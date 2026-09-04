@@ -4,24 +4,22 @@ App de Preparación FCR: inventariar un libro de la Biblia, definir equipos con 
 
 ## Arranque
 
-Necesitas el monorepo [`idiomas-puentes-lms`](../idiomas-puentes-lms) (para `@ip-lms/dcs-client`) y [`idiomas-puentes-docs`](../../idiomas-puentes-docs) (scripts Python de inventario) al lado, o la variable `GATEWAY_TASKS_DOCS_SCRIPTS`.
+Necesitas el monorepo [`idiomas-puentes-lms`](../idiomas-puentes-lms) al lado (para `@ip-lms/dcs-client`).
 
 ```bash
-# Terminal 1 — API local de inventario
-npm run worker
-
-# Terminal 2 — UI
 npm install
 npm run dev
 # http://localhost:5175
 ```
 
-Sin worker puedes usar **Usar instantánea NEH** o **Cargar JSON**.
+No hace falta ningún proceso aparte: **Generar** en el paso Inventario corre
+enteramente en el navegador (ver [Inventario](#inventario) más abajo). Sin
+red también puedes usar **Instantánea NEH** o **Cargar JSON**.
 
 ## Flujo
 
 1. **Contexto** (barra): lengua, org de contenido (`{lang}_gl`), org PM (si hay login), libro.
-2. **Inventario**: generar (worker) o cargar JSON → porciones + artículos pendientes.
+2. **Inventario**: generar o cargar JSON → porciones + artículos pendientes.
 3. **Equipos**: personas, equipos y alcance (Notas, Preguntas, Academia, Palabras).
 4. **Asignar**: backlog filtrado por el equipo activo; asignar o **Autoasignar**.
 5. **Publicar**: descargar JSON o **Guardar en DCS**.
@@ -47,9 +45,16 @@ Schema del entregable: `gateway-assignments-1` (personas, equipos, asignaciones 
 
 Login: usuario/contraseña → PAT, o pegar un token (`read:user`, `read:organization`, `write:repository`).
 
-## Worker
+## Inventario
 
-`POST /jobs` con `{ "book", "lang", "contentOrg" }`. Un trabajo a la vez. Solo `127.0.0.1:8765`.
+**Generar** corre en [`src/worker/inventoryWorker.ts`](src/worker/inventoryWorker.ts), un
+Web Worker real (no un proceso aparte): descarga el ULT y los archivos
+compañeros (UST/TN/TQ/TWL) directamente de Door43, arma las porciones
+(`src/prep/`) y comprueba el estado de cada artículo de Academia/Palabras en
+el org destino (`src/status/`). Ambas mitades son un port a TypeScript, línea
+a línea, de los scripts Python de `idiomas-puentes-docs` (`prep_portions.py`
++ `check_article_status.py`); `npm run verify:prep`, `verify:seqmatch` y
+`verify:status` comparan la salida contra la de esos scripts originales.
 
 ## Relación con la guía
 

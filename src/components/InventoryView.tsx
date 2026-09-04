@@ -96,7 +96,7 @@ export function InventoryView({
           <CardHeader>
             <CardTitle>Sin inventario en esta sesión</CardTitle>
             <CardDescription>
-              Genera con el worker, carga un JSON o usa la instantánea de Nehemías para empezar a
+              Genera el libro, carga un JSON o usa la instantánea de Nehemías para empezar a
               asignar.
             </CardDescription>
           </CardHeader>

@@ -10,7 +10,6 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4175 --strictPort",
     "typecheck": "tsc -b --noEmit",
-    "worker": "python scripts/worker.py",
     "verify:prep": "tsx scripts/verify-prep.mts",
     "verify:seqmatch": "tsx scripts/verify-seqmatch.mts",
     "verify:status": "tsx scripts/verify-status.mts"

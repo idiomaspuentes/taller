@@ -7,7 +7,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Local worker output
+# Scratch output
 out/
 
 # Env

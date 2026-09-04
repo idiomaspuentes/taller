@@ -22,7 +22,7 @@ import {
   loadInventoryFromDcs,
   loadTeamsFromDcs,
 } from "./dcs/persist";
-import { checkWorker, pollJob, startJob } from "./worker/client";
+import { generateInventory } from "./worker/client";
 import { SignInModal } from "./components/SignIn";
 import { ContextView } from "./components/ContextView";
 import { InventoryView } from "./components/InventoryView";
@@ -90,7 +90,6 @@ export function App() {
   const [contextConfirmed, setContextConfirmed] = useState(
     () => readContextConfirmed() || Boolean(restoreSessionInventory()),
   );
-  const [workerOnline, setWorkerOnline] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [jobMessage, setJobMessage] = useState("");
   const [live, setLive] = useState("");
@@ -111,14 +110,6 @@ export function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [view]);
-
-  useEffect(() => {
-    void checkWorker().then(setWorkerOnline);
-    const id = window.setInterval(() => {
-      void checkWorker().then(setWorkerOnline);
-    }, 8000);
-    return () => window.clearInterval(id);
-  }, []);
 
   useEffect(() => {
     if (!session) {
@@ -185,17 +176,9 @@ export function App() {
 
   async function generate() {
     setGenerating(true);
-    setJobMessage("Encolando…");
+    setJobMessage("Descargando…");
     try {
-      const online = await checkWorker();
-      setWorkerOnline(online);
-      if (!online) {
-        throw new Error("Worker no disponible. Arranca `npm run worker` o carga un JSON.");
-      }
-      const { id } = await startJob({ book, lang, contentOrg });
-      const result = await pollJob(id, (job) => {
-        setJobMessage(job.message || job.step || job.status);
-      });
+      const result = await generateInventory({ book, lang, contentOrg }, setJobMessage);
       applyInventory(result, result.articles.length ? "asignar" : "inventario");
       setJobMessage("Listo.");
     } catch (err) {
@@ -300,18 +283,6 @@ export function App() {
             </Button>
           ) : null}
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
-            <Badge
-              variant="outline"
-              title={workerOnline ? "Worker en 127.0.0.1:8765" : "Worker no disponible"}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  workerOnline ? "bg-emerald-500" : "bg-red-400",
-                )}
-              />
-              Worker
-            </Badge>
             <Badge
               variant="outline"
               title={session ? `${session.username} · ${hostShort(session.host)}` : "Sin sesión DCS"}
