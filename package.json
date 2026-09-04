@@ -11,7 +11,9 @@
     "preview": "vite preview --port 4175 --strictPort",
     "typecheck": "tsc -b --noEmit",
     "worker": "python scripts/worker.py",
-    "verify:prep": "tsx scripts/verify-prep.mts"
+    "verify:prep": "tsx scripts/verify-prep.mts",
+    "verify:seqmatch": "tsx scripts/verify-seqmatch.mts",
+    "verify:status": "tsx scripts/verify-status.mts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
@@ -19,6 +21,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.5",
+    "fflate": "^0.8.3",
     "lucide-react": "^1.41.0",
     "radix-ui": "^1.6.7",
     "react": "^18.3.1",

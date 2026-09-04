@@ -1,0 +1,7 @@
+---
+dublin_core:
+  identifier: tw
+  language:
+    identifier: es-419
+  subject: Translation Words
+  type: dict
