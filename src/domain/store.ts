@@ -18,6 +18,7 @@ import {
   type ScopeRule,
   type Team,
   type TeamBundle,
+  type TeamPreset,
   type TaskResource,
   ARTICLE_FILTERS,
   ASSIGNMENT_GRAINS,
@@ -29,6 +30,7 @@ import { scopeFromRules, uid } from "./assignment";
 const STORE_PREFIX = "gt-assignments:";
 const CONTEXT_KEY = "gt-context";
 const SESSION_INV_KEY = "gt-session-inventory";
+const TEAM_PRESETS_KEY = "gt-team-presets";
 
 function isArticleStatus(value: string): value is ArticleStatus {
   return (
@@ -501,4 +503,52 @@ export function toExportDoc(doc: AssignmentsDoc): AssignmentsDoc {
     exported_at: new Date().toISOString(),
     activeTeamId: undefined,
   };
+}
+
+/** Drop anything specific to one book's structure before a rule is reused as a preset. */
+function stripRuleForPreset(rule: ScopeRule): ScopeRule {
+  return {
+    resource: rule.resource,
+    articleFilter: rule.articleFilter,
+    grain: rule.grain,
+    stayInChapter: rule.stayInChapter,
+    includeDuplicates: rule.includeDuplicates,
+  };
+}
+
+export function normalizeTeamPresets(raw: unknown): TeamPreset[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((row) => row && typeof row === "object")
+    .map((row) => {
+      const item = row as Partial<TeamPreset>;
+      const rules = normalizeRules(item.rules, []).map(stripRuleForPreset);
+      const bundle = normalizeBundle(item.bundle);
+      return {
+        id: String(item.id || uid()),
+        name: String(item.name ?? "").trim(),
+        description: String(item.description ?? "").trim() || undefined,
+        rules,
+        bundle: bundle ? { enabled: bundle.enabled, grain: bundle.grain } : undefined,
+      };
+    })
+    .filter((row) => row.name && row.rules.length);
+}
+
+export function loadTeamPresets(): TeamPreset[] {
+  try {
+    const raw = localStorage.getItem(TEAM_PRESETS_KEY);
+    if (!raw) return [];
+    return normalizeTeamPresets(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
+export function saveTeamPresets(presets: TeamPreset[]): void {
+  try {
+    localStorage.setItem(TEAM_PRESETS_KEY, JSON.stringify(presets));
+  } catch {
+    /* quota */
+  }
 }

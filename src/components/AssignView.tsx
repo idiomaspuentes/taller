@@ -371,7 +371,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoEquipos }
           </Button>
         </CardHeader>
         {team ? (
-          <CardContent className="grid gap-3">
+          <CardContent className="grid gap-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={team.id}
@@ -391,18 +391,20 @@ export function AssignView({ inventory, board, onChange, announce, onGoEquipos }
               {team.description?.trim() ? (
                 <span className="max-w-full text-sm text-muted-foreground">{team.description.trim()}</span>
               ) : null}
-              <div className="flex flex-wrap gap-1">
-                {bundled && team.bundle ? (
-                  <Badge variant="outline">Juntos · {BUNDLE_GRAIN_LABEL[team.bundle.grain]}</Badge>
-                ) : grain ? (
-                  <Badge variant="outline">{GRAIN_LABEL[grain]}</Badge>
-                ) : null}
-                {teamRules(team).map((rule) => (
-                  <Badge key={`${rule.resource}-${rule.articleFilter}`} variant="outline">
-                    {scopeRuleLabel(rule, resolvedRuleGrain(team, rule))}
-                  </Badge>
-                ))}
-              </div>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {bundled && team.bundle ? (
+                <Badge variant="outline">Juntos · {BUNDLE_GRAIN_LABEL[team.bundle.grain]}</Badge>
+              ) : grain ? (
+                <Badge variant="outline">{GRAIN_LABEL[grain]}</Badge>
+              ) : null}
+              {teamRules(team).map((rule) => (
+                <Badge key={`${rule.resource}-${rule.articleFilter}`} variant="outline">
+                  {scopeRuleLabel(rule, resolvedRuleGrain(team, rule))}
+                </Badge>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               <Select value={chapter} onValueChange={setChapter}>
                 <SelectTrigger className="w-auto" aria-label="Capítulo">
                   <SelectValue />

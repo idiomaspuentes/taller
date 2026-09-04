@@ -10,6 +10,7 @@ import type {
   ScopeKey,
   ScopeRule,
   Team,
+  TeamPreset,
 } from "../domain/types";
 import {
   BUNDLE_GRAIN_LABEL,
@@ -37,7 +38,7 @@ import {
   uid,
 } from "../domain/assignment";
 import { groupPortionsByChapter, portionKey } from "../domain/chapters";
-import { mergePeople } from "../domain/store";
+import { loadTeamPresets, mergePeople, saveTeamPresets } from "../domain/store";
 import type { GtSession } from "../dcs/auth";
 import { listPmOrgMembers } from "../dcs/persist";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -56,7 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 
 type Props = {
   board: AssignmentsDoc;
@@ -174,6 +175,7 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(() => board.teams.length === 0);
   const [scopeHelpOpen, setScopeHelpOpen] = useState(false);
+  const [presets, setPresets] = useState<TeamPreset[]>(() => loadTeamPresets());
   const [bundleOn, setBundleOn] = useState(false);
   const [bundleGrain, setBundleGrain] = useState<BundleGrain>("portion");
   const [bundleChapter, setBundleChapter] = useState("");
@@ -297,6 +299,62 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
     setBundleChapter("");
     setBundlePortionIds([]);
     setFormOpen(false);
+  }
+
+  function applyPreset(preset: TeamPreset) {
+    const next: ScopeDraft = {};
+    for (const rule of preset.rules) {
+      const grain = rule.grain ?? defaultGrainFor(rule.resource);
+      next[rule.resource] = {
+        articleFilter: rule.articleFilter,
+        grain,
+        stayInChapter: rule.stayInChapter ?? grain === "portionRefs",
+        includeDuplicates: rule.includeDuplicates ?? false,
+        chapter: "",
+        portionIds: [],
+        itemIds: "",
+      };
+    }
+    setDraft(next);
+    setBundleOn(Boolean(preset.bundle?.enabled));
+    setBundleGrain(preset.bundle?.grain ?? "portion");
+    setBundleChapter("");
+    setBundlePortionIds([]);
+    setTeamName(preset.name);
+    setDescription(preset.description ?? "");
+    setFormOpen(true);
+  }
+
+  function saveAsPreset() {
+    const name = teamName.trim();
+    const cleanRules = rulesFromDraft(draft, true).map((rule) => ({
+      ...rule,
+      itemIds: undefined,
+    }));
+    if (!name || !cleanRules.length) return;
+    const preset: TeamPreset = {
+      id: uid(),
+      name,
+      description: description.trim() || undefined,
+      rules: cleanRules,
+      bundle: { enabled: bundleOn, grain: bundleGrain },
+    };
+    setPresets((prev) => {
+      const withoutSameName = prev.filter(
+        (p) => p.name.toLocaleLowerCase("es") !== name.toLocaleLowerCase("es"),
+      );
+      const next = [...withoutSameName, preset];
+      saveTeamPresets(next);
+      return next;
+    });
+  }
+
+  function removePreset(id: string) {
+    setPresets((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      saveTeamPresets(next);
+      return next;
+    });
   }
 
   const rules = rulesFromDraft(draft, bundleOn);
@@ -549,6 +607,36 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
           <Badge variant="secondary">{board.teams.length}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
+          {!editingId && presets.length ? (
+            <div className="grid gap-1.5 rounded-lg border border-dashed p-2">
+              <Label className="text-xs text-muted-foreground">Empezar desde un preset</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((preset) => (
+                  <div
+                    key={preset.id}
+                    className="inline-flex items-center gap-1 rounded-full border bg-card py-1 pl-2.5 pr-1 text-xs"
+                  >
+                    <button
+                      type="button"
+                      className="font-medium hover:underline"
+                      onClick={() => applyPreset(preset)}
+                      title={preset.rules.map((r) => scopeRuleLabel(r, r.grain)).join(" · ")}
+                    >
+                      {preset.name}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Eliminar preset ${preset.name}`}
+                      className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
+                      onClick={() => removePreset(preset.id)}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-1.5">
             <Label htmlFor="team-name">Nombre</Label>
             <Input
@@ -928,6 +1016,15 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
           <div className="flex flex-wrap gap-1.5">
             <Button type="button" onClick={saveTeam} disabled={!teamName.trim() || !rules.length}>
               {editingId ? "Guardar cambios" : "Crear equipo"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={saveAsPreset}
+              disabled={!teamName.trim() || !rules.length}
+              title="Guarda el alcance y grano de este equipo para reusarlo en otro libro, sin los integrantes ni las porciones específicas"
+            >
+              Guardar como preset
             </Button>
             <Button type="button" variant="secondary" onClick={resetForm}>
               Cancelar

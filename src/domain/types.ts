@@ -155,6 +155,20 @@ export type Team = {
   bundle?: TeamBundle;
 };
 
+/**
+ * Reusable team template: the resource shape (filters, grains, bundle) a
+ * team was built with, stripped of anything specific to one book — no
+ * chapter, portionIds, itemIds or members. Applying a preset to a new team
+ * pre-fills the scope form; the user still picks members and can tweak.
+ */
+export type TeamPreset = {
+  id: string;
+  name: string;
+  description?: string;
+  rules: ScopeRule[];
+  bundle?: { enabled: boolean; grain: BundleGrain };
+};
+
 export type Assignment = {
   id: string;
   /** Display name of the assignee (person). Never a team name. */
