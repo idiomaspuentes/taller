@@ -1,0 +1,8 @@
+Reference	ID	Tags	SupportReference	Quote	Occurrence	Note
+front:intro	m2jl				0	Introduction to Titus (fixture).
+1:intro	abc1				0	Chapter 1 introduction (fixture).
+1:1	n001		rc://*/ta/man/translate/figs-metaphor	servant of God	1	Paul calls himself a servant of God.
+1:2	n002		rc://*/ta/man/translate/figs-explicit	eternal life	1	Eternal life is life with God.
+2:1	n003		rc://*/ta/man/translate/figs-yousingular	you	1	You is singular and refers to Titus.
+2:3	n004		rc://*/ta/man/translate/figs-explicit	Older women	1	Women who are older in the church.
+3:1	n005		rc://*/ta/man/translate/translate-unknown	rulers	1	Civil authorities.

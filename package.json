@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4175 --strictPort",
     "typecheck": "tsc -b --noEmit",
-    "worker": "python scripts/worker.py"
+    "worker": "python scripts/worker.py",
+    "verify:prep": "tsx scripts/verify-prep.mts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
@@ -31,6 +32,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   }

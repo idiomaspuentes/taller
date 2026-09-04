@@ -1,0 +1,298 @@
+{
+  "schema": "prep-inventory-1",
+  "phase": "0-preparacion",
+  "book": "TIT",
+  "mode": "package",
+  "generated_at": "2026-09-04T20:19:42Z",
+  "generator": "prep_portions.py",
+  "ult": "fixtures/prep_portions/57-TIT-sample.usfm",
+  "sources": {
+    "ult": "fixtures/prep_portions/57-TIT-sample.usfm",
+    "notas": "fixtures/prep_portions/tn_TIT.tsv",
+    "preguntas": "fixtures/prep_portions/tq_TIT.tsv",
+    "enlaces_palabras": "fixtures/prep_portions/twl_TIT.tsv"
+  },
+  "warnings": [
+    "TIT 3: no hay marcadores \\ts; se usa el capítulo entero como una porción."
+  ],
+  "counts": {
+    "chapters": 3,
+    "portions": 5,
+    "notas": 5,
+    "preguntas": 6,
+    "preguntas_sin_asignar": 0,
+    "palabras": 6,
+    "academia": 4,
+    "warnings": 1
+  },
+  "palabras": [
+    {
+      "id": "christ",
+      "path": "bible/kt/christ"
+    },
+    {
+      "id": "god",
+      "path": "bible/kt/god"
+    },
+    {
+      "id": "life",
+      "path": "bible/kt/life"
+    },
+    {
+      "id": "teach",
+      "path": "bible/kt/teach"
+    },
+    {
+      "id": "authority",
+      "path": "bible/other/authority"
+    },
+    {
+      "id": "woman",
+      "path": "bible/other/woman"
+    }
+  ],
+  "academia": [
+    {
+      "id": "figs-explicit",
+      "path": "translate/figs-explicit"
+    },
+    {
+      "id": "figs-metaphor",
+      "path": "translate/figs-metaphor"
+    },
+    {
+      "id": "figs-yousingular",
+      "path": "translate/figs-yousingular"
+    },
+    {
+      "id": "translate-unknown",
+      "path": "translate/translate-unknown"
+    }
+  ],
+  "preguntas_sin_asignar": 0,
+  "book_intro": 1,
+  "chapters": [
+    {
+      "chapter": 1,
+      "preguntas_sin_asignar": 0,
+      "portions": [
+        {
+          "id": "TIT-01-01",
+          "ref": "TIT 1:1-2",
+          "chapter": 1,
+          "verses": [
+            1,
+            2
+          ],
+          "notas": 2,
+          "preguntas": 2,
+          "notas_items": [
+            {
+              "id": "n001",
+              "ref": "1:1",
+              "chapter": 1,
+              "portion": "TIT-01-01"
+            },
+            {
+              "id": "n002",
+              "ref": "1:2",
+              "chapter": 1,
+              "portion": "TIT-01-01"
+            }
+          ],
+          "preguntas_items": [
+            {
+              "id": "q001",
+              "ref": "1:1",
+              "chapter": 1,
+              "portion": "TIT-01-01"
+            },
+            {
+              "id": "q002",
+              "ref": "1:2",
+              "chapter": 1,
+              "portion": "TIT-01-01"
+            }
+          ],
+          "academia": [
+            {
+              "id": "figs-metaphor",
+              "firstSeenInBook": true
+            },
+            {
+              "id": "figs-explicit",
+              "firstSeenInBook": true
+            }
+          ],
+          "palabras": [
+            {
+              "id": "god",
+              "firstSeenInBook": true
+            },
+            {
+              "id": "christ",
+              "firstSeenInBook": true
+            },
+            {
+              "id": "life",
+              "firstSeenInBook": true
+            }
+          ]
+        },
+        {
+          "id": "TIT-01-02",
+          "ref": "TIT 1:3-4",
+          "chapter": 1,
+          "verses": [
+            3,
+            4
+          ],
+          "notas": 0,
+          "preguntas": 1,
+          "notas_items": [],
+          "preguntas_items": [
+            {
+              "id": "q003",
+              "ref": "1:4",
+              "chapter": 1,
+              "portion": "TIT-01-02"
+            }
+          ],
+          "academia": [],
+          "palabras": []
+        }
+      ],
+      "intro_notes": 1
+    },
+    {
+      "chapter": 2,
+      "preguntas_sin_asignar": 0,
+      "portions": [
+        {
+          "id": "TIT-02-01",
+          "ref": "TIT 2:1-2",
+          "chapter": 2,
+          "verses": [
+            1,
+            2
+          ],
+          "notas": 1,
+          "preguntas": 1,
+          "notas_items": [
+            {
+              "id": "n003",
+              "ref": "2:1",
+              "chapter": 2,
+              "portion": "TIT-02-01"
+            }
+          ],
+          "preguntas_items": [
+            {
+              "id": "q004",
+              "ref": "2:2",
+              "chapter": 2,
+              "portion": "TIT-02-01"
+            }
+          ],
+          "academia": [
+            {
+              "id": "figs-yousingular",
+              "firstSeenInBook": true
+            }
+          ],
+          "palabras": [
+            {
+              "id": "teach",
+              "firstSeenInBook": true
+            }
+          ]
+        },
+        {
+          "id": "TIT-02-02",
+          "ref": "TIT 2:3",
+          "chapter": 2,
+          "verses": [
+            3
+          ],
+          "notas": 1,
+          "preguntas": 1,
+          "notas_items": [
+            {
+              "id": "n004",
+              "ref": "2:3",
+              "chapter": 2,
+              "portion": "TIT-02-02"
+            }
+          ],
+          "preguntas_items": [
+            {
+              "id": "q005",
+              "ref": "2:3",
+              "chapter": 2,
+              "portion": "TIT-02-02"
+            }
+          ],
+          "academia": [
+            {
+              "id": "figs-explicit",
+              "firstSeenInBook": false
+            }
+          ],
+          "palabras": [
+            {
+              "id": "woman",
+              "firstSeenInBook": true
+            }
+          ]
+        }
+      ],
+      "intro_notes": 0
+    },
+    {
+      "chapter": 3,
+      "preguntas_sin_asignar": 0,
+      "portions": [
+        {
+          "id": "TIT-03-01",
+          "ref": "TIT 3:1-2",
+          "chapter": 3,
+          "verses": [
+            1,
+            2
+          ],
+          "notas": 1,
+          "preguntas": 1,
+          "notas_items": [
+            {
+              "id": "n005",
+              "ref": "3:1",
+              "chapter": 3,
+              "portion": "TIT-03-01"
+            }
+          ],
+          "preguntas_items": [
+            {
+              "id": "q006",
+              "ref": "3:1",
+              "chapter": 3,
+              "portion": "TIT-03-01"
+            }
+          ],
+          "academia": [
+            {
+              "id": "translate-unknown",
+              "firstSeenInBook": true
+            }
+          ],
+          "palabras": [
+            {
+              "id": "authority",
+              "firstSeenInBook": true
+            }
+          ]
+        }
+      ],
+      "intro_notes": 0
+    }
+  ]
+}
