@@ -47,3 +47,9 @@ Login: usuario/contraseña → PAT, o pegar un token (`read:user`, `read:organiz
 ## Relación con la guía
 
 El `/tablero` de `idiomas-puentes-docs` queda como prototipo. Esta app es el destino.
+
+## UI/UX
+
+Antes de tocar una vista o añadir un control, lee
+[`docs/UI_UX_PRINCIPLES.md`](docs/UI_UX_PRINCIPLES.md) — reglas de
+divulgación progresiva y jerarquía visual, con una checklist para PRs.

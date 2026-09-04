@@ -174,7 +174,10 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(() => board.teams.length === 0);
+  const [descOpen, setDescOpen] = useState(false);
+  const [addManualOpen, setAddManualOpen] = useState(false);
   const [scopeHelpOpen, setScopeHelpOpen] = useState(false);
+  const [bundleHelpOpen, setBundleHelpOpen] = useState(false);
   const [presets, setPresets] = useState<TeamPreset[]>(() => loadTeamPresets());
   const [bundleOn, setBundleOn] = useState(false);
   const [bundleGrain, setBundleGrain] = useState<BundleGrain>("portion");
@@ -299,6 +302,7 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
     setBundleChapter("");
     setBundlePortionIds([]);
     setFormOpen(false);
+    setDescOpen(false);
   }
 
   function applyPreset(preset: TeamPreset) {
@@ -322,6 +326,7 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
     setBundlePortionIds([]);
     setTeamName(preset.name);
     setDescription(preset.description ?? "");
+    setDescOpen(Boolean(preset.description?.trim()));
     setFormOpen(true);
   }
 
@@ -357,6 +362,8 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
     });
   }
 
+  const addedResources = SCOPE_KEYS.filter((key) => draft[key] != null);
+  const availableResources = SCOPE_KEYS.filter((key) => draft[key] == null);
   const rules = rulesFromDraft(draft, bundleOn);
   const chapterNum = Number(bundleChapter);
   const draftTeam: Team = {
@@ -444,6 +451,7 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
     setEditingId(team.id);
     setTeamName(team.name);
     setDescription(team.description ?? "");
+    setDescOpen(Boolean(team.description?.trim()));
     setMemberIds([...team.memberIds]);
     setDraft(draftFromTeam(team));
     setBundleOn(Boolean(team.bundle?.enabled));
@@ -559,26 +567,51 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
             ) : null}
           </div>
 
-          <div className="grid gap-1.5 border-t pt-3">
-            <Label htmlFor="local-person">Añadir a mano (local / sin sesión)</Label>
-            <div className="flex gap-1.5">
-              <Input
-                id="local-person"
-                value={personName}
-                onChange={(e) => setPersonName(e.target.value)}
-                placeholder="Nombre"
-                aria-label="Nombre de la persona"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addPerson();
-                  }
-                }}
-              />
-              <Button type="button" onClick={addPerson} disabled={!personName.trim()}>
-                Añadir
-              </Button>
+          {!session || addManualOpen ? (
+            <div className="grid gap-1.5 border-t pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="local-person">
+                  {session ? "Añadir a mano" : "Añadir a mano (local / sin sesión)"}
+                </Label>
+                {session ? (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setAddManualOpen(false)}
+                  >
+                    Ocultar
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex gap-1.5">
+                <Input
+                  id="local-person"
+                  value={personName}
+                  onChange={(e) => setPersonName(e.target.value)}
+                  placeholder="Nombre"
+                  aria-label="Nombre de la persona"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addPerson();
+                    }
+                  }}
+                />
+                <Button type="button" onClick={addPerson} disabled={!personName.trim()}>
+                  Añadir
+                </Button>
+              </div>
             </div>
+          ) : (
+            <button
+              type="button"
+              className="justify-self-start border-t pt-3 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setAddManualOpen(true)}
+            >
+              + Añadir persona a mano
+            </button>
+          )}
+          <div className="grid gap-1.5">
             {board.people.filter((p) => !rosterMap.has(p.id)).length ? (
               <div className="max-h-40 overflow-auto">
                 {board.people
@@ -609,7 +642,9 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
         <CardContent className="grid gap-3">
           {!editingId && presets.length ? (
             <div className="grid gap-1.5 rounded-lg border border-dashed p-2">
-              <Label className="text-xs text-muted-foreground">Empezar desde un preset</Label>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Empezar desde un preset
+              </h3>
               <div className="flex flex-wrap gap-1.5">
                 {presets.map((preset) => (
                   <div
@@ -647,23 +682,48 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
               aria-label="Nombre del equipo"
             />
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="team-desc">Descripción (fase)</Label>
-            <textarea
-              id="team-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="p. ej. Fase 1 · Borrador"
-              aria-label="Descripción del equipo"
-              rows={2}
-              className="min-h-16 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
-            />
-          </div>
+          {descOpen ? (
+            <div className="grid gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="team-desc">Descripción (fase)</Label>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setDescription("");
+                    setDescOpen(false);
+                  }}
+                >
+                  Quitar
+                </button>
+              </div>
+              <textarea
+                id="team-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="p. ej. Fase 1 · Borrador"
+                aria-label="Descripción del equipo"
+                rows={2}
+                autoFocus
+                className="min-h-16 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setDescOpen(true)}
+            >
+              + Añadir descripción de fase
+            </button>
+          )}
 
           <div className="grid gap-2">
             <Collapsible open={scopeHelpOpen} onOpenChange={setScopeHelpOpen}>
               <div className="flex items-center justify-between gap-2">
-                <Label>Alcance y grano por recurso</Label>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Alcance y grano por recurso
+                </h3>
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
@@ -685,65 +745,79 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
                 </p>
               </CollapsibleContent>
             </Collapsible>
+            {availableResources.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {availableResources.map((key) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => toggleResource(key)}
+                  >
+                    + {SCOPE_LABEL[key]}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
             <div className="grid gap-2">
-              {SCOPE_KEYS.map((key) => {
-                const row = draft[key];
-                const included = row != null;
-                const filter = row?.articleFilter ?? "pending";
-                const grain = row?.grain ?? defaultGrainFor(key);
+              {addedResources.map((key) => {
+                const row = draft[key] as ResourceDraft;
+                const filter = row.articleFilter;
+                const grain = row.grain;
                 const options = filtersForResource(key);
-                const matchCount =
-                  included && inventory
-                    ? ruleItemCount(
-                        {
-                          resource: key,
-                          articleFilter: filter,
-                          grain,
-                          stayInChapter: row?.stayInChapter,
-                          includeDuplicates: row?.includeDuplicates,
-                          chapter: bundleOn
-                            ? chapterNum > 0
-                              ? chapterNum
-                              : undefined
-                            : row?.stayInChapter && Number(row.chapter) > 0
-                              ? Number(row.chapter)
-                              : undefined,
-                          portionIds: bundleOn
-                            ? bundlePortionIds.length
-                              ? bundlePortionIds
-                              : undefined
-                            : row?.portionIds.length
-                              ? row.portionIds
-                              : undefined,
-                        },
-                        inventory.portions,
-                        inventory.articles,
-                        draftTeam,
-                      )
-                    : null;
-                const geoChapter = bundleOn ? bundleChapter : row?.chapter ?? "";
+                const matchCount = inventory
+                  ? ruleItemCount(
+                      {
+                        resource: key,
+                        articleFilter: filter,
+                        grain,
+                        stayInChapter: row.stayInChapter,
+                        includeDuplicates: row.includeDuplicates,
+                        chapter: bundleOn
+                          ? chapterNum > 0
+                            ? chapterNum
+                            : undefined
+                          : row.stayInChapter && Number(row.chapter) > 0
+                            ? Number(row.chapter)
+                            : undefined,
+                        portionIds: bundleOn
+                          ? bundlePortionIds.length
+                            ? bundlePortionIds
+                            : undefined
+                          : row.portionIds.length
+                            ? row.portionIds
+                            : undefined,
+                      },
+                      inventory.portions,
+                      inventory.articles,
+                      draftTeam,
+                    )
+                  : null;
+                const geoChapter = bundleOn ? bundleChapter : row.chapter ?? "";
                 const geoPortions = chapterPortionsFor(geoChapter);
                 return (
-                  <div
-                    key={key}
-                    className={cn(
-                      "grid gap-2 rounded-lg border p-2",
-                      included && "border-primary/40 bg-primary/5",
-                    )}
-                  >
+                  <div key={key} className="grid gap-2 rounded-lg border border-primary/40 bg-primary/5 p-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <Label className="min-w-24 font-normal">
-                        <Checkbox checked={included} onCheckedChange={() => toggleResource(key)} />
-                        {SCOPE_LABEL[key]}
-                      </Label>
-                      {matchCount != null ? (
-                        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-                          {matchCount} {matchCount === 1 ? "ítem" : "ítems"}
-                        </span>
-                      ) : null}
+                      <span className="min-w-24 text-sm font-medium">{SCOPE_LABEL[key]}</span>
+                      <div className="ml-auto flex items-center gap-2">
+                        {matchCount != null ? (
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            {matchCount} {matchCount === 1 ? "ítem" : "ítems"}
+                          </span>
+                        ) : null}
+                        <button
+                          type="button"
+                          aria-label={`Quitar ${SCOPE_LABEL[key]}`}
+                          className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
+                          onClick={() => toggleResource(key)}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    {included && row ? (
-                      <div className="grid gap-2">
+                    <div className="grid gap-2">
                         <Select
                           value={filter}
                           onValueChange={(value) =>
@@ -904,7 +978,6 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
                           </div>
                         ) : null}
                       </div>
-                    ) : null}
                   </div>
                 );
               })}
@@ -912,18 +985,37 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
           </div>
 
           <div className="grid gap-2 rounded-lg border p-2">
-            <Label className="font-medium">
-              <Checkbox
-                checked={bundleOn}
-                onCheckedChange={(checked) => setBundleOn(checked === true)}
-              />
-              Asignar juntos
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              La misma persona recibe todos los recursos listados para esa unidad: una porción, las
-              porciones elegidas de un capítulo, o un capítulo entero. Autoasignar reparte lotes, no
-              notas y academia por separado.
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="font-medium">
+                <Checkbox
+                  checked={bundleOn}
+                  onCheckedChange={(checked) => setBundleOn(checked === true)}
+                />
+                Asignar juntos
+              </Label>
+              <Collapsible open={bundleHelpOpen} onOpenChange={setBundleHelpOpen}>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    ¿Qué es esto?
+                    <ChevronDown
+                      className={cn("size-3 transition-transform", bundleHelpOpen && "rotate-180")}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+              </Collapsible>
+            </div>
+            <Collapsible open={bundleHelpOpen} onOpenChange={setBundleHelpOpen}>
+              <CollapsibleContent>
+                <p className="text-xs text-muted-foreground">
+                  La misma persona recibe todos los recursos listados para esa unidad: una porción, las
+                  porciones elegidas de un capítulo, o un capítulo entero. Autoasignar reparte lotes, no
+                  notas y academia por separado.
+                </p>
+              </CollapsibleContent>
+            </Collapsible>
             {bundleOn ? (
               <div className="grid gap-2">
                 <Select

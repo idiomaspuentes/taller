@@ -1,5 +1,6 @@
+import { useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
-import { BOOKS } from "../domain/books";
+import { BOOKS, defaultContentOrg } from "../domain/books";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,8 +43,11 @@ export function ContextView({
   onContinue,
   onSignIn,
 }: Props) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const valid = Boolean(lang.trim() && contentOrg.trim() && book.trim());
   const selectedBook = BOOKS.find((b) => b.code === book);
+  const isCustomContentOrg = contentOrg !== defaultContentOrg(lang);
+  const showContentOrg = advancedOpen || isCustomContentOrg;
 
   return (
     <Card className="mx-auto max-w-lg" size="sm">
@@ -65,20 +69,41 @@ export function ContextView({
             spellCheck={false}
           />
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="ctx-content">Organización de contenido</Label>
-          <Input
-            id="ctx-content"
-            value={contentOrg}
-            onChange={(e) => onContentOrgChange(e.target.value.trim())}
-            title="Donde viven {lang}_ta y {lang}_tw"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <p className="text-xs text-muted-foreground">
-            Donde viven los recursos públicos (TPL, TPS, Notas, Palabras, Preguntas, Academia).
-          </p>
-        </div>
+        {showContentOrg ? (
+          <div className="grid gap-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="ctx-content">Organización de contenido</Label>
+              {!isCustomContentOrg ? (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setAdvancedOpen(false)}
+                >
+                  Ocultar
+                </button>
+              ) : null}
+            </div>
+            <Input
+              id="ctx-content"
+              value={contentOrg}
+              onChange={(e) => onContentOrgChange(e.target.value.trim())}
+              title="Donde viven {lang}_ta y {lang}_tw"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <p className="text-xs text-muted-foreground">
+              Donde viven los recursos públicos (TPL, TPS, Notas, Palabras, Preguntas, Academia).
+            </p>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setAdvancedOpen(true)}
+          >
+            Avanzado: organización de contenido ({contentOrg})
+          </button>
+        )}
         <div className="grid gap-1.5">
           <Label htmlFor="ctx-pm">Organización PM</Label>
           {session ? (
