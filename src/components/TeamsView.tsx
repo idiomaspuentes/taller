@@ -38,9 +38,9 @@ import {
   uid,
 } from "../domain/assignment";
 import { groupPortionsByChapter, portionKey } from "../domain/chapters";
-import { loadTeamPresets, mergePeople, saveTeamPresets } from "../domain/store";
+import { loadTeamPresets, mergePeople, mergeTeamPresets, saveTeamPresets } from "../domain/store";
 import type { GtSession } from "../dcs/auth";
-import { listPmOrgMembers } from "../dcs/persist";
+import { listPmOrgMembers, loadTeamPresetsFromDcs, saveTeamPresetsToDcs } from "../dcs/persist";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,7 @@ type Props = {
   pmOrg: string;
   orgs: DcsOrg[];
   onPmOrgChange: (org: string) => void;
+  announce: (msg: string) => void;
 };
 
 type ResourceDraft = {
@@ -166,7 +167,16 @@ function needsGeoPickers(draft: ResourceDraft): boolean {
   return draft.grain === "portionRefs" || draft.stayInChapter || draft.grain === "portion";
 }
 
-export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, onPmOrgChange }: Props) {
+export function TeamsView({
+  board,
+  inventory,
+  onChange,
+  session,
+  pmOrg,
+  orgs,
+  onPmOrgChange,
+  announce,
+}: Props) {
   const [personName, setPersonName] = useState("");
   const [teamName, setTeamName] = useState("");
   const [description, setDescription] = useState("");
@@ -211,6 +221,22 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
       .finally(() => {
         if (!cancelled) setRosterLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, pmOrg]);
+
+  useEffect(() => {
+    if (!session || !pmOrg) return;
+    let cancelled = false;
+    void loadTeamPresetsFromDcs(session, pmOrg).then((remote) => {
+      if (cancelled || !remote) return;
+      setPresets((prev) => {
+        const merged = mergeTeamPresets(prev, remote);
+        saveTeamPresets(merged);
+        return merged;
+      });
+    });
     return () => {
       cancelled = true;
     };
@@ -330,6 +356,16 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
     setFormOpen(true);
   }
 
+  async function syncPresets(next: TeamPreset[]) {
+    saveTeamPresets(next);
+    if (!session || !pmOrg) return;
+    try {
+      await saveTeamPresetsToDcs(session, pmOrg, next);
+    } catch (err) {
+      announce(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   function saveAsPreset() {
     const name = teamName.trim();
     const cleanRules = rulesFromDraft(draft, true).map((rule) => ({
@@ -344,22 +380,23 @@ export function TeamsView({ board, inventory, onChange, session, pmOrg, orgs, on
       rules: cleanRules,
       bundle: { enabled: bundleOn, grain: bundleGrain },
     };
-    setPresets((prev) => {
-      const withoutSameName = prev.filter(
-        (p) => p.name.toLocaleLowerCase("es") !== name.toLocaleLowerCase("es"),
-      );
-      const next = [...withoutSameName, preset];
-      saveTeamPresets(next);
-      return next;
-    });
+    const withoutSameName = presets.filter(
+      (p) => p.name.toLocaleLowerCase("es") !== name.toLocaleLowerCase("es"),
+    );
+    const next = [...withoutSameName, preset];
+    setPresets(next);
+    void syncPresets(next);
+    announce(
+      session && pmOrg
+        ? `Preset "${name}" guardado en ${pmOrg}/gateway-tasks.`
+        : `Preset "${name}" guardado en este dispositivo.`,
+    );
   }
 
   function removePreset(id: string) {
-    setPresets((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      saveTeamPresets(next);
-      return next;
-    });
+    const next = presets.filter((p) => p.id !== id);
+    setPresets(next);
+    void syncPresets(next);
   }
 
   const addedResources = SCOPE_KEYS.filter((key) => draft[key] != null);

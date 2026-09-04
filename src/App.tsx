@@ -285,8 +285,8 @@ export function App() {
   return (
     <div className="flex min-h-svh flex-col">
       <header className="sticky top-0 z-20 border-b bg-card/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2 px-3 py-2 sm:px-4">
-          <div className="font-heading text-sm font-semibold tracking-tight">Gateway Tasks</div>
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2.5 px-3 py-2.5 sm:px-4">
+          <div className="font-heading text-base font-semibold tracking-tight">Gateway Tasks</div>
           {contextConfirmed ? (
             <Button
               type="button"
@@ -401,6 +401,7 @@ export function App() {
             pmOrg={pmOrg}
             orgs={orgs}
             onPmOrgChange={setPmOrg}
+            announce={announce}
           />
         ) : null}
 

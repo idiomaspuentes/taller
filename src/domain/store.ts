@@ -488,6 +488,21 @@ export function teamsPath(lang: string): string {
   return `${lang.trim().toLowerCase()}/teams.json`;
 }
 
+/** Team-shape presets aren't tied to one language or book, so they live at the repo root. */
+export function teamPresetsPath(): string {
+  return "team-presets.json";
+}
+
+/** Local entries win on a name collision; remote-only presets are added. */
+export function mergeTeamPresets(local: TeamPreset[], remote: TeamPreset[]): TeamPreset[] {
+  const byName = new Map(local.map((preset) => [preset.name.toLocaleLowerCase("es"), preset]));
+  for (const preset of remote) {
+    const key = preset.name.toLocaleLowerCase("es");
+    if (!byName.has(key)) byName.set(key, preset);
+  }
+  return [...byName.values()];
+}
+
 export function assignmentsPath(lang: string, book: string): string {
   return `${lang.trim().toLowerCase()}/${book.trim().toUpperCase()}/assignments.json`;
 }

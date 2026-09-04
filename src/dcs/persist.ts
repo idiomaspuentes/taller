@@ -11,7 +11,7 @@ import {
   type DcsOrgMember,
   type DcsRepo,
 } from "@ip-lms/dcs-client";
-import type { AssignmentsDoc, InventoryDoc, Person, Team } from "../domain/types";
+import type { AssignmentsDoc, InventoryDoc, Person, Team, TeamPreset } from "../domain/types";
 import {
   ASSIGNMENTS_SCHEMA,
   PM_REPO_NAME,
@@ -21,7 +21,9 @@ import {
   inventoryPath,
   normalizeAssignmentsDoc,
   normalizeInventory,
+  normalizeTeamPresets,
   isInventoryDoc,
+  teamPresetsPath,
   teamsPath,
   toExportDoc,
 } from "../domain/store";
@@ -223,6 +225,37 @@ export async function saveProjectToDcs(params: {
       `Inventario ${book} (${lang})`,
     );
   }
+}
+
+export async function loadTeamPresetsFromDcs(
+  session: GtSession,
+  org: string,
+): Promise<TeamPreset[] | null> {
+  const config = dcsConfig(session.host);
+  try {
+    const raw = await getRawContent(config, org, PM_REPO_NAME, teamPresetsPath(), {
+      token: session.token,
+    });
+    const parsed = JSON.parse(raw) as { presets?: unknown };
+    return normalizeTeamPresets(parsed.presets);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveTeamPresetsToDcs(
+  session: GtSession,
+  org: string,
+  presets: TeamPreset[],
+): Promise<void> {
+  await ensurePmRepo(session, org);
+  await writeJsonFile(
+    session,
+    org,
+    teamPresetsPath(),
+    { presets, updated_at: new Date().toISOString() },
+    "Actualizar presets de equipos",
+  );
 }
 
 export async function orgHasPmRepo(session: GtSession, org: string): Promise<boolean> {

@@ -31,10 +31,17 @@ Sin worker puedes usar **Usar instantánea NEH** o **Cargar JSON**.
 Repo: `{pmOrg}/gateway-tasks`
 
 ```
+team-presets.json
 {lang}/teams.json
 {lang}/{book}/assignments.json
 {lang}/{book}/inventory.json
 ```
+
+`team-presets.json` guarda las plantillas de alcance de equipo (recursos, filtro,
+grano, "asignar juntos"), sin nada específico de un libro. No está bajo `{lang}/`
+porque el mismo preset sirve para cualquier lengua. Se sincroniza al guardar o
+borrar un preset en Equipos (si hay sesión y organización PM elegidas); si no,
+queda solo en este dispositivo (`localStorage`).
 
 Schema del entregable: `gateway-assignments-1` (personas, equipos, asignaciones con `personId` + `teamId`).
 
