@@ -1,16 +1,20 @@
 /**
  * Mock DCS: «Crear la revisión» creates ONLY the review task's subtarea, for
- * the typed verse range, assigned to someone who may edit TPL in any phase,
- * and only after the project plan (with the review task) is saved.
+ * the typed verse range, assigned to someone who may edit TPL in DCS (org
+ * team access, mocked), and only after the project plan (with the review
+ * task) is saved.
  * No network.
  * Run: npx tsx scripts/verify-review-task.mts
  */
 import { createReviewIssues, reviewIssuesToast } from "../src/dcs/issues.ts";
 import {
+  REVIEW_CANDIDATES_FALLBACK_NOTE,
   parseReviewRef,
   reviewAssigneeCandidates,
   reviewWorkOrders,
+  type OrgTeamAccess,
 } from "../src/domain/reviewTask.ts";
+import { loadReviewCandidates } from "../src/domain/teamEligibility.ts";
 import { principalPassGate } from "../src/domain/principalPass.ts";
 import {
   publishableWorkOrders,
@@ -272,6 +276,98 @@ const board = {
   const ana = candidates.find((c) => c.person.id === "ana")!;
   assert(ana.via.some((v) => v.taskId === "tpl-draft" && v.phaseName === "Fase 1"), "Ana puede por Traducir TPL (Fase 1)");
   console.log("ok  la lista incluye a una editora de TPL de otra fase y excluye a quien no edita TPL");
+}
+
+{
+  // 5. «Quién revisa» = quien puede editar el recurso en DCS (permisos simulados, sin red).
+  const orgTeams: OrgTeamAccess[] = [
+    {
+      teamName: "pm-tpl",
+      repoNames: ["gateway-tasks", "es-419_glt"],
+      members: [
+        { id: "ana", name: "ana" },
+        { id: "rosa", name: "Rosa" },
+      ],
+    },
+    {
+      teamName: "pm-notas",
+      repoNames: ["gateway-tasks", "es-419_tn"],
+      members: [
+        { id: "nico", name: "Nico" },
+        { id: "luis", name: "Luis" },
+      ],
+    },
+    {
+      teamName: "pm-tps",
+      repoNames: ["gateway-tasks", "es-419_gst"],
+      members: [{ id: "teo", name: "Teo" }],
+    },
+  ];
+  const withPedro = {
+    ...board,
+    people: [...board.people, { id: "pedro", name: "Pedro" }],
+  } as AssignmentsDoc;
+  let reads = 0;
+  const readAccess = async () => {
+    reads++;
+    return orgTeams;
+  };
+
+  const tpl = await loadReviewCandidates({ session, org: ORG, board: withPedro, task: review, readAccess });
+  const tplIds = tpl.candidates.map((c) => c.person.id);
+  assert(reads === 1, "lee los permisos una vez");
+  assert(tpl.source === "permisos", `fuente = permisos, got ${tpl.source}`);
+  assert(tplIds.includes("rosa"), `Rosa (acceso a TPL, sin tarea) aparece, got ${tplIds.join(",")}`);
+  assert(tplIds.includes("ana"), "Ana (acceso a TPL) aparece");
+  assert(!tplIds.includes("pedro"), "Pedro (sin acceso) no aparece");
+  assert(!tplIds.includes("nico") && !tplIds.includes("luis"), "quien solo edita Notas no aparece en TPL");
+  assert(!tplIds.includes("teo"), "quien solo edita TPS no aparece en TPL");
+  const ana = tpl.candidates.find((c) => c.person.id === "ana")!;
+  assert(ana.person.name === "Ana", "usa el nombre guardado en el proyecto");
+  assert(ana.teams?.join() === "pm-tpl", "Ana puede por el equipo pm-tpl");
+  console.log("ok  TPL: incluye a quien tiene acceso aunque no sea integrante; excluye sin acceso y solo Notas");
+
+  const reviewTps = { ...review, id: "rev-tps", scope: ["tps"], rules: [{ resource: "tps", articleFilter: "all" }] } as ProjectTask;
+  const tps = await loadReviewCandidates({ session, org: ORG, board: withPedro, task: reviewTps, readAccess });
+  assert(
+    tps.candidates.map((c) => c.person.id).join() === "teo",
+    `TPS: solo quien edita TPS, got ${tps.candidates.map((c) => c.person.id).join(",")}`,
+  );
+  console.log("ok  la lista corresponde al recurso de la revisión (TPS ≠ TPL)");
+
+  // La subtarea queda asignada solo a la persona elegida.
+  const rosaReview = { ...review, reviewAssigneeId: "rosa" } as ProjectTask;
+  const rosaOrders = reviewWorkOrders(board, rosaReview, inventory).orders;
+  assert(
+    rosaOrders.length === 1 && rosaOrders[0].assignee?.personId === "rosa",
+    "la subtarea se asigna solo a Rosa",
+  );
+
+  // Si Door43 no responde: integrantes guardados y aviso en español.
+  const fallback = await loadReviewCandidates({
+    session,
+    org: ORG,
+    board: withPedro,
+    task: review,
+    readAccess: async () => {
+      throw new TypeError("Failed to fetch");
+    },
+  });
+  assert(fallback.source === "integrantes", `fuente = integrantes, got ${fallback.source}`);
+  assert(
+    fallback.candidates.map((c) => c.person.id).join() === "ana",
+    `respaldo = integrantes de tareas TPL, got ${fallback.candidates.map((c) => c.person.id).join(",")}`,
+  );
+  assert(
+    /no se pudieron leer los permisos/i.test(REVIEW_CANDIDATES_FALLBACK_NOTE) &&
+      /ya están en las tareas/i.test(REVIEW_CANDIDATES_FALLBACK_NOTE),
+    "el aviso explica que muestra integrantes porque no se leyeron los permisos",
+  );
+  assert(
+    !/\b(git|commit|push|branch|rama|repo|sha|api|403)\b/i.test(REVIEW_CANDIDATES_FALLBACK_NOTE),
+    `aviso sin jerga: «${REVIEW_CANDIDATES_FALLBACK_NOTE}»`,
+  );
+  console.log("ok  sin Door43, muestra los integrantes guardados con un aviso en español");
 }
 
 {

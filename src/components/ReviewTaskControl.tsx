@@ -2,14 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import type { AssignmentsDoc, InventoryDoc, Team } from "../domain/types";
 import { SCOPE_LABEL } from "../domain/types";
 import type { GtSession } from "../dcs/auth";
-import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
+import { DEFAULT_PM_CONFIG, displayOrgTeamName, type PmConfig } from "../domain/roles";
 import {
+  REVIEW_CANDIDATES_FALLBACK_NOTE,
   REVIEW_CREATE_ACTION,
   parseReviewRef,
-  reviewAssigneeCandidates,
+  resolveReviewCandidates,
   reviewResources,
   reviewWorkOrders,
+  type OrgTeamAccess,
+  type ReviewCandidate,
 } from "../domain/reviewTask";
+import { tryReadOrgTeamAccess } from "../domain/teamEligibility";
 import { createReviewIssues, loadPmConfig, reviewIssuesToast } from "../dcs/issues";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -34,8 +38,9 @@ type Props = {
 
 /**
  * Gestor: save the project plan, then create ONLY this review's subtarea for
- * its verses, assigned to one person who may already edit the resource in any
- * phase. Does not publish the rest of the plan.
+ * its verses, assigned to one person who may edit the resource in DCS (org
+ * team access), whether or not they are an integrante of a task. Does not
+ * publish the rest of the plan.
  */
 export function ReviewTaskControl({
   session,
@@ -52,11 +57,18 @@ export function ReviewTaskControl({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  /** `undefined` while reading DCS; `null` when it could not be read. */
+  const [access, setAccess] = useState<OrgTeamAccess[] | null | undefined>(undefined);
+
   useEffect(() => {
     if (!session || !pmOrg) return;
     let cancelled = false;
     void loadPmConfig(session, pmOrg).then((config) => {
       if (!cancelled) setPmConfig(config);
+    });
+    setAccess(undefined);
+    void tryReadOrgTeamAccess(session, pmOrg).then((rows) => {
+      if (!cancelled) setAccess(rows);
     });
     return () => {
       cancelled = true;
@@ -67,9 +79,10 @@ export function ReviewTaskControl({
   const scope = parseReviewRef(team.reviewRef, projectBooks);
   const resources = reviewResources(team);
   const resourceNames = resources.map((r) => SCOPE_LABEL[r]).join(" y ");
-  const candidates = useMemo(
-    () => reviewAssigneeCandidates(board, team, pmConfig),
-    [board, team, pmConfig],
+  const loading = Boolean(session && pmOrg) && access === undefined;
+  const { candidates, source } = useMemo(
+    () => resolveReviewCandidates(board, team, access ?? null, pmConfig),
+    [board, team, access, pmConfig],
   );
   const assigneeId = team.reviewAssigneeId ?? "";
   const assigneeOk = candidates.some((c) => c.person.id === assigneeId);
@@ -87,17 +100,30 @@ export function ReviewTaskControl({
   const blockReason =
     planReason ||
     (!session || !pmOrg ? "Inicia sesión y elige la organización para crear la revisión." : null) ||
+    (loading ? `Buscando quién puede editar ${resourceNames || "este recurso"}…` : null) ||
     (!candidates.length
-      ? `Nadie en este proyecto puede editar ${resourceNames || "este recurso"} todavía. Añade integrantes a una tarea de ${resourceNames || "ese recurso"}.`
+      ? source === "permisos"
+        ? `Nadie en la organización puede editar ${resourceNames || "este recurso"} todavía. Pide a un gestor que dé acceso a un equipo.`
+        : `Nadie en este proyecto puede editar ${resourceNames || "este recurso"} todavía. Añade integrantes a una tarea de ${resourceNames || "ese recurso"}.`
       : null) ||
     (!assigneeOk ? "Elige quién hace la revisión." : null);
 
   function pickAssignee(id: string) {
     setMessage("");
+    const picked = candidates.find((c) => c.person.id === id)?.person;
+    const known = board.people.some((p) => p.id.toLowerCase() === id.toLowerCase());
     onChange({
       ...board,
+      people: picked && !known ? [...board.people, picked] : board.people,
       teams: board.teams.map((t) => (t.id === team.id ? { ...t, reviewAssigneeId: id } : t)),
     });
+  }
+
+  function candidateDetail(c: ReviewCandidate): string {
+    if (c.teams?.length) {
+      return c.teams.map((name) => displayOrgTeamName(name, pmConfig.teamPrefix)).join(", ");
+    }
+    return c.via.map((v) => (v.phaseName ? `${v.taskName} (${v.phaseName})` : v.taskName)).join(", ");
   }
 
   async function create() {
@@ -136,10 +162,7 @@ export function ReviewTaskControl({
             <SelectContent>
               {candidates.map((c) => (
                 <SelectItem key={c.person.id} value={c.person.id}>
-                  {c.person.name} ·{" "}
-                  {c.via
-                    .map((v) => (v.phaseName ? `${v.taskName} (${v.phaseName})` : v.taskName))
-                    .join(", ")}
+                  {c.person.name} · {candidateDetail(c)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -150,6 +173,9 @@ export function ReviewTaskControl({
             </p>
           ) : null}
         </div>
+      ) : null}
+      {session && pmOrg && access === null ? (
+        <p className="phases-task__note">{REVIEW_CANDIDATES_FALLBACK_NOTE}</p>
       ) : null}
       <Button
         type="button"

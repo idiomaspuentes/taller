@@ -1,9 +1,9 @@
 /**
  * Revisión puntual: after a phase already translated a portion, a gestor
  * creates ONE review task for a verse or a range (`NEH 1:2`, `NEH 1:1-3`)
- * and assigns it to someone who may already edit that resource on any task
- * of the project. Pure: the DCS writer is `createReviewIssues` in
- * `dcs/issues.ts`.
+ * and assigns it to someone who may edit that resource in DCS (see
+ * `reviewCandidatesFromOrgTeams`). Pure: the DCS writer is
+ * `createReviewIssues` in `dcs/issues.ts`.
  */
 
 import type { AssignmentsDoc, InventoryDoc, Person, ProjectTask, ScopeKey } from "./types";
@@ -124,11 +124,78 @@ export type ReviewCandidate = {
   person: Person;
   /** Tasks (any phase) through which this person may edit the resource. */
   via: Array<{ taskId: string; taskName: string; phaseName: string }>;
+  /** Org teams (display names) that give this person write access to the resource. */
+  teams?: string[];
+};
+
+/** One DCS org team as the review list needs it: its repos and its members. */
+export type OrgTeamAccess = {
+  teamName: string;
+  repoNames: string[];
+  members: Person[];
 };
 
 /**
- * Everyone who may already edit the review's resource on some task of this
- * project, any phase. Same rule as linking an org team to a task
+ * Everyone who may edit the review's resource in DCS: members of any org team
+ * whose repos cover every repo the review needs. Same rule as linking an org
+ * team to a task (`teamHasReposForTask`), so being an integrante of a task is
+ * not required, and a team with only the notes repo never qualifies for TPL.
+ */
+export function reviewCandidatesFromOrgTeams(
+  board: Pick<AssignmentsDoc, "people" | "lang">,
+  task: ProjectTask,
+  orgTeams: OrgTeamAccess[],
+  pmConfig: PmConfig = DEFAULT_PM_CONFIG,
+): ReviewCandidate[] {
+  const resources = reviewResources(task);
+  if (!resources.length) return [];
+  const need = { scope: resources };
+  const peopleById = new Map(board.people.map((p) => [p.id.toLowerCase(), p]));
+  const byId = new Map<string, ReviewCandidate>();
+  for (const team of orgTeams) {
+    if (!teamHasReposForTask(team.repoNames, need, board.lang, pmConfig).ok) continue;
+    for (const member of team.members) {
+      const key = member.id.toLowerCase();
+      const person = peopleById.get(key) ?? member;
+      const row = byId.get(key) ?? { person, via: [], teams: [] };
+      if (!row.teams!.includes(team.teamName)) row.teams!.push(team.teamName);
+      byId.set(key, row);
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.person.name.localeCompare(b.person.name, "es"));
+}
+
+export type ReviewCandidatesResult = {
+  candidates: ReviewCandidate[];
+  /**
+   * `permisos`: who may edit the resource in DCS.
+   * `integrantes`: DCS could not be read; people already on the project's tasks.
+   */
+  source: "permisos" | "integrantes";
+};
+
+/**
+ * «Quién revisa»: write access from DCS when `orgTeams` was read; otherwise
+ * (`null`) the integrantes of tasks that cover the resource.
+ */
+export function resolveReviewCandidates(
+  board: Pick<AssignmentsDoc, "people" | "teams" | "phases" | "lang">,
+  task: ProjectTask,
+  orgTeams: OrgTeamAccess[] | null,
+  pmConfig: PmConfig = DEFAULT_PM_CONFIG,
+): ReviewCandidatesResult {
+  if (orgTeams) {
+    return { candidates: reviewCandidatesFromOrgTeams(board, task, orgTeams, pmConfig), source: "permisos" };
+  }
+  return { candidates: reviewAssigneeCandidates(board, task, pmConfig), source: "integrantes" };
+}
+
+export const REVIEW_CANDIDATES_FALLBACK_NOTE =
+  "No se pudieron leer los permisos de Door43. Se muestran las personas que ya están en las tareas del proyecto.";
+
+/**
+ * Fallback when DCS permissions cannot be read: everyone who may already edit
+ * the review's resource on some task of this project, any phase. Same rule as linking an org team to a task
  * (`teamHasReposForTask`): a task grants the resource when its repos cover
  * every repo the review needs.
  */
