@@ -1,0 +1,146 @@
+/**
+ * Self-test for step claim + progress v2.
+ * Run: npx tsx scripts/verify-step-claim.mts
+ */
+import {
+  canApproveStep,
+  canClaimStep,
+  claimStep,
+  approveStep,
+  isStepComplete,
+  isStepUnlocked,
+  stepClaimMode,
+  formatStepClaimLabel,
+  formatTaskClaimSummary,
+} from "../src/domain/stepClaim.ts";
+import {
+  parseTaskProgressMarker,
+  encodeTaskProgressMarker,
+  emptyTaskProgress,
+  upsertTaskProgressInBody,
+} from "../src/domain/taskProgress.ts";
+import { normalizeTaskSteps } from "../src/domain/store.ts";
+import type { TaskStep } from "../src/domain/types.ts";
+
+function assert(cond: unknown, msg: string): asserts cond {
+  if (!cond) throw new Error(msg);
+}
+
+const draft: TaskStep = { id: "draft", name: "Borrador", claimMode: "none" };
+const pair: TaskStep = {
+  id: "pair",
+  name: "Pares",
+  claimMode: "exclusive",
+  includeAuthorInApproval: true,
+  excludePriorStepIds: ["draft"],
+};
+const group: TaskStep = {
+  id: "group",
+  name: "Grupal",
+  claimMode: "pool",
+  minAssignees: 2,
+  maxAssignees: 2,
+  excludePriorStepIds: ["draft", "pair"],
+};
+const steps = [draft, pair, group];
+
+// normalize
+const normalized = normalizeTaskSteps([
+  { id: "pair", name: "Pares", claimMode: "exclusive", includeAuthorInApproval: true },
+  { id: "group", name: "G", claimMode: "pool" },
+]);
+assert(normalized[0].claimMode === "exclusive", "normalize exclusive");
+assert(normalized[0].includeAuthorInApproval === true, "normalize author flag");
+assert(normalized[1].claimMode === "pool", "normalize pool");
+assert(normalized[1].minAssignees === 2 && normalized[1].maxAssignees === 2, "pool defaults");
+
+// v1 parse → v2 shape
+const v1Body = `hello\n\n<!-- gateway-task-progress ${JSON.stringify({
+  schema: "gateway-task-progress-1",
+  doneStepIds: ["draft"],
+})} -->\n`;
+const parsed = parseTaskProgressMarker(v1Body);
+assert(parsed.doneStepIds.includes("draft"), "v1 doneStepIds");
+assert(parsed.schema === "gateway-task-progress-2" || parsed.doneStepIds.length === 1, "parsed");
+
+let progress = emptyTaskProgress();
+progress = {
+  ...progress,
+  doneStepIds: ["draft"],
+  steps: { draft: { assignees: ["alice"], approvals: [] } },
+};
+
+assert(isStepUnlocked(steps, progress, "pair"), "pair unlocked after draft");
+assert(!isStepUnlocked(steps, progress, "group"), "group still locked");
+assert(canClaimStep("bob", steps, progress, pair), "bob can claim pair");
+assert(!canClaimStep("alice", steps, progress, pair), "drafter excluded from pair");
+
+const pairExcludeAssignee: TaskStep = {
+  ...pair,
+  excludePriorStepIds: undefined,
+  excludeIssueAssignee: true,
+};
+assert(
+  !canClaimStep("alice", steps, progress, pairExcludeAssignee, undefined, "alice"),
+  "issue assignee excluded by flag",
+);
+assert(
+  canClaimStep("bob", steps, progress, pairExcludeAssignee, undefined, "alice"),
+  "non-assignee can claim with flag",
+);
+
+progress = claimStep(progress, pair, "bob");
+assert(!canClaimStep("carol", steps, progress, pair), "exclusive hidden after claim");
+assert(stepClaimMode(pair) === "exclusive", "mode");
+
+assert(canApproveStep("bob", progress, pair), "claimer can approve");
+assert(canApproveStep("alice", progress, pair), "author can approve");
+assert(!canApproveStep("carol", progress, pair), "outsider cannot approve");
+
+progress = approveStep(progress, pair, "bob");
+assert(!isStepComplete(progress, pair), "need author too");
+progress = approveStep(progress, pair, "alice");
+assert(isStepComplete(progress, pair), "pair complete");
+assert(progress.doneStepIds.includes("pair"), "pair in doneStepIds");
+
+assert(isStepUnlocked(steps, progress, "group"), "group unlocked");
+assert(canClaimStep("carol", steps, progress, group), "carol can claim group");
+assert(!canClaimStep("alice", steps, progress, group), "drafter excluded from group");
+assert(!canClaimStep("bob", steps, progress, group), "pair reviewer excluded");
+
+progress = claimStep(progress, group, "carol");
+assert(canClaimStep("dave", steps, progress, group), "pool still open for dave");
+progress = claimStep(progress, group, "dave");
+assert(!canClaimStep("erin", steps, progress, group), "pool full at max 2");
+
+progress = approveStep(progress, group, "carol");
+assert(!isStepComplete(progress, group), "need min 2 approvals");
+progress = approveStep(progress, group, "dave");
+assert(isStepComplete(progress, group), "group complete");
+assert(progress.doneStepIds.includes("group"), "group done");
+
+const encoded = encodeTaskProgressMarker(progress);
+const roundTrip = parseTaskProgressMarker(upsertTaskProgressInBody("body", progress));
+assert(roundTrip.doneStepIds.includes("group"), "round-trip done");
+assert(roundTrip.steps?.pair?.assignees.includes("bob"), "round-trip seating");
+assert(encoded.includes("gateway-task-progress-2"), "encode v2 schema");
+
+assert(formatStepClaimLabel(draft) === null, "none has no claim label");
+assert(formatStepClaimLabel(pair) === "Pares", "exclusive+author → Pares");
+assert(formatStepClaimLabel({ id: "e", name: "E", claimMode: "exclusive" }) === "Uno", "exclusive → Uno");
+assert(formatStepClaimLabel(group) === "Grupal", "pool 2 → Grupal");
+assert(
+  formatStepClaimLabel({ id: "p", name: "P", claimMode: "pool", minAssignees: 3 }) === "Varios 3",
+  "pool 3 → Varios 3",
+);
+assert(formatTaskClaimSummary(steps) === "Pares · Grupal", "task mix Pares · Grupal");
+assert(
+  formatTaskClaimSummary([
+    draft,
+    { id: "e", name: "E", claimMode: "exclusive" },
+    { id: "p", name: "P", claimMode: "pool", minAssignees: 3 },
+  ]) === "Uno · Varios 3",
+  "task mix Uno · Varios 3",
+);
+
+console.log("verify-step-claim: ok");

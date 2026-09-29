@@ -92,11 +92,22 @@ function articleIds(slots: Record<string, ResourceSlot>, name: string): string[]
 }
 
 function succinctPortion(portion: Portion, slots: Record<string, ResourceSlot>): Record<string, unknown> {
+  const tplSlot = slots.TPL;
+  const tpsSlot = slots.TPS;
+  const tplReady = tplSlot?.items ?? [];
+  const tpsReady = (tpsSlot?.items ?? []).filter((item) => item.status !== "pendiente");
+  const tpsSlots: Record<string, ResourceSlot> = tpsSlot
+    ? { ...slots, TPS: { ...tpsSlot, items: tpsReady } }
+    : slots;
   return {
     id: portion.portionId,
     ref: portion.ref,
     chapter: portion.chapter,
     verses: portion.verses,
+    tpl: tplReady.length,
+    tps: tpsReady.length,
+    tpl_items: taskItems(slots, "TPL", portion),
+    tps_items: taskItems(tpsSlots, "TPS", portion),
     notas: slotItems(slots, "Notas").length,
     preguntas: slotItems(slots, "Preguntas").length,
     notas_items: taskItems(slots, "Notas", portion),
@@ -111,6 +122,8 @@ export function inventoryToDict(inventory: PrepInventory, options: { generatedAt
   let portionCount = 0;
   let notasTotal = 0;
   let preguntasTotal = 0;
+  let tplTotal = 0;
+  let tpsTotal = 0;
   let unassignedTotal = 0;
 
   for (const chapter of inventory.chapters) {
@@ -121,6 +134,8 @@ export function inventoryToDict(inventory: PrepInventory, options: { generatedAt
       const row = succinctPortion(portion, slots);
       notasTotal += row.notas as number;
       preguntasTotal += row.preguntas as number;
+      tplTotal += row.tpl as number;
+      tpsTotal += row.tps as number;
       portions.push(row);
     }
     unassignedTotal += chapter.unassignedQuestions.length;
@@ -149,6 +164,8 @@ export function inventoryToDict(inventory: PrepInventory, options: { generatedAt
     counts: {
       chapters: inventory.chapters.length,
       portions: portionCount,
+      tpl: tplTotal,
+      tps: tpsTotal,
       notas: notasTotal,
       preguntas: preguntasTotal,
       preguntas_sin_asignar: unassignedTotal,

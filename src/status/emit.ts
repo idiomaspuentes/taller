@@ -176,6 +176,8 @@ export function portionsFromPrep(data: Record<string, unknown> | null): Record<s
       const p = portion as Record<string, unknown>;
       const { count: notas, tasks: notasTasks } = slotCountAndTasks(p, "notas", "Notas", "notas_items");
       const { count: preguntas, tasks: preguntasTasks } = slotCountAndTasks(p, "preguntas", "Preguntas", "preguntas_items");
+      const { count: tpl, tasks: tplTasks } = slotCountAndTasks(p, "tpl", "TPL", "tpl_items");
+      const { count: tps, tasks: tpsTasks } = slotCountAndTasks(p, "tps", "TPS", "tps_items");
       const chapterVal = p.chapter ?? chapterNum;
       const portionId = String(p.id ?? "").trim();
       const row: Record<string, unknown> = {
@@ -183,8 +185,12 @@ export function portionsFromPrep(data: Record<string, unknown> | null): Record<s
         ref: String(p.ref ?? ""),
         chapter: chapterVal,
         verses: p.verses ?? [],
+        tpl,
+        tps,
         notas,
         preguntas,
+        tpl_items: tplTasks.map((t) => ({ id: t.id, ref: t.ref, chapter: chapterVal, portion: portionId })),
+        tps_items: tpsTasks.map((t) => ({ id: t.id, ref: t.ref, chapter: chapterVal, portion: portionId })),
         notas_items: notasTasks.map((t) => ({ id: t.id, ref: t.ref, chapter: chapterVal, portion: portionId })),
         preguntas_items: preguntasTasks.map((t) => ({ id: t.id, ref: t.ref, chapter: chapterVal, portion: portionId })),
         academia: articleIdsOf(p, "academia", "Academia"),

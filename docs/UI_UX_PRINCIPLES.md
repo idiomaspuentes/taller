@@ -1,11 +1,14 @@
-# UI/UX principles for Gateway Tasks
+# UI/UX principles for TAS
 
-Gateway Tasks is a 5-step wizard (Contexto → Inventario → Equipos → Asignar →
-Publicar) used by a small number of PM/reviewer users, often working through
-hundreds of items per book. The main failure mode we keep re-discovering is
-**simultaneous density**: every control that *could* be relevant is rendered
-at once, so the screen that matters most (Equipos) turns into a wall of
-checkboxes, selects and paragraphs before the user has done anything.
+TAS (Translation Assistance System) is a multi-step project wizard used by
+a small number of PM/reviewer users, often working through hundreds of items
+per book. One-time workspace setup (lengua, orgs, DCS) lives outside the rail.
+The main failure mode we keep re-discovering is **simultaneous density**: every
+control that *could* be relevant is rendered at once, so the screen that
+matters most (Equipos) turns into a wall of checkboxes, selects and paragraphs
+before the user has done anything.
+
+Screen layout and step cuts: [`VISUAL_ARCHITECTURE.md`](./VISUAL_ARCHITECTURE.md).
 
 These rules exist so the next change doesn't reintroduce that. They're not
 novel — they're standard interaction-design heuristics, restated with this
@@ -38,8 +41,8 @@ A form for creating a new X should stay open when there is no X yet (empty
 state = guide the user in), and collapse to a `+ New X` button once at least
 one X exists. Editing an existing X reopens the form. This is why the
 "Nuevo equipo" card in Equipos collapses after the first team is saved, and
-why "Contexto" only shows the auto-derived content org as an editable field
-when it's been customized (`Avanzado: organización de contenido (…)`
+why the workspace dialog only shows the auto-derived content org as an editable
+field when it's been customized (`Avanzado: organización de contenido (…)`
 otherwise).
 
 ### 3. Hick's Law: fewer simultaneous choices, not fewer eventual choices
@@ -96,6 +99,17 @@ Anything the user has already entered (a description, a manually-added
 person, a saved preset) must always be visible, even if the *editor* for it
 is collapsed. Collapse controls, not content.
 
+### 8. Ink & paper chrome; role preview without privilege elevation
+Visual tokens live in `src/styles/tokens.css`: warm paper canvas, ink text,
+**teal** accent (not violet). Hubs use `.hub-*` board/queue patterns so
+Proyectos / Mis tareas / Organización share one density language.
+
+Managers may preview the worker surface via `RoleModeFab` (`viewMode` in
+`sessionStorage`). UI routing and manager affordances use
+`effectiveCanManage = canManage && viewMode === "gestor"`. Real workers never
+see the FAB; preview never grants manager APIs to non-managers. See
+[`VISUAL_ARCHITECTURE.md`](./VISUAL_ARCHITECTURE.md) §0.
+
 ## A pre-merge checklist for new screens/forms
 
 Before adding a control to an existing view, ask:
@@ -111,6 +125,21 @@ Before adding a control to an existing view, ask:
       this section?
 - [ ] If I hide this by default, is there still a way to reach it in one
       click, and does it stay visible once it holds real data?
+
+### Density and scroll budgets
+
+From [`VISUAL_ARCHITECTURE.md`](./VISUAL_ARCHITECTURE.md):
+
+- [ ] Primary action of the current step is reachable at **1280×800** without
+      scrolling.
+- [ ] Step page ≤ **2 viewports** tall; long lists scroll the **page** under
+      sticky chrome, not inside a nested `max-h-*` box.
+- [ ] ≤ **12** interactive targets visible in the default state of any step
+      (overlays don't count until open).
+- [ ] Reference data (drills, long help, resolved scope) lives in overlays,
+      not in the flow.
+- [ ] Repeated config blocks use a **single-open accordion**; a geo/scope
+      control appears **once** per screen, never once per resource.
 
 ## Where the underlying idea comes from
 

@@ -1,0 +1,208 @@
+import {
+  parseArticleOccurrenceId,
+  parseTaskItemId,
+} from "./assignment";
+import { portionKey } from "./chapters";
+import { helpsMarkdownPath, type HelpsResource } from "./helpsTarget";
+import type { SolverLaunchContext } from "./solverLaunch";
+import type { InventoryDoc, Portion } from "./types";
+import { portionRange } from "./usfmEdit";
+import { parseVerseRef } from "../prep/inventory";
+import { parseTsvTable, serializeTsv } from "../prep/tsv";
+
+export type HelpsDraftItem = {
+  id: string;
+  label: string;
+  meta: string;
+  text: string;
+  secondary?: string;
+  secondaryLabel?: string;
+  filepath: string;
+  kind: "tsv" | "markdown";
+};
+
+function matchPortion(inventory: InventoryDoc, portionId: string): Portion | undefined {
+  return inventory.portions.find(
+    (p) => portionKey(p) === portionId || p.ref === portionId || p.id === portionId,
+  );
+}
+
+function lookupArticle(
+  inventory: InventoryDoc,
+  articleId: string,
+): { id: string; path: string; title?: string } | undefined {
+  const needle = articleId.trim().toLowerCase();
+  const hit = inventory.articles.find(
+    (a) =>
+      a.id.toLowerCase() === needle ||
+      a.path.toLowerCase() === needle ||
+      a.path.toLowerCase().endsWith(`/${needle}`),
+  );
+  if (!hit) return undefined;
+  return { id: hit.id, path: hit.path, title: hit.title };
+}
+
+export function tsvRowId(row: Record<string, string>): string {
+  return (row.ID || row.Id || row.id || "").trim();
+}
+
+/** IDs from the work order / inventory for this TSV resource; null = filter by ref. */
+export function tsvIdsForLaunch(
+  ctx: Pick<SolverLaunchContext, "resource" | "portionIds" | "itemIds">,
+  inventory: InventoryDoc | null,
+): Set<string> | null {
+  const ids = new Set<string>();
+  if (inventory && (ctx.resource === "notas" || ctx.resource === "preguntas")) {
+    for (const pid of ctx.portionIds) {
+      const portion = matchPortion(inventory, pid);
+      if (!portion) continue;
+      const items =
+        ctx.resource === "notas" ? portion.notasItems : portion.preguntasItems;
+      for (const item of items ?? []) {
+        if (item.id) ids.add(item.id);
+      }
+    }
+  }
+  for (const raw of ctx.itemIds) {
+    const parsed = parseTaskItemId(raw);
+    if (parsed && parsed.resource === ctx.resource) ids.add(parsed.id);
+  }
+  return ids.size ? ids : null;
+}
+
+export function tsvRowInPortion(
+  row: Record<string, string>,
+  ctx: Pick<SolverLaunchContext, "ref" | "chapter">,
+): boolean {
+  const ref = row.Reference || row.reference || "";
+  const parsed = parseVerseRef(ref);
+  const range = portionRange(ctx.ref, 0);
+  if (parsed && range) {
+    if (parsed.chapter !== range.chapter) return false;
+    return parsed.verses.some((v) => v >= range.from && v <= range.to);
+  }
+  const lower = ref.trim().toLowerCase();
+  const chapter = range?.chapter || ctx.chapter;
+  if (chapter && lower === `${chapter}:intro`) return true;
+  return false;
+}
+
+export function selectTsvRowsForPortion(
+  rows: Record<string, string>[],
+  ctx: Pick<SolverLaunchContext, "resource" | "portionIds" | "itemIds" | "ref" | "chapter">,
+  inventory: InventoryDoc | null,
+): Record<string, string>[] {
+  const ids = tsvIdsForLaunch(ctx, inventory);
+  if (ids) return rows.filter((row) => ids.has(tsvRowId(row)));
+  return rows.filter((row) => tsvRowInPortion(row, ctx));
+}
+
+export function applyHelpsTsvEdits(
+  original: string,
+  edits: { id: string; fields: Record<string, string> }[],
+): string {
+  const { headers, rows } = parseTsvTable(original);
+  if (!headers.length) return original;
+  const byId = new Map(edits.map((e) => [e.id, e.fields]));
+  const next = rows.map((row) => {
+    const patch = byId.get(tsvRowId(row));
+    return patch ? { ...row, ...patch } : row;
+  });
+  return serializeTsv(headers, next);
+}
+
+export function tsvRowsToDraftItems(
+  resource: "notas" | "preguntas",
+  filepath: string,
+  rows: Record<string, string>[],
+): HelpsDraftItem[] {
+  return rows.map((row) => {
+    const id = tsvRowId(row) || `${row.Reference || "fila"}`;
+    if (resource === "notas") {
+      return {
+        id,
+        label: row.Quote || row.Note || id,
+        meta: [row.Reference, id].filter(Boolean).join(" · "),
+        text: row.Note || "",
+        filepath,
+        kind: "tsv",
+      };
+    }
+    return {
+      id,
+      label: row.Question || id,
+      meta: [row.Reference, id].filter(Boolean).join(" · "),
+      text: row.Question || "",
+      secondary: row.Response || "",
+      secondaryLabel: "Respuesta",
+      filepath,
+      kind: "tsv",
+    };
+  });
+}
+
+export function collectHelpsArticleRefs(
+  ctx: Pick<SolverLaunchContext, "resource" | "portionIds" | "itemIds">,
+  inventory: InventoryDoc | null,
+): { id: string; path: string; title?: string }[] {
+  const resource = ctx.resource as HelpsResource;
+  if (resource !== "academia" && resource !== "palabras") return [];
+  const out: { id: string; path: string; title?: string }[] = [];
+  const seen = new Set<string>();
+
+  function push(id: string, path: string, title?: string) {
+    const key = (path || id).toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push({ id, path, title });
+  }
+
+  if (inventory) {
+    for (const pid of ctx.portionIds) {
+      const portion = matchPortion(inventory, pid);
+      if (!portion) continue;
+      const refs = resource === "academia" ? portion.academia : portion.palabras;
+      for (const ref of refs ?? []) {
+        const article = lookupArticle(inventory, ref.id);
+        push(article?.id || ref.id, article?.path || ref.id, article?.title);
+      }
+    }
+  }
+
+  for (const raw of ctx.itemIds) {
+    const occ = parseArticleOccurrenceId(raw);
+    if (!occ) continue;
+    const article = inventory ? lookupArticle(inventory, occ.articleId) : undefined;
+    push(article?.id || occ.articleId, article?.path || occ.articleId, article?.title);
+  }
+
+  return out;
+}
+
+export function articleRefsToDraftItems(
+  resource: "academia" | "palabras",
+  refs: { id: string; path: string; title?: string }[],
+): HelpsDraftItem[] {
+  const out: HelpsDraftItem[] = [];
+  for (const ref of refs) {
+    const filepath = helpsMarkdownPath(resource, ref);
+    if (!filepath) continue;
+    out.push({
+      id: ref.id || filepath,
+      label: ref.title?.trim() || ref.id,
+      meta: filepath,
+      text: "",
+      filepath,
+      kind: "markdown",
+    });
+  }
+  return out;
+}
+
+export function tsvFieldsForItem(
+  resource: "notas" | "preguntas",
+  item: HelpsDraftItem,
+): Record<string, string> {
+  if (resource === "notas") return { Note: item.text };
+  return { Question: item.text, Response: item.secondary ?? "" };
+}

@@ -30,10 +30,37 @@ export function displayRef(book: string, ref: string): string {
   return book ? `${book} ${text}` : text;
 }
 
+/**
+ * Human verse range for list titles: "1:1–3" from "NEH 1:1-3" or "1:1-3".
+ * Falls back to the trimmed ref when it doesn't look like chapter:verse.
+ */
+export function verseRangeLabel(ref: string): string {
+  const text = (ref || "").trim();
+  if (!text) return "";
+  const match = text.match(/(\d+:\d+(?:\s*[-–—]\s*\d+)?)\s*$/);
+  if (!match) return text;
+  return match[1].replace(/\s*[-–—]\s*/, "–");
+}
+
+/** Resource chip for scripture / note / question tasks. */
+export function taskKindLabel(resource: TaskResource): string {
+  if (resource === "notas") return "Nota";
+  if (resource === "preguntas") return "Pregunta";
+  if (resource === "tpl") return "TPL";
+  return "TPS";
+}
+
 export function flattenTasks(portions: Portion[], resource: TaskResource): InventoryTask[] {
   const tasks: InventoryTask[] = [];
   for (const portion of portions) {
-    const items = resource === "notas" ? portion.notasItems : portion.preguntasItems;
+    const items =
+      resource === "notas"
+        ? portion.notasItems
+        : resource === "preguntas"
+          ? portion.preguntasItems
+          : resource === "tpl"
+            ? portion.tplItems
+            : portion.tpsItems;
     for (const item of items) tasks.push(item);
   }
   return tasks;
@@ -44,7 +71,14 @@ export function tasksByChapter(portions: Portion[], resource: TaskResource) {
     .map((group) => ({
       chapter: group.chapter,
       portions: group.portions.filter((portion) => {
-        const items = resource === "notas" ? portion.notasItems : portion.preguntasItems;
+        const items =
+          resource === "notas"
+            ? portion.notasItems
+            : resource === "preguntas"
+              ? portion.preguntasItems
+              : resource === "tpl"
+                ? portion.tplItems
+                : portion.tpsItems;
         return items.length > 0;
       }),
     }))

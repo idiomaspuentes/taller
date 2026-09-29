@@ -1,6 +1,15 @@
-# Gateway Tasks
+# TAS — Translation Assistance System
 
-App de Preparación FCR: inventariar un libro de la Biblia, definir equipos con alcance y **producir la lista de asignaciones**. Con sesión DCS se guarda en `{org}/gateway-tasks`.
+App de preparación FCR y gestión de trabajo sobre issues DCS: inventariar un
+libro (o varios en un proyecto temático), definir **tareas** (alcance + reparto),
+asignar **equipos** de org y publicar **subtareas**.
+
+Antes: *Gateway Tasks*. El repo DCS sigue siendo `{pmOrg}/gateway-tasks` por
+compatibilidad.
+
+Vocabulario y arquitectura: [`docs/MODELO.md`](docs/MODELO.md) ·
+migración: [`docs/PLAN_MIGRACION.md`](docs/PLAN_MIGRACION.md) ·
+plataforma: [`docs/PLATAFORMA.md`](docs/PLATAFORMA.md).
 
 ## Arranque
 
@@ -14,54 +23,35 @@ npm run dev
 
 No hace falta ningún proceso aparte: **Generar** en el paso Inventario corre
 enteramente en el navegador (ver [Inventario](#inventario) más abajo). Sin
-red también puedes usar **Instantánea NEH** o **Cargar JSON**.
+red también puedes **Cargar JSON**.
 
 ## Flujo
 
-1. **Contexto** (barra): lengua, org de contenido (`{lang}_gl`), org PM (si hay login), libro.
-2. **Inventario**: generar o cargar JSON → porciones + artículos pendientes.
-3. **Equipos**: personas, equipos y alcance (Notas, Preguntas, Academia, Palabras).
-4. **Asignar**: backlog filtrado por el equipo activo; asignar o **Autoasignar**.
-5. **Publicar**: descargar JSON o **Guardar en DCS**.
+1. **Inventario**: elegir proyecto (libro o temático) e inventariar.
+2. **Tareas**: alcance (`ScriptureScope`), reparto y (opcional) equipo de org DCS.
+3. **Asignar**: backlog filtrado por la tarea activa; asignar o **Autoasignar**.
+4. **Entregar**: descargar JSON, guardar en DCS y/o publicar subtareas (issues).
+
+La lengua se elige en el setup y en Proyectos. La sesión DCS y la organización PM
+viven en el chip de la barra (iniciar sesión o, ya dentro, el resumen de sesión).
+
+Arquitectura visual: [`docs/VISUAL_ARCHITECTURE.md`](docs/VISUAL_ARCHITECTURE.md).
+Dominio: [`docs/MODELO.md`](docs/MODELO.md).
 
 ## Persistencia DCS
 
-Repo: `{pmOrg}/gateway-tasks`
+Repo: `{pmOrg}/gateway-tasks` (nombre técnico legacy; producto = TAS)
 
 ```
 team-presets.json
-{lang}/teams.json
-{lang}/{book}/assignments.json
-{lang}/{book}/inventory.json
+{lang}/projects.json
+{lang}/teams.json          # people + tasks
+{lang}/{projectId}/assignments.json
+{lang}/{BOOK}/inventory.json
 ```
-
-`team-presets.json` guarda las plantillas de alcance de equipo (recursos, filtro,
-grano, "asignar juntos"), sin nada específico de un libro. No está bajo `{lang}/`
-porque el mismo preset sirve para cualquier lengua. Se sincroniza al guardar o
-borrar un preset en Equipos (si hay sesión y organización PM elegidas); si no,
-queda solo en este dispositivo (`localStorage`).
-
-Schema del entregable: `gateway-assignments-1` (personas, equipos, asignaciones con `personId` + `teamId`).
-
-Login: usuario/contraseña → PAT, o pegar un token (`read:user`, `read:organization`, `write:repository`).
 
 ## Inventario
 
-**Generar** corre en [`src/worker/inventoryWorker.ts`](src/worker/inventoryWorker.ts), un
-Web Worker real (no un proceso aparte): descarga el ULT y los archivos
-compañeros (UST/TN/TQ/TWL) directamente de Door43, arma las porciones
-(`src/prep/`) y comprueba el estado de cada artículo de Academia/Palabras en
-el org destino (`src/status/`). Ambas mitades son un port a TypeScript, línea
-a línea, de los scripts Python de `idiomas-puentes-docs` (`prep_portions.py`
-+ `check_article_status.py`); `npm run verify:prep`, `verify:seqmatch` y
-`verify:status` comparan la salida contra la de esos scripts originales.
-
-## Relación con la guía
-
-El `/tablero` de `idiomas-puentes-docs` queda como prototipo. Esta app es el destino.
-
-## UI/UX
-
-Antes de tocar una vista o añadir un control, lee
-[`docs/UI_UX_PRINCIPLES.md`](docs/UI_UX_PRINCIPLES.md) — reglas de
-divulgación progresiva y jerarquía visual, con una checklist para PRs.
+El paso Inventario genera el JSON de porciones/artículos en el navegador
+(worker). Para proyectos temáticos, inventaría cada libro de `books[]` por
+pestaña.

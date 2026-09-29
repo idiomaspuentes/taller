@@ -71,12 +71,17 @@ function parseDelimited(text: string, delimiter: string): string[][] {
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
-/** Read a TSV/CSV file's text into an array of {header: value} rows, all trimmed. */
-export function readTsv(text: string): Record<string, string>[] {
+export type TsvTable = {
+  headers: string[];
+  rows: Record<string, string>[];
+};
+
+/** Read a TSV/CSV file into headers + {header: value} rows, all trimmed. */
+export function parseTsvTable(text: string): TsvTable {
   const sample = text.slice(0, 2048);
   const delimiter = detectDelimiter(sample);
   const rows = parseDelimited(text, delimiter);
-  if (!rows.length) return [];
+  if (!rows.length) return { headers: [], rows: [] };
   const headers = rows[0].map((h) => h.trim());
   const out: Record<string, string>[] = [];
   for (const raw of rows.slice(1)) {
@@ -86,5 +91,26 @@ export function readTsv(text: string): Record<string, string>[] {
     });
     out.push(record);
   }
-  return out;
+  return { headers, rows: out };
+}
+
+/** Read a TSV/CSV file's text into an array of {header: value} rows, all trimmed. */
+export function readTsv(text: string): Record<string, string>[] {
+  return parseTsvTable(text).rows;
+}
+
+function escapeTsvField(value: string): string {
+  if (/[\t\n\r"]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+/** Write a TSV (tab) from headers + rows. */
+export function serializeTsv(headers: string[], rows: Record<string, string>[]): string {
+  const lines = [
+    headers.join("\t"),
+    ...rows.map((row) => headers.map((h) => escapeTsvField(row[h] ?? "")).join("\t")),
+  ];
+  return `${lines.join("\n")}\n`;
 }

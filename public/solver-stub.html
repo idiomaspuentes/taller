@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TAS · Stub de herramienta</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f1e8;
+        --ink: #1c1917;
+        --muted: #57534e;
+        --accent: #0f766e;
+        --card: #fffdf8;
+        --border: #e7e0d4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background:
+          radial-gradient(ellipse 80% 50% at 10% 0%, #d8efe9 0%, transparent 55%),
+          var(--bg);
+        color: var(--ink);
+        padding: 1.5rem;
+      }
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem 1.35rem;
+        box-shadow: 0 1px 0 rgba(28, 25, 23, 0.04);
+      }
+      h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.35rem;
+        letter-spacing: -0.02em;
+      }
+      .lede {
+        margin: 0 0 1rem;
+        color: var(--muted);
+        font-size: 0.9375rem;
+        line-height: 1.45;
+      }
+      .grid {
+        display: grid;
+        gap: 0.55rem;
+        margin: 0 0 1rem;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 7.5rem 1fr;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+      }
+      .row dt {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .row dd {
+        margin: 0;
+        word-break: break-word;
+      }
+      .err {
+        color: #b91c1c;
+        font-size: 0.875rem;
+      }
+      pre {
+        margin: 0;
+        max-height: 18rem;
+        overflow: auto;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #faf7f2;
+        font-size: 0.75rem;
+        line-height: 1.4;
+      }
+      .badge {
+        display: inline-block;
+        margin-bottom: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--accent) 12%, white);
+        color: var(--accent);
+        font-size: 0.75rem;
+        font-weight: 650;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="badge">gateway-solver-launch-1</span>
+      <h1>Herramienta de demostración</h1>
+      <p class="lede">
+        Stub de TAS: muestra el contexto que Mis tareas envía al hacer
+        <strong>Resolver</strong>. Sustituye esta URL en
+        <code>solvers.json</code> por tu app real.
+      </p>
+      <div id="summary" class="grid"></div>
+      <h2 style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted)">
+        JSON completo
+      </h2>
+      <pre id="raw">Cargando…</pre>
+    </main>
+    <script>
+      function decodeCtx(raw) {
+        if (!raw) return null;
+        var b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+        while (b64.length % 4) b64 += "=";
+        var binary = atob(b64);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
+
+      function pickCtx() {
+        var hash = location.hash.replace(/^#/, "");
+        var params = new URLSearchParams(hash.includes("=") ? hash : "");
+        var fromHash = params.get("ctx");
+        if (fromHash) return fromHash;
+        var q = new URLSearchParams(location.search);
+        return q.get("ctx") || q.get("context");
+      }
+
+      var elSummary = document.getElementById("summary");
+      var elRaw = document.getElementById("raw");
+      try {
+        var encoded = pickCtx();
+        var ctx = decodeCtx(encoded);
+        if (!ctx || ctx.schema !== "gateway-solver-launch-1") {
+          throw new Error("Falta o no es un contexto gateway-solver-launch-1.");
+        }
+        var fields = [
+          ["Tarea", ctx.taskName || ctx.taskId],
+          ["Proyecto", ctx.projectId],
+          ["Libro", ctx.book],
+          ["Ref", ctx.ref],
+          ["Recurso", ctx.resource],
+          ["Lengua", ctx.lang],
+          ["Issue", ctx.issueNumber ? "#" + ctx.issueNumber : "—"],
+          ["Usuario", ctx.username ? "@" + ctx.username : "—"],
+        ];
+        elSummary.innerHTML = fields
+          .map(function (pair) {
+            return (
+              '<div class="row"><dt>' +
+              pair[0] +
+              "</dt><dd>" +
+              String(pair[1] || "—") +
+              "</dd></div>"
+            );
+          })
+          .join("");
+        elRaw.textContent = JSON.stringify(ctx, null, 2);
+      } catch (err) {
+        elSummary.innerHTML =
+          '<p class="err">' + (err && err.message ? err.message : String(err)) + "</p>";
+        elRaw.textContent = location.href;
+      }
+    </script>
+  </body>
+</html>

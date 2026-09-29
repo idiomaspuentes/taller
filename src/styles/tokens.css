@@ -1,0 +1,81 @@
+/**
+ * TAS design tokens — Ink & paper.
+ * Warm off-white canvas, deep ink text, single teal accent.
+ * Distinct from the LMS puente brand and from generic violet “AI ops”.
+ */
+
+:root {
+  /* Neutral scale (warm paper undertone) */
+  --gray-0: #fffcf7;
+  --gray-50: #f6f3ee;
+  --gray-100: #efebe4;
+  --gray-150: #e5e0d7;
+  --gray-200: #d8d1c6;
+  --gray-300: #c0b7a8;
+  --gray-400: #9e9484;
+  --gray-500: #7a7164;
+  --gray-600: #5c554b;
+  --gray-700: #433e37;
+  --gray-800: #2e2a25;
+  --gray-900: #1c1916;
+  --gray-950: #12100e;
+
+  /* Brand accent: teal */
+  --accent-50: #eef9f7;
+  --accent-100: #d5f0eb;
+  --accent-200: #abe1d8;
+  --accent-300: #74c9bc;
+  --accent-400: #3fafa0;
+  --accent-500: #0f8f80;
+  --accent-600: #0b7368;
+  --accent-700: #0a5c54;
+  --accent-800: #0a4a44;
+  --accent-900: #093c38;
+
+  /* Semantic status colors (function, not brand) */
+  --success-100: #dcfce7;
+  --success-500: #16a34a;
+  --success-700: #15803d;
+  --warning-100: #fef3c7;
+  --warning-500: #d97706;
+  --warning-700: #92400e;
+  --danger-100: #fee2e2;
+  --danger-500: #dc2626;
+  --danger-700: #b91c1c;
+
+  /* Semantic aliases the app reads */
+  --bg: var(--gray-50);
+  --surface: var(--gray-0);
+  --surface-muted: var(--gray-100);
+  --surface-popover: var(--gray-0);
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --input-border: var(--gray-300);
+  --text: var(--gray-900);
+  --text-muted: var(--gray-600);
+  --text-faint: var(--gray-500);
+  --primary: var(--accent-500);
+  --primary-hover: var(--accent-600);
+  --primary-foreground: #ffffff;
+  --secondary: var(--gray-100);
+  --secondary-hover: var(--gray-150);
+  --secondary-foreground: var(--gray-800);
+  --destructive: var(--danger-500);
+  --destructive-hover: var(--danger-700);
+  --destructive-foreground: #ffffff;
+  --ring: var(--accent-400);
+
+  /* Radius scale */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* Shadows — flat-first, used sparingly (popovers/dialogs / FAB) */
+  --shadow-sm: 0 1px 2px rgba(18, 16, 14, 0.06);
+  --shadow-md: 0 8px 28px rgba(18, 16, 14, 0.14);
+
+  --font-sans: "Geist Variable", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

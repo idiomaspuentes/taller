@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Check } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -8,117 +8,147 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-export type StepId = "contexto" | "inventario" | "equipos" | "asignar" | "publicar";
+/**
+ * Steps inside a project shell.
+ * `inventario` prepares source material (for book-shaped projects: ULT/helps).
+ * The project id in the URL is separate and is not always a book.
+ */
+export type StepId = "inventario" | "tareas" | "asignar" | "entregar";
 
-export const STEPS: { id: StepId; n: number; label: string }[] = [
-  { id: "contexto", n: 1, label: "Contexto" },
-  { id: "inventario", n: 2, label: "Inventario" },
-  { id: "equipos", n: 3, label: "Equipos" },
-  { id: "asignar", n: 4, label: "Asignar" },
-  { id: "publicar", n: 5, label: "Publicar" },
+export const STEPS: { id: StepId; n: number; label: string; short: string }[] = [
+  { id: "inventario", n: 1, label: "Inventario", short: "Inventario" },
+  { id: "tareas", n: 2, label: "Fases y tareas", short: "Fases" },
+  { id: "asignar", n: 3, label: "Asignar", short: "Asignar" },
+  { id: "entregar", n: 4, label: "Entregar", short: "Entregar" },
 ];
 
 export function stepEnabled(
   id: StepId,
-  contextConfirmed: boolean,
+  setupDone: boolean,
   hasInventory: boolean,
 ): boolean {
-  if (id === "contexto") return true;
-  if (id === "inventario" || id === "equipos") return contextConfirmed;
-  return contextConfirmed && hasInventory;
+  if (!setupDone) return false;
+  if (id === "inventario" || id === "tareas") return true;
+  return hasInventory;
+}
+
+export type StepStatus = "locked" | "current" | "done" | "todo";
+
+export function stepStatus(
+  id: StepId,
+  view: StepId,
+  setupDone: boolean,
+  hasInventory: boolean,
+  hasTeams: boolean,
+): StepStatus {
+  if (!stepEnabled(id, setupDone, hasInventory)) return "locked";
+  if (id === view) return "current";
+  if (id === "inventario" && hasInventory) return "done";
+  if (id === "tareas" && hasTeams) return "done";
+  const order = STEPS.findIndex((s) => s.id === id);
+  const current = STEPS.findIndex((s) => s.id === view);
+  if (order >= 0 && current >= 0 && order < current) return "done";
+  return "todo";
 }
 
 type Props = {
   view: StepId;
-  contextConfirmed: boolean;
+  setupDone: boolean;
   hasInventory: boolean;
+  hasTeams?: boolean;
   onChange: (id: StepId) => void;
 };
 
-export function StepNav({ view, contextConfirmed, hasInventory, onChange }: Props) {
-  const current = STEPS.find((s) => s.id === view) ?? STEPS[0];
+function optionLabel(
+  step: (typeof STEPS)[number],
+  status: StepStatus,
+): string {
+  const mark = status === "done" ? "✓ " : `${step.n} · `;
+  return `${mark}${step.label}`;
+}
+
+/**
+ * Project step switcher: rail on wider screens, one native select on narrow.
+ */
+export function StepNav({
+  view,
+  setupDone,
+  hasInventory,
+  hasTeams = false,
+  onChange,
+}: Props) {
+  const index = STEPS.findIndex((s) => s.id === view) + 1;
+
+  function go(id: StepId) {
+    if (stepEnabled(id, setupDone, hasInventory)) onChange(id);
+  }
 
   return (
-    <nav aria-label="Pasos" className="flex min-w-0 flex-1 items-center">
-      <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 sm:flex">
+    <nav aria-label="Pasos del proyecto" className="app-step-nav">
+      <ol className="app-step-nav__rail">
         {STEPS.map((step) => {
-          const enabled = stepEnabled(step.id, contextConfirmed, hasInventory);
-          const active = view === step.id;
+          const status = stepStatus(step.id, view, setupDone, hasInventory, hasTeams);
           return (
-            <Button
-              key={step.id}
-              type="button"
-              size="sm"
-              variant={active ? "default" : "ghost"}
-              disabled={!enabled}
-              aria-current={active ? "step" : undefined}
-              onClick={() => onChange(step.id)}
-              className={cn("rounded-full", !active && enabled && "text-foreground")}
-            >
-              <span
-                className={cn(
-                  "flex size-4 items-center justify-center rounded-full text-[0.65rem] font-semibold",
-                  active ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground",
-                )}
+            <li key={step.id} className="app-step-nav__item">
+              <button
+                type="button"
+                className={cn("app-step-nav__step", `app-step-nav__step--${status}`)}
+                disabled={status === "locked"}
+                aria-current={status === "current" ? "step" : undefined}
+                onClick={() => go(step.id)}
               >
-                {step.n}
-              </span>
-              {step.label}
-            </Button>
+                <span className="app-step-nav__marker" aria-hidden>
+                  {status === "done" ? (
+                    <Check className="app-step-nav__check" strokeWidth={2.5} />
+                  ) : (
+                    step.n
+                  )}
+                </span>
+                <span className="app-step-nav__label app-step-nav__label--short">
+                  {step.short}
+                </span>
+                <span className="app-step-nav__label app-step-nav__label--full">
+                  {step.label}
+                </span>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
-      <div className="flex w-full min-w-0 flex-1 items-center gap-2 sm:hidden">
-        <div className="flex gap-1">
-          {STEPS.map((step) => {
-            const enabled = stepEnabled(step.id, contextConfirmed, hasInventory);
-            const active = view === step.id;
-            return (
-              <button
-                key={step.id}
-                type="button"
-                disabled={!enabled}
-                aria-label={`${step.n} · ${step.label}`}
-                aria-current={active ? "step" : undefined}
-                onClick={() => onChange(step.id)}
-                className={cn(
-                  "flex size-6 items-center justify-center rounded-full text-[0.65rem] font-semibold",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : enabled
-                      ? "bg-muted text-foreground"
-                      : "bg-muted/60 text-muted-foreground",
-                )}
-              >
-                {step.n}
-              </button>
-            );
-          })}
-        </div>
-        <Select
-          value={view}
-          onValueChange={(id) => {
-            if (stepEnabled(id as StepId, contextConfirmed, hasInventory)) {
-              onChange(id as StepId);
-            }
-          }}
-        >
-          <SelectTrigger className="min-w-0 flex-1" size="sm" aria-label="Paso">
-            <SelectValue>{current.n} · {current.label}</SelectValue>
+      <div className="app-step-nav__mobile">
+        <Select value={view} onValueChange={(id) => go(id as StepId)}>
+          <SelectTrigger
+            className="app-step-nav__trigger"
+            size="sm"
+            aria-label="Paso del proyecto"
+          >
+            <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" align="end">
-            {STEPS.map((step) => (
-              <SelectItem
-                key={step.id}
-                value={step.id}
-                disabled={!stepEnabled(step.id, contextConfirmed, hasInventory)}
-              >
-                {step.n} · {step.label}
-              </SelectItem>
-            ))}
+            {STEPS.map((step) => {
+              const status = stepStatus(
+                step.id,
+                view,
+                setupDone,
+                hasInventory,
+                hasTeams,
+              );
+              return (
+                <SelectItem
+                  key={step.id}
+                  value={step.id}
+                  disabled={status === "locked"}
+                >
+                  {optionLabel(step, status)}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
+        <span className="app-step-nav__progress" aria-hidden>
+          {index}/{STEPS.length}
+        </span>
       </div>
     </nav>
   );

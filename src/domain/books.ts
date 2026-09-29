@@ -71,6 +71,41 @@ export function bookName(code: string): string {
   return BOOKS.find((b) => b.code === code)?.name ?? code;
 }
 
+/**
+ * Lowercase USFM id for chapter study URLs (`tit`, `neh`, `1sa`).
+ * Unknown tokens (thematic slugs) return null so callers can disable launch.
+ */
+export function usfmStudyBookId(book: string): string | null {
+  const upper = book.trim().toUpperCase();
+  if (!upper || !BOOKS.some((b) => b.code === upper)) return null;
+  return upper.toLowerCase();
+}
+
+/**
+ * Project id in routes / storage.
+ * Today often a UBS book code (`NEH`); later may be a thematic slug
+ * (`pentateuco-r1`). Known book codes are normalized to uppercase.
+ */
+export function normalizeProjectId(raw: string): string {
+  const id = raw.trim();
+  if (!id) return id;
+  const upper = id.toUpperCase();
+  if (BOOKS.some((b) => b.code === upper)) return upper;
+  return id;
+}
+
+/** Display label: book name when the id is a known book, else the id itself. */
+export function projectDisplayName(projectId: string): string {
+  const id = normalizeProjectId(projectId);
+  return BOOKS.find((b) => b.code === id)?.name ?? id;
+}
+
+/** True when this project id is a single known Bible book (current MVP shape). */
+export function isBookProjectId(projectId: string): boolean {
+  const id = normalizeProjectId(projectId);
+  return BOOKS.some((b) => b.code === id);
+}
+
 /** Default content org for a gateway language (e.g. es-419 → es-419_gl). */
 export function defaultContentOrg(lang: string): string {
   const clean = lang.trim().toLowerCase();

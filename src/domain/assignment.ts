@@ -5,25 +5,112 @@ import {
   type AssignmentGrain,
   type AssignmentState,
   type BundleGrain,
+  type DistributePolicy,
+  type DistributeUnit,
   type InventoryTask,
   type ItemType,
   type Person,
   type Portion,
   type ScopeKey,
   type ScopeRule,
+  type ScriptureScope,
   type TaskResource,
   type Team,
   type TeamBundle,
   articleFilterLabel,
+  bundleGrainForDistributeUnit,
   citesArticlesFromPortions,
   displayResourceGrain,
+  distributeUnitFromBundleGrain,
   expandsArticleOccurrences,
   GRAIN_LABEL,
   isArticleResource,
+  isScriptureResource,
   REMAINING,
   SCOPE_LABEL,
 } from "./types";
 import { flattenTasks, groupPortionsByChapter, portionKey } from "./chapters";
+
+/** Optional project context for {@link ScriptureScope} mode `project`. */
+export type ScriptureScopeContext = {
+  projectBooks?: string[];
+  /** Implied book when portions omit `portion.book` (single-book inventory). */
+  fallbackBook?: string;
+};
+
+function portionBookCode(portion: Portion, fallbackBook = ""): string {
+  return String(portion.book || fallbackBook || "")
+    .trim()
+    .toUpperCase();
+}
+
+/**
+ * Filter inventory portions by a task's scripture window before resource rules/grain.
+ * Default / omit scope = whole project (`mode: "project"`).
+ */
+export function filterPortionsByScriptureScope(
+  portions: Portion[],
+  scope: ScriptureScope | undefined,
+  ctx: ScriptureScopeContext = {},
+): Portion[] {
+  const resolved: ScriptureScope = scope ?? { mode: "project" };
+  const fallback = String(ctx.fallbackBook ?? "")
+    .trim()
+    .toUpperCase();
+  const projectBooks = (ctx.projectBooks ?? []).map((b) => b.trim().toUpperCase()).filter(Boolean);
+
+  if (resolved.mode === "project") {
+    if (!projectBooks.length) return portions;
+    const allowed = new Set(projectBooks);
+    return portions.filter((portion) => {
+      const book = portionBookCode(portion, fallback);
+      return !book || allowed.has(book);
+    });
+  }
+
+  if (resolved.mode === "books") {
+    const allowed = new Set(resolved.books.map((b) => b.trim().toUpperCase()).filter(Boolean));
+    if (!allowed.size) return portions;
+    return portions.filter((portion) => {
+      const book = portionBookCode(portion, fallback);
+      return !book || allowed.has(book);
+    });
+  }
+
+  if (resolved.mode === "chapters") {
+    const book = resolved.book.trim().toUpperCase();
+    const chapters = new Set(resolved.chapters);
+    return portions.filter((portion) => {
+      const code = portionBookCode(portion, fallback);
+      if (code && book && code !== book) return false;
+      if (!code && fallback && book && fallback !== book) return false;
+      return chapters.has(portion.chapter);
+    });
+  }
+
+  // portions
+  const book = resolved.book.trim().toUpperCase();
+  const ids = new Set(resolved.portionIds);
+  return portions.filter((portion) => {
+    const code = portionBookCode(portion, fallback);
+    if (code && book && code !== book) return false;
+    if (!code && fallback && book && fallback !== book) return false;
+    return (
+      ids.has(portionKey(portion)) ||
+      ids.has(portion.ref) ||
+      ids.has(portion.id) ||
+      (portion.id.includes(":") && ids.has(portion.id.split(":").slice(1).join(":")))
+    );
+  });
+}
+
+export function portionsForTask(
+  team: Team,
+  portions: Portion[],
+  ctx: ScriptureScopeContext = {},
+): Portion[] {
+  return filterPortionsByScriptureScope(portions, team.scriptureScope, ctx);
+}
 
 export function uid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -52,6 +139,8 @@ export function taskItemId(resource: TaskResource, id: string): string {
 export function parseTaskItemId(itemId: string): { resource: TaskResource; id: string } | null {
   if (itemId.startsWith("notas:")) return { resource: "notas", id: itemId.slice(6) };
   if (itemId.startsWith("preguntas:")) return { resource: "preguntas", id: itemId.slice(10) };
+  if (itemId.startsWith("tpl:")) return { resource: "tpl", id: itemId.slice(4) };
+  if (itemId.startsWith("tps:")) return { resource: "tps", id: itemId.slice(4) };
   return null;
 }
 
@@ -94,6 +183,74 @@ export function teamBundle(team: Team): TeamBundle | undefined {
 export function bundleEnabled(team: Team): boolean {
   return Boolean(team.bundle?.enabled);
 }
+
+export function resolveDistributeUnit(team: Team): DistributeUnit {
+  if (
+    team.distributeUnit === "portion" ||
+    team.distributeUnit === "chapter" ||
+    team.distributeUnit === "chapterRounds"
+  ) {
+    return team.distributeUnit;
+  }
+  return distributeUnitFromBundleGrain(team.bundle?.grain);
+}
+
+export function resolveDistributePolicy(team: Team): DistributePolicy {
+  const raw = String(team.distributePolicy ?? "").trim();
+  if (raw === "manual") return "manual";
+  if (raw === "contiguous" || raw === "equitable" || raw === "uneven") return "contiguous";
+  return "contiguous";
+}
+
+/** Contiguous slices: sizes differ by at most 1 when N is not divisible by M. */
+export function contiguousPartition<T>(items: T[], memberCount: number): T[][] {
+  if (memberCount <= 0) return [];
+  const n = items.length;
+  const result: T[][] = Array.from({ length: memberCount }, () => []);
+  if (n === 0) return result;
+  const base = Math.floor(n / memberCount);
+  const rem = n % memberCount;
+  let offset = 0;
+  for (let i = 0; i < memberCount; i++) {
+    const size = base + (i < rem ? 1 : 0);
+    result[i] = items.slice(offset, offset + size);
+    offset += size;
+  }
+  return result;
+}
+
+/**
+ * Partition units chapter-by-chapter: within each chapter, contiguous equitable
+ * split among all members; then the next chapter. Keeps the book advancing
+ * one chapter at a time.
+ */
+export function chapterRoundsPartition<T extends { chapter: number }>(
+  items: T[],
+  memberCount: number,
+): T[][] {
+  if (memberCount <= 0) return [];
+  const result: T[][] = Array.from({ length: memberCount }, () => []);
+  if (!items.length) return result;
+
+  const byChapter = new Map<number, T[]>();
+  for (const item of items) {
+    const list = byChapter.get(item.chapter) ?? [];
+    list.push(item);
+    byChapter.set(item.chapter, list);
+  }
+  const chapters = [...byChapter.keys()].sort((a, b) => a - b);
+  for (const chapter of chapters) {
+    const chunk = byChapter.get(chapter) ?? [];
+    const parts = contiguousPartition(chunk, memberCount);
+    for (let i = 0; i < memberCount; i++) {
+      result[i].push(...parts[i]);
+    }
+  }
+  return result;
+}
+
+/** @deprecated Use contiguousPartition — kept as alias for older imports. */
+export const equitableContiguousPartition = contiguousPartition;
 
 /** No grain on the team or any rule: oldest docs list the article catalog. */
 export function isLegacyGrain(team: Team): boolean {
@@ -193,18 +350,25 @@ export function portionsMatchingRule(
   team: Team,
   rule: ScopeRule,
   portions: Portion[],
+  ctx: ScriptureScopeContext = {},
 ): Portion[] {
-  return filterPortionsByGeo(portions, ruleGeo(team, rule));
+  const base = portionsForTask(team, portions, ctx);
+  return filterPortionsByGeo(base, ruleGeo(team, rule));
 }
 
-export function portionsMatchingGrain(team: Team, portions: Portion[]): Portion[] {
+export function portionsMatchingGrain(
+  team: Team,
+  portions: Portion[],
+  ctx: ScriptureScopeContext = {},
+): Portion[] {
+  const base = portionsForTask(team, portions, ctx);
   if (bundleEnabled(team) || isLegacyGrain(team) || !teamRules(team).length) {
-    return filterPortionsByGeo(portions, teamGeo(team));
+    return filterPortionsByGeo(base, teamGeo(team));
   }
   const seen = new Set<string>();
   const rows: Portion[] = [];
   for (const rule of teamRules(team)) {
-    for (const portion of portionsMatchingRule(team, rule, portions)) {
+    for (const portion of portionsMatchingRule(team, rule, base, ctx)) {
       const key = portionKey(portion);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -212,13 +376,22 @@ export function portionsMatchingGrain(team: Team, portions: Portion[]): Portion[
     }
   }
   if (!rows.length && (team.grainChapter || team.grainPortionIds?.length)) {
-    return filterPortionsByGeo(portions, teamGeo(team));
+    return filterPortionsByGeo(base, teamGeo(team));
   }
-  return rows.length ? rows : portions;
+  return rows.length ? rows : base;
+}
+
+function isTaskResource(resource: ScopeKey): resource is TaskResource {
+  return (
+    resource === "notas" ||
+    resource === "preguntas" ||
+    resource === "tpl" ||
+    resource === "tps"
+  );
 }
 
 function showsNoteRowsForRule(team: Team, rule: ScopeRule): boolean {
-  if (rule.resource !== "notas" && rule.resource !== "preguntas") return false;
+  if (!isTaskResource(rule.resource)) return false;
   return resolvedRuleGrain(team, rule) !== "portion";
 }
 
@@ -229,20 +402,24 @@ export function showsNoteRows(team: Team): boolean {
 
 export function showsPortionRows(team: Team): boolean {
   if (isLegacyGrain(team)) {
-    return teamRules(team).some((rule) => rule.resource === "notas" || rule.resource === "preguntas");
+    return teamRules(team).some((rule) => isTaskResource(rule.resource));
   }
   return teamRules(team).some((rule) => {
-    if (rule.resource !== "notas" && rule.resource !== "preguntas") return false;
+    if (!isTaskResource(rule.resource)) return false;
     return resolvedRuleGrain(team, rule) === "portion";
   });
 }
 
-export function tasksInScope(team: Team, portions: Portion[]): InventoryTask[] {
+export function tasksInScope(
+  team: Team,
+  portions: Portion[],
+  ctx: ScriptureScopeContext = {},
+): InventoryTask[] {
   const tasks: InventoryTask[] = [];
   const seen = new Set<string>();
   for (const rule of teamRules(team)) {
     if (!showsNoteRowsForRule(team, rule)) continue;
-    const scoped = portionsMatchingRule(team, rule, portions).filter((portion) =>
+    const scoped = portionsMatchingRule(team, rule, portions, ctx).filter((portion) =>
       portionMatchesFilter(portion, rule.resource as TaskResource, rule.articleFilter),
     );
     const allowedIds = itemIdSet(team, rule);
@@ -382,7 +559,9 @@ export function articlesInGrain(
   team: Team,
   portions: Portion[],
   articles: Article[],
+  ctx: ScriptureScopeContext = {},
 ): ScopedArticle[] {
+  const scopedPortions = portionsForTask(team, portions, ctx);
   if (isLegacyGrain(team)) {
     return articles
       .filter((article) => articleInScope(article, team))
@@ -398,9 +577,9 @@ export function articlesInGrain(
     if (listsCatalogArticles(team, rule)) {
       listed = articlesFromCatalog(rule, articles);
     } else if (expandsArticleOccurrences(grain, ruleIncludeDuplicates(team, rule))) {
-      listed = expandedCitedArticles(team, rule, portions, articles);
+      listed = expandedCitedArticles(team, rule, scopedPortions, articles);
     } else {
-      listed = uniqueCitedArticles(team, rule, portions, articles);
+      listed = uniqueCitedArticles(team, rule, scopedPortions, articles);
     }
     for (const row of listed) {
       if (seen.has(row.occurrenceId)) continue;
@@ -461,17 +640,24 @@ function articleMatchesFilter(article: Article, filter: ArticleFilter): boolean 
   return article.status === filter;
 }
 
-function portionCount(portion: Portion, resource: "notas" | "preguntas"): number {
-  return resource === "notas" ? portion.notas : portion.preguntas;
+function portionCount(portion: Portion, resource: TaskResource): number {
+  if (resource === "notas") return portion.notas;
+  if (resource === "preguntas") return portion.preguntas;
+  if (resource === "tpl") return portion.tpl;
+  return portion.tps;
 }
 
 /** Portions have counts only — never invent article statuses. */
 function portionMatchesFilter(
   portion: Portion,
-  resource: "notas" | "preguntas",
+  resource: TaskResource,
   filter: ArticleFilter,
 ): boolean {
-  if (filter === "all") return true;
+  if (filter === "all") {
+    // Scripture "all" still requires the source text to exist (TPS needs UST).
+    if (isScriptureResource(resource)) return portionCount(portion, resource) > 0;
+    return true;
+  }
   if (filter === "pending") return portionCount(portion, resource) > 0;
   return false;
 }
@@ -479,7 +665,7 @@ function portionMatchesFilter(
 /** Portions expose counts only (no article status). `pending` = count > 0; `all` = every portion. */
 export function portionInScope(portion: Portion, team: Team): boolean {
   for (const rule of teamRules(team)) {
-    if (rule.resource !== "notas" && rule.resource !== "preguntas") continue;
+    if (!isTaskResource(rule.resource)) continue;
     if (portionMatchesFilter(portion, rule.resource, rule.articleFilter)) return true;
   }
   return false;
@@ -491,6 +677,7 @@ export function ruleItemCount(
   portions: Portion[],
   articles: Article[],
   team?: Team,
+  ctx: ScriptureScopeContext = {},
 ): number {
   const fake: Team = team
     ? { ...team, rules: [rule], scope: [rule.resource] }
@@ -498,21 +685,22 @@ export function ruleItemCount(
         id: "count",
         name: "",
         description: "",
+        phaseId: "phase-default",
         memberIds: [],
         rules: [rule],
         scope: [rule.resource],
         grain: rule.grain,
       };
-  if (rule.resource === "notas" || rule.resource === "preguntas") {
-    const resource = rule.resource;
+  if (rule.resource === "notas" || rule.resource === "preguntas" || isScriptureResource(rule.resource)) {
+    const resource = rule.resource as TaskResource;
     if (showsNoteRowsForRule(fake, rule)) {
-      return tasksInScope(fake, portions).length;
+      return tasksInScope(fake, portions, ctx).length;
     }
-    return portionsMatchingRule(fake, rule, portions).filter((row) =>
+    return portionsMatchingRule(fake, rule, portions, ctx).filter((row) =>
       portionMatchesFilter(row, resource, rule.articleFilter),
     ).length;
   }
-  return articlesInGrain(fake, portions, articles).length;
+  return articlesInGrain(fake, portions, articles, ctx).length;
 }
 
 /** Article matches if any included resource rule covers its kind and filter. */
@@ -531,20 +719,21 @@ export function itemInTeamScope(
   team: Team,
   portions: Portion[],
   articles: Article[],
+  ctx: ScriptureScopeContext = {},
 ): boolean {
   if (type === "tarea") {
     const parsed = parseTaskItemId(id);
     if (!parsed) return false;
-    return tasksInScope(team, portions).some(
+    return tasksInScope(team, portions, ctx).some(
       (task) => task.resource === parsed.resource && task.id === parsed.id,
     );
   }
   if (type === "porcion") {
-    const scoped = portionsMatchingGrain(team, portions);
+    const scoped = portionsMatchingGrain(team, portions, ctx);
     const portion = scoped.find((row) => row.ref === id || row.id === id);
     return portion ? portionInScope(portion, team) : false;
   }
-  return articlesInGrain(team, portions, articles).some(
+  return articlesInGrain(team, portions, articles, ctx).some(
     (row) => row.occurrenceId === id || row.id === id,
   );
 }
@@ -575,10 +764,11 @@ function workItemsInScope(
   team: Team,
   portions: Portion[],
   articles: Article[],
+  ctx: ScriptureScopeContext = {},
 ): WorkItem[] {
   const items: WorkItem[] = [];
   if (showsNoteRows(team)) {
-    for (const task of tasksInScope(team, portions)) {
+    for (const task of tasksInScope(team, portions, ctx)) {
       items.push({
         type: "tarea",
         id: taskItemId(task.resource, task.id),
@@ -588,13 +778,13 @@ function workItemsInScope(
     }
   }
   if (showsPortionRows(team)) {
-    const scoped = portionsMatchingGrain(team, portions);
+    const scoped = portionsMatchingGrain(team, portions, ctx);
     for (const portion of scoped) {
       if (!portionInScope(portion, team)) continue;
       items.push({ type: "porcion", id: portion.ref, portionId: portionKey(portion) });
     }
   }
-  const sorted = [...articlesInGrain(team, portions, articles)].sort((a, b) => {
+  const sorted = [...articlesInGrain(team, portions, articles, ctx)].sort((a, b) => {
     const portionCmp = (a.portionRef ?? "").localeCompare(b.portionRef ?? "", "es");
     if (portionCmp) return portionCmp;
     return articleLabel(a).localeCompare(articleLabel(b), "es");
@@ -616,9 +806,10 @@ export function unassignedInScope(
   portions: Portion[],
   articles: Article[],
   assignments: Assignment[],
+  ctx: ScriptureScopeContext = {},
 ): { type: ItemType; id: string }[] {
   const items: { type: ItemType; id: string }[] = [];
-  for (const item of workItemsInScope(team, portions, articles)) {
+  for (const item of workItemsInScope(team, portions, articles, ctx)) {
     const current = assignmentFor(assignments, item.type, item.id, team.id);
     if (current && current.state !== "sin asignar" && current.personId) continue;
     items.push({ type: item.type, id: item.id });
@@ -655,16 +846,20 @@ export type ScopeBundle = {
 };
 
 function emptyCounts(): Record<ScopeKey, number> {
-  return { notas: 0, preguntas: 0, academia: 0, palabras: 0 };
+  return { tpl: 0, tps: 0, notas: 0, preguntas: 0, academia: 0, palabras: 0 };
 }
 
 function countWorkItem(counts: Record<ScopeKey, number>, item: WorkItem): void {
-  if (item.type === "tarea" && (item.resource === "notas" || item.resource === "preguntas")) {
+  if (item.type === "tarea" && item.resource && isTaskResource(item.resource)) {
     counts[item.resource] += 1;
     return;
   }
   if (item.type === "porcion") {
-    counts.notas += 1;
+    if (item.resource && isTaskResource(item.resource)) {
+      counts[item.resource] += 1;
+    } else {
+      counts.notas += 1;
+    }
     return;
   }
   if (item.resource === "academia" || item.resource === "palabras") {
@@ -684,7 +879,11 @@ function bundleUnits(
   portionRefs: string[];
   portions: Portion[];
 }[] {
-  const grain: BundleGrain = team.bundle?.grain ?? "portion";
+  const unit = resolveDistributeUnit(team);
+  const grain: BundleGrain =
+    team.bundle?.grain === "chapterPortions"
+      ? "chapterPortions"
+      : bundleGrainForDistributeUnit(unit);
   const scoped = filterPortionsByGeo(portions, teamGeo(team));
   if (grain === "portion") {
     return scoped.map((portion) => {
@@ -733,12 +932,14 @@ export function bundlesInScope(
   team: Team,
   portions: Portion[],
   articles: Article[],
+  ctx: ScriptureScopeContext = {},
 ): ScopeBundle[] {
   if (!bundleEnabled(team)) return [];
+  const scopedPortions = portionsForTask(team, portions, ctx);
   const bundles: ScopeBundle[] = [];
-  for (const unit of bundleUnits(team, portions)) {
+  for (const unit of bundleUnits(team, scopedPortions)) {
     const scopedTeam = teamForBundleUnit(team, unit.portionIds, unit.chapter);
-    const items = workItemsInScope(scopedTeam, portions, articles);
+    const items = workItemsInScope(scopedTeam, scopedPortions, articles, ctx);
     if (!items.length) continue;
     const counts = emptyCounts();
     for (const item of items) countWorkItem(counts, item);
@@ -758,6 +959,12 @@ export function bundlesInScope(
 
 export function bundleSummary(bundle: ScopeBundle): string {
   const parts: string[] = [];
+  if (bundle.counts.tpl) {
+    parts.push(`${bundle.counts.tpl} TPL`);
+  }
+  if (bundle.counts.tps) {
+    parts.push(`${bundle.counts.tps} TPS`);
+  }
   if (bundle.counts.notas) {
     parts.push(`${bundle.counts.notas} ${bundle.counts.notas === 1 ? "nota" : "notas"}`);
   }
@@ -805,8 +1012,9 @@ function unassignedBundles(
   portions: Portion[],
   articles: Article[],
   assignments: Assignment[],
+  ctx: ScriptureScopeContext = {},
 ): ScopeBundle[] {
-  return bundlesInScope(team, portions, articles).filter(
+  return bundlesInScope(team, portions, articles, ctx).filter(
     (bundle) => bundleState(bundle, assignments, team.id) === "sin asignar",
   );
 }
@@ -910,13 +1118,36 @@ export function assignToPerson(
   return { assignments: list, added, skipped };
 }
 
-/** Round-robin unassigned in-scope items — or lotes when “asignar juntos” is on. */
+/** Clear assignees for selected item/lote keys on this task. */
+export function unassignKeys(
+  assignments: Assignment[],
+  selectedKeys: string[],
+  team: Team,
+  portions: Portion[],
+  articles: Article[],
+): { assignments: Assignment[]; removed: number } {
+  const expanded = expandSelectedKeys(selectedKeys, team, portions, articles);
+  if (!expanded.length) return { assignments, removed: 0 };
+  const drop = new Set(expanded.map((item) => `${item.type}\0${item.id}`));
+  let removed = 0;
+  const next = assignments.filter((row) => {
+    if (row.teamId !== team.id) return true;
+    if (!drop.has(`${row.itemType}\0${row.itemId}`)) return true;
+    if (row.state === "sin asignar" && !row.personId) return true;
+    removed += 1;
+    return false;
+  });
+  return { assignments: next, removed };
+}
+
+/** Contiguous auto-assign by portion/chapter; respects packaging + policy. */
 export function autoAssign(
   assignments: Assignment[],
   team: Team,
   people: Person[],
   portions: Portion[],
   articles: Article[],
+  ctx: ScriptureScopeContext = {},
 ): { assignments: Assignment[]; assigned: number; message: string } {
   const members = team.memberIds
     .map((id) => people.find((p) => p.id === id))
@@ -928,8 +1159,33 @@ export function autoAssign(
       message: `Añade integrantes a ${team.name} antes de autoasignar.`,
     };
   }
+
+  const policy = resolveDistributePolicy(team);
+  if (policy === "manual") {
+    return {
+      assignments,
+      assigned: 0,
+      message: `${team.name} está en modo solo manual: elige persona a persona en Asignar.`,
+    };
+  }
+
+  const unit = resolveDistributeUnit(team);
+  const scopedPortions = portionsForTask(team, portions, ctx);
+  const portionById = new Map(scopedPortions.map((p) => [portionKey(p), p]));
+  const unitLabel =
+    unit === "chapter"
+      ? "por capítulo entero"
+      : unit === "chapterRounds"
+        ? "porciones por capítulo"
+        : "por porción";
+
+  function partitionForUnit<T extends { chapter: number }>(ordered: T[]): T[][] {
+    if (unit === "chapterRounds") return chapterRoundsPartition(ordered, members.length);
+    return contiguousPartition(ordered, members.length);
+  }
+
   if (bundleEnabled(team)) {
-    const pool = unassignedBundles(team, portions, articles, assignments);
+    const pool = unassignedBundles(team, scopedPortions, articles, assignments, ctx);
     if (!pool.length) {
       return {
         assignments,
@@ -937,49 +1193,118 @@ export function autoAssign(
         message: `No queda un lote sin asignar en el alcance de ${team.name}.`,
       };
     }
+    const partitions = partitionForUnit(pool);
     let list = [...assignments];
     let assignedItems = 0;
-    pool.forEach((bundle, index) => {
-      const member = members[index % members.length];
-      for (const item of bundle.items) {
-        list = upsertAssignment(
-          list,
-          item.type,
-          item.id,
-          member,
-          team.id,
-          "asignado",
-          "",
-          bundle.id,
-        );
-        assignedItems += 1;
+    let assignedLotes = 0;
+    partitions.forEach((chunk, index) => {
+      const member = members[index];
+      for (const bundle of chunk) {
+        assignedLotes += 1;
+        for (const item of bundle.items) {
+          list = upsertAssignment(
+            list,
+            item.type,
+            item.id,
+            member,
+            team.id,
+            "asignado",
+            "",
+            bundle.id,
+          );
+          assignedItems += 1;
+        }
       }
     });
     return {
       assignments: list,
       assigned: assignedItems,
-      message: `Autoasignados ${pool.length} ${
-        pool.length === 1 ? "lote" : "lotes"
-      } de ${team.name} entre ${members.length} personas.`,
+      message: `Autoasignados ${assignedLotes} ${
+        assignedLotes === 1 ? "lote" : "lotes"
+      } de ${team.name} entre ${members.length} personas (${unitLabel}).`,
     };
   }
-  const pool = unassignedInScope(team, portions, articles, assignments);
-  if (!pool.length) {
+
+  const unassigned = workItemsInScope(team, scopedPortions, articles, ctx).filter((item) => {
+    const current = assignmentFor(assignments, item.type, item.id, team.id);
+    return !(current && current.state !== "sin asignar" && current.personId);
+  });
+  if (!unassigned.length) {
     return {
       assignments,
       assigned: 0,
       message: `No queda trabajo sin asignar en el alcance de ${team.name}.`,
     };
   }
+
+  // Keep resources separate: partition each resource queue on its own.
+  const byResource = new Map<string, WorkItem[]>();
+  for (const item of unassigned) {
+    const key = item.resource ?? item.type;
+    const list = byResource.get(key) ?? [];
+    list.push(item);
+    byResource.set(key, list);
+  }
+
   let list = [...assignments];
-  pool.forEach((item, index) => {
-    const member = members[index % members.length];
-    list = upsertAssignment(list, item.type, item.id, member, team.id, "asignado", "");
-  });
+  let assignedItems = 0;
+  let assignedUnits = 0;
+
+  for (const items of byResource.values()) {
+    type GeoUnit = { key: string; sort: number; chapter: number; items: WorkItem[] };
+    const unitMap = new Map<string, GeoUnit>();
+    let orphanIndex = 0;
+    for (const item of items) {
+      let key: string;
+      let sort: number;
+      let chapter = 0;
+      if (unit === "chapter") {
+        const portion = item.portionId ? portionById.get(item.portionId) : undefined;
+        if (portion) {
+          key = `ch:${portion.chapter}`;
+          sort = portion.chapter;
+          chapter = portion.chapter;
+        } else {
+          key = `item:${item.type}:${item.id}`;
+          sort = 1_000_000 + orphanIndex++;
+          chapter = 1_000_000 + orphanIndex;
+        }
+      } else if (item.portionId) {
+        const portion = portionById.get(item.portionId);
+        key = `p:${item.portionId}`;
+        chapter = portion?.chapter ?? 0;
+        sort = portion
+          ? portion.chapter * 10_000 + (portion.verses[0] ?? 0)
+          : 1_000_000 + orphanIndex++;
+      } else {
+        key = `item:${item.type}:${item.id}`;
+        sort = 1_000_000 + orphanIndex++;
+        chapter = 1_000_000 + orphanIndex;
+      }
+      const existing = unitMap.get(key);
+      if (existing) existing.items.push(item);
+      else unitMap.set(key, { key, sort, chapter, items: [item] });
+    }
+    const ordered = [...unitMap.values()].sort((a, b) => a.sort - b.sort || a.key.localeCompare(b.key));
+    const partitions = partitionForUnit(ordered);
+    partitions.forEach((chunk, index) => {
+      const member = members[index];
+      for (const geo of chunk) {
+        assignedUnits += 1;
+        for (const item of geo.items) {
+          list = upsertAssignment(list, item.type, item.id, member, team.id, "asignado", "");
+          assignedItems += 1;
+        }
+      }
+    });
+  }
+
   return {
     assignments: list,
-    assigned: pool.length,
-    message: `Autoasignados ${pool.length} ítems de ${team.name} entre ${members.length} personas.`,
+    assigned: assignedItems,
+    message: `Autoasignados ${assignedUnits} ${
+      unit === "chapter" ? "capítulos/bloques" : "porciones/bloques"
+    } (${assignedItems} ítems) de ${team.name} entre ${members.length} personas (${unitLabel}).`,
   };
 }
 

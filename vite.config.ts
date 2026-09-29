@@ -1,16 +1,28 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const usfmAst = path.resolve(root, "../usfm-ast/packages");
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(root, "./src"),
+      "@usfm-tools/parser": path.resolve(usfmAst, "usfm-parser/src/index.ts"),
+      "@usfm-tools/types": path.resolve(usfmAst, "shared-types/src/index.ts"),
+      "@usfm-tools/usj-core": path.resolve(usfmAst, "usfm-usj-core/src/index.ts"),
+      "@usfm-tools/help-markdown": path.resolve(usfmAst, "help-markdown/src/index.ts"),
+      "@usfm-tools/usfm-readonly-react/styles.css": path.resolve(
+        usfmAst,
+        "usfm-readonly-react/src/default.css",
+      ),
+      "@usfm-tools/usfm-readonly-react": path.resolve(
+        usfmAst,
+        "usfm-readonly-react/src/index.ts",
+      ),
     },
   },
   server: {

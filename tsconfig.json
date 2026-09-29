@@ -19,7 +19,12 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@usfm-tools/parser": ["./src/usfm-tools/parser.d.ts"],
+      "@usfm-tools/usj-core": ["./src/usfm-tools/usj-core.d.ts"],
+      "@usfm-tools/usfm-readonly-react": ["./src/usfm-tools/usfm-readonly-react.d.ts"],
+      "@usfm-tools/usfm-readonly-react/styles.css": ["./src/usfm-tools/css.d.ts"],
+      "@usfm-tools/help-markdown": ["./src/usfm-tools/help-markdown.d.ts"]
     }
   },
   "include": ["src"]
