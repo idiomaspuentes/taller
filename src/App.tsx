@@ -589,6 +589,7 @@ export function App() {
     })();
     return () => {
       cancelled = true;
+      setHydrating(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.name === "proyecto" ? route.projectId : "", session?.token, pmOrg, lang, hydrateProjectFromDcs]);
@@ -1022,9 +1023,9 @@ export function App() {
         <div className="sr-only" aria-live="polite">
           {live}
         </div>
-        {hydrating ? (
+        {hydrating && route.name === "proyecto" ? (
           <Alert className="mb-3">
-            <AlertDescription>Cargando plan y subtareas desde DCS…</AlertDescription>
+            <AlertDescription>Cargando plan y subtareas del proyecto…</AlertDescription>
           </Alert>
         ) : null}
         {live ? (

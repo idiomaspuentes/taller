@@ -915,7 +915,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setWordsFailed(false);
       setQuestionsFailed(false);
       setDirty(Boolean(cache));
-      setError("Sin sesión: el borrador queda en este navegador. Conéctate para guardar en DCS.");
+      setError("Sin sesión: el borrador queda en este navegador. Conéctate para guardar en Door43.");
       stopAllLoading();
       return;
     }
@@ -1041,7 +1041,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         setDirty(true);
         if (!announcedCache.current) {
           announcedCache.current = true;
-          announce("Se restauró un borrador local (aún no está en DCS).");
+          announce("Se restauró un borrador local (aún no está en Door43).");
         }
       } else if (!editedVerses.current.size) {
         setDirty(false);
@@ -1069,7 +1069,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             setDirty(true);
             if (!announcedCache.current) {
               announcedCache.current = true;
-              announce("Se restauró un borrador local (aún no está en DCS).");
+              announce("Se restauró un borrador local (aún no está en Door43).");
             }
           }
           return found;
@@ -1741,7 +1741,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     <span className="scripture-editor__details-key">Guardado</span>
                     <span>
                       {write?.mode === "dcs"
-                        ? "Laboratorio: puedes guardar en DCS en la org indicada. No hay subtarea ni revisión."
+                        ? "Laboratorio: puedes guardar en Door43 en la organización indicada. No hay subtarea ni revisión."
                         : write?.reason ||
                           "Laboratorio: borrador local. No se escribe en Door43."}
                     </span>

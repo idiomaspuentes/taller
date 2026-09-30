@@ -2662,7 +2662,7 @@ export function TeamsView({
               />
             </div>
             <div className="grid gap-1">
-              <Label htmlFor="new-phase-slug">Slug git</Label>
+              <Label htmlFor="new-phase-slug">Identificador corto</Label>
               <Input
                 id="new-phase-slug"
                 value={newPhaseSlug}
@@ -2672,7 +2672,7 @@ export function TeamsView({
                 }}
                 placeholder="revision"
                 className="font-mono"
-                aria-label="Slug git de la fase"
+                aria-label="Identificador corto de la fase"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") addPhase();
                 }}
@@ -2728,7 +2728,7 @@ export function TeamsView({
                           if (e.key === "Escape") setEditingPhaseId(null);
                         }}
                         className="h-8 max-w-[10rem] font-mono text-xs"
-                        aria-label="Slug git de la fase"
+                        aria-label="Identificador corto de la fase"
                         placeholder="revision"
                       />
                     </div>
@@ -2741,7 +2741,7 @@ export function TeamsView({
                         setEditingPhaseName(phase.name);
                         setEditingPhaseSlug(ensurePhaseSlug(phase));
                       }}
-                      title="Clic para renombrar o editar el slug git"
+                      title="Clic para renombrar la fase"
                     >
                       {phase.name}
                     </button>

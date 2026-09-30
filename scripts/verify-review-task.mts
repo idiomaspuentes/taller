@@ -10,6 +10,7 @@ import { createReviewIssues, reviewIssuesToast } from "../src/dcs/issues.ts";
 import {
   REVIEW_CANDIDATES_FALLBACK_NOTE,
   parseReviewRef,
+  resolveReviewCandidates,
   reviewAssigneeCandidates,
   reviewWorkOrders,
   type OrgTeamAccess,
@@ -368,6 +369,16 @@ const board = {
     `aviso sin jerga: «${REVIEW_CANDIDATES_FALLBACK_NOTE}»`,
   );
   console.log("ok  sin Door43, muestra los integrantes guardados con un aviso en español");
+
+  // Mientras se leen los permisos, no se ofrece a nadie (ni los integrantes).
+  const pending = resolveReviewCandidates(withPedro, review, undefined);
+  assert(pending.source === "cargando", `fuente = cargando, got ${pending.source}`);
+  assert(pending.candidates.length === 0, `sin opciones mientras carga, got ${pending.candidates.map((c) => c.person.id).join(",")}`);
+  assert(
+    resolveReviewCandidates(withPedro, review, null).source === "integrantes",
+    "solo si la lectura falla se muestran los integrantes",
+  );
+  console.log("ok  mientras se leen los permisos, la lista queda vacía; los integrantes solo si falla");
 }
 
 {

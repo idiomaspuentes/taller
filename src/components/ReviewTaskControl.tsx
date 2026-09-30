@@ -79,10 +79,11 @@ export function ReviewTaskControl({
   const scope = parseReviewRef(team.reviewRef, projectBooks);
   const resources = reviewResources(team);
   const resourceNames = resources.map((r) => SCOPE_LABEL[r]).join(" y ");
-  const loading = Boolean(session && pmOrg) && access === undefined;
+  const signedIn = Boolean(session && pmOrg);
+  const loading = signedIn && access === undefined;
   const { candidates, source } = useMemo(
-    () => resolveReviewCandidates(board, team, access ?? null, pmConfig),
-    [board, team, access, pmConfig],
+    () => resolveReviewCandidates(board, team, signedIn ? access : null, pmConfig),
+    [board, team, signedIn, access, pmConfig],
   );
   const assigneeId = team.reviewAssigneeId ?? "";
   const assigneeOk = candidates.some((c) => c.person.id === assigneeId);
@@ -150,12 +151,12 @@ export function ReviewTaskControl({
       <p className="phases-task__note">
         {scope.ok ? `Revisión de ${scope.display}${resourceNames ? ` · ${resourceNames}` : ""}` : scope.reason}
       </p>
-      {candidates.length ? (
+      {candidates.length || loading ? (
         <div className="grid gap-1">
           <Label htmlFor={selectId} className="text-xs">
             Quién revisa
           </Label>
-          <Select value={assigneeOk ? assigneeId : ""} onValueChange={pickAssignee}>
+          <Select value={assigneeOk ? assigneeId : ""} onValueChange={pickAssignee} disabled={loading}>
             <SelectTrigger id={selectId} className="w-full max-w-sm" aria-label="Quién revisa">
               <SelectValue placeholder="Elige una persona" />
             </SelectTrigger>
@@ -167,7 +168,7 @@ export function ReviewTaskControl({
               ))}
             </SelectContent>
           </Select>
-          {assigneeId && !assigneeOk ? (
+          {assigneeId && !assigneeOk && !loading ? (
             <p className="phases-task__note">
               La persona elegida antes ya no puede editar {resourceNames} en este proyecto. Elige otra.
             </p>

@@ -170,20 +170,23 @@ export type ReviewCandidatesResult = {
   /**
    * `permisos`: who may edit the resource in DCS.
    * `integrantes`: DCS could not be read; people already on the project's tasks.
+   * `cargando`: DCS is still being read; no one is offered yet.
    */
-  source: "permisos" | "integrantes";
+  source: "permisos" | "integrantes" | "cargando";
 };
 
 /**
- * «Quién revisa»: write access from DCS when `orgTeams` was read; otherwise
- * (`null`) the integrantes of tasks that cover the resource.
+ * «Quién revisa»: write access from DCS when `orgTeams` was read; nobody while
+ * it is still loading (`undefined`); the integrantes of tasks that cover the
+ * resource only when it could not be read (`null`).
  */
 export function resolveReviewCandidates(
   board: Pick<AssignmentsDoc, "people" | "teams" | "phases" | "lang">,
   task: ProjectTask,
-  orgTeams: OrgTeamAccess[] | null,
+  orgTeams: OrgTeamAccess[] | null | undefined,
   pmConfig: PmConfig = DEFAULT_PM_CONFIG,
 ): ReviewCandidatesResult {
+  if (orgTeams === undefined) return { candidates: [], source: "cargando" };
   if (orgTeams) {
     return { candidates: reviewCandidatesFromOrgTeams(board, task, orgTeams, pmConfig), source: "permisos" };
   }

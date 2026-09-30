@@ -988,7 +988,7 @@ export function MyTasksView({
                 ? `Hay ${availableCount} subtareas libres. Ábrelas en Disponibles para Tomar.`
                 : hasBrowse
                   ? "Usa Disponibles para reclamar trabajo libre, o espera a que te asignen."
-                  : "Cuando un gestor te asigne subtareas en DCS, aparecerán aquí."}
+                  : "Cuando un gestor te asigne subtareas, aparecerán aquí."}
           </p>
           <div className="hub-empty-panel__actions">
             {filter === "mine" && availableCount > 0 && !search.trim() ? (

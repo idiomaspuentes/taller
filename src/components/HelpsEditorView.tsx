@@ -168,7 +168,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setError(
         lab
           ? "Laboratorio sin sesión: el borrador queda en este navegador."
-          : "Sin sesión: el borrador queda en este navegador. Conéctate para guardar en DCS.",
+          : "Sin sesión: el borrador queda en este navegador. Conéctate para guardar en Door43.",
       );
       return;
     }
@@ -235,7 +235,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           if (!next.length && lab) next = labPlaceholderHelpsItems(decoded, resolved);
           setItems(next);
           setDirty(usedCache);
-          if (usedCache) announce("Se restauró un borrador local (aún no está en DCS).");
+          if (usedCache) announce("Se restauró un borrador local (aún no está en Door43).");
           return;
         } catch (err) {
           if (lab) {
@@ -275,7 +275,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setFiles(nextFiles);
       setItems(nextItems.length || !lab ? nextItems : labPlaceholderHelpsItems(decoded, resolved));
       setDirty(usedCache);
-      if (usedCache) announce("Se restauró un borrador local (aún no está en DCS).");
+      if (usedCache) announce("Se restauró un borrador local (aún no está en Door43).");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

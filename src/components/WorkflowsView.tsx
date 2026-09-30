@@ -739,7 +739,7 @@ export function WorkflowsView({
                               if (e.key === "Escape") setEditingPhaseId(null);
                             }}
                             className="h-8 max-w-[10rem] font-mono text-xs"
-                            aria-label="Slug git de la fase"
+                            aria-label="Identificador corto de la fase"
                             placeholder="revision"
                           />
                         </div>
@@ -752,7 +752,7 @@ export function WorkflowsView({
                             setEditingPhaseName(phase.name);
                             setEditingPhaseSlug(ensurePhaseSlug(phase));
                           }}
-                          title="Clic para renombrar o editar el slug git"
+                          title="Clic para renombrar la fase"
                         >
                           {phase.name}
                         </button>
