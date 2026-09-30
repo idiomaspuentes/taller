@@ -5789,3 +5789,30 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
   .al-word { min-height: 2.75rem; }
   .al-verse-tab { min-width: 2.75rem; min-height: 2.75rem; }
 }
+
+/* Alineación: glosa en inglés, cajas vacías compactas, texto de referencia y revisión en lista */
+.al-ref__gloss { font-size: 0.75rem; font-weight: 600; color: var(--accent-700); max-width: 9rem; line-height: 1.2; }
+.al-box[data-compact="true"] { min-width: 6rem; border-style: dashed; background: transparent; }
+.al-box[data-compact="true"] .al-box__head { border-bottom: 0; align-items: center; }
+.al-box[data-compact="true"] .al-box__body { display: none; }
+.al-box__plus { align-self: center; margin-inline: 0.125rem 0.375rem; font-size: 1.25rem; line-height: 1; color: var(--text-muted); }
+.al-reference { padding: 0.375rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font-size: 0.875rem; }
+.al-reference summary { cursor: pointer; font-weight: 700; color: var(--text-muted); min-height: 2rem; display: flex; align-items: center; }
+.al-reference p { margin: 0.25rem 0 0.125rem; line-height: 1.45; }
+.al-pairs { display: grid; gap: 0.625rem; }
+.al-pairs__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.al-pair { display: grid; grid-template-columns: minmax(6rem, 38%) auto 1fr; align-items: center; gap: 0.5rem; padding: 0.5rem 0.625rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.al-pair__source { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
+.al-pair__word { display: grid; text-align: center; }
+.al-pair__he { font-size: 1.125rem; font-weight: 600; }
+.al-pair__gloss { font-size: 0.75rem; color: var(--accent-700); font-weight: 600; }
+.al-pair__arrow { color: var(--text-muted); }
+.al-pair__target { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.al-pairs__alone { padding: 0.375rem 0.625rem; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); font-size: 0.875rem; }
+.al-pairs__alone summary { cursor: pointer; font-weight: 600; color: var(--text-muted); min-height: 2rem; display: flex; align-items: center; }
+.al-pairs__alone p { margin: 0.25rem 0 0; line-height: 1.6; }
+@media (max-width: 480px) {
+  .al-pair { grid-template-columns: 1fr; gap: 0.25rem; }
+  .al-pair__source { justify-content: flex-start; }
+  .al-pair__arrow { display: none; }
+}

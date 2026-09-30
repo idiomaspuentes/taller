@@ -38,7 +38,9 @@ import {
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
+import { shortGloss } from "../domain/alignmentGloss";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
+import { resolveSourcePackage } from "../domain/sourcePackage";
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -191,6 +193,8 @@ function MergeGrip({ boxId, disabled }: { boxId: string; disabled: boolean }) {
 function Box({
   box,
   draft,
+  gloss,
+  compact,
   slot,
   selected,
   selectedRef,
@@ -201,6 +205,10 @@ function Box({
 }: {
   box: AlignmentBoxModel;
   draft: WordToken[];
+  /** English gloss of each word of the original, by its index in the verse. */
+  gloss: string[];
+  /** An empty box that is not being filled: one slim line instead of a tall drop area. */
+  compact: boolean;
   slot: number;
   selected: boolean;
   selectedRef: number | null;
@@ -218,6 +226,7 @@ function Box({
       className="al-box"
       data-slot={box.groupIndex !== null ? slot : undefined}
       data-merged={merged ? "true" : undefined}
+      data-compact={compact ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
       data-over={isOver && editable ? "true" : undefined}
       onClick={(e) => {
@@ -241,11 +250,22 @@ function Box({
                 data-no-box-select
               >
                 <span className="al-ref__word">{tok.surface}</span>
-                {tok.lemma ? <span className="al-ref__lemma">{tok.lemma}</span> : null}
+                {gloss[refIndex] ? (
+                  <span className="al-ref__gloss" dir="ltr" title={tok.lemma ? `${gloss[refIndex]} · ${tok.lemma}` : gloss[refIndex]}>
+                    {shortGloss(gloss[refIndex]!)}
+                  </span>
+                ) : tok.lemma ? (
+                  <span className="al-ref__lemma">{tok.lemma}</span>
+                ) : null}
               </button>
             );
           })}
         </div>
+        {compact ? (
+          <span className="al-box__plus" aria-hidden>
+            +
+          </span>
+        ) : null}
       </div>
       <div className="al-box__body">
         {box.alignedSourceWords.length === 0 ? (
@@ -266,6 +286,85 @@ function Box({
           })
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The review of a verse as a short list: each word (or words) of the original with what
+ * translates it. Words of the original nobody translated are folded away; words of the
+ * draft left without a place are shown on top, because that is what a reviewer must notice.
+ */
+function PairsList({
+  boxes,
+  draft,
+  gloss,
+  aligned,
+  rtl,
+}: {
+  boxes: AlignmentBoxModel[];
+  draft: WordToken[];
+  gloss: string[];
+  aligned: boolean[];
+  rtl: boolean;
+}) {
+  const linked = boxes.filter((b) => b.groupIndex !== null && b.alignedSourceWords.length > 0);
+  const alone = boxes.filter((b) => b.groupIndex === null || b.alignedSourceWords.length === 0);
+  const loose = draft.filter((_, i) => !aligned[i]);
+  const originalOf = (box: AlignmentBoxModel) =>
+    box.targetTokens.map((tok, i) => {
+      const at = box.targetTokenIndices[i] ?? 0;
+      return (
+        <span key={at} className="al-pair__word">
+          <span className="al-pair__he" dir={rtl ? "rtl" : undefined}>
+            {tok.surface}
+          </span>
+          {gloss[at] ? <span className="al-pair__gloss">{shortGloss(gloss[at]!, 30)}</span> : null}
+        </span>
+      );
+    });
+  return (
+    <div className="al-pairs">
+      {loose.length ? (
+        <p className="af-stale" role="status">
+          Palabras del borrador sin colocar: {loose.map((w) => w.surface).join(" · ")}
+        </p>
+      ) : null}
+      <ul className="al-pairs__list">
+        {linked.map((box) => (
+          <li key={box.id} className="al-pair">
+            <span className="al-pair__source">{originalOf(box)}</span>
+            <span className="al-pair__arrow" aria-hidden>
+              →
+            </span>
+            <span className="al-pair__target">
+              {box.alignedSourceWords.map((aw) => (
+                <span key={`${aw.word}-${aw.occurrence}`} className="al-chip">
+                  {aw.word}
+                </span>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {alone.length ? (
+        <details className="al-pairs__alone">
+          <summary>
+            {alone.length} {alone.length === 1 ? "palabra del original sin traducción" : "palabras del original sin traducción"}
+          </summary>
+          <p>
+            {alone.map((box, i) => (
+              <span key={box.id}>
+                {i ? " · " : ""}
+                {box.targetTokens.map((t) => t.surface).join(" ")}
+                {box.targetTokenIndices.map((at) => gloss[at]).filter(Boolean).length
+                  ? ` (${box.targetTokenIndices.map((at) => gloss[at]).filter(Boolean).join(", ")})`
+                  : ""}
+              </span>
+            ))}
+          </p>
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -334,7 +433,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       if (!sourceTaskId) {
         throw new Error("Esta tarea no dice qué texto alinea. Quien administra debe añadir «Esperar a» la traducción en la tarea.");
       }
-      const loaded = await loadAlineacion({ session, ctx: decoded, sourceTaskId });
+      const loaded = await loadAlineacion({ session, ctx: decoded, sourceTaskId, pkg: resolveSourcePackage(board?.settings) });
       setData(loaded);
       setGroups(Object.fromEntries(loaded.verses.map((v) => [v.verse, v.groups])));
       setDirty({});
@@ -684,6 +783,68 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     return { id: "complete", mark: "○", label: "por responder" };
   }
 
+  /** The verse in English (ULT or UST) under the original, closed by default on a phone. */
+  const reference = verse?.reference ? (
+    <details className="al-reference" open={typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches}>
+      <summary>Texto en inglés ({data?.referenceLabel})</summary>
+      <p>{verse.reference}</p>
+    </details>
+  ) : null;
+
+  const dnd = verse && data ? (
+          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
+            <div className="al-layout">
+              <Bank editable={editable}>
+                <p className="af-lbl">Tu borrador</p>
+                <div className="al-bank__words">
+                  {verse.draft.map((token, i) => (
+                    <BankWord
+                      key={`${i}-${token.surface}`}
+                      token={token}
+                      index={i}
+                      aligned={aligned[i] === true}
+                      selected={selectedWords.includes(i)}
+                      dragIndices={selectedWords.includes(i) ? selectedWords.filter((w) => !aligned[w]) : [i]}
+                      disabled={!editable}
+                      onTap={tapWord}
+                    />
+                  ))}
+                </div>
+              </Bank>
+
+              <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
+                <p className="af-lbl">
+                  {data.originalLabel} · {data.book} {data.chapter}:{verse.verse}
+                </p>
+                {reference}
+                <div className="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
+                  {boxes.map((box, i) => (
+                    <Box
+                      key={box.id}
+                      box={box}
+                      draft={verse.draft}
+                      gloss={verse.gloss}
+                      compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id)}
+                      slot={i % 6}
+                      selected={selectedBoxes.includes(box.id)}
+                      selectedRef={selectedRef?.boxId === box.id ? selectedRef.refIndex : null}
+                      editable={editable}
+                      onTap={tapBox}
+                      onSelectRef={(boxId, refIndex) => {
+                        setSelectedWords([]);
+                        setSelectedBoxes([boxId]);
+                        setSelectedRef({ boxId, refIndex });
+                      }}
+                      onRemoveWord={removeWord}
+                    />
+                  ))}
+                </div>
+              </section>
+            </div>
+            <DragOverlay>{dragging ? <span className="al-word al-word--ghost">{dragging}</span> : null}</DragOverlay>
+          </DndContext>
+  ) : null;
+
   return (
     <div className="af al">
       <header className="af-head">
@@ -740,54 +901,17 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
             })}
           </nav>
 
-          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-            <div className="al-layout">
-              <Bank editable={editable}>
-                <p className="af-lbl">Tu borrador</p>
-                <div className="al-bank__words">
-                  {verse.draft.map((token, i) => (
-                    <BankWord
-                      key={`${i}-${token.surface}`}
-                      token={token}
-                      index={i}
-                      aligned={aligned[i] === true}
-                      selected={selectedWords.includes(i)}
-                      dragIndices={selectedWords.includes(i) ? selectedWords.filter((w) => !aligned[w]) : [i]}
-                      disabled={!editable}
-                      onTap={tapWord}
-                    />
-                  ))}
-                </div>
-              </Bank>
-
-              <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
-                <p className="af-lbl">
-                  {data.originalLabel} · {data.book} {data.chapter}:{verse.verse}
-                </p>
-                <div className="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
-                  {boxes.map((box, i) => (
-                    <Box
-                      key={box.id}
-                      box={box}
-                      draft={verse.draft}
-                      slot={i % 6}
-                      selected={selectedBoxes.includes(box.id)}
-                      selectedRef={selectedRef?.boxId === box.id ? selectedRef.refIndex : null}
-                      editable={editable}
-                      onTap={tapBox}
-                      onSelectRef={(boxId, refIndex) => {
-                        setSelectedWords([]);
-                        setSelectedBoxes([boxId]);
-                        setSelectedRef({ boxId, refIndex });
-                      }}
-                      onRemoveWord={removeWord}
-                    />
-                  ))}
-                </div>
-              </section>
-            </div>
-            <DragOverlay>{dragging ? <span className="al-word al-word--ghost">{dragging}</span> : null}</DragOverlay>
-          </DndContext>
+          {editable ? (
+            dnd
+          ) : (
+            <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
+              <p className="af-lbl">
+                {data.originalLabel} · {data.book} {data.chapter}:{verse.verse}
+              </p>
+              {reference}
+              <PairsList boxes={boxes} draft={verse.draft} gloss={verse.gloss} aligned={aligned} rtl={data.originalRtl} />
+            </section>
+          )}
 
           {editable ? (
             <section className="af-card al-tools" aria-label="Herramientas">

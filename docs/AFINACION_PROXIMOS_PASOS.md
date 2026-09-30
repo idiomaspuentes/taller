@@ -52,12 +52,13 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 | 18 | **Atajos de teclado en computador**: flechas para moverse entre cajas, 1-9 para elegir palabras del banco, Enter para colocar, Esc para soltar, Ctrl+Z | Alinear | M | Acelera a quien alinea mucho. |
 | 19 | **Accesibilidad**: estados que no dependan solo del color, orden de foco, anuncios para lectores de pantalla, contraste revisado | Todo | M | Hoy solo hay etiquetas básicas. |
 | 20 | **Sugerencia automática de alineación** a partir del ULT y de las palabras ya alineadas en otros versículos (solo proponer, nunca guardar sola) | Alinear | L | Ahorra trabajo, pero necesita diseño y prueba cuidadosos. |
+| 21 | **Propuestas y objeciones con alineación**: quien propone un cambio lo hace sobre una copia de la alineación del versículo (las mismas cajas) y lo envía con su nota; quien alineó o quien coordina lo acepta (se aplica y el proponente queda de acuerdo) o lo rechaza con motivo. Las objeciones indican la caja y se resuelven al cambiar la alineación, al retirarlas quien las puso o con una decisión de la reunión | Revisar | L | Hoy "Propongo un cambio" y "Tengo una objeción" son solo una nota: no se puede aplicar y nadie la acepta. Ver la sección 5. |
 
-**Ya hecho (30 de septiembre de 2026), comprobado con dos personas en el Door43 de mentira:** 1 (barra de acciones fija abajo, con deshacer, rehacer y guardar/terminar; en la revisión, las tres respuestas y el campo de la nota), 2 (se guarda al cambiar de versículo con las pestañas, con "Volver" y con el pager; marca "Sin guardar" y aviso del navegador al cerrar), 3 (deshacer, rehacer y "Limpiar versículo"), 10 (tres estados por versículo con marca y texto), 11 ("Siguiente por responder" y contador "Te faltan N versículos por responder"), 12 (aviso al autor), 14 (zonas táctiles de 44 px en pantallas táctiles) y 15 (palabras colocadas legibles con ✓).
+**Ya hecho (30 de septiembre de 2026), comprobado con dos personas en el Door43 de mentira:** 1 (barra de acciones fija abajo, con deshacer, rehacer y guardar/terminar; en la revisión, las tres respuestas y el campo de la nota), 2 (se guarda al cambiar de versículo con las pestañas, con "Volver" y con el pager; marca "Sin guardar" y aviso del navegador al cerrar), 3 (deshacer, rehacer y "Limpiar versículo"), 10 (tres estados por versículo con marca y texto), 11 ("Siguiente por responder" y contador "Te faltan N versículos por responder"), 12 (aviso al autor), 14 (zonas táctiles de 44 px en pantallas táctiles) y 15 (palabras colocadas legibles con ✓), y además 4 (cajas vacías compactas: 56 px en vez de 106), 5 (glosa en inglés tomada del ULT o el UST alineado, que se acorta en una palabra entera), 6 (texto del versículo en inglés, abierto en computador y cerrado en teléfono) y 7 (revisión como lista de pares, con las palabras sin traducción plegadas y las del borrador sin colocar avisadas arriba).
 
 **Error encontrado al hacerlo:** las tres pantallas de la Afinación (notas, palabras y alineación) **no se podían desplazar** en una pantalla completa de herramienta: el contenedor tenía `overflow: hidden` y las pantallas no traían su propio desplazamiento, así que no se llegaba al resto del versículo. Corregido en `.af`. Las pruebas anteriores no lo vieron porque leían la página con código, no con el dedo: conviene que toda prueba de pantalla incluya desplazarse hasta el final.
 
-**Orden recomendado para lo que falta:** 4, 5, 6, 7; después 8, 9, 13, 16, 17; al final 18, 19, 20.
+**Orden recomendado para lo que falta:** 21 (propuestas con alineación, junto con 8 y 9, porque son parte del mismo flujo); después 13, 16, 17; al final 18, 19, 20.
 
 ## Decisiones tomadas (30 de septiembre de 2026)
 
@@ -99,3 +100,16 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 - Guardar alineaciones reescribe el borrador grupal. La regla de quitar la puntuación de las palabras alineadas es crítica; si se toca, repetir la prueba de ida y vuelta.
 - La huella de "terminado" depende del texto del borrador y de las uniones; si cambia cómo se calcula, todas las marcas de "terminado" quedan sin valor.
 - El servidor de mentira no reproduce todo Door43 (por ejemplo, rechazos de permisos o ramas protegidas). Antes de usar esto con el equipo, una prueba corta en QA.
+
+## 5. Qué pasa hoy con una propuesta o una objeción, y cómo debería ser
+
+**Hoy.** "Propongo un cambio" y "Tengo una objeción" solo guardan una nota. El versículo pasa a "en discusión" y no se puede acordar mientras esa persona no vuelva a responder o cambie la alineación. Nadie "acepta" nada: la persona que alineó lee la nota y corrige a mano, y eso deja sin valor las respuestas anteriores. Quien propone no puede mostrar el cambio que tiene en mente.
+
+**Propuesta de diseño (pendiente de confirmar).**
+- **Proponer un cambio** abre el versículo en las mismas cajas, sobre una **copia**. Se guarda como propuesta de esa persona (`checkings/proposals/`), con la nota y con la huella de la alineación sobre la que se hizo. No toca el borrador grupal.
+- **Quién decide:** quien alineó el versículo o quien coordina. Ve la propuesta con las cajas que cambian resaltadas. Si no hay respuesta en unos días, cualquier habilitada distinta de quien propuso puede decidir.
+- **Aceptar:** se aplica la alineación propuesta (se guarda como cualquier cambio), el versículo se marca terminado de nuevo con esa huella y quien propuso queda de acuerdo con la versión nueva. Las demás respuestas pasan a "desactualizadas" y se les avisa, como ya ocurre con una corrección de texto. Se puede deshacer porque es un cambio más del historial.
+- **Rechazar:** exige un motivo y avisa a quien propuso. El versículo sigue en discusión hasta que esa persona acepte la alineación actual, retire su propuesta o el asunto pase a la lista de la reunión.
+- **Contrapropuesta:** si quien alineó cambia la alineación por su cuenta, la propuesta queda desactualizada (la huella ya no coincide) y se avisa a quien propuso para que la mire otra vez.
+- **Objeción:** no se aplica. Señala la caja a la que se refiere y el motivo. Impide acordar el versículo hasta que se resuelva: cambia la alineación (y se le pide volver a revisar), la retira quien la puso, o la reunión decide y lo deja escrito.
+- **Cambios del texto del borrador** siguen siendo correcciones inmediatas ("Corregir este versículo"); esto es solo para la alineación.
