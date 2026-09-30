@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
+import { applyVerseEditsKeepingAlignment } from "../domain/alignmentKeep";
 import {
   closeOwnedPortionPrIfSafe,
   ensurePortionPr,
@@ -36,7 +37,6 @@ import {
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { loadDraftCache, saveDraftCache } from "../domain/draftCache";
 import {
-  applyVerseEdits,
   portionRange,
   skeletonUsfm,
   type RefRange,
@@ -1466,11 +1466,16 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     setSaving(true);
     setError("");
     try {
-      const nextUsfm = applyVerseEdits(
+      // Saving text must not erase the word alignment of the words that did not change.
+      const kept = applyVerseEditsKeepingAlignment(
         usfm || skeletonUsfm(target.book, range.chapter, range.from, range.to),
         range.chapter,
         drafts,
       );
+      const nextUsfm = kept.usfm;
+      if (kept.clearedVerses.length) {
+        announce(`Se perdió la alineación de los versículos ${kept.clearedVerses.join(", ")}: el texto cambió por completo.`);
+      }
       const message = `TAS: ${target.book} ${ctx.ref} (${ctx.resource || "tpl"}) · #${ctx.issueNumber || "—"}`;
       const saved = await saveUsfmOnPortionBranch({
         session,

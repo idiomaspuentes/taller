@@ -15,6 +15,9 @@ import type {
   WorkflowsCatalog,
 } from "../domain/types";
 import { SCOPE_KEYS, SCOPE_LABEL, WORKFLOWS_SCHEMA } from "../domain/types";
+import type { ProjectTask } from "../domain/types";
+import { WaitsEditor } from "./WaitsEditor";
+import { MinLevelField } from "./MinLevelField";
 import {
   loadLocalWorkflows,
   mergeWorkflowCatalogs,
@@ -23,6 +26,7 @@ import {
 } from "../domain/store";
 import { formatTaskClaimSummary } from "../domain/stepClaim";
 import { emptyWorkflow } from "../domain/workflows";
+import { fcrWorkflowTemplate } from "../domain/fcrTemplate";
 import { ensurePhaseSlug, makePhase, slugifyPhase } from "../domain/phaseSlug";
 import { StepClaimPolicyPanel } from "./StepClaimPolicyPanel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -183,7 +187,22 @@ export function WorkflowsView({
     openWorkflow(wf, { rename: true });
     setDirty(true);
     setDescOpen(false);
-    announce(`Plantilla «${wf.name}» creada (guarda para publicar en DCS).`);
+    announce(`Plantilla «${wf.name}» creada (guarda para publicarla).`);
+  }
+
+  /** A new template that starts from the FCR base (same flow, own copy to adjust). */
+  function createFromFcr() {
+    const base = fcrWorkflowTemplate();
+    const wf = { ...base, id: uid(), name: `${base.name} ${catalog.workflows.length + 1}` };
+    setCatalog((prev) => {
+      const next = { schema: WORKFLOWS_SCHEMA, workflows: [...prev.workflows, wf] };
+      saveLocalWorkflows(next);
+      return next;
+    });
+    openWorkflow(wf, { rename: true });
+    setDirty(true);
+    setDescOpen(false);
+    announce(`Plantilla «${wf.name}» creada desde el FCR (guarda para publicarla).`);
   }
 
   function commitRenameWorkflow() {
@@ -477,6 +496,11 @@ export function WorkflowsView({
               disabled={busy}
             >
               + Nueva plantilla
+            </Button>
+          ) : null}
+          {canManage ? (
+            <Button type="button" size="sm" variant="ghost" onClick={createFromFcr} disabled={busy}>
+              + Desde el FCR
             </Button>
           ) : null}
         </div>
@@ -1023,6 +1047,23 @@ export function WorkflowsView({
                                 ) : null}
                               </section>
                             ) : null}
+
+                            <section className="wf-editor-block">
+                              <MinLevelField
+                                id={`wf-min-level-${task.id}`}
+                                value={task.minLevel}
+                                onChange={(next) => updateTask(task.id, { minLevel: next })}
+                              />
+                            </section>
+
+                            <section className="wf-editor-block">
+                              <WaitsEditor
+                                board={{ teams: draft.tasks as unknown as ProjectTask[], phases: draft.phases }}
+                                taskId={task.id}
+                                value={task.waitsFor ?? []}
+                                onChange={(next) => updateTask(task.id, { waitsFor: next.length ? next : undefined })}
+                              />
+                            </section>
 
                             <section className="wf-editor-block">
                               <header className="wf-editor-block__head">
