@@ -124,7 +124,8 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 - "Propongo un cambio" abre la alineación en las mismas cajas sobre una copia; se envía con una nota y abre la decisión del equipo. "Tengo una objeción" deja tocar las palabras del original a las que se refiere.
 - La decisión es una subtarea libre del equipo (abre a cualquier integrante de la tarea, aunque nadie la tenga asignada), con una tarjeta de votos, la confirmación del consenso y el cierre que aplica la alineación y guarda el resultado en `checkings/proposals/`.
 - El versículo muestra "en discusión del equipo" con el enlace a la decisión; una objeción que prospera aparece como petición de ajuste para quien alineó; una propuesta aceptada deja el versículo terminado con la versión nueva.
-- Pendiente: mostrar las decisiones abiertas en Equipo hoy con recordatorio, aviso automático a quien no ha votado al acercarse el plazo, y cómo se ve la tarjeta en un teléfono real.
+- Equipo hoy tiene un grupo "Decisiones del equipo" con el plazo y "Recordar a quien falta" (menciona solo a las habilitadas de la tarea que no han votado ni propusieron). En Mis tareas una decisión dice "Decisión del equipo" y "Votar", sin la lista de pasos de la tarea, y llega como libre a toda la gente de la tarea, sin filtro de nivel.
+- Pendiente: aviso automático a quien no ha votado al acercarse el plazo (hoy el recordatorio es manual, desde Equipo hoy) y cómo se ven las tarjetas en un teléfono real.
 
 **Cómo se ven las decisiones (1 de octubre de 2026):**
 - La alineación se ve siempre en cajas, las mismas que usa quien alinea, pero compactas y de solo lectura (con la glosa en inglés y las palabras sin traducción plegadas). En la revisión ya no hay lista de pares: las cajas la reemplazan.

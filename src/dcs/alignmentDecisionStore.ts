@@ -12,7 +12,7 @@ import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { appendMyDecision, isShaConflict, readRepoFile, saveCorrection, type RepoTarget } from "./afinacionStore";
 import { alignmentOfDraft, saveVerseAlignment, verseKey, type AlignmentSourceRef } from "./alignmentStore";
-import { closeIssue, commentOnIssue, createDecisionIssue } from "./issues";
+import { closeIssue, commentOnIssue, createDecisionIssue, loadPmConfig } from "./issues";
 import { alignmentHash, groupsToLines } from "../domain/alignmentHash";
 import {
   DECISION_DAYS,
@@ -23,6 +23,7 @@ import {
   newDecisionId,
   outcomeOf,
   parseProposalFilename,
+  waitingOn,
   proposalPath,
   resultPath,
   type DecisionKind,
@@ -40,8 +41,10 @@ import {
   buildVoteEvent,
   decisionId,
   decisionTitle,
+  alineacionDecisionData,
   editsText,
   readDecisionThread,
+  refLabel,
   type DecisionEventData,
 } from "../domain/chatEvents/alineacionDecision";
 import type { DecisionView } from "../domain/verseEditView";
@@ -350,3 +353,36 @@ export async function closeAlignmentDecision(params: {
 
 export { decisionId };
 export type { DecisionVote };
+
+/**
+ * Reminds the people of the team who still have not voted: habilitadas who did not propose
+ * and have no vote yet. Returns who was reminded (nobody if everybody has voted or it is over).
+ */
+export async function remindDecisionVoters(params: { session: GtSession; pmOrg: string; issue: number; team: string[] }): Promise<string[]> {
+  const { session, pmOrg, issue } = params;
+  const comments = await listIssueComments(dcsConfig(session.host), pmOrg, PM_REPO_NAME, issue, session.token);
+  const events = comments.flatMap((c) => {
+    const event = parseChatEvent(c.body);
+    return event ? [{ event, at: c.created_at ?? "" }] : [];
+  });
+  const card = events.map((e) => ({ data: alineacionDecisionData(e.event) })).find((e) => e.data)?.data;
+  if (!card) throw new Error("Esta subtarea no tiene una decisión abierta.");
+  const thread = readDecisionThread(events, decisionId(card));
+  if (thread.closed) return [];
+  const levels = (await loadPmConfig(session, pmOrg).catch(() => null))?.levels ?? {};
+  const waiting = waitingOn({ team: params.team, levels, votes: thread.votes, proposer: card.by });
+  if (!waiting.length) return [];
+  await commentOnIssue(
+    session,
+    pmOrg,
+    issue,
+    formatChatEvent({
+      type: "alineacion-recordatorio",
+      emitter: "equipo-hoy",
+      issue,
+      summary: `${waiting.map((w) => `@${w}`).join(" ")} falta su voto en ${refLabel(card)} (${card.kind === "proposal" ? "propuesta" : "objeción"} de @${card.by}). Se decide antes del ${card.deadline.slice(0, 10)}.`,
+      mentions: waiting,
+    }),
+  );
+  return waiting;
+}

@@ -102,4 +102,16 @@ test("cada fila trae sus candidatos", () => {
   assert.deepEqual(g.stuck[0]!.candidates, ["luis"]);
 });
 
+test("una decisión del equipo no es trabajo por tomar: va a su grupo, con su plazo, y no cuenta como libre ni atascada", () => {
+  const fresh = issue("tpl", { created: 1, portion: "decision:ana-1" });
+  const late = issue("tpl", { created: 5, portion: "decision:bea-2" });
+  const today = issue("tpl", { created: 3, portion: "decision:eva-3" });
+  const g = classifyToday({ issues: [fresh, late, today], board, now });
+  assert.deepEqual(g.decisions.map((r) => r.issue.number), [late.number, today.number, fresh.number], "la más antigua primero");
+  assert.equal(g.free.length + g.stuck.length, 0, "no se cuentan como libres ni atascadas");
+  assert.match(g.decisions.find((r) => r.issue.number === fresh.number)!.reason, /antes de 2 días/);
+  assert.match(g.decisions.find((r) => r.issue.number === today.number)!.reason, /vence hoy/);
+  assert.match(g.decisions.find((r) => r.issue.number === late.number)!.reason, /venció hace 2 días: decide quien coordina/);
+});
+
 console.log(`\nverify-team-today: ${passed} checks passed.`);

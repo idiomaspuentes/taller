@@ -1,6 +1,8 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { isIssueUnassigned } from "../dcs/issues";
 import { levelOf, meetsLevel, type PersonLevel } from "./levels";
+import { DECISION_DAYS } from "./alignmentDecision";
+import { isDecisionIssue } from "./decisionAccess";
 import { issueTaskId } from "./myTasks";
 import type { AssignmentsDoc, ProjectTask } from "./types";
 import { waitBlocks, waitReason } from "./waits";
@@ -10,7 +12,7 @@ import { waitBlocks, waitReason } from "./waits";
  * Pure: takes every subtarea of the project (open and closed) and the plan.
  */
 
-export type TodayGroup = "stuck" | "running" | "free" | "waiting" | "done";
+export type TodayGroup = "decisions" | "stuck" | "running" | "free" | "waiting" | "done";
 
 export type TodayRow = {
   issue: DcsIssue;
@@ -82,7 +84,7 @@ export function classifyToday(params: {
   const { issues, board, now } = params;
   const limits = { ...DEFAULT_THRESHOLDS, ...params.thresholds };
   const open = issues.filter((issue) => issue.state !== "closed");
-  const out: Record<TodayGroup, TodayRow[]> = { stuck: [], running: [], free: [], waiting: [], done: [] };
+  const out: Record<TodayGroup, TodayRow[]> = { decisions: [], stuck: [], running: [], free: [], waiting: [], done: [] };
 
   for (const issue of issues) {
     const taskId = issueTaskId(issue);
@@ -99,6 +101,18 @@ export function classifyToday(params: {
       if (issue.closed_at && days <= limits.doneDays) {
         out.done.push({ ...base, group: "done", days, reason: `Cerrada ${daysText(days)}` });
       }
+      continue;
+    }
+    // A decision of the team is not work to take: the team votes on it before a deadline.
+    if (isDecisionIssue(issue)) {
+      const days = daysSince(issue.created_at, now);
+      const left = DECISION_DAYS - days;
+      out.decisions.push({
+        ...base,
+        group: "decisions",
+        days,
+        reason: left > 0 ? `Se decide antes de ${left === 1 ? "mañana" : `${left} días`}` : left === 0 ? "El plazo vence hoy" : `El plazo venció ${daysText(-left)}: decide quien coordina`,
+      });
       continue;
     }
     const blocks = waitBlocks(issue, board, open);
@@ -128,6 +142,7 @@ export function classifyToday(params: {
     }
   }
 
+  out.decisions.sort((a, b) => b.days - a.days);
   out.stuck.sort((a, b) => b.days - a.days);
   out.waiting.sort((a, b) => b.days - a.days);
   out.running.sort((a, b) => a.days - b.days);

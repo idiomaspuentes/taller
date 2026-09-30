@@ -8,7 +8,7 @@ import { Buffer } from "node:buffer";
 import type { OriginalWordToken, WordToken } from "@usfm-tools/editor-core";
 import { addSourcesToBox } from "@usfm-ast/alignment-box-model";
 import type { GtSession } from "../src/dcs/auth";
-import { closeAlignmentDecision, currentVerseHash, loadProposalFiles, openAlignmentDecision, postVote, readDecisionVotes } from "../src/dcs/alignmentDecisionStore";
+import { closeAlignmentDecision, currentVerseHash, loadProposalFiles, openAlignmentDecision, postVote, readDecisionVotes, remindDecisionVoters } from "../src/dcs/alignmentDecisionStore";
 import { saveVerseAlignment } from "../src/dcs/alignmentStore";
 import { loadDecisionFiles } from "../src/dcs/afinacionStore";
 import { tallyOf, alineacionDecisionData, DECISION_EVENT } from "../src/domain/chatEvents/alineacionDecision";
@@ -382,6 +382,31 @@ await test("una propuesta que solo cambia la alineación no muestra diff de text
   const op = resolveChatEvent(await cardOf(o.issue.number)).panels.find((x) => x.custom?.kind === "cajas")!;
   const hl = (op.custom!.data as { highlight: { tone: string; keys: string[] } }).highlight;
   assert.deepEqual([hl.tone, hl.keys], ["objected", ["1"]]);
+});
+
+await test("el recordatorio menciona solo a quien falta por votar, y deja de hacerlo cuando ya votaron todas o se cerró", async () => {
+  actor = "bea";
+  put(REPO, "neh", draftPath, draftUsfm);
+  actor = "ana";
+  await saveVerseAlignment({ session: session("ana"), target, filepath: draftPath, book: "NEH", chapter: 1, verse: 1, groups: anas, source });
+  const h = currentVerseHash(draftNow(), "NEH", 1, 1, source);
+  actor = "bea";
+  const opened = await openAlignmentDecision({ ...common, session: session("bea"), kind: "proposal", note: "recordar", baseHash: h, before: anas, proposed: beas, now: new Date("2026-10-01T22:00:00Z") });
+  const n = opened.issue.number;
+  const data = alineacionDecisionData(await cardOf(n))!;
+  const team = ["ana", "bea", "carla", "dora"];
+  actor = "carla";
+  await postVote(session("carla"), "BSOJ", n, data, "aceptar");
+  actor = "ana";
+  const who = await remindDecisionVoters({ session: session("ana"), pmOrg: "BSOJ", issue: n, team });
+  assert.deepEqual(who, ["ana"], "ni bea (propuso) ni carla (votó); dora no es habilitada");
+  const last = (comments.get(n) ?? []).at(-1)!;
+  assert.deepEqual(parseChatEvent(last.body)?.mentions, ["ana"]);
+  assert.match(parseChatEvent(last.body)!.summary, /@ana falta su voto en NEH 1:1/);
+  await postVote(session("ana"), "BSOJ", n, data, "aceptar");
+  assert.deepEqual(await remindDecisionVoters({ session: session("ana"), pmOrg: "BSOJ", issue: n, team }), [], "ya votaron todas");
+  await closeAlignmentDecision({ session: session("carla"), pmOrg: "BSOJ", threadIssue: n, data, option: "aceptar", how: "consenso" });
+  assert.deepEqual(await remindDecisionVoters({ session: session("ana"), pmOrg: "BSOJ", issue: n, team: ["ana", "bea", "carla", "eva"] }), [], "cerrada: no se recuerda nada");
 });
 
 console.log(`\nverify-alignment-decision-store: ${passed} checks passed.`);

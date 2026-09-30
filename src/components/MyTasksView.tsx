@@ -72,7 +72,7 @@ import {
 } from "../domain/taskProgress";
 import type { AssignmentsDoc, TaskStep } from "../domain/types";
 import type { ReadCursorDoc } from "../domain/readCursor";
-import { opensAsTeamDecision } from "../domain/decisionAccess";
+import { isDecisionIssue, opensAsTeamDecision } from "../domain/decisionAccess";
 import { canOpenConversation } from "../domain/conversation";
 import {
   attentionRank,
@@ -1203,9 +1203,15 @@ export function MyTasksView({
               <div key={issue.number} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0 font-semibold">{shortTitle(issue)}</span>
                 <span className="flex gap-2">
-                  <Button type="button" size="sm" onClick={() => void begin(issue, bucket.board)}>
-                    Tomar y empezar
-                  </Button>
+                  {isDecisionIssue(issue) ? (
+                    <Button type="button" size="sm" onClick={() => onOpenThread(issue.number)}>
+                      Votar
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" onClick={() => void begin(issue, bucket.board)}>
+                      Tomar y empezar
+                    </Button>
+                  )}
                   <Button type="button" size="sm" variant="ghost" onClick={() => onMarkSeen?.(issue.number)}>
                     Ahora no
                   </Button>
@@ -1637,12 +1643,15 @@ function QueueRow({
   const mine = isIssueAssignedTo(issue, session.username);
   const open = isIssueUnassigned(issue);
   const inProgress = issueIsInProgress(issue);
-  const claimable = canClaimIssue(session, pmOrg, issue, board, myLevel);
+  // A decision of the team has nobody assigned on purpose: people vote on it, they do not take it.
+  const decision = isDecisionIssue(issue);
+  const claimable = !decision && canClaimIssue(session, pmOrg, issue, board, myLevel);
   const liberable = canUnassignIssue(session, issue, browseProject);
   const busy = acting === issue.number;
   const taskId = issueTaskId(issue);
   const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
-  const steps = task?.steps ?? [];
+  // A team decision is not the task's work: it has no steps of its own.
+  const steps = decision ? [] : (task?.steps ?? []);
   const progress = parseTaskProgressMarker(issue.body);
   const issueAssignee =
     issue.assignee?.login || issue.assignees?.[0]?.login || undefined;
@@ -1682,14 +1691,21 @@ function QueueRow({
       ));
 
   let status: ReactNode = null;
-  if (waiting) status = <span className="status-chip" data-status="espera">{holdKind === "nivel" ? "Todavía no" : "Esperando"}</span>;
+  if (decision && !waiting) status = <span className="status-chip" data-status="libre">Decisión del equipo</span>;
+  else if (waiting) status = <span className="status-chip" data-status="espera">{holdKind === "nivel" ? "Todavía no" : "Esperando"}</span>;
   else if (open) status = <span className="status-chip" data-status="libre">Disponible</span>;
   else if (inProgress && mine) status = <span className="status-chip" data-status="curso">En curso</span>;
   else if (mine) status = <span className="status-chip" data-status="tuya">Tuya</span>;
   else status = <span className="status-chip" data-status="otra">{assigneeLabel(issue)}</span>;
 
   let primary: ReactNode = null;
-  if (claimable && featured && onBegin) {
+  if (decision && canOpenThread) {
+    primary = (
+      <Button type="button" size="sm" onClick={onOpenThread}>
+        Votar
+      </Button>
+    );
+  } else if (claimable && featured && onBegin) {
     primary = (
       <Button type="button" size="lg" disabled={busy} onClick={onBegin}>
         Empezar

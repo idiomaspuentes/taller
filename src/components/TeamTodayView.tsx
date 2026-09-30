@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
 import { commentOnIssue, loadPmConfig, reassignIssue } from "../dcs/issues";
+import { remindDecisionVoters } from "../dcs/alignmentDecisionStore";
 import { loadTeamToday, type TodayProject } from "../dcs/teamToday";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,6 +19,7 @@ type Props = {
 };
 
 const GROUPS: { id: TodayGroup; title: string; empty: string }[] = [
+  { id: "decisions", title: "Decisiones del equipo", empty: "No hay decisiones abiertas." },
   { id: "stuck", title: "Atascadas", empty: "Nada atascado." },
   { id: "waiting", title: "Esperando", empty: "Ninguna tarea espera a otra." },
   { id: "running", title: "En marcha", empty: "Nadie está trabajando ahora." },
@@ -42,7 +44,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   const [levels, setLevels] = useState<Record<string, PersonLevel>>({});
   const [assigning, setAssigning] = useState<number | null>(null);
   const [pick, setPick] = useState("");
-  const [open, setOpen] = useState<Set<TodayGroup>>(new Set(["stuck", "waiting", "running"]));
+  const [open, setOpen] = useState<Set<TodayGroup>>(new Set(["decisions", "stuck", "waiting", "running"]));
 
   const reload = useCallback(async () => {
     if (!pmOrg) return;
@@ -69,7 +71,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
 
   const rows = useMemo(() => {
     const merged: Record<TodayGroup, Array<TodayRow & { project: string }>> = {
-      stuck: [], running: [], free: [], waiting: [], done: [],
+      decisions: [], stuck: [], running: [], free: [], waiting: [], done: [],
     };
     const now = new Date();
     for (const project of projects) {
@@ -87,6 +89,16 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
       await commentOnIssue(session, pmOrg, row.issue.number, `@${row.assignee} ¿Cómo va esta tarea? Si necesitas ayuda, escríbelo aquí.`);
       setReminded((prev) => new Set(prev).add(row.issue.number));
       announce(`Le recordaste a @${row.assignee}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function remindVoters(row: TodayRow) {
+    try {
+      const who = await remindDecisionVoters({ session, pmOrg, issue: row.issue.number, team: row.candidates });
+      setReminded((prev) => new Set(prev).add(row.issue.number));
+      announce(who.length ? `Le recordaste a ${who.map((w) => `@${w}`).join(", ")}` : "Ya votaron todas las personas habilitadas");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -188,7 +200,12 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                             </p>
                             <p className="today-row__reason">{row.reason}</p>
                           </div>
-                          {session.canManage && row.group !== "done" && row.group !== "waiting" && row.candidates.length ? (
+                          {row.group === "decisions" ? (
+                            <Button type="button" size="sm" variant="outline" disabled={reminded.has(row.issue.number)} onClick={() => void remindVoters(row)}>
+                              {reminded.has(row.issue.number) ? "Recordado" : "Recordar a quien falta"}
+                            </Button>
+                          ) : null}
+                          {session.canManage && row.group !== "done" && row.group !== "waiting" && row.group !== "decisions" && row.candidates.length ? (
                             assigning === row.issue.number ? (
                               <div className="today-assign">
                                 <label className="sr-only" htmlFor={`assign-${row.issue.number}`}>

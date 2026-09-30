@@ -1,3 +1,4 @@
+import { isDecisionIssue } from "./decisionAccess";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned } from "../dcs/issues";
@@ -50,16 +51,20 @@ export function audienceOf(params: {
   const taskId = issueTaskId(issue);
   const task = taskId ? project.board.teams.find((t) => t.id === taskId) : undefined;
 
+  // A team decision belongs to everybody on the task's team (its people or its organization team).
+  const decision = isDecisionIssue(issue);
+  const me = session.username.trim().toLowerCase();
+  const inTaskPeople = Boolean(task?.memberIds.some((m) => m.trim().toLowerCase() === me));
   let relation: Audience["relation"] = "other";
   if (isIssueAssignedTo(issue, session.username)) relation = "mine";
-  else if (isIssueUnassigned(issue) && onTeamOfTask(session, pmOrg, task?.orgTeamName)) relation = "free";
+  else if (isIssueUnassigned(issue) && (onTeamOfTask(session, pmOrg, task?.orgTeamName) || (decision && inTaskPeople))) relation = "free";
   if (relation === "other") return { relation, notify: false };
 
   let hold: AudienceHold | undefined;
   const blocks = project.openIssues ? waitBlocks(issue, project.board, project.openIssues) : [];
   if (blocks.length) {
     hold = { kind: "espera", text: waitReason(blocks, project.board) };
-  } else if (task?.minLevel && !meetsLevel(myLevel, task.minLevel)) {
+  } else if (!decision && task?.minLevel && !meetsLevel(myLevel, task.minLevel)) {
     hold = { kind: "nivel", text: levelRequirementText(task.minLevel) };
   } else if (!meetsLevel(myLevel, undefined)) {
     // Oyente: watches, never gets work.

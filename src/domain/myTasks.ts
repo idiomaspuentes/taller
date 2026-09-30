@@ -189,7 +189,7 @@ export async function loadMyTasksProjects(params: {
         : local.teams.length
           ? local
           : fromDcs ?? emptyAssignments(projectId, lang, contentOrg, pmOrg);
-    const involved = userInvolvedInProject(doc, session.teams, pmOrg);
+    const involved = userInvolvedInProject(doc, session.teams, pmOrg, session.username);
     const allow = projectAllowsSelfAssign(doc);
     // Gestores can browse open queues to verify publish; workers need team link.
     const browseProject = allow && (involved || Boolean(session.canManage));

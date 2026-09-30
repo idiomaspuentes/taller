@@ -143,4 +143,26 @@ test("el nivel mínimo de una tarea sobrevive a guardar y volver a leer el plan"
   assert.equal(bad[0]!.minLevel, undefined);
 });
 
+test("una decisión del equipo llega a la gente de la tarea aunque no esté en el equipo de la organización, y sin filtro de nivel", () => {
+  const withPeople: Pick<AssignmentsDoc, "teams" | "phases"> = {
+    ...board,
+    teams: [task("tpl", { memberIds: ["ana", "bob", "lia"] }), task("afinar", { memberIds: ["ana"], minLevel: "habilitada" })],
+  };
+  const d = issue("tpl", undefined, "decision:bea-1");
+  const project = { board: withPeople, openIssues: [d] };
+  const lia = { username: "lia", teams: [] } as never;
+  const a = audienceOf({ issue: d, project, session: lia, pmOrg: PM });
+  assert.deepEqual([a.relation, a.notify], ["free", true], "lia está entre las personas de la tarea");
+  assert.equal(audienceOf({ issue: d, project, session: eva, pmOrg: PM }).relation, "other", "quien no es de la tarea no la recibe");
+  // a level below the task's minimum does not stop someone from voting
+  const low = issue("afinar", undefined, "decision:bea-2");
+  const lowProject = { board: withPeople, openIssues: [low] };
+  const aprendiz = audienceOf({ issue: low, project: lowProject, session: { username: "ana", teams: [] } as never, pmOrg: PM, myLevel: "aprendiz" });
+  assert.deepEqual([aprendiz.relation, aprendiz.notify], ["free", true]);
+  // ...but the same subtarea as ordinary work would be held for the level
+  const work = issue("afinar", undefined, "p-9-9");
+  const held = audienceOf({ issue: work, project: { board: withPeople, openIssues: [work] }, session: { username: "ana", teams: [team("pm-afinacion")] } as never, pmOrg: PM, myLevel: "aprendiz" });
+  assert.equal(held.notify, false);
+});
+
 console.log(`\nverify-audience: ${passed} checks passed.`);

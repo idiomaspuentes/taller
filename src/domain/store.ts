@@ -824,7 +824,11 @@ export function userInvolvedInProject(
   doc: Pick<AssignmentsDoc, "teams">,
   sessionTeams: { name: string; organization?: { name?: string } | null }[] | undefined,
   pmOrg: string,
+  /** Being one of the people of a task also counts (team decisions are for them). */
+  username?: string,
 ): boolean {
+  const me = username?.trim().toLowerCase();
+  if (me && doc.teams.some((task) => task.memberIds.some((m) => m.trim().toLowerCase() === me))) return true;
   const mine = new Set(
     (sessionTeams ?? [])
       .filter((t) => t.organization?.name === pmOrg)
