@@ -182,7 +182,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
       setNotes(notesLoaded);
 
       if (!ultLoaded && !ustLoaded && notesLoaded.source === "none") {
-        setError("No se pudieron cargar ULT, UST ni las notas. Revisa la sesión o DCS.");
+        setError("No se pudieron cargar ULT, UST ni las notas. Revisa tu sesión.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

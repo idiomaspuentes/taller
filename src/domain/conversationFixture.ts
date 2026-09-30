@@ -86,7 +86,7 @@ export function demoThreadSources(
     },
     {
       id: 702,
-      body: `### Conflictos de versículo al cerrar #${issueNumber}\n\nLibro **NEH** · tronco «neh/tpl-draft»\n\n<!-- tas:verse-conflicts eyJzY2hlbWEiOiJ0YXMtdmVyc2UtY29uZmxpY3RzLTEifQ -->`,
+      body: `### Conflictos de versículo al cerrar #${issueNumber}\n\nLibro **NEH** · borrador grupal\n\n<!-- tas:verse-conflicts eyJzY2hlbWEiOiJ0YXMtdmVyc2UtY29uZmxpY3RzLTEifQ -->`,
       created_at: at(39, now),
       user: { login: me },
     },

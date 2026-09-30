@@ -188,11 +188,53 @@ function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** Tag + visible name for today's version of a profile (one per profile per day). */
-export function releaseIdentity(profile: ReleaseProfile, now: Date = new Date()): { tag: string; name: string } {
+export type ReleaseIdentity = { tag: string; name: string };
+
+/**
+ * Tag + visible name of a profile's version on a date. `number` 1 is the
+ * day's first version (no suffix); 2, 3… are extra versions the same day.
+ */
+export function releaseIdentity(profile: ReleaseProfile, now: Date = new Date(), number = 1): ReleaseIdentity {
   const ymd = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const label = now.toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" });
-  return { tag: `${slug(profile.name)}-${ymd}`, name: `${profile.name.trim()} · ${label}` };
+  const tag = `${slug(profile.name)}-${ymd}`;
+  const name = `${profile.name.trim()} · ${label}`;
+  return number > 1 ? { tag: `${tag}-${number}`, name: `${name} · ${number}` } : { tag, name };
+}
+
+/** Number of a same-day version tag (1 = unsuffixed), or null if the tag is another day / profile. */
+function sameDayNumber(tag: string, baseTag: string): number | null {
+  if (tag === baseTag) return 1;
+  if (!tag.startsWith(`${baseTag}-`)) return null;
+  const rest = tag.slice(baseTag.length + 1);
+  return /^\d+$/.test(rest) && Number(rest) >= 2 ? Number(rest) : null;
+}
+
+/**
+ * The version to create next: the day's first one if no repo has it yet,
+ * otherwise one number above the highest found on any repo, so the same
+ * number is free on all of them and earlier versions are never reused.
+ */
+export function nextReleaseIdentity(
+  profile: ReleaseProfile,
+  tagsByRepo: string[][],
+  now: Date = new Date(),
+): ReleaseIdentity {
+  const baseTag = releaseIdentity(profile, now).tag;
+  let highest = 0;
+  for (const tags of tagsByRepo) {
+    for (const tag of tags) highest = Math.max(highest, sameDayNumber(tag, baseTag) ?? 0);
+  }
+  return releaseIdentity(profile, now, highest + 1);
+}
+
+/** `nextReleaseIdentity` from the repos' current tags. */
+export async function resolveReleaseIdentity(
+  writer: Pick<ReleaseWriter, "listTags">,
+  params: { repos: string[]; profile: ReleaseProfile; now?: Date },
+): Promise<ReleaseIdentity> {
+  const tagsByRepo = await Promise.all(params.repos.map((repo) => writer.listTags(repo)));
+  return nextReleaseIdentity(params.profile, tagsByRepo, params.now);
 }
 
 export function releaseBody(params: { profileName: string; phaseNames: string[]; by: string }): string {

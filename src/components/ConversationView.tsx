@@ -192,7 +192,7 @@ export function ConversationView(props: Props) {
     return (
       <ThreadShell onBack={props.onBack} title={`Subtarea #${issueNumber}`}>
         <div className="chat-state">
-          <p className="chat-state__title">Elige la organización PM</p>
+          <p className="chat-state__title">Elige la organización del equipo</p>
           <p className="chat-state__body">
             Abre el chip del encabezado para seleccionar la org de tus subtareas.
           </p>

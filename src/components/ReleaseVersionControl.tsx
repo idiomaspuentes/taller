@@ -8,13 +8,13 @@ import {
   RELEASE_ACTION,
   defaultReleaseProfile,
   releaseGate,
-  releaseIdentity,
   releaseNameBlock,
   releaseToast,
   withNameDraft,
   withNameDrafts,
+  type ReleaseIdentity,
 } from "../domain/release";
-import { runPublishVersion } from "../dcs/release";
+import { previewReleaseIdentity, runPublishVersion } from "../dcs/release";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -57,7 +57,9 @@ export function ReleaseVersionControl({
   const [confirm, setConfirm] = useState<{
     profile: ReleaseProfile;
     phaseNames: string[];
-    identity: { tag: string; name: string };
+    now: Date;
+    /** null while the name of the next version is looked up. */
+    identity: ReleaseIdentity | null;
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -114,23 +116,47 @@ export function ReleaseVersionControl({
     updateProfile(profile.id, { requiredPhaseIds: phases.map((p) => p.id).filter((id) => ids.has(id)) });
   }
 
+  function boardWith(profile: ReleaseProfile): AssignmentsDoc {
+    return {
+      ...board,
+      settings: {
+        ...board.settings,
+        releaseProfiles: profiles.map((p) => (p.id === profile.id ? profile : p)),
+      },
+    };
+  }
+
+  async function openConfirm(profile: ReleaseProfile, phaseNames: string[]) {
+    if (!session) return;
+    const now = new Date();
+    setError("");
+    setConfirm({ profile, phaseNames, now, identity: null });
+    try {
+      const identity = await previewReleaseIdentity({
+        session,
+        pmOrg,
+        board: boardWith(profile),
+        profileId: profile.id,
+        now,
+      });
+      setConfirm((c) => (c && c.profile.id === profile.id && c.now === now ? { ...c, identity } : c));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function run() {
-    if (!confirm || !session) return;
+    if (!confirm?.identity || !session) return;
     setBusy(true);
     setError("");
     try {
       const outcome = await runPublishVersion({
         session,
         pmOrg,
-        board: {
-          ...board,
-          settings: {
-            ...board.settings,
-            releaseProfiles: profiles.map((p) => (p.id === confirm.profile.id ? confirm.profile : p)),
-          },
-        },
+        board: boardWith(confirm.profile),
         profileId: confirm.profile.id,
         identity: confirm.identity,
+        now: confirm.now,
       });
       announce(releaseToast(outcome, confirm.identity.name));
       setConfirm(null);
@@ -228,7 +254,7 @@ export function ReleaseVersionControl({
                   onClick={() => {
                     setError("");
                     commitName(stored);
-                    setConfirm({ profile, phaseNames: gate.phaseNames, identity: releaseIdentity(profile) });
+                    void openConfirm(profile, gate.phaseNames);
                   }}
                 >
                   {RELEASE_ACTION}
@@ -272,7 +298,11 @@ export function ReleaseVersionControl({
           <DialogHeader>
             <DialogTitle>{RELEASE_ACTION}</DialogTitle>
             <DialogDescription>
-              Se publica la versión «{confirm?.identity.name}» a partir del borrador principal.
+              {confirm?.identity
+                ? `Se publica la versión «${confirm.identity.name}» a partir del borrador principal.`
+                : error
+                  ? "No se pudo preparar la versión."
+                  : "Buscando el nombre de la nueva versión…"}
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
@@ -288,7 +318,7 @@ export function ReleaseVersionControl({
             <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirm(null)}>
               Cancelar
             </Button>
-            <Button type="button" disabled={busy} onClick={() => void run()}>
+            <Button type="button" disabled={busy || !confirm?.identity} onClick={() => void run()}>
               {busy ? "Publicando…" : RELEASE_ACTION}
             </Button>
           </DialogFooter>

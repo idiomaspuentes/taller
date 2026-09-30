@@ -562,8 +562,8 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
         : articles.length;
   const emptyHint = bundled
     ? pipeline === "sin asignar"
-      ? "No hay lotes sin asignar para esta tarea y filtro."
-      : "No hay lotes en este estado."
+      ? "No hay grupos de trabajo sin asignar para esta tarea y filtro."
+      : "No hay grupos de trabajo en este estado."
     : tab === "tareas"
       ? pipeline === "sin asignar"
         ? "No queda trabajo (TPL, TPS, notas, preguntas) para esta tarea y filtro."
@@ -654,7 +654,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
           <CardHeader>
             <CardTitle>No hay tarea activa</CardTitle>
             <CardDescription>
-              Crea una tarea con alcance, grano y personas. El backlog es la unión de esas reglas.
+              Crea una tarea con alcance, tamaño de reparto y personas. Lo que hay por repartir sale de esas reglas.
             </CardDescription>
           </CardHeader>
           <CardContent>

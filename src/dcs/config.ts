@@ -6,6 +6,12 @@ import {
 
 export { PRODUCTION_HOST, QA_HOST };
 
+/**
+ * The server a new session starts on. While the app runs in development it is QA,
+ * so nobody signs in to production by accident; the published app starts on production.
+ */
+export const DEFAULT_HOST: string = (import.meta as { env?: { DEV?: boolean } }).env?.DEV ? QA_HOST : PRODUCTION_HOST;
+
 export function dcsConfig(host: string): DcsClientConfig {
   return {
     host: host.replace(/\/$/, ""),

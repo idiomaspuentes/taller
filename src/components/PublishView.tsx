@@ -126,11 +126,11 @@ export function PublishView({
   async function saveRemote() {
     setMoreOpen(false);
     if (!session) {
-      setError("Inicia sesión para guardar en DCS.");
+      setError("Inicia sesión para guardar.");
       return;
     }
     if (!pmOrg) {
-      setError("Elige la organización PM en el espacio de trabajo.");
+      setError("Elige la organización del equipo en el espacio de trabajo.");
       return;
     }
     setBusy(true);
@@ -157,7 +157,7 @@ export function PublishView({
   /** Fetch dry-run counts, then open confirm dialog. */
   async function requestPublish() {
     if (!session || !pmOrg || !inventory) {
-      setError("Necesitas sesión, organización PM e inventario para publicar.");
+      setError("Necesitas sesión, organización del equipo e inventario para publicar.");
       return;
     }
     setPreviewing(true);
@@ -181,7 +181,7 @@ export function PublishView({
   /** Saves the plan and publishes subtareas — one deliver action. */
   async function publish() {
     if (!session || !pmOrg || !inventory) {
-      setError("Necesitas sesión, organización PM e inventario para publicar.");
+      setError("Necesitas sesión, organización del equipo e inventario para publicar.");
       return;
     }
     setConfirmOpen(false);
@@ -264,7 +264,7 @@ export function PublishView({
 
   async function syncFromIssues() {
     if (!session || !pmOrg) {
-      setError("Inicia sesión para sincronizar desde issues.");
+      setError("Inicia sesión para actualizar desde las subtareas.");
       return;
     }
     setBusy(true);
@@ -277,7 +277,7 @@ export function PublishView({
         board,
       });
       onImported({ ...board, assignments });
-      announce(`Sincronizado desde ${issues.length} issues.`);
+      announce(`Actualizado desde ${issues.length} subtareas.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -311,9 +311,9 @@ export function PublishView({
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">Entregar</h1>
+          <h1 className="hub-title">Crear subtareas</h1>
           <p className="hub-lede">
-            Publica subtareas en DCS · <strong>{board.title || projectId}</strong>
+            Reparte subtareas · <strong>{board.title || projectId}</strong>
             {session && pmOrg ? (
               <>
                 {" "}
@@ -347,7 +347,7 @@ export function PublishView({
               disabled={busy}
               onClick={() => void syncFromIssues()}
             >
-              Sincronizar
+              Actualizar
             </Button>
           ) : null}
           <div className="phases-create" ref={moreRef}>
@@ -371,7 +371,7 @@ export function PublishView({
                     className="phases-menu__item"
                     onClick={() => void saveRemote()}
                   >
-                    Solo guardar plan
+                    Guardar sin repartir
                   </button>
                 ) : null}
                 {canSave ? (
@@ -425,7 +425,7 @@ export function PublishView({
           <span className="hub-empty-panel__kicker">Publicado</span>
           <h2 className="hub-empty-panel__title">
             {(delivered.created ?? 0) + (delivered.updated ?? 0) > 0
-              ? "Subtareas en DCS"
+              ? "Subtareas publicadas"
               : "Nada nuevo que publicar"}
           </h2>
           <p className="hub-empty-panel__body">
@@ -453,7 +453,7 @@ export function PublishView({
               disabled={busy}
               onClick={() => void syncFromIssues()}
             >
-              Sincronizar plan
+              Actualizar plan
             </Button>
           </div>
         </div>
@@ -487,7 +487,7 @@ export function PublishView({
       {!canSave ? (
         <p className="hub-hint">
           {session
-            ? "Elige la organización PM en el espacio de trabajo para publicar."
+            ? "Elige la organización del equipo en el espacio de trabajo para publicar."
             : "Descarga el plan ahora. Para publicar, inicia sesión desde el espacio de trabajo."}
         </p>
       ) : null}
@@ -512,10 +512,10 @@ export function PublishView({
           </button>
           {helpOpen ? (
             <p className="hub-hint">
-              Publicar guarda el plan y crea o actualiza las subtareas en DCS. Antes de aplicar verás
+              Publicar guarda el plan y crea o actualiza las subtareas. Antes de aplicar verás
               cuántas se crean, actualizan o cierran (si el alcance cambió). Puedes publicar sin
               asignar personas: salen libres para Tomar si la autoasignación está activa. Usa Más →
-              Solo guardar plan si aún no quieres crear issues. Sincronizar trae el estado desde DCS.
+              Guardar sin repartir guarda el plan sin crear subtareas. Actualizar trae el estado más reciente.
             </p>
           ) : null}
         </div>
@@ -677,7 +677,7 @@ export function PublishView({
                 <Alert variant="destructive">
                   <AlertDescription>
                     El alcance cambió: se cerrarán subtareas abiertas que ya no coinciden con el
-                    plan. El historial queda en DCS; no se borran.
+                    plan. El historial se conserva; no se borran.
                   </AlertDescription>
                 </Alert>
               ) : preview.existingOpen > 0 ? (

@@ -72,7 +72,7 @@ export function WorkspaceDialog({
         <DialogHeader>
           <DialogTitle>Sesión</DialogTitle>
           <DialogDescription>
-            Identidad en DCS, lengua y organización PM para este espacio de trabajo.
+            Tu identidad, lengua y organización del equipo para este espacio de trabajo.
           </DialogDescription>
         </DialogHeader>
 
@@ -100,9 +100,9 @@ export function WorkspaceDialog({
 
             {showPmSelect ? (
               <div className="grid gap-1.5">
-                <Label htmlFor="ws-pm">Organización PM</Label>
+                <Label htmlFor="ws-pm">Organización del equipo</Label>
                 <Select value={pmOrg} onValueChange={onPmOrgChange}>
-                  <SelectTrigger id="ws-pm" className="w-full" aria-label="Organización PM">
+                  <SelectTrigger id="ws-pm" className="w-full" aria-label="Organización del equipo">
                     <SelectValue placeholder="Elige una organización" />
                   </SelectTrigger>
                   <SelectContent position="popper">
@@ -132,7 +132,7 @@ export function WorkspaceDialog({
                 className="justify-self-start"
                 onClick={onOpenFromDcs}
               >
-                Abrir DCS
+                Abrir desde Door43
               </Button>
             ) : null}
           </div>

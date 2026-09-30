@@ -44,7 +44,7 @@ ctx.onmessage = async (event) => {
       hasUst: Boolean(files.ust),
     });
 
-    onProgress("Revisando artículos en DCS…");
+    onProgress("Revisando artículos…");
     const { org, taRepo, twRepo } = defaultRepos(lang, contentOrg);
     const result = await runStatus({ prep, org, taRepo, twRepo, onProgress });
 

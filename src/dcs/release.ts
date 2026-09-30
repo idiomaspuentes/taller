@@ -5,13 +5,15 @@
  * default branch tip. Never writes files, never moves the borrador grupal.
  */
 import { createRelease, listReleases } from "@ip-lms/dcs-client";
-import type { AssignmentsDoc, ScopeKey } from "../domain/types";
+import type { AssignmentsDoc, ReleaseProfile, ScopeKey } from "../domain/types";
 import { canManageOrg, resolveResourceRepo } from "../domain/roles";
 import {
   publishVersion,
   releaseBody,
   releaseGate,
   releaseResources,
+  resolveReleaseIdentity,
+  type ReleaseIdentity,
   type ReleaseOutcome,
   type ReleaseWriter,
 } from "../domain/release";
@@ -24,14 +26,18 @@ import { getBranchSha, getDefaultBranch } from "./pulls";
 const RELEASE_PAGE = 50;
 const RELEASE_MAX_PAGES = 20;
 
-export async function runPublishVersion(params: {
+type ReleaseTarget = {
+  profile: ReleaseProfile;
+  repos: string[];
+  writer: ReleaseWriter;
+};
+
+async function releaseTarget(params: {
   session: GtSession;
   pmOrg: string;
   board: AssignmentsDoc;
   profileId: string;
-  /** Identity shown in the confirm dialog; reused so the gestor gets exactly that name. */
-  identity: { tag: string; name: string };
-}): Promise<ReleaseOutcome> {
+}): Promise<ReleaseTarget> {
   const { session, pmOrg, board } = params;
   const pmConfig = await loadPmConfig(session, pmOrg);
   if (!canManageOrg(session.teams ?? [], pmOrg, pmConfig.managerTeam)) {
@@ -41,22 +47,6 @@ export async function runPublishVersion(params: {
   if (!profile) throw new Error("Esa versión ya no existe en el proyecto.");
   const owner = (board.contentOrg || "").trim();
   if (!owner) throw new Error("Falta la organización de contenido del proyecto.");
-
-  const projectId = board.projectId || board.book;
-  const { issues, namespaceId } = await listProjectIssues(session, pmOrg, projectId);
-  const principalPasses = board.settings?.principalPasses;
-  const decisions = await loadPassDecisionComments({ session, pmOrg, issues, namespaceId, marks: principalPasses });
-  const gate = releaseGate({
-    profile,
-    phases: board.phases,
-    tasks: board.teams,
-    issues,
-    book: board.book,
-    namespaceId,
-    principalPasses,
-    decisions,
-  });
-  if (gate.blockReason) throw new Error(gate.blockReason);
 
   const repos = [
     ...new Set(
@@ -95,6 +85,59 @@ export async function runPublishVersion(params: {
       });
     },
   };
+  return { profile, repos, writer };
+}
+
+/**
+ * Name of the version the next publish would create (read only): the day's
+ * first one, or «· 2», «· 3»… when earlier versions exist today.
+ */
+export async function previewReleaseIdentity(params: {
+  session: GtSession;
+  pmOrg: string;
+  board: AssignmentsDoc;
+  profileId: string;
+  now: Date;
+}): Promise<ReleaseIdentity> {
+  const { profile, repos, writer } = await releaseTarget(params);
+  return resolveReleaseIdentity(writer, { repos, profile, now: params.now });
+}
+
+export async function runPublishVersion(params: {
+  session: GtSession;
+  pmOrg: string;
+  board: AssignmentsDoc;
+  profileId: string;
+  /** Identity shown in the confirm dialog; reused so the gestor gets exactly that name. */
+  identity: ReleaseIdentity;
+  /** Date the identity was computed for (see `previewReleaseIdentity`). */
+  now: Date;
+}): Promise<ReleaseOutcome> {
+  const { session, pmOrg, board } = params;
+  const { profile, repos, writer } = await releaseTarget(params);
+
+  const projectId = board.projectId || board.book;
+  const { issues, namespaceId } = await listProjectIssues(session, pmOrg, projectId);
+  const principalPasses = board.settings?.principalPasses;
+  const decisions = await loadPassDecisionComments({ session, pmOrg, issues, namespaceId, marks: principalPasses });
+  const gate = releaseGate({
+    profile,
+    phases: board.phases,
+    tasks: board.teams,
+    issues,
+    book: board.book,
+    namespaceId,
+    principalPasses,
+    decisions,
+  });
+  if (gate.blockReason) throw new Error(gate.blockReason);
+
+  const current = await resolveReleaseIdentity(writer, { repos, profile, now: params.now });
+  if (current.tag !== params.identity.tag) {
+    throw new Error(
+      `Mientras confirmabas se publicó otra versión hoy. No se publicó «${params.identity.name}»; cierra y vuelve a publicar para ver el nombre nuevo.`,
+    );
+  }
 
   return publishVersion(writer, {
     repos,

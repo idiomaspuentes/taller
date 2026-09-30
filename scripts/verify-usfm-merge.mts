@@ -415,7 +415,7 @@ function verseLines(usfm: string): string[] {
   });
   const parsed = parseVerseConflictsComment(body);
   assert(JSON.stringify(parsed) === JSON.stringify(x), "comentario-roundtrip: parse(format(x)) === x");
-  assert(body.includes("Quedó en el tronco"), "comentario-legible: «Quedó en el tronco»");
+  assert(body.includes("Quedó en el borrador grupal"), "comentario-legible: «Quedó en el borrador grupal»");
   assert(body.includes("Del tronco") && body.includes(tricky), "comentario-legible: ambos textos");
   assert((body.match(/tas:verse-conflicts/g) ?? []).length === 1, "comentario-legible: un solo marcador");
 }
@@ -633,7 +633,7 @@ async function withGitDir<T>(run: (gitDir: string) => Promise<T>): Promise<T> {
   // resumen-conflictos
   const conflicts = mergeUsfmByVerse(ch1(["\\v 10-11 X"]), [ch1(["\\v 10 a", "\\v 11 b"])]).conflicts;
   const line = summarizeVerseConflicts({ issue: 42, conflicts });
-  assert(line === "1:10–11 estructura (quedó el tronco)", `resumen-conflictos: ${line}`);
+  assert(line === "1:10–11 estructura (quedó el borrador grupal)", `resumen-conflictos: ${line}`);
   const body = formatVerseConflictsComment({ issueNumber: 42, bookRef: "neh/t", book: "NEH", conflicts });
   assert(summarizeVerseConflicts(parseVerseConflictsComment(body)!) === line, "resumen-conflictos: desde el comentario");
 }

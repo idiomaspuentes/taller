@@ -60,7 +60,7 @@ export function labWriteDecision(ctx: SolverLaunchContext): LabWriteDecision {
   if (!org) {
     return {
       mode: "blocked",
-      reason: "Para escribir en DCS indica una organización de prueba (no uses es-419_gl).",
+      reason: "Para escribir indica una organización de prueba (no uses es-419_gl).",
     };
   }
   if (isProtectedContentOrg(org) && !ctx.labUnsafeWrite) {

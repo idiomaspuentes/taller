@@ -101,11 +101,11 @@ function technical(detail: string): string {
 
 function gitRefs500Hint(message: string, status?: number): string {
   if (status !== 500) return message;
-  if (/rama padre|ramas hijas|SHA válido|repo está vacío|repositorio vacío/i.test(message)) {
+  if (/Ya existe el borrador|cuelgan de ese nombre|No se pudo crear el borrador|repositorio vacío/i.test(message)) {
     return message;
   }
   if (/\/git\/refs/.test(message) || /HTTP 500/.test(message) || /-> 500/.test(message)) {
-    return `${message} Git no permite una ref hija si el padre ya es rama (p. ej. tronco «libro/tarea» y trabajo «libro/tarea/usuario/issue»), o falta un SHA (repo vacío).`;
+    return `${message} Puede que ya exista un borrador con un nombre que choca con este, o que el repositorio esté vacío.`;
   }
   return message;
 }
@@ -187,7 +187,7 @@ export async function assertRepoExists(
   } catch (err) {
     if (err instanceof DcsApiError && err.status === 404) {
       throw new BootstrapError(
-        `El repositorio ${owner}/${repo} no existe en DCS.`,
+        `El repositorio ${owner}/${repo} no existe.`,
         "repo",
         404,
         err,
@@ -354,7 +354,7 @@ export async function writeRepoFile(params: RepoFileRef & {
             ? "book-branch"
             : params.step || "task-branch";
         throw new BootstrapError(
-          `La rama «${branch}» no existe; no se puede crear el archivo ahí.`,
+          `Falta el borrador «${branch}»; no se puede crear el archivo ahí.`,
           missingStep,
           404,
           err,

@@ -108,8 +108,10 @@ export function verseConflictPanels(data: VerseConflictData): Array<{ label: str
 export function verseConflictOptionLabels(data: VerseConflictData): Record<VerseConflictOptionId, string> {
   const inTrunk = ownInTrunk(data);
   return {
-    tronco: inTrunk ? "Quedarme con esta" : `Mantener la de ${otherShort(data, true)}`,
-    desplazado: inTrunk ? "Volver a la otra" : "Volver a la mía",
+    tronco: inTrunk ? "Dejar la mía" : `Dejar la de ${otherShort(data, true)}`,
+    desplazado: inTrunk
+      ? otherShort(data, true) === "la otra" ? "Usar la anterior" : `Usar la de ${otherShort(data, true)}`
+      : "Usar la mía",
   };
 }
 

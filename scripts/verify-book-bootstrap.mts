@@ -580,7 +580,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
 
 {
   const err = new BootstrapError(
-    "Ya existe la rama padre «w»; Git no permite crear «w/neh/task/ana/5».",
+    "Ya existe el borrador «w»; no se puede crear «w/neh/task/ana/5».",
     "task-branch",
     500,
     undefined,
@@ -596,7 +596,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   assert(msg.includes("es-419_gl/es-419_glt"), "alert names the real repo, not a dash");
   assert(!msg.includes("es-419_gl/—"), "placeholder repo is gone");
   assert(msg.includes("w/neh/task/ana/5"), "alert uses the failing ref from the error");
-  assert(msg.includes("rama padre") || msg.includes("HTTP 500"), "500 is diagnosed");
+  assert(msg.includes("Ya existe el borrador") || msg.includes("HTTP 500"), "500 is diagnosed");
 }
 
 {
@@ -619,7 +619,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   } catch (err) {
     threw = true;
     const text = err instanceof Error ? err.message : String(err);
-    assert(/padre|hijas|500/i.test(text), `nested create is diagnosed, got: ${text}`);
+    assert(/Ya existe el borrador|cuelgan|500/i.test(text), `nested create is diagnosed, got: ${text}`);
   }
   assert(threw, "creating a git child of the trunk must fail");
   assert(
@@ -739,7 +739,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
 
 {
   const err = new BootstrapError(
-    "Ya existe la rama padre «neh»; Git no permite crear «neh/6f1e771e-2f2d-4987-b516-6455a751405a».",
+    "Ya existe el borrador «neh»; no se puede crear «neh/6f1e771e-2f2d-4987-b516-6455a751405a».",
     "book-branch",
     500,
     undefined,
@@ -753,8 +753,8 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     creating: true,
   });
   assert(msg.includes("es-419_gl/es-419_glt"), "book-branch alert names the real repo");
-  assert(msg.includes("rama padre «neh»"), "book-branch alert names the blocking parent");
-  assert(msg.includes("Git no permite crear"), "book-branch alert finishes the sentence");
+  assert(msg.includes("Ya existe el borrador «neh»"), "book-branch alert names the blocking parent");
+  assert(msg.includes("no se puede crear"), "book-branch alert finishes the sentence");
   assert(!msg.endsWith("exist"), "parent-ref sentence is not truncated");
 }
 

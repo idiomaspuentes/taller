@@ -195,7 +195,7 @@ export function ProjectsView({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="book">Libro (id = código UBS)</SelectItem>
-                <SelectItem value="thematic">Temático (slug + varios libros)</SelectItem>
+                <SelectItem value="thematic">Temático (identificador + varios libros)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -230,7 +230,7 @@ export function ProjectsView({
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="create-slug">Id (slug)</Label>
+                <Label htmlFor="create-slug">Identificador</Label>
                 <Input
                   id="create-slug"
                   value={slug}

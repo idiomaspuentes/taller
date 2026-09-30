@@ -132,19 +132,19 @@ export function diagnoseGitRefCreateFailure(params: {
 }): string {
   const { branch, sourceBranch, sourceSha, parent, children, status } = params;
   if (!sourceSha) {
-    return `No hay SHA válido para crear «${branch}»${
+    return `No se pudo crear el borrador «${branch}»${
       sourceBranch ? ` desde «${sourceBranch}»` : ""
-    } (repositorio vacío o rama origen ausente).`;
+    } (repositorio vacío o falta el borrador de origen).`;
   }
   if (parent) {
-    return `Ya existe la rama padre «${parent}»; Git no permite crear «${branch}».`;
+    return `Ya existe el borrador «${parent}»; no se puede crear «${branch}».`;
   }
   if (children && children.length) {
     const sample = children.slice(0, 3).join(", ");
-    return `Git no permite crear «${branch}» porque ya existen ramas hijas (${sample}). Un padre no puede ser rama si cuelgan hijos.`;
+    return `No se puede crear «${branch}» porque ya existen borradores que cuelgan de ese nombre (${sample}).`;
   }
   if (status === 500) {
-    return `DCS rechazó crear «${branch}» (HTTP 500). Suele ser: un segmento padre ya es rama, SHA inválido, o el repo está vacío.`;
+    return `Door43 rechazó crear «${branch}» (HTTP 500). Suele ser un nombre que choca con otro borrador, o un repositorio vacío.`;
   }
   return `No se pudo crear la ref «${branch}».`;
 }

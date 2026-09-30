@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { HOST_OPTIONS } from "../dcs/config";
+import { isProductionHost } from "../domain/qaAdmin";
 import { signInWithPassword, signInWithToken, type GtSession } from "../dcs/auth";
 import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from "../dcs/sessionExpiry";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -121,7 +122,7 @@ export function SignInModal({
           <>
             <DialogHeader>
               <DialogTitle>
-                {needsReauth || sessionExpired ? "Volver a iniciar sesión" : "Iniciar sesión en DCS"}
+                {needsReauth || sessionExpired ? "Volver a iniciar sesión" : "Iniciar sesión"}
               </DialogTitle>
               {sessionExpired ? (
                 <DialogDescription>{SESSION_EXPIRED_MESSAGE}</DialogDescription>
@@ -147,6 +148,14 @@ export function SignInModal({
                   </SelectContent>
                 </Select>
               </div>
+
+              {import.meta.env.DEV && isProductionHost(host) ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    Esta es la versión de desarrollo y el servidor elegido es producción. Si estás probando, elige QA.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               <Tabs
                 value={mode}
@@ -212,8 +221,8 @@ export function SignInModal({
               {helpOpen ? (
                 <p className="text-xs text-muted-foreground">
                   {mode === "password"
-                    ? "Al entrar se crea un token con acceso a repositorios, issues, organización y notificaciones."
-                    : "Pega un token que ya tenga acceso a repositorios, issues, organización y notificaciones."}
+                    ? "Al entrar se crea un token con acceso a repositorios, subtareas, organización y notificaciones."
+                    : "Pega un token que ya tenga acceso a repositorios, subtareas, organización y notificaciones."}
                 </p>
               ) : null}
 
@@ -251,7 +260,7 @@ function SignedInBody({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Sesión DCS</DialogTitle>
+        <DialogTitle>Tu sesión</DialogTitle>
         <DialogDescription>
           <span className="font-medium text-foreground">{session.username}</span>
           {" · "}
@@ -276,7 +285,7 @@ function BusyBody() {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Iniciar sesión en DCS</DialogTitle>
+        <DialogTitle>Iniciar sesión</DialogTitle>
       </DialogHeader>
       <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
         Entrando…

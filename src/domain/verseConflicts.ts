@@ -54,12 +54,12 @@ export function formatVerseConflictsComment(params: {
   const lines: string[] = [
     `### Conflictos de versículo al cerrar #${issueNumber}`,
     "",
-    `Libro **${book || "—"}** · tronco «${bookRef}»${trunkSha ? ` (\`${trunkSha.slice(0, 10)}\`)` : ""}`,
+    `Libro **${book || "—"}** · borrador grupal`,
   ];
   for (const conflict of conflicts) {
     const { kept, displaced } = keptAndDisplaced(conflict);
     lines.push("", `**${rangeLabel(conflict.chapter, conflict.from, conflict.to)} · ${conflict.kind}**`, "");
-    lines.push("Quedó en el tronco:");
+    lines.push("Quedó en el borrador grupal:");
     lines.push(...(kept.length ? kept.map((c) => quote(conflict.chapter, c)) : ["> (vacío)"]));
     const fromTrunk = displaced.filter((c) => c.source === "tronco");
     const fromIssue = displaced.filter((c) => c.source === "entrante");
@@ -67,7 +67,7 @@ export function formatVerseConflictsComment(params: {
       lines.push("", `Desplazado (#${issueNumber}):`, ...fromIssue.map((c) => quote(conflict.chapter, c)));
     }
     if (fromTrunk.length) {
-      lines.push("", "Del tronco:", ...fromTrunk.map((c) => quote(conflict.chapter, c)));
+      lines.push("", "Del borrador grupal:", ...fromTrunk.map((c) => quote(conflict.chapter, c)));
     }
   }
   const payload: VerseConflictsPayload = {
@@ -79,18 +79,18 @@ export function formatVerseConflictsComment(params: {
   };
   lines.push(
     "",
-    "El tronco no tiene marcadores de conflicto. Para resolver, edita el tronco con el texto elegido.",
+    "El borrador grupal no tiene marcas de conflicto. Para resolver, edita el borrador grupal con el texto elegido.",
     "",
     `<!-- tas:verse-conflicts ${encodeBase64Url(JSON.stringify(payload))} -->`,
   );
   return lines.join("\n");
 }
 
-/** One line for Mis tareas, e.g. `1:10–11 estructura (quedó el tronco) · 1:12 texto (quedó #42)`. */
+/** One line for Mis tareas, e.g. `1:10–11 estructura (quedó el borrador grupal) · 1:12 texto (quedó #42)`. */
 export function summarizeVerseConflicts(payload: Pick<VerseConflictsPayload, "issue" | "conflicts">): string {
   return payload.conflicts
     .map((c) => {
-      const kept = c.kept === "tronco" ? "quedó el tronco" : `quedó #${payload.issue}`;
+      const kept = c.kept === "tronco" ? "quedó el borrador grupal" : `quedó #${payload.issue}`;
       return `${rangeLabel(c.chapter, c.from, c.to)} ${c.kind} (${kept})`;
     })
     .join(" · ");

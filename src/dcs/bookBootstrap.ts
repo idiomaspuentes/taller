@@ -221,7 +221,7 @@ function refuseWorkRefAsTrunk(bookBranch: string, book: string, taskId?: string)
   const trunk = bookBranchName(book, taskId);
   if (isGitRefDescendant(bookBranch, trunk) || bookBranch.startsWith("w/")) {
     throw new BootstrapError(
-      `«${bookBranch}» es una rama de trabajo, no el tronco del libro «${trunk}». Primero se crea el tronco y luego se bifurca el trabajo desde su SHA.`,
+      `«${bookBranch}» es un borrador personal, no el borrador grupal del libro «${trunk}». Primero se crea el borrador grupal y luego se parte de él.`,
       "book-branch",
       undefined,
       undefined,
@@ -392,7 +392,7 @@ export async function ensureBookUsfm(
     defaultSha = await getBranchSha(config, owner, repo, defaultBranch, session.token);
     if (!defaultSha) {
       throw new BootstrapError(
-        `El repositorio ${owner}/${repo} sigue sin SHA en «${defaultBranch}» después del primer archivo.`,
+        `El repositorio ${owner}/${repo} sigue vacío en «${defaultBranch}» después del primer archivo.`,
         "default-branch",
         404,
       );
@@ -507,7 +507,7 @@ export async function ensureTaskBranchFromBook(params: {
   }
   if (workBranch === trunk || isGitRefDescendant(workBranch, trunk)) {
     throw new BootstrapError(
-      `La rama de trabajo no puede ser «${workBranch}»: Git no permite un hijo del tronco «${trunk}».`,
+      `El borrador personal no puede llamarse «${workBranch}»: choca con el borrador grupal «${trunk}».`,
       "task-branch",
       500,
       undefined,

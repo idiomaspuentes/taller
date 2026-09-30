@@ -111,7 +111,7 @@ export function ContextLangFields({
                 title="Donde viven los recursos públicos (TPL, TPS, Notas, Palabras, Preguntas, Academia)."
                 autoComplete="off"
                 spellCheck={false}
-                placeholder="slug, p. ej. es-419_gl"
+                placeholder="nombre corto, p. ej. es-419_gl"
               />
             ) : (
               <button

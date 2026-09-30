@@ -711,8 +711,8 @@ test("verse-conflict comments: Ana's thread plus Bob's with @bob only", () => {
     assert.equal(post.event.decision?.id, "41:1:10-10:0123456789ab", "same decision in both threads");
   }
   const labels = (i: number) => posts[i]!.event.decision!.options.map((o) => o.label);
-  assert.deepEqual(labels(0), ["Quedarme con esta", "Volver a la otra"]);
-  assert.deepEqual(labels(1), ["Mantener la de @ana", "Volver a la mía"]);
+  assert.deepEqual(labels(0), ["Dejar la mía", "Usar la de @bob"]);
+  assert.deepEqual(labels(1), ["Dejar la de @ana", "Usar la mía"]);
 });
 
 test("verse-conflict card parses back after reload; bad data is a system line", () => {
@@ -749,7 +749,7 @@ test("verse-conflict: unknown other author → card on the closer's thread only"
   assert.equal(panels[1]!.label, "Borrador grupal anterior");
 });
 
-// ── Slice 6: Quedarme con esta / Volver a la otra ──────────────────────────
+// ── Slice 6: Dejar la mía / Usar la de otra persona ──────────────────────────
 
 const [anaCard, bobCard] = buildVerseConflictPosts({ ...conflictBase, others: [{ otherIssue: 37, otherLogin: "bob" }] });
 const anaData = verseConflictData(anaCard!.event)!;
@@ -788,8 +788,8 @@ test("choiceBlockReason: enabled, wrong person, trunk changed, unreadable, no so
   );
   const options = resolveChatEvent(anaCard!.event).definition!.options!(anaCard!.event, { viewer: anaViewer, prepared: changed });
   assert.deepEqual(options.map((o) => [o.label, Boolean(o.blockReason)]), [
-    ["Quedarme con esta", true],
-    ["Volver a la otra", true],
+    ["Dejar la mía", true],
+    ["Usar la de @bob", true],
   ]);
   const enabled = resolveChatEvent(anaCard!.event).definition!.options!(anaCard!.event, { viewer: anaViewer, prepared: okPrepared });
   assert.equal(enabled[1]!.confirm, "¿Volver a la versión de @bob en 1:10? Se guarda en el borrador grupal.");
@@ -862,7 +862,7 @@ test("verse-choice: both threads, mention the other person, card collapses; olde
   assert.equal(resolutionsOnCards([choice]).size, 0, "without its card (other thread) the line stays");
 });
 
-test("decided card after «Volver a la otra»: badge, sentence and restore follow who won", () => {
+test("decided card after «Usar la del otro»: badge, sentence and restore follow who won", () => {
   const bobText = "Tus criados, dijo @carla <!-- x";
   const posts = buildVerseChoicePosts({ data: anaData, decisionId: anaCard!.event.decision!.id, option: "desplazado", by: "ana", wrote: true });
   assert.equal(posts[0]!.event.data!.kept, "tronco", "choice records what the trunk holds now");
@@ -892,7 +892,7 @@ test("decided card after «Volver a la otra»: badge, sentence and restore follo
     ], label);
     assert.deepEqual(ana.options, ["desplazado"], `${label}: only the loser may restore`);
     const restore = def.options!(ana.event, { viewer: anaViewer, prepared: afterPrepared }).find((o) => o.id === "desplazado")!;
-    assert.deepEqual([restore.label, restore.blockReason, restore.primary], ["Volver a la mía", null, false]);
+    assert.deepEqual([restore.label, restore.blockReason, restore.primary], ["Usar la mía", null, false]);
     assert.equal(restore.confirm, "¿Volver a la versión de @ana en 1:10? Se guarda en el borrador grupal.");
     const blocked = (trunkText: string) =>
       def.options!(ana.event, { viewer: anaViewer, prepared: { trunkText, sourceReason: null } }).find((o) => o.id === "desplazado")!.blockReason;
@@ -977,8 +977,8 @@ const decisionBody = formatChatEvent({
   decision: {
     id: "1:1:10-10:abc",
     options: [
-      { id: "tronco", label: "Mantener la de @abelper8" },
-      { id: "desplazado", label: "Volver a la mía" },
+      { id: "tronco", label: "Dejar la de @abelper8" },
+      { id: "desplazado", label: "Usar la mía" },
     ],
     state: "pendiente",
   },
@@ -1083,14 +1083,14 @@ test("sandbox: pending card shows both texts and the two production options", ()
     prepared: sandboxPrepared(state),
   });
   assert.deepEqual(options.map((o) => [o.label, o.blockReason]), [
-    ["Quedarme con esta", null],
-    ["Volver a la otra", null],
+    ["Dejar la mía", null],
+    ["Usar la de @bob", null],
   ]);
   for (const item of source!.items) assert.ok(!/neh\/|tpl-draft|[0-9a-f]{12,}/.test(item.text), "no branches or SHAs");
   assert.equal(card.event!.decision!.id, sandboxDecisionId());
 });
 
-test("sandbox: pending → chosen (Volver a la otra) patches only 1:10 in memory → reset", () => {
+test("sandbox: pending → chosen (Usar la anterior) patches only 1:10 in memory → reset", () => {
   const start = initialSandbox(0);
   const chosen = chooseInSandbox(start, "desplazado", "ana");
   assert.ok(chosen.ok);
@@ -1114,7 +1114,7 @@ test("sandbox: pending → chosen (Volver a la otra) patches only 1:10 in memory
   assert.notEqual(sandboxThreadSources(reset, "ana")[0]!.items[2]!.key, sandboxThreadSources(start, "ana")[0]!.items[2]!.key, "card remounts");
 });
 
-test("sandbox: Quedarme con esta writes nothing; hand edit blocks both buttons with the card reason", () => {
+test("sandbox: Dejar la mía writes nothing; hand edit blocks both buttons with the card reason", () => {
   const kept = chooseInSandbox(initialSandbox(0), "tronco", "ana");
   assert.ok(kept.ok && kept.state.trunk === initialSandbox(0).trunk && kept.state.choice?.wrote === false);
   const edited = editSandboxVerse(initialSandbox(0));

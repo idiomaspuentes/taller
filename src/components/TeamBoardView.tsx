@@ -132,7 +132,7 @@ export function TeamBoardView({
             </Alert>
           ) : null}
           {!busy && !issues.length ? (
-            <p className="text-sm text-muted-foreground">No hay issues sin asignar.</p>
+            <p className="text-sm text-muted-foreground">No hay subtareas sin asignar.</p>
           ) : null}
           {issues.map((issue) => {
             const marker = parseWorkOrderMarker(issue.body);

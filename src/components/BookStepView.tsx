@@ -223,7 +223,7 @@ export function BookStepView({
           <span className="hub-empty-panel__kicker">Pendiente</span>
           <h2 className="hub-empty-panel__title">Sin inventario para {activeBook}</h2>
           <p className="hub-empty-panel__body">
-            Genera desde DCS o carga un JSON. Eso es lo único necesario para este libro.
+            Genera desde Door43 o carga un JSON. Eso es lo único necesario para este libro.
           </p>
           <div className="hub-empty-panel__actions">
             <Button type="button" onClick={onGenerate} disabled={generating || !activeBook}>
@@ -404,7 +404,7 @@ export function BookStepView({
       {helpOpen ? (
         <p className="hub-hint">
           {multi
-            ? "Cada libro se inventaría y se guarda en su propia ruta DCS. Completa todos antes de pasar a fases y tareas. "
+            ? "Cada libro se inventaría y se guarda por separado. Completa todos antes de pasar a fases y tareas. "
             : "El tablero de asignación usa este inventario. Regenerar reemplaza porciones y artículos desde las fuentes. "}
           {pending > 0
             ? "Puedes continuar aunque queden ayudas en inglés; el inventario de porciones ya sirve para asignar."

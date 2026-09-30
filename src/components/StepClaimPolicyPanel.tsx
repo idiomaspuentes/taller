@@ -80,7 +80,7 @@ export function StepClaimPolicyPanel({
               onChange(applyPairReviewPreset(step, draftId));
             }}
           >
-            Preset pares
+            Modelo para pares
           </button>
           <button
             type="button"
@@ -93,7 +93,7 @@ export function StepClaimPolicyPanel({
               onChange(applyGroupReviewPreset(step, priors));
             }}
           >
-            Preset grupal
+            Modelo grupal
           </button>
           {active && !expanded ? null : (
             <button

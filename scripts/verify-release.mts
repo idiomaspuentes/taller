@@ -4,9 +4,11 @@
  */
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import {
+  nextReleaseIdentity,
   publishVersion,
   releaseGate,
   releaseIdentity,
+  resolveReleaseIdentity,
   releaseNameBlock,
   releaseResources,
   releaseToast,
@@ -277,6 +279,72 @@ const passedA = [passMark("tpl-a", [1, 2]), passMark("tps-a", [3])];
   assert(created.join() === "es_gst", `exactly one create call: ${created.join()}`);
   assert(/ya existe/.test(releaseToast(second, identity.name)), "Spanish «ya existe» message");
   console.log("ok  existing tag reported without a second create");
+}
+
+// 5b. Same-day extra versions: next free number on every repo, earlier ones untouched.
+{
+  const corta: ReleaseProfile = { ...onlyA, name: "Revision corta" };
+  const day = new Date(2026, 8, 30);
+  const BASE_NAME = "Revision corta · 30 de septiembre de 2026";
+  const BASE_TAG = "revision-corta-2026-09-30";
+
+  type Op = { op: "create"; repo: string; tag: string; name: string };
+  function fakeDcs(initial: Record<string, string[]>) {
+    const tagsByRepo: Record<string, string[]> = Object.fromEntries(
+      Object.entries(initial).map(([repo, tags]) => [repo, [...tags]]),
+    );
+    const ops: Op[] = [];
+    const writer: ReleaseWriter = {
+      listTags: async (repo) => [...(tagsByRepo[repo] ?? [])],
+      principalTip: async () => "tip",
+      create: async (repo, release) => {
+        assert(!(tagsByRepo[repo] ?? []).includes(release.tag), `never recreate ${release.tag} on ${repo}`);
+        ops.push({ op: "create", repo, tag: release.tag, name: release.name });
+        tagsByRepo[repo] = [...(tagsByRepo[repo] ?? []), release.tag];
+      },
+    };
+    return { writer, tagsByRepo, ops };
+  }
+  async function publishNext(dcs: ReturnType<typeof fakeDcs>, repos: string[]) {
+    const identity = await resolveReleaseIdentity(dcs.writer, { repos, profile: corta, now: day });
+    const outcome = await publishVersion(dcs.writer, { repos, ...identity, body: "" });
+    return { identity, outcome };
+  }
+
+  const none = fakeDcs({ es_glt: ["revision-corta-2026-09-29", "traduccion-2026-09-30"] });
+  const first = await publishNext(none, ["es_glt"]);
+  assert(first.identity.name === BASE_NAME && first.identity.tag === BASE_TAG, `no version today: ${JSON.stringify(first.identity)}`);
+  assert(first.outcome.created.join() === "es_glt", "first version created");
+  assert(releaseIdentity(corta, day).tag === BASE_TAG, "releaseIdentity default is the unsuffixed one");
+
+  const one = fakeDcs({ es_glt: [BASE_TAG] });
+  const second = await publishNext(one, ["es_glt"]);
+  assert(second.identity.name === `${BASE_NAME} · 2`, `second name: ${second.identity.name}`);
+  assert(second.identity.tag === `${BASE_TAG}-2`, `second tag: ${second.identity.tag}`);
+  assert(second.outcome.created.join() === "es_glt" && !second.outcome.existing.length, "second version created");
+  assert(one.ops.length === 1 && one.ops[0]!.tag === `${BASE_TAG}-2`, "only one create, for the new version");
+  assert(one.tagsByRepo.es_glt!.join() === `${BASE_TAG},${BASE_TAG}-2`, "first version kept, not deleted or updated");
+  assert(releaseToast(second.outcome, second.identity.name) === `Versión «${BASE_NAME} · 2» publicada.`, "toast names the new version");
+
+  const two = fakeDcs({ es_glt: [BASE_TAG, `${BASE_TAG}-2`] });
+  const third = await publishNext(two, ["es_glt"]);
+  assert(third.identity.name === `${BASE_NAME} · 3` && third.identity.tag === `${BASE_TAG}-3`, `third: ${JSON.stringify(third.identity)}`);
+  assert(two.tagsByRepo.es_glt!.join() === `${BASE_TAG},${BASE_TAG}-2,${BASE_TAG}-3`, "earlier versions kept");
+
+  const mixed = fakeDcs({ es_glt: [BASE_TAG], es_gst: [BASE_TAG, `${BASE_TAG}-2`] });
+  const both = await publishNext(mixed, ["es_glt", "es_gst"]);
+  assert(both.identity.tag === `${BASE_TAG}-3` && both.identity.name === `${BASE_NAME} · 3`, `one number for all repos: ${both.identity.tag}`);
+  assert(both.outcome.created.join() === "es_glt,es_gst", "both repos get the new version");
+  assert(mixed.ops.every((o) => o.tag === `${BASE_TAG}-3`), "same tag on every repo");
+  assert(mixed.tagsByRepo.es_gst!.includes(`${BASE_TAG}-2`) && mixed.tagsByRepo.es_glt!.includes(BASE_TAG), "earlier versions kept on both");
+
+  assert(
+    nextReleaseIdentity(corta, [[`${BASE_TAG}-x`, `${BASE_TAG}-2026`, `${BASE_TAG}-1`, `${BASE_TAG}-02b`]], day).tag === `${BASE_TAG}-2027`,
+    "numeric suffixes count (even odd ones); non-numeric do not",
+  );
+  assert(nextReleaseIdentity(corta, [["otra-revision-corta-2026-09-30"]], day).tag === BASE_TAG, "another profile's tag is ignored");
+  assert(!/\btag\b|release|SHA/i.test(second.identity.name), "visible name has no git jargon");
+  console.log("ok  same-day extra versions: «· 2», «· 3»…, one free number across repos, earlier versions kept");
 }
 
 // 6. Profiles persist and travel with templates.
