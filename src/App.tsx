@@ -1,4 +1,5 @@
-import { APP_NAME, APP_NAME_FULL } from "./brand";
+import { BrandMark } from "./components/BrandMark";
+import { APP_TITLE } from "./brand";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
 import { defaultContentOrg, normalizeProjectId, projectDisplayName } from "./domain/books";
@@ -30,7 +31,7 @@ import {
   signOut,
   type GtSession,
 } from "./dcs/auth";
-import { PRODUCTION_HOST } from "./dcs/config";
+import { DEFAULT_HOST } from "./dcs/config";
 import { installSessionExpiryGuard, SESSION_EXPIRED_MESSAGE } from "./dcs/sessionExpiry";
 import {
   fetchOrg,
@@ -51,6 +52,11 @@ import { BookStepView } from "./components/BookStepView";
 import { TeamsView } from "./components/TeamsView";
 import { AssignView } from "./components/AssignView";
 import { PublishView } from "./components/PublishView";
+import { AdvanceView } from "./components/AdvanceView";
+import { AfinacionView } from "./components/AfinacionView";
+import { AlineacionView } from "./components/AlineacionView";
+import { TeamTodayView } from "./components/TeamTodayView";
+import { BottomNav, type BottomNavId } from "./components/BottomNav";
 import { MyTasksView } from "./components/MyTasksView";
 import { ConflictSandboxView } from "./components/ConflictSandboxView";
 import { ConversationView } from "./components/ConversationView";
@@ -70,7 +76,7 @@ import { AppNav } from "./components/AppNav";
 import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin } from "./domain/qaAdmin";
 import { resolveResourceRepo } from "./domain/roles";
-import { StepNav, stepEnabled, type StepId } from "./components/StepNav";
+import { StepNav, SubStepTabs, stepEnabled, type StepId } from "./components/StepNav";
 import { landingRoute, useHashRoute } from "./router";
 import { decodeSolverLaunchContext } from "./domain/solverLaunch";
 import { isLabLaunch } from "./domain/solverLab";
@@ -104,7 +110,7 @@ function writeSetupDone(): void {
 export function App() {
   const saved = loadContext();
   const { route, navigate } = useHashRoute();
-  const [host, setHost] = useState(saved?.host || PRODUCTION_HOST);
+  const [host, setHost] = useState(saved?.host || DEFAULT_HOST);
   const [lang, setLang] = useState(saved?.lang || "es-419");
   const [contentOrg, setContentOrg] = useState(saved?.contentOrg || defaultContentOrg("es-419"));
   const [pmOrg, setPmOrg] = useState(saved?.pmOrg || "");
@@ -151,6 +157,18 @@ export function App() {
   const [catalogLangs, setCatalogLangs] = useState<LanguageOption[]>([]);
 
   const activity = useConversationActivity(session, pmOrg);
+
+  // Unread count on the installed app icon and in the tab title (best effort).
+  useEffect(() => {
+    const count = session ? activity.unreadCount : 0;
+    document.title = count > 0 ? `(${count}) ${APP_TITLE}` : APP_TITLE;
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (count > 0) void nav.setAppBadge?.(count)?.catch(() => {});
+    else void nav.clearAppBadge?.()?.catch(() => {});
+  }, [session, activity.unreadCount]);
   const [mineIssues, setMineIssues] = useState<DcsIssue[]>([]);
   const { setExtraIssues } = activity;
   const onMineIssues = useCallback(
@@ -187,15 +205,16 @@ export function App() {
     saveViewMode(mode);
     if (mode === "trabajador") {
       if (
+        route.name === "hoy" ||
         route.name === "proyectos" ||
         route.name === "proyecto" ||
         route.name === "organizacion" ||
         route.name === "plantillas"
       ) {
-        navigate({ name: "mis-tareas" });
+        navigate({ name: "ahora" });
       }
-    } else if (route.name === "mis-tareas" || route.name === "home") {
-      navigate({ name: "proyectos" });
+    } else if (route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos" || route.name === "home") {
+      navigate({ name: "hoy" });
     }
   }
 
@@ -269,8 +288,8 @@ export function App() {
   // Kick managers out of manager-only routes while previewing trabajador.
   useEffect(() => {
     if (!canManage || viewMode !== "trabajador") return;
-    if (route.name === "proyectos" || route.name === "proyecto") {
-      navigate({ name: "mis-tareas" });
+    if (route.name === "hoy" || route.name === "proyectos" || route.name === "proyecto") {
+      navigate({ name: "ahora" });
     }
   }, [canManage, viewMode, route.name, navigate]);
 
@@ -577,7 +596,7 @@ export function App() {
           }
           announce(
             result.issueCount > 0
-              ? `Plan cargado · ${result.issueCount} subtareas en DCS`
+              ? `Plan cargado · ${result.issueCount} subtareas publicadas`
               : `Plan cargado desde ${pmOrg}/gateway-tasks`,
           );
         }
@@ -673,14 +692,14 @@ export function App() {
 
   async function openFromDcs() {
     if (!session || !pmOrg) {
-      announce("Inicia sesión y elige la organización PM en el espacio de trabajo.");
+      announce("Inicia sesión y elige la organización del equipo en el espacio de trabajo.");
       return;
     }
     setHydrating(true);
     try {
       const result = await hydrateProjectFromDcs(book);
       if (!result || !result.found) {
-        announce("No hay datos guardados para este proyecto en DCS.");
+        announce("No hay datos guardados para este proyecto.");
         return;
       }
       if (result.inventory) {
@@ -701,7 +720,7 @@ export function App() {
       navigate({ name: "proyecto", projectId: normalizeProjectId(book), step: land });
       announce(
         result.issueCount > 0
-          ? `Cargado · ${result.issueCount} subtareas en DCS`
+          ? `Cargado · ${result.issueCount} subtareas publicadas`
           : `Cargado desde ${pmOrg}/gateway-tasks.`,
       );
       setWorkspaceOpen(false);
@@ -815,6 +834,7 @@ export function App() {
     route.name === "solver-scripture" ||
     route.name === "solver-helps" ||
     route.name === "solver-familiarize" ||
+    route.name === "solver-afinar" ||
     route.name === "solver-review"
   ) {
     const onSolverClose = () => {
@@ -848,6 +868,16 @@ export function App() {
             announce={announce}
             onClose={onSolverClose}
           />
+        ) : route.name === "solver-afinar" && route.step === "alineacion" ? (
+          <AlineacionView
+            key={`${sessionEpoch}-alineacion`}
+            ctxEncoded={route.ctx}
+            mode={decodeSolverLaunchContext(route.ctx)?.stepId === "revisar-alineacion" ? "revisar" : "alinear"}
+            announce={announce}
+            onClose={onSolverClose}
+          />
+        ) : route.name === "solver-afinar" ? (
+          <AfinacionView key={`${sessionEpoch}-${route.step}`} ctxEncoded={route.ctx} step={route.step === "palabras" ? "palabras" : "notas"} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-familiarize" ? (
           <FamiliarizeView key={sessionEpoch} ctxEncoded={route.ctx} onClose={onSolverClose} />
         ) : (
@@ -870,9 +900,7 @@ export function App() {
         <header className="app-header">
           <div className="app-header__bar">
             <div className="app-header__brand">
-              <div className="app-mark" title={APP_NAME_FULL}>
-                {APP_NAME}
-              </div>
+              <BrandMark />
             </div>
           </div>
         </header>
@@ -906,13 +934,11 @@ export function App() {
       <header className="app-header">
         <div className="app-header__bar">
           <div className="app-header__brand">
-            <div className="app-mark" title={APP_NAME_FULL}>
-              {APP_NAME}
-            </div>
+            <BrandMark />
             <button
               type="button"
               className="app-workspace"
-              title={session ? "Sesión DCS" : "Iniciar sesión"}
+              title={session ? "Tu sesión" : "Iniciar sesión"}
               onClick={() => {
                 if (session) setWorkspaceOpen(true);
                 else setSignInOpen(true);
@@ -935,6 +961,12 @@ export function App() {
           <AppNav
             links={[
               {
+                id: "ahora",
+                label: "Ahora",
+                active: route.name === "ahora",
+                onSelect: () => navigate({ name: "ahora" }),
+              },
+              {
                 id: "mis-tareas",
                 label: "Mis tareas",
                 active:
@@ -944,8 +976,20 @@ export function App() {
                   route.name === "equipo",
                 onSelect: () => navigate({ name: "mis-tareas" }),
               },
+              {
+                id: "avisos",
+                label: "Avisos",
+                active: route.name === "avisos",
+                onSelect: () => navigate({ name: "avisos" }),
+              },
               ...(effectiveCanManage
                 ? [
+                    {
+                      id: "hoy",
+                      label: "Equipo hoy",
+                      active: route.name === "hoy",
+                      onSelect: () => navigate({ name: "hoy" }),
+                    },
                     {
                       id: "proyectos",
                       label: "Proyectos",
@@ -982,7 +1026,7 @@ export function App() {
                 : []),
             ]}
             attentionCount={activity.unreadCount}
-            attentionLinkId="mis-tareas"
+            attentionLinkId="avisos"
             canManage={canManage}
             viewMode={viewMode}
             onViewModeChange={setViewModeAndPersist}
@@ -1039,7 +1083,7 @@ export function App() {
         {needsReauth ? (
           <Alert className="mb-3" variant="destructive">
             <AlertDescription className="flex flex-wrap items-center gap-2">
-              Tu sesión no tiene los permisos nuevos (issues, organización, notificaciones).
+              Tu sesión no tiene los permisos nuevos (subtareas, organización, notificaciones).
               <Button type="button" size="sm" onClick={() => setSignInOpen(true)}>
                 Volver a iniciar sesión
               </Button>
@@ -1047,8 +1091,19 @@ export function App() {
           </Alert>
         ) : null}
 
-        {route.name === "mis-tareas" && session ? (
+        {route.name === "hoy" && session && effectiveCanManage ? (
+          <TeamTodayView
+            session={session}
+            pmOrg={pmOrg}
+            lang={lang}
+            contentOrg={contentOrg}
+            announce={announce}
+            onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
+          />
+        ) : null}
+        {(route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos") && session ? (
           <MyTasksView
+            mode={route.name === "mis-tareas" ? "lista" : route.name}
             session={session}
             pmOrg={pmOrg}
             lang={lang}
@@ -1056,6 +1111,7 @@ export function App() {
             announce={announce}
             cursor={activity.cursor}
             onMineIssues={onMineIssues}
+            onAudience={activity.setAudience}
             onRefreshActivity={activity.refresh}
             decisionIssues={activity.decisionIssues}
             onMarkSeen={activity.markSeen}
@@ -1093,7 +1149,7 @@ export function App() {
             announce={announce}
           />
         ) : null}
-        {route.name === "mis-tareas" && !session ? (
+        {(route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos") && !session ? (
           <Alert>
             <AlertDescription>
               Inicia sesión para ver tus tareas.{" "}
@@ -1168,6 +1224,15 @@ export function App() {
           </Alert>
         ) : null}
 
+        {route.name === "proyecto" && effectiveCanManage ? (
+          <SubStepTabs
+            view={route.step}
+            setupDone={setupDone}
+            hasInventory={hasInventory}
+            onChange={goToStep}
+          />
+        ) : null}
+
         {route.name === "proyecto" && effectiveCanManage && route.step === "inventario" ? (
           <BookStepView
             book={book}
@@ -1239,6 +1304,32 @@ export function App() {
           />
         ) : null}
 
+        {route.name === "proyecto" && effectiveCanManage && route.step === "avance" ? (
+          <AdvanceView
+            section="tareas"
+            board={board}
+            inventory={inventory}
+            onChange={updateBoard}
+            session={session}
+            pmOrg={pmOrg}
+            announce={announce}
+            onGoTareas={() => goToStep("tareas")}
+          />
+        ) : null}
+
+        {route.name === "proyecto" && effectiveCanManage && route.step === "publicar" ? (
+          <AdvanceView
+            section="version"
+            board={board}
+            inventory={inventory}
+            onChange={updateBoard}
+            session={session}
+            pmOrg={pmOrg}
+            announce={announce}
+            onGoTareas={() => goToStep("tareas")}
+          />
+        ) : null}
+
         {route.name === "solver-lab" ? (
           <SolverLabView
             username={session?.username ?? ""}
@@ -1281,6 +1372,15 @@ export function App() {
           defaultRepo={resolveResourceRepo("tpl", lang) ?? ""}
           defaultBook={book}
           defaultPmOrg={pmOrg}
+        />
+      ) : null}
+
+      {session &&
+      (route.name === "ahora" || route.name === "avisos" || route.name === "mis-tareas") ? (
+        <BottomNav
+          active={route.name as BottomNavId}
+          attentionCount={activity.unreadCount}
+          onSelect={(id) => navigate({ name: id })}
         />
       ) : null}
 

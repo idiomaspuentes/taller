@@ -4,6 +4,12 @@ import { normalizeProjectId } from "./domain/books";
 
 export type AppRoute =
   | { name: "home" }
+  /** Home of a worker: the one thing to do next. */
+  | { name: "ahora" }
+  /** Decisions, unread comments and new tasks. */
+  | { name: "avisos" }
+  /** «Equipo hoy»: how the work stands, for whoever coordinates. */
+  | { name: "hoy" }
   | { name: "mis-tareas" }
   /** One subtarea as a conversation. `demo` = local fixture (dev only, no DCS). */
   | { name: "conversacion"; issue: number; demo?: boolean }
@@ -24,10 +30,12 @@ export type AppRoute =
   | { name: "solver-helps"; ctx: string }
   | { name: "solver-familiarize"; ctx: string }
   | { name: "solver-review"; ctx: string; mode: "pair" | "group" }
+  /** Afinación review step (`notas`, later `palabras`, `alineacion`). */
+  | { name: "solver-afinar"; ctx: string; step: string }
   /** Sandbox: launch solvers without Entregar / issues. `#/lab` or `#/solver-lab`. */
   | { name: "solver-lab" };
 
-const PROJECT_STEPS: StepId[] = ["inventario", "tareas", "asignar", "entregar"];
+const PROJECT_STEPS: StepId[] = ["inventario", "tareas", "asignar", "entregar", "avance", "publicar"];
 
 /** Map legacy URL segments → current step ids. */
 export function normalizeProjectStep(raw: string | undefined): StepId {
@@ -57,6 +65,9 @@ export function parseHash(hash: string): AppRoute {
     }
     return { name: "mis-tareas" };
   }
+  if (parts[0] === "ahora") return { name: "ahora" };
+  if (parts[0] === "avisos") return { name: "avisos" };
+  if (parts[0] === "hoy") return { name: "hoy" };
   if (parts[0] === "organizacion") return { name: "organizacion" };
   if (parts[0] === "plantillas") {
     return { name: "plantillas", workflowId: parts[1] || undefined };
@@ -77,6 +88,9 @@ export function parseHash(hash: string): AppRoute {
   if (parts[0] === "solver" && parts[1] === "review") {
     const mode = params.get("mode") === "group" ? "group" : "pair";
     return { name: "solver-review", ctx: params.get("ctx") || "", mode };
+  }
+  if (parts[0] === "solver" && parts[1] === "afinar") {
+    return { name: "solver-afinar", ctx: params.get("ctx") || "", step: params.get("step") || "notas" };
   }
   if (parts[0] === "proyectos") {
     if (parts.length === 1) return { name: "proyectos" };
@@ -104,6 +118,12 @@ export function routeToHash(route: AppRoute): string {
   switch (route.name) {
     case "home":
       return "#/";
+    case "ahora":
+      return "#/ahora";
+    case "avisos":
+      return "#/avisos";
+    case "hoy":
+      return "#/hoy";
     case "mis-tareas":
       return "#/mis-tareas";
     case "conversacion":
@@ -133,6 +153,8 @@ export function routeToHash(route: AppRoute): string {
       return `#/solver/helps?ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-familiarize":
       return `#/solver/familiarize?ctx=${encodeURIComponent(route.ctx)}`;
+    case "solver-afinar":
+      return `#/solver/afinar?step=${encodeURIComponent(route.step)}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-review":
       return `#/solver/review?mode=${route.mode}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-lab":
@@ -199,5 +221,5 @@ export function useHashRoute(): {
 }
 
 export function landingRoute(canManage: boolean): AppRoute {
-  return canManage ? { name: "proyectos" } : { name: "mis-tareas" };
+  return canManage ? { name: "hoy" } : { name: "ahora" };
 }
