@@ -72,6 +72,7 @@ import {
 } from "../domain/taskProgress";
 import type { AssignmentsDoc, TaskStep } from "../domain/types";
 import type { ReadCursorDoc } from "../domain/readCursor";
+import { useDecisionReminders } from "../useDecisionReminders";
 import { isDecisionIssue, opensAsTeamDecision } from "../domain/decisionAccess";
 import { canOpenConversation } from "../domain/conversation";
 import {
@@ -280,6 +281,7 @@ export function MyTasksView({
   mode = "lista",
 }: Props) {
   const [projects, setProjects] = useState<MyTasksProjectBucket[]>([]);
+  useDecisionReminders(session, pmOrg, projects);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");

@@ -8,7 +8,7 @@ import { Buffer } from "node:buffer";
 import type { OriginalWordToken, WordToken } from "@usfm-tools/editor-core";
 import { addSourcesToBox } from "@usfm-ast/alignment-box-model";
 import type { GtSession } from "../src/dcs/auth";
-import { closeAlignmentDecision, currentVerseHash, loadProposalFiles, openAlignmentDecision, postVote, readDecisionVotes, remindDecisionVoters } from "../src/dcs/alignmentDecisionStore";
+import { closeAlignmentDecision, currentVerseHash, loadProposalFiles, openAlignmentDecision, postVote, readDecisionVotes, remindDecisionVoters, resetDecisionSweep, sweepDecisionReminders } from "../src/dcs/alignmentDecisionStore";
 import { saveVerseAlignment } from "../src/dcs/alignmentStore";
 import { loadDecisionFiles } from "../src/dcs/afinacionStore";
 import { tallyOf, alineacionDecisionData, DECISION_EVENT } from "../src/domain/chatEvents/alineacionDecision";
@@ -407,6 +407,49 @@ await test("el recordatorio menciona solo a quien falta por votar, y deja de hac
   assert.deepEqual(await remindDecisionVoters({ session: session("ana"), pmOrg: "BSOJ", issue: n, team }), [], "ya votaron todas");
   await closeAlignmentDecision({ session: session("carla"), pmOrg: "BSOJ", threadIssue: n, data, option: "aceptar", how: "consenso" });
   assert.deepEqual(await remindDecisionVoters({ session: session("ana"), pmOrg: "BSOJ", issue: n, team: ["ana", "bea", "carla", "eva"] }), [], "cerrada: no se recuerda nada");
+});
+
+await test("la app recuerda sola cuando alguien la abre: una sola vez al día, solo a quien falta y solo cerca del plazo", async () => {
+  resetDecisionSweep();
+  actor = "ana";
+  put(REPO, "neh", draftPath, draftUsfm);
+  await saveVerseAlignment({ session: session("ana"), target, filepath: draftPath, book: "NEH", chapter: 1, verse: 1, groups: anas, source });
+  const h = currentVerseHash(draftNow(), "NEH", 1, 1, source);
+  actor = "bea";
+  const created = new Date("2026-10-10T12:00:00Z");
+  const opened = await openAlignmentDecision({ ...common, session: session("bea"), kind: "proposal", note: "automático", baseHash: h, before: anas, proposed: beas, now: created });
+  const fakeIssue = { ...issues.find((i) => i.number === opened.issue.number)!, created_at: created.toISOString() } as never;
+  const sweep = (now: string) => {
+    clock = Date.parse(now); // the comments are dated with this clock
+    return sweepDecisionReminders({ session: session("carla"), pmOrg: "BSOJ", issues: [fakeIssue], teamOf: () => ["ana", "bea", "carla"], isDecision: () => true, now: new Date(now) });
+  };
+  const countReminders = () => (comments.get(opened.issue.number) ?? []).filter((c) => parseChatEvent(c.body)?.type === "alineacion-recordatorio").length;
+
+  actor = "carla";
+  assert.deepEqual(await sweep("2026-10-11T12:00:00Z"), [], "al día siguiente todavía falta mucho");
+  assert.equal(countReminders(), 0);
+
+  // two days and a bit: less than a day left; ana and carla have not voted, bea proposed
+  assert.deepEqual(await sweep("2026-10-12T13:00:00Z"), [{ issue: opened.issue.number, who: ["ana", "carla"] }]);
+  assert.equal(countReminders(), 1);
+  assert.match(parseChatEvent((comments.get(opened.issue.number) ?? []).at(-1)!.body)!.summary, /mañana vence el plazo/);
+
+  // opening the app again soon does not repeat it, and neither does another person a bit later
+  assert.deepEqual(await sweep("2026-10-12T13:30:00Z"), []);
+  resetDecisionSweep();
+  assert.deepEqual(await sweep("2026-10-12T20:00:00Z"), [], "hubo uno hace menos de un día");
+  assert.equal(countReminders(), 1);
+
+  // the deadline passes: one more, telling them it is over
+  resetDecisionSweep();
+  assert.deepEqual((await sweep("2026-10-13T14:00:00Z")).map((r) => r.who), [["ana", "carla"]]);
+  assert.match(parseChatEvent((comments.get(opened.issue.number) ?? []).at(-1)!.body)!.summary, /venció/);
+
+  // once carla has voted she is no longer reminded
+  resetDecisionSweep();
+  const data = alineacionDecisionData(await cardOf(opened.issue.number))!;
+  await postVote(session("carla"), "BSOJ", opened.issue.number, data, "aceptar");
+  assert.deepEqual((await sweep("2026-10-14T16:00:00Z")).map((r) => r.who), [["ana"]]);
 });
 
 console.log(`\nverify-alignment-decision-store: ${passed} checks passed.`);

@@ -6,11 +6,13 @@ import { alignmentHash, groupsToLines } from "../src/domain/alignmentHash";
 import {
   deadlineFrom,
   latestVotes,
+  mayBeNearDeadline,
   newDecisionId,
   optionsFor,
   outcomeOf,
   parseProposalFilename,
   proposalPath,
+  reminderDue,
   resultPath,
   settledProposalIds,
   tallyDecision,
@@ -117,6 +119,24 @@ test("la huella no cambia por la puntuación de las palabras pero sí por cualqu
   assert.equal(alignmentHash(["Las", "palabras,"], g("palabras,")), alignmentHash(["Las", "palabras"], g("palabras")));
   assert.notEqual(alignmentHash(["Las", "palabras"], g("palabras")), alignmentHash(["Las", "palabras"], g("Las")));
   assert.deepEqual(groupsToLines(g("Las")), ["דבר → Las"]);
+});
+
+test("el recordatorio automático: solo si falta alguien, el plazo está a menos de un día o pasó, y no hubo otro en el último día", () => {
+  const deadline = "2026-10-04T12:00:00Z";
+  const due = (nowIso: string, waiting: string[], last?: string) => reminderDue({ deadline, now: new Date(nowIso), waiting, lastReminderAt: last });
+  assert.equal(due("2026-10-02T11:00:00Z", ["ana"]), null, "a más de un día: todavía no");
+  assert.equal(due("2026-10-03T13:00:00Z", ["ana"]), "cerca", "a menos de un día");
+  assert.equal(due("2026-10-03T13:00:00Z", []), null, "ya votaron todas");
+  assert.equal(due("2026-10-03T13:00:00Z", ["ana"], "2026-10-03T02:00:00Z"), null, "hubo uno hace 11 horas");
+  assert.equal(due("2026-10-03T13:00:00Z", ["ana"], "2026-10-02T12:00:00Z"), "cerca", "el anterior fue hace más de un día");
+  assert.equal(due("2026-10-04T13:00:00Z", ["ana"]), "vencido", "pasó el plazo");
+  assert.equal(due("2026-10-04T13:00:00Z", ["ana"], "2026-10-04T12:30:00Z"), null, "aun vencido, no más de uno al día");
+});
+
+test("solo se lee el hilo de una decisión que puede estar cerca del plazo", () => {
+  assert.equal(mayBeNearDeadline("2026-10-01T12:00:00Z", new Date("2026-10-01T20:00:00Z")), false);
+  assert.equal(mayBeNearDeadline("2026-10-01T12:00:00Z", new Date("2026-10-03T12:00:00Z")), true, "a los 2 días queda 1");
+  assert.equal(mayBeNearDeadline(undefined, new Date()), false);
 });
 
 console.log(`\nverify-alignment-decision: ${passed} checks passed.`);

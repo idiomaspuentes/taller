@@ -5,6 +5,7 @@ import { commentOnIssue, loadPmConfig, reassignIssue } from "../dcs/issues";
 import { remindDecisionVoters } from "../dcs/alignmentDecisionStore";
 import { loadTeamToday, type TodayProject } from "../dcs/teamToday";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
+import { useDecisionReminders } from "../useDecisionReminders";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { PersonLevel } from "../domain/levels";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ function shortTitle(row: TodayRow): string {
  */
 export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOpenThread }: Props) {
   const [projects, setProjects] = useState<TodayProject[]>([]);
+  useDecisionReminders(session, pmOrg, projects);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");

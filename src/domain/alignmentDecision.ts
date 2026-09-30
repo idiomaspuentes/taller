@@ -217,3 +217,33 @@ export function waitingOn(params: { team: string[]; levels: Record<string, Perso
 export function settledProposalIds(results: ResultFile[]): Set<string> {
   return new Set(results.filter((r) => r.outcome === "rechazada" || r.outcome === "mantenida" || r.outcome === "caducada").map((r) => r.id));
 }
+
+/** Hours before the deadline when the people who have not voted start to be reminded. */
+export const REMIND_WITHIN_HOURS = 24;
+/** The same decision is never reminded more often than this. */
+export const REMIND_EVERY_HOURS = 24;
+
+const HOUR = 3_600_000;
+
+/**
+ * Whether the team should be reminded now, by itself: there is someone left to ask, the deadline is
+ * less than a day away (or has passed), and nobody was reminded in the last day.
+ * `cerca` = the deadline is near, `vencido` = it has passed without a consensus.
+ */
+export function reminderDue(params: { deadline: string; now: Date; lastReminderAt?: string; waiting: string[] }): "cerca" | "vencido" | null {
+  if (!params.waiting.length) return null;
+  const end = Date.parse(params.deadline);
+  if (!Number.isFinite(end)) return null;
+  const left = end - params.now.getTime();
+  if (left > REMIND_WITHIN_HOURS * HOUR) return null;
+  const last = params.lastReminderAt ? Date.parse(params.lastReminderAt) : NaN;
+  if (Number.isFinite(last) && params.now.getTime() - last < REMIND_EVERY_HOURS * HOUR) return null;
+  return left <= 0 ? "vencido" : "cerca";
+}
+
+/** Age in days from which a decision can be near its deadline (cheap filter before reading its thread). */
+export function mayBeNearDeadline(createdAt: string | undefined, now: Date): boolean {
+  const created = createdAt ? Date.parse(createdAt) : NaN;
+  if (!Number.isFinite(created)) return false;
+  return now.getTime() >= created + DECISION_DAYS * 24 * HOUR - REMIND_WITHIN_HOURS * HOUR;
+}

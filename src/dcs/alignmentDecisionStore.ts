@@ -22,7 +22,9 @@ import {
   deadlineFrom,
   newDecisionId,
   outcomeOf,
+  mayBeNearDeadline,
   parseProposalFilename,
+  reminderDue,
   waitingOn,
   proposalPath,
   resultPath,
@@ -357,9 +359,20 @@ export type { DecisionVote };
 /**
  * Reminds the people of the team who still have not voted: habilitadas who did not propose
  * and have no vote yet. Returns who was reminded (nobody if everybody has voted or it is over).
+ *
+ * `auto` is for the app doing it by itself: it only reminds when the deadline is less than a day
+ * away (or passed) and nobody was reminded in the last day. Without it a person asked for it.
  */
-export async function remindDecisionVoters(params: { session: GtSession; pmOrg: string; issue: number; team: string[] }): Promise<string[]> {
+export async function remindDecisionVoters(params: {
+  session: GtSession;
+  pmOrg: string;
+  issue: number;
+  team: string[];
+  auto?: boolean;
+  now?: Date;
+}): Promise<string[]> {
   const { session, pmOrg, issue } = params;
+  const now = params.now ?? new Date();
   const comments = await listIssueComments(dcsConfig(session.host), pmOrg, PM_REPO_NAME, issue, session.token);
   const events = comments.flatMap((c) => {
     const event = parseChatEvent(c.body);
@@ -372,17 +385,59 @@ export async function remindDecisionVoters(params: { session: GtSession; pmOrg: 
   const levels = (await loadPmConfig(session, pmOrg).catch(() => null))?.levels ?? {};
   const waiting = waitingOn({ team: params.team, levels, votes: thread.votes, proposer: card.by });
   if (!waiting.length) return [];
+  const lastReminderAt = events.filter((e) => e.event.type === "alineacion-recordatorio").map((e) => e.at).sort().at(-1);
+  const due = params.auto ? reminderDue({ deadline: card.deadline, now, lastReminderAt, waiting }) : null;
+  if (params.auto && !due) return [];
+  const what = `${refLabel(card)} (${card.kind === "proposal" ? "propuesta" : "objeción"} de @${card.by})`;
+  const who = waiting.map((w) => `@${w}`).join(" ");
+  const summary =
+    due === "vencido"
+      ? `${who} el plazo para votar en ${what} venció. Quien coordina puede decidir; si aún quieren opinar, háganlo ahora.`
+      : due === "cerca"
+        ? `${who} mañana vence el plazo para votar en ${what}. Falta su voto.`
+        : `${who} falta su voto en ${what}. Se decide antes del ${card.deadline.slice(0, 10)}.`;
   await commentOnIssue(
     session,
     pmOrg,
     issue,
-    formatChatEvent({
-      type: "alineacion-recordatorio",
-      emitter: "equipo-hoy",
-      issue,
-      summary: `${waiting.map((w) => `@${w}`).join(" ")} falta su voto en ${refLabel(card)} (${card.kind === "proposal" ? "propuesta" : "objeción"} de @${card.by}). Se decide antes del ${card.deadline.slice(0, 10)}.`,
-      mentions: waiting,
-    }),
+    formatChatEvent({ type: "alineacion-recordatorio", emitter: params.auto ? "automatico" : "equipo-hoy", issue, summary, mentions: waiting }),
   );
   return waiting;
+}
+
+const checkedAt = new Map<number, number>();
+
+/**
+ * The app reminds by itself when somebody of the team opens it: for each open decision that may be
+ * near its deadline, who has not voted is reminded, at most once a day. No server is needed.
+ * An issue already looked at in the last hour is not read again.
+ */
+export async function sweepDecisionReminders(params: {
+  session: GtSession;
+  pmOrg: string;
+  issues: DcsIssue[];
+  teamOf: (issue: DcsIssue) => string[];
+  isDecision: (issue: DcsIssue) => boolean;
+  now?: Date;
+}): Promise<{ issue: number; who: string[] }[]> {
+  const now = params.now ?? new Date();
+  const out: { issue: number; who: string[] }[] = [];
+  for (const issue of params.issues) {
+    if (issue.state === "closed" || !params.isDecision(issue) || !mayBeNearDeadline(issue.created_at, now)) continue;
+    const last = checkedAt.get(issue.number);
+    if (last !== undefined && now.getTime() - last < 3_600_000) continue;
+    checkedAt.set(issue.number, now.getTime());
+    try {
+      const who = await remindDecisionVoters({ session: params.session, pmOrg: params.pmOrg, issue: issue.number, team: params.teamOf(issue), auto: true, now });
+      if (who.length) out.push({ issue: issue.number, who });
+    } catch {
+      /* a reminder that fails is not worth an error on screen */
+    }
+  }
+  return out;
+}
+
+/** For tests: forget which decisions were looked at. */
+export function resetDecisionSweep(): void {
+  checkedAt.clear();
 }
