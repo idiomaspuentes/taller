@@ -1,54 +1,57 @@
 /**
- * TAS design tokens — Ink & paper.
- * Warm off-white canvas, deep ink text, single teal accent.
- * Distinct from the LMS puente brand and from generic violet “AI ops”.
+ * TAS design tokens — Puentes Tareas.
+ * Same palette and type as the Puentes LMS design system, adapted for a work tool:
+ * puente (blue) = brand + action, río (teal) = done, sol (amber) = needs attention,
+ * señal (red) = error only. Old token names stay as aliases so components keep working.
+ * Reference: "Puentes Tareas" design system artifact.
  */
 
 :root {
-  /* Neutral scale (warm paper undertone) */
-  --gray-0: #fffcf7;
-  --gray-50: #f6f3ee;
-  --gray-100: #efebe4;
-  --gray-150: #e5e0d7;
-  --gray-200: #d8d1c6;
-  --gray-300: #c0b7a8;
-  --gray-400: #9e9484;
-  --gray-500: #7a7164;
-  --gray-600: #5c554b;
-  --gray-700: #433e37;
-  --gray-800: #2e2a25;
-  --gray-900: #1c1916;
-  --gray-950: #12100e;
+  /* Neutral scale (cool, blue undertone) */
+  --gray-0: #ffffff;
+  --gray-50: #f5f7fb;
+  --gray-100: #eef1f8;
+  --gray-150: #e2e7f0;
+  --gray-200: #e2e7f0;
+  --gray-300: #cbd3e3;
+  --gray-400: #8a93a6;
+  --gray-500: #666d7a;
+  --gray-600: #5b6478;
+  --gray-700: #3d465a;
+  --gray-800: #232c42;
+  --gray-900: #0b1730;
+  --gray-950: #060d1c;
 
-  /* Brand accent: teal */
-  --accent-50: #eef9f7;
-  --accent-100: #d5f0eb;
-  --accent-200: #abe1d8;
-  --accent-300: #74c9bc;
-  --accent-400: #3fafa0;
-  --accent-500: #0f8f80;
-  --accent-600: #0b7368;
-  --accent-700: #0a5c54;
-  --accent-800: #0a4a44;
-  --accent-900: #093c38;
+  /* Brand accent: puente */
+  --accent-50: #eef4fe;
+  --accent-100: #dce9fd;
+  --accent-200: #b9d3fb;
+  --accent-300: #7fadf3;
+  --accent-400: #4c8df0;
+  --accent-500: #1c6fe5;
+  --accent-600: #175fc7;
+  --accent-700: #153bb0;
+  --accent-800: #102e8c;
+  --accent-900: #0b2158;
+  --action-edge: #153bb0;
 
   /* Semantic status colors (function, not brand) */
-  --success-100: #dcfce7;
-  --success-500: #16a34a;
-  --success-700: #15803d;
-  --warning-100: #fef3c7;
-  --warning-500: #d97706;
-  --warning-700: #92400e;
-  --danger-100: #fee2e2;
-  --danger-500: #dc2626;
-  --danger-700: #b91c1c;
+  --success-100: #d3f4ee;
+  --success-500: #14b8a6;
+  --success-700: #0a695f;
+  --warning-100: #fdebcc;
+  --warning-500: #f5a623;
+  --warning-700: #81550a;
+  --danger-100: #fbe0de;
+  --danger-500: #e5484d;
+  --danger-700: #a82f33;
 
   /* Semantic aliases the app reads */
   --bg: var(--gray-50);
   --surface: var(--gray-0);
   --surface-muted: var(--gray-100);
   --surface-popover: var(--gray-0);
-  --border: var(--gray-200);
+  --border: var(--gray-150);
   --border-strong: var(--gray-300);
   --input-border: var(--gray-300);
   --text: var(--gray-900);
@@ -63,19 +66,21 @@
   --destructive: var(--danger-500);
   --destructive-hover: var(--danger-700);
   --destructive-foreground: #ffffff;
-  --ring: var(--accent-400);
+  --ring: var(--accent-500);
 
-  /* Radius scale */
-  --radius-sm: 6px;
+  /* Radius scale (sm/md follow Puentes: 8 controls, 14 cards) */
+  --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 999px;
 
   /* Shadows — flat-first, used sparingly (popovers/dialogs / FAB) */
-  --shadow-sm: 0 1px 2px rgba(18, 16, 14, 0.06);
-  --shadow-md: 0 8px 28px rgba(18, 16, 14, 0.14);
+  --shadow-sm: 0 1px 2px rgba(11, 23, 48, 0.06);
+  --shadow-md: 0 1px 2px rgba(11, 23, 48, 0.04), 0 8px 20px -8px rgba(11, 23, 48, 0.14);
 
-  --font-sans: "Geist Variable", system-ui, -apple-system, sans-serif;
+  --font-sans: "Manrope Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Baloo 2 Variable", ui-rounded, "Segoe UI", sans-serif;
+  --font-logo: "Outfit Variable", ui-sans-serif, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }

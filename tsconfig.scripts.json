@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@usfm-ast/alignment-box-model": ["../usfm-ast/packages/usfm-editor-app/src/hooks/useAlignmentBoxModel.ts"]
+    }
+  }
+}

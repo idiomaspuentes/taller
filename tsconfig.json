@@ -20,6 +20,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@usfm-ast/alignment-box-model": ["../usfm-ast/packages/usfm-editor-app/src/hooks/useAlignmentBoxModel.ts"],
       "@usfm-tools/parser": ["./src/usfm-tools/parser.d.ts"],
       "@usfm-tools/usj-core": ["./src/usfm-tools/usj-core.d.ts"],
       "@usfm-tools/usfm-readonly-react": ["./src/usfm-tools/usfm-readonly-react.d.ts"],
