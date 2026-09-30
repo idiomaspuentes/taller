@@ -16,7 +16,9 @@ import {
   isPmOrgTeamName,
   mirroredOrgTeamName,
 } from "../domain/roles";
-import { loadPmConfig } from "../dcs/issues";
+import { loadPmConfig, savePmConfig } from "../dcs/issues";
+import { LEVEL_LABEL, LEVEL_ORDER, isLevel, levelOf, type PersonLevel } from "../domain/levels";
+import type { PmConfig } from "../domain/roles";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +36,8 @@ type Props = {
 export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Props) {
   const [teams, setTeams] = useState<DcsTeam[]>([]);
   const [members, setMembers] = useState<Person[]>([]);
+  const [pmConfig, setPmConfig] = useState<PmConfig | null>(null);
+  const [levelSaving, setLevelSaving] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [teamMembers, setTeamMembers] = useState<Person[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -80,6 +84,26 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
     [session],
   );
 
+  /** Save one person's level in the org config (empty = remove it). */
+  async function setLevel(login: string, level: PersonLevel | "") {
+    if (!pmConfig) return;
+    const key = login.trim().toLowerCase();
+    const levels = { ...pmConfig.levels };
+    if (level) levels[key] = level;
+    else delete levels[key];
+    setLevelSaving(key);
+    try {
+      const next = { ...pmConfig, levels };
+      await savePmConfig(session, pmOrg, next);
+      setPmConfig(next);
+      announce(level ? `@${login} ahora es ${LEVEL_LABEL[level].toLowerCase()}` : `@${login} sin nivel`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLevelSaving(null);
+    }
+  }
+
   const reload = useCallback(async () => {
     if (!pmOrg) {
       setTeams([]);
@@ -91,13 +115,14 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
     setBusy(true);
     setError("");
     try {
-      const [orgTeams, orgMembers, pmConfig] = await Promise.all([
+      const [orgTeams, orgMembers, loadedConfig] = await Promise.all([
         listPmOrgTeams(session, pmOrg),
         canManage ? listPmOrgMembers(session, pmOrg) : Promise.resolve([] as Person[]),
         loadPmConfig(session, pmOrg),
       ]);
-      setTeamPrefix(pmConfig.teamPrefix);
-      const tas = orgTeams.filter((t) => isPmOrgTeamName(t.name, pmConfig.teamPrefix));
+      setPmConfig(loadedConfig);
+      setTeamPrefix(loadedConfig.teamPrefix);
+      const tas = orgTeams.filter((t) => isPmOrgTeamName(t.name, loadedConfig.teamPrefix));
       // Workers only keep TAS (system) teams; extra DCS org teams stay manager-only.
       setTeams(canManage ? orgTeams : tas);
       setMembers(orgMembers);
@@ -358,7 +383,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
           <p className="hub-empty-panel__kicker">Espacio de trabajo</p>
           <h2 className="hub-empty-panel__title">Falta la organización</h2>
           <p className="hub-empty-panel__body">
-            Elige una organización PM en el espacio de trabajo para ver y crear equipos.
+            Elige una organización del equipo en el espacio de trabajo para ver y crear equipos.
           </p>
         </div>
       ) : !loaded ? (
@@ -477,6 +502,22 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                                 <span className="hub-team__person-name">{m.name}</span>
                                 <span className="hub-team__person-id">@{m.id}</span>
                               </span>
+                              {canManage && pmConfig ? (
+                                <select
+                                  className="hub-team__level"
+                                  aria-label={`Nivel de @${m.id}`}
+                                  value={levelOf(pmConfig.levels, m.id) ?? ""}
+                                  disabled={levelSaving === m.id.toLowerCase()}
+                                  onChange={(e) => void setLevel(m.id, isLevel(e.target.value) ? e.target.value : "")}
+                                >
+                                  <option value="">Sin nivel</option>
+                                  {LEVEL_ORDER.map((level) => (
+                                    <option key={level} value={level}>
+                                      {LEVEL_LABEL[level]}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : null}
                               {canManage ? (
                                 <Button
                                   type="button"

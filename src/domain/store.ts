@@ -43,8 +43,11 @@ import {
   WORKFLOWS_SCHEMA,
   distributeUnitFromBundleGrain,
 } from "./types";
+import { normalizeSourcePackage } from "./sourcePackage";
 import { scopeFromRules, uid } from "./assignment";
 import { ensurePhaseSlug, makePhase } from "./phaseSlug";
+import { normalizeWaitRules } from "./waitRules";
+import { isLevel } from "./levels";
 import {
   isBookProjectId,
   normalizeProjectId,
@@ -432,6 +435,10 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
           : minAssignees;
     }
 
+    const indRaw = Number(item.minIndependent);
+    const minIndependent =
+      claimMode === "pool" && Number.isFinite(indRaw) && indRaw >= 1 ? Math.floor(indRaw) : undefined;
+
     const includeAuthorInApproval =
       claimMode === "exclusive" ? Boolean(item.includeAuthorInApproval) : undefined;
     const excludeIssueAssignee =
@@ -447,6 +454,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       claimMode: claimMode === "none" ? undefined : claimMode,
       minAssignees,
       maxAssignees,
+      minIndependent,
       excludePriorStepIds: excludePriorStepIds?.length ? excludePriorStepIds : undefined,
       excludeIssueAssignee,
       includeAuthorInApproval: includeAuthorInApproval || undefined,
@@ -480,6 +488,8 @@ export function normalizeTeams(raw: unknown, people: Person[]): ProjectTask[] {
       const phaseId = String(item.phaseId ?? "").trim() || "phase-default";
       const scriptureScope = normalizeScriptureScope(item.scriptureScope);
       const steps = normalizeTaskSteps(item.steps);
+      const waitsFor = normalizeWaitRules(item.waitsFor);
+      const minLevel = isLevel(item.minLevel) ? item.minLevel : undefined;
       return {
         id: String(item.id || uid()),
         name: String(item.name ?? "").trim(),
@@ -500,6 +510,8 @@ export function normalizeTeams(raw: unknown, people: Person[]): ProjectTask[] {
         orgTeamName: String(item.orgTeamName ?? "").trim() || undefined,
         solverAppId: String(item.solverAppId ?? "").trim() || undefined,
         steps: steps.length ? steps : undefined,
+        waitsFor,
+        minLevel,
         reviewsPrincipal: item.reviewsPrincipal === true ? true : undefined,
         reviewRef:
           item.reviewsPrincipal === true ? String(item.reviewRef ?? "").trim() || undefined : undefined,
@@ -737,6 +749,8 @@ function normalizeProjectSettings(raw: unknown): ProjectSettings | undefined {
   if (releaseProfiles) settings.releaseProfiles = releaseProfiles;
   const principalPasses = normalizePrincipalPasses(row.principalPasses);
   if (principalPasses) settings.principalPasses = principalPasses;
+  const sourcePackage = normalizeSourcePackage(row.sourcePackage);
+  if (sourcePackage) settings.sourcePackage = sourcePackage;
   return Object.keys(settings).length ? settings : undefined;
 }
 
@@ -1289,6 +1303,8 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
   const bundle = normalizeBundle(item.bundle);
   const orgTeamId = Number(item.orgTeamId);
   const steps = normalizeTaskSteps(item.steps);
+  const waitsFor = normalizeWaitRules(item.waitsFor);
+  const minLevel = isLevel(item.minLevel) ? item.minLevel : undefined;
   return {
     id: String(item.id || uid()),
     name,
@@ -1302,6 +1318,8 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
     orgTeamName: String(item.orgTeamName ?? "").trim() || undefined,
     solverAppId: String(item.solverAppId ?? "").trim() || undefined,
     steps: steps.length ? steps : undefined,
+    waitsFor,
+    minLevel,
   };
 }
 

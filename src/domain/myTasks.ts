@@ -28,6 +28,7 @@ import {
 } from "./taskProgress";
 import type { AssignmentsDoc, ProjectTask, TaskStep } from "./types";
 import { parseWorkOrderMarker } from "./workOrder";
+import { meetsLevel, type PersonLevel } from "./levels";
 
 export type MyTasksFilter = "mine" | "all" | "available";
 
@@ -38,6 +39,11 @@ export type MyTasksProjectBucket = {
   browseProject: boolean;
   board: AssignmentsDoc;
   issues: DcsIssue[];
+  /**
+   * Every OPEN subtarea of the project, when known. Used to tell which
+   * tasks are still waiting for others (see `waits.ts`); absent = unknown.
+   */
+  openIssues?: DcsIssue[];
 };
 
 /**
@@ -104,11 +110,14 @@ export function canClaimIssue(
   pmOrg: string,
   issue: DcsIssue,
   board: AssignmentsDoc,
+  /** The signed-in person's level (see `levels.ts`); unknown = not filtered. */
+  myLevel?: PersonLevel,
 ): boolean {
   if (!projectAllowsSelfAssign(board) || !isIssueUnassigned(issue)) return false;
   if (session.canManage) return true;
   const taskId = issueTaskId(issue);
   const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
+  if (!meetsLevel(myLevel, task?.minLevel)) return false;
   const orgTeamName = task?.orgTeamName;
   if (!orgTeamName) return false;
   return (session.teams ?? []).some(
@@ -193,6 +202,13 @@ export async function loadMyTasksProjects(params: {
     const issues = browseProject
       ? await listProjectOpenIssues(session, pmOrg, projectId)
       : mineInProject;
+    // Waiting only needs the other open subtareas of the project: fetched when the plan has rules.
+    const hasWaits = doc.teams.some((t) => t.waitsFor?.length);
+    const openIssues = browseProject
+      ? issues
+      : hasWaits
+        ? await listProjectOpenIssues(session, pmOrg, projectId).catch(() => undefined)
+        : undefined;
 
     buckets.push({
       projectId: doc.projectId || projectId,
@@ -200,6 +216,7 @@ export async function loadMyTasksProjects(params: {
       browseProject,
       board: doc,
       issues,
+      openIssues,
     });
   }
 

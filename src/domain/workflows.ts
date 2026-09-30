@@ -61,6 +61,8 @@ function taskFromTemplate(
     orgTeamName: t.orgTeamName,
     solverAppId: t.solverAppId,
     steps: steps.length ? steps : undefined,
+    waitsFor: t.waitsFor?.length ? t.waitsFor.map((r) => ({ ...r })) : undefined,
+    minLevel: t.minLevel,
   };
 }
 
@@ -91,6 +93,8 @@ export function boardToWorkflowTemplate(
     orgTeamName: t.orgTeamName,
     solverAppId: t.solverAppId,
     steps: t.steps?.length ? [...t.steps] : undefined,
+    waitsFor: t.waitsFor?.length ? t.waitsFor.map((r) => ({ ...r })) : undefined,
+    minLevel: t.minLevel,
   }));
   const phases = normalizePhases(board.phases, board.teams);
   const releaseProfiles = board.settings?.releaseProfiles?.map((p) => ({

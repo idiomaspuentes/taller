@@ -1,4 +1,6 @@
 /** Domain types for gateway-tasks (schema gateway-assignments-2). */
+import type { PersonLevel } from "./levels";
+import type { SourcePackage } from "./sourcePackage";
 
 export type ArticleStatus = "translated" | "english" | "incomplete" | "missing";
 export type ItemType = "articulo" | "porcion" | "tarea";
@@ -231,6 +233,10 @@ export type ProjectTask = {
    * Every subtarea of this task inherits these steps.
    */
   steps?: TaskStep[];
+  /** Work this task waits for before it can start (see `domain/waits.ts`). */
+  waitsFor?: WaitRule[];
+  /** Lowest person level that can take this task (see `domain/levels.ts`). */
+  minLevel?: PersonLevel;
   /**
    * Revisión of text already in the borrador principal: «Pasar al borrador
    * principal» may replace differing verses inside this task's range after
@@ -264,6 +270,11 @@ export type TaskStep = {
   minAssignees?: number;
   /** Pool only: max claim seats (default = minAssignees). */
   maxAssignees?: number;
+  /**
+   * Review rounds (see `reviewRound.ts`): how many of the agreeing habilitadas
+   * must not have written the text. Omitted = 0.
+   */
+  minIndependent?: number;
   /** Logins who were assignees on these prior steps cannot claim this step. */
   excludePriorStepIds?: string[];
   /**
@@ -283,6 +294,19 @@ export type TaskStep = {
  */
 export type Team = ProjectTask;
 
+/** How much of the awaited work must be closed: the same portion, the same chapter, or all of it. */
+export type WaitScope = "portion" | "chapter" | "all";
+
+/**
+ * «Espera a»: the task cannot start until the awaited work is closed.
+ * Names one task (`taskId`) or a whole phase (`phaseId`), never both.
+ */
+export type WaitRule = {
+  taskId?: string;
+  phaseId?: string;
+  scope: WaitScope;
+};
+
 /**
  * Reusable task shape inside an org {@link WorkflowTemplate}.
  * No book-specific scripture window; apply sets `{ mode: "project" }`.
@@ -300,6 +324,8 @@ export type TaskTemplate = {
   orgTeamName?: string;
   solverAppId?: string;
   steps?: TaskStep[];
+  waitsFor?: WaitRule[];
+  minLevel?: PersonLevel;
 };
 
 /**
@@ -422,6 +448,8 @@ export type ProjectSettings = {
   releaseProfiles?: ReleaseProfile[];
   /** Scripture tasks already passed into the borrador principal (release gate). */
   principalPasses?: PrincipalPassMark[];
+  /** Notes, words and texts the Afinación reads; the default is unfoldingWord's English package. */
+  sourcePackage?: SourcePackage;
 };
 
 /** Persisted deliverable + local board state for one project. */

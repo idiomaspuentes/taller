@@ -107,6 +107,33 @@ export const DEFAULT_SOLVERS_CATALOG: SolversCatalog = {
       openMode: "tab",
     },
     {
+      id: "afinar-notas",
+      name: "Revisar notas",
+      description: "Afinación: cada nota del capítulo con el original y el borrador a la vista.",
+      launchUrl: "/#/solver/afinar?step=notas&ctx={context}",
+      resources: ["tpl", "tps"],
+      kind: "app",
+      openMode: "tab",
+    },
+    {
+      id: "afinar-palabras",
+      name: "Revisar palabras clave",
+      description: "Afinación: cada término clave, comparado con el resto del libro.",
+      launchUrl: "/#/solver/afinar?step=palabras&ctx={context}",
+      resources: ["tpl", "tps"],
+      kind: "app",
+      openMode: "tab",
+    },
+    {
+      id: "afinar-alineacion",
+      name: "Alinear",
+      description: "Afinación: une cada palabra del original con lo que la traduce en el borrador.",
+      launchUrl: "/#/solver/afinar?step=alineacion&ctx={context}",
+      resources: ["tpl", "tps"],
+      kind: "app",
+      openMode: "tab",
+    },
+    {
       id: "helps-review",
       name: "Ayudas (TN / TQ / TW / TA)",
       description: "Borrador de ayudas, uno por subtarea.",
@@ -157,7 +184,7 @@ export function isFamiliarizeSolver(app: SolverApp): boolean {
 
 /** Queue action: Estudiar for familiarize, Resolver for in-app tools. */
 export function solverActionLabel(app: SolverApp): string {
-  return isFamiliarizeSolver(app) ? "Estudiar" : "Resolver";
+  return isFamiliarizeSolver(app) ? "Estudiar" : "Abrir editor";
 }
 
 export function normalizeSolversCatalog(raw: unknown): SolversCatalog {

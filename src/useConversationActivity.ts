@@ -64,6 +64,10 @@ export type ConversationActivity = {
   refresh: () => void;
   /** Mis tareas reports its "Mías" rows so step-role subtareas count too. */
   setExtraIssues: (issues: DcsIssue[]) => void;
+  /** Mis tareas reports free subtareas of my teams (worth a notice) and the ones held back. */
+  setAudience: (audience: { free: DcsIssue[]; held: number[] }) => void;
+  /** Free subtareas of my teams: they count and notify as «libre», not as assigned. */
+  freeIssues: number[];
   /** Opening one thread with every source loaded: advances that thread only. */
   markRead: (issue: number, maxIds: Partial<Record<CommentSource, number>>) => void;
   /** Opening a thread or launching its mini-app: the subtarea is no longer "nueva". */
@@ -86,6 +90,9 @@ export function useConversationActivity(
   const [decisionIssues, setDecisionIssues] = useState<DcsIssue[] | null>(null);
   const [offline, setOffline] = useState(false);
   const extraRef = useRef<DcsIssue[]>([]);
+  const freeRef = useRef<DcsIssue[]>([]);
+  const heldRef = useRef<Set<number>>(new Set());
+  const [audienceVersion, setAudienceVersion] = useState(0);
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const runRef = useRef<() => void>(() => {});
@@ -96,6 +103,8 @@ export function useConversationActivity(
     setDecisionIssues(null);
     setOffline(false);
     extraRef.current = [];
+    freeRef.current = [];
+    heldRef.current = new Set();
   }, [key]);
 
   // Other tabs write the same key: pick up their reads and polls.
@@ -149,7 +158,7 @@ export function useConversationActivity(
           session: current,
           pmOrg,
           doc: stored,
-          extraIssues: extraRef.current,
+          extraIssues: [...extraRef.current, ...freeRef.current],
         });
         if (cancelled) return;
         const merged = seedSeenIfEmpty(mergeCursors(loadCursor(key!), result.doc), result.issues);
@@ -177,7 +186,8 @@ export function useConversationActivity(
       const { show, notified } = shouldNotify({
         candidates: attentionCandidates({
           doc,
-          issues: result.issues,
+          issues: result.issues.filter((n) => !heldRef.current.has(n)),
+          freeIssues: freeRef.current.map((issue) => issue.number),
           decisionIssues: (result.decisions ?? []).map((issue) => issue.number),
           titles: result.titles,
           me: sessionRef.current?.username ?? "",
@@ -223,6 +233,11 @@ export function useConversationActivity(
   const setExtraIssues = useCallback((next: DcsIssue[]) => {
     extraRef.current = next;
   }, []);
+  const setAudience = useCallback((next: { free: DcsIssue[]; held: number[] }) => {
+    freeRef.current = next.free;
+    heldRef.current = new Set(next.held);
+    setAudienceVersion((v) => v + 1);
+  }, []);
 
   const markRead = useCallback(
     (issue: number, maxIds: Partial<Record<CommentSource, number>>) => {
@@ -246,10 +261,21 @@ export function useConversationActivity(
     [key],
   );
 
+  // Held subtareas (waiting, or above my level) never count: the notice comes when the hold lifts.
+  const visibleIssues = useMemo(
+    () => issues.filter((n) => !heldRef.current.has(n)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [issues, audienceVersion],
+  );
   const unreadCount = useMemo(
     () =>
-      key ? countAttention(cursor, issues, (decisionIssues ?? []).map((issue) => issue.number)) : 0,
-    [key, cursor, issues, decisionIssues],
+      key ? countAttention(cursor, visibleIssues, (decisionIssues ?? []).map((issue) => issue.number)) : 0,
+    [key, cursor, visibleIssues, decisionIssues],
+  );
+  const freeIssues = useMemo(
+    () => freeRef.current.map((issue) => issue.number),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [audienceVersion],
   );
 
   return {
@@ -260,6 +286,8 @@ export function useConversationActivity(
     offline,
     refresh,
     setExtraIssues,
+    setAudience,
+    freeIssues,
     markRead,
     markSeen,
   };

@@ -1,5 +1,6 @@
 import type { DcsTeam } from "@ip-lms/dcs-client";
 import type { ScopeKey } from "./types";
+import { normalizeLevels, type PersonLevel } from "./levels";
 import { defaultTaRepo, defaultTwRepo } from "./books";
 import { PM_REPO_NAME } from "./types";
 
@@ -29,6 +30,8 @@ export type PmConfig = {
    * preguntas → `{lang}_tq`.
    */
   resourceRepos: Partial<Record<ScopeKey, string>>;
+  /** Level of each person (lowercase login). Missing = not filtered. */
+  levels: Record<string, PersonLevel>;
 };
 
 export const DEFAULT_PM_CONFIG: PmConfig = {
@@ -36,6 +39,7 @@ export const DEFAULT_PM_CONFIG: PmConfig = {
   managerTeam: "managers",
   teamPrefix: `${DEFAULT_PM_NAMESPACE}-`,
   resourceRepos: {},
+  levels: {},
 };
 
 export function normalizePmConfig(raw: unknown): PmConfig {
@@ -61,7 +65,7 @@ export function normalizePmConfig(raw: unknown): PmConfig {
       }
     }
   }
-  return { namespaceId, managerTeam, teamPrefix, resourceRepos };
+  return { namespaceId, managerTeam, teamPrefix, resourceRepos, levels: normalizeLevels(row.levels) };
 }
 
 /** Root label applied to every platform issue — primary search filter. */

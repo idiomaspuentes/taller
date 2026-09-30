@@ -20,6 +20,8 @@ export type NotifyCandidate = {
   own: boolean;
   title: string;
   body: string;
+  /** Where a click goes when it is not the subtarea's own thread. */
+  href?: string;
 };
 
 export type NotifiedDoc = {
@@ -74,12 +76,15 @@ export function attentionCandidates(params: {
   decisionIssues: number[];
   titles: Record<string, string>;
   me: string;
+  /** Subtareas nobody has yet, from a team I am on: announced as «libre», not as assigned. */
+  freeIssues?: Iterable<number>;
   /** Comment ids written by the signed-in user (from the poll). */
   ownCommentIds?: Iterable<number>;
 }): NotifyCandidate[] {
   const { doc, titles } = params;
   const me = params.me.trim().toLowerCase();
   const own = new Set(params.ownCommentIds ?? []);
+  const free = new Set(params.freeIssues ?? []);
   const out: NotifyCandidate[] = [];
 
   for (const issue of new Set(params.issues)) {
@@ -105,7 +110,8 @@ export function attentionCandidates(params: {
         kind: "task",
         own: false,
         title: portionTitle(issue, titles),
-        body: "Tarea nueva asignada",
+        body: free.has(issue) ? "Tarea libre para tu equipo" : "Tarea nueva asignada",
+        ...(free.has(issue) ? { href: "#/avisos" } : {}),
       });
     }
   }
@@ -162,6 +168,7 @@ export function shouldNotify(params: {
 }
 
 /** Hash route opened when the notification is clicked. */
-export function notificationHref(candidate: Pick<NotifyCandidate, "issue">): string {
+export function notificationHref(candidate: Pick<NotifyCandidate, "issue" | "href">): string {
+  if (candidate.href) return candidate.href;
   return candidate.issue > 0 ? `#/mis-tareas/${candidate.issue}` : "#/mis-tareas";
 }

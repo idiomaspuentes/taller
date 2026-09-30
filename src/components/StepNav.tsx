@@ -9,18 +9,34 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Steps inside a project shell.
+ * Screens inside a project shell. The URL keeps one id per screen; the header
+ * groups them into four stages (Preparar, Repartir, Avance, Publicar).
  * `inventario` prepares source material (for book-shaped projects: ULT/helps).
  * The project id in the URL is separate and is not always a book.
  */
-export type StepId = "inventario" | "tareas" | "asignar" | "entregar";
+export type StepId = "inventario" | "tareas" | "asignar" | "entregar" | "avance" | "publicar";
 
-export const STEPS: { id: StepId; n: number; label: string; short: string }[] = [
-  { id: "inventario", n: 1, label: "Inventario", short: "Inventario" },
-  { id: "tareas", n: 2, label: "Fases y tareas", short: "Fases" },
-  { id: "asignar", n: 3, label: "Asignar", short: "Asignar" },
-  { id: "entregar", n: 4, label: "Entregar", short: "Entregar" },
+export type StageId = "preparar" | "repartir" | "avance" | "publicar";
+
+export const STEPS: { id: StepId; label: string }[] = [
+  { id: "inventario", label: "Libro" },
+  { id: "tareas", label: "Fases y tareas" },
+  { id: "asignar", label: "Asignar personas" },
+  { id: "entregar", label: "Crear subtareas" },
+  { id: "avance", label: "Avance" },
+  { id: "publicar", label: "Publicar versión" },
 ];
+
+export const STAGES: { id: StageId; n: number; label: string; steps: StepId[] }[] = [
+  { id: "preparar", n: 1, label: "Preparar", steps: ["inventario", "tareas"] },
+  { id: "repartir", n: 2, label: "Repartir", steps: ["asignar", "entregar"] },
+  { id: "avance", n: 3, label: "Avance", steps: ["avance"] },
+  { id: "publicar", n: 4, label: "Publicar", steps: ["publicar"] },
+];
+
+export function stageOf(step: StepId): (typeof STAGES)[number] {
+  return STAGES.find((s) => s.steps.includes(step)) ?? STAGES[0]!;
+}
 
 export function stepEnabled(
   id: StepId,
@@ -34,20 +50,18 @@ export function stepEnabled(
 
 export type StepStatus = "locked" | "current" | "done" | "todo";
 
-export function stepStatus(
-  id: StepId,
+function stageStatus(
+  stage: (typeof STAGES)[number],
   view: StepId,
   setupDone: boolean,
   hasInventory: boolean,
   hasTeams: boolean,
 ): StepStatus {
-  if (!stepEnabled(id, setupDone, hasInventory)) return "locked";
-  if (id === view) return "current";
-  if (id === "inventario" && hasInventory) return "done";
-  if (id === "tareas" && hasTeams) return "done";
-  const order = STEPS.findIndex((s) => s.id === id);
-  const current = STEPS.findIndex((s) => s.id === view);
-  if (order >= 0 && current >= 0 && order < current) return "done";
+  if (!stage.steps.some((id) => stepEnabled(id, setupDone, hasInventory))) return "locked";
+  const currentStage = stageOf(view);
+  if (currentStage.id === stage.id) return "current";
+  if (stage.n < currentStage.n) return "done";
+  if (stage.id === "preparar" && hasInventory && hasTeams) return "done";
   return "todo";
 }
 
@@ -59,16 +73,13 @@ type Props = {
   onChange: (id: StepId) => void;
 };
 
-function optionLabel(
-  step: (typeof STEPS)[number],
-  status: StepStatus,
-): string {
-  const mark = status === "done" ? "✓ " : `${step.n} · `;
-  return `${mark}${step.label}`;
+function optionLabel(stage: (typeof STAGES)[number], status: StepStatus): string {
+  const mark = status === "done" ? "✓ " : `${stage.n} · `;
+  return `${mark}${stage.label}`;
 }
 
 /**
- * Project step switcher: rail on wider screens, one native select on narrow.
+ * Project stage switcher: rail on wider screens, one native select on narrow.
  */
 export function StepNav({
   view,
@@ -77,38 +88,42 @@ export function StepNav({
   hasTeams = false,
   onChange,
 }: Props) {
-  const index = STEPS.findIndex((s) => s.id === view) + 1;
+  const current = stageOf(view);
 
-  function go(id: StepId) {
-    if (stepEnabled(id, setupDone, hasInventory)) onChange(id);
+  function goStage(id: StageId) {
+    const stage = STAGES.find((s) => s.id === id);
+    if (!stage) return;
+    if (stage.id === current.id) return;
+    const target = stage.steps.find((step) => stepEnabled(step, setupDone, hasInventory));
+    if (target) onChange(target);
   }
 
   return (
-    <nav aria-label="Pasos del proyecto" className="app-step-nav">
+    <nav aria-label="Etapas del proyecto" className="app-step-nav">
       <ol className="app-step-nav__rail">
-        {STEPS.map((step) => {
-          const status = stepStatus(step.id, view, setupDone, hasInventory, hasTeams);
+        {STAGES.map((stage) => {
+          const status = stageStatus(stage, view, setupDone, hasInventory, hasTeams);
           return (
-            <li key={step.id} className="app-step-nav__item">
+            <li key={stage.id} className="app-step-nav__item">
               <button
                 type="button"
                 className={cn("app-step-nav__step", `app-step-nav__step--${status}`)}
                 disabled={status === "locked"}
                 aria-current={status === "current" ? "step" : undefined}
-                onClick={() => go(step.id)}
+                onClick={() => goStage(stage.id)}
               >
                 <span className="app-step-nav__marker" aria-hidden>
                   {status === "done" ? (
                     <Check className="app-step-nav__check" strokeWidth={2.5} />
                   ) : (
-                    step.n
+                    stage.n
                   )}
                 </span>
                 <span className="app-step-nav__label app-step-nav__label--short">
-                  {step.short}
+                  {stage.label}
                 </span>
                 <span className="app-step-nav__label app-step-nav__label--full">
-                  {step.label}
+                  {stage.label}
                 </span>
               </button>
             </li>
@@ -117,39 +132,61 @@ export function StepNav({
       </ol>
 
       <div className="app-step-nav__mobile">
-        <Select value={view} onValueChange={(id) => go(id as StepId)}>
+        <Select value={current.id} onValueChange={(id) => goStage(id as StageId)}>
           <SelectTrigger
             className="app-step-nav__trigger"
             size="sm"
-            aria-label="Paso del proyecto"
+            aria-label="Etapa del proyecto"
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" align="end">
-            {STEPS.map((step) => {
-              const status = stepStatus(
-                step.id,
-                view,
-                setupDone,
-                hasInventory,
-                hasTeams,
-              );
+            {STAGES.map((stage) => {
+              const status = stageStatus(stage, view, setupDone, hasInventory, hasTeams);
               return (
-                <SelectItem
-                  key={step.id}
-                  value={step.id}
-                  disabled={status === "locked"}
-                >
-                  {optionLabel(step, status)}
+                <SelectItem key={stage.id} value={stage.id} disabled={status === "locked"}>
+                  {optionLabel(stage, status)}
                 </SelectItem>
               );
             })}
           </SelectContent>
         </Select>
         <span className="app-step-nav__progress" aria-hidden>
-          {index}/{STEPS.length}
+          {current.n}/{STAGES.length}
         </span>
       </div>
     </nav>
+  );
+}
+
+/** Second level: the screens inside the current stage. Renders nothing for single-screen stages. */
+export function SubStepTabs({
+  view,
+  setupDone,
+  hasInventory,
+  onChange,
+}: Omit<Props, "hasTeams">) {
+  const stage = stageOf(view);
+  if (stage.steps.length < 2) return null;
+  return (
+    <div className="substep-tabs" role="tablist" aria-label={stage.label}>
+      {stage.steps.map((id) => {
+        const step = STEPS.find((s) => s.id === id)!;
+        const enabled = stepEnabled(id, setupDone, hasInventory);
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            className="substep-tabs__tab"
+            aria-selected={id === view}
+            disabled={!enabled}
+            onClick={() => onChange(id)}
+          >
+            {step.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

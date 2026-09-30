@@ -55,6 +55,7 @@ import {
 } from "../domain/workOrder";
 import { reviewWorkOrders } from "../domain/reviewTask";
 import { parseItemKey, uid } from "../domain/assignment";
+import { formatChatEvent } from "../domain/chatEvent";
 import { dcsConfig } from "./config";
 import type { GtSession } from "./auth";
 import { ensurePmRepo, saveProjectToDcs } from "./persist";
@@ -219,7 +220,7 @@ export async function loadSolversCatalog(
       if (upgraded !== catalog) {
         void saveSolversCatalog(session, org, upgraded).catch(() => undefined);
       }
-      return upgraded;
+      return withOfferedSolvers(upgraded);
     }
   } catch {
     /* missing or unreadable — seed defaults below */
@@ -231,6 +232,18 @@ export async function loadSolversCatalog(
     /* read-only token — still use defaults in-memory */
   }
   return DEFAULT_SOLVERS_CATALOG;
+}
+
+/**
+ * Solvers shipped with the app that every catalog should offer, added in memory
+ * only. Reading the catalog never writes it: this must not cause a write.
+ */
+const OFFERED_SOLVER_IDS = ["afinar-notas", "afinar-palabras", "afinar-alineacion"];
+
+function withOfferedSolvers(catalog: SolversCatalog): SolversCatalog {
+  const have = new Set(catalog.solvers.map((s) => s.id));
+  const extra = DEFAULT_SOLVERS_CATALOG.solvers.filter((def) => OFFERED_SOLVER_IDS.includes(def.id) && !have.has(def.id));
+  return extra.length ? { ...catalog, solvers: [...catalog.solvers, ...extra] } : catalog;
 }
 
 /** Point legacy stub URLs for TPL/TPS at the real scripture editor; add new shipped apps. */
@@ -484,7 +497,7 @@ export async function syncTeamToOrg(
     } catch (err) {
       throw enrich403(
         err,
-        "No se pudo crear el equipo en la organización (hace falta ser admin/owner de la org en DCS).",
+        "No se pudo crear el equipo en la organización (hace falta ser admin/owner de la org).",
       );
     }
   }
@@ -857,7 +870,7 @@ export async function createReviewIssues(params: {
     });
   } catch {
     throw new Error(
-      "No se pudo guardar el plan del proyecto en DCS, así que no se creó la revisión. Revisa tu conexión y tus permisos en la organización e inténtalo de nuevo.",
+      "No se pudo guardar el plan del proyecto, así que no se creó la revisión. Revisa tu conexión y tus permisos en la organización e inténtalo de nuevo.",
     );
   }
 
@@ -1127,6 +1140,32 @@ export async function claimIssue(
     [session.username],
     session.token,
   );
+}
+
+/**
+ * Hand a subtarea to another person (replaces whoever had it) and tell them with a mention.
+ * Caller must enforce capability (coordinators only).
+ */
+export async function reassignIssue(
+  session: GtSession,
+  org: string,
+  issue: DcsIssue,
+  login: string,
+  taskLabel: string,
+): Promise<DcsIssue> {
+  const edited = await editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issue.number, {
+    token: session.token,
+    assignees: [login],
+  });
+  const before = issueAssigneeLogins(issue).filter((l) => l.toLowerCase() !== login.toLowerCase());
+  const summary = `@${login} Te asignaron «${taskLabel}».${before.length ? ` La tenía ${before.map((l) => `@${l}`).join(", ")}.` : ""}`;
+  await commentOnIssue(
+    session,
+    org,
+    issue.number,
+    formatChatEvent({ type: "tarea-asignada", emitter: "equipo-hoy", issue: issue.number, summary, mentions: [login], data: { by: session.username, from: before } }),
+  ).catch(() => undefined);
+  return edited;
 }
 
 /** Clear assignees (Liberar). Caller must enforce capability. */

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { RowMenu, type RowMenuItem } from "./RowMenu";
+import { waitBlocks, waitReason } from "../domain/waits";
+import { audienceOf, type AudienceHold } from "../domain/audience";
+import { levelOf, type PersonLevel } from "../domain/levels";
+import { loadPmConfig } from "../dcs/issues";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import {
@@ -92,6 +97,8 @@ type Props = {
   cursor: ReadCursorDoc;
   /** Reports the "Mías" rows so step-role subtareas also feed the badge poll. */
   onMineIssues?: (issues: DcsIssue[]) => void;
+  /** Free subtareas of my teams worth a notice, and the ones held back (waiting / level). */
+  onAudience?: (audience: { free: DcsIssue[]; held: number[] }) => void;
   onRefreshActivity?: () => void;
   /** Pending decisions from the background poll; keeps "decidir" rows current without Actualizar. */
   decisionIssues?: DcsIssue[] | null;
@@ -100,6 +107,8 @@ type Props = {
   /** `effectiveCanManage`: gestor view may open any subtarea's thread. */
   canManage: boolean;
   onOpenThread: (issue: number) => void;
+  /** ahora: the next thing to do · avisos: what needs attention · lista: every subtarea. */
+  mode?: "ahora" | "avisos" | "lista";
 };
 
 const COLLAPSE_CHAPTERS_AT = 12;
@@ -261,11 +270,13 @@ export function MyTasksView({
   announce,
   cursor,
   onMineIssues,
+  onAudience,
   onRefreshActivity,
   decisionIssues,
   onMarkSeen,
   canManage,
   onOpenThread,
+  mode = "lista",
 }: Props) {
   const [projects, setProjects] = useState<MyTasksProjectBucket[]>([]);
   const [busy, setBusy] = useState(false);
@@ -273,6 +284,7 @@ export function MyTasksView({
   const [error, setError] = useState("");
   const [acting, setActing] = useState<number | null>(null);
   const [conflictIssues, setConflictIssues] = useState<DcsIssue[]>([]);
+  const [myLevel, setMyLevel] = useState<PersonLevel | undefined>(undefined);
   const [filter, setFilter] = useState<MyTasksFilter>("mine");
   const [filterTouched, setFilterTouched] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -387,6 +399,53 @@ export function MyTasksView({
       ...rows.sort((a, b) => attentionRank(a.activity, b.activity)),
     ];
   }, [mineRows, conflictIssues, projects, cursor]);
+
+  // Free subtareas of my teams that are ready to take, and everything held back.
+  const freeRows = useMemo(() => {
+    const rows: Array<{ issue: DcsIssue; bucket: MyTasksProjectBucket }> = [];
+    for (const bucket of projects) {
+      if (!bucket.browseProject) continue;
+      for (const issue of bucket.issues) {
+        if (audienceOf({ issue, project: bucket, session, pmOrg, myLevel }).relation === "free") rows.push({ issue, bucket });
+      }
+    }
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, session, pmOrg, myLevel]);
+  const freeReady = useMemo(
+    () =>
+      freeRows.filter(({ issue, bucket }) => audienceOf({ issue, project: bucket, session, pmOrg, myLevel }).notify),
+    [freeRows, session, pmOrg, myLevel],
+  );
+  const freeNew = useMemo(
+    () => freeReady.filter(({ issue }) => rowActivity(cursor, issue.number).isNew),
+    [freeReady, cursor],
+  );
+  const heldNumbers = useMemo(() => {
+    const held: number[] = [];
+    for (const bucket of projects) {
+      for (const issue of bucket.issues) {
+        const audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
+        if (audience.relation !== "other" && audience.hold) held.push(issue.number);
+      }
+    }
+    return held;
+  }, [projects, session, pmOrg, myLevel]);
+  useEffect(() => {
+    if (!loaded) return;
+    onAudience?.({ free: freeReady.map((row) => row.issue), held: heldNumbers });
+  }, [loaded, freeReady, heldNumbers, onAudience]);
+
+  useEffect(() => {
+    if (!pmOrg) return;
+    let cancelled = false;
+    void loadPmConfig(session, pmOrg).then((config) => {
+      if (!cancelled) setMyLevel(levelOf(config.levels, session.username));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, pmOrg]);
 
   const now = new Date();
 
@@ -768,7 +827,7 @@ export function MyTasksView({
   }
 
   async function take(issue: DcsIssue, board: MyTasksProjectBucket["board"]) {
-    if (!canClaimIssue(session, pmOrg, issue, board)) {
+    if (!canClaimIssue(session, pmOrg, issue, board, myLevel)) {
       setError("No puedes tomar esta subtarea.");
       return;
     }
@@ -801,6 +860,124 @@ export function MyTasksView({
     }
   }
 
+  /** What holds this subtarea back (waits for other work, or asks for a higher level). */
+  function holdFor(issue: DcsIssue, bucket: MyTasksProjectBucket): AudienceHold | undefined {
+    const audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
+    if (audience.hold) return audience.hold;
+    if (bucket.openIssues) {
+      const blocks = waitBlocks(issue, bucket.board, bucket.openIssues);
+      if (blocks.length) return { kind: "espera", text: waitReason(blocks, bucket.board) };
+    }
+    return undefined;
+  }
+  const waitingText = (issue: DcsIssue, bucket: MyTasksProjectBucket): string => holdFor(issue, bucket)?.text ?? "";
+
+  function renderQueueRow(issue: DcsIssue, bucket: MyTasksProjectBucket, featured = false) {
+    return (
+            <QueueRow
+              key={issue.id}
+              issue={issue}
+              activity={rowActivity(cursor, issue.number)}
+              canOpenThread={canOpenConversation(
+                issue,
+                session.username,
+                canManage,
+              )}
+              onOpenThread={() => onOpenThread(issue.number)}
+              now={now}
+              session={session}
+              pmOrg={pmOrg}
+              board={bucket.board}
+              browseProject={bucket.browseProject}
+              solversCatalog={solversCatalog}
+              acting={acting}
+              onTake={() =>
+                void take(issue, bucket.board)
+              }
+              onStart={() => void start(issue)}
+              lang={lang}
+              contentOrg={contentOrg}
+              onResolve={(step) =>
+                void resolve(issue, bucket.board, {
+                  step,
+                  app: step?.solverAppId
+                    ? findSolverApp(
+                        solversCatalog,
+                        step.solverAppId,
+                      )
+                    : undefined,
+                })
+              }
+              onToggleStep={(stepId) =>
+                void toggleChecklistStep(
+                  issue,
+                  bucket.board,
+                  stepId,
+                )
+              }
+              onClaimStep={(step) =>
+                void claimStepOnIssue(
+                  issue,
+                  bucket.board,
+                  step,
+                )
+              }
+              onApproveStep={(step) =>
+                void approveStepOnIssue(
+                  issue,
+                  bucket.board,
+                  step,
+                )
+              }
+              onClose={() =>
+                void close(issue, bucket.board)
+              }
+              featured={featured}
+              waiting={waitingText(issue, bucket)}
+              holdKind={holdFor(issue, bucket)?.kind}
+              myLevel={myLevel}
+              onBegin={() => void begin(issue, bucket.board)}
+              onLiberar={() =>
+                void liberar(
+                  issue,
+                  bucket.browseProject,
+                )
+              }
+            />
+    );
+  }
+
+  /** «Empezar»: take the subtarea if it is free, then open its editor. */
+  async function begin(issue: DcsIssue, board: MyTasksProjectBucket["board"]) {
+    const holder = projects.find((p) => p.board === board);
+    if (holder && waitingText(issue, holder)) {
+      setError(waitingText(issue, holder));
+      return;
+    }
+    if (isIssueUnassigned(issue)) {
+      if (!canClaimIssue(session, pmOrg, issue, board, myLevel)) {
+        setError("No puedes tomar esta subtarea.");
+        return;
+      }
+      setActing(issue.number);
+      try {
+        await claimIssue(session, pmOrg, issue.number);
+        announce(`Tomaste #${issue.number}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setActing(null);
+        return;
+      }
+    }
+    await resolve(issue, board);
+  }
+
+  // «Ahora»: the one thing to do next. Decisions first, then work in progress, then the rest of mine.
+  const nowDecide = attentionRows.find((row) => row.decide);
+  const ready = mineRows.filter((row) => !waitingText(row.issue, row.bucket));
+  const nowMine = ready.find((row) => issueIsInProgress(row.issue)) ?? ready[0];
+  const nowFree = !nowDecide && !nowMine ? freeRows[0] : undefined;
+
   const showEmpty =
     loaded &&
     !busy &&
@@ -813,7 +990,7 @@ export function MyTasksView({
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">Mis tareas</h1>
+          <h1 className="hub-title">{mode === "ahora" ? "Ahora" : mode === "avisos" ? "Avisos" : "Mis tareas"}</h1>
           <p className="hub-lede">
             Trabajo de <strong>@{session.username}</strong>
             {pmOrg ? (
@@ -825,9 +1002,11 @@ export function MyTasksView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a className="btn" data-size="sm" data-variant="ghost" href="#/mis-tareas/prueba">
-            Probar un conflicto
-          </a>
+          {import.meta.env.DEV ? (
+            <a className="btn" data-size="sm" data-variant="ghost" href="#/mis-tareas/prueba">
+              Probar un conflicto
+            </a>
+          ) : null}
           <Button
             type="button"
             size="sm"
@@ -843,7 +1022,7 @@ export function MyTasksView({
         </div>
       </div>
 
-      {pmOrg ? (
+      {pmOrg && mode === "lista" ? (
         <div className="hub-toolbar">
           <div className="hub-filters" role="tablist" aria-label="Filtro de subtareas">
             {(
@@ -901,7 +1080,26 @@ export function MyTasksView({
       ) : null}
 
 
-      {pmOrg && attentionRows.length ? (
+      {pmOrg && loaded && mode === "ahora" && (nowDecide || nowMine || nowFree) ? (
+        <section className="hub-now" aria-labelledby="hub-now-title">
+          <p className="hub-now__kicker" id="hub-now-title">Ahora</p>
+          {nowDecide ? (
+            <div className="hub-now__decide">
+              <h2 className="hub-now__title">{nowDecide.issue.title}</h2>
+              <p className="hub-now__text">Hay un versículo que decidir. Tarda un minuto.</p>
+              <Button type="button" size="lg" onClick={() => onOpenThread(nowDecide.issue.number)}>
+                Decidir
+              </Button>
+            </div>
+          ) : nowMine ? (
+            <div className="hub-now__row">{renderQueueRow(nowMine.issue, nowMine.bucket, true)}</div>
+          ) : nowFree ? (
+            <div className="hub-now__row">{renderQueueRow(nowFree.issue, nowFree.bucket, true)}</div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {pmOrg && mode === "avisos" && attentionRows.length ? (
         <section className="hub-attention" aria-labelledby="hub-attention-title">
           <div className="hub-attention__head">
             <h2 id="hub-attention-title" className="hub-attention__title">
@@ -959,7 +1157,7 @@ export function MyTasksView({
       {!pmOrg ? (
         <div className="hub-empty-panel">
           <span className="hub-empty-panel__kicker">Espacio de trabajo</span>
-          <h2 className="hub-empty-panel__title">Elige la organización PM</h2>
+          <h2 className="hub-empty-panel__title">Elige la organización del equipo</h2>
           <p className="hub-empty-panel__body">
             Abre el chip del encabezado para seleccionar la org donde están tus
             subtareas. Sin eso no se puede cargar la cola.
@@ -969,7 +1167,64 @@ export function MyTasksView({
 
       {busy && !loaded ? <p className="hub-hint">Cargando subtareas…</p> : null}
 
-      {showEmpty ? (
+      {pmOrg && loaded && !busy && mode === "ahora" && !nowDecide && !nowMine && !nowFree ? (
+        <div className="hub-empty-panel">
+          <span className="hub-empty-panel__kicker">Ahora</span>
+          <h2 className="hub-empty-panel__title">Estás al día</h2>
+          <p className="hub-empty-panel__body">
+            No tienes nada pendiente. Cuando haya una tarea para ti, aparecerá aquí y te avisaremos.
+          </p>
+        </div>
+      ) : null}
+
+      {pmOrg && loaded && mode === "ahora" && attentionRows.length ? (
+        <a className="hub-now__link" href="#/avisos">
+          {attentionRows.length === 1
+            ? "1 aviso te espera"
+            : `${attentionRows.length} avisos te esperan`}
+          <ChevronRight aria-hidden />
+        </a>
+      ) : null}
+
+      {pmOrg && mode === "avisos" && freeNew.length ? (
+        <section className="hub-attention" aria-labelledby="hub-free-title">
+          <div className="hub-attention__head">
+            <h2 id="hub-free-title" className="hub-attention__title">
+              Libres para tu equipo
+            </h2>
+            <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">
+              {freeNew.length}
+            </span>
+          </div>
+          <div className="grid gap-2 p-3">
+            {freeNew.map(({ issue, bucket }) => (
+              <div key={issue.number} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 font-semibold">{shortTitle(issue)}</span>
+                <span className="flex gap-2">
+                  <Button type="button" size="sm" onClick={() => void begin(issue, bucket.board)}>
+                    Tomar y empezar
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => onMarkSeen?.(issue.number)}>
+                    Ahora no
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {pmOrg && loaded && !busy && mode === "avisos" && !attentionRows.length && !freeNew.length ? (
+        <div className="hub-empty-panel">
+          <span className="hub-empty-panel__kicker">Avisos</span>
+          <h2 className="hub-empty-panel__title">No hay avisos nuevos</h2>
+          <p className="hub-empty-panel__body">
+            Aquí verás las decisiones por tomar, los comentarios sin leer y las tareas nuevas.
+          </p>
+        </div>
+      ) : null}
+
+      {showEmpty && mode === "lista" ? (
         <div className="hub-empty-panel">
           <span className="hub-empty-panel__kicker">Cola vacía</span>
           <h2 className="hub-empty-panel__title">
@@ -1023,7 +1278,7 @@ export function MyTasksView({
         </div>
       ) : null}
 
-      {showQueue ? (
+      {showQueue && mode === "lista" ? (
         <>
           <div className="grid gap-1.5">
             <button
@@ -1037,8 +1292,8 @@ export function MyTasksView({
               <>
                 <p className="hub-hint">
                   {hasBrowse
-                    ? "Disponibles son subtareas libres: Tomar las reclama. Las revisiones en pares o grupales aparecen arriba: Tomar reseña / Aprobar. Resolver abre la herramienta de la tarea (si está enlazada)."
-                    : "Resolver abre la herramienta enlazada a la tarea. Marca En curso al empezar y Cerrar al terminar."}
+                    ? "Disponibles son subtareas libres: Tomar las reclama. Las revisiones en pares o grupales aparecen arriba: Tomar la revisión / Aprobar. Abrir editor abre la herramienta de la tarea (si está enlazada)."
+                    : "Abrir editor abre la herramienta de la tarea. Pulsa Empezar al comenzar y Cerrar al terminar."}
                 </p>
                 <p className="hub-hint">
                   El punto marca mensajes de otras personas que aún no abriste aquí. Lo leído
@@ -1106,7 +1361,7 @@ export function MyTasksView({
                               onClick={() => void takeStepClaim(offer)}
                             >
                               {offer.step.claimMode === "pool"
-                                ? "Tomar reseña"
+                                ? "Tomar la revisión"
                                 : "Tomar"}
                             </Button>
                           ) : (
@@ -1250,73 +1505,7 @@ export function MyTasksView({
                                                   </span>
                                                 </button>
                                                 {!isCollapsed
-                                                  ? group.issues.map((issue) => (
-                                                      <QueueRow
-                                                        key={issue.id}
-                                                        issue={issue}
-                                                        activity={rowActivity(cursor, issue.number)}
-                                                        canOpenThread={canOpenConversation(
-                                                          issue,
-                                                          session.username,
-                                                          canManage,
-                                                        )}
-                                                        onOpenThread={() => onOpenThread(issue.number)}
-                                                        now={now}
-                                                        session={session}
-                                                        pmOrg={pmOrg}
-                                                        board={bucket.board}
-                                                        browseProject={bucket.browseProject}
-                                                        solversCatalog={solversCatalog}
-                                                        acting={acting}
-                                                        onTake={() =>
-                                                          void take(issue, bucket.board)
-                                                        }
-                                                        onStart={() => void start(issue)}
-                                                        lang={lang}
-                                                        contentOrg={contentOrg}
-                                                        onResolve={(step) =>
-                                                          void resolve(issue, bucket.board, {
-                                                            step,
-                                                            app: step?.solverAppId
-                                                              ? findSolverApp(
-                                                                  solversCatalog,
-                                                                  step.solverAppId,
-                                                                )
-                                                              : undefined,
-                                                          })
-                                                        }
-                                                        onToggleStep={(stepId) =>
-                                                          void toggleChecklistStep(
-                                                            issue,
-                                                            bucket.board,
-                                                            stepId,
-                                                          )
-                                                        }
-                                                        onClaimStep={(step) =>
-                                                          void claimStepOnIssue(
-                                                            issue,
-                                                            bucket.board,
-                                                            step,
-                                                          )
-                                                        }
-                                                        onApproveStep={(step) =>
-                                                          void approveStepOnIssue(
-                                                            issue,
-                                                            bucket.board,
-                                                            step,
-                                                          )
-                                                        }
-                                                        onClose={() =>
-                                                          void close(issue, bucket.board)
-                                                        }
-                                                        onLiberar={() =>
-                                                          void liberar(
-                                                            issue,
-                                                            bucket.browseProject,
-                                                          )
-                                                        }
-                                                      />
-                                                    ))
+                                                  ? group.issues.map((issue) => renderQueueRow(issue, bucket))
                                                   : null}
                                               </div>
                                             );
@@ -1408,6 +1597,11 @@ function QueueRow({
   onApproveStep,
   onClose,
   onLiberar,
+  featured = false,
+  onBegin,
+  waiting = "",
+  holdKind,
+  myLevel,
 }: {
   issue: DcsIssue;
   activity: RowActivity;
@@ -1430,11 +1624,18 @@ function QueueRow({
   onApproveStep: (step: TaskStep) => void;
   onClose: () => void;
   onLiberar: () => void;
+  /** «Ahora» card: bigger row; a free subtarea starts with one button. */
+  featured?: boolean;
+  onBegin?: () => void;
+  /** Reason this subtarea cannot start yet (it waits for other work, or asks for a level). */
+  waiting?: string;
+  holdKind?: "espera" | "nivel";
+  myLevel?: PersonLevel;
 }) {
   const mine = isIssueAssignedTo(issue, session.username);
   const open = isIssueUnassigned(issue);
   const inProgress = issueIsInProgress(issue);
-  const claimable = canClaimIssue(session, pmOrg, issue, board);
+  const claimable = canClaimIssue(session, pmOrg, issue, board, myLevel);
   const liberable = canUnassignIssue(session, issue, browseProject);
   const busy = acting === issue.number;
   const taskId = issueTaskId(issue);
@@ -1463,6 +1664,7 @@ function QueueRow({
     issue,
   });
   const showChecklist =
+    !waiting &&
     steps.length > 0 &&
     (mine ||
       steps.some(
@@ -1478,13 +1680,20 @@ function QueueRow({
       ));
 
   let status: ReactNode = null;
-  if (open) status = <Badge variant="secondary">Disponible</Badge>;
-  else if (inProgress && mine) status = <Badge variant="secondary">En curso</Badge>;
-  else if (mine) status = <Badge variant="outline">Mía</Badge>;
-  else status = <Badge variant="outline">{assigneeLabel(issue)}</Badge>;
+  if (waiting) status = <span className="status-chip" data-status="espera">{holdKind === "nivel" ? "Todavía no" : "Esperando"}</span>;
+  else if (open) status = <span className="status-chip" data-status="libre">Disponible</span>;
+  else if (inProgress && mine) status = <span className="status-chip" data-status="curso">En curso</span>;
+  else if (mine) status = <span className="status-chip" data-status="tuya">Tuya</span>;
+  else status = <span className="status-chip" data-status="otra">{assigneeLabel(issue)}</span>;
 
   let primary: ReactNode = null;
-  if (claimable) {
+  if (claimable && featured && onBegin) {
+    primary = (
+      <Button type="button" size="lg" disabled={busy} onClick={onBegin}>
+        Empezar
+      </Button>
+    );
+  } else if (claimable) {
     primary = (
       <Button type="button" size="sm" disabled={busy} onClick={onTake}>
         Tomar
@@ -1509,7 +1718,7 @@ function QueueRow({
   } else if (mine && !inProgress) {
     primary = (
       <Button type="button" size="sm" disabled={busy} onClick={onStart}>
-        En curso
+        Empezar
       </Button>
     );
   } else if (mine && inProgress && (!steps.length || checklistDone)) {
@@ -1530,7 +1739,21 @@ function QueueRow({
     );
   }
 
+  if (waiting) primary = null;
+
   const activityLine = previewLine(activity.latest);
+
+  // One primary button per row; the rest lives in the "⋯" menu.
+  const menuItems: RowMenuItem[] = [];
+  if (mine && inProgress && canOpenThread) {
+    menuItems.push({ id: "comment", label: "Comentar", onSelect: onOpenThread });
+  }
+  if (mine && !claimable && !waiting && !(steps.length && checklistDone)) {
+    menuItems.push({ id: "close", label: "Cerrar tarea", onSelect: onClose, disabled: busy });
+  }
+  if (liberable && !claimable) {
+    menuItems.push({ id: "release", label: "Liberar", onSelect: onLiberar, disabled: busy, danger: true });
+  }
 
   return (
     <div
@@ -1573,6 +1796,7 @@ function QueueRow({
           ) : null}
           <div className="hub-queue-item__meta">
             {status}
+            {waiting ? <span className="text-xs text-muted-foreground">{waiting}</span> : null}
             {canResolveTask && taskLevelSolver ? (
               <span className="text-xs text-muted-foreground">{taskLevelSolver.name}</span>
             ) : null}
@@ -1586,21 +1810,7 @@ function QueueRow({
         </div>
         <div className="hub-queue-item__actions">
           {primary}
-          {mine && inProgress && canOpenThread ? (
-            <Button type="button" size="sm" variant="ghost" onClick={onOpenThread}>
-              Comentar
-            </Button>
-          ) : null}
-          {mine && !claimable && !(steps.length && checklistDone) ? (
-            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={onClose}>
-              Cerrar
-            </Button>
-          ) : null}
-          {liberable && !claimable ? (
-            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={onLiberar}>
-              Liberar
-            </Button>
-          ) : null}
+          <RowMenu items={menuItems} />
         </div>
       </div>
       {showChecklist ? (
@@ -1654,7 +1864,7 @@ function QueueRow({
                       disabled={busy}
                       onClick={() => onClaimStep(step)}
                     >
-                      {mode === "pool" ? "Tomar reseña" : "Tomar"}
+                      {mode === "pool" ? "Tomar la revisión" : "Tomar"}
                     </Button>
                   ) : null}
                   {canApprove ? (
