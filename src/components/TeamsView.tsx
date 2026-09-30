@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { DcsIssue, DcsOrg } from "@ip-lms/dcs-client";
+import type { DcsOrg } from "@ip-lms/dcs-client";
 import type {
   ArticleFilter,
   AssignmentGrain,
@@ -16,6 +16,7 @@ import type {
   TeamPreset,
   Phase,
   TaskStep,
+  WaitRule,
   WorkflowsCatalog,
 } from "../domain/types";
 import {
@@ -60,7 +61,6 @@ import {
 import { bookName } from "../domain/books";
 import { displayRef, groupPortionsByChapter, portionKey } from "../domain/chapters";
 import { parseReviewRef } from "../domain/reviewTask";
-import { ReviewTaskControl } from "./ReviewTaskControl";
 import {
   loadLocalWorkflows,
   loadTeamPresets,
@@ -74,6 +74,7 @@ import { formatTaskClaimSummary } from "../domain/stepClaim";
 import { applyWorkflowToBoard, boardToWorkflowTemplate } from "../domain/workflows";
 import { filterTeamsEligibleForTask } from "../domain/teamEligibility";
 import { orgOptionLabel, orgSlug } from "../domain/orgs";
+import { DEFAULT_SOURCE_PACKAGE, resolveSourcePackage, sourcePackageFor, sourcePackageLang } from "../domain/sourcePackage";
 import { displayOrgTeamName, isPmOrgTeamName, type TeamRepoEligibility } from "../domain/roles";
 import type { GtSession } from "../dcs/auth";
 import {
@@ -86,10 +87,11 @@ import {
   saveWorkflowsToDcs,
   type DcsTeam,
 } from "../dcs/persist";
-import { assignOrgTeamToTask, listProjectIssues, loadPmConfig, loadSolversCatalog } from "../dcs/issues";
-import { dropStalePrincipalPasses, principalPassGate, recordPrincipalPass } from "../domain/principalPass";
-import { PrincipalPassControl } from "./PrincipalPassControl";
-import { ReleaseVersionControl } from "./ReleaseVersionControl";
+import { assignOrgTeamToTask, loadPmConfig, loadSolversCatalog } from "../dcs/issues";
+import { pruneWaitRules } from "../domain/waits";
+import { WaitsEditor } from "./WaitsEditor";
+import { MinLevelField } from "./MinLevelField";
+import type { PersonLevel } from "../domain/levels";
 import {
   DEFAULT_SOLVERS_CATALOG,
   solversForTaskResources,
@@ -308,6 +310,8 @@ export function TeamsView({
   const [solverPickerOpen, setSolverPickerOpen] = useState(false);
   const [draftSteps, setDraftSteps] = useState<TaskStep[]>([]);
   const [draftReviewsPrincipal, setDraftReviewsPrincipal] = useState(false);
+  const [draftWaits, setDraftWaits] = useState<WaitRule[]>([]);
+  const [draftMinLevel, setDraftMinLevel] = useState<PersonLevel | undefined>(undefined);
   const [draftReviewRef, setDraftReviewRef] = useState("");
   const [stepSolverId, setStepSolverId] = useState<string | null>(null);
   const [claimPolicyStepId, setClaimPolicyStepId] = useState<string | null>(null);
@@ -343,35 +347,6 @@ export function TeamsView({
   const [rosterError, setRosterError] = useState("");
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterQuery, setRosterQuery] = useState("");
-  const [passIssues, setPassIssues] = useState<{ issues: DcsIssue[]; namespaceId: string } | null>(null);
-  const [passError, setPassError] = useState("");
-  const [passReload, setPassReload] = useState(0);
-  const passProjectId = board.projectId || board.book;
-  const hasTasks = board.teams.length > 0;
-  useEffect(() => {
-    if (!session || !pmOrg || !passProjectId || !hasTasks) return;
-    let cancelled = false;
-    setPassIssues(null);
-    setPassError("");
-    listProjectIssues(session, pmOrg, passProjectId)
-      .then((res) => {
-        if (!cancelled) setPassIssues(res);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setPassError(`No se pudieron leer las subtareas: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [session, pmOrg, passProjectId, hasTasks, passReload]);
-  useEffect(() => {
-    if (!passIssues) return;
-    const next = dropStalePrincipalPasses(board.settings, passIssues.issues, passIssues.namespaceId);
-    if (next !== board.settings) onChange({ ...board, settings: next });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passIssues, board.settings]);
   const [orgTeams, setOrgTeams] = useState<DcsTeam[]>([]);
   const [orgTeamsError, setOrgTeamsError] = useState("");
   const [orgTeamFilter, setOrgTeamFilter] = useState<string>("all");
@@ -420,7 +395,7 @@ export function TeamsView({
         setRosterError(
           `No se pudieron cargar los integrantes o equipos de ${pmOrg}. Se mantienen las personas locales.`,
         );
-        setOrgTeamsError(`No se pudieron cargar los equipos DCS de ${pmOrg}.`);
+        setOrgTeamsError(`No se pudieron cargar los equipos de ${pmOrg}.`);
       })
       .finally(() => {
         if (!cancelled) setRosterLoading(false);
@@ -451,7 +426,7 @@ export function TeamsView({
       .catch(() => {
         if (cancelled) return;
         setOrgTeamMemberIds(new Set());
-        setOrgTeamsError("No se pudieron cargar los miembros del equipo DCS seleccionado.");
+        setOrgTeamsError("No se pudieron cargar los miembros del equipo seleccionado.");
       })
       .finally(() => {
         if (!cancelled) setOrgTeamMembersLoading(false);
@@ -662,7 +637,7 @@ export function TeamsView({
       setOrgTeams(teams);
       setOrgTeamsError("");
     } catch {
-      setOrgTeamsError(`No se pudieron cargar los equipos DCS de ${pmOrg}.`);
+      setOrgTeamsError(`No se pudieron cargar los equipos de ${pmOrg}.`);
     }
   }
 
@@ -710,6 +685,8 @@ export function TeamsView({
     setDraftSolverAppId("");
     setSolverPickerOpen(false);
     setDraftSteps([]);
+    setDraftWaits([]);
+    setDraftMinLevel(undefined);
     setDraftReviewsPrincipal(false);
     setDraftReviewRef("");
     setStepSolverId(null);
@@ -877,8 +854,8 @@ export function TeamsView({
     void syncPresets(next);
     announce(
       session && pmOrg
-        ? `Preset "${name}" guardado en ${pmOrg}/gateway-tasks.`
-        : `Preset "${name}" guardado en este dispositivo.`,
+        ? `Plantilla «${name}» guardada para todo ${pmOrg}.`
+        : `Plantilla «${name}» guardada en este dispositivo.`,
     );
   }
 
@@ -944,6 +921,8 @@ export function TeamsView({
             }))
             .filter((s) => s.name)
         : undefined,
+      waitsFor: pruneWaitRules({ id: editingId ?? "", waitsFor: draftWaits } as Team, board),
+      minLevel: draftMinLevel,
       reviewsPrincipal: draftReviewsPrincipal || undefined,
       reviewRef: draftReviewsPrincipal ? draftReviewRef.trim() || undefined : undefined,
     };
@@ -989,6 +968,8 @@ export function TeamsView({
     setDraftSolverAppId(team.solverAppId ?? "");
     setSolverPickerOpen(Boolean(team.solverAppId));
     setDraftSteps(team.steps?.length ? structuredClone(team.steps) : []);
+    setDraftWaits(team.waitsFor?.length ? structuredClone(team.waitsFor) : []);
+    setDraftMinLevel(team.minLevel);
     setDraftReviewsPrincipal(Boolean(team.reviewsPrincipal));
     setDraftReviewRef(team.reviewRef ?? "");
     setStepSolverId(null);
@@ -1039,7 +1020,7 @@ export function TeamsView({
 
   async function openAssignOrgTeam(team: Team) {
     if (!session || !pmOrg) {
-      announce("Inicia sesión y elige la organización PM para asignar un equipo.");
+      announce("Inicia sesión y elige la organización del equipo para asignar un equipo.");
       return;
     }
     setAssignTask(team);
@@ -1117,7 +1098,7 @@ export function TeamsView({
         t.id === team.id ? { ...t, orgTeamId: undefined, orgTeamName: undefined } : t,
       ),
     });
-    announce(`Se quitó el equipo org de «${team.name}».`);
+    announce(`Se quitó el equipo de «${team.name}».`);
   }
 
   function sortedPhases(): Phase[] {
@@ -1279,7 +1260,7 @@ export function TeamsView({
                 {!editingId && presets.length ? (
                   <div className="grid gap-1.5 rounded-lg border border-dashed p-2">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Empezar desde un preset
+                      Empezar desde una plantilla
                     </h3>
                     <div className="flex flex-wrap gap-1.5">
                       {presets.map((preset) => (
@@ -1297,7 +1278,7 @@ export function TeamsView({
                           </button>
                           <button
                             type="button"
-                            aria-label={`Eliminar preset ${preset.name}`}
+                            aria-label={`Eliminar plantilla ${preset.name}`}
                             className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
                             onClick={() => removePreset(preset.id)}
                           >
@@ -1494,6 +1475,8 @@ export function TeamsView({
                     </p>
                   ) : null}
                 </div>
+                <WaitsEditor board={board} taskId={editingId} value={draftWaits} onChange={setDraftWaits} />
+                <MinLevelField id="task-min-level" value={draftMinLevel} onChange={setDraftMinLevel} />
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label>Pasos para completar</Label>
@@ -1953,7 +1936,7 @@ export function TeamsView({
                               ) : null}
                               {key === "notas" || key === "preguntas" ? (
                                 <div className="grid gap-1.5">
-                                  <Label htmlFor={`rule-ids-${key}`}>IDs explícitos (opcional)</Label>
+                                  <Label htmlFor={`rule-ids-${key}`}>Números concretos (opcional)</Label>
                                   <Input
                                     id={`rule-ids-${key}`}
                                     value={row.itemIds}
@@ -1961,7 +1944,7 @@ export function TeamsView({
                                       patchResource(key, { itemIds: e.target.value })
                                     }
                                     placeholder="p. ej. bi9h abc1 qd3e"
-                                    aria-label={`IDs explícitos de ${SCOPE_LABEL[key]}`}
+                                    aria-label={`Números concretos de ${SCOPE_LABEL[key]}`}
                                   />
                                   <p className="text-xs text-muted-foreground">
                                     Limita la cola a estos IDs concretos, además del filtro y el
@@ -2195,13 +2178,13 @@ export function TeamsView({
               <>
                 {session && !pmOrg ? (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="personas-org">Organización PM</Label>
+                    <Label htmlFor="personas-org">Organización del equipo</Label>
                     {orgs.length ? (
                       <Select
                         value={pmOrg || "__none__"}
                         onValueChange={(v) => onPmOrgChange(v === "__none__" ? "" : v)}
                       >
-                        <SelectTrigger id="personas-org" className="w-full" aria-label="Organización PM">
+                        <SelectTrigger id="personas-org" className="w-full" aria-label="Organización del equipo">
                           <SelectValue placeholder="Elige la organización" />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -2218,7 +2201,7 @@ export function TeamsView({
                       </Select>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Elige la organización PM en el espacio de trabajo para cargar el roster.
+                        Elige la organización del equipo en el espacio de trabajo para cargar a las personas.
                       </p>
                     )}
                   </div>
@@ -2236,7 +2219,7 @@ export function TeamsView({
                       {orgTeams.length ? ` · ${orgTeams.length} equipos org` : ""}
                     </p>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="org-team-filter">Filtrar roster por equipo org</Label>
+                      <Label htmlFor="org-team-filter">Mostrar solo un equipo</Label>
                       <Select
                         value={orgTeamFilter}
                         onValueChange={(v) => {
@@ -2267,8 +2250,8 @@ export function TeamsView({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Sin sesión DCS: añade personas a mano. Con sesión, el listado sale de la
-                    organización PM y puedes filtrar por equipos org.
+                    Sin sesión: añade personas a mano. Con sesión, el listado sale de la
+                    organización del equipo y puedes filtrar por equipos org.
                   </p>
                 )}
 
@@ -2436,7 +2419,7 @@ export function TeamsView({
                     disabled={!canSave}
                     title="Guarda el alcance y grano de esta tarea para reusarlo en otro proyecto"
                   >
-                    Guardar como preset
+                    Guardar como plantilla de tarea
                   </Button>
                   <Button type="button" onClick={saveTeam} disabled={!canSave}>
                     {editingId ? "Guardar cambios" : "Crear tarea"}
@@ -2626,21 +2609,37 @@ export function TeamsView({
               </span>
             </span>
           </label>
+          <div className="grid gap-1.5 sm:grid-cols-[1fr_8rem] sm:items-end">
+            <div className="sm:col-span-2">
+              <div className="text-sm font-medium text-foreground">Recursos de referencia de la Afinación</div>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                De aquí salen las notas, las palabras clave y el texto alineado que se ven junto al borrador. El griego y el hebreo
+                siempre son los de unfoldingWord.
+              </p>
+            </div>
+            {(() => {
+              const pkg = resolveSourcePackage(board.settings);
+              const update = (owner: string, lang: string) => {
+                const next = sourcePackageFor(owner, lang);
+                const isDefault = owner === DEFAULT_SOURCE_PACKAGE.owner && lang === sourcePackageLang(DEFAULT_SOURCE_PACKAGE);
+                onChange({ ...board, settings: { ...board.settings, sourcePackage: isDefault ? undefined : next } });
+              };
+              return (
+                <>
+                  <div className="grid gap-1">
+                    <Label htmlFor="source-owner">Organización</Label>
+                    <Input id="source-owner" value={pkg.owner} onChange={(e) => update(e.target.value, sourcePackageLang(pkg))} />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="source-lang">Idioma</Label>
+                    <Input id="source-lang" value={sourcePackageLang(pkg)} onChange={(e) => update(pkg.owner, e.target.value)} />
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </div>
       </div>
-
-      {board.phases.length ? (
-        <ReleaseVersionControl
-          session={session}
-          pmOrg={pmOrg}
-          board={board}
-          onChange={onChange}
-          issues={passIssues}
-          issuesError={passError}
-          onDone={() => setPassReload((n) => n + 1)}
-          announce={announce}
-        />
-      ) : null}
 
       {newPhaseOpen ? (
         <div className="hub-panel">
@@ -2872,7 +2871,12 @@ export function TeamsView({
                           </Badge>
                         ) : null}
                         {team.solverAppId ? (
-                          <Badge variant="outline">Resolver tarea</Badge>
+                          <Badge variant="outline">Con editor</Badge>
+                        ) : null}
+                        {team.waitsFor?.length ? (
+                          <Badge variant="outline">
+                            Espera a {team.waitsFor.length} {team.waitsFor.length === 1 ? "cosa" : "cosas"}
+                          </Badge>
                         ) : null}
                         {team.reviewsPrincipal ? (
                           <Badge variant="outline">Revisión del borrador principal</Badge>
@@ -2890,46 +2894,6 @@ export function TeamsView({
                             .join(", ")}
                           .
                         </p>
-                      ) : null}
-                      {session && pmOrg && rules.some((r) => r.resource === "tpl" || r.resource === "tps") ? (
-                        <div className="mt-2">
-                          <PrincipalPassControl
-                            session={session}
-                            pmOrg={pmOrg}
-                            board={board}
-                            team={team}
-                            gate={
-                              passIssues
-                                ? principalPassGate({
-                                    issues: passIssues.issues,
-                                    taskId: team.id,
-                                    book: board.book,
-                                    namespaceId: passIssues.namespaceId,
-                                  })
-                                : null
-                            }
-                            gateError={passError}
-                            onPassed={(mark) =>
-                              onChange({ ...board, settings: recordPrincipalPass(board.settings, mark) })
-                            }
-                            onDone={() => setPassReload((n) => n + 1)}
-                            announce={announce}
-                          />
-                        </div>
-                      ) : null}
-                      {team.reviewsPrincipal ? (
-                        <div className="mt-2">
-                          <ReviewTaskControl
-                            session={session}
-                            pmOrg={pmOrg}
-                            board={board}
-                            team={team}
-                            inventory={inventory}
-                            onChange={onChange}
-                            onCreated={() => setPassReload((n) => n + 1)}
-                            announce={announce}
-                          />
-                        </div>
                       ) : null}
                     </div>
                     <div className="phases-task__actions">
@@ -2978,7 +2942,7 @@ export function TeamsView({
                             >
                               {team.orgTeamName
                                 ? `Equipo · ${displayOrgTeamName(team.orgTeamName, teamPrefix)}`
-                                : "Asignar equipo org"}
+                                : "Asignar un equipo"}
                             </button>
                             {team.orgTeamId ? (
                               <button
@@ -3050,7 +3014,7 @@ export function TeamsView({
       <Dialog open={Boolean(assignTask)} onOpenChange={(open) => !open && setAssignTask(null)}>
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Asignar equipo org</DialogTitle>
+            <DialogTitle>Asignar un equipo</DialogTitle>
             <DialogDescription>
               {assignTask
                 ? `Elige un equipo con acceso a los repos de «${assignTask.name}». No se crea un equipo nuevo.`
