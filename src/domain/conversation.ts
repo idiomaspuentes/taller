@@ -310,8 +310,10 @@ export function canOpenConversation(
   issue: Pick<DcsIssue, "assignee" | "assignees" | "body">,
   username: string,
   canManage: boolean,
+  /** A team decision (nobody assigned) opens to the people of the task's team. */
+  teamDecision = false,
 ): boolean {
-  if (canManage) return true;
+  if (canManage || teamDecision) return true;
   const me = username.trim().toLowerCase();
   if (!me) return false;
   return issueParticipants(issue).some((login) => login.toLowerCase() === me);

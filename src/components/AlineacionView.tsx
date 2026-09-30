@@ -29,12 +29,14 @@ import { loadSession, type GtSession } from "../dcs/auth";
 import { appendMyDecision, loadDecisionFiles } from "../dcs/afinacionStore";
 import { loadAlineacion, type AlineacionData, type AlignmentVerse } from "../dcs/alignmentLoad";
 import { saveVerseAlignment } from "../dcs/alignmentStore";
+import { loadProposalFiles, openAlignmentDecision } from "../dcs/alignmentDecisionStore";
+import { settledProposalIds, type ProposalFile, type ResultFile } from "../domain/alignmentDecision";
+import { alignmentHash } from "../domain/alignmentHash";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import {
   mergeDecisionFiles,
   summarizeRound,
   tallyItem,
-  textFingerprint,
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
@@ -73,11 +75,7 @@ type DragData =
 
 /** What a reviewer sees of the verse: the draft words and every link, so any change makes old answers stale. */
 function alignmentFingerprint(draft: WordToken[], groups: AlignmentGroup[]): string {
-  const plain = (w: string) => w.replace(/[^\p{L}\p{N}\p{M}]/gu, "");
-  const links = groups.map(
-    (g) => `${g.sources.map((s) => `${s.content}#${s.occurrence}`).join("+")}=${g.targets.map((t) => `${plain(t.word)}#${t.occurrence}`).join("+")}`,
-  );
-  return textFingerprint(`${draft.map((w) => plain(w.surface)).join(" ")}|${links.join(";")}`);
+  return alignmentHash(draft.map((w) => w.surface), groups);
 }
 
 function verseComplete(verse: AlignmentVerse, groups: AlignmentGroup[]): boolean {
@@ -301,12 +299,19 @@ function PairsList({
   gloss,
   aligned,
   rtl,
+  selectable,
+  selected,
+  onToggle,
 }: {
   boxes: AlignmentBoxModel[];
   draft: WordToken[];
   gloss: string[];
   aligned: boolean[];
   rtl: boolean;
+  /** An objection points at the words it is about. */
+  selectable?: boolean;
+  selected?: string[];
+  onToggle?: (word: string) => void;
 }) {
   const linked = boxes.filter((b) => b.groupIndex !== null && b.alignedSourceWords.length > 0);
   const alone = boxes.filter((b) => b.groupIndex === null || b.alignedSourceWords.length === 0);
@@ -314,12 +319,22 @@ function PairsList({
   const originalOf = (box: AlignmentBoxModel) =>
     box.targetTokens.map((tok, i) => {
       const at = box.targetTokenIndices[i] ?? 0;
-      return (
-        <span key={at} className="al-pair__word">
+      const word = `${tok.surface}#${tok.occurrence}`;
+      const inner = (
+        <>
           <span className="al-pair__he" dir={rtl ? "rtl" : undefined}>
             {tok.surface}
           </span>
           {gloss[at] ? <span className="al-pair__gloss">{shortGloss(gloss[at]!, 30)}</span> : null}
+        </>
+      );
+      return selectable ? (
+        <button key={at} type="button" className="al-pair__word al-pair__word--pick" data-selected={selected?.includes(word) ? "true" : undefined} aria-pressed={selected?.includes(word) ?? false} onClick={() => onToggle?.(word)}>
+          {inner}
+        </button>
+      ) : (
+        <span key={at} className="al-pair__word">
+          {inner}
         </span>
       );
     });
@@ -401,12 +416,17 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const [selectedRef, setSelectedRef] = useState<{ boxId: string; refIndex: number } | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [pending, setPending] = useState<ReviewStance | null>(null);
+  const [proposals, setProposals] = useState<{ proposals: ProposalFile[]; results: ResultFile[] }>({ proposals: [], results: [] });
+  /** A proposal being written: the alignment as it was, to put back if it is cancelled or sent. */
+  const [proposing, setProposing] = useState<{ base: AlignmentGroup[] } | null>(null);
+  const [objecting, setObjecting] = useState(false);
+  const [objectWords, setObjectWords] = useState<string[]>([]);
+  const [sentIssue, setSentIssue] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const editable = mode === "alinear";
+  const editable = mode === "alinear" || Boolean(proposing);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
@@ -434,11 +454,18 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         throw new Error("Esta tarea no dice qué texto alinea. Quien administra debe añadir «Esperar a» la traducción en la tarea.");
       }
       const loaded = await loadAlineacion({ session, ctx: decoded, sourceTaskId, pkg: resolveSourcePackage(board?.settings) });
+      // Everything is read before anything is shown: a verse must not look unfinished for a moment
+      // because the decisions and answers about it have not arrived yet.
+      const repoTarget = { owner: loaded.draft.owner, repo: loaded.draft.repo, branch: loaded.draft.branch };
+      const [files, loadedProposals] = await Promise.all([
+        loadDecisionFiles(session, repoTarget, loaded.book),
+        loadProposalFiles(session, repoTarget, loaded.book).catch(() => ({ proposals: [], results: [] })),
+      ]);
+      setDecisions(mergeDecisionFiles(files));
+      setProposals(loadedProposals);
       setData(loaded);
       setGroups(Object.fromEntries(loaded.verses.map((v) => [v.verse, v.groups])));
       setDirty({});
-      const files = await loadDecisionFiles(session, { owner: loaded.draft.owner, repo: loaded.draft.repo, branch: loaded.draft.branch }, loaded.book);
-      setDecisions(mergeDecisionFiles(files));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -471,20 +498,40 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const taskStep = task?.steps?.find((s) => s.id === ctx?.stepId);
   const thresholds = { minAgree: taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
   const hashOf = (v: AlignmentVerse) => alignmentFingerprint(v.draft, groups[v.verse] ?? []);
+  // When the team decides not to change the alignment, the open answer that came with the
+  // proposal or objection stops blocking the verse.
+  const settled = useMemo(() => settledProposalIds(proposals.results), [proposals]);
+  const effective = useMemo(() => decisions.filter((d) => !(d.proposalId && settled.has(d.proposalId))), [decisions, settled]);
+  /** An accepted proposal is what the verse looks like now: its result carries the hash of that version. */
+  const acceptedFor = (v: AlignmentVerse): ResultFile[] =>
+    data ? proposals.results.filter((r) => r.outcome === "aceptada" && r.chapter === data.chapter && r.verse === v.verse && r.newHash === hashOf(v)) : [];
   const isDone = (v: AlignmentVerse) =>
-    Boolean(data) && decisions.some((d) => d.itemId === doneId(data!.chapter, v.verse) && d.textHash === hashOf(v));
+    Boolean(data) && (effective.some((d) => d.itemId === doneId(data!.chapter, v.verse) && d.textHash === hashOf(v)) || acceptedFor(v).length > 0);
+  /** Decisions about this verse that nobody has closed yet. */
+  const openFor = (v: AlignmentVerse) =>
+    data ? proposals.proposals.filter((p) => p.chapter === data.chapter && p.verse === v.verse && !proposals.results.some((r) => r.id === p.id)) : [];
+  /** Objections that prospered and asked for an adjustment nobody has made yet. */
+  const realignFor = (v: AlignmentVerse) =>
+    data ? proposals.results.filter((r) => r.outcome === "realinear" && r.chapter === data.chapter && r.verse === v.verse && r.baseHash === hashOf(v)) : [];
   // Whoever marked a verse as finished is its author: their answer does not count as independent.
-  const authorsOf = (v: AlignmentVerse): string[] =>
-    data ? decisions.filter((d) => d.itemId === doneId(data.chapter, v.verse) && d.textHash === hashOf(v)).map((d) => d.reviewer) : [];
+  /** Who wrote the version of the verse with this hash: who marked it finished, or whose proposal was accepted. */
+  const authorsAt = (v: AlignmentVerse, hash: string): string[] =>
+    data
+      ? [
+          ...effective.filter((d) => d.itemId === doneId(data.chapter, v.verse) && d.textHash === hash).map((d) => d.reviewer),
+          ...proposals.results.filter((r) => r.outcome === "aceptada" && r.chapter === data.chapter && r.verse === v.verse && r.newHash === hash).map((r) => r.proposer),
+        ]
+      : [];
+  const authorsOf = (v: AlignmentVerse): string[] => authorsAt(v, hashOf(v));
   const answeredByMe = (v: AlignmentVerse) =>
-    Boolean(data) && decisions.some((d) => d.itemId === itemId(data!.chapter, v.verse) && d.reviewer.trim().toLowerCase() === me && d.textHash === hashOf(v));
+    Boolean(data) && effective.some((d) => d.itemId === itemId(data!.chapter, v.verse) && d.reviewer.trim().toLowerCase() === me && d.textHash === hashOf(v));
   const authoredByMe = (v: AlignmentVerse) => authorsOf(v).some((a) => a.trim().toLowerCase() === me);
   /** In review: finished by its author, not written by me, and not answered by me since it last changed. */
   const pendingForMe = (v: AlignmentVerse) => isDone(v) && !answeredByMe(v) && !authoredByMe(v);
   const needsWork = (v: AlignmentVerse) => (mode === "alinear" ? !isDone(v) : pendingForMe(v));
   const tally =
     verse && data
-      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions, currentHash: hashOf(verse), levels: data.levels, authors: authorsOf(verse), thresholds })
+      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: effective, currentHash: hashOf(verse), levels: data.levels, authors: authorsOf(verse), thresholds })
       : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -493,7 +540,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       data
         ? summarizeRound({
             itemIds: data.verses.map((v) => itemId(data.chapter, v.verse)),
-            decisions,
+            decisions: effective,
             currentHashes: Object.fromEntries(data.verses.map((v) => [itemId(data.chapter, v.verse), alignmentFingerprint(v.draft, groups[v.verse] ?? [])])),
             levels: data.levels,
             authors: [],
@@ -502,15 +549,17 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, decisions, groups, thresholds.minAgree, thresholds.minIndependent],
+    [data, effective, proposals, groups, thresholds.minAgree, thresholds.minIndependent],
   );
 
   useEffect(() => {
     setSelectedWords([]);
     setSelectedBoxes([]);
     setSelectedRef(null);
-    setPending(null);
     setNote("");
+    setObjecting(false);
+    setObjectWords([]);
+    setSentIssue(null);
   }, [verse?.verse]);
 
   function clearSelection() {
@@ -666,7 +715,11 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   /** Change verse; what was edited in this one is saved first, so nothing is left only in memory. */
   async function goTo(index: number) {
     if (!data || index < 0 || index >= data.verses.length || index === position) return;
-    if (editable && verse && dirty[verse.verse] && !(await saveVerseOf(verse))) return;
+    if (proposing || objecting) {
+      announce("Envía o cancela lo que estás escribiendo antes de cambiar de versículo");
+      return;
+    }
+    if (mode === "alinear" && verse && dirty[verse.verse] && !(await saveVerseOf(verse))) return;
     setPosition(index);
   }
 
@@ -693,7 +746,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   }
 
   async function leave() {
-    if (editable && data) {
+    if (mode === "alinear" && data) {
       for (const v of data.verses) {
         if (dirty[v.verse] && !(await saveVerseOf(v))) return;
       }
@@ -730,10 +783,9 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
 
   async function answer(status: ReviewStance) {
     if (!session || !data || !verse || !ctx) return;
-    if (status !== "approved" && !note.trim()) {
-      setPending(status);
-      return;
-    }
+    // A change proposal or an objection is not an answer: it opens a decision for the team.
+    if (status === "revise") return startProposal();
+    if (status === "rejected") return startObjection();
     setSaving(true);
     setError("");
     try {
@@ -745,14 +797,84 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         status,
         reviewer: session.username,
         timestamp: new Date().toISOString(),
-        note: note.trim() || undefined,
         textHash: hashOf(verse),
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
-      setPending(null);
       announce(`${STANCE_LABEL[status]}: guardado`);
       moveOnAfterAction();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function startProposal() {
+    if (!verse) return;
+    setProposing({ base: current });
+    setObjecting(false);
+    setNote("");
+    setSentIssue(null);
+  }
+
+  function cancelProposal() {
+    if (!verse || !proposing) return;
+    setGroups((prev) => ({ ...prev, [verse.verse]: proposing.base }));
+    setDirty((prev) => ({ ...prev, [verse.verse]: false }));
+    setHistory((prev) => ({ ...prev, [verse.verse]: { past: [], future: [] } }));
+    setProposing(null);
+    setNote("");
+    clearSelection();
+  }
+
+  function startObjection() {
+    setObjecting(true);
+    setProposing(null);
+    setObjectWords([]);
+    setNote("");
+    setSentIssue(null);
+  }
+
+  function cancelObjection() {
+    setObjecting(false);
+    setObjectWords([]);
+    setNote("");
+  }
+
+  /** Sends the proposal or the objection: it becomes a decision of the team in its own subtarea. */
+  async function sendDecision(kind: "proposal" | "objection") {
+    if (!session || !data || !verse || !ctx) return;
+    const base = kind === "proposal" && proposing ? proposing.base : current;
+    setSaving(true);
+    setError("");
+    try {
+      const target = { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch };
+      const opened = await openAlignmentDecision({
+        session,
+        pmOrg: ctx.pmOrg,
+        task: { projectId: ctx.projectId, taskId: ctx.taskId, taskName: ctx.taskName || ctx.taskId, resource: data.resource, parentIssue: ctx.issueNumber },
+        target,
+        draftFilepath: data.draft.filepath,
+        source: data.source,
+        book: data.book,
+        chapter: data.chapter,
+        verse: verse.verse,
+        kind,
+        note,
+        baseHash: alignmentFingerprint(verse.draft, base),
+        before: base,
+        ...(kind === "proposal" ? { proposed: current } : { words: objectWords }),
+        aligners: authorsAt(verse, alignmentFingerprint(verse.draft, base)),
+        thresholds,
+      });
+      if (kind === "proposal") cancelProposal();
+      else cancelObjection();
+      const [files, loadedProposals] = await Promise.all([loadDecisionFiles(session, target, data.book), loadProposalFiles(session, target, data.book)]);
+      setDecisions(mergeDecisionFiles(files));
+      setProposals(loadedProposals);
+      setSentIssue(opened.issue.number);
+      announce(`Se abrió la decisión #${opened.issue.number} para el equipo`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -769,9 +891,47 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const oneBox = selectedBoxes.length === 1 ? boxes.find((b) => b.id === selectedBoxes[0]) : undefined;
   const canSeparate = Boolean(oneBox && oneBox.groupIndex !== null && (oneBox.targetTokens.length > 1 || oneBox.alignedSourceWords.length > 1));
   const title = mode === "alinear" ? "Alinear" : "Revisar la alineación";
+  const openHere = verse ? openFor(verse) : [];
+  const realignHere = verse ? realignFor(verse) : [];
+  const decisionNotes = (
+    <>
+      {sentIssue ? (
+        <p className="af-hint" role="status">
+          Se abrió una decisión para el equipo. <a href={`#/mis-tareas/${sentIssue}`}>Abrirla (#{sentIssue})</a>
+        </p>
+      ) : null}
+      {mode === "alinear" && realignHere.length ? (
+        <div className="af-stale" role="status">
+          El equipo pidió ajustar este versículo:
+          <ul className="al-decisions">
+            {realignHere.map((r) => (
+              <li key={r.id}>
+                {proposals.proposals.find((p) => p.id === r.id)?.note ?? "Hay una objeción que prosperó."}
+                {r.issue ? <> · <a href={`#/mis-tareas/${r.issue}`}>ver la decisión</a></> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {openHere.length ? (
+        <div className="af-hint" role="status">
+          En discusión del equipo:
+          <ul className="al-decisions">
+            {openHere.map((p) => (
+              <li key={p.id}>
+                {p.kind === "proposal" ? "Propuesta" : "Objeción"} de @{p.by}
+                {p.issue ? <> · <a href={`#/mis-tareas/${p.issue}`}>votar y comentar (#{p.issue})</a></> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </>
+  );
 
   /** One of three states per verse, told by a mark and a word, never only by colour. */
   function verseState(v: AlignmentVerse): { id: string; mark: string; label: string } {
+    if (openFor(v).length) return { id: "discussion", mark: "…", label: "en discusión del equipo" };
     if (mode === "alinear") {
       if (isDone(v)) return { id: "done", mark: "✓", label: "terminado" };
       if (verseComplete(v, groups[v.verse] ?? [])) return { id: "complete", mark: "○", label: "completo, falta terminarlo" };
@@ -909,12 +1069,23 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                 {data.originalLabel} · {data.book} {data.chapter}:{verse.verse}
               </p>
               {reference}
-              <PairsList boxes={boxes} draft={verse.draft} gloss={verse.gloss} aligned={aligned} rtl={data.originalRtl} />
+              <PairsList
+                boxes={boxes}
+                draft={verse.draft}
+                gloss={verse.gloss}
+                aligned={aligned}
+                rtl={data.originalRtl}
+                selectable={objecting}
+                selected={objectWords}
+                onToggle={(w) => setObjectWords((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]))}
+              />
             </section>
           )}
 
           {editable ? (
             <section className="af-card al-tools" aria-label="Herramientas">
+              {mode === "revisar" ? <p className="af-hint">Estás escribiendo una propuesta: cambia las uniones como creas que deben quedar y envíala con una nota. No se cambia nada hasta que el equipo la acepte.</p> : null}
+              {decisionNotes}
               <p className="af-hint">
                 {selectedWords.length
                   ? `Tocaste ${selectedWords.length === 1 ? "una palabra" : `${selectedWords.length} palabras`}. Toca la caja donde van.`
@@ -953,6 +1124,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
             </section>
           ) : (
             <section className="af-card" aria-label="Tu respuesta">
+              {decisionNotes}
               {!complete ? (
                 <p className="af-stale" role="status">
                   Este versículo todavía no está completo: {pendingWords === 1 ? "falta 1 palabra" : `faltan ${pendingWords} palabras`} del borrador por colocar.
@@ -1004,7 +1176,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           </div>
 
           <div className="al-actionbar" role="region" aria-label="Acciones">
-            {editable ? (
+            {mode === "alinear" ? (
               <>
                 <div className="al-actionbar__row">
                   <Button type="button" variant="outline" disabled={!canUndo} onClick={undo}>
@@ -1026,17 +1198,42 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                   </Button>
                 </div>
               </>
-            ) : pending ? (
+            ) : proposing ? (
               <div className="al-actionbar__note">
                 <label className="af-field">
-                  <span>{pending === "revise" ? "¿Qué cambio propones?" : "¿Cuál es tu objeción?"}</span>
+                  <span>¿Qué cambias y por qué? (obligatorio)</span>
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
                 </label>
                 <div className="al-actionbar__row">
-                  <Button type="button" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
-                    Enviar
+                  <Button type="button" variant="outline" disabled={!canUndo} onClick={undo}>
+                    Deshacer
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => setPending(null)}>
+                  <Button type="button" variant="outline" disabled={!canRedo} onClick={redo}>
+                    Rehacer
+                  </Button>
+                </div>
+                <div className="al-actionbar__row">
+                  <Button type="button" disabled={saving || !note.trim() || !dirty[verse.verse]} onClick={() => void sendDecision("proposal")}>
+                    {saving ? "Enviando…" : "Enviar propuesta al equipo"}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={cancelProposal}>
+                    Cancelar
+                  </Button>
+                </div>
+                {!dirty[verse.verse] ? <p className="af-hint">Cambia alguna unión para poder enviar la propuesta.</p> : null}
+              </div>
+            ) : objecting ? (
+              <div className="al-actionbar__note">
+                <p className="af-hint">Toca las palabras del original a las que se refiere tu objeción (opcional).</p>
+                <label className="af-field">
+                  <span>¿Cuál es tu objeción? (obligatorio)</span>
+                  <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+                </label>
+                <div className="al-actionbar__row">
+                  <Button type="button" disabled={saving || !note.trim()} onClick={() => void sendDecision("objection")}>
+                    {saving ? "Enviando…" : "Enviar objeción al equipo"}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={cancelObjection}>
                     Cancelar
                   </Button>
                 </div>

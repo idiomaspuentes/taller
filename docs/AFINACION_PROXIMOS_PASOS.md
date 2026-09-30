@@ -103,7 +103,7 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 
 ## 5. Propuestas y objeciones: cada una es una decisión del equipo
 
-**Hoy (antes de esta tanda).** "Propongo un cambio" y "Tengo una objeción" solo guardaban una nota. El versículo pasaba a "en discusión" y nadie podía aceptar nada: quien alineó leía la nota y corregía a mano. Quien proponía no podía mostrar el cambio.
+**Antes de esta tanda.** "Propongo un cambio" y "Tengo una objeción" solo guardaban una nota. El versículo pasaba a "en discusión" y nadie podía aceptar nada: quien alineó leía la nota y corregía a mano. Quien proponía no podía mostrar el cambio.
 
 **Decisiones de diseño (acordadas el 1 de octubre de 2026).**
 - **Dónde vive la conversación: un issue de Door43 por decisión.** Es una subtarea más del mismo proyecto y de la misma tarea, libre para todo el equipo: aparece en Mis tareas y en Equipo hoy y avisa a todos. La discusión son comentarios normales. Los votos son tarjetas de un clic (una por persona; vale la última). Al decidir se deja un resumen y se cierra.
@@ -112,9 +112,16 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 - **Objeción:** no se aplica; señala las palabras del original a las que se refiere y el motivo.
 - **Quién vota:** las habilitadas del equipo de la tarea. Quien alineó y quien propone cuentan para el mínimo, pero no como independientes. Los mínimos vienen de la tarea (los mismos de la revisión).
 - **Cuándo se decide:** cuando una opción reúne el mínimo de habilitadas, con el mínimo de independientes y sin votos de la opción contraria. Plazo de 3 días; vencido, decide quien coordina con un botón. La reunión queda solo para lo que ni así se resuelva.
+- **Nada se cierra ni se aplica solo:** los votos solo registran. Al llegar al consenso se avisa a quien propuso y a quien alineó, y una persona debe **confirmarlo** viendo quién votó qué y qué se va a aplicar. Si alguien cambia su voto antes, el consenso se deshace y confirmar falla.
 - **Qué ocurre al decidir:**
   - *Propuesta aceptada:* se aplica la alineación propuesta (solo si la alineación no cambió desde que se propuso; si cambió, la propuesta caduca), el versículo queda terminado con esa versión y las demás respuestas pasan a desactualizadas con aviso.
   - *Propuesta rechazada:* la alineación queda igual; la respuesta abierta de quien propuso deja de bloquear el versículo.
   - *Objeción que prospera:* se le pide a quien alineó que lo ajuste (aviso con la objeción); al cambiar la alineación, las respuestas se vuelven a pedir.
   - *Objeción que no prospera:* se cierra con el motivo y deja de bloquear.
 - **Cambios del texto del borrador** siguen siendo correcciones inmediatas; esto es solo para la alineación.
+
+**Hecho (1 de octubre de 2026), comprobado con Ana, Bea y Carla en el Door43 de mentira:**
+- "Propongo un cambio" abre la alineación en las mismas cajas sobre una copia; se envía con una nota y abre la decisión del equipo. "Tengo una objeción" deja tocar las palabras del original a las que se refiere.
+- La decisión es una subtarea libre del equipo (abre a cualquier integrante de la tarea, aunque nadie la tenga asignada), con una tarjeta de votos, la confirmación del consenso y el cierre que aplica la alineación y guarda el resultado en `checkings/proposals/`.
+- El versículo muestra "en discusión del equipo" con el enlace a la decisión; una objeción que prospera aparece como petición de ajuste para quien alineó; una propuesta aceptada deja el versículo terminado con la versión nueva.
+- Pendiente: mostrar las decisiones abiertas en Equipo hoy con recordatorio, aviso automático a quien no ha votado al acercarse el plazo, y cómo se ve la tarjeta en un teléfono real.

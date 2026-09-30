@@ -104,7 +104,7 @@ function reset() {
     ],
   };
   put(`${PM_ORG}/gateway-tasks`, "main", "es-419/NEH/assignments.json", JSON.stringify(board, null, 2));
-  put(`${PM_ORG}/gateway-tasks`, "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "aprendiz" } }));
+  put(`${PM_ORG}/gateway-tasks`, "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada" } }));
   put(`${CONTENT_ORG}/es-419_glt`, "neh", "16-NEH.usfm", DRAFT);
   issues = [
     workOrder(1, "afinar-tpl-1", "c1", null, 6, 6, "NEH 1 · Afinar TPL 1"),
@@ -345,6 +345,20 @@ async function handle(req, res) {
         if (kind === "labels") return json(res, issue.labels);
       }
       if (rest === "issues" && req.method === "GET") return json(res, issues.map(issueView));
+      if (rest === "issues" && req.method === "POST") {
+        if (!user) return json(res, { message: "token is required" }, 401);
+        const body = await readBody(req);
+        issueCounter += 1;
+        const created = {
+          id: issueCounter, number: issueCounter, title: String(body.title || ""), state: "open", body: String(body.body || ""),
+          labels: labels.filter((l) => (body.labels || []).includes(l.id)),
+          assignee: null, assignees: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), comments: 0,
+          milestone: milestones.find((m) => m.id === body.milestone) || null,
+        };
+        issues.push(created);
+        log.push({ at: created.created_at, user: user.login, write: `issue #${created.number} created` });
+        return json(res, issueView(created), 201);
+      }
     }
   }
 

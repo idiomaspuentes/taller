@@ -129,35 +129,6 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
   const id = newDecisionId(session.username, now);
   const path = proposalPath(book, params.chapter, params.verse, id);
 
-  const file: ProposalFile = {
-    schema: PROPOSAL_SCHEMA,
-    id,
-    kind: params.kind,
-    book,
-    chapter: params.chapter,
-    verse: params.verse,
-    by: session.username,
-    createdAt: now.toISOString(),
-    baseHash: params.baseHash,
-    note,
-    ...(params.kind === "proposal" ? { proposed: params.proposed } : { words: params.words ?? [] }),
-  };
-  await writeNewFile(session, target, path, `${JSON.stringify(file, null, 2)}\n`, `TAS: ${params.kind === "proposal" ? "propuesta" : "objeción"} ${book} ${params.chapter}:${params.verse} · ${id}`);
-
-  // The sender's own answer: it keeps the verse from being agreed while the team decides.
-  await appendMyDecision(session, target, book, {
-    itemId: `al:${params.chapter}:${params.verse}`,
-    ref: { start: { chapter: params.chapter, verse: params.verse } },
-    sessionId: String(params.task.parentIssue || params.task.taskId),
-    stageId: "afinacion",
-    status: params.kind === "proposal" ? "revise" : "rejected",
-    reviewer: session.username,
-    timestamp: now.toISOString(),
-    note,
-    textHash: params.baseHash,
-    proposalId: id,
-  });
-
   const data: DecisionEventData = {
     id,
     kind: params.kind,
@@ -190,6 +161,36 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     title: `${book} ${params.chapter}:${params.verse} · Decidir: ${params.kind === "proposal" ? "propuesta" : "objeción"} de @${session.username}`,
     text: `${decisionTitle(data)}.\n\n> ${note.replace(/\n/g, "\n> ")}\n\nEl equipo decide aquí, con comentarios y un voto por persona.`,
   });
+  const file: ProposalFile = {
+    schema: PROPOSAL_SCHEMA,
+    id,
+    kind: params.kind,
+    book,
+    chapter: params.chapter,
+    verse: params.verse,
+    by: session.username,
+    createdAt: now.toISOString(),
+    baseHash: params.baseHash,
+    note,
+    issue: issue.number,
+    ...(params.kind === "proposal" ? { proposed: params.proposed } : { words: params.words ?? [] }),
+  };
+  await writeNewFile(session, target, path, `${JSON.stringify(file, null, 2)}\n`, `TAS: ${params.kind === "proposal" ? "propuesta" : "objeción"} ${book} ${params.chapter}:${params.verse} · ${id}`);
+
+  // The sender's own answer: it keeps the verse from being agreed while the team decides.
+  await appendMyDecision(session, target, book, {
+    itemId: `al:${params.chapter}:${params.verse}`,
+    ref: { start: { chapter: params.chapter, verse: params.verse } },
+    sessionId: String(params.task.parentIssue || params.task.taskId),
+    stageId: "afinacion",
+    status: params.kind === "proposal" ? "revise" : "rejected",
+    reviewer: session.username,
+    timestamp: now.toISOString(),
+    note,
+    textHash: params.baseHash,
+    proposalId: id,
+  });
+
   const event = buildDecisionEvent(data, issue.number);
   const comment = await createIssueComment(
     dcsConfig(session.host),
@@ -304,6 +305,7 @@ export async function closeAlignmentDecision(params: {
     at: new Date().toISOString(),
     proposer: data.by,
     baseHash: data.baseHash,
+    issue: params.threadIssue,
     ...(newHash ? { newHash } : {}),
   };
   await writeNewFile(session, target, resultPath(data.book, data.chapter, data.verse, data.id), `${JSON.stringify(result, null, 2)}\n`, `TAS: decisión ${data.book} ${data.chapter}:${data.verse} · ${outcome} · ${data.id}`);

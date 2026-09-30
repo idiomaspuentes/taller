@@ -72,6 +72,7 @@ import {
 } from "../domain/taskProgress";
 import type { AssignmentsDoc, TaskStep } from "../domain/types";
 import type { ReadCursorDoc } from "../domain/readCursor";
+import { opensAsTeamDecision } from "../domain/decisionAccess";
 import { canOpenConversation } from "../domain/conversation";
 import {
   attentionRank,
@@ -882,6 +883,7 @@ export function MyTasksView({
                 issue,
                 session.username,
                 canManage,
+                opensAsTeamDecision(session, pmOrg, bucket.board, issue),
               )}
               onOpenThread={() => onOpenThread(issue.number)}
               now={now}

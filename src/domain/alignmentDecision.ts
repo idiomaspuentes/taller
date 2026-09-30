@@ -34,6 +34,8 @@ export type ProposalFile = {
   /** Hash of the alignment this was made on; if the alignment changes, the proposal no longer applies. */
   baseHash: string;
   note: string;
+  /** The subtarea where the team decides (its issue number). */
+  issue?: number;
   /** Proposals only: the alignment the proposer wants. */
   proposed?: AlignmentGroup[];
   /** Objections only: the words of the original it is about, as «word#occurrence». */
@@ -56,6 +58,8 @@ export type ResultFile = {
   /** The proposer, so whoever reads the result knows whose open answer it settles. */
   proposer: string;
   baseHash: string;
+  /** The subtarea where it was decided. */
+  issue?: number;
   /** Hash of the verse after an accepted proposal; it is what the new «terminado» is worth. */
   newHash?: string;
   note?: string;

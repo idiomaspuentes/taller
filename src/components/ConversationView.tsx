@@ -62,6 +62,7 @@ import {
 import type { AssignmentsDoc } from "../domain/types";
 import { PM_REPO_NAME } from "../domain/types";
 import { Button } from "@/components/ui/button";
+import { opensAsTeamDecision } from "../domain/decisionAccess";
 import { DecisionCard } from "./DecisionCard";
 
 export type ConversationDemo = {
@@ -308,7 +309,8 @@ function ConversationThread({
       try {
         const subject = await loadConversationSubject({ session, pmOrg, lang, contentOrg, issueNumber });
         if (cancelled) return;
-        if (!canOpenConversation(subject.issue, session.username, canManage)) {
+        const teamDecision = opensAsTeamDecision(session, pmOrg, subject.board, subject.issue);
+        if (!canOpenConversation(subject.issue, session.username, canManage, teamDecision)) {
           setLoad({ status: "forbidden" });
           return;
         }
