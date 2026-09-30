@@ -41,6 +41,8 @@ import {
   type ReviewStance,
 } from "../domain/reviewRound";
 import { shortGloss } from "../domain/alignmentGloss";
+import { AlignmentBoxes } from "./AlignmentBoxes";
+import { groupsAfterTextEdit, objectedBoxKeys, sameText, tokensFromText, viewFromTokens, wordDiff } from "../domain/verseEditView";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import type { ProjectTask } from "../domain/types";
@@ -288,102 +290,6 @@ function Box({
   );
 }
 
-/**
- * The review of a verse as a short list: each word (or words) of the original with what
- * translates it. Words of the original nobody translated are folded away; words of the
- * draft left without a place are shown on top, because that is what a reviewer must notice.
- */
-function PairsList({
-  boxes,
-  draft,
-  gloss,
-  aligned,
-  rtl,
-  selectable,
-  selected,
-  onToggle,
-}: {
-  boxes: AlignmentBoxModel[];
-  draft: WordToken[];
-  gloss: string[];
-  aligned: boolean[];
-  rtl: boolean;
-  /** An objection points at the words it is about. */
-  selectable?: boolean;
-  selected?: string[];
-  onToggle?: (word: string) => void;
-}) {
-  const linked = boxes.filter((b) => b.groupIndex !== null && b.alignedSourceWords.length > 0);
-  const alone = boxes.filter((b) => b.groupIndex === null || b.alignedSourceWords.length === 0);
-  const loose = draft.filter((_, i) => !aligned[i]);
-  const originalOf = (box: AlignmentBoxModel) =>
-    box.targetTokens.map((tok, i) => {
-      const at = box.targetTokenIndices[i] ?? 0;
-      const word = `${tok.surface}#${tok.occurrence}`;
-      const inner = (
-        <>
-          <span className="al-pair__he" dir={rtl ? "rtl" : undefined}>
-            {tok.surface}
-          </span>
-          {gloss[at] ? <span className="al-pair__gloss">{shortGloss(gloss[at]!, 30)}</span> : null}
-        </>
-      );
-      return selectable ? (
-        <button key={at} type="button" className="al-pair__word al-pair__word--pick" data-selected={selected?.includes(word) ? "true" : undefined} aria-pressed={selected?.includes(word) ?? false} onClick={() => onToggle?.(word)}>
-          {inner}
-        </button>
-      ) : (
-        <span key={at} className="al-pair__word">
-          {inner}
-        </span>
-      );
-    });
-  return (
-    <div className="al-pairs">
-      {loose.length ? (
-        <p className="af-stale" role="status">
-          Palabras del borrador sin colocar: {loose.map((w) => w.surface).join(" · ")}
-        </p>
-      ) : null}
-      <ul className="al-pairs__list">
-        {linked.map((box) => (
-          <li key={box.id} className="al-pair">
-            <span className="al-pair__source">{originalOf(box)}</span>
-            <span className="al-pair__arrow" aria-hidden>
-              →
-            </span>
-            <span className="al-pair__target">
-              {box.alignedSourceWords.map((aw) => (
-                <span key={`${aw.word}-${aw.occurrence}`} className="al-chip">
-                  {aw.word}
-                </span>
-              ))}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {alone.length ? (
-        <details className="al-pairs__alone">
-          <summary>
-            {alone.length} {alone.length === 1 ? "palabra del original sin traducción" : "palabras del original sin traducción"}
-          </summary>
-          <p>
-            {alone.map((box, i) => (
-              <span key={box.id}>
-                {i ? " · " : ""}
-                {box.targetTokens.map((t) => t.surface).join(" ")}
-                {box.targetTokenIndices.map((at) => gloss[at]).filter(Boolean).length
-                  ? ` (${box.targetTokenIndices.map((at) => gloss[at]).filter(Boolean).join(", ")})`
-                  : ""}
-              </span>
-            ))}
-          </p>
-        </details>
-      ) : null}
-    </div>
-  );
-}
-
 function Bank({ children, editable }: { children: ReactNode; editable: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id: BANK_ID, disabled: !editable });
   return (
@@ -418,7 +324,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const [note, setNote] = useState("");
   const [proposals, setProposals] = useState<{ proposals: ProposalFile[]; results: ResultFile[] }>({ proposals: [], results: [] });
   /** A proposal being written: the alignment as it was, to put back if it is cancelled or sent. */
-  const [proposing, setProposing] = useState<{ base: AlignmentGroup[] } | null>(null);
+  const [proposing, setProposing] = useState<{ base: AlignmentGroup[]; text: string; tokens: WordToken[] | null } | null>(null);
   const [objecting, setObjecting] = useState(false);
   const [objectWords, setObjectWords] = useState<string[]>([]);
   const [sentIssue, setSentIssue] = useState<number | null>(null);
@@ -489,7 +395,9 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasUnsaved]);
 
-  const verse = data?.verses[Math.min(position, Math.max((data?.verses.length ?? 1) - 1, 0))];
+  const baseVerse = data?.verses[Math.min(position, Math.max((data?.verses.length ?? 1) - 1, 0))];
+  /** While a proposal edits the text, the verse has the words of the new text. */
+  const verse = baseVerse && proposing?.tokens ? { ...baseVerse, draft: proposing.tokens } : baseVerse;
   const current = useMemo(() => (verse ? groups[verse.verse] ?? [] : []), [verse, groups]);
   const boxes = useMemo(() => (verse ? deriveAlignmentBoxes(verse.original, current, verse.draft) : []), [verse, current]);
   const aligned = useMemo(() => (verse ? computeAlignedSourceIndices(verse.draft, boxes) : []), [verse, boxes]);
@@ -811,8 +719,8 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   }
 
   function startProposal() {
-    if (!verse) return;
-    setProposing({ base: current });
+    if (!verse || !baseVerse) return;
+    setProposing({ base: current, text: baseVerse.text, tokens: null });
     setObjecting(false);
     setNote("");
     setSentIssue(null);
@@ -826,6 +734,15 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     setProposing(null);
     setNote("");
     clearSelection();
+  }
+
+  /** Editing the text in a proposal: the links follow the words that stay, the rest are left to place. */
+  function changeProposalText(text: string) {
+    if (!data || !verse || !baseVerse || !proposing) return;
+    const sid = `${data.book} ${data.chapter}:${verse.verse}`;
+    const back = sameText(text, baseVerse.text);
+    setProposing({ ...proposing, text, tokens: back ? null : tokensFromText(text, sid) });
+    change(back ? proposing.base : groupsAfterTextEdit(current, proposing.text, text));
   }
 
   function startObjection() {
@@ -846,6 +763,9 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   async function sendDecision(kind: "proposal" | "objection") {
     if (!session || !data || !verse || !ctx) return;
     const base = kind === "proposal" && proposing ? proposing.base : current;
+    // What the verse was when the proposal was made: the hash, the card and "who aligned it" use this version.
+    const was = baseVerse ?? verse;
+    const textChanged = kind === "proposal" && Boolean(proposing) && !sameText(proposing!.text, was.text);
     setSaving(true);
     setError("");
     try {
@@ -862,10 +782,13 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         verse: verse.verse,
         kind,
         note,
-        baseHash: alignmentFingerprint(verse.draft, base),
+        baseHash: alignmentFingerprint(was.draft, base),
         before: base,
         ...(kind === "proposal" ? { proposed: current } : { words: objectWords }),
-        aligners: authorsAt(verse, alignmentFingerprint(verse.draft, base)),
+        view: viewFromTokens({ rtl: data.originalRtl, original: was.original, gloss: was.gloss, draftBefore: was.draft, draftAfter: textChanged ? verse.draft : was.draft }),
+        oldText: was.text,
+        ...(textChanged ? { newText: proposing!.text } : {}),
+        aligners: authorsAt(was, alignmentFingerprint(was.draft, base)),
         thresholds,
       });
       if (kind === "proposal") cancelProposal();
@@ -1069,22 +992,46 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                 {data.originalLabel} · {data.book} {data.chapter}:{verse.verse}
               </p>
               {reference}
-              <PairsList
-                boxes={boxes}
-                draft={verse.draft}
+              <AlignmentBoxes
+                original={verse.original}
                 gloss={verse.gloss}
-                aligned={aligned}
+                draft={verse.draft}
+                groups={current}
                 rtl={data.originalRtl}
-                selectable={objecting}
-                selected={objectWords}
-                onToggle={(w) => setObjectWords((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]))}
+                picked={objecting ? objectedBoxKeys(boxes, objectWords) : undefined}
+                onPick={
+                  objecting
+                    ? (box) => {
+                        const words = box.targetTokens.map((t) => `${t.surface}#${t.occurrence}`);
+                        setObjectWords((prev) => (words.every((w) => prev.includes(w)) ? prev.filter((w) => !words.includes(w)) : [...new Set([...prev, ...words])]));
+                      }
+                    : undefined
+                }
               />
             </section>
           )}
 
           {editable ? (
             <section className="af-card al-tools" aria-label="Herramientas">
-              {mode === "revisar" ? <p className="af-hint">Estás escribiendo una propuesta: cambia las uniones como creas que deben quedar y envíala con una nota. No se cambia nada hasta que el equipo la acepte.</p> : null}
+              {mode === "revisar" && proposing && baseVerse ? (
+                <div className="al-textedit">
+                  <p className="af-hint">Estás escribiendo una propuesta: cambia las uniones como creas que deben quedar y envíala con una nota. No se cambia nada hasta que el equipo la acepte.</p>
+                  <label className="af-field">
+                    <span>Texto del versículo (cámbialo solo si propones cambiar el texto)</span>
+                    <textarea value={proposing.text} onChange={(e) => changeProposalText(e.target.value)} rows={3} />
+                  </label>
+                  {!sameText(proposing.text, baseVerse.text) ? (
+                    <p className="al-diff" aria-label="Lo que cambia en el texto">
+                      {wordDiff(baseVerse.text, proposing.text).map((piece, i) => (
+                        <span key={i}>
+                          {i ? " " : ""}
+                          {piece.kind === "del" ? <del>{piece.text}</del> : piece.kind === "ins" ? <ins>{piece.text}</ins> : piece.text}
+                        </span>
+                      ))}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {decisionNotes}
               <p className="af-hint">
                 {selectedWords.length
@@ -1213,18 +1160,18 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                   </Button>
                 </div>
                 <div className="al-actionbar__row">
-                  <Button type="button" disabled={saving || !note.trim() || !dirty[verse.verse]} onClick={() => void sendDecision("proposal")}>
+                  <Button type="button" disabled={saving || !note.trim() || (!dirty[verse.verse] && !(baseVerse && proposing && !sameText(proposing.text, baseVerse.text)))} onClick={() => void sendDecision("proposal")}>
                     {saving ? "Enviando…" : "Enviar propuesta al equipo"}
                   </Button>
                   <Button type="button" variant="ghost" onClick={cancelProposal}>
                     Cancelar
                   </Button>
                 </div>
-                {!dirty[verse.verse] ? <p className="af-hint">Cambia alguna unión para poder enviar la propuesta.</p> : null}
+                {!dirty[verse.verse] ? <p className="af-hint">Cambia alguna unión o el texto para poder enviar la propuesta.</p> : null}
               </div>
             ) : objecting ? (
               <div className="al-actionbar__note">
-                <p className="af-hint">Toca las palabras del original a las que se refiere tu objeción (opcional).</p>
+                <p className="af-hint">Toca las cajas a las que se refiere tu objeción: se marcan en amarillo (opcional).</p>
                 <label className="af-field">
                   <span>¿Cuál es tu objeción? (obligatorio)</span>
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />

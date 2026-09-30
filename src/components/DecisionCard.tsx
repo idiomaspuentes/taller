@@ -10,6 +10,7 @@ import {
   type ResolvedChatEvent,
 } from "../domain/chatEvents/registry";
 import { formatLaunchRef } from "../domain/solverLab";
+import { DecisionCustomPanel } from "./DecisionCustomPanel";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -111,12 +112,12 @@ export function DecisionCard({
   const panels = shownPanels.length ? (
     <div className="chat-decision__panels">
       {shownPanels.map((panel) => (
-        <figure key={panel.label} className="chat-decision__panel">
+        <figure key={panel.label} className={`chat-decision__panel${panel.custom?.kind === "cajas" ? " chat-decision__panel--wide" : ""}`}>
           <figcaption className="chat-decision__label">
             <span>{panel.label}</span>
             {panel.tag ? <span className="chat-decision__tag">{panel.tag}</span> : null}
           </figcaption>
-          <blockquote className="chat-decision__text">{panel.text || "(vacío)"}</blockquote>
+          {panel.custom ? <DecisionCustomPanel custom={panel.custom} /> : <blockquote className="chat-decision__text">{panel.text || "(vacío)"}</blockquote>}
         </figure>
       ))}
     </div>

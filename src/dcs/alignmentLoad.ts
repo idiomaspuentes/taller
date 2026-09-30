@@ -21,6 +21,8 @@ export type AlignmentVerse = {
   original: OriginalWordToken[];
   /** Words of the draft. */
   draft: WordToken[];
+  /** The draft text of the verse, as plain text. */
+  text: string;
   /** English gloss of each word of the original (same order), from the aligned ULT or UST; empty when unknown. */
   gloss: string[];
   /** The verse in English (ULT for the TPL, UST for the TPS), for reference. */
@@ -86,6 +88,7 @@ export async function loadAlineacion(params: {
   const draftUsj = tryParseUsj(found.text);
   if (!draftUsj) throw new Error("No se pudo leer el borrador grupal de este libro.");
   const draftTokens = tokenizeDocument(draftUsj);
+  const draftTexts = verseTextsFromUsj(draftUsj, { chapter, from: 1, to: 200 }) || {};
   const originalTokens = tokenizeOriginalDocument(parseUsfmToUsj(originalRaw, { stripAlignment: false }) as { content?: unknown[] });
   const saved = alignmentOfDraft(found.text, target.book, source).verses;
   // The English text is only a help: if it cannot be read the screen works without it.
@@ -104,6 +107,7 @@ export async function loadAlineacion(params: {
       verse,
       original,
       draft: tokens,
+      text: draftTexts[verse] ?? tokens.map((t) => t.surface).join(" "),
       gloss: gatewayKey ? glossesFor(original, gateway!.alignments[gatewayKey]!) : [],
       reference: gatewayVerses[verse] ?? "",
       groups: key ? saved[key]! : [],

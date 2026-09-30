@@ -125,3 +125,9 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 - La decisión es una subtarea libre del equipo (abre a cualquier integrante de la tarea, aunque nadie la tenga asignada), con una tarjeta de votos, la confirmación del consenso y el cierre que aplica la alineación y guarda el resultado en `checkings/proposals/`.
 - El versículo muestra "en discusión del equipo" con el enlace a la decisión; una objeción que prospera aparece como petición de ajuste para quien alineó; una propuesta aceptada deja el versículo terminado con la versión nueva.
 - Pendiente: mostrar las decisiones abiertas en Equipo hoy con recordatorio, aviso automático a quien no ha votado al acercarse el plazo, y cómo se ve la tarjeta en un teléfono real.
+
+**Cómo se ven las decisiones (1 de octubre de 2026):**
+- La alineación se ve siempre en cajas, las mismas que usa quien alinea, pero compactas y de solo lectura (con la glosa en inglés y las palabras sin traducción plegadas). En la revisión ya no hay lista de pares: las cajas la reemplazan.
+- En la tarjeta de una **propuesta** se ve la alineación de ahora y la propuesta, y en esta última la caja que cambia va resaltada en otro color.
+- En la tarjeta de una **objeción** las cajas objetadas van en amarillo; se eligen tocando las cajas en la revisión.
+- Una propuesta también puede **cambiar el texto del borrador**: quien propone edita el texto del versículo, las uniones siguen a las palabras que se quedan y las nuevas quedan por colocar. La tarjeta muestra el diff del versículo (lo que sale tachado, lo nuevo en verde) y la alineación nueva en cajas con todas las palabras. Al aceptarse se escribe primero el texto y después la alineación.

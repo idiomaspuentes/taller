@@ -15,6 +15,8 @@ import {
   type DecisionThresholds,
   type DecisionVote,
 } from "../alignmentDecision";
+import type { AlignmentGroup } from "@usfm-tools/types";
+import { boxesOf, changedBoxKeys, objectedBoxKeys, sameText, wordDiff, type DecisionView } from "../verseEditView";
 import { registerChatEventType, type ChatEventType, type DecisionOption, type DecisionPanel } from "./registry";
 
 export const DECISION_EVENT = "alineacion-decision";
@@ -33,9 +35,17 @@ export type DecisionEventData = {
   baseHash: string;
   /** Where the proposal file lives in the text repository. */
   path: string;
-  /** The links now and the links proposed, as readable lines. */
+  /** The links now and the links proposed, as readable lines (for whoever reads the issue on Door43). */
   before: string[];
   after: string[];
+  /** The same links as data, so the card can draw the boxes. */
+  groupsBefore: AlignmentGroup[];
+  groupsAfter: AlignmentGroup[];
+  /** The words of the verse (original with glosses, draft before and after). */
+  view: DecisionView;
+  /** The verse text before and after; equal unless the proposal edits the draft. */
+  oldText: string;
+  newText: string;
   /** Objections: the words of the original it is about. */
   words: string[];
   deadline: string;
@@ -67,6 +77,11 @@ function asData(value: unknown): DecisionEventData | null {
     path: String(d.path),
     before: Array.isArray(d.before) ? d.before.map(String) : [],
     after: Array.isArray(d.after) ? d.after.map(String) : [],
+    groupsBefore: Array.isArray(d.groupsBefore) ? d.groupsBefore : [],
+    groupsAfter: Array.isArray(d.groupsAfter) ? d.groupsAfter : [],
+    view: d.view && Array.isArray(d.view.original) ? d.view : { rtl: false, original: [], draftBefore: [], draftAfter: [] },
+    oldText: String(d.oldText ?? ""),
+    newText: String(d.newText ?? ""),
     words: Array.isArray(d.words) ? d.words.map(String) : [],
     deadline: String(d.deadline ?? ""),
     thresholds: { minAgree: Number(d.thresholds?.minAgree) || 2, minIndependent: Number(d.thresholds?.minIndependent) || 1 },
@@ -85,8 +100,14 @@ export function refLabel(d: Pick<DecisionEventData, "book" | "chapter" | "verse"
   return `${d.book} ${d.chapter}:${d.verse}`;
 }
 
+/** The proposal edits the text of the draft, not only the alignment. */
+export function editsText(d: Pick<DecisionEventData, "kind" | "oldText" | "newText">): boolean {
+  return d.kind === "proposal" && d.newText.trim() !== "" && !sameText(d.oldText, d.newText);
+}
+
 export function decisionTitle(d: DecisionEventData): string {
-  return d.kind === "proposal" ? `Propuesta de @${d.by} para ${refLabel(d)}` : `Objeción de @${d.by} en ${refLabel(d)}`;
+  if (d.kind === "objection") return `Objeción de @${d.by} en ${refLabel(d)}`;
+  return editsText(d) ? `Propuesta de @${d.by} para cambiar el texto de ${refLabel(d)}` : `Propuesta de @${d.by} para ${refLabel(d)}`;
 }
 
 /** The card that opens the decision. `issue` is the decision's own subtarea. */
@@ -230,9 +251,42 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
   panels(event): DecisionPanel[] {
     const d = alineacionDecisionData(event);
     if (!d) return [];
+    const sid = `${d.book} ${d.chapter}:${d.verse}`;
     const panels: DecisionPanel[] = [{ label: `Lo que dice @${d.by}`, text: d.note }];
+    const hasBoxes = d.view.original.length > 0;
+    const boxes = (draft: DecisionView["draftBefore"], groups: AlignmentGroup[]) => boxesOf(d.view, draft, groups, sid);
     if (d.kind === "proposal") {
-      panels.push({ label: "Alineación ahora", text: d.before.join("\n") }, { label: "Alineación propuesta", text: d.after.join("\n"), tag: "propuesta" });
+      if (editsText(d)) {
+        panels.push({
+          label: "Texto del versículo",
+          text: `${d.oldText} → ${d.newText}`,
+          tag: "cambia",
+          custom: { kind: "diff", data: { pieces: wordDiff(d.oldText, d.newText) } },
+        });
+      }
+      if (hasBoxes) {
+        const before = boxes(d.view.draftBefore, d.groupsBefore);
+        const after = boxes(d.view.draftAfter, d.groupsAfter);
+        panels.push(
+          { label: "Alineación ahora", text: d.before.join("\n"), custom: { kind: "cajas", data: { view: d.view, draft: "before", groups: d.groupsBefore, sid } } },
+          {
+            label: "Alineación propuesta",
+            text: d.after.join("\n"),
+            tag: "lo que cambia va resaltado",
+            custom: { kind: "cajas", data: { view: d.view, draft: "after", groups: d.groupsAfter, sid, highlight: { tone: "changed", keys: [...changedBoxKeys(before, after)] } } },
+          },
+        );
+      } else {
+        panels.push({ label: "Alineación ahora", text: d.before.join("\n") }, { label: "Alineación propuesta", text: d.after.join("\n"), tag: "propuesta" });
+      }
+    } else if (hasBoxes) {
+      const now = boxes(d.view.draftBefore, d.groupsBefore);
+      panels.push({
+        label: "Alineación ahora",
+        text: d.before.join("\n"),
+        tag: d.words.length ? "lo objetado va en amarillo" : undefined,
+        custom: { kind: "cajas", data: { view: d.view, draft: "before", groups: d.groupsBefore, sid, highlight: { tone: "objected", keys: [...objectedBoxKeys(now, d.words)] } } },
+      });
     } else {
       if (d.words.length) panels.push({ label: "Palabras señaladas", text: d.words.join(" · ") });
       panels.push({ label: "Alineación ahora", text: d.before.join("\n") });

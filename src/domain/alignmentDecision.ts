@@ -36,7 +36,10 @@ export type ProposalFile = {
   note: string;
   /** The subtarea where the team decides (its issue number). */
   issue?: number;
-  /** Proposals only: the alignment the proposer wants. */
+  /** Proposals that edit the text of the draft: the verse as it was and as it is proposed. */
+  oldText?: string;
+  newText?: string;
+  /** Proposals only: the alignment the proposer wants (over the new text, if it changes). */
   proposed?: AlignmentGroup[];
   /** Objections only: the words of the original it is about, as «word#occurrence». */
   words?: string[];

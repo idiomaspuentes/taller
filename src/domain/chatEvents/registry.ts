@@ -10,7 +10,13 @@ import type { ThreadItem } from "../conversation";
 export type ChatEventRender = "system" | "decision";
 
 /** One text shown in a decision card (e.g. the two versions side by side). */
-export type DecisionPanel = { label: string; text: string; tag?: string };
+export type DecisionPanel = {
+  label: string;
+  text: string;
+  tag?: string;
+  /** Something other than text: the card draws it with a renderer registered for its `kind`. */
+  custom?: { kind: string; data: unknown };
+};
 
 export type DecisionViewer = {
   username: string;

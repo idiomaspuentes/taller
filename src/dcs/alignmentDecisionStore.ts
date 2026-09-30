@@ -10,7 +10,7 @@ import { tokenizeDocument } from "@usfm-tools/editor-core";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
-import { appendMyDecision, isShaConflict, readRepoFile, type RepoTarget } from "./afinacionStore";
+import { appendMyDecision, isShaConflict, readRepoFile, saveCorrection, type RepoTarget } from "./afinacionStore";
 import { alignmentOfDraft, saveVerseAlignment, verseKey, type AlignmentSourceRef } from "./alignmentStore";
 import { closeIssue, commentOnIssue, createDecisionIssue } from "./issues";
 import { alignmentHash, groupsToLines } from "../domain/alignmentHash";
@@ -40,9 +40,11 @@ import {
   buildVoteEvent,
   decisionId,
   decisionTitle,
+  editsText,
   readDecisionThread,
   type DecisionEventData,
 } from "../domain/chatEvents/alineacionDecision";
+import type { DecisionView } from "../domain/verseEditView";
 import { commentToItem, type ThreadItem } from "../domain/conversation";
 import { PM_REPO_NAME } from "../domain/types";
 import { tryParseUsj } from "../domain/usfmAst";
@@ -105,8 +107,13 @@ export type OpenDecisionParams = {
   baseHash: string;
   /** The alignment of the verse now (for the card). */
   before: AlignmentGroup[];
-  /** Proposals: the alignment wanted. */
+  /** Proposals: the alignment wanted (over the new text, when the text changes). */
   proposed?: AlignmentGroup[];
+  /** The words of the verse as the card draws them. */
+  view: DecisionView;
+  /** The text of the verse now, and the text proposed (omit it to leave the text as it is). */
+  oldText: string;
+  newText?: string;
   /** Objections: the words of the original it is about. */
   words?: string[];
   /** Who aligned the verse (they are told, and do not count as independent). */
@@ -141,6 +148,11 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     path,
     before: groupsToLines(params.before),
     after: params.proposed ? groupsToLines(params.proposed) : [],
+    groupsBefore: params.before,
+    groupsAfter: params.proposed ?? params.before,
+    view: params.view,
+    oldText: params.oldText,
+    newText: params.kind === "proposal" && params.newText ? params.newText : params.oldText,
     words: params.words ?? [],
     deadline: deadlineFrom(now, DECISION_DAYS),
     thresholds: params.thresholds,
@@ -174,6 +186,7 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     note,
     issue: issue.number,
     ...(params.kind === "proposal" ? { proposed: params.proposed } : { words: params.words ?? [] }),
+    ...(params.kind === "proposal" && params.newText ? { oldText: params.oldText, newText: params.newText } : {}),
   };
   await writeNewFile(session, target, path, `${JSON.stringify(file, null, 2)}\n`, `TAS: ${params.kind === "proposal" ? "propuesta" : "objeción"} ${book} ${params.chapter}:${params.verse} · ${id}`);
 
@@ -276,8 +289,24 @@ export async function closeAlignmentDecision(params: {
       outcome = "caducada";
     } else {
       const proposalFile = await readRepoFile(session, target, data.path);
-      const proposed = (proposalFile && (JSON.parse(proposalFile.text) as ProposalFile).proposed) || null;
+      const saved0 = proposalFile ? (JSON.parse(proposalFile.text) as ProposalFile) : null;
+      const proposed = saved0?.proposed ?? null;
       if (!proposed) throw new Error("No se pudo leer la propuesta guardada.");
+      // A proposal that edits the text writes the text first (the links of the words that did not
+      // change are kept), and then the alignment the proposer wants over the new words.
+      const newText = saved0?.newText ?? data.newText;
+      if (editsText({ kind: data.kind, oldText: saved0?.oldText ?? data.oldText, newText })) {
+        await saveCorrection({
+          session,
+          target,
+          filepath: data.draft.filepath,
+          book: data.book,
+          chapter: data.chapter,
+          verse: data.verse,
+          text: newText,
+          reason: `propuesta de @${data.by} aceptada por el equipo`,
+        });
+      }
       const saved = await saveVerseAlignment({
         session,
         target,

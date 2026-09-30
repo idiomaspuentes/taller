@@ -16,6 +16,8 @@ import { getChatEventType } from "../src/domain/chatEvents/registry";
 import "../src/dcs/alignmentDecisionThread";
 import { parseChatEvent } from "../src/domain/chatEvent";
 import { mergeDecisionFiles } from "../src/domain/reviewRound";
+import { tokensFromText, viewFromTokens } from "../src/domain/verseEditView";
+import { resolveChatEvent } from "../src/domain/chatEvents/registry";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void>) {
@@ -132,7 +134,8 @@ const anas = addSourcesToBox(so, tr, addSourcesToBox(so, tr, [], "u0", [0, 1, 2]
 const beas = addSourcesToBox(so, tr, addSourcesToBox(so, tr, [], "u0", [0, 1]), "u1", [2, 3]);
 
 const task = { projectId: "NEH", taskId: "afinar-tpl-1", taskName: "Afinar TPL 1", resource: "tpl" as const, parentIssue: 1 };
-const common = { pmOrg: "BSOJ", task, target, draftFilepath: draftPath, source, book: "NEH", chapter: 1, verse: 1, aligners: ["ana"], thresholds: { minAgree: 2, minIndependent: 1 } };
+const view = viewFromTokens({ rtl: true, original: so, gloss: ["The words of", "Nehemiah"], draftBefore: tr });
+const common = { pmOrg: "BSOJ", task, target, draftFilepath: draftPath, source, book: "NEH", chapter: 1, verse: 1, aligners: ["ana"], thresholds: { minAgree: 2, minIndependent: 1 }, view, oldText: "Las palabras de Nehemías" };
 
 const cardOf = async (issueNumber: number) => {
   const first = (comments.get(issueNumber) ?? [])[0]!;
@@ -313,6 +316,72 @@ await test("quien propone no puede votar su propia propuesta", async () => {
   await assert.rejects(() => cardType().run!("aceptar", event, envFor("bea", opened.issue.number)), /Es tu propuesta/);
   const { options } = await optionsNow("bea", opened.issue.number);
   assert.ok(options.every((o) => o.blockReason), "sus botones salen bloqueados con el motivo");
+});
+
+await test("una propuesta puede cambiar el texto: la tarjeta muestra el diff y las cajas resaltadas, y al aceptarla se escribe el texto y la alineación", async () => {
+  // start from a known state: the draft as Ana left it, aligned
+  put(REPO, "neh", draftPath, draftUsfm);
+  actor = "ana";
+  await saveVerseAlignment({ session: session("ana"), target, filepath: draftPath, book: "NEH", chapter: 1, verse: 1, groups: anas, source });
+  const h = currentVerseHash(draftNow(), "NEH", 1, 1, source);
+  const newText = "Las palabras de Nehemías el profeta";
+  const newTokens = tokensFromText(newText, "NEH 1:1");
+  const wanted = addSourcesToBox(so, newTokens, addSourcesToBox(so, newTokens, [], "u0", [0, 1, 2]), "u1", [3]);
+  actor = "bea";
+  const opened = await openAlignmentDecision({
+    ...common,
+    session: session("bea"),
+    kind: "proposal",
+    note: "falta decir quién es",
+    baseHash: h,
+    before: anas,
+    proposed: wanted,
+    oldText: "Las palabras de Nehemías",
+    newText,
+    view: viewFromTokens({ rtl: true, original: so, gloss: ["The words of", "Nehemiah"], draftBefore: tr, draftAfter: newTokens }),
+    now: new Date("2026-10-01T19:00:00Z"),
+  });
+  const event = await cardOf(opened.issue.number);
+  const panels = resolveChatEvent(event).panels;
+  const diff = panels.find((p) => p.custom?.kind === "diff");
+  assert.ok(diff, "hay un panel con el diff");
+  assert.match(JSON.stringify(diff!.custom), /"ins".*el profeta|el profeta.*"ins"/);
+  const proposed = panels.find((p) => p.label === "Alineación propuesta")!;
+  assert.equal((proposed.custom!.data as { draft: string }).draft, "after", "la alineación propuesta se dibuja con las palabras del texto nuevo");
+  assert.equal(panels.filter((p) => p.custom?.kind === "cajas").length, 2, "las uniones de ahora y las propuestas, en cajas");
+
+  const file = JSON.parse(files.get(fkey(REPO, "neh", `checkings/proposals/NEH.1-1.${opened.id}.proposal.json`))!.text);
+  assert.equal(file.newText, newText);
+  assert.equal(file.oldText, "Las palabras de Nehemías");
+
+  const before = draftNow();
+  const data = alineacionDecisionData(event)!;
+  const closed = await closeAlignmentDecision({ session: session("carla"), pmOrg: "BSOJ", threadIssue: opened.issue.number, data, option: "aceptar", how: "consenso" });
+  assert.equal(closed.outcome, "aceptada");
+  assert.notEqual(draftNow(), before);
+  assert.match(draftNow().replace(/\s+/g, " "), /el profeta/, "el texto nuevo quedó escrito");
+  assert.deepEqual(wordsIn(draftNow()), ["Las", "palabras", "de", "Nehemías"], "las palabras alineadas siguen; las nuevas quedan sin unir");
+  const { results } = await loadProposalFiles(session("carla"), target, "NEH");
+  assert.equal(results.find((r) => r.id === opened.id)!.newHash, currentVerseHash(draftNow(), "NEH", 1, 1, source));
+});
+
+await test("una propuesta que solo cambia la alineación no muestra diff de texto, y una objeción resalta sus cajas en amarillo", async () => {
+  actor = "bea";
+  put(REPO, "neh", draftPath, draftUsfm);
+  actor = "ana";
+  await saveVerseAlignment({ session: session("ana"), target, filepath: draftPath, book: "NEH", chapter: 1, verse: 1, groups: anas, source });
+  const h = currentVerseHash(draftNow(), "NEH", 1, 1, source);
+  actor = "bea";
+  const p = await openAlignmentDecision({ ...common, session: session("bea"), kind: "proposal", note: "solo unión", baseHash: h, before: anas, proposed: beas, now: new Date("2026-10-01T20:00:00Z") });
+  const pp = resolveChatEvent(await cardOf(p.issue.number)).panels;
+  assert.ok(!pp.some((x) => x.custom?.kind === "diff"), "sin cambio de texto no hay diff");
+  const changed = (pp.find((x) => x.label === "Alineación propuesta")!.custom!.data as { highlight: { tone: string; keys: string[] } }).highlight;
+  assert.equal(changed.tone, "changed");
+  assert.deepEqual([...changed.keys].sort(), ["0", "1"], "cambian las dos primeras cajas");
+  const o = await openAlignmentDecision({ ...common, session: session("bea"), kind: "objection", note: "mal unida", baseHash: h, before: anas, words: ["נְחֶמְיָה#1"], now: new Date("2026-10-01T21:00:00Z") });
+  const op = resolveChatEvent(await cardOf(o.issue.number)).panels.find((x) => x.custom?.kind === "cajas")!;
+  const hl = (op.custom!.data as { highlight: { tone: string; keys: string[] } }).highlight;
+  assert.deepEqual([hl.tone, hl.keys], ["objected", ["1"]]);
 });
 
 console.log(`\nverify-alignment-decision-store: ${passed} checks passed.`);
