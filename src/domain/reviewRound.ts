@@ -21,6 +21,8 @@ export type ReviewDecision = CheckingDecision & {
   itemId: string;
   /** Fingerprint of the text that was reviewed; a different text makes the answer stale. */
   textHash?: string;
+  /** The proposal or objection this answer was made with (see alignmentDecision.ts). */
+  proposalId?: string;
 };
 
 export type ReviewThresholds = {

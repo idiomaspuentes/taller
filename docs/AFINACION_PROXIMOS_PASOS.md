@@ -101,15 +101,20 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 - La huella de "terminado" depende del texto del borrador y de las uniones; si cambia cómo se calcula, todas las marcas de "terminado" quedan sin valor.
 - El servidor de mentira no reproduce todo Door43 (por ejemplo, rechazos de permisos o ramas protegidas). Antes de usar esto con el equipo, una prueba corta en QA.
 
-## 5. Qué pasa hoy con una propuesta o una objeción, y cómo debería ser
+## 5. Propuestas y objeciones: cada una es una decisión del equipo
 
-**Hoy.** "Propongo un cambio" y "Tengo una objeción" solo guardan una nota. El versículo pasa a "en discusión" y no se puede acordar mientras esa persona no vuelva a responder o cambie la alineación. Nadie "acepta" nada: la persona que alineó lee la nota y corrige a mano, y eso deja sin valor las respuestas anteriores. Quien propone no puede mostrar el cambio que tiene en mente.
+**Hoy (antes de esta tanda).** "Propongo un cambio" y "Tengo una objeción" solo guardaban una nota. El versículo pasaba a "en discusión" y nadie podía aceptar nada: quien alineó leía la nota y corregía a mano. Quien proponía no podía mostrar el cambio.
 
-**Propuesta de diseño (pendiente de confirmar).**
-- **Proponer un cambio** abre el versículo en las mismas cajas, sobre una **copia**. Se guarda como propuesta de esa persona (`checkings/proposals/`), con la nota y con la huella de la alineación sobre la que se hizo. No toca el borrador grupal.
-- **Quién decide:** quien alineó el versículo o quien coordina. Ve la propuesta con las cajas que cambian resaltadas. Si no hay respuesta en unos días, cualquier habilitada distinta de quien propuso puede decidir.
-- **Aceptar:** se aplica la alineación propuesta (se guarda como cualquier cambio), el versículo se marca terminado de nuevo con esa huella y quien propuso queda de acuerdo con la versión nueva. Las demás respuestas pasan a "desactualizadas" y se les avisa, como ya ocurre con una corrección de texto. Se puede deshacer porque es un cambio más del historial.
-- **Rechazar:** exige un motivo y avisa a quien propuso. El versículo sigue en discusión hasta que esa persona acepte la alineación actual, retire su propuesta o el asunto pase a la lista de la reunión.
-- **Contrapropuesta:** si quien alineó cambia la alineación por su cuenta, la propuesta queda desactualizada (la huella ya no coincide) y se avisa a quien propuso para que la mire otra vez.
-- **Objeción:** no se aplica. Señala la caja a la que se refiere y el motivo. Impide acordar el versículo hasta que se resuelva: cambia la alineación (y se le pide volver a revisar), la retira quien la puso, o la reunión decide y lo deja escrito.
-- **Cambios del texto del borrador** siguen siendo correcciones inmediatas ("Corregir este versículo"); esto es solo para la alineación.
+**Decisiones de diseño (acordadas el 1 de octubre de 2026).**
+- **Dónde vive la conversación: un issue de Door43 por decisión.** Es una subtarea más del mismo proyecto y de la misma tarea, libre para todo el equipo: aparece en Mis tareas y en Equipo hoy y avisa a todos. La discusión son comentarios normales. Los votos son tarjetas de un clic (una por persona; vale la última). Al decidir se deja un resumen y se cierra.
+- **Dónde viven los datos que deben viajar con el texto: el repositorio del texto.** La propuesta completa (la alineación propuesta, la huella de la versión sobre la que se hizo y la nota) va en `checkings/proposals/`, escrita solo por quien propone. El resultado de la decisión va en un archivo aparte, escrito una sola vez. No se guardan comentarios en JSON temporales.
+- **Proponer un cambio:** se edita una copia de la alineación del versículo con las mismas cajas y se envía con una nota. No toca el borrador grupal. La persona que propone cuenta como un voto a favor, no independiente.
+- **Objeción:** no se aplica; señala las palabras del original a las que se refiere y el motivo.
+- **Quién vota:** las habilitadas del equipo de la tarea. Quien alineó y quien propone cuentan para el mínimo, pero no como independientes. Los mínimos vienen de la tarea (los mismos de la revisión).
+- **Cuándo se decide:** cuando una opción reúne el mínimo de habilitadas, con el mínimo de independientes y sin votos de la opción contraria. Plazo de 3 días; vencido, decide quien coordina con un botón. La reunión queda solo para lo que ni así se resuelva.
+- **Qué ocurre al decidir:**
+  - *Propuesta aceptada:* se aplica la alineación propuesta (solo si la alineación no cambió desde que se propuso; si cambió, la propuesta caduca), el versículo queda terminado con esa versión y las demás respuestas pasan a desactualizadas con aviso.
+  - *Propuesta rechazada:* la alineación queda igual; la respuesta abierta de quien propuso deja de bloquear el versículo.
+  - *Objeción que prospera:* se le pide a quien alineó que lo ajuste (aviso con la objeción); al cambiar la alineación, las respuestas se vuelven a pedir.
+  - *Objeción que no prospera:* se cierra con el motivo y deja de bloquear.
+- **Cambios del texto del borrador** siguen siendo correcciones inmediatas; esto es solo para la alineación.

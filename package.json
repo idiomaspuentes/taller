@@ -31,6 +31,8 @@
     "mock:door43": "node scripts/mock-door43/server.mjs",
     "verify:source-package": "tsx --tsconfig tsconfig.scripts.json scripts/verify-source-package.mts",
     "verify:alignment-gloss": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-gloss.mts",
+    "verify:alignment-decision": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-decision.mts",
+    "verify:alignment-decision-store": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-decision-store.mts",
     "verify:alignment-store": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-store.mts",
     "verify:afinacion-words": "tsx --tsconfig tsconfig.scripts.json scripts/verify-afinacion-words.mts",
     "verify:afinacion-notes": "tsx --tsconfig tsconfig.scripts.json scripts/verify-afinacion-notes.mts",

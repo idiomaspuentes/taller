@@ -47,6 +47,7 @@ import {
 } from "../domain/solvers";
 import { normalizeProjectId } from "../domain/books";
 import {
+  encodeWorkOrderMarker,
   parseWorkOrderMarker,
   workOrderIssueBody,
   workOrderIssueTitle,
@@ -1166,6 +1167,63 @@ export async function reassignIssue(
     formatChatEvent({ type: "tarea-asignada", emitter: "equipo-hoy", issue: issue.number, summary, mentions: [login], data: { by: session.username, from: before } }),
   ).catch(() => undefined);
   return edited;
+}
+
+/**
+ * A subtarea for the team to decide something about a verse (an alignment proposal or
+ * objection). It belongs to the same project and task as the work it is about and has
+ * nobody assigned, so it reaches the whole team like any free subtarea.
+ */
+export async function createDecisionIssue(
+  session: GtSession,
+  org: string,
+  params: {
+    projectId: string;
+    taskId: string;
+    taskName: string;
+    resource: "tpl" | "tps";
+    book: string;
+    chapter: number;
+    verse: number;
+    decisionId: string;
+    title: string;
+    text: string;
+  },
+): Promise<DcsIssue> {
+  const config = dcsConfig(session.host);
+  const pmConfig = await loadPmConfig(session, org);
+  const namespaceId = pmConfig.namespaceId;
+  const labelCache = new Map<string, number>();
+  const order: WorkOrder = {
+    key: `${params.taskId}|decision:${params.decisionId}`,
+    teamId: params.taskId,
+    teamName: params.taskName,
+    book: params.book,
+    resource: params.resource,
+    chapter: params.chapter,
+    portionIds: [`decision:${params.decisionId}`],
+    itemIds: [],
+    itemTypes: [],
+    label: `${params.chapter}:${params.verse} · Decisión`,
+  };
+  const labelIds: number[] = [];
+  for (const name of pmIssueLabelNames(order, namespaceId)) {
+    try {
+      labelIds.push(await ensureLabel(session, org, name, labelColorFor(name, namespaceId), labelCache));
+    } catch {
+      /* labels are a convenience; the marker is what identifies the subtarea */
+    }
+  }
+  const milestoneId = await ensureMilestone(session, org, normalizeProjectId(params.projectId), new Map());
+  return createIssue(config, org, PM_REPO_NAME, {
+    token: session.token,
+    title: params.title,
+    body: `${params.text}
+
+${encodeWorkOrderMarker(order)}`,
+    milestone: milestoneId,
+    labels: labelIds,
+  });
 }
 
 /** Clear assignees (Liberar). Caller must enforce capability. */
