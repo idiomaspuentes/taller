@@ -53,7 +53,11 @@ Tamaño: S = pocas horas, M = un día, L = varios días. Impacto para quien trab
 | 19 | **Accesibilidad**: estados que no dependan solo del color, orden de foco, anuncios para lectores de pantalla, contraste revisado | Todo | M | Hoy solo hay etiquetas básicas. |
 | 20 | **Sugerencia automática de alineación** a partir del ULT y de las palabras ya alineadas en otros versículos (solo proponer, nunca guardar sola) | Alinear | L | Ahorra trabajo, pero necesita diseño y prueba cuidadosos. |
 
-**Orden recomendado:** primero 1, 2, 3, 10, 11, 12 (todos S y de efecto inmediato); luego 4, 5, 6, 7; después 8, 9, 13 a 17; al final 18, 19, 20.
+**Ya hecho (30 de septiembre de 2026), comprobado con dos personas en el Door43 de mentira:** 1 (barra de acciones fija abajo, con deshacer, rehacer y guardar/terminar; en la revisión, las tres respuestas y el campo de la nota), 2 (se guarda al cambiar de versículo con las pestañas, con "Volver" y con el pager; marca "Sin guardar" y aviso del navegador al cerrar), 3 (deshacer, rehacer y "Limpiar versículo"), 10 (tres estados por versículo con marca y texto), 11 ("Siguiente por responder" y contador "Te faltan N versículos por responder"), 12 (aviso al autor), 14 (zonas táctiles de 44 px en pantallas táctiles) y 15 (palabras colocadas legibles con ✓).
+
+**Error encontrado al hacerlo:** las tres pantallas de la Afinación (notas, palabras y alineación) **no se podían desplazar** en una pantalla completa de herramienta: el contenedor tenía `overflow: hidden` y las pantallas no traían su propio desplazamiento, así que no se llegaba al resto del versículo. Corregido en `.af`. Las pruebas anteriores no lo vieron porque leían la página con código, no con el dedo: conviene que toda prueba de pantalla incluya desplazarse hasta el final.
+
+**Orden recomendado para lo que falta:** 4, 5, 6, 7; después 8, 9, 13, 16, 17; al final 18, 19, 20.
 
 ## Decisiones tomadas (30 de septiembre de 2026)
 

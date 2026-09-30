@@ -5671,7 +5671,9 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
 @media (max-width: 520px) { .today-row { flex-wrap: wrap; } }
 
 /* ---------- Afinación: revisar notas (phone first) ---------- */
-.af { display: grid; gap: 0.75rem; padding: 0.75rem; max-width: 52rem; margin: 0 auto; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+.af { display: grid; align-content: start; gap: 0.75rem; padding: 0.75rem; width: 100%; max-width: 52rem; margin: 0 auto; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  /* The full-screen tool shell does not scroll by itself: the screen scrolls here, so the sticky bank and action bar work. */
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .af-head { display: grid; gap: 0.5rem; }
 .af-back { justify-self: start; font-weight: 700; color: var(--accent-700); padding: 0.25rem 0; }
 .af-title h1 { margin: 0; font-family: var(--font-display); font-size: 1.375rem; font-weight: 700; }
@@ -5765,3 +5767,25 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
 
 .today-assign { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
 .today-assign select { min-height: 2.25rem; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); }
+
+/* Alineación: pestañas con tres estados, barra de acciones fija, toques cómodos */
+.al-verse-tab { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; padding: 0 0.625rem; }
+.al-verse-tab__mark { font-size: 0.8125rem; font-weight: 700; min-width: 0.75rem; }
+.al-verse-tab[data-state="done"] { background: var(--accent-100); color: var(--accent-700); }
+.al-verse-tab[data-state="complete"] { border-style: dashed; border-color: var(--accent-500); }
+.al-verse-tab[data-state="own"] { color: var(--text-muted); }
+.al-verse-tab[data-dirty="true"]::after { content: ""; position: absolute; top: 0.25rem; right: 0.25rem; width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #d97706; }
+.al-word[data-aligned="true"] { opacity: 1; color: var(--text-muted); background: var(--surface-muted, var(--surface)); border-style: dashed; }
+.al-word[data-aligned="true"]::after { content: " ✓"; }
+.al-actionbar { position: sticky; bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); z-index: 6; display: grid; gap: 0.5rem; padding: 0.625rem 0.75rem calc(0.625rem + env(safe-area-inset-bottom, 0px)); margin: 0 -0.25rem; background: var(--surface); border-top: 1px solid var(--border-strong); box-shadow: 0 -4px 12px rgb(0 0 0 / 0.06); }
+.al-actionbar__row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.al-actionbar__row > button { flex: 1 1 auto; min-height: 2.75rem; }
+.al-actionbar__flag { margin-left: auto; font-size: 0.8125rem; font-weight: 700; color: #b45309; }
+.al-actionbar__note { display: grid; gap: 0.5rem; }
+.al-actionbar__note textarea { width: 100%; }
+@media (pointer: coarse) {
+  .al-chip__x, .al-grip { min-width: 2.75rem; min-height: 2.75rem; }
+  .al-chip { min-height: 2.75rem; }
+  .al-word { min-height: 2.75rem; }
+  .al-verse-tab { min-width: 2.75rem; min-height: 2.75rem; }
+}

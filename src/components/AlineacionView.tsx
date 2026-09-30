@@ -296,6 +296,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const [position, setPosition] = useState(0);
   const [groups, setGroups] = useState<Record<number, AlignmentGroup[]>>({});
   const [dirty, setDirty] = useState<Record<number, boolean>>({});
+  const [history, setHistory] = useState<Record<number, { past: AlignmentGroup[][]; future: AlignmentGroup[][] }>>({});
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
   const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
   const [selectedRef, setSelectedRef] = useState<{ boxId: string; refIndex: number } | null>(null);
@@ -350,6 +351,18 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     void load();
   }, [load]);
 
+  // Leaving the page with changes that were not saved asks first.
+  const hasUnsaved = Object.values(dirty).some(Boolean);
+  useEffect(() => {
+    if (!hasUnsaved) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasUnsaved]);
+
   const verse = data?.verses[Math.min(position, Math.max((data?.verses.length ?? 1) - 1, 0))];
   const current = useMemo(() => (verse ? groups[verse.verse] ?? [] : []), [verse, groups]);
   const boxes = useMemo(() => (verse ? deriveAlignmentBoxes(verse.original, current, verse.draft) : []), [verse, current]);
@@ -364,6 +377,12 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   // Whoever marked a verse as finished is its author: their answer does not count as independent.
   const authorsOf = (v: AlignmentVerse): string[] =>
     data ? decisions.filter((d) => d.itemId === doneId(data.chapter, v.verse) && d.textHash === hashOf(v)).map((d) => d.reviewer) : [];
+  const answeredByMe = (v: AlignmentVerse) =>
+    Boolean(data) && decisions.some((d) => d.itemId === itemId(data!.chapter, v.verse) && d.reviewer.trim().toLowerCase() === me && d.textHash === hashOf(v));
+  const authoredByMe = (v: AlignmentVerse) => authorsOf(v).some((a) => a.trim().toLowerCase() === me);
+  /** In review: finished by its author, not written by me, and not answered by me since it last changed. */
+  const pendingForMe = (v: AlignmentVerse) => isDone(v) && !answeredByMe(v) && !authoredByMe(v);
+  const needsWork = (v: AlignmentVerse) => (mode === "alinear" ? !isDone(v) : pendingForMe(v));
   const tally =
     verse && data
       ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions, currentHash: hashOf(verse), levels: data.levels, authors: authorsOf(verse), thresholds })
@@ -395,13 +414,47 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     setNote("");
   }, [verse?.verse]);
 
-  function change(next: AlignmentGroup[] | null) {
-    if (!verse || !next) return;
-    setGroups((prev) => ({ ...prev, [verse.verse]: next }));
-    setDirty((prev) => ({ ...prev, [verse.verse]: true }));
+  function clearSelection() {
     setSelectedWords([]);
     setSelectedBoxes([]);
     setSelectedRef(null);
+  }
+
+  function change(next: AlignmentGroup[] | null) {
+    if (!verse || !next) return;
+    const before = current;
+    setHistory((prev) => {
+      const h = prev[verse.verse] ?? { past: [], future: [] };
+      return { ...prev, [verse.verse]: { past: [...h.past.slice(-49), before], future: [] } };
+    });
+    setGroups((prev) => ({ ...prev, [verse.verse]: next }));
+    setDirty((prev) => ({ ...prev, [verse.verse]: true }));
+    clearSelection();
+  }
+
+  const canUndo = Boolean(verse && (history[verse.verse]?.past.length ?? 0) > 0);
+  const canRedo = Boolean(verse && (history[verse.verse]?.future.length ?? 0) > 0);
+
+  function undo() {
+    if (!verse) return;
+    const h = history[verse.verse];
+    const back = h?.past[h.past.length - 1];
+    if (!h || !back) return;
+    setHistory((prev) => ({ ...prev, [verse.verse]: { past: h.past.slice(0, -1), future: [current, ...h.future] } }));
+    setGroups((prev) => ({ ...prev, [verse.verse]: back }));
+    setDirty((prev) => ({ ...prev, [verse.verse]: true }));
+    clearSelection();
+  }
+
+  function redo() {
+    if (!verse) return;
+    const h = history[verse.verse];
+    const ahead = h?.future[0];
+    if (!h || !ahead) return;
+    setHistory((prev) => ({ ...prev, [verse.verse]: { past: [...h.past, current], future: h.future.slice(1) } }));
+    setGroups((prev) => ({ ...prev, [verse.verse]: ahead }));
+    setDirty((prev) => ({ ...prev, [verse.verse]: true }));
+    clearSelection();
   }
 
   function put(boxId: string, indices: number[]) {
@@ -481,8 +534,8 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     }
   }
 
-  async function saveVerse(): Promise<boolean> {
-    if (!session || !data || !verse) return false;
+  async function saveVerseOf(target: AlignmentVerse): Promise<boolean> {
+    if (!session || !data) return false;
     setSaving(true);
     setError("");
     try {
@@ -492,12 +545,12 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         filepath: data.draft.filepath,
         book: data.book,
         chapter: data.chapter,
-        verse: verse.verse,
-        groups: current,
+        verse: target.verse,
+        groups: groups[target.verse] ?? [],
         source: data.source,
       });
-      setDirty((prev) => ({ ...prev, [verse.verse]: false }));
-      announce(`Alineación de ${data.book} ${data.chapter}:${verse.verse} guardada`);
+      setDirty((prev) => ({ ...prev, [target.verse]: false }));
+      announce(`Alineación de ${data.book} ${data.chapter}:${target.verse} guardada`);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -507,9 +560,46 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     }
   }
 
+  async function saveVerse(): Promise<boolean> {
+    return verse ? saveVerseOf(verse) : false;
+  }
+
+  /** Change verse; what was edited in this one is saved first, so nothing is left only in memory. */
+  async function goTo(index: number) {
+    if (!data || index < 0 || index >= data.verses.length || index === position) return;
+    if (editable && verse && dirty[verse.verse] && !(await saveVerseOf(verse))) return;
+    setPosition(index);
+  }
+
+  /** The next verse (after this one, wrapping) that still needs this person's work. */
+  function nextNeedingWork(): number {
+    if (!data) return -1;
+    const n = data.verses.length;
+    for (let k = 1; k < n; k++) {
+      const i = (position + k) % n;
+      if (needsWork(data.verses[i]!)) return i;
+    }
+    return -1;
+  }
+
+  function moveOnAfterAction() {
+    const next = nextNeedingWork();
+    if (next >= 0) setPosition(next);
+    else announce(mode === "alinear" ? "Todos los versículos están terminados" : "No te queda ningún versículo por responder");
+  }
+
   async function saveAndNext() {
     if (dirty[verse?.verse ?? -1] && !(await saveVerse())) return;
     if (data && position < data.verses.length - 1) setPosition((p) => p + 1);
+  }
+
+  async function leave() {
+    if (editable && data) {
+      for (const v of data.verses) {
+        if (dirty[v.verse] && !(await saveVerseOf(v))) return;
+      }
+    }
+    onClose();
   }
 
   async function markDone() {
@@ -531,7 +621,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
       announce(`Versículo ${verse.verse} terminado`);
-      if (position < data.verses.length - 1) setPosition((p) => p + 1);
+      moveOnAfterAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -563,7 +653,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       setDecisions((prev) => [...prev, decision]);
       setPending(null);
       announce(`${STANCE_LABEL[status]}: guardado`);
-      if (position < data.verses.length - 1) setPosition((p) => p + 1);
+      moveOnAfterAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -572,6 +662,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   }
 
   const doneCount = data ? data.verses.filter((v) => isDone(v)).length : 0;
+  const toAnswer = data ? data.verses.filter((v) => pendingForMe(v)).length : 0;
   const readyToReview = verse ? isDone(verse) : false;
   const complete = verse ? verseComplete(verse, current) : false;
   const pendingWords = aligned.filter((a) => !a).length;
@@ -580,10 +671,23 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const canSeparate = Boolean(oneBox && oneBox.groupIndex !== null && (oneBox.targetTokens.length > 1 || oneBox.alignedSourceWords.length > 1));
   const title = mode === "alinear" ? "Alinear" : "Revisar la alineación";
 
+  /** One of three states per verse, told by a mark and a word, never only by colour. */
+  function verseState(v: AlignmentVerse): { id: string; mark: string; label: string } {
+    if (mode === "alinear") {
+      if (isDone(v)) return { id: "done", mark: "✓", label: "terminado" };
+      if (verseComplete(v, groups[v.verse] ?? [])) return { id: "complete", mark: "○", label: "completo, falta terminarlo" };
+      return { id: "pending", mark: "", label: "pendiente" };
+    }
+    if (!isDone(v)) return { id: "pending", mark: "", label: "todavía no está terminado" };
+    if (authoredByMe(v)) return { id: "own", mark: "✎", label: "lo alineaste tú" };
+    if (answeredByMe(v)) return { id: "done", mark: "✓", label: "ya lo respondiste" };
+    return { id: "complete", mark: "○", label: "por responder" };
+  }
+
   return (
     <div className="af al">
       <header className="af-head">
-        <button type="button" className="af-back" onClick={onClose} aria-label="Volver">
+        <button type="button" className="af-back" onClick={() => void leave()} aria-label="Volver">
           ← Volver
         </button>
         <div className="af-title">
@@ -596,6 +700,9 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
             <span className="af-bar">
               <i style={{ width: `${data.verses.length ? ((mode === "alinear" ? doneCount : summary?.agreed ?? 0) / data.verses.length) * 100 : 0}%` }} />
             </span>
+            {mode === "revisar" ? (
+              <span>{toAnswer === 0 ? "No te queda nada por responder" : `Te ${toAnswer === 1 ? "falta 1 versículo" : `faltan ${toAnswer} versículos`} por responder`}</span>
+            ) : null}
           </div>
         ) : null}
       </header>
@@ -611,18 +718,23 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         <>
           <nav className="al-verses" aria-label="Versículos">
             {data.verses.map((v, i) => {
-              const done = mode === "alinear" ? verseComplete(v, groups[v.verse] ?? []) : isDone(v);
+              const state = verseState(v);
               return (
                 <button
                   key={v.verse}
                   type="button"
                   className="al-verse-tab"
                   data-current={i === position ? "true" : undefined}
-                  data-complete={done ? "true" : undefined}
-                  onClick={() => setPosition(i)}
-                  aria-label={`Versículo ${v.verse}${done ? (mode === "alinear" ? ", completo" : ", terminado") : ""}`}
+                  data-state={state.id}
+                  data-dirty={dirty[v.verse] ? "true" : undefined}
+                  onClick={() => void goTo(i)}
+                  aria-label={`Versículo ${v.verse}, ${state.label}${dirty[v.verse] ? ", sin guardar" : ""}`}
+                  aria-current={i === position ? "true" : undefined}
                 >
-                  {v.verse}
+                  <span>{v.verse}</span>
+                  <span className="al-verse-tab__mark" aria-hidden>
+                    {state.mark}
+                  </span>
                 </button>
               );
             })}
@@ -696,8 +808,11 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                 <Button type="button" variant="outline" disabled={!selectedBoxes.length} onClick={emptyBoxes}>
                   Vaciar caja
                 </Button>
-                <Button type="button" variant="ghost" disabled={!selectedWords.length && !selectedBoxes.length} onClick={() => (setSelectedWords([]), setSelectedBoxes([]), setSelectedRef(null))}>
+                <Button type="button" variant="ghost" disabled={!selectedWords.length && !selectedBoxes.length} onClick={clearSelection}>
                   Quitar selección
+                </Button>
+                <Button type="button" variant="ghost" disabled={!current.length} onClick={() => change([])}>
+                  Limpiar versículo
                 </Button>
               </div>
               {readyToReview ? <p className="af-hint" role="status">Terminado: ya puede revisarlo otra persona.</p> : null}
@@ -711,21 +826,6 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                   {pendingBoxes ? ` Quedan ${pendingBoxes} ${pendingBoxes === 1 ? "caja" : "cajas"} del original sin palabras; está bien si no tienen traducción.` : ""}
                 </p>
               )}
-              <div className="al-actions">
-                {complete && !readyToReview ? (
-                  <Button type="button" onClick={() => void markDone()} disabled={saving}>
-                    {saving ? "Guardando…" : "Terminé este versículo"}
-                  </Button>
-                ) : null}
-                <Button type="button" variant={complete && !readyToReview ? "outline" : "default"} onClick={() => void saveAndNext()} disabled={saving}>
-                  {saving ? "Guardando…" : dirty[verse.verse] ? "Guardar y seguir" : "Seguir"}
-                </Button>
-                {dirty[verse.verse] ? (
-                  <Button type="button" variant="outline" onClick={() => void saveVerse()} disabled={saving}>
-                    Guardar aquí
-                  </Button>
-                ) : null}
-              </div>
             </section>
           ) : (
             <section className="af-card" aria-label="Tu respuesta">
@@ -739,6 +839,11 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                   Todavía no está terminado: quien lo alinea aún no lo marcó. Cuando lo marque podrás responder.
                 </p>
               ) : null}
+              {authoredByMe(verse) ? (
+                <p className="af-hint" role="status">
+                  Tú alineaste este versículo: tu respuesta no cuenta como la de una persona independiente.
+                </p>
+              ) : null}
               <p className="af-question">¿Cada palabra del original está unida a lo que la traduce?</p>
               {mine ? (
                 <p className="af-mine">
@@ -748,22 +853,6 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
               ) : null}
               {tally?.stale.some((a) => a.reviewer.trim().toLowerCase() === me) ? (
                 <p className="af-stale">Cambió la alineación después de tu respuesta. Vuelve a revisarla.</p>
-              ) : null}
-              <div className="af-answers">
-                {(["approved", "revise", "rejected"] as ReviewStance[]).map((s) => (
-                  <Button key={s} type="button" variant={s === "approved" ? "default" : "outline"} disabled={saving || !readyToReview} onClick={() => void answer(s)}>
-                    {STANCE_LABEL[s]}
-                  </Button>
-                ))}
-              </div>
-              {pending ? (
-                <label className="af-field">
-                  <span>{pending === "revise" ? "¿Qué cambio propones?" : "¿Cuál es tu objeción?"}</span>
-                  <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
-                  <Button type="button" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
-                    Enviar
-                  </Button>
-                </label>
               ) : null}
               {others.length ? (
                 <ul className="af-others">
@@ -779,15 +868,64 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           )}
 
           <div className="al-pager">
-            <Button type="button" variant="outline" disabled={position === 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
+            <Button type="button" variant="outline" disabled={position === 0} onClick={() => void goTo(position - 1)}>
               ← Anterior
             </Button>
             <span>
               {position + 1} de {data.verses.length}
             </span>
-            <Button type="button" variant="outline" disabled={position >= data.verses.length - 1} onClick={() => setPosition((p) => p + 1)}>
+            <Button type="button" variant="outline" disabled={position >= data.verses.length - 1} onClick={() => void goTo(position + 1)}>
               Siguiente →
             </Button>
+          </div>
+
+          <div className="al-actionbar" role="region" aria-label="Acciones">
+            {editable ? (
+              <>
+                <div className="al-actionbar__row">
+                  <Button type="button" variant="outline" disabled={!canUndo} onClick={undo}>
+                    Deshacer
+                  </Button>
+                  <Button type="button" variant="outline" disabled={!canRedo} onClick={redo}>
+                    Rehacer
+                  </Button>
+                  {dirty[verse.verse] ? <span className="al-actionbar__flag">Sin guardar</span> : null}
+                </div>
+                <div className="al-actionbar__row">
+                  {complete && !readyToReview ? (
+                    <Button type="button" onClick={() => void markDone()} disabled={saving}>
+                      {saving ? "Guardando…" : "Terminé este versículo"}
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant={complete && !readyToReview ? "outline" : "default"} onClick={() => void saveAndNext()} disabled={saving}>
+                    {saving ? "Guardando…" : dirty[verse.verse] ? "Guardar y seguir" : "Seguir"}
+                  </Button>
+                </div>
+              </>
+            ) : pending ? (
+              <div className="al-actionbar__note">
+                <label className="af-field">
+                  <span>{pending === "revise" ? "¿Qué cambio propones?" : "¿Cuál es tu objeción?"}</span>
+                  <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+                </label>
+                <div className="al-actionbar__row">
+                  <Button type="button" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
+                    Enviar
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setPending(null)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="al-actionbar__row">
+                {(["approved", "revise", "rejected"] as ReviewStance[]).map((stance) => (
+                  <Button key={stance} type="button" variant={stance === "approved" ? "default" : "outline"} disabled={saving || !readyToReview} onClick={() => void answer(stance)}>
+                    {STANCE_LABEL[stance]}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         </>
       ) : null}
