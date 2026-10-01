@@ -7,6 +7,8 @@ import type { UiLanguage } from "../config";
 
 /** Spanish factory name → Portuguese. Names that read the same in both are left out. */
 const PT: [string, string][] = [
+  // Workflow
+  ["Flujo de Creación de Recursos", "Fluxo de Criação de Recursos"],
   // Phases
   ["Traducción", "Tradução"],
   ["Afinación", "Afinação"],

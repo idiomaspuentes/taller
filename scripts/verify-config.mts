@@ -147,6 +147,7 @@ test("se recuerda si una persona ya tuvo trabajo, por servidor, organización y 
 });
 
 test("los nombres de fábrica de las plantillas se traducen al mostrarlos y lo editado se respeta", () => {
+  assert.equal(localizeName("FCR: Flujo de Creación de Recursos 1", "pt"), "FCR: Fluxo de Criação de Recursos 1");
   assert.equal(localizeName("Afinación", "pt"), "Afinação");
   assert.equal(localizeName("Afinación", "es"), "Afinación", "en español no cambia nada");
   assert.equal(localizeName("2 · Traducir TPL 1", "pt"), "2 · Traduzir TPL 1", "también dentro del título de una subtarea");

@@ -43,6 +43,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+import { tNow, useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeName } from "../domain/templateNames";
+import { localizeScope } from "../domain/scopeNames";
 
 type Props = {
   session: GtSession;
@@ -73,6 +77,10 @@ export function WorkflowsView({
   focusWorkflowId,
   onSelectWorkflow,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeScope(text, language);
+  const nm = (text: string) => localizeName(text, language);
   const [catalog, setCatalog] = useState<WorkflowsCatalog>(() => loadLocalWorkflows());
   const [solvers, setSolvers] = useState<SolversCatalog>(DEFAULT_SOLVERS_CATALOG);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -152,7 +160,7 @@ export function WorkflowsView({
 
   function openWorkflow(wf: WorkflowTemplate, opts?: { rename?: boolean }) {
     if (dirty && draft && draft.id !== wf.id) {
-      const ok = window.confirm("Hay cambios sin guardar. ¿Descartarlos?");
+      const ok = window.confirm(t("wf.discard"));
       if (!ok) return;
     }
     setSelectedId(wf.id);
@@ -175,7 +183,7 @@ export function WorkflowsView({
   }
 
   function createNew() {
-    const wf = emptyWorkflow(`Flujo ${catalog.workflows.length + 1}`);
+    const wf = emptyWorkflow(tNow("wf.flowN").replace("{n}", String(catalog.workflows.length + 1)));
     setCatalog((prev) => {
       const next = {
         schema: WORKFLOWS_SCHEMA,
@@ -187,7 +195,7 @@ export function WorkflowsView({
     openWorkflow(wf, { rename: true });
     setDirty(true);
     setDescOpen(false);
-    announce(`Plantilla «${wf.name}» creada (guarda para publicarla).`);
+    announce(t("wf.created").replace("{name}", wf.name));
   }
 
   /** A new template that starts from the FCR base (same flow, own copy to adjust). */
@@ -202,14 +210,14 @@ export function WorkflowsView({
     openWorkflow(wf, { rename: true });
     setDirty(true);
     setDescOpen(false);
-    announce(`Plantilla «${wf.name}» creada desde el FCR (guarda para publicarla).`);
+    announce(t("wf.createdFcr").replace("{name}", nm(wf.name)));
   }
 
   function commitRenameWorkflow() {
     setEditingName(false);
     if (!draft) return;
     const name = draft.name.trim();
-    if (!name) updateDraft({ name: "Sin nombre" });
+    if (!name) updateDraft({ name: t("wf.unnamed") });
   }
 
   function switchWorkflow(id: string) {
@@ -295,7 +303,7 @@ export function WorkflowsView({
     const taskId = uid();
     const task: TaskTemplate = {
       id: taskId,
-      name: "Nueva tarea",
+      name: tNow("tv.newTask"),
       phaseId,
       rules: [defaultRule("tpl")],
       distributeUnit: "portion",
@@ -350,7 +358,7 @@ export function WorkflowsView({
         tasks: prev.tasks.map((t) => {
           if (t.id !== taskId) return t;
           const nextIndex = (t.steps?.length ?? 0) + 1;
-          const step: TaskStep = { id: uid(), name: `Paso ${nextIndex}` };
+          const step: TaskStep = { id: uid(), name: tNow("tv.stepN").replace("{n}", String(nextIndex)) };
           return { ...t, steps: [...(t.steps ?? []), step] };
         }),
       };
@@ -398,11 +406,11 @@ export function WorkflowsView({
     if (!draft || !canManage) return;
     const normalized = normalizeWorkflowTemplate(draft);
     if (!normalized) {
-      setError("La plantilla necesita un nombre y al menos una tarea con recursos.");
+      setError(t("wf.needName"));
       return;
     }
     if (!normalized.tasks.length) {
-      setError("Añade al menos una tarea a la plantilla.");
+      setError(t("wf.needTask"));
       return;
     }
     setBusy(true);
@@ -421,8 +429,8 @@ export function WorkflowsView({
       setDirty(false);
       announce(
         pmOrg
-          ? `Plantilla «${normalized.name}» guardada en ${pmOrg}/gateway-tasks.`
-          : `Plantilla «${normalized.name}» guardada en este dispositivo.`,
+          ? t("tv.workflowSavedOrg").replace("{name}", normalized.name).replace("{org}", pmOrg)
+          : t("tv.savedLocal").replace("{name}", normalized.name),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -433,7 +441,7 @@ export function WorkflowsView({
 
   async function removeWorkflow(id: string) {
     if (!canManage) return;
-    if (!window.confirm("¿Eliminar esta plantilla de flujo?")) return;
+    if (!window.confirm(t("wf.confirmDelete"))) return;
     setBusy(true);
     try {
       const next: WorkflowsCatalog = {
@@ -448,7 +456,7 @@ export function WorkflowsView({
         setDraft(null);
         onSelectWorkflow?.(undefined);
       }
-      announce("Plantilla eliminada.");
+      announce(t("wf.deleted"));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -465,17 +473,17 @@ export function WorkflowsView({
   );
 
   const draftSummary = draft
-    ? `${draft.phases.length} fase${draft.phases.length === 1 ? "" : "s"} · ${draft.tasks.length} tarea${draft.tasks.length === 1 ? "" : "s"}`
+    ? `${t(draft.phases.length === 1 ? "wf.phasesOne" : "wf.phasesMany").replace("{n}", String(draft.phases.length))} · ${t(draft.tasks.length === 1 ? "tv.tasksOne" : "tv.tasksMany").replace("{n}", String(draft.tasks.length))}`
     : "";
 
   return (
     <div className={cn("hub", draft && "hub--editing-workflow")}>
       <div className="hub-header">
         <div>
-          <h1 className={cn("hub-title", draft && "hub-title--quiet")}>Plantillas de flujo</h1>
+          <h1 className={cn("hub-title", draft && "hub-title--quiet")}>{t("wf.title")}</h1>
           {listHelpOpen ? (
             <p className="hub-lede">
-              Copia al proyecto al aplicar; no es un enlace en vivo.
+              {t("wf.help")}
             </p>
           ) : null}
         </div>
@@ -485,7 +493,7 @@ export function WorkflowsView({
             className="text-xs text-muted-foreground underline-offset-2 hover:underline"
             onClick={() => setListHelpOpen((v) => !v)}
           >
-            {listHelpOpen ? "Ocultar ayuda" : "¿Cómo funciona?"}
+            {listHelpOpen ? t("tv.hideHelp") : t("tv.howItWorks")}
           </button>
           {canManage ? (
             <Button
@@ -495,12 +503,12 @@ export function WorkflowsView({
               onClick={createNew}
               disabled={busy}
             >
-              + Nueva plantilla
+              {t("wf.newTpl")}
             </Button>
           ) : null}
           {canManage ? (
             <Button type="button" size="sm" variant="ghost" onClick={createFromFcr} disabled={busy}>
-              + Desde el FCR
+              {t("wf.fromFcr")}
             </Button>
           ) : null}
         </div>
@@ -515,13 +523,13 @@ export function WorkflowsView({
       {!catalog.workflows.length && !draft ? (
         <Alert>
           <AlertDescription>
-            Aún no hay plantillas.{" "}
+            {t("wf.noneYet")}
             {canManage ? (
               <button type="button" className="underline underline-offset-2" onClick={createNew}>
-                Crear la primera
+                {t("wf.createFirst")}
               </button>
             ) : (
-              "Pide a un gestor que cree una."
+              t("wf.askManager")
             )}
           </AlertDescription>
         </Alert>
@@ -546,7 +554,7 @@ export function WorkflowsView({
                       }
                     }}
                     className="workflows-identity__title-input"
-                    aria-label="Nombre de la plantilla"
+                    aria-label={t("wf.nameAria")}
                     autoFocus
                   />
                 ) : canManage ? (
@@ -554,16 +562,16 @@ export function WorkflowsView({
                     type="button"
                     className="workflows-identity__title"
                     onClick={() => setEditingName(true)}
-                    title="Clic para renombrar"
+                    title={t("wf.clickRenameTpl")}
                   >
-                    {draft.name}
+                    {nm(draft.name)}
                   </button>
                 ) : (
-                  <h2 className="workflows-identity__title">{draft.name}</h2>
+                  <h2 className="workflows-identity__title">{nm(draft.name)}</h2>
                 )}
                 <span className="workflows-identity__status">{draftSummary}</span>
                 {dirty ? (
-                  <span className="workflows-identity__status">sin guardar</span>
+                  <span className="workflows-identity__status">{t("wf.unsaved")}</span>
                 ) : null}
               </div>
 
@@ -571,16 +579,16 @@ export function WorkflowsView({
                 <Select value={draft.id} onValueChange={switchWorkflow}>
                   <SelectTrigger
                     className="workflows-identity__switcher"
-                    aria-label="Cambiar plantilla"
+                    aria-label={t("wf.switchAria")}
                   >
-                    Cambiar
+                    {t("wf.switch")}
                   </SelectTrigger>
                   <SelectContent>
                     {catalog.workflows.map((wf) => {
                       const shown = draft.id === wf.id ? draft : wf;
                       return (
                         <SelectItem key={wf.id} value={wf.id}>
-                          {shown.name}
+                          {nm(shown.name)}
                         </SelectItem>
                       );
                     })}
@@ -595,7 +603,7 @@ export function WorkflowsView({
                     variant="ghost"
                     size="sm"
                     aria-expanded={templateMenuOpen}
-                    aria-label="Más acciones de la plantilla"
+                    aria-label={t("wf.moreTpl")}
                     onClick={() => {
                       setTemplateMenuOpen((v) => !v);
                       setCreateMenuOpen(false);
@@ -615,7 +623,7 @@ export function WorkflowsView({
                           setEditingName(true);
                         }}
                       >
-                        Renombrar
+                        {t("wf.rename")}
                       </button>
                       <button
                         type="button"
@@ -626,7 +634,7 @@ export function WorkflowsView({
                           setDescOpen(true);
                         }}
                       >
-                        {draft.description?.trim() ? "Editar descripción" : "Añadir descripción"}
+                        {draft.description?.trim() ? t("wf.editDesc") : t("wf.addDescMenu")}
                       </button>
                       <button
                         type="button"
@@ -638,7 +646,7 @@ export function WorkflowsView({
                           void removeWorkflow(draft.id);
                         }}
                       >
-                        Eliminar plantilla
+                        {t("wf.deleteTpl")}
                       </button>
                     </div>
                   ) : null}
@@ -649,7 +657,7 @@ export function WorkflowsView({
             {descOpen || draft.description?.trim() ? (
               <div className="workflows-identity__desc grid gap-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="wf-desc">Descripción</Label>
+                  <Label htmlFor="wf-desc">{t("tv.description")}</Label>
                   {canManage ? (
                     <button
                       type="button"
@@ -659,7 +667,7 @@ export function WorkflowsView({
                         setDescOpen(false);
                       }}
                     >
-                      Quitar
+                      {t("tv.remove")}
                     </button>
                   ) : null}
                 </div>
@@ -669,7 +677,7 @@ export function WorkflowsView({
                   value={draft.description ?? ""}
                   disabled={!canManage}
                   onChange={(e) => updateDraft({ description: e.target.value })}
-                  placeholder="Opcional — visible al aplicar en un proyecto"
+                  placeholder={t("wf.descPlaceholder")}
                 />
               </div>
             ) : canManage ? (
@@ -678,14 +686,14 @@ export function WorkflowsView({
                 className="workflows-identity__desc-add"
                 onClick={() => setDescOpen(true)}
               >
-                + Añadir descripción
+                {t("tv.addDescription")}
               </button>
             ) : null}
           </div>
 
           <div className="workflows-board-head">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Fases y tareas
+              {t("tv.phasesAndTasks")}
             </h2>
             {canManage ? (
               <div className="phases-create">
@@ -700,7 +708,7 @@ export function WorkflowsView({
                     setTemplateMenuOpen(false);
                   }}
                 >
-                  + Fase / tarea
+                  {t("wf.addPhaseTask")}
                 </Button>
                 {createMenuOpen ? (
                   <div className="phases-menu" role="menu">
@@ -713,7 +721,7 @@ export function WorkflowsView({
                         addPhase();
                       }}
                     >
-                      Fase
+                      {t("tv.menuPhase")}
                     </button>
                     <button
                       type="button"
@@ -725,7 +733,7 @@ export function WorkflowsView({
                         if (sortedPhases[0]) addTask(sortedPhases[0].id);
                       }}
                     >
-                      Tarea
+                      {t("wf.menuTask")}
                     </button>
                   </div>
                 ) : null}
@@ -751,7 +759,7 @@ export function WorkflowsView({
                               if (e.key === "Escape") setEditingPhaseId(null);
                             }}
                             className="h-8 max-w-xs font-medium"
-                            aria-label="Renombrar fase"
+                            aria-label={t("tv.renamePhaseAria")}
                             autoFocus
                           />
                           <Input
@@ -763,7 +771,7 @@ export function WorkflowsView({
                               if (e.key === "Escape") setEditingPhaseId(null);
                             }}
                             className="h-8 max-w-[10rem] font-mono text-xs"
-                            aria-label="Identificador corto de la fase"
+                            aria-label={t("tv.shortIdAria")}
                             placeholder="revision"
                           />
                         </div>
@@ -776,18 +784,18 @@ export function WorkflowsView({
                             setEditingPhaseName(phase.name);
                             setEditingPhaseSlug(ensurePhaseSlug(phase));
                           }}
-                          title="Clic para renombrar la fase"
+                          title={t("tv.clickRename")}
                         >
-                          {phase.name}
+                          {nm(phase.name)}
                         </button>
                       ) : (
-                        <span className="phases-section__title">{phase.name}</span>
+                        <span className="phases-section__title">{nm(phase.name)}</span>
                       )}
                       <span className="phases-section__count">
-                        {phaseTasks.length} tarea{phaseTasks.length === 1 ? "" : "s"}
+                        {t(phaseTasks.length === 1 ? "tv.tasksOne" : "tv.tasksMany").replace("{n}", String(phaseTasks.length))}
                       </span>
                       {editingPhaseId === phase.id ? null : (
-                        <span className="phases-section__slug" title="Identificador corto de la fase">
+                        <span className="phases-section__slug" title={t("tv.shortIdAria")}>
                           {ensurePhaseSlug(phase)}
                         </span>
                       )}
@@ -799,7 +807,7 @@ export function WorkflowsView({
                           variant="ghost"
                           size="sm"
                           aria-expanded={phaseMenuOpen}
-                          aria-label={`Más acciones · ${phase.name}`}
+                          aria-label={t("tv.moreActions").replace("{name}", nm(phase.name))}
                           onClick={() => {
                             setPhaseMenuId(phaseMenuOpen ? null : phase.id);
                             setCreateMenuOpen(false);
@@ -819,7 +827,7 @@ export function WorkflowsView({
                                 addTask(phase.id);
                               }}
                             >
-                              Añadir tarea
+                              {t("tv.addTask")}
                             </button>
                             <button
                               type="button"
@@ -828,7 +836,7 @@ export function WorkflowsView({
                               disabled={draft.phases.length <= 1}
                               onClick={() => removePhase(phase.id)}
                             >
-                              Eliminar fase
+                              {t("tv.deletePhase")}
                             </button>
                           </div>
                         ) : null}
@@ -837,7 +845,7 @@ export function WorkflowsView({
                   </div>
 
                   {phaseTasks.map((task) => {
-                    const resources = task.rules.map((r) => SCOPE_LABEL[r.resource]).join(" · ");
+                    const resources = task.rules.map((r) => loc(SCOPE_LABEL[r.resource])).join(" · ");
                     const solver = solvers.solvers.find((s) => s.id === task.solverAppId);
                     const stepCount = task.steps?.length ?? 0;
                     const isEditing = taskEditId === task.id;
@@ -846,11 +854,11 @@ export function WorkflowsView({
                       : [];
                     const availableResources = SCOPE_KEYS.filter((k) => !taskResources.includes(k));
                     const showSteps = stepCount > 0;
-                    const claimSummary = formatTaskClaimSummary(task.steps);
+                    const claimSummary = loc(formatTaskClaimSummary(task.steps));
                     const summaryParts = [
-                      resources || "Sin recursos",
+                      resources || loc("Sin recursos"),
                       stepCount
-                        ? `${stepCount} paso${stepCount === 1 ? "" : "s"}${claimSummary ? ` · ${claimSummary}` : ""}`
+                        ? `${t(stepCount === 1 ? "tv.stepsOne" : "tv.stepsMany").replace("{n}", String(stepCount))}${claimSummary ? ` · ${claimSummary}` : ""}`
                         : null,
                       !showSteps && solver ? solver.name : null,
                     ].filter(Boolean);
@@ -888,16 +896,16 @@ export function WorkflowsView({
                                   value={task.name}
                                   onChange={(e) => updateTask(task.id, { name: e.target.value })}
                                   className="phases-task__title-input wf-title-input"
-                                  aria-label="Nombre de la tarea"
+                                  aria-label={t("tv.taskNameAria")}
                                 />
                               ) : (
-                                <span className="phases-task__title">{task.name}</span>
+                                <span className="phases-task__title">{nm(task.name)}</span>
                               )}
                               <button
                                 type="button"
                                 className="phases-task__collapse"
                                 aria-expanded
-                                aria-label="Cerrar editor"
+                                aria-label={t("wf.closeEditor")}
                                 onClick={toggleTaskEdit}
                               >
                                 <ChevronDown className="phases-task__chevron phases-task__chevron--open" />
@@ -913,7 +921,7 @@ export function WorkflowsView({
                             onClick={toggleTaskEdit}
                           >
                             <span className="phases-task__title">
-                              {task.name}
+                              {nm(task.name)}
                               <ChevronDown className="phases-task__chevron" aria-hidden />
                             </span>
                             <span className="phases-task__summary">{summaryParts.join(" · ")}</span>
@@ -924,20 +932,20 @@ export function WorkflowsView({
                           <div className="phases-task__editor">
                             <section className="wf-editor-block">
                               <header className="wf-editor-block__head">
-                                <h3 className="wf-editor-block__title">Recursos</h3>
+                                <h3 className="wf-editor-block__title">{t("tv.resources")}</h3>
                                 <p className="wf-editor-block__hint">
-                                  Qué material cubre esta tarea.
+                                  {t("wf.resourcesHint")}
                                 </p>
                               </header>
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {taskResources.map((key) => (
                                   <Badge key={key} variant="secondary" className="gap-1 pr-1">
-                                    {SCOPE_LABEL[key]}
+                                    {loc(SCOPE_LABEL[key])}
                                     {canManage ? (
                                       <button
                                         type="button"
                                         className="rounded-sm px-1 text-muted-foreground hover:text-foreground"
-                                        aria-label={`Quitar ${SCOPE_LABEL[key]}`}
+                                        aria-label={t("tv.removeRes").replace("{res}", loc(SCOPE_LABEL[key]))}
                                         onClick={() =>
                                           setTaskResources(
                                             task.id,
@@ -961,7 +969,7 @@ export function WorkflowsView({
                                         setStepMenuId(null);
                                       }}
                                     >
-                                      + Recurso
+                                      {t("wf.addResource")}
                                     </button>
                                     {resourceMenuOpen ? (
                                       <div className="phases-menu" role="menu">
@@ -979,7 +987,7 @@ export function WorkflowsView({
                                               ]);
                                             }}
                                           >
-                                            {SCOPE_LABEL[key]}
+                                            {loc(SCOPE_LABEL[key])}
                                           </button>
                                         ))}
                                       </div>
@@ -992,15 +1000,15 @@ export function WorkflowsView({
                             {!showSteps ? (
                               <section className="wf-editor-block">
                                 <header className="wf-editor-block__head">
-                                  <h3 className="wf-editor-block__title">Resolución</h3>
+                                  <h3 className="wf-editor-block__title">{t("wf.resolution")}</h3>
                                   <p className="wf-editor-block__hint">
-                                    Opcional si la tarea no tiene checklist.
+                                    {t("wf.resolutionHint")}
                                   </p>
                                 </header>
                                 {showTaskSolver ? (
                                   <div className="grid gap-1.5">
                                     <div className="flex items-center justify-between gap-2">
-                                      <Label>Herramienta</Label>
+                                      <Label>{t("tv.toolAria")}</Label>
                                       {canManage ? (
                                         <button
                                           type="button"
@@ -1010,7 +1018,7 @@ export function WorkflowsView({
                                             setSolverPickerOpen(false);
                                           }}
                                         >
-                                          Quitar
+                                          {t("tv.remove")}
                                         </button>
                                       ) : null}
                                     </div>
@@ -1024,10 +1032,10 @@ export function WorkflowsView({
                                       }
                                     >
                                       <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Elige herramienta" />
+                                        <SelectValue placeholder={t("tv.pickTool")} />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="none">Ninguna</SelectItem>
+                                        <SelectItem value="none">{t("tv.none")}</SelectItem>
                                         {solvers.solvers.map((app) => (
                                           <SelectItem key={app.id} value={app.id}>
                                             {app.name}
@@ -1042,7 +1050,7 @@ export function WorkflowsView({
                                     className="wf-text-action"
                                     onClick={() => setSolverPickerOpen(true)}
                                   >
-                                    + Herramienta para resolver
+                                    {t("tv.addSolver")}
                                   </button>
                                 ) : null}
                               </section>
@@ -1067,9 +1075,9 @@ export function WorkflowsView({
 
                             <section className="wf-editor-block">
                               <header className="wf-editor-block__head">
-                                <h3 className="wf-editor-block__title">Checklist</h3>
+                                <h3 className="wf-editor-block__title">{t("wf.checklist")}</h3>
                                 <p className="wf-editor-block__hint">
-                                  Pasos que el trabajador marca al completar.
+                                  {t("wf.checklistHint")}
                                 </p>
                               </header>
 
@@ -1093,7 +1101,7 @@ export function WorkflowsView({
                                                 type="button"
                                                 className="wf-step__reorder-btn"
                                                 disabled={idx === 0}
-                                                aria-label={`Subir paso ${idx + 1}`}
+                                                aria-label={t("tv.stepUp").replace("{n}", String(idx + 1))}
                                                 onClick={() => moveStep(task.id, step.id, -1)}
                                               >
                                                 ↑
@@ -1102,7 +1110,7 @@ export function WorkflowsView({
                                                 type="button"
                                                 className="wf-step__reorder-btn"
                                                 disabled={idx >= (task.steps?.length ?? 0) - 1}
-                                                aria-label={`Bajar paso ${idx + 1}`}
+                                                aria-label={t("tv.stepDown").replace("{n}", String(idx + 1))}
                                                 onClick={() => moveStep(task.id, step.id, 1)}
                                               >
                                                 ↓
@@ -1120,8 +1128,8 @@ export function WorkflowsView({
                                               })
                                             }
                                             className="wf-step__name"
-                                            aria-label={`Paso ${idx + 1}`}
-                                            placeholder={`Paso ${idx + 1}`}
+                                            aria-label={t("tv.stepN").replace("{n}", String(idx + 1))}
+                                            placeholder={t("tv.stepN").replace("{n}", String(idx + 1))}
                                           />
                                           <div className="wf-step__tool">
                                             {editingStepSolver ? (
@@ -1137,11 +1145,11 @@ export function WorkflowsView({
                                                 }}
                                               >
                                                 <SelectTrigger className="h-8 w-full max-w-[14rem]">
-                                                  <SelectValue placeholder="Herramienta" />
+                                                  <SelectValue placeholder={t("tv.toolAria")} />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                   <SelectItem value="none">
-                                                    Sin herramienta
+                                                    {t("tv.noTool")}
                                                   </SelectItem>
                                                   {solvers.solvers.map((app) => (
                                                     <SelectItem key={app.id} value={app.id}>
@@ -1160,7 +1168,7 @@ export function WorkflowsView({
                                                   setStepMenuId(null);
                                                 }}
                                               >
-                                                {stepSolver?.name ?? "Herramienta"}
+                                                {stepSolver?.name ?? t("tv.toolAria")}
                                               </button>
                                             ) : canManage ? (
                                               <button
@@ -1171,7 +1179,7 @@ export function WorkflowsView({
                                                   setStepMenuId(null);
                                                 }}
                                               >
-                                                + Herramienta
+                                                {t("tv.addToolShort")}
                                               </button>
                                             ) : null}
                                           </div>
@@ -1198,7 +1206,7 @@ export function WorkflowsView({
                                               size="sm"
                                               variant="ghost"
                                               aria-expanded={stepMenuOpen}
-                                              aria-label={`Más acciones · paso ${idx + 1}`}
+                                              aria-label={t("wf.moreStep").replace("{n}", String(idx + 1))}
                                               onClick={() => {
                                                 setStepMenuId(stepMenuOpen ? null : step.id);
                                                 setResourceMenuOpen(false);
@@ -1221,9 +1229,7 @@ export function WorkflowsView({
                                                     setStepSolverId(step.id);
                                                   }}
                                                 >
-                                                  {step.solverAppId
-                                                    ? "Cambiar herramienta"
-                                                    : "Añadir herramienta"}
+                                                  {step.solverAppId ? t("wf.changeTool") : t("wf.addTool")}
                                                 </button>
                                                 {step.solverAppId ? (
                                                   <button
@@ -1237,7 +1243,7 @@ export function WorkflowsView({
                                                       });
                                                     }}
                                                   >
-                                                    Quitar herramienta
+                                                    {t("wf.removeTool")}
                                                   </button>
                                                 ) : null}
                                                 <button
@@ -1249,7 +1255,7 @@ export function WorkflowsView({
                                                     removeStep(task.id, step.id);
                                                   }}
                                                 >
-                                                  Quitar paso
+                                                  {t("wf.removeStep")}
                                                 </button>
                                               </div>
                                             ) : null}
@@ -1261,7 +1267,7 @@ export function WorkflowsView({
                                 </ol>
                               ) : (
                                 <p className="wf-editor-block__empty">
-                                  Sin checklist: el trabajador solo cierra la subtarea.
+                                  {t("wf.noChecklist")}
                                 </p>
                               )}
 
@@ -1271,7 +1277,7 @@ export function WorkflowsView({
                                   className="wf-add-step"
                                   onClick={() => addStep(task.id)}
                                 >
-                                  + Añadir paso
+                                  {t("wf.addStep")}
                                 </button>
                               ) : null}
                             </section>
@@ -1284,7 +1290,7 @@ export function WorkflowsView({
                                   variant="ghost"
                                   onClick={() => removeTask(task.id)}
                                 >
-                                  Quitar tarea
+                                  {t("wf.removeTask")}
                                 </Button>
                               ) : (
                                 <span />
@@ -1301,7 +1307,7 @@ export function WorkflowsView({
                                   setSolverPickerOpen(false);
                                 }}
                               >
-                                Listo
+                                {t("wf.done")}
                               </Button>
                             </div>
                           </div>
@@ -1312,7 +1318,7 @@ export function WorkflowsView({
 
                   {!phaseTasks.length ? (
                     <p className="text-sm text-muted-foreground px-1">
-                      Sin tareas en esta fase.
+                      {t("wf.noTasksInPhase")}
                       {canManage ? (
                         <>
                           {" "}
@@ -1321,7 +1327,7 @@ export function WorkflowsView({
                             className="underline-offset-2 hover:underline"
                             onClick={() => addTask(phase.id)}
                           >
-                            Añadir tarea
+                            {t("tv.addTask")}
                           </button>
                         </>
                       ) : null}
@@ -1334,9 +1340,9 @@ export function WorkflowsView({
 
           {canManage && dirty ? (
             <div className="workflows-save-bar">
-              <p className="text-sm text-muted-foreground">Cambios sin guardar en esta plantilla.</p>
+              <p className="text-sm text-muted-foreground">{t("wf.unsavedBar")}</p>
               <Button type="button" disabled={busy} onClick={() => void save()}>
-                {busy ? "Guardando…" : "Guardar"}
+                {busy ? t("wf.saving") : t("wf.save")}
               </Button>
             </div>
           ) : null}
@@ -1344,7 +1350,7 @@ export function WorkflowsView({
       ) : catalog.workflows.length ? (
         <div className="hub-panel">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Elige una plantilla
+            {t("wf.pick")}
           </h2>
           <div className="workflows-picker">
             {catalog.workflows.map((wf) => (
@@ -1354,9 +1360,9 @@ export function WorkflowsView({
                 className="workflows-picker__item"
                 onClick={() => openWorkflow(wf)}
               >
-                <span className="workflows-picker__name">{wf.name}</span>
+                <span className="workflows-picker__name">{nm(wf.name)}</span>
                 <span className="workflows-picker__meta">
-                  {wf.tasks.length} tarea{wf.tasks.length === 1 ? "" : "s"}
+                  {t(wf.tasks.length === 1 ? "tv.tasksOne" : "tv.tasksMany").replace("{n}", String(wf.tasks.length))}
                 </span>
               </button>
             ))}
