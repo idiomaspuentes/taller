@@ -9,6 +9,7 @@ import { parseWorkOrderMarker } from "../domain/workOrder";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useT } from "../i18n/messages";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Props = {
@@ -28,6 +29,7 @@ export function TeamBoardView({
   contentOrg,
   announce,
 }: Props) {
+  const t = useT();
   const [issues, setIssues] = useState<DcsIssue[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -85,7 +87,7 @@ export function TeamBoardView({
 
   async function take(issue: DcsIssue) {
     if (!isMember) {
-      setError("Solo los miembros del equipo pueden tomar tareas.");
+      setError(t("tb.onlyMembers"));
       return;
     }
     const projectId = (
@@ -94,15 +96,13 @@ export function TeamBoardView({
       ""
     ).toUpperCase();
     if (projectId && !allowByProject[projectId]) {
-      setError(
-        "Este proyecto no permite autoasignación. Pide a un gestor que te asigne o active el ajuste.",
-      );
+      setError(t("tb.noSelfError"));
       return;
     }
     setActing(issue.number);
     try {
       await claimIssue(session, pmOrg, issue.number);
-      announce(`Tomaste #${issue.number}`);
+      announce(t("tb.took").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -115,17 +115,15 @@ export function TeamBoardView({
     <div className="grid gap-3">
       <Card size="sm">
         <CardHeader>
-          <CardTitle>Equipo · {orgTeam}</CardTitle>
+          <CardTitle>{t("tb.title").replace("{team}", orgTeam)}</CardTitle>
           <CardDescription>
-            Issues sin asignar del equipo en {pmOrg}.{" "}
-            {isMember
-              ? "Puedes tomar tareas solo en proyectos con autoasignación."
-              : "No eres miembro de este equipo."}
+            {t("tb.unassigned").replace("{org}", pmOrg)}{" "}
+            {isMember ? t("tb.canTake") : t("tb.notMember")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2">
           <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reload()}>
-            {busy ? "Cargando…" : "Actualizar"}
+            {busy ? t("tb.loading") : t("tb.refresh")}
           </Button>
           {error ? (
             <Alert variant="destructive">
@@ -133,7 +131,7 @@ export function TeamBoardView({
             </Alert>
           ) : null}
           {!busy && !issues.length ? (
-            <p className="text-sm text-muted-foreground">No hay subtareas sin asignar.</p>
+            <p className="text-sm text-muted-foreground">{t("tb.empty")}</p>
           ) : null}
           {issues.map((issue) => {
             const marker = parseWorkOrderMarker(issue.body);
@@ -158,7 +156,7 @@ export function TeamBoardView({
                     {issue.milestone?.title ? <Badge variant="outline">{issue.milestone.title}</Badge> : null}
                     {marker?.resource ? <Badge variant="secondary">{marker.resource}</Badge> : null}
                     {projectId && allowByProject[projectId] === false ? (
-                      <Badge variant="outline">Sin autoasignación</Badge>
+                      <Badge variant="outline">{t("tb.noSelf")}</Badge>
                     ) : null}
                   </div>
                 </div>
@@ -168,7 +166,7 @@ export function TeamBoardView({
                   disabled={!isMember || !allowed || acting === issue.number}
                   onClick={() => void take(issue)}
                 >
-                  Tomar
+                  {t("tb.take")}
                 </Button>
               </div>
             );

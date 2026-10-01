@@ -3,6 +3,7 @@ import { ChevronDown, Eye, Menu, MoreHorizontal, Wrench } from "lucide-react";
 import type { ViewMode } from "../viewMode";
 import { RoleModeToggle } from "./RoleModeToggle";
 import { BrowserNotifyToggle } from "./BrowserNotifyToggle";
+import { useT, type MessageKey } from "../i18n/messages";
 
 export type AppNavLink = {
   id: string;
@@ -29,10 +30,8 @@ type Props = {
   signedIn: boolean;
 };
 
-function attentionLabel(count: number): string {
-  return count === 1
-    ? "1 conversación necesita tu atención"
-    : `${count} conversaciones necesitan tu atención`;
+function attentionLabel(count: number, t: (key: MessageKey) => string): string {
+  return count === 1 ? t("nav.attentionOne") : t("nav.attentionMany").replace("{n}", String(count));
 }
 
 function AttentionBadge({ count }: { count: number }) {
@@ -54,6 +53,7 @@ export function AppNav({
   onOpenQaAdmin,
   signedIn,
 }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const panelId = useId();
@@ -88,11 +88,11 @@ export function AppNav({
 
   function linkAriaLabel(link: AppNavLink): string | undefined {
     if (link.id !== attentionLinkId || count <= 0) return undefined;
-    return `${link.label} · ${attentionLabel(count)}`;
+    return `${link.label} · ${attentionLabel(count, t)}`;
   }
 
   return (
-    <nav className="app-nav" aria-label="Principal" ref={rootRef}>
+    <nav className="app-nav" aria-label={t("nav.main")} ref={rootRef}>
       <div className="app-nav__links">
         {links.filter((link) => !link.menuOnly).map((link) => (
           <button
@@ -101,7 +101,7 @@ export function AppNav({
             className="app-nav-btn"
             data-active={link.active ? "true" : "false"}
             aria-label={linkAriaLabel(link)}
-            title={link.id === attentionLinkId && count > 0 ? attentionLabel(count) : undefined}
+            title={link.id === attentionLinkId && count > 0 ? attentionLabel(count, t) : undefined}
             onClick={() => selectLink(link)}
           >
             {link.label}
@@ -120,8 +120,8 @@ export function AppNav({
         aria-haspopup="true"
         aria-label={
           [
-            previewing ? "Menú · vista trabajador" : "Menú",
-            count > 0 ? attentionLabel(count) : "",
+            previewing ? t("nav.menuWorker") : t("nav.menu"),
+            count > 0 ? attentionLabel(count, t) : "",
           ]
             .filter(Boolean)
             .join(" · ")
@@ -130,7 +130,7 @@ export function AppNav({
       >
         <span className="app-nav__menu-mobile">
           <Menu className="app-nav__icon" aria-hidden />
-          Menú
+          {t("nav.menu")}
           <AttentionBadge count={count} />
           {previewing ? (
             <span className="app-nav__preview-mark" aria-hidden />
@@ -140,13 +140,13 @@ export function AppNav({
           {previewing ? (
             <>
               <Eye className="app-nav__icon" aria-hidden />
-              Trabajador
+              {t("nav.workerShort")}
               <ChevronDown className="app-nav__chevron" aria-hidden />
             </>
           ) : (
             <>
               <MoreHorizontal className="app-nav__icon" aria-hidden />
-              <span className="sr-only">Vista de rol</span>
+              <span className="sr-only">{t("nav.roleView")}</span>
             </>
           )}
         </span>
@@ -181,7 +181,7 @@ export function AppNav({
               }}
             >
               <Wrench className="app-nav__icon" aria-hidden />
-              Administración (QA)
+              {t("nav.qaAdmin")}
             </button>
           ) : null}
         </div>

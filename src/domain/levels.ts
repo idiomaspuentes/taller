@@ -1,3 +1,4 @@
+import glossary from "../i18n/locales/glossary.pt.json";
 /**
  * Person levels for a function (from the FCR qualification rubric):
  * oyente observes, aprendiz works with a person beside them, practicante works
@@ -14,6 +15,13 @@ export const LEVEL_LABEL: Record<PersonLevel, string> = {
   practicante: "Practicante",
   habilitada: "Persona habilitada",
 };
+
+const LEVEL_LABEL_PT: Record<PersonLevel, string> = glossary.levelNames as Record<PersonLevel, string>;
+
+/** Level name for the screen, in the interface language. */
+export function levelLabel(level: PersonLevel, language: "es" | "pt"): string {
+  return (language === "pt" ? LEVEL_LABEL_PT : LEVEL_LABEL)[level];
+}
 
 export function isLevel(value: unknown): value is PersonLevel {
   return typeof value === "string" && (LEVEL_ORDER as string[]).includes(value);

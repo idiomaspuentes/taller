@@ -1,3 +1,4 @@
+import glossary from "../i18n/locales/glossary.pt.json";
 export const BOOKS: { code: string; name: string }[] = [
   { code: "GEN", name: "Génesis" },
   { code: "EXO", name: "Éxodo" },
@@ -67,8 +68,16 @@ export const BOOKS: { code: string; name: string }[] = [
   { code: "REV", name: "Apocalipsis" },
 ];
 
+/** The stored name is Spanish (it ends up in titles written to Door43); this is only for showing. */
+const BOOK_NAMES_PT: Record<string, string> = glossary.books;
+
 export function bookName(code: string): string {
   return BOOKS.find((b) => b.code === code)?.name ?? code;
+}
+
+/** Book name for the screen, in the interface language. */
+export function bookLabel(code: string, language: "es" | "pt"): string {
+  return (language === "pt" ? BOOK_NAMES_PT[code] : undefined) ?? bookName(code);
 }
 
 /**
@@ -95,9 +104,9 @@ export function normalizeProjectId(raw: string): string {
 }
 
 /** Display label: book name when the id is a known book, else the id itself. */
-export function projectDisplayName(projectId: string): string {
+export function projectDisplayName(projectId: string, language: "es" | "pt" = "es"): string {
   const id = normalizeProjectId(projectId);
-  return BOOKS.find((b) => b.code === id)?.name ?? id;
+  return BOOKS.some((b) => b.code === id) ? bookLabel(id, language) : id;
 }
 
 /** True when this project id is a single known Bible book (current MVP shape). */

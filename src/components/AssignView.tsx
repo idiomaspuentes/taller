@@ -52,6 +52,9 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useT, type MessageKey } from "../i18n/messages";
+import { localizeScope } from "../domain/scopeNames";
+import { useUiLanguage } from "../i18n/language";
 
 type PipelineFilter = AssignmentState | "all";
 type ItemTab = "lotes" | "tareas" | "porciones" | "articulos";
@@ -111,6 +114,10 @@ const PRIMARY_PIPELINE: PipelineFilter[] = ["all", "sin asignar", "asignado"];
 const SECONDARY_PIPELINE: AssignmentState[] = ["en curso", "hecho"];
 
 export function AssignView({ inventory, board, onChange, announce, onGoTareas }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeScope(text, language);
+  const n = (key: MessageKey, count: number) => t(key).replace("{n}", String(count));
   const team = board.teams.find((t) => t.id === board.activeTeamId) ?? board.teams[0];
   const [tab, setTab] = useState<ItemTab>(() => defaultItemTab(team));
   const [pipeline, setPipeline] = useState<PipelineFilter>("all");
@@ -486,12 +493,12 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
 
   function doAssign() {
     if (!team) {
-      announce("Elige una tarea activa.");
+      announce(t("as.pickActive"));
       return;
     }
     const person = board.people.find((p) => p.id === assigneeId) ?? members[0];
     if (!person) {
-      announce("Elige una persona de la tarea.");
+      announce(t("as.pickPerson"));
       return;
     }
     const result = assignToPerson(
@@ -505,17 +512,18 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
     onChange({ ...board, assignments: result.assignments, activeTeamId: team.id });
     setSelected(new Set());
     announce(
-      `${result.added} asignados a ${person.name}.${result.skipped ? ` ${result.skipped} fuera de alcance.` : ""}`,
+      t("as.assigned").replace("{n}", String(result.added)).replace("{name}", person.name) +
+        (result.skipped ? n("as.outOfScope", result.skipped) : ""),
     );
   }
 
   function doUnassign() {
     if (!team) {
-      announce("Elige una tarea activa.");
+      announce(t("as.pickActive"));
       return;
     }
     if (!selected.size) {
-      announce("Selecciona ítems para liberar.");
+      announce(t("as.selectToRelease"));
       return;
     }
     const result = unassignKeys(
@@ -530,14 +538,16 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
     if (result.removed) setPipeline("sin asignar");
     announce(
       result.removed
-        ? `Liberados ${result.removed} ${result.removed === 1 ? "ítem" : "ítems"}.`
-        : "Nada que liberar en la selección.",
+        ? result.removed === 1
+          ? t("as.releasedOne")
+          : n("as.releasedMany", result.removed)
+        : t("as.nothingToRelease"),
     );
   }
 
   function doAuto() {
     if (!team) {
-      announce("Crea personas y una tarea con alcance antes de autoasignar.");
+      announce(t("as.createFirst"));
       return;
     }
     const result = autoAssign(
@@ -550,7 +560,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
     );
     onChange({ ...board, assignments: result.assignments, activeTeamId: team.id });
     if (result.assigned) setPipeline("asignado");
-    announce(result.message);
+    announce(loc(result.message));
   }
 
   const listCount = bundled
@@ -562,19 +572,19 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
         : articles.length;
   const emptyHint = bundled
     ? pipeline === "sin asignar"
-      ? "No hay grupos de trabajo sin asignar para esta tarea y filtro."
-      : "No hay grupos de trabajo en este estado."
+      ? t("as.emptyLotsUn")
+      : t("as.emptyLots")
     : tab === "tareas"
       ? pipeline === "sin asignar"
-        ? "No queda trabajo (TPL, TPS, notas, preguntas) para esta tarea y filtro."
-        : "No hay ítems en este estado."
+        ? t("as.emptyJobsUn")
+        : t("as.emptyJobs")
       : tab === "porciones"
         ? pipeline === "sin asignar"
-          ? "No quedan porciones para esta tarea y filtro."
-          : "No hay porciones en este estado."
+          ? t("as.emptyPortionsUn")
+          : t("as.emptyPortions")
         : pipeline === "sin asignar"
-          ? "No quedan artículos para esta tarea y filtro."
-          : "No hay artículos en este estado.";
+          ? t("as.emptyArtsUn")
+          : t("as.emptyArts");
 
   const grain = team ? teamGrain(team) : undefined;
   const citedRepeat = scopedArticles.filter((row) => !row.firstSeenInBook).length;
@@ -638,9 +648,9 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
   }, [collapseKey, chapterIdsKey]);
 
   const tabLabel = (id: ItemTab): string => {
-    if (id === "tareas") return `Trabajos ${tasks.length}`;
-    if (id === "porciones") return `Porciones ${portions.length}`;
-    return `Artículos ${articles.length}`;
+    if (id === "tareas") return n("as.tabJobs", tasks.length);
+    if (id === "porciones") return n("as.tabPortions", portions.length);
+    return n("as.tabArticles", articles.length);
   };
 
   return (
@@ -652,14 +662,14 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
       {!team ? (
         <Card size="sm" className="border-dashed">
           <CardHeader>
-            <CardTitle>No hay tarea activa</CardTitle>
+            <CardTitle>{t("as.noActiveTitle")}</CardTitle>
             <CardDescription>
-              Crea una tarea con alcance, tamaño de reparto y personas. Lo que hay por repartir sale de esas reglas.
+              {t("as.noActiveBody")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button type="button" variant="secondary" onClick={onGoTareas}>
-              Ir a Fases y tareas
+              {t("as.goTasks")}
             </Button>
           </CardContent>
         </Card>
@@ -675,7 +685,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                     value={team.id}
                     onValueChange={(id) => onChange({ ...board, activeTeamId: id })}
                   >
-                    <SelectTrigger className="w-auto max-w-full" aria-label="Tarea activa">
+                    <SelectTrigger className="w-auto max-w-full" aria-label={t("as.activeTaskAria")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
@@ -693,8 +703,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                   onClick={() => setScopeOpen((v) => !v)}
                   aria-expanded={scopeOpen}
                 >
-                  Alcance ({ruleCount}
-                  {bundled ? " · juntos" : ""})
+                  {n(bundled ? "as.scopeTogether" : "as.scope", ruleCount)}
                 </button>
               </div>
               <Button
@@ -705,31 +714,31 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                 disabled={!members.length || resolveDistributePolicy(team) === "manual"}
                 title={
                   !members.length
-                    ? "Añade integrantes a la tarea en Fases y tareas primero."
+                    ? t("as.addMembersFirst")
                     : resolveDistributePolicy(team) === "manual"
-                      ? "Esta tarea está en modo solo manual."
+                      ? t("as.manualMode")
                       : undefined
                 }
               >
-                Autoasignar
+                {t("tv.autoAssign")}
               </Button>
             </div>
 
             {scopeOpen ? (
               <div className="assign-chrome__scope-panel">
-                {bundled ? <Badge variant="outline">Juntos</Badge> : null}
+                {bundled ? <Badge variant="outline">{t("tv.together")}</Badge> : null}
                 <Badge variant="outline">
-                  {DISTRIBUTE_UNIT_LABEL[resolveDistributeUnit(team)]}
+                  {loc(DISTRIBUTE_UNIT_LABEL[resolveDistributeUnit(team)])}
                 </Badge>
                 <Badge variant="outline">
-                  {DISTRIBUTE_POLICY_LABEL[resolveDistributePolicy(team)]}
+                  {loc(DISTRIBUTE_POLICY_LABEL[resolveDistributePolicy(team)])}
                 </Badge>
                 {!bundled && grain ? (
-                  <Badge variant="outline">{GRAIN_LABEL[grain]}</Badge>
+                  <Badge variant="outline">{loc(GRAIN_LABEL[grain])}</Badge>
                 ) : null}
                 {teamRules(team).map((rule) => (
                   <Badge key={`${rule.resource}-${rule.articleFilter}`} variant="outline">
-                    {scopeRuleLabel(rule, resolvedRuleGrain(team, rule))}
+                    {loc(scopeRuleLabel(rule, resolvedRuleGrain(team, rule)))}
                   </Badge>
                 ))}
               </div>
@@ -737,25 +746,25 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
 
             <div className="assign-chrome__tools">
               <Select value={chapter} onValueChange={setChapter}>
-                <SelectTrigger className="w-auto" aria-label="Capítulo">
+                <SelectTrigger className="w-auto" aria-label={t("tv.chapter")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value="all">Todos los capítulos</SelectItem>
+                  <SelectItem value="all">{t("as.allChapters")}</SelectItem>
                   {chapters.map((c) => (
                     <SelectItem key={c} value={String(c)}>
-                      Capítulo {c}
+                      {n("as.chapterN", c)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={personFilter} onValueChange={setPersonFilter}>
-                <SelectTrigger className="w-auto" aria-label="Persona">
+                <SelectTrigger className="w-auto" aria-label={t("td.person")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value="all">Todas las personas</SelectItem>
-                  <SelectItem value="__unassigned__">Sin asignar</SelectItem>
+                  <SelectItem value="all">{t("as.allPeople")}</SelectItem>
+                  <SelectItem value="__unassigned__">{loc("Sin asignar")}</SelectItem>
                   {personOptions.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
@@ -766,11 +775,11 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar…"
-                aria-label="Buscar"
+                placeholder={t("mt.searchPlaceholder")}
+                aria-label={t("as.searchAria")}
                 className="assign-chrome__search"
               />
-              <div className="assign-chrome__status" role="tablist" aria-label="Cola">
+              <div className="assign-chrome__status" role="tablist" aria-label={t("as.queueAria")}>
                 {PRIMARY_PIPELINE.map((id) => {
                   const count =
                     id === "all"
@@ -779,7 +788,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                         queueCounts["en curso"] +
                         queueCounts.hecho
                       : queueCounts[id];
-                  const label = id === "all" ? "Todos" : STATE_LABEL[id];
+                  const label = loc(id === "all" ? "Todos" : STATE_LABEL[id]);
                   return (
                     <button
                       key={id}
@@ -812,7 +821,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                       )}
                       onClick={() => setPipeline(id)}
                     >
-                      {STATE_LABEL[id]}
+                      {loc(STATE_LABEL[id])}
                       <span className="assign-status-chip__n">{count}</span>
                     </button>
                   );
@@ -825,7 +834,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                   onClick={() => setMoreStates((v) => !v)}
                   aria-expanded={moreStates}
                 >
-                  {moreStates ? "Menos" : "Más"}
+                  {moreStates ? t("as.less") : t("as.more")}
                 </Button>
               </div>
             </div>
@@ -845,24 +854,28 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                       onCheckedChange={() => toggleSelectVisible()}
                       aria-label={
                         allVisibleSelected
-                          ? "Quitar selección visible"
-                          : "Seleccionar visibles"
+                          ? t("as.unselectVisible")
+                          : t("as.selectVisible")
                       }
                     />
                     <span className="assign-board__select-label">
                       {selected.size > 0
-                        ? `${selected.size} seleccionados`
+                        ? selected.size === 1
+                          ? t("as.nSelectedOne")
+                          : n("as.nSelected", selected.size)
                         : chapter !== "all"
-                          ? `Capítulo ${chapter}`
-                          : `${listCount} visibles`}
+                          ? n("as.chapterN", Number(chapter))
+                          : listCount === 1
+                            ? t("as.nVisibleOne")
+                            : n("as.nVisible", listCount)}
                     </span>
                   </>
                 ) : (
-                  <span className="assign-board__select-label">Sin ítems</span>
+                  <span className="assign-board__select-label">{t("as.noItems")}</span>
                 )}
               </div>
               {bundled ? (
-                <p className="text-sm font-medium text-foreground">Lotes</p>
+                <p className="text-sm font-medium text-foreground">{t("as.lots")}</p>
               ) : availableTabs.length > 1 ? (
                 <Tabs value={tab} onValueChange={(v) => setTab(v as ItemTab)}>
                   <TabsList className="flex-wrap">
@@ -884,10 +897,10 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                 aria-hidden
               >
                 <span />
-                <span>Nombre</span>
-                {showTipo ? <span>Tipo</span> : null}
-                <span>Persona</span>
-                <span>Estado</span>
+                <span>{t("as.colName")}</span>
+                {showTipo ? <span>{t("as.colType")}</span> : null}
+                <span>{t("as.colPerson")}</span>
+                <span>{t("as.colState")}</span>
               </div>
             ) : null}
 
@@ -900,6 +913,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                   return (
                     <section key={group.chapter} className="assign-group">
                       <AssignGroupHead
+                        t={t}
                         chapter={group.chapter}
                         count={group.bundles.length}
                         allSelected={all}
@@ -937,8 +951,8 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                                 key={bundle.id}
                                 selected={selected.has(key)}
                                 onToggle={() => toggleBundle(bundle.id)}
-                                title={rangeTitle || `Capítulo ${bundle.chapter}`}
-                                kind={bundleSummary(bundle)}
+                                title={rangeTitle || n("as.chapterN", bundle.chapter)}
+                                kind={loc(bundleSummary(bundle))}
                                 showTipo={showTipo}
                                 person={first?.person}
                                 state={state}
@@ -959,6 +973,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                     return (
                       <section key={group.chapter} className="assign-group">
                         <AssignGroupHead
+                          t={t}
                           chapter={group.chapter}
                           count={group.tasks.length}
                           allSelected={all}
@@ -986,7 +1001,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                                   selected={selected.has(key)}
                                   onToggle={() => toggle("tarea", itemId)}
                                   title={range}
-                                  kind={taskKindLabel(task.resource)}
+                                  kind={loc(taskKindLabel(task.resource))}
                                   showTipo={showTipo}
                                   person={asg?.person}
                                   state={itemState(asg)}
@@ -1008,6 +1023,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                       return (
                         <section key={group.chapter} className="assign-group">
                           <AssignGroupHead
+                            t={t}
                             chapter={group.chapter}
                             count={group.portions.length}
                             allSelected={all}
@@ -1048,11 +1064,11 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                       <>
                         {citesArticles ? (
                           <p className="border-b bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
-                            Artículos citados en las porciones de esta tarea
+                            {t("as.citedHead")}
                             {citedRepeat
-                              ? ` · ${citedRepeat} ya citado${citedRepeat === 1 ? "" : "s"} en el libro. `
-                              : ". "}
-                            Siguen asignables.
+                              ? n(citedRepeat === 1 ? "as.citedRepeatOne" : "as.citedRepeatMany", citedRepeat)
+                              : t("as.citedDot")}
+                            {t("as.stillAssignable")}
                           </p>
                         ) : null}
                         {articles.map((a) => {
@@ -1070,7 +1086,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                               selected={selected.has(key)}
                               onToggle={() => toggle("articulo", itemId)}
                               title={articleLabel(a)}
-                              kind={KIND_LABEL[a.kind] ?? a.kind}
+                              kind={loc(KIND_LABEL[a.kind] ?? a.kind)}
                               showTipo={showTipo}
                               person={asg?.person}
                               state={itemState(asg)}
@@ -1078,8 +1094,8 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                               titleAttr={a.id}
                               extra={
                                 !a.firstSeenInBook ? (
-                                  <Badge variant="secondary" title="Ya citado en el libro">
-                                    Ya citado
+                                  <Badge variant="secondary" title={t("as.alreadyCitedTitle")}>
+                                    {t("as.alreadyCited")}
                                   </Badge>
                                 ) : a.portionRef ? (
                                   <span className="text-xs text-muted-foreground">
@@ -1098,11 +1114,11 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                 <p className="text-sm text-muted-foreground">{emptyHint}</p>
                 {pipeline !== "all" ? (
                   <Button type="button" variant="link" onClick={() => setPipeline("all")}>
-                    Ver todos
+                    {t("as.seeAll")}
                   </Button>
                 ) : !members.length ? (
                   <Button type="button" variant="secondary" className="mt-2" onClick={onGoTareas}>
-                    Añadir integrantes
+                    {t("as.addMembers")}
                   </Button>
                 ) : null}
               </div>
@@ -1110,21 +1126,21 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
           </div>
 
           {selected.size > 0 ? (
-            <div className="assign-bulk-bar" role="toolbar" aria-label="Acciones de selección">
+            <div className="assign-bulk-bar" role="toolbar" aria-label={t("as.bulkAria")}>
               <span className="assign-bulk-bar__count">
-                <strong>{selected.size}</strong> seleccionados
+                <strong>{selected.size}</strong> {t(selected.size === 1 ? "as.nSelectedOne" : "as.nSelected").replace(/\{n\}|^1/, "").trim()}
               </span>
               <Select
                 value={assigneeId || "__none__"}
                 onValueChange={(v) => setAssigneeId(v === "__none__" ? "" : v)}
                 disabled={!members.length}
               >
-                <SelectTrigger className="w-auto" aria-label="Persona">
-                  <SelectValue placeholder={members.length ? "Persona" : "Sin integrantes"} />
+                <SelectTrigger className="w-auto" aria-label={t("td.person")}>
+                  <SelectValue placeholder={members.length ? t("td.person") : t("as.noMembers")} />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   <SelectItem value="__none__">
-                    {members.length ? "Persona" : "Sin integrantes"}
+                    {members.length ? t("td.person") : t("as.noMembers")}
                   </SelectItem>
                   {members.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
@@ -1134,10 +1150,10 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                 </SelectContent>
               </Select>
               <Button type="button" size="sm" disabled={!members.length} onClick={doAssign}>
-                Asignar
+                {t("tv.assign")}
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={doUnassign}>
-                Liberar
+                {t("as.release")}
               </Button>
               <Button
                 type="button"
@@ -1145,7 +1161,7 @@ export function AssignView({ inventory, board, onChange, announce, onGoTareas }:
                 variant="ghost"
                 onClick={() => setSelected(new Set())}
               >
-                Limpiar
+                {t("as.clear")}
               </Button>
             </div>
           ) : null}
@@ -1164,6 +1180,7 @@ function portionKeyMatch(
 }
 
 function AssignGroupHead({
+  t,
   chapter,
   count,
   allSelected,
@@ -1172,6 +1189,7 @@ function AssignGroupHead({
   onToggleSelect,
   onToggleCollapse,
 }: {
+  t: (key: MessageKey) => string;
   chapter: number;
   count: number;
   allSelected: boolean;
@@ -1199,7 +1217,7 @@ function AssignGroupHead({
         indeterminate={someSelected}
         onCheckedChange={() => onToggleSelect()}
         onClick={(e) => e.stopPropagation()}
-        aria-label={`Seleccionar capítulo ${chapter}`}
+        aria-label={t("as.selectChapterAria").replace("{n}", String(chapter))}
       />
       <ChevronDown
         className={cn(
@@ -1208,7 +1226,7 @@ function AssignGroupHead({
         )}
         aria-hidden
       />
-      <span className="assign-group__title">Capítulo {chapter}</span>
+      <span className="assign-group__title">{t("as.chapterN").replace("{n}", String(chapter))}</span>
       <span className="assign-group__count">{count}</span>
     </div>
   );
@@ -1227,10 +1245,15 @@ function AssignPerson({ name }: { name?: string }) {
 }
 
 function AssignState({ state, issueRef }: { state: AssignmentState; issueRef?: string }) {
+  const t = useT();
+  const language = useUiLanguage();
   return (
-    <span className={stateClass(state)} title={issueRef ? `Subtarea ${issueRef}` : undefined}>
+    <span
+      className={stateClass(state)}
+      title={issueRef ? t("as.subtaskTitle").replace("{ref}", issueRef) : undefined}
+    >
       <span className="assign-state__dot" aria-hidden />
-      {STATE_LABEL[state]}
+      {localizeScope(STATE_LABEL[state], language)}
       {issueRef ? <span className="assign-state__issue">{issueRef}</span> : null}
     </span>
   );

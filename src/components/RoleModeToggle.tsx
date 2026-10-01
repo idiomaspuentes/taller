@@ -2,6 +2,7 @@ import { Eye, Shield, Users } from "lucide-react";
 import type { ViewMode } from "../viewMode";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "../i18n/messages";
 
 type Props = {
   mode: ViewMode;
@@ -13,18 +14,19 @@ type Props = {
  * Visible only when the parent mounts it (real `canManage`).
  */
 export function RoleModeToggle({ mode, onChange }: Props) {
+  const t = useT();
   const previewing = mode === "trabajador";
 
   return (
     <div className="role-mode-toggle">
       {previewing ? (
         <p className="role-mode-toggle__hint" aria-live="polite">
-          Vista trabajador
+          {t("nav.workerView")}
         </p>
       ) : (
-        <p className="role-mode-toggle__hint">Vista de rol</p>
+        <p className="role-mode-toggle__hint">{t("nav.roleView")}</p>
       )}
-      <div className="role-mode-toggle__group" role="group" aria-label="Cambiar vista de rol">
+      <div className="role-mode-toggle__group" role="group" aria-label={t("nav.roleChange")}>
         <Button
           type="button"
           size="sm"
@@ -37,7 +39,7 @@ export function RoleModeToggle({ mode, onChange }: Props) {
           onClick={() => onChange("gestor")}
         >
           <Shield className="size-3.5" aria-hidden />
-          Gestor
+          {t("nav.manager")}
         </Button>
         <Button
           type="button"
@@ -55,7 +57,7 @@ export function RoleModeToggle({ mode, onChange }: Props) {
           ) : (
             <Users className="size-3.5" aria-hidden />
           )}
-          Trabajador
+          {t("nav.workerShort")}
         </Button>
       </div>
     </div>

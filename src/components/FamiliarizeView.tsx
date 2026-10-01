@@ -25,6 +25,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UsfmReferencePane } from "./UsfmReferencePane";
+import { tNow, useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
+import { localizeName } from "../domain/templateNames";
 
 type Props = {
   ctxEncoded: string;
@@ -55,6 +59,7 @@ function VistoToggle({
   seen: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   return (
     <Button
       type="button"
@@ -62,7 +67,7 @@ function VistoToggle({
       variant={seen ? "secondary" : "outline"}
       onClick={onToggle}
     >
-      {seen ? "Ya visto" : "Marcar visto"}
+      {seen ? t("fa.seen") : t("fa.markSeen")}
     </Button>
   );
 }
@@ -82,6 +87,7 @@ function ScriptureCard({
   loggedIn: boolean;
   loginHint: string;
 }) {
+  const t = useT();
   const hasText = Boolean(pane.usfm.trim() || Object.keys(pane.verses).length);
   return (
     <section className="scripture-editor__ref-card">
@@ -98,7 +104,7 @@ function ScriptureCard({
         />
       ) : (
         <p className="text-sm text-muted-foreground">
-          No se pudo cargar {pane.meta?.short || title} para esta porción.
+          {t("fa.loadFailed").replace("{what}", pane.meta?.short || title)}
         </p>
       )}
     </section>
@@ -106,6 +112,8 @@ function ScriptureCard({
 }
 
 export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
   const [ctx, setCtx] = useState<SolverLaunchContext | null>(null);
   const [range, setRange] = useState<RefRange | null>(null);
   const [ult, setUlt] = useState<ScripturePane>(EMPTY_SCRIPTURE);
@@ -119,7 +127,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
     if (!decoded) {
-      setError("Contexto de lanzamiento inválido o incompleto.");
+      setError(tNow("se.badContext"));
       return;
     }
     setCtx(decoded);
@@ -127,7 +135,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
 
     const refRange = portionRange(decoded.ref, decoded.chapter);
     if (!refRange) {
-      setError(`No se pudo interpretar la referencia «${decoded.ref}».`);
+      setError(tNow("fa.badRef").replace("{ref}", decoded.ref));
       return;
     }
     setRange(refRange);
@@ -182,7 +190,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
       setNotes(notesLoaded);
 
       if (!ultLoaded && !ustLoaded && notesLoaded.source === "none") {
-        setError("No se pudieron cargar ULT, UST ni las notas. Revisa tu sesión.");
+        setError(tNow("fa.nothingLoaded"));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -210,15 +218,15 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     <div className="scripture-editor scripture-editor--familiarize">
       <header className="scripture-editor__head">
         <div className="min-w-0">
-          <p className="scripture-editor__kicker">Familiarizar · solo lectura</p>
+          <p className="scripture-editor__kicker">{t("fa.kicker")}</p>
           <h1 className="scripture-editor__title">
-            {ctx ? `${ctx.book} ${ctx.ref}` : "Familiarizar"}
+            {ctx ? `${ctx.book} ${ctx.ref}` : t("fa.title")}
           </h1>
           <p className="scripture-editor__meta">
-            {ctx?.taskName ? `${ctx.taskName} · ` : ""}
+            {ctx?.taskName ? `${localizeName(ctx.taskName, language)} · ` : ""}
             {ctx?.resource ? ctx.resource.toUpperCase() : ""}
             {ctx?.issueNumber ? ` · #${ctx.issueNumber}` : ""}
-            {" · ULT · UST · notas"}
+            {t("fa.metaTail")}
           </p>
         </div>
         <div className="scripture-editor__actions">
@@ -226,68 +234,68 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             <VistoToggle seen={alreadySeen} onToggle={toggleSeen} />
           ) : null}
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cerrar
+            {t("se.close")}
           </Button>
         </div>
       </header>
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{localizeThread(error, language)}</AlertDescription>
         </Alert>
       ) : null}
 
       {!loggedIn && ctx ? (
         <Alert className="mx-4 mt-3">
           <AlertDescription>
-            Inicia sesión para leer ULT, UST y las notas.
+            {t("fa.loginAll")}
           </AlertDescription>
         </Alert>
       ) : null}
 
       {busy ? (
-        <p className="scripture-editor__loading">Cargando ULT, UST y notas…</p>
+        <p className="scripture-editor__loading">{t("fa.loading")}</p>
       ) : (
         <div
           className="scripture-editor__workspace"
-          aria-label="Lectura de la porción"
+          aria-label={t("fa.readAria")}
         >
           <ScriptureCard
-            kicker="Literal"
-            title="ULT (inglés)"
+            kicker={t("fa.literal")}
+            title={t("se.ultEnglish")}
             range={range}
             pane={ult}
             loggedIn={loggedIn}
-            loginHint="Inicia sesión para leer el ULT inglés."
+            loginHint={t("fa.loginUlt")}
           />
           <ScriptureCard
-            kicker="Simple"
-            title="UST (inglés)"
+            kicker={t("fa.simple")}
+            title={t("se.ustEnglish")}
             range={range}
             pane={ust}
             loggedIn={loggedIn}
-            loginHint="Inicia sesión para leer el UST inglés."
+            loginHint={t("fa.loginUst")}
           />
           <section className="scripture-editor__ref-card">
-            <p className="scripture-editor__kicker">Notas</p>
+            <p className="scripture-editor__kicker">{t("fa.notes")}</p>
             <h2 className="scripture-editor__ref-title">
-              {notes.label || "Notas de traducción"}
+              {notes.label ? localizeThread(notes.label, language) : t("fa.notesTitle")}
             </h2>
             {notes.source === "en" ? (
               <p className="text-xs text-muted-foreground">
-                Se muestra en_tn porque no hay notas GL en este rango.
+                {t("fa.enFallback")}
               </p>
             ) : null}
             {!loggedIn ? (
               <p className="text-sm text-muted-foreground">
-                Inicia sesión para leer las notas TN de esta porción.
+                {t("fa.loginNotes")}
               </p>
             ) : notes.notes.length ? (
               <ul className="scripture-editor__help-list">
                 {notes.notes.map((item) => (
                   <li key={item.id} className="scripture-editor__help-item">
                     <div className="scripture-editor__help-meta">
-                      <Badge variant="outline">Nota</Badge>
+                      <Badge variant="outline">{t("se.kindNote")}</Badge>
                       {item.ref ? (
                         <span className="text-xs text-muted-foreground">{item.ref}</span>
                       ) : null}
@@ -301,7 +309,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
               </ul>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No hay notas TN para este rango.
+                {t("fa.noNotes")}
               </p>
             )}
           </section>

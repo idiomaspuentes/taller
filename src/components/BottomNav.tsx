@@ -19,7 +19,7 @@ const ITEMS: { id: BottomNavId; label: MessageKey; Icon: typeof Bell }[] = [
 export function BottomNav({ active, attentionCount, onSelect }: Props) {
   const t = useT();
   return (
-    <nav className="bottom-nav" aria-label="Principal">
+    <nav className="bottom-nav" aria-label={t("nav.main")}>
       {ITEMS.map(({ id, label: labelKey, Icon }) => {
         const label = t(labelKey);
         return (

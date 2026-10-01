@@ -17,13 +17,15 @@ import {
   mirroredOrgTeamName,
 } from "../domain/roles";
 import { loadPmConfig, savePmConfig } from "../dcs/issues";
-import { LEVEL_LABEL, LEVEL_ORDER, isLevel, levelOf, type PersonLevel } from "../domain/levels";
+import { LEVEL_ORDER, levelLabel, isLevel, levelOf, type PersonLevel } from "../domain/levels";
 import type { PmConfig } from "../domain/roles";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
 
 type Props = {
   session: GtSession;
@@ -34,6 +36,8 @@ type Props = {
 };
 
 export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
   const [teams, setTeams] = useState<DcsTeam[]>([]);
   const [members, setMembers] = useState<Person[]>([]);
   const [pmConfig, setPmConfig] = useState<PmConfig | null>(null);
@@ -96,7 +100,11 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       const next = { ...pmConfig, levels };
       await savePmConfig(session, pmOrg, next);
       setPmConfig(next);
-      announce(level ? `@${login} ahora es ${LEVEL_LABEL[level].toLowerCase()}` : `@${login} sin nivel`);
+      announce(
+        level
+          ? t("org.nowLevel").replace("{who}", login).replace("{level}", levelLabel(level, language).toLowerCase())
+          : t("org.noLevelSet").replace("{who}", login),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -229,7 +237,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
     try {
       const team = await createPmOrgTeam(session, pmOrg, name);
       setNewTeamName("");
-      announce(`Equipo «${friendlyName(team.name)}» creado`);
+      announce(t("org.teamCreated").replace("{team}", friendlyName(team.name)));
       await reload();
       setSelectedTeamId(team.id);
       setCreateOpen(false);
@@ -250,7 +258,9 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       setTeamMembers(list);
       setMemberCounts((prev) => ({ ...prev, [selectedTeamId]: list.length }));
       announce(
-        `@${username} añadido a «${friendlyName(selectedTeam?.name ?? String(selectedTeamId))}»`,
+        t("org.memberAdded")
+          .replace("{who}", username)
+          .replace("{team}", friendlyName(selectedTeam?.name ?? String(selectedTeamId))),
       );
       setPersonQuery("");
       if (list.length > 0) setAddOpen(false);
@@ -270,7 +280,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       const list = await listPmOrgTeamMembers(session, selectedTeamId);
       setTeamMembers(list);
       setMemberCounts((prev) => ({ ...prev, [selectedTeamId]: list.length }));
-      announce(`@${username} quitado del equipo`);
+      announce(t("org.memberRemoved").replace("{who}", username));
       if (canManage && list.length === 0) setAddOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -281,15 +291,15 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
 
   const createForm = canManage ? (
     <div className="hub-panel">
-      <h2 className="text-sm font-semibold text-foreground">Nuevo equipo</h2>
+      <h2 className="text-sm font-semibold text-foreground">{t("org.newTeam")}</h2>
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
         <div className="grid gap-1.5">
-          <Label htmlFor="new-org-team">Nombre</Label>
+          <Label htmlFor="new-org-team">{t("org.name")}</Label>
           <Input
             id="new-org-team"
             value={newTeamName}
             onChange={(e) => setNewTeamName(e.target.value)}
-            placeholder="p. ej. Traductores, Revisores"
+            placeholder={t("org.namePlaceholder")}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -304,7 +314,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
             disabled={busy || !newTeamName.trim()}
             onClick={() => void createTeam()}
           >
-            Crear
+            {t("org.create")}
           </Button>
           {tasTeams.length > 0 ? (
             <Button
@@ -315,7 +325,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                 setNewTeamName("");
               }}
             >
-              Cancelar
+              {t("org.cancel")}
             </Button>
           ) : null}
         </div>
@@ -327,12 +337,10 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">Organización</h1>
+          <h1 className="hub-title">{t("org.title")}</h1>
           <p className="hub-lede">
-            Equipos de trabajo en {pmOrg || "—"}.
-            {canManage
-              ? " Créalos aquí; en el proyecto solo los asignas a tareas."
-              : " Solo lectura."}
+            {t("org.lede").replace("{org}", pmOrg || "—")}
+            {canManage ? t("org.ledeManage") : t("org.readOnly")}
           </p>
         </div>
         <Button
@@ -342,7 +350,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
           disabled={busy || !pmOrg}
           onClick={() => void reload()}
         >
-          {busy ? "Cargando…" : "Actualizar"}
+          {busy ? t("org.loading") : t("org.refresh")}
         </Button>
       </div>
 
@@ -352,12 +360,11 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
           className="w-fit text-xs text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => setHelpOpen((v) => !v)}
         >
-          {helpOpen ? "Ocultar ayuda" : "¿Cómo funciona?"}
+          {helpOpen ? t("org.hideHelp") : t("org.howItWorks")}
         </button>
         {helpOpen ? (
           <p className="hub-hint">
-            Abre un equipo para ver quién está dentro. Añade personas de la organización con un
-            clic. En Fases y tareas vinculas el equipo a cada tarea.
+            {t("org.help")}
           </p>
         ) : null}
       </div>
@@ -371,7 +378,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       {canManage && tasTeams.length > 0 && !createOpen ? (
         <div>
           <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
-            + Nuevo equipo
+            {t("org.newTeamPlus")}
           </Button>
         </div>
       ) : null}
@@ -380,26 +387,26 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
 
       {!pmOrg ? (
         <div className="hub-empty-panel">
-          <p className="hub-empty-panel__kicker">Espacio de trabajo</p>
-          <h2 className="hub-empty-panel__title">Falta la organización</h2>
+          <p className="hub-empty-panel__kicker">{t("org.workspaceKicker")}</p>
+          <h2 className="hub-empty-panel__title">{t("org.missingOrg")}</h2>
           <p className="hub-empty-panel__body">
-            Elige una organización del equipo en el espacio de trabajo para ver y crear equipos.
+            {t("org.missingOrgBody")}
           </p>
         </div>
       ) : !loaded ? (
-        <div className="hub-empty">Cargando equipos…</div>
+        <div className="hub-empty">{t("org.loadingTeams")}</div>
       ) : !visibleTeams.length ? (
         <div className="hub-empty-panel">
-          <p className="hub-empty-panel__kicker">Equipos</p>
+          <p className="hub-empty-panel__kicker">{t("org.teamsKicker")}</p>
           <h2 className="hub-empty-panel__title">
-            {showAllOrgTeams ? "No hay equipos en la org" : "Aún no hay equipos"}
+            {showAllOrgTeams ? t("org.noTeamsOrg") : t("org.noTeamsYet")}
           </h2>
           <p className="hub-empty-panel__body">
             {canManage && !showAllOrgTeams
-              ? "Crea el primero con un nombre claro (Traductores, Revisores…). Luego añade personas y asígnalo a las tareas del proyecto."
+              ? t("org.createFirst")
               : showAllOrgTeams
-                ? "Esta organización no tiene equipos todavía."
-                : "Pide a un gestor que cree el equipo en Organización."}
+                ? t("org.orgNoTeams")
+                : t("org.askManager")}
           </p>
           {canManage && teams.length > tasTeams.length && !showAllOrgTeams ? (
             <div className="hub-empty-panel__actions">
@@ -409,7 +416,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                 variant="ghost"
                 onClick={() => setShowAllOrgTeams(true)}
               >
-                Ver otros equipos de la org ({teams.length - tasTeams.length})
+                {t("org.seeOthers").replace("{n}", String(teams.length - tasTeams.length))}
               </Button>
             </div>
           ) : null}
@@ -418,7 +425,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
         <div className="grid gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {showAllOrgTeams ? "Todos los equipos" : "Equipos"}
+              {showAllOrgTeams ? t("org.allTeams") : t("org.teamsKicker")}
               <span className="ml-1.5 font-medium normal-case tracking-normal text-muted-foreground/80">
                 · {visibleTeams.length}
               </span>
@@ -430,8 +437,8 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                 onClick={() => setShowAllOrgTeams((v) => !v)}
               >
                 {showAllOrgTeams
-                  ? `Solo equipos de Taller (${tasTeams.length})`
-                  : `Incluir otros de la org (${teams.length - tasTeams.length})`}
+                  ? t("org.onlyTaller").replace("{n}", String(tasTeams.length))
+                  : t("org.includeOthers").replace("{n}", String(teams.length - tasTeams.length))}
               </button>
             ) : null}
           </div>
@@ -446,8 +453,8 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                 count == null
                   ? null
                   : count === 1
-                    ? "1 miembro"
-                    : `${count} miembros`;
+                    ? t("org.memberOne")
+                    : t("org.memberMany").replace("{n}", String(count));
               return (
                 <div
                   key={team.id}
@@ -468,9 +475,9 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                         {countLabel ? (
                           <span className="text-xs text-muted-foreground">{countLabel}</span>
                         ) : showAllOrgTeams && !isTas ? (
-                          <span className="text-xs text-muted-foreground">Otro equipo de la org</span>
+                          <span className="text-xs text-muted-foreground">{t("org.otherTeam")}</span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Abrir</span>
+                          <span className="text-xs text-muted-foreground">{t("org.open")}</span>
                         )}
                       </span>
                     </span>
@@ -480,7 +487,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                     <div className="hub-team__body">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Personas
+                          {t("org.people")}
                         </h3>
                         <Button
                           type="button"
@@ -488,12 +495,12 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                           variant="ghost"
                           onClick={() => onOpenTeam(team.name)}
                         >
-                          Ver tablero
+                          {t("org.seeBoard")}
                         </Button>
                       </div>
 
                       {membersLoading ? (
-                        <p className="text-sm text-muted-foreground">Cargando personas…</p>
+                        <p className="text-sm text-muted-foreground">{t("org.loadingPeople")}</p>
                       ) : (
                         <ul className="hub-team__people">
                           {teamMembers.map((m) => (
@@ -505,15 +512,15 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                               {canManage && pmConfig ? (
                                 <select
                                   className="hub-team__level"
-                                  aria-label={`Nivel de @${m.id}`}
+                                  aria-label={t("org.levelOf").replace("{who}", m.id)}
                                   value={levelOf(pmConfig.levels, m.id) ?? ""}
                                   disabled={levelSaving === m.id.toLowerCase()}
                                   onChange={(e) => void setLevel(m.id, isLevel(e.target.value) ? e.target.value : "")}
                                 >
-                                  <option value="">Sin nivel</option>
+                                  <option value="">{t("org.noLevel")}</option>
                                   {LEVEL_ORDER.map((level) => (
                                     <option key={level} value={level}>
-                                      {LEVEL_LABEL[level]}
+                                      {levelLabel(level, language)}
                                     </option>
                                   ))}
                                 </select>
@@ -526,14 +533,14 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                                   disabled={actingUser === m.id}
                                   onClick={() => void removeMember(m.id)}
                                 >
-                                  {actingUser === m.id ? "…" : "Quitar"}
+                                  {actingUser === m.id ? "…" : t("org.remove")}
                                 </Button>
                               ) : null}
                             </li>
                           ))}
                           {!teamMembers.length ? (
                             <li className="text-sm text-muted-foreground">
-                              Nadie en este equipo todavía.
+                              {t("org.nobody")}
                             </li>
                           ) : null}
                         </ul>
@@ -547,13 +554,13 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                               className="hub-team__add-toggle"
                               onClick={() => setAddOpen(true)}
                             >
-                              + Añadir persona
+                              {t("org.addPerson")}
                             </button>
                           ) : (
                             <div className="grid gap-2">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <Label htmlFor={`org-person-q-${team.id}`}>
-                                  Buscar en la organización
+                                  {t("org.searchOrg")}
                                 </Label>
                                 {teamMembers.length > 0 ? (
                                   <button
@@ -564,7 +571,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                                       setPersonQuery("");
                                     }}
                                   >
-                                    Cerrar
+                                    {t("org.close")}
                                   </button>
                                 ) : null}
                               </div>
@@ -572,16 +579,16 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                                 id={`org-person-q-${team.id}`}
                                 value={personQuery}
                                 onChange={(e) => setPersonQuery(e.target.value)}
-                                placeholder="Nombre o usuario…"
+                                placeholder={t("org.searchPlaceholder")}
                                 autoFocus
                               />
                               {!available.length ? (
                                 <p className="text-xs text-muted-foreground">
-                                  Todas las personas de la org ya están en este equipo.
+                                  {t("org.allInTeam")}
                                 </p>
                               ) : !filteredAvailable.length ? (
                                 <p className="text-xs text-muted-foreground">
-                                  Ninguna coincidencia.
+                                  {t("org.noMatch")}
                                 </p>
                               ) : (
                                 <ul className="hub-team__candidates" role="listbox">
@@ -599,15 +606,14 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                                           <span className="hub-team__person-id">@{m.id}</span>
                                         </span>
                                         <span className="hub-team__candidate-action">
-                                          {actingUser === m.id ? "Añadiendo…" : "Añadir"}
+                                          {actingUser === m.id ? t("org.adding") : t("org.add")}
                                         </span>
                                       </button>
                                     </li>
                                   ))}
                                   {filteredAvailable.length > 12 ? (
                                     <li className="px-1 text-xs text-muted-foreground">
-                                      Afina la búsqueda para ver más ({filteredAvailable.length - 12}{" "}
-                                      ocultas).
+                                      {t("org.refine").replace("{n}", String(filteredAvailable.length - 12))}
                                     </li>
                                   ) : null}
                                 </ul>

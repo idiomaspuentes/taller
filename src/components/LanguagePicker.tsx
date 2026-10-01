@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type UIEvent } from "react";
+import { useT } from "../i18n/messages";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
+  const t = useT();
   const uid = useId();
   const listId = `${id || uid}-list`;
   const searchId = `${id || uid}-search`;
@@ -46,16 +48,16 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
   const selectedKnown = options.some((row) => row.code === selected);
   const selectedLabel = selected
     ? languageDisplayName(selected, languages)
-    : "Elige una lengua";
+    : t("lp.pick");
 
   const start = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
   const end = Math.min(filtered.length, Math.ceil((scrollTop + viewportH) / ITEM_HEIGHT) + OVERSCAN);
   const visible = filtered.slice(start, end);
   const hint = !options.length
-    ? "Cargando lenguas…"
+    ? t("lp.loading")
     : query.trim()
-      ? `${filtered.length} de ${options.length} lenguas`
-      : `${options.length} lenguas — escribe para filtrar`;
+      ? t("lp.nOf").replace("{a}", String(filtered.length)).replace("{b}", String(options.length))
+      : t("lp.typeToFilter").replace("{n}", String(options.length));
 
   useEffect(() => {
     if (selected && !selectedKnown) {
@@ -151,7 +153,7 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
-        aria-label="Lengua"
+        aria-label={t("lp.aria")}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={onTriggerKey}
       >
@@ -162,7 +164,7 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
       {open ? (
         <div className="lang-picker__panel">
           <Label htmlFor={searchId} className="sr-only">
-            Buscar lengua
+            {t("lp.search")}
           </Label>
           <Input
             id={searchId}
@@ -174,7 +176,7 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
               if (listRef.current) listRef.current.scrollTop = 0;
             }}
             onKeyDown={onSearchKey}
-            placeholder="Buscar por nombre o código…"
+            placeholder={t("lp.searchPlaceholder")}
             autoComplete="off"
             spellCheck={false}
           />
@@ -186,7 +188,7 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
             id={listId}
             className="lang-picker__list"
             role="listbox"
-            aria-label="Lenguas"
+            aria-label={t("lp.listAria")}
             onScroll={onListScroll}
           >
             {filtered.length ? (
@@ -212,7 +214,7 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
                 })}
               </div>
             ) : (
-              <p className="lang-picker__empty">Sin coincidencias</p>
+              <p className="lang-picker__empty">{t("lp.none")}</p>
             )}
           </div>
           <div className="lang-picker__other">
@@ -222,12 +224,12 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
               aria-expanded={otherOpen}
               onClick={() => setOtherOpen((v) => !v)}
             >
-              Otra…
+              {t("lp.other")}
             </button>
             {otherOpen ? (
               <div className="lang-picker__other-row">
                 <Label htmlFor={otherId} className="sr-only">
-                  Código de lengua
+                  {t("lp.codeLabel")}
                 </Label>
                 <Input
                   id={otherId}
@@ -239,7 +241,7 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
                       commitOther();
                     }
                   }}
-                  placeholder="código, p. ej. quh"
+                  placeholder={t("lp.codePlaceholder")}
                   autoComplete="off"
                   spellCheck={false}
                 />
@@ -251,7 +253,7 @@ export function LanguagePicker({ id, value, onChange, languages = [] }: Props) {
                   disabled={!normalizeLangCode(otherDraft)}
                   onClick={commitOther}
                 >
-                  Usar
+                  {t("lp.use")}
                 </button>
               </div>
             ) : null}

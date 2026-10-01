@@ -98,6 +98,11 @@ type ScripturePane = {
   bookCode?: string;
 };
 
+import { tNow, useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
+import { localizeName } from "../domain/templateNames";
+
 const EMPTY_PANE: ScripturePane = { usfm: "", verses: {}, meta: null };
 
 type Props = {
@@ -145,10 +150,11 @@ function RecreateActionButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  const t = useT();
   return (
     <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={onClick}>
       <RefreshCw className="scripture-editor__action-icon" aria-hidden />
-      Rehacer mi borrador
+      {t("se.recreateBtn")}
     </Button>
   );
 }
@@ -170,27 +176,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 function RecreatePlanDetails({ plan }: { plan: RecreateBookWorkspacePlan }) {
-  const work = "Se borrará tu borrador de esta subtarea (si existe y es tuyo) y se creará de nuevo desde el borrador grupal.";
+  const t = useT();
+  const work = t("se.recreateWork");
   const why =
     plan.trunkReason === "missing"
-      ? "el archivo no está"
+      ? t("se.whyMissing")
       : plan.trunkReason === "invalid"
-        ? "el USFM no se puede leer"
-        : "es un esqueleto vacío creado en esta sesión";
-  const keep =
-    !plan.willWipeTrunkFile
-      ? `Se conserva el texto del borrador grupal${
-          plan.trunkReason === "filled"
-            ? " — tiene versículos; no se borra el trabajo de otras personas."
-            : " — no se reemplaza un esqueleto que no creó esta sesión."
-        }`
-      : null;
+        ? t("se.whyInvalid")
+        : t("se.whySkeleton");
+  const keep = !plan.willWipeTrunkFile ? (plan.trunkReason === "filled" ? t("se.keepFilled") : t("se.keepOther")) : null;
   return (
     <ul className="scripture-editor__recreate-list">
-      <li>Se cerrará la revisión anterior de esta subtarea; vuelve a pulsar «Listo para revisión» cuando termines.</li>
+      <li>{t("se.closePrevReview")}</li>
       <li>
         {plan.willWipeTrunkFile
-          ? `${work} También se recreará el archivo del borrador grupal porque ${why}.`
+          ? t("se.alsoRecreate").replace("{work}", work).replace("{why}", why)
           : work}
       </li>
       {keep ? <li>{keep}</li> : null}
@@ -206,10 +206,10 @@ type WordClickInfo = {
 };
 type WordFilter = WordClickInfo & { source: "ult" | "ust" };
 
-function helpKindLabel(kind: ReferenceHelpRow["kind"]): string {
-  if (kind === "nota") return "Nota";
-  if (kind === "palabra") return "Palabra";
-  return "Pregunta";
+function helpKindKey(kind: ReferenceHelpRow["kind"]): "se.kindNote" | "se.kindWord" | "se.kindQuestion" {
+  if (kind === "nota") return "se.kindNote";
+  if (kind === "palabra") return "se.kindWord";
+  return "se.kindQuestion";
 }
 
 function helpKindRank(kind: ReferenceHelpRow["kind"]): number {
@@ -274,9 +274,10 @@ function sortHelpByScriptureOrder(
 }
 
 function HelpKindBadge({ kind }: { kind: ReferenceHelpRow["kind"] }) {
+  const t = useT();
   return (
     <Badge variant="outline" className="scripture-editor__help-kind">
-      {helpKindLabel(kind)}
+      {t(helpKindKey(kind))}
     </Badge>
   );
 }
@@ -518,6 +519,7 @@ function ScriptureTab({
   highlight?: QuoteHighlight | null;
   onWordClick?: (info: WordClickInfo) => void;
 }) {
+  const t = useT();
   return (
     <div className="scripture-editor__tab-body" aria-busy={loading || undefined}>
       {loading ? (
@@ -535,8 +537,8 @@ function ScriptureTab({
       ) : (
         <p className="text-sm text-muted-foreground">
           {loggedIn
-            ? `No se pudo cargar ${pane.meta?.short || title} para esta porción.`
-            : "Inicia sesión para ver ULT o UST junto al borrador."}
+            ? t("se.loadFailed").replace("{what}", pane.meta?.short || title)
+            : t("se.loginForRefs")}
         </p>
       )}
     </div>
@@ -588,6 +590,7 @@ function HelpItem({
   onHover?: (item: ReferenceHelpRow | null) => void;
   onActivate?: (item: ReferenceHelpRow) => void;
 }) {
+  const t = useT();
   const key = helpKey(item);
   const collapsible = helpStartsCollapsed(item);
   const [open, setOpen] = useState(!collapsible);
@@ -650,7 +653,7 @@ function HelpItem({
             type="button"
             className="scripture-editor__help-fold"
             aria-expanded={open}
-            aria-label={open ? "Ocultar" : "Mostrar"}
+            aria-label={open ? t("se.hide") : t("se.show")}
             onClick={(event) => {
               event.stopPropagation();
               toggleOpen();
@@ -798,6 +801,9 @@ function HelpBlock({
 }
 
 export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeThread(text, language);
   const [session, setSession] = useState<GtSession | undefined>(() => loadSession());
   const [ctx, setCtx] = useState<SolverLaunchContext | null>(() =>
     decodeSolverLaunchContext(ctxEncoded),
@@ -878,7 +884,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     };
     const decoded = decodeSolverLaunchContext(ctxEncoded);
     if (!decoded) {
-      setError("Contexto de lanzamiento inválido o incompleto.");
+      setError(tNow("se.badContext"));
       stopAllLoading();
       return;
     }
@@ -886,7 +892,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     setWordFilter(null);
     const refRange = rangeFromLaunch(decoded);
     if (!refRange) {
-      setError(`No se pudo interpretar la referencia «${decoded.ref}».`);
+      setError(tNow("se.badRef").replace("{ref}", decoded.ref));
       stopAllLoading();
       return;
     }
@@ -915,7 +921,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setWordsFailed(false);
       setQuestionsFailed(false);
       setDirty(Boolean(cache));
-      setError("Sin sesión: el borrador queda en este navegador. Conéctate para guardar en Door43.");
+      setError(tNow("se.noSession"));
       stopAllLoading();
       return;
     }
@@ -1041,12 +1047,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         setDirty(true);
         if (!announcedCache.current) {
           announcedCache.current = true;
-          announce("Se restauró un borrador local (aún no está en Door43).");
+          announce(tNow("se.restored"));
         }
       } else if (!editedVerses.current.size) {
         setDirty(false);
         if (extracted.via === "plain" && source === "remote") {
-          announce("No se pudo analizar el USFM: se usa el editor de texto por versículo.");
+          announce(tNow("se.plainEditor"));
         }
       }
     };
@@ -1069,7 +1075,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             setDirty(true);
             if (!announcedCache.current) {
               announcedCache.current = true;
-              announce("Se restauró un borrador local (aún no está en Door43).");
+              announce(tNow("se.restored"));
             }
           }
           return found;
@@ -1286,7 +1292,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   }, [draftLoading, recreating, bootPending]);
 
   const title = useMemo(() => {
-    if (!ctx) return "Borrador";
+    if (!ctx) return t("se.draft");
     const res = (ctx.resource || "tpl").toUpperCase();
     return `${ctx.book} ${ctx.ref} · ${res}`;
   }, [ctx]);
@@ -1310,25 +1316,25 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const labLocal = lab && write?.mode !== "dcs";
   const saveState: { tone: "busy" | "dirty" | "saved" | "idle"; text: string } =
     recreating
-      ? { tone: "busy", text: "Recreando…" }
+      ? { tone: "busy", text: t("se.recreating") }
       : draftLoading
-        ? { tone: "busy", text: "Cargando borrador…" }
+        ? { tone: "busy", text: t("se.loadingDraft") }
         : saving
-          ? { tone: "busy", text: "Guardando…" }
+          ? { tone: "busy", text: t("se.saving") }
           : dirty
-            ? { tone: "dirty", text: "Sin guardar" }
+            ? { tone: "dirty", text: t("se.unsaved") }
             : !session
-              ? { tone: "idle", text: "Solo en este navegador" }
+              ? { tone: "idle", text: t("se.onlyHere") }
               : savedOnce
-                ? { tone: "saved", text: labLocal ? "Guardado en este navegador" : "Guardado" }
-                : { tone: "idle", text: "Sin cambios" };
+                ? { tone: "saved", text: labLocal ? t("se.savedHere") : t("se.saved") }
+                : { tone: "idle", text: t("se.noChanges") };
   const labNote = !lab
     ? ""
     : write?.mode === "dcs"
-      ? "Laboratorio: Guardar escribe en la org de prueba. Sin subtarea ni revisión."
+      ? t("se.labDcs")
       : write?.mode === "blocked"
-        ? write.reason
-        : "Laboratorio: el borrador queda en este navegador. No se escribe en Door43.";
+        ? loc(write.reason)
+        : t("se.labLocal");
   const highlightPane = resourceTab === "ust" ? ust : ult;
   const focusedHelp = activeHelp ?? hoveredHelp;
   const quoteHighlight = highlightForHelp(
@@ -1431,14 +1437,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       rows.push({ from: v, to: v, text: v === cur.from ? cur.text : "" });
     }
     replaceRows(index, 1, rows);
-    announce(`Reparte el texto entre los versículos ${cur.from}–${cur.to}.`);
+    announce(t("se.splitAnnounce").replace("{a}", String(cur.from)).replace("{b}", String(cur.to)));
   }
 
   async function save() {
     if (!ctx || !range) return;
     persistLocal(drafts, branch);
     if (!session) {
-      announce("Borrador guardado en este navegador.");
+      announce(t("se.savedLocalAnnounce"));
       return;
     }
     if (isLabLaunch(ctx)) {
@@ -1446,7 +1452,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (decision.mode === "local") {
         setDirty(false);
         setSavedOnce(true);
-        announce("Borrador guardado en este navegador.");
+        announce(t("se.savedLocalAnnounce"));
         return;
       }
       if (decision.mode === "blocked") {
@@ -1474,7 +1480,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       );
       const nextUsfm = kept.usfm;
       if (kept.clearedVerses.length) {
-        announce(`Se perdió la alineación de los versículos ${kept.clearedVerses.join(", ")}: el texto cambió por completo.`);
+        announce(t("se.alignmentLost").replace("{list}", kept.clearedVerses.join(", ")));
       }
       const message = `TAS: ${target.book} ${ctx.ref} (${ctx.resource || "tpl"}) · #${ctx.issueNumber || "—"}`;
       const saved = await saveUsfmOnPortionBranch({
@@ -1506,7 +1512,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setDirty(false);
       setSavedOnce(true);
       persistLocal(drafts, saved.branch || head);
-      announce(`Guardado en ${target.owner}/${target.repo} @ ${saved.branch || head}`);
+      announce(t("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${saved.branch || head}`));
     } catch (err) {
       setError(
         explainRepoFileError(err, {
@@ -1537,7 +1543,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         ctx.contentOrg,
       );
       if (!board) {
-        throw new Error("No se encontró el plan del proyecto para abrir la revisión.");
+        throw new Error(t("se.noPlan"));
       }
       const result = await ensurePortionPr({
         session,
@@ -1551,8 +1557,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setBranch(result.marker.head);
       announce(
         result.created
-          ? "Revisión abierta para esta subtarea"
-          : "La revisión de esta subtarea ya estaba abierta",
+          ? t("se.reviewOpened")
+          : t("se.reviewWasOpen"),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -1612,14 +1618,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       params = await buildRecreateParams();
       if (!params) {
         if (inspectGen === recreateInspectGen.current) {
-          setRecreatePlanError("No se pudo armar el destino del archivo USFM.");
+          setRecreatePlanError(t("se.noTarget"));
         }
         return;
       }
       const plan = await withTimeout(
         inspectRecreateBookWorkspace(params),
         12000,
-        "Door43 no respondió al comprobar tu borrador. Puedes rehacerlo de todos modos o cancelar.",
+        t("se.timeout"),
       );
       if (inspectGen === recreateInspectGen.current) setRecreatePlan(plan);
     } catch (err) {
@@ -1664,8 +1670,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setRecreatePlan(null);
       announce(
         result.reusedTrunk
-          ? "Tu borrador se rehízo. Se conservó el texto del borrador grupal."
-          : "Tu borrador y el archivo se rehicieron. Recargando el borrador…",
+          ? t("se.recreatedKeep")
+          : t("se.recreatedFile"),
       );
       await load();
     } catch (err) {
@@ -1695,17 +1701,17 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             size="sm"
             variant="ghost"
             className="scripture-editor__icon-btn scripture-editor__back"
-            aria-label="Cerrar"
+            aria-label={t("se.close")}
             onClick={onClose}
           >
             <ChevronLeft className="scripture-editor__back-icon" aria-hidden />
-            <span className="scripture-editor__action-label">Cerrar</span>
+            <span className="scripture-editor__action-label">{t("se.close")}</span>
           </Button>
           <span className="scripture-editor__head-rule" aria-hidden />
           <h1 className="scripture-editor__title">{title}</h1>
           {lab ? (
             <Badge variant="outline" className="scripture-editor__status">
-              Laboratorio
+              {t("se.lab")}
             </Badge>
           ) : null}
         </div>
@@ -1714,55 +1720,54 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             <details className="scripture-editor__details">
               <summary
                 className="scripture-editor__details-toggle"
-                title="Detalles"
-                aria-label="Detalles"
+                title={t("se.details")}
+                aria-label={t("se.details")}
               >
                 <MoreHorizontal className="scripture-editor__details-icon" aria-hidden />
               </summary>
               <div className="scripture-editor__details-panel">
                 {ctx?.taskName || ctx?.issueNumber ? (
                   <p className="scripture-editor__details-row">
-                    <span className="scripture-editor__details-key">Tarea</span>
+                    <span className="scripture-editor__details-key">{t("se.task")}</span>
                     <span>
-                      {ctx?.taskName || "Traducir"}
+                      {ctx?.taskName ? localizeName(ctx.taskName, language) : t("se.translateDefault")}
                       {ctx?.issueNumber ? ` · #${ctx.issueNumber}` : ""}
                     </span>
                   </p>
                 ) : null}
                 {createdNew ? (
                   <p className="scripture-editor__details-row">
-                    <span className="scripture-editor__details-key">Estado</span>
-                    <span>Archivo creado en el borrador grupal</span>
+                    <span className="scripture-editor__details-key">{t("se.status")}</span>
+                    <span>{t("se.fileCreated")}</span>
                   </p>
                 ) : null}
                 {targetLabel ? (
                   <p className="scripture-editor__details-row">
-                    <span className="scripture-editor__details-key">Archivo</span>
+                    <span className="scripture-editor__details-key">{t("se.file")}</span>
                     <span className="scripture-editor__details-mono">{targetLabel}</span>
                   </p>
                 ) : null}
                 {lab ? (
                   <p className="scripture-editor__details-row">
-                    <span className="scripture-editor__details-key">Guardado</span>
+                    <span className="scripture-editor__details-key">{t("se.savedKey")}</span>
                     <span>
                       {write?.mode === "dcs"
-                        ? "Laboratorio: puedes guardar en Door43 en la organización indicada. No hay subtarea ni revisión."
-                        : write?.reason ||
-                          "Laboratorio: borrador local. No se escribe en Door43."}
+                        ? t("se.labCanSave")
+                        : loc(write?.reason || "") || t("se.labLocalDraft")}
                     </span>
                   </p>
                 ) : null}
                 {ctx?.book ? (
                   <p className="scripture-editor__details-row">
-                    <span className="scripture-editor__details-key">Fase</span>
+                    <span className="scripture-editor__details-key">{t("se.phase")}</span>
                     <span>{bookBranchLabel(ctx.book, ctx.phaseName)}</span>
                   </p>
                 ) : null}
                 {draftUrl ? (
                   <p className="scripture-editor__details-row">
-                    <span className="scripture-editor__details-key">Tu borrador</span>
+                    <span className="scripture-editor__details-key">{t("se.yourDraft")}</span>
                     <a href={draftUrl} target="_blank" rel="noopener noreferrer">
-                      Abrir en Door43
+                      {t("se.openDoor43")}
                     </a>
                   </p>
                 ) : null}
@@ -1783,11 +1788,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               size="sm"
               variant="outline"
               className="scripture-editor__icon-btn"
-              aria-label="Abrir en Door43"
+              aria-label={t("se.openDoor43")}
               onClick={() => window.open(prUrl, "_blank", "noopener,noreferrer")}
             >
               <ExternalLink className="scripture-editor__action-icon" aria-hidden />
-              <span className="scripture-editor__action-label">Abrir en Door43</span>
+              <span className="scripture-editor__action-label">{t("se.openDoor43")}</span>
             </Button>
           ) : (
             <Button
@@ -1795,13 +1800,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               size="sm"
               variant="outline"
               className="scripture-editor__icon-btn"
-              aria-label={openingPr ? "Abriendo revisión" : "Listo para revisión"}
+              aria-label={openingPr ? t("se.openingReview") : t("se.readyForReview")}
               disabled={recreating || openingPr || !session || !ctx?.issueNumber}
               onClick={() => void openPr()}
             >
               <Check className="scripture-editor__action-icon" aria-hidden />
               <span className="scripture-editor__action-label">
-                {openingPr ? "Abriendo…" : "Listo para revisión"}
+                {openingPr ? t("se.opening") : t("se.readyForReview")}
               </span>
             </Button>
           )}
@@ -1809,13 +1814,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             type="button"
             size="sm"
             className="scripture-editor__save"
-            aria-label={saving ? "Guardando" : "Guardar"}
+            aria-label={saving ? t("se.savingAria") : t("se.save")}
             disabled={recreating || saving || !drafts.length || (!dirty && Boolean(session))}
             onClick={() => void save()}
           >
             <Save className="scripture-editor__action-icon" aria-hidden />
             <span className="scripture-editor__action-label">
-              {saving ? "Guardando…" : "Guardar"}
+              {saving ? t("se.saving") : t("se.save")}
             </span>
           </Button>
         </div>
@@ -1824,7 +1829,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       {error ? (
         <Alert variant="destructive" className="scripture-editor__alert">
           <AlertDescription>
-            <p>{error}</p>
+            <p>{loc(error)}</p>
             {canRecreate ? (
               <div className="scripture-editor__alert-actions">
                 <RecreateActionButton
@@ -1838,7 +1843,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       ) : canRecreate && loadStuck ? (
         <Alert className="scripture-editor__alert scripture-editor__alert--quiet">
           <AlertDescription>
-            <p>Si esto no termina, puedes rehacer tu borrador.</p>
+            <p>{t("se.stuck")}</p>
             <div className="scripture-editor__alert-actions">
               <RecreateActionButton
                 disabled={recreating}
@@ -1850,7 +1855,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       ) : null}
 
       <div className="scripture-editor__workspace">
-        <aside className="scripture-editor__refs" aria-label="Recursos de referencia">
+        <aside className="scripture-editor__refs" aria-label={t("se.refsAria")}>
           <Tabs
             value={resourceTab}
             onValueChange={(value) => setResourceTab(value as ResourceTab)}
@@ -1860,15 +1865,15 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               <TabsTrigger value="ult">ULT</TabsTrigger>
               <TabsTrigger value="ust">UST</TabsTrigger>
               <TabsTrigger value="notas">
-                <span className="scripture-editor__tab-full">Notas y palabras</span>
-                <span className="scripture-editor__tab-short">Notas</span>
+                <span className="scripture-editor__tab-full">{t("se.tabNotesFull")}</span>
+                <span className="scripture-editor__tab-short">{t("se.tabNotesShort")}</span>
                 {mixedHelps.length ? (
                   <span className="scripture-editor__tab-count">{mixedHelps.length}</span>
                 ) : null}
               </TabsTrigger>
               <TabsTrigger value="preguntas">
-                <span className="scripture-editor__tab-full">Preguntas</span>
-                <span className="scripture-editor__tab-short">Preg.</span>
+                <span className="scripture-editor__tab-full">{t("se.tabQuestionsFull")}</span>
+                <span className="scripture-editor__tab-short">{t("se.tabQuestionsShort")}</span>
                 {questions.length ? (
                   <span className="scripture-editor__tab-count">{questions.length}</span>
                 ) : null}
@@ -1876,7 +1881,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             </TabsList>
             <TabsContent value="ult" className="scripture-editor__tab-pane">
               <ScriptureTab
-                title="ULT (inglés)"
+                title={t("se.ultEnglish")}
                 range={range}
                 pane={ult}
                 activeVerse={activeVerse}
@@ -1888,7 +1893,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             </TabsContent>
             <TabsContent value="ust" className="scripture-editor__tab-pane">
               <ScriptureTab
-                title="UST (inglés)"
+                title={t("se.ustEnglish")}
                 range={range}
                 pane={ust}
                 activeVerse={activeVerse}
@@ -1903,8 +1908,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                 <div className="scripture-editor__help-filter">
                   <p className="scripture-editor__help-filter-label">
                     {wordFilter.word
-                      ? `Filtrado por «${wordFilter.word}»`
-                      : "Filtrado por la palabra seleccionada"}
+                      ? t("se.filteredBy").replace("{w}", wordFilter.word)
+                      : t("se.filteredBySel")}
                   </p>
                   <Button
                     type="button"
@@ -1912,24 +1917,24 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     variant="ghost"
                     onClick={clearWordFilter}
                   >
-                    Ver todas
+                    {t("se.seeAll")}
                   </Button>
                 </div>
               ) : null}
               <HelpBlock
-                title="Notas y palabras"
+                title={t("se.notesAndWords")}
                 items={mixedHelps}
                 displayQuotes={displayQuotes}
                 loggedIn={loggedIn}
                 failed={notesFailed && wordsFailed}
                 loading={notesLoading || wordsLoading}
-                loginHint="Inicia sesión para ver las notas y palabras de esta porción."
+                loginHint={t("se.loginNotes")}
                 emptyHint={
                   wordFilter
-                    ? "Ninguna nota ni palabra coincide con esta selección."
-                    : "No hay notas ni palabras para este rango."
+                    ? t("se.noMatchNotes")
+                    : t("se.noNotes")
                 }
-                errorHint="No se pudieron cargar las notas y palabras."
+                errorHint={t("se.notesError")}
                 activeId={activeHelpKey}
                 onHover={setHoveredHelp}
                 onActivate={activateHelp}
@@ -1937,15 +1942,15 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             </TabsContent>
             <TabsContent value="preguntas" className="scripture-editor__tab-pane">
               <HelpBlock
-                title="Preguntas"
+                title={t("se.questions")}
                 items={questions}
                 displayQuotes={displayQuotes}
                 loggedIn={loggedIn}
                 failed={questionsFailed}
                 loading={questionsLoading}
-                loginHint="Inicia sesión para ver las preguntas de esta porción."
-                emptyHint="No hay preguntas TQ para este rango."
-                errorHint="No se pudieron cargar las preguntas."
+                loginHint={t("se.loginQuestions")}
+                emptyHint={t("se.noQuestions")}
+                errorHint={t("se.questionsError")}
                 activeId={activeHelpKey}
                 onHover={setHoveredHelp}
                 onActivate={activateHelp}
@@ -1956,11 +1961,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
         <section
           className="scripture-editor__draft"
-          aria-label="Borrador"
+          aria-label={t("se.draftAria")}
           aria-busy={draftLoading || recreating || undefined}
         >
           <div className="scripture-editor__draft-head">
-            <p className="scripture-editor__eyebrow">Tu borrador · {resourceCode}</p>
+            <p className="scripture-editor__eyebrow">{t("se.yourDraftRes").replace("{res}", resourceCode)}</p>
             <p
               className="scripture-editor__save-state"
               data-tone={saveState.tone}
@@ -2008,12 +2013,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                         value={d.text}
                         onFocus={() => setActiveVerse(d.from)}
                         onChange={(e) => updateVerse(key, e.target.value)}
-                        placeholder="Traducción…"
+                        placeholder={t("se.translationPlaceholder")}
                         disabled={recreating}
                       />
                       {!inside ? (
                         <p className="scripture-editor__verse-note">
-                          Puente con versículos fuera de tu porción
+                          {t("se.bridgeOutside")}
                         </p>
                       ) : null}
                     </div>
@@ -2035,11 +2040,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           variant="outline"
                           className="scripture-editor__seam-btn scripture-editor__seam-btn--split"
                           disabled={recreating}
-                          title={`Separar el puente \\v ${label.replace("–", "-")}`}
+                          title={t("se.splitTitle").replace("{l}", label.replace("–", "-"))}
                           onClick={() => splitRow(index)}
                         >
                           <Unlink2 aria-hidden />
-                          <span>Separar {label}</span>
+                          <span>{t("se.splitLabel").replace("{l}", label)}</span>
                         </Button>
                       ) : null}
                       {joinable && next ? (
@@ -2049,12 +2054,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           variant="outline"
                           className="scripture-editor__seam-btn scripture-editor__seam-btn--join"
                           disabled={recreating}
-                          title={`Unir en un puente (\\v ${d.from}-${next.to})`}
+                          title={t("se.joinTitle").replace("{a}", String(d.from)).replace("{b}", String(next.to))}
                           onClick={() => joinWithNext(index)}
                         >
                           <Link2 aria-hidden />
                           <span>
-                            Unir {label} y {slotLabel(next)}
+                            {t("se.joinLabel").replace("{a}", label).replace("{b}", slotLabel(next))}
                           </span>
                         </Button>
                       ) : null}
@@ -2065,19 +2070,16 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             </div>
           )}
           {!draftLoading && !drafts.length && !error ? (
-            <p className="text-sm text-muted-foreground">No hay versículos en este rango.</p>
+            <p className="text-sm text-muted-foreground">{t("se.noVerses")}</p>
           ) : null}
           {!session ? (
             <p className="scripture-editor__hint">
-              Puedes redactar sin red. Al iniciar sesión, Guardar sube tu borrador
-              de esta subtarea (no el borrador principal). La revisión se abre al
-              marcar el borrador o con Listo para revisión.
+              {t("se.offlineHint")}
             </p>
           ) : null}
           {draftVia === "plain" && usfm.trim() && drafts.length ? (
             <p className="scripture-editor__hint">
-              Editor simple: no se pudo analizar el USFM con usfm-ast. El
-              guardado sigue siendo el mismo (versículo a versículo en tu borrador).
+              {t("se.plainHint")}
             </p>
           ) : null}
         </section>
@@ -2086,7 +2088,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       <div
         className="scripture-editor__panel-toggle"
         role="tablist"
-        aria-label="Panel"
+        aria-label={t("se.panelAria")}
       >
         <button
           type="button"
@@ -2096,7 +2098,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           aria-selected={mobilePanel === "editor"}
           onClick={() => setMobilePanel("editor")}
         >
-          Editor
+          {t("se.panelEditor")}
         </button>
         <button
           type="button"
@@ -2106,7 +2108,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           aria-selected={mobilePanel === "recursos"}
           onClick={() => setMobilePanel("recursos")}
         >
-          Recursos
+          {t("se.panelResources")}
         </button>
       </div>
 
@@ -2124,21 +2126,19 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       >
         <DialogContent className="max-w-md" showCloseButton={!recreating}>
           <DialogHeader>
-            <DialogTitle>Rehacer mi borrador</DialogTitle>
+            <DialogTitle>{t("se.recreateTitle")}</DialogTitle>
             <DialogDescription>
-              Se deshace el estado roto de esta subtarea y se vuelve a crear
-              desde el borrador grupal (o desde el borrador principal si el
-              borrador grupal no sirve). No se pierde el trabajo de otras personas.
+              {t("se.recreateDesc")}
             </DialogDescription>
           </DialogHeader>
           {recreatePlanError ? (
             <Alert variant="destructive">
-              <AlertDescription>{recreatePlanError}</AlertDescription>
+              <AlertDescription>{loc(recreatePlanError)}</AlertDescription>
             </Alert>
           ) : recreatePlan ? (
             <RecreatePlanDetails plan={recreatePlan} />
           ) : (
-            <p className="text-sm text-muted-foreground">Comprobando tu borrador en Door43…</p>
+            <p className="text-sm text-muted-foreground">{t("se.checkingDraft")}</p>
           )}
           <DialogFooter>
             <Button
@@ -2147,14 +2147,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               disabled={recreating}
               onClick={() => setRecreateOpen(false)}
             >
-              Cancelar
+              {t("se.cancel")}
             </Button>
             <Button
               type="button"
               disabled={recreating || (!recreatePlan && !recreatePlanError)}
               onClick={() => void confirmRecreate()}
             >
-              {recreating ? "Recreando…" : "Recrear"}
+              {recreating ? t("se.recreateBusy") : t("se.recreate")}
             </Button>
           </DialogFooter>
         </DialogContent>

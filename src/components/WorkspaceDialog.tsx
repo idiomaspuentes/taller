@@ -86,9 +86,9 @@ export function WorkspaceDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="dialog--workspace">
         <DialogHeader>
-          <DialogTitle>Sesión</DialogTitle>
+          <DialogTitle>{t("ws.session")}</DialogTitle>
           <DialogDescription>
-            Tu identidad, lengua y organización del equipo para este espacio de trabajo.
+            {t("ws.sessionHelp")}
           </DialogDescription>
         </DialogHeader>
 
@@ -106,7 +106,7 @@ export function WorkspaceDialog({
                   </Button>
                 ) : null}
                 <Button type="button" variant="ghost" size="sm" onClick={onSignOut}>
-                  Cerrar sesión
+                  {t("ws.signOut")}
                 </Button>
               </div>
             </div>
@@ -152,15 +152,15 @@ export function WorkspaceDialog({
 
             {showPmSelect ? (
               <div className="grid gap-1.5">
-                <Label htmlFor="ws-pm">Organización del equipo</Label>
+                <Label htmlFor="ws-pm">{t("ws.teamOrg")}</Label>
                 <Select value={pmOrg} onValueChange={onPmOrgChange}>
-                  <SelectTrigger id="ws-pm" className="w-full" aria-label="Organización del equipo">
-                    <SelectValue placeholder="Elige una organización" />
+                  <SelectTrigger id="ws-pm" className="w-full" aria-label={t("ws.teamOrg")}>
+                    <SelectValue placeholder={t("ws.pickOrg")} />
                   </SelectTrigger>
                   <SelectContent position="popper">
                     {!pmOrg ? (
                       <SelectItem value="" disabled>
-                        Elige una organización
+                        {t("ws.pickOrg")}
                       </SelectItem>
                     ) : null}
                     {pmOptions.map((org) => {
@@ -186,7 +186,7 @@ export function WorkspaceDialog({
                 className="justify-self-start"
                 onClick={onOpenFromDcs}
               >
-                Abrir desde Door43
+                {t("ws.openFrom")}
               </Button>
             ) : null}
           </div>
@@ -194,7 +194,7 @@ export function WorkspaceDialog({
 
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cerrar
+            {t("se.close")}
           </Button>
         </DialogFooter>
       </DialogContent>

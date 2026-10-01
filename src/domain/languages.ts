@@ -1,3 +1,4 @@
+import glossary from "../i18n/locales/glossary.pt.json";
 /**
  * Workspace language codes as Door43 stores them (`lc`, e.g. `es-419`).
  * Catalog comes from GET /api/v1/languages/langnames.json (or its snapshot).
@@ -36,6 +37,8 @@ const SHORT_CHIP: Record<string, string> = {
   pt: "Portugués",
   fr: "Francés",
 };
+
+const SHORT_CHIP_PT: Record<string, string> = glossary.languages;
 
 const BUNDLED_ASSET = "/data/door43-languages.json";
 
@@ -95,10 +98,10 @@ export function languageDisplayName(code: string, catalog: LanguageOption[] = []
 }
 
 /** Compact header chip: short name when known, else display name. */
-export function languageChipLabel(code: string, catalog: LanguageOption[] = []): string {
+export function languageChipLabel(code: string, catalog: LanguageOption[] = [], ui: "es" | "pt" = "es"): string {
   const clean = normalizeLangCode(code);
   if (!clean) return "";
-  return SHORT_CHIP[clean] || languageDisplayName(clean, catalog);
+  return (ui === "pt" ? SHORT_CHIP_PT[clean] : undefined) || SHORT_CHIP[clean] || languageDisplayName(clean, catalog);
 }
 
 export function mergeLanguageOptions(

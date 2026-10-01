@@ -12,6 +12,9 @@ import {
 import { formatLaunchRef } from "../domain/solverLab";
 import { DecisionCustomPanel } from "./DecisionCustomPanel";
 import { Button } from "@/components/ui/button";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
 
 type Props = {
   item: ThreadItem;
@@ -41,6 +44,9 @@ export function DecisionCard({
   onRun,
   onOpenEditor,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeThread(text, language);
   const event = item.event!;
   const definition = resolved.definition;
   const resolution = status?.resolution;
@@ -97,7 +103,7 @@ export function DecisionCard({
       setPrepareError(fresh.prepareError);
       const again = offered(definition?.options?.(target, { viewer, ...fresh }) ?? []).find((o) => o.id === option.id);
       if (!again || again.blockReason) {
-        setError(again?.blockReason || "Esta opción ya no está disponible.");
+        setError(loc(again?.blockReason || "") || t("dc.unavailable"));
         return;
       }
       await onRun!(option.id, target);
@@ -114,10 +120,10 @@ export function DecisionCard({
       {shownPanels.map((panel) => (
         <figure key={panel.label} className={`chat-decision__panel${panel.custom?.kind === "cajas" ? " chat-decision__panel--wide" : ""}`}>
           <figcaption className="chat-decision__label">
-            <span>{panel.label}</span>
-            {panel.tag ? <span className="chat-decision__tag">{panel.tag}</span> : null}
+            <span>{loc(panel.label)}</span>
+            {panel.tag ? <span className="chat-decision__tag">{loc(panel.tag)}</span> : null}
           </figcaption>
-          {panel.custom ? <DecisionCustomPanel custom={panel.custom} /> : <blockquote className="chat-decision__text">{panel.text || "(vacío)"}</blockquote>}
+          {panel.custom ? <DecisionCustomPanel custom={panel.custom} /> : <blockquote className="chat-decision__text">{panel.text || t("dc.empty")}</blockquote>}
         </figure>
       ))}
     </div>
@@ -128,17 +134,17 @@ export function DecisionCard({
     <>
       {busy ? (
         <p className="chat-decision__busy" role="status">
-          {busy.busyLabel || "Guardando…"}
+          {busy.busyLabel ? loc(busy.busyLabel) : t("dc.saving")}
         </p>
       ) : confirmOption ? (
-        <div className="chat-decision__confirm" role="group" aria-label="Confirmar">
-          <p className="chat-decision__confirm-text">{confirmOption.confirm}</p>
+        <div className="chat-decision__confirm" role="group" aria-label={t("dc.confirmAria")}>
+          <p className="chat-decision__confirm-text">{loc(confirmOption.confirm ?? "")}</p>
           <div className="chat-decision__actions">
             <Button type="button" onClick={() => void run(confirmOption)}>
-              Confirmar
+              {t("dc.confirm")}
             </Button>
             <Button type="button" variant="outline" onClick={() => setConfirming(null)}>
-              Cancelar
+              {t("dc.cancel")}
             </Button>
           </div>
         </div>
@@ -152,19 +158,19 @@ export function DecisionCard({
               disabled={Boolean(option.blockReason)}
               onClick={() => (option.confirm ? setConfirming(option.id) : void run(option))}
             >
-              {option.label}
+              {loc(option.label)}
             </Button>
           ))}
         </div>
       ) : null}
       {!busy && !confirmOption && reasons.length ? (
         <p className="chat-decision__reason">
-          {reasons.join(" ")}
+          {reasons.map(loc).join(" ")}
           {editorRange && onOpenEditor ? (
             <>
               {" "}
               <button type="button" className="chat-link chat-decision__editor" onClick={() => onOpenEditor(editorRange)}>
-                Abrir {formatLaunchRef(editorRange.chapter, editorRange.from, editorRange.to)} en el editor
+                {t("dc.openInEditor").replace("{ref}", formatLaunchRef(editorRange.chapter, editorRange.from, editorRange.to))}
               </button>
             </>
           ) : null}
@@ -183,15 +189,15 @@ export function DecisionCard({
       <section
         className="chat-decision chat-decision--resolved"
         data-key={item.key}
-        aria-label="Decisión resuelta"
+        aria-label={t("dc.resolvedAria")}
         aria-busy={Boolean(busy)}
       >
-        <p className="chat-decision__eyebrow">Decidido</p>
+        <p className="chat-decision__eyebrow">{t("dc.decided")}</p>
         <p className="chat-decision__title">
-          {resolveChatEvent(resolution).title}
+          {loc(resolveChatEvent(resolution).title)}
           {resolutionTime ? <span className="chat-decision__when"> · {resolutionTime}</span> : null}
         </p>
-        <p className="chat-decision__sub">{decided?.title ?? resolved.title}</p>
+        <p className="chat-decision__sub">{loc(decided?.title ?? resolved.title)}</p>
         {expanded ? panels : null}
         <button
           type="button"
@@ -199,7 +205,7 @@ export function DecisionCard({
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}
         >
-          {expanded ? "Ocultar textos" : "Ver textos"}
+          {expanded ? t("dc.hideTexts") : t("dc.seeTexts")}
         </button>
         {controls}
       </section>
@@ -207,12 +213,12 @@ export function DecisionCard({
   }
 
   return (
-    <section className="chat-decision" data-key={item.key} aria-label="Decisión pendiente" aria-busy={Boolean(busy)}>
-      <p className="chat-decision__eyebrow">Decidir</p>
-      <p className="chat-decision__title">{resolved.title}</p>
+    <section className="chat-decision" data-key={item.key} aria-label={t("dc.pendingAria")} aria-busy={Boolean(busy)}>
+      <p className="chat-decision__eyebrow">{t("dc.decide")}</p>
+      <p className="chat-decision__title">{loc(resolved.title)}</p>
       {panels}
       {status?.superseded ? (
-        <p className="chat-decision__reason">Hay un conflicto más reciente para estos versículos; decide allí.</p>
+        <p className="chat-decision__reason">{t("dc.superseded")}</p>
       ) : null}
       {controls}
       {item.createdAt ? (

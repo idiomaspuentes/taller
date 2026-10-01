@@ -12,6 +12,10 @@ import {
   pullIssues,
   type PublishPreview,
 } from "../dcs/issues";
+import { useT, type MessageKey } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeScope } from "../domain/scopeNames";
+import { bookLabel, isBookProjectId } from "../domain/books";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,20 +42,30 @@ type Props = {
 type Delivered = {
   kind: "json" | "dcs" | "issues";
   at: number;
+  /** File name or folder for «json» and «dcs»; for «issues» it is built from the counts when shown. */
   detail: string;
   created?: number;
   updated?: number;
+  closed?: number;
   openCount?: number;
   enabledSelfAssign?: boolean;
 };
 
-function previewSummary(preview: PublishPreview): string {
+function previewSummary(preview: PublishPreview, t: (key: MessageKey) => string): string {
   const parts = [
-    `${preview.created} crear`,
-    `${preview.updated} actualizar`,
-    `${preview.closed} cerrar`,
+    t("pb.create").replace("{n}", String(preview.created)),
+    t("pb.update").replace("{n}", String(preview.updated)),
+    t("pb.close").replace("{n}", String(preview.closed)),
   ];
   return parts.join(" · ");
+}
+
+function deliveredDetail(d: Delivered, t: (key: MessageKey) => string): string {
+  if (d.kind !== "issues") return d.detail;
+  return (
+    t("pb.detail").replace("{created}", String(d.created ?? 0)).replace("{updated}", String(d.updated ?? 0)) +
+    (d.closed ? t("pb.detailRemoved").replace("{n}", String(d.closed)) : "")
+  );
 }
 
 export function PublishView({
@@ -63,6 +77,9 @@ export function PublishView({
   onGoToMyTasks,
   announce,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const n = (key: MessageKey, count: number) => t(key).replace("{n}", String(count));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [delivered, setDelivered] = useState<Delivered | null>(null);
@@ -76,6 +93,8 @@ export function PublishView({
   const moreRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   const projectId = board.projectId || board.book;
+  const projectTitle =
+    board.kind === "book" && isBookProjectId(projectId) ? bookLabel(projectId, language) : board.title || projectId;
   const byPerson = loadByPerson(board.assignments, board.people);
   const publishOrders = inventory ? publishableWorkOrders(board, inventory) : [];
   const orderCount = publishOrders.length;
@@ -121,17 +140,17 @@ export function PublishView({
       at: Date.now(),
       detail: `gateway-${board.lang}-${projectId}-asignaciones.json`,
     });
-    announce("Plan descargado.");
+    announce(t("pb.downloaded"));
   }
 
   async function saveRemote() {
     setMoreOpen(false);
     if (!session) {
-      setError("Inicia sesión para guardar.");
+      setError(t("pb.signInToSave"));
       return;
     }
     if (!pmOrg) {
-      setError("Elige la organización del equipo en el espacio de trabajo.");
+      setError(t("pb.pickOrg"));
       return;
     }
     setBusy(true);
@@ -147,7 +166,7 @@ export function PublishView({
       });
       const path = `${pmOrg}/${PM_REPO_NAME}/${board.lang}/${projectId}/`;
       setDelivered({ kind: "dcs", at: Date.now(), detail: path });
-      announce(`Guardado en ${path}`);
+      announce(t("pb.savedIn").replace("{path}", path));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -158,7 +177,7 @@ export function PublishView({
   /** Fetch dry-run counts, then open confirm dialog. */
   async function requestPublish() {
     if (!session || !pmOrg || !inventory) {
-      setError("Necesitas sesión, organización del equipo e inventario para publicar.");
+      setError(t("pb.needAll"));
       return;
     }
     setPreviewing(true);
@@ -182,7 +201,7 @@ export function PublishView({
   /** Saves the plan and publishes subtareas — one deliver action. */
   async function publish() {
     if (!session || !pmOrg || !inventory) {
-      setError("Necesitas sesión, organización del equipo e inventario para publicar.");
+      setError(t("pb.needAll"));
       return;
     }
     setConfirmOpen(false);
@@ -208,7 +227,12 @@ export function PublishView({
         inventory,
         onProgress: (p) =>
           setProgress(
-            `${p.done}/${p.total} · ${p.current ?? ""} (${p.created} nuevos, ${p.updated} actualizados)`,
+            t("pb.progress")
+              .replace("{done}", String(p.done))
+              .replace("{total}", String(p.total))
+              .replace("{current}", localizeScope(p.current ?? "", language))
+              .replace("{created}", String(p.created))
+              .replace("{updated}", String(p.updated)),
           ),
       });
 
@@ -237,18 +261,17 @@ export function PublishView({
       setDelivered({
         kind: "issues",
         at: Date.now(),
-        detail:
-          `${result.created} creados, ${result.updated} actualizados` +
-          (result.closed ? `, ${result.closed} retirados` : ""),
+        detail: "",
         created: result.created,
         updated: result.updated,
+        closed: result.closed,
         openCount: openOrderCount,
         enabledSelfAssign,
       });
       announce(
-        `Publicado: ${result.created} nuevos, ${result.updated} actualizados` +
-          (result.closed ? `, ${result.closed} retirados` : "") +
-          (enabledSelfAssign ? " · autoasignación activada" : ""),
+        t("pb.published").replace("{created}", String(result.created)).replace("{updated}", String(result.updated)) +
+          (result.closed ? t("pb.publishedRemoved").replace("{n}", String(result.closed)) : "") +
+          (enabledSelfAssign ? t("pb.selfAssignOn") : ""),
       );
       requestAnimationFrame(() => {
         successRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -265,7 +288,7 @@ export function PublishView({
 
   async function syncFromIssues() {
     if (!session || !pmOrg) {
-      setError("Inicia sesión para actualizar desde las subtareas.");
+      setError(t("pb.signInToSync"));
       return;
     }
     setBusy(true);
@@ -278,7 +301,7 @@ export function PublishView({
         board,
       });
       onImported({ ...board, assignments });
-      announce(`Actualizado desde ${issues.length} subtareas.`);
+      announce(n("pb.syncedFrom", issues.length));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -300,7 +323,7 @@ export function PublishView({
         });
         onImported(normalized);
         setDelivered(null);
-        announce("Asignaciones importadas.");
+        announce(t("pb.imported"));
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -312,9 +335,9 @@ export function PublishView({
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">Crear subtareas</h1>
+          <h1 className="hub-title">{t("pb.title")}</h1>
           <p className="hub-lede">
-            Reparte subtareas · <strong>{board.title || projectId}</strong>
+            {t("pb.lede")}<strong>{projectTitle}</strong>
             {session && pmOrg ? (
               <>
                 {" "}
@@ -331,14 +354,14 @@ export function PublishView({
               onClick={() => void requestPublish()}
             >
               {busy
-                ? "Publicando…"
+                ? t("pb.publishing")
                 : previewing
-                  ? "Calculando…"
-                  : `Publicar${orderCount ? ` (${orderCount})` : ""}`}
+                  ? t("pb.calculating")
+                  : `${t("pb.publish")}${orderCount ? ` (${orderCount})` : ""}`}
             </Button>
           ) : (
             <Button type="button" onClick={download}>
-              Descargar
+              {t("pb.download")}
             </Button>
           )}
           {canSave ? (
@@ -348,7 +371,7 @@ export function PublishView({
               disabled={busy}
               onClick={() => void syncFromIssues()}
             >
-              Actualizar
+              {t("pb.refresh")}
             </Button>
           ) : null}
           <div className="phases-create" ref={moreRef}>
@@ -361,7 +384,7 @@ export function PublishView({
               disabled={busy}
               onClick={() => setMoreOpen((v) => !v)}
             >
-              Más
+              {t("pb.more")}
             </Button>
             {moreOpen ? (
               <div className="phases-menu phases-menu--end" role="menu">
@@ -372,7 +395,7 @@ export function PublishView({
                     className="phases-menu__item"
                     onClick={() => void saveRemote()}
                   >
-                    Guardar sin repartir
+                    {t("pb.saveOnly")}
                   </button>
                 ) : null}
                 {canSave ? (
@@ -382,7 +405,7 @@ export function PublishView({
                     className="phases-menu__item"
                     onClick={download}
                   >
-                    Descargar
+                    {t("pb.download")}
                   </button>
                 ) : null}
                 <button
@@ -394,7 +417,7 @@ export function PublishView({
                     fileRef.current?.click();
                   }}
                 >
-                  Importar
+                  {t("pb.import")}
                 </button>
               </div>
             ) : null}
@@ -423,28 +446,22 @@ export function PublishView({
 
       {delivered?.kind === "issues" ? (
         <div className="hub-empty-panel" ref={successRef} data-publish-success="true">
-          <span className="hub-empty-panel__kicker">Publicado</span>
+          <span className="hub-empty-panel__kicker">{t("pb.publishedKicker")}</span>
           <h2 className="hub-empty-panel__title">
             {(delivered.created ?? 0) + (delivered.updated ?? 0) > 0
-              ? "Subtareas publicadas"
-              : "Nada nuevo que publicar"}
+              ? t("pb.subtasksPublished")
+              : t("pb.nothingNew")}
           </h2>
           <p className="hub-empty-panel__body">
-            {delivered.created ?? 0} creadas · {delivered.updated ?? 0} actualizadas
-            {delivered.detail.includes("retirados")
-              ? ` · huérfanas cerradas`
-              : ""}
-            {delivered.openCount
-              ? ` · ${delivered.openCount} sin asignar (Disponibles en Mis tareas)`
-              : ""}
-            {delivered.enabledSelfAssign
-              ? ". Se activó la autoasignación del proyecto para que el equipo pueda Tomar."
-              : ". Las subtareas que ya existían se actualizan; las que ya no están en el plan se cierran."}
+            {t("pb.createdUpdated").replace("{c}", String(delivered.created ?? 0)).replace("{u}", String(delivered.updated ?? 0))}
+            {delivered.closed ? t("pb.orphansClosed") : ""}
+            {delivered.openCount ? n("pb.unassignedAvailable", delivered.openCount) : ""}
+            {delivered.enabledSelfAssign ? t("pb.selfAssignEnabled") : t("pb.existingUpdated")}
           </p>
           <div className="hub-empty-panel__actions">
             {onGoToMyTasks ? (
               <Button type="button" size="sm" onClick={onGoToMyTasks}>
-                Ir a Mis tareas
+                {t("pb.goMyTasks")}
               </Button>
             ) : null}
             <Button
@@ -454,22 +471,23 @@ export function PublishView({
               disabled={busy}
               onClick={() => void syncFromIssues()}
             >
-              Actualizar plan
+              {t("pb.refreshPlan")}
             </Button>
           </div>
         </div>
       ) : lastPublish ? (
         <Alert>
           <AlertDescription className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">Ya publicado</Badge>
+            <Badge variant="secondary">{t("pb.alreadyPublished")}</Badge>
             <span className="text-sm">
-              {new Date(lastPublish.at).toLocaleString("es")} · {lastPublish.created} creadas,{" "}
-              {lastPublish.updated} actualizadas. Publicar de nuevo actualiza las mismas subtareas y
-              cierra las que ya no están en el plan.
+              {t("pb.lastPublishLine")
+                .replace("{when}", new Date(lastPublish.at).toLocaleString(language))
+                .replace("{c}", String(lastPublish.created))
+                .replace("{u}", String(lastPublish.updated))}
             </span>
             {onGoToMyTasks ? (
               <Button type="button" size="sm" variant="outline" onClick={onGoToMyTasks}>
-                Mis tareas
+                {t("pb.myTasks")}
               </Button>
             ) : null}
           </AlertDescription>
@@ -478,7 +496,7 @@ export function PublishView({
         <Alert>
           <AlertDescription className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">
-              {delivered.kind === "dcs" ? "Plan guardado" : "Descargado"}
+              {delivered.kind === "dcs" ? t("pb.planSaved") : t("pb.downloadedBadge")}
             </Badge>
             <span className="text-sm">{delivered.detail}</span>
           </AlertDescription>
@@ -488,16 +506,15 @@ export function PublishView({
       {!canSave ? (
         <p className="hub-hint">
           {session
-            ? "Elige la organización del equipo en el espacio de trabajo para publicar."
-            : "Descarga el plan ahora. Para publicar, inicia sesión desde el espacio de trabajo."}
+            ? t("pb.hintSession")
+            : t("pb.hintNoSession")}
         </p>
       ) : null}
 
       {needsSelfAssignHint ? (
         <Alert>
           <AlertDescription>
-            Hay {openOrderCount} subtareas sin asignar. Activa «Permitir autoasignación» en Fases y
-            tareas para que los trabajadores puedan Tomarlas en Mis tareas.
+            {openOrderCount === 1 ? t("pb.selfAssignHintOne") : n("pb.selfAssignHint", openOrderCount)}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -509,14 +526,11 @@ export function PublishView({
             className="w-fit text-xs text-muted-foreground underline-offset-2 hover:underline"
             onClick={() => setHelpOpen((v) => !v)}
           >
-            {helpOpen ? "Ocultar ayuda" : "¿Cómo funciona?"}
+            {helpOpen ? t("tv.hideHelp") : t("tv.howItWorks")}
           </button>
           {helpOpen ? (
             <p className="hub-hint">
-              Publicar guarda el plan y crea o actualiza las subtareas. Antes de aplicar verás
-              cuántas se crean, actualizan o cierran (si el alcance cambió). Puedes publicar sin
-              asignar personas: salen libres para Tomar si la autoasignación está activa. Usa Más →
-              Guardar sin repartir guarda el plan sin crear subtareas. Actualizar trae el estado más reciente.
+              {t("pb.help")}
             </p>
           ) : null}
         </div>
@@ -530,59 +544,58 @@ export function PublishView({
 
       {!inventory ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Inventario</span>
-          <h2 className="hub-empty-panel__title">Falta el inventario</h2>
+          <span className="hub-empty-panel__kicker">{t("pb.inventoryKicker")}</span>
+          <h2 className="hub-empty-panel__title">{t("pb.missingInventory")}</h2>
           <p className="hub-empty-panel__body">
-            Completa Inventario antes de publicar subtareas.
+            {t("pb.missingInventoryBody")}
           </p>
         </div>
       ) : !board.teams.length ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Fases</span>
-          <h2 className="hub-empty-panel__title">Sin fases todavía</h2>
+          <span className="hub-empty-panel__kicker">{t("pb.phasesKicker")}</span>
+          <h2 className="hub-empty-panel__title">{t("pb.noPhases")}</h2>
           <p className="hub-empty-panel__body">
-            Define al menos una tarea en Fases y tareas para generar la cola de subtareas.
+            {t("pb.noPhasesBody")}
           </p>
         </div>
       ) : orderCount === 0 ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Vacío</span>
-          <h2 className="hub-empty-panel__title">Nada que publicar</h2>
+          <span className="hub-empty-panel__kicker">{t("pb.emptyKicker")}</span>
+          <h2 className="hub-empty-panel__title">{t("pb.nothingToPublish")}</h2>
           <p className="hub-empty-panel__body">
-            Las fases no tienen alcance con ítems en el inventario. Ajusta el alcance o vuelve a
-            Inventario.
+            {t("pb.nothingToPublishBody")}
           </p>
         </div>
       ) : (
         <Card size="sm">
           <CardHeader>
-            <CardTitle>Resumen</CardTitle>
+            <CardTitle>{t("pb.summary")}</CardTitle>
             <CardDescription>
               {publishedIssues
-                ? `Última publicación: ${delivered?.detail}.`
+                ? t("pb.lastPublication").replace("{d}", delivered ? deliveredDetail(delivered, t) : "")
                 : lastPublish
-                  ? "Edita asignaciones y vuelve a publicar para actualizar subtareas existentes."
-                  : "Confirma la cola antes de publicar."}
+                  ? t("pb.editAndRepublish")
+                  : t("pb.confirmQueue")}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="grid grid-cols-3 gap-2">
-              <Stat value={orderCount} label="Subtareas" />
-              <Stat value={assignedOrderCount} label="Con persona" />
-              <Stat value={openOrderCount} label="Sin asignar" />
+              <Stat value={orderCount} label={t("pb.statSubtasks")} />
+              <Stat value={assignedOrderCount} label={t("pb.statWithPerson")} />
+              <Stat value={openOrderCount} label={t("pb.statUnassigned")} />
             </div>
 
             {byPerson.length ? (
               <>
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Carga por persona
+                  {t("pb.loadByPerson")}
                 </h3>
                 <div className="grid gap-1.5">
                   {byPerson.map(({ person, count }) => (
                     <div key={person.id} className="flex items-center justify-between gap-3">
                       <div>
                         <strong className="font-medium">{person.name}</strong>
-                        <div className="text-xs text-muted-foreground">{count} ítems</div>
+                        <div className="text-xs text-muted-foreground">{n("pb.nItems", count)}</div>
                       </div>
                       <span
                         className="block h-1.5 w-24 overflow-hidden rounded-full bg-muted"
@@ -607,7 +620,7 @@ export function PublishView({
             {ordersByTeam.length ? (
               <>
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Por fase
+                  {t("pb.byPhase")}
                 </h3>
                 <div className="grid gap-1.5">
                   {ordersByTeam.map(({ team, count }) => (
@@ -646,54 +659,49 @@ export function PublishView({
         <DialogContent className="max-w-md" showCloseButton={!busy}>
           <DialogHeader>
             <DialogTitle>
-              {preview?.existingOpen || lastPublish ? "Confirmar republicación" : "Confirmar publicación"}
+              {preview?.existingOpen || lastPublish ? t("pb.confirmRepublish") : t("pb.confirmPublish")}
             </DialogTitle>
             <DialogDescription>
               {preview
-                ? `Plan de ${board.title || projectId}: ${preview.totalOrders} subtareas en total.`
-                : "Calculando impacto…"}
+                ? (preview.totalOrders === 1 ? t("pb.planOfOne") : t("pb.planOf").replace("{n}", String(preview.totalOrders))).replace("{title}", projectTitle)
+                : t("pb.computing")}
             </DialogDescription>
           </DialogHeader>
 
           {preview ? (
             <div className="grid gap-3">
               <p className="text-sm font-medium tabular-nums text-foreground">
-                {previewSummary(preview)}
+                {previewSummary(preview, t)}
               </p>
               <ul className="grid gap-1.5 text-sm text-muted-foreground">
                 <li>
-                  <strong className="text-foreground">{preview.created}</strong> crear
-                  {preview.created === 1 ? " subtarea nueva" : " subtareas nuevas"}
+                  {boldCount(t(preview.created === 1 ? "pb.createOne" : "pb.createMany"), preview.created)}
                 </li>
                 <li>
-                  <strong className="text-foreground">{preview.updated}</strong> actualizar
-                  {preview.updated === 1 ? " existente" : " existentes"} (misma clave)
+                  {boldCount(t(preview.updated === 1 ? "pb.updateOne" : "pb.updateMany"), preview.updated)}
                 </li>
                 <li>
-                  <strong className="text-foreground">{preview.closed}</strong> cerrar
-                  {preview.closed === 1 ? " huérfana" : " huérfanas"} (ya no están en el plan)
+                  {boldCount(t(preview.closed === 1 ? "pb.closeOne" : "pb.closeMany"), preview.closed)}
                 </li>
               </ul>
               {preview.scopeChanged ? (
                 <Alert variant="destructive">
                   <AlertDescription>
-                    El alcance cambió: se cerrarán subtareas abiertas que ya no coinciden con el
-                    plan. El historial se conserva; no se borran.
+                    {t("pb.scopeChanged")}
                   </AlertDescription>
                 </Alert>
               ) : preview.existingOpen > 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Hay {preview.existingOpen} subtareas abiertas en este proyecto. Se reutilizan las
-                  que coinciden; no se vacía el proyecto.
+                  {preview.existingOpen === 1 ? t("pb.existingOpenOne") : n("pb.existingOpen", preview.existingOpen)}
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Primera publicación de esta cola (o no hay subtareas abiertas con marcador).
+                  {t("pb.firstPublish")}
                 </p>
               )}
               {openOrderCount > 0 && !selfAssignOn ? (
                 <p className="text-sm text-muted-foreground">
-                  Se activará la autoasignación para que el equipo pueda Tomar lo libre.
+                  {t("pb.willEnableSelf")}
                 </p>
               ) : null}
             </div>
@@ -709,19 +717,31 @@ export function PublishView({
                 setPreview(null);
               }}
             >
-              Cancelar
+              {t("pb.cancel")}
             </Button>
             <Button
               type="button"
               disabled={busy || !preview || preview.totalOrders === 0}
               onClick={() => void publish()}
             >
-              {busy ? "Publicando…" : "Confirmar y publicar"}
+              {busy ? t("pb.publishing") : t("pb.confirmAndPublish")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** «{n} crear subtarea nueva» with the number in bold. */
+function boldCount(template: string, count: number) {
+  const [before, after] = template.split("{n}");
+  return (
+    <>
+      {before}
+      <strong className="text-foreground">{count}</strong>
+      {after}
+    </>
   );
 }
 

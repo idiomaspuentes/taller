@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useT } from "../i18n/messages";
 import type { OriginalWordToken, WordToken } from "@usfm-tools/editor-core";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import { computeAlignedSourceIndices, deriveAlignmentBoxes, transIndexForAlignedWord, type AlignmentBoxModel } from "@usfm-ast/alignment-box-model";
@@ -30,6 +31,7 @@ type Props = {
  * draft linked to it. Used in the review and in the cards of the team decisions.
  */
 export function AlignmentBoxes({ original, gloss, draft, groups, rtl, highlight, foldEmpty = true, onPick, picked, label }: Props) {
+  const t = useT();
   const boxes = useMemo(() => deriveAlignmentBoxes(original, groups, draft), [original, groups, draft]);
   const aligned = useMemo(() => computeAlignedSourceIndices(draft, boxes), [draft, boxes]);
   const loose = draft.filter((_, i) => !aligned[i]);
@@ -99,7 +101,7 @@ export function AlignmentBoxes({ original, gloss, draft, groups, rtl, highlight,
     <div className="al-read" aria-label={label}>
       {loose.length ? (
         <p className="af-stale" role="status">
-          Palabras del borrador sin colocar: {loose.map((w) => w.surface).join(" · ")}
+          {t("ab.looseWords").replace("{list}", loose.map((w) => w.surface).join(" · "))}
         </p>
       ) : null}
       <div className="al-grid al-grid--dense" dir={rtl ? "rtl" : undefined}>
@@ -109,7 +111,7 @@ export function AlignmentBoxes({ original, gloss, draft, groups, rtl, highlight,
       {foldEmpty && empty.length ? (
         <details className="al-pairs__alone">
           <summary>
-            {empty.length} {empty.length === 1 ? "palabra del original sin traducción" : "palabras del original sin traducción"}
+            {t(empty.length === 1 ? "ab.untranslatedOne" : "ab.untranslatedMany").replace("{n}", String(empty.length))}
           </summary>
           <div className="al-grid al-grid--dense" dir={rtl ? "rtl" : undefined}>
             {empty.map((box, i) => render(box, i % 6))}

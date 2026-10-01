@@ -19,6 +19,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
+import { localizeName } from "../domain/templateNames";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +55,9 @@ export function ReleaseVersionControl({
   onDone,
   announce,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeThread(text, language);
   const profiles = board.settings?.releaseProfiles ?? [];
   const phases = [...board.phases].sort((a, b) => a.order - b.order);
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
@@ -158,7 +165,7 @@ export function ReleaseVersionControl({
         identity: confirm.identity,
         now: confirm.now,
       });
-      announce(releaseToast(outcome, confirm.identity.name));
+      announce(loc(releaseToast(outcome, confirm.identity.name)));
       setConfirm(null);
       onDone();
     } catch (err) {
@@ -172,10 +179,9 @@ export function ReleaseVersionControl({
     <div className="hub-panel">
       <div className="grid gap-3">
         <div>
-          <div className="text-sm font-medium text-foreground">Versiones publicadas</div>
+          <div className="text-sm font-medium text-foreground">{t("rl.title")}</div>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Una versión publicada sale del borrador principal. Elige qué fases tienen que estar
-            listas; las demás pueden seguir abiertas.
+            {t("rl.help")}
           </p>
         </div>
 
@@ -193,22 +199,23 @@ export function ReleaseVersionControl({
             principalPasses: marks,
             decisions: decisions ?? undefined,
           });
-          const reason = !session
-            ? "Inicia sesión para publicar."
+          const rawReason = !session
+            ? t("rl.signIn")
             : nameBlock
               ? nameBlock
               : !profile.requiredPhaseIds.length || !board.teams.length
               ? gate.blockReason
               : issuesError ||
                 decisionsError ||
-                (issues && decisions ? gate.blockReason : "Comprobando subtareas…");
+                (issues && decisions ? gate.blockReason : t("rl.checking"));
+          const reason = rawReason ? loc(rawReason) : rawReason;
           const reasonId = `release-reason-${profile.id}`;
           return (
             <div key={profile.id} className="grid gap-2 rounded-md border border-border p-3">
               <div className="flex flex-wrap items-end gap-2">
                 <div className="grid min-w-[12rem] flex-1 gap-1">
                   <label className="text-xs text-muted-foreground" htmlFor={`release-name-${profile.id}`}>
-                    Nombre de la versión
+                    {t("rl.name")}
                   </label>
                   <Input
                     id={`release-name-${profile.id}`}
@@ -227,12 +234,12 @@ export function ReleaseVersionControl({
                   size="sm"
                   onClick={() => saveProfiles(profiles.filter((p) => p.id !== profile.id))}
                 >
-                  Quitar
+                  {t("rl.remove")}
                 </Button>
               </div>
               <div className="grid gap-1" role="group" aria-labelledby={`release-phases-${profile.id}`}>
                 <p id={`release-phases-${profile.id}`} className="text-xs text-muted-foreground">
-                  Fases que deben estar listas
+                  {t("rl.phases")}
                 </p>
                 {phases.map((phase) => (
                   <label key={phase.id} className="flex items-center gap-2 text-sm">
@@ -240,7 +247,7 @@ export function ReleaseVersionControl({
                       checked={profile.requiredPhaseIds.includes(phase.id)}
                       onCheckedChange={(checked) => togglePhase(stored, phase.id, Boolean(checked))}
                     />
-                    {phase.name}
+                    {localizeName(phase.name, language)}
                   </label>
                 ))}
               </div>
@@ -257,7 +264,7 @@ export function ReleaseVersionControl({
                     void openConfirm(profile, gate.phaseNames);
                   }}
                 >
-                  {RELEASE_ACTION}
+                  {loc(RELEASE_ACTION)}
                 </Button>
                 {reason ? (
                   <p id={reasonId} className="phases-task__note">
@@ -279,12 +286,12 @@ export function ReleaseVersionControl({
             saveProfiles([
               ...profiles,
               profiles.length
-                ? { ...defaultReleaseProfile(board.phases), name: `Versión ${profiles.length + 1}` }
+                ? { ...defaultReleaseProfile(board.phases), name: t("rl.newVersion").replace("{n}", String(profiles.length + 1)) }
                 : defaultReleaseProfile(board.phases),
             ])
           }
         >
-          + Nueva versión
+          {t("rl.add")}
         </Button>
       </div>
 
@@ -296,30 +303,29 @@ export function ReleaseVersionControl({
       >
         <DialogContent className="max-w-md" showCloseButton={!busy}>
           <DialogHeader>
-            <DialogTitle>{RELEASE_ACTION}</DialogTitle>
+            <DialogTitle>{loc(RELEASE_ACTION)}</DialogTitle>
             <DialogDescription>
               {confirm?.identity
-                ? `Se publica la versión «${confirm.identity.name}» a partir del borrador principal.`
+                ? t("rl.confirmReady").replace("{name}", confirm.identity.name)
                 : error
-                  ? "No se pudo preparar la versión."
-                  : "Buscando el nombre de la nueva versión…"}
+                  ? t("rl.prepareFailed")
+                  : t("rl.lookingName")}
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Fases incluidas: {confirm?.phaseNames.join(", ")}. No se cambia ningún texto ni el
-            borrador grupal.
+            {t("rl.included").replace("{list}", (confirm?.phaseNames ?? []).map((n) => localizeName(n, language)).join(", "))}
           </p>
           {error ? (
             <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{loc(error)}</AlertDescription>
             </Alert>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirm(null)}>
-              Cancelar
+              {t("rl.cancel")}
             </Button>
             <Button type="button" disabled={busy || !confirm?.identity} onClick={() => void run()}>
-              {busy ? "Publicando…" : RELEASE_ACTION}
+              {busy ? t("rl.publishing") : loc(RELEASE_ACTION)}
             </Button>
           </DialogFooter>
         </DialogContent>

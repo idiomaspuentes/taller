@@ -9,6 +9,7 @@ import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeHold, localizeName } from "../domain/templateNames";
+import { localizeThread } from "../domain/threadNames";
 import { appName } from "../brand";
 import type { MentionRow } from "../dcs/mentions";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -1135,7 +1136,7 @@ export function MyTasksView({
             {attentionRows.map((row) => {
               const { issue, bucket, activity } = row;
               const resource = bucket ? taskLabelFor(issue, bucket.board) || bucket.title : "";
-              const line = previewLine(activity.latest);
+              const line = previewLine(activity.latest, (text) => localizeThread(text, language));
               return (
                 <button
                   key={issue.number}
@@ -1588,11 +1589,12 @@ function SolverLaunchControl({
   variant?: "default" | "outline";
   onClick?: () => void;
 }) {
-  const label = solverActionLabel(app);
-  const reason = ctx
-    ? solverLaunchBlockReason(app, ctx)
-    : "No se pudo armar el contexto para la herramienta.";
-  const href = ctx && !reason ? resolveSolverLaunchUrl(app, ctx) : "";
+  const t = useT();
+  const language = useUiLanguage();
+  const label = localizeThread(solverActionLabel(app), language);
+  const rawReason = ctx ? solverLaunchBlockReason(app, ctx) : t("mt.noContext");
+  const reason = rawReason ? localizeThread(rawReason, language) : rawReason;
+  const href = ctx && !rawReason ? resolveSolverLaunchUrl(app, ctx) : "";
   if (href && (app.kind === "url" || app.openMode === "external")) {
     return (
       <a
@@ -1799,7 +1801,7 @@ function QueueRow({
 
   if (waiting) primary = null;
 
-  const activityLine = previewLine(activity.latest);
+  const activityLine = previewLine(activity.latest, (text) => localizeThread(text, language));
 
   // One primary button per row; the rest lives in the "⋯" menu.
   const menuItems: RowMenuItem[] = [];
