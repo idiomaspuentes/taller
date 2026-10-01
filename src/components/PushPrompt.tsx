@@ -64,7 +64,7 @@ export function PushPrompt({ session }: { session: Pick<GtSession, "token" | "ho
   }
 
   return (
-    <div className="push-prompt" role="region" aria-label="Avisos con la app cerrada">
+    <div className="push-prompt" role="region" aria-label={t("push.region")}>
       <BellRing className="size-4" aria-hidden />
       <p>{t("push.text")}</p>
       <Button type="button" size="sm" disabled={busy} onClick={() => void activate()}>

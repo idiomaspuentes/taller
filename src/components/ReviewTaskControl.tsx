@@ -16,6 +16,11 @@ import {
 import { tryReadOrgTeamAccess } from "../domain/teamEligibility";
 import { createReviewIssues, loadPmConfig, reviewIssuesToast } from "../dcs/issues";
 import { Button } from "@/components/ui/button";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
+import { localizeScope } from "../domain/scopeNames";
+import { localizeName } from "../domain/templateNames";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -52,6 +57,9 @@ export function ReviewTaskControl({
   onCreated,
   announce,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeThread(text, language);
   const [pmConfig, setPmConfig] = useState<PmConfig>(DEFAULT_PM_CONFIG);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -78,7 +86,7 @@ export function ReviewTaskControl({
   const projectBooks = board.books?.length ? board.books : [board.book];
   const scope = parseReviewRef(team.reviewRef, projectBooks);
   const resources = reviewResources(team);
-  const resourceNames = resources.map((r) => SCOPE_LABEL[r]).join(" y ");
+  const resourceNames = resources.map((r) => localizeScope(SCOPE_LABEL[r], language)).join(t("rt.and"));
   const signedIn = Boolean(session && pmOrg);
   const loading = signedIn && access === undefined;
   const { candidates, source } = useMemo(
@@ -90,24 +98,21 @@ export function ReviewTaskControl({
 
   if (!team.reviewRef?.trim()) {
     return (
-      <p className="phases-task__note">
-        Sin versículos: esta revisión cubre porciones completas. Para crear solo un versículo o un
-        rango, escríbelo en Editar.
-      </p>
+      <p className="phases-task__note">{t("rt.noRef")}</p>
     );
   }
 
   const planReason = reviewWorkOrders(board, team, inventory).reason;
   const blockReason =
-    planReason ||
-    (!session || !pmOrg ? "Inicia sesión y elige la organización para crear la revisión." : null) ||
-    (loading ? `Buscando quién puede editar ${resourceNames || "este recurso"}…` : null) ||
+    (planReason ? loc(planReason) : null) ||
+    (!session || !pmOrg ? t("rt.signIn") : null) ||
+    (loading ? t("rt.searching").replace("{res}", resourceNames || t("rt.thisResource")) : null) ||
     (!candidates.length
       ? source === "permisos"
-        ? `Nadie en la organización puede editar ${resourceNames || "este recurso"} todavía. Pide a un gestor que dé acceso a un equipo.`
-        : `Nadie en este proyecto puede editar ${resourceNames || "este recurso"} todavía. Añade integrantes a una tarea de ${resourceNames || "ese recurso"}.`
+        ? t("rt.nobodyOrg").replace("{res}", resourceNames || t("rt.thisResource"))
+        : t("rt.nobodyProject").replace("{res}", resourceNames || t("rt.thisResource")).replace("{that}", resourceNames || t("rt.thatResource"))
       : null) ||
-    (!assigneeOk ? "Elige quién hace la revisión." : null);
+    (!assigneeOk ? t("rt.pickWho") : null);
 
   function pickAssignee(id: string) {
     setMessage("");
@@ -124,7 +129,7 @@ export function ReviewTaskControl({
     if (c.teams?.length) {
       return c.teams.map((name) => displayOrgTeamName(name, pmConfig.teamPrefix)).join(", ");
     }
-    return c.via.map((v) => (v.phaseName ? `${v.taskName} (${v.phaseName})` : v.taskName)).join(", ");
+    return c.via.map((v) => (v.phaseName ? `${localizeName(v.taskName, language)} (${localizeName(v.phaseName, language)})` : localizeName(v.taskName, language))).join(", ");
   }
 
   async function create() {
@@ -134,7 +139,7 @@ export function ReviewTaskControl({
     setMessage("");
     try {
       const result = await createReviewIssues({ session, org: pmOrg, board, task: team, inventory });
-      const text = reviewIssuesToast(result);
+      const text = loc(reviewIssuesToast(result));
       setMessage(text);
       announce(text);
       onCreated();
@@ -149,16 +154,16 @@ export function ReviewTaskControl({
   return (
     <div className="grid gap-1.5">
       <p className="phases-task__note">
-        {scope.ok ? `Revisión de ${scope.display}${resourceNames ? ` · ${resourceNames}` : ""}` : scope.reason}
+        {scope.ok ? `${t("rt.reviewOf").replace("{display}", scope.display)}${resourceNames ? ` · ${resourceNames}` : ""}` : loc(scope.reason)}
       </p>
       {candidates.length || loading ? (
         <div className="grid gap-1">
           <Label htmlFor={selectId} className="text-xs">
-            Quién revisa
+            {t("rt.whoReviews")}
           </Label>
           <Select value={assigneeOk ? assigneeId : ""} onValueChange={pickAssignee} disabled={loading}>
-            <SelectTrigger id={selectId} className="w-full max-w-sm" aria-label="Quién revisa">
-              <SelectValue placeholder="Elige una persona" />
+            <SelectTrigger id={selectId} className="w-full max-w-sm" aria-label={t("rt.whoReviews")}>
+              <SelectValue placeholder={t("rt.pickPerson")} />
             </SelectTrigger>
             <SelectContent>
               {candidates.map((c) => (
@@ -170,13 +175,13 @@ export function ReviewTaskControl({
           </Select>
           {assigneeId && !assigneeOk && !loading ? (
             <p className="phases-task__note">
-              La persona elegida antes ya no puede editar {resourceNames} en este proyecto. Elige otra.
+              {t("rt.staleAssignee").replace("{res}", resourceNames)}
             </p>
           ) : null}
         </div>
       ) : null}
       {session && pmOrg && access === null ? (
-        <p className="phases-task__note">{REVIEW_CANDIDATES_FALLBACK_NOTE}</p>
+        <p className="phases-task__note">{loc(REVIEW_CANDIDATES_FALLBACK_NOTE)}</p>
       ) : null}
       <Button
         type="button"
@@ -187,7 +192,7 @@ export function ReviewTaskControl({
         aria-describedby={blockReason ? `review-create-${team.id}` : undefined}
         onClick={() => void create()}
       >
-        {busy ? "Creando…" : REVIEW_CREATE_ACTION}
+        {busy ? t("rt.creating") : loc(REVIEW_CREATE_ACTION)}
       </Button>
       {blockReason ? (
         <p id={`review-create-${team.id}`} className="phases-task__note">
@@ -195,12 +200,11 @@ export function ReviewTaskControl({
         </p>
       ) : (
         <p className="phases-task__note">
-          Guarda el plan del proyecto y crea solo la subtarea de esta revisión. No cambia las demás
-          subtareas ni publica una versión.
+          {t("rt.hint")}
         </p>
       )}
       {message ? <p className="phases-task__note">{message}</p> : null}
-      {error ? <p className="phases-task__note text-destructive">{error}</p> : null}
+      {error ? <p className="phases-task__note text-destructive">{loc(error)}</p> : null}
     </div>
   );
 }

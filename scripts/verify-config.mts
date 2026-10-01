@@ -1,4 +1,5 @@
 /** taller.config.ts: it must be usable, spaces must not share an organization, and the language and space logic. */
+import { PRINCIPAL_PASS_ACTION, principalReviewConfirmText } from "../src/domain/principalPass";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
@@ -357,6 +358,32 @@ test("los archivos de traducción tienen las mismas claves y conservan los {marc
   for (const [section, table] of Object.entries(glossary)) {
     for (const [source, target] of Object.entries(table)) assert.ok(target.trim() !== "", `glosario ${section}: «${source}» sin traducción`);
   }
+});
+
+test("el pase al borrador principal se traduce (acción y confirmación)", () => {
+  const texts = [
+    PRINCIPAL_PASS_ACTION,
+    principalReviewConfirmText({ taskName: "Rev A", replaced: [{ book: "TIT", verses: [{ chapter: 1, from: 2, to: 2 }] }] }),
+    principalReviewConfirmText({ taskName: "Rev A", replaced: [] }),
+  ];
+  for (const text of texts) {
+    const pt = localizeThread(text, "pt");
+    assert.notEqual(pt, text);
+    assert.doesNotMatch(pt, /borrador|revisión|Esto no|Solo /);
+  }
+});
+
+test("los avisos de revisión y de publicar versión se traducen", () => {
+  const cases: [string, string][] = [
+    ["Crear la revisión", "Criar a revisão"],
+    ["Publicar versión", "Publicar versão"],
+    ["Elige al menos una fase para «Traducción».", "Escolha pelo menos uma fase para «Traducción»."],
+    ["Traducir TPL todavía no está en el borrador principal.", "Traducir TPL ainda não está no rascunho principal."],
+    ["Versión «Traducción · 1 oct» publicada.", "Versão «Traducción · 1 oct» publicada."],
+    ["Revisiones creadas: #4, #5.", "Revisões criadas: #4, #5."],
+    ["Esta revisión ya existe (#4); no se creó otra. Se cambió la persona asignada en #4.", "Esta revisão já existe (#4); nenhuma outra foi criada. A pessoa atribuída foi trocada em #4."],
+  ];
+  for (const [es, pt] of cases) assert.equal(localizeThread(es, "pt"), pt);
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

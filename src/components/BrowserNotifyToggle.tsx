@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Bell, BellOff, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNotificationPermission } from "../browserNotifications";
+import { useT } from "../i18n/messages";
 import { loadSession } from "../dcs/auth";
 import { browserPushDeps, disablePush, enablePush, pushState, type PushState } from "../push";
 
@@ -10,6 +11,7 @@ import { browserPushDeps, disablePush, enablePush, pushState, type PushState } f
  * Local to this browser; no DCS scope involved.
  */
 export function BrowserNotifyToggle() {
+  const t = useT();
   const { permission, request } = useNotificationPermission();
   const [asking, setAsking] = useState(false);
   const pushDeps = useMemo(() => browserPushDeps(), []);
@@ -36,11 +38,11 @@ export function BrowserNotifyToggle() {
 
   return (
     <div className="browser-notify" data-state={permission}>
-      <p className="role-mode-toggle__hint">Avisos del navegador</p>
+      <p className="role-mode-toggle__hint">{t("bn.title")}</p>
       {permission === "unsupported" ? (
         <p className="browser-notify__note">
           <BellOff className="size-3.5" aria-hidden />
-          Este navegador no admite avisos.
+          {t("bn.unsupported")}
         </p>
       ) : null}
       {permission === "default" ? (
@@ -61,53 +63,52 @@ export function BrowserNotifyToggle() {
             }}
           >
             <Bell className="size-3.5" aria-hidden />
-            {asking ? "Esperando permiso…" : "Activar avisos"}
+            {asking ? t("bn.waiting") : t("bn.enable")}
           </Button>
           <p className="browser-notify__note">
-            Te avisa de mensajes, decisiones y tareas nuevas cuando Taller está en otra pestaña.
+            {t("bn.enableNote")}
           </p>
         </>
       ) : null}
       {permission === "granted" ? (
         <p className="browser-notify__note browser-notify__note--on" aria-live="polite">
           <BellRing className="size-3.5" aria-hidden />
-          Avisos activados
+          {t("bn.on")}
         </p>
       ) : null}
       {permission === "denied" ? (
         <p className="browser-notify__note" aria-live="polite">
           <BellOff className="size-3.5" aria-hidden />
-          Bloqueados en este navegador. Para activarlos, permite las notificaciones de este sitio
-          en la configuración del navegador.
+          {t("bn.denied")}
         </p>
       ) : null}
       {push !== "unsupported" ? (
         <div className="browser-notify__push">
-          <p className="role-mode-toggle__hint">Avisos con la app cerrada</p>
+          <p className="role-mode-toggle__hint">{t("bn.closedTitle")}</p>
           {push === "off" ? (
             <>
               <Button type="button" size="sm" variant="outline" className="browser-notify__btn" disabled={pushBusy} onClick={() => void togglePush(true)}>
                 <Bell className="size-3.5" aria-hidden />
-                {pushBusy ? "Activando…" : "Activar en este dispositivo"}
+                {pushBusy ? t("bn.activating") : t("bn.enableDevice")}
               </Button>
-              <p className="browser-notify__note">Te llega un aviso al teléfono cuando te mencionan o te asignan algo, aunque no tengas Taller abierto.</p>
+              <p className="browser-notify__note">{t("bn.deviceNote")}</p>
             </>
           ) : null}
           {push === "on" ? (
             <>
               <p className="browser-notify__note browser-notify__note--on" aria-live="polite">
                 <BellRing className="size-3.5" aria-hidden />
-                Activados en este dispositivo
+                {t("bn.deviceOn")}
               </p>
               <Button type="button" size="sm" variant="ghost" disabled={pushBusy} onClick={() => void togglePush(false)}>
-                Desactivar
+                {t("bn.disable")}
               </Button>
             </>
           ) : null}
           {push === "denied" ? (
             <p className="browser-notify__note" aria-live="polite">
               <BellOff className="size-3.5" aria-hidden />
-              Bloqueados en este navegador. Permite las notificaciones de este sitio para activarlos.
+              {t("bn.deviceDenied")}
             </p>
           ) : null}
           {pushError ? (

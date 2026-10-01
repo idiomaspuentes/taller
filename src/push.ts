@@ -1,4 +1,5 @@
 import type { GtSession } from "./dcs/auth";
+import { tNow } from "./i18n/messages";
 
 /**
  * Notices with the app closed (Web Push). The device subscribes with the browser's push service and
@@ -50,12 +51,12 @@ export async function enablePush(deps: PushDeps, session: Pick<GtSession, "token
   const reg = await deps.registration();
   if (!reg) return "unsupported";
   const key = (await (await deps.fetch(`${deps.url}/vapid`)).json()) as { publicKey?: string };
-  if (!key.publicKey) throw new Error("El servicio de avisos no respondió.");
+  if (!key.publicKey) throw new Error(tNow("push.noKey"));
   const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key.publicKey) });
   const res = await deps.fetch(`${deps.url}/subscribe`, { method: "POST", headers: headers(session), body: JSON.stringify({ subscription: sub.toJSON() }) });
   if (!res.ok) {
     await sub.unsubscribe().catch(() => false);
-    throw new Error(res.status === 401 ? "No se pudo comprobar tu sesión para activar los avisos." : "No se pudieron activar los avisos.");
+    throw new Error(tNow(res.status === 401 ? "push.noAuth" : "push.failed"));
   }
   return "on";
 }

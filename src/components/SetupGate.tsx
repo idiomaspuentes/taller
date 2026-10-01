@@ -3,6 +3,7 @@ import type { LanguageOption } from "../domain/languages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContextLangFields } from "./ContextLangFields";
+import { useT } from "../i18n/messages";
 
 type Props = {
   lang: string;
@@ -23,14 +24,15 @@ export function SetupGate({
   onContentOrgChange,
   onContinue,
 }: Props) {
+  const t = useT();
   const valid = Boolean(lang.trim());
 
   return (
     <Card className="mx-auto max-w-lg" size="sm">
       <CardHeader>
-        <CardTitle>Contexto</CardTitle>
+        <CardTitle>{t("su.title")}</CardTitle>
         <CardDescription>
-          Elige la lengua del proyecto. El libro se elige al crear o abrir un proyecto.
+          {t("su.help")}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
@@ -46,7 +48,7 @@ export function SetupGate({
       </CardContent>
       <CardFooter className="justify-end">
         <Button type="button" disabled={!valid} onClick={onContinue}>
-          Continuar
+          {t("su.continue")}
         </Button>
       </CardFooter>
     </Card>

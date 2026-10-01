@@ -38,7 +38,7 @@ import {
   type GtSession,
 } from "./dcs/auth";
 import { DEFAULT_HOST } from "./dcs/config";
-import { installSessionExpiryGuard, SESSION_EXPIRED_MESSAGE } from "./dcs/sessionExpiry";
+import { installSessionExpiryGuard } from "./dcs/sessionExpiry";
 import {
   fetchOrg,
   listPmProjects,
@@ -716,7 +716,7 @@ export function App() {
     reader.onload = () => {
       try {
         const parsed: unknown = JSON.parse(String(reader.result));
-        if (!isInventoryDoc(parsed)) throw new Error("JSON de inventario inválido.");
+        if (!isInventoryDoc(parsed)) throw new Error(tNow("app.badInventory"));
         ingestBookInventory(normalizeInventory(parsed), "inventario");
       } catch (err) {
         announce(err instanceof Error ? err.message : String(err));
@@ -835,9 +835,9 @@ export function App() {
     sessionExpired && !session ? (
       <Alert className="mb-3" variant="destructive">
         <AlertDescription className="flex flex-wrap items-center gap-2">
-          {SESSION_EXPIRED_MESSAGE}
+          {t("signIn.expired")}
           <Button type="button" size="sm" onClick={() => setSignInOpen(true)}>
-            Iniciar sesión
+            {t("header.signIn")}
           </Button>
         </AlertDescription>
       </Alert>
@@ -1238,9 +1238,9 @@ export function App() {
         {(route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos") && !session ? (
           <Alert>
             <AlertDescription>
-              Inicia sesión para ver tus tareas.{" "}
+              {t("app.signInForTasks")}{" "}
               <Button type="button" size="sm" variant="link" className="px-1" onClick={() => setSignInOpen(true)}>
-                Entrar
+                {t("cv.enter")}
               </Button>{" "}
               {import.meta.env.DEV ? (
                 <>
@@ -1374,7 +1374,7 @@ export function App() {
           ) : (
             <Alert>
               <AlertDescription>
-                El tablero de asignación necesita porciones y artículos del libro.
+                {t("app.needsInventory")}
               </AlertDescription>
             </Alert>
           )

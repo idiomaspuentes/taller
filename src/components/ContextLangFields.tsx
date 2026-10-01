@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useT } from "../i18n/messages";
 import { LanguagePicker } from "./LanguagePicker";
 
 type Props = {
@@ -38,6 +39,7 @@ export function ContextLangFields({
   onContentOrgChange,
   langInputId = "ctx-lang",
 }: Props) {
+  const t = useT();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const isCustomContentOrg = contentOrg !== defaultContentOrg(lang);
@@ -50,7 +52,7 @@ export function ContextLangFields({
   return (
     <div className="context-lang">
       <div className="grid gap-1.5">
-        <Label htmlFor={langInputId}>Lengua</Label>
+        <Label htmlFor={langInputId}>{t("cl.lang")}</Label>
         <LanguagePicker
           id={langInputId}
           value={lang}
@@ -62,14 +64,14 @@ export function ContextLangFields({
       {showContentOrg ? (
         <div className="grid gap-1.5">
           <div className="flex items-center justify-between gap-2">
-            <Label htmlFor={contentId}>Organización de contenido</Label>
+            <Label htmlFor={contentId}>{t("cl.contentOrg")}</Label>
             {!isCustomContentOrg ? (
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setAdvancedOpen(false)}
               >
-                Ocultar
+                {t("cl.hide")}
               </button>
             ) : null}
           </div>
@@ -78,9 +80,9 @@ export function ContextLangFields({
               <SelectTrigger
                 id={contentId}
                 className="w-full"
-                aria-label="Organización de contenido"
+                aria-label={t("cl.contentOrg")}
               >
-                <SelectValue placeholder="Elige una organización" />
+                <SelectValue placeholder={t("cl.pickOrg")} />
               </SelectTrigger>
               <SelectContent position="popper">
                 {contentOptions.map((org) => {
@@ -98,7 +100,7 @@ export function ContextLangFields({
               id={contentId}
               value={contentOrg}
               onChange={(e) => onContentOrgChange(e.target.value.trim())}
-              title="Donde viven los recursos públicos (TPL, TPS, Notas, Palabras, Preguntas, Academia)."
+              title={t("cl.where")}
               autoComplete="off"
               spellCheck={false}
             />
@@ -108,10 +110,10 @@ export function ContextLangFields({
               <Input
                 value={contentOrg}
                 onChange={(e) => onContentOrgChange(e.target.value.trim())}
-                title="Donde viven los recursos públicos (TPL, TPS, Notas, Palabras, Preguntas, Academia)."
+                title={t("cl.where")}
                 autoComplete="off"
                 spellCheck={false}
-                placeholder="nombre corto, p. ej. es-419_gl"
+                placeholder={t("cl.shortName")}
               />
             ) : (
               <button
@@ -119,7 +121,7 @@ export function ContextLangFields({
                 className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setCustomOpen(true)}
               >
-                Otra…
+                {t("cl.other")}
               </button>
             )
           ) : null}
@@ -130,7 +132,7 @@ export function ContextLangFields({
           className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
           onClick={() => setAdvancedOpen(true)}
         >
-          Avanzado: organización de contenido ({contentLabel})
+          {t("cl.advanced").replace("{org}", contentLabel)}
         </button>
       )}
     </div>
