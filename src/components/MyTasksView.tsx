@@ -7,6 +7,8 @@ import { levelOf, type PersonLevel } from "../domain/levels";
 import { loadPmConfig } from "../dcs/issues";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { appName } from "../brand";
 import type { MentionRow } from "../dcs/mentions";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -998,6 +1000,7 @@ export function MyTasksView({
     stepOffers.length === 0;
   const showQueue = visibleProjects.length > 0 || stepOffers.length > 0;
   const t = useT();
+  const language = useUiLanguage();
   const hadWork = useHadWork(
     hadWorkKey(session.host, session.username, pmOrg),
     loaded && !busy,
@@ -1008,9 +1011,9 @@ export function MyTasksView({
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">{mode === "ahora" ? "Ahora" : mode === "avisos" ? "Avisos" : "Mis tareas"}</h1>
+          <h1 className="hub-title">{mode === "ahora" ? t("nav.now") : mode === "avisos" ? t("nav.alerts") : t("mt.title")}</h1>
           <p className="hub-lede">
-            Trabajo de <strong>@{session.username}</strong>
+            {t("mt.workOf")} <strong>@{session.username}</strong>
             {pmOrg ? (
               <>
                 {" "}
@@ -1035,27 +1038,27 @@ export function MyTasksView({
               onRefreshActivity?.();
             }}
           >
-            {busy ? "Actualizando…" : "Actualizar"}
+            {busy ? t("mt.refreshing") : t("mt.refresh")}
           </Button>
         </div>
       </div>
 
       {pmOrg && mode === "lista" ? (
         <div className="hub-toolbar">
-          <div className="hub-filters" role="tablist" aria-label="Filtro de subtareas">
+          <div className="hub-filters" role="tablist" aria-label={t("mt.filterLabel")}>
             {(
               [
-                { id: "mine" as const, label: "Mías", count: mineCount },
+                { id: "mine" as const, label: t("mt.filterMine"), count: mineCount },
                 ...(hasBrowse
                   ? [
                       {
                         id: "all" as const,
-                        label: "Todas",
+                        label: t("mt.filterAll"),
                         count: projects.reduce((n, p) => n + p.issues.length, 0),
                       },
                       {
                         id: "available" as const,
-                        label: "Disponibles",
+                        label: t("mt.filterAvailable"),
                         count: availableCount,
                       },
                     ]
@@ -1082,10 +1085,10 @@ export function MyTasksView({
           {showQueue || search ? (
             <Input
               className="hub-toolbar__search"
-              placeholder="Buscar…"
+              placeholder={t("mt.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              aria-label="Buscar subtareas"
+              aria-label={t("mt.searchLabel")}
             />
           ) : null}
         </div>
@@ -1100,13 +1103,13 @@ export function MyTasksView({
 
       {pmOrg && loaded && mode === "ahora" && (nowDecide || nowMine || nowFree) ? (
         <section className="hub-now" aria-labelledby="hub-now-title">
-          <p className="hub-now__kicker" id="hub-now-title">Ahora</p>
+          <p className="hub-now__kicker" id="hub-now-title">{t("nav.now")}</p>
           {nowDecide ? (
             <div className="hub-now__decide">
               <h2 className="hub-now__title">{nowDecide.issue.title}</h2>
-              <p className="hub-now__text">Hay un versículo que decidir. Tarda un minuto.</p>
+              <p className="hub-now__text">{t("mt.decideText")}</p>
               <Button type="button" size="lg" onClick={() => onOpenThread(nowDecide.issue.number)}>
-                Decidir
+                {t("mt.decide")}
               </Button>
             </div>
           ) : nowMine ? (
@@ -1121,7 +1124,7 @@ export function MyTasksView({
         <section className="hub-attention" aria-labelledby="hub-attention-title">
           <div className="hub-attention__head">
             <h2 id="hub-attention-title" className="hub-attention__title">
-              Necesitan tu atención
+              {t("mt.needAttention")}
             </h2>
             <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">
               {attentionRows.length}
@@ -1140,13 +1143,13 @@ export function MyTasksView({
                   onClick={() => onOpenThread(issue.number)}
                 >
                   {activity.unread ? (
-                    <span className="hub-queue-item__dot" role="img" aria-label="sin leer" />
+                    <span className="hub-queue-item__dot" role="img" aria-label={t("mt.unread")} />
                   ) : null}
                   <span className="hub-attention__main">
                     <span className="hub-attention__label">
-                      {row.decide ? <span className="hub-attention__tag">decidir</span> : null}
+                      {row.decide ? <span className="hub-attention__tag">{t("mt.tagDecide")}</span> : null}
                       {activity.isNew ? (
-                        <span className="hub-attention__tag hub-attention__tag--new">nueva</span>
+                        <span className="hub-attention__tag hub-attention__tag--new">{t("mt.tagNew")}</span>
                       ) : null}
                       <span>{issue.title}</span>
                       {resource ? (
@@ -1158,7 +1161,7 @@ export function MyTasksView({
                         <span className="hub-queue-item__preview">{line}</span>
                         {activity.latest ? (
                           <time className="hub-queue-item__time" dateTime={activity.latest.at}>
-                            {formatRelativeEs(activity.latest.at, now)}
+                            {formatRelativeEs(activity.latest.at, now, language)}
                           </time>
                         ) : null}
                       </span>
@@ -1174,16 +1177,13 @@ export function MyTasksView({
 
       {!pmOrg ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Espacio de trabajo</span>
-          <h2 className="hub-empty-panel__title">Elige la organización del equipo</h2>
-          <p className="hub-empty-panel__body">
-            Abre el chip del encabezado para seleccionar la org donde están tus
-            subtareas. Sin eso no se puede cargar la cola.
-          </p>
+          <span className="hub-empty-panel__kicker">{t("workspace.title")}</span>
+          <h2 className="hub-empty-panel__title">{t("mt.chooseOrgTitle")}</h2>
+          <p className="hub-empty-panel__body">{t("mt.chooseOrgBody")}</p>
         </div>
       ) : null}
 
-      {busy && !loaded ? <p className="hub-hint">Cargando subtareas…</p> : null}
+      {busy && !loaded ? <p className="hub-hint">{t("mt.loading")}</p> : null}
 
       {pmOrg && loaded && !busy && mode === "ahora" && !nowDecide && !nowMine && !nowFree ? (
         <div className="hub-empty-panel">
@@ -1196,8 +1196,8 @@ export function MyTasksView({
       {pmOrg && loaded && mode === "ahora" && attentionRows.length ? (
         <a className="hub-now__link" href="#/avisos">
           {attentionRows.length === 1
-            ? "1 aviso te espera"
-            : `${attentionRows.length} avisos te esperan`}
+            ? t("mt.oneAlert")
+            : t("mt.nAlerts").replace("{n}", String(attentionRows.length))}
           <ChevronRight aria-hidden />
         </a>
       ) : null}
@@ -1206,7 +1206,7 @@ export function MyTasksView({
         <section className="hub-attention" aria-labelledby="hub-mentions-title">
           <div className="hub-attention__head">
             <h2 id="hub-mentions-title" className="hub-attention__title">
-              Menciones y respuestas
+              {t("mt.mentions")}
             </h2>
             <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">{mentions.length}</span>
           </div>
@@ -1222,7 +1222,7 @@ export function MyTasksView({
                     onOpenThread(row.issue);
                   }}
                 >
-                  Abrir
+                  {t("mt.open")}
                 </Button>
               </div>
             ))}
@@ -1234,7 +1234,7 @@ export function MyTasksView({
         <section className="hub-attention" aria-labelledby="hub-free-title">
           <div className="hub-attention__head">
             <h2 id="hub-free-title" className="hub-attention__title">
-              Libres para tu equipo
+              {t("mt.freeForTeam")}
             </h2>
             <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">
               {freeNew.length}
@@ -1247,15 +1247,15 @@ export function MyTasksView({
                 <span className="flex gap-2">
                   {isDecisionIssue(issue) ? (
                     <Button type="button" size="sm" onClick={() => onOpenThread(issue.number)}>
-                      Votar
+                      {t("mt.vote")}
                     </Button>
                   ) : (
                     <Button type="button" size="sm" onClick={() => void begin(issue, bucket.board)}>
-                      Tomar y empezar
+                      {t("mt.takeAndStart")}
                     </Button>
                   )}
                   <Button type="button" size="sm" variant="ghost" onClick={() => onMarkSeen?.(issue.number)}>
-                    Ahora no
+                    {t("push.later")}
                   </Button>
                 </span>
               </div>
@@ -1274,28 +1274,28 @@ export function MyTasksView({
 
       {showEmpty && mode === "lista" ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Cola vacía</span>
+          <span className="hub-empty-panel__kicker">{t("mt.emptyKicker")}</span>
           <h2 className="hub-empty-panel__title">
             {search.trim()
-              ? "Sin coincidencias"
+              ? t("mt.noMatches")
               : !hadWork && filter === "mine"
                 ? t("empty.firstTitle")
                 : filter === "available"
-                ? "Nada disponible"
+                ? t("mt.nothingAvailable")
                 : filter === "all"
-                  ? "Sin subtareas en tus proyectos"
-                  : "Nada asignado por ahora"}
+                  ? t("mt.noSubtasks")
+                  : t("mt.nothingAssigned")}
           </h2>
           <p className="hub-empty-panel__body">
             {search.trim()
-              ? "Prueba otro término o limpia la búsqueda."
+              ? t("mt.tryOther")
               : !hadWork && filter === "mine" && availableCount === 0
                 ? t("empty.firstBody")
                 : filter === "mine" && availableCount > 0
-                ? `Hay ${availableCount} subtareas libres. Ábrelas en Disponibles para Tomar.`
+                ? t("mt.freeAvailable").replace("{n}", String(availableCount))
                 : hasBrowse
-                  ? "Usa Disponibles para reclamar trabajo libre, o espera a que te asignen."
-                  : "Cuando un gestor te asigne subtareas, aparecerán aquí."}
+                  ? t("mt.useAvailable")
+                  : t("mt.managerWillAssign")}
           </p>
           <div className="hub-empty-panel__actions">
             {filter === "mine" && availableCount > 0 && !search.trim() ? (
@@ -1308,12 +1308,12 @@ export function MyTasksView({
                   setCollapseSeeded(false);
                 }}
               >
-                Ver disponibles ({availableCount})
+                {t("mt.seeAvailable").replace("{n}", String(availableCount))}
               </Button>
             ) : null}
             {search.trim() ? (
               <Button type="button" size="sm" variant="secondary" onClick={() => setSearch("")}>
-                Limpiar búsqueda
+                {t("mt.clearSearch")}
               </Button>
             ) : (
               <Button
@@ -1323,7 +1323,7 @@ export function MyTasksView({
                 disabled={busy}
                 onClick={() => void reload()}
               >
-                Volver a comprobar
+                {t("mt.checkAgain")}
               </Button>
             )}
           </div>
@@ -1338,21 +1338,14 @@ export function MyTasksView({
               className="w-fit text-xs text-muted-foreground underline-offset-2 hover:underline"
               onClick={() => setHelpOpen((v) => !v)}
             >
-              {helpOpen ? "Ocultar ayuda" : "¿Cómo funciona?"}
+              {helpOpen ? t("mt.hideHelp") : t("mt.howItWorks")}
             </button>
             {helpOpen ? (
               <>
                 <p className="hub-hint">
-                  {hasBrowse
-                    ? "Disponibles son subtareas libres: Tomar las reclama. Las revisiones en pares o grupales aparecen arriba: Tomar la revisión / Aprobar. Abrir editor abre la herramienta de la tarea (si está enlazada)."
-                    : "Abrir editor abre la herramienta de la tarea. Pulsa Empezar al comenzar y Cerrar al terminar."}
+                  {hasBrowse ? t("mt.helpBrowse") : t("mt.helpNoBrowse")}
                 </p>
-                <p className="hub-hint">
-                  El punto marca mensajes de otras personas que aún no abriste aquí. Lo leído
-                  se guarda en este navegador. En otro equipo puede que veas el punto en
-                  conversaciones que ya leíste aquí, hasta que las abras allí. Marcar como
-                  leído en Door43 no quita el punto de Taller.
-                </p>
+                <p className="hub-hint">{t("mt.helpDot").replace("{app}", appName(language))}</p>
               </>
             ) : null}
           </div>
@@ -1361,9 +1354,9 @@ export function MyTasksView({
             <div className="hub-queue hub-queue--claims">
               <div className="hub-queue-head hub-queue-head--static">
                 <div className="hub-queue-head__text">
-                  <h2 className="hub-queue-head__title">Revisiones</h2>
+                  <h2 className="hub-queue-head__title">{t("mt.reviews")}</h2>
                   <div className="hub-queue-head__meta text-xs text-muted-foreground">
-                    Pasos exclusivos o en grupo que puedes tomar o aprobar
+                    {t("mt.reviewsMeta")}
                   </div>
                 </div>
                 <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">
@@ -1374,11 +1367,11 @@ export function MyTasksView({
                 {stepOffers.map((offer) => {
                   const busyOffer = acting === offer.issue.number;
                   const modeLabel =
-                    offer.step.claimMode === "pool" ? "Grupal" : "Pares";
+                    offer.step.claimMode === "pool" ? t("mt.modeGroup") : t("mt.modePairs");
                   const seatsLabel =
                     offer.step.claimMode === "pool"
                       ? `${offer.seated}/${offer.minSeats}`
-                      : offer.seated ? "tomado" : "libre";
+                      : offer.seated ? t("mt.seatTaken") : t("mt.seatFree");
                   return (
                     <div
                       key={`${offer.issue.number}:${offer.step.id}:${offer.action}`}
@@ -1413,8 +1406,8 @@ export function MyTasksView({
                               onClick={() => void takeStepClaim(offer)}
                             >
                               {offer.step.claimMode === "pool"
-                                ? "Tomar la revisión"
-                                : "Tomar"}
+                                ? t("mt.takeReview")
+                                : t("mt.take")}
                             </Button>
                           ) : (
                             <Button
@@ -1423,7 +1416,7 @@ export function MyTasksView({
                               disabled={busyOffer}
                               onClick={() => void approveStepClaim(offer)}
                             >
-                              Aprobar
+                              {t("mt.approve")}
                             </Button>
                           )}
                         </div>
@@ -1459,15 +1452,15 @@ export function MyTasksView({
                       <div className="font-semibold text-foreground">{bucket.title}</div>
                       <div className="text-xs text-muted-foreground">
                         {bucket.projectId}
-                        {bucket.browseProject ? " · autoasignación" : ""}
+                        {bucket.browseProject ? t("mt.selfAssign") : ""}
                         {filter === "mine"
-                          ? ` · ${bucket.issues.filter((i) => issueIsInProgress(i)).length} en curso`
+                          ? t("mt.nInProgress").replace("{n}", String(bucket.issues.filter((i) => issueIsInProgress(i)).length))
                           : ""}
                       </div>
                     </div>
                     <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">
                       {bucket.issues.length}{" "}
-                      {bucket.issues.length === 1 ? "subtarea" : "subtareas"}
+                      {bucket.issues.length === 1 ? t("mt.subtask") : t("mt.subtasks")}
                     </span>
                   </button>
 
@@ -1531,8 +1524,8 @@ export function MyTasksView({
                                             const isCollapsed = collapsed.has(key);
                                             const label =
                                               group.chapter > 0
-                                                ? `Capítulo ${group.chapter}`
-                                                : "Sin capítulo";
+                                                ? t("mt.chapter").replace("{n}", String(group.chapter))
+                                                : t("mt.noChapter");
                                             return (
                                               <div key={key} className="hub-queue-chapter">
                                                 <button
@@ -1684,6 +1677,8 @@ function QueueRow({
   holdKind?: "espera" | "nivel";
   myLevel?: PersonLevel;
 }) {
+  const t = useT();
+  const language = useUiLanguage();
   const mine = isIssueAssignedTo(issue, session.username);
   const open = isIssueUnassigned(issue);
   const inProgress = issueIsInProgress(issue);
@@ -1735,36 +1730,36 @@ function QueueRow({
       ));
 
   let status: ReactNode = null;
-  if (decision && !waiting) status = <span className="status-chip" data-status="libre">Decisión del equipo</span>;
-  else if (waiting) status = <span className="status-chip" data-status="espera">{holdKind === "nivel" ? "Todavía no" : "Esperando"}</span>;
-  else if (open) status = <span className="status-chip" data-status="libre">Disponible</span>;
-  else if (inProgress && mine) status = <span className="status-chip" data-status="curso">En curso</span>;
-  else if (mine) status = <span className="status-chip" data-status="tuya">Tuya</span>;
+  if (decision && !waiting) status = <span className="status-chip" data-status="libre">{t("mt.statusDecision")}</span>;
+  else if (waiting) status = <span className="status-chip" data-status="espera">{holdKind === "nivel" ? t("mt.statusNotYet") : t("mt.statusWaiting")}</span>;
+  else if (open) status = <span className="status-chip" data-status="libre">{t("mt.statusAvailable")}</span>;
+  else if (inProgress && mine) status = <span className="status-chip" data-status="curso">{t("mt.statusInProgress")}</span>;
+  else if (mine) status = <span className="status-chip" data-status="tuya">{t("mt.statusMine")}</span>;
   else status = <span className="status-chip" data-status="otra">{assigneeLabel(issue)}</span>;
 
   let primary: ReactNode = null;
   if (decision && canOpenThread) {
     primary = (
       <Button type="button" size="sm" onClick={onOpenThread}>
-        Votar
+        {t("mt.vote")}
       </Button>
     );
   } else if (claimable && featured && onBegin) {
     primary = (
       <Button type="button" size="lg" disabled={busy} onClick={onBegin}>
-        Empezar
+        {t("mt.start")}
       </Button>
     );
   } else if (claimable) {
     primary = (
       <Button type="button" size="sm" disabled={busy} onClick={onTake}>
-        Tomar
+        {t("mt.take")}
       </Button>
     );
   } else if (mine && steps.length && checklistDone) {
     primary = (
       <Button type="button" size="sm" disabled={busy} onClick={onClose}>
-        Cerrar
+        {t("mt.close")}
       </Button>
     );
   } else if (canResolveTask && !steps.length && taskLevelSolver) {
@@ -1780,13 +1775,13 @@ function QueueRow({
   } else if (mine && !inProgress) {
     primary = (
       <Button type="button" size="sm" disabled={busy} onClick={onStart}>
-        Empezar
+        {t("mt.start")}
       </Button>
     );
   } else if (mine && inProgress && (!steps.length || checklistDone)) {
     primary = (
       <Button type="button" size="sm" disabled={busy} onClick={onClose}>
-        Cerrar
+        {t("mt.close")}
       </Button>
     );
   } else if (canResolveTask && taskLevelSolver) {
@@ -1808,13 +1803,13 @@ function QueueRow({
   // One primary button per row; the rest lives in the "⋯" menu.
   const menuItems: RowMenuItem[] = [];
   if (mine && inProgress && canOpenThread) {
-    menuItems.push({ id: "comment", label: "Comentar", onSelect: onOpenThread });
+    menuItems.push({ id: "comment", label: t("mt.comment"), onSelect: onOpenThread });
   }
   if (mine && !claimable && !waiting && !(steps.length && checklistDone)) {
-    menuItems.push({ id: "close", label: "Cerrar tarea", onSelect: onClose, disabled: busy });
+    menuItems.push({ id: "close", label: t("mt.closeTask"), onSelect: onClose, disabled: busy });
   }
   if (liberable && !claimable) {
-    menuItems.push({ id: "release", label: "Liberar", onSelect: onLiberar, disabled: busy, danger: true });
+    menuItems.push({ id: "release", label: t("mt.release"), onSelect: onLiberar, disabled: busy, danger: true });
   }
 
   return (
@@ -1832,10 +1827,10 @@ function QueueRow({
               onClick={onOpenThread}
             >
               {activity.unread ? (
-                <span className="hub-queue-item__dot" role="img" aria-label="sin leer" />
+                <span className="hub-queue-item__dot" role="img" aria-label={t("mt.unread")} />
               ) : null}
               {activity.isNew ? (
-                <span className="hub-attention__tag hub-attention__tag--new">nueva</span>
+                <span className="hub-attention__tag hub-attention__tag--new">{t("mt.tagNew")}</span>
               ) : null}
               <span className="hub-queue-item__label">{shortTitle(issue)}</span>
               <ChevronRight className="hub-attention__chevron" aria-hidden />
@@ -1843,7 +1838,7 @@ function QueueRow({
           ) : (
             <span className="hub-queue-item__title">
               {activity.isNew ? (
-                <span className="hub-attention__tag hub-attention__tag--new">nueva</span>
+                <span className="hub-attention__tag hub-attention__tag--new">{t("mt.tagNew")}</span>
               ) : null}
               <span className="hub-queue-item__label">{shortTitle(issue)}</span>
             </span>
@@ -1852,7 +1847,7 @@ function QueueRow({
             <div className="hub-queue-item__activity">
               <span className="hub-queue-item__preview">{activityLine}</span>
               <time className="hub-queue-item__time" dateTime={activity.latest.at}>
-                {formatRelativeEs(activity.latest.at, now)}
+                {formatRelativeEs(activity.latest.at, now, language)}
               </time>
             </div>
           ) : null}
@@ -1865,7 +1860,7 @@ function QueueRow({
             {steps.length ? (
               <span className="text-xs text-muted-foreground">
                 {progress.doneStepIds.filter((id) => steps.some((s) => s.id === id)).length}/
-                {steps.length} pasos
+                {steps.length} {t("mt.steps")}
               </span>
             ) : null}
           </div>
@@ -1926,7 +1921,7 @@ function QueueRow({
                       disabled={busy}
                       onClick={() => onClaimStep(step)}
                     >
-                      {mode === "pool" ? "Tomar la revisión" : "Tomar"}
+                      {mode === "pool" ? t("mt.takeReview") : t("mt.take")}
                     </Button>
                   ) : null}
                   {canApprove ? (
@@ -1936,7 +1931,7 @@ function QueueRow({
                       disabled={busy}
                       onClick={() => onApproveStep(step)}
                     >
-                      Aprobar
+                      {t("mt.approve")}
                     </Button>
                   ) : null}
                   {familiarizeApp && mine && stepApp ? (

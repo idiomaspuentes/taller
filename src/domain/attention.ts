@@ -61,19 +61,19 @@ function startOfDay(d: Date): number {
 }
 
 /** "ahora", "hace 5 min", "hace 3 h", "ayer", "12 sept" (+ year if not this year). */
-export function formatRelativeEs(date: Date | string, now: Date = new Date()): string {
+export function formatRelativeEs(date: Date | string, now: Date = new Date(), language: "es" | "pt" = "es"): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const t = d.getTime();
   if (!Number.isFinite(t)) return "";
   const diff = now.getTime() - t;
-  if (diff < 45_000) return "ahora";
-  const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto", style: "short" });
+  if (diff < 45_000) return language === "pt" ? "agora" : "ahora";
+  const rtf = new Intl.RelativeTimeFormat(language, { numeric: "auto", style: "short" });
   const minutes = Math.round(diff / 60_000);
   if (minutes < 60) return rtf.format(-Math.max(1, minutes), "minute");
   const dayDelta = Math.round((startOfDay(now) - startOfDay(d)) / DAY_MS);
   if (dayDelta === 0) return rtf.format(-Math.round(diff / 3_600_000), "hour");
-  if (dayDelta === 1) return "ayer";
-  return d.toLocaleDateString("es", {
+  if (dayDelta === 1) return language === "pt" ? "ontem" : "ayer";
+  return d.toLocaleDateString(language, {
     day: "numeric",
     month: "short",
     ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
