@@ -53,9 +53,10 @@ cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller
 ## Qué sigue (por prioridad)
 
 ### 1. Terminar la experiencia en portugués
-1. ~~**Equipo hoy**~~ (hecho: textos, razones de cada fila y recordatorios; probado en el mock en móvil y escritorio, pero el mock no trae trabajo repartido, así que las filas solo están probadas con `verify:config`). Falta: gestión de equipos, proyectos, organización, plantillas y el encabezado («Portugués · pt-br_gl», «Vista de rol»): textos y nombres de las plantillas.
-2. Editor, conversación y decisiones de alineación.
-3. **Nombres de los libros** en portugués.
+1. **Hecho:** Equipo hoy, encabezado y menús, Proyectos, tablero de equipo, Organización y los nombres de los libros (tabla aparte, solo para mostrar: `bookLabel`; `bookName` sigue en español porque se escribe en Door43). Probado en el mock en móvil y escritorio (Organización y Proyectos con datos mínimos). «Plantillas» se muestra como «Modelos» en portugués: que lo confirme la persona que revise.
+   **Falta**, de más a menos texto: `TeamsView` (fases y tareas, ~120 líneas con español), `AlineacionView`, `ScriptureEditorView`, `PublishView`, `AfinacionView`, `WorkflowsView` (plantillas de flujo), `ConversationView`, `AssignView`, `QaAdminDialog` y los demás de `src/components/` (para listarlos: `grep -c "[áéíóúñ¿¡]" src/components/*.tsx`).
+2. Editor, conversación y decisiones de alineación (ver lo que falta arriba).
+3. ~~Nombres de los libros en portugués~~ (hecho; falta usarlos en `BookStepView` y `TeamsView`, que se traducen con sus pantallas).
 4. Que una persona del equipo brasileño **revise** las traducciones (`src/i18n/messages.ts`, `src/domain/templateNames.ts`, `taller.config.ts`).
 5. Mensajes que llegan de Door43 tal cual (errores del servidor): decidir si se envuelven.
 
