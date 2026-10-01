@@ -50,3 +50,43 @@ export async function markMentionRead(session: GtSession, id: number, doFetch: t
   const base = `${dcsConfig(session.host).host}/api/v1`;
   await doFetch(`${base}/notifications/threads/${id}?to-status=read`, { method: "PATCH", headers: headers(session) }).catch(() => undefined);
 }
+
+/**
+ * What this device has already opened, as notification id → its `updated_at` when it was opened.
+ * Door43 only lets a token mark notifications read with `write:notification`, which the app does not
+ * ask for, so "already seen" is remembered here. A newer comment on the thread shows it again.
+ */
+export type SeenMentions = Record<string, string>;
+
+export function withoutSeen(rows: MentionRow[], seen: SeenMentions): MentionRow[] {
+  return rows.filter((r) => !seen[String(r.id)] || r.at > seen[String(r.id)]!);
+}
+
+export function markSeen(seen: SeenMentions, row: Pick<MentionRow, "id" | "at">, max = 200): SeenMentions {
+  const next = { ...seen, [String(row.id)]: row.at };
+  const keys = Object.keys(next);
+  if (keys.length <= max) return next;
+  // Forget the oldest ones.
+  keys.sort((a, b) => (next[a]! < next[b]! ? -1 : 1));
+  for (const key of keys.slice(0, keys.length - max)) delete next[key];
+  return next;
+}
+
+export const seenKey = (host: string, username: string) => `gt-mentions-seen:${host.replace(/\/$/, "")}:${username.toLowerCase()}`;
+
+export function loadSeen(key: string): SeenMentions {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "{}") as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as SeenMentions) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveSeen(key: string, seen: SeenMentions): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(seen));
+  } catch {
+    /* private window: they just show again next time */
+  }
+}

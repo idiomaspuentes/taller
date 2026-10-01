@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GtSession } from "./dcs/auth";
-import { listMentions, markMentionRead, type MentionRow } from "./dcs/mentions";
+import { listMentions, loadSeen, markMentionRead, markSeen, saveSeen, seenKey, withoutSeen, type MentionRow } from "./dcs/mentions";
 import { PM_REPO_NAME } from "./domain/types";
 
 const POLL_MS = 60_000;
@@ -10,16 +10,19 @@ const POLL_MS = 60_000;
  * Polled while the tab is visible, and again whenever it becomes visible.
  */
 export function useMentions(session: GtSession | null, pmOrg: string) {
-  const [rows, setRows] = useState<MentionRow[]>([]);
+  const [all, setAll] = useState<MentionRow[]>([]);
+  const [seen, setSeen] = useState(() => (session ? loadSeen(seenKey(session.host, session.username)) : {}));
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const token = session?.token ?? "";
+  const key = session ? seenKey(session.host, session.username) : "";
+  useEffect(() => setSeen(key ? loadSeen(key) : {}), [key]);
 
   const refresh = useCallback(async () => {
     const s = sessionRef.current;
-    if (!s?.token || !pmOrg) return setRows([]);
+    if (!s?.token || !pmOrg) return setAll([]);
     try {
-      setRows(await listMentions(s, pmOrg, PM_REPO_NAME));
+      setAll(await listMentions(s, pmOrg, PM_REPO_NAME));
     } catch {
       /* offline: keep what is shown */
     }
@@ -27,7 +30,7 @@ export function useMentions(session: GtSession | null, pmOrg: string) {
 
   useEffect(() => {
     if (!token || !pmOrg) {
-      setRows([]);
+      setAll([]);
       return;
     }
     void refresh();
@@ -42,11 +45,20 @@ export function useMentions(session: GtSession | null, pmOrg: string) {
     };
   }, [token, pmOrg, refresh]);
 
-  const markRead = useCallback((id: number) => {
-    setRows((current) => current.filter((r) => r.id !== id));
-    const s = sessionRef.current;
-    if (s) void markMentionRead(s, id);
-  }, []);
+  const markRead = useCallback(
+    (id: number) => {
+      const row = all.find((r) => r.id === id);
+      if (row && key) {
+        const next = markSeen(loadSeen(key), row);
+        saveSeen(key, next);
+        setSeen(next);
+      }
+      // Also tell Door43; it only takes effect if the token may write notifications.
+      const s = sessionRef.current;
+      if (s) void markMentionRead(s, id);
+    },
+    [all, key],
+  );
 
-  return { rows, refresh, markRead };
+  return { rows: withoutSeen(all, seen), refresh, markRead };
 }

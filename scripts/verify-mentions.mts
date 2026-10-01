@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { issueNumberOf, listMentions, markMentionRead, mentionRows } from "../src/dcs/mentions";
+import { issueNumberOf, listMentions, markMentionRead, markSeen, mentionRows, withoutSeen } from "../src/dcs/mentions";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void> | void) {
@@ -49,6 +49,21 @@ await test("pide las no leídas con el token y marca una como leída", async () 
 await test("si Door43 no responde bien, no hay menciones y no se rompe nada", async () => {
   const fail = (async () => new Response("no", { status: 500 })) as unknown as typeof fetch;
   assert.deepEqual(await listMentions({ host: "https://qa.door43.org", token: "t", username: "a" } as never, "o", "r", fail), []);
+});
+
+await test("lo que abriste en este dispositivo no vuelve, salvo que haya un comentario más nuevo", () => {
+  const row = { id: 5, issue: 1, title: "x", at: "2026-10-01T10:00:00Z" };
+  const seen = markSeen({}, row);
+  assert.deepEqual(withoutSeen([row], seen), []);
+  assert.equal(withoutSeen([{ ...row, at: "2026-10-01T11:00:00Z" }], seen).length, 1, "un comentario nuevo la muestra otra vez");
+  assert.equal(withoutSeen([{ ...row, id: 6 }], seen).length, 1, "otra mención distinta sigue pendiente");
+});
+
+await test("la lista de lo visto se recorta para no crecer sin fin", () => {
+  let seen = {};
+  for (let i = 1; i <= 30; i++) seen = markSeen(seen, { id: i, at: `2026-10-01T10:${String(i).padStart(2, "0")}:00Z` }, 10);
+  assert.equal(Object.keys(seen).length, 10);
+  assert.ok("30" in seen && !("1" in seen), "se olvidan las más viejas");
 });
 
 console.log(`\nverify-mentions: ${passed} checks passed.`);
