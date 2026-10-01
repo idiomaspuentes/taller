@@ -57,6 +57,13 @@ const es = {
   "onboarding.tasksText": "Ahí verás lo que te toca. Si hoy no hay nada, te avisaremos cuando llegue algo.",
   "onboarding.tasksButton": "Ir a Mis tareas",
   "onboarding.hide": "Listo, ocultar esto",
+  "empty.now": "Ahora",
+  "empty.firstTitle": "Todavía no tienes tareas",
+  "empty.firstBody": "Tu coordinación te las irá asignando, o aparecerán libres para tu equipo. Mientras tanto, activa los avisos y te diremos en cuanto llegue algo.",
+  "empty.upTitle": "Estás al día",
+  "empty.upBody": "No tienes nada pendiente. Cuando haya una tarea para ti, aparecerá aquí y te avisaremos.",
+  "empty.alertsTitle": "No hay avisos nuevos",
+  "empty.alertsBody": "Aquí verás las decisiones por tomar, los comentarios sin leer y las tareas nuevas.",
 } as const;
 
 export type MessageKey = keyof typeof es;
@@ -116,6 +123,13 @@ const pt: Record<MessageKey, string> = {
   "onboarding.tasksText": "Lá você verá o que cabe a você. Se hoje não houver nada, avisaremos quando chegar algo.",
   "onboarding.tasksButton": "Ir para Minhas tarefas",
   "onboarding.hide": "Pronto, ocultar isto",
+  "empty.now": "Agora",
+  "empty.firstTitle": "Você ainda não tem tarefas",
+  "empty.firstBody": "Sua coordenação vai atribuí-las, ou elas aparecerão livres para sua equipe. Enquanto isso, ative os avisos e diremos assim que chegar algo.",
+  "empty.upTitle": "Você está em dia",
+  "empty.upBody": "Você não tem nada pendente. Quando houver uma tarefa para você, ela aparecerá aqui e avisaremos.",
+  "empty.alertsTitle": "Não há avisos novos",
+  "empty.alertsBody": "Aqui você verá as decisões a tomar, os comentários não lidos e as tarefas novas.",
 };
 
 const TABLE: Record<UiLanguage, Record<MessageKey, string>> = { es, pt };

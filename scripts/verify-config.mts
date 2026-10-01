@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
+import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
 import { contextWith, initialWorkspace, loadWorkspaceId, saveWorkspaceId, suggestedWorkspace } from "../src/workspace";
 
@@ -129,6 +130,16 @@ test("los primeros pasos se ocultan por persona y servidor en este dispositivo, 
   assert.equal(onboardingDone(ana, store), true);
   assert.equal(onboardingDone(onboardingKey("https://qa.door43.org", "bea"), store), false, "otra persona los ve");
   assert.equal(onboardingDone(onboardingKey("https://git.door43.org", "ana"), store), false, "otro servidor, otra vez");
+});
+
+test("se recuerda si una persona ya tuvo trabajo, por servidor, organización y espacio", () => {
+  const store = memory();
+  const key = hadWorkKey("https://qa.door43.org/", "Ana", "ES-419_gl", "");
+  assert.equal(key, hadWorkKey("https://qa.door43.org", "ana", "es-419_gl", ""), "sin barra final ni mayúsculas");
+  assert.equal(hadWork(key, store), false);
+  markHadWork(key, store);
+  assert.equal(hadWork(key, store), true);
+  assert.equal(hadWork(hadWorkKey("https://qa.door43.org", "ana", "es-419_gl", "pt:"), store), false, "otro espacio de la misma organización empieza de cero");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

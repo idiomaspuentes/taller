@@ -5,6 +5,8 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import { levelOf, type PersonLevel } from "../domain/levels";
 import { loadPmConfig } from "../dcs/issues";
+import { hadWorkKey, useHadWork } from "../hadWork";
+import { useT } from "../i18n/messages";
 import type { MentionRow } from "../dcs/mentions";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -995,6 +997,12 @@ export function MyTasksView({
     visibleProjects.length === 0 &&
     stepOffers.length === 0;
   const showQueue = visibleProjects.length > 0 || stepOffers.length > 0;
+  const t = useT();
+  const hadWork = useHadWork(
+    hadWorkKey(session.host, session.username, pmOrg),
+    loaded && !busy,
+    Boolean(nowDecide || nowMine || nowFree),
+  );
 
   return (
     <div className="hub">
@@ -1179,11 +1187,9 @@ export function MyTasksView({
 
       {pmOrg && loaded && !busy && mode === "ahora" && !nowDecide && !nowMine && !nowFree ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Ahora</span>
-          <h2 className="hub-empty-panel__title">Estás al día</h2>
-          <p className="hub-empty-panel__body">
-            No tienes nada pendiente. Cuando haya una tarea para ti, aparecerá aquí y te avisaremos.
-          </p>
+          <span className="hub-empty-panel__kicker">{t("empty.now")}</span>
+          <h2 className="hub-empty-panel__title">{hadWork ? t("empty.upTitle") : t("empty.firstTitle")}</h2>
+          <p className="hub-empty-panel__body">{hadWork ? t("empty.upBody") : t("empty.firstBody")}</p>
         </div>
       ) : null}
 
@@ -1260,11 +1266,9 @@ export function MyTasksView({
 
       {pmOrg && loaded && !busy && mode === "avisos" && !attentionRows.length && !freeNew.length && !mentions.length ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Avisos</span>
-          <h2 className="hub-empty-panel__title">No hay avisos nuevos</h2>
-          <p className="hub-empty-panel__body">
-            Aquí verás las decisiones por tomar, los comentarios sin leer y las tareas nuevas.
-          </p>
+          <span className="hub-empty-panel__kicker">{t("nav.alerts")}</span>
+          <h2 className="hub-empty-panel__title">{t("empty.alertsTitle")}</h2>
+          <p className="hub-empty-panel__body">{t("empty.alertsBody")}</p>
         </div>
       ) : null}
 
@@ -1274,7 +1278,9 @@ export function MyTasksView({
           <h2 className="hub-empty-panel__title">
             {search.trim()
               ? "Sin coincidencias"
-              : filter === "available"
+              : !hadWork && filter === "mine"
+                ? t("empty.firstTitle")
+                : filter === "available"
                 ? "Nada disponible"
                 : filter === "all"
                   ? "Sin subtareas en tus proyectos"
@@ -1283,7 +1289,9 @@ export function MyTasksView({
           <p className="hub-empty-panel__body">
             {search.trim()
               ? "Prueba otro término o limpia la búsqueda."
-              : filter === "mine" && availableCount > 0
+              : !hadWork && filter === "mine" && availableCount === 0
+                ? t("empty.firstBody")
+                : filter === "mine" && availableCount > 0
                 ? `Hay ${availableCount} subtareas libres. Ábrelas en Disponibles para Tomar.`
                 : hasBrowse
                   ? "Usa Disponibles para reclamar trabajo libre, o espera a que te asignen."
