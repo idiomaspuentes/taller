@@ -116,6 +116,14 @@ const PT: [string, string][] = [
   ["Pares", "Pares"],
   ["Grupal", "Em grupo"],
   ["Sin recursos", "Sem recursos"],
+  // States and kinds shown in «Asignar»
+  ["Sin asignar", "Sem atribuição"],
+  ["Asignado", "Atribuído"],
+  ["En curso", "Em andamento"],
+  ["Hecho", "Feito"],
+  ["Nota", "Nota"],
+  ["Pregunta", "Pergunta"],
+  ["Academia", "Academia"],
   ["Preguntas", "Perguntas"],
   ["Palabras", "Palavras"],
 ];
@@ -130,8 +138,30 @@ const PATTERNS: [RegExp, (m: RegExpExecArray) => string][] = [
   ],
   [/^Todo el catálogo de (.+) del libro\.$/, (m) => `Todo o catálogo de ${m[1]} do livro.`],
   [/^Varios (\d+)$/, (m) => `Vários ${m[1]}`],
-  [/^(\d+) (porciones|porción|notas|nota|preguntas|pregunta|citas|cita|artículos|artículo|ítems|ítem)$/, (m) => `${m[1]} ${NOUN_PT[m[2]!] ?? m[2]}`],
+  [/^(\d+) (porciones|porción|notas|nota|preguntas|pregunta|citas|cita|artículos|artículo|ítems|ítem|academia|palabras)$/, (m) => `${m[1]} ${NOUN_PT[m[2]!] ?? m[2]}`],
+  [/^Porción (.+)$/, (m) => `Porção ${m[1]}`],
+  [/^Porciones (.+)$/, (m) => `Porções ${m[1]}`],
+  // What «Autoasignar» answers (built by `autoAssign` in assignment.ts)
+  [/^Añade integrantes a (.+) antes de autoasignar\.$/, (m) => `Adicione integrantes a ${m[1]} antes de autoatribuir.`],
+  [/^(.+) está en modo solo manual: elige persona a persona en Asignar\.$/, (m) => `${m[1]} está no modo somente manual: escolha pessoa por pessoa em Atribuir.`],
+  [/^No queda un lote sin asignar en el alcance de (.+)\.$/, (m) => `Não resta nenhum lote sem atribuição no alcance de ${m[1]}.`],
+  [/^No queda trabajo sin asignar en el alcance de (.+)\.$/, (m) => `Não resta trabalho sem atribuição no alcance de ${m[1]}.`],
+  [
+    /^Autoasignados (\d+) (lote|lotes) de (.+) entre (\d+) personas \((.+)\)\.$/,
+    (m) => `Autoatribuídos ${m[1]} ${m[2] === "lote" ? "lote" : "lotes"} de ${m[3]} entre ${m[4]} pessoas (${UNIT_PT[m[5]!] ?? m[5]}).`,
+  ],
+  [
+    /^Autoasignados (\d+) (capítulos\/bloques|porciones\/bloques) \((\d+) ítems\) de (.+) entre (\d+) personas \((.+)\)\.$/,
+    (m) =>
+      `Autoatribuídos ${m[1]} ${m[2] === "capítulos/bloques" ? "capítulos/blocos" : "porções/blocos"} (${m[3]} itens) de ${m[4]} entre ${m[5]} pessoas (${UNIT_PT[m[6]!] ?? m[6]}).`,
+  ],
 ];
+
+const UNIT_PT: Record<string, string> = {
+  "por capítulo entero": "por capítulo inteiro",
+  "porciones por capítulo": "porções por capítulo",
+  "por porción": "por porção",
+};
 
 const NOUN_PT: Record<string, string> = {
   porciones: "porções",
@@ -146,16 +176,25 @@ const NOUN_PT: Record<string, string> = {
   "artículo": "artigo",
   "ítems": "itens",
   "ítem": "item",
+  academia: "academia",
+  palabras: "palavras",
 };
 
 export function localizeScope(text: string, language: UiLanguage): string {
   if (language !== "pt" || !text) return text;
   const exact = EXACT.get(text);
   if (exact) return exact;
-  if (text.includes(" · ")) return text.split(" · ").map((part) => localizeScope(part, language)).join(" · ");
   for (const [re, fn] of PATTERNS) {
     const m = re.exec(text);
     if (m) return fn(m);
   }
+  // `scopeRuleLabel` lowercases the filter and grain names: look them up capitalized, then lowercase the answer.
+  const first = text[0]!;
+  if (first !== first.toUpperCase()) {
+    const cap = first.toUpperCase() + text.slice(1);
+    const hit = localizeScope(cap, language);
+    if (hit !== cap) return hit[0]!.toLowerCase() + hit.slice(1);
+  }
+  if (text.includes(" · ")) return text.split(" · ").map((part) => localizeScope(part, language)).join(" · ");
   return text;
 }

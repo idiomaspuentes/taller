@@ -227,4 +227,21 @@ test("las etiquetas y ayudas del alcance de una tarea se traducen sin dejar fras
   assert.equal(localizeScope("Solo con notas", "es"), "Solo con notas");
 });
 
+test("lo que muestra «Asignar» (estados, tipos, lotes y mensajes de autoasignar) se traduce", () => {
+  const cases: [string, string][] = [
+    ["Sin asignar", "Sem atribuição"],
+    ["En curso", "Em andamento"],
+    ["Pregunta", "Pergunta"],
+    ["Capítulo 3 · 4 TPL · 2 notas · 1 pregunta · 5 palabras", "Capítulo 3 · 4 TPL · 2 notas · 1 pergunta · 5 palavras"],
+    ["Porciones NEH 1:1-3 · NEH 1:4-6", "Porções NEH 1:1-3 · NEH 1:4-6"],
+    ["Añade integrantes a Traducir TPL antes de autoasignar.", "Adicione integrantes a Traducir TPL antes de autoatribuir."],
+    ["Traducir TPL está en modo solo manual: elige persona a persona en Asignar.", "Traducir TPL está no modo somente manual: escolha pessoa por pessoa em Atribuir."],
+    ["No queda trabajo sin asignar en el alcance de Traducir TPL.", "Não resta trabalho sem atribuição no alcance de Traducir TPL."],
+    ["Autoasignados 1 lote de X entre 3 personas (por porción).", "Autoatribuídos 1 lote de X entre 3 pessoas (por porção)."],
+    ["Autoasignados 6 porciones/bloques (12 ítems) de X entre 3 personas (por capítulo entero).", "Autoatribuídos 6 porções/blocos (12 itens) de X entre 3 pessoas (por capítulo inteiro)."],
+    ["tpl · todas las porciones · porciones", "tpl · todas as porções · porções"],
+  ];
+  for (const [es, pt] of cases) assert.equal(localizeScope(es, "pt"), pt);
+});
+
 console.log(`\nverify-config: ${passed} checks passed.`);
