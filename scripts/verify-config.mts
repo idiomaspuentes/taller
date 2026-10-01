@@ -12,6 +12,8 @@ import {
   decidedConflictSentence, verseConflictOptionLabels, verseConflictPanels, verseConflictTitle,
   type VerseConflictData,
 } from "../src/domain/verseConflictEvent";
+import { localizeAfinacion } from "../src/domain/afinacionNames";
+import { categoryLabel } from "../src/domain/afinacionNotes";
 import { BOOKS, bookLabel, bookName } from "../src/domain/books";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
@@ -299,6 +301,18 @@ test("las líneas de la conversación (decisiones, votos, conflictos de versícu
   );
   assert.equal(localizeThread("Resuelto por @ana: quedó la versión de @bea", "pt"), "Resolvido por @ana: ficou a versão de @bea");
   assert.equal(localizeThread("Versículos 1:2 guardados en el borrador grupal", "pt"), "Versículos 1:2 salvos no rascunho do grupo");
+});
+
+test("las categorías de las notas se traducen y las que no se conocen se dejan", () => {
+  for (const code of ["figs-metaphor", "figs-rquestion", "translate-names", "grammar-connect-logic-reason", "writing-background", ""]) {
+    const es = categoryLabel(code);
+    assert.notEqual(localizeAfinacion(es, "pt"), "", code);
+    assert.equal(localizeAfinacion(es, "es"), es);
+  }
+  assert.equal(localizeAfinacion(categoryLabel("figs-metaphor"), "pt"), "Metáfora");
+  assert.equal(localizeAfinacion(categoryLabel("figs-youplural"), "pt"), "«Você» plural");
+  assert.equal(localizeAfinacion(categoryLabel(""), "pt"), "Informação geral");
+  assert.equal(localizeAfinacion(categoryLabel("figs-algo-nuevo"), "pt"), categoryLabel("figs-algo-nuevo"), "una categoría nueva se muestra como viene");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

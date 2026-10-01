@@ -64,6 +64,10 @@ const EXACT: [string, string][] = [
   // System comments
   ["Conflicto de versículos al cerrar", "Conflito de versículos ao fechar"],
   ["Mensaje nuevo", "Mensagem nova"],
+  // Errors of the review tools
+  ["Falta el capítulo en la tarea.", "Falta o capítulo na tarefa."],
+  ["Todavía no hay borrador grupal de este libro. Se crea cuando alguien cierra una tarea de traducción.", "Ainda não há rascunho do grupo deste livro. Ele é criado quando alguém fecha uma tarefa de tradução."],
+  ["No se encontró el borrador grupal de este libro.", "O rascunho do grupo deste livro não foi encontrado."],
   // Buttons that open a tool
   ["Estudiar", "Estudar"],
   ["Abrir editor", "Abrir editor"],
