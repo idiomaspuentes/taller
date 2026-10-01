@@ -24,13 +24,14 @@ Cada **tarea** se describe con una tabla de **pasos**. Cada paso dice:
 | **Herramienta** | La pantalla que se abre. |
 | **Se completa cuando** | La regla de cierre (ver 1.1). |
 
-### 1.1 Las cuatro reglas de cierre
+### 1.1 Las cinco reglas de cierre
 
 | Regla | Cómo funciona |
 |-------|---------------|
 | **Lo marca quien lo hace** | La persona pulsa «Terminé». |
 | **Otra persona lo aprueba** | Quien revisa aprueba; si se indica, el autor también confirma. |
 | **Consenso por ítem** | Cada persona responde ítem por ítem (de acuerdo, propongo un cambio, objeción). Si todo queda de acuerdo, termina solo. Lo que queda sin acuerdo va a una **reunión**, y el **coordinador del equipo** (o una persona habilitada del equipo) registra la **decisión final**. |
+| **Comprobación automática** | Una herramienta hace las comprobaciones sin intervención; el paso se completa cuando todas pasan (Publicación). |
 | **Lista de comprobación por ítem** | Cada ítem se revisa con preguntas de sí o no. Termina cuando todo está en «sí», o cuando lo que estaba en «no» quedó corregido, creado o enviado a su dueño. |
 
 ### 1.2 Unidades
@@ -52,6 +53,9 @@ Cada **tarea** se describe con una tabla de **pasos**. Cada paso dice:
 - Solo las **personas habilitadas** cuentan para los mínimos y pueden cerrar.
 - **Observador** ve el trabajo y no toma tareas. **Aprendiz** trabaja acompañado; por ahora el
   acompañamiento se lleva **fuera de la app** (es una práctica nueva).
+- **Propuesta aceptada para más adelante, «copia de práctica»:** el Aprendiz toma la misma porción
+  que una persona con experiencia. Su borrador **no se entrega** al grupo; la app pone los dos lado a
+  lado para compararlos y el acompañante deja comentarios.
 - Las **cualificaciones** de cada persona (por ejemplo, dominio del hebreo o del griego) tampoco se
   registran todavía; podrán agregarse después.
 
@@ -187,7 +191,7 @@ recurso.
 3. Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?
 4. (Por versículo) ¿Cada diferencia importante entre el TPL y el TPS tiene una nota?
 
-**Lista C · Academia (por confirmar, no está en la presentación)**
+**Lista C · Academia**
 1. ¿El artículo enlazado enseña el tipo de dificultad que señala la nota?
 2. ¿El artículo está publicado en español? Si no, se crea.
 
@@ -213,7 +217,7 @@ recurso.
 | 1 | Preguntas frente a los textos | Comprobar | Equipo de la pista | 1 o más | Pregunta, respuesta, TPL y TPS | Lista de comprobación por pregunta (F) |
 | 2 | Cierre independiente | Cerrar | Habilitada que no preparó ni ajustó | 1 | Resumen | Otra persona lo aprueba |
 
-**Lista F · cada pregunta (por confirmar, no está en la presentación)**
+**Lista F · cada pregunta**
 1. ¿Se puede responder con el TPL y el TPS afinados?
 2. ¿La respuesta sugerida coincide con lo que dicen los textos?
 
@@ -257,14 +261,22 @@ apoyo → Armonización). Cuando el dueño responde, la unidad vuelve **al mismo
 
 **Propósito:** publicar exactamente lo avalado. No se edita contenido.
 
+**Cuándo:** cada unidad se publica **en cuanto recibe el aval**; no espera a las demás. Quien usa los
+recursos ya puede trabajar con el capítulo 1 mientras el 2 sigue en el flujo.
+
+**Cómo:** casi automática. Unas **mini-apps de comprobación** revisan formato, metadatos y lo que
+haga falta, y otra hace la publicación. La persona solo interviene si una comprobación falla.
+
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Comprobar formato y metadatos | Comprobar | Equipo de informática | 1 | Comprobación automática + lista | Lo marca quien lo hace |
-| 2 | Publicar | Publicar | Equipo de informática | 1 | Publicar versión | Queda publicada la versión avalada |
+| 1 | Comprobaciones | Comprobar | Automático; lo vigila el equipo de informática | — | Mini-apps de comprobación (formato, metadatos, correspondencia con el aval) | Todas las comprobaciones pasan |
+| 2 | Publicar | Publicar | Automático, o una persona de informática confirma | 1 | Mini-app de publicación | Queda publicada la unidad avalada |
 
-Si aparece un problema de contenido, se detiene y se envía al dueño.
-**(Por confirmar:** si se publica cada unidad en cuanto tiene aval, o se juntan varias en una
-versión.)
+Si una comprobación encuentra un problema de **contenido**, la publicación se detiene y se envía al
+dueño (Afinación o Armonización).
+
+Esto agrega una **quinta regla de cierre**: **comprobación automática** (el paso lo completa una
+herramienta, sin persona, cuando sus comprobaciones pasan).
 
 ---
 
@@ -308,10 +320,10 @@ lo demás ya está en las cuatro reglas de cierre.
 
 ## 10. Pendientes para cerrar la plantilla
 
-1. Listas C (Academia) y F (Preguntas): las redacté yo; hay que revisarlas o reemplazarlas.
-2. Validación: la regla definitiva del aval.
-3. Publicación: ¿cada unidad en cuanto tiene aval, o varias juntas en una versión?
+1. Validación: la regla definitiva del aval (hoy: objeciones a la vista de todos; si no hay consenso,
+   mayoría).
 
-Resuelto: el acompañamiento del Aprendiz y las cualificaciones quedan fuera de la app por ahora; las
-ayudas no llevan revisión grupal; las palabras clave se revisan por capítulo; Armonización espera al
-TPL, al TPS y a sus ayudas.
+Resuelto: el acompañamiento del Aprendiz y las cualificaciones quedan fuera de la app por ahora (con
+la «copia de práctica» como siguiente paso); las ayudas no llevan revisión grupal; las palabras clave
+se revisan por capítulo; Armonización espera al TPL, al TPS y a sus ayudas; las listas C y F quedan
+como están; cada unidad se publica al recibir el aval, de forma casi automática.
