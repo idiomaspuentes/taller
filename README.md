@@ -1,11 +1,10 @@
-# TAS — Translation Assistance System
+# Taller
 
-App de preparación FCR y gestión de trabajo sobre issues DCS: inventariar un
-libro (o varios en un proyecto temático), definir **tareas** (alcance + reparto),
-asignar **equipos** de org y publicar **subtareas**.
+La app del equipo FCR de [Idiomas Puentes](https://idiomaspuentes.org) para el trabajo de traducción sobre Door43: lo que te toca hoy, revisiones y decisiones de alineación en equipo, y avisos en el teléfono. PWA móvil primero, en español y portugués, de código abierto (MIT) y adaptable a otra organización.
 
-Antes: *Gateway Tasks*. El repo DCS sigue siendo `{pmOrg}/gateway-tasks` por
-compatibilidad.
+Estado y próximos pasos: [`docs/PLAN.md`](docs/PLAN.md). Para quien continúe el trabajo (también una sesión de Claude): [`CLAUDE.md`](CLAUDE.md).
+
+Antes se llamó *TAS* (Translation Assistance System) y *Gateway Tasks*. El repositorio de datos en Door43 sigue siendo `{pmOrg}/gateway-tasks` por compatibilidad.
 
 Vocabulario y arquitectura: [`docs/MODELO.md`](docs/MODELO.md) ·
 migración: [`docs/PLAN_MIGRACION.md`](docs/PLAN_MIGRACION.md) ·
@@ -17,10 +16,10 @@ La bienvenida, los equipos (espacios de trabajo por lengua) y el nombre de la ap
 
 ## Arranque
 
-Necesitas el monorepo [`idiomas-puentes-lms`](../idiomas-puentes-lms) al lado (para `@ip-lms/dcs-client`).
+Taller necesita [`usfm-ast`](https://github.com/abelpz/usfm-ast) **al lado** de este repositorio. Un script lo prepara todo (necesita git, Node 20+ y [Bun](https://bun.sh)):
 
 ```bash
-npm install
+node scripts/setup-workspace.mjs   # clona ../usfm-ast, lo construye, instala y comprueba
 npm run dev
 # http://localhost:5175
 ```
