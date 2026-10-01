@@ -1,5 +1,6 @@
 /** taller.config.ts: it must be usable, spaces must not share an organization, and the language and space logic. */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
@@ -343,6 +344,19 @@ test("los mensajes de error al guardar el borrador se traducen alrededor del det
     localizeThread("No se pudo guardar «16-NEH.usfm» en pt-br_gl/pt-br_glt en tu borrador (HTTP 500): algo", "pt"),
     "Não foi possível salvar «16-NEH.usfm» em pt-br_gl/pt-br_glt no seu rascunho (HTTP 500): algo",
   );
+});
+
+test("los archivos de traducción tienen las mismas claves y conservan los {marcadores}", () => {
+  const dir = new URL("../src/i18n/locales/", import.meta.url);
+  const esJson = JSON.parse(readFileSync(new URL("es.json", dir), "utf8")) as Record<string, string>;
+  const ptJson = JSON.parse(readFileSync(new URL("pt.json", dir), "utf8")) as Record<string, string>;
+  const marks = (t: string) => [...(t.match(/\{[A-Za-z0-9_]+\}/g) ?? [])].sort().join(",");
+  assert.deepEqual(Object.keys(ptJson).sort(), Object.keys(esJson).sort(), "pt.json y es.json deben tener las mismas claves");
+  for (const key of Object.keys(esJson)) assert.equal(marks(ptJson[key]!), marks(esJson[key]!), `«${key}» debe conservar sus {marcadores}`);
+  const glossary = JSON.parse(readFileSync(new URL("glossary.pt.json", dir), "utf8")) as Record<string, Record<string, string>>;
+  for (const [section, table] of Object.entries(glossary)) {
+    for (const [source, target] of Object.entries(table)) assert.ok(target.trim() !== "", `glosario ${section}: «${source}» sin traducción`);
+  }
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

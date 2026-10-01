@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taller · Revisão da tradução (português)</title>
+<style>
+  :root { --bg:#fafaf7; --card:#fff; --ink:#1f2328; --mute:#667085; --line:#e4e2da; --accent:#1f6f5c; --warn:#b54708; --warnbg:#fff4e5; --ok:#067647; --okbg:#e8f6ef; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#16181a; --card:#1e2124; --ink:#e8e8e3; --mute:#9aa3ad; --line:#33373b; --accent:#5fc3a8; --warn:#f5a45a; --warnbg:#3a2a16; --ok:#6fd3a0; --okbg:#173326; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  header.top { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line); padding:12px 16px; }
+  h1 { font-size:1.15rem; margin:0 0 4px; }
+  .sub { color:var(--mute); font-size:.9rem; margin:0 0 8px; }
+  .bar { height:8px; background:var(--line); border-radius:99px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--accent); }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
+  input, select, textarea, button { font:inherit; color:inherit; }
+  input[type=text], input[type=search], select, textarea { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:7px 9px; }
+  textarea { width:100%; min-height:3.2rem; resize:vertical; }
+  button { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:7px 12px; cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  main { max-width:900px; margin:0 auto; padding:12px 16px 80px; }
+  .item { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; margin:10px 0; }
+  .item[data-reviewed="true"] { border-left:4px solid var(--ok); }
+  .item[data-bad="true"] { border-left:4px solid var(--warn); }
+  .meta { color:var(--mute); font-size:.78rem; display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .es { background:var(--bg); border-radius:8px; padding:8px 10px; white-space:pre-wrap; margin:0 0 8px; }
+  .lbl { font-size:.78rem; color:var(--mute); margin:6px 0 3px; display:block; }
+  .tools { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+  .warn { background:var(--warnbg); color:var(--warn); border-radius:8px; padding:6px 9px; font-size:.88rem; margin-top:6px; }
+  .group { margin:22px 0 4px; font-weight:600; }
+  .note { background:var(--okbg); color:var(--ok); border-radius:8px; padding:8px 10px; font-size:.9rem; }
+  .ro { color:var(--mute); font-size:.85rem; }
+  mark.ph { background:var(--warnbg); color:var(--warn); padding:0 2px; border-radius:3px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Revisão da tradução do Taller para português (Brasil)</h1>
+  <p class="sub" id="sub"></p>
+  <div class="bar" aria-hidden="true"><i id="barfill" style="width:0"></i></div>
+  <div class="row">
+    <label>Seu nome <input type="text" id="who" size="14" placeholder="para o registro"></label>
+    <label>Mostrar <select id="filter">
+      <option value="pending">Falta revisar</option><option value="all">Tudo</option><option value="edited">Que eu alterei</option>
+      <option value="bad">Com problema</option><option value="commented">Com comentário</option><option value="reviewed">Já revisadas</option>
+    </select></label>
+    <label>Parte <select id="area"></select></label>
+    <input type="search" id="q" placeholder="Buscar em espanhol ou português…" size="22">
+  </div>
+  <div class="row">
+    <button class="primary" id="save">Baixar meu trabalho (JSON)</button>
+    <button id="load">Continuar de um arquivo…</button>
+    <input type="file" id="file" accept="application/json,.json" hidden>
+    <span class="ro" id="status"></span>
+  </div>
+</header>
+<main>
+  <p class="note">Como funciona: à esquerda de cada item está o texto original em espanhol; edite a tradução abaixo, marque <b>Revisado</b> quando estiver boa e use o campo de comentário para qualquer dúvida. Seu trabalho fica salvo neste navegador. Ao terminar (ou para pausar), toque em <b>Baixar meu trabalho</b> e envie o arquivo a quem coordena. Partes entre chaves, como <mark class="ph">{n}</mark>, são preenchidas pelo aplicativo: devem permanecer exatamente iguais.</p>
+  <div id="list"></div>
+  <p><button id="more" hidden>Mostrar mais</button></p>
+</main>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function () {
+  var DATA = JSON.parse(document.getElementById("data").textContent);
+  var KEY = "taller-pt-review-v1";
+  var state = { who: "", entries: {} };
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || "null"); if (saved && saved.entries) state = saved; } catch (e) {}
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var PH = /\{[A-Za-z0-9_]+\}/g;
+  function phs(t) { return (t.match(PH) || []).slice().sort().join(","); }
+  var items = DATA.items;
+  var byId = {}; items.forEach(function (it) { byId[it.id] = it; });
+  function entry(id) { return state.entries[id] || {}; }
+  function ptOf(it) { var e = entry(it.id); return typeof e.pt === "string" ? e.pt : it.pt; }
+  function isBad(it) {
+    if (!it.editable) return false;
+    var pt = ptOf(it);
+    return pt.trim() === "" || phs(pt) !== phs(it.es);
+  }
+  function isReviewed(it) { var e = entry(it.id); return e.reviewed === true || (e.reviewed === undefined && it.reviewed); }
+  function isEdited(it) { var e = entry(it.id); return typeof e.pt === "string" && e.pt !== it.pt; }
+  function matches(it) {
+    var f = document.getElementById("filter").value, a = document.getElementById("area").value, q = document.getElementById("q").value.trim().toLowerCase();
+    if (a !== "all" && it.group !== a) return false;
+    if (q && (it.es + " " + ptOf(it) + " " + it.key).toLowerCase().indexOf(q) < 0) return false;
+    if (f === "pending") return !isReviewed(it);
+    if (f === "reviewed") return isReviewed(it);
+    if (f === "edited") return isEdited(it);
+    if (f === "bad") return isBad(it);
+    if (f === "commented") return !!entry(it.id).comment;
+    return true;
+  }
+  var area = document.getElementById("area");
+  area.innerHTML = '<option value="all">Todas</option>' + DATA.groups.map(function (g) { return '<option value="' + g + '">' + esc(g) + "</option>"; }).join("");
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function highlight(t) { return esc(t).replace(PH, function (m) { return '<mark class="ph">' + m + "</mark>"; }); }
+  var shown = 0, PAGE = 60, current = [];
+  function progress() {
+    var reviewable = items.filter(function (i) { return i.editable; });
+    var done = reviewable.filter(isReviewed).length;
+    document.getElementById("barfill").style.width = (reviewable.length ? (100 * done) / reviewable.length : 0) + "%";
+    document.getElementById("sub").textContent = done + " de " + reviewable.length + " itens revisados · " + items.filter(isBad).length + " com problema";
+  }
+  function render(reset) {
+    if (reset) { current = items.filter(matches); shown = 0; document.getElementById("list").innerHTML = ""; }
+    var list = document.getElementById("list"), last = list.getAttribute("data-last") || "";
+    if (reset) last = "";
+    current.slice(shown, shown + PAGE).forEach(function (it) {
+      if (it.group !== last) { var g = document.createElement("div"); g.className = "group"; g.textContent = it.group; list.appendChild(g); last = it.group; }
+      list.appendChild(card(it));
+    });
+    list.setAttribute("data-last", last);
+    shown = Math.min(current.length, shown + PAGE);
+    var more = document.getElementById("more"); more.hidden = shown >= current.length; more.textContent = "Mostrar mais (" + (current.length - shown) + ")";
+    if (!current.length) list.innerHTML = '<p class="ro">Nada para mostrar com este filtro.</p>';
+    progress();
+  }
+  function card(it) {
+    var d = document.createElement("div"); d.className = "item"; d.id = "it-" + btoa(unescape(encodeURIComponent(it.id))).replace(/=/g, "");
+    function paint() { d.setAttribute("data-reviewed", isReviewed(it) ? "true" : "false"); d.setAttribute("data-bad", isBad(it) ? "true" : "false"); }
+    d.innerHTML = '<div class="meta"><span>' + esc(it.kind) + '</span><span>' + esc(it.key) + '</span></div><p class="es" dir="auto">' + highlight(it.es) + "</p>";
+    var warn = document.createElement("div");
+    function checkWarn() { warn.innerHTML = ""; if (!it.editable) return; var pt = ptOf(it); if (pt.trim() === "") warn.innerHTML = '<div class="warn">Tradução vazia: enquanto estiver vazia, o aplicativo mostra o espanhol.</div>'; else if (phs(pt) !== phs(it.es)) warn.innerHTML = '<div class="warn">Os trechos entre chaves devem ser iguais ao original: ' + highlight((it.es.match(PH) || []).join(" ") || "(nenhum)") + "</div>"; }
+    if (it.editable) {
+      var l = document.createElement("label"); l.className = "lbl"; l.textContent = "Português"; d.appendChild(l);
+      var ta = document.createElement("textarea"); ta.value = ptOf(it); ta.rows = Math.max(2, Math.min(8, Math.ceil(ta.value.length / 70)));
+      ta.addEventListener("input", function () { var e = state.entries[it.id] || (state.entries[it.id] = {}); e.pt = ta.value; if (e.reviewed === undefined && ta.value !== it.pt) e.reviewed = false; persist(); paint(); checkWarn(); progress(); });
+      d.appendChild(ta);
+    } else {
+      var p = document.createElement("p"); p.className = "es"; p.innerHTML = highlight(it.pt) + '<br><span class="ro">(' + esc(it.why) + ")</span>"; var l2 = document.createElement("span"); l2.className = "lbl"; l2.textContent = "Português (atual)"; d.appendChild(l2); d.appendChild(p);
+    }
+    d.appendChild(warn); checkWarn();
+    var tools = document.createElement("div"); tools.className = "tools";
+    var rv = document.createElement("label"); rv.innerHTML = '<input type="checkbox"> Revisado'; var cb = rv.firstChild; cb.checked = isReviewed(it);
+    cb.addEventListener("change", function () { (state.entries[it.id] || (state.entries[it.id] = {})).reviewed = cb.checked; persist(); paint(); progress(); });
+    tools.appendChild(rv);
+    var cm = document.createElement("input"); cm.type = "text"; cm.placeholder = "Comentário (opcional)"; cm.size = 34; cm.value = entry(it.id).comment || "";
+    cm.addEventListener("input", function () { (state.entries[it.id] || (state.entries[it.id] = {})).comment = cm.value; persist(); });
+    tools.appendChild(cm);
+    if (it.editable && it.pt !== "" && isEdited(it)) { var rs = document.createElement("button"); rs.textContent = "Desfazer minha mudança"; rs.addEventListener("click", function () { var e = state.entries[it.id]; delete e.pt; ta.value = it.pt; persist(); paint(); checkWarn(); progress(); }); tools.appendChild(rs); }
+    d.appendChild(tools); paint(); return d;
+  }
+  ["filter", "area", "q"].forEach(function (id) { document.getElementById(id).addEventListener(id === "q" ? "input" : "change", function () { render(true); }); });
+  document.getElementById("more").addEventListener("click", function () { render(false); });
+  var who = document.getElementById("who"); who.value = state.who || "";
+  who.addEventListener("input", function () { state.who = who.value; persist(); });
+  function status(t) { document.getElementById("status").textContent = t; }
+  document.getElementById("save").addEventListener("click", function () {
+    var out = {};
+    Object.keys(state.entries).forEach(function (id) {
+      var it = byId[id]; if (!it) return; var e = state.entries[id], r = {};
+      if (it.editable && typeof e.pt === "string" && e.pt !== it.pt) r.pt = e.pt;
+      if (e.reviewed === true) r.reviewed = true;
+      if (e.comment && e.comment.trim()) r.comment = e.comment.trim();
+      if (Object.keys(r).length) out[id] = r;
+    });
+    var doc = { format: "taller-translation-review-1", language: "pt", reviewer: state.who || "", exportedAt: new Date().toISOString(), entries: out };
+    var blob = new Blob([JSON.stringify(doc, null, 2) + "\n"], { type: "application/json" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "revisao-pt-" + (state.who || "revisor").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + new Date().toISOString().slice(0, 10) + ".json"; a.click();
+    status("Arquivo baixado. Envie-o a quem coordena.");
+  });
+  document.getElementById("load").addEventListener("click", function () { document.getElementById("file").click(); });
+  document.getElementById("file").addEventListener("change", function (ev) {
+    var f = ev.target.files && ev.target.files[0]; if (!f) return; var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var doc = JSON.parse(String(rd.result)); if (doc.format !== "taller-translation-review-1") throw new Error("formato");
+        if (doc.reviewer) { state.who = doc.reviewer; who.value = doc.reviewer; }
+        Object.keys(doc.entries || {}).forEach(function (id) { if (byId[id]) state.entries[id] = Object.assign({}, state.entries[id], doc.entries[id]); });
+        persist(); render(true); status("Arquivo carregado.");
+      } catch (e) { status("Esse arquivo não parece ser de uma revisão do Taller."); }
+    };
+    rd.readAsText(f); ev.target.value = "";
+  });
+  render(true);
+})();
+</script>
+</body>
+</html>
