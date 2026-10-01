@@ -32,6 +32,12 @@ export type Workspace = {
   contentOrg: string;
   /** Door43 organization that holds the `gateway-tasks` repository (the plan and its subtareas). */
   pmOrg: string;
+  /**
+   * What keeps this space apart from another one in the SAME organization (even in the same language): its issues,
+   * milestones, plan files and local copies are marked with it. Letters, digits and dashes. Leave it out for a space
+   * that is alone in its organization; at most one space per organization may leave it out.
+   */
+  scope?: string;
   /** The interface language this team starts in. */
   uiLanguage: UiLanguage;
   /** How the team is named on the welcome screen, in each interface language. */

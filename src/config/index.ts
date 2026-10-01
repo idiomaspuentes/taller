@@ -1,4 +1,5 @@
 import { tallerConfig } from "../../taller.config";
+import { SCOPE_PATTERN } from "../domain/scope";
 import type { TallerConfig, Workspace } from "./types";
 
 export { tallerConfig };
@@ -11,17 +12,27 @@ export function configProblems(config: TallerConfig): string[] {
   if (!config.uiLanguages.includes(config.defaultUiLanguage)) problems.push("defaultUiLanguage no está en uiLanguages.");
   if (config.workspaces.length === 0) problems.push("Hace falta al menos un espacio de trabajo en workspaces.");
   const ids = new Set<string>();
-  const pms = new Set<string>();
   for (const w of config.workspaces) {
     if (!w.id.trim()) problems.push("Un espacio no tiene id.");
     if (ids.has(w.id)) problems.push(`El id de espacio "${w.id}" está repetido.`);
     ids.add(w.id);
     if (!w.lang.trim() || !w.contentOrg.trim() || !w.pmOrg.trim()) problems.push(`El espacio "${w.id}" necesita lang, contentOrg y pmOrg.`);
-    // Two spaces on one pmOrg would share their tasks: that is exactly what must not happen.
-    if (pms.has(w.pmOrg.toLowerCase())) problems.push(`El espacio "${w.id}" repite la organización ${w.pmOrg}: los espacios no deben compartirla.`);
-    pms.add(w.pmOrg.toLowerCase());
+    if (w.scope !== undefined && !SCOPE_PATTERN.test(w.scope)) problems.push(`El scope "${w.scope}" del espacio "${w.id}" solo puede tener minúsculas, números y guiones.`);
     if (!config.uiLanguages.includes(w.uiLanguage)) problems.push(`El espacio "${w.id}" usa un idioma de interfaz que no está en uiLanguages.`);
     for (const lang of config.uiLanguages) if (!w.name[lang]?.trim()) problems.push(`El espacio "${w.id}" no tiene nombre en "${lang}".`);
+  }
+  // Spaces may share an organization, but only if their scopes tell them apart: otherwise they would share tasks.
+  const shared = new Map<string, Workspace[]>();
+  for (const w of config.workspaces) {
+    const key = `${w.pmOrg.toLowerCase()}`;
+    shared.set(key, [...(shared.get(key) ?? []), w]);
+  }
+  for (const [org, spaces] of shared) {
+    if (spaces.length < 2) continue;
+    const unscoped = spaces.filter((w) => !w.scope);
+    if (unscoped.length > 1) problems.push(`Los espacios ${unscoped.map((w) => `"${w.id}"`).join(", ")} comparten la organización ${org} sin scope: sus tareas se mezclarían. Dale un scope distinto a cada uno (como mucho uno puede no tenerlo).`);
+    const scopes = spaces.map((w) => w.scope).filter(Boolean) as string[];
+    if (new Set(scopes.map((s) => s.toLowerCase())).size !== scopes.length) problems.push(`Hay espacios en la organización ${org} con el mismo scope.`);
   }
   for (const lang of config.uiLanguages) {
     const copy = config.welcome[lang];

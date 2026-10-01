@@ -4,6 +4,7 @@ import { tallerConfig, workspaceOfOrg, type Workspace } from "./config";
 import { useUiLanguage } from "./i18n/language";
 import { useT } from "./i18n/messages";
 import { contextWith, initialWorkspace, saveWorkspaceId } from "./workspace";
+import { setActiveScope } from "./domain/scope";
 import { Welcome } from "./components/Welcome";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
@@ -128,6 +129,8 @@ export function App() {
     () => initialWorkspace(tallerConfig) ?? (savedRaw?.pmOrg ? workspaceOfOrg(tallerConfig, savedRaw.pmOrg) : undefined),
   );
   const saved = savedRaw && workspace ? contextWith(savedRaw, workspace) : savedRaw;
+  // Set before anything reads or writes: the space decides every label, milestone and path.
+  setActiveScope(workspace?.scope);
   const { route, navigate } = useHashRoute();
   const [host, setHost] = useState(saved?.host || DEFAULT_HOST);
   const [lang, setLang] = useState(workspace?.lang ?? (saved?.lang || "es-419"));
@@ -854,6 +857,7 @@ export function App() {
       window.location.reload();
       return;
     }
+    setActiveScope(next.scope);
     setWorkspace(next);
     setLang(next.lang);
     setContentOrg(next.contentOrg);

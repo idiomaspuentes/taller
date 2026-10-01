@@ -15,7 +15,7 @@ Todo lo que cambia de una organización a otra vive en **un solo archivo**: [`ta
 
 ## Espacios de trabajo (equipos que no se mezclan)
 
-Cada espacio tiene su propia organización de Door43, y por eso **sus proyectos, tareas y avisos nunca se mezclan con los de otro**: la app solo lee y escribe dentro de la organización del espacio elegido.
+Cada espacio es un equipo con su propio trabajo. Pueden estar en **organizaciones distintas**, o en **la misma organización** (con idiomas distintos o con el mismo idioma). En todos los casos **sus proyectos, tareas y avisos no se mezclan**: la app solo lee y escribe dentro del espacio elegido.
 
 ```ts
 {
@@ -23,14 +23,34 @@ Cada espacio tiene su propia organización de Door43, y por eso **sus proyectos,
   lang: "pt-br",               // código de lengua en Door43
   contentOrg: "pt-br_gl",      // organización de los repositorios de contenido
   pmOrg: "pt-br_gl",           // organización donde vive el repositorio gateway-tasks (plan y subtareas)
+  scope: "pt",                 // opcional: lo que lo distingue de otro espacio en la MISMA organización
   uiLanguage: "pt",            // idioma de interfaz con el que empieza este equipo
   name: { es: "Portugués (Brasil)", pt: "Português (Brasil)" },
 }
 ```
 
+### Cuándo hace falta `scope`
+
+- **Un espacio solo en su organización** (cada uno en la suya): no hace falta. Se queda con los nombres de siempre.
+- **Varios espacios en la misma organización**: cada uno necesita un `scope` distinto (solo letras minúsculas, números y guiones). Como mucho **uno** puede no tenerlo; ese conserva los nombres de siempre, así que los datos que ya existían siguen siendo suyos.
+
+Con `scope`, el espacio marca todo lo que escribe y filtra todo lo que lee:
+
+| Qué | Cómo queda con `scope: "pt"` |
+|---|---|
+| Subtareas (incidencias) | llevan la etiqueta `pm/espacio:pt` y solo se listan en ese espacio; un espacio sin scope no ve las que tienen scope |
+| Hitos de cada proyecto | `pt/NEH` en lugar de `NEH` |
+| Archivos del plan, equipos, flujos, niveles de las personas (`config.json`) | bajo `pt/…` en el repositorio `gateway-tasks` |
+| Copias en el navegador | con su propia clave |
+| Menciones y avisos | solo las de subtareas de ese espacio |
+| Un enlace a una subtarea de otro espacio | no la abre: avisa que es de otro espacio |
+
+Qué **sí** se comparte dentro de una organización: los equipos de Door43, el catálogo de herramientas (`solvers.json`) y los repositorios de contenido.
+
+La configuración se valida (consola en desarrollo y `npm run verify:config`): avisa de espacios sin `scope` que comparten organización, de scopes repetidos o con caracteres no válidos.
+
 - Con **un solo espacio**, la bienvenida no pregunta nada y entra directo.
 - Con **varios**, la bienvenida muestra una tarjeta por equipo y sugiere el que habla el idioma de la interfaz.
-- Dos espacios **no pueden compartir `pmOrg`**: la configuración se valida y avisa (en la consola en desarrollo, y en `npm run verify:config`).
 - Quien ya inició sesión puede cambiar de espacio en el diálogo «Sesión»; la app se recarga para que no quede nada del espacio anterior.
 
 ## Cambiar la bienvenida
@@ -47,7 +67,7 @@ La pantalla de bienvenida, el inicio de sesión, los menús principales, el avis
 
 ## Avisos con la app cerrada en cada espacio
 
-El Worker de avisos (`push-worker/`) escucha un webhook por organización. Para cada espacio hay que crear el webhook de Door43 en **su** organización (`pmOrg`), con el mismo secreto. Ver [`push-worker/README.md`](../push-worker/README.md).
+El Worker de avisos (`push-worker/`) escucha un webhook por organización. Hay que crear el webhook de Door43 en cada organización (`pmOrg`) distinta, con el mismo secreto; los espacios que comparten organización comparten el webhook. Ver [`push-worker/README.md`](../push-worker/README.md).
 
 ## Comprobar
 
@@ -55,4 +75,4 @@ El Worker de avisos (`push-worker/`) escucha un webhook por organización. Para 
 npm run verify:config
 ```
 
-Valida la configuración (espacios sin repetir, textos completos en cada idioma) y la lógica de idioma y espacio.
+Valida la configuración (espacios sin repetir, textos completos en cada idioma) y la lógica de idioma y espacio. `npm run verify:scope` comprueba que dos espacios de una misma organización no se ven entre sí.

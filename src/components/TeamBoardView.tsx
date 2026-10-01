@@ -1,3 +1,4 @@
+import { projectFromMilestone } from "../domain/scope";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -53,7 +54,7 @@ export function TeamBoardView({
       const ids = [
         ...new Set(
           open
-            .map((issue) => issue.milestone?.title || parseWorkOrderMarker(issue.body)?.book || "")
+            .map((issue) => projectFromMilestone(issue.milestone?.title) || parseWorkOrderMarker(issue.body)?.book || "")
             .filter(Boolean),
         ),
       ];
@@ -88,7 +89,7 @@ export function TeamBoardView({
       return;
     }
     const projectId = (
-      issue.milestone?.title ||
+      projectFromMilestone(issue.milestone?.title) ||
       parseWorkOrderMarker(issue.body)?.book ||
       ""
     ).toUpperCase();
@@ -137,7 +138,7 @@ export function TeamBoardView({
           {issues.map((issue) => {
             const marker = parseWorkOrderMarker(issue.body);
             const projectId = (
-              issue.milestone?.title ||
+              projectFromMilestone(issue.milestone?.title) ||
               marker?.book ||
               ""
             ).toUpperCase();

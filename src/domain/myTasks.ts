@@ -1,3 +1,4 @@
+import { projectFromMilestone } from "./scope";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import {
@@ -89,7 +90,7 @@ export function userOnTaskTeam(
 
 export function issueProjectId(issue: DcsIssue): string {
   return (
-    issue.milestone?.title ||
+    projectFromMilestone(issue.milestone?.title) ||
     parseWorkOrderMarker(issue.body)?.book ||
     ""
   ).trim();

@@ -1,3 +1,4 @@
+import { projectFromMilestone } from "./scope";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { usfmStudyBookId } from "./books";
 import { resolveTaskPhaseName, resolveTaskPhaseSlug } from "./phaseSlug";
@@ -156,7 +157,7 @@ export function buildSolverLaunchContext(params: {
   const book =
     marker?.book ||
     bookCodeFromIssueTitle(params.issue.title) ||
-    params.issue.milestone?.title ||
+    projectFromMilestone(params.issue.milestone?.title) ||
     params.board.projectId ||
     params.board.book ||
     "";

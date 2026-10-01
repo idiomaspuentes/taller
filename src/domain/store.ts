@@ -1,3 +1,4 @@
+import { scopeFolder, scopeKey } from "./scope";
 import {
   ASSIGNMENTS_SCHEMA,
   type Article,
@@ -906,7 +907,7 @@ export function normalizeAssignmentsDoc(
 }
 
 function storageKey(lang: string, projectId: string): string {
-  return `${STORE_PREFIX}${lang.trim().toLowerCase()}:${normalizeProjectId(projectId)}`;
+  return `${STORE_PREFIX}${scopeKey()}${lang.trim().toLowerCase()}:${normalizeProjectId(projectId)}`;
 }
 
 export function loadLocalAssignments(
@@ -1024,7 +1025,7 @@ export function listLocalProjects(lang: string): string[] {
 }
 
 function projectsIndexKey(lang: string): string {
-  return `${PROJECTS_INDEX_PREFIX}${lang.trim().toLowerCase()}`;
+  return `${PROJECTS_INDEX_PREFIX}${scopeKey()}${lang.trim().toLowerCase()}`;
 }
 
 export function loadLocalProjectsIndex(lang: string): ProjectIndexEntry[] {
@@ -1210,12 +1211,12 @@ export function restoreSessionInventory(): InventoryDoc | null {
 }
 
 export function teamsPath(lang: string): string {
-  return `${lang.trim().toLowerCase()}/teams.json`;
+  return `${scopeFolder()}${lang.trim().toLowerCase()}/teams.json`;
 }
 
 /** Team-shape presets aren't tied to one language or book, so they live at the repo root. */
 export function teamPresetsPath(): string {
-  return "team-presets.json";
+  return `${scopeFolder()}team-presets.json`;
 }
 
 /** Local entries win on a name collision; remote-only presets are added. */
@@ -1229,15 +1230,15 @@ export function mergeTeamPresets(local: TeamPreset[], remote: TeamPreset[]): Tea
 }
 
 export function assignmentsPath(lang: string, projectId: string): string {
-  return `${lang.trim().toLowerCase()}/${normalizeProjectId(projectId)}/assignments.json`;
+  return `${scopeFolder()}${lang.trim().toLowerCase()}/${normalizeProjectId(projectId)}/assignments.json`;
 }
 
 export function inventoryPath(lang: string, book: string): string {
-  return `${lang.trim().toLowerCase()}/${normalizeProjectId(book)}/inventory.json`;
+  return `${scopeFolder()}${lang.trim().toLowerCase()}/${normalizeProjectId(book)}/inventory.json`;
 }
 
 export function projectsIndexPath(lang: string): string {
-  return `${lang.trim().toLowerCase()}/projects.json`;
+  return `${scopeFolder()}${lang.trim().toLowerCase()}/projects.json`;
 }
 
 /** Drop anything specific to one book's structure before a rule is reused as a preset. */
@@ -1274,7 +1275,7 @@ export function normalizeTeamPresets(raw: unknown): TeamPreset[] {
 
 export function loadTeamPresets(): TeamPreset[] {
   try {
-    const raw = localStorage.getItem(TEAM_PRESETS_KEY);
+    const raw = localStorage.getItem(TEAM_PRESETS_KEY + scopeKey());
     if (!raw) return [];
     return normalizeTeamPresets(JSON.parse(raw));
   } catch {
@@ -1284,14 +1285,14 @@ export function loadTeamPresets(): TeamPreset[] {
 
 export function saveTeamPresets(presets: TeamPreset[]): void {
   try {
-    localStorage.setItem(TEAM_PRESETS_KEY, JSON.stringify(presets));
+    localStorage.setItem(TEAM_PRESETS_KEY + scopeKey(), JSON.stringify(presets));
   } catch {
     /* quota */
   }
 }
 
 export function workflowsPath(): string {
-  return "workflows.json";
+  return `${scopeFolder()}workflows.json`;
 }
 
 function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
@@ -1375,7 +1376,7 @@ export function normalizeWorkflowsCatalog(raw: unknown): WorkflowsCatalog {
 
 export function loadLocalWorkflows(): WorkflowsCatalog {
   try {
-    const raw = localStorage.getItem(WORKFLOWS_KEY);
+    const raw = localStorage.getItem(WORKFLOWS_KEY + scopeKey());
     if (!raw) return { schema: WORKFLOWS_SCHEMA, workflows: [] };
     return normalizeWorkflowsCatalog(JSON.parse(raw));
   } catch {
@@ -1386,7 +1387,7 @@ export function loadLocalWorkflows(): WorkflowsCatalog {
 export function saveLocalWorkflows(catalog: WorkflowsCatalog): void {
   try {
     localStorage.setItem(
-      WORKFLOWS_KEY,
+      WORKFLOWS_KEY + scopeKey(),
       JSON.stringify(normalizeWorkflowsCatalog(catalog)),
     );
   } catch {

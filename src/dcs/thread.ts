@@ -1,3 +1,5 @@
+import { issueInScope } from "../domain/scope";
+import { tNow } from "../i18n/messages";
 import { getIssue, listCommits, listIssueComments, type DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
@@ -32,6 +34,8 @@ export async function loadConversationSubject(params: {
 }): Promise<ConversationSubjectData> {
   const { session, pmOrg, lang, contentOrg, issueNumber } = params;
   const issue = await getIssue(dcsConfig(session.host), pmOrg, PM_REPO_NAME, issueNumber, session.token);
+  // A link (a notice, a bookmark) can point to another workspace of the same organization.
+  if (!issueInScope(issue)) throw new Error(tNow("thread.otherSpace"));
   const projectId = issueProjectId(issue);
   const [remote, catalog] = await Promise.all([
     projectId

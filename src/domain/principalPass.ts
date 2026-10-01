@@ -11,6 +11,7 @@
  * the ones the gestor confirmed.
  */
 
+import { projectFromMilestone } from "./scope";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { PrincipalPassMark, ProjectSettings } from "./types";
 import { parseChatEvent } from "./chatEvent";
@@ -64,7 +65,7 @@ export function issuesOfTask(params: {
   return params.issues.filter((issue) => {
     if (issueTaskId(issue, namespaceId) !== params.taskId) return false;
     const marker = parseWorkOrderMarker(issue.body);
-    const issueBook = (marker?.book || issue.milestone?.title || "").trim().toUpperCase();
+    const issueBook = (marker?.book || projectFromMilestone(issue.milestone?.title) || "").trim().toUpperCase();
     return !book || !issueBook || issueBook === book;
   });
 }

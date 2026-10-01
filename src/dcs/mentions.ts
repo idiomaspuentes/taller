@@ -1,5 +1,6 @@
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
+import { activeScope, issueInScope } from "../domain/scope";
 
 /**
  * Door43 notifications for this person (mentions, assignments, comments on issues they take part in),
@@ -39,11 +40,35 @@ function headers(session: GtSession): Record<string, string> {
   return { authorization: `token ${session.token}`, accept: "application/json" };
 }
 
+/** Which issues belong to the active workspace, remembered so each is looked up once. */
+const inSpace = new Map<string, boolean>();
+
+async function belongsToSpace(session: GtSession, org: string, repo: string, issue: number, doFetch: typeof fetch): Promise<boolean> {
+  const key = `${session.host}|${org}|${repo}|${issue}|${activeScope()}`;
+  const known = inSpace.get(key);
+  if (known !== undefined) return known;
+  try {
+    const res = await doFetch(`${dcsConfig(session.host).host}/api/v1/repos/${org}/${repo}/issues/${issue}`, { headers: headers(session) });
+    if (!res.ok) return true; // not able to tell: do not hide a mention
+    const ok = issueInScope((await res.json()) as { labels?: { name: string }[] });
+    inSpace.set(key, ok);
+    return ok;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Notifications are per person, not per workspace. When several workspaces share an organization, only the
+ * mentions of issues of the active one are shown.
+ */
 export async function listMentions(session: GtSession, org: string, repo: string, doFetch: typeof fetch = fetch): Promise<MentionRow[]> {
   const base = `${dcsConfig(session.host).host}/api/v1`;
   const res = await doFetch(`${base}/notifications?status-types=unread&subject-type=issue&limit=50`, { headers: headers(session) });
   if (!res.ok) return [];
-  return mentionRows((await res.json()) as Thread[], org, repo);
+  const rows = mentionRows((await res.json()) as Thread[], org, repo);
+  const keep = await Promise.all(rows.map((row) => belongsToSpace(session, org, repo, row.issue, doFetch)));
+  return rows.filter((_, i) => keep[i]);
 }
 
 export async function markMentionRead(session: GtSession, id: number, doFetch: typeof fetch = fetch): Promise<void> {

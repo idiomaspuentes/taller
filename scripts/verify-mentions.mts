@@ -34,6 +34,7 @@ await test("pide las no leídas con el token y marca una como leída", async () 
   const calls: { url: string; method: string; auth: string }[] = [];
   const fake = (async (input: string, init?: RequestInit) => {
     calls.push({ url: input, method: init?.method ?? "GET", auth: String((init?.headers as Record<string, string>).authorization) });
+    if (/\/issues\/\d+$/.test(input)) return new Response(JSON.stringify({ labels: [] }), { status: 200 });
     return new Response(JSON.stringify([t(1, "es-419_gl/gateway-tasks", "https://q/api/v1/repos/es-419_gl/gateway-tasks/issues/1")]), { status: 200 });
   }) as unknown as typeof fetch;
   const session = { host: "https://qa.door43.org/", token: "tok", username: "abelperez" } as never;
@@ -42,8 +43,8 @@ await test("pide las no leídas con el token y marca una como leída", async () 
   assert.match(calls[0]!.url, /^https:\/\/qa\.door43\.org\/api\/v1\/notifications\?status-types=unread/);
   assert.equal(calls[0]!.auth, "token tok");
   await markMentionRead(session, 1, fake);
-  assert.equal(calls[1]!.method, "PATCH");
-  assert.match(calls[1]!.url, /\/notifications\/threads\/1\?to-status=read$/);
+  const patch = calls.find((c) => c.method === "PATCH")!;
+  assert.match(patch.url, /\/notifications\/threads\/1\?to-status=read$/);
 });
 
 await test("si Door43 no responde bien, no hay menciones y no se rompe nada", async () => {

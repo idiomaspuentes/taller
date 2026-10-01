@@ -30,7 +30,7 @@ test("se avisa de lo que falta o está mal, en palabras claras", () => {
 
   const shared = clone();
   shared.workspaces[1]!.pmOrg = shared.workspaces[0]!.pmOrg.toUpperCase();
-  assert.match(configProblems(shared).join(" "), /no deben compartirla/, "dos espacios en una misma organización mezclarían sus tareas");
+  assert.match(configProblems(shared).join(" "), /comparten la organización .* sin scope/, "dos espacios en una misma organización sin scope mezclarían sus tareas");
 
   const noName = clone();
   noName.workspaces[0]!.name.pt = " ";
@@ -43,6 +43,29 @@ test("se avisa de lo que falta o está mal, en palabras claras", () => {
   const dupId = clone();
   dupId.workspaces[1]!.id = dupId.workspaces[0]!.id;
   assert.match(configProblems(dupId).join(" "), /repetido/);
+});
+
+test("varios espacios pueden compartir organización si su scope los distingue", () => {
+  const ok = clone();
+  ok.workspaces[1]!.pmOrg = ok.workspaces[0]!.pmOrg;
+  ok.workspaces[0]!.scope = "es";
+  ok.workspaces[1]!.scope = "pt";
+  assert.deepEqual(configProblems(ok), [], "dos scopes distintos en una organización");
+
+  const oneBare = clone();
+  oneBare.workspaces[1]!.pmOrg = oneBare.workspaces[0]!.pmOrg;
+  oneBare.workspaces[1]!.scope = "pt";
+  assert.deepEqual(configProblems(oneBare), [], "uno sin scope (el de siempre) y otro con scope");
+
+  const same = clone();
+  same.workspaces[1]!.pmOrg = same.workspaces[0]!.pmOrg;
+  same.workspaces[0]!.scope = "x";
+  same.workspaces[1]!.scope = "X";
+  assert.match(configProblems(same).join(" "), /mismo scope/);
+
+  const bad = clone();
+  bad.workspaces[0]!.scope = "con espacios/y barras";
+  assert.match(configProblems(bad).join(" "), /solo puede tener minúsculas/);
 });
 
 test("español y portugués tienen cada uno su propio espacio, con su organización y su lengua", () => {

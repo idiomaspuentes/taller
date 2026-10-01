@@ -1,3 +1,4 @@
+import { activeScope, issueInScope, scopeFolder, scopeLabelName, scopedMilestone } from "../domain/scope";
 import {
   addIssueAssignees,
   addIssueLabels,
@@ -77,7 +78,7 @@ const FACET_COLORS: Record<string, string> = {
 };
 
 function configPath(): string {
-  return "config.json";
+  return `${scopeFolder()}config.json`;
 }
 
 function solversPath(): string {
@@ -113,6 +114,8 @@ export function pmIssueLabelNames(
   if (order.book) {
     labels.push(pmFacetLabel("libro", order.book.toUpperCase(), namespaceId));
   }
+  // A scoped workspace marks its issues so another workspace in the same organization never lists them.
+  if (activeScope()) labels.push(scopeLabelName(activeScope(), namespaceId));
   return labels;
 }
 
@@ -176,7 +179,7 @@ async function searchPmIssues(
       token: session.token,
       owner: org,
       labels: [pmRootLabel(namespaceId)],
-      milestones: opts.milestones,
+      milestones: opts.milestones?.map((m) => scopedMilestone(m)),
       team: opts.team,
       assigned: opts.assigned,
       type: "issues",
@@ -189,7 +192,7 @@ async function searchPmIssues(
     page += 1;
   }
   return issues.filter(
-    (issue) => isPmNamespacedIssue(issue, namespaceId) && isGatewayTasksRepo(issue),
+    (issue) => isPmNamespacedIssue(issue, namespaceId) && isGatewayTasksRepo(issue) && issueInScope(issue),
   );
 }
 
@@ -586,9 +589,10 @@ async function ensureLabel(
 async function ensureMilestone(
   session: GtSession,
   org: string,
-  title: string,
+  projectTitle: string,
   cache: Map<string, number>,
 ): Promise<number> {
+  const title = scopedMilestone(projectTitle);
   if (cache.has(title)) return cache.get(title)!;
   const config = dcsConfig(session.host);
   const list = await listMilestones(config, org, PM_REPO_NAME, {
