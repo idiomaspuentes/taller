@@ -5,8 +5,7 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import { levelOf, type PersonLevel } from "../domain/levels";
 import { loadPmConfig } from "../dcs/issues";
-import { listMentions, markMentionRead, type MentionRow } from "../dcs/mentions";
-import { PM_REPO_NAME } from "../domain/types";
+import type { MentionRow } from "../dcs/mentions";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import {
@@ -111,6 +110,9 @@ type Props = {
   /** `effectiveCanManage`: gestor view may open any subtarea's thread. */
   canManage: boolean;
   onOpenThread: (issue: number) => void;
+  /** Unread Door43 notifications of the project (mentions, replies), and how to mark one read. */
+  mentions?: MentionRow[];
+  onMentionRead?: (id: number) => void;
   /** ahora: the next thing to do · avisos: what needs attention · lista: every subtarea. */
   mode?: "ahora" | "avisos" | "lista";
 };
@@ -280,24 +282,14 @@ export function MyTasksView({
   onMarkSeen,
   canManage,
   onOpenThread,
+  mentions = [],
+  onMentionRead,
   mode = "lista",
 }: Props) {
   const [projects, setProjects] = useState<MyTasksProjectBucket[]>([]);
   useDecisionReminders(session, pmOrg, projects);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  // Door43 notifications (mentions, replies): shown even for issues the plan does not know.
-  const [mentions, setMentions] = useState<MentionRow[]>([]);
-  useEffect(() => {
-    if (mode !== "avisos" || !pmOrg || !session?.token) return;
-    let live = true;
-    void listMentions(session, pmOrg, PM_REPO_NAME)
-      .then((rows) => live && setMentions(rows))
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, [mode, pmOrg, session?.token]);
   const [error, setError] = useState("");
   const [acting, setActing] = useState<number | null>(null);
   const [conflictIssues, setConflictIssues] = useState<DcsIssue[]>([]);
@@ -1220,8 +1212,7 @@ export function MyTasksView({
                   type="button"
                   size="sm"
                   onClick={() => {
-                    void markMentionRead(session, row.id);
-                    setMentions((rows) => rows.filter((r) => r.id !== row.id));
+                    onMentionRead?.(row.id);
                     onOpenThread(row.issue);
                   }}
                 >

@@ -74,6 +74,8 @@ import { WorkflowsView } from "./components/WorkflowsView";
 import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView";
 import { AppNav } from "./components/AppNav";
 import { PushPrompt } from "./components/PushPrompt";
+import { useMentions } from "./useMentions";
+import { clearNotices } from "./clearNotices";
 import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin } from "./domain/qaAdmin";
 import { resolveResourceRepo } from "./domain/roles";
@@ -158,10 +160,14 @@ export function App() {
   const [catalogLangs, setCatalogLangs] = useState<LanguageOption[]>([]);
 
   const activity = useConversationActivity(session, pmOrg);
+  const mentions = useMentions(session, pmOrg);
+  // Mentions of issues the plan already tracks are counted there; only the others add to the badge.
+  const attentionTotal =
+    activity.unreadCount + mentions.rows.filter((m) => !activity.issues.includes(m.issue)).length;
 
   // Unread count on the installed app icon and in the tab title (best effort).
   useEffect(() => {
-    const count = session ? activity.unreadCount : 0;
+    const count = session ? attentionTotal : 0;
     document.title = count > 0 ? `(${count}) ${APP_TITLE}` : APP_TITLE;
     const nav = navigator as Navigator & {
       setAppBadge?: (n?: number) => Promise<void>;
@@ -169,7 +175,15 @@ export function App() {
     };
     if (count > 0) void nav.setAppBadge?.(count)?.catch(() => {});
     else void nav.clearAppBadge?.()?.catch(() => {});
-  }, [session, activity.unreadCount]);
+  }, [session, attentionTotal]);
+  // A notice on the phone goes away once its subtarea (or the list it leads to) is open in the app.
+  const openedIssue = route.name === "conversacion" ? route.issue : 0;
+  useEffect(() => {
+    if (openedIssue) void clearNotices([`subtarea-${openedIssue}`]);
+  }, [openedIssue]);
+  useEffect(() => {
+    if (route.name === "avisos" || route.name === "mis-tareas") void clearNotices(["asignaciones", "resumen"]);
+  }, [route.name]);
   const [mineIssues, setMineIssues] = useState<DcsIssue[]>([]);
   const { setExtraIssues } = activity;
   const onMineIssues = useCallback(
@@ -1026,7 +1040,7 @@ export function App() {
                   ]
                 : []),
             ]}
-            attentionCount={activity.unreadCount}
+            attentionCount={attentionTotal}
             attentionLinkId="avisos"
             canManage={canManage}
             viewMode={viewMode}
@@ -1118,6 +1132,8 @@ export function App() {
             decisionIssues={activity.decisionIssues}
             onMarkSeen={activity.markSeen}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
+            mentions={mentions.rows}
+            onMentionRead={mentions.markRead}
             canManage={effectiveCanManage}
           />
         ) : null}
@@ -1381,7 +1397,7 @@ export function App() {
       (route.name === "ahora" || route.name === "avisos" || route.name === "mis-tareas") ? (
         <BottomNav
           active={route.name as BottomNavId}
-          attentionCount={activity.unreadCount}
+          attentionCount={attentionTotal}
           onSelect={(id) => navigate({ name: id })}
         />
       ) : null}
