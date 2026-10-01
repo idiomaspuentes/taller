@@ -14,6 +14,8 @@ import {
 } from "../src/domain/verseConflictEvent";
 import { localizeAfinacion } from "../src/domain/afinacionNames";
 import { categoryLabel } from "../src/domain/afinacionNotes";
+import { BootstrapError, explainRepoFileError, type BootstrapStep } from "../src/dcs/repoFile";
+import { DcsApiError } from "@ip-lms/dcs-client";
 import { BOOKS, bookLabel, bookName } from "../src/domain/books";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
@@ -313,6 +315,34 @@ test("las categorías de las notas se traducen y las que no se conocen se dejan"
   assert.equal(localizeAfinacion(categoryLabel("figs-youplural"), "pt"), "«Você» plural");
   assert.equal(localizeAfinacion(categoryLabel(""), "pt"), "Informação geral");
   assert.equal(localizeAfinacion(categoryLabel("figs-algo-nuevo"), "pt"), categoryLabel("figs-algo-nuevo"), "una categoría nueva se muestra como viene");
+});
+
+test("los mensajes de error al guardar el borrador se traducen alrededor del detalle técnico", () => {
+  const ctx = { owner: "pt-br_gl", repo: "pt-br_glt", filepath: "16-NEH.usfm", branch: "w/neh/1" };
+  const steps: BootstrapStep[] = ["repo", "default-branch", "book-branch", "file-create", "file-copy", "task-branch", "pr-close", "work-branch-delete", "trunk-merge", "principal-pass"];
+  const messages: string[] = [];
+  for (const step of steps) {
+    for (const status of [undefined, 404, 403, 500]) {
+      messages.push(explainRepoFileError(new BootstrapError("detalle crudo", step, status), ctx));
+    }
+  }
+  for (const status of [401, 404, 409, 500]) {
+    messages.push(explainRepoFileError(new DcsApiError("x", status, { message: "algo" }), ctx));
+    messages.push(explainRepoFileError(new DcsApiError("x", status), { ...ctx, creating: true }));
+  }
+  for (const branch of ["master", "w/x/1", "archivo/neh", "otra"]) {
+    messages.push(explainRepoFileError(new DcsApiError("x", 404), { ...ctx, branch }));
+  }
+  const frames = /\b(No se pudo|Sin permiso|Falló|Inicia sesión|No existe|No se encontró|Conflicto al|Vuelve a|Detalle técnico|está vacío|reintenta)\b/;
+  for (const es of new Set(messages)) {
+    const pt = localizeThread(es, "pt");
+    assert.ok(!frames.test(pt), `sin traducir: ${es}\n→ ${pt}`);
+    assert.ok(pt.includes("detalle crudo") || !es.includes("detalle crudo"), "el detalle técnico se conserva tal cual");
+  }
+  assert.equal(
+    localizeThread("No se pudo guardar «16-NEH.usfm» en pt-br_gl/pt-br_glt en tu borrador (HTTP 500): algo", "pt"),
+    "Não foi possível salvar «16-NEH.usfm» em pt-br_gl/pt-br_glt no seu rascunho (HTTP 500): algo",
+  );
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

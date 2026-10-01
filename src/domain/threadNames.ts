@@ -68,6 +68,11 @@ const EXACT: [string, string][] = [
   ["Falta el capítulo en la tarea.", "Falta o capítulo na tarefa."],
   ["Todavía no hay borrador grupal de este libro. Se crea cuando alguien cierra una tarea de traducción.", "Ainda não há rascunho do grupo deste livro. Ele é criado quando alguém fecha uma tarefa de tradução."],
   ["No se encontró el borrador grupal de este libro.", "O rascunho do grupo deste livro não foi encontrado."],
+  ["Tu sesión caducó. Vuelve a iniciar sesión.", "Sua sessão expirou. Entre de novo."],
+  ["Falta el código de libro en el contexto.", "Falta o código do livro no contexto."],
+  ["Falta contentOrg en el contexto.", "Falta contentOrg no contexto."],
+  ["Laboratorio: el borrador queda en este navegador. No se escribe en Door43.", "Laboratório: o rascunho fica neste navegador. Nada é escrito no Door43."],
+  ["Para escribir indica una organización de prueba (no uses es-419_gl).", "Para escrever, indique uma organização de teste (não use es-419_gl)."],
   // Buttons that open a tool
   ["Estudiar", "Estudar"],
   ["Abrir editor", "Abrir editor"],
@@ -126,10 +131,68 @@ const PHRASES: [RegExp, string][] = [
   [/Pasó el plazo sin consenso\. Vas a decidir (aceptar|rechazar|cambiarla|mantenerla) en nombre del equipo\./g, "O prazo passou sem consenso. Você vai decidir $1 em nome da equipe."],
 ];
 
+const STEP_PT: Record<string, string> = {
+  repositorio: "repositório",
+  "borrador principal": "rascunho principal",
+  "borrador grupal": "rascunho do grupo",
+  "alta del archivo": "criação do arquivo",
+  "copia del archivo": "cópia do arquivo",
+  "borrador de la subtarea": "rascunho da subtarefa",
+  "cierre de la revisión": "fechamento da revisão",
+  borrador: "rascunho",
+  "guardado en el borrador grupal": "salvamento no rascunho do grupo",
+  "paso al borrador principal": "passagem ao rascunho principal",
+};
+const PLACE_PT: Record<string, string> = {
+  "el archivo del trabajo": "no arquivo do trabalho",
+  "el borrador principal": "no rascunho principal",
+  "tu borrador": "no seu rascunho",
+  "el borrador grupal": "no rascunho do grupo",
+};
+const stepPt = (step: string) => STEP_PT[step] ?? step;
+const placePt = (place: string | undefined) => (place ? ` ${PLACE_PT[place] ?? `em ${place}`}` : "");
+const DETAIL = "Detalle técnico: ";
+const detailPt = (text: string) => text.replace(DETAIL, "Detalhe técnico: ");
+const PLACE_RE = "(?: en (el archivo del trabajo|el borrador principal|tu borrador|el borrador grupal))?";
+const HTTP_RE = "( \\(HTTP \\d+\\))?";
+const repoErr = (body: string) => new RegExp(`^${body}$`, "s");
+
+/** Messages of `explainRepoFileError` and the helpers it frames: the sentence around the technical detail. */
+const REPO_SENTENCES: [RegExp, (m: RegExpExecArray) => string][] = [
+  [repoErr(`Sin permiso para acceder a (\\S+?)${HTTP_RE}\\. Inicia sesión con una cuenta que pueda editar ese repositorio\\.`), (m) => `Sem permissão para acessar ${m[1]}${m[2] ?? ""}. Entre com uma conta que possa editar esse repositório.`],
+  [repoErr(`No existe el repositorio (\\S+?)${HTTP_RE}\\. Crea el repo de TPL o TPS en esa organización, o reintenta si tu sesión puede crearlo\\.`), (m) => `O repositório ${m[1]} não existe${m[2] ?? ""}. Crie o repositório de TPL ou TPS nessa organização, ou tente de novo se a sua sessão puder criá-lo.`],
+  [repoErr(`Falló el repositorio (\\S+?)${HTTP_RE}: (.*)`), (m) => `Falhou o repositório ${m[1]}${m[2] ?? ""}: ${m[3]}`],
+  [repoErr(`El borrador principal de (\\S+?) no existe o está vacío${HTTP_RE}\\. (.*)`), (m) => `O rascunho principal de ${m[1]} não existe ou está vazio${m[2] ?? ""}. ${detailPt(m[3]!)}`],
+  [repoErr(`No se pudo crear o leer el (.+?) en (\\S+?)${HTTP_RE}\\. (.*)`), (m) => `Não foi possível criar ou ler o ${stepPt(m[1]!)} em ${m[2]}${m[3] ?? ""}. ${detailPt(m[4]!)}`],
+  [repoErr(`No se pudo (copiar|crear) «(.+?)» en (\\S+?)${PLACE_RE}${HTTP_RE}\\. (.*)`), (m) => `Não foi possível ${m[1] === "copiar" ? "copiar" : "criar"} «${m[2]}» em ${m[3]}${placePt(m[4])}${m[5] ?? ""}. ${detailPt(m[6]!)}`],
+  [repoErr(`No se pudo crear tu borrador de esta subtarea en (\\S+?)${HTTP_RE}\\. (.*)`), (m) => `Não foi possível criar o seu rascunho desta subtarefa em ${m[1]}${m[2] ?? ""}. ${detailPt(m[3]!)}`],
+  [repoErr(`Sin permiso para cerrar la revisión de esta subtarea en (\\S+?)${HTTP_RE}\\.`), (m) => `Sem permissão para fechar a revisão desta subtarefa em ${m[1]}${m[2] ?? ""}.`],
+  [repoErr(`No se pudo cerrar la revisión anterior de esta subtarea en (\\S+?)${HTTP_RE}\\. (.*)`), (m) => `Não foi possível fechar a revisão anterior desta subtarefa em ${m[1]}${m[2] ?? ""}. ${detailPt(m[3]!)}`],
+  [repoErr(`Sin permiso para borrar tu borrador en (\\S+?)${HTTP_RE}\\.`), (m) => `Sem permissão para apagar o seu rascunho em ${m[1]}${m[2] ?? ""}.`],
+  [repoErr(`No se pudo borrar tu borrador en (\\S+?)${HTTP_RE}\\. (.*)`), (m) => `Não foi possível apagar o seu rascunho em ${m[1]}${m[2] ?? ""}. ${detailPt(m[3]!)}`],
+  [repoErr(`Falló (.+?) en (\\S+?)${HTTP_RE}: (.*)`), (m) => `Falhou ${stepPt(m[1]!)} em ${m[2]}${m[3] ?? ""}: ${detailPt(m[4]!)}`],
+  [repoErr(`Sin permiso para escribir en (\\S+?)${HTTP_RE}\\. Inicia sesión con una cuenta que pueda editar ese repositorio\\.`), (m) => `Sem permissão para escrever em ${m[1]}${m[2] ?? ""}. Entre com uma conta que possa editar esse repositório.`],
+  [repoErr(`No se pudo crear «(.+?)» en (\\S+?)${PLACE_RE}${HTTP_RE}\\. El archivo no existía; Door43 rechazó el alta \\(revisa el repositorio o tu permiso\\)\\.`), (m) => `Não foi possível criar «${m[1]}» em ${m[2]}${placePt(m[3])}${m[4] ?? ""}. O arquivo não existia; o Door43 recusou a criação (verifique o repositório ou a sua permissão).`],
+  [repoErr(`No se encontró «(.+?)» en (\\S+?)${PLACE_RE}${HTTP_RE}\\.`), (m) => `«${m[1]}» não foi encontrado em ${m[2]}${placePt(m[3])}${m[4] ?? ""}.`],
+  [repoErr(`Conflicto al guardar «(.+?)» en (\\S+?)${PLACE_RE}${HTTP_RE}: (.*)\\. Vuelve a cargar y reintenta\\.`), (m) => `Conflito ao salvar «${m[1]}» em ${m[2]}${placePt(m[3])}${m[4] ?? ""}: ${m[5]}. Recarregue e tente de novo.`],
+  [repoErr(`No se pudo guardar «(.+?)» en (\\S+?)${PLACE_RE}${HTTP_RE}: (.*)`), (m) => `Não foi possível salvar «${m[1]}» em ${m[2]}${placePt(m[3])}${m[4] ?? ""}: ${m[5]}`],
+  [/^El repositorio (\S+) no existe\.$/, (m) => `O repositório ${m[1]} não existe.`],
+  [/^Sin permiso para acceder a (\S+)\.$/, (m) => `Sem permissão para acessar ${m[1]}.`],
+  [/^Sin permiso para crear (\S+)\.$/, (m) => `Sem permissão para criar ${m[1]}.`],
+  [/^No se pudo crear el repositorio (\S+?)( \(HTTP \d+\))?\.$/, (m) => `Não foi possível criar o repositório ${m[1]}${m[2] ?? ""}.`],
+  [/^Falta el borrador «(.+)»; no se puede crear el archivo ahí\.$/, (m) => `Falta o rascunho «${m[1]}»; não é possível criar o arquivo ali.`],
+  [/^No hay repo configurado para «(.+?)»\. Añade resourceRepos\.(\S+) en config\.json \(p\. ej\. "(.+)"\)\.$/, (m) => `Não há repositório configurado para «${m[1]}». Adicione resourceRepos.${m[2]} em config.json (p. ex. "${m[3]}").`],
+  [/^«(.+)» parece de producción\. Usa una org de prueba o confirma escritura insegura\.$/, (m) => `«${m[1]}» parece ser de produção. Use uma org de teste ou confirme a escrita insegura.`],
+];
+
 function lookup(text: string): string | undefined {
   const hit = EXACT_MAP.get(text);
   if (hit) return hit;
   for (const [re, fn] of SENTENCES) {
+    const m = re.exec(text);
+    if (m) return fn(m);
+  }
+  for (const [re, fn] of REPO_SENTENCES) {
     const m = re.exec(text);
     if (m) return fn(m);
   }
