@@ -1,0 +1,14 @@
+{
+  "name": "@ip-lms/dcs-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed client for the Door43 (DCS/Gitea) API: auth, content, issues, labels, milestones, notifications, catalog. Copied from the Idiomas Puentes LMS monorepo so Taller builds on its own.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "test": "vitest run"
+  }
+}

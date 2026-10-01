@@ -61,7 +61,7 @@
     "@fontsource-variable/baloo-2": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource-variable/outfit": "^5.3.0",
-    "@ip-lms/dcs-client": "file:../idiomas-puentes-lms/packages/dcs-client",
+    "@ip-lms/dcs-client": "file:packages/dcs-client",
     "@usfm-tools/adapters": "file:../usfm-ast/packages/usfm-adapters",
     "@usfm-tools/checking": "file:../usfm-ast/packages/usfm-editor-checking",
     "@usfm-tools/editor-core": "file:../usfm-ast/packages/usfm-editor-core",
