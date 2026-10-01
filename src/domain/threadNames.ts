@@ -64,6 +64,7 @@ const EXACT: [string, string][] = [
   // System comments
   ["Conflicto de versículos al cerrar", "Conflito de versículos ao fechar"],
   ["Mensaje nuevo", "Mensagem nova"],
+  ["Respuesta", "Resposta"],
   // Errors of the review tools
   ["Falta el capítulo en la tarea.", "Falta o capítulo na tarefa."],
   ["Todavía no hay borrador grupal de este libro. Se crea cuando alguien cierra una tarea de traducción.", "Ainda não há rascunho do grupo deste livro. Ele é criado quando alguém fecha uma tarefa de tradução."],
@@ -181,7 +182,8 @@ const REPO_SENTENCES: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^Sin permiso para crear (\S+)\.$/, (m) => `Sem permissão para criar ${m[1]}.`],
   [/^No se pudo crear el repositorio (\S+?)( \(HTTP \d+\))?\.$/, (m) => `Não foi possível criar o repositório ${m[1]}${m[2] ?? ""}.`],
   [/^Falta el borrador «(.+)»; no se puede crear el archivo ahí\.$/, (m) => `Falta o rascunho «${m[1]}»; não é possível criar o arquivo ali.`],
-  [/^No hay repo configurado para «(.+?)»\. Añade resourceRepos\.(\S+) en config\.json \(p\. ej\. "(.+)"\)\.$/, (m) => `Não há repositório configurado para «${m[1]}». Adicione resourceRepos.${m[2]} em config.json (p. ex. "${m[3]}").`],
+  [/^No hay repo configurado para «(.+?)»\. Añade resourceRepos\.(\S+) en config\.json(?: \(p\. ej\. "(.+)"\))?\.$/, (m) => `Não há repositório configurado para «${m[1]}». Adicione resourceRepos.${m[2]} em config.json${m[3] ? ` (p. ex. "${m[3]}")` : ""}.`],
+  [/^«(.+?)» no es una ayuda \(notas, preguntas, palabras o academia\)\.$/, (m) => `«${m[1]}» não é um auxílio (notas, perguntas, palavras ou academia).`],
   [/^«(.+)» parece de producción\. Usa una org de prueba o confirma escritura insegura\.$/, (m) => `«${m[1]}» parece ser de produção. Use uma org de teste ou confirme a escrita insegura.`],
 ];
 

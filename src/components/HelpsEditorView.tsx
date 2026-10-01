@@ -38,6 +38,10 @@ import { parseTsvTable } from "../prep/tsv";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { localizeName } from "../domain/templateNames";
+import { tNow, useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
 
 type Props = {
   ctxEncoded: string;
@@ -60,7 +64,7 @@ async function readFileOnRef(
     ref,
   });
   if (Array.isArray(meta)) {
-    throw new Error(`«${filepath}» es un directorio, no un archivo.`);
+    throw new Error(tNow("he.dirNotFile").replace("{f}", filepath));
   }
   const text = await getRawContent(config, owner, repo, filepath, {
     token: session.token,
@@ -84,6 +88,9 @@ async function readFilePreferBranch(
 }
 
 export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeThread(text, language);
   const [session, setSession] = useState<GtSession | undefined>(() => loadSession());
   const [ctx, setCtx] = useState<SolverLaunchContext | null>(null);
   const [target, setTarget] = useState<HelpsTarget | null>(null);
@@ -100,7 +107,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
     if (!decoded) {
-      setError("Contexto de lanzamiento inválido o incompleto.");
+      setError(tNow("se.badContext"));
       return;
     }
     setCtx(decoded);
@@ -167,8 +174,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       }
       setError(
         lab
-          ? "Laboratorio sin sesión: el borrador queda en este navegador."
-          : "Sin sesión: el borrador queda en este navegador. Conéctate para guardar en Door43.",
+          ? tNow("he.labNoSession")
+          : tNow("se.noSession"),
       );
       return;
     }
@@ -235,7 +242,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           if (!next.length && lab) next = labPlaceholderHelpsItems(decoded, resolved);
           setItems(next);
           setDirty(usedCache);
-          if (usedCache) announce("Se restauró un borrador local (aún no está en Door43).");
+          if (usedCache) announce(tNow("se.restored"));
           return;
         } catch (err) {
           if (lab) {
@@ -275,7 +282,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setFiles(nextFiles);
       setItems(nextItems.length || !lab ? nextItems : labPlaceholderHelpsItems(decoded, resolved));
       setDirty(usedCache);
-      if (usedCache) announce("Se restauró un borrador local (aún no está en Door43).");
+      if (usedCache) announce(tNow("se.restored"));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -322,13 +329,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     if (!ctx || !target) return;
     persistLocal(items, branch);
     if (!session) {
-      announce("Borrador guardado en este navegador.");
+      announce(tNow("se.savedLocalAnnounce"));
       return;
     }
     if (isLabLaunch(ctx)) {
       const decision = labWriteDecision(ctx);
       if (decision.mode === "local") {
-        announce(decision.reason);
+        announce(loc(decision.reason));
         return;
       }
       if (decision.mode === "blocked") {
@@ -400,7 +407,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setBranch(head);
       setDirty(false);
       persistLocal(items, head);
-      announce(`Guardado en ${target.owner}/${target.repo} @ ${head}`);
+      announce(tNow("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${head}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -423,7 +430,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         ctx.contentOrg,
       );
       if (!board) {
-        throw new Error("No se encontró el plan del proyecto para abrir la revisión.");
+        throw new Error(tNow("se.noPlan"));
       }
       const result = await ensurePortionPr({
         session,
@@ -437,8 +444,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setBranch(result.marker.head);
       announce(
         result.created
-          ? "Revisión abierta para esta subtarea"
-          : "La revisión de esta subtarea ya estaba abierta",
+          ? tNow("se.reviewOpened")
+          : tNow("se.reviewWasOpen"),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -452,11 +459,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       <header className="scripture-editor__head">
         <div className="min-w-0">
           <p className="scripture-editor__kicker">
-            {ctx && isLabLaunch(ctx) ? "Ayudas · laboratorio" : "Ayudas · un borrador por subtarea"}
+            {ctx && isLabLaunch(ctx) ? t("he.kickerLab") : t("he.kicker")}
           </p>
           <h1 className="scripture-editor__title">{title}</h1>
           <p className="scripture-editor__meta">
-            {ctx?.taskName ? `${ctx.taskName} · ` : ""}
+            {ctx?.taskName ? `${localizeName(ctx.taskName, language)} · ` : ""}
             {target ? `${target.owner}/${target.repo}` : "…"}
             {target?.filepath ? `/${target.filepath}` : ""}
             {ctx?.issueNumber ? ` · #${ctx.issueNumber}` : ""}
@@ -464,7 +471,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         </div>
         <div className="scripture-editor__actions">
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cerrar
+            {t("se.close")}
           </Button>
           {ctx && isLabLaunch(ctx) ? null : prUrl ? (
             <Button
@@ -472,7 +479,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               variant="outline"
               onClick={() => window.open(prUrl, "_blank", "noopener,noreferrer")}
             >
-              Abrir en Door43
+              {t("se.openDoor43")}
             </Button>
           ) : (
             <Button
@@ -481,7 +488,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               disabled={busy || openingPr || !session || !ctx?.issueNumber}
               onClick={() => void openPr()}
             >
-              {openingPr ? "Abriendo…" : "Listo para revisión"}
+              {openingPr ? t("se.opening") : t("se.readyForReview")}
             </Button>
           )}
           <Button
@@ -489,31 +496,28 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             disabled={busy || saving || !items.length || (!dirty && Boolean(session))}
             onClick={() => void save()}
           >
-            {saving ? "Guardando…" : session ? "Guardar borrador" : "Guardar local"}
+            {saving ? t("se.saving") : session ? t("he.saveDraft") : t("he.saveLocal")}
           </Button>
         </div>
       </header>
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{loc(error)}</AlertDescription>
         </Alert>
       ) : null}
 
       {busy ? (
-        <p className="scripture-editor__loading">Cargando ayudas…</p>
+        <p className="scripture-editor__loading">{t("he.loading")}</p>
       ) : (
         <div className="scripture-editor__body">
           {!session ? (
             <p className="text-sm text-muted-foreground">
-              Puedes redactar sin red. Al iniciar sesión, Guardar sube tu borrador
-              de esta subtarea (no el borrador principal). La revisión se abre con
-              Listo para revisión.
+              {t("he.offlineHint")}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Un recurso por lanzamiento. Lista de esta porción; el resto del
-              archivo no se toca.
+              {t("he.oneResource")}
             </p>
           )}
           {items.map((item) => (
@@ -528,17 +532,17 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 rows={item.kind === "markdown" ? 8 : 4}
                 value={item.text}
                 onChange={(e) => updateItem(item.id, { text: e.target.value })}
-                placeholder="Texto…"
+                placeholder={t("he.textPlaceholder")}
               />
               {item.secondaryLabel ? (
                 <label className="grid gap-1">
-                  <span className="text-xs text-muted-foreground">{item.secondaryLabel}</span>
+                  <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
                   <textarea
                     className="scripture-editor__input"
                     rows={3}
                     value={item.secondary ?? ""}
                     onChange={(e) => updateItem(item.id, { secondary: e.target.value })}
-                    placeholder={item.secondaryLabel}
+                    placeholder={loc(item.secondaryLabel)}
                   />
                 </label>
               ) : null}
@@ -546,7 +550,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           ))}
           {!items.length && !error ? (
             <p className="text-sm text-muted-foreground">
-              No hay ítems de esta ayuda en la porción.
+              {t("he.noItems")}
             </p>
           ) : null}
         </div>
