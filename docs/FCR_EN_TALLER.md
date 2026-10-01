@@ -334,3 +334,65 @@ Si separamos bien, el FCR completo cabe en **datos**, y el motor queda reutiliza
 4. **Familiarización** como paso de la plantilla.
 5. **Armonización en tres pistas**, con creación de artículos nuevos dentro de la fase.
 6. **Dependencia entre proyectos:** un proceso puede esperar lo que otro publicó.
+
+### Tercera ronda de respuestas (1 de octubre de 2026)
+
+- **Quién confirma el consenso.** Cada equipo (por ejemplo, «Traducir borrador del TPL») tiene un
+  **coordinador**. La decisión final la confirma el coordinador o una **persona habilitada** de ese
+  equipo.
+- **Validación.** Todavía no es definitivo. La idea: si un pastor tiene una objeción, **los demás
+  deben conocerla**; si después de eso no hay consenso, **se aprueba por mayoría**. (Esto difiere de
+  la guía, donde una objeción seria bloquea el aval.)
+- **Lengua minoritaria.** La comprobación con la comunidad la hace y la registra **una persona del
+  equipo de esa lengua** (hablante nativa, miembro del grupo), igual que hay un equipo de español y
+  uno de portugués. La comunidad no usa la app.
+- **Cómo se sabe que algo está armonizado.** Con las listas de comprobación del antiguo «paso 6»
+  (presentación *GL Step 6*). Cada **ítem** (una nota, una palabra) se revisa con preguntas de sí o
+  no frente a los textos afinados. Si alguna respuesta es «no», se corrige el recurso, se agrega lo
+  que falta o se avisa al dueño del texto.
+
+#### Listas de comprobación de Armonización (del antiguo paso 6)
+
+**Notas frente al TPL** (por cada nota):
+1. ¿Tiene sentido con el texto del TPL?
+2. ¿Es útil: el traductor sabe qué hacer con la dificultad?
+3. ¿Cada dificultad del TPL tiene una nota que la explique? (se revisa por versículo)
+4. ¿Cada traducción alternativa encaja exactamente en la frase que reemplaza?
+
+Si «no»: editar la nota o agregar la que falta.
+
+**Notas frente al TPS** (por cada nota):
+1. ¿Explica bien el texto del TPS?
+2. ¿Ayuda a ver cómo el TPS «llegó ahí» desde el TPL?
+3. ¿Cada diferencia importante entre el TPL y el TPS tiene una nota?
+4. Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?
+
+**Palabras frente al TPL** (por cada término):
+1. ¿La definición del artículo es correcta para este contexto del TPL?
+   - Si no: ¿hace falta un **artículo nuevo** para este sentido? ¿O hay que cambiar el artículo, o el
+     texto del TPL (eso va a Afinación)?
+2. ¿Cada palabra difícil del TPL tiene su artículo?
+   - Si no: enlazar el artículo existente o crear el que falta.
+
+**Palabras frente al TPS:** no aplica (las definiciones son para las palabras del TPL). Opcional:
+¿la forma en que el TPS dice el término aparece en las «sugerencias de traducción» del artículo? Si
+no, agregarla.
+
+**Revisión final del paquete** (antiguo paso 8, versículo por versículo): ¿tiene sentido?, ¿es
+útil?, ¿hay errores? Se anotan los problemas para el equipo dueño.
+
+**Lo que la presentación no trae:** una lista para **Preguntas** y otra para **Academia**.
+
+### Lo que esto agrega al diseño
+
+7. **Lista de comprobación por ítem, definida en la plantilla.** Un paso puede declarar sus preguntas
+   de sí o no. La herramienta recorre los ítems (notas, términos, versículos) y guarda la respuesta
+   de cada pregunta. El paso se completa cuando todos los ítems tienen todo en «sí», o lo que estaba
+   en «no» quedó corregido o enviado a su dueño. Es la misma mecánica de «ítem por ítem» de la
+   Afinación, con las preguntas como datos. Sirve igual para la revisión comunitaria en una lengua
+   minoritaria.
+8. **Salidas de un «no»:** corregir aquí, crear un ítem nuevo (nota o artículo), o **enviar al
+   dueño** (Afinación si el problema es del TPL o del TPS).
+9. **Coordinador por equipo:** quien confirma una decisión final y asigna niveles en su equipo.
+10. **Regla de decisión configurable por paso:** consenso con decisión final (Afinación), o mayoría
+    con objeciones visibles para todos (Validación, por confirmar).
