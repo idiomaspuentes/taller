@@ -1,7 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { applyMockSessionFromUrl } from "./devMockSession";
 import "./index.css";
+
+applyMockSessionFromUrl();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
