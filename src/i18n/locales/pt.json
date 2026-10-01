@@ -1325,5 +1325,15 @@
   "signIn.forgot": "Esqueceu sua senha?",
   "signIn.createAccount": "Criar uma conta",
   "signIn.trust": "Pedimos só as permissões necessárias para ler e guardar suas tarefas, e sua senha não é guardada.",
-  "nav.manage": "Gestão"
+  "nav.manage": "Gestão",
+  "nav.me": "Eu",
+  "menu.open": "Seu menu",
+  "menu.profile": "Meu perfil",
+  "menu.notifications": "Avisos neste dispositivo",
+  "menu.teamSettings": "Configurações da equipe",
+  "menu.team": "Sua equipe",
+  "menu.openFromDoor43": "Abrir um projeto do Door43",
+  "menu.sessionSettings": "Idioma e organização",
+  "menu.testing": "Testes",
+  "menu.previewTeam": "Ver como pessoa da equipe"
 }

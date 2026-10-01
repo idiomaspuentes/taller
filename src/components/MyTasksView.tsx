@@ -119,6 +119,8 @@ type Props = {
   /** Unread Door43 notifications of the project (mentions, replies), and how to mark one read. */
   mentions?: MentionRow[];
   onMentionRead?: (id: number) => void;
+  /** People who coordinate have no «Ahora» page: their next step is shown at the top of «Mis tareas». */
+  showNow?: boolean;
   /** ahora: the next thing to do · avisos: what needs attention · lista: every subtarea. */
   mode?: "ahora" | "avisos" | "lista";
 };
@@ -290,8 +292,12 @@ export function MyTasksView({
   onOpenThread,
   mentions = [],
   onMentionRead,
+  showNow = false,
   mode = "lista",
 }: Props) {
+  // Declared first: helpers below (waiting reasons, messages) use them while the component renders.
+  const t = useT();
+  const language = useUiLanguage();
   const [projects, setProjects] = useState<MyTasksProjectBucket[]>([]);
   useDecisionReminders(session, pmOrg, projects);
   const [busy, setBusy] = useState(false);
@@ -1001,8 +1007,6 @@ export function MyTasksView({
     visibleProjects.length === 0 &&
     stepOffers.length === 0;
   const showQueue = visibleProjects.length > 0 || stepOffers.length > 0;
-  const t = useT();
-  const language = useUiLanguage();
   const hadWork = useHadWork(
     hadWorkKey(session.host, session.username, pmOrg),
     loaded && !busy,
@@ -1103,7 +1107,7 @@ export function MyTasksView({
       ) : null}
 
 
-      {pmOrg && loaded && mode === "ahora" && (nowDecide || nowMine || nowFree) ? (
+      {pmOrg && loaded && (mode === "ahora" || (mode === "lista" && showNow)) && (nowDecide || nowMine || nowFree) ? (
         <section className="hub-now" aria-labelledby="hub-now-title">
           <p className="hub-now__kicker" id="hub-now-title">{t("nav.now")}</p>
           {nowDecide ? (

@@ -64,6 +64,8 @@ Orden acordado para lo que sigue; Abel prueba la app y va diciendo qué cambiar,
 
 **Cambios pedidos tras probar** *(se añaden aquí a medida que lleguen)*:
 - **Menú de quien coordina** (2 de octubre): demasiados elementos. Proyectos, Organización y Plantillas pasan a un desplegable «Gestión»; queda Ahora · Mis tareas · Avisos · Equipo hoy · Gestión. En el teléfono el menú sigue plano. El Laboratorio solo existe en desarrollo.
+- **Navegación por rol y menú de la persona** (2 de octubre), tras una revisión de diseño: la barra muestra solo lo diario de cada rol (equipo: Ahora · Mis tareas · Avisos; coordinación: Equipo hoy · Mis tareas · Avisos · Proyectos), igual en la barra inferior del teléfono (equipo con «Yo»). Todo lo personal pasa a un menú en el avatar (perfil, equipo, idioma, avisos, ajustes del equipo, cerrar sesión); desaparecen el chip de la cabecera, el menú «···» y la vista de rol (queda como «Ver como persona del equipo» solo en desarrollo y en QA). Quien coordina entra a «Equipo hoy» y ve su siguiente paso arriba de «Mis tareas». Se descartó el desplegable «Gestión» del cambio anterior.
+- **Fallo corregido** (2 de octubre): «Mis tareas» y «Ahora» se caían con una subtarea en espera (se usaba el idioma antes de declararlo). Venía del commit que tradujo las razones de espera y estaba publicado.
 
 ## Qué sigue (por prioridad)
 

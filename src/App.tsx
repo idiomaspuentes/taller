@@ -11,8 +11,8 @@ import { Welcome } from "./components/Welcome";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
 import { defaultContentOrg, normalizeProjectId, projectDisplayName } from "./domain/books";
-import { languageChipLabel, normalizeLangCode, type LanguageOption } from "./domain/languages";
-import { mergeOrgs, orgChipLabel, orgSlug } from "./domain/orgs";
+import { normalizeLangCode, type LanguageOption } from "./domain/languages";
+import { mergeOrgs, orgSlug } from "./domain/orgs";
 import { loadDoor43Languages } from "./dcs/languages";
 import { slugifyPhase } from "./domain/phaseSlug";
 import type { AssignmentsDoc, InventoryDoc, ProjectIndexEntry } from "./domain/types";
@@ -64,7 +64,7 @@ import { AdvanceView } from "./components/AdvanceView";
 import { AfinacionView } from "./components/AfinacionView";
 import { AlineacionView } from "./components/AlineacionView";
 import { TeamTodayView } from "./components/TeamTodayView";
-import { BottomNav, type BottomNavId } from "./components/BottomNav";
+import { itemsFor, BottomNav, type BottomNavId } from "./components/BottomNav";
 import { MyTasksView } from "./components/MyTasksView";
 import { ConflictSandboxView } from "./components/ConflictSandboxView";
 import { ConversationView } from "./components/ConversationView";
@@ -85,11 +85,11 @@ import { PushPrompt } from "./components/PushPrompt";
 import { useMentions } from "./useMentions";
 import { Onboarding } from "./components/Onboarding";
 import { ProfileView } from "./components/ProfileView";
-import { initialsOf } from "./domain/profile";
 import { useOnboarding } from "./onboarding";
 import { clearNotices } from "./clearNotices";
 import { QaAdminDialog } from "./components/QaAdminDialog";
-import { canShowQaAdmin } from "./domain/qaAdmin";
+import { canShowQaAdmin, isProductionHost } from "./domain/qaAdmin";
+import { UserMenu } from "./components/UserMenu";
 import { resolveResourceRepo } from "./domain/roles";
 import { StepNav, SubStepTabs, stepEnabled, type StepId } from "./components/StepNav";
 import { landingRoute, useHashRoute } from "./router";
@@ -103,6 +103,9 @@ import {
 } from "./viewMode";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+
+/** Pages that keep the phone's bottom bar: the daily places and the personal ones. */
+const BOTTOM_NAV_ROUTES: string[] = ["ahora", "avisos", "mis-tareas", "perfil", "hoy", "proyectos", "organizacion", "plantillas"];
 
 const SETUP_DONE_KEY = "gt-context-confirmed";
 
@@ -234,8 +237,13 @@ export function App() {
   /** Real DCS capability — role-toggle visibility and never elevated by preview. */
   const canManage = Boolean(session?.canManage);
   /** UI gates / nav / landing — demoted when admin previews trabajador. */
-  const effectiveCanManage = computeEffectiveCanManage(canManage, viewMode);
-  const showQaAdmin = canShowQaAdmin({ host: session?.host, canManage, viewMode });
+  // Seeing the app «as a person of the team» is for testing (development or a test server), not a choice for people.
+  const canPreview = canManage && (Boolean(import.meta.env.DEV) || Boolean(session && !isProductionHost(session.host)));
+  const roleView: ViewMode = canPreview ? viewMode : "gestor";
+  const effectiveCanManage = computeEffectiveCanManage(canManage, roleView);
+  const showQaAdmin = canShowQaAdmin({ host: session?.host, canManage, viewMode: roleView });
+  const myTasksActive =
+    route.name === "mis-tareas" || route.name === "conversacion" || route.name === "conflicto-prueba" || route.name === "equipo";
   const [qaAdminOpen, setQaAdminOpen] = useState(false);
   const projectStep: StepId | null = route.name === "proyecto" ? route.step : null;
 
@@ -326,11 +334,11 @@ export function App() {
 
   // Kick managers out of manager-only routes while previewing trabajador.
   useEffect(() => {
-    if (!canManage || viewMode !== "trabajador") return;
+    if (!canManage || roleView !== "trabajador") return;
     if (route.name === "hoy" || route.name === "proyectos" || route.name === "proyecto") {
       navigate({ name: "ahora" });
     }
-  }, [canManage, viewMode, route.name, navigate]);
+  }, [canManage, roleView, route.name, navigate]);
 
   // Sync workspace project id from route (`projectId` may be a book code today).
   useEffect(() => {
@@ -830,9 +838,6 @@ export function App() {
     setBoard(loadLocalAssignments(code, book, defaultContentOrg(code), pmOrg));
   }
 
-  const langChip = languageChipLabel(lang, catalogLangs, uiLanguage);
-  const pmChip = orgChipLabel(pmOrg, knownOrgs);
-  const identityLabel = pmOrg ? `${langChip} · ${pmChip}` : langChip;
   const hasInventory = Boolean(inventory);
 
   const sessionExpiredAlert =
@@ -1017,70 +1022,11 @@ export function App() {
         <div className="app-header__bar">
           <div className="app-header__brand">
             <BrandMark />
-            <button
-              type="button"
-              className="app-workspace"
-              title={session ? t("header.yourSession") : t("header.signIn")}
-              onClick={() => {
-                if (session) setWorkspaceOpen(true);
-                else setSignInOpen(true);
-              }}
-            >
-              <i
-                className="app-workspace__dot"
-                data-ok={session ? "true" : "false"}
-                aria-hidden
-              />
-              <span className="app-workspace__label">
-                {session ? identityLabel : t("header.signIn")}
-              </span>
-              {book && effectiveCanManage ? (
-                <span className="hidden text-muted-foreground sm:inline">· {book}</span>
-              ) : null}
-            </button>
-            {session ? (
-              <button
-                type="button"
-                className="app-avatar"
-                data-active={route.name === "perfil" ? "true" : undefined}
-                aria-label={t("nav.profile")}
-                title={t("nav.profile")}
-                onClick={() => navigate({ name: "perfil" })}
-              >
-                {session.avatarUrl ? (
-                  <img src={session.avatarUrl} alt="" width={28} height={28} />
-                ) : (
-                  <span aria-hidden>{initialsOf(session.username)}</span>
-                )}
-              </button>
-            ) : null}
           </div>
 
           <AppNav
-            links={[
-              {
-                id: "ahora",
-                label: t("nav.now"),
-                active: route.name === "ahora",
-                onSelect: () => navigate({ name: "ahora" }),
-              },
-              {
-                id: "mis-tareas",
-                label: t("nav.myTasks"),
-                active:
-                  route.name === "mis-tareas" ||
-                  route.name === "conversacion" ||
-                  route.name === "conflicto-prueba" ||
-                  route.name === "equipo",
-                onSelect: () => navigate({ name: "mis-tareas" }),
-              },
-              {
-                id: "avisos",
-                label: t("nav.alerts"),
-                active: route.name === "avisos",
-                onSelect: () => navigate({ name: "avisos" }),
-              },
-              ...(effectiveCanManage
+            links={
+              effectiveCanManage
                 ? [
                     {
                       id: "hoy",
@@ -1089,59 +1035,74 @@ export function App() {
                       onSelect: () => navigate({ name: "hoy" }),
                     },
                     {
+                      id: "mis-tareas",
+                      label: t("nav.myTasks"),
+                      active: myTasksActive,
+                      onSelect: () => navigate({ name: "mis-tareas" }),
+                    },
+                    {
+                      id: "avisos",
+                      label: t("nav.alerts"),
+                      active: route.name === "avisos",
+                      onSelect: () => navigate({ name: "avisos" }),
+                    },
+                    {
                       id: "proyectos",
                       label: t("nav.projects"),
                       active: route.name === "proyectos" || route.name === "proyecto",
                       onSelect: () => navigate({ name: "proyectos" }),
-                      group: t("nav.manage"),
                     },
                   ]
-                : []),
-              {
-                id: "perfil",
-                label: t("nav.profile"),
-                active: route.name === "perfil",
-                onSelect: () => navigate({ name: "perfil" }),
-                menuOnly: true,
-              },
-              {
-                id: "organizacion",
-                label: t("nav.organization"),
-                active: route.name === "organizacion",
-                onSelect: () => navigate({ name: "organizacion" }),
-                // For people who coordinate it joins Proyectos and Plantillas under «Gestión»; for the rest it stays alone.
-                ...(effectiveCanManage ? { group: t("nav.manage") } : {}),
-              },
-              ...(effectiveCanManage
-                ? [
+                : [
                     {
-                      id: "plantillas",
-                      label: t("nav.templates"),
-                      active: route.name === "plantillas",
-                      onSelect: () => navigate({ name: "plantillas" }),
-                      group: t("nav.manage"),
+                      id: "ahora",
+                      label: t("nav.now"),
+                      active: route.name === "ahora",
+                      onSelect: () => navigate({ name: "ahora" }),
                     },
-                  ]
-                : []),
-              ...(import.meta.env.DEV
-                ? [
                     {
-                      id: "lab",
-                      label: t("nav.lab"),
-                      active: route.name === "solver-lab",
-                      onSelect: () => navigate({ name: "solver-lab" }),
+                      id: "mis-tareas",
+                      label: t("nav.myTasks"),
+                      active: myTasksActive,
+                      onSelect: () => navigate({ name: "mis-tareas" }),
+                    },
+                    {
+                      id: "avisos",
+                      label: t("nav.alerts"),
+                      active: route.name === "avisos",
+                      onSelect: () => navigate({ name: "avisos" }),
                     },
                   ]
-                : []),
-            ]}
+            }
             attentionCount={attentionTotal}
             attentionLinkId="avisos"
-            canManage={canManage}
-            viewMode={viewMode}
-            onViewModeChange={setViewModeAndPersist}
-            onOpenQaAdmin={showQaAdmin ? () => setQaAdminOpen(true) : undefined}
-            signedIn={Boolean(session)}
           />
+
+          {session ? (
+            <UserMenu
+              session={session}
+              coordinator={effectiveCanManage}
+              workspaces={workspace ? tallerConfig.workspaces : []}
+              workspaceId={workspace?.id}
+              onChooseWorkspace={chooseWorkspace}
+              onOpenProfile={() => navigate({ name: "perfil" })}
+              onOpenOrganization={() => navigate({ name: "organizacion" })}
+              onOpenTemplates={() => navigate({ name: "plantillas" })}
+              onOpenFromDoor43={effectiveCanManage ? () => void openFromDcs() : undefined}
+              onOpenSessionSettings={workspace ? undefined : () => setWorkspaceOpen(true)}
+              preview={canPreview ? { on: viewMode === "trabajador", toggle: () => setViewModeAndPersist(viewMode === "trabajador" ? "gestor" : "trabajador") } : undefined}
+              onOpenQaAdmin={showQaAdmin ? () => setQaAdminOpen(true) : undefined}
+              onOpenLab={import.meta.env.DEV ? () => navigate({ name: "solver-lab" }) : undefined}
+              onSignOut={() => {
+                signOut();
+                setSession(null);
+              }}
+            />
+          ) : (
+            <button type="button" className="app-workspace" onClick={() => setSignInOpen(true)}>
+              {t("header.signIn")}
+            </button>
+          )}
         </div>
 
           {route.name === "proyecto" && effectiveCanManage ? (
@@ -1219,6 +1180,7 @@ export function App() {
         {(route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos") && session ? (
           <MyTasksView
             mode={route.name === "mis-tareas" ? "lista" : route.name}
+            showNow={effectiveCanManage}
             session={session}
             pmOrg={pmOrg}
             lang={lang}
@@ -1514,11 +1476,11 @@ export function App() {
         />
       ) : null}
 
-      {session &&
-      (route.name === "ahora" || route.name === "avisos" || route.name === "mis-tareas" || route.name === "perfil") ? (
+      {session && BOTTOM_NAV_ROUTES.includes(route.name) ? (
         <BottomNav
-          active={route.name === "perfil" ? null : (route.name as BottomNavId)}
+          active={(itemsFor(effectiveCanManage) as string[]).includes(route.name) ? (route.name as BottomNavId) : null}
           attentionCount={attentionTotal}
+          coordinator={effectiveCanManage}
           onSelect={(id) => navigate({ name: id })}
         />
       ) : null}
