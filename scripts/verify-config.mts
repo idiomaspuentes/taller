@@ -4,6 +4,7 @@ import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type Talle
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
 import { appTitle } from "../src/brand";
+import { buildManifest } from "../src/manifest";
 import { localizeHold, localizeName } from "../src/domain/templateNames";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
@@ -172,6 +173,19 @@ test("el título del sitio es el nombre de la app más el nombre corto de la org
   const noShort = clone();
   noShort.brand.short = " ";
   assert.match(configProblems(noShort).join(" "), /brand\.short/);
+});
+
+test("el nombre con que se instala la app sigue el idioma de la interfaz", () => {
+  const es = buildManifest("es", "https://taller.example/") as { name: string; short_name: string; lang: string; start_url: string; scope: string; icons: { src: string }[] };
+  const pt = buildManifest("pt", "https://taller.example/") as typeof es;
+  assert.equal(es.name, "Taller Id");
+  assert.equal(es.short_name, "Taller");
+  assert.equal(pt.name, "Ateliê Id");
+  assert.equal(pt.short_name, "Ateliê");
+  assert.equal(pt.lang, "pt");
+  assert.equal(pt.start_url, "https://taller.example/#/mis-tareas", "todo absoluto: un manifest en memoria no tiene dónde resolver rutas");
+  assert.equal(pt.scope, "https://taller.example/");
+  assert.ok(pt.icons.every((i) => i.src.startsWith("https://taller.example/")));
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

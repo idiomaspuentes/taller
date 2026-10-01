@@ -49,6 +49,12 @@ export function setUiLanguage(next: UiLanguage): void {
   listeners.forEach((fn) => fn());
 }
 
+/** Calls `fn` whenever the interface language changes; returns how to stop. */
+export function onUiLanguageChange(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 export function useUiLanguage(): UiLanguage {
   return useSyncExternalStore(
     (fn) => {

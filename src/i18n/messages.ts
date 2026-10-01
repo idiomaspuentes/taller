@@ -3,6 +3,7 @@ import { getUiLanguage, useUiLanguage } from "./language";
 
 /** Texts of the app that are not specific to one organization. The organization's own words live in taller.config.ts. */
 const es = {
+  "app.description": "Tus tareas de traducción en un solo lugar.",
   "nav.now": "Ahora",
   "nav.myTasks": "Mis tareas",
   "nav.alerts": "Avisos",
@@ -164,6 +165,7 @@ const es = {
 export type MessageKey = keyof typeof es;
 
 const pt: Record<MessageKey, string> = {
+  "app.description": "Suas tarefas de tradução em um só lugar.",
   "nav.now": "Agora",
   "nav.myTasks": "Minhas tarefas",
   "nav.alerts": "Avisos",
