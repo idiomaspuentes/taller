@@ -50,8 +50,10 @@ Cada **tarea** se describe con una tabla de **pasos**. Cada paso dice:
 - **Coordinador:** cada equipo tiene uno. Reparte, confirma decisiones finales y asigna niveles en
   su equipo.
 - Solo las **personas habilitadas** cuentan para los mínimos y pueden cerrar.
-- **Observador** ve el trabajo y no toma tareas. **Aprendiz** trabaja acompañado **(por confirmar:
-  cómo se registra el acompañamiento)**.
+- **Observador** ve el trabajo y no toma tareas. **Aprendiz** trabaja acompañado; por ahora el
+  acompañamiento se lleva **fuera de la app** (es una práctica nueva).
+- Las **cualificaciones** de cada persona (por ejemplo, dominio del hebreo o del griego) tampoco se
+  registran todavía; podrán agregarse después.
 
 ---
 
@@ -103,7 +105,7 @@ La familiarización es **por capítulo**: quien ya la hizo para un capítulo no 
 porciones de ese capítulo, y la introducción al libro se lee una sola vez. Lo mismo vale para la
 familiarización del TPL y del TPS.
 
-**(Por confirmar:** si alguna ayuda lleva también revisión grupal.)
+Las ayudas **no llevan revisión grupal**.
 
 ### 3.5 Traducir Palabras · 3.6 Traducir Academia
 
@@ -138,9 +140,16 @@ grupo reúne 3 o más.
 **Nombres:** hoy el paso 1 se llama «Revisar notas» en Taller; la guía lo llama «desafíos de
 traducción». Propongo el nombre de la guía.
 
-**(Por confirmar:**
-- si las palabras clave se revisan por porción o por capítulo completo;
-- si «dominio del idioma bíblico» se registra aparte del nivel, hebreo o griego.)
+**Cómo funciona el paso 2, palabras clave:**
+- Se revisa **por capítulo** (o por tramo, si el capítulo se partió), no por porción.
+- La **lista de palabras del inglés (TWL)** es el mapa: dice qué palabras clave hay en el capítulo y
+  en qué versículo está cada una, con el enlace a su **artículo de Palabras** (qué significa y a qué
+  se refiere).
+- Se avanza **palabra por palabra**. Para cada una, la herramienta muestra **todos los versículos ya
+  traducidos donde aparece**, uno debajo de otro, como hace translationCore, para comparar cómo se
+  tradujo en cada caso.
+- Dos comprobaciones por palabra: que esté traducida **correctamente** respecto al idioma original,
+  y que su traducción sea **consistente** en todos los lugares.
 
 **Al entregar:** el texto afinado pasa al borrador del grupo. Desde aquí, **solo Afinación** cambia
 el TPL y el TPS.
@@ -152,8 +161,8 @@ el TPL y el TPS.
 **Propósito:** ajustar los recursos de apoyo a los textos ya afinados.
 
 **Tres pistas**, cada una con su equipo y su coordinador.
-**Espera a:** la Traducción de sus recursos y la Afinación del TPL **y** del TPS, de toda la unidad
-de traspaso **(por confirmar que son los dos textos)**.
+**Espera a:** la Afinación del TPL **y** del TPS, y la Traducción de las ayudas de esa pista, todo de
+la misma unidad de traspaso. Sin los dos textos afinados y sus ayudas listas, la pista no avanza.
 **Quién:** personas habilitadas en Armonización. Cierra una persona distinta de quien preparó el
 recurso.
 
@@ -299,11 +308,10 @@ lo demás ya está en las cuatro reglas de cierre.
 
 ## 10. Pendientes para cerrar la plantilla
 
-1. Acompañamiento del **Aprendiz**: cómo se registra.
-2. Ayudas en Traducción: ¿alguna lleva revisión grupal?
-3. Palabras clave en Afinación: ¿por porción o por capítulo?
-4. «Dominio del idioma bíblico»: ¿se registra por persona?
-5. Armonización: ¿espera al TPL **y** al TPS?
-6. Listas C (Academia) y F (Preguntas): revisarlas o reemplazarlas.
-7. Validación: regla definitiva del aval.
-8. Publicación: ¿por unidad o por versión?
+1. Listas C (Academia) y F (Preguntas): las redacté yo; hay que revisarlas o reemplazarlas.
+2. Validación: la regla definitiva del aval.
+3. Publicación: ¿cada unidad en cuanto tiene aval, o varias juntas en una versión?
+
+Resuelto: el acompañamiento del Aprendiz y las cualificaciones quedan fuera de la app por ahora; las
+ayudas no llevan revisión grupal; las palabras clave se revisan por capítulo; Armonización espera al
+TPL, al TPS y a sus ayudas.
