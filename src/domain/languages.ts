@@ -1,3 +1,4 @@
+import glossary from "../i18n/locales/glossary.pt.json";
 /**
  * Workspace language codes as Door43 stores them (`lc`, e.g. `es-419`).
  * Catalog comes from GET /api/v1/languages/langnames.json (or its snapshot).
@@ -37,14 +38,7 @@ const SHORT_CHIP: Record<string, string> = {
   fr: "Francés",
 };
 
-const SHORT_CHIP_PT: Record<string, string> = {
-  "es-419": "Espanhol",
-  es: "Espanhol",
-  en: "Inglês",
-  "pt-br": "Português",
-  pt: "Português",
-  fr: "Francês",
-};
+const SHORT_CHIP_PT: Record<string, string> = glossary.languages;
 
 const BUNDLED_ASSET = "/data/door43-languages.json";
 

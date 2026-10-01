@@ -6,82 +6,18 @@
  * wrote is never passed through here (only text the app generated).
  */
 import type { UiLanguage } from "../config";
+import glossary from "../i18n/locales/glossary.pt.json";
 
 /** Options of an alignment decision; the card may add « (2) ✓» after them. */
-const LABELS: [string, string][] = [
-  ["Aceptar la propuesta", "Aceitar a proposta"],
-  ["Rechazar la propuesta", "Rejeitar a proposta"],
-  ["Hay que cambiar la alineación", "É preciso mudar o alinhamento"],
-  ["Mantener la alineación", "Manter o alinhamento"],
-];
+const LABELS: [string, string][] = Object.entries(glossary.threadOptions);
 
 /** How an alignment decision ended; it ends a longer line. */
-const CLOSINGS: [string, string][] = [
-  ["Se aceptó la propuesta y la alineación quedó cambiada.", "A proposta foi aceita e o alinhamento foi alterado."],
-  ["Se rechazó la propuesta; la alineación sigue igual.", "A proposta foi rejeitada; o alinhamento continua igual."],
-  ["La objeción prospera: hay que ajustar la alineación.", "A objeção procede: é preciso ajustar o alinhamento."],
-  ["La objeción no prospera; la alineación se mantiene.", "A objeção não procede; o alinhamento é mantido."],
-  ["La alineación cambió mientras se decidía, así que la propuesta ya no aplica.", "O alinhamento mudou enquanto se decidia, então a proposta não se aplica mais."],
-];
+const CLOSINGS: [string, string][] = Object.entries(glossary.threadClosings);
 
 /** The whole string, as it is. */
-const EXACT: [string, string][] = [
-  ["Confirmar el consenso y cerrar", "Confirmar o consenso e encerrar"],
-  // Panels
-  ["Texto del versículo", "Texto do versículo"],
-  ["Alineación ahora", "Alinhamento agora"],
-  ["Alineación propuesta", "Alinhamento proposto"],
-  ["Palabras señaladas", "Palavras indicadas"],
-  ["cambia", "muda"],
-  ["lo que cambia va resaltado", "o que muda está destacado"],
-  ["propuesta", "proposta"],
-  ["lo objetado va en amarillo", "o que foi contestado está em amarelo"],
-  ["grupal", "do grupo"],
-  ["(vacío)", "(vazio)"],
-  ["Tu versión", "Sua versão"],
-  ["Borrador grupal anterior", "Rascunho do grupo anterior"],
-  // What the card says while it works or why it cannot
-  ["Guardando…", "Salvando…"],
-  ["Guardando tu voto…", "Salvando seu voto…"],
-  ["Cerrando la decisión…", "Encerrando a decisão…"],
-  ["Guardando la decisión…", "Salvando a decisão…"],
-  ["Guardando en el borrador grupal…", "Salvando no rascunho do grupo…"],
-  ["Comprobando los votos…", "Verificando os votos…"],
-  ["Esta decisión ya se cerró.", "Esta decisão já foi encerrada."],
-  ["Es tuya: ya cuenta a favor.", "É sua: já conta a favor."],
-  ["Comprobando el versículo…", "Verificando o versículo…"],
-  ["No se encontró el borrador grupal. No se puede decidir desde aquí.", "O rascunho do grupo não foi encontrado. Não é possível decidir daqui."],
-  ["Esa versión ya está en el borrador grupal.", "Essa versão já está no rascunho do grupo."],
-  ["No se sabe de dónde recuperar la otra versión (falta la subtarea que la escribió).", "Não se sabe de onde recuperar a outra versão (falta a subtarefa que a escreveu)."],
-  ["Solo quien tiene la subtarea o un gestor puede decidir.", "Somente quem tem a subtarefa ou um gestor pode decidir."],
-  ["Esta opción ya no está disponible.", "Esta opção não está mais disponível."],
-  ["Hay un conflicto más reciente para estos versículos; decide allí.", "Há um conflito mais recente para estes versículos; decida lá."],
-  // Verse conflicts
-  ["Dejar la mía", "Manter a minha"],
-  ["Usar la anterior", "Usar a anterior"],
-  ["Usar la mía", "Usar a minha"],
-  ["otra subtarea", "outra subtarefa"],
-  // System comments
-  ["Conflicto de versículos al cerrar", "Conflito de versículos ao fechar"],
-  ["Mensaje nuevo", "Mensagem nova"],
-  ["Respuesta", "Resposta"],
-  // Errors of the review tools
-  ["Falta el capítulo en la tarea.", "Falta o capítulo na tarefa."],
-  ["Todavía no hay borrador grupal de este libro. Se crea cuando alguien cierra una tarea de traducción.", "Ainda não há rascunho do grupo deste livro. Ele é criado quando alguém fecha uma tarefa de tradução."],
-  ["No se encontró el borrador grupal de este libro.", "O rascunho do grupo deste livro não foi encontrado."],
-  ["Tu sesión caducó. Vuelve a iniciar sesión.", "Sua sessão expirou. Entre de novo."],
-  ["Falta el código de libro en el contexto.", "Falta o código do livro no contexto."],
-  ["Falta contentOrg en el contexto.", "Falta contentOrg no contexto."],
-  ["Laboratorio: el borrador queda en este navegador. No se escribe en Door43.", "Laboratório: o rascunho fica neste navegador. Nada é escrito no Door43."],
-  ["Para escribir indica una organización de prueba (no uses es-419_gl).", "Para escrever, indique uma organização de teste (não use es-419_gl)."],
-  // Buttons that open a tool
-  ["Estudiar", "Estudar"],
-  ["Abrir editor", "Abrir editor"],
-  ["Falta el capítulo para abrir el estudio.", "Falta o capítulo para abrir o estudo."],
-  ["Falta el libro para abrir el estudio.", "Falta o livro para abrir o estudo."],
-];
+const EXACT: [string, string][] = Object.entries(glossary.thread);
 
-const SHORT: Record<string, string> = { aceptar: "aceitar", rechazar: "rejeitar", cambiarla: "mudá-lo", mantenerla: "mantê-lo" };
+const SHORT: Record<string, string> = glossary.threadShort;
 const OWNER = "(la versión de (.+?)|la otra versión)";
 
 /** A whole sentence with parts to carry over, tried in order; the first that matches wins. */
@@ -132,24 +68,8 @@ const PHRASES: [RegExp, string][] = [
   [/Pasó el plazo sin consenso\. Vas a decidir (aceptar|rechazar|cambiarla|mantenerla) en nombre del equipo\./g, "O prazo passou sem consenso. Você vai decidir $1 em nome da equipe."],
 ];
 
-const STEP_PT: Record<string, string> = {
-  repositorio: "repositório",
-  "borrador principal": "rascunho principal",
-  "borrador grupal": "rascunho do grupo",
-  "alta del archivo": "criação do arquivo",
-  "copia del archivo": "cópia do arquivo",
-  "borrador de la subtarea": "rascunho da subtarefa",
-  "cierre de la revisión": "fechamento da revisão",
-  borrador: "rascunho",
-  "guardado en el borrador grupal": "salvamento no rascunho do grupo",
-  "paso al borrador principal": "passagem ao rascunho principal",
-};
-const PLACE_PT: Record<string, string> = {
-  "el archivo del trabajo": "no arquivo do trabalho",
-  "el borrador principal": "no rascunho principal",
-  "tu borrador": "no seu rascunho",
-  "el borrador grupal": "no rascunho do grupo",
-};
+const STEP_PT: Record<string, string> = glossary.threadSteps;
+const PLACE_PT: Record<string, string> = glossary.threadPlaces;
 const stepPt = (step: string) => STEP_PT[step] ?? step;
 const placePt = (place: string | undefined) => (place ? ` ${PLACE_PT[place] ?? `em ${place}`}` : "");
 const DETAIL = "Detalle técnico: ";

@@ -4,39 +4,10 @@
  * when they are displayed; the stored data is never changed, and a name someone edited is left as they wrote it.
  */
 import type { UiLanguage } from "../config";
+import glossary from "../i18n/locales/glossary.pt.json";
 
 /** Spanish factory name → Portuguese. Names that read the same in both are left out. */
-const PT: [string, string][] = [
-  // Workflow
-  ["Flujo de Creación de Recursos", "Fluxo de Criação de Recursos"],
-  // Phases
-  ["Traducción", "Tradução"],
-  ["Afinación", "Afinação"],
-  ["Armonización", "Harmonização"],
-  ["Validación", "Validação"],
-  // Tasks
-  ["Traducir TPL", "Traduzir TPL"],
-  ["Traducir TPS", "Traduzir TPS"],
-  ["Traducir Notas", "Traduzir Notas"],
-  ["Traducir Preguntas", "Traduzir Perguntas"],
-  ["Traducir Palabras", "Traduzir Palavras"],
-  ["Traducir Academia", "Traduzir Academia"],
-  ["Armonizar ", "Harmonizar "],
-  // Steps
-  ["Borrador", "Rascunho"],
-  ["Revisión en pares", "Revisão em pares"],
-  ["Revisión grupal", "Revisão em grupo"],
-  ["Revisar palabras clave", "Revisar palavras-chave"],
-  ["Revisar la alineación", "Revisar o alinhamento"],
-  ["Alinear", "Alinhar"],
-  ["Ajustar a los textos afinados", "Ajustar aos textos afinados"],
-  ["Cierre independiente", "Fechamento independente"],
-  ["Decisión pastoral", "Decisão pastoral"],
-  // Placeholders the lists use
-  ["Sin tarea", "Sem tarefa"],
-  ["Sin fase", "Sem fase"],
-  ["Sin asignar", "Sem atribuição"],
-];
+const PT: [string, string][] = Object.entries(glossary.templates);
 
 // Longest first, so "Revisar la alineación" is not cut by "Alinear" and the like.
 const ORDERED = [...PT].sort((a, b) => b[0].length - a[0].length);
@@ -48,12 +19,7 @@ export function localizeName(text: string, language: UiLanguage): string {
   return out;
 }
 
-const LEVELS_PT: Record<string, string> = {
-  oyente: "ouvinte",
-  aprendiz: "aprendiz",
-  practicante: "praticante",
-  "persona habilitada": "pessoa habilitada",
-};
+const LEVELS_PT: Record<string, string> = glossary.levels;
 
 /**
  * The reason a subtarea cannot start yet (built in Spanish by the domain): shown in the interface language.
