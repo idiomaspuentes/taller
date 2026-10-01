@@ -1,3 +1,4 @@
+import { PM_REPO_NAME } from "../domain/types";
 import { useEffect, useRef, useState } from "react";
 import type { AssignmentsDoc, InventoryDoc } from "../domain/types";
 import { loadByPerson } from "../domain/assignment";
@@ -144,7 +145,7 @@ export function PublishView({
         assignments: board,
         inventory,
       });
-      const path = `${pmOrg}/gateway-tasks/${board.lang}/${projectId}/`;
+      const path = `${pmOrg}/${PM_REPO_NAME}/${board.lang}/${projectId}/`;
       setDelivered({ kind: "dcs", at: Date.now(), detail: path });
       announce(`Guardado en ${path}`);
     } catch (err) {

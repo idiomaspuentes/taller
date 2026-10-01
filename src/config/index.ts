@@ -10,6 +10,7 @@ export function configProblems(config: TallerConfig): string[] {
   const problems: string[] = [];
   if (config.uiLanguages.length === 0) problems.push("uiLanguages está vacío.");
   if (!config.uiLanguages.includes(config.defaultUiLanguage)) problems.push("defaultUiLanguage no está en uiLanguages.");
+  if (!/^[A-Za-z0-9._-]+$/.test(config.pmRepo)) problems.push(`pmRepo "${config.pmRepo}" no es un nombre de repositorio válido (letras, números, punto, guion y guion bajo).`);
   if (config.workspaces.length === 0) problems.push("Hace falta al menos un espacio de trabajo en workspaces.");
   const ids = new Set<string>();
   for (const w of config.workspaces) {

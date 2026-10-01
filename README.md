@@ -4,7 +4,7 @@ La app del equipo FCR de [Idiomas Puentes](https://idiomaspuentes.org) para el t
 
 Estado y próximos pasos: [`docs/PLAN.md`](docs/PLAN.md). Para quien continúe el trabajo (también una sesión de Claude): [`CLAUDE.md`](CLAUDE.md).
 
-Antes se llamó *TAS* (Translation Assistance System) y *Gateway Tasks*. El repositorio de datos en Door43 sigue siendo `{pmOrg}/gateway-tasks` por compatibilidad.
+Antes se llamó *TAS* (Translation Assistance System) y *Gateway Tasks*. El repositorio de datos en Door43 se llama `{pmOrg}/taller` y se configura con `pmRepo` en `taller.config.ts` (antes, `gateway-tasks`).
 
 Vocabulario y arquitectura: [`docs/MODELO.md`](docs/MODELO.md) ·
 migración: [`docs/PLAN_MIGRACION.md`](docs/PLAN_MIGRACION.md) ·
@@ -43,7 +43,7 @@ Dominio: [`docs/MODELO.md`](docs/MODELO.md).
 
 ## Persistencia DCS
 
-Repo: `{pmOrg}/gateway-tasks` (nombre técnico legacy; producto = TAS)
+Repo: `{pmOrg}/taller` (configurable con `pmRepo`; antes `gateway-tasks`)
 
 ```
 team-presets.json

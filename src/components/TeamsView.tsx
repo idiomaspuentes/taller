@@ -1,3 +1,4 @@
+import { PM_REPO_NAME } from "../domain/types";
 import { useEffect, useMemo, useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
 import type {
@@ -752,7 +753,7 @@ export function TeamsView({
       setApplyWorkflowId(wf.id);
       announce(
         session && pmOrg
-          ? `Plantilla «${wf.name}» guardada en ${pmOrg}/gateway-tasks.`
+          ? `Plantilla «${wf.name}» guardada en ${pmOrg}/${PM_REPO_NAME}.`
           : `Plantilla «${wf.name}» guardada en este dispositivo.`,
       );
     } catch (err) {

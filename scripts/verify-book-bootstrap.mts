@@ -827,7 +827,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     },
     files: { "neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
     issues: {
-      "es-419_gl/gateway-tasks/41": {
+      "es-419_gl/taller/41": {
         number: 41,
         body: upsertPortionPrInBody("## NEH 1:1–8\n", marker),
       },
@@ -875,7 +875,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   assert(!fake.branches[nested], "legacy nested work ref was deleted");
   assert(fake.pulls["es-419_gl/es-419_glt/99"]?.state === "closed", "PR 99 closed");
   assert(
-    !parsePortionPrMarker(fake.issues["es-419_gl/gateway-tasks/41"]?.body),
+    !parsePortionPrMarker(fake.issues["es-419_gl/taller/41"]?.body),
     "issue marker dropped so Ver PR cannot reopen the old URL",
   );
 }
@@ -901,7 +901,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     branches: { master: "abc123master", [work]: "worksha" },
     files: {},
     issues: {
-      "es-419_gl/gateway-tasks/41": {
+      "es-419_gl/taller/41": {
         number: 41,
         body: upsertPortionPrInBody("texto", stale),
       },
@@ -923,9 +923,9 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
       id: 41,
       number: 41,
       title: "x",
-      body: fake.issues["es-419_gl/gateway-tasks/41"].body,
+      body: fake.issues["es-419_gl/taller/41"].body,
       state: "open",
-      html_url: "https://qa.door43.org/es-419_gl/gateway-tasks/issues/41",
+      html_url: "https://qa.door43.org/es-419_gl/taller/issues/41",
     },
     workBranch: work,
     username: "ana",
@@ -935,7 +935,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   assert(!visible.marker, "Ver PR hidden when stored head ≠ current work");
   assert(visible.dropped, "stale marker dropped");
   assert(
-    !parsePortionPrMarker(fake.issues["es-419_gl/gateway-tasks/41"]?.body),
+    !parsePortionPrMarker(fake.issues["es-419_gl/taller/41"]?.body),
     "issue no longer points at the antique PR",
   );
 }

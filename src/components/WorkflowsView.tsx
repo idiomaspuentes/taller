@@ -1,3 +1,4 @@
+import { PM_REPO_NAME } from "../domain/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GtSession } from "../dcs/auth";
 import { loadSolversCatalog } from "../dcs/issues";
@@ -421,7 +422,7 @@ export function WorkflowsView({
       setDirty(false);
       announce(
         pmOrg
-          ? `Plantilla «${normalized.name}» guardada en ${pmOrg}/gateway-tasks.`
+          ? `Plantilla «${normalized.name}» guardada en ${pmOrg}/${PM_REPO_NAME}.`
           : `Plantilla «${normalized.name}» guardada en este dispositivo.`,
       );
     } catch (err) {

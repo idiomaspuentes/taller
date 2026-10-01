@@ -44,7 +44,7 @@ type FakeIssue = {
 type Call = { method: string; path: string; body?: Record<string, unknown> };
 
 const ORG = "es-419_gl";
-const PM = "gateway-tasks";
+const PM = "taller";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -284,7 +284,7 @@ const board = {
   const orgTeams: OrgTeamAccess[] = [
     {
       teamName: "pm-tpl",
-      repoNames: ["gateway-tasks", "es-419_glt"],
+      repoNames: ["taller", "es-419_glt"],
       members: [
         { id: "ana", name: "ana" },
         { id: "rosa", name: "Rosa" },
@@ -292,7 +292,7 @@ const board = {
     },
     {
       teamName: "pm-notas",
-      repoNames: ["gateway-tasks", "es-419_tn"],
+      repoNames: ["taller", "es-419_tn"],
       members: [
         { id: "nico", name: "Nico" },
         { id: "luis", name: "Luis" },
@@ -300,7 +300,7 @@ const board = {
     },
     {
       teamName: "pm-tps",
-      repoNames: ["gateway-tasks", "es-419_gst"],
+      repoNames: ["taller", "es-419_gst"],
       members: [{ id: "teo", name: "Teo" }],
     },
   ];

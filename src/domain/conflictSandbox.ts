@@ -5,6 +5,7 @@
  * Deciding reuses `choiceBlockReason` / `computeChoicePatch` (and so
  * `patchTrunkByVerse`) on an in-memory USFM, exactly like production.
  */
+import { PM_REPO_NAME } from "./types";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { commentToItem, type ThreadItem, type ThreadSourceState } from "./conversation";
 import {
@@ -32,7 +33,7 @@ export const SANDBOX_OTHER_LOGIN = "bob";
 export const SANDBOX_TITLE = "Prueba · NEH 1:10–11 · TPL";
 export const SANDBOX_RANGE = { chapter: 1, from: 10, to: 10 } as const;
 
-const PM = { owner: "prueba-local", repo: "gateway-tasks" };
+const PM = { owner: "prueba-local", repo: PM_REPO_NAME };
 const STAMP = "prueba";
 
 export const SANDBOX_TEXTS = {

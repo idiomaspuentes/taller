@@ -8,7 +8,7 @@ La app del equipo FCR de Idiomas Puentes para el trabajo de traducción: lo que 
 
 - Producción de pruebas: https://taller.idiomaspuentes.org (Cloudflare Pages, proyecto `taller`). Arranca contra **QA** (`qa.door43.org`).
 - Avisos con la app cerrada: Worker `tas-push` en Cloudflare ([push-worker/README.md](../push-worker/README.md)).
-- Nombre del repositorio de datos en Door43: `{pmOrg}/gateway-tasks` (se conserva por compatibilidad).
+- Repositorio de datos en Door43: `{pmOrg}/taller` (`pmRepo` en `taller.config.ts`; antes `gateway-tasks`). En QA queda un `es-419_gl/gateway-tasks` viejo, de pruebas, que se puede borrar.
 
 ## Dónde estamos
 
@@ -82,7 +82,7 @@ Pendientes de [AFINACION_PROXIMOS_PASOS.md](AFINACION_PROXIMOS_PASOS.md): oculta
 ### 6. Para el lanzamiento
 1. (Hecho el 1 de octubre) La app publicada arranca en producción; QA solo con `?server=qa`.
 2. Avisos en producción: el Worker ya acepta `git.door43.org` (1 de octubre); **falta crear el webhook** en la organización de producción (`es-419_gl`, con el mismo secreto que el de QA) y probarlo con un teléfono.
-3. Borrar los datos que se crearon por error en producción (`es-419_gl/gateway-tasks`).
+3. (Hecho el 1 de octubre) El repositorio creado por error en producción (`es-419_gl/gateway-tasks`) se borró, y el nombre pasó a `taller` antes del primer inicio de sesión real.
 4. Revisar las políticas de datos (el Worker guarda las direcciones de push de cada dispositivo; ver su README).
 
 ## Reglas de trabajo acordadas

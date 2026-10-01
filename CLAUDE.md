@@ -31,7 +31,7 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 ## Convenciones
 
 - **Texto de interfaz**: lo propio de una organización va en `taller.config.ts`; lo general en `src/i18n/messages.ts` (columnas `es` y `pt`, el tipo obliga a rellenar las dos). Los nombres de las plantillas de flujo se traducen al mostrarlos en `src/domain/templateNames.ts`. No dejes texto en español suelto en un componente nuevo: usa `useT()`.
-- **Espacios de trabajo**: todo lo que se lee o escribe de un espacio pasa por `src/domain/scope.ts` (etiquetas, hitos, rutas, claves locales). Un código nuevo que liste incidencias o archivos del repositorio `gateway-tasks` debe respetarlo; añade una prueba en `verify-scope`.
+- **Espacios de trabajo**: todo lo que se lee o escribe de un espacio pasa por `src/domain/scope.ts` (etiquetas, hitos, rutas, claves locales). Un código nuevo que liste incidencias o archivos del repositorio del plan (`pmRepo`, hoy `taller`) debe respetarlo; añade una prueba en `verify-scope`.
 - Comentarios y commits en inglés; la interfaz y la documentación del producto, en español. Commits con título corto y un cuerpo que explique el porqué.
 - Estilo del código: el del entorno (comentarios que expliquen el porqué, pocos). Pruebas con salida legible y nombres que cuenten lo que se verifica.
 - Cada cambio visible se prueba en el navegador (móvil y escritorio) además de las pruebas automáticas.

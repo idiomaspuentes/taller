@@ -8,6 +8,7 @@
  *   DCS_ASSIGNEE=abelperez DCS_TITLE="NEH 1:1–3 · TPL · prueba conflicto" \
  *   DCS_KEY_SUFFIX=prueba-conflicto npx tsx scripts/qa-clone-pm-issue.mts
  */
+import { PM_REPO_NAME } from "../src/domain/types";
 const host = (process.env.DCS_HOST || "").replace(/\/$/, "");
 const token = (process.env.DCS_TOKEN || "").trim();
 const org = (process.env.DCS_ORG || "").trim();
@@ -19,7 +20,7 @@ const suffix = (process.env.DCS_KEY_SUFFIX || "").trim();
 if (!host || /git\.door43\.org/i.test(host)) throw new Error("DCS_HOST must be a non-production host.");
 if (!token || !org || !from || !assignee || !title || !suffix) throw new Error("Missing env.");
 
-const api = `${host}/api/v1/repos/${encodeURIComponent(org)}/gateway-tasks`;
+const api = `${host}/api/v1/repos/${encodeURIComponent(org)}/${PM_REPO_NAME}`;
 const headers = { Authorization: `token ${token}`, "Content-Type": "application/json" };
 
 const existing = await (await fetch(`${api}/issues?state=open&type=issues&q=${encodeURIComponent(title)}`, { headers })).json();

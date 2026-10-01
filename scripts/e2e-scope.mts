@@ -67,7 +67,7 @@ await step("los listados de un proyecto: cada espacio ve solo sus subtareas de N
 
 await step("las menciones de otro espacio no se muestran: se filtra por la etiqueta de la subtarea", async () => {
   setActiveScope("pt");
-  const seen = new Set((await listMentions(session, ORG, "gateway-tasks")).map((m) => m.issue));
+  const seen = new Set((await listMentions(session, ORG, "taller")).map((m) => m.issue));
   assert.ok(!seen.has(base.number) && !seen.has(es.number), "pt no ve avisos de los otros espacios");
 });
 

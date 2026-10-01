@@ -1,5 +1,5 @@
 /**
- * Delete (hard-remove) all TAS `pm` subtareas in `{org}/gateway-tasks`.
+ * Delete (hard-remove) all TAS `pm` subtareas in the plan repository (`pmRepo`, `{org}/taller`).
  *
  * Usage:
  *   DCS_TOKEN=… DCS_ORG=es-419_gl DCS_HOST=https://qa.door43.org npx tsx scripts/cleanup-pm-issues.mts

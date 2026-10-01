@@ -14,6 +14,10 @@ export const tallerConfig: TallerConfig = {
   },
 
   // Interface languages. The first visit follows the browser's language; people can switch on the welcome screen.
+  // The Door43 repository (in each workspace's organization) where Taller keeps the plan, the subtareas and the
+  // team settings. It is created on first sign-in if it does not exist.
+  pmRepo: "taller",
+
   uiLanguages: ["es", "pt"],
   defaultUiLanguage: "es",
 

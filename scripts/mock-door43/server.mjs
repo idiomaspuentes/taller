@@ -82,7 +82,7 @@ function workOrder(n, taskId, portion, assignee, created, updated, title) {
 
 function reset() {
   repos = new Map();
-  repos.set(`${PM_ORG}/gateway-tasks`, { defaultBranch: "main", branches: new Map() });
+  repos.set(`${PM_ORG}/taller`, { defaultBranch: "main", branches: new Map() });
   repos.set(`${CONTENT_ORG}/es-419_glt`, { defaultBranch: "master", branches: new Map() });
   const board = {
     schema: "gateway-assignments-1", projectId: "NEH", book: "NEH", title: "Nehemías", lang: "es-419", contentOrg: CONTENT_ORG, pmOrg: PM_ORG,
@@ -103,8 +103,8 @@ function reset() {
       },
     ],
   };
-  put(`${PM_ORG}/gateway-tasks`, "main", "es-419/NEH/assignments.json", JSON.stringify(board, null, 2));
-  put(`${PM_ORG}/gateway-tasks`, "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada" } }));
+  put(`${PM_ORG}/taller`, "main", "es-419/NEH/assignments.json", JSON.stringify(board, null, 2));
+  put(`${PM_ORG}/taller`, "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada" } }));
   put(`${CONTENT_ORG}/es-419_glt`, "neh", "16-NEH.usfm", DRAFT);
   issues = [
     workOrder(1, "afinar-tpl-1", "c1", null, 6, 6, "NEH 1 · Afinar TPL 1"),
@@ -202,7 +202,7 @@ function handleContents(req, res, url, user, owner, name, path, body) {
 }
 
 function issueView(issue) {
-  return { ...issue, comments: (comments.get(issue.number) || []).length, html_url: `http://localhost:${PORT}/${PM_ORG}/gateway-tasks/issues/${issue.number}` };
+  return { ...issue, comments: (comments.get(issue.number) || []).length, html_url: `http://localhost:${PORT}/${PM_ORG}/taller/issues/${issue.number}` };
 }
 
 async function handle(req, res) {
@@ -245,7 +245,7 @@ async function handle(req, res) {
   if (api === "/user/orgs") return json(res, [{ id: 1, name: PM_ORG, username: PM_ORG }, { id: 2, name: CONTENT_ORG, username: CONTENT_ORG }]);
   const orgMatch = /^\/orgs\/([^/]+)$/.exec(api);
   if (orgMatch) return json(res, { id: 1, name: decodeURIComponent(orgMatch[1]), username: decodeURIComponent(orgMatch[1]), full_name: decodeURIComponent(orgMatch[1]) });
-  if (api === `/repos/${PM_ORG}/gateway-tasks/issues/comments`) return json(res, []);
+  if (api === `/repos/${PM_ORG}/taller/issues/comments`) return json(res, []);
   if (/^\/orgs\/[^/]+\/teams$/.test(api)) return json(res, [{ id: 10, name: "managers", organization: { name: PM_ORG } }, { id: 11, name: "Equipo", organization: { name: PM_ORG } }]);
   if (/^\/teams\/\d+\/members$/.test(api)) return json(res, Object.values(USERS));
   if (/^\/orgs\/[^/]+\/members$/.test(api)) return json(res, Object.values(USERS));
@@ -284,7 +284,7 @@ async function handle(req, res) {
     if (branchGet && req.method === "GET") {
       return repos.get(repoKey).branches.has(decodeURIComponent(branchGet[1])) ? json(res, { name: decodeURIComponent(branchGet[1]), commit: { id: nextSha() } }) : json(res, { message: "branch not found" }, 404);
     }
-    if (repoKey === `${PM_ORG}/gateway-tasks`) {
+    if (repoKey === `${PM_ORG}/taller`) {
       if (rest === "labels" && req.method === "GET") return json(res, labels);
       if (rest === "labels" && req.method === "POST") {
         const body = await readBody(req);

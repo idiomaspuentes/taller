@@ -53,6 +53,11 @@ export type TallerConfig = {
     /** The organization's short commercial name, added to the app's name in the site title ("Taller Id"). */
     short: string;
   };
+  /**
+   * Name of the Door43 repository, in each workspace's organization, that holds the plan, the subtareas and the
+   * team settings. Existing deployments that still use `gateway-tasks` keep that name here.
+   */
+  pmRepo: string;
   uiLanguages: UiLanguage[];
   defaultUiLanguage: UiLanguage;
   /**

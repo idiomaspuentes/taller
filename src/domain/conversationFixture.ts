@@ -2,6 +2,7 @@
  * Local demo thread for `#/mis-tareas/{n}?demo=1` (dev builds only). Lets the
  * thread UI be checked on phone and desktop without reading or writing DCS.
  */
+import { PM_REPO_NAME } from "./types";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { commentToItem, commitToItem, type ThreadItem, type ThreadSourceState } from "./conversation";
 import { buildVerseChoicePosts, type ConflictPrepared } from "./conflictChoice";
@@ -9,7 +10,7 @@ import { portionPrApprovalReviewBody } from "./portionPr";
 import { formatChatEvent } from "./chatEvent";
 import { buildVerseConflictPosts, verseConflictData, type VerseConflictOptionId } from "./verseConflictEvent";
 
-const PM = { owner: "demo-pm-sandbox", repo: "gateway-tasks" };
+const PM = { owner: "demo-pm-sandbox", repo: PM_REPO_NAME };
 const PR = { owner: "demo-sandbox", repo: "demo_tpl" };
 
 function at(minutesAgo: number, now: number): string {

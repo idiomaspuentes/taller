@@ -12,8 +12,8 @@ import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboar
 import { contextWith, initialWorkspace, loadWorkspaceId, saveWorkspaceId, suggestedWorkspace } from "../src/workspace";
 
 let passed = 0;
-function test(name: string, fn: () => void) {
-  fn();
+async function test(name: string, fn: () => void | Promise<void>) {
+  await fn();
   passed++;
   console.log(`ok  ${name}`);
 }
@@ -200,6 +200,18 @@ test("el servidor de Door43 no se ofrece a la gente normal: solo con ?server= en
   assert.equal(serverChoiceVisible(true, true, store), true, "en desarrollo siempre");
   assert.equal(readServerFromUrl("?server=qa", store), "https://qa.door43.org");
   assert.equal(serverChoiceVisible(true, false, store), true, "tras pedirlo, ese dispositivo lo ve");
+});
+
+await test("el repositorio del plan se configura en taller.config.ts", async () => {
+  assert.equal(tallerConfig.pmRepo, "taller");
+  const { PM_REPO_NAME } = await import("../src/domain/types");
+  assert.equal(PM_REPO_NAME, tallerConfig.pmRepo, "el código lee la configuración, no un nombre escrito a mano");
+  const bad = clone();
+  bad.pmRepo = "con espacios/y barra";
+  assert.match(configProblems(bad).join(" "), /pmRepo/);
+  const legacy = clone();
+  legacy.pmRepo = "gateway-tasks";
+  assert.deepEqual(configProblems(legacy), [], "quien ya usa gateway-tasks lo conserva");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

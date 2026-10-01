@@ -11,6 +11,7 @@ Todo lo que cambia de una organización a otra vive en **un solo archivo**: [`ta
 | `brand.short` | El nombre corto de la organización (para Idiomas Puentes, «Id»). Se añade al nombre de la app en el título del sitio: «Taller Id». |
 | `uiLanguages` / `defaultUiLanguage` | Los idiomas de la interfaz. La primera visita sigue el idioma del navegador; la persona puede cambiarlo en la pantalla de bienvenida. |
 | `defaultServer` | El servidor de Door43 con el que arranca la app publicada (`production` o `qa`). La persona normal nunca ve la opción de servidor: quien prueba abre la app con `?server=qa` (o `?server=production` para volver), y solo en ese dispositivo aparece «Avanzado: servidor» al iniciar sesión. |
+| `pmRepo` | El nombre del repositorio de Door43 donde Taller guarda el plan, las subtareas y los ajustes del equipo (hoy `taller`). Se crea al primer inicio de sesión si no existe. Quien ya usa `gateway-tasks` lo conserva escribiéndolo aquí. |
 | `workspaces` | Los **espacios de trabajo**: uno por equipo de lengua. Ver abajo. |
 | `welcome` | El texto de la primera pantalla, en cada idioma: título, subtítulo, tres líneas de lo que se encontrará, la pregunta del equipo, el botón y el texto de confianza. |
 
@@ -23,7 +24,7 @@ Cada espacio es un equipo con su propio trabajo. Pueden estar en **organizacione
   id: "pt",                    // clave estable; no la cambies cuando ya haya personas usando la app
   lang: "pt-br",               // código de lengua en Door43
   contentOrg: "pt-br_gl",      // organización de los repositorios de contenido
-  pmOrg: "pt-br_gl",           // organización donde vive el repositorio gateway-tasks (plan y subtareas)
+  pmOrg: "pt-br_gl",           // organización donde vive el repositorio del plan (`pmRepo`) con el plan y las subtareas
   scope: "pt",                 // opcional: lo que lo distingue de otro espacio en la MISMA organización
   uiLanguage: "pt",            // idioma de interfaz con el que empieza este equipo
   name: { es: "Portugués (Brasil)", pt: "Português (Brasil)" },
@@ -41,7 +42,7 @@ Con `scope`, el espacio marca todo lo que escribe y filtra todo lo que lee:
 |---|---|
 | Subtareas (incidencias) | llevan la etiqueta `pm/espacio:pt` y solo se listan en ese espacio; un espacio sin scope no ve las que tienen scope |
 | Hitos de cada proyecto | `pt/NEH` en lugar de `NEH` |
-| Archivos del plan, equipos, flujos, niveles de las personas (`config.json`) | bajo `pt/…` en el repositorio `gateway-tasks` |
+| Archivos del plan, equipos, flujos, niveles de las personas (`config.json`) | bajo `pt/…` en el repositorio del plan (`pmRepo`) |
 | Copias en el navegador | con su propia clave |
 | Menciones y avisos | solo las de subtareas de ese espacio |
 | Un enlace a una subtarea de otro espacio | no la abre: avisa que es de otro espacio |

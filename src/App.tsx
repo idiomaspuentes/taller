@@ -1,3 +1,4 @@
+import { PM_REPO_NAME } from "./domain/types";
 import { BrandMark } from "./components/BrandMark";
 import { appTitle } from "./brand";
 import { tallerConfig, workspaceOfOrg, type Workspace } from "./config";
@@ -633,7 +634,7 @@ export function App() {
           announce(
             result.issueCount > 0
               ? `Plan cargado · ${result.issueCount} subtareas publicadas`
-              : `Plan cargado desde ${pmOrg}/gateway-tasks`,
+              : `Plan cargado desde ${pmOrg}/${PM_REPO_NAME}`,
           );
         }
       } catch (err) {
@@ -757,7 +758,7 @@ export function App() {
       announce(
         result.issueCount > 0
           ? `Cargado · ${result.issueCount} subtareas publicadas`
-          : `Cargado desde ${pmOrg}/gateway-tasks.`,
+          : `Cargado desde ${pmOrg}/${PM_REPO_NAME}.`,
       );
       setWorkspaceOpen(false);
     } catch (err) {

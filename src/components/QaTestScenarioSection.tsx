@@ -1,3 +1,4 @@
+import { PM_REPO_NAME } from "../domain/types";
 import { useState } from "react";
 import { DcsApiError } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -221,7 +222,7 @@ export function QaTestScenarioSection({ session, defaultPmOrg, owner, repo, book
             </li>
             {plan.issues.map((row) => (
               <li key={row.title}>
-                Issue en {pmOrg}/gateway-tasks «{row.title}» asignada a @{row.assignee}
+                Issue en {pmOrg}/{PM_REPO_NAME} «{row.title}» asignada a @{row.assignee}
                 {row.predictedNumber ? ` (previsto #${row.predictedNumber})` : ""}; rama{" "}
                 <code>{row.workRef}</code> por POST /branches desde la punta del tronco; un commit en{" "}
                 {inspection!.input.filepath} con «{row.verseText}»; un PR de esa rama al tronco.

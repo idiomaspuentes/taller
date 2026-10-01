@@ -20,7 +20,7 @@ const issue = (number: number, labels: string[], milestone?: string) => ({
   state: "open",
   labels: labels.map((name, i) => ({ id: i + 1, name })),
   milestone: milestone ? { title: milestone } : undefined,
-  repository: { name: "gateway-tasks", full_name: "es-419_gl/gateway-tasks" },
+  repository: { name: "taller", full_name: "es-419_gl/taller" },
 });
 const legacy = issue(1, ["pm", "pm/tarea:t1"], "NEH");
 const portuguese = issue(2, ["pm", "pm/tarea:t1", scopeLabelName("pt")], "pt/NEH");

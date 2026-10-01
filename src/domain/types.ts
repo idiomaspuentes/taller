@@ -1,3 +1,4 @@
+import { tallerConfig } from "../../taller.config";
 /** Domain types for gateway-tasks (schema gateway-assignments-2). */
 import type { PersonLevel } from "./levels";
 import type { SourcePackage } from "./sourcePackage";
@@ -858,6 +859,7 @@ export function assignableCountLabel(
   return `${count} ${assignableUnitNoun(resource, grain, count)}`;
 }
 
-export const PM_REPO_NAME = "gateway-tasks";
+/** The Door43 repository that holds the plan and the subtareas: `pmRepo` in taller.config.ts. */
+export const PM_REPO_NAME: string = tallerConfig.pmRepo;
 export const ASSIGNMENTS_SCHEMA = "gateway-assignments-2" as const;
 export const ASSIGNMENTS_SCHEMA_LEGACY = "gateway-assignments-1" as const;

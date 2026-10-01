@@ -65,7 +65,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     files.set(target, { text: Buffer.from(String(body.content), "base64").toString("utf-8"), sha: `sha${++counter}` });
     return json({ content: { sha: files.get(target)!.sha }, commit: { sha: "c" } });
   }
-  if (/\/repos\/BSOJ\/gateway-tasks\/labels$/.test(url.pathname)) {
+  if (/\/repos\/BSOJ\/taller\/labels$/.test(url.pathname)) {
     if (method === "POST") {
       const l = { id: labels.length + 1, name: String(body.name) };
       labels.push(l);
@@ -73,7 +73,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     return json(labels);
   }
-  if (/\/repos\/BSOJ\/gateway-tasks\/milestones$/.test(url.pathname)) {
+  if (/\/repos\/BSOJ\/taller\/milestones$/.test(url.pathname)) {
     if (method === "POST") {
       const m = { id: milestones.length + 1, title: String(body.title) };
       milestones.push(m);
@@ -81,14 +81,14 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     return json(milestones);
   }
-  if (/\/repos\/BSOJ\/gateway-tasks\/issues$/.test(url.pathname) && method === "POST") {
+  if (/\/repos\/BSOJ\/taller\/issues$/.test(url.pathname) && method === "POST") {
     const number = issues.length + 10;
     const ids = (body.labels as number[] | undefined) ?? [];
     const issue: FakeIssue = { id: number, number, title: String(body.title), body: String(body.body), state: "open", labels: labels.filter((l) => ids.includes(l.id)), assignees: [] };
     issues.push(issue);
     return json(issue, 201);
   }
-  const im = /\/repos\/BSOJ\/gateway-tasks\/issues\/(\d+)(?:\/(comments))?$/.exec(url.pathname);
+  const im = /\/repos\/BSOJ\/taller\/issues\/(\d+)(?:\/(comments))?$/.exec(url.pathname);
   if (im) {
     const number = Number(im[1]);
     if (im[2] === "comments") {
@@ -142,7 +142,7 @@ const cardOf = async (issueNumber: number) => {
   return parseChatEvent(first.body)!;
 };
 
-put("BSOJ/gateway-tasks", "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada" } }));
+put("BSOJ/taller", "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada" } }));
 put(REPO, "neh", draftPath, draftUsfm);
 actor = "ana";
 await saveVerseAlignment({ session: session("ana"), target, filepath: draftPath, book: "NEH", chapter: 1, verse: 1, groups: anas, source });

@@ -12,7 +12,7 @@ Cada puerto es un origen distinto, así que cada pestaña guarda su propia sesi�
 
 ## Qué contiene
 
-- El plan y las subtareas del proyecto NEH (`BSOJ/gateway-tasks`) y el borrador en español (`es-419_gl/es-419_glt`, rama `neh`). Todo se escribe aquí, en memoria.
+- El plan y las subtareas del proyecto NEH (`BSOJ/taller`) y el borrador en español (`es-419_gl/es-419_glt`, rama `neh`). Todo se escribe aquí, en memoria.
 - Los textos públicos de unfoldingWord (hebreo, notas, palabras, artículos) se leen de `qa.door43.org`, sin credenciales y solo lectura, y se guardan en caché.
 - Personas de prueba: `ana` (coordina), `bea`, `carla`. Sus tokens son `token-ana`, `token-bea` y `token-carla`.
 

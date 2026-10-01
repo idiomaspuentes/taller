@@ -35,7 +35,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 const ORG = "es-419_gl";
-const PM = "gateway-tasks";
+const PM = "taller";
 
 function toApi(issue: FakeIssue) {
   return {

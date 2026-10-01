@@ -162,11 +162,11 @@ test("parseIssueUrl: issue API URL, pull web URL, other host", () => {
 
 test("mapCommentToIssue: PM issue, PR via marker, foreign PR, wrong repo", () => {
   const prIndex = buildPrIndex([issue(41, prBody), issue(42)]);
-  const pm = { owner: PM, repo: "gateway-tasks" };
+  const pm = { owner: PM, repo: "taller" };
   const content = { owner: "es-419_sandbox", repo: "es-419_tpl" };
   assert.deepEqual(
     mapCommentToIssue(
-      { issue_url: `https://git.door43.org/api/v1/repos/${PM}/gateway-tasks/issues/42` },
+      { issue_url: `https://git.door43.org/api/v1/repos/${PM}/taller/issues/42` },
       pm,
       { pmOrg: PM, prIndex },
     ),
@@ -351,7 +351,7 @@ test("attention order: unread first, most recent first; generic rows work", () =
 
 // ── Slice 3: thread timeline, typed events, local mark-read ────────────────
 
-const PM_REPO = { owner: PM, repo: "gateway-tasks" };
+const PM_REPO = { owner: PM, repo: "taller" };
 const PR_REPO = { owner: "es-419_sandbox", repo: "es-419_tpl" };
 const FORBIDDEN_VISIBLE = /<!--|-->|tas:|archivo\/|\bw\/|\btas\/|[A-Za-z0-9_-]{32,}|\b[0-9a-f]{10,40}\b/;
 
@@ -524,7 +524,7 @@ test("reply payload: POST on the PM issue, never the PR", () => {
   const req = buildThreadReplyRequest("ip-pm-test", 41, "  > **NEH 1:10** siervo\n\n¿Así?  ");
   assert.deepEqual(req, {
     method: "POST",
-    path: "/repos/ip-pm-test/gateway-tasks/issues/41/comments",
+    path: "/repos/ip-pm-test/taller/issues/41/comments",
     body: { body: "> **NEH 1:10** siervo\n\n¿Así?" },
   });
   assert.ok(!/pulls|es-419_tpl/.test(req.path));
