@@ -296,3 +296,41 @@ Si separamos bien, el FCR completo cabe en **datos**, y el motor queda reutiliza
 - **Otros proyectos (pregunta 23).** El siguiente proceso es la **traducción de una Biblia a una
   lengua minoritaria usando los recursos que produce este FCR**. Es el segundo caso con el que hay
   que probar el diseño.
+
+### Segunda ronda de respuestas (1 de octubre de 2026)
+
+- **Terminar una revisión en grupo (pregunta 2 de la lista corta).** Hace falta **consenso**.
+  - Si en la revisión personal todas las personas quedaron de acuerdo, **no hace falta reunión**: la
+    revisión termina.
+  - Si algo quedó sin acuerdo, se concierta una **reunión**, y después se marca en la app la
+    **decisión final**. Dos formas válidas de cerrarla: **todas** las personas la marcan como
+    acordada, o **una persona responsable confirma por todas** que hubo consenso.
+  - Consecuencia: el paso se completa cuando **todos los ítems** tienen consenso (por respuestas o
+    por decisión final registrada), no cuando las personas pulsan «Aprobar». Hace falta la acción
+    «Registrar la decisión de la reunión» con quién la confirma.
+- **Traducción (pregunta 4).** Se hace como en la plantilla: **estudio o familiarización → borrador →
+  revisión en pares → revisión grupal**. Falta agregar la familiarización como primer paso de la
+  plantilla (hoy es una herramienta suelta), y alinear la guía pública.
+- **Niveles (pregunta 19).** El nivel es **por fase**: cada fase tiene su propia escala y su propia
+  experiencia. Quien pasa a otra fase empieza de cero, o con el nivel que le asigne **el coordinador
+  de ese equipo**. Consecuencia: el nivel se guarda por persona **y fase** (o equipo), y lo asigna el
+  coordinador del equipo.
+- **Capítulos largos.** Cuando un capítulo se parte, cada parte avanza sola (una puede estar en
+  Afinación mientras la otra sigue en Traducción). **El coordinador que genera las tareas del libro
+  decide en la app cómo agrupar** lo que pasa a cada fase, y puede ser mixto: capítulos 1 y 2 enteros
+  y el 3 en dos partes. Consecuencia: al preparar el libro hay un paso nuevo, «**Unidades de
+  traspaso**», con el capítulo como valor inicial y la opción de partir uno en tramos de porciones.
+- **Lenguas minoritarias (pregunta 23).** Fases: borrador → revisión del equipo → comprobación con la
+  comunidad (con las Preguntas) → consultor. El libro también se divide en porciones, y solo se puede
+  trabajar sobre **los capítulos que el FCR ya publicó**. Consecuencia: ese proceso depende de lo
+  publicado por otro proyecto, una espera **entre proyectos**.
+
+### Lo que esto fija para el diseño
+
+1. **Dos unidades con nombre:** unidad de traspaso (la define el coordinador por libro) y unidad de
+   reparto (porción). Las esperas entre fases se cuentan por unidad de traspaso.
+2. **Regla de cierre de una ronda:** consenso por ítem + decisión final registrada para lo disputado.
+3. **Nivel por fase**, asignado por el coordinador de cada equipo.
+4. **Familiarización** como paso de la plantilla.
+5. **Armonización en tres pistas**, con creación de artículos nuevos dentro de la fase.
+6. **Dependencia entre proyectos:** un proceso puede esperar lo que otro publicó.
