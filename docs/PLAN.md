@@ -60,7 +60,7 @@ cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller
    **Falta**: las de gestión o laboratorio `QaAdminDialog`, `QaTestScenarioSection`, `SolverLabView`. Lo demás que muestra `grep -c "[áéíóúñ¿¡]" src/components/*.tsx` son puntos medios («·») y comentarios. Los motivos de error de `parseReviewRef` (`domain/reviewTask.ts`) siguen en español.
 2. Editor, conversación y decisiones de alineación (ver lo que falta arriba).
 3. ~~Nombres de los libros en portugués~~ (hecho; falta usarlos en `BookStepView` y `TeamsView`, que se traducen con sus pantallas).
-4. Que una persona del equipo brasileño **revise** las traducciones: herramienta lista (`npm run translations:review` genera `docs/traduccion/revisar-portugues.html`; ver [TRADUCCION.md](TRADUCCION.md)). Falta enviarla a la persona y aplicar lo que devuelva.
+4. Que una persona del equipo brasileño **revise** las traducciones: herramienta lista (`npm run translations:review` genera `docs/traduccion/revisar-portugues.html`; ver [TRADUCCION.md](TRADUCCION.md)). **Hecho (provisional):** la persona de Brasil la aprobó tal cual; el resto lo corregirá usando la app. Cuando devuelva correcciones sueltas, se aplican con `translations:apply` (ver [TRADUCCION.md](TRADUCCION.md)). Hasta entonces `pt.review.json` sigue vacío: nada está marcado como revisado.
 5. Mensajes que llegan de Door43 tal cual (errores del servidor): decidir si se envuelven.
 
 ### 2. Espacios de trabajo, con datos reales
