@@ -1,0 +1,293 @@
+# Plantilla del FCR (para leer y revisar)
+
+Borrador del 1 de octubre de 2026. Esta es la plantilla del FCR escrita para personas. Cuando esté
+aprobada, se pasa a datos y Taller la usa tal cual. Nada de esto está todavía en la app.
+
+Viene de la guía pública del FCR, de lo que ya probamos en Taller y de las respuestas anotadas en
+[FCR_EN_TALLER.md](FCR_EN_TALLER.md). Lo marcado con **(por confirmar)** es una suposición mía.
+
+Al final hay un borrador de una segunda plantilla, para traducir la Biblia a una lengua minoritaria,
+que usa las mismas piezas.
+
+---
+
+## 1. Cómo leer esta plantilla
+
+Cada **tarea** se describe con una tabla de **pasos**. Cada paso dice:
+
+| Columna | Qué significa |
+|---------|---------------|
+| **Paso** | El nombre que ve la persona. |
+| **Botón** | Lo que dice el botón grande en «Mis tareas». |
+| **Quién** | Quién puede hacerlo: nivel mínimo en esa fase y restricciones («no quien hizo el borrador»). |
+| **Cuántas** | Cuántas personas: una, o de un mínimo a un máximo. |
+| **Herramienta** | La pantalla que se abre. |
+| **Se completa cuando** | La regla de cierre (ver 1.1). |
+
+### 1.1 Las cuatro reglas de cierre
+
+| Regla | Cómo funciona |
+|-------|---------------|
+| **Lo marca quien lo hace** | La persona pulsa «Terminé». |
+| **Otra persona lo aprueba** | Quien revisa aprueba; si se indica, el autor también confirma. |
+| **Consenso por ítem** | Cada persona responde ítem por ítem (de acuerdo, propongo un cambio, objeción). Si todo queda de acuerdo, termina solo. Lo que queda sin acuerdo va a una **reunión**, y el **coordinador del equipo** (o una persona habilitada del equipo) registra la **decisión final**. |
+| **Lista de comprobación por ítem** | Cada ítem se revisa con preguntas de sí o no. Termina cuando todo está en «sí», o cuando lo que estaba en «no» quedó corregido, creado o enviado a su dueño. |
+
+### 1.2 Unidades
+
+- **Unidad de traspaso:** lo que pasa de una fase a la siguiente. Por defecto, **un capítulo**. El
+  coordinador que prepara el libro puede partir un capítulo largo en tramos (Salmo 119) y cada tramo
+  avanza solo.
+- **Unidad de reparto:** la **porción**, para que varias personas trabajen el mismo capítulo a la
+  vez. Cada porción de cada tarea es una **subtarea**.
+- **Ítem:** lo que se revisa uno por uno dentro de un paso (una nota, un término, un versículo, una
+  pregunta).
+
+### 1.3 Personas
+
+- **Niveles, por fase:** Observador, Aprendiz, Practicante, Persona habilitada. El nivel de una
+  persona en una fase no vale en otra. Lo asigna el **coordinador del equipo**.
+- **Coordinador:** cada equipo tiene uno. Reparte, confirma decisiones finales y asigna niveles en
+  su equipo.
+- Solo las **personas habilitadas** cuentan para los mínimos y pueden cerrar.
+- **Observador** ve el trabajo y no toma tareas. **Aprendiz** trabaja acompañado **(por confirmar:
+  cómo se registra el acompañamiento)**.
+
+---
+
+## 2. Fase 0 · Preparación
+
+No tiene tareas para el equipo. La hace quien coordina el libro, en la app:
+
+1. Elegir el libro.
+2. Taller trae las porciones y el inventario de cada una (qué notas, preguntas, palabras y artículos
+   le corresponden, y cuáles artículos ya están publicados).
+3. **Definir las unidades de traspaso:** capítulo por capítulo, o partiendo los capítulos largos.
+4. Revisar el resumen y crear las tareas.
+
+---
+
+## 3. Fase 1 · Traducción
+
+**Propósito:** escribir en español los primeros borradores de los seis recursos, cada uno desde su
+fuente en inglés. Los recursos de apoyo se escriben sin mirar el TPL ni el TPS en español.
+
+**Equipos:** uno por tarea, cada uno con su coordinador. **Unidad de reparto:** porción.
+**Espera a:** nada.
+
+### 3.1 Traducir TPL · 3.2 Traducir TPS
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura del capítulo (TranslationCore Study) | Lo marca quien lo hace |
+| 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de texto bíblico | Lo marca quien lo hace |
+| 3 | Revisión en pares | Revisar | Otra persona del equipo, no quien hizo el borrador | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
+| 4 | Revisión grupal | Revisar | Personas del equipo que no hicieron el borrador ni la revisión en pares | 2 | Revisión del borrador | Otra persona lo aprueba (las 2) |
+
+**Al entregar:** el texto de la porción pasa al borrador del grupo.
+
+### 3.3 Traducir Notas · 3.4 Traducir Preguntas
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
+| 2 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Editor de ayudas | Otra persona lo aprueba, y el autor confirma |
+
+**(Por confirmar:** si las ayudas también llevan familiarización y revisión grupal.)
+
+### 3.5 Traducir Palabras · 3.6 Traducir Academia
+
+Igual que 3.3, pero el ítem es el **artículo** y solo se traducen los que todavía no están
+publicados en español. Un artículo sirve a muchas porciones y libros: se traduce una sola vez.
+
+---
+
+## 4. Fase 2 · Afinación
+
+**Propósito:** volver a anclar el TPL y el TPS al idioma original.
+
+**Tareas:** **Afinar TPL** y **Afinar TPS**, con las mismas etapas; pueden avanzar a la vez con
+equipos distintos.
+**Espera a:** la Traducción de ese texto, **de toda la unidad de traspaso**.
+**Quién:** al menos 2 personas habilitadas con dominio del idioma bíblico y ajenas al borrador; el
+grupo reúne 3 o más.
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Desafíos de traducción | Revisar | Equipo de Afinación; al menos 2 habilitadas que no escribieron el borrador | 3 a 6 | Notas frente al original y al borrador | Consenso por ítem (cada nota) |
+| 2 | Palabras clave | Revisar | Igual | 3 a 6 | Términos comparados en todo el libro | Consenso por ítem (cada término) |
+| 3 | Alinear | Alinear | Una persona del equipo, no quien tiene la subtarea | 1 | Alineación | Lo marca quien lo hace (todas las palabras del borrador colocadas) |
+| 4 | Revisar la alineación | Revisar | Otras personas del equipo, no quien alineó | 2 a 4 | Revisión de la alineación | Consenso por ítem (cada versículo) |
+
+**Nombres:** hoy el paso 1 se llama «Revisar notas» en Taller; la guía lo llama «desafíos de
+traducción». Propongo el nombre de la guía.
+
+**(Por confirmar:**
+- si las palabras clave se revisan por porción o por capítulo completo;
+- si «dominio del idioma bíblico» se registra aparte del nivel, hebreo o griego.)
+
+**Al entregar:** el texto afinado pasa al borrador del grupo. Desde aquí, **solo Afinación** cambia
+el TPL y el TPS.
+
+---
+
+## 5. Fase 3 · Armonización
+
+**Propósito:** ajustar los recursos de apoyo a los textos ya afinados.
+
+**Tres pistas**, cada una con su equipo y su coordinador.
+**Espera a:** la Traducción de sus recursos y la Afinación del TPL **y** del TPS, de toda la unidad
+de traspaso **(por confirmar que son los dos textos)**.
+**Quién:** personas habilitadas en Armonización. Cierra una persona distinta de quien preparó el
+recurso.
+
+### 5.1 Armonizar Notas y Academia
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Notas frente al TPL | Comprobar | Equipo de la pista | 1 o más | Notas con el TPL a la vista | Lista de comprobación por nota (A) |
+| 2 | Notas frente al TPS | Comprobar | Equipo de la pista | 1 o más | Notas con el TPL y el TPS a la vista | Lista de comprobación por nota (B) |
+| 3 | Academia | Comprobar | Equipo de la pista | 1 o más | Artículo enlazado por cada nota | Lista de comprobación (C) |
+| 4 | Cierre independiente | Cerrar | Habilitada que no preparó ni ajustó el recurso | 1 | Resumen de lo comprobado | Otra persona lo aprueba |
+
+**Lista A · cada nota frente al TPL**
+1. ¿Tiene sentido con el texto del TPL?
+2. ¿Es útil: el traductor sabe qué hacer con la dificultad?
+3. ¿La traducción alternativa encaja exactamente en la frase que reemplaza?
+4. (Por versículo) ¿Cada dificultad del TPL tiene una nota que la explique?
+
+**Lista B · cada nota frente al TPS**
+1. ¿Explica bien el texto del TPS?
+2. ¿Ayuda a ver cómo el TPS llegó ahí desde el TPL?
+3. Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?
+4. (Por versículo) ¿Cada diferencia importante entre el TPL y el TPS tiene una nota?
+
+**Lista C · Academia (por confirmar, no está en la presentación)**
+1. ¿El artículo enlazado enseña el tipo de dificultad que señala la nota?
+2. ¿El artículo está publicado en español? Si no, se crea.
+
+### 5.2 Armonizar Palabras
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Palabras frente al TPL | Comprobar | Equipo de la pista | 1 o más | Término, artículo y TPL | Lista de comprobación por término (D) |
+| 2 | Sugerencias frente al TPS | Comprobar | Equipo de la pista | 1 o más | Término, artículo y TPS | Lista de comprobación por término (E) |
+| 3 | Cierre independiente | Cerrar | Habilitada que no preparó ni ajustó | 1 | Resumen | Otra persona lo aprueba |
+
+**Lista D · cada término frente al TPL**
+1. ¿La definición del artículo es correcta para este contexto?
+2. (Por versículo) ¿Cada palabra difícil del TPL tiene su artículo?
+
+**Lista E · cada término frente al TPS (opcional)**
+1. ¿La forma en que el TPS dice el término aparece en las sugerencias de traducción del artículo?
+
+### 5.3 Armonizar Preguntas
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Preguntas frente a los textos | Comprobar | Equipo de la pista | 1 o más | Pregunta, respuesta, TPL y TPS | Lista de comprobación por pregunta (F) |
+| 2 | Cierre independiente | Cerrar | Habilitada que no preparó ni ajustó | 1 | Resumen | Otra persona lo aprueba |
+
+**Lista F · cada pregunta (por confirmar, no está en la presentación)**
+1. ¿Se puede responder con el TPL y el TPS afinados?
+2. ¿La respuesta sugerida coincide con lo que dicen los textos?
+
+### 5.4 Qué pasa cuando una respuesta es «no»
+
+| Salida | Qué hace la app |
+|--------|-----------------|
+| **Corregir aquí** | La persona edita la nota, el artículo o la pregunta y la respuesta pasa a «sí». |
+| **Crear lo que falta** | Se crea una nota nueva, o un **artículo nuevo** de Palabras o Academia, que queda como trabajo de esta fase. |
+| **Enviar a Afinación** | Si el problema está en el TPL o el TPS, se avisa al equipo de Afinación, que es el dueño. El ítem queda «en consulta» hasta que respondan. |
+
+---
+
+## 6. Fase 4 · Validación
+
+**Propósito:** el comité pastoral decide si la unidad recibe el aval.
+
+**Tarea:** **Validar**. **Unidad:** la unidad de traspaso completa (los seis recursos).
+**Espera a:** las tres pistas de Armonización.
+**Quién:** pastores habilitados. No editan contenido.
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Revisión pastoral | Revisar | Pastores habilitados | 2 o más | Lectura del paquete, versículo por versículo | Cada pastor da su juicio |
+| 2 | Decisión del comité | Decidir | Coordinador del comité | 1 | Resumen de juicios y objeciones | Regla del aval (abajo) |
+
+**Cada pastor responde tres preguntas:** ¿comunica fielmente el mensaje?, ¿se entiende?, ¿ayuda a
+resolver dificultades reales de traducción? Puede dejar **observaciones** y **objeciones**.
+
+**Regla del aval (por confirmar, todavía no es definitiva):**
+- Toda objeción queda **a la vista de todos los pastores** antes de decidir.
+- Si hay consenso, se concede el aval.
+- Si no hay consenso, se decide **por mayoría** de los pastores que participaron.
+
+**Si el aval queda pendiente:** cada observación va a su dueño (TPL o TPS → Afinación; recursos de
+apoyo → Armonización). Cuando el dueño responde, la unidad vuelve **al mismo comité**.
+
+---
+
+## 7. Fase 5 · Publicación
+
+**Propósito:** publicar exactamente lo avalado. No se edita contenido.
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Comprobar formato y metadatos | Comprobar | Equipo de informática | 1 | Comprobación automática + lista | Lo marca quien lo hace |
+| 2 | Publicar | Publicar | Equipo de informática | 1 | Publicar versión | Queda publicada la versión avalada |
+
+Si aparece un problema de contenido, se detiene y se envía al dueño.
+**(Por confirmar:** si se publica cada unidad en cuanto tiene aval, o se juntan varias en una
+versión.)
+
+---
+
+## 8. Resumen: qué espera a qué
+
+```text
+Traducir TPL ─────▶ Afinar TPL ─┐
+Traducir TPS ─────▶ Afinar TPS ─┼─▶ Armonizar Notas y Academia ─┐
+Traducir Notas ─────────────────┤                               │
+Traducir Academia ──────────────┘                               │
+Traducir Palabras ────────────────▶ Armonizar Palabras ─────────┼─▶ Validar ─▶ Publicar
+Traducir Preguntas ───────────────▶ Armonizar Preguntas ────────┘
+        (Afinar TPL y TPS también antes de Palabras y Preguntas)
+```
+
+Todas las esperas se cuentan por **unidad de traspaso**.
+
+---
+
+## 9. Segunda plantilla: traducción a una lengua minoritaria (borrador)
+
+Usa las mismas piezas. Sirve para comprobar que el diseño no depende del FCR.
+
+- **Proyecto:** un libro en una lengua.
+- **Solo se puede trabajar** sobre los capítulos que el FCR ya **publicó** (espera entre proyectos).
+- **Equipo:** hablantes nativos, miembros de la comunidad. Niveles por fase, igual.
+- **Unidades:** las mismas (capítulo para el traspaso, porción para el reparto).
+
+| Fase | Tarea | Pasos | Se completa cuando |
+|------|-------|-------|--------------------|
+| 1 · Borrador | Traducir | Estudiar con el TPL, el TPS y las ayudas → Borrador | Lo marca quien lo hace |
+| 2 · Revisión del equipo | Revisar | Revisión en pares → Revisión grupal | Consenso por ítem (versículo) |
+| 3 · Comprobación con la comunidad | Comprobar | Una persona del equipo lee el texto con la comunidad y registra las respuestas a las **Preguntas** | Lista de comprobación por pregunta: ¿respondieron lo esperado? Si «no»: corregir el texto |
+| 4 · Consultor | Validar | Revisión del consultor | Otra persona lo aprueba |
+| 5 · Publicación | Publicar | Formato y publicar | Lo marca quien lo hace |
+
+Lo que esta plantilla pide al motor y el FCR no: **esperar a lo publicado por otro proyecto**. Todo
+lo demás ya está en las cuatro reglas de cierre.
+
+---
+
+## 10. Pendientes para cerrar la plantilla
+
+1. Acompañamiento del **Aprendiz**: cómo se registra.
+2. Ayudas en Traducción: ¿familiarización y revisión grupal también?
+3. Palabras clave en Afinación: ¿por porción o por capítulo?
+4. «Dominio del idioma bíblico»: ¿se registra por persona?
+5. Armonización: ¿espera al TPL **y** al TPS?
+6. Listas C (Academia) y F (Preguntas): revisarlas o reemplazarlas.
+7. Validación: regla definitiva del aval.
+8. Publicación: ¿por unidad o por versión?
