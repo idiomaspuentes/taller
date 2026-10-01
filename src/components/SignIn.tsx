@@ -5,6 +5,7 @@ import { isProductionHost } from "../domain/qaAdmin";
 import { signInWithPassword, signInWithToken, type GtSession } from "../dcs/auth";
 import { isSessionExpiredError } from "../dcs/sessionExpiry";
 import { useT } from "../i18n/messages";
+import { serverChoiceVisible } from "../serverChoice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -249,6 +250,7 @@ export function SignInModal({
                 <p className="signin__hint">{mode === "password" ? t("signIn.permsPassword") : t("signIn.permsToken")}</p>
               ) : null}
 
+              {serverChoiceVisible(isProductionHost(host), Boolean(import.meta.env.DEV)) ? (
               <details className="signin__advanced" open={import.meta.env.DEV || undefined}>
                 <summary>{t("signIn.advanced")}</summary>
                 <div className="signin__field">
@@ -272,6 +274,7 @@ export function SignInModal({
                   </Alert>
                 ) : null}
               </details>
+              ) : null}
             </div>
           </form>
         )}

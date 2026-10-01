@@ -57,7 +57,8 @@ export type TallerConfig = {
   defaultUiLanguage: UiLanguage;
   /**
    * The Door43 server a published app starts on. People can change it under "Avanzado" when signing in.
-   * `VITE_DEFAULT_HOST=qa` in the build environment overrides it (used while testing).
+   * `VITE_DEFAULT_HOST=qa` in the build environment overrides it (used while testing). People who test open the app
+   * with `?server=qa` instead; regular people are never offered the choice.
    */
   defaultServer: "production" | "qa";
   workspaces: Workspace[];

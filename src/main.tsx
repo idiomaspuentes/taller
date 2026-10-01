@@ -3,9 +3,11 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { applyMockSessionFromUrl } from "./devMockSession";
 import { startManifest } from "./manifest";
+import { applyServerFromUrl } from "./serverChoice";
 import "./index.css";
 
 applyMockSessionFromUrl();
+applyServerFromUrl();
 startManifest();
 
 createRoot(document.getElementById("root")!).render(

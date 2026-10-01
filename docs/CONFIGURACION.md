@@ -10,7 +10,7 @@ Todo lo que cambia de una organización a otra vive en **un solo archivo**: [`ta
 | `brand.organization` | La organización que aparece sobre el título de la bienvenida. |
 | `brand.short` | El nombre corto de la organización (para Idiomas Puentes, «Id»). Se añade al nombre de la app en el título del sitio: «Taller Id». |
 | `uiLanguages` / `defaultUiLanguage` | Los idiomas de la interfaz. La primera visita sigue el idioma del navegador; la persona puede cambiarlo en la pantalla de bienvenida. |
-| `defaultServer` | El servidor de Door43 con el que arranca la app publicada (`production` o `qa`). Cada persona puede cambiarlo en «Avanzado» al iniciar sesión. |
+| `defaultServer` | El servidor de Door43 con el que arranca la app publicada (`production` o `qa`). La persona normal nunca ve la opción de servidor: quien prueba abre la app con `?server=qa` (o `?server=production` para volver), y solo en ese dispositivo aparece «Avanzado: servidor» al iniciar sesión. |
 | `workspaces` | Los **espacios de trabajo**: uno por equipo de lengua. Ver abajo. |
 | `welcome` | El texto de la primera pantalla, en cada idioma: título, subtítulo, tres líneas de lo que se encontrará, la pregunta del equipo, el botón y el texto de confianza. |
 

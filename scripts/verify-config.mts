@@ -5,6 +5,7 @@ import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
 import { appTitle } from "../src/brand";
 import { buildManifest } from "../src/manifest";
+import { parseServerParam, readServerFromUrl, serverChoiceVisible } from "../src/serverChoice";
 import { localizeHold, localizeName } from "../src/domain/templateNames";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
@@ -186,6 +187,19 @@ test("el nombre con que se instala la app sigue el idioma de la interfaz", () =>
   assert.equal(pt.start_url, "https://taller.example/#/mis-tareas", "todo absoluto: un manifest en memoria no tiene dónde resolver rutas");
   assert.equal(pt.scope, "https://taller.example/");
   assert.ok(pt.icons.every((i) => i.src.startsWith("https://taller.example/")));
+});
+
+test("el servidor de Door43 no se ofrece a la gente normal: solo con ?server= en ese dispositivo", () => {
+  assert.equal(parseServerParam("?server=qa"), "qa");
+  assert.equal(parseServerParam("?x=1&server=PRODUCTION"), "production");
+  assert.equal(parseServerParam("?server=otro"), null);
+  assert.equal(parseServerParam(""), null);
+  const store = memory();
+  assert.equal(serverChoiceVisible(true, false, store), false, "producción y nadie lo pidió: no se ve");
+  assert.equal(serverChoiceVisible(false, false, store), true, "si el servidor no es producción, se ve para poder volver");
+  assert.equal(serverChoiceVisible(true, true, store), true, "en desarrollo siempre");
+  assert.equal(readServerFromUrl("?server=qa", store), "https://qa.door43.org");
+  assert.equal(serverChoiceVisible(true, false, store), true, "tras pedirlo, ese dispositivo lo ve");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

@@ -36,7 +36,7 @@ npm run verify:config              # y los demás verify:* (ver package.json); v
 ```
 
 - **Pruebas:** `scripts/verify-*.mts`, una por tema, con salida legible. `npm run mock:door43` levanta un Door43 en memoria (puerto 8787, `MOCK_PM_ORG` elige la organización) y `?mockUser=ana|bea|carla` inicia sesión como cada una. `npm run verify:scope-mock` prueba el aislamiento de espacios contra ese mock.
-- **Variables de compilación** (en `.env.production.local`, no se sube): `VITE_PUSH_URL` (dirección del Worker de avisos) y `VITE_DEFAULT_HOST=qa` (que la versión publicada arranque en QA).
+- **Variables de compilación** (en `.env.production.local`, no se sube): `VITE_PUSH_URL` (dirección del Worker de avisos) y, solo para una versión de pruebas, `VITE_DEFAULT_HOST=qa`. La versión publicada arranca en **producción** (`git.door43.org`); para probar contra QA se abre con `?server=qa` (y `?server=production` para volver).
 - **Dependencia de usfm-ast:** repositorio aparte, esperado en `../usfm-ast` (el script lo clona fijado en un commit conocido). `packages/dcs-client` es una copia del cliente de Door43 del monorepo `idiomas-puentes-lms`.
 
 ## Publicar
@@ -80,7 +80,7 @@ Pendientes de [AFINACION_PROXIMOS_PASOS.md](AFINACION_PROXIMOS_PASOS.md): oculta
 - Revisar el aviso de «Probar un conflicto» y otras herramientas de desarrollo que solo deben verse con `import.meta.env.DEV`.
 
 ### 6. Para el lanzamiento
-1. Cambiar `defaultServer` a `production` y quitar `VITE_DEFAULT_HOST=qa` del build.
+1. (Hecho el 1 de octubre) La app publicada arranca en producción; QA solo con `?server=qa`.
 2. Webhook y Worker apuntando a producción (`ALLOWED_HOSTS` hoy solo QA).
 3. Borrar los datos que se crearon por error en producción (`es-419_gl/gateway-tasks`).
 4. Revisar las políticas de datos (el Worker guarda las direcciones de push de cada dispositivo; ver su README).

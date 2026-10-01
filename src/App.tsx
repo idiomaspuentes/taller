@@ -5,6 +5,7 @@ import { useUiLanguage } from "./i18n/language";
 import { useT } from "./i18n/messages";
 import { contextWith, initialWorkspace, saveWorkspaceId } from "./workspace";
 import { setActiveScope } from "./domain/scope";
+import { forcedHost } from "./serverChoice";
 import { Welcome } from "./components/Welcome";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
@@ -132,7 +133,7 @@ export function App() {
   // Set before anything reads or writes: the space decides every label, milestone and path.
   setActiveScope(workspace?.scope);
   const { route, navigate } = useHashRoute();
-  const [host, setHost] = useState(saved?.host || DEFAULT_HOST);
+  const [host, setHost] = useState(forcedHost() ?? saved?.host ?? DEFAULT_HOST);
   const [lang, setLang] = useState(workspace?.lang ?? (saved?.lang || "es-419"));
   const [contentOrg, setContentOrg] = useState(workspace?.contentOrg ?? (saved?.contentOrg || defaultContentOrg("es-419")));
   const [pmOrg, setPmOrg] = useState(workspace?.pmOrg ?? (saved?.pmOrg || ""));
