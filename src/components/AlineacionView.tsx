@@ -48,6 +48,9 @@ import { resolveSourcePackage } from "../domain/sourcePackage";
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { tNow, useT, type MessageKey } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -58,10 +61,10 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-const STANCE_LABEL: Record<ReviewStance, string> = {
-  approved: "De acuerdo",
-  revise: "Propongo un cambio",
-  rejected: "Tengo una objeción",
+const STANCE_KEY: Record<ReviewStance, MessageKey> = {
+  approved: "rv.approved",
+  revise: "rv.revise",
+  rejected: "rv.rejected",
 };
 
 const BANK_ID = "bank";
@@ -148,6 +151,7 @@ function PlacedWord({
   disabled: boolean;
   onRemove: () => void;
 }) {
+  const t = useT();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `chip-${boxId}-${transIndex}`,
     data: { type: "chip", boxId, transIndex } satisfies DragData,
@@ -160,7 +164,7 @@ function PlacedWord({
         <Occurrence token={token} />
       </button>
       {!disabled ? (
-        <button type="button" className="al-chip__x" aria-label={`Quitar «${token.surface}» de esta caja`} onClick={onRemove} data-no-box-select>
+        <button type="button" className="al-chip__x" aria-label={t("al.removeFromBox").replace("{w}", token.surface)} onClick={onRemove} data-no-box-select>
           ×
         </button>
       ) : null}
@@ -169,6 +173,7 @@ function PlacedWord({
 }
 
 function MergeGrip({ boxId, disabled }: { boxId: string; disabled: boolean }) {
+  const t = useT();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `merge-${boxId}`,
     data: { type: "merge", boxId } satisfies DragData,
@@ -182,7 +187,7 @@ function MergeGrip({ boxId, disabled }: { boxId: string; disabled: boolean }) {
       {...attributes}
       className="al-grip"
       data-dragging={isDragging ? "true" : undefined}
-      aria-label="Arrastra esta caja sobre otra para juntarlas"
+      aria-label={t("al.mergeGrip")}
       data-no-box-select
     >
       ⠿
@@ -291,9 +296,10 @@ function Box({
 }
 
 function Bank({ children, editable }: { children: ReactNode; editable: boolean }) {
+  const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id: BANK_ID, disabled: !editable });
   return (
-    <div ref={setNodeRef} className="al-bank" data-over={isOver ? "true" : undefined} role="region" aria-label="Palabras de tu borrador">
+    <div ref={setNodeRef} className="al-bank" data-over={isOver ? "true" : undefined} role="region" aria-label={t("al.bankAria")}>
       {children}
     </div>
   );
@@ -308,6 +314,10 @@ function Bank({ children, editable }: { children: ReactNode; editable: boolean }
  * read-only and answers.
  */
 export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const stanceLabel = (status: string) => t(STANCE_KEY[status as ReviewStance] ?? "rv.approved");
+  const n = (key: MessageKey, count: number) => t(key).replace("{n}", String(count));
   const [session] = useState<GtSession | undefined>(() => loadSession());
   const [ctx, setCtx] = useState<SolverLaunchContext | null>(null);
   const [data, setData] = useState<AlineacionData | null>(null);
@@ -341,12 +351,12 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
     if (!decoded) {
-      setError("El enlace de esta herramienta no es válido. Ábrela de nuevo desde Mis tareas.");
+      setError(tNow("af.badLink"));
       return;
     }
     setCtx(decoded);
     if (!session?.token) {
-      setError("Tu sesión caducó. Vuelve a iniciar sesión.");
+      setError(tNow("af.expired"));
       return;
     }
     setBusy(true);
@@ -357,7 +367,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       setTask(thisTask);
       const sourceTaskId = thisTask?.waitsFor?.find((w) => w.taskId)?.taskId;
       if (!sourceTaskId) {
-        throw new Error("Esta tarea no dice qué texto alinea. Quien administra debe añadir «Esperar a» la traducción en la tarea.");
+        throw new Error(tNow("al.noSource"));
       }
       const loaded = await loadAlineacion({ session, ctx: decoded, sourceTaskId, pkg: resolveSourcePackage(board?.settings) });
       // Everything is read before anything is shown: a verse must not look unfinished for a moment
@@ -373,7 +383,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       setGroups(Object.fromEntries(loaded.verses.map((v) => [v.verse, v.groups])));
       setDirty({});
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(err instanceof Error ? localizeThread(err.message, language) : String(err));
     } finally {
       setBusy(false);
     }
@@ -568,7 +578,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     const data = e.active.data.current as DragData | undefined;
     if (data?.type === "word") setDragging(verse?.draft[data.indices[0]!]?.surface ?? null);
     if (data?.type === "chip") setDragging(verse?.draft[data.transIndex]?.surface ?? null);
-    if (data?.type === "merge") setDragging("Juntar cajas");
+    if (data?.type === "merge") setDragging(t("al.mergeBoxes"));
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -606,7 +616,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         source: data.source,
       });
       setDirty((prev) => ({ ...prev, [target.verse]: false }));
-      announce(`Alineación de ${data.book} ${data.chapter}:${target.verse} guardada`);
+      announce(t("al.saved").replace("{ref}", `${data.book} ${data.chapter}:${target.verse}`));
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -624,7 +634,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   async function goTo(index: number) {
     if (!data || index < 0 || index >= data.verses.length || index === position) return;
     if (proposing || objecting) {
-      announce("Envía o cancela lo que estás escribiendo antes de cambiar de versículo");
+      announce(t("al.finishFirst"));
       return;
     }
     if (mode === "alinear" && verse && dirty[verse.verse] && !(await saveVerseOf(verse))) return;
@@ -645,7 +655,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   function moveOnAfterAction() {
     const next = nextNeedingWork();
     if (next >= 0) setPosition(next);
-    else announce(mode === "alinear" ? "Todos los versículos están terminados" : "No te queda ningún versículo por responder");
+    else announce(mode === "alinear" ? t("al.allDone") : t("al.noneToAnswer"));
   }
 
   async function saveAndNext() {
@@ -680,7 +690,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
-      announce(`Versículo ${verse.verse} terminado`);
+      announce(n("al.verseDone", verse.verse));
       moveOnAfterAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -709,7 +719,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
-      announce(`${STANCE_LABEL[status]}: guardado`);
+      announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
       moveOnAfterAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -797,7 +807,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       setDecisions(mergeDecisionFiles(files));
       setProposals(loadedProposals);
       setSentIssue(opened.issue.number);
-      announce(`Se abrió la decisión #${opened.issue.number} para el equipo`);
+      announce(n("al.decisionOpened", opened.issue.number));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -813,24 +823,24 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const pendingBoxes = boxes.filter((b) => b.groupIndex === null).length;
   const oneBox = selectedBoxes.length === 1 ? boxes.find((b) => b.id === selectedBoxes[0]) : undefined;
   const canSeparate = Boolean(oneBox && oneBox.groupIndex !== null && (oneBox.targetTokens.length > 1 || oneBox.alignedSourceWords.length > 1));
-  const title = mode === "alinear" ? "Alinear" : "Revisar la alineación";
+  const title = mode === "alinear" ? t("al.titleAlign") : t("al.titleReview");
   const openHere = verse ? openFor(verse) : [];
   const realignHere = verse ? realignFor(verse) : [];
   const decisionNotes = (
     <>
       {sentIssue ? (
         <p className="af-hint" role="status">
-          Se abrió una decisión para el equipo. <a href={`#/mis-tareas/${sentIssue}`}>Abrirla (#{sentIssue})</a>
+          {t("al.decisionOpenedNote")}<a href={`#/mis-tareas/${sentIssue}`}>{n("al.openIt", sentIssue)}</a>
         </p>
       ) : null}
       {mode === "alinear" && realignHere.length ? (
         <div className="af-stale" role="status">
-          El equipo pidió ajustar este versículo:
+          {t("al.teamAsked")}
           <ul className="al-decisions">
             {realignHere.map((r) => (
               <li key={r.id}>
-                {proposals.proposals.find((p) => p.id === r.id)?.note ?? "Hay una objeción que prosperó."}
-                {r.issue ? <> · <a href={`#/mis-tareas/${r.issue}`}>ver la decisión</a></> : null}
+                {proposals.proposals.find((p) => p.id === r.id)?.note ?? t("al.objectionHeld")}
+                {r.issue ? <> · <a href={`#/mis-tareas/${r.issue}`}>{t("al.seeDecision")}</a></> : null}
               </li>
             ))}
           </ul>
@@ -838,12 +848,12 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       ) : null}
       {openHere.length ? (
         <div className="af-hint" role="status">
-          En discusión del equipo:
+          {t("al.inDiscussion")}
           <ul className="al-decisions">
             {openHere.map((p) => (
               <li key={p.id}>
-                {p.kind === "proposal" ? "Propuesta" : "Objeción"} de @{p.by}
-                {p.issue ? <> · <a href={`#/mis-tareas/${p.issue}`}>votar y comentar (#{p.issue})</a></> : null}
+                {t(p.kind === "proposal" ? "al.proposalBy" : "al.objectionBy").replace("{by}", p.by)}
+                {p.issue ? <> · <a href={`#/mis-tareas/${p.issue}`}>{n("al.voteComment", p.issue)}</a></> : null}
               </li>
             ))}
           </ul>
@@ -854,22 +864,22 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
 
   /** One of three states per verse, told by a mark and a word, never only by colour. */
   function verseState(v: AlignmentVerse): { id: string; mark: string; label: string } {
-    if (openFor(v).length) return { id: "discussion", mark: "…", label: "en discusión del equipo" };
+    if (openFor(v).length) return { id: "discussion", mark: "…", label: t("al.stDiscussion") };
     if (mode === "alinear") {
-      if (isDone(v)) return { id: "done", mark: "✓", label: "terminado" };
-      if (verseComplete(v, groups[v.verse] ?? [])) return { id: "complete", mark: "○", label: "completo, falta terminarlo" };
-      return { id: "pending", mark: "", label: "pendiente" };
+      if (isDone(v)) return { id: "done", mark: "✓", label: t("al.stDone") };
+      if (verseComplete(v, groups[v.verse] ?? [])) return { id: "complete", mark: "○", label: t("al.stComplete") };
+      return { id: "pending", mark: "", label: t("al.stPending") };
     }
-    if (!isDone(v)) return { id: "pending", mark: "", label: "todavía no está terminado" };
-    if (authoredByMe(v)) return { id: "own", mark: "✎", label: "lo alineaste tú" };
-    if (answeredByMe(v)) return { id: "done", mark: "✓", label: "ya lo respondiste" };
-    return { id: "complete", mark: "○", label: "por responder" };
+    if (!isDone(v)) return { id: "pending", mark: "", label: t("al.stNotDone") };
+    if (authoredByMe(v)) return { id: "own", mark: "✎", label: t("al.stOwn") };
+    if (answeredByMe(v)) return { id: "done", mark: "✓", label: t("al.stAnswered") };
+    return { id: "complete", mark: "○", label: t("al.stToAnswer") };
   }
 
   /** The verse in English (ULT or UST) under the original, closed by default on a phone. */
   const reference = verse?.reference ? (
     <details className="al-reference" open={typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches}>
-      <summary>Texto en inglés ({data?.referenceLabel})</summary>
+      <summary>{t("al.english").replace("{label}", data?.referenceLabel ?? "")}</summary>
       <p>{verse.reference}</p>
     </details>
   ) : null;
@@ -878,7 +888,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
             <div className="al-layout">
               <Bank editable={editable}>
-                <p className="af-lbl">Tu borrador</p>
+                <p className="af-lbl">{t("al.yourDraft")}</p>
                 <div className="al-bank__words">
                   {verse.draft.map((token, i) => (
                     <BankWord
@@ -931,21 +941,21 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   return (
     <div className="af al">
       <header className="af-head">
-        <button type="button" className="af-back" onClick={() => void leave()} aria-label="Volver">
-          ← Volver
+        <button type="button" className="af-back" onClick={() => void leave()} aria-label={t("al.back")}>
+          {t("al.backArrow")}
         </button>
         <div className="af-title">
           <h1>{title}</h1>
           <p>{data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}</p>
         </div>
         {data ? (
-          <div className="af-progress" aria-label="Avance">
-            <span>{mode === "alinear" ? `${doneCount} de ${data.verses.length} versículos terminados` : `${summary?.agreed ?? 0} de ${data.verses.length} acordados`}</span>
+          <div className="af-progress" aria-label={t("al.progressAria")}>
+            <span>{(mode === "alinear" ? t("al.versesDone").replace("{a}", String(doneCount)) : t("al.versesAgreed").replace("{a}", String(summary?.agreed ?? 0))).replace("{b}", String(data.verses.length))}</span>
             <span className="af-bar">
               <i style={{ width: `${data.verses.length ? ((mode === "alinear" ? doneCount : summary?.agreed ?? 0) / data.verses.length) * 100 : 0}%` }} />
             </span>
             {mode === "revisar" ? (
-              <span>{toAnswer === 0 ? "No te queda nada por responder" : `Te ${toAnswer === 1 ? "falta 1 versículo" : `faltan ${toAnswer} versículos`} por responder`}</span>
+              <span>{toAnswer === 0 ? t("al.nothingToAnswer") : toAnswer === 1 ? t("al.oneToAnswer") : n("al.nToAnswer", toAnswer)}</span>
             ) : null}
           </div>
         ) : null}
@@ -956,11 +966,11 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">Cargando el original y el borrador…</p> : null}
+      {busy ? <p className="hub-hint">{t("al.loading")}</p> : null}
 
       {data && verse ? (
         <>
-          <nav className="al-verses" aria-label="Versículos">
+          <nav className="al-verses" aria-label={t("al.versesNav")}>
             {data.verses.map((v, i) => {
               const state = verseState(v);
               return (
@@ -972,7 +982,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
                   data-state={state.id}
                   data-dirty={dirty[v.verse] ? "true" : undefined}
                   onClick={() => void goTo(i)}
-                  aria-label={`Versículo ${v.verse}, ${state.label}${dirty[v.verse] ? ", sin guardar" : ""}`}
+                  aria-label={`${t("al.verseTab").replace("{n}", String(v.verse)).replace("{state}", state.label)}${dirty[v.verse] ? t("al.unsavedSuffix") : ""}`}
                   aria-current={i === position ? "true" : undefined}
                 >
                   <span>{v.verse}</span>
@@ -1012,16 +1022,16 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           )}
 
           {editable ? (
-            <section className="af-card al-tools" aria-label="Herramientas">
+            <section className="af-card al-tools" aria-label={t("al.toolsAria")}>
               {mode === "revisar" && proposing && baseVerse ? (
                 <div className="al-textedit">
-                  <p className="af-hint">Estás escribiendo una propuesta: cambia las uniones como creas que deben quedar y envíala con una nota. No se cambia nada hasta que el equipo la acepte.</p>
+                  <p className="af-hint">{t("al.proposalIntro")}</p>
                   <label className="af-field">
-                    <span>Texto del versículo (cámbialo solo si propones cambiar el texto)</span>
+                    <span>{t("al.verseTextEdit")}</span>
                     <textarea value={proposing.text} onChange={(e) => changeProposalText(e.target.value)} rows={3} />
                   </label>
                   {!sameText(proposing.text, baseVerse.text) ? (
-                    <p className="al-diff" aria-label="Lo que cambia en el texto">
+                    <p className="al-diff" aria-label={t("al.textDiffAria")}>
                       {wordDiff(baseVerse.text, proposing.text).map((piece, i) => (
                         <span key={i}>
                           {i ? " " : ""}
@@ -1035,73 +1045,75 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
               {decisionNotes}
               <p className="af-hint">
                 {selectedWords.length
-                  ? `Tocaste ${selectedWords.length === 1 ? "una palabra" : `${selectedWords.length} palabras`}. Toca la caja donde van.`
+                  ? selectedWords.length === 1
+                    ? t("al.touchedOne")
+                    : n("al.touchedMany", selectedWords.length)
                   : selectedBoxes.length
-                    ? "Caja elegida. Toca otra para juntarlas, o usa los botones."
-                    : "Toca palabras de tu borrador y luego la caja donde van. También puedes arrastrarlas."}
+                    ? t("al.boxChosen")
+                    : t("al.tapHint")}
               </p>
               <div className="al-actions">
                 <Button type="button" variant="outline" disabled={selectedBoxes.length < 2} onClick={join}>
-                  Juntar cajas
+                  {t("al.mergeBoxes")}
                 </Button>
                 <Button type="button" variant="outline" disabled={!canSeparate} onClick={separate}>
-                  Separar
+                  {t("al.separate")}
                 </Button>
                 <Button type="button" variant="outline" disabled={!selectedBoxes.length} onClick={emptyBoxes}>
-                  Vaciar caja
+                  {t("al.emptyBox")}
                 </Button>
                 <Button type="button" variant="ghost" disabled={!selectedWords.length && !selectedBoxes.length} onClick={clearSelection}>
-                  Quitar selección
+                  {t("al.clearSel")}
                 </Button>
                 <Button type="button" variant="ghost" disabled={!current.length} onClick={() => change([])}>
-                  Limpiar versículo
+                  {t("al.clearVerse")}
                 </Button>
               </div>
-              {readyToReview ? <p className="af-hint" role="status">Terminado: ya puede revisarlo otra persona.</p> : null}
+              {readyToReview ? <p className="af-hint" role="status">{t("al.readyForReview")}</p> : null}
               {!complete ? (
                 <p className="af-stale" role="status">
-                  Falta colocar {pendingWords} {pendingWords === 1 ? "palabra" : "palabras"} de tu borrador.
+                  {pendingWords === 1 ? t("al.missingWordsOne") : n("al.missingWordsMany", pendingWords)}
                 </p>
               ) : (
                 <p className="af-hint" role="status">
-                  Todas las palabras de tu borrador están colocadas.
-                  {pendingBoxes ? ` Quedan ${pendingBoxes} ${pendingBoxes === 1 ? "caja" : "cajas"} del original sin palabras; está bien si no tienen traducción.` : ""}
+                  {t("al.allPlaced")}
+                  {pendingBoxes ? (pendingBoxes === 1 ? t("al.emptyBoxesOne") : n("al.emptyBoxesMany", pendingBoxes)) : ""}
                 </p>
               )}
             </section>
           ) : (
-            <section className="af-card" aria-label="Tu respuesta">
+            <section className="af-card" aria-label={t("al.yourAnswerAria")}>
               {decisionNotes}
               {!complete ? (
                 <p className="af-stale" role="status">
-                  Este versículo todavía no está completo: {pendingWords === 1 ? "falta 1 palabra" : `faltan ${pendingWords} palabras`} del borrador por colocar.
+                  {pendingWords === 1 ? t("al.notCompleteOne") : n("al.notCompleteMany", pendingWords)}
                 </p>
               ) : null}
               {!readyToReview ? (
                 <p className="af-hint" role="status">
-                  Todavía no está terminado: quien lo alinea aún no lo marcó. Cuando lo marque podrás responder.
+                  {t("al.notMarked")}
                 </p>
               ) : null}
               {authoredByMe(verse) ? (
                 <p className="af-hint" role="status">
-                  Tú alineaste este versículo: tu respuesta no cuenta como la de una persona independiente.
+                  {t("al.authoredByMe")}
                 </p>
               ) : null}
-              <p className="af-question">¿Cada palabra del original está unida a lo que la traduce?</p>
+              <p className="af-question">{t("al.question")}</p>
               {mine ? (
                 <p className="af-mine">
-                  Tu respuesta: {STANCE_LABEL[mine.status as ReviewStance]}
+                  {t("al.myAnswer").replace("{stance}", stanceLabel(mine.status))}
                   {mine.note ? ` · ${mine.note}` : ""}
                 </p>
               ) : null}
               {tally?.stale.some((a) => a.reviewer.trim().toLowerCase() === me) ? (
-                <p className="af-stale">Cambió la alineación después de tu respuesta. Vuelve a revisarla.</p>
+                <p className="af-stale">{t("al.staleMine")}</p>
               ) : null}
               {others.length ? (
                 <ul className="af-others">
                   {others.map((a) => (
                     <li key={`${a.reviewer}-${a.timestamp}`}>
-                      <b>{a.reviewer}</b>: {STANCE_LABEL[a.status as ReviewStance]}
+                      <b>{a.reviewer}</b>: {stanceLabel(a.status)}
                       {a.note ? ` · ${a.note}` : ""}
                     </li>
                   ))}
@@ -1112,76 +1124,76 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
 
           <div className="al-pager">
             <Button type="button" variant="outline" disabled={position === 0} onClick={() => void goTo(position - 1)}>
-              ← Anterior
+              {t("al.prev")}
             </Button>
             <span>
-              {position + 1} de {data.verses.length}
+              {t("af.countOf").replace("{a}", String(position + 1)).replace("{b}", String(data.verses.length))}
             </span>
             <Button type="button" variant="outline" disabled={position >= data.verses.length - 1} onClick={() => void goTo(position + 1)}>
-              Siguiente →
+              {t("al.next")}
             </Button>
           </div>
 
-          <div className="al-actionbar" role="region" aria-label="Acciones">
+          <div className="al-actionbar" role="region" aria-label={t("al.actionsAria")}>
             {mode === "alinear" ? (
               <>
                 <div className="al-actionbar__row">
                   <Button type="button" variant="outline" disabled={!canUndo} onClick={undo}>
-                    Deshacer
+                    {t("al.undo")}
                   </Button>
                   <Button type="button" variant="outline" disabled={!canRedo} onClick={redo}>
-                    Rehacer
+                    {t("al.redo")}
                   </Button>
-                  {dirty[verse.verse] ? <span className="al-actionbar__flag">Sin guardar</span> : null}
+                  {dirty[verse.verse] ? <span className="al-actionbar__flag">{t("al.unsaved")}</span> : null}
                 </div>
                 <div className="al-actionbar__row">
                   {complete && !readyToReview ? (
                     <Button type="button" onClick={() => void markDone()} disabled={saving}>
-                      {saving ? "Guardando…" : "Terminé este versículo"}
+                      {saving ? t("al.saving") : t("al.markDone")}
                     </Button>
                   ) : null}
                   <Button type="button" variant={complete && !readyToReview ? "outline" : "default"} onClick={() => void saveAndNext()} disabled={saving}>
-                    {saving ? "Guardando…" : dirty[verse.verse] ? "Guardar y seguir" : "Seguir"}
+                    {saving ? t("al.saving") : dirty[verse.verse] ? t("al.saveNext") : t("al.continue")}
                   </Button>
                 </div>
               </>
             ) : proposing ? (
               <div className="al-actionbar__note">
                 <label className="af-field">
-                  <span>¿Qué cambias y por qué? (obligatorio)</span>
+                  <span>{t("al.whatChange")}</span>
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
                 </label>
                 <div className="al-actionbar__row">
                   <Button type="button" variant="outline" disabled={!canUndo} onClick={undo}>
-                    Deshacer
+                    {t("al.undo")}
                   </Button>
                   <Button type="button" variant="outline" disabled={!canRedo} onClick={redo}>
-                    Rehacer
+                    {t("al.redo")}
                   </Button>
                 </div>
                 <div className="al-actionbar__row">
                   <Button type="button" disabled={saving || !note.trim() || (!dirty[verse.verse] && !(baseVerse && proposing && !sameText(proposing.text, baseVerse.text)))} onClick={() => void sendDecision("proposal")}>
-                    {saving ? "Enviando…" : "Enviar propuesta al equipo"}
+                    {saving ? t("al.sending") : t("al.sendProposal")}
                   </Button>
                   <Button type="button" variant="ghost" onClick={cancelProposal}>
-                    Cancelar
+                    {t("al.cancel")}
                   </Button>
                 </div>
-                {!dirty[verse.verse] ? <p className="af-hint">Cambia alguna unión o el texto para poder enviar la propuesta.</p> : null}
+                {!dirty[verse.verse] ? <p className="af-hint">{t("al.changeToSend")}</p> : null}
               </div>
             ) : objecting ? (
               <div className="al-actionbar__note">
-                <p className="af-hint">Toca las cajas a las que se refiere tu objeción: se marcan en amarillo (opcional).</p>
+                <p className="af-hint">{t("al.objectHint")}</p>
                 <label className="af-field">
-                  <span>¿Cuál es tu objeción? (obligatorio)</span>
+                  <span>{t("al.whatObjection")}</span>
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
                 </label>
                 <div className="al-actionbar__row">
                   <Button type="button" disabled={saving || !note.trim()} onClick={() => void sendDecision("objection")}>
-                    {saving ? "Enviando…" : "Enviar objeción al equipo"}
+                    {saving ? t("al.sending") : t("al.sendObjection")}
                   </Button>
                   <Button type="button" variant="ghost" onClick={cancelObjection}>
-                    Cancelar
+                    {t("al.cancel")}
                   </Button>
                 </div>
               </div>
@@ -1189,7 +1201,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
               <div className="al-actionbar__row">
                 {(["approved", "revise", "rejected"] as ReviewStance[]).map((stance) => (
                   <Button key={stance} type="button" variant={stance === "approved" ? "default" : "outline"} disabled={saving || !readyToReview} onClick={() => void answer(stance)}>
-                    {STANCE_LABEL[stance]}
+                    {t(STANCE_KEY[stance])}
                   </Button>
                 ))}
               </div>
