@@ -5847,20 +5847,26 @@ button.al-box--read { cursor: pointer; }
 .al-textedit textarea, .al-actionbar__note textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); }
 .chat-decision__panel--wide { grid-column: 1 / -1; }
 .push-prompt {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  transform: translateX(-50%);
+  width: min(28rem, calc(100vw - 1.5rem));
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.75rem;
-  margin: 0.5rem 1rem 0;
-  padding: 0.6rem 0.75rem;
+  padding: 0.65rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 0.875rem;
   background: var(--surface, #fff);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.18);
   font-size: 0.8125rem;
   line-height: 1.35;
 }
 .push-prompt p {
-  flex: 1 1 14rem;
+  flex: 1 1 12rem;
   margin: 0;
 }
 .push-prompt__close {
