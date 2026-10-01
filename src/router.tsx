@@ -11,6 +11,8 @@ export type AppRoute =
   /** «Equipo hoy»: how the work stands, for whoever coordinates. */
   | { name: "hoy" }
   | { name: "mis-tareas" }
+  /** The person's Door43 profile, read-only (editing happens in Door43). */
+  | { name: "perfil" }
   /** One subtarea as a conversation. `demo` = local fixture (dev only, no DCS). */
   | { name: "conversacion"; issue: number; demo?: boolean }
   /** Fictional verse conflict, in memory only (`#/mis-tareas/prueba`). */
@@ -68,6 +70,7 @@ export function parseHash(hash: string): AppRoute {
   if (parts[0] === "ahora") return { name: "ahora" };
   if (parts[0] === "avisos") return { name: "avisos" };
   if (parts[0] === "hoy") return { name: "hoy" };
+  if (parts[0] === "perfil") return { name: "perfil" };
   if (parts[0] === "organizacion") return { name: "organizacion" };
   if (parts[0] === "plantillas") {
     return { name: "plantillas", workflowId: parts[1] || undefined };
@@ -130,6 +133,8 @@ export function routeToHash(route: AppRoute): string {
       return `#/mis-tareas/${route.issue}${route.demo ? "?demo=1" : ""}`;
     case "conflicto-prueba":
       return "#/mis-tareas/prueba";
+    case "perfil":
+      return "#/perfil";
     case "organizacion":
       return "#/organizacion";
     case "plantillas":

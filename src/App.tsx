@@ -84,6 +84,8 @@ import { AppNav } from "./components/AppNav";
 import { PushPrompt } from "./components/PushPrompt";
 import { useMentions } from "./useMentions";
 import { Onboarding } from "./components/Onboarding";
+import { ProfileView } from "./components/ProfileView";
+import { initialsOf } from "./domain/profile";
 import { useOnboarding } from "./onboarding";
 import { clearNotices } from "./clearNotices";
 import { QaAdminDialog } from "./components/QaAdminDialog";
@@ -1036,6 +1038,22 @@ export function App() {
                 <span className="hidden text-muted-foreground sm:inline">· {book}</span>
               ) : null}
             </button>
+            {session ? (
+              <button
+                type="button"
+                className="app-avatar"
+                data-active={route.name === "perfil" ? "true" : undefined}
+                aria-label={t("nav.profile")}
+                title={t("nav.profile")}
+                onClick={() => navigate({ name: "perfil" })}
+              >
+                {session.avatarUrl ? (
+                  <img src={session.avatarUrl} alt="" width={28} height={28} />
+                ) : (
+                  <span aria-hidden>{initialsOf(session.username)}</span>
+                )}
+              </button>
+            ) : null}
           </div>
 
           <AppNav
@@ -1078,6 +1096,13 @@ export function App() {
                     },
                   ]
                 : []),
+              {
+                id: "perfil",
+                label: t("nav.profile"),
+                active: route.name === "perfil",
+                onSelect: () => navigate({ name: "perfil" }),
+                menuOnly: true,
+              },
               {
                 id: "organizacion",
                 label: t("nav.organization"),
@@ -1271,6 +1296,19 @@ export function App() {
           />
         ) : null}
 
+        {route.name === "perfil" && session ? (
+          <ProfileView
+            session={session}
+            pmOrg={pmOrg}
+            workspaceName={workspace ? workspace.name[uiLanguage] : ""}
+            onSignOut={() => {
+              signOut();
+              setSession(null);
+              navigate({ name: "ahora" });
+            }}
+          />
+        ) : null}
+
         {route.name === "organizacion" && session ? (
           <OrgView
             session={session}
@@ -1455,6 +1493,10 @@ export function App() {
           workspaces={workspace ? tallerConfig.workspaces : undefined}
           workspaceId={workspace?.id}
           onWorkspaceChange={chooseWorkspace}
+          onOpenProfile={() => {
+            setWorkspaceOpen(false);
+            navigate({ name: "perfil" });
+          }}
         />
       ) : null}
 
@@ -1471,9 +1513,9 @@ export function App() {
       ) : null}
 
       {session &&
-      (route.name === "ahora" || route.name === "avisos" || route.name === "mis-tareas") ? (
+      (route.name === "ahora" || route.name === "avisos" || route.name === "mis-tareas" || route.name === "perfil") ? (
         <BottomNav
-          active={route.name as BottomNavId}
+          active={route.name === "perfil" ? null : (route.name as BottomNavId)}
           attentionCount={attentionTotal}
           onSelect={(id) => navigate({ name: id })}
         />

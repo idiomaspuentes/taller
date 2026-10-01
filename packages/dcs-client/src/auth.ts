@@ -78,6 +78,13 @@ export interface DcsUser {
   email?: string;
   /** A Gravatar/uploaded avatar URL DCS generates for every user, even one who never set a custom image — swagger's `User.avatar_url`. */
   avatar_url?: string;
+  /** What the person wrote in their Door43 profile (all optional; Door43 sends empty strings for the ones left blank). */
+  full_name?: string;
+  location?: string;
+  website?: string;
+  description?: string;
+  /** ISO date the account was created. */
+  created?: string;
 }
 
 /** API_DCS.md §3.3 — confirms a token is still valid and identifies the user holding it. */

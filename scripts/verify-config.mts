@@ -5,6 +5,7 @@ import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
 import { appTitle } from "../src/brand";
 import { buildManifest } from "../src/manifest";
+import { displayName, initialsOf, levelName, memberSince, publicProfileUrl, safeLink, settingsUrl } from "../src/domain/profile";
 import { parseServerParam, readServerFromUrl, serverChoiceVisible } from "../src/serverChoice";
 import { localizeHold, localizeName } from "../src/domain/templateNames";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
@@ -24,11 +25,11 @@ const memory = () => {
   return { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) };
 };
 
-test("la configuración que se publica no tiene problemas", () => {
+await test("la configuración que se publica no tiene problemas", () => {
   assert.deepEqual(configProblems(tallerConfig), []);
 });
 
-test("se avisa de lo que falta o está mal, en palabras claras", () => {
+await test("se avisa de lo que falta o está mal, en palabras claras", () => {
   const noSpaces = clone();
   noSpaces.workspaces = [];
   assert.match(configProblems(noSpaces).join(" "), /al menos un espacio/);
@@ -50,7 +51,7 @@ test("se avisa de lo que falta o está mal, en palabras claras", () => {
   assert.match(configProblems(dupId).join(" "), /repetido/);
 });
 
-test("varios espacios pueden compartir organización si su scope los distingue", () => {
+await test("varios espacios pueden compartir organización si su scope los distingue", () => {
   const ok = clone();
   ok.workspaces[1]!.pmOrg = ok.workspaces[0]!.pmOrg;
   ok.workspaces[0]!.scope = "es";
@@ -73,7 +74,7 @@ test("varios espacios pueden compartir organización si su scope los distingue",
   assert.match(configProblems(bad).join(" "), /solo puede tener minúsculas/);
 });
 
-test("español y portugués tienen cada uno su propio espacio, con su organización y su lengua", () => {
+await test("español y portugués tienen cada uno su propio espacio, con su organización y su lengua", () => {
   const es = workspaceById(tallerConfig, "es")!;
   const pt = workspaceById(tallerConfig, "pt")!;
   assert.notEqual(es.pmOrg.toLowerCase(), pt.pmOrg.toLowerCase());
@@ -82,7 +83,7 @@ test("español y portugués tienen cada uno su propio espacio, con su organizaci
   assert.equal(workspaceOfOrg(tallerConfig, "PT-BR_GL")?.id, "pt", "se reconoce la organización sin importar mayúsculas");
 });
 
-test("el espacio guardado se respeta; con uno solo se elige solo; con varios y sin elegir se pregunta", () => {
+await test("el espacio guardado se respeta; con uno solo se elige solo; con varios y sin elegir se pregunta", () => {
   const store = memory();
   assert.equal(initialWorkspace(tallerConfig, store), undefined, "dos espacios y ninguna elección: se pregunta");
   saveWorkspaceId("pt", store);
@@ -95,19 +96,19 @@ test("el espacio guardado se respeta; con uno solo se elige solo; con varios y s
   assert.equal(initialWorkspace(one, memory())?.id, "es", "con un solo espacio no hay nada que elegir");
 });
 
-test("el espacio fija la lengua y las organizaciones por encima de lo guardado, sin tocar lo demás", () => {
+await test("el espacio fija la lengua y las organizaciones por encima de lo guardado, sin tocar lo demás", () => {
   const stale = { lang: "es-419", contentOrg: "es-419_gl", pmOrg: "BSOJ", book: "NEH", host: "https://qa.door43.org" };
   const pt = workspaceById(tallerConfig, "pt")!;
   assert.deepEqual(contextWith(stale, pt), { lang: pt.lang, contentOrg: pt.contentOrg, pmOrg: pt.pmOrg, book: "NEH", host: "https://qa.door43.org" });
 });
 
-test("la pantalla de bienvenida sugiere el equipo que habla el idioma de la persona", () => {
+await test("la pantalla de bienvenida sugiere el equipo que habla el idioma de la persona", () => {
   assert.equal(suggestedWorkspace(tallerConfig, "pt")?.id, "pt");
   assert.equal(suggestedWorkspace(tallerConfig, "es")?.id, "es");
   assert.equal(suggestedWorkspace(tallerConfig, "fr")?.id, "es", "sin coincidencia, el primero");
 });
 
-test("el idioma de la interfaz: lo elegido antes, si no el del navegador, si no el de la configuración", () => {
+await test("el idioma de la interfaz: lo elegido antes, si no el del navegador, si no el de la configuración", () => {
   const supported = ["es", "pt"] as const;
   assert.equal(detectUiLanguage(supported, "pt", ["es-419"], "es"), "pt", "lo elegido gana");
   assert.equal(detectUiLanguage(supported, null, ["pt-BR", "en"], "es"), "pt");
@@ -116,7 +117,7 @@ test("el idioma de la interfaz: lo elegido antes, si no el del navegador, si no 
   assert.equal(detectUiLanguage(supported, "fr", [], "es"), "es", "un idioma guardado que ya no se soporta se ignora");
 });
 
-test("cada texto de la interfaz existe en portugués y no queda ninguno vacío", () => {
+await test("cada texto de la interfaz existe en portugués y no queda ninguno vacío", () => {
   for (const key of MESSAGE_KEYS_ES) {
     assert.ok(translate("es", key).trim(), `es: ${key}`);
     assert.ok(translate("pt", key).trim(), `pt: ${key}`);
@@ -125,7 +126,7 @@ test("cada texto de la interfaz existe en portugués y no queda ninguno vacío",
   assert.equal(translate("es", "nav.myTasks"), "Mis tareas");
 });
 
-test("los primeros pasos se ocultan por persona y servidor en este dispositivo, y no vuelven", () => {
+await test("los primeros pasos se ocultan por persona y servidor en este dispositivo, y no vuelven", () => {
   const store = memory();
   const ana = onboardingKey("https://qa.door43.org/", "Ana");
   assert.equal(ana, onboardingKey("https://qa.door43.org", "ana"), "sin barra final ni mayúsculas");
@@ -136,7 +137,7 @@ test("los primeros pasos se ocultan por persona y servidor en este dispositivo, 
   assert.equal(onboardingDone(onboardingKey("https://git.door43.org", "ana"), store), false, "otro servidor, otra vez");
 });
 
-test("se recuerda si una persona ya tuvo trabajo, por servidor, organización y espacio", () => {
+await test("se recuerda si una persona ya tuvo trabajo, por servidor, organización y espacio", () => {
   const store = memory();
   const key = hadWorkKey("https://qa.door43.org/", "Ana", "ES-419_gl", "");
   assert.equal(key, hadWorkKey("https://qa.door43.org", "ana", "es-419_gl", ""), "sin barra final ni mayúsculas");
@@ -146,7 +147,7 @@ test("se recuerda si una persona ya tuvo trabajo, por servidor, organización y 
   assert.equal(hadWork(hadWorkKey("https://qa.door43.org", "ana", "es-419_gl", "pt:"), store), false, "otro espacio de la misma organización empieza de cero");
 });
 
-test("los nombres de fábrica de las plantillas se traducen al mostrarlos y lo editado se respeta", () => {
+await test("los nombres de fábrica de las plantillas se traducen al mostrarlos y lo editado se respeta", () => {
   assert.equal(localizeName("Afinación", "pt"), "Afinação");
   assert.equal(localizeName("Afinación", "es"), "Afinación", "en español no cambia nada");
   assert.equal(localizeName("2 · Traducir TPL 1", "pt"), "2 · Traduzir TPL 1", "también dentro del título de una subtarea");
@@ -158,7 +159,7 @@ test("los nombres de fábrica de las plantillas se traducen al mostrarlos y lo e
   assert.equal(localizeName("", "pt"), "");
 });
 
-test("las razones de espera y de nivel se muestran en el idioma de la interfaz", () => {
+await test("las razones de espera y de nivel se muestran en el idioma de la interfaz", () => {
   assert.equal(localizeHold("Espera a «Traducir TPL» de @ana y 2 más", "pt"), "Aguarda «Traduzir TPL» de @ana e mais 2");
   assert.equal(localizeHold("Espera a «Afinar TPL»", "pt"), "Aguarda «Afinar TPL»");
   assert.equal(localizeHold("Pide nivel persona habilitada", "pt"), "Exige nível pessoa habilitada");
@@ -168,7 +169,7 @@ test("las razones de espera y de nivel se muestran en el idioma de la interfaz",
   assert.equal(localizeHold("Algo que no se conoce", "pt"), "Algo que no se conoce");
 });
 
-test("el título del sitio es el nombre de la app más el nombre corto de la organización", () => {
+await test("el título del sitio es el nombre de la app más el nombre corto de la organización", () => {
   assert.equal(appTitle("es"), "Taller Id");
   assert.equal(appTitle("pt"), "Ateliê Id");
   const noShort = clone();
@@ -176,7 +177,7 @@ test("el título del sitio es el nombre de la app más el nombre corto de la org
   assert.match(configProblems(noShort).join(" "), /brand\.short/);
 });
 
-test("el nombre con que se instala la app sigue el idioma de la interfaz", () => {
+await test("el nombre con que se instala la app sigue el idioma de la interfaz", () => {
   const es = buildManifest("es", "https://taller.example/") as { name: string; short_name: string; lang: string; start_url: string; scope: string; icons: { src: string }[] };
   const pt = buildManifest("pt", "https://taller.example/") as typeof es;
   assert.equal(es.name, "Taller Id");
@@ -189,7 +190,7 @@ test("el nombre con que se instala la app sigue el idioma de la interfaz", () =>
   assert.ok(pt.icons.every((i) => i.src.startsWith("https://taller.example/")));
 });
 
-test("el servidor de Door43 no se ofrece a la gente normal: solo con ?server= en ese dispositivo", () => {
+await test("el servidor de Door43 no se ofrece a la gente normal: solo con ?server= en ese dispositivo", () => {
   assert.equal(parseServerParam("?server=qa"), "qa");
   assert.equal(parseServerParam("?x=1&server=PRODUCTION"), "production");
   assert.equal(parseServerParam("?server=otro"), null);
@@ -212,6 +213,28 @@ await test("el repositorio del plan se configura en taller.config.ts", async () 
   const legacy = clone();
   legacy.pmRepo = "gateway-tasks";
   assert.deepEqual(configProblems(legacy), [], "quien ya usa gateway-tasks lo conserva");
+});
+
+await test("el perfil: lo que se muestra viene de Door43 y para cambiarlo se envía a Door43", () => {
+  assert.equal(settingsUrl("https://git.door43.org/"), "https://git.door43.org/user/settings");
+  assert.equal(publicProfileUrl("https://qa.door43.org", "abel perez"), "https://qa.door43.org/abel%20perez");
+  assert.equal(displayName({ login: "abelperez", full_name: " Abel Pérez " }, "x"), "Abel Pérez");
+  assert.equal(displayName({ login: "abelperez", full_name: "" }, "x"), "abelperez", "sin nombre completo, el usuario");
+  assert.equal(displayName(null, "ana"), "ana");
+  assert.equal(initialsOf("Abel Pérez"), "AP");
+  assert.equal(initialsOf("abelperez"), "AB");
+  assert.equal(initialsOf("ana.maria_lopez"), "AL");
+  assert.equal(initialsOf("  "), "?");
+  assert.match(memberSince("2024-03-05T10:00:00Z", "es"), /marzo.*2024/i);
+  assert.match(memberSince("2024-03-05T10:00:00Z", "pt"), /março.*2024/i);
+  assert.equal(memberSince("no es fecha", "es"), "");
+  assert.equal(memberSince(undefined, "es"), "");
+  assert.equal(levelName("habilitada", "pt"), "Pessoa habilitada");
+  assert.equal(levelName("oyente", "es"), "Oyente");
+  assert.equal(safeLink("https://example.org/a"), "https://example.org/a");
+  assert.equal(safeLink("example.org"), "https://example.org/", "sin protocolo se asume https");
+  assert.equal(safeLink("javascript:alert(1)"), "", "nunca un enlace que ejecute código");
+  assert.equal(safeLink(""), "");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

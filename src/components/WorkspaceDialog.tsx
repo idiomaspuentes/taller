@@ -40,6 +40,8 @@ type Props = {
   onPmOrgChange: (org: string) => void;
   onSignOut: () => void;
   onOpenFromDcs: () => void;
+  /** Opens the person's profile page. */
+  onOpenProfile?: () => void;
   /** When the organization fixes its team spaces (taller.config.ts), language and organizations are not free fields. */
   workspaces?: Workspace[];
   workspaceId?: string;
@@ -69,6 +71,7 @@ export function WorkspaceDialog({
   onPmOrgChange,
   onSignOut,
   onOpenFromDcs,
+  onOpenProfile,
   workspaces,
   workspaceId,
   onWorkspaceChange,
@@ -96,9 +99,16 @@ export function WorkspaceDialog({
                 <p className="truncate text-sm font-medium">{session.username}</p>
                 <p className="truncate text-xs text-muted-foreground">{hostShort(session.host)}</p>
               </div>
-              <Button type="button" variant="ghost" size="sm" onClick={onSignOut}>
-                Cerrar sesión
-              </Button>
+              <div className="flex flex-wrap justify-end gap-1">
+                {onOpenProfile ? (
+                  <Button type="button" variant="outline" size="sm" onClick={onOpenProfile}>
+                    {t("profile.view")}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="ghost" size="sm" onClick={onSignOut}>
+                  Cerrar sesión
+                </Button>
+              </div>
             </div>
 
             {fixed && workspaces ? (

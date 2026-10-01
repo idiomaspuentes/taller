@@ -9,6 +9,8 @@ export type AppNavLink = {
   label: string;
   active: boolean;
   onSelect: () => void;
+  /** Listed in the phone menu only: on a wide screen it has its own button elsewhere. */
+  menuOnly?: boolean;
 };
 
 type Props = {
@@ -92,7 +94,7 @@ export function AppNav({
   return (
     <nav className="app-nav" aria-label="Principal" ref={rootRef}>
       <div className="app-nav__links">
-        {links.map((link) => (
+        {links.filter((link) => !link.menuOnly).map((link) => (
           <button
             key={link.id}
             type="button"

@@ -6280,3 +6280,180 @@ button.al-box--read { cursor: pointer; }
 .signin__advanced[open] > summary {
   margin-bottom: 0.5rem;
 }
+
+/* ---- Profile ---- */
+.app-workspace__avatar {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.profile {
+  display: grid;
+  gap: 1rem;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+.profile__card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.profile__head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.profile__avatar {
+  width: 5.5rem;
+  height: 5.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-muted);
+}
+.profile__avatar--initials {
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+.profile__who {
+  min-width: 0;
+}
+.profile__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.profile__login,
+.profile__since {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.profile__note {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  font-size: 0.875rem;
+}
+.profile__bio {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.profile__actions .btn {
+  gap: 0.4rem;
+  text-decoration: none;
+}
+.profile__actions svg {
+  width: 1rem;
+  height: 1rem;
+}
+.profile__help,
+.profile__source {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.profile__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.profile__list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+.profile__row {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+.profile__row dt {
+  color: var(--text-muted);
+}
+.profile__row dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.profile__row a {
+  color: var(--primary);
+}
+.profile__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.profile__chip {
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  font-size: 0.8125rem;
+}
+.profile__foot {
+  display: flex;
+  justify-content: center;
+}
+.profile__foot .btn {
+  gap: 0.4rem;
+}
+.profile__foot svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* The profile button of the header: the person's photo (or initials), wide screens only. */
+.app-avatar {
+  display: none;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.app-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.app-avatar[data-active] {
+  border-color: var(--primary);
+}
+/* From 1000px: below that the coordinator's navigation already fills the bar; the profile is then in the session dialog. */
+@media (min-width: 1000px) {
+  .app-avatar {
+    display: inline-grid;
+    place-items: center;
+  }
+}
