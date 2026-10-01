@@ -11,7 +11,7 @@ export type SendResult = "sent" | "gone" | "failed";
 /** What the service worker of the app receives and shows. */
 export function payloadOf(notice: Notice): PushMessage {
   return {
-    data: { title: notice.title, body: notice.body, url: notice.url, tag: notice.tag },
+    data: { title: notice.title, body: notice.body, url: notice.url, tag: notice.tag, grouped: notice.grouped },
     options: { ttl: 24 * 3600, urgency: "normal", topic: notice.tag.slice(0, 32).replace(/[^A-Za-z0-9_-]/g, "-") },
   };
 }

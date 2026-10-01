@@ -18,6 +18,7 @@ async function test(name: string, fn: () => Promise<void>) {
 // ---- a tiny KV ----
 class FakeKV {
   data = new Map<string, string>();
+  lists = 0;
   async get(key: string) {
     return this.data.get(key) ?? null;
   }
@@ -28,9 +29,16 @@ class FakeKV {
     this.data.delete(key);
   }
   async list(opts: { prefix?: string } = {}) {
+    this.lists++;
     return { keys: [...this.data.keys()].filter((k) => k.startsWith(opts.prefix ?? "")).sort().map((name) => ({ name })), list_complete: true };
   }
 }
+
+/** How many devices the KV holds for one person (all in one key). */
+const devicesOf = (login: string): string[] => {
+  const raw = kv.data.get(`u:https://qa.door43.org:${login}`);
+  return raw ? (JSON.parse(raw) as { devices: { sub: { endpoint: string } }[] }).devices.map((d) => d.sub.endpoint) : [];
+};
 
 const b64url = (bytes: ArrayBuffer | Uint8Array) => Buffer.from(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)).toString("base64url");
 
@@ -122,7 +130,7 @@ await test("la clave pública se sirve sin pedir nada, y solo a los orígenes pe
 await test("suscribirse pide el token de Door43, que solo se usa para saber quién eres; si no, no se guarda nada", async () => {
   const sub = await deviceSubscription("https://push.example/bea-1");
   assert.equal((await subscribe("tok-bea", sub)).status, 204);
-  assert.deepEqual([...kv.data.keys()].map((k) => k.replace(/[0-9a-f]{24}$/, "…")), ["s:https://qa.door43.org:bea:…"], "se guarda con el usuario en minúsculas");
+  assert.deepEqual([...kv.data.keys()], ["u:https://qa.door43.org:bea"], "una sola clave por persona, con el usuario en minúsculas");
   assert.ok(![...kv.data.values()].some((v) => v.includes("tok-bea")), "el token no se guarda");
   assert.equal((await subscribe("tok-malo", sub)).status, 401, "token que Door43 no conoce");
   assert.equal((await subscribe("tok-bea", sub, { "x-door43-host": "https://git.door43.org" })).status, 401, "un servidor que este Worker no atiende");
@@ -131,7 +139,7 @@ await test("suscribirse pide el token de Door43, que solo se usa para saber qui�
 
 await test("cada persona guarda como mucho unos pocos dispositivos y se olvidan los más viejos; también puede darse de baja", async () => {
   for (let i = 2; i <= MAX_DEVICES + 3; i++) await subscribe("tok-ana", await deviceSubscription(`https://push.example/ana-${i}`));
-  assert.equal([...kv.data.keys()].filter((k) => k.includes(":ana:")).length, MAX_DEVICES);
+  assert.equal(devicesOf("ana").length, MAX_DEVICES);
   const keep = await deviceSubscription("https://push.example/ana-last");
   await subscribe("tok-ana", keep);
   assert.equal((await subscribe("tok-ana", { endpoint: keep.endpoint }, {}, "DELETE")).status, 204);
@@ -158,7 +166,7 @@ await test("un comentario que menciona a Bea llega a su dispositivo, cifrado y f
 
 await test("quien tiene la subtarea asignada recibe los comentarios aunque no lo mencionen, en todos sus dispositivos; una asignación nueva también avisa", async () => {
   await subscribe("tok-ana", await deviceSubscription("https://push.example/ana-fresh"));
-  const anaDevices = [...kv.data.keys()].filter((k) => k.includes(":ana:")).length;
+  const anaDevices = devicesOf("ana").length;
   pushes = [];
   await webhook("issue_comment", comment("Ya lo miré, está bien.", "bea", ["ana"]));
   assert.equal(pushes.length, anaDevices, "ana tiene la subtarea; bea la escribió");
@@ -173,10 +181,11 @@ await test("quien tiene la subtarea asignada recibe los comentarios aunque no lo
 });
 
 await test("un dispositivo que ya no existe (410) se olvida; un servidor que este Worker no atiende se ignora", async () => {
-  const before = [...kv.data.keys()].filter((k) => k.includes(":bea:")).length;
+  const before = devicesOf("bea").length;
   pushStatus["https://push.example/bea-1"] = 410;
   await webhook("issue_comment", comment("@bea otra vez", "ana"));
-  assert.equal([...kv.data.keys()].filter((k) => k.includes(":bea:")).length, before - 1);
+  assert.equal(devicesOf("bea").length, before - 1);
+  assert.equal(kv.lists, 0, "avisar nunca usa list: el plan gratuito solo da 1 000 al día");
   pushes = [];
   const foreign = await webhook("issue_comment", { ...comment("@bea hola", "ana"), repository: { html_url: "https://git.door43.org/x/y" } });
   assert.deepEqual(await foreign.json(), { ignored: "servidor no permitido" });

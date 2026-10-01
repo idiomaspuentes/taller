@@ -1,6 +1,7 @@
 /** What Door43 tells the Worker (a Gitea webhook) turned into who to notify and what to say. */
 
-export type Notice = { login: string; title: string; body: string; url: string; tag: string };
+/** `grouped` is what the app shows when several notices share a tag; `{n}` is their count. */
+export type Notice = { login: string; title: string; body: string; url: string; tag: string; grouped?: string };
 
 const MENTION = /(?:^|[^\w@/])@([A-Za-z0-9][A-Za-z0-9._-]*)/g;
 const CHAT_MARKER = /<!--\s*tas:[^>]*-->/g;
@@ -98,12 +99,14 @@ export function noticesFor(event: string | null, payload: GiteaPayload, appUrl: 
         body: `${payload.comment.user?.login ?? "Alguien"}: ${line}`.trim(),
         url,
         tag: `subtarea-${number}`,
+        grouped: `{n} avisos nuevos en ${name(issue)}`,
       });
     }
   } else if (event === "issues" && payload.action === "assigned") {
     const login = lower(payload.assignee?.login);
     if (login && login !== sender) {
-      notices.push({ login, title: "Te asignaron una subtarea", body: subtarea(issue), url, tag: `subtarea-${number}` });
+      // Many assignments at once (a bulk plan) become one notice: "Te asignaron 100 subtareas".
+      notices.push({ login, title: "Te asignaron una subtarea", body: subtarea(issue), url, tag: "asignaciones", grouped: "Te asignaron {n} subtareas" });
     }
   } else if (event === "pull_request" && (payload.action === "assigned" || payload.action === "review_requested")) {
     const login = lower(payload.action === "assigned" ? payload.assignee?.login : (payload as { requested_reviewer?: Person }).requested_reviewer?.login);

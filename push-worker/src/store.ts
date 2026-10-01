@@ -1,4 +1,7 @@
-/** Push subscriptions in KV: one key per device, grouped by Door43 host and login. */
+/**
+ * Push subscriptions in KV: ONE key per person (their devices together), so that telling someone
+ * costs a single read. The free plan allows 100 000 reads a day but only 1 000 list operations.
+ */
 export type StoredSubscription = {
   endpoint: string;
   expirationTime: number | null;
@@ -8,12 +11,7 @@ export type StoredSubscription = {
 /** Most devices one person may have subscribed; the oldest is dropped past this. */
 export const MAX_DEVICES = 5;
 
-async function hash(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-export const prefix = (host: string, login: string) => `s:${host}:${login.toLowerCase()}:`;
+export const personKey = (host: string, login: string) => `u:${host}:${login.toLowerCase()}`;
 
 export function validSubscription(value: unknown): value is StoredSubscription {
   const s = value as Partial<StoredSubscription> | null;
@@ -28,33 +26,37 @@ export function validSubscription(value: unknown): value is StoredSubscription {
   );
 }
 
-export async function saveSubscription(kv: KVNamespace, host: string, login: string, sub: StoredSubscription, now = Date.now()): Promise<void> {
-  const key = `${prefix(host, login)}${await hash(sub.endpoint)}`;
-  await kv.put(key, JSON.stringify({ sub, at: now }));
-  // Keep the newest devices only.
-  const all = await kv.list({ prefix: prefix(host, login) });
-  if (all.keys.length > MAX_DEVICES) {
-    const rows = await Promise.all(all.keys.map(async (k) => ({ name: k.name, at: (JSON.parse((await kv.get(k.name)) ?? "{}") as { at?: number }).at ?? 0 })));
-    rows.sort((a, b) => a.at - b.at);
-    for (const old of rows.slice(0, rows.length - MAX_DEVICES)) await kv.delete(old.name);
+type Device = { sub: StoredSubscription; at: number };
+
+async function readDevices(kv: KVNamespace, key: string): Promise<Device[]> {
+  try {
+    const raw = JSON.parse((await kv.get(key)) ?? "null") as { devices?: Device[] } | null;
+    return (raw?.devices ?? []).filter((d) => d && validSubscription(d.sub));
+  } catch {
+    return [];
   }
 }
 
-export async function removeSubscription(kv: KVNamespace, host: string, login: string, endpoint: string): Promise<void> {
-  await kv.delete(`${prefix(host, login)}${await hash(endpoint)}`);
+async function writeDevices(kv: KVNamespace, key: string, devices: Device[]): Promise<void> {
+  if (devices.length === 0) await kv.delete(key);
+  else await kv.put(key, JSON.stringify({ devices }));
 }
 
-export async function listSubscriptions(kv: KVNamespace, host: string, login: string): Promise<{ key: string; sub: StoredSubscription }[]> {
-  const all = await kv.list({ prefix: prefix(host, login) });
-  const rows = await Promise.all(
-    all.keys.map(async (k) => {
-      try {
-        const raw = JSON.parse((await kv.get(k.name)) ?? "null") as { sub?: StoredSubscription } | null;
-        return raw?.sub && validSubscription(raw.sub) ? { key: k.name, sub: raw.sub } : null;
-      } catch {
-        return null;
-      }
-    }),
-  );
-  return rows.filter((r): r is { key: string; sub: StoredSubscription } => r !== null);
+export async function saveSubscription(kv: KVNamespace, host: string, login: string, sub: StoredSubscription, now = Date.now()): Promise<void> {
+  const key = personKey(host, login);
+  const others = (await readDevices(kv, key)).filter((d) => d.sub.endpoint !== sub.endpoint);
+  // Keep the newest devices only.
+  const devices = [...others, { sub, at: now }].sort((a, b) => a.at - b.at).slice(-MAX_DEVICES);
+  await writeDevices(kv, key, devices);
+}
+
+export async function removeSubscription(kv: KVNamespace, host: string, login: string, endpoint: string): Promise<void> {
+  const key = personKey(host, login);
+  const devices = await readDevices(kv, key);
+  const kept = devices.filter((d) => d.sub.endpoint !== endpoint);
+  if (kept.length !== devices.length) await writeDevices(kv, key, kept);
+}
+
+export async function listSubscriptions(kv: KVNamespace, host: string, login: string): Promise<StoredSubscription[]> {
+  return (await readDevices(kv, personKey(host, login))).map((d) => d.sub);
 }

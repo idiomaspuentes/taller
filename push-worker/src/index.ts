@@ -69,10 +69,10 @@ export function createHandler(deps: Deps) {
       const notices = noticesFor(request.headers.get("x-gitea-event") ?? request.headers.get("x-github-event"), payload, env.APP_URL);
       let sent = 0;
       for (const notice of notices) {
-        for (const { key, sub } of await listSubscriptions(env.SUBSCRIPTIONS, host, notice.login)) {
+        for (const sub of await listSubscriptions(env.SUBSCRIPTIONS, host, notice.login)) {
           const result = await sendPush(deps.fetch, sub, notice, vapid);
           if (result === "sent") sent++;
-          if (result === "gone") await env.SUBSCRIPTIONS.delete(key);
+          if (result === "gone") await removeSubscription(env.SUBSCRIPTIONS, host, notice.login, sub.endpoint);
         }
       }
       return json({ notices: notices.length, sent }, 200, headers);

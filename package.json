@@ -49,7 +49,8 @@
     "verify:waits": "tsx scripts/verify-waits.mts",
     "verify:review-task": "tsx scripts/verify-review-task.mts",
     "verify:session-expiry": "tsx scripts/verify-session-expiry.mts",
-    "cleanup:pm-issues": "tsx scripts/cleanup-pm-issues.mts"
+    "cleanup:pm-issues": "tsx scripts/cleanup-pm-issues.mts",
+    "verify:sw-push": "tsx --tsconfig tsconfig.scripts.json scripts/verify-sw-push.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
