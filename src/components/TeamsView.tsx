@@ -58,7 +58,6 @@ import {
   uid,
   type ScriptureScopeContext,
 } from "../domain/assignment";
-import { bookName } from "../domain/books";
 import { displayRef, groupPortionsByChapter, portionKey } from "../domain/chapters";
 import { parseReviewRef } from "../domain/reviewTask";
 import {
@@ -124,6 +123,10 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronDown, X } from "lucide-react";
 import { StepClaimPolicyPanel } from "./StepClaimPolicyPanel";
+import { tNow, useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeScope } from "../domain/scopeNames";
+import { bookLabel } from "../domain/books";
 
 type Props = {
   board: AssignmentsDoc;
@@ -155,10 +158,10 @@ type ScopeDraft = Partial<Record<ScopeKey, ResourceDraft>>;
 type EditorStep = "identidad" | "alcance" | "personas";
 type Packaging = "separate" | "together";
 
-const EDITOR_STEPS: { id: EditorStep; label: string }[] = [
-  { id: "identidad", label: "Identidad" },
-  { id: "alcance", label: "Alcance" },
-  { id: "personas", label: "Personas" },
+const EDITOR_STEPS: { id: EditorStep; label: "tv.stepIdentity" | "tv.stepScope" | "tv.stepPeople" }[] = [
+  { id: "identidad", label: "tv.stepIdentity" },
+  { id: "alcance", label: "tv.stepScope" },
+  { id: "personas", label: "tv.stepPeople" },
 ];
 
 function defaultGrainFor(resource: ScopeKey): AssignmentGrain {
@@ -288,6 +291,9 @@ export function TeamsView({
   onEditTask,
   onOpenPlantillas,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeScope(text, language);
   const [personName, setPersonName] = useState("");
   const [teamName, setTeamName] = useState("");
   const [description, setDescription] = useState("");
@@ -392,10 +398,8 @@ export function TeamsView({
       })
       .catch(() => {
         if (cancelled) return;
-        setRosterError(
-          `No se pudieron cargar los integrantes o equipos de ${pmOrg}. Se mantienen las personas locales.`,
-        );
-        setOrgTeamsError(`No se pudieron cargar los equipos de ${pmOrg}.`);
+        setRosterError(tNow("tv.rosterError").replace("{org}", pmOrg));
+        setOrgTeamsError(tNow("tv.orgTeamsError").replace("{org}", pmOrg));
       })
       .finally(() => {
         if (!cancelled) setRosterLoading(false);
@@ -426,7 +430,7 @@ export function TeamsView({
       .catch(() => {
         if (cancelled) return;
         setOrgTeamMemberIds(new Set());
-        setOrgTeamsError("No se pudieron cargar los miembros del equipo seleccionado.");
+        setOrgTeamsError(tNow("tv.membersError"));
       })
       .finally(() => {
         if (!cancelled) setOrgTeamMembersLoading(false);
@@ -637,7 +641,7 @@ export function TeamsView({
       setOrgTeams(teams);
       setOrgTeamsError("");
     } catch {
-      setOrgTeamsError(`No se pudieron cargar los equipos de ${pmOrg}.`);
+      setOrgTeamsError(t("tv.orgTeamsError").replace("{org}", pmOrg));
     }
   }
 
@@ -711,20 +715,18 @@ export function TeamsView({
   function applySelectedWorkflow() {
     const wf = workflowsCatalog.workflows.find((w) => w.id === applyWorkflowId);
     if (!wf) {
-      announce("Elige una plantilla de flujo.");
+      announce(t("tv.pickWorkflow"));
       return;
     }
     if (board.teams.length) {
-      const ok = window.confirm(
-        "Esto reemplaza las fases y tareas del proyecto con una copia de la plantilla. ¿Continuar?",
-      );
+      const ok = window.confirm(t("tv.confirmReplace"));
       if (!ok) return;
     }
     setApplyBusy(true);
     try {
       const next = applyWorkflowToBoard(board, wf);
       onChange(next);
-      announce(`Plantilla «${wf.name}» aplicada a este proyecto.`);
+      announce(t("tv.workflowApplied").replace("{name}", wf.name));
     } finally {
       setApplyBusy(false);
     }
@@ -732,11 +734,11 @@ export function TeamsView({
 
   async function saveBoardAsWorkflow() {
     if (!board.teams.length) {
-      announce("No hay tareas para guardar como plantilla.");
+      announce(t("tv.noTasksToSave"));
       return;
     }
     const name =
-      window.prompt("Nombre de la plantilla de flujo:", `Flujo ${board.title || board.projectId}`) ||
+      window.prompt(t("tv.promptWorkflowName"), t("tv.flowDefault").replace("{title}", board.title || board.projectId)) ||
       "";
     if (!name.trim()) return;
     setApplyBusy(true);
@@ -752,8 +754,8 @@ export function TeamsView({
       setApplyWorkflowId(wf.id);
       announce(
         session && pmOrg
-          ? `Plantilla «${wf.name}» guardada en ${pmOrg}/gateway-tasks.`
-          : `Plantilla «${wf.name}» guardada en este dispositivo.`,
+          ? t("tv.workflowSavedOrg").replace("{name}", wf.name).replace("{org}", pmOrg)
+          : t("tv.savedLocal").replace("{name}", wf.name),
       );
     } catch (err) {
       announce(err instanceof Error ? err.message : String(err));
@@ -854,8 +856,8 @@ export function TeamsView({
     void syncPresets(next);
     announce(
       session && pmOrg
-        ? `Plantilla «${name}» guardada para todo ${pmOrg}.`
-        : `Plantilla «${name}» guardada en este dispositivo.`,
+        ? t("tv.presetSavedOrg").replace("{name}", name).replace("{org}", pmOrg)
+        : t("tv.savedLocal").replace("{name}", name),
     );
   }
 
@@ -1002,7 +1004,7 @@ export function TeamsView({
       if (editingId !== team.id) startEdit(team, false);
       return;
     }
-    announce(`No se encontró la tarea «${focusTaskId}».`);
+    announce(tNow("tv.taskNotFound").replace("{id}", focusTaskId));
     onFocusTaskConsumed?.();
     // Only react to deep-link id changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1020,7 +1022,7 @@ export function TeamsView({
 
   async function openAssignOrgTeam(team: Team) {
     if (!session || !pmOrg) {
-      announce("Inicia sesión y elige la organización del equipo para asignar un equipo.");
+      announce(t("tv.signInToAssign"));
       return;
     }
     setAssignTask(team);
@@ -1079,8 +1081,8 @@ export function TeamsView({
       });
       announce(
         warnings.length
-          ? `Equipo ${orgTeam.name}: ${warnings.join(" · ")}`
-          : `Tarea «${assignTask.name}» asignada al equipo ${orgTeam.name}.`,
+          ? t("tv.teamWarn").replace("{team}", orgTeam.name).replace("{warnings}", warnings.join(" · "))
+          : t("tv.taskAssigned").replace("{task}", assignTask.name).replace("{team}", orgTeam.name),
       );
       setAssignTask(null);
       await refreshOrgTeams();
@@ -1098,7 +1100,7 @@ export function TeamsView({
         t.id === team.id ? { ...t, orgTeamId: undefined, orgTeamName: undefined } : t,
       ),
     });
-    announce(`Se quitó el equipo de «${team.name}».`);
+    announce(t("tv.teamRemoved").replace("{task}", team.name));
   }
 
   function sortedPhases(): Phase[] {
@@ -1125,7 +1127,7 @@ export function TeamsView({
     setTaskPhaseCreateName("");
     setTaskPhaseCreateOpen(false);
     setDraftPhaseId(phase.id);
-    announce(`Fase «${phase.name}» creada.`);
+    announce(t("tv.phaseCreated").replace("{name}", phase.name));
   }
 
   function commitTaskPhaseCreate() {
@@ -1176,7 +1178,7 @@ export function TeamsView({
 
   function removePhase(id: string) {
     if (board.phases.length <= 1) {
-      announce("Debe quedar al menos una fase.");
+      announce(t("tv.keepOnePhase"));
       return;
     }
     const fallback = sortedPhases().find((p) => p.id !== id);
@@ -1197,8 +1199,8 @@ export function TeamsView({
     if (draftPhaseId === id) setDraftPhaseId(fallback.id);
     announce(
       moved
-        ? `Fase eliminada; ${moved} tarea(s) pasaron a «${fallback.name}».`
-        : "Fase eliminada.",
+        ? t("tv.phaseDeletedMoved").replace("{n}", String(moved)).replace("{to}", fallback.name)
+        : t("tv.phaseDeleted"),
     );
   }
 
@@ -1234,8 +1236,8 @@ export function TeamsView({
         <Card size="sm">
           <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle>{editingId ? "Editar tarea" : "Nueva tarea"}</CardTitle>
-              <CardDescription>Tres pasos: identidad, alcance y personas.</CardDescription>
+              <CardTitle>{editingId ? t("tv.editTask") : t("tv.newTask")}</CardTitle>
+              <CardDescription>{t("tv.threeSteps")}</CardDescription>
             </div>
             <div className="flex flex-wrap gap-1">
               {EDITOR_STEPS.map((step, i) => (
@@ -1248,7 +1250,7 @@ export function TeamsView({
                   onClick={() => setEditorStep(step.id)}
                 >
                   <span className="text-[0.65rem] font-semibold opacity-70">{i + 1}</span>
-                  {step.label}
+                  {t(step.label)}
                 </Button>
               ))}
             </div>
@@ -1260,7 +1262,7 @@ export function TeamsView({
                 {!editingId && presets.length ? (
                   <div className="grid gap-1.5 rounded-lg border border-dashed p-2">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Empezar desde una plantilla
+                      {t("tv.startFromTemplate")}
                     </h3>
                     <div className="flex flex-wrap gap-1.5">
                       {presets.map((preset) => (
@@ -1272,13 +1274,13 @@ export function TeamsView({
                             type="button"
                             className="font-medium hover:underline"
                             onClick={() => applyPreset(preset)}
-                            title={preset.rules.map((r) => scopeRuleLabel(r, r.grain)).join(" · ")}
+                            title={preset.rules.map((r) => loc(scopeRuleLabel(r, r.grain))).join(" · ")}
                           >
                             {preset.name}
                           </button>
                           <button
                             type="button"
-                            aria-label={`Eliminar plantilla ${preset.name}`}
+                            aria-label={t("tv.deleteTemplateAria").replace("{name}", preset.name)}
                             className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
                             onClick={() => removePreset(preset.id)}
                           >
@@ -1290,25 +1292,25 @@ export function TeamsView({
                   </div>
                 ) : null}
                 <div className="grid gap-1.5">
-                  <Label htmlFor="team-name">Nombre</Label>
+                  <Label htmlFor="team-name">{t("tv.name")}</Label>
                   <Input
                     id="team-name"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
-                    placeholder="p. ej. Traducir TPL"
-                    aria-label="Nombre de la tarea"
+                    placeholder={t("tv.namePlaceholder")}
+                    aria-label={t("tv.taskNameAria")}
                   />
                 </div>
                 <div className="grid gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="task-phase">Fase</Label>
+                    <Label htmlFor="task-phase">{t("tv.phase")}</Label>
                     {!taskPhaseCreateOpen ? (
                       <button
                         type="button"
                         className="text-xs text-muted-foreground hover:text-foreground"
                         onClick={() => setTaskPhaseCreateOpen(true)}
                       >
-                        + Nueva etiqueta de fase
+                        {t("tv.newPhaseLink")}
                       </button>
                     ) : null}
                   </div>
@@ -1318,8 +1320,8 @@ export function TeamsView({
                         id="task-phase-new"
                         value={taskPhaseCreateName}
                         onChange={(e) => setTaskPhaseCreateName(e.target.value)}
-                        placeholder="p. ej. Borrador, Revisión"
-                        aria-label="Nueva etiqueta de fase"
+                        placeholder={t("tv.phasePlaceholder")}
+                        aria-label={t("tv.newPhaseAria")}
                         className="min-w-[12rem] flex-1"
                         autoFocus
                         onKeyDown={(e) => {
@@ -1339,7 +1341,7 @@ export function TeamsView({
                         disabled={!taskPhaseCreateName.trim()}
                         onClick={commitTaskPhaseCreate}
                       >
-                        Añadir
+                        {t("tv.add")}
                       </Button>
                       <Button
                         type="button"
@@ -1350,13 +1352,13 @@ export function TeamsView({
                           setTaskPhaseCreateName("");
                         }}
                       >
-                        Cancelar
+                        {t("tv.cancel")}
                       </Button>
                     </div>
                   ) : (
                     <Select value={draftPhaseId} onValueChange={setDraftPhaseId}>
-                      <SelectTrigger id="task-phase" className="w-full" aria-label="Fase">
-                        <SelectValue placeholder="Elige fase" />
+                      <SelectTrigger id="task-phase" className="w-full" aria-label={t("tv.phase")}>
+                        <SelectValue placeholder={t("tv.pickPhase")} />
                       </SelectTrigger>
                       <SelectContent>
                         {[...board.phases]
@@ -1378,22 +1380,20 @@ export function TeamsView({
                   />
                   <span>
                     <span className="font-medium">
-                      Esta tarea revisa texto que ya está en el borrador principal
+                      {t("tv.reviewsMain")}
                     </span>
                     <span className="mt-0.5 block text-muted-foreground">
-                      Al pasarla al borrador principal, la revisión puede reemplazar los versículos
-                      de su rango que ya tienen otro texto. Antes verás cuáles cambian y tendrás
-                      que confirmarlo.
+                      {t("tv.reviewsMainHelp")}
                     </span>
                   </span>
                 </label>
                 {draftReviewsPrincipal ? (
                   <div className="grid gap-1.5 pl-6">
-                    <Label htmlFor="task-review-ref">Versículos que se revisan</Label>
+                    <Label htmlFor="task-review-ref">{t("tv.reviewRefLabel")}</Label>
                     <Input
                       id="task-review-ref"
                       value={draftReviewRef}
-                      placeholder={`${projectBooks[0] || "NEH"} 1:2 o ${projectBooks[0] || "NEH"} 1:1-3`}
+                      placeholder={t("tv.reviewRefPlaceholder").replace(/\{b\}/g, projectBooks[0] || "NEH")}
                       list="task-review-ref-portions"
                       onChange={(e) => setDraftReviewRef(e.target.value)}
                       aria-describedby="task-review-ref-help"
@@ -1412,16 +1412,16 @@ export function TeamsView({
                             const parsed = parseReviewRef(draftReviewRef, projectBooks);
                             if (!parsed.ok) return parsed.reason;
                             return parsed.range.to > parsed.range.from
-                              ? `Se revisa ${parsed.display}: una sola subtarea con esos versículos.`
-                              : `Se revisa solo ${parsed.display}: una sola subtarea con ese versículo.`;
+                              ? t("tv.reviewedRange").replace("{d}", parsed.display)
+                              : t("tv.reviewedOne").replace("{d}", parsed.display);
                           })()
-                        : "Escribe un versículo o un rango, o elige una porción. Si lo dejas vacío, la revisión cubre porciones completas y se crea con Publicar."}
+                        : t("tv.reviewRefHelp")}
                     </p>
                   </div>
                 ) : null}
                 <div className="grid gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="task-solver">Herramienta para resolver</Label>
+                    <Label htmlFor="task-solver">{t("tv.solverLabel")}</Label>
                     {solverPickerOpen || draftSolverAppId ? (
                       <button
                         type="button"
@@ -1431,26 +1431,27 @@ export function TeamsView({
                           setSolverPickerOpen(false);
                         }}
                       >
-                        Quitar
+                        {t("tv.remove")}
                       </button>
                     ) : null}
                   </div>
                   {solverPickerOpen || draftSolverAppId ? (
                     solversCatalog.solvers.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        No hay herramientas disponibles. Al abrir Fases y tareas con sesión, Taller
-                        crea <code className="font-mono">solvers.json</code> con demos por defecto.
+                        {t("tv.noSolversA")}
+                        <code className="font-mono">solvers.json</code>
+                        {t("tv.noSolversB")}
                       </p>
                     ) : (
                       <Select
                         value={draftSolverAppId || "none"}
                         onValueChange={(v) => setDraftSolverAppId(v === "none" ? "" : v)}
                       >
-                        <SelectTrigger id="task-solver" className="w-full" aria-label="Herramienta">
-                          <SelectValue placeholder="Elige herramienta" />
+                        <SelectTrigger id="task-solver" className="w-full" aria-label={t("tv.toolAria")}>
+                          <SelectValue placeholder={t("tv.pickTool")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Ninguna</SelectItem>
+                          <SelectItem value="none">{t("tv.none")}</SelectItem>
                           {eligibleSolvers.map((app) => (
                             <SelectItem key={app.id} value={app.id}>
                               {app.name}
@@ -1465,13 +1466,12 @@ export function TeamsView({
                       className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => setSolverPickerOpen(true)}
                     >
-                      + Herramienta para resolver
+                      {t("tv.addSolver")}
                     </button>
                   )}
                   {draftSolverAppId && eligibleSolvers.every((a) => a.id !== draftSolverAppId) ? (
                     <p className="text-xs text-muted-foreground">
-                      La herramienta guardada no coincide con los recursos actuales del borrador;
-                      sigue enlazada hasta que la cambies.
+                      {t("tv.toolMismatch")}
                     </p>
                   ) : null}
                 </div>
@@ -1479,19 +1479,19 @@ export function TeamsView({
                 <MinLevelField id="task-min-level" value={draftMinLevel} onChange={setDraftMinLevel} />
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between gap-2">
-                    <Label>Pasos para completar</Label>
+                    <Label>{t("tv.stepsTitle")}</Label>
                     <button
                       type="button"
                       className="text-xs text-muted-foreground hover:text-foreground"
                       onClick={() =>
-                        setDraftSteps((prev) => [...prev, { id: uid(), name: "Paso" }])
+                        setDraftSteps((prev) => [...prev, { id: uid(), name: t("tv.stepDefault") }])
                       }
                     >
-                      + Paso
+                      {t("tv.addStep")}
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Checklist de cada subtarea. Preferible definirlos en Plantillas de flujo.
+                    {t("tv.stepsHelp")}
                   </p>
                   {draftSteps.length ? (
                     <ol className="wf-steps">
@@ -1512,7 +1512,7 @@ export function TeamsView({
                                     type="button"
                                     className="wf-step__reorder-btn"
                                     disabled={idx === 0}
-                                    aria-label={`Subir paso ${idx + 1}`}
+                                    aria-label={t("tv.stepUp").replace("{n}", String(idx + 1))}
                                     onClick={() => moveDraftStep(step.id, -1)}
                                   >
                                     ↑
@@ -1521,7 +1521,7 @@ export function TeamsView({
                                     type="button"
                                     className="wf-step__reorder-btn"
                                     disabled={idx >= draftSteps.length - 1}
-                                    aria-label={`Bajar paso ${idx + 1}`}
+                                    aria-label={t("tv.stepDown").replace("{n}", String(idx + 1))}
                                     onClick={() => moveDraftStep(step.id, 1)}
                                   >
                                     ↓
@@ -1536,8 +1536,8 @@ export function TeamsView({
                                   patchDraftStep(step.id, { ...step, name: e.target.value })
                                 }
                                 className="wf-step__name"
-                                aria-label={`Paso ${idx + 1}`}
-                                placeholder={`Paso ${idx + 1}`}
+                                aria-label={t("tv.stepN").replace("{n}", String(idx + 1))}
+                                placeholder={t("tv.stepN").replace("{n}", String(idx + 1))}
                               />
                               <div className="wf-step__tool">
                                 {editingStepSolver ? (
@@ -1552,10 +1552,10 @@ export function TeamsView({
                                     }}
                                   >
                                     <SelectTrigger className="h-8 w-full max-w-[14rem]">
-                                      <SelectValue placeholder="Herramienta" />
+                                      <SelectValue placeholder={t("tv.toolAria")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="none">Sin herramienta</SelectItem>
+                                      <SelectItem value="none">{t("tv.noTool")}</SelectItem>
                                       {solversCatalog.solvers.map((app) => (
                                         <SelectItem key={app.id} value={app.id}>
                                           {app.name}
@@ -1572,7 +1572,7 @@ export function TeamsView({
                                       setClaimPolicyStepId(null);
                                     }}
                                   >
-                                    {stepSolver?.name ?? "Herramienta"}
+                                    {stepSolver?.name ?? t("tv.toolAria")}
                                   </button>
                                 ) : (
                                   <button
@@ -1583,7 +1583,7 @@ export function TeamsView({
                                       setClaimPolicyStepId(null);
                                     }}
                                   >
-                                    + Herramienta
+                                    {t("tv.addToolShort")}
                                   </button>
                                 )}
                               </div>
@@ -1603,7 +1603,7 @@ export function TeamsView({
                               type="button"
                               size="sm"
                               variant="ghost"
-                              aria-label={`Quitar paso ${idx + 1}`}
+                              aria-label={t("tv.removeStepAria").replace("{n}", String(idx + 1))}
                               onClick={() =>
                                 setDraftSteps((prev) => prev.filter((s) => s.id !== step.id))
                               }
@@ -1619,7 +1619,7 @@ export function TeamsView({
                 {descOpen ? (
                   <div className="grid gap-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="team-desc">Descripción</Label>
+                      <Label htmlFor="team-desc">{t("tv.description")}</Label>
                       <button
                         type="button"
                         className="text-xs text-muted-foreground hover:text-foreground"
@@ -1628,15 +1628,15 @@ export function TeamsView({
                           setDescOpen(false);
                         }}
                       >
-                        Quitar
+                        {t("tv.remove")}
                       </button>
                     </div>
                     <textarea
                       id="team-desc"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Nota opcional sobre esta tarea"
-                      aria-label="Descripción de la tarea"
+                      placeholder={t("tv.descPlaceholder")}
+                      aria-label={t("tv.descAria")}
                       rows={2}
                       autoFocus
                       className="min-h-16 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
@@ -1648,7 +1648,7 @@ export function TeamsView({
                     className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => setDescOpen(true)}
                   >
-                    + Añadir descripción
+                    {t("tv.addDescription")}
                   </button>
                 )}
               </>
@@ -1658,13 +1658,12 @@ export function TeamsView({
               <>
                 <div className="grid gap-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Alcance bíblico
+                    {t("tv.scriptureScope")}
                   </h3>
                   {!showScripturePicker && board.kind === "book" ? (
                     <div className="grid gap-2 rounded-lg border p-2">
                       <p className="text-xs text-muted-foreground">
-                        Por defecto todo {bookName(projectBooks[0] || board.book)}. Limita a
-                        capítulos o porciones si hace falta.
+                        {t("tv.defaultAll").replace("{book}", bookLabel(projectBooks[0] || board.book, language))}
                       </p>
                       <Select
                         value={scriptureMode}
@@ -1678,9 +1677,9 @@ export function TeamsView({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="project">Todo el libro</SelectItem>
-                          <SelectItem value="chapters">Capítulos…</SelectItem>
-                          <SelectItem value="portions">Porciones…</SelectItem>
+                          <SelectItem value="project">{t("tv.wholeBook")}</SelectItem>
+                          <SelectItem value="chapters">{t("tv.chaptersDots")}</SelectItem>
+                          <SelectItem value="portions">{t("tv.portionsDots")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1700,12 +1699,12 @@ export function TeamsView({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="project">Todo el proyecto</SelectItem>
+                          <SelectItem value="project">{t("tv.wholeProject")}</SelectItem>
                           {multiBook ? (
-                            <SelectItem value="books">Libros…</SelectItem>
+                            <SelectItem value="books">{t("tv.booksDots")}</SelectItem>
                           ) : null}
-                          <SelectItem value="chapters">Capítulos…</SelectItem>
-                          <SelectItem value="portions">Porciones…</SelectItem>
+                          <SelectItem value="chapters">{t("tv.chaptersDots")}</SelectItem>
+                          <SelectItem value="portions">{t("tv.portionsDots")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1737,12 +1736,12 @@ export function TeamsView({
                       {multiBook ? (
                         <Select value={scopeBook || projectBooks[0]} onValueChange={setScopeBook}>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Libro" />
+                            <SelectValue placeholder={t("tv.book")} />
                           </SelectTrigger>
                           <SelectContent>
                             {projectBooks.map((code) => (
                               <SelectItem key={code} value={code}>
-                                {code} — {bookName(code)}
+                                {code} — {bookLabel(code, language)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1750,7 +1749,7 @@ export function TeamsView({
                       ) : null}
                       {scriptureMode === "chapters" ? (
                         <div className="grid gap-1.5">
-                          <Label htmlFor="scope-chapters">Capítulos (ej. 1, 2, 3)</Label>
+                          <Label htmlFor="scope-chapters">{t("tv.chaptersLabel")}</Label>
                           <Input
                             id="scope-chapters"
                             value={scopeChaptersText}
@@ -1788,7 +1787,7 @@ export function TeamsView({
 
                 <div className="grid gap-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Recursos
+                    {t("tv.resources")}
                   </h3>
                   {availableResources.length ? (
                     <div className="flex flex-wrap gap-1.5">
@@ -1801,7 +1800,7 @@ export function TeamsView({
                           className="rounded-full"
                           onClick={() => toggleResource(key)}
                         >
-                          + {SCOPE_LABEL[key]}
+                          + {loc(SCOPE_LABEL[key])}
                         </Button>
                       ))}
                     </div>
@@ -1829,7 +1828,7 @@ export function TeamsView({
                           )
                         : null;
                       const summary = [
-                        SCOPE_LABEL[key],
+                        loc(SCOPE_LABEL[key]),
                         resourceShowsFilter(key)
                           ? articleFilterLabel(key, row.articleFilter, row.grain)
                           : null,
@@ -1863,7 +1862,7 @@ export function TeamsView({
                             </button>
                             <button
                               type="button"
-                              aria-label={`Quitar ${SCOPE_LABEL[key]}`}
+                              aria-label={t("tv.removeRes").replace("{res}", loc(SCOPE_LABEL[key]))}
                               className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
                               onClick={() => toggleResource(key)}
                             >
@@ -1874,28 +1873,27 @@ export function TeamsView({
                             <div className="grid gap-2 border-t border-primary/20 p-2">
                               {matchCount != null ? (
                                 <p className="text-xs font-medium text-foreground">
-                                  {assignableCountLabel(key, row.grain, matchCount)} en la cola de
-                                  Asignar
+                                  {t("tv.inQueue").replace("{count}", loc(assignableCountLabel(key, row.grain, matchCount)))}
                                 </p>
                               ) : null}
                               {isScriptureResource(key) ? (
                                 <p className="text-xs text-muted-foreground">
-                                  {scriptureIntro(key as "tpl" | "tps")}
+                                  {loc(scriptureIntro(key as "tpl" | "tps"))}
                                 </p>
                               ) : null}
 
                               {resourceShowsFilter(key) ? (
                                 <ChoiceGroup
                                   name={`filter-${key}`}
-                                  label="Qué incluir"
+                                  label={t("tv.whatInclude")}
                                   value={row.articleFilter}
                                   onChange={(value) =>
                                     patchResource(key, { articleFilter: value as ArticleFilter })
                                   }
                                   options={filtersForResource(key).map((value) => ({
                                     value,
-                                    label: articleFilterLabel(key, value, row.grain),
-                                    description: articleFilterHelp(key, value, row.grain),
+                                    label: loc(articleFilterLabel(key, value, row.grain)),
+                                    description: loc(articleFilterHelp(key, value, row.grain)),
                                   }))}
                                 />
                               ) : null}
@@ -1903,15 +1901,15 @@ export function TeamsView({
                               {resourceShowsGrain(key) ? (
                                 <ChoiceGroup
                                   name={`grain-${key}`}
-                                  label="Cómo cortar filas"
+                                  label={t("tv.howCut")}
                                   value={row.grain}
                                   onChange={(value) =>
                                     patchResource(key, { grain: value as AssignmentGrain })
                                   }
                                   options={grainsForResource(key).map((value) => ({
                                     value,
-                                    label: grainChoiceLabel(key, value),
-                                    description: grainHelp(key, value),
+                                    label: loc(grainChoiceLabel(key, value)),
+                                    description: loc(grainHelp(key, value)),
                                   }))}
                                 />
                               ) : null}
@@ -1926,29 +1924,27 @@ export function TeamsView({
                                         })
                                       }
                                     />
-                                    Incluir duplicados (Ya citado)
+                                    {t("tv.includeDup")}
                                   </Label>
                                   <p className="text-xs text-muted-foreground">
-                                    Si el mismo artículo se cita en varias porciones, cada cita es
-                                    una fila asignable. Sin esto, solo aparece la primera.
+                                    {t("tv.dupHelp")}
                                   </p>
                                 </div>
                               ) : null}
                               {key === "notas" || key === "preguntas" ? (
                                 <div className="grid gap-1.5">
-                                  <Label htmlFor={`rule-ids-${key}`}>Números concretos (opcional)</Label>
+                                  <Label htmlFor={`rule-ids-${key}`}>{t("tv.concreteNums")}</Label>
                                   <Input
                                     id={`rule-ids-${key}`}
                                     value={row.itemIds}
                                     onChange={(e) =>
                                       patchResource(key, { itemIds: e.target.value })
                                     }
-                                    placeholder="p. ej. bi9h abc1 qd3e"
-                                    aria-label={`Números concretos de ${SCOPE_LABEL[key]}`}
+                                    placeholder={t("tv.concretePlaceholder")}
+                                    aria-label={t("tv.concreteAria").replace("{res}", loc(SCOPE_LABEL[key]))}
                                   />
                                   <p className="text-xs text-muted-foreground">
-                                    Limita la cola a estos IDs concretos, además del filtro y el
-                                    ámbito.
+                                    {t("tv.concreteHelp")}
                                   </p>
                                 </div>
                               ) : null}
@@ -1957,8 +1953,8 @@ export function TeamsView({
                               scriptureMode !== "portions" ? (
                                 <details className="rounded-md border border-border/80 bg-surface/70 px-2 py-1.5">
                                   <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-                                    Opciones al repartir
-                                    {row.stayInChapter ? " · sin cruzar capítulos" : ""}
+                                    {t("tv.distOptions")}
+                                    {row.stayInChapter ? t("tv.noCrossSuffix") : ""}
                                   </summary>
                                   <div className="mt-2 grid gap-1">
                                     <Label className="font-normal text-xs">
@@ -1970,10 +1966,10 @@ export function TeamsView({
                                           })
                                         }
                                       />
-                                      No cruzar capítulos al repartir
+                                      {t("tv.noCross")}
                                     </Label>
                                     <p className="text-xs text-muted-foreground">
-                                      {stayInChapterHelp(key)}
+                                      {loc(stayInChapterHelp(key))}
                                     </p>
                                   </div>
                                 </details>
@@ -1985,7 +1981,7 @@ export function TeamsView({
                     })}
                     {!addedResources.length ? (
                       <p className="text-sm text-muted-foreground">
-                        Añade al menos un recurso (TPL, TPS, Notas, Preguntas, Academia o Palabras).
+                        {t("tv.addOneResource")}
                       </p>
                     ) : null}
                   </div>
@@ -1996,14 +1992,14 @@ export function TeamsView({
                     <Collapsible open={scopeHelpOpen} onOpenChange={setScopeHelpOpen}>
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Reparto
+                          {t("tv.distribution")}
                         </h3>
                         <CollapsibleTrigger asChild>
                           <button
                             type="button"
                             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                           >
-                            ¿Cómo funciona?
+                            {t("tv.howItWorks")}
                             <ChevronDown
                               className={cn(
                                 "size-3 transition-transform",
@@ -2015,9 +2011,7 @@ export function TeamsView({
                       </div>
                       <CollapsibleContent>
                         <p className="pt-1 text-xs text-muted-foreground">
-                          Tres decisiones distintas: si varios recursos van juntos a la misma
-                          persona, si la unidad es porción o capítulo, y cómo Autoasignar parte el
-                          proyecto entre los integrantes (bloques contiguos).
+                          {t("tv.distHelp")}
                         </p>
                       </CollapsibleContent>
                     </Collapsible>
@@ -2025,21 +2019,19 @@ export function TeamsView({
                     {canBundle ? (
                       <ChoiceGroup
                         name="packaging"
-                        label="Empaquetado de recursos"
+                        label={t("tv.packaging")}
                         value={packaging}
                         onChange={(v) => setPackaging(v as Packaging)}
                         options={[
                           {
                             value: "separate",
-                            label: "Separado",
-                            description:
-                              "Cada recurso tiene su cola. Una persona puede llevar TPL y otra las notas de la misma porción.",
+                            label: t("tv.separate"),
+                            description: t("tv.separateDesc"),
                           },
                           {
                             value: "together",
-                            label: "Juntos",
-                            description:
-                              "La misma persona recibe todos los recursos del mismo bloque (porción o capítulo).",
+                            label: t("tv.together"),
+                            description: t("tv.togetherDesc"),
                           },
                         ]}
                       />
@@ -2047,7 +2039,7 @@ export function TeamsView({
 
                     <ChoiceGroup
                       name="distribute-unit"
-                      label="Unidad al repartir"
+                      label={t("tv.distUnit")}
                       value={distributeUnit}
                       onChange={(v) => {
                         const next = v as DistributeUnit;
@@ -2057,37 +2049,37 @@ export function TeamsView({
                       options={[
                         {
                           value: "portion",
-                          label: DISTRIBUTE_UNIT_LABEL.portion,
-                          description: DISTRIBUTE_UNIT_HELP.portion,
+                          label: loc(DISTRIBUTE_UNIT_LABEL.portion),
+                          description: loc(DISTRIBUTE_UNIT_HELP.portion),
                         },
                         {
                           value: "chapterRounds",
-                          label: DISTRIBUTE_UNIT_LABEL.chapterRounds,
-                          description: DISTRIBUTE_UNIT_HELP.chapterRounds,
+                          label: loc(DISTRIBUTE_UNIT_LABEL.chapterRounds),
+                          description: loc(DISTRIBUTE_UNIT_HELP.chapterRounds),
                         },
                         {
                           value: "chapter",
-                          label: DISTRIBUTE_UNIT_LABEL.chapter,
-                          description: DISTRIBUTE_UNIT_HELP.chapter,
+                          label: loc(DISTRIBUTE_UNIT_LABEL.chapter),
+                          description: loc(DISTRIBUTE_UNIT_HELP.chapter),
                         },
                       ]}
                     />
 
                     <ChoiceGroup
                       name="distribute-policy"
-                      label="Autoasignar"
+                      label={t("tv.autoAssign")}
                       value={distributePolicy}
                       onChange={(v) => setDistributePolicy(v as DistributePolicy)}
                       options={[
                         {
                           value: "contiguous",
-                          label: DISTRIBUTE_POLICY_LABEL.contiguous,
-                          description: DISTRIBUTE_POLICY_HELP.contiguous,
+                          label: loc(DISTRIBUTE_POLICY_LABEL.contiguous),
+                          description: loc(DISTRIBUTE_POLICY_HELP.contiguous),
                         },
                         {
                           value: "manual",
-                          label: DISTRIBUTE_POLICY_LABEL.manual,
-                          description: DISTRIBUTE_POLICY_HELP.manual,
+                          label: loc(DISTRIBUTE_POLICY_LABEL.manual),
+                          description: loc(DISTRIBUTE_POLICY_HELP.manual),
                         },
                       ]}
                     />
@@ -2097,10 +2089,10 @@ export function TeamsView({
                 {showSharedAmbit ? (
                   <div className="grid gap-2 rounded-lg border p-2">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Ámbito del libro
+                      {t("tv.bookScope")}
                     </h3>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="shared-chapter">Capítulo</Label>
+                      <Label htmlFor="shared-chapter">{t("tv.chapter")}</Label>
                       <Select
                         value={sharedChapter || "__none__"}
                         onValueChange={(v) => {
@@ -2108,16 +2100,16 @@ export function TeamsView({
                           setSharedPortionIds([]);
                         }}
                       >
-                        <SelectTrigger id="shared-chapter" className="w-full" aria-label="Capítulo">
-                          <SelectValue placeholder="Elige capítulo" />
+                        <SelectTrigger id="shared-chapter" className="w-full" aria-label={t("tv.chapter")}>
+                          <SelectValue placeholder={t("tv.pickChapter")} />
                         </SelectTrigger>
                         <SelectContent position="popper">
                           <SelectItem value="__none__">
-                            {bundleOn ? "— capítulo —" : "— todo el libro —"}
+                            {bundleOn ? t("tv.dashChapter") : t("tv.dashWholeBook")}
                           </SelectItem>
                           {inventoryChapters.map((group) => (
                             <SelectItem key={group.chapter} value={String(group.chapter)}>
-                              Capítulo {group.chapter} · {group.portions.length} porciones
+                              {t("tv.chapterN").replace("{n}", String(group.chapter)).replace("{p}", String(group.portions.length))}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -2125,7 +2117,7 @@ export function TeamsView({
                     </div>
                     {distributeUnit !== "chapter" && geoPortions.length ? (
                       <div className="grid gap-1.5">
-                        <Label>Porciones del capítulo</Label>
+                        <Label>{t("tv.chapterPortions")}</Label>
                         <div className="max-h-40 overflow-auto rounded-lg border p-2">
                           {geoPortions.map((portion, index) => {
                             const portionId = portionKey(portion);
@@ -2159,15 +2151,14 @@ export function TeamsView({
                 {inventory && (draft.notas != null || draft.academia != null) ? (
                   <p className="text-xs text-muted-foreground">
                     {draft.notas != null
-                      ? `${draftNotes} ${draftNotes === 1 ? "nota" : "notas"}`
+                      ? t(draftNotes === 1 ? "tv.noteOne" : "tv.noteMany").replace("{n}", String(draftNotes))
                       : null}
                     {draft.notas != null && draft.academia != null ? " · " : null}
                     {draft.academia != null
-                      ? `${draftCited.filter((row) => row.kind === "Translation Academy").length} Academia${
-                          draftCitedRepeat
-                            ? ` · ${draftCitedRepeat} ya citada${draftCitedRepeat === 1 ? "" : "s"}`
-                            : ""
-                        }`
+                      ? t("tv.academiaCount").replace("{n}", String(draftCited.filter((row) => row.kind === "Translation Academy").length)) +
+                        (draftCitedRepeat
+                          ? t(draftCitedRepeat === 1 ? "tv.citedOne" : "tv.citedMany").replace("{n}", String(draftCitedRepeat))
+                          : "")
                       : null}
                   </p>
                 ) : null}
@@ -2178,17 +2169,17 @@ export function TeamsView({
               <>
                 {session && !pmOrg ? (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="personas-org">Organización del equipo</Label>
+                    <Label htmlFor="personas-org">{t("tv.teamOrg")}</Label>
                     {orgs.length ? (
                       <Select
                         value={pmOrg || "__none__"}
                         onValueChange={(v) => onPmOrgChange(v === "__none__" ? "" : v)}
                       >
-                        <SelectTrigger id="personas-org" className="w-full" aria-label="Organización del equipo">
-                          <SelectValue placeholder="Elige la organización" />
+                        <SelectTrigger id="personas-org" className="w-full" aria-label={t("tv.teamOrg")}>
+                          <SelectValue placeholder={t("tv.pickOrg")} />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          <SelectItem value="__none__">— elige org —</SelectItem>
+                          <SelectItem value="__none__">{t("tv.dashPickOrg")}</SelectItem>
                           {orgs.map((o) => {
                             const slug = orgSlug(o);
                             return (
@@ -2201,7 +2192,7 @@ export function TeamsView({
                       </Select>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Elige la organización del equipo en el espacio de trabajo para cargar a las personas.
+                        {t("tv.pickOrgHint")}
                       </p>
                     )}
                   </div>
@@ -2210,16 +2201,17 @@ export function TeamsView({
                 {session && pmOrg ? (
                   <div className="grid gap-2">
                     <p className="text-xs text-muted-foreground">
-                      Roster de <strong>{pmOrg}</strong>
+                      {t("tv.rosterOf")}
+                      <strong>{pmOrg}</strong>
                       {rosterLoading
-                        ? " · cargando…"
+                        ? t("tv.loadingInline")
                         : roster.length
-                          ? ` · ${roster.length} personas`
+                          ? t("tv.nPeople").replace("{n}", String(roster.length))
                           : ""}
-                      {orgTeams.length ? ` · ${orgTeams.length} equipos org` : ""}
+                      {orgTeams.length ? t("tv.nOrgTeams").replace("{n}", String(orgTeams.length)) : ""}
                     </p>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="org-team-filter">Mostrar solo un equipo</Label>
+                      <Label htmlFor="org-team-filter">{t("tv.showOneTeam")}</Label>
                       <Select
                         value={orgTeamFilter}
                         onValueChange={(v) => {
@@ -2227,11 +2219,11 @@ export function TeamsView({
                           setOrgTeamsError("");
                         }}
                       >
-                        <SelectTrigger id="org-team-filter" className="w-full" aria-label="Equipo org">
-                          <SelectValue placeholder="Toda la organización" />
+                        <SelectTrigger id="org-team-filter" className="w-full" aria-label={t("tv.orgTeamAria")}>
+                          <SelectValue placeholder={t("tv.wholeOrg")} />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          <SelectItem value="all">Toda la organización</SelectItem>
+                          <SelectItem value="all">{t("tv.wholeOrg")}</SelectItem>
                           {orgTeams.map((team) => (
                             <SelectItem key={team.id} value={String(team.id)}>
                               {displayOrgTeamName(team.name, teamPrefix)}
@@ -2240,18 +2232,18 @@ export function TeamsView({
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Crear o editar equipos org: ve a{" "}
-                        <strong>Organización</strong> en la barra superior.
+                        {t("tv.manageTeamsA")}
+                        <strong>{t("nav.organization")}</strong>
+                        {t("tv.manageTeamsB")}
                       </p>
                     </div>
                     {orgTeamMembersLoading ? (
-                      <p className="text-xs text-muted-foreground">Cargando miembros del equipo…</p>
+                      <p className="text-xs text-muted-foreground">{t("tv.loadingMembers")}</p>
                     ) : null}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Sin sesión: añade personas a mano. Con sesión, el listado sale de la
-                    organización del equipo y puedes filtrar por equipos org.
+                    {t("tv.noSession")}
                   </p>
                 )}
 
@@ -2270,8 +2262,8 @@ export function TeamsView({
                   <Input
                     value={rosterQuery}
                     onChange={(e) => setRosterQuery(e.target.value)}
-                    placeholder="Buscar integrante…"
-                    aria-label="Buscar integrante"
+                    placeholder={t("tv.searchMember")}
+                    aria-label={t("tv.searchMemberAria")}
                   />
                 ) : null}
 
@@ -2282,7 +2274,7 @@ export function TeamsView({
                       className="text-xs text-muted-foreground hover:text-foreground"
                       onClick={selectAllFiltered}
                     >
-                      Marcar todos los visibles
+                      {t("tv.markAll")}
                     </button>
                     {memberIds.length ? (
                       <button
@@ -2290,7 +2282,7 @@ export function TeamsView({
                         className="text-xs text-muted-foreground hover:text-foreground"
                         onClick={() => setMemberIds([])}
                       >
-                        Desmarcar ({memberIds.length})
+                        {t("tv.unmark").replace("{n}", String(memberIds.length))}
                       </button>
                     ) : null}
                   </div>
@@ -2318,8 +2310,8 @@ export function TeamsView({
                   {!selectable.length && !rosterLoading && !orgTeamMembersLoading ? (
                     <span className="text-sm text-muted-foreground">
                       {rosterQuery || orgTeamFilter !== "all"
-                        ? "Ningún integrante coincide."
-                        : "Sin personas todavía"}
+                        ? t("tv.noMatch")
+                        : t("tv.noPeople")}
                     </span>
                   ) : null}
                 </div>
@@ -2328,7 +2320,7 @@ export function TeamsView({
                   <div className="grid gap-1.5 border-t pt-3">
                     <div className="flex items-center justify-between gap-2">
                       <Label htmlFor="local-person">
-                        {session ? "Añadir a mano" : "Añadir a mano (local / sin sesión)"}
+                        {session ? t("tv.addManual") : t("tv.addManualLocal")}
                       </Label>
                       {session ? (
                         <button
@@ -2336,7 +2328,7 @@ export function TeamsView({
                           className="text-xs text-muted-foreground hover:text-foreground"
                           onClick={() => setAddManualOpen(false)}
                         >
-                          Ocultar
+                          {t("tv.hide")}
                         </button>
                       ) : null}
                     </div>
@@ -2345,8 +2337,8 @@ export function TeamsView({
                         id="local-person"
                         value={personName}
                         onChange={(e) => setPersonName(e.target.value)}
-                        placeholder="Nombre"
-                        aria-label="Nombre de la persona"
+                        placeholder={t("tv.name")}
+                        aria-label={t("tv.personNameAria")}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
@@ -2355,7 +2347,7 @@ export function TeamsView({
                         }}
                       />
                       <Button type="button" onClick={addPerson} disabled={!personName.trim()}>
-                        Añadir
+                        {t("tv.add")}
                       </Button>
                     </div>
                   </div>
@@ -2365,7 +2357,7 @@ export function TeamsView({
                     className="justify-self-start border-t pt-3 text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => setAddManualOpen(true)}
                   >
-                    + Añadir persona a mano
+                    {t("tv.addManualLink")}
                   </button>
                 )}
 
@@ -2385,7 +2377,7 @@ export function TeamsView({
                             size="sm"
                             onClick={() => removePerson(p.id)}
                           >
-                            Quitar
+                            {t("tv.remove")}
                           </Button>
                         </div>
                       ))}
@@ -2401,11 +2393,11 @@ export function TeamsView({
             <div className="flex flex-wrap gap-1.5">
               {stepIndex > 0 ? (
                 <Button type="button" variant="ghost" size="sm" onClick={goPrevStep}>
-                  Atrás
+                  {t("tv.back")}
                 </Button>
               ) : (
                 <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
-                  Cancelar
+                  {t("tv.cancel")}
                 </Button>
               )}
             </div>
@@ -2417,12 +2409,12 @@ export function TeamsView({
                     variant="outline"
                     onClick={saveAsPreset}
                     disabled={!canSave}
-                    title="Guarda el alcance y grano de esta tarea para reusarlo en otro proyecto"
+                    title={t("tv.saveAsTaskTemplateTitle")}
                   >
-                    Guardar como plantilla de tarea
+                    {t("tv.saveAsTaskTemplate")}
                   </Button>
                   <Button type="button" onClick={saveTeam} disabled={!canSave}>
-                    {editingId ? "Guardar cambios" : "Crear tarea"}
+                    {editingId ? t("tv.saveChanges") : t("tv.createTask")}
                   </Button>
                 </>
               ) : (
@@ -2431,7 +2423,7 @@ export function TeamsView({
                   onClick={goNextStep}
                   disabled={editorStep === "identidad" && !teamName.trim()}
                 >
-                  Siguiente
+                  {t("tv.next")}
                 </Button>
               )}
             </div>
@@ -2445,11 +2437,10 @@ export function TeamsView({
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">Fases y tareas</h1>
+          <h1 className="hub-title">{t("tv.phasesAndTasks")}</h1>
           {listHelpOpen ? (
             <p className="hub-lede">
-              Aplica una plantilla de flujo reutilizable (fases, tareas, checklists). La edición
-              avanzada de tareas sigue disponible; lo habitual es definir plantillas en Plantillas.
+              {t("tv.listLede")}
             </p>
           ) : null}
         </div>
@@ -2459,11 +2450,11 @@ export function TeamsView({
             className="text-xs text-muted-foreground underline-offset-2 hover:underline"
             onClick={() => setListHelpOpen((v) => !v)}
           >
-            {listHelpOpen ? "Ocultar ayuda" : "¿Cómo funciona?"}
+            {listHelpOpen ? t("tv.hideHelp") : t("tv.howItWorks")}
           </button>
           {onOpenPlantillas ? (
             <Button type="button" variant="outline" size="sm" onClick={onOpenPlantillas}>
-              Plantillas
+              {t("nav.templates")}
             </Button>
           ) : null}
           {board.teams.length > 0 ? (
@@ -2479,7 +2470,7 @@ export function TeamsView({
                   setTaskMenuId(null);
                 }}
               >
-                + Nueva
+                {t("tv.newMenu")}
               </Button>
               {createMenuOpen ? (
                 <div className="phases-menu" role="menu">
@@ -2493,7 +2484,7 @@ export function TeamsView({
                       setNewPhaseName(`Fase ${board.phases.length + 1}`);
                     }}
                   >
-                    Fase
+                    {t("tv.menuPhase")}
                   </button>
                   <button
                     type="button"
@@ -2504,7 +2495,7 @@ export function TeamsView({
                       openNew();
                     }}
                   >
-                    Tarea (avanzado)
+                    {t("tv.menuTaskAdv")}
                   </button>
                 </div>
               ) : null}
@@ -2515,19 +2506,19 @@ export function TeamsView({
 
       <div className="workflow-apply">
         <div className="grid min-w-[12rem] flex-1 gap-1.5">
-          <Label htmlFor="apply-workflow">Plantilla de flujo</Label>
+          <Label htmlFor="apply-workflow">{t("tv.workflowTemplate")}</Label>
           <Select
             value={applyWorkflowId || "none"}
             onValueChange={(v) => setApplyWorkflowId(v === "none" ? "" : v)}
           >
             <SelectTrigger id="apply-workflow" className="w-full">
-              <SelectValue placeholder="Elige plantilla" />
+              <SelectValue placeholder={t("tv.pickTemplate")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Elige plantilla…</SelectItem>
+              <SelectItem value="none">{t("tv.pickTemplateDots")}</SelectItem>
               {workflowsCatalog.workflows.map((wf) => (
                 <SelectItem key={wf.id} value={wf.id}>
-                  {wf.name} ({wf.tasks.length} tareas)
+                  {t("tv.nTasksOf").replace("{name}", wf.name).replace("{n}", String(wf.tasks.length))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -2539,7 +2530,7 @@ export function TeamsView({
           disabled={applyBusy || !applyWorkflowId}
           onClick={applySelectedWorkflow}
         >
-          {board.teams.length ? "Reaplicar plantilla" : "Aplicar plantilla"}
+          {board.teams.length ? t("tv.reapply") : t("tv.apply")}
         </Button>
         {board.teams.length ? (
           <Button
@@ -2549,26 +2540,26 @@ export function TeamsView({
             disabled={applyBusy}
             onClick={() => void saveBoardAsWorkflow()}
           >
-            Guardar como plantilla
+            {t("tv.saveAsTemplate")}
           </Button>
         ) : null}
         {board.workflowId ? (
           <p className="basis-full text-xs text-muted-foreground">
-            Aplicada: <code className="font-mono">{board.workflowId}</code>
+            {t("tv.applied")}<code className="font-mono">{board.workflowId}</code>
             {board.workflowAppliedAt
-              ? ` · ${new Date(board.workflowAppliedAt).toLocaleString("es")}`
+              ? ` · ${new Date(board.workflowAppliedAt).toLocaleString(language)}`
               : ""}
           </p>
         ) : null}
         {!workflowsCatalog.workflows.length ? (
           <p className="basis-full text-xs text-muted-foreground">
-            No hay plantillas todavía.{" "}
+            {t("tv.noTemplatesYet")}{" "}
             {onOpenPlantillas ? (
               <button type="button" className="underline" onClick={onOpenPlantillas}>
-                Crear en Plantillas
+                {t("tv.createInTemplates")}
               </button>
             ) : (
-              "Crea una en Plantillas."
+              t("tv.createOneInTemplates")
             )}
           </p>
         ) : null}
@@ -2577,15 +2568,14 @@ export function TeamsView({
       {!board.teams.length ? (
         <Alert className="mb-3">
           <AlertDescription>
-            Este proyecto aún no tiene fases ni tareas. Aplica una plantilla de flujo para
-            reutilizar el mismo checklist en varios libros.
+            {t("tv.noPhasesAlert")}
           </AlertDescription>
         </Alert>
       ) : null}
 
       <div className="hub-panel">
         <div className="grid gap-2">
-          <div className="text-sm font-medium text-foreground">Ajustes del proyecto</div>
+          <div className="text-sm font-medium text-foreground">{t("tv.projectSettings")}</div>
           <label className="flex items-start gap-2 text-sm leading-snug">
             <Checkbox
               checked={Boolean(board.settings?.allowSelfAssign)}
@@ -2601,20 +2591,17 @@ export function TeamsView({
               className="mt-0.5"
             />
             <span>
-              <span className="font-medium">Permitir autoasignación</span>
+              <span className="font-medium">{t("tv.allowSelf")}</span>
               <span className="mt-0.5 block text-muted-foreground">
-                Los integrantes de los equipos vinculados pueden tomar subtareas libres y ver
-                toda la cola del proyecto en Mis tareas. Solo un gestor puede liberar el trabajo
-                de otra persona.
+                {t("tv.allowSelfHelp")}
               </span>
             </span>
           </label>
           <div className="grid gap-1.5 sm:grid-cols-[1fr_8rem] sm:items-end">
             <div className="sm:col-span-2">
-              <div className="text-sm font-medium text-foreground">Recursos de referencia de la Afinación</div>
+              <div className="text-sm font-medium text-foreground">{t("tv.refResources")}</div>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                De aquí salen las notas, las palabras clave y el texto alineado que se ven junto al borrador. El griego y el hebreo
-                siempre son los de unfoldingWord.
+                {t("tv.refHelp")}
               </p>
             </div>
             {(() => {
@@ -2627,11 +2614,11 @@ export function TeamsView({
               return (
                 <>
                   <div className="grid gap-1">
-                    <Label htmlFor="source-owner">Organización</Label>
+                    <Label htmlFor="source-owner">{t("nav.organization")}</Label>
                     <Input id="source-owner" value={pkg.owner} onChange={(e) => update(e.target.value, sourcePackageLang(pkg))} />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="source-lang">Idioma</Label>
+                    <Label htmlFor="source-lang">{t("tv.language")}</Label>
                     <Input id="source-lang" value={sourcePackageLang(pkg)} onChange={(e) => update(pkg.owner, e.target.value)} />
                   </div>
                 </>
@@ -2645,7 +2632,7 @@ export function TeamsView({
         <div className="hub-panel">
           <div className="grid gap-1.5 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
             <div className="grid gap-1">
-              <Label htmlFor="new-phase-name">Etiqueta de la fase</Label>
+              <Label htmlFor="new-phase-name">{t("tv.phaseLabel")}</Label>
               <Input
                 id="new-phase-name"
                 value={newPhaseName}
@@ -2654,14 +2641,14 @@ export function TeamsView({
                   setNewPhaseName(value);
                   if (!newPhaseSlugTouched) setNewPhaseSlug(slugifyPhase(value));
                 }}
-                placeholder="p. ej. Borrador, Revisión"
+                placeholder={t("tv.phasePlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") addPhase();
                 }}
               />
             </div>
             <div className="grid gap-1">
-              <Label htmlFor="new-phase-slug">Identificador corto</Label>
+              <Label htmlFor="new-phase-slug">{t("tv.shortId")}</Label>
               <Input
                 id="new-phase-slug"
                 value={newPhaseSlug}
@@ -2671,14 +2658,14 @@ export function TeamsView({
                 }}
                 placeholder="revision"
                 className="font-mono"
-                aria-label="Identificador corto de la fase"
+                aria-label={t("tv.shortIdAria")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") addPhase();
                 }}
               />
             </div>
             <Button type="button" onClick={() => addPhase()}>
-              Crear
+              {t("tv.create")}
             </Button>
             <Button
               type="button"
@@ -2690,7 +2677,7 @@ export function TeamsView({
                 setNewPhaseSlugTouched(false);
               }}
             >
-              Cancelar
+              {t("tv.cancel")}
             </Button>
           </div>
         </div>
@@ -2715,7 +2702,7 @@ export function TeamsView({
                           if (e.key === "Escape") setEditingPhaseId(null);
                         }}
                         className="h-8 max-w-xs font-medium"
-                        aria-label="Renombrar fase"
+                        aria-label={t("tv.renamePhaseAria")}
                         autoFocus
                       />
                       <Input
@@ -2727,7 +2714,7 @@ export function TeamsView({
                           if (e.key === "Escape") setEditingPhaseId(null);
                         }}
                         className="h-8 max-w-[10rem] font-mono text-xs"
-                        aria-label="Identificador corto de la fase"
+                        aria-label={t("tv.shortIdAria")}
                         placeholder="revision"
                       />
                     </div>
@@ -2740,16 +2727,16 @@ export function TeamsView({
                         setEditingPhaseName(phase.name);
                         setEditingPhaseSlug(ensurePhaseSlug(phase));
                       }}
-                      title="Clic para renombrar la fase"
+                      title={t("tv.clickRename")}
                     >
                       {phase.name}
                     </button>
                   )}
                   <span className="phases-section__count">
-                    {phaseTasks.length} tarea{phaseTasks.length === 1 ? "" : "s"}
+                    {t(phaseTasks.length === 1 ? "tv.tasksOne" : "tv.tasksMany").replace("{n}", String(phaseTasks.length))}
                   </span>
                   {editingPhaseId === phase.id ? null : (
-                    <span className="phases-section__slug" title="Identificador corto de la fase">
+                    <span className="phases-section__slug" title={t("tv.shortIdAria")}>
                       {ensurePhaseSlug(phase)}
                     </span>
                   )}
@@ -2760,7 +2747,7 @@ export function TeamsView({
                     variant="ghost"
                     size="sm"
                     aria-expanded={phaseMenuOpen}
-                    aria-label={`Más acciones · ${phase.name}`}
+                    aria-label={t("tv.moreActions").replace("{name}", phase.name)}
                     onClick={() => {
                       setPhaseMenuId(phaseMenuOpen ? null : phase.id);
                       setCreateMenuOpen(false);
@@ -2781,7 +2768,7 @@ export function TeamsView({
                           setPhaseMenuId(null);
                         }}
                       >
-                        Subir
+                        {t("tv.up")}
                       </button>
                       <button
                         type="button"
@@ -2793,7 +2780,7 @@ export function TeamsView({
                           setPhaseMenuId(null);
                         }}
                       >
-                        Bajar
+                        {t("tv.down")}
                       </button>
                       <button
                         type="button"
@@ -2804,7 +2791,7 @@ export function TeamsView({
                           openNewInPhase(phase.id);
                         }}
                       >
-                        Añadir tarea
+                        {t("tv.addTask")}
                       </button>
                       <button
                         type="button"
@@ -2816,7 +2803,7 @@ export function TeamsView({
                           removePhase(phase.id);
                         }}
                       >
-                        Eliminar fase
+                        {t("tv.deletePhase")}
                       </button>
                     </div>
                   ) : null}
@@ -2830,10 +2817,10 @@ export function TeamsView({
                   .filter((row): row is Person => Boolean(row));
                 const rules = teamRules(team);
                 const resourceBit = rules.length
-                  ? rules.map((rule) => SCOPE_LABEL[rule.resource]).join(" · ")
-                  : "Sin recursos";
-                const summary = `${resourceBit} · ${DISTRIBUTE_UNIT_LABEL[resolveDistributeUnit(team)]} · ${members.length} integrante${members.length === 1 ? "" : "s"}`;
-                const claimSummary = formatTaskClaimSummary(team.steps);
+                  ? rules.map((rule) => loc(SCOPE_LABEL[rule.resource])).join(" · ")
+                  : loc("Sin recursos");
+                const summary = `${resourceBit} · ${loc(DISTRIBUTE_UNIT_LABEL[resolveDistributeUnit(team)])} · ${t(members.length === 1 ? "tv.memberOne" : "tv.memberMany").replace("{n}", String(members.length))}`;
+                const claimSummary = loc(formatTaskClaimSummary(team.steps));
                 const taskMenuOpen = taskMenuId === team.id;
                 return (
                   <div
@@ -2854,10 +2841,10 @@ export function TeamsView({
                       <p className="phases-task__summary">{summary}</p>
                       <div className="phases-task__flags">
                         {board.activeTeamId === team.id ? (
-                          <Badge variant="secondary">Activo en Asignar</Badge>
+                          <Badge variant="secondary">{t("tv.activeInAssign")}</Badge>
                         ) : null}
                         {overlaps.length ? (
-                          <Badge variant="outline">Alcance solapado</Badge>
+                          <Badge variant="outline">{t("tv.overlap")}</Badge>
                         ) : null}
                         {team.orgTeamName ? (
                           <Badge variant="outline">
@@ -2866,25 +2853,25 @@ export function TeamsView({
                         ) : null}
                         {team.steps?.length ? (
                           <Badge variant="outline">
-                            {team.steps.length} paso{team.steps.length === 1 ? "" : "s"}
+                            {t(team.steps.length === 1 ? "tv.stepsOne" : "tv.stepsMany").replace("{n}", String(team.steps.length))}
                             {claimSummary ? ` · ${claimSummary}` : ""}
                           </Badge>
                         ) : null}
                         {team.solverAppId ? (
-                          <Badge variant="outline">Con editor</Badge>
+                          <Badge variant="outline">{t("tv.withEditor")}</Badge>
                         ) : null}
                         {team.waitsFor?.length ? (
                           <Badge variant="outline">
-                            Espera a {team.waitsFor.length} {team.waitsFor.length === 1 ? "cosa" : "cosas"}
+                            {t(team.waitsFor.length === 1 ? "tv.waitsOne" : "tv.waitsMany").replace("{n}", String(team.waitsFor.length))}
                           </Badge>
                         ) : null}
                         {team.reviewsPrincipal ? (
-                          <Badge variant="outline">Revisión del borrador principal</Badge>
+                          <Badge variant="outline">{t("tv.reviewsMainBadge")}</Badge>
                         ) : null}
                       </div>
                       {overlaps.length ? (
                         <p className="phases-task__note">
-                          Mismo recurso que{" "}
+                          {t("tv.sameResource")}
                           {overlaps
                             .map((p) =>
                               p.description.trim()
@@ -2903,7 +2890,7 @@ export function TeamsView({
                         size="sm"
                         onClick={() => onChange({ ...board, activeTeamId: team.id })}
                       >
-                        Usar en Asignar
+                        {t("tv.useInAssign")}
                       </Button>
                       <Button
                         type="button"
@@ -2911,7 +2898,7 @@ export function TeamsView({
                         size="sm"
                         onClick={() => startEdit(team)}
                       >
-                        Editar
+                        {t("tv.edit")}
                       </Button>
                       <div className="phases-task__more">
                         <Button
@@ -2919,7 +2906,7 @@ export function TeamsView({
                           variant="ghost"
                           size="sm"
                           aria-expanded={taskMenuOpen}
-                          aria-label={`Más acciones · ${team.name}`}
+                          aria-label={t("tv.moreActions").replace("{name}", team.name)}
                           onClick={() => {
                             setTaskMenuId(taskMenuOpen ? null : team.id);
                             setPhaseMenuId(null);
@@ -2941,8 +2928,8 @@ export function TeamsView({
                               }}
                             >
                               {team.orgTeamName
-                                ? `Equipo · ${displayOrgTeamName(team.orgTeamName, teamPrefix)}`
-                                : "Asignar un equipo"}
+                                ? t("tv.teamBullet").replace("{name}", displayOrgTeamName(team.orgTeamName, teamPrefix))
+                                : t("tv.assignTeam")}
                             </button>
                             {team.orgTeamId ? (
                               <button
@@ -2954,7 +2941,7 @@ export function TeamsView({
                                   clearOrgTeam(team);
                                 }}
                               >
-                                Quitar equipo
+                                {t("tv.removeTeam")}
                               </button>
                             ) : null}
                             <button
@@ -2966,7 +2953,7 @@ export function TeamsView({
                                 removeTeam(team.id);
                               }}
                             >
-                              Eliminar
+                              {t("tv.delete")}
                             </button>
                           </div>
                         ) : null}
@@ -2978,13 +2965,13 @@ export function TeamsView({
 
               {!phaseTasks.length ? (
                 <p className="hub-hint">
-                  Sin tareas en esta fase.{" "}
+                  {t("tv.noTasksInPhase")}
                   <button
                     type="button"
                     className="font-medium text-foreground underline-offset-2 hover:underline"
                     onClick={() => openNewInPhase(phase.id)}
                   >
-                    Añadir una
+                    {t("tv.addOne")}
                   </button>
                 </p>
               ) : null}
@@ -2994,17 +2981,17 @@ export function TeamsView({
 
         {!board.teams.length && !board.phases.length ? (
           <div className="hub-empty-panel">
-            <span className="hub-empty-panel__kicker">Vacío</span>
-            <h2 className="hub-empty-panel__title">Sin fases ni tareas</h2>
+            <span className="hub-empty-panel__kicker">{t("tv.emptyKicker")}</span>
+            <h2 className="hub-empty-panel__title">{t("tv.noPhasesTasks")}</h2>
             <p className="hub-empty-panel__body">
-              Crea una fase y luego tareas con recursos y reparto.
+              {t("tv.createPhaseThen")}
             </p>
             <div className="hub-empty-panel__actions">
               <Button type="button" variant="outline" onClick={() => addPhase("Fase 1")}>
-                + Nueva fase
+                {t("tv.newPhasePlus")}
               </Button>
               <Button type="button" onClick={openNew}>
-                + Nueva tarea
+                {t("tv.newTaskPlus")}
               </Button>
             </div>
           </div>
@@ -3014,15 +3001,15 @@ export function TeamsView({
       <Dialog open={Boolean(assignTask)} onOpenChange={(open) => !open && setAssignTask(null)}>
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Asignar un equipo</DialogTitle>
+            <DialogTitle>{t("tv.assignTeam")}</DialogTitle>
             <DialogDescription>
               {assignTask
-                ? `Elige un equipo con acceso a los repos de «${assignTask.name}». No se crea un equipo nuevo.`
+                ? t("tv.assignTeamDesc").replace("{task}", assignTask.name)
                 : null}
             </DialogDescription>
           </DialogHeader>
           {assignLoading ? (
-            <p className="text-sm text-muted-foreground">Comprobando repos de equipos…</p>
+            <p className="text-sm text-muted-foreground">{t("tv.checking")}</p>
           ) : null}
           {assignError ? (
             <Alert variant="destructive">
@@ -3031,13 +3018,13 @@ export function TeamsView({
           ) : null}
           {!assignLoading && assignEligible.length === 0 && assignIneligible.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No hay equipos en Organización. Créalos allí y vuelve a elegir.
+              {t("tv.noOrgTeams")}
             </p>
           ) : null}
           {assignEligible.length ? (
             <div className="grid gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Elegibles
+                {t("tv.eligible")}
               </p>
               {assignEligible.map((team) => (
                 <div
@@ -3049,7 +3036,7 @@ export function TeamsView({
                       {displayOrgTeamName(team.name, teamPrefix)}
                     </div>
                     {assignTask?.orgTeamId === team.id ? (
-                      <Badge variant="secondary">Actual</Badge>
+                      <Badge variant="secondary">{t("tv.current")}</Badge>
                     ) : null}
                   </div>
                   <Button
@@ -3058,7 +3045,7 @@ export function TeamsView({
                     disabled={assignBusyId != null}
                     onClick={() => void confirmAssignOrgTeam(team, false)}
                   >
-                    {assignBusyId === team.id ? "Asignando…" : "Asignar"}
+                    {assignBusyId === team.id ? t("tv.assigning") : t("tv.assign")}
                   </Button>
                 </div>
               ))}
@@ -3067,8 +3054,8 @@ export function TeamsView({
           {assignIneligible.length ? (
             <div className="grid gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Sin todos los repos
-                {session?.canManage ? " — puedes concederlos" : ""}
+                {t("tv.missingRepos")}
+                {session?.canManage ? t("tv.canGrant") : ""}
               </p>
               {assignIneligible.map(({ team, eligibility }) => (
                 <div key={team.id} className="rounded-md border border-dashed p-2">
@@ -3084,12 +3071,12 @@ export function TeamsView({
                         disabled={assignBusyId != null}
                         onClick={() => void confirmAssignOrgTeam(team, true)}
                       >
-                        {assignBusyId === team.id ? "Concediendo…" : "Conceder repos y asignar"}
+                        {assignBusyId === team.id ? t("tv.granting") : t("tv.grantAndAssign")}
                       </Button>
                     ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Faltan: {eligibility.missing.join(", ") || "—"}
+                    {t("tv.missing")}{eligibility.missing.join(", ") || "—"}
                   </p>
                 </div>
               ))}
@@ -3097,7 +3084,7 @@ export function TeamsView({
           ) : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setAssignTask(null)}>
-              Cerrar
+              {t("tv.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -13,6 +13,7 @@ import {
   clearStepClaimPolicy,
 } from "../domain/stepPresets";
 import type { StepClaimMode, TaskStep } from "../domain/types";
+import { useT } from "../i18n/messages";
 
 type Props = {
   step: TaskStep;
@@ -38,6 +39,7 @@ export function StepClaimPolicyPanel({
   onChange,
   canManage = true,
 }: Props) {
+  const t = useT();
   const active = hasClaimPolicy(step);
   const showPanel = expanded || active;
 
@@ -46,8 +48,10 @@ export function StepClaimPolicyPanel({
     return (
       <p className="text-xs text-muted-foreground">
         {step.claimMode === "exclusive"
-          ? "Uno del equipo"
-          : `Cupo ${step.minAssignees ?? 2}–${step.maxAssignees ?? step.minAssignees ?? 2}`}
+          ? t("sc.oneOfTeam")
+          : t("sc.quota")
+              .replace("{min}", String(step.minAssignees ?? 2))
+              .replace("{max}", String(step.maxAssignees ?? step.minAssignees ?? 2))}
       </p>
     );
   }
@@ -60,7 +64,7 @@ export function StepClaimPolicyPanel({
           className="wf-step__tool-add"
           onClick={() => onExpandedChange(true)}
         >
-          + Quién puede tomarlo
+          {t("sc.whoCanTake")}
         </button>
       </div>
     );
@@ -80,7 +84,7 @@ export function StepClaimPolicyPanel({
               onChange(applyPairReviewPreset(step, draftId));
             }}
           >
-            Modelo para pares
+            {t("sc.pairs")}
           </button>
           <button
             type="button"
@@ -93,7 +97,7 @@ export function StepClaimPolicyPanel({
               onChange(applyGroupReviewPreset(step, priors));
             }}
           >
-            Modelo grupal
+            {t("sc.group")}
           </button>
           {active && !expanded ? null : (
             <button
@@ -101,13 +105,13 @@ export function StepClaimPolicyPanel({
               className="text-xs text-muted-foreground underline-offset-2 hover:underline"
               onClick={() => onExpandedChange(false)}
             >
-              Ocultar
+              {t("sc.hide")}
             </button>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">
-            Quién puede tomarlo
+            {t("sc.whoLabel")}
           </span>
           <Select
             value={step.claimMode ?? "none"}
@@ -138,16 +142,16 @@ export function StepClaimPolicyPanel({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Cualquiera (casilla libre)</SelectItem>
-              <SelectItem value="exclusive">Uno del equipo</SelectItem>
-              <SelectItem value="pool">Varios (cupo)</SelectItem>
+              <SelectItem value="none">{t("sc.anyone")}</SelectItem>
+              <SelectItem value="exclusive">{t("sc.oneOfTeam")}</SelectItem>
+              <SelectItem value="pool">{t("sc.several")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         {step.claimMode === "pool" ? (
           <div className="flex flex-wrap gap-2">
             <label className="grid gap-0.5 text-xs">
-              <span className="text-muted-foreground">Mín.</span>
+              <span className="text-muted-foreground">{t("sc.min")}</span>
               <Input
                 type="number"
                 min={1}
@@ -161,7 +165,7 @@ export function StepClaimPolicyPanel({
               />
             </label>
             <label className="grid gap-0.5 text-xs">
-              <span className="text-muted-foreground">Máx.</span>
+              <span className="text-muted-foreground">{t("sc.max")}</span>
               <Input
                 type="number"
                 min={step.minAssignees ?? 1}
@@ -188,7 +192,7 @@ export function StepClaimPolicyPanel({
                 })
               }
             />
-            Incluir a quien hizo el paso previo
+            {t("sc.includeAuthor")}
           </label>
         ) : null}
         {active ? (
@@ -203,13 +207,13 @@ export function StepClaimPolicyPanel({
                 })
               }
             />
-            Excluir al asignado de la subtarea
+            {t("sc.excludeAssignee")}
           </label>
         ) : null}
         {active && steps.length > 1 ? (
           <div className="grid gap-1">
             <span className="text-xs text-muted-foreground">
-              Excluir quienes participaron en
+              {t("sc.excludePrior")}
             </span>
             <div className="flex flex-wrap gap-1.5">
               {steps

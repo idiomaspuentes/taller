@@ -4,6 +4,8 @@ import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type Talle
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
 import { localizeHold, localizeName, localizeToday } from "../src/domain/templateNames";
+import { localizeScope } from "../src/domain/scopeNames";
+import { articleFilterHelp, articleFilterLabel, assignableCountLabel, grainChoiceLabel, grainHelp, scriptureIntro, stayInChapterHelp, DISTRIBUTE_POLICY_HELP, DISTRIBUTE_POLICY_LABEL, DISTRIBUTE_UNIT_HELP, DISTRIBUTE_UNIT_LABEL, SCOPE_KEYS, ARTICLE_FILTERS, ARTICLE_FILTER_LABEL, GRAIN_LABEL } from "../src/domain/types";
 import { BOOKS, bookLabel, bookName } from "../src/domain/books";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
@@ -197,6 +199,31 @@ test("los 66 libros tienen nombre en portugués y el guardado sigue en español"
   assert.equal(bookLabel("JHN", "es"), "Juan");
   assert.equal(bookName("JHN"), "Juan", "lo que se escribe en Door43 no cambia con la interfaz");
   assert.equal(bookLabel("pentateuco-r1", "pt"), "pentateuco-r1", "un proyecto temático conserva su identificador");
+});
+
+test("las etiquetas y ayudas del alcance de una tarea se traducen sin dejar frases en español", () => {
+  const texts: string[] = [
+    ...Object.values(DISTRIBUTE_UNIT_LABEL), ...Object.values(DISTRIBUTE_UNIT_HELP),
+    ...Object.values(DISTRIBUTE_POLICY_LABEL), ...Object.values(DISTRIBUTE_POLICY_HELP),
+    ...Object.values(ARTICLE_FILTER_LABEL), ...Object.values(GRAIN_LABEL),
+    stayInChapterHelp("notas"), scriptureIntro("tpl"), scriptureIntro("tps"),
+  ];
+  const grains = ["item", "portion", "portionRefs"] as const;
+  for (const key of SCOPE_KEYS) {
+    for (const f of ARTICLE_FILTERS) {
+      texts.push(articleFilterLabel(key, f), articleFilterHelp(key, f), articleFilterHelp(key, f, "portionRefs"));
+    }
+    for (const g of grains) texts.push(grainChoiceLabel(key, g), grainHelp(key, g));
+    for (const n of [1, 5]) for (const g of grains) texts.push(assignableCountLabel(key, g, n));
+  }
+  const missing = [...new Set(texts.filter((t) => t && localizeScope(t, "pt") === t))];
+  // Words spelled the same in both languages are fine; anything with a Spanish-only mark or word is not.
+  const sameInBoth = ["Nota por nota"];
+  const spanish = missing.filter((t) => !sameInBoth.includes(t) && /[ñ¿¡]|ción|\b(el|la|los|las|de|del|en|con|solo|cada|una|uno|por|para)\b/i.test(t));
+  assert.deepEqual(spanish, [], "faltan en scopeNames.ts");
+  assert.equal(localizeScope("12 porciones", "pt"), "12 porções");
+  assert.equal(localizeScope("Notas · Solo con notas · Nota por nota", "pt"), "Notas · Somente com notas · Nota por nota");
+  assert.equal(localizeScope("Solo con notas", "es"), "Solo con notas");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

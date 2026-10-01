@@ -6,7 +6,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { LEVEL_LABEL, type PersonLevel } from "../domain/levels";
+import { levelLabel, type PersonLevel } from "../domain/levels";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
 
 const CHOICES: PersonLevel[] = ["aprendiz", "practicante", "habilitada"];
 
@@ -20,24 +22,26 @@ export function MinLevelField({
   value: PersonLevel | undefined;
   onChange: (next: PersonLevel | undefined) => void;
 }) {
+  const t = useT();
+  const language = useUiLanguage();
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>Nivel mínimo</Label>
+      <Label htmlFor={id}>{t("ml.label")}</Label>
       <Select value={value ?? "none"} onValueChange={(v) => onChange(v === "none" ? undefined : (v as PersonLevel))}>
-        <SelectTrigger id={id} className="w-full" aria-label="Nivel mínimo">
+        <SelectTrigger id={id} className="w-full" aria-label={t("ml.label")}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">Sin mínimo</SelectItem>
+          <SelectItem value="none">{t("ml.none")}</SelectItem>
           {CHOICES.map((level) => (
             <SelectItem key={level} value={level}>
-              {LEVEL_LABEL[level]}
+              {levelLabel(level, language)}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
       <p className="text-xs text-muted-foreground">
-        Quien no llegue a este nivel ve la tarea como «Todavía no» y no recibe aviso.
+        {t("ml.help")}
       </p>
     </div>
   );
