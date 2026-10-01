@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
+import { localizeName } from "../src/domain/templateNames";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
 import { contextWith, initialWorkspace, loadWorkspaceId, saveWorkspaceId, suggestedWorkspace } from "../src/workspace";
@@ -140,6 +141,18 @@ test("se recuerda si una persona ya tuvo trabajo, por servidor, organización y 
   markHadWork(key, store);
   assert.equal(hadWork(key, store), true);
   assert.equal(hadWork(hadWorkKey("https://qa.door43.org", "ana", "es-419_gl", "pt:"), store), false, "otro espacio de la misma organización empieza de cero");
+});
+
+test("los nombres de fábrica de las plantillas se traducen al mostrarlos y lo editado se respeta", () => {
+  assert.equal(localizeName("Afinación", "pt"), "Afinação");
+  assert.equal(localizeName("Afinación", "es"), "Afinación", "en español no cambia nada");
+  assert.equal(localizeName("2 · Traducir TPL 1", "pt"), "2 · Traduzir TPL 1", "también dentro del título de una subtarea");
+  assert.equal(localizeName("Revisar la alineación", "pt"), "Revisar o alinhamento", "la más larga gana a «Alinear»");
+  assert.equal(localizeName("Alinear", "pt"), "Alinhar");
+  assert.equal(localizeName("Armonizar Tpl", "pt"), "Harmonizar Tpl");
+  assert.equal(localizeName("Sin asignar", "pt"), "Sem atribuição");
+  assert.equal(localizeName("Mi paso propio", "pt"), "Mi paso propio", "un nombre editado se deja como está");
+  assert.equal(localizeName("", "pt"), "");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

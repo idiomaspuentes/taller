@@ -8,6 +8,7 @@ import { loadPmConfig } from "../dcs/issues";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
+import { localizeName } from "../domain/templateNames";
 import { appName } from "../brand";
 import type { MentionRow } from "../dcs/mentions";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -1106,7 +1107,7 @@ export function MyTasksView({
           <p className="hub-now__kicker" id="hub-now-title">{t("nav.now")}</p>
           {nowDecide ? (
             <div className="hub-now__decide">
-              <h2 className="hub-now__title">{nowDecide.issue.title}</h2>
+              <h2 className="hub-now__title">{localizeName(nowDecide.issue.title, language)}</h2>
               <p className="hub-now__text">{t("mt.decideText")}</p>
               <Button type="button" size="lg" onClick={() => onOpenThread(nowDecide.issue.number)}>
                 {t("mt.decide")}
@@ -1151,7 +1152,7 @@ export function MyTasksView({
                       {activity.isNew ? (
                         <span className="hub-attention__tag hub-attention__tag--new">{t("mt.tagNew")}</span>
                       ) : null}
-                      <span>{issue.title}</span>
+                      <span>{localizeName(issue.title, language)}</span>
                       {resource ? (
                         <span className="hub-attention__resource">· {resource}</span>
                       ) : null}
@@ -1243,7 +1244,7 @@ export function MyTasksView({
           <div className="grid gap-2 p-3">
             {freeNew.map(({ issue, bucket }) => (
               <div key={issue.number} className="flex flex-wrap items-center justify-between gap-2">
-                <span className="min-w-0 font-semibold">{shortTitle(issue)}</span>
+                <span className="min-w-0 font-semibold">{localizeName(shortTitle(issue), language)}</span>
                 <span className="flex gap-2">
                   {isDecisionIssue(issue) ? (
                     <Button type="button" size="sm" onClick={() => onOpenThread(issue.number)}>
@@ -1384,7 +1385,7 @@ export function MyTasksView({
                               #{offer.issue.number}
                             </span>
                             <span className="hub-queue-item__label">
-                              {offer.step.name} · {shortTitle(offer.issue)}
+                              {localizeName(offer.step.name, language)} · {localizeName(shortTitle(offer.issue), language)}
                             </span>
                           </div>
                           <div className="hub-queue-item__meta">
@@ -1483,7 +1484,7 @@ export function MyTasksView({
                                 )}
                                 aria-hidden
                               />
-                              <span className="hub-queue-phase__title">{phase.label}</span>
+                              <span className="hub-queue-phase__title">{localizeName(phase.label, language)}</span>
                               <span className="hub-queue-chapter__count">{phase.issueCount}</span>
                             </button>
                             {!phaseCollapsed
@@ -1509,7 +1510,7 @@ export function MyTasksView({
                                           )}
                                           aria-hidden
                                         />
-                                        <span className="hub-queue-task__title">{task.label}</span>
+                                        <span className="hub-queue-task__title">{localizeName(task.label, language)}</span>
                                         <span className="hub-queue-chapter__count">
                                           {task.issueCount}
                                         </span>
@@ -1735,7 +1736,7 @@ function QueueRow({
   else if (open) status = <span className="status-chip" data-status="libre">{t("mt.statusAvailable")}</span>;
   else if (inProgress && mine) status = <span className="status-chip" data-status="curso">{t("mt.statusInProgress")}</span>;
   else if (mine) status = <span className="status-chip" data-status="tuya">{t("mt.statusMine")}</span>;
-  else status = <span className="status-chip" data-status="otra">{assigneeLabel(issue)}</span>;
+  else status = <span className="status-chip" data-status="otra">{localizeName(assigneeLabel(issue), language)}</span>;
 
   let primary: ReactNode = null;
   if (decision && canOpenThread) {
@@ -1832,7 +1833,7 @@ function QueueRow({
               {activity.isNew ? (
                 <span className="hub-attention__tag hub-attention__tag--new">{t("mt.tagNew")}</span>
               ) : null}
-              <span className="hub-queue-item__label">{shortTitle(issue)}</span>
+              <span className="hub-queue-item__label">{localizeName(shortTitle(issue), language)}</span>
               <ChevronRight className="hub-attention__chevron" aria-hidden />
             </button>
           ) : (
@@ -1840,7 +1841,7 @@ function QueueRow({
               {activity.isNew ? (
                 <span className="hub-attention__tag hub-attention__tag--new">{t("mt.tagNew")}</span>
               ) : null}
-              <span className="hub-queue-item__label">{shortTitle(issue)}</span>
+              <span className="hub-queue-item__label">{localizeName(shortTitle(issue), language)}</span>
             </span>
           )}
           {activityLine && activity.latest ? (
@@ -1902,7 +1903,7 @@ function QueueRow({
                     }}
                   />
                   <span className={done ? "line-through text-muted-foreground" : undefined}>
-                    {step.name}
+                    {localizeName(step.name, language)}
                     {mode === "pool" && !done ? (
                       <span className="text-muted-foreground">
                         {" "}
