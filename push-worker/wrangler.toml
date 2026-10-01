@@ -1,0 +1,20 @@
+# TAS push notifications: a Cloudflare Worker (free plan) with one KV namespace.
+# Deploy steps are in README.md. Nothing here holds a secret: keys and the webhook
+# secret are set with `wrangler secret put`.
+name = "tas-push"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Door43 servers whose people may subscribe (comma separated, no trailing slash).
+ALLOWED_HOSTS = "https://qa.door43.org"
+# Where the app is served (the notification opens it). Change it to the Pages address.
+APP_URL = "http://localhost:5177"
+# Origins allowed to call /subscribe from a browser (comma separated).
+ALLOWED_ORIGINS = "http://localhost:5177"
+# Contact for the push services, as a mailto: or https: address.
+VAPID_SUBJECT = "mailto:CAMBIAR@ejemplo.org"
+
+[[kv_namespaces]]
+binding = "SUBSCRIPTIONS"
+id = "CAMBIAR-por-el-id-que-imprime-wrangler-kv-namespace-create"

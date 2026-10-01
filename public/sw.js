@@ -53,3 +53,41 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+/* Notices with the app closed (Web Push). The push Worker sends {title, body, url, tag}. */
+self.addEventListener("push", (event) => {
+  let notice = {};
+  try {
+    notice = event.data ? event.data.json() : {};
+  } catch {
+    notice = { body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(notice.title || "TAS", {
+      body: notice.body || "",
+      // The same subtarea replaces its earlier notice instead of piling up.
+      tag: notice.tag || undefined,
+      renotify: Boolean(notice.tag),
+      icon: "icon-192.png",
+      badge: "icon-192.png",
+      data: { url: notice.url || "./" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "./";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) {
+        if ("focus" in client) {
+          client.focus();
+          if ("navigate" in client) client.navigate(url).catch(() => {});
+          return undefined;
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});

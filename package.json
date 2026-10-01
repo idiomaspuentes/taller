@@ -36,6 +36,8 @@
     "verify:alignment-decision": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-decision.mts",
     "verify:alignment-decision-store": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-decision-store.mts",
     "verify:verse-edit-view": "tsx --tsconfig tsconfig.scripts.json scripts/verify-verse-edit-view.mts",
+    "verify:push-worker": "tsx --tsconfig tsconfig.scripts.json scripts/verify-push-worker.mts",
+    "verify:push-client": "tsx --tsconfig tsconfig.scripts.json scripts/verify-push-client.mts",
     "verify:alignment-store": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-store.mts",
     "verify:afinacion-words": "tsx --tsconfig tsconfig.scripts.json scripts/verify-afinacion-words.mts",
     "verify:afinacion-notes": "tsx --tsconfig tsconfig.scripts.json scripts/verify-afinacion-notes.mts",
