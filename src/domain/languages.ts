@@ -37,6 +37,15 @@ const SHORT_CHIP: Record<string, string> = {
   fr: "Francés",
 };
 
+const SHORT_CHIP_PT: Record<string, string> = {
+  "es-419": "Espanhol",
+  es: "Espanhol",
+  en: "Inglês",
+  "pt-br": "Português",
+  pt: "Português",
+  fr: "Francês",
+};
+
 const BUNDLED_ASSET = "/data/door43-languages.json";
 
 /** Door43 / workspace form: lowercase, trim. `es-419` stays `es-419`. */
@@ -95,10 +104,10 @@ export function languageDisplayName(code: string, catalog: LanguageOption[] = []
 }
 
 /** Compact header chip: short name when known, else display name. */
-export function languageChipLabel(code: string, catalog: LanguageOption[] = []): string {
+export function languageChipLabel(code: string, catalog: LanguageOption[] = [], ui: "es" | "pt" = "es"): string {
   const clean = normalizeLangCode(code);
   if (!clean) return "";
-  return SHORT_CHIP[clean] || languageDisplayName(clean, catalog);
+  return (ui === "pt" ? SHORT_CHIP_PT[clean] : undefined) || SHORT_CHIP[clean] || languageDisplayName(clean, catalog);
 }
 
 export function mergeLanguageOptions(

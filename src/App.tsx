@@ -2,7 +2,7 @@ import { BrandMark } from "./components/BrandMark";
 import { appTitle } from "./brand";
 import { tallerConfig, workspaceOfOrg, type Workspace } from "./config";
 import { useUiLanguage } from "./i18n/language";
-import { useT } from "./i18n/messages";
+import { tNow, useT } from "./i18n/messages";
 import { contextWith, initialWorkspace, saveWorkspaceId } from "./workspace";
 import { setActiveScope } from "./domain/scope";
 import { Welcome } from "./components/Welcome";
@@ -479,7 +479,7 @@ export function App() {
     }
     navigate({ name: "proyecto", projectId: meta.projectId, step: land });
     announce(
-      `Inventario: ${normalized.portions.length} porciones, ${normalized.articles.length} artículos.`,
+      tNow("app.inventory").replace("{p}", String(normalized.portions.length)).replace("{a}", String(normalized.articles.length)),
     );
   }
 
@@ -631,8 +631,8 @@ export function App() {
           }
           announce(
             result.issueCount > 0
-              ? `Plan cargado · ${result.issueCount} subtareas publicadas`
-              : `Plan cargado desde ${pmOrg}/gateway-tasks`,
+              ? tNow("app.planLoaded").replace("{n}", String(result.issueCount))
+              : tNow("app.planLoadedFrom").replace("{org}", pmOrg),
           );
         }
       } catch (err) {
@@ -727,14 +727,14 @@ export function App() {
 
   async function openFromDcs() {
     if (!session || !pmOrg) {
-      announce("Inicia sesión y elige la organización del equipo en el espacio de trabajo.");
+      announce(tNow("app.signInPickOrg"));
       return;
     }
     setHydrating(true);
     try {
       const result = await hydrateProjectFromDcs(book);
       if (!result || !result.found) {
-        announce("No hay datos guardados para este proyecto.");
+        announce(tNow("app.noSavedData"));
         return;
       }
       if (result.inventory) {
@@ -755,8 +755,8 @@ export function App() {
       navigate({ name: "proyecto", projectId: normalizeProjectId(book), step: land });
       announce(
         result.issueCount > 0
-          ? `Cargado · ${result.issueCount} subtareas publicadas`
-          : `Cargado desde ${pmOrg}/gateway-tasks.`,
+          ? tNow("app.loaded").replace("{n}", String(result.issueCount))
+          : tNow("app.loadedFrom").replace("{org}", pmOrg),
       );
       setWorkspaceOpen(false);
     } catch (err) {
@@ -811,7 +811,7 @@ export function App() {
     setBoard(doc);
     setInventory(null);
     navigate({ name: "proyecto", projectId: meta.projectId, step: "inventario" });
-    announce(`Proyecto ${meta.title} creado.`);
+    announce(tNow("app.projectCreated").replace("{title}", meta.title));
     if (session && pmOrg) {
       void saveProjectsIndexToDcs(session, pmOrg, lang, loadLocalProjectsIndex(lang)).catch(() => {
         /* optional index sync */
@@ -826,7 +826,7 @@ export function App() {
     setBoard(loadLocalAssignments(code, book, defaultContentOrg(code), pmOrg));
   }
 
-  const langChip = languageChipLabel(lang, catalogLangs);
+  const langChip = languageChipLabel(lang, catalogLangs, uiLanguage);
   const pmChip = orgChipLabel(pmOrg, knownOrgs);
   const identityLabel = pmOrg ? `${langChip} · ${pmChip}` : langChip;
   const hasInventory = Boolean(inventory);
@@ -1016,7 +1016,7 @@ export function App() {
             <button
               type="button"
               className="app-workspace"
-              title={session ? "Tu sesión" : "Iniciar sesión"}
+              title={session ? t("header.yourSession") : t("header.signIn")}
               onClick={() => {
                 if (session) setWorkspaceOpen(true);
                 else setSignInOpen(true);
@@ -1086,7 +1086,7 @@ export function App() {
                 ? [
                     {
                       id: "plantillas",
-                      label: "Plantillas",
+                      label: t("nav.templates"),
                       active: route.name === "plantillas",
                       onSelect: () => navigate({ name: "plantillas" }),
                     },
@@ -1119,7 +1119,7 @@ export function App() {
                 type="button"
                 className="app-header__back"
                 onClick={() => navigate({ name: "proyectos" })}
-                title="Volver a proyectos"
+                title={t("header.backToProjects")}
               >
                 <span aria-hidden>←</span>
                 <span className="app-header__back-label">
@@ -1153,7 +1153,7 @@ export function App() {
         ) : null}
         {hydrating && route.name === "proyecto" ? (
           <Alert className="mb-3">
-            <AlertDescription>Cargando plan y subtareas del proyecto…</AlertDescription>
+            <AlertDescription>{t("app.loadingProject")}</AlertDescription>
           </Alert>
         ) : null}
         {live ? (
@@ -1167,9 +1167,9 @@ export function App() {
         {needsReauth ? (
           <Alert className="mb-3" variant="destructive">
             <AlertDescription className="flex flex-wrap items-center gap-2">
-              Tu sesión no tiene los permisos nuevos (subtareas, organización, notificaciones).
+              {t("app.needsReauth")}
               <Button type="button" size="sm" onClick={() => setSignInOpen(true)}>
-                Volver a iniciar sesión
+                {t("app.signInAgain")}
               </Button>
             </AlertDescription>
           </Alert>
@@ -1306,10 +1306,8 @@ export function App() {
         {route.name === "proyecto" && !effectiveCanManage ? (
           <Alert>
             <AlertDescription>
-              Solo los gestores pueden abrir el asistente de proyectos.
-              {canManage
-                ? " Cambia a vista Gestor desde el menú de navegación."
-                : ""}
+              {t("app.managersOnly")}
+              {canManage ? t("app.switchToManager") : ""}
             </AlertDescription>
           </Alert>
         ) : null}
