@@ -5935,10 +5935,11 @@ button.al-box--read { cursor: pointer; }
 }
 .welcome__kicker {
   margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  /* The organization's name is written in lowercase, in the logo's own font, as its brand establishes. */
+  font-family: var(--font-logo);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  text-transform: lowercase;
   color: var(--primary);
 }
 .welcome__title {
