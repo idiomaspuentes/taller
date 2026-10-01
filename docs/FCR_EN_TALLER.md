@@ -277,3 +277,22 @@ Si separamos bien, el FCR completo cabe en **datos**, y el motor queda reutiliza
 23. ¿Qué otros proyectos imaginan en el próximo año (OBS, lenguas nativas, revisión comunitaria,
     cursos)? Con uno o dos ejemplos concretos podemos probar que el diseño sirve.
 24. ¿El FCR en **portugués** es el mismo proceso, o tendrá variaciones (otros mínimos, otras fases)?
+
+## 9. Respuestas recibidas (1 de octubre de 2026)
+
+- **Unidad (preguntas 1 y 3).** Lo que pasa de una fase a la siguiente es normalmente el **capítulo
+  entero**. Dentro de cada fase, el capítulo se reparte en **porciones** para que varias personas
+  trabajen a la vez. Un capítulo muy largo o difícil (Salmo 119) puede dividirse en varias unidades
+  de traspaso. Consecuencia para el diseño: hay **dos unidades** distintas y la plantilla debe poder
+  nombrarlas: la **unidad de traspaso** (capítulo, o un tramo de un capítulo largo) y la **unidad de
+  reparto** (porción). La espera «por capítulo» de la plantilla actual coincide con esto; falta poder
+  partir un capítulo largo.
+- **Armonización (pregunta 11).** Son **tres pistas**: **Notas + Academia** juntas, **Palabras**, y
+  **Preguntas**. (La guía pública dice dos pistas, con Preguntas junto a Notas y Academia: hay que
+  alinear la guía o la plantilla.)
+- **Artículos compartidos (pregunta 18).** Los artículos nuevos de Palabras y Academia se **crean en
+  Armonización** cuando hacen falta. Queda por conversar cómo se sabe que los recursos de cada pista
+  están armonizados.
+- **Otros proyectos (pregunta 23).** El siguiente proceso es la **traducción de una Biblia a una
+  lengua minoritaria usando los recursos que produce este FCR**. Es el segundo caso con el que hay
+  que probar el diseño.
