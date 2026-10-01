@@ -14,6 +14,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown } from "lucide-react";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeScope } from "../domain/scopeNames";
 
 const PREVIEW = 12;
 
@@ -35,11 +38,11 @@ function statusTone(status: string): string {
   return "";
 }
 
-function kindLabel(kind: string): string {
-  return KIND_LABEL[kind] ?? kind;
+function kindLabel(kind: string, language: "es" | "pt"): string {
+  return localizeScope(KIND_LABEL[kind] ?? kind, language);
 }
 
-function groupPendingByKind(articles: Article[]): { kind: string; label: string; rows: Article[] }[] {
+function groupPendingByKind(articles: Article[], language: "es" | "pt"): { kind: string; label: string; rows: Article[] }[] {
   const order = ["Translation Academy", "Translation Words"];
   const map = new Map<string, Article[]>();
   for (const article of articles) {
@@ -50,16 +53,19 @@ function groupPendingByKind(articles: Article[]): { kind: string; label: string;
   const groups: { kind: string; label: string; rows: Article[] }[] = [];
   for (const kind of order) {
     const rows = map.get(kind);
-    if (rows?.length) groups.push({ kind, label: kindLabel(kind), rows });
+    if (rows?.length) groups.push({ kind, label: kindLabel(kind, language), rows });
     map.delete(kind);
   }
   for (const [kind, rows] of map) {
-    groups.push({ kind, label: kindLabel(kind), rows });
+    groups.push({ kind, label: kindLabel(kind, language), rows });
   }
   return groups;
 }
 
 export function BookExplorerDialog({ open, onClose, inventory, focusPending = false }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const n = (key: Parameters<typeof t>[0], count: number) => t(key).replace("{n}", String(count));
   const pending = useMemo(
     () => inventory.articles.filter((a) => REMAINING.has(a.status)),
     [inventory.articles],
@@ -81,24 +87,24 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
   );
   const chapters = groupPortionsByChapter(inventory.portions);
   const book = inventory.book;
-  const pendingGroups = useMemo(() => groupPendingByKind(pending), [pending]);
+  const pendingGroups = useMemo(() => groupPendingByKind(pending, language), [pending, language]);
   const visibleCount = showAllPending ? pending.length : Math.min(PREVIEW, pending.length);
   let shown = 0;
 
   const pendingTitle =
     pending.length === 1
-      ? `1 pendiente · ${inventory.book}`
-      : `${pending.length} pendientes · ${inventory.book}`;
+      ? t("bx.pendingOne").replace("{book}", inventory.book)
+      : n("bx.pendingMany", pending.length).replace("{book}", inventory.book);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="explorer-dialog max-h-[85vh] max-w-lg overflow-hidden">
         <DialogHeader>
           <DialogTitle>
-            {mode === "pending" && preferPending ? pendingTitle : `Explorar ${inventory.book}`}
+            {mode === "pending" && preferPending ? pendingTitle : t("bx.explore").replace("{book}", inventory.book)}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Consulta del inventario. No modifica datos.
+            {t("bx.descSr")}
           </DialogDescription>
         </DialogHeader>
 
@@ -108,7 +114,7 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
               <div className="explorer-pending">
                 {!pending.length ? (
                   <p className="px-1 py-2 text-sm text-muted-foreground">
-                    No hay artículos pendientes.
+                    {t("bx.noPending")}
                   </p>
                 ) : (
                   pendingGroups.map((group) => {
@@ -134,11 +140,11 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
                                   variant="outline"
                                   className={statusTone(article.status)}
                                 >
-                                  {STATUS_LABEL[article.status]}
+                                  {localizeScope(STATUS_LABEL[article.status], language)}
                                 </Badge>
                                 <span
                                   className="explorer-pending__path"
-                                  title={article.parent ? `padre: ${article.parent}` : article.path}
+                                  title={article.parent ? t("bx.parent").replace("{p}", article.parent) : article.path}
                                 >
                                   {article.parent || article.path}
                                 </span>
@@ -158,15 +164,15 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
                     className="px-0"
                     onClick={() => setShowAllPending((v) => !v)}
                   >
-                    {showAllPending ? "Mostrar menos" : `Ver todos (${pending.length})`}
+                    {showAllPending ? t("bx.showLess") : n("bx.seeAll", pending.length)}
                   </Button>
                 ) : null}
               </div>
               <div className="explorer-dialog__footer">
                 <Button type="button" size="sm" variant="outline" onClick={() => setMode("catalog")}>
-                  Ver porciones y ayudas
+                  {t("bx.seePortions")}
                 </Button>
-                <span className="explorer-dialog__note">Solo lectura</span>
+                <span className="explorer-dialog__note">{t("bx.readOnly")}</span>
               </div>
             </>
           ) : (
@@ -174,16 +180,15 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
               {preferPending ? (
                 <div className="explorer-dialog__footer explorer-dialog__footer--top">
                   <Button type="button" size="sm" variant="secondary" onClick={() => setMode("pending")}>
-                    Volver a pendientes ({pending.length})
+                    {n("bx.backToPending", pending.length)}
                   </Button>
                 </div>
               ) : null}
               <div className="explorer-catalog">
-                <Drill title="Porciones" count={inventory.portions.length} defaultOpen>
+                <Drill title={t("bx.portions")} count={inventory.portions.length} defaultOpen>
                   {inventory.preguntas_sin_asignar ? (
                     <p className="explorer-catalog__note">
-                      {inventory.preguntas_sin_asignar} preguntas cruzan dos porciones (sin asignar
-                      al corte).
+                      {n("bx.crossing", inventory.preguntas_sin_asignar)}
                     </p>
                   ) : null}
                   <div>
@@ -192,7 +197,7 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
                         key={group.chapter}
                         chapter={group.chapter}
                         count={group.portions.length}
-                        unit="porciones"
+                        unit={t(group.portions.length === 1 ? "bx.portionOne" : "bx.portionMany")}
                         defaultOpen={index === 0}
                       >
                         {group.portions.map((portion) => (
@@ -204,7 +209,7 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
                 </Drill>
 
                 <TaskDrill
-                  title="Notas"
+                  title={t("bx.notes")}
                   resource="notas"
                   count={notas}
                   book={book}
@@ -212,7 +217,7 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
                   defaultOpen
                 />
                 <TaskDrill
-                  title="Preguntas"
+                  title={t("bx.questions")}
                   resource="preguntas"
                   count={preguntas}
                   book={book}
@@ -220,7 +225,7 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
                 />
 
                 {!preferPending ? (
-                  <Drill title="Artículos pendientes" count={pending.length}>
+                  <Drill title={t("bx.pendingArticlesTitle")} count={pending.length}>
                     <PendingFlatList
                       groups={pendingGroups}
                       preview={PREVIEW}
@@ -230,7 +235,7 @@ export function BookExplorerDialog({ open, onClose, inventory, focusPending = fa
                   </Drill>
                 ) : null}
               </div>
-              <p className="explorer-dialog__note explorer-dialog__note--end">Solo lectura</p>
+              <p className="explorer-dialog__note explorer-dialog__note--end">{t("bx.readOnly")}</p>
             </>
           )}
         </div>
@@ -250,13 +255,15 @@ function PendingFlatList({
   showAll: boolean;
   onToggleShowAll: () => void;
 }) {
-  const total = groups.reduce((n, g) => n + g.rows.length, 0);
+  const t = useT();
+  const language = useUiLanguage();
+  const total = groups.reduce((sum, g) => sum + g.rows.length, 0);
   const limit = showAll ? total : Math.min(preview, total);
   let shown = 0;
   return (
     <div className="explorer-pending explorer-pending--nested">
       {!total ? (
-        <p className="px-3 py-3 text-sm text-muted-foreground">No hay artículos pendientes.</p>
+        <p className="px-3 py-3 text-sm text-muted-foreground">{t("bx.noPending")}</p>
       ) : (
         groups.map((group) => {
           const rows: Article[] = [];
@@ -278,11 +285,11 @@ function PendingFlatList({
                     <div className="explorer-pending__title">{articleLabel(article)}</div>
                     <div className="explorer-pending__meta">
                       <Badge variant="outline" className={statusTone(article.status)}>
-                        {STATUS_LABEL[article.status]}
+                        {localizeScope(STATUS_LABEL[article.status], language)}
                       </Badge>
                       <span
                         className="explorer-pending__path"
-                        title={article.parent ? `padre: ${article.parent}` : article.path}
+                        title={article.parent ? t("bx.parent").replace("{p}", article.parent) : article.path}
                       >
                         {article.parent || article.path}
                       </span>
@@ -296,7 +303,7 @@ function PendingFlatList({
       )}
       {total > preview ? (
         <Button type="button" variant="link" size="sm" className="mx-2 mb-1" onClick={onToggleShowAll}>
-          {showAll ? "Mostrar menos" : `Ver todos (${total})`}
+          {showAll ? t("bx.showLess") : t("bx.seeAll").replace("{n}", String(total))}
         </Button>
       ) : null}
     </div>
@@ -304,6 +311,8 @@ function PendingFlatList({
 }
 
 function PortionRow({ portion }: { portion: Portion }) {
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeScope(text, language);
   const acad = portion.academia.length;
   const pal = portion.palabras.length;
   const range = verseRangeLabel(portion.ref) || portion.ref;
@@ -311,11 +320,11 @@ function PortionRow({ portion }: { portion: Portion }) {
     <div className="border-b px-3 py-2 last:border-0">
       <div className="text-sm font-semibold tracking-tight">{range}</div>
       <div className="mt-0.5 text-xs text-muted-foreground">
-        TPL {portion.tpl || 0} · TPS {portion.tps || 0} · Notas{" "}
-        {portion.notasItems.length || portion.notas} · Preguntas{" "}
+        TPL {portion.tpl || 0} · TPS {portion.tps || 0} · {loc("Notas")}{" "}
+        {portion.notasItems.length || portion.notas} · {loc("Preguntas")}{" "}
         {portion.preguntasItems.length || portion.preguntas}
-        {acad ? ` · Academia ${acad}` : ""}
-        {pal ? ` · Palabras ${pal}` : ""}
+        {acad ? ` · ${loc("Academia")} ${acad}` : ""}
+        {pal ? ` · ${loc("Palabras")} ${pal}` : ""}
         {portion.id && portion.id !== portion.ref ? (
           <span className="ml-1.5 font-mono opacity-70">{portion.id}</span>
         ) : null}
@@ -339,6 +348,7 @@ function TaskDrill({
   portions: Portion[];
   defaultOpen?: boolean;
 }) {
+  const t = useT();
   const groups = tasksByChapter(portions, resource);
   const hasItems = portions.some((portion) =>
     resource === "notas" ? portion.notasItems.length : portion.preguntasItems.length,
@@ -348,8 +358,7 @@ function TaskDrill({
       <div>
         {!hasItems ? (
           <p className="px-3 py-3 text-sm text-muted-foreground">
-            Este inventario solo trae el conteo. Regenera el libro o carga un JSON con{" "}
-            {resource}_items (id + referencia).
+            {t("bx.countOnly").replace("{res}", resource)}
           </p>
         ) : (
           groups.map((group, index) => (
@@ -357,7 +366,7 @@ function TaskDrill({
               key={group.chapter}
               chapter={group.chapter}
               count={group.portions.length}
-              unit="porciones"
+              unit={t(group.portions.length === 1 ? "bx.portionOne" : "bx.portionMany")}
               defaultOpen={index === 0}
             >
               {group.portions.map((portion) => {
@@ -427,11 +436,12 @@ function ChapterBlock({
   defaultOpen?: boolean;
   children: ReactNode;
 }) {
+  const t = useT();
   return (
     <Collapsible defaultOpen={defaultOpen} className="border-b last:border-0">
       <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm">
         <ChevronDown className="size-3 text-muted-foreground chevron" />
-        <span className="font-medium">Capítulo {chapter}</span>
+        <span className="font-medium">{t("as.chapterN").replace("{n}", String(chapter))}</span>
         <span className="text-xs text-muted-foreground">
           {count} {unit}
         </span>

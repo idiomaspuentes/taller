@@ -1,6 +1,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
+import { tNow } from "../../i18n/messages"
 
 /**
  * Native <dialog> (showModal()), which handles its own top-layer rendering
@@ -65,7 +66,7 @@ function DialogContent({
           onClick={() => onOpenChange(false)}
         >
           <XIcon />
-          <span className="sr-only">Cerrar</span>
+          <span className="sr-only">{tNow("tv.close")}</span>
         </button>
       ) : null}
     </dialog>

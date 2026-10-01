@@ -244,4 +244,12 @@ test("lo que muestra «Asignar» (estados, tipos, lotes y mensajes de autoasigna
   for (const [es, pt] of cases) assert.equal(localizeScope(es, "pt"), pt);
 });
 
+test("el avance de «Inventariar» y los estados de los artículos se traducen", () => {
+  for (const [es, pt] of [
+    ["Descargando…", "Baixando…"], ["Descargando ULT y compañeros…", "Baixando ULT e companheiros…"],
+    ["Preparando porciones…", "Preparando porções…"], ["Revisando artículos…", "Revisando artigos…"], ["Listo.", "Pronto."],
+    ["Inglés", "Inglês"], ["Traducido", "Traduzido"], ["Incompleto", "Incompleto"],
+  ] as const) assert.equal(localizeScope(es, "pt"), pt);
+});
+
 console.log(`\nverify-config: ${passed} checks passed.`);

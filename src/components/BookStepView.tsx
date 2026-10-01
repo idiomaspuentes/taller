@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { InventoryDoc, Portion, StatusCounts } from "../domain/types";
 import { REMAINING } from "../domain/types";
-import { BOOKS, bookName, isBookProjectId } from "../domain/books";
+import { BOOKS, bookLabel, isBookProjectId } from "../domain/books";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeScope } from "../domain/scopeNames";
 import { BookExplorerDialog } from "./BookExplorerDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,6 +105,9 @@ export function BookStepView({
   onLoadFile,
   onContinue,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const n = (key: Parameters<typeof t>[0], count: number) => t(key).replace("{n}", String(count));
   const fileRef = useRef<HTMLInputElement>(null);
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -180,36 +186,36 @@ export function BookStepView({
       <div className="hub-header">
         <div>
           <h1 className="hub-title">
-            {activeBook} — {bookName(activeBook) || activeBook}
+            {activeBook} — {bookLabel(activeBook, language) || activeBook}
           </h1>
           <p className="hub-lede">
             {multi
               ? activeStatus.ready
-                ? `${activeBook} listo · ${activeStatus.portionCount} porciones`
-                : `${activeBook} sin inventario`
+                ? n("bk.ready", activeStatus.portionCount).replace("{book}", activeBook)
+                : t("bk.noInventory").replace("{book}", activeBook)
               : activeStatus.ready
-                ? `Inventario listo · ${activeStatus.portionCount} porciones`
-                : "Genera o carga el inventario de este libro."}
+                ? n("bk.inventoryReady", activeStatus.portionCount)
+                : t("bk.generateOrLoad")}
           </p>
         </div>
         {multi ? (
           <div className="grid gap-1 min-w-[11rem]">
             <label htmlFor="inv-book" className="text-xs font-medium text-muted-foreground">
-              Libro
+              {t("pj.book")}
             </label>
             <Select value={activeBook} onValueChange={selectBook}>
-              <SelectTrigger id="inv-book" className="w-full" aria-label="Libro a inventariar">
+              <SelectTrigger id="inv-book" className="w-full" aria-label={t("bk.pickBookAria")}>
                 <SelectValue>
                   {selectedBook
-                    ? `${selectedBook.code}${activeStatus.ready ? "" : " · pendiente"}`
+                    ? `${selectedBook.code}${activeStatus.ready ? "" : t("bk.pending")}`
                     : activeBook}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-72">
                 {bookStatuses.map((s) => (
                   <SelectItem key={s.code} value={s.code}>
-                    {s.code} — {bookName(s.code)}
-                    {s.ready ? ` · ${s.portionCount}` : " · pendiente"}
+                    {s.code} — {bookLabel(s.code, language)}
+                    {s.ready ? ` · ${s.portionCount}` : t("bk.pending")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -220,17 +226,17 @@ export function BookStepView({
 
       {!activeStatus.ready ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Pendiente</span>
-          <h2 className="hub-empty-panel__title">Sin inventario para {activeBook}</h2>
+          <span className="hub-empty-panel__kicker">{t("bk.pendingKicker")}</span>
+          <h2 className="hub-empty-panel__title">{t("bk.noInventoryFor").replace("{book}", activeBook)}</h2>
           <p className="hub-empty-panel__body">
-            Genera desde Door43 o carga un JSON. Eso es lo único necesario para este libro.
+            {t("bk.generateBody")}
           </p>
           <div className="hub-empty-panel__actions">
             <Button type="button" onClick={onGenerate} disabled={generating || !activeBook}>
-              {generating ? "Generando…" : `Inventariar ${activeBook}`}
+              {generating ? t("bk.generating") : t("bk.inventory").replace("{book}", activeBook)}
             </Button>
             <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
-              Cargar JSON
+              {t("bk.loadJson")}
             </Button>
           </div>
         </div>
@@ -239,10 +245,10 @@ export function BookStepView({
           <div className="hub-panel">
             {multi ? (
               <p className="text-sm font-medium text-foreground">
-                {readyBooks.length} de {books.length} libros listos
+                {t("bk.booksReady").replace("{r}", String(readyBooks.length)).replace("{n}", String(books.length))}
                 {nextMissing ? (
                   <>
-                    {" · siguiente: "}
+                    {t("bk.next")}
                     <button
                       type="button"
                       className="underline-offset-2 hover:underline"
@@ -256,10 +262,10 @@ export function BookStepView({
             ) : null}
             {pending > 0 ? (
               <p className="inv-metrics__alert">
-                {pending} artículos pendientes de traducción en las ayudas
+                {n("bk.pendingArticles", pending)}
               </p>
             ) : (
-              <p className="inv-metrics__ok">Listo para definir fases y tareas</p>
+              <p className="inv-metrics__ok">{t("bk.readyForTasks")}</p>
             )}
           </div>
 
@@ -274,7 +280,7 @@ export function BookStepView({
                 <span className="inv-disclosure__chevron" data-open={detailOpen ? "true" : "false"} aria-hidden>
                   ▾
                 </span>
-                Detalle
+                {t("bk.detail")}
               </button>
               {detailOpen ? (
                 <Button
@@ -283,15 +289,15 @@ export function BookStepView({
                   variant="outline"
                   onClick={() => setExplorerOpen(true)}
                 >
-                  Explorar
+                  {t("bk.explore")}
                 </Button>
               ) : null}
             </div>
             {detailOpen ? (
-              <div className="inv-detail__body" aria-label="Detalle del inventario">
+              <div className="inv-detail__body" aria-label={t("bk.detailAria")}>
                 <dl className="inv-detail__table">
                   <div className="inv-detail__row">
-                    <dt>Escritura</dt>
+                    <dt>{t("bk.scripture")}</dt>
                     <dd>
                       TPL {activeStatus.tpl}
                       <span className="inv-detail__sep" aria-hidden>
@@ -301,26 +307,26 @@ export function BookStepView({
                     </dd>
                   </div>
                   <div className="inv-detail__row">
-                    <dt>Ayudas</dt>
+                    <dt>{t("bk.helps")}</dt>
                     <dd>
-                      {activeStatus.notas} notas
+                      {activeStatus.notas === 1 ? t("bk.noteOne") : n("bk.notes", activeStatus.notas)}
                       <span className="inv-detail__sep" aria-hidden>
                         ·
                       </span>
-                      {activeStatus.preguntas} preguntas
+                      {activeStatus.preguntas === 1 ? t("bk.questionOne") : n("bk.questions", activeStatus.preguntas)}
                     </dd>
                   </div>
                   <div className="inv-detail__row">
-                    <dt>Artículos</dt>
+                    <dt>{t("bk.articles")}</dt>
                     <dd>
-                      <span title={`${academia.done} traducidos · ${academia.pending} pendientes`}>
-                        Academia {formatDoneTotal(academia)}
+                      <span title={t("bk.translatedPending").replace("{d}", String(academia.done)).replace("{p}", String(academia.pending))}>
+                        {localizeScope("Academia", language)} {formatDoneTotal(academia)}
                       </span>
                       <span className="inv-detail__sep" aria-hidden>
                         ·
                       </span>
-                      <span title={`${palabras.done} traducidos · ${palabras.pending} pendientes`}>
-                        Palabras {formatDoneTotal(palabras)}
+                      <span title={t("bk.translatedPending").replace("{d}", String(palabras.done)).replace("{p}", String(palabras.pending))}>
+                        {localizeScope("Palabras", language)} {formatDoneTotal(palabras)}
                       </span>
                     </dd>
                   </div>
@@ -343,7 +349,7 @@ export function BookStepView({
               >
                 ▾
               </span>
-              Regenerar o reemplazar
+              {t("bk.regenOrReplace")}
             </button>
             {maintainOpen ? (
               <div className="inv-maintain__body flex flex-wrap gap-2">
@@ -354,7 +360,7 @@ export function BookStepView({
                   onClick={onGenerate}
                   disabled={generating}
                 >
-                  {generating ? "Generando…" : `Regenerar ${activeBook}`}
+                  {generating ? t("bk.generating") : t("bk.regen").replace("{book}", activeBook)}
                 </Button>
                 <Button
                   type="button"
@@ -362,7 +368,7 @@ export function BookStepView({
                   variant="outline"
                   onClick={() => fileRef.current?.click()}
                 >
-                  Cargar JSON
+                  {t("bk.loadJson")}
                 </Button>
               </div>
             ) : null}
@@ -382,7 +388,7 @@ export function BookStepView({
         }}
       />
 
-      {jobMessage ? <p className="hub-hint">{jobMessage}</p> : null}
+      {jobMessage ? <p className="hub-hint">{localizeScope(jobMessage, language)}</p> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <button
@@ -390,7 +396,7 @@ export function BookStepView({
           className="text-xs text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => setHelpOpen((v) => !v)}
         >
-          {helpOpen ? "Ocultar ayuda" : "¿Cómo funciona?"}
+          {helpOpen ? t("tv.hideHelp") : t("tv.howItWorks")}
         </button>
         <Button
           type="button"
@@ -398,16 +404,16 @@ export function BookStepView({
           disabled={!ready}
           onClick={onContinue}
         >
-          Continuar a fases y tareas
+          {t("bk.continue")}
         </Button>
       </div>
       {helpOpen ? (
         <p className="hub-hint">
           {multi
-            ? "Cada libro se inventaría y se guarda por separado. Completa todos antes de pasar a fases y tareas. "
-            : "El tablero de asignación usa este inventario. Regenerar reemplaza porciones y artículos desde las fuentes. "}
+            ? t("bk.helpMulti")
+            : t("bk.helpOne")}
           {pending > 0
-            ? "Puedes continuar aunque queden ayudas en inglés; el inventario de porciones ya sirve para asignar."
+            ? t("bk.helpPending")
             : null}
         </p>
       ) : null}

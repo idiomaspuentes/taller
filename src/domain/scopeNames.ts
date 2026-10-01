@@ -116,6 +116,15 @@ const PT: [string, string][] = [
   ["Pares", "Pares"],
   ["Grupal", "Em grupo"],
   ["Sin recursos", "Sem recursos"],
+  // Progress of «Inventariar» (inventoryWorker.ts, fetchBook.ts, App.tsx)
+  ["Descargando…", "Baixando…"],
+  ["Descargando ULT y compañeros…", "Baixando ULT e companheiros…"],
+  ["Preparando porciones…", "Preparando porções…"],
+  ["Revisando artículos…", "Revisando artigos…"],
+  ["Listo.", "Pronto."],
+  // Status of an article
+  ["Inglés", "Inglês"],
+  ["Falta", "Falta"],
   // States and kinds shown in «Asignar»
   ["Sin asignar", "Sem atribuição"],
   ["Asignado", "Atribuído"],
