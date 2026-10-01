@@ -50,6 +50,21 @@ cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller
 
 (Se ejecuta fuera de la carpeta del proyecto para que wrangler no intente autoconfigurar Vite.) El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
 
+## Ahora (2 de octubre): pruebas de la persona dueña
+
+Orden acordado para lo que sigue; Abel prueba la app y va diciendo qué cambiar, y los cambios se anotan aquí o en incidencias.
+
+1. **Probar de punta a punta con una cuenta real en producción** (`?server=production`): que la app cree `taller` limpio, que el webhook de producción entregue avisos (Recent Deliveries) y que el teléfono los reciba.
+2. **Alineación y revisión en portugués con datos reales de QA**: cajas, banco de palabras, votos y propuestas; hasta ahora solo se vieron con un enlace inválido.
+3. **Avisos**: urgencia alta, subtareas libres para un equipo, recordatorios sin abrir la app; borrar el Worker sobrante `taller`.
+4. **CI en GitHub** (tipos y `verify:*` en cada cambio, publicación automática) y arreglar o retirar `verify:prep`.
+5. **Producto**: pendientes de la alineación, dos espacios en una organización y el webhook de `pt-br_gl`.
+
+**Entorno de pruebas local:** `npm run mock:door43` (con `MOCK_PM_ORG=es-419_gl`) y `npm run dev:lan`; entrar con `?mockUser=ana|bea|carla` (ver [scripts/mock-door43/README.md](../scripts/mock-door43/README.md)). Para QA real, abrir la app publicada con `?server=qa`.
+
+**Cambios pedidos tras probar** *(se añaden aquí a medida que lleguen)*:
+- (ninguno todavía)
+
 ## Qué sigue (por prioridad)
 
 ### 1. Terminar la experiencia en portugués
