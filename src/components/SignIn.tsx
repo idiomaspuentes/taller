@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { HOST_OPTIONS } from "../dcs/config";
 import { isProductionHost } from "../domain/qaAdmin";
 import { signInWithPassword, signInWithToken, type GtSession } from "../dcs/auth";
@@ -23,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type AuthMode = "password" | "token";
 
@@ -47,6 +47,8 @@ function hostShort(host: string): string {
   }
 }
 
+const withoutSlash = (host: string) => host.replace(/\/$/, "");
+
 export function SignInModal({
   open,
   onClose,
@@ -63,6 +65,7 @@ export function SignInModal({
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [mode, setMode] = useState<AuthMode>("password");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -70,6 +73,7 @@ export function SignInModal({
   const signedIn = Boolean(session && !needsReauth);
   const canSubmit =
     mode === "password" ? Boolean(username.trim() && password) : Boolean(token.trim());
+  const notice = sessionExpired ? t("signIn.expired") : needsReauth ? t("signIn.reauth") : "";
 
   useEffect(() => {
     if (open) return;
@@ -77,6 +81,7 @@ export function SignInModal({
     setError("");
     setPassword("");
     setToken("");
+    setShowPassword(false);
     setHelpOpen(false);
   }, [open]);
 
@@ -108,6 +113,12 @@ export function SignInModal({
     }
   }
 
+  function switchMode() {
+    setMode((m) => (m === "password" ? "token" : "password"));
+    setError("");
+    setHelpOpen(false);
+  }
+
   return (
     <Dialog
       open={open}
@@ -115,135 +126,154 @@ export function SignInModal({
         if (!next) onClose();
       }}
     >
-      <DialogContent className="sm:max-w-md" aria-busy={busy || undefined}>
+      <DialogContent className="sm:max-w-md dialog--signin" aria-busy={busy || undefined}>
         {signedIn && session ? (
           <SignedInBody session={session} onClose={onClose} onSignOut={onSignOut} />
-        ) : busy ? (
-          <BusyBody />
         ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle>
-                {needsReauth || sessionExpired ? t("signIn.again") : t("signIn.title")}
-              </DialogTitle>
-              {sessionExpired ? (
-                <DialogDescription>{t("signIn.expired")}</DialogDescription>
-              ) : needsReauth ? (
-                <DialogDescription>{t("signIn.reauth")}</DialogDescription>
+          <form className="signin" onSubmit={submit} noValidate>
+            <img className="signin__logo" src="/taller-isotipo.svg" alt="" width={36} height={29} />
+            <DialogHeader className="signin__header">
+              <DialogTitle>{needsReauth || sessionExpired ? t("signIn.again") : t("signIn.heading")}</DialogTitle>
+              {notice ? (
+                <DialogDescription className="signin__notice">{notice}</DialogDescription>
               ) : null}
             </DialogHeader>
-            <form className="grid gap-3" onSubmit={submit}>
-              <details className="sign-in__advanced" open={import.meta.env.DEV || undefined}>
-                <summary>{t("signIn.advanced")}</summary>
-              <div className="grid gap-1.5">
-                <Label htmlFor="host">{t("signIn.server")}</Label>
-                <Select value={host} onValueChange={onHostChange}>
-                  <SelectTrigger id="host" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {HOST_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              </details>
+            {/* Be plain about which Door43 this is: a test server should never pass for the real one. */}
+            {!isProductionHost(host) ? (
+              <p className="signin__env">
+                <span aria-hidden className="signin__env-dot" />
+                {t("signIn.testServer")} · {hostShort(host)}
+              </p>
+            ) : null}
 
-              {import.meta.env.DEV && isProductionHost(host) ? (
-                <Alert variant="destructive">
-                  <AlertDescription>
-                    {t("signIn.devProd")}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-
-              <Tabs
-                value={mode}
-                onValueChange={(value) => {
-                  setMode(value as AuthMode);
-                  setError("");
-                }}
-              >
-                <TabsList className="w-full">
-                  <TabsTrigger value="password" className="flex-1">
-                    {t("signIn.tabPassword")}
-                  </TabsTrigger>
-                  <TabsTrigger value="token" className="flex-1">
-                    {t("signIn.tabToken")}
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="password" className="grid gap-3">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="user">{t("signIn.user")}</Label>
-                    <Input
-                      id="user"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      autoComplete="username"
-                      autoFocus
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="pass">{t("signIn.password")}</Label>
+            {mode === "password" ? (
+              <div className="signin__fields">
+                <div className="signin__field">
+                  <Label htmlFor="user">{t("signIn.user")}</Label>
+                  <Input
+                    id="user"
+                    name="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoFocus
+                    disabled={busy}
+                    aria-invalid={error ? true : undefined}
+                  />
+                </div>
+                <div className="signin__field">
+                  <Label htmlFor="pass">{t("signIn.password")}</Label>
+                  <div className="signin__password">
                     <Input
                       id="pass"
-                      type="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="current-password"
-                      required
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      disabled={busy}
+                      aria-invalid={error ? true : undefined}
                     />
+                    <button
+                      type="button"
+                      className="signin__eye"
+                      aria-label={showPassword ? t("signIn.hidePassword") : t("signIn.showPassword")}
+                      aria-pressed={showPassword}
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      {showPassword ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+                    </button>
                   </div>
-                </TabsContent>
-                <TabsContent value="token" className="grid gap-3">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="token">{t("signIn.token")}</Label>
-                    <Input
-                      id="token"
-                      value={token}
-                      onChange={(e) => setToken(e.target.value)}
-                      autoComplete="off"
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
+                </div>
+              </div>
+            ) : (
+              <div className="signin__fields">
+                <div className="signin__field">
+                  <Label htmlFor="token">{t("signIn.token")}</Label>
+                  <Input
+                    id="token"
+                    name="token"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoFocus
+                    disabled={busy}
+                    aria-invalid={error ? true : undefined}
+                  />
+                  <p className="signin__hint">{t("signIn.permsToken")}</p>
+                </div>
+              </div>
+            )}
 
-              <button
-                type="button"
-                className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setHelpOpen((openHelp) => !openHelp)}
-              >
+            {error ? (
+              <Alert variant="destructive" role="alert">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {/* Always there: a button that appears only when the fields are full hides what to do next. */}
+            <Button type="submit" size="lg" className="signin__submit" disabled={!canSubmit || busy}>
+              {busy ? t("signIn.busy") : t("signIn.submit")}
+            </Button>
+
+            <div className="signin__links">
+              {mode === "password" ? (
+                <a href={`${withoutSlash(host)}/user/forgot_password`} target="_blank" rel="noreferrer">
+                  {t("signIn.forgot")}
+                </a>
+              ) : null}
+              <a href={`${withoutSlash(host)}/user/sign_up`} target="_blank" rel="noreferrer">
+                {t("signIn.createAccount")}
+              </a>
+            </div>
+
+            <p className="signin__trust">{t("signIn.trust")}</p>
+
+            <div className="signin__more">
+              <button type="button" className="signin__link" onClick={switchMode}>
+                {mode === "password" ? t("signIn.useToken") : t("signIn.useUserPass")}
+              </button>
+              <button type="button" className="signin__link" aria-expanded={helpOpen} onClick={() => setHelpOpen((v) => !v)}>
                 {helpOpen ? t("signIn.permsHide") : t("signIn.permsAsk")}
               </button>
               {helpOpen ? (
-                <p className="text-xs text-muted-foreground">
-                  {mode === "password" ? t("signIn.permsPassword") : t("signIn.permsToken")}
-                </p>
+                <p className="signin__hint">{mode === "password" ? t("signIn.permsPassword") : t("signIn.permsToken")}</p>
               ) : null}
 
-              {error ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : null}
-
-              <DialogFooter className="px-0">
-                <Button type="button" variant="secondary" onClick={onClose}>
-                  {t("signIn.cancel")}
-                </Button>
-                {canSubmit ? (
-                  <Button type="submit">{t("signIn.submit")}</Button>
+              <details className="signin__advanced" open={import.meta.env.DEV || undefined}>
+                <summary>{t("signIn.advanced")}</summary>
+                <div className="signin__field">
+                  <Label htmlFor="host">{t("signIn.server")}</Label>
+                  <Select value={host} onValueChange={onHostChange}>
+                    <SelectTrigger id="host" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {HOST_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {import.meta.env.DEV && isProductionHost(host) ? (
+                  <Alert variant="destructive">
+                    <AlertDescription>{t("signIn.devProd")}</AlertDescription>
+                  </Alert>
                 ) : null}
-              </DialogFooter>
-            </form>
-          </>
+              </details>
+            </div>
+          </form>
         )}
       </DialogContent>
     </Dialog>
@@ -280,20 +310,6 @@ function SignedInBody({
           {t("signIn.close")}
         </Button>
       </DialogFooter>
-    </>
-  );
-}
-
-function BusyBody() {
-  const t = useT();
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>{t("signIn.title")}</DialogTitle>
-      </DialogHeader>
-      <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
-        {t("signIn.busy")}
-      </p>
     </>
   );
 }
