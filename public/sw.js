@@ -1,4 +1,4 @@
-/* TAS service worker: lets the app install and open offline (shell only).
+/* Taller service worker: lets the app install and open offline (shell only).
  * Door43 requests are never cached: they are cross-origin and always live. */
 const CACHE = "tas-shell-v1";
 
@@ -63,7 +63,7 @@ self.addEventListener("push", (event) => {
     notice = { body: event.data ? event.data.text() : "" };
   }
   event.waitUntil(
-    self.registration.showNotification(notice.title || "TAS", {
+    self.registration.showNotification(notice.title || "Taller", {
       body: notice.body || "",
       // The same subtarea replaces its earlier notice instead of piling up.
       tag: notice.tag || undefined,

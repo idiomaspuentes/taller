@@ -430,7 +430,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                 onClick={() => setShowAllOrgTeams((v) => !v)}
               >
                 {showAllOrgTeams
-                  ? `Solo equipos de TAS (${tasTeams.length})`
+                  ? `Solo equipos de Taller (${tasTeams.length})`
                   : `Incluir otros de la org (${teams.length - tasTeams.length})`}
               </button>
             ) : null}

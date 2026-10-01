@@ -1438,7 +1438,7 @@ export function TeamsView({
                   {solverPickerOpen || draftSolverAppId ? (
                     solversCatalog.solvers.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        No hay herramientas disponibles. Al abrir Fases y tareas con sesión, TAS
+                        No hay herramientas disponibles. Al abrir Fases y tareas con sesión, Taller
                         crea <code className="font-mono">solvers.json</code> con demos por defecto.
                       </p>
                     ) : (

@@ -1309,7 +1309,7 @@ export function MyTasksView({
                   El punto marca mensajes de otras personas que aún no abriste aquí. Lo leído
                   se guarda en este navegador. En otro equipo puede que veas el punto en
                   conversaciones que ya leíste aquí, hasta que las abras allí. Marcar como
-                  leído en Door43 no quita el punto de TAS.
+                  leído en Door43 no quita el punto de Taller.
                 </p>
               </>
             ) : null}

@@ -64,7 +64,7 @@ export function BrowserNotifyToggle() {
             {asking ? "Esperando permiso…" : "Activar avisos"}
           </Button>
           <p className="browser-notify__note">
-            Te avisa de mensajes, decisiones y tareas nuevas cuando TAS está en otra pestaña.
+            Te avisa de mensajes, decisiones y tareas nuevas cuando Taller está en otra pestaña.
           </p>
         </>
       ) : null}
@@ -90,7 +90,7 @@ export function BrowserNotifyToggle() {
                 <Bell className="size-3.5" aria-hidden />
                 {pushBusy ? "Activando…" : "Activar en este dispositivo"}
               </Button>
-              <p className="browser-notify__note">Te llega un aviso al teléfono cuando te mencionan o te asignan algo, aunque no tengas TAS abierto.</p>
+              <p className="browser-notify__note">Te llega un aviso al teléfono cuando te mencionan o te asignan algo, aunque no tengas Taller abierto.</p>
             </>
           ) : null}
           {push === "on" ? (

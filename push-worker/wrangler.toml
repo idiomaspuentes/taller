@@ -9,12 +9,12 @@ compatibility_date = "2026-09-01"
 # Door43 servers whose people may subscribe (comma separated, no trailing slash).
 ALLOWED_HOSTS = "https://qa.door43.org"
 # Where the app is served (the notification opens it). Change it to the Pages address.
-APP_URL = "http://localhost:5177"
+APP_URL = "https://taller.idiomaspuentes.org"
 # Origins allowed to call /subscribe from a browser (comma separated).
-ALLOWED_ORIGINS = "http://localhost:5177"
+ALLOWED_ORIGINS = "https://taller-b2h.pages.dev,https://taller.idiomaspuentes.org,http://localhost:5177"
 # Contact for the push services, as a mailto: or https: address.
-VAPID_SUBJECT = "mailto:CAMBIAR@ejemplo.org"
+VAPID_SUBJECT = "https://qa.door43.org"
 
 [[kv_namespaces]]
 binding = "SUBSCRIPTIONS"
-id = "CAMBIAR-por-el-id-que-imprime-wrangler-kv-namespace-create"
+id = "9c62045505e448afbba28a88d1e98e77"

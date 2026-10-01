@@ -39,10 +39,11 @@ export function readableLine(body: string, max = 140): string {
 }
 
 type Person = { login?: string };
-type Issue = { number?: number; title?: string; assignees?: Person[]; assignee?: Person | null };
+type Issue = { number?: number; title?: string; html_url?: string; assignees?: Person[]; assignee?: Person | null };
 export type GiteaPayload = {
   action?: string;
   issue?: Issue;
+  pull_request?: Issue;
   comment?: { body?: string; user?: Person };
   sender?: Person;
   assignee?: Person;
@@ -72,14 +73,19 @@ function subtarea(issue: Issue): string {
  * - a subtarea is assigned to somebody: that person is told.
  */
 export function noticesFor(event: string | null, payload: GiteaPayload, appUrl: string): Notice[] {
-  const issue = payload.issue;
+  const isPr = event === "pull_request_comment" || event === "pull_request";
+  const issue = isPr ? (payload.pull_request ?? payload.issue) : payload.issue;
   const number = issue?.number;
   if (!issue || !number) return [];
   const sender = lower(payload.sender?.login ?? payload.comment?.user?.login);
-  const url = `${appUrl.replace(/\/$/, "")}/#/mis-tareas/${number}`;
+  // Pull requests are not subtareas: the notice opens the request on Door43.
+  const url = isPr ? (issue.html_url ?? "") : `${appUrl.replace(/\/$/, "")}/#/mis-tareas/${number}`;
+  if (!url) return [];
+  const what = isPr ? "la solicitud de cambios" : "";
+  const name = (i: Issue) => (isPr ? `${what} #${i.number}${i.title ? ` ${i.title}` : ""}` : subtarea(i));
   const notices: Notice[] = [];
 
-  if (event === "issue_comment" && payload.action === "created" && payload.comment?.body) {
+  if ((event === "issue_comment" || event === "pull_request_comment") && payload.action === "created" && payload.comment?.body) {
     const body = payload.comment.body;
     const mentioned = new Set(mentionsIn(body));
     const assignees = new Set((issue.assignees ?? (issue.assignee ? [issue.assignee] : [])).map((a) => lower(a.login)).filter(Boolean));
@@ -88,7 +94,7 @@ export function noticesFor(event: string | null, payload: GiteaPayload, appUrl: 
       if (!login || login === sender) continue;
       notices.push({
         login,
-        title: mentioned.has(login) ? `Te mencionaron en ${subtarea(issue)}` : `Comentario nuevo en ${subtarea(issue)}`,
+        title: mentioned.has(login) ? `Te mencionaron en ${name(issue)}` : `Comentario nuevo en ${name(issue)}`,
         body: `${payload.comment.user?.login ?? "Alguien"}: ${line}`.trim(),
         url,
         tag: `subtarea-${number}`,
@@ -98,6 +104,11 @@ export function noticesFor(event: string | null, payload: GiteaPayload, appUrl: 
     const login = lower(payload.assignee?.login);
     if (login && login !== sender) {
       notices.push({ login, title: "Te asignaron una subtarea", body: subtarea(issue), url, tag: `subtarea-${number}` });
+    }
+  } else if (event === "pull_request" && (payload.action === "assigned" || payload.action === "review_requested")) {
+    const login = lower(payload.action === "assigned" ? payload.assignee?.login : (payload as { requested_reviewer?: Person }).requested_reviewer?.login);
+    if (login && login !== sender) {
+      notices.push({ login, title: payload.action === "assigned" ? "Te asignaron una solicitud de cambios" : "Te pidieron revisar una solicitud de cambios", body: name(issue), url, tag: `pr-${number}` });
     }
   }
   return notices;

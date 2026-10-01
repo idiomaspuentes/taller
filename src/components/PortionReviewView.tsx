@@ -48,7 +48,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const sess = loadSession();
     setSession(sess);
     if (!sess?.token) {
-      setError("La reseña requiere conexión e inicio de sesión en TAS.");
+      setError("La reseña requiere conexión e inicio de sesión en Taller.");
       return;
     }
     if (!decoded.issueNumber) {
