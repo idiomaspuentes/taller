@@ -81,7 +81,7 @@ Pendientes de [AFINACION_PROXIMOS_PASOS.md](AFINACION_PROXIMOS_PASOS.md): oculta
 
 ### 6. Para el lanzamiento
 1. (Hecho el 1 de octubre) La app publicada arranca en producción; QA solo con `?server=qa`.
-2. Webhook y Worker apuntando a producción (`ALLOWED_HOSTS` hoy solo QA).
+2. Avisos en producción: el Worker ya acepta `git.door43.org` (1 de octubre); **falta crear el webhook** en la organización de producción (`es-419_gl`, con el mismo secreto que el de QA) y probarlo con un teléfono.
 3. Borrar los datos que se crearon por error en producción (`es-419_gl/gateway-tasks`).
 4. Revisar las políticas de datos (el Worker guarda las direcciones de push de cada dispositivo; ver su README).
 

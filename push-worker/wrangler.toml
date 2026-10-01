@@ -7,7 +7,7 @@ compatibility_date = "2026-09-01"
 
 [vars]
 # Door43 servers whose people may subscribe (comma separated, no trailing slash).
-ALLOWED_HOSTS = "https://qa.door43.org"
+ALLOWED_HOSTS = "https://git.door43.org,https://qa.door43.org"
 # Where the app is served (the notification opens it). Change it to the Pages address.
 APP_URL = "https://taller.idiomaspuentes.org"
 # Origins allowed to call /subscribe from a browser (comma separated).

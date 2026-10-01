@@ -36,7 +36,7 @@ Necesitas una cuenta gratuita de Cloudflare y Node. Todo se hace en esta carpeta
 5. Un secreto para las firmas de Door43 (invéntalo largo y al azar, por ejemplo con `node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"`):
    - `npx wrangler secret put WEBHOOK_SECRET`
 6. Revisa los valores de `wrangler.toml`:
-   - `ALLOWED_HOSTS`: los servidores de Door43 cuya gente puede suscribirse (hoy solo QA). **No agregues producción** hasta que la app se lance.
+   - `ALLOWED_HOSTS`: los servidores de Door43 cuya gente puede suscribirse (producción y QA; quita QA al lanzar si ya no se prueba).
    - `APP_URL` y `ALLOWED_ORIGINS`: la dirección donde se sirve la app (con HTTPS), sin barra final.
    - `VAPID_SUBJECT`: un correo de contacto, como `mailto:equipo@tudominio.org`.
 7. `npx wrangler deploy`. Imprime la dirección del Worker, por ejemplo `https://tas-push.tucuenta.workers.dev`.
