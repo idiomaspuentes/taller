@@ -11,6 +11,17 @@ npm run dev                        # http://localhost:5175
 
 `usfm-ast` (github.com/abelpz/usfm-ast) debe estar **al lado** de este repositorio (`../usfm-ast`); el script lo hace. `packages/dcs-client` es una copia del cliente de Door43.
 
+## En una sesión en la nube
+
+El entorno nuevo no trae `usfm-ast` ni Bun. Al empezar, una sola vez:
+
+```bash
+curl -fsSL https://bun.sh/install | bash && export PATH="$HOME/.bun/bin:$PATH"
+node scripts/setup-workspace.mjs
+```
+
+Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm run mock:door43`) y no se publica. No hay memoria de conversaciones anteriores; lo que importa está en `docs/PLAN.md` y en este archivo.
+
 ## Comandos
 
 - `npx tsc --noEmit -p .` — tipos. `npm run build` — versión publicada.
