@@ -64,6 +64,10 @@ import { PM_REPO_NAME } from "../domain/types";
 import { Button } from "@/components/ui/button";
 import { opensAsTeamDecision } from "../domain/decisionAccess";
 import { DecisionCard } from "./DecisionCard";
+import { tNow, useT } from "../i18n/messages";
+import { getUiLanguage, useUiLanguage } from "../i18n/language";
+import { localizeThread } from "../domain/threadNames";
+import { localizeName } from "../domain/templateNames";
 
 export type ConversationDemo = {
   issue: DcsIssue;
@@ -111,10 +115,10 @@ type LoadState =
   | { status: "forbidden" }
   | { status: "error"; message: string };
 
-const SOURCE_LABEL: Record<string, string> = {
-  issue: "los mensajes de la tarea",
-  pr: "los comentarios de revisión",
-  commit: "el historial de guardado",
+const SOURCE_LABEL: Record<string, "cv.srcIssue" | "cv.srcPr" | "cv.srcCommit"> = {
+  issue: "cv.srcIssue",
+  pr: "cv.srcPr",
+  commit: "cv.srcCommit",
 };
 
 function isNotFound(err: unknown): boolean {
@@ -126,19 +130,19 @@ function clock(iso: string, now: Date): string {
   if (!Number.isFinite(d.getTime())) return "";
   const sameDay = d.toDateString() === now.toDateString();
   return sameDay
-    ? d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })
-    : formatRelativeEs(d, now);
+    ? d.toLocaleTimeString(getUiLanguage(), { hour: "2-digit", minute: "2-digit" })
+    : formatRelativeEs(d, now, getUiLanguage());
 }
 
 /** Time inside a bubble ("22:04"); the day lives in the day divider above. */
 function timeOfDay(iso: string): string {
   const d = new Date(iso);
-  return Number.isFinite(d.getTime()) ? d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : "";
+  return Number.isFinite(d.getTime()) ? d.toLocaleTimeString(getUiLanguage(), { hour: "2-digit", minute: "2-digit" }) : "";
 }
 
 function fullStamp(iso: string): string {
   const d = new Date(iso);
-  return Number.isFinite(d.getTime()) ? d.toLocaleString("es", { dateStyle: "long", timeStyle: "short" }) : "";
+  return Number.isFinite(d.getTime()) ? d.toLocaleString(getUiLanguage(), { dateStyle: "long", timeStyle: "short" }) : "";
 }
 
 function dayKey(iso: string): string {
@@ -152,13 +156,13 @@ function dayLabel(iso: string, now: Date): string {
   const days = Math.round(
     (new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86_400_000,
   );
-  if (days === 0) return "Hoy";
-  if (days === 1) return "Ayer";
+  if (days === 0) return tNow("cv.today");
+  if (days === 1) return tNow("cv.yesterday");
   if (days > 1 && days < 7) {
-    const weekday = d.toLocaleDateString("es", { weekday: "long" });
+    const weekday = d.toLocaleDateString(getUiLanguage(), { weekday: "long" });
     return weekday.charAt(0).toUpperCase() + weekday.slice(1);
   }
-  return d.toLocaleDateString("es", {
+  return d.toLocaleDateString(getUiLanguage(), {
     day: "numeric",
     month: "long",
     ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
@@ -176,14 +180,16 @@ function door43IssueUrl(session: GtSession | null, pmOrg: string, issue: number)
 }
 
 export function ConversationView(props: Props) {
+  const t = useT();
   const { session, pmOrg, issueNumber, demo } = props;
+  const threadTitle = t("cv.thread").replace("{n}", String(issueNumber));
   if (!demo && !session) {
     return (
-      <ThreadShell onBack={props.onBack} title={`Subtarea #${issueNumber}`}>
+      <ThreadShell onBack={props.onBack} title={threadTitle}>
         <div className="chat-state">
-          <p className="chat-state__title">Inicia sesión para ver esta conversación.</p>
+          <p className="chat-state__title">{t("cv.signInTitle")}</p>
           <Button type="button" onClick={props.onSignIn}>
-            Entrar
+            {t("cv.enter")}
           </Button>
         </div>
       </ThreadShell>
@@ -191,11 +197,11 @@ export function ConversationView(props: Props) {
   }
   if (!demo && !pmOrg) {
     return (
-      <ThreadShell onBack={props.onBack} title={`Subtarea #${issueNumber}`}>
+      <ThreadShell onBack={props.onBack} title={threadTitle}>
         <div className="chat-state">
-          <p className="chat-state__title">Elige la organización del equipo</p>
+          <p className="chat-state__title">{t("cv.pickOrgTitle")}</p>
           <p className="chat-state__body">
-            Abre el chip del encabezado para seleccionar la org de tus subtareas.
+            {t("cv.pickOrgBody")}
           </p>
         </div>
       </ThreadShell>
@@ -213,13 +219,14 @@ function ThreadShell({
   title: string;
   children: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div className="chat-main">
       <header className="chat-header">
         <div className="chat-header__row">
-          <button type="button" className="chat-back" onClick={onBack} aria-label="Volver a Mis tareas">
+          <button type="button" className="chat-back" onClick={onBack} aria-label={t("cv.backToMy")}>
             <ArrowLeft aria-hidden className="size-4" />
-            <span className="chat-back__label">Mis tareas</span>
+            <span className="chat-back__label">{t("nav.myTasks")}</span>
           </button>
           <h1 className="chat-header__title">{title}</h1>
         </div>
@@ -245,6 +252,9 @@ function ConversationThread({
   onOpenThread,
   announce,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  const loc = (text: string) => localizeThread(text, language);
   const username = session?.username || demo?.viewer || "";
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [issue, setIssue] = useState<DcsIssue | null>(demo?.issue ?? null);
@@ -437,7 +447,7 @@ function ConversationThread({
     (app: SolverApp, ctx: SolverLaunchContext) => {
       try {
         openSolverApp(app, ctx);
-        announce(`Abriendo «${app.name}» · ${ctx.book} ${ctx.ref}`);
+        announce(tNow("cv.openingApp").replace("{app}", app.name).replace("{ref}", `${ctx.book} ${ctx.ref}`));
       } catch (err) {
         announce(err instanceof Error ? err.message : String(err));
       }
@@ -464,7 +474,7 @@ function ConversationThread({
       for (const row of items) doc = pushLocal(doc, issueNumber, { ...row, key: `local:${row.key}`, reconcileKey: row.key });
       writePending(doc);
       refreshLocal();
-      announce("Decisión guardada");
+      announce(tNow("cv.decisionSaved"));
     },
     [demo, pendingDecisions, decisionEnv, readPending, writePending, refreshLocal, issueNumber, announce],
   );
@@ -602,8 +612,8 @@ function ConversationThread({
   const title = header?.title || issue?.title || `Subtarea #${issueNumber}`;
   const doorUrl = issue?.html_url || door43IssueUrl(session, pmOrg, issueNumber);
   const subline = [
-    header?.taskLabel,
-    header?.step ? `Paso: ${header.step.name}` : "",
+    header?.taskLabel ? localizeName(header.taskLabel, language) : "",
+    header?.step ? t("cv.step").replace("{name}", localizeName(header.step.name, language)) : "",
     header?.assignees.length ? header.assignees.map((a) => `@${a}`).join(", ") : "",
   ].filter(Boolean);
 
@@ -612,7 +622,7 @@ function ConversationThread({
   return (
     <div className={showAside ? "chat-layout chat-layout--split" : "chat-layout"}>
       {showAside ? (
-        <nav className="chat-aside" aria-label="Mis conversaciones">
+        <nav className="chat-aside" aria-label={t("cv.myConversations")}>
           {siblings.map((row) => (
             <button
               key={row.number}
@@ -622,7 +632,7 @@ function ConversationThread({
               onClick={() => onOpenThread(row.number)}
             >
               {hasUnread(cursor, row.number) && row.number !== issueNumber ? (
-                <span className="hub-queue-item__dot" role="img" aria-label="sin leer" />
+                <span className="hub-queue-item__dot" role="img" aria-label={t("cv.unreadAria")} />
               ) : null}
               <span className="chat-aside__label">{row.title}</span>
             </button>
@@ -633,9 +643,9 @@ function ConversationThread({
       <div className="chat-main">
         <header className="chat-header">
           <div className="chat-header__row">
-            <button type="button" className="chat-back" onClick={onBack} aria-label="Volver a Mis tareas">
+            <button type="button" className="chat-back" onClick={onBack} aria-label={t("cv.backToMy")}>
               <ArrowLeft aria-hidden className="size-4" />
-              <span className="chat-back__label">Mis tareas</span>
+              <span className="chat-back__label">{t("nav.myTasks")}</span>
             </button>
             <h1 className="chat-header__title">{title}</h1>
             <div className="chat-header__actions">
@@ -651,7 +661,7 @@ function ConversationThread({
                       rel="noopener noreferrer"
                       title={`${solver.name} · ${launchCtx.book} ${launchCtx.ref}`}
                     >
-                      {solverActionLabel(solver)}
+                      {loc(solverActionLabel(solver))}
                     </a>
                   )
                 ) : (
@@ -663,7 +673,7 @@ function ConversationThread({
                     title={`${solver.name} · ${launchCtx.book} ${launchCtx.ref}`}
                     onClick={() => openLaunch(solver, launchCtx)}
                   >
-                    {solverActionLabel(solver)}
+                    {loc(solverActionLabel(solver))}
                   </Button>
                 )
               ) : null}
@@ -672,7 +682,7 @@ function ConversationThread({
                   <button
                     type="button"
                     className="chat-icon-btn"
-                    aria-label="Más opciones"
+                    aria-label={t("cv.moreOptions")}
                     aria-expanded={moreOpen}
                     onClick={() => setMoreOpen((v) => !v)}
                   >
@@ -682,7 +692,7 @@ function ConversationThread({
                     <div className="chat-more__menu" role="menu">
                       {!demo ? (
                         <a role="menuitem" href={doorUrl} target="_blank" rel="noreferrer" onClick={() => setMoreOpen(false)}>
-                          Abrir en Door43 · #{issueNumber}
+                          {t("cv.openDoor43n").replace("{n}", String(issueNumber))}
                         </a>
                       ) : null}
                       <button
@@ -690,11 +700,11 @@ function ConversationThread({
                         role="menuitem"
                         onClick={() => {
                           void navigator.clipboard?.writeText(window.location.href);
-                          announce("Enlace copiado");
+                          announce(t("cv.linkCopied"));
                           setMoreOpen(false);
                         }}
                       >
-                        Copiar enlace
+                        {t("cv.copyLink")}
                       </button>
                     </div>
                   ) : null}
@@ -703,15 +713,15 @@ function ConversationThread({
             </div>
           </div>
           {subline.length ? <p className="chat-header__sub">{subline.join(" · ")}</p> : null}
-          {solverBlock ? <p className="chat-header__sub">{solverBlock}</p> : null}
+          {solverBlock ? <p className="chat-header__sub">{loc(solverBlock)}</p> : null}
           {demo ? (
-            <p className="chat-header__sub">{demo.notice || "Demostración local: no lee ni escribe en Door43."}</p>
+            <p className="chat-header__sub">{demo.notice || t("cv.demoNotice")}</p>
           ) : null}
           {demo?.toolbar ?? null}
         </header>
 
         {load.status === "loading" ? (
-          <div className="chat-log" aria-busy="true" aria-label="Cargando conversación">
+          <div className="chat-log" aria-busy="true" aria-label={t("cv.loadingAria")}>
             <div className="chat-skeleton chat-skeleton--other" />
             <div className="chat-skeleton chat-skeleton--mine" />
             <div className="chat-skeleton chat-skeleton--other" />
@@ -720,45 +730,45 @@ function ConversationThread({
 
         {load.status === "missing" ? (
           <div className="chat-state">
-            <p className="chat-state__title">No existe la subtarea #{issueNumber} en {pmOrg}.</p>
-            <p className="chat-state__body">Puede que se haya borrado o que el enlace sea de otra organización.</p>
+            <p className="chat-state__title">{t("cv.missingTitle").replace("{n}", String(issueNumber)).replace("{org}", pmOrg)}</p>
+            <p className="chat-state__body">{t("cv.missingBody")}</p>
             <Button type="button" variant="outline" onClick={onBack}>
-              Volver a Mis tareas
+              {t("cv.backToMy")}
             </Button>
           </div>
         ) : null}
 
         {load.status === "forbidden" ? (
           <div className="chat-state">
-            <p className="chat-state__title">Esta conversación no es tuya.</p>
-            <p className="chat-state__body">Solo quien tiene asignada la subtarea, o un gestor, puede abrirla.</p>
+            <p className="chat-state__title">{t("cv.forbiddenTitle")}</p>
+            <p className="chat-state__body">{t("cv.forbiddenBody")}</p>
             <Button type="button" variant="outline" onClick={onBack}>
-              Volver a Mis tareas
+              {t("cv.backToMy")}
             </Button>
           </div>
         ) : null}
 
         {load.status === "error" ? (
           <div className="chat-state">
-            <p className="chat-state__title">No se pudo abrir la conversación.</p>
+            <p className="chat-state__title">{t("cv.errorTitle")}</p>
             <p className="chat-state__body">{load.message}</p>
             <div className="chat-state__actions">
               <Button type="button" onClick={() => setReloadTick((n) => n + 1)}>
-                Reintentar
+                {t("cv.retry")}
               </Button>
               <a className="btn" data-size="default" data-variant="outline" href={doorUrl} target="_blank" rel="noreferrer">
-                Abrir en Door43
+                {t("cv.openDoor43")}
               </a>
             </div>
           </div>
         ) : null}
 
         {load.status === "ready" ? (
-          <div ref={logRef} className="chat-log" role="log" aria-live="polite" aria-label="Mensajes">
+          <div ref={logRef} className="chat-log" role="log" aria-live="polite" aria-label={t("cv.messagesAria")}>
             {!visible.length && !failed.length ? (
               <div className="chat-state chat-state--inline">
-                <p className="chat-state__title">Aún no hay mensajes.</p>
-                <p className="chat-state__body">Escribe para hablar con quien revisa esta tarea.</p>
+                <p className="chat-state__title">{t("cv.noMessagesTitle")}</p>
+                <p className="chat-state__body">{t("cv.noMessagesBody")}</p>
               </div>
             ) : null}
             {visible.map((item, index) => (
@@ -780,9 +790,9 @@ function ConversationThread({
             ))}
             {failed.map((source) => (
               <p key={source.kind} className="chat-system chat-system--error">
-                No se pudieron cargar {SOURCE_LABEL[source.kind] ?? "algunos mensajes"} ·{" "}
+                {t("cv.failedLoad").replace("{what}", t(SOURCE_LABEL[source.kind] ?? "cv.srcOther"))} ·{" "}
                 <button type="button" className="chat-link" disabled={retrying} onClick={() => void retry()}>
-                  {retrying ? "Reintentando…" : "Reintentar"}
+                  {retrying ? t("cv.retrying") : t("cv.retry")}
                 </button>
               </p>
             ))}
@@ -839,6 +849,7 @@ function Composer({
   cites: CiteTarget[];
   onSend: (text: string) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState(() => readDraft(draftKey));
   const [caret, setCaret] = useState(0);
   const [citeOpen, setCiteOpen] = useState(false);
@@ -893,7 +904,7 @@ function Composer({
   return (
     <div className="chat-composer">
       {suggestions.length ? (
-        <div className="chat-composer__menu" role="listbox" aria-label="Mencionar">
+        <div className="chat-composer__menu" role="listbox" aria-label={t("cv.mention")}>
           {suggestions.map((login) => (
             <button key={login} type="button" role="option" aria-selected="false" onClick={() => pickMention(login)}>
               @{login}
@@ -902,7 +913,7 @@ function Composer({
         </div>
       ) : null}
       {citeOpen && cites.length ? (
-        <div className="chat-composer__menu" role="listbox" aria-label="Citar">
+        <div className="chat-composer__menu" role="listbox" aria-label={t("cv.quote")}>
           {cites.map((target) => (
             <button key={target.id} type="button" role="option" aria-selected="false" onClick={() => pickCite(target)}>
               <strong>{target.ref}</strong> <span className="chat-composer__cite-text">{target.text}</span>
@@ -916,8 +927,8 @@ function Composer({
             ref={ref}
             className="chat-composer__input"
             rows={1}
-            placeholder="Escribe un mensaje…"
-            aria-label="Mensaje"
+            placeholder={t("cv.placeholder")}
+            aria-label={t("cv.messageAria")}
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
@@ -937,27 +948,27 @@ function Composer({
               type="button"
               className="chat-composer__cite"
               aria-expanded={citeOpen}
-              aria-label="Citar"
-              title="Citar un versículo"
+              aria-label={t("cv.quote")}
+              title={t("cv.quoteTitle")}
               onClick={() => setCiteOpen((v) => !v)}
             >
               <TextQuote aria-hidden className="size-4" />
-              <span className="chat-composer__cite-label">Citar</span>
+              <span className="chat-composer__cite-label">{t("cv.quote")}</span>
             </button>
           ) : null}
         </div>
         <button
           type="button"
           className="chat-composer__send"
-          aria-label="Enviar"
-          title="Enviar"
+          aria-label={t("cv.send")}
+          title={t("cv.send")}
           disabled={!ready || !draft.trim()}
           onClick={submit}
         >
           <SendHorizontal aria-hidden className="size-5" />
         </button>
       </div>
-      {!ready ? <p className="chat-composer__hint">Cargando conversación…</p> : null}
+      {!ready ? <p className="chat-composer__hint">{t("cv.loadingHint")}</p> : null}
     </div>
   );
 }
@@ -982,6 +993,8 @@ function TimelineRow({
   onDiscard: () => void;
   renderDecision: (item: ThreadItem, resolved: ResolvedChatEvent) => ReactNode;
 }) {
+  const t = useT();
+  const language = useUiLanguage();
   const breaks = Boolean(day) || showNewDivider;
   const dividers = (
     <>
@@ -992,7 +1005,7 @@ function TimelineRow({
       ) : null}
       {showNewDivider ? (
         <div className="chat-new-divider" role="separator">
-          <span>Nuevos</span>
+          <span>{t("cv.newDivider")}</span>
         </div>
       ) : null}
     </>
@@ -1008,11 +1021,10 @@ function TimelineRow({
         </>
       );
     }
-    const who = item.author && item.author.toLowerCase() === me.toLowerCase() ? "Tú" : item.author;
+    const who = item.author && item.author.toLowerCase() === me.toLowerCase() ? t("cv.you") : item.author;
+    const title = localizeThread(resolved.title, language);
     const label =
-      item.count && item.count > 1
-        ? `${resolved.title} · ${item.count} veces`
-        : resolved.title;
+      item.count && item.count > 1 ? t("cv.nTimes").replace("{title}", title).replace("{n}", String(item.count)) : title;
     return (
       <>
         {dividers}
@@ -1060,8 +1072,8 @@ function TimelineRow({
                 <MessageText text={item.text} />
               </div>
               <span className="chat-bubble__meta">
-                {item.pending === "enviando" ? "Enviando…" : null}
-                {item.pending === "error" ? <span className="chat-msg__error">No se envió</span> : null}
+                {item.pending === "enviando" ? t("cv.sending") : null}
+                {item.pending === "error" ? <span className="chat-msg__error">{t("cv.notSent")}</span> : null}
                 {item.createdAt && !item.pending ? (
                   <time dateTime={item.createdAt} title={fullStamp(item.createdAt)}>
                     {timeOfDay(item.createdAt)}
@@ -1073,10 +1085,10 @@ function TimelineRow({
           {item.pending === "error" ? (
             <span className="chat-msg__meta">
               <button type="button" className="chat-link chat-msg__action" onClick={onRetry}>
-                Reintentar
+                {t("cv.retry")}
               </button>
               <button type="button" className="chat-link chat-msg__action" onClick={onDiscard}>
-                Descartar
+                {t("cv.discard")}
               </button>
             </span>
           ) : null}

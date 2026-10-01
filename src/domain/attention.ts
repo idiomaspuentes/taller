@@ -102,9 +102,9 @@ export function rowActivity(
 }
 
 /** "Bob: ¿seguro de 'siervo'?" — author prefix only when there is text. */
-export function previewLine(latest: LatestComment | null): string {
+export function previewLine(latest: LatestComment | null, localize: (text: string) => string = (text) => text): string {
   if (!latest) return "";
-  const text = latest.preview || "Mensaje nuevo";
+  const text = localize(latest.preview || "Mensaje nuevo");
   return latest.author ? `${latest.author}: ${text}` : text;
 }
 

@@ -6,6 +6,12 @@ import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
 import { localizeHold, localizeName, localizeToday } from "../src/domain/templateNames";
 import { localizeScope } from "../src/domain/scopeNames";
 import { articleFilterHelp, articleFilterLabel, assignableCountLabel, grainChoiceLabel, grainHelp, scriptureIntro, stayInChapterHelp, DISTRIBUTE_POLICY_HELP, DISTRIBUTE_POLICY_LABEL, DISTRIBUTE_UNIT_HELP, DISTRIBUTE_UNIT_LABEL, SCOPE_KEYS, ARTICLE_FILTERS, ARTICLE_FILTER_LABEL, GRAIN_LABEL } from "../src/domain/types";
+import { localizeThread } from "../src/domain/threadNames";
+import { OPTION_LABEL } from "../src/domain/alignmentDecision";
+import {
+  decidedConflictSentence, verseConflictOptionLabels, verseConflictPanels, verseConflictTitle,
+  type VerseConflictData,
+} from "../src/domain/verseConflictEvent";
 import { BOOKS, bookLabel, bookName } from "../src/domain/books";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
@@ -250,6 +256,49 @@ test("el avance de «Inventariar» y los estados de los artículos se traducen",
     ["Preparando porciones…", "Preparando porções…"], ["Revisando artículos…", "Revisando artigos…"], ["Listo.", "Pronto."],
     ["Inglés", "Inglês"], ["Traducido", "Traduzido"], ["Incompleto", "Incompleto"],
   ] as const) assert.equal(localizeScope(es, "pt"), pt);
+});
+
+test("las líneas de la conversación (decisiones, votos, conflictos de versículo) se traducen y los textos de las personas no", () => {
+  const spanishMarks = /[ñ¿¡]|\b(el|la|los|las|del|con|quedó|versión|propuesta|alineación|cerrar|decisión|votó|tu|tuya|otra)\b/i;
+  for (const label of Object.values(OPTION_LABEL)) {
+    const pt = localizeThread(label, "pt");
+    assert.notEqual(pt, label);
+    assert.equal(localizeThread(`${label} (2) ✓`, "pt"), `${pt} (2) ✓`, "con el contador y la marca");
+  }
+  const base: VerseConflictData = {
+    pr: { owner: "o", repo: "r", number: 1 }, bookRef: "NEH", book: "NEH", usfmPath: "x",
+    range: { chapter: 1, from: 2, to: 3, kind: "texto", kept: "ultimo" },
+    conflictIssue: 10, closer: "ana", otherIssue: 11, otherLogin: "bea", side: "entrante",
+    texts: { entrante: "a", tronco: "b" },
+  };
+  const samples: string[] = [];
+  for (const side of ["entrante", "desplazado"] as const) {
+    for (const kept of ["ultimo", "tronco"] as const) {
+      for (const otherLogin of ["bea", null]) {
+        const data: VerseConflictData = { ...base, side, otherLogin, range: { ...base.range, kept } };
+        samples.push(verseConflictTitle(data), decidedConflictSentence(data), ...Object.values(verseConflictOptionLabels(data)));
+        for (const panel of verseConflictPanels(data)) samples.push(panel.label, ...(panel.tag ? [panel.tag] : []));
+      }
+    }
+  }
+  for (const es of new Set(samples)) {
+    const pt = localizeThread(es, "pt");
+    assert.ok(pt !== es || !spanishMarks.test(es), `sin traducir: ${es}`);
+    assert.ok(!/\b(quedó|versión|cerró|Dejar|Usar la)\b/.test(pt), `quedó español: ${pt}`);
+    assert.equal(localizeThread(es, "es"), es);
+  }
+  assert.equal(localizeThread("Propuesta de @ana para NEH 1:2", "pt"), "Proposta de @ana para NEH 1:2");
+  assert.equal(localizeThread("@bea votó: Aceptar la propuesta", "pt"), "@bea votou: Aceitar a proposta");
+  assert.equal(
+    localizeThread("Decidido por el equipo; @ana confirmó el consenso. Se aceptó la propuesta y la alineación quedó cambiada.", "pt"),
+    "Decidido pela equipe; @ana confirmou o consenso. A proposta foi aceita e o alinhamento foi alterado.",
+  );
+  assert.equal(
+    localizeThread("Hay consenso: Aceptar la propuesta (@ana, @bea). @ana: falta que una persona lo confirme para cerrar la decisión.", "pt"),
+    "Há consenso: Aceitar a proposta (@ana, @bea). @ana: falta uma pessoa confirmar para encerrar a decisão.",
+  );
+  assert.equal(localizeThread("Resuelto por @ana: quedó la versión de @bea", "pt"), "Resolvido por @ana: ficou a versão de @bea");
+  assert.equal(localizeThread("Versículos 1:2 guardados en el borrador grupal", "pt"), "Versículos 1:2 salvos no rascunho do grupo");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);
