@@ -7,7 +7,8 @@ Todo lo que cambia de una organización a otra vive en **un solo archivo**: [`ta
 | Campo | Para qué sirve |
 |---|---|
 | `brand.name` | El nombre de la app en cada idioma de la interfaz (`es`, `pt`). |
-| `brand.organization` | La organización que aparece sobre el título de la bienvenida y en el título de la pestaña. |
+| `brand.organization` | La organización que aparece sobre el título de la bienvenida. |
+| `brand.short` | El nombre corto de la organización (para Idiomas Puentes, «Id»). Se añade al nombre de la app en el título del sitio: «Taller Id». |
 | `uiLanguages` / `defaultUiLanguage` | Los idiomas de la interfaz. La primera visita sigue el idioma del navegador; la persona puede cambiarlo en la pantalla de bienvenida. |
 | `defaultServer` | El servidor de Door43 con el que arranca la app publicada (`production` o `qa`). Cada persona puede cambiarlo en «Avanzado» al iniciar sesión. |
 | `workspaces` | Los **espacios de trabajo**: uno por equipo de lengua. Ver abajo. |

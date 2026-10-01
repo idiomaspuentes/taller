@@ -40,6 +40,7 @@ export function configProblems(config: TallerConfig): string[] {
     else if (![copy.title, copy.subtitle, copy.workspacePrompt, copy.enter, copy.trust, ...copy.points].every((t) => t.trim())) problems.push(`El texto de bienvenida en "${lang}" tiene campos vacíos.`);
     if (!config.brand.name[lang]?.trim()) problems.push(`Falta el nombre de la marca en "${lang}".`);
   }
+  if (!config.brand.short.trim()) problems.push("Falta brand.short (el nombre corto de la organización, como «Id»).");
   return problems;
 }
 

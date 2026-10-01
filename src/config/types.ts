@@ -50,6 +50,8 @@ export type TallerConfig = {
     name: Localized;
     /** The organization behind it, shown above the welcome title. */
     organization: string;
+    /** The organization's short commercial name, added to the app's name in the site title ("Taller Id"). */
+    short: string;
   };
   uiLanguages: UiLanguage[];
   defaultUiLanguage: UiLanguage;

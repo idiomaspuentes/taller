@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
+import { appTitle } from "../src/brand";
 import { localizeHold, localizeName } from "../src/domain/templateNames";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
@@ -163,6 +164,14 @@ test("las razones de espera y de nivel se muestran en el idioma de la interfaz",
   assert.equal(localizeHold("Solo observas", "pt"), "Você só observa");
   assert.equal(localizeHold("Solo observas", "es"), "Solo observas", "en español no cambia");
   assert.equal(localizeHold("Algo que no se conoce", "pt"), "Algo que no se conoce");
+});
+
+test("el título del sitio es el nombre de la app más el nombre corto de la organización", () => {
+  assert.equal(appTitle("es"), "Taller Id");
+  assert.equal(appTitle("pt"), "Oficina Id");
+  const noShort = clone();
+  noShort.brand.short = " ";
+  assert.match(configProblems(noShort).join(" "), /brand\.short/);
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

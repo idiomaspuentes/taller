@@ -1,6 +1,6 @@
 /* Taller service worker: lets the app install and open offline (shell only).
  * Door43 requests are never cached: they are cross-origin and always live. */
-const CACHE = "tas-shell-v1";
+const CACHE = "taller-shell-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

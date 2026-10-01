@@ -50,7 +50,7 @@ export function Welcome({ initialWorkspaceId, onEnter, signedIn = false, config 
       </header>
 
       <main className="welcome__main">
-        <img className="welcome__logo" src="/puentes-isotipo.svg" alt="" width={64} height={54} />
+        <img className="welcome__logo" src="/taller-isotipo.svg" alt="" width={64} height={54} />
         <p className="welcome__kicker">{ORGANIZATION}</p>
         <h1 className="welcome__title">{copy.title}</h1>
         <p className="welcome__lead">{copy.subtitle}</p>

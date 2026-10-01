@@ -9,6 +9,8 @@ export const tallerConfig: TallerConfig = {
   brand: {
     name: { es: "Taller", pt: "Oficina" },
     organization: "Idiomas Puentes",
+    // "Id": the I and the d of Idiomas, and the first word of «Id y haced discípulos». The site title reads "Taller Id".
+    short: "Id",
   },
 
   // Interface languages. The first visit follows the browser's language; people can switch on the welcome screen.
