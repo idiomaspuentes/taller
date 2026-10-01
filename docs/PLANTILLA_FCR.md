@@ -100,7 +100,8 @@ fuente en inglés. Los recursos de apoyo se escriben sin mirar el TPL ni el TPS 
 - El **capítulo completo**: para saber quién habla, a quién y de qué en el pasaje de la nota.
 
 La familiarización es **por capítulo**: quien ya la hizo para un capítulo no la repite en las demás
-porciones de ese capítulo, y la introducción al libro se lee una sola vez **(por confirmar)**.
+porciones de ese capítulo, y la introducción al libro se lee una sola vez. Lo mismo vale para la
+familiarización del TPL y del TPS.
 
 **(Por confirmar:** si alguna ayuda lleva también revisión grupal.)
 
@@ -299,7 +300,7 @@ lo demás ya está en las cuatro reglas de cierre.
 ## 10. Pendientes para cerrar la plantilla
 
 1. Acompañamiento del **Aprendiz**: cómo se registra.
-2. Ayudas en Traducción: ¿alguna lleva revisión grupal? ¿La familiarización se hace una vez por capítulo?
+2. Ayudas en Traducción: ¿alguna lleva revisión grupal?
 3. Palabras clave en Afinación: ¿por porción o por capítulo?
 4. «Dominio del idioma bíblico»: ¿se registra por persona?
 5. Armonización: ¿espera al TPL **y** al TPS?
