@@ -5846,3 +5846,32 @@ button.al-box--read { cursor: pointer; }
 .al-textedit .af-field, .al-actionbar__note .af-field { display: grid; gap: 0.25rem; }
 .al-textedit textarea, .al-actionbar__note textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); }
 .chat-decision__panel--wide { grid-column: 1 / -1; }
+.push-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0.5rem 1rem 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface, #fff);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.push-prompt p {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+.push-prompt__close {
+  display: inline-flex;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.push-prompt .push-prompt__error {
+  flex-basis: 100%;
+  color: var(--danger, #b3261e);
+}

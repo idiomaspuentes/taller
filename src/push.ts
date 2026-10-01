@@ -81,7 +81,9 @@ export function browserPushDeps(): PushDeps {
     requestPermission: () => Notification.requestPermission(),
     registration: async () => {
       if (!("serviceWorker" in navigator)) return null;
-      return ((await navigator.serviceWorker.getRegistration()) ?? null) as unknown as PushRegistration | null;
+      // Right after opening the app the worker may still be starting: wait for it a moment.
+      const ready = await Promise.race([navigator.serviceWorker.ready, new Promise<null>((r) => setTimeout(() => r(null), 3000))]);
+      return (ready ?? (await navigator.serviceWorker.getRegistration()) ?? null) as unknown as PushRegistration | null;
     },
   };
 }

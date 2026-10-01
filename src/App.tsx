@@ -73,6 +73,7 @@ import { PortionReviewView } from "./components/PortionReviewView";
 import { WorkflowsView } from "./components/WorkflowsView";
 import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView";
 import { AppNav } from "./components/AppNav";
+import { PushPrompt } from "./components/PushPrompt";
 import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin } from "./domain/qaAdmin";
 import { resolveResourceRepo } from "./domain/roles";
@@ -957,6 +958,8 @@ export function App() {
               ) : null}
             </button>
           </div>
+
+          <PushPrompt session={session} />
 
           <AppNav
             links={[
