@@ -959,8 +959,6 @@ export function App() {
             </button>
           </div>
 
-          <PushPrompt session={session} />
-
           <AppNav
             links={[
               {
@@ -1070,6 +1068,7 @@ export function App() {
         <div className="sr-only" aria-live="polite">
           {live}
         </div>
+        {route.name !== "conversacion" && route.name !== "conflicto-prueba" ? <PushPrompt session={session} /> : null}
         {hydrating && route.name === "proyecto" ? (
           <Alert className="mb-3">
             <AlertDescription>Cargando plan y subtareas del proyecto…</AlertDescription>
