@@ -5,7 +5,7 @@
  * tokens are not real credentials.
  */
 const MOCK_USERS = ["ana", "bea", "carla"];
-const SCOPES = ["read:user", "read:organization", "write:repository", "write:issue", "write:organization", "read:notification"];
+const SCOPES = ["read:user", "read:organization", "write:repository", "write:issue", "write:organization", "read:notification", "write:notification"];
 
 export function applyMockSessionFromUrl(): void {
   if (!import.meta.env.DEV || typeof location === "undefined") return;
@@ -16,7 +16,7 @@ export function applyMockSessionFromUrl(): void {
   try {
     localStorage.setItem(
       "gt-dcs-session",
-      JSON.stringify({ host, username: user, token: `token-${user}`, avatarUrl: "", scopes: SCOPES, scopesVersion: 2, isOwner: false, canManage: user === "ana", teams: [] }),
+      JSON.stringify({ host, username: user, token: `token-${user}`, avatarUrl: "", scopes: SCOPES, scopesVersion: 3, isOwner: false, canManage: user === "ana", teams: [] }),
     );
     localStorage.setItem("gt-context", JSON.stringify({ book: "NEH", contentOrg: "es-419_gl", host, lang: "es-419", pmOrg: "BSOJ" }));
     localStorage.setItem("gt-context-confirmed", "1");

@@ -138,7 +138,7 @@ const session: GtSession = {
   host: "https://qa.door43.org",
   username: "gestor",
   token: "tok",
-  scopesVersion: 2,
+  scopesVersion: 3,
 };
 
 const board = { book: "NEH", projectId: "NEH", people: [], teams: [], assignments: [] } as unknown as AssignmentsDoc;

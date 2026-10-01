@@ -159,7 +159,7 @@ const session: GtSession = {
   host: "https://qa.door43.org",
   username: "gestor",
   token: "tok",
-  scopesVersion: 2,
+  scopesVersion: 3,
 };
 
 const portion = (id: string, chapter: number, verses: number[]) => ({

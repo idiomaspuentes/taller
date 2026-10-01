@@ -17,9 +17,11 @@ export const TOKEN_SCOPES = [
   "write:issue",
   "write:organization",
   "read:notification",
+  // Lets the app mark a mention as read in Door43 once it is opened.
+  "write:notification",
 ] as const;
 
-export const SCOPES_VERSION = 2;
+export const SCOPES_VERSION = 3;
 
 export type GtSession = {
   host: string;

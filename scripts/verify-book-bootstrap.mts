@@ -54,7 +54,7 @@ function makeSession(): GtSession {
     host: "https://qa.door43.org",
     username: "ana",
     token: "tok",
-    scopesVersion: 2,
+    scopesVersion: 3,
   };
 }
 
