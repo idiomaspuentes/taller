@@ -80,6 +80,8 @@ import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView
 import { AppNav } from "./components/AppNav";
 import { PushPrompt } from "./components/PushPrompt";
 import { useMentions } from "./useMentions";
+import { Onboarding } from "./components/Onboarding";
+import { useOnboarding } from "./onboarding";
 import { clearNotices } from "./clearNotices";
 import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin } from "./domain/qaAdmin";
@@ -175,6 +177,7 @@ export function App() {
 
   const activity = useConversationActivity(session, pmOrg);
   const mentions = useMentions(session, pmOrg);
+  const onboarding = useOnboarding(session);
   // Mentions of issues the plan already tracks are counted there; only the others add to the badge.
   const attentionTotal =
     activity.unreadCount + mentions.rows.filter((m) => !activity.issues.includes(m.issue)).length;
@@ -1138,7 +1141,12 @@ export function App() {
         <div className="sr-only" aria-live="polite">
           {live}
         </div>
-        {route.name !== "conversacion" && route.name !== "conflicto-prueba" ? <PushPrompt session={session} /> : null}
+        {route.name === "ahora" && session && onboarding.visible ? (
+          <Onboarding session={session} onOpenTasks={() => navigate({ name: "mis-tareas" })} onHide={onboarding.hide} />
+        ) : null}
+        {route.name !== "conversacion" && route.name !== "conflicto-prueba" && !(route.name === "ahora" && onboarding.visible) ? (
+          <PushPrompt session={session} />
+        ) : null}
         {hydrating && route.name === "proyecto" ? (
           <Alert className="mb-3">
             <AlertDescription>Cargando plan y subtareas del proyecto…</AlertDescription>

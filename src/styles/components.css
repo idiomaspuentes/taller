@@ -6052,3 +6052,88 @@ button.al-box--read { cursor: pointer; }
   color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
+
+/* ---- First steps card (Ahora, first visits) ---- */
+.onboarding {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 7%, var(--surface)), var(--surface) 60%);
+  box-shadow: var(--shadow-sm);
+}
+.onboarding__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+.onboarding__lead {
+  margin: 0.15rem 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+.onboarding__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.onboarding__step {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.onboarding__icon {
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  color: var(--primary);
+}
+.onboarding__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.onboarding__step[data-done] .onboarding__icon {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.onboarding__body {
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+.onboarding__step-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.onboarding__step-text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.onboarding__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--destructive);
+}
+.onboarding__hide {
+  margin-top: 0.85rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  cursor: pointer;
+}

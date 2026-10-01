@@ -42,6 +42,20 @@ const es = {
   "signIn.session": "Tu sesión",
   "signIn.signOut": "Cerrar sesión",
   "signIn.close": "Cerrar",
+  "onboarding.greeting": "Hola, {name}",
+  "onboarding.lead": "Tres cosas para empezar con buen pie.",
+  "onboarding.installTitle": "Instala la app en tu teléfono",
+  "onboarding.installText": "Abre el menú del navegador y elige «Instalar» o «Añadir a la pantalla de inicio». Así la tienes a un toque.",
+  "onboarding.installDone": "Ya la tienes instalada.",
+  "onboarding.installButton": "Instalar",
+  "onboarding.pushTitle": "Activa los avisos",
+  "onboarding.pushText": "Te avisamos cuando alguien te menciona o te asigna algo, aunque la app esté cerrada.",
+  "onboarding.pushDone": "Listo: te avisaremos en este dispositivo.",
+  "onboarding.pushDenied": "Los avisos están bloqueados en este navegador. Puedes permitirlos en la configuración del sitio.",
+  "onboarding.tasksTitle": "Mira tus tareas",
+  "onboarding.tasksText": "Ahí verás lo que te toca. Si hoy no hay nada, te avisaremos cuando llegue algo.",
+  "onboarding.tasksButton": "Ir a Mis tareas",
+  "onboarding.hide": "Listo, ocultar esto",
 } as const;
 
 export type MessageKey = keyof typeof es;
@@ -86,6 +100,20 @@ const pt: Record<MessageKey, string> = {
   "signIn.session": "Sua sessão",
   "signIn.signOut": "Sair",
   "signIn.close": "Fechar",
+  "onboarding.greeting": "Olá, {name}",
+  "onboarding.lead": "Três coisas para começar bem.",
+  "onboarding.installTitle": "Instale o app no seu celular",
+  "onboarding.installText": "Abra o menu do navegador e escolha “Instalar” ou “Adicionar à tela inicial”. Assim ele fica a um toque.",
+  "onboarding.installDone": "Você já o instalou.",
+  "onboarding.installButton": "Instalar",
+  "onboarding.pushTitle": "Ative os avisos",
+  "onboarding.pushText": "Avisamos quando alguém mencionar você ou atribuir algo a você, mesmo com o app fechado.",
+  "onboarding.pushDone": "Pronto: avisaremos neste dispositivo.",
+  "onboarding.pushDenied": "Os avisos estão bloqueados neste navegador. Você pode permiti-los nas configurações do site.",
+  "onboarding.tasksTitle": "Veja suas tarefas",
+  "onboarding.tasksText": "Lá você verá o que cabe a você. Se hoje não houver nada, avisaremos quando chegar algo.",
+  "onboarding.tasksButton": "Ir para Minhas tarefas",
+  "onboarding.hide": "Pronto, ocultar isto",
 };
 
 const TABLE: Record<UiLanguage, Record<MessageKey, string>> = { es, pt };

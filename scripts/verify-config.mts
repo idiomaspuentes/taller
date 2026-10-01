@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
+import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
 import { contextWith, initialWorkspace, loadWorkspaceId, saveWorkspaceId, suggestedWorkspace } from "../src/workspace";
 
 let passed = 0;
@@ -94,6 +95,17 @@ test("cada texto de la interfaz existe en portugués y no queda ninguno vacío",
   }
   assert.equal(translate("pt", "nav.myTasks"), "Minhas tarefas");
   assert.equal(translate("es", "nav.myTasks"), "Mis tareas");
+});
+
+test("los primeros pasos se ocultan por persona y servidor en este dispositivo, y no vuelven", () => {
+  const store = memory();
+  const ana = onboardingKey("https://qa.door43.org/", "Ana");
+  assert.equal(ana, onboardingKey("https://qa.door43.org", "ana"), "sin barra final ni mayúsculas");
+  assert.equal(onboardingDone(ana, store), false);
+  markOnboardingDone(ana, store);
+  assert.equal(onboardingDone(ana, store), true);
+  assert.equal(onboardingDone(onboardingKey("https://qa.door43.org", "bea"), store), false, "otra persona los ve");
+  assert.equal(onboardingDone(onboardingKey("https://git.door43.org", "ana"), store), false, "otro servidor, otra vez");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);
