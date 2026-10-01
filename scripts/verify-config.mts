@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
-import { localizeHold, localizeName } from "../src/domain/templateNames";
+import { localizeHold, localizeName, localizeToday } from "../src/domain/templateNames";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
 import { contextWith, initialWorkspace, loadWorkspaceId, saveWorkspaceId, suggestedWorkspace } from "../src/workspace";
@@ -163,6 +163,27 @@ test("las razones de espera y de nivel se muestran en el idioma de la interfaz",
   assert.equal(localizeHold("Solo observas", "pt"), "Você só observa");
   assert.equal(localizeHold("Solo observas", "es"), "Solo observas", "en español no cambia");
   assert.equal(localizeHold("Algo que no se conoce", "pt"), "Algo que no se conoce");
+});
+
+test("las razones de «Equipo hoy» se muestran en el idioma de la interfaz", () => {
+  const cases: [string, string][] = [
+    ["Cerrada hoy", "Fechada hoje"],
+    ["Cerrada hace 3 días", "Fechada há 3 dias"],
+    ["Se decide antes de mañana", "Decide-se antes de amanhã"],
+    ["Se decide antes de 2 días", "Decide-se antes de 2 dias"],
+    ["El plazo vence hoy", "O prazo vence hoje"],
+    ["El plazo venció hace 1 día: decide quien coordina", "O prazo venceu há 1 dia: decide quem coordena"],
+    ["Nadie la ha tomado en 4 días", "Ninguém pegou há 4 dias"],
+    ["Libre para el equipo", "Livre para a equipe"],
+    ["Sin movimiento hace 6 días", "Sem movimento há 6 dias"],
+    ["Último movimiento hoy", "Último movimento hoje"],
+    ["Espera a «Traducir TPL» de @ana", "Aguarda «Traduzir TPL» de @ana"],
+  ];
+  for (const [es, pt] of cases) {
+    assert.equal(localizeToday(es, "pt"), pt);
+    assert.equal(localizeToday(es, "es"), es, "en español no cambia");
+  }
+  assert.equal(localizeToday("Algo que no se conoce", "pt"), "Algo que no se conoce");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

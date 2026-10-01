@@ -6,6 +6,9 @@ import { remindDecisionVoters } from "../dcs/alignmentDecisionStore";
 import { loadTeamToday, type TodayProject } from "../dcs/teamToday";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
 import { useDecisionReminders } from "../useDecisionReminders";
+import { useT, type MessageKey } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { localizeName, localizeToday } from "../domain/templateNames";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { PersonLevel } from "../domain/levels";
 import { Button } from "@/components/ui/button";
@@ -19,13 +22,13 @@ type Props = {
   onOpenThread: (issue: number) => void;
 };
 
-const GROUPS: { id: TodayGroup; title: string; empty: string }[] = [
-  { id: "decisions", title: "Decisiones del equipo", empty: "No hay decisiones abiertas." },
-  { id: "stuck", title: "Atascadas", empty: "Nada atascado." },
-  { id: "waiting", title: "Esperando", empty: "Ninguna tarea espera a otra." },
-  { id: "running", title: "En marcha", empty: "Nadie está trabajando ahora." },
-  { id: "free", title: "Libres para el equipo", empty: "No hay tareas libres." },
-  { id: "done", title: "Terminadas esta semana", empty: "Aún no se ha cerrado nada esta semana." },
+const GROUPS: { id: TodayGroup; title: MessageKey; empty: MessageKey }[] = [
+  { id: "decisions", title: "td.gDecisions", empty: "td.eDecisions" },
+  { id: "stuck", title: "td.gStuck", empty: "td.eStuck" },
+  { id: "waiting", title: "td.gWaiting", empty: "td.eWaiting" },
+  { id: "running", title: "td.gRunning", empty: "td.eRunning" },
+  { id: "free", title: "td.gFree", empty: "td.eFree" },
+  { id: "done", title: "td.gDone", empty: "td.eDone" },
 ];
 
 function shortTitle(row: TodayRow): string {
@@ -37,6 +40,8 @@ function shortTitle(row: TodayRow): string {
  * each row with what can be done about it from the same place.
  */
 export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOpenThread }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
   const [projects, setProjects] = useState<TodayProject[]>([]);
   useDecisionReminders(session, pmOrg, projects);
   const [busy, setBusy] = useState(false);
@@ -88,9 +93,9 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   async function remind(row: TodayRow) {
     if (!row.assignee) return;
     try {
-      await commentOnIssue(session, pmOrg, row.issue.number, `@${row.assignee} ¿Cómo va esta tarea? Si necesitas ayuda, escríbelo aquí.`);
+      await commentOnIssue(session, pmOrg, row.issue.number, t("td.pingText").replace("{who}", row.assignee));
       setReminded((prev) => new Set(prev).add(row.issue.number));
-      announce(`Le recordaste a @${row.assignee}`);
+      announce(t("td.didRemind").replace("{who}", row.assignee));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -100,7 +105,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
     try {
       const who = await remindDecisionVoters({ session, pmOrg, issue: row.issue.number, team: row.candidates });
       setReminded((prev) => new Set(prev).add(row.issue.number));
-      announce(who.length ? `Le recordaste a ${who.map((w) => `@${w}`).join(", ")}` : "Ya votaron todas las personas habilitadas");
+      announce(who.length ? t("td.didRemindMany").replace("{who}", who.map((w) => `@${w}`).join(", ")) : t("td.allVoted"));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -112,7 +117,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
     setError("");
     try {
       await reassignIssue(session, pmOrg, row.issue, pick, row.taskName || shortTitle(row));
-      announce(`Asignaste la tarea a @${pick}`);
+      announce(t("td.didAssign").replace("{who}", pick));
       setAssigning(null);
       setPick("");
       await reload();
@@ -128,11 +133,11 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">Equipo hoy</h1>
-          <p className="hub-lede">Cómo va el trabajo y qué necesita tu atención.</p>
+          <h1 className="hub-title">{t("td.title")}</h1>
+          <p className="hub-lede">{t("td.lede")}</p>
         </div>
         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reload()}>
-          {busy ? "Actualizando…" : "Actualizar"}
+          {busy ? t("td.refreshing") : t("td.refresh")}
         </Button>
       </div>
 
@@ -141,23 +146,23 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {!pmOrg ? <p className="hub-hint">Elige la organización del equipo para ver el trabajo.</p> : null}
-      {busy && !loaded ? <p className="hub-hint">Cargando el trabajo del equipo…</p> : null}
+      {!pmOrg ? <p className="hub-hint">{t("td.pickOrg")}</p> : null}
+      {busy && !loaded ? <p className="hub-hint">{t("td.loading")}</p> : null}
 
       {loaded && !projects.length && !error ? (
         <div className="hub-empty-panel">
-          <span className="hub-empty-panel__kicker">Equipo hoy</span>
-          <h2 className="hub-empty-panel__title">Aún no hay trabajo repartido</h2>
-          <p className="hub-empty-panel__body">Cuando repartas las subtareas de un proyecto, aquí verás cómo avanzan.</p>
+          <span className="hub-empty-panel__kicker">{t("td.title")}</span>
+          <h2 className="hub-empty-panel__title">{t("td.emptyTitle")}</h2>
+          <p className="hub-empty-panel__body">{t("td.emptyBody")}</p>
         </div>
       ) : null}
 
       {loaded && projects.length ? (
-        <div className="today-summary" role="list" aria-label="Resumen">
+        <div className="today-summary" role="list" aria-label={t("td.summary")}>
           {GROUPS.map((group) => (
             <div key={group.id} role="listitem" className="today-summary__item" data-group={group.id}>
               <span className="today-summary__count">{rows[group.id].length}</span>
-              <span className="today-summary__label">{group.title}</span>
+              <span className="today-summary__label">{t(group.title)}</span>
             </div>
           ))}
         </div>
@@ -182,7 +187,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                     })
                   }
                 >
-                  <span className="today-group__title">{group.title}</span>
+                  <span className="today-group__title">{t(group.title)}</span>
                   <span className="today-group__count">{list.length}</span>
                 </button>
                 {isOpen ? (
@@ -192,29 +197,29 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                         <li key={row.issue.number} className="today-row">
                           <div className="today-row__main">
                             <button type="button" className="today-row__title" onClick={() => onOpenThread(row.issue.number)}>
-                              {shortTitle(row)}
+                              {localizeName(shortTitle(row), language)}
                               <ChevronRight aria-hidden />
                             </button>
                             <p className="today-row__meta">
-                              {[multiProject ? row.project : "", row.phaseName, row.assignee ? `@${row.assignee}` : "Sin persona"]
+                              {[multiProject ? row.project : "", localizeName(row.phaseName, language), row.assignee ? `@${row.assignee}` : t("td.noPerson")]
                                 .filter(Boolean)
                                 .join(" · ")}
                             </p>
-                            <p className="today-row__reason">{row.reason}</p>
+                            <p className="today-row__reason">{localizeToday(row.reason, language)}</p>
                           </div>
                           {row.group === "decisions" ? (
                             <Button type="button" size="sm" variant="outline" disabled={reminded.has(row.issue.number)} onClick={() => void remindVoters(row)}>
-                              {reminded.has(row.issue.number) ? "Recordado" : "Recordar a quien falta"}
+                              {reminded.has(row.issue.number) ? t("td.reminded") : t("td.remindVoters")}
                             </Button>
                           ) : null}
                           {session.canManage && row.group !== "done" && row.group !== "waiting" && row.group !== "decisions" && row.candidates.length ? (
                             assigning === row.issue.number ? (
                               <div className="today-assign">
                                 <label className="sr-only" htmlFor={`assign-${row.issue.number}`}>
-                                  Persona
+                                  {t("td.person")}
                                 </label>
                                 <select id={`assign-${row.issue.number}`} value={pick} onChange={(e) => setPick(e.target.value)}>
-                                  <option value="">Elegir persona…</option>
+                                  <option value="">{t("td.choosePerson")}</option>
                                   {row.candidates.map((login) => (
                                     <option key={login} value={login}>
                                       @{login}
@@ -222,10 +227,10 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                                   ))}
                                 </select>
                                 <Button type="button" size="sm" disabled={!pick || busy} onClick={() => void assign(row)}>
-                                  Asignar
+                                  {t("td.assign")}
                                 </Button>
                                 <Button type="button" size="sm" variant="ghost" onClick={() => setAssigning(null)}>
-                                  Cancelar
+                                  {t("td.cancel")}
                                 </Button>
                               </div>
                             ) : (
@@ -238,7 +243,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                                   setPick("");
                                 }}
                               >
-                                {row.assignee ? "Pasar a otra persona" : "Asignar"}
+                                {row.assignee ? t("td.reassign") : t("td.assign")}
                               </Button>
                             )
                           ) : null}
@@ -250,14 +255,14 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                               disabled={reminded.has(row.issue.number)}
                               onClick={() => void remind(row)}
                             >
-                              {reminded.has(row.issue.number) ? "Recordado" : "Recordar"}
+                              {reminded.has(row.issue.number) ? t("td.reminded") : t("td.remind")}
                             </Button>
                           ) : null}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="today-group__empty">{group.empty}</p>
+                    <p className="today-group__empty">{t(group.empty)}</p>
                   )
                 ) : null}
               </section>

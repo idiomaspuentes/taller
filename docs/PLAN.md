@@ -19,7 +19,7 @@ La app del equipo FCR de Idiomas Puentes para el trabajo de traducción: lo que 
 - **Avisos push** (Cloudflare Workers gratis): menciones, asignaciones y solicitudes de cambios; se agrupan y se cierran al verlos en la app.
 - **Primera pantalla** de bienvenida y tarjeta de primeros pasos; estados vacíos que distinguen «sin tareas todavía» de «al día».
 - **Configuración en un archivo** y **espacios de trabajo**: varios equipos (por idioma o no) en la misma organización o en organizaciones distintas, sin mezclarse (`scope`).
-- **Español y portugués**: bienvenida, inicio de sesión, menús, Ahora, Mis tareas, Avisos (incluidos mensajes y nombres de las plantillas de flujo).
+- **Español y portugués**: bienvenida, inicio de sesión, menús, Ahora, Mis tareas, Equipo hoy, Avisos (incluidos mensajes y nombres de las plantillas de flujo).
 - Puentes: diseño visual, PWA instalable, acceso por LAN para probar en el teléfono, mock de Door43 para pruebas con varias personas.
 
 **Probado de verdad:** lo de la alineación y las decisiones con tres usuarios en el mock; los avisos push de punta a punta con un teléfono real; la bienvenida, los primeros pasos y las pantallas en portugués en el navegador (móvil y escritorio).
@@ -53,7 +53,7 @@ cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller
 ## Qué sigue (por prioridad)
 
 ### 1. Terminar la experiencia en portugués
-1. **Equipo hoy**, gestión de equipos, proyectos, organización: textos y nombres de las plantillas.
+1. ~~**Equipo hoy**~~ (hecho: textos, razones de cada fila y recordatorios; probado en el mock en móvil y escritorio, pero el mock no trae trabajo repartido, así que las filas solo están probadas con `verify:config`). Falta: gestión de equipos, proyectos, organización, plantillas y el encabezado («Portugués · pt-br_gl», «Vista de rol»): textos y nombres de las plantillas.
 2. Editor, conversación y decisiones de alineación.
 3. **Nombres de los libros** en portugués.
 4. Que una persona del equipo brasileño **revise** las traducciones (`src/i18n/messages.ts`, `src/domain/templateNames.ts`, `taller.config.ts`).
