@@ -12,7 +12,26 @@ export type AppNavLink = {
   onSelect: () => void;
   /** Listed in the phone menu only: on a wide screen it has its own button elsewhere. */
   menuOnly?: boolean;
+  /** Links that share a group name sit under one dropdown button on wide screens (the phone menu lists them all). */
+  group?: string;
 };
+
+type NavEntry = { kind: "link"; link: AppNavLink } | { kind: "group"; name: string; links: AppNavLink[] };
+
+/** The inline bar: ungrouped links as they are, each group once, at the place of its first link. */
+export function navEntries(links: AppNavLink[]): NavEntry[] {
+  const entries: NavEntry[] = [];
+  for (const link of links.filter((l) => !l.menuOnly)) {
+    if (!link.group) {
+      entries.push({ kind: "link", link });
+      continue;
+    }
+    const existing = entries.find((e): e is Extract<NavEntry, { kind: "group" }> => e.kind === "group" && e.name === link.group);
+    if (existing) existing.links.push(link);
+    else entries.push({ kind: "group", name: link.group, links: [link] });
+  }
+  return entries;
+}
 
 type Props = {
   links: AppNavLink[];
@@ -55,6 +74,7 @@ export function AppNav({
 }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState<string | null>(null);
   const rootRef = useRef<HTMLElement>(null);
   const panelId = useId();
   const previewing = canManage && viewMode === "trabajador";
@@ -76,9 +96,26 @@ export function AppNav({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!groupOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setGroupOpen(null);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setGroupOpen(null);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [groupOpen]);
+
   function selectLink(link: AppNavLink) {
     link.onSelect();
     setOpen(false);
+    setGroupOpen(null);
   }
 
   function changeMode(mode: ViewMode) {
@@ -94,20 +131,51 @@ export function AppNav({
   return (
     <nav className="app-nav" aria-label={t("nav.main")} ref={rootRef}>
       <div className="app-nav__links">
-        {links.filter((link) => !link.menuOnly).map((link) => (
-          <button
-            key={link.id}
-            type="button"
-            className="app-nav-btn"
-            data-active={link.active ? "true" : "false"}
-            aria-label={linkAriaLabel(link)}
-            title={link.id === attentionLinkId && count > 0 ? attentionLabel(count, t) : undefined}
-            onClick={() => selectLink(link)}
-          >
-            {link.label}
-            {link.id === attentionLinkId ? <AttentionBadge count={count} /> : null}
-          </button>
-        ))}
+        {navEntries(links).map((entry) =>
+          entry.kind === "link" ? (
+            <button
+              key={entry.link.id}
+              type="button"
+              className="app-nav-btn"
+              data-active={entry.link.active ? "true" : "false"}
+              aria-label={linkAriaLabel(entry.link)}
+              title={entry.link.id === attentionLinkId && count > 0 ? attentionLabel(count, t) : undefined}
+              onClick={() => selectLink(entry.link)}
+            >
+              {entry.link.label}
+              {entry.link.id === attentionLinkId ? <AttentionBadge count={count} /> : null}
+            </button>
+          ) : (
+            <div key={`group:${entry.name}`} className="app-nav__group">
+              <button
+                type="button"
+                className="app-nav-btn"
+                data-active={entry.links.some((l) => l.active) ? "true" : "false"}
+                aria-expanded={groupOpen === entry.name}
+                aria-haspopup="true"
+                onClick={() => setGroupOpen((current) => (current === entry.name ? null : entry.name))}
+              >
+                {entry.name}
+                <ChevronDown className="app-nav__chevron" aria-hidden />
+              </button>
+              {groupOpen === entry.name ? (
+                <div className="app-nav__dropdown">
+                  {entry.links.map((link) => (
+                    <button
+                      key={link.id}
+                      type="button"
+                      className="app-nav__panel-link"
+                      data-active={link.active ? "true" : "false"}
+                      onClick={() => selectLink(link)}
+                    >
+                      {link.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ),
+        )}
       </div>
 
       <button

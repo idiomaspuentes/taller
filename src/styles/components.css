@@ -6457,3 +6457,25 @@ button.al-box--read { cursor: pointer; }
     place-items: center;
   }
 }
+
+/* A group of links under one button («Gestión»): the dropdown opens below it. */
+.app-nav__group {
+  position: relative;
+}
+.app-nav__group .app-nav-btn {
+  gap: 0.25rem;
+}
+.app-nav__dropdown {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 40;
+  display: grid;
+  gap: 0.125rem;
+  min-width: 11rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}

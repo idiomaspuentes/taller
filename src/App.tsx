@@ -1093,6 +1093,7 @@ export function App() {
                       label: t("nav.projects"),
                       active: route.name === "proyectos" || route.name === "proyecto",
                       onSelect: () => navigate({ name: "proyectos" }),
+                      group: t("nav.manage"),
                     },
                   ]
                 : []),
@@ -1108,6 +1109,8 @@ export function App() {
                 label: t("nav.organization"),
                 active: route.name === "organizacion",
                 onSelect: () => navigate({ name: "organizacion" }),
+                // For people who coordinate it joins Proyectos and Plantillas under «Gestión»; for the rest it stays alone.
+                ...(effectiveCanManage ? { group: t("nav.manage") } : {}),
               },
               ...(effectiveCanManage
                 ? [
@@ -1116,6 +1119,7 @@ export function App() {
                       label: t("nav.templates"),
                       active: route.name === "plantillas",
                       onSelect: () => navigate({ name: "plantillas" }),
+                      group: t("nav.manage"),
                     },
                   ]
                 : []),

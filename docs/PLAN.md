@@ -63,7 +63,7 @@ Orden acordado para lo que sigue; Abel prueba la app y va diciendo qué cambiar,
 **Entorno de pruebas local:** `npm run mock:door43` (con `MOCK_PM_ORG=es-419_gl`) y `npm run dev:lan`; entrar con `?mockUser=ana|bea|carla` (ver [scripts/mock-door43/README.md](../scripts/mock-door43/README.md)). Para QA real, abrir la app publicada con `?server=qa`.
 
 **Cambios pedidos tras probar** *(se añaden aquí a medida que lleguen)*:
-- (ninguno todavía)
+- **Menú de quien coordina** (2 de octubre): demasiados elementos. Proyectos, Organización y Plantillas pasan a un desplegable «Gestión»; queda Ahora · Mis tareas · Avisos · Equipo hoy · Gestión. En el teléfono el menú sigue plano. El Laboratorio solo existe en desarrollo.
 
 ## Qué sigue (por prioridad)
 

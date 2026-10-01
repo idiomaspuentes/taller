@@ -1324,5 +1324,6 @@
   "signIn.useUserPass": "Entrar con usuario y contraseña",
   "signIn.forgot": "¿Olvidaste tu contraseña?",
   "signIn.createAccount": "Crear una cuenta",
-  "signIn.trust": "Solo pedimos los permisos necesarios para leer y guardar tus tareas, y tu contraseña no se guarda."
+  "signIn.trust": "Solo pedimos los permisos necesarios para leer y guardar tus tareas, y tu contraseña no se guarda.",
+  "nav.manage": "Gestión"
 }

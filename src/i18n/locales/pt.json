@@ -1324,5 +1324,6 @@
   "signIn.useUserPass": "Entrar com usuário e senha",
   "signIn.forgot": "Esqueceu sua senha?",
   "signIn.createAccount": "Criar uma conta",
-  "signIn.trust": "Pedimos só as permissões necessárias para ler e guardar suas tarefas, e sua senha não é guardada."
+  "signIn.trust": "Pedimos só as permissões necessárias para ler e guardar suas tarefas, e sua senha não é guardada.",
+  "nav.manage": "Gestão"
 }
