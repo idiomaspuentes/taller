@@ -90,25 +90,30 @@ fuente en inglés. Los recursos de apoyo se escriben sin mirar el TPL ni el TPS 
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
-| 2 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Editor de ayudas | Otra persona lo aprueba, y el autor confirma |
+| 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura: introducción al libro, introducción al capítulo y el capítulo completo | Lo marca quien lo hace |
+| 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
+| 3 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Editor de ayudas | Otra persona lo aprueba, y el autor confirma |
 
-**(Por confirmar:** si Notas y Preguntas también llevan familiarización, y si alguna ayuda lleva
-revisión grupal.)
+**Qué se lee al familiarizarse y por qué:**
+- La **introducción al libro** y la **introducción al capítulo** donde está la nota: dan el contexto
+  de la porción del texto (TPL / ULT) a la que la nota se refiere.
+- El **capítulo completo**: para saber quién habla, a quién y de qué en el pasaje de la nota.
+
+La familiarización es **por capítulo**: quien ya la hizo para un capítulo no la repite en las demás
+porciones de ese capítulo, y la introducción al libro se lee una sola vez **(por confirmar)**.
+
+**(Por confirmar:** si alguna ayuda lleva también revisión grupal.)
 
 ### 3.5 Traducir Palabras · 3.6 Traducir Academia
 
 El ítem es el **artículo**, y solo se traducen los que todavía no están publicados en español. Un
-artículo sirve a muchas porciones y libros: se traduce una sola vez.
+artículo sirve a muchas porciones y libros: se traduce una sola vez. **No llevan familiarización**:
+el artículo no depende de un pasaje.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura del capítulo (TranslationCore Study) | Lo marca quien lo hace |
-| 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
-| 3 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Editor de ayudas | Otra persona lo aprueba, y el autor confirma |
-
-**(Por confirmar:** que la familiarización vale para Palabras **y** para Academia, y qué se lee en
-ella: el capítulo, o los pasajes donde aparece el término.)
+| 1 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
+| 2 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Editor de ayudas | Otra persona lo aprueba, y el autor confirma |
 
 ---
 
@@ -294,7 +299,7 @@ lo demás ya está en las cuatro reglas de cierre.
 ## 10. Pendientes para cerrar la plantilla
 
 1. Acompañamiento del **Aprendiz**: cómo se registra.
-2. Ayudas en Traducción: Palabras (y Academia) llevan familiarización. ¿Notas y Preguntas también? ¿Alguna lleva revisión grupal?
+2. Ayudas en Traducción: ¿alguna lleva revisión grupal? ¿La familiarización se hace una vez por capítulo?
 3. Palabras clave en Afinación: ¿por porción o por capítulo?
 4. «Dominio del idioma bíblico»: ¿se registra por persona?
 5. Armonización: ¿espera al TPL **y** al TPS?
