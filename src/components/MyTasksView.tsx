@@ -5,6 +5,8 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import { levelOf, type PersonLevel } from "../domain/levels";
 import { loadPmConfig } from "../dcs/issues";
+import { listMentions, markMentionRead, type MentionRow } from "../dcs/mentions";
+import { PM_REPO_NAME } from "../domain/types";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import {
@@ -284,6 +286,18 @@ export function MyTasksView({
   useDecisionReminders(session, pmOrg, projects);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Door43 notifications (mentions, replies): shown even for issues the plan does not know.
+  const [mentions, setMentions] = useState<MentionRow[]>([]);
+  useEffect(() => {
+    if (mode !== "avisos" || !pmOrg || !session?.token) return;
+    let live = true;
+    void listMentions(session, pmOrg, PM_REPO_NAME)
+      .then((rows) => live && setMentions(rows))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [mode, pmOrg, session?.token]);
   const [error, setError] = useState("");
   const [acting, setActing] = useState<number | null>(null);
   const [conflictIssues, setConflictIssues] = useState<DcsIssue[]>([]);
@@ -1190,6 +1204,35 @@ export function MyTasksView({
         </a>
       ) : null}
 
+      {pmOrg && mode === "avisos" && mentions.length ? (
+        <section className="hub-attention" aria-labelledby="hub-mentions-title">
+          <div className="hub-attention__head">
+            <h2 id="hub-mentions-title" className="hub-attention__title">
+              Menciones y respuestas
+            </h2>
+            <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">{mentions.length}</span>
+          </div>
+          <div className="grid gap-2 p-3">
+            {mentions.map((row) => (
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 font-semibold">{row.title}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    void markMentionRead(session, row.id);
+                    setMentions((rows) => rows.filter((r) => r.id !== row.id));
+                    onOpenThread(row.issue);
+                  }}
+                >
+                  Abrir
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {pmOrg && mode === "avisos" && freeNew.length ? (
         <section className="hub-attention" aria-labelledby="hub-free-title">
           <div className="hub-attention__head">
@@ -1224,7 +1267,7 @@ export function MyTasksView({
         </section>
       ) : null}
 
-      {pmOrg && loaded && !busy && mode === "avisos" && !attentionRows.length && !freeNew.length ? (
+      {pmOrg && loaded && !busy && mode === "avisos" && !attentionRows.length && !freeNew.length && !mentions.length ? (
         <div className="hub-empty-panel">
           <span className="hub-empty-panel__kicker">Avisos</span>
           <h2 className="hub-empty-panel__title">No hay avisos nuevos</h2>
