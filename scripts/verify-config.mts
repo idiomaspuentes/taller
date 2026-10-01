@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type TallerConfig } from "../src/config";
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
-import { localizeName } from "../src/domain/templateNames";
+import { localizeHold, localizeName } from "../src/domain/templateNames";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
 import { contextWith, initialWorkspace, loadWorkspaceId, saveWorkspaceId, suggestedWorkspace } from "../src/workspace";
@@ -153,6 +153,16 @@ test("los nombres de fábrica de las plantillas se traducen al mostrarlos y lo e
   assert.equal(localizeName("Sin asignar", "pt"), "Sem atribuição");
   assert.equal(localizeName("Mi paso propio", "pt"), "Mi paso propio", "un nombre editado se deja como está");
   assert.equal(localizeName("", "pt"), "");
+});
+
+test("las razones de espera y de nivel se muestran en el idioma de la interfaz", () => {
+  assert.equal(localizeHold("Espera a «Traducir TPL» de @ana y 2 más", "pt"), "Aguarda «Traduzir TPL» de @ana e mais 2");
+  assert.equal(localizeHold("Espera a «Afinar TPL»", "pt"), "Aguarda «Afinar TPL»");
+  assert.equal(localizeHold("Pide nivel persona habilitada", "pt"), "Exige nível pessoa habilitada");
+  assert.equal(localizeHold("Pide nivel oyente", "pt"), "Exige nível ouvinte");
+  assert.equal(localizeHold("Solo observas", "pt"), "Você só observa");
+  assert.equal(localizeHold("Solo observas", "es"), "Solo observas", "en español no cambia");
+  assert.equal(localizeHold("Algo que no se conoce", "pt"), "Algo que no se conoce");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

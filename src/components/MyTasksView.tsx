@@ -8,7 +8,7 @@ import { loadPmConfig } from "../dcs/issues";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
-import { localizeName } from "../domain/templateNames";
+import { localizeHold, localizeName } from "../domain/templateNames";
 import { appName } from "../brand";
 import type { MentionRow } from "../dcs/mentions";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -533,7 +533,7 @@ export function MyTasksView({
     setActing(issue.number);
     try {
       await markIssueInProgress(session, pmOrg, issue);
-      announce(`#${issue.number} en curso`);
+      announce(t("mt.nowInProgress").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -554,7 +554,7 @@ export function MyTasksView({
         : undefined) ||
       resolveSolverForIssue(solversCatalog, board, issue);
     if (!app) {
-      setError("Esta subtarea no tiene herramienta de resolución.");
+      setError(t("mt.noTool"));
       return;
     }
     const ctx = buildSolverLaunchContext({
@@ -568,7 +568,7 @@ export function MyTasksView({
       stepName: opts?.step?.name,
     });
     if (!ctx) {
-      setError("No se pudo armar el contexto para la herramienta.");
+      setError(t("mt.noContext"));
       return;
     }
     onMarkSeen?.(issue.number);
@@ -578,8 +578,8 @@ export function MyTasksView({
       openSolverApp(app, ctx);
       announce(
         opts?.step
-          ? `Abriendo «${app.name}» · ${opts.step.name} (#${issue.number})`
-          : `Abriendo «${app.name}» para #${issue.number}`,
+          ? t("mt.openingStep").replace("{app}", app.name).replace("{step}", localizeName(opts.step.name, language)).replace("{n}", String(issue.number))
+          : t("mt.openingFor").replace("{app}", app.name).replace("{n}", String(issue.number)),
       );
       if (!issueIsInProgress(issue)) {
         await markIssueInProgress(session, pmOrg, issue);
@@ -606,11 +606,11 @@ export function MyTasksView({
         issue,
       });
       if (result.created) {
-        announce(`Revisión abierta para #${issue.number}`);
+        announce(t("mt.reviewOpened").replace("{n}", String(issue.number)));
       }
     } catch (err) {
       announce(
-        `El paso se guardó, pero no se pudo abrir la revisión: ${err instanceof Error ? err.message : String(err)}`,
+        t("mt.reviewFailed").replace("{err}", err instanceof Error ? err.message : String(err)),
       );
     }
   }
@@ -626,7 +626,7 @@ export function MyTasksView({
     const step = steps.find((s) => s.id === stepId);
     if (!step) return;
     if (stepClaimMode(step) !== "none") {
-      setError("Este paso se completa con Tomar / Aprobar, no con la casilla.");
+      setError(t("mt.useTakeApprove"));
       return;
     }
     const current = parseTaskProgressMarker(issue.body);
@@ -655,8 +655,8 @@ export function MyTasksView({
       }
       announce(
         next.doneStepIds.includes(stepId)
-          ? `Paso marcado en #${issue.number}`
-          : `Paso desmarcado en #${issue.number}`,
+          ? t("mt.stepMarked").replace("{n}", String(issue.number))
+          : t("mt.stepUnmarked").replace("{n}", String(issue.number)),
       );
       await reload();
     } catch (err) {
@@ -682,7 +682,7 @@ export function MyTasksView({
         issueAssignee,
       )
     ) {
-      setError("No puedes tomar este paso ahora.");
+      setError(t("mt.cannotTakeStep"));
       return;
     }
     const next = claimStep(current, step, session.username);
@@ -697,7 +697,7 @@ export function MyTasksView({
       if (board && stepNeedsOpenPortionPr(step)) {
         await tryEnsurePortionPr(updated, board);
       }
-      announce(`Tomaste «${step.name}» en #${issue.number}`);
+      announce(t("mt.tookStep").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -712,7 +712,7 @@ export function MyTasksView({
     const issueAssignee =
       issue.assignee?.login || issue.assignees?.[0]?.login || undefined;
     if (!canApproveStep(session.username, current, step, issueAssignee)) {
-      setError("No puedes aprobar este paso ahora.");
+      setError(t("mt.cannotApproveStep"));
       return;
     }
     const next = approveStep(current, step, session.username, issueAssignee);
@@ -729,8 +729,8 @@ export function MyTasksView({
       await setIssueTaskProgress(session, pmOrg, issue, next);
       announce(
         next.doneStepIds.includes(step.id)
-          ? `«${step.name}» completado en #${issue.number}`
-          : `Aprobaste «${step.name}» en #${issue.number}`,
+          ? t("mt.stepCompleted").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number))
+          : t("mt.stepApproved").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)),
       );
       await reload();
     } catch (err) {
@@ -817,20 +817,20 @@ export function MyTasksView({
           recordOwnAction(own, issue.number, { ...item, reconcileKey: item.key, key: `local:${item.key}` });
         }
         conflictNote = posted.unknownOther.length
-          ? ` · no se supo quién más escribió ${posted.unknownOther.join(", ")}`
+          ? t("mt.unknownOther").replace("{who}", posted.unknownOther.join(", "))
           : "";
       }
       if (publishError) {
-        setError(`#${issue.number} se cerró, pero no se pudo dejar el conflicto en la conversación: ${publishError}`);
+        setError(t("mt.closedNoConflict").replace("{n}", String(issue.number)).replace("{err}", publishError));
       }
       announce(
         merge.status === "verses"
           ? conflictCount
-            ? `#${issue.number} cerrado · versículos guardados en el borrador grupal · ${conflictCount} conflicto(s): decídelo en la conversación${conflictNote}`
-            : `#${issue.number} cerrado · versículos guardados en el borrador grupal`
+            ? t("mt.closedVersesConflict").replace("{n}", String(issue.number)).replace("{c}", String(conflictCount)).replace("{note}", conflictNote)
+            : t("mt.closedVerses").replace("{n}", String(issue.number))
           : merge.status === "merged"
-            ? `#${issue.number} cerrado · guardado en el borrador grupal`
-            : `#${issue.number} cerrado`,
+            ? t("mt.closedMerged").replace("{n}", String(issue.number))
+            : t("mt.closedPlain").replace("{n}", String(issue.number)),
       );
       await reload();
     } catch (err) {
@@ -842,13 +842,13 @@ export function MyTasksView({
 
   async function take(issue: DcsIssue, board: MyTasksProjectBucket["board"]) {
     if (!canClaimIssue(session, pmOrg, issue, board, myLevel)) {
-      setError("No puedes tomar esta subtarea.");
+      setError(t("mt.cannotTake"));
       return;
     }
     setActing(issue.number);
     try {
       await claimIssue(session, pmOrg, issue.number);
-      announce(`Tomaste #${issue.number}`);
+      announce(t("mt.tookIssue").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -859,13 +859,13 @@ export function MyTasksView({
 
   async function liberar(issue: DcsIssue, browseProject: boolean) {
     if (!canUnassignIssue(session, issue, browseProject)) {
-      setError("No puedes liberar la asignación de otro.");
+      setError(t("mt.cannotRelease"));
       return;
     }
     setActing(issue.number);
     try {
       await unclaimIssue(session, pmOrg, issue.number);
-      announce(`Liberada #${issue.number}`);
+      announce(t("mt.released").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -884,7 +884,7 @@ export function MyTasksView({
     }
     return undefined;
   }
-  const waitingText = (issue: DcsIssue, bucket: MyTasksProjectBucket): string => holdFor(issue, bucket)?.text ?? "";
+  const waitingText = (issue: DcsIssue, bucket: MyTasksProjectBucket): string => localizeHold(holdFor(issue, bucket)?.text ?? "", language);
 
   function renderQueueRow(issue: DcsIssue, bucket: MyTasksProjectBucket, featured = false) {
     return (
@@ -971,13 +971,13 @@ export function MyTasksView({
     }
     if (isIssueUnassigned(issue)) {
       if (!canClaimIssue(session, pmOrg, issue, board, myLevel)) {
-        setError("No puedes tomar esta subtarea.");
+        setError(t("mt.cannotTake"));
         return;
       }
       setActing(issue.number);
       try {
         await claimIssue(session, pmOrg, issue.number);
-        announce(`Tomaste #${issue.number}`);
+        announce(t("mt.tookIssue").replace("{n}", String(issue.number)));
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
         setActing(null);

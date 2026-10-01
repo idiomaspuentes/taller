@@ -45,3 +45,27 @@ export function localizeName(text: string, language: UiLanguage): string {
   for (const [es, pt] of ORDERED) if (out.includes(es)) out = out.split(es).join(pt);
   return out;
 }
+
+const LEVELS_PT: Record<string, string> = {
+  oyente: "ouvinte",
+  aprendiz: "aprendiz",
+  practicante: "praticante",
+  "persona habilitada": "pessoa habilitada",
+};
+
+/**
+ * The reason a subtarea cannot start yet (built in Spanish by the domain): shown in the interface language.
+ * Anything that does not match a known sentence is returned as it is.
+ */
+export function localizeHold(text: string, language: UiLanguage): string {
+  if (language !== "pt" || !text) return text;
+  const wait = /^Espera a «(.*?)»(?: de (@\S+))?(?: y (\d+) más)?$/.exec(text);
+  if (wait) {
+    const [, name, owner, more] = wait;
+    return `Aguarda «${localizeName(name ?? "", language)}»${owner ? ` de ${owner}` : ""}${more ? ` e mais ${more}` : ""}`;
+  }
+  const level = /^Pide nivel (.+)$/.exec(text);
+  if (level) return `Exige nível ${LEVELS_PT[level[1]!] ?? level[1]}`;
+  if (text === "Solo observas") return "Você só observa";
+  return localizeName(text, language);
+}
