@@ -4,6 +4,7 @@ import { tallerConfig, configProblems, workspaceById, workspaceOfOrg, type Talle
 import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
 import { localizeHold, localizeName, localizeToday } from "../src/domain/templateNames";
+import { BOOKS, bookLabel, bookName } from "../src/domain/books";
 import { hadWork, hadWorkKey, markHadWork } from "../src/hadWork";
 import { markOnboardingDone, onboardingDone, onboardingKey } from "../src/onboarding";
 import { contextWith, initialWorkspace, loadWorkspaceId, saveWorkspaceId, suggestedWorkspace } from "../src/workspace";
@@ -184,6 +185,18 @@ test("las razones de «Equipo hoy» se muestran en el idioma de la interfaz", ()
     assert.equal(localizeToday(es, "es"), es, "en español no cambia");
   }
   assert.equal(localizeToday("Algo que no se conoce", "pt"), "Algo que no se conoce");
+});
+
+test("los 66 libros tienen nombre en portugués y el guardado sigue en español", () => {
+  for (const b of BOOKS) {
+    assert.notEqual(bookLabel(b.code, "pt"), "", b.code);
+    assert.ok(/[a-zA-Z]/.test(bookLabel(b.code, "pt")), b.code);
+  }
+  assert.equal(BOOKS.length, 66);
+  assert.equal(bookLabel("JHN", "pt"), "João");
+  assert.equal(bookLabel("JHN", "es"), "Juan");
+  assert.equal(bookName("JHN"), "Juan", "lo que se escribe en Door43 no cambia con la interfaz");
+  assert.equal(bookLabel("pentateuco-r1", "pt"), "pentateuco-r1", "un proyecto temático conserva su identificador");
 });
 
 console.log(`\nverify-config: ${passed} checks passed.`);

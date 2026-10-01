@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { BOOKS, bookName, isBookProjectId, normalizeProjectId } from "../domain/books";
+import { BOOKS, bookLabel, bookName, isBookProjectId, normalizeProjectId } from "../domain/books";
+import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
 import { languageDisplayName, type LanguageOption } from "../domain/languages";
 import type { ProjectIndexEntry, ProjectKind } from "../domain/types";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +54,8 @@ export function ProjectsView({
   onOpenProject,
   onCreateProject,
 }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
   const [kind, setKind] = useState<ProjectKind>("book");
   const [bookCode, setBookCode] = useState("NEH");
   const [title, setTitle] = useState("");
@@ -113,25 +117,23 @@ export function ProjectsView({
     <div className="hub">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">Proyectos</h1>
+          <h1 className="hub-title">{t("pj.title")}</h1>
           <p className="hub-lede">
-            Tablero de proyectos en {languageDisplayName(lang, languages)}
-            {canManage
-              ? ". Abre uno para inventariar, definir fases y asignar trabajo."
-              : "."}
+            {t("pj.ledeIn").replace("{lang}", languageDisplayName(lang, languages))}
+            {canManage ? t("pj.ledeManage") : "."}
           </p>
         </div>
         {canManage && !createOpen ? (
           <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
-            Nuevo proyecto
+            {t("pj.new")}
           </Button>
         ) : null}
       </div>
 
       {!list.length ? (
         <div className="hub-empty">
-          Aún no hay proyectos.
-          {canManage ? " Usa «Nuevo proyecto» para empezar." : ""}
+          {t("pj.none")}
+          {canManage ? t("pj.noneManage") : ""}
         </div>
       ) : (
         <div className="hub-board" role="list">
@@ -141,7 +143,7 @@ export function ProjectsView({
                 ? project.projectId
                 : project.books.length
                   ? project.books.join(", ")
-                  : "sin libros";
+                  : t("pj.noBooks");
             return (
               <button
                 key={project.projectId}
@@ -158,17 +160,17 @@ export function ProjectsView({
                   aria-hidden
                 />
                 <span className="hub-row-body">
-                  <span className="hub-row-title">{project.title}</span>
+                  <span className="hub-row-title">{project.kind === "book" && isBookProjectId(project.projectId) ? bookLabel(project.projectId, language) : project.title}</span>
                   <span className="hub-row-meta">
                     <Badge variant="outline">
-                      {project.kind === "book" ? "Libro" : "Temático"}
+                      {project.kind === "book" ? t("pj.kindBook") : t("pj.kindThematic")}
                     </Badge>
                     <span className="font-mono">{project.projectId}</span>
                     <span>{booksLabel}</span>
                   </span>
                 </span>
                 {canManage ? (
-                  <span className="text-xs text-muted-foreground">Abrir →</span>
+                  <span className="text-xs text-muted-foreground">{t("pj.open")}</span>
                 ) : null}
               </button>
             );
@@ -179,13 +181,13 @@ export function ProjectsView({
       {canManage && createOpen ? (
         <div className="hub-panel">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Crear proyecto</h2>
+            <h2 className="text-sm font-semibold">{t("pj.createTitle")}</h2>
             <Button type="button" variant="ghost" size="sm" onClick={() => setCreateOpen(false)}>
-              Cancelar
+              {t("pj.cancel")}
             </Button>
           </div>
           <div className="grid gap-1.5">
-            <Label>Tipo</Label>
+            <Label>{t("pj.type")}</Label>
             <Select
               value={kind}
               onValueChange={(v) => setKind(v === "thematic" ? "thematic" : "book")}
@@ -194,14 +196,14 @@ export function ProjectsView({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="book">Libro (id = código UBS)</SelectItem>
-                <SelectItem value="thematic">Temático (identificador + varios libros)</SelectItem>
+                <SelectItem value="book">{t("pj.typeBook")}</SelectItem>
+                <SelectItem value="thematic">{t("pj.typeThematic")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {kind === "book" ? (
             <div className="grid gap-1.5">
-              <Label htmlFor="create-book">Libro</Label>
+              <Label htmlFor="create-book">{t("pj.book")}</Label>
               <Select value={bookCode} onValueChange={setBookCode}>
                 <SelectTrigger id="create-book" className="w-full">
                   <SelectValue />
@@ -209,7 +211,7 @@ export function ProjectsView({
                 <SelectContent className="max-h-72">
                   {BOOKS.map((b) => (
                     <SelectItem key={b.code} value={b.code}>
-                      {b.code} — {b.name}
+                      {b.code} — {bookLabel(b.code, language)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -218,7 +220,7 @@ export function ProjectsView({
           ) : (
             <>
               <div className="grid gap-1.5">
-                <Label htmlFor="create-title">Título</Label>
+                <Label htmlFor="create-title">{t("pj.titleLabel")}</Label>
                 <Input
                   id="create-title"
                   value={title}
@@ -226,11 +228,11 @@ export function ProjectsView({
                     setTitle(e.target.value);
                     if (!slug) setSlug(slugifyThematic(e.target.value));
                   }}
-                  placeholder="Pentateuco ronda 1"
+                  placeholder={t("pj.titlePlaceholder")}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="create-slug">Identificador</Label>
+                <Label htmlFor="create-slug">{t("pj.slug")}</Label>
                 <Input
                   id="create-slug"
                   value={slug}
@@ -240,7 +242,7 @@ export function ProjectsView({
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Libros</Label>
+                <Label>{t("pj.books")}</Label>
                 <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
                   {BOOKS.slice(0, 39).map((b) => (
                     <Button
@@ -259,21 +261,20 @@ export function ProjectsView({
             </>
           )}
           <div className="grid gap-1.5">
-            <Label htmlFor="create-phase">Etiqueta de la primera fase</Label>
+            <Label htmlFor="create-phase">{t("pj.firstPhase")}</Label>
             <Input
               id="create-phase"
               value={firstPhaseName}
               onChange={(e) => setFirstPhaseName(e.target.value)}
-              placeholder="Fase 1"
+              placeholder={t("pj.firstPhasePlaceholder")}
             />
             <p className="text-xs text-muted-foreground">
-              Nombre visible al agrupar tareas (p. ej. Borrador, Revisión). Puedes crear más fases
-              después.
+              {t("pj.firstPhaseHelp")}
             </p>
           </div>
           <div>
             <Button type="button" onClick={submitCreate}>
-              Crear y abrir
+              {t("pj.createOpen")}
             </Button>
           </div>
         </div>

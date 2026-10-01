@@ -1123,7 +1123,7 @@ export function App() {
               >
                 <span aria-hidden>←</span>
                 <span className="app-header__back-label">
-                  {projectDisplayName(route.projectId)}
+                  {projectDisplayName(route.projectId, uiLanguage)}
                 </span>
               </button>
               <StepNav
