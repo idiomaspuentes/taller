@@ -7,7 +7,7 @@ import type { TallerConfig } from "./src/config/types";
  */
 export const tallerConfig: TallerConfig = {
   brand: {
-    name: { es: "Taller", pt: "Oficina" },
+    name: { es: "Taller", pt: "Ateliê" },
     organization: "Idiomas Puentes",
     // "Id": the I and the d of Idiomas, and the first word of «Id y haced discípulos». The site title reads "Taller Id".
     short: "Id",

@@ -168,7 +168,7 @@ test("las razones de espera y de nivel se muestran en el idioma de la interfaz",
 
 test("el título del sitio es el nombre de la app más el nombre corto de la organización", () => {
   assert.equal(appTitle("es"), "Taller Id");
-  assert.equal(appTitle("pt"), "Oficina Id");
+  assert.equal(appTitle("pt"), "Ateliê Id");
   const noShort = clone();
   noShort.brand.short = " ";
   assert.match(configProblems(noShort).join(" "), /brand\.short/);
