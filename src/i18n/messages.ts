@@ -567,6 +567,18 @@ const es = {
   "sc.includeAuthor": "Incluir a quien hizo el paso previo",
   "sc.excludeAssignee": "Excluir al asignado de la subtarea",
   "sc.excludePrior": "Excluir quienes participaron en",
+  "st.book": "Libro",
+  "st.tasks": "Fases y tareas",
+  "st.assign": "Asignar personas",
+  "st.deliver": "Crear subtareas",
+  "st.progress": "Avance",
+  "st.publish": "Publicar versión",
+  "sg.prepare": "Preparar",
+  "sg.split": "Repartir",
+  "sg.progress": "Avance",
+  "sg.publish": "Publicar",
+  "st.stagesAria": "Etapas del proyecto",
+  "st.stageAria": "Etapa del proyecto",
 } as const;
 
 export type MessageKey = keyof typeof es;
@@ -1136,6 +1148,18 @@ const pt: Record<MessageKey, string> = {
   "sc.includeAuthor": "Incluir quem fez o passo anterior",
   "sc.excludeAssignee": "Excluir quem está atribuído à subtarefa",
   "sc.excludePrior": "Excluir quem participou de",
+  "st.book": "Livro",
+  "st.tasks": "Fases e tarefas",
+  "st.assign": "Atribuir pessoas",
+  "st.deliver": "Criar subtarefas",
+  "st.progress": "Andamento",
+  "st.publish": "Publicar versão",
+  "sg.prepare": "Preparar",
+  "sg.split": "Distribuir",
+  "sg.progress": "Andamento",
+  "sg.publish": "Publicar",
+  "st.stagesAria": "Etapas do projeto",
+  "st.stageAria": "Etapa do projeto",
 };
 
 const TABLE: Record<UiLanguage, Record<MessageKey, string>> = { es, pt };

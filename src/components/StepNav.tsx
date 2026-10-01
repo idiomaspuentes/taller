@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useT, type MessageKey } from "../i18n/messages";
 
 /**
  * Screens inside a project shell. The URL keeps one id per screen; the header
@@ -18,20 +19,20 @@ export type StepId = "inventario" | "tareas" | "asignar" | "entregar" | "avance"
 
 export type StageId = "preparar" | "repartir" | "avance" | "publicar";
 
-export const STEPS: { id: StepId; label: string }[] = [
-  { id: "inventario", label: "Libro" },
-  { id: "tareas", label: "Fases y tareas" },
-  { id: "asignar", label: "Asignar personas" },
-  { id: "entregar", label: "Crear subtareas" },
-  { id: "avance", label: "Avance" },
-  { id: "publicar", label: "Publicar versión" },
+export const STEPS: { id: StepId; label: MessageKey }[] = [
+  { id: "inventario", label: "st.book" },
+  { id: "tareas", label: "st.tasks" },
+  { id: "asignar", label: "st.assign" },
+  { id: "entregar", label: "st.deliver" },
+  { id: "avance", label: "st.progress" },
+  { id: "publicar", label: "st.publish" },
 ];
 
-export const STAGES: { id: StageId; n: number; label: string; steps: StepId[] }[] = [
-  { id: "preparar", n: 1, label: "Preparar", steps: ["inventario", "tareas"] },
-  { id: "repartir", n: 2, label: "Repartir", steps: ["asignar", "entregar"] },
-  { id: "avance", n: 3, label: "Avance", steps: ["avance"] },
-  { id: "publicar", n: 4, label: "Publicar", steps: ["publicar"] },
+export const STAGES: { id: StageId; n: number; label: MessageKey; steps: StepId[] }[] = [
+  { id: "preparar", n: 1, label: "sg.prepare", steps: ["inventario", "tareas"] },
+  { id: "repartir", n: 2, label: "sg.split", steps: ["asignar", "entregar"] },
+  { id: "avance", n: 3, label: "sg.progress", steps: ["avance"] },
+  { id: "publicar", n: 4, label: "sg.publish", steps: ["publicar"] },
 ];
 
 export function stageOf(step: StepId): (typeof STAGES)[number] {
@@ -73,9 +74,9 @@ type Props = {
   onChange: (id: StepId) => void;
 };
 
-function optionLabel(stage: (typeof STAGES)[number], status: StepStatus): string {
+function optionLabel(stage: (typeof STAGES)[number], status: StepStatus, t: (key: MessageKey) => string): string {
   const mark = status === "done" ? "✓ " : `${stage.n} · `;
-  return `${mark}${stage.label}`;
+  return `${mark}${t(stage.label)}`;
 }
 
 /**
@@ -88,6 +89,7 @@ export function StepNav({
   hasTeams = false,
   onChange,
 }: Props) {
+  const t = useT();
   const current = stageOf(view);
 
   function goStage(id: StageId) {
@@ -99,7 +101,7 @@ export function StepNav({
   }
 
   return (
-    <nav aria-label="Etapas del proyecto" className="app-step-nav">
+    <nav aria-label={t("st.stagesAria")} className="app-step-nav">
       <ol className="app-step-nav__rail">
         {STAGES.map((stage) => {
           const status = stageStatus(stage, view, setupDone, hasInventory, hasTeams);
@@ -120,10 +122,10 @@ export function StepNav({
                   )}
                 </span>
                 <span className="app-step-nav__label app-step-nav__label--short">
-                  {stage.label}
+                  {t(stage.label)}
                 </span>
                 <span className="app-step-nav__label app-step-nav__label--full">
-                  {stage.label}
+                  {t(stage.label)}
                 </span>
               </button>
             </li>
@@ -136,7 +138,7 @@ export function StepNav({
           <SelectTrigger
             className="app-step-nav__trigger"
             size="sm"
-            aria-label="Etapa del proyecto"
+            aria-label={t("st.stageAria")}
           >
             <SelectValue />
           </SelectTrigger>
@@ -145,7 +147,7 @@ export function StepNav({
               const status = stageStatus(stage, view, setupDone, hasInventory, hasTeams);
               return (
                 <SelectItem key={stage.id} value={stage.id} disabled={status === "locked"}>
-                  {optionLabel(stage, status)}
+                  {optionLabel(stage, status, t)}
                 </SelectItem>
               );
             })}
@@ -166,10 +168,11 @@ export function SubStepTabs({
   hasInventory,
   onChange,
 }: Omit<Props, "hasTeams">) {
+  const t = useT();
   const stage = stageOf(view);
   if (stage.steps.length < 2) return null;
   return (
-    <div className="substep-tabs" role="tablist" aria-label={stage.label}>
+    <div className="substep-tabs" role="tablist" aria-label={t(stage.label)}>
       {stage.steps.map((id) => {
         const step = STEPS.find((s) => s.id === id)!;
         const enabled = stepEnabled(id, setupDone, hasInventory);
@@ -183,7 +186,7 @@ export function SubStepTabs({
             disabled={!enabled}
             onClick={() => onChange(id)}
           >
-            {step.label}
+            {t(step.label)}
           </button>
         );
       })}
