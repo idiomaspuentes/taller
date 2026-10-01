@@ -5,7 +5,6 @@ import { normalizeProjectId } from "./domain/books";
 export type AppRoute =
   | { name: "home" }
   /** Home of a worker: the one thing to do next. */
-  | { name: "ahora" }
   /** Decisions, unread comments and new tasks. */
   | { name: "avisos" }
   /** «Equipo hoy»: how the work stands, for whoever coordinates. */
@@ -67,7 +66,8 @@ export function parseHash(hash: string): AppRoute {
     }
     return { name: "mis-tareas" };
   }
-  if (parts[0] === "ahora") return { name: "ahora" };
+  // «Ahora» became the first card of «Mis tareas»: old links and installed shortcuts still land there.
+  if (parts[0] === "ahora") return { name: "mis-tareas" };
   if (parts[0] === "avisos") return { name: "avisos" };
   if (parts[0] === "hoy") return { name: "hoy" };
   if (parts[0] === "perfil") return { name: "perfil" };
@@ -121,8 +121,6 @@ export function routeToHash(route: AppRoute): string {
   switch (route.name) {
     case "home":
       return "#/";
-    case "ahora":
-      return "#/ahora";
     case "avisos":
       return "#/avisos";
     case "hoy":
@@ -226,5 +224,5 @@ export function useHashRoute(): {
 }
 
 export function landingRoute(canManage: boolean): AppRoute {
-  return canManage ? { name: "hoy" } : { name: "ahora" };
+  return canManage ? { name: "hoy" } : { name: "mis-tareas" };
 }

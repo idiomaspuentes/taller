@@ -8,7 +8,6 @@ import { browserPushDeps, enablePush, pushState, type PushState } from "../push"
 
 type Props = {
   session: Pick<GtSession, "token" | "host" | "username">;
-  onOpenTasks: () => void;
   onHide: () => void;
 };
 
@@ -31,7 +30,7 @@ function Step({ done, icon, title, text, children }: { done: boolean; icon: Reac
  * The first thing someone sees after signing in for the first time: three small steps instead of an empty screen.
  * The person hides it when they are done; it never comes back for them on this device.
  */
-export function Onboarding({ session, onOpenTasks, onHide }: Props) {
+export function Onboarding({ session, onHide }: Props) {
   const t = useT();
   const deps = useMemo(() => browserPushDeps(), []);
   const [push, setPush] = useState<PushState>("unsupported");
@@ -85,11 +84,7 @@ export function Onboarding({ session, onOpenTasks, onHide }: Props) {
             {error ? <p className="onboarding__error">{error}</p> : null}
           </Step>
         ) : null}
-        <Step done={false} icon={<ListChecks />} title={t("onboarding.tasksTitle")} text={t("onboarding.tasksText")}>
-          <Button type="button" size="sm" variant="outline" onClick={onOpenTasks}>
-            {t("onboarding.tasksButton")}
-          </Button>
-        </Step>
+        <Step done={false} icon={<ListChecks />} title={t("onboarding.tasksTitle")} text={t("onboarding.tasksText")} />
       </ul>
       <button type="button" className="onboarding__hide" onClick={onHide}>
         {t("onboarding.hide")}

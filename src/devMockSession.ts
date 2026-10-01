@@ -22,7 +22,7 @@ export function applyMockSessionFromUrl(): void {
     localStorage.setItem("gt-context-confirmed", "1");
     params.delete("mockUser");
     const rest = params.toString();
-    history.replaceState(null, "", `${location.pathname}${rest ? `?${rest}` : ""}${location.hash || "#/ahora"}`);
+    history.replaceState(null, "", `${location.pathname}${rest ? `?${rest}` : ""}${location.hash || "#/mis-tareas"}`);
   } catch {
     /* private window or blocked storage: the normal sign-in is used */
   }

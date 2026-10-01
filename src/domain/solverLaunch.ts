@@ -273,9 +273,18 @@ export function resolveSolverLaunchUrl(
   return url;
 }
 
-export function openSolverApp(app: SolverApp, ctx: SolverLaunchContext): Window | null {
+/**
+ * Opens the tool. Tools of this app open in the SAME tab (a person on a phone must not lose the app in another
+ * tab); outside tools, or an explicit `newTab`, open another one.
+ */
+export function openSolverApp(app: SolverApp, ctx: SolverLaunchContext, opts: { newTab?: boolean } = {}): Window | null {
   const reason = solverLaunchBlockReason(app, ctx);
   if (reason) throw new Error(reason);
   const url = resolveSolverLaunchUrl(app, ctx);
+  const sameOrigin = typeof window !== "undefined" && url.startsWith(window.location.origin);
+  if (sameOrigin && !opts.newTab && app.openMode !== "external") {
+    window.location.assign(url);
+    return window;
+  }
   return window.open(url, "_blank", "noopener,noreferrer");
 }

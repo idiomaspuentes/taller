@@ -1,12 +1,12 @@
-import { Bell, CheckCircle2, FolderKanban, ListChecks, UserRound, Users } from "lucide-react";
+import { Bell, FolderKanban, ListChecks, UserRound, Users } from "lucide-react";
 import { useT, type MessageKey } from "../i18n/messages";
 
-export type BottomNavId = "ahora" | "mis-tareas" | "avisos" | "hoy" | "proyectos" | "perfil";
+export type BottomNavId = "mis-tareas" | "avisos" | "hoy" | "proyectos" | "perfil";
 
 type Props = {
   active: BottomNavId | null;
   attentionCount: number;
-  /** People who coordinate start from the team and have projects at hand; the rest from their next task. */
+  /** People who coordinate start from the team and have projects at hand; the rest from their tasks. */
   coordinator: boolean;
   onSelect: (id: BottomNavId) => void;
 };
@@ -14,7 +14,6 @@ type Props = {
 type Item = { id: BottomNavId; label: MessageKey; Icon: typeof Bell };
 
 const TEAM: Item[] = [
-  { id: "ahora", label: "nav.now", Icon: CheckCircle2 },
   { id: "mis-tareas", label: "nav.myTasks", Icon: ListChecks },
   { id: "avisos", label: "nav.alerts", Icon: Bell },
   { id: "perfil", label: "nav.me", Icon: UserRound },

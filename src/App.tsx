@@ -105,7 +105,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 /** Pages that keep the phone's bottom bar: the daily places and the personal ones. */
-const BOTTOM_NAV_ROUTES: string[] = ["ahora", "avisos", "mis-tareas", "perfil", "hoy", "proyectos", "organizacion", "plantillas"];
+const BOTTOM_NAV_ROUTES: string[] = ["avisos", "mis-tareas", "perfil", "hoy", "proyectos", "organizacion", "plantillas"];
 
 const SETUP_DONE_KEY = "gt-context-confirmed";
 
@@ -258,9 +258,9 @@ export function App() {
         route.name === "organizacion" ||
         route.name === "plantillas"
       ) {
-        navigate({ name: "ahora" });
+        navigate({ name: "mis-tareas" });
       }
-    } else if (route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos" || route.name === "home") {
+    } else if (route.name === "mis-tareas" || route.name === "avisos" || route.name === "home") {
       navigate({ name: "hoy" });
     }
   }
@@ -336,7 +336,7 @@ export function App() {
   useEffect(() => {
     if (!canManage || roleView !== "trabajador") return;
     if (route.name === "hoy" || route.name === "proyectos" || route.name === "proyecto") {
-      navigate({ name: "ahora" });
+      navigate({ name: "mis-tareas" });
     }
   }, [canManage, roleView, route.name, navigate]);
 
@@ -862,7 +862,7 @@ export function App() {
     saveWorkspaceId(next.id);
     saveContext({ lang: next.lang, contentOrg: next.contentOrg, pmOrg: next.pmOrg, book, host });
     if (reload) {
-      window.location.hash = "#/ahora";
+      window.location.hash = "#/mis-tareas";
       window.location.reload();
       return;
     }
@@ -1055,12 +1055,6 @@ export function App() {
                   ]
                 : [
                     {
-                      id: "ahora",
-                      label: t("nav.now"),
-                      active: route.name === "ahora",
-                      onSelect: () => navigate({ name: "ahora" }),
-                    },
-                    {
                       id: "mis-tareas",
                       label: t("nav.myTasks"),
                       active: myTasksActive,
@@ -1137,10 +1131,10 @@ export function App() {
         <div className="sr-only" aria-live="polite">
           {live}
         </div>
-        {route.name === "ahora" && session && onboarding.visible ? (
-          <Onboarding session={session} onOpenTasks={() => navigate({ name: "mis-tareas" })} onHide={onboarding.hide} />
+        {route.name === "mis-tareas" && session && onboarding.visible ? (
+          <Onboarding session={session} onHide={onboarding.hide} />
         ) : null}
-        {route.name !== "conversacion" && route.name !== "conflicto-prueba" && !(route.name === "ahora" && onboarding.visible) ? (
+        {route.name !== "conversacion" && route.name !== "conflicto-prueba" && !(route.name === "mis-tareas" && onboarding.visible) ? (
           <PushPrompt session={session} />
         ) : null}
         {hydrating && route.name === "proyecto" ? (
@@ -1177,10 +1171,9 @@ export function App() {
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
           />
         ) : null}
-        {(route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos") && session ? (
+        {(route.name === "mis-tareas" || route.name === "avisos") && session ? (
           <MyTasksView
             mode={route.name === "mis-tareas" ? "lista" : route.name}
-            showNow={effectiveCanManage}
             session={session}
             pmOrg={pmOrg}
             lang={lang}
@@ -1228,7 +1221,7 @@ export function App() {
             announce={announce}
           />
         ) : null}
-        {(route.name === "mis-tareas" || route.name === "ahora" || route.name === "avisos") && !session ? (
+        {(route.name === "mis-tareas" || route.name === "avisos") && !session ? (
           <Alert>
             <AlertDescription>
               {t("app.signInForTasks")}{" "}
@@ -1270,7 +1263,7 @@ export function App() {
             onSignOut={() => {
               signOut();
               setSession(null);
-              navigate({ name: "ahora" });
+              navigate({ name: "mis-tareas" });
             }}
           />
         ) : null}
