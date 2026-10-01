@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContextLangFields } from "./ContextLangFields";
+import type { Workspace } from "../config";
+import { useUiLanguage } from "../i18n/language";
+import { useT } from "../i18n/messages";
 
 type Props = {
   open: boolean;
@@ -37,6 +40,10 @@ type Props = {
   onPmOrgChange: (org: string) => void;
   onSignOut: () => void;
   onOpenFromDcs: () => void;
+  /** When the organization fixes its team spaces (taller.config.ts), language and organizations are not free fields. */
+  workspaces?: Workspace[];
+  workspaceId?: string;
+  onWorkspaceChange?: (workspace: Workspace) => void;
 };
 
 function hostShort(host: string): string {
@@ -62,7 +69,13 @@ export function WorkspaceDialog({
   onPmOrgChange,
   onSignOut,
   onOpenFromDcs,
+  workspaces,
+  workspaceId,
+  onWorkspaceChange,
 }: Props) {
+  const t = useT();
+  const uiLanguage = useUiLanguage();
+  const fixed = Boolean(workspaces && workspaces.length > 0 && workspaceId);
   const pmOptions = withSelectedOrg(orgs, pmOrg);
   const showPmSelect = pmOptions.length > 0;
 
@@ -88,6 +101,35 @@ export function WorkspaceDialog({
               </Button>
             </div>
 
+            {fixed && workspaces ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor="ws-space">{t("workspace.title")}</Label>
+                {workspaces.length > 1 ? (
+                  <Select
+                    value={workspaceId}
+                    onValueChange={(id) => {
+                      const next = workspaces.find((w) => w.id === id);
+                      if (next) onWorkspaceChange?.(next);
+                    }}
+                  >
+                    <SelectTrigger id="ws-space" className="w-full" aria-label={t("workspace.title")}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {workspaces.map((w) => (
+                        <SelectItem key={w.id} value={w.id}>
+                          {w.name[uiLanguage]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm font-medium">{workspaces[0]?.name[uiLanguage]}</p>
+                )}
+                {workspaces.length > 1 ? <p className="text-xs text-muted-foreground">{t("workspace.help")}</p> : null}
+              </div>
+            ) : (
+              <>
             <ContextLangFields
               lang={lang}
               contentOrg={contentOrg}
@@ -123,6 +165,8 @@ export function WorkspaceDialog({
                 </Select>
               </div>
             ) : null}
+              </>
+            )}
 
             {pmOrg ? (
               <Button

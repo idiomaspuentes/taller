@@ -1,5 +1,10 @@
 import { BrandMark } from "./components/BrandMark";
-import { APP_TITLE } from "./brand";
+import { appTitle } from "./brand";
+import { tallerConfig, workspaceOfOrg, type Workspace } from "./config";
+import { useUiLanguage } from "./i18n/language";
+import { useT } from "./i18n/messages";
+import { contextWith, initialWorkspace, saveWorkspaceId } from "./workspace";
+import { Welcome } from "./components/Welcome";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
 import { defaultContentOrg, normalizeProjectId, projectDisplayName } from "./domain/books";
@@ -111,12 +116,21 @@ function writeSetupDone(): void {
 }
 
 export function App() {
-  const saved = loadContext();
+  const t = useT();
+  const uiLanguage = useUiLanguage();
+  // The team space this browser works in. Its language and organizations are fixed by taller.config.ts and
+  // laid over anything saved, so a space never picks up another's organization.
+  const savedRaw = loadContext();
+  // A person who signed in before spaces existed is placed by the organization they were using.
+  const [workspace, setWorkspace] = useState<Workspace | undefined>(
+    () => initialWorkspace(tallerConfig) ?? (savedRaw?.pmOrg ? workspaceOfOrg(tallerConfig, savedRaw.pmOrg) : undefined),
+  );
+  const saved = savedRaw && workspace ? contextWith(savedRaw, workspace) : savedRaw;
   const { route, navigate } = useHashRoute();
   const [host, setHost] = useState(saved?.host || DEFAULT_HOST);
-  const [lang, setLang] = useState(saved?.lang || "es-419");
-  const [contentOrg, setContentOrg] = useState(saved?.contentOrg || defaultContentOrg("es-419"));
-  const [pmOrg, setPmOrg] = useState(saved?.pmOrg || "");
+  const [lang, setLang] = useState(workspace?.lang ?? (saved?.lang || "es-419"));
+  const [contentOrg, setContentOrg] = useState(workspace?.contentOrg ?? (saved?.contentOrg || defaultContentOrg("es-419")));
+  const [pmOrg, setPmOrg] = useState(workspace?.pmOrg ?? (saved?.pmOrg || ""));
   const [book, setBook] = useState(saved?.book || "NEH");
   const [session, setSession] = useState<GtSession | null>(() => {
     const loaded = loadSession();
@@ -148,7 +162,7 @@ export function App() {
     ),
   );
   const [setupDone, setSetupDone] = useState(
-    () => readSetupDone() || Boolean(restoreSessionInventory()),
+    () => readSetupDone() || Boolean(restoreSessionInventory()) || Boolean(workspace),
   );
   const [generating, setGenerating] = useState(false);
   const [jobMessage, setJobMessage] = useState("");
@@ -168,14 +182,14 @@ export function App() {
   // Unread count on the installed app icon and in the tab title (best effort).
   useEffect(() => {
     const count = session ? attentionTotal : 0;
-    document.title = count > 0 ? `(${count}) ${APP_TITLE}` : APP_TITLE;
+    document.title = count > 0 ? `(${count}) ${appTitle(uiLanguage)}` : appTitle(uiLanguage);
     const nav = navigator as Navigator & {
       setAppBadge?: (n?: number) => Promise<void>;
       clearAppBadge?: () => Promise<void>;
     };
     if (count > 0) void nav.setAppBadge?.(count)?.catch(() => {});
     else void nav.clearAppBadge?.()?.catch(() => {});
-  }, [session, attentionTotal]);
+  }, [session, attentionTotal, uiLanguage]);
   // A notice on the phone goes away once its subtarea (or the list it leads to) is open in the app.
   const openedIssue = route.name === "conversacion" ? route.issue : 0;
   useEffect(() => {
@@ -337,10 +351,10 @@ export function App() {
     void listUserOrgs(session)
       .then((list) => {
         setOrgs(list);
-        if (!pmOrg && list.length) setPmOrg(orgSlug(list[0]));
+        if (!pmOrg && !workspace && list.length) setPmOrg(orgSlug(list[0]));
       })
       .catch(() => setOrgs([]));
-  }, [session, pmOrg]);
+  }, [session, pmOrg, workspace]);
 
   useEffect(() => {
     setExtraOrgs([]);
@@ -823,6 +837,29 @@ export function App() {
       </Alert>
     ) : null;
 
+  /**
+   * Work in another workspace. Before sign-in nothing is loaded, so the choice is just remembered; once signed in
+   * the page reloads so nothing of the previous space (tasks, plans, caches in memory) can carry over.
+   */
+  function chooseWorkspace(next: Workspace) {
+    if (workspace?.id === next.id) return;
+    const reload = Boolean(session) && Boolean(workspace);
+    saveWorkspaceId(next.id);
+    saveContext({ lang: next.lang, contentOrg: next.contentOrg, pmOrg: next.pmOrg, book, host });
+    if (reload) {
+      window.location.hash = "#/ahora";
+      window.location.reload();
+      return;
+    }
+    setWorkspace(next);
+    setLang(next.lang);
+    setContentOrg(next.contentOrg);
+    setPmOrg(next.pmOrg);
+    setProjects(loadLocalProjectsIndex(next.lang));
+    setBoard(loadLocalAssignments(next.lang, book, next.contentOrg, next.pmOrg));
+    setSetupDone(true);
+  }
+
   const signInModal = (
     <SignInModal
       open={signInOpen}
@@ -909,6 +946,25 @@ export function App() {
     );
   }
 
+  // First screen for someone who is signed out: what Taller is, which team space, and the way in.
+  // Someone already signed in but not yet in any space (their saved organization matches none) is asked to choose.
+  const needsSpace = Boolean(session) && !workspace && tallerConfig.workspaces.length > 0;
+  if ((!session || needsSpace) && tallerConfig.workspaces.length > 0 && route.name !== "solver-lab" && route.name !== "conflicto-prueba") {
+    return (
+      <>
+        <Welcome
+          initialWorkspaceId={workspace?.id}
+          signedIn={Boolean(session)}
+          onEnter={(chosen) => {
+            chooseWorkspace(chosen);
+            if (!session) setSignInOpen(true);
+          }}
+        />
+        {signInModal}
+      </>
+    );
+  }
+
   if (!setupDone && route.name !== "solver-lab" && route.name !== "conflicto-prueba") {
     return (
       <div className="app-shell">
@@ -965,7 +1021,7 @@ export function App() {
                 aria-hidden
               />
               <span className="app-workspace__label">
-                {session ? identityLabel : "Iniciar sesión"}
+                {session ? identityLabel : t("header.signIn")}
               </span>
               {book && effectiveCanManage ? (
                 <span className="hidden text-muted-foreground sm:inline">· {book}</span>
@@ -977,13 +1033,13 @@ export function App() {
             links={[
               {
                 id: "ahora",
-                label: "Ahora",
+                label: t("nav.now"),
                 active: route.name === "ahora",
                 onSelect: () => navigate({ name: "ahora" }),
               },
               {
                 id: "mis-tareas",
-                label: "Mis tareas",
+                label: t("nav.myTasks"),
                 active:
                   route.name === "mis-tareas" ||
                   route.name === "conversacion" ||
@@ -993,7 +1049,7 @@ export function App() {
               },
               {
                 id: "avisos",
-                label: "Avisos",
+                label: t("nav.alerts"),
                 active: route.name === "avisos",
                 onSelect: () => navigate({ name: "avisos" }),
               },
@@ -1001,13 +1057,13 @@ export function App() {
                 ? [
                     {
                       id: "hoy",
-                      label: "Equipo hoy",
+                      label: t("nav.teamToday"),
                       active: route.name === "hoy",
                       onSelect: () => navigate({ name: "hoy" }),
                     },
                     {
                       id: "proyectos",
-                      label: "Proyectos",
+                      label: t("nav.projects"),
                       active: route.name === "proyectos" || route.name === "proyecto",
                       onSelect: () => navigate({ name: "proyectos" }),
                     },
@@ -1015,7 +1071,7 @@ export function App() {
                 : []),
               {
                 id: "organizacion",
-                label: "Organización",
+                label: t("nav.organization"),
                 active: route.name === "organizacion",
                 onSelect: () => navigate({ name: "organizacion" }),
               },
@@ -1033,7 +1089,7 @@ export function App() {
                 ? [
                     {
                       id: "lab",
-                      label: "Laboratorio",
+                      label: t("nav.lab"),
                       active: route.name === "solver-lab",
                       onSelect: () => navigate({ name: "solver-lab" }),
                     },
@@ -1174,10 +1230,14 @@ export function App() {
               <Button type="button" size="sm" variant="link" className="px-1" onClick={() => setSignInOpen(true)}>
                 Entrar
               </Button>{" "}
-              ·{" "}
-              <a className="chat-link" href="#/mis-tareas/prueba">
-                Probar un conflicto
-              </a>
+              {import.meta.env.DEV ? (
+                <>
+                  ·{" "}
+                  <a className="chat-link" href="#/mis-tareas/prueba">
+                    Probar un conflicto
+                  </a>
+                </>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -1279,7 +1339,7 @@ export function App() {
             session={session}
             pmOrg={pmOrg}
             orgs={orgs}
-            onPmOrgChange={setPmOrg}
+            onPmOrgChange={workspace ? () => undefined : setPmOrg}
             announce={announce}
             focusTaskId={route.taskId}
             onFocusTaskConsumed={() =>
@@ -1371,13 +1431,16 @@ export function App() {
           session={session}
           onLangChange={onLangChange}
           onContentOrgChange={setContentOrg}
-          onPmOrgChange={setPmOrg}
+          onPmOrgChange={workspace ? () => undefined : setPmOrg}
           onSignOut={() => {
             signOut();
             setSession(null);
             setWorkspaceOpen(false);
           }}
           onOpenFromDcs={() => void openFromDcs()}
+          workspaces={workspace ? tallerConfig.workspaces : undefined}
+          workspaceId={workspace?.id}
+          onWorkspaceChange={chooseWorkspace}
         />
       ) : null}
 

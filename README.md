@@ -11,6 +11,10 @@ Vocabulario y arquitectura: [`docs/MODELO.md`](docs/MODELO.md) ·
 migración: [`docs/PLAN_MIGRACION.md`](docs/PLAN_MIGRACION.md) ·
 plataforma: [`docs/PLATAFORMA.md`](docs/PLATAFORMA.md).
 
+## Adaptarla a otra organización
+
+La bienvenida, los equipos (espacios de trabajo por lengua) y el nombre de la app se cambian en un solo archivo, [`taller.config.ts`](taller.config.ts). Ver [docs/CONFIGURACION.md](docs/CONFIGURACION.md).
+
 ## Arranque
 
 Necesitas el monorepo [`idiomas-puentes-lms`](../idiomas-puentes-lms) al lado (para `@ip-lms/dcs-client`).

@@ -1,4 +1,5 @@
 import { Bell, CheckCircle2, ListChecks } from "lucide-react";
+import { useT, type MessageKey } from "../i18n/messages";
 
 export type BottomNavId = "ahora" | "mis-tareas" | "avisos";
 
@@ -8,17 +9,20 @@ type Props = {
   onSelect: (id: BottomNavId) => void;
 };
 
-const ITEMS: { id: BottomNavId; label: string; Icon: typeof Bell }[] = [
-  { id: "ahora", label: "Ahora", Icon: CheckCircle2 },
-  { id: "mis-tareas", label: "Mis tareas", Icon: ListChecks },
-  { id: "avisos", label: "Avisos", Icon: Bell },
+const ITEMS: { id: BottomNavId; label: MessageKey; Icon: typeof Bell }[] = [
+  { id: "ahora", label: "nav.now", Icon: CheckCircle2 },
+  { id: "mis-tareas", label: "nav.myTasks", Icon: ListChecks },
+  { id: "avisos", label: "nav.alerts", Icon: Bell },
 ];
 
 /** Phone navigation: the three places a worker goes. Hidden on wide screens. */
 export function BottomNav({ active, attentionCount, onSelect }: Props) {
+  const t = useT();
   return (
     <nav className="bottom-nav" aria-label="Principal">
-      {ITEMS.map(({ id, label, Icon }) => (
+      {ITEMS.map(({ id, label: labelKey, Icon }) => {
+        const label = t(labelKey);
+        return (
         <button
           key={id}
           type="button"
@@ -41,7 +45,8 @@ export function BottomNav({ active, attentionCount, onSelect }: Props) {
           </span>
           <span className="bottom-nav__label">{label}</span>
         </button>
-      ))}
+        );
+      })}
     </nav>
   );
 }

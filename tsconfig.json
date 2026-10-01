@@ -28,5 +28,5 @@
       "@usfm-tools/help-markdown": ["./src/usfm-tools/help-markdown.d.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "taller.config.ts"]
 }

@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { HOST_OPTIONS } from "../dcs/config";
 import { isProductionHost } from "../domain/qaAdmin";
 import { signInWithPassword, signInWithToken, type GtSession } from "../dcs/auth";
-import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from "../dcs/sessionExpiry";
+import { isSessionExpiredError } from "../dcs/sessionExpiry";
+import { useT } from "../i18n/messages";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +58,7 @@ export function SignInModal({
   sessionExpired = false,
   onSignOut,
 }: Props) {
+  const t = useT();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
@@ -96,7 +98,7 @@ export function SignInModal({
       setHelpOpen(false);
       setError(
         isSessionExpiredError(err)
-          ? "Usuario, contraseña o token incorrectos."
+          ? t("signIn.wrong")
           : err instanceof Error
             ? err.message
             : String(err),
@@ -122,19 +124,19 @@ export function SignInModal({
           <>
             <DialogHeader>
               <DialogTitle>
-                {needsReauth || sessionExpired ? "Volver a iniciar sesión" : "Iniciar sesión"}
+                {needsReauth || sessionExpired ? t("signIn.again") : t("signIn.title")}
               </DialogTitle>
               {sessionExpired ? (
-                <DialogDescription>{SESSION_EXPIRED_MESSAGE}</DialogDescription>
+                <DialogDescription>{t("signIn.expired")}</DialogDescription>
               ) : needsReauth ? (
-                <DialogDescription>
-                  Tu token no tiene los permisos actuales. Vuelve a entrar para renovarlo.
-                </DialogDescription>
+                <DialogDescription>{t("signIn.reauth")}</DialogDescription>
               ) : null}
             </DialogHeader>
             <form className="grid gap-3" onSubmit={submit}>
+              <details className="sign-in__advanced" open={import.meta.env.DEV || undefined}>
+                <summary>{t("signIn.advanced")}</summary>
               <div className="grid gap-1.5">
-                <Label htmlFor="host">Servidor</Label>
+                <Label htmlFor="host">{t("signIn.server")}</Label>
                 <Select value={host} onValueChange={onHostChange}>
                   <SelectTrigger id="host" className="w-full">
                     <SelectValue />
@@ -149,10 +151,12 @@ export function SignInModal({
                 </Select>
               </div>
 
+              </details>
+
               {import.meta.env.DEV && isProductionHost(host) ? (
                 <Alert variant="destructive">
                   <AlertDescription>
-                    Esta es la versión de desarrollo y el servidor elegido es producción. Si estás probando, elige QA.
+                    {t("signIn.devProd")}
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -166,15 +170,15 @@ export function SignInModal({
               >
                 <TabsList className="w-full">
                   <TabsTrigger value="password" className="flex-1">
-                    Contraseña
+                    {t("signIn.tabPassword")}
                   </TabsTrigger>
                   <TabsTrigger value="token" className="flex-1">
-                    Token
+                    {t("signIn.tabToken")}
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="password" className="grid gap-3">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="user">Usuario</Label>
+                    <Label htmlFor="user">{t("signIn.user")}</Label>
                     <Input
                       id="user"
                       value={username}
@@ -185,7 +189,7 @@ export function SignInModal({
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="pass">Contraseña</Label>
+                    <Label htmlFor="pass">{t("signIn.password")}</Label>
                     <Input
                       id="pass"
                       type="password"
@@ -198,7 +202,7 @@ export function SignInModal({
                 </TabsContent>
                 <TabsContent value="token" className="grid gap-3">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="token">Token</Label>
+                    <Label htmlFor="token">{t("signIn.token")}</Label>
                     <Input
                       id="token"
                       value={token}
@@ -216,13 +220,11 @@ export function SignInModal({
                 className="justify-self-start text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setHelpOpen((openHelp) => !openHelp)}
               >
-                {helpOpen ? "Ocultar permisos" : "¿Qué permisos?"}
+                {helpOpen ? t("signIn.permsHide") : t("signIn.permsAsk")}
               </button>
               {helpOpen ? (
                 <p className="text-xs text-muted-foreground">
-                  {mode === "password"
-                    ? "Al entrar se crea un token con acceso a repositorios, subtareas, organización y notificaciones."
-                    : "Pega un token que ya tenga acceso a repositorios, subtareas, organización y notificaciones."}
+                  {mode === "password" ? t("signIn.permsPassword") : t("signIn.permsToken")}
                 </p>
               ) : null}
 
@@ -234,10 +236,10 @@ export function SignInModal({
 
               <DialogFooter className="px-0">
                 <Button type="button" variant="secondary" onClick={onClose}>
-                  Cancelar
+                  {t("signIn.cancel")}
                 </Button>
                 {canSubmit ? (
-                  <Button type="submit">Entrar</Button>
+                  <Button type="submit">{t("signIn.submit")}</Button>
                 ) : null}
               </DialogFooter>
             </form>
@@ -257,10 +259,11 @@ function SignedInBody({
   onClose: () => void;
   onSignOut?: () => void;
 }) {
+  const t = useT();
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Tu sesión</DialogTitle>
+        <DialogTitle>{t("signIn.session")}</DialogTitle>
         <DialogDescription>
           <span className="font-medium text-foreground">{session.username}</span>
           {" · "}
@@ -270,11 +273,11 @@ function SignedInBody({
       <DialogFooter>
         {onSignOut ? (
           <Button type="button" variant="ghost" onClick={onSignOut}>
-            Cerrar sesión
+            {t("signIn.signOut")}
           </Button>
         ) : null}
         <Button type="button" variant="secondary" onClick={onClose}>
-          Cerrar
+          {t("signIn.close")}
         </Button>
       </DialogFooter>
     </>
@@ -282,13 +285,14 @@ function SignedInBody({
 }
 
 function BusyBody() {
+  const t = useT();
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Iniciar sesión</DialogTitle>
+        <DialogTitle>{t("signIn.title")}</DialogTitle>
       </DialogHeader>
       <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
-        Entrando…
+        {t("signIn.busy")}
       </p>
     </>
   );

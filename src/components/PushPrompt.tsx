@@ -3,6 +3,7 @@ import { BellRing, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { browserPushDeps, enablePush, pushState, type PushState } from "../push";
 import type { GtSession } from "../dcs/auth";
+import { useT } from "../i18n/messages";
 
 const DISMISSED = "taller-push-prompt-dismissed";
 
@@ -19,6 +20,7 @@ function dismissedThisVisit(): boolean {
  * The permission can only be asked from a tap, so this is a banner with a button, not a prompt.
  */
 export function PushPrompt({ session }: { session: Pick<GtSession, "token" | "host" | "username"> | null }) {
+  const t = useT();
   const deps = useMemo(() => browserPushDeps(), []);
   const [state, setState] = useState<PushState>("unsupported");
   const [hidden, setHidden] = useState(dismissedThisVisit);
@@ -64,11 +66,11 @@ export function PushPrompt({ session }: { session: Pick<GtSession, "token" | "ho
   return (
     <div className="push-prompt" role="region" aria-label="Avisos con la app cerrada">
       <BellRing className="size-4" aria-hidden />
-      <p>Activa los avisos para enterarte de menciones y asignaciones aunque Taller esté cerrado.</p>
+      <p>{t("push.text")}</p>
       <Button type="button" size="sm" disabled={busy} onClick={() => void activate()}>
-        {busy ? "Activando…" : "Activar avisos"}
+        {busy ? t("push.busy") : t("push.enable")}
       </Button>
-      <button type="button" className="push-prompt__close" aria-label="Ahora no" onClick={dismiss}>
+      <button type="button" className="push-prompt__close" aria-label={t("push.later")} onClick={dismiss}>
         <X className="size-4" aria-hidden />
       </button>
       {error ? <p className="push-prompt__error">{error}</p> : null}

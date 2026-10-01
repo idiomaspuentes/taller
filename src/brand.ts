@@ -1,4 +1,6 @@
-/** Product brand — UI strings. DCS repo path stays `gateway-tasks` for compatibility. */
-export const APP_NAME = "Taller";
-export const APP_NAME_FULL = "El taller de traducción de Idiomas Puentes";
-export const APP_TITLE = APP_NAME;
+import { tallerConfig, type UiLanguage } from "./config";
+
+/** Product brand. The names come from taller.config.ts; the DCS repo path stays `gateway-tasks` for compatibility. */
+export const appName = (language: UiLanguage): string => tallerConfig.brand.name[language];
+export const appTitle = (language: UiLanguage): string => `${appName(language)} · ${tallerConfig.brand.organization}`;
+export const ORGANIZATION = tallerConfig.brand.organization;

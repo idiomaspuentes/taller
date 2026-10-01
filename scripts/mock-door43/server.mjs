@@ -15,7 +15,7 @@ import { Buffer } from "node:buffer";
 
 const PORT = Number(process.env.MOCK_PORT || 8787);
 const REAL = "https://qa.door43.org";
-const PM_ORG = "BSOJ";
+const PM_ORG = process.env.MOCK_PM_ORG || "BSOJ";
 const CONTENT_ORG = "es-419_gl";
 
 const USERS = {
@@ -241,6 +241,7 @@ async function handle(req, res) {
     // Only Ana coordinates; the others are plain members.
     return json(res, user.login === "ana" ? [{ id: 10, name: "managers", organization: { name: PM_ORG, username: PM_ORG } }] : [{ id: 11, name: "Equipo", organization: { name: PM_ORG, username: PM_ORG } }]);
   }
+  if (api === "/notifications" || api.startsWith("/notifications/")) return json(res, []);
   if (api === "/user/orgs") return json(res, [{ id: 1, name: PM_ORG, username: PM_ORG }, { id: 2, name: CONTENT_ORG, username: CONTENT_ORG }]);
   const orgMatch = /^\/orgs\/([^/]+)$/.exec(api);
   if (orgMatch) return json(res, { id: 1, name: decodeURIComponent(orgMatch[1]), username: decodeURIComponent(orgMatch[1]), full_name: decodeURIComponent(orgMatch[1]) });
@@ -368,6 +369,11 @@ async function handle(req, res) {
 
 http
   .createServer((req, res) => {
+    const writeHead = res.writeHead.bind(res);
+    res.writeHead = (status, ...rest) => {
+      if (status === 401) log.push({ at: new Date().toISOString(), unauthorized: `${req.method} ${req.url}`, auth: String(req.headers.authorization || "").slice(0, 20) });
+      return writeHead(status, ...rest);
+    };
     handle(req, res).catch((err) => {
       console.error(err);
       if (!res.headersSent) json(res, { message: String(err) }, 500);
