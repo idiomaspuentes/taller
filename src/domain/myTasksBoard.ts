@@ -1,0 +1,223 @@
+import type { DcsIssue } from "@ip-lms/dcs-client";
+import type { GtSession } from "../dcs/auth";
+import { isIssueAssignedTo, issueIsInProgress } from "../dcs/issues";
+import { attentionRank, rowActivity, type RowActivity } from "./attention";
+import { audienceOf } from "./audience";
+import { isDecisionIssue } from "./decisionAccess";
+import type { PersonLevel } from "./levels";
+import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
+import type { ReadCursorDoc } from "./readCursor";
+import { canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { allStepsDone, parseTaskProgressMarker } from "./taskProgress";
+import type { ProjectTask, TaskStep } from "./types";
+
+/**
+ * «Mis tareas» as a person who is not at ease with computers needs it: one flat list of cards, grouped by what
+ * there is to do, each card with ONE action that says what will happen. Pure: no Door43 calls, no React.
+ * See docs/PLAN_MIS_TAREAS.md.
+ */
+
+export type BoardGroup = "decide" | "doing" | "todo" | "reviews" | "free" | "waiting" | "done";
+
+/** The order the groups are shown in; the first ones are open, the rest folded. */
+export const GROUP_ORDER: BoardGroup[] = ["decide", "doing", "todo", "reviews", "free", "waiting", "done"];
+export const OPEN_GROUPS: BoardGroup[] = ["decide", "doing", "todo", "reviews"];
+
+export type CardAction =
+  /** Take it if free (or start it if mine) and open the tool of its next step. */
+  | { kind: "begin"; step?: TaskStep }
+  /** Open the tool of the next step that is mine to do (or the task's tool when it has no steps). */
+  | { kind: "continue"; step?: TaskStep }
+  /** Everything is done: hand the work over (closes the subtarea). Asks first. */
+  | { kind: "deliver" }
+  | { kind: "vote" }
+  /** A review step others started: take a seat in it. */
+  | { kind: "claimStep"; step: TaskStep }
+  /** A review step I am seated in: approve it. */
+  | { kind: "approveStep"; step: TaskStep }
+  /** Nothing to press; `why` says what the card is waiting for. */
+  | { kind: "none"; why: "hold" | "othersReview" | "assigneeDelivers" | "done" | "noTool" };
+
+export type BoardCard = {
+  issue: DcsIssue;
+  bucket?: MyTasksProjectBucket;
+  task?: ProjectTask;
+  group: BoardGroup;
+  action: CardAction;
+  /** Started (marked in progress): the main button says «Seguir» instead of «Empezar». */
+  started: boolean;
+  /** The task's own name (not translated here). */
+  taskName: string;
+  /** Book code and the place inside it as written in the subtarea title: `NEH`, `2` or `1:1–8`. */
+  book: string;
+  place: string;
+  stepsDone: number;
+  stepsTotal: number;
+  /** The first step not done yet. */
+  nextStep?: TaskStep;
+  /** Why it cannot start (as the domain writes it, in Spanish; translated when shown). */
+  holdText?: string;
+  activity: RowActivity;
+  /** Mine to deliver (assigned to me), so «Entregar» can be offered in the card's menu. */
+  canDeliver: boolean;
+  /** Mine, and the project lets people give work back. */
+  canRelease: boolean;
+};
+
+export type BoardInput = {
+  session: Pick<GtSession, "username" | "teams" | "canManage">;
+  pmOrg: string;
+  projects: MyTasksProjectBucket[];
+  /** Closed subtareas with a verse conflict to decide (they need a vote). */
+  decisionIssues: DcsIssue[];
+  /** My subtareas closed lately. */
+  closedIssues: DcsIssue[];
+  cursor: ReadCursorDoc;
+  myLevel?: PersonLevel;
+};
+
+export type Board = Record<BoardGroup, BoardCard[]>;
+
+function taskOf(issue: DcsIssue, bucket?: MyTasksProjectBucket): ProjectTask | undefined {
+  const id = issueTaskId(issue);
+  return id && bucket ? bucket.board.teams.find((t) => t.id === id) : undefined;
+}
+
+/** `NEH 1:1–8 · TPL` → place `1:1–8`; `NEH 2 · Traducir TPL 1` → `2`. */
+export function placeOf(issue: DcsIssue): { book: string; place: string } {
+  const title = (issue.title ?? "").trim();
+  const head = title.split(" · ")[0] ?? "";
+  const match = /^([1-3]?[A-Z]{2,3})\s+(.+)$/.exec(head);
+  if (match) return { book: match[1]!, place: match[2]!.trim() };
+  return { book: issueProjectId(issue).toUpperCase(), place: "" };
+}
+
+function assigneeOf(issue: DcsIssue): string | undefined {
+  return issue.assignee?.login || issue.assignees?.[0]?.login || undefined;
+}
+
+/** What the next pending step asks of me, for a subtarea that is mine (assigned or seated in a step). */
+function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boolean): { action: CardAction; next?: TaskStep } {
+  const progress = parseTaskProgressMarker(issue.body ?? "");
+  const assignee = assigneeOf(issue);
+  if (allStepsDone(steps.map((s) => s.id), progress)) {
+    return { action: mine ? { kind: "deliver" } : { kind: "none", why: "assigneeDelivers" } };
+  }
+  const next = steps.find((s) => !progress.doneStepIds.includes(s.id))!;
+  const mode = stepClaimMode(next);
+  if (mode === "none") return { action: mine ? { kind: "continue", step: next } : { kind: "none", why: "assigneeDelivers" }, next };
+  if (isStepActor(login, progress, next, assignee)) {
+    // Seated: my part is to do it (open its tool) and, in a review, approve it.
+    if (canApproveStep(login, progress, next, assignee) && !next.solverAppId) return { action: { kind: "approveStep", step: next }, next };
+    return { action: { kind: "continue", step: next }, next };
+  }
+  if (canClaimStep(login, steps, progress, next, undefined, assignee)) return { action: { kind: "claimStep", step: next }, next };
+  return { action: { kind: "none", why: "othersReview" }, next };
+}
+
+export function buildBoard(input: BoardInput): Board {
+  const { session, pmOrg, projects, cursor, myLevel } = input;
+  const login = session.username;
+  const board: Board = { decide: [], doing: [], todo: [], reviews: [], free: [], waiting: [], done: [] };
+  const seen = new Set<number>();
+
+  const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => {
+    const task = taskOf(issue, bucket);
+    const steps = task?.steps ?? [];
+    const progress = parseTaskProgressMarker(issue.body ?? "");
+    const { book, place } = placeOf(issue);
+    const mineAssigned = isIssueAssignedTo(issue, login);
+    return {
+      issue,
+      bucket,
+      task,
+      group,
+      action,
+      started: issueIsInProgress(issue),
+      taskName: task?.name ?? "",
+      book,
+      place,
+      stepsDone: steps.filter((s) => progress.doneStepIds.includes(s.id)).length,
+      stepsTotal: steps.length,
+      nextStep: steps.find((s) => !progress.doneStepIds.includes(s.id)),
+      activity: rowActivity(cursor, issue.number, { decision: group === "decide" }),
+      canDeliver: mineAssigned && (issueIsInProgress(issue) || steps.length > 0) && group !== "done",
+      canRelease: mineAssigned && group !== "done" && Boolean(bucket?.browseProject || session.canManage),
+      ...extra,
+    };
+  };
+
+  // Decisions: closed subtareas with a verse to decide, and team decisions of my teams.
+  for (const issue of input.decisionIssues) {
+    if (seen.has(issue.number)) continue;
+    seen.add(issue.number);
+    const bucket = projects.find((p) => p.projectId.toUpperCase() === issueProjectId(issue).toUpperCase());
+    board.decide.push(card(issue, bucket, "decide", { kind: "vote" }));
+  }
+
+  for (const bucket of projects) {
+    for (const issue of bucket.issues) {
+      if (seen.has(issue.number) || (issue.state ?? "open").toLowerCase() === "closed") continue;
+      const audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
+      const task = taskOf(issue, bucket);
+      const steps = task?.steps ?? [];
+      const seated = steps.some((s) => (s.claimMode === "exclusive" || s.claimMode === "pool") && isStepActor(login, parseTaskProgressMarker(issue.body ?? ""), s, assigneeOf(issue)));
+      const mine = audience.relation === "mine";
+      if (audience.relation === "other" && !seated) continue;
+
+      seen.add(issue.number);
+      if (isDecisionIssue(issue)) {
+        board.decide.push(card(issue, bucket, "decide", { kind: "vote" }));
+        continue;
+      }
+      if (audience.hold) {
+        board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: audience.hold.text }));
+        continue;
+      }
+      if (audience.relation === "free") {
+        const can = canClaimIssue(session as GtSession, pmOrg, issue, bucket.board, myLevel);
+        const first = steps[0];
+        board.free.push(card(issue, bucket, "free", can ? { kind: "begin", step: first } : { kind: "none", why: "hold" }));
+        continue;
+      }
+      // Mine (assigned) or seated in one of its steps.
+      if (steps.length) {
+        const { action } = stepAction(login, steps, issue, mine);
+        const group: BoardGroup = issueIsInProgress(issue) || seated ? "doing" : "todo";
+        const shown = group === "todo" && action.kind === "continue" ? { kind: "begin" as const, step: action.step } : action;
+        board[group].push(card(issue, bucket, group, shown));
+      } else {
+        const started = issueIsInProgress(issue);
+        board[started ? "doing" : "todo"].push(card(issue, bucket, started ? "doing" : "todo", started ? { kind: "continue" } : { kind: "begin" }));
+      }
+    }
+  }
+
+  // Review steps of my teams that I can take or approve, on subtareas that are not mine.
+  for (const offer of listStepClaimOffers(session as GtSession, pmOrg, projects)) {
+    if (seen.has(offer.issue.number)) continue;
+    seen.add(offer.issue.number);
+    const bucket = projects.find((p) => p.projectId === offer.projectId);
+    board.reviews.push(card(offer.issue, bucket, "reviews", offer.action === "claim" ? { kind: "claimStep", step: offer.step } : { kind: "approveStep", step: offer.step }));
+  }
+
+  for (const issue of input.closedIssues) {
+    if (seen.has(issue.number)) continue;
+    seen.add(issue.number);
+    const bucket = projects.find((p) => p.projectId.toUpperCase() === issueProjectId(issue).toUpperCase());
+    board.done.push(card(issue, bucket, "done", { kind: "none", why: "done" }));
+  }
+
+  for (const group of GROUP_ORDER) {
+    if (group === "done") board.done.sort((a, b) => Date.parse(b.issue.closed_at ?? b.issue.updated_at ?? "") - Date.parse(a.issue.closed_at ?? a.issue.updated_at ?? ""));
+    else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
+  }
+  return board;
+}
+
+/** The one card that is «what to do now»: a decision, then work in progress, then work to start, then a review. */
+export function nextCard(board: Board): BoardCard | undefined {
+  return board.decide[0] ?? board.doing.find((c) => c.action.kind !== "none") ?? board.todo[0] ?? board.reviews[0] ?? board.free[0];
+}
+
+export const boardCount = (board: Board): number => GROUP_ORDER.reduce((n, g) => n + (g === "done" ? 0 : board[g].length), 0);

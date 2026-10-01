@@ -56,7 +56,8 @@
     "verify:scope": "tsx --tsconfig tsconfig.scripts.json scripts/verify-scope.mts",
     "verify:scope-mock": "tsx --tsconfig tsconfig.scripts.json scripts/e2e-scope.mts",
     "translations:review": "tsx --tsconfig tsconfig.scripts.json scripts/translations/review.mts",
-    "translations:apply": "tsx --tsconfig tsconfig.scripts.json scripts/translations/apply.mts"
+    "translations:apply": "tsx --tsconfig tsconfig.scripts.json scripts/translations/apply.mts",
+    "verify:my-tasks-board": "tsx --tsconfig tsconfig.scripts.json scripts/verify-my-tasks-board.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

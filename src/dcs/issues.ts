@@ -1309,6 +1309,29 @@ export function issueHasConflict(issue: DcsIssue, namespaceId: string = DEFAULT_
  * Closed subtareas assigned to me that still carry the conflict label.
  * `labels=` in the search drops unknown labels, so filter in the client.
  */
+/** My subtareas closed in the last `days` days (newest first): «Terminadas» in Mis tareas. */
+export async function listMyClosedIssues(session: GtSession, org: string, days = 7, now: Date = new Date()): Promise<DcsIssue[]> {
+  const pmConfig = await loadPmConfig(session, org);
+  const closed = await searchPmIssues(session, org, {
+    assigned: true,
+    state: "closed",
+    maxPages: 2,
+    namespaceId: pmConfig.namespaceId,
+  });
+  return closedWithin(closed, days, now);
+}
+
+/** Closed within the last `days` days, newest first. */
+export function closedWithin(issues: DcsIssue[], days: number, now: Date): DcsIssue[] {
+  const since = now.getTime() - days * 86_400_000;
+  return issues
+    .filter((issue) => {
+      const at = Date.parse(issue.closed_at ?? issue.updated_at ?? "");
+      return Number.isFinite(at) && at >= since;
+    })
+    .sort((a, b) => Date.parse(b.closed_at ?? b.updated_at ?? "") - Date.parse(a.closed_at ?? a.updated_at ?? ""));
+}
+
 export async function listMyConflictIssues(session: GtSession, org: string): Promise<DcsIssue[]> {
   const pmConfig = await loadPmConfig(session, org);
   const closed = await searchPmIssues(session, org, {
