@@ -1782,6 +1782,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               </div>
             </details>
           ) : null}
+          {!lab && ctx && range ? (
+            // In another tab, so the draft in hand stays as it is.
+            <a className="scripture-editor__glossary" href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}`} target="_blank" rel="noreferrer">
+              {t("gl.open")}
+            </a>
+          ) : null}
           {lab ? null : prUrl ? (
             <Button
               type="button"

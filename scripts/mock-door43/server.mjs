@@ -396,6 +396,18 @@ async function handle(req, res) {
   }
   if (api === "/notifications" || api.startsWith("/notifications/")) return json(res, []);
   if (api === "/user/orgs") return json(res, [{ id: 1, name: PM_ORG, username: PM_ORG }, { id: 2, name: CONTENT_ORG, username: CONTENT_ORG }]);
+  // POST /orgs/{org}/repos (and the older /org/{org}/repos): a new repository, with a first file when asked.
+  const newRepo = /^\/orgs?\/([^/]+)\/repos$/.exec(api);
+  if (newRepo && req.method === "POST") {
+    if (!user) return json(res, { message: "token is required" }, 401);
+    const body = await readBody(req);
+    const key = `${decodeURIComponent(newRepo[1])}/${body.name}`;
+    if (repos.has(key)) return json(res, { message: "repository already exists" }, 409);
+    repos.set(key, { defaultBranch: "master", branches: new Map([["master", new Map()]]) });
+    if (body.auto_init) put(key, "master", "README.md", `# ${body.name}\n`);
+    log.push({ at: new Date().toISOString(), user: user.login, write: `repo ${key} created` });
+    return json(res, { name: body.name, full_name: key, default_branch: "master", owner: { login: decodeURIComponent(newRepo[1]) } }, 201);
+  }
   const orgMatch = /^\/orgs\/([^/]+)$/.exec(api);
   if (orgMatch) return json(res, { id: 1, name: decodeURIComponent(orgMatch[1]), username: decodeURIComponent(orgMatch[1]), full_name: decodeURIComponent(orgMatch[1]) });
   if (api === `/repos/${PM_ORG}/taller/issues/comments`) return json(res, []);

@@ -22,6 +22,7 @@ import { HandoffUnitsPanel } from "./components/HandoffUnitsPanel";
 import { ChecklistView } from "./components/ChecklistView";
 import { EndorsementView } from "./components/EndorsementView";
 import { PublishUnitView } from "./components/PublishUnitView";
+import { GlossaryView } from "./components/GlossaryView";
 import type { AssignmentsDoc, InventoryDoc, ProjectIndexEntry } from "./domain/types";
 import {
   emptyAssignments,
@@ -112,7 +113,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 /** Pages that keep the phone's bottom bar: the daily places and the personal ones. */
-const BOTTOM_NAV_ROUTES: string[] = ["avisos", "mis-tareas", "perfil", "hoy", "proyectos", "organizacion", "plantillas"];
+const BOTTOM_NAV_ROUTES: string[] = ["avisos", "mis-tareas", "perfil", "hoy", "proyectos", "organizacion", "plantillas", "glosario"];
 
 const SETUP_DONE_KEY = "gt-context-confirmed";
 
@@ -1081,6 +1082,12 @@ export function App() {
                       active: route.name === "proyectos" || route.name === "proyecto",
                       onSelect: () => navigate({ name: "proyectos" }),
                     },
+                    {
+                      id: "glosario",
+                      label: t("nav.glossary"),
+                      active: route.name === "glosario",
+                      onSelect: () => navigate({ name: "glosario" }),
+                    },
                   ]
                 : [
                     {
@@ -1094,6 +1101,12 @@ export function App() {
                       label: t("nav.alerts"),
                       active: route.name === "avisos",
                       onSelect: () => navigate({ name: "avisos" }),
+                    },
+                    {
+                      id: "glosario",
+                      label: t("nav.glossary"),
+                      active: route.name === "glosario",
+                      onSelect: () => navigate({ name: "glosario" }),
                     },
                   ]
             }
@@ -1299,6 +1312,20 @@ export function App() {
               setSession(null);
               navigate({ name: "mis-tareas" });
             }}
+          />
+        ) : null}
+
+        {route.name === "glosario" && session ? (
+          <GlossaryView
+            key={`${sessionEpoch}-${route.book ?? ""}-${route.chapter ?? 0}-${route.from ?? 0}`}
+            session={session}
+            owner={contentOrg}
+            lang={lang}
+            pmOrg={pmOrg}
+            canManage={effectiveCanManage}
+            passage={route.book && route.chapter ? { book: route.book, chapter: route.chapter, from: route.from ?? 1, to: route.to ?? 200 } : undefined}
+            announce={announce}
+            onClose={() => window.history.back()}
           />
         ) : null}
 

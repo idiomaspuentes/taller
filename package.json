@@ -66,6 +66,7 @@
     "verify:delivery": "tsx --tsconfig tsconfig.scripts.json scripts/verify-delivery.mts",
     "verify:unit-publish": "tsx --tsconfig tsconfig.scripts.json scripts/verify-unit-publish.mts",
     "verify:workflow-upgrade": "tsx --tsconfig tsconfig.scripts.json scripts/verify-workflow-upgrade.mts",
+    "verify:glossary": "tsx --tsconfig tsconfig.scripts.json scripts/verify-glossary.mts",
     "check:door43-api": "node scripts/check-door43-api.mjs",
     "verify:consensus": "tsx --tsconfig tsconfig.scripts.json scripts/verify-consensus.mts"
   },

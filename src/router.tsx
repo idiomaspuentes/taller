@@ -26,6 +26,8 @@ export type AppRoute =
   | { name: "organizacion" }
   /** Org workflow templates (fases + tareas + checklists). */
   | { name: "plantillas"; workflowId?: string }
+  /** The glossary of translation decisions; with a passage, it opens on the entries of that passage. */
+  | { name: "glosario"; book?: string; chapter?: number; from?: number; to?: number }
   /** Scripture USFM editor opened from Resolver (`ctx` in hash query). */
   | { name: "solver-scripture"; ctx: string }
   | { name: "solver-helps"; ctx: string }
@@ -75,6 +77,12 @@ export function parseHash(hash: string): AppRoute {
   // «Ahora» became the first card of «Mis tareas»: old links and installed shortcuts still land there.
   if (parts[0] === "ahora") return { name: "mis-tareas" };
   if (parts[0] === "avisos") return { name: "avisos" };
+  if (parts[0] === "glosario") {
+    const chapter = Number(params.get("c"));
+    const book = (params.get("libro") || "").toUpperCase();
+    if (!book || !Number.isInteger(chapter) || chapter <= 0) return { name: "glosario" };
+    return { name: "glosario", book, chapter, from: Number(params.get("de")) || 1, to: Number(params.get("a")) || 200 };
+  }
   if (parts[0] === "hoy") return { name: "hoy" };
   if (parts[0] === "perfil") return { name: "perfil" };
   if (parts[0] === "organizacion") return { name: "organizacion" };
@@ -174,6 +182,8 @@ export function routeToHash(route: AppRoute): string {
       return `#/solver/familiarize?ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-afinar":
       return `#/solver/afinar?step=${encodeURIComponent(route.step)}${route.mode ? `&mode=${encodeURIComponent(route.mode)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
+    case "glosario":
+      return route.book && route.chapter ? `#/glosario?libro=${encodeURIComponent(route.book)}&c=${route.chapter}&de=${route.from ?? 1}&a=${route.to ?? 200}` : "#/glosario";
     case "solver-publicar":
       return `#/solver/publicar?mode=${encodeURIComponent(route.mode)}&aligned=${encodeURIComponent(route.aligned)}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-aval":

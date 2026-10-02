@@ -437,6 +437,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         <div className="af-title">
           <h1>{t(TITLE[stepProp])}</h1>
           <p>{data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}</p>
+          {data ? (
+            <a className="scripture-editor__glossary" href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200`} target="_blank" rel="noreferrer">
+              {t("gl.open")}
+            </a>
+          ) : null}
         </div>
         {summary ? (
           <div className="af-progress" aria-label={t("af.progressAria")}>
