@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 9,
+      "version": 10,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -91,7 +91,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {
@@ -180,7 +180,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {
@@ -269,7 +269,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {
@@ -337,7 +337,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {

@@ -1,3 +1,4 @@
+import { StudyNotesPanel } from "./StudyNotesPanel";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
@@ -133,7 +134,7 @@ function canJoinRows(cur: VerseDraft, next: VerseDraft, range: RefRange | null):
 function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
   return a.length === b.length && a.every((d, i) => slotKey(d) === slotKey(b[i]!) && d.text === b[i]!.text);
 }
-type ResourceTab = "ult" | "ust" | "notas" | "preguntas";
+type ResourceTab = "ult" | "ust" | "notas" | "preguntas" | "apuntes";
 type MobilePanel = "editor" | "recursos";
 function bootBranchHint(err: unknown, fallback: string): string {
   if (err instanceof BootstrapError && err.ref) return err.ref;
@@ -834,6 +835,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [notesFailed, setNotesFailed] = useState(false);
   const [wordsFailed, setWordsFailed] = useState(false);
   const [questionsFailed, setQuestionsFailed] = useState(false);
+  const [studyNoteCount, setStudyNoteCount] = useState(0);
   const [resourceTab, setResourceTab] = useState<ResourceTab>(() =>
     primaryEnglishKind(decodeSolverLaunchContext(ctxEncoded)?.resource),
   );
@@ -1887,7 +1889,19 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                   <span className="scripture-editor__tab-count">{questions.length}</span>
                 ) : null}
               </TabsTrigger>
+              {session && ctx?.projectId && ctx.pmOrg && range ? (
+                <TabsTrigger value="apuntes">
+                  {t("sn.tab")}
+                  {studyNoteCount ? <span className="scripture-editor__tab-count">{studyNoteCount}</span> : null}
+                </TabsTrigger>
+              ) : null}
             </TabsList>
+            {session && ctx?.projectId && ctx.pmOrg && range ? (
+              // Kept mounted so that its count shows on the tab before it is opened.
+              <div role="tabpanel" hidden={resourceTab !== "apuntes"} className="scripture-editor__tab-pane">
+                <StudyNotesPanel session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} onCount={setStudyNoteCount} />
+              </div>
+            ) : null}
             <TabsContent value="ult" className="scripture-editor__tab-pane">
               <ScriptureTab
                 title={t("se.ultEnglish")}

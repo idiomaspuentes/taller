@@ -426,15 +426,34 @@ export async function loadEnglishWordsForRange(
  * The introductions a person reads before working on a passage: the note that introduces the book and the one that
  * introduces the chapter (rows `front:intro` and `N:intro` of the notes). Empty text when the notes have none.
  */
-export async function loadIntroNotes(session: GtSession, book: string, chapter: number): Promise<{ book: string; chapter: string }> {
+export async function loadIntroNotes(
+  session: GtSession,
+  book: string,
+  chapter: number,
+  /** The team's own notes, read first: an introduction already translated is the one to study from. */
+  own?: { contentOrg?: string; lang?: string; pmConfig?: PmConfig },
+): Promise<{ book: string; chapter: string; translated: { book: boolean; chapter: boolean } }> {
   const code = (book || "").toUpperCase();
-  if (!code) return { book: "", chapter: "" };
-  const rows = await loadEnglishTsv(session, "en_tn", helpsTsvFilename("notas", code)).catch(() => [] as Record<string, string>[]);
-  const noteAt = (reference: string) => {
+  if (!code) return { book: "", chapter: "", translated: { book: false, chapter: false } };
+  const file = helpsTsvFilename("notas", code);
+  const glOwner = (own?.contentOrg || "").trim();
+  const glRepo = own?.lang ? resolveResourceRepo("notas", own.lang, own.pmConfig ?? DEFAULT_PM_CONFIG) : "";
+  const skipGl = !glOwner || !glRepo || (glOwner.toLowerCase() === "unfoldingword" && glRepo === "en_tn");
+  const [mine, english] = await Promise.all([
+    skipGl ? Promise.resolve([] as Record<string, string>[]) : loadTsvFromRepo(session, glOwner, glRepo, file).catch(() => [] as Record<string, string>[]),
+    loadEnglishTsv(session, "en_tn", file).catch(() => [] as Record<string, string>[]),
+  ]);
+  const noteAt = (rows: Record<string, string>[], reference: string) => {
     const row = rows.find((r) => (r.Reference || r.reference || "").trim().toLowerCase() === reference);
     return row ? normalizeHelpText(row.Note || row.note || row.OccurrenceNote || "").trim() : "";
   };
-  return { book: noteAt("front:intro"), chapter: noteAt(`${chapter}:intro`) };
+  const pick = (reference: string) => {
+    const own = noteAt(mine, reference);
+    return { text: own || noteAt(english, reference), translated: Boolean(own) };
+  };
+  const ofBook = pick("front:intro");
+  const ofChapter = pick(`${chapter}:intro`);
+  return { book: ofBook.text, chapter: ofChapter.text, translated: { book: ofBook.translated, chapter: ofChapter.translated } };
 }
 
 /** Compact English TN/TQ for the same verse range (best-effort). */

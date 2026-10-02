@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 9,
+      "version": 10,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -91,7 +91,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {
@@ -180,7 +180,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {
@@ -269,7 +269,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {
@@ -337,7 +337,7 @@
                 "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
               },
               "solverAppId": "fcr-familiarize",
-              "closing": "self",
+              "closing": "automatic",
               "scope": "chapter-once"
             },
             {
