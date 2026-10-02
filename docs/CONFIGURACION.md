@@ -55,6 +55,12 @@ La configuración se valida (consola en desarrollo y `npm run verify:config`): a
 - Con **varios**, la bienvenida muestra una tarjeta por equipo y sugiere el que habla el idioma de la interfaz.
 - Quien ya inició sesión puede cambiar de espacio en el diálogo «Sesión»; la app se recarga para que no quede nada del espacio anterior.
 
+## El proceso de trabajo
+
+Las fases, tareas, pasos y herramientas con las que trabaja el equipo no están en el código: son un paquete JSON en
+`processes/`, listado en `processes` de `taller.config.ts`. Otra organización escribe su propio paquete y lo lista
+ahí. Ver [`PROCESOS.md`](PROCESOS.md).
+
 ## Cambiar la bienvenida
 
 Edita `welcome.es` y `welcome.pt` en `taller.config.ts`. Los tres puntos (`points`) llevan un ícono cada uno. Si añades un idioma nuevo hay que:

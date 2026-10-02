@@ -5,9 +5,13 @@
  */
 import type { UiLanguage } from "../config";
 import glossary from "../i18n/locales/glossary.pt.json";
+import { processGlossary } from "./processes";
 
-/** Spanish factory name → Portuguese. Names that read the same in both are left out. */
-const PT: [string, string][] = Object.entries(glossary.templates);
+/**
+ * Stored name → Portuguese. The names of a process come from its package (`processes/*.json`): the names its
+ * templates declare and its glossary of older names. The app's own few («Sin fase») stay in the interface glossary.
+ */
+const PT: [string, string][] = [...Object.entries(glossary.templates), ...processGlossary("pt")];
 
 // Longest first, so "Revisar la alineación" is not cut by "Alinear" and the like.
 const ORDERED = [...PT].sort((a, b) => b[0].length - a[0].length);

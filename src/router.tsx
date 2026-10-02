@@ -32,7 +32,7 @@ export type AppRoute =
   | { name: "solver-familiarize"; ctx: string }
   | { name: "solver-review"; ctx: string; mode: "pair" | "group" }
   /** Afinación review step (`notas`, later `palabras`, `alineacion`). */
-  | { name: "solver-afinar"; ctx: string; step: string }
+  | { name: "solver-afinar"; ctx: string; step: string; mode?: string }
   /** Sandbox: launch solvers without Entregar / issues. `#/lab` or `#/solver-lab`. */
   | { name: "solver-lab" };
 
@@ -93,7 +93,8 @@ export function parseHash(hash: string): AppRoute {
     return { name: "solver-review", ctx: params.get("ctx") || "", mode };
   }
   if (parts[0] === "solver" && parts[1] === "afinar") {
-    return { name: "solver-afinar", ctx: params.get("ctx") || "", step: params.get("step") || "notas" };
+    const mode = params.get("mode") || undefined;
+    return { name: "solver-afinar", ctx: params.get("ctx") || "", step: params.get("step") || "notas", ...(mode ? { mode } : {}) };
   }
   if (parts[0] === "proyectos") {
     if (parts.length === 1) return { name: "proyectos" };
@@ -157,7 +158,7 @@ export function routeToHash(route: AppRoute): string {
     case "solver-familiarize":
       return `#/solver/familiarize?ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-afinar":
-      return `#/solver/afinar?step=${encodeURIComponent(route.step)}&ctx=${encodeURIComponent(route.ctx)}`;
+      return `#/solver/afinar?step=${encodeURIComponent(route.step)}${route.mode ? `&mode=${encodeURIComponent(route.mode)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-review":
       return `#/solver/review?mode=${route.mode}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-lab":

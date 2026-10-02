@@ -64,7 +64,20 @@ Espacio de trabajo (idioma)
 
 Cada fase deja la app funcionando y sigue leyendo los proyectos existentes.
 
-### Fase 1 · La plantilla como datos (sin cambios visibles)
+### Fase 1 · La plantilla como datos — hecha (1 de octubre de 2026)
+
+**Lo que quedó:** el FCR salió del código a `processes/fcr.json` (plantilla nueva con familiarización, tres pistas de
+Armonización, listas de comprobación, nombres en español y portugués, botón por paso, regla de cierre y versión) y
+`taller.config.ts` lo lista en `processes`. El motor lee los paquetes por `src/domain/processes.ts`; las herramientas
+de fábrica y la puesta al día del catálogo de cada organización son genéricas (`supersedes`, `stepParams`,
+`needsIssue`). `validateTemplate` existe como `workflowProblems` / `processProblems` (`workflowCheck.ts`), con
+`verify:templates` (incluye un proceso inventado de grabación de audio) y `verify:decoupling`. Detalle en
+[PROCESOS.md](PROCESOS.md).
+
+**Lo que falta de esta fase:** editar en la pantalla **Plantillas** los campos nuevos (nombres por idioma, botón,
+regla de cierre, preguntas); hoy se conservan al guardar pero solo se escriben en el JSON.
+
+Lo planeado era:
 - Tipos nuevos en `types.ts`: nombres por idioma (`string | { es, pt }`), `actionLabel`, `closing`,
   `checklist`, `stepScope`. Lectura de los formatos actuales sin romper nada.
 - `templates/fcr.json` con la plantilla de [PLANTILLA_FCR.md](PLANTILLA_FCR.md), en español y

@@ -940,7 +940,7 @@ export function App() {
           <AlineacionView
             key={`${sessionEpoch}-alineacion`}
             ctxEncoded={route.ctx}
-            mode={decodeSolverLaunchContext(route.ctx)?.stepId === "revisar-alineacion" ? "revisar" : "alinear"}
+            mode={route.mode === "revisar" ? "revisar" : "alinear"}
             announce={announce}
             onClose={onSolverClose}
           />

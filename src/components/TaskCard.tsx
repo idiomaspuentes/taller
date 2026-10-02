@@ -6,6 +6,7 @@ import { formatRelativeEs, previewLine } from "../domain/attention";
 import type { BoardCard } from "../domain/myTasksBoard";
 import { canApproveStep, canClaimStep, isStepActor, isStepUnlocked, stepClaimMode } from "../domain/stepClaim";
 import { parseTaskProgressMarker } from "../domain/taskProgress";
+import { localized } from "../domain/processes";
 import { localizeHold, localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { TaskStep } from "../domain/types";
@@ -62,19 +63,23 @@ export function TaskCard(props: Props) {
     };
   }, [menuOpen]);
 
+  // Names and the button's words are the process's own (its template); the glossary covers plans saved before that.
+  const stepName = (step: TaskStep) => (step.names?.[language] ? localized(step.name, step.names, language) : localizeName(step.name, language));
+  const stepButton = (step: TaskStep | undefined) => (step?.actionLabel ? localized(step.actionLabel, step.actionLabels, language) : "");
+
   const what = card.taskName ? localizeName(card.taskName, language) : localizeName(card.issue.title ?? "", language);
   const where = [card.book ? bookLabel(card.book, language) : "", card.place].filter(Boolean).join(" ");
   const title = where ? `${what} · ${where}` : what;
 
   const action = card.action;
   let label = "";
-  if (action.kind === "begin") label = props.externalTool ? t("tb.study") : t("tb.begin");
-  else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : card.started ? t("tb.continue") : t("tb.begin");
+  if (action.kind === "begin") label = props.externalTool ? t("tb.study") : stepButton(action.step) || t("tb.begin");
+  else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : stepButton(action.step) || (card.started ? t("tb.continue") : t("tb.begin"));
   else if (action.kind === "deliver") label = t("tb.deliver");
   else if (action.kind === "vote") label = t("tb.vote");
   // The step's own name says what it is; the app only knows the mechanics (join it, approve it).
-  else if (action.kind === "claimStep") label = t("tb.join").replace("{step}", localizeName(action.step.name, language));
-  else if (action.kind === "approveStep") label = t("tb.approveStep").replace("{step}", localizeName(action.step.name, language));
+  else if (action.kind === "claimStep") label = t("tb.join").replace("{step}", stepName(action.step));
+  else if (action.kind === "approveStep") label = t("tb.approveStep").replace("{step}", stepName(action.step));
 
   let status = "";
   if (card.group === "waiting") status = localizeHold(card.holdText ?? "", language);
@@ -146,7 +151,7 @@ export function TaskCard(props: Props) {
           </span>
           <span>{t("tb.steps").replace("{done}", String(card.stepsDone)).replace("{total}", String(card.stepsTotal))}</span>
           {card.nextStep && card.stepsDone < card.stepsTotal ? (
-            <span className="task-card__next">{t("tb.next").replace("{step}", localizeName(card.nextStep.name, language))}</span>
+            <span className="task-card__next">{t("tb.next").replace("{step}", stepName(card.nextStep))}</span>
           ) : null}
         </div>
       ) : null}
@@ -182,7 +187,7 @@ export function TaskCard(props: Props) {
                     : t("tb.stepOthers");
             return (
               <li key={step.id} data-done={done || undefined}>
-                <span className="task-card__step-name">{localizeName(step.name, language)}</span>
+                <span className="task-card__step-name">{stepName(step)}</span>
                 <span className="task-card__step-note">{note}</span>
                 {isPrimary ? null : claim ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onClaimStep(step)}>
@@ -210,7 +215,7 @@ export function TaskCard(props: Props) {
           </Button>
           {canFinishStep && stepInHand ? (
             <Button type="button" size="lg" variant="outline" className="task-card__action" disabled={props.busy} onClick={() => props.onToggleStep(stepInHand)}>
-              {t("tb.stepFinishNamed").replace("{step}", localizeName(stepInHand.name, language))}
+              {t("tb.stepFinishNamed").replace("{step}", stepName(stepInHand))}
             </Button>
           ) : null}
         </div>

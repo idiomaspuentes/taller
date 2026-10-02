@@ -4,7 +4,7 @@ import { usfmStudyBookId } from "./books";
 import { resolveTaskPhaseName, resolveTaskPhaseSlug } from "./phaseSlug";
 import type { AssignmentsDoc } from "./types";
 import { parseWorkOrderMarker } from "./workOrder";
-import { isUrlSolver, TC_STUDY, type SolverApp } from "./solvers";
+import { isUrlSolver, URL_TOOL_DEFAULT_LANG, type SolverApp } from "./solvers";
 import { parsePmFacetValue } from "./roles";
 
 export const SOLVER_LAUNCH_SCHEMA = "gateway-solver-launch-1";
@@ -224,7 +224,7 @@ function launchPlaceholders(
     ? (usfmStudyBookId(ctx.book) ?? ctx.book.trim().toLowerCase())
     : ctx.book;
   const lang = isUrlSolver(app)
-    ? (app.lang?.trim() || TC_STUDY.defaultLang)
+    ? (app.lang?.trim() || URL_TOOL_DEFAULT_LANG)
     : ctx.lang;
   return {
     context: encoded,
@@ -267,6 +267,12 @@ export function resolveSolverLaunchUrl(
     if (key === "context") return value;
     return encodeURIComponent(value);
   });
+  // What the tool needs to know about the step it is opened for, as the process declared it.
+  const extra = ctx.stepId ? app.stepParams?.[ctx.stepId] : undefined;
+  if (extra) {
+    const query = Object.entries(extra).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
+    url += `${url.includes("?") ? "&" : "?"}${query}`;
+  }
   if (url.startsWith("/") && typeof window !== "undefined" && window.location?.origin) {
     url = `${window.location.origin}${url}`;
   }

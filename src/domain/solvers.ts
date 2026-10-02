@@ -1,3 +1,4 @@
+import { tallerConfig } from "../../taller.config";
 import type { ProjectTask, ScopeKey } from "./types";
 import { SCOPE_KEYS } from "./types";
 import { parsePmFacetValue } from "./roles";
@@ -5,29 +6,16 @@ import { parseWorkOrderMarker } from "./workOrder";
 
 export const SOLVERS_SCHEMA = "gateway-solvers-1";
 
-export const FAMILIARIZE_SOLVER_ID = "fcr-familiarize";
-
 /** In-app hash route vs absolute external site. */
 export type SolverKind = "app" | "url";
 
 /** Both open a new browsing context; `external` is a third-party site. */
 export type SolverOpenMode = "tab" | "external";
 
-/**
- * TranslationCore Study chapter reader.
- * Path shape is fixed; only `{lang}`, `{book}`, `{chapter}` vary.
- * `{lang}` defaults to English source — workspace GL codes (es-419) are not a study-site field.
- */
-export const TC_STUDY = {
-  origin: "https://study.translationcore.com",
-  defaultLang: "en",
-} as const;
+/** `{lang}` of an outside tool that does not say which one it reads in. */
+export const URL_TOOL_DEFAULT_LANG = "en";
 
-/** `tit 2` → `…/chapter/tit%202` after placeholder substitution + encode. */
-export const TC_STUDY_LAUNCH_URL =
-  `${TC_STUDY.origin}/read/{lang}/bible/chapter/{book}%20{chapter}` as const;
-
-/** Registered mini-app that can resolve a ProjectTask’s subtareas. */
+/** A tool a step can open: a screen of this app, or an outside site. Which tools exist is the process's choice. */
 export type SolverApp = {
   id: string;
   name: string;
@@ -42,8 +30,20 @@ export type SolverApp = {
   /** Defaults from the URL: `https://…` → `url`, same-origin `/…` → `app`. */
   kind: SolverKind;
   openMode: SolverOpenMode;
-  /** Overrides `{lang}` for `kind: "url"` templates. Default: {@link TC_STUDY.defaultLang}. */
+  /** Overrides `{lang}` for `kind: "url"` templates. Default: {@link URL_TOOL_DEFAULT_LANG}. */
   lang?: string;
+  /** The tool works on a real subtarea (its pull request, its thread): it cannot be tried in the lab without one. */
+  needsIssue?: boolean;
+  /**
+   * Fragments of older launch URLs of this tool. An organization's saved copy whose URL contains one is brought up
+   * to the shipped URL (see `upgradeShippedTools`).
+   */
+  supersedes?: string[];
+  /**
+   * Extra URL parameters when the tool is opened for a given step: `{ "review-step-id": { "mode": "revisar" } }`.
+   * It lets one screen serve two steps of a process without the screen knowing the process.
+   */
+  stepParams?: Record<string, Record<string, string>>;
 };
 
 export type SolversCatalog = {
@@ -56,101 +56,15 @@ export const EMPTY_SOLVERS_CATALOG: SolversCatalog = {
   solvers: [],
 };
 
-/**
- * Shipped defaults used when `{pmOrg}/gateway-tasks/solvers.json` is missing.
- * Familiarize is `kind: "url"` (TranslationCore Study). TPL/TPS and helps stay in-app.
- */
-export const DEFAULT_SOLVERS_CATALOG: SolversCatalog = {
-  schema: SOLVERS_SCHEMA,
-  solvers: [
-    {
-      id: FAMILIARIZE_SOLVER_ID,
-      name: "Familiarizar",
-      description: "Lee el capítulo en TranslationCore Study. Solo lectura.",
-      kind: "url",
-      launchUrl: TC_STUDY_LAUNCH_URL,
-      lang: TC_STUDY.defaultLang,
-      openMode: "external",
-    },
-    {
-      id: "tpl-translate",
-      name: "Borrador TPL",
-      description: "Editor USFM con un borrador por subtarea → repo GLT.",
-      launchUrl: "/#/solver/scripture?ctx={context}",
-      resources: ["tpl"],
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "tps-translate",
-      name: "Borrador TPS",
-      description: "Editor USFM con un borrador por subtarea → repo GST.",
-      launchUrl: "/#/solver/scripture?ctx={context}",
-      resources: ["tps"],
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "fcr-pair-review",
-      name: "Revisión en pares",
-      description: "Cambios del borrador de esta subtarea. Aprobar en Mis tareas.",
-      launchUrl: "/#/solver/review?mode=pair&ctx={context}",
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "fcr-group-review",
-      name: "Revisión grupal",
-      description: "Mismos cambios; cupo de reseñas. Aprobar en Mis tareas.",
-      launchUrl: "/#/solver/review?mode=group&ctx={context}",
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "afinar-notas",
-      name: "Revisar notas",
-      description: "Afinación: cada nota del capítulo con el original y el borrador a la vista.",
-      launchUrl: "/#/solver/afinar?step=notas&ctx={context}",
-      resources: ["tpl", "tps"],
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "afinar-palabras",
-      name: "Revisar palabras clave",
-      description: "Afinación: cada término clave, comparado con el resto del libro.",
-      launchUrl: "/#/solver/afinar?step=palabras&ctx={context}",
-      resources: ["tpl", "tps"],
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "afinar-alineacion",
-      name: "Alinear",
-      description: "Afinación: une cada palabra del original con lo que la traduce en el borrador.",
-      launchUrl: "/#/solver/afinar?step=alineacion&ctx={context}",
-      resources: ["tpl", "tps"],
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "helps-review",
-      name: "Ayudas (TN / TQ / TW / TA)",
-      description: "Borrador de ayudas, uno por subtarea.",
-      launchUrl: "/#/solver/helps?ctx={context}",
-      resources: ["notas", "preguntas", "palabras", "academia"],
-      kind: "app",
-      openMode: "tab",
-    },
-    {
-      id: "solver-demo",
-      name: "Demostración genérica",
-      description: "Cualquier recurso — muestra el payload de lanzamiento.",
-      launchUrl: "/solver-stub.html#ctx={context}",
-      kind: "app",
-      openMode: "tab",
-    },
-  ],
+/** The engine's only own tool: it shows the launch payload, to try a step that has no tool yet. */
+export const DEMO_SOLVER_ID = "solver-demo";
+const DEMO_TOOL = {
+  id: DEMO_SOLVER_ID,
+  name: "Demostración genérica",
+  description: "Cualquier recurso — muestra el payload de lanzamiento.",
+  launchUrl: "/solver-stub.html#ctx={context}",
+  kind: "app",
+  openMode: "tab",
 };
 
 function isScopeKey(value: string): value is ScopeKey {
@@ -178,13 +92,9 @@ export function isUrlSolver(app: SolverApp): boolean {
   return app.kind === "url" || app.openMode === "external";
 }
 
-export function isFamiliarizeSolver(app: SolverApp): boolean {
-  return app.id === FAMILIARIZE_SOLVER_ID;
-}
-
-/** Queue action: Estudiar for familiarize, Resolver for in-app tools. */
+/** Queue action: «Estudiar» for an outside site (reading), «Abrir editor» for a tool of the app. */
 export function solverActionLabel(app: SolverApp): string {
-  return isFamiliarizeSolver(app) ? "Estudiar" : "Abrir editor";
+  return isUrlSolver(app) ? "Estudiar" : "Abrir editor";
 }
 
 export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
@@ -212,6 +122,15 @@ export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
     const rowApp = item as Partial<SolverApp> & { open?: string };
     const kind = inferSolverKind(launchUrl, rowApp.kind);
     const lang = String(rowApp.lang ?? "").trim() || undefined;
+    const stepParams: Record<string, Record<string, string>> = {};
+    if (rowApp.stepParams && typeof rowApp.stepParams === "object") {
+      for (const [stepId, params] of Object.entries(rowApp.stepParams)) {
+        if (!params || typeof params !== "object") continue;
+        const clean = Object.fromEntries(Object.entries(params).filter(([key, value]) => /^\w+$/.test(key) && typeof value === "string" && value));
+        if (Object.keys(clean).length) stepParams[stepId] = clean as Record<string, string>;
+      }
+    }
+    const supersedes = Array.isArray(rowApp.supersedes) ? rowApp.supersedes.map(String).map((x) => x.trim()).filter(Boolean) : [];
     solvers.push({
       id,
       name,
@@ -221,6 +140,9 @@ export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
       kind,
       openMode: inferOpenMode(kind, rowApp.open ?? rowApp.openMode),
       lang,
+      ...(rowApp.needsIssue === true ? { needsIssue: true } : {}),
+      ...(supersedes.length ? { supersedes } : {}),
+      ...(Object.keys(stepParams).length ? { stepParams } : {}),
     });
   }
   return { schema: SOLVERS_SCHEMA, solvers };
@@ -278,7 +200,7 @@ export function resolveSolverForIssue(
     if (specific) return specific;
     if (matched[0]) return matched[0];
   }
-  return findSolverApp(catalog, "solver-demo") ?? catalog.solvers[0];
+  return findSolverApp(catalog, DEMO_SOLVER_ID) ?? catalog.solvers[0];
 }
 
 /** Apps eligible for a task given its resource scope. */
@@ -292,4 +214,43 @@ export function solversForTaskResources(
     if (!app.resources?.length) return true;
     return app.resources.some((r) => set.has(r));
   });
+}
+
+/**
+ * The tools shipped with the app: those of the processes in `taller.config.ts`, plus the demo. Used when the
+ * organization has not saved a catalog of its own (`solvers.json`).
+ */
+export const DEFAULT_SOLVERS_CATALOG: SolversCatalog = normalizeSolversCatalog({
+  solvers: [...tallerConfig.processes.flatMap((process) => process.tools ?? []), DEMO_TOOL],
+});
+
+/**
+ * An organization's saved catalog, brought up to date with the shipped tools, without touching what the organization
+ * changed: a saved tool whose URL is one the shipped tool `supersedes` takes the shipped launch fields.
+ */
+export function upgradeShippedTools(catalog: SolversCatalog, shipped: SolversCatalog = DEFAULT_SOLVERS_CATALOG): SolversCatalog {
+  const byId = new Map(shipped.solvers.map((tool) => [tool.id, tool]));
+  let changed = false;
+  const solvers = catalog.solvers.map((app) => {
+    const def = byId.get(app.id);
+    if (!def) return app;
+    let next = app;
+    if (def.supersedes?.some((old) => app.launchUrl.includes(old))) {
+      next = { ...next, launchUrl: def.launchUrl, kind: def.kind, openMode: def.openMode, lang: def.lang ?? app.lang, description: def.description ?? app.description };
+    }
+    // Catalogs saved before a field existed take it from the shipped tool.
+    if (def.stepParams && !app.stepParams) next = { ...next, stepParams: def.stepParams };
+    if (def.needsIssue && app.needsIssue === undefined) next = { ...next, needsIssue: true };
+    if (next === app) return app;
+    changed = true;
+    return next;
+  });
+  return changed ? { ...catalog, solvers } : catalog;
+}
+
+/** The catalog plus every shipped tool it lacks, in memory only: reading a catalog never writes it. */
+export function withShippedTools(catalog: SolversCatalog, shipped: SolversCatalog = DEFAULT_SOLVERS_CATALOG): SolversCatalog {
+  const have = new Set(catalog.solvers.map((tool) => tool.id));
+  const extra = shipped.solvers.filter((tool) => !have.has(tool.id));
+  return extra.length ? { ...catalog, solvers: [...catalog.solvers, ...extra] } : catalog;
 }

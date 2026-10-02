@@ -27,7 +27,7 @@ import {
 } from "../domain/store";
 import { formatTaskClaimSummary } from "../domain/stepClaim";
 import { emptyWorkflow } from "../domain/workflows";
-import { fcrWorkflowTemplate } from "../domain/fcrTemplate";
+import { localized, shippedWorkflows } from "../domain/processes";
 import { ensurePhaseSlug, makePhase, slugifyPhase } from "../domain/phaseSlug";
 import { StepClaimPolicyPanel } from "./StepClaimPolicyPanel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -199,10 +199,9 @@ export function WorkflowsView({
     announce(t("wf.created").replace("{name}", wf.name));
   }
 
-  /** A new template that starts from the FCR base (same flow, own copy to adjust). */
-  function createFromFcr() {
-    const base = fcrWorkflowTemplate();
-    const wf = { ...base, id: uid(), name: `${base.name} ${catalog.workflows.length + 1}` };
+  /** A new template that starts from one shipped with the app (same flow, own copy to adjust). */
+  function createFromShipped(base: WorkflowTemplate) {
+    const wf = { ...base, id: uid(), name: `${base.name} ${catalog.workflows.length + 1}`, names: undefined };
     setCatalog((prev) => {
       const next = { schema: WORKFLOWS_SCHEMA, workflows: [...prev.workflows, wf] };
       saveLocalWorkflows(next);
@@ -211,7 +210,7 @@ export function WorkflowsView({
     openWorkflow(wf, { rename: true });
     setDirty(true);
     setDescOpen(false);
-    announce(t("wf.createdFcr").replace("{name}", nm(wf.name)));
+    announce(t("wf.createdShipped").replace("{name}", nm(wf.name)));
   }
 
   function commitRenameWorkflow() {
@@ -507,11 +506,13 @@ export function WorkflowsView({
               {t("wf.newTpl")}
             </Button>
           ) : null}
-          {canManage ? (
-            <Button type="button" size="sm" variant="ghost" onClick={createFromFcr} disabled={busy}>
-              {t("wf.fromFcr")}
-            </Button>
-          ) : null}
+          {canManage
+            ? shippedWorkflows().map((base) => (
+                <Button key={base.id} type="button" size="sm" variant="ghost" onClick={() => createFromShipped(base)} disabled={busy}>
+                  {t("wf.fromShipped").replace("{name}", localized(base.name, base.names, language))}
+                </Button>
+              ))
+            : null}
         </div>
       </div>
 

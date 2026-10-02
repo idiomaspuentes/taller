@@ -5,6 +5,7 @@ import {
   type SolverLaunchContext,
 } from "./solverLaunch";
 import { isUrlSolver, type SolverApp } from "./solvers";
+import { SCOPE_KEYS } from "./types";
 import { portionRange } from "./usfmEdit";
 
 /** Lab / missing-task launches — never require Entregar or a PM issue. */
@@ -87,15 +88,12 @@ export function launchDraftSlot(ctx: SolverLaunchContext): {
 }
 
 export function solverNeedsRealIssue(app: SolverApp): boolean {
-  return app.id === "fcr-pair-review" || app.id === "fcr-group-review";
+  return app.needsIssue === true;
 }
 
+/** The resource the lab starts with: the first one the tool declares, or the first the app knows. */
 export function defaultResourceForSolver(app: SolverApp): string {
-  if (app.resources?.length === 1) return app.resources[0];
-  if (app.id === "helps-review") return "notas";
-  if (app.id === "tps-translate") return "tps";
-  if (app.id === "tpl-translate") return "tpl";
-  return app.resources?.[0] || "tpl";
+  return app.resources?.[0] || SCOPE_KEYS[0]!;
 }
 
 export function buildLabSolverLaunchContext(params: {

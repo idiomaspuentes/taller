@@ -577,7 +577,6 @@
   "wf.discard": "Há alterações não salvas. Descartá-las?",
   "wf.flowN": "Fluxo {n}",
   "wf.created": "Modelo «{name}» criado (salve para publicá-lo).",
-  "wf.createdFcr": "Modelo «{name}» criado a partir do FCR (salve para publicá-lo).",
   "wf.unnamed": "Sem nome",
   "wf.needName": "O modelo precisa de um nome e de pelo menos uma tarefa com recursos.",
   "wf.needTask": "Adicione pelo menos uma tarefa ao modelo.",
@@ -588,7 +587,6 @@
   "wf.title": "Modelos de fluxo",
   "wf.help": "Copia para o projeto ao aplicar; não é um vínculo ao vivo.",
   "wf.newTpl": "+ Novo modelo",
-  "wf.fromFcr": "+ A partir do FCR",
   "wf.noneYet": "Ainda não há modelos. ",
   "wf.createFirst": "Criar o primeiro",
   "wf.askManager": "Peça a um gestor que crie um.",
@@ -1380,5 +1378,7 @@
   "tb.joinShort": "Participar",
   "tb.stepFinish": "Terminei",
   "tb.stepUndo": "Desmarcar",
-  "tb.stepFinishNamed": "Terminei «{step}»"
+  "tb.stepFinishNamed": "Terminei «{step}»",
+  "wf.fromShipped": "+ A partir de «{name}»",
+  "wf.createdShipped": "Modelo «{name}» criado (salve para publicá-lo)."
 }

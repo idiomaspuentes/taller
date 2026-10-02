@@ -49,7 +49,7 @@ type Props = {
 const QUICK_BOOKS = ["NEH", "TIT"] as const;
 
 export function SolverLabView({ username, lang: workspaceLang, languages, announce }: Props) {
-  const [solverId, setSolverId] = useState("tpl-translate");
+  const [solverId, setSolverId] = useState(DEFAULT_SOLVERS_CATALOG.solvers[0]?.id ?? "");
   const [lang, setLang] = useState(workspaceLang || "es-419");
   const [book, setBook] = useState("NEH");
   const [chapter, setChapter] = useState("1");

@@ -44,6 +44,24 @@ export type Workspace = {
   name: Localized;
 };
 
+/**
+ * A process an organization works with (for Idiomas Puentes, the FCR): its templates of phases, tasks and steps, the
+ * tools its steps open, and the words of its older plans. It is a JSON file under `processes/`; the engine has no
+ * process of its own, so another organization lists its own packages here.
+ */
+export type ProcessPackage = {
+  schema?: string;
+  /** Stable key of the process (`fcr`). */
+  id: string;
+  name?: string;
+  /** Templates offered under «Plantillas» (`WorkflowTemplate`, checked when read). */
+  workflows?: unknown[];
+  /** Tools the steps can open (`SolverApp`, checked when read). */
+  tools?: unknown[];
+  /** Names that older plans stored as plain text, by interface language: `{ pt: { "Borrador": "Rascunho" } }`. */
+  glossary?: Record<string, Record<string, string>>;
+};
+
 export type TallerConfig = {
   brand: {
     /** The app's name, in each interface language. */
@@ -67,5 +85,7 @@ export type TallerConfig = {
    */
   defaultServer: "production" | "qa";
   workspaces: Workspace[];
+  /** The processes this organization works with. Their templates and tools are data: see `processes/`. */
+  processes: ProcessPackage[];
   welcome: Record<UiLanguage, WelcomeCopy>;
 };

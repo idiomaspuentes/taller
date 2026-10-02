@@ -44,6 +44,8 @@ import {
 import {
   DEFAULT_SOLVERS_CATALOG,
   normalizeSolversCatalog,
+  upgradeShippedTools,
+  withShippedTools,
   type SolversCatalog,
 } from "../domain/solvers";
 import { normalizeProjectId } from "../domain/books";
@@ -220,11 +222,11 @@ export async function loadSolversCatalog(
     });
     const catalog = normalizeSolversCatalog(JSON.parse(raw));
     if (catalog.solvers.length) {
-      const upgraded = upgradeShippedSolverUrls(catalog);
+      const upgraded = upgradeShippedTools(catalog);
       if (upgraded !== catalog) {
         void saveSolversCatalog(session, org, upgraded).catch(() => undefined);
       }
-      return withOfferedSolvers(upgraded);
+      return withShippedTools(upgraded);
     }
   } catch {
     /* missing or unreadable — seed defaults below */
@@ -236,72 +238,6 @@ export async function loadSolversCatalog(
     /* read-only token — still use defaults in-memory */
   }
   return DEFAULT_SOLVERS_CATALOG;
-}
-
-/**
- * Solvers shipped with the app that every catalog should offer, added in memory
- * only. Reading the catalog never writes it: this must not cause a write.
- */
-const OFFERED_SOLVER_IDS = ["afinar-notas", "afinar-palabras", "afinar-alineacion"];
-
-function withOfferedSolvers(catalog: SolversCatalog): SolversCatalog {
-  const have = new Set(catalog.solvers.map((s) => s.id));
-  const extra = DEFAULT_SOLVERS_CATALOG.solvers.filter((def) => OFFERED_SOLVER_IDS.includes(def.id) && !have.has(def.id));
-  return extra.length ? { ...catalog, solvers: [...catalog.solvers, ...extra] } : catalog;
-}
-
-/** Point legacy stub URLs for TPL/TPS at the real scripture editor; add new shipped apps. */
-function upgradeShippedSolverUrls(catalog: SolversCatalog): SolversCatalog {
-  const defaults = new Map(DEFAULT_SOLVERS_CATALOG.solvers.map((s) => [s.id, s]));
-  let changed = false;
-  const solvers = catalog.solvers.map((app) => {
-    const def = defaults.get(app.id);
-    if (!def) return app;
-    if (
-      (app.id === "tpl-translate" ||
-        app.id === "tps-translate" ||
-        app.id === "helps-review") &&
-      app.launchUrl.includes("solver-stub")
-    ) {
-      changed = true;
-      return {
-        ...app,
-        launchUrl: def.launchUrl,
-        kind: def.kind,
-        openMode: def.openMode,
-        description: def.description ?? app.description,
-      };
-    }
-    if (
-      app.id === "fcr-familiarize" &&
-      (app.launchUrl.includes("/solver/familiarize") ||
-        app.launchUrl.includes("solver-stub"))
-    ) {
-      changed = true;
-      return {
-        ...app,
-        launchUrl: def.launchUrl,
-        kind: def.kind,
-        openMode: def.openMode,
-        lang: def.lang,
-        description: def.description ?? app.description,
-      };
-    }
-    return app;
-  });
-  const have = new Set(solvers.map((s) => s.id));
-  for (const def of DEFAULT_SOLVERS_CATALOG.solvers) {
-    if (have.has(def.id)) continue;
-    if (
-      def.id === "fcr-familiarize" ||
-      def.id === "fcr-pair-review" ||
-      def.id === "fcr-group-review"
-    ) {
-      solvers.push(def);
-      changed = true;
-    }
-  }
-  return changed ? { ...catalog, solvers } : catalog;
 }
 
 export async function saveSolversCatalog(

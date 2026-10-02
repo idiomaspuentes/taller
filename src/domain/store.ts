@@ -422,7 +422,8 @@ function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
     const text = String(item.text ?? "").trim();
     if (!id || !text || seen.has(id)) continue;
     seen.add(id);
-    out.push({ id, text, texts: normalizeLocalized(item.texts), per: item.per === "verse" ? "verse" : undefined });
+    const texts = normalizeLocalized(item.texts);
+    out.push({ id, text, ...(texts ? { texts } : {}), ...(item.per === "verse" ? { per: "verse" as const } : {}) });
   }
   return out.length ? out : undefined;
 }

@@ -1,4 +1,5 @@
 import type { TallerConfig } from "./src/config/types";
+import fcr from "./processes/fcr.json";
 
 /**
  * Taller's settings for one organization. To reuse this app for another team, change this file:
@@ -43,6 +44,10 @@ export const tallerConfig: TallerConfig = {
       name: { es: "Portugués (Brasil)", pt: "Português (Brasil)" },
     },
   ],
+
+  // The processes the team works with: templates (phases, tasks, steps), the tools the steps open and their words.
+  // Each one is a JSON file; add or replace files here to work with another process. The engine has none of its own.
+  processes: [fcr],
 
   // The first screen, per interface language.
   welcome: {

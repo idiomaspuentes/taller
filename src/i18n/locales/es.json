@@ -577,7 +577,6 @@
   "wf.discard": "Hay cambios sin guardar. ¿Descartarlos?",
   "wf.flowN": "Flujo {n}",
   "wf.created": "Plantilla «{name}» creada (guarda para publicarla).",
-  "wf.createdFcr": "Plantilla «{name}» creada desde el FCR (guarda para publicarla).",
   "wf.unnamed": "Sin nombre",
   "wf.needName": "La plantilla necesita un nombre y al menos una tarea con recursos.",
   "wf.needTask": "Añade al menos una tarea a la plantilla.",
@@ -588,7 +587,6 @@
   "wf.title": "Plantillas de flujo",
   "wf.help": "Copia al proyecto al aplicar; no es un enlace en vivo.",
   "wf.newTpl": "+ Nueva plantilla",
-  "wf.fromFcr": "+ Desde el FCR",
   "wf.noneYet": "Aún no hay plantillas. ",
   "wf.createFirst": "Crear la primera",
   "wf.askManager": "Pide a un gestor que cree una.",
@@ -1380,5 +1378,7 @@
   "tb.joinShort": "Sumarme",
   "tb.stepFinish": "Terminé",
   "tb.stepUndo": "Desmarcar",
-  "tb.stepFinishNamed": "Terminé «{step}»"
+  "tb.stepFinishNamed": "Terminé «{step}»",
+  "wf.fromShipped": "+ Desde «{name}»",
+  "wf.createdShipped": "Plantilla «{name}» creada (guarda para publicarla)."
 }

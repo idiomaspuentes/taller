@@ -6,7 +6,7 @@ import { levelOf, type PersonLevel } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
 import { boardCount, buildBoard, type BoardCard } from "../domain/myTasksBoard";
 import { ConfirmDialog, MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
-import { isFamiliarizeSolver as isOutsideTool } from "../domain/solvers";
+import { isUrlSolver as isOutsideTool } from "../domain/solvers";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
