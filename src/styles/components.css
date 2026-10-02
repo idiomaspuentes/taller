@@ -7064,3 +7064,4 @@ button.al-box--read { cursor: pointer; }
 .scripture-editor__glossary { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); font-weight: 600; font-size: 0.875rem; text-decoration: none; color: inherit; background: var(--surface); }
 .ck-word { min-height: 36px; margin: 0.125rem; padding: 0.125rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-muted); font: inherit; cursor: pointer; }
 .ck-word[aria-pressed="true"] { background: var(--accent-100); border-color: var(--primary); font-weight: 600; }
+.gl-new { color: var(--primary); }

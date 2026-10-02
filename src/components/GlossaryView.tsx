@@ -3,7 +3,7 @@ import type { OriginalWord } from "@usfm-tools/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
-import { loadGlossary, loadGlossaryChanges, loadPassageContext, loadRenderingIndexes, saveGlossaryEntry, settleGlossaryChange, type Glossary, type GlossaryChange, type PassageContext } from "../dcs/glossaryStore";
+import { loadGlossary, loadGlossaryChanges, loadGlossaryHistory, loadPassageContext, loadRenderingIndexes, saveGlossaryEntry, settleGlossaryChange, type Glossary, type GlossaryChange, type GlossaryEvent, type PassageContext } from "../dcs/glossaryStore";
 import { loadPmConfig } from "../dcs/issues";
 import {
   baseStrong,
@@ -21,6 +21,7 @@ import {
   type GlossaryEntry,
   type GlossaryScope,
 } from "../domain/glossary";
+import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 
 type Props = {
@@ -37,7 +38,17 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-type View = "passage" | "search" | "pending";
+type View = "passage" | "search" | "pending" | "recent";
+
+/** When this person last opened «Cambios recientes» of a glossary, kept on the device. */
+const seenKey = (glossary: Pick<Glossary, "owner" | "repo">) => `taller.glossary.seen.${glossary.owner}/${glossary.repo}`;
+const readSeen = (glossary: Pick<Glossary, "owner" | "repo">): string => {
+  try {
+    return localStorage.getItem(seenKey(glossary)) ?? "";
+  } catch {
+    return "";
+  }
+};
 const SCOPE_KEY: Record<GlossaryScope, MessageKey> = { all: "gl.scopeAll", tpl: "gl.scopeTpl", tps: "gl.scopeTps", helps: "gl.scopeHelps" };
 const join = (items: string[]) => items.join("; ");
 const split = (text: string) => text.split(";").map((part) => part.trim()).filter(Boolean);
@@ -50,6 +61,7 @@ const split = (text: string) => text.split(";").map((part) => part.trim()).filte
 export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, onClose, announce }: Props) {
   const [canAgree, setCanAgree] = useState(canManage);
   const t = useT();
+  const language = useUiLanguage();
   const [glossary, setGlossary] = useState<Glossary | null>(null);
   const [context, setContext] = useState<PassageContext | null>(null);
   const [view, setView] = useState<View>(passage ? "passage" : "search");
@@ -57,6 +69,9 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
   const [picked, setPicked] = useState<{ ref: string; word: string; sources: OriginalWord[]; offered: OriginalWord[] }[]>([]);
   const [draft, setDraft] = useState<{ entry: GlossaryEntry; before?: GlossaryEntry } | null>(null);
   const [changes, setChanges] = useState<GlossaryChange[]>([]);
+  const [history, setHistory] = useState<GlossaryEvent[]>([]);
+  /** What was already seen when the screen opened: newer changes are marked as new until the list is opened. */
+  const [seen, setSeen] = useState("");
   /** The generated index of the published books (literal text): how each word was translated in all of them. */
   const [indexes, setIndexes] = useState<{ book: string; index: RenderingIndex }[]>([]);
   const [busy, setBusy] = useState(false);
@@ -75,6 +90,8 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       setGlossary(loaded);
       setContext(ctx);
       setChanges(await loadGlossaryChanges(session, loaded).catch(() => []));
+      setSeen(readSeen(loaded));
+      setHistory(await loadGlossaryHistory(session, loaded).catch(() => []));
       setIndexes(await loadRenderingIndexes(session, loaded, "tpl").catch((err) => (console.warn("glossary index not read", err), [])));
       if (!canManage && pmOrg) {
         const book = await loadPmConfig(session, pmOrg).catch(() => null);
@@ -94,6 +111,19 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
   }, [load]);
 
   const entries = glossary?.entries ?? [];
+  const isNew = (event: GlossaryEvent) => !seen || Date.parse(event.at) > Date.parse(seen);
+  const fresh = history.filter(isNew).length;
+
+  /** Opening the recent changes is having seen them; they stay marked while the list is in view. */
+  function openView(id: View) {
+    setView(id);
+    if (id !== "recent" || !glossary) return;
+    try {
+      localStorage.setItem(seenKey(glossary), new Date().toISOString());
+    } catch {
+      /* a device that cannot remember only keeps showing them as new */
+    }
+  }
   const passageWords = useMemo(() => (context?.verses ?? []).flatMap((verse) => verse.groups.flatMap((group) => group.sources)), [context]);
   const passageText = useMemo(() => (context?.verses ?? []).map((verse) => verse.words.map((w) => w.text).join(" ")).join(" "), [context]);
   const shown = useMemo(() => {
@@ -196,9 +226,10 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       {glossary && !draft ? (
         <>
           <div className="gl-views" role="tablist" aria-label={t("gl.title")}>
-            {([...(passage ? (["passage"] as View[]) : []), "search", "pending"] as View[]).map((id) => (
-              <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}>
-                {t(id === "passage" ? "gl.viewPassage" : id === "search" ? "gl.viewSearch" : "gl.viewPending")}
+            {([...(passage ? (["passage"] as View[]) : []), "search", "pending", "recent"] as View[]).map((id) => (
+              <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => openView(id)}>
+                {t(id === "passage" ? "gl.viewPassage" : id === "search" ? "gl.viewSearch" : id === "pending" ? "gl.viewPending" : "gl.viewRecent")}
+                {id === "recent" && fresh && view !== "recent" ? ` (${fresh})` : ""}
                 {id === "pending" ? ` (${entries.filter((e) => e.status === "proposed").length + changes.length})` : ""}
               </button>
             ))}
@@ -245,6 +276,26 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
             </section>
           ) : null}
 
+          {view === "recent" ? (
+            history.length ? (
+              <ul className="gl-list">
+                {history.map((event) => (
+                  <li key={event.id} className="af-card" data-new={isNew(event) || undefined}>
+                    <p>
+                      {isNew(event) ? <b className="gl-new">{t("gl.new")} </b> : null}
+                      {event.text}
+                    </p>
+                    <p className="af-hint">
+                      {event.by ? `@${event.by} · ` : ""}
+                      {event.at ? new Date(event.at).toLocaleDateString(language, { day: "numeric", month: "long" }) : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="hub-hint">{t("gl.noneRecent")}</p>
+            )
+          ) : null}
           {view === "pending" && changes.length ? (
             <ul className="gl-list">
               {changes.map((change) => (
@@ -271,7 +322,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
               ))}
             </ul>
           ) : null}
-          {!shown.length && !(view === "pending" && changes.length) ? (
+          {view === "recent" ? null : !shown.length && !(view === "pending" && changes.length) ? (
             <p className="hub-hint">{t(view === "search" ? (query.trim() ? "gl.noneFound" : "gl.typeToSearch") : view === "pending" ? "gl.nonePending" : "gl.nonePassage")}</p>
           ) : (
             <ul className="gl-list">

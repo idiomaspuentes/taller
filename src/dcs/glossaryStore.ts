@@ -1,4 +1,4 @@
-import { createOrUpdateContents, DcsApiError, getContents, getRawContent } from "@ip-lms/dcs-client";
+import { createOrUpdateContents, DcsApiError, getContents, getRawContent, listCommits } from "@ip-lms/dcs-client";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { groupDraftBranches, readRaw } from "./afinacionLoad";
@@ -112,7 +112,8 @@ async function saveNow(params: { session: GtSession; owner: string; lang: string
     branch = `glosario/${entry.id}-${session.username.toLowerCase()}`;
     await ensureBranchFrom(config, owner, repo, branch, session.token, base);
   }
-  const message = `Glosario: ${params.before ? "cambiar" : "agregar"} «${entry.lemma}» → ${entry.rendering || "—"}${params.reason ? ` · ${params.reason}` : ""}`;
+  const what = !params.before ? "nueva entrada" : params.before.status !== "agreed" && entry.status === "agreed" ? "acordada" : "cambio";
+  const message = `Glosario: ${what} · «${entry.lemma}»${entry.english.length ? ` (${entry.english[0]})` : ""} → ${entry.rendering || "—"}${params.reason ? ` · ${params.reason}` : ""}`;
   for (let attempt = 1; attempt <= 4; attempt++) {
     const current = await readFile(session, owner, repo, branch, file);
     try {
@@ -270,4 +271,31 @@ export async function loadRenderingIndexes(session: GtSession, glossary: Glossar
       .map((entry) => getRawContent(config, glossary.owner, glossary.repo, entry.path, { token: session.token }).then((raw) => JSON.parse(raw) as BookRenderings).catch(() => null)),
   );
   return docs.filter((doc): doc is BookRenderings => Boolean(doc?.book && doc.texts?.[text])).map((doc) => ({ book: doc.book, index: doc.texts[text]! }));
+}
+
+// ---------------------------------------------------------------- recent changes
+
+export type GlossaryEvent = { id: string; at: string; by: string; text: string };
+
+/** What every save of an entry is filed under in the history of the repository. */
+const SAVED = /^Glosario:\s*/;
+
+/**
+ * The latest decisions, newest first, read from the history of the repository: each save of an entry says what
+ * changed and why, so the history is the notice. Generated files (the index) are left out.
+ */
+export async function loadGlossaryHistory(session: GtSession, glossary: Glossary, limit = 40): Promise<GlossaryEvent[]> {
+  if (!glossary.exists) return [];
+  const commits = await listCommits(dcsConfig(session.host), glossary.owner, glossary.repo, { limit, token: session.token }).catch(() => []);
+  return commits
+    .filter((row) => SAVED.test(row.commit?.message ?? ""))
+    .map((row) => {
+      const who = row as unknown as { author?: { login?: string }; commit?: { author?: { name?: string; date?: string } } };
+      return {
+        id: row.sha,
+        at: row.created || who.commit?.author?.date || "",
+        by: who.author?.login || who.commit?.author?.name || "",
+        text: (row.commit.message.split("\n")[0] ?? "").replace(SAVED, ""),
+      };
+    });
 }

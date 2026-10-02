@@ -1617,5 +1617,8 @@
   "pu.p.articleEmpty": "artigos vazios:",
   "pu.glossary": "Avisos do glossário",
   "pu.glossaryHint": "O texto usa outra tradução que a acordada. Não interrompe a publicação: serve para revisar se for preciso.",
-  "pu.glossaryAgreed": "foi acordado «{rendering}» e aqui diz"
+  "pu.glossaryAgreed": "foi acordado «{rendering}» e aqui diz",
+  "gl.viewRecent": "Alterações recentes",
+  "gl.new": "Novo ·",
+  "gl.noneRecent": "Ainda não há alterações no glossário."
 }

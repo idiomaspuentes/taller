@@ -212,7 +212,11 @@ acordada. Crear o trabajar una propuesta es un commit; cambiar lo acordado es un
 glosario (cada palabra del original con sus traducciones, por texto). «Cómo se tradujo antes» suma todos los libros
 publicados y, para el libro en curso, lo que el equipo tiene ahora.
 
-**Límites:** falta la vista de «cambios recientes» y el informe de consistencia como comprobación antes de publicar; proponer la alineación con el puente por el inglés no está hecho. Las propuestas de cambio a
+**Cambios recientes:** lo decidido desde la última vez que la persona miró, leído del historial del repositorio.
+**Avisos al publicar:** la pantalla de publicación dice dónde la unidad se aparta de una decisión acordada; avisa,
+no detiene.
+
+**Límites:** proponer la alineación con el puente por el inglés no está hecho. Las propuestas de cambio a
 una decisión acordada se ven en «Por acordar» y las acepta o descarta quien coordina o una persona habilitada.
 
 ### Fase 8 · Abrir el motor a otros procesos — hecha en parte (2 de octubre de 2026)

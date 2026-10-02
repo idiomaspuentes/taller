@@ -331,6 +331,7 @@ function handleContents(req, res, url, user, owner, name, path, body) {
   const file = { text, sha: nextSha() };
   files.set(path, file);
   log.push({ at: new Date().toISOString(), user: user.login, write: `${method} ${owner}/${name}@${branch}:${path}`, bytes: text.length });
+  (repo.commits ??= []).unshift({ sha: nextSha(), created: new Date().toISOString(), branch, html_url: "", author: { login: user.login }, commit: { message: body.message || "", author: { name: user.full_name } } });
   return json(res, { content: contentEntry(path, file), commit: { sha: nextSha(), message: body.message || "" } }, method === "POST" ? 201 : 200);
 }
 
@@ -357,14 +358,14 @@ async function handle(req, res) {
   if (p === "/__mock/dump") {
     const plain = (map) => [...map].map(([branch, files]) => [branch, [...files]]);
     return json(res, {
-      repos: [...repos].map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, branches: plain(repo.branches) }]),
+      repos: [...repos].map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, branches: plain(repo.branches), commits: repo.commits ?? [] }]),
       pulls: [...pulls].map(([key, list]) => [key, list.map((pull) => ({ ...pull, snapshot: [...pull.snapshot] }))]),
       issues, comments: [...comments], labels, milestones, issueCounter, counter,
     });
   }
   if (p === "/__mock/load" && req.method === "POST") {
     const state = await readBody(req);
-    repos = new Map(state.repos.map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, branches: new Map(repo.branches.map(([branch, files]) => [branch, new Map(files)])) }]));
+    repos = new Map(state.repos.map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, commits: repo.commits ?? [], branches: new Map(repo.branches.map(([branch, files]) => [branch, new Map(files)])) }]));
     pulls = new Map(state.pulls.map(([key, list]) => [key, list.map((pull) => ({ ...pull, snapshot: new Map(pull.snapshot) }))]));
     issues = state.issues;
     comments = new Map(state.comments);
@@ -437,6 +438,11 @@ async function handle(req, res) {
     if (rest.startsWith("contents/") || rest === "contents") {
       const body = req.method === "GET" ? {} : await readBody(req);
       return handleContents(req, res, url, user, owner, name, decodeURIComponent(rest.slice("contents/".length)), body);
+    }
+    if (rest === "commits" && req.method === "GET") {
+      const repo = repos.get(repoKey);
+      const wanted = url.searchParams.get("sha") || repo.defaultBranch;
+      return json(res, (repo.commits ?? []).filter((c) => c.branch === wanted).slice(0, Number(url.searchParams.get("limit") || 30)));
     }
     if (rest === "") return json(res, { name, owner: { login: owner }, full_name: repoKey, default_branch: repos.get(repoKey).defaultBranch, permissions: { admin: true, push: true, pull: true } });
     if (rest === "branches" && req.method === "GET") return json(res, [...repos.get(repoKey).branches].map(([b, files]) => ({ name: b, commit: { id: headSha(files) || "" } })));
