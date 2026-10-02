@@ -420,5 +420,11 @@ Ya incorporadas en la historia:
 5. **Afinación:** en principio, las mismas personas en los cuatro pasos.
 6. **Quién escribe un cambio acordado:** cualquier persona habilitada del equipo. Afinación mantiene
    el TPL y el TPS desde que los recibe.
+8. **Si Afinación cambia un versículo** después de Armonización, la cita generada cambia y
+   Armonización **vuelve a revisar** las notas de ese versículo.
+9. **Si la cita original de una nota está mal** (incompleta, o no es la frase de la que habla la
+   nota): hoy lo resuelven Armonización y Afinación con apoyo de informática. Propuesta: que quien
+   armoniza seleccione las palabras en el TPL en español y el sistema deduzca el griego o hebreo por
+   la alineación y regenere la cita.
 7. **Validación:** cada pastor empieza en cuanto llega el capítulo y registra sus inquietudes; solo
    ve las de los demás **después de entregar su reporte**.

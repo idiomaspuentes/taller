@@ -337,3 +337,19 @@ Resuelto: el acompañamiento del Aprendiz y las cualificaciones quedan fuera de 
 la «copia de práctica» como siguiente paso); las ayudas no llevan revisión grupal; las palabras clave
 se revisan por capítulo; Armonización espera al TPL, al TPS y a sus ayudas; las listas C y F quedan
 como están; cada unidad se publica al recibir el aval, de forma casi automática.
+
+## 11. La cita de una nota (regla completa)
+
+- La nota guarda su cita **en griego o hebreo**. La cita en español **se genera** desde el TPL
+  alineado; nadie la traduce.
+- **Si Afinación cambia un versículo** después de que Armonización revisó sus notas, la cita generada
+  cambia sola y **Armonización debe volver a revisar las notas de ese versículo**. Esas notas
+  vuelven a quedar pendientes, con el motivo («cambió el texto»).
+- **Si la cita original está mal** (incompleta para tener sentido con la nota, o no es la frase de la
+  que la nota habla), hay dos caminos:
+  1. *Hoy:* Armonización y Afinación lo conversan y lo arreglan con apoyo de informática.
+  2. *Propuesto:* quien armoniza **selecciona en el TPL en español** las palabras a las que la nota
+     se refiere; el sistema **deduce el griego o hebreo** por la alineación y **regenera la cita**.
+     Así se corrige sin saber el idioma original y sin pasar por informática.
+- Con el camino 2, una cita solo necesita a Afinación cuando el problema está en el **texto** o en su
+  **alineación**, no en la nota.
