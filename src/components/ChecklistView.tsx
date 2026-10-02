@@ -1,4 +1,7 @@
 import { HelpMessages } from "./HelpMessages";
+import { HelpMarkdownView } from "./HelpMarkdownView";
+import { categoryFromSupportRef, categoryLabel } from "../domain/afinacionNotes";
+import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -439,8 +442,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               {tally ? <span className="af-state" data-state={tally.state === "ok" ? "agreed" : tally.state === "pending" ? "pending" : "disputed"}>{t(`ck.state.${tally.state}` as MessageKey)}</span> : null}
             </div>
             {item.title ? <h2 className="af-phrase">{item.title}</h2> : null}
-            {item.body ? <p className="af-note">{item.body}</p> : null}
-            {item.supportRef ? <p className="af-hint">{t("ck.support").replace("{ref}", item.supportRef)}</p> : null}
+            {item.body ? <HelpMarkdownView className="af-note af-note--md" content={item.body} /> : null}
+            {item.supportRef ? <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p> : null}
             {session && ctx?.pmOrg && ctx.projectId && data ? (
               // What the teams before this one said about this very help (those who refined the text, say).
               <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} />

@@ -618,7 +618,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                       {t("af.seeNote")}
                       {noteMessages[item.id] ? ` · ${t(noteMessages[item.id] === 1 ? "hm.countOne" : "hm.countMany").replace("{n}", String(noteMessages[item.id]))}` : ""}
                     </summary>
-                    <p className="af-note">{item.note}</p>
+                    <HelpMarkdownView className="af-note af-note--md" content={item.note} />
                     {session && ctx?.pmOrg && ctx.projectId ? (
                       // Refining is about the text, not the notes: a disagreement with a note is left for whoever harmonizes it.
                       <HelpMessages
@@ -643,7 +643,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             ) : (
               <>
                 <h2 className="af-phrase">{termSlug ? `${termLabel(termSlug, termTitles)}${item.phrase ? ` · «${item.phrase}»` : ""}` : item.phrase ? `«${item.phrase}»` : item.quote ? item.quote : t("af.wholeVerse")}</h2>
-                {item.note ? <p className="af-note">{item.note}</p> : null}
+                {item.note ? <HelpMarkdownView className="af-note af-note--md" content={item.note} /> : null}
                 {termSlug && session && ctx?.pmOrg && ctx.projectId ? (
                   // The same as with a note: what the refiners would change in the term's article is left for whoever harmonizes the words.
                   <details className="af-note-box">
