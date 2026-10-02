@@ -59,16 +59,19 @@ subtareas. `startBook` (el camino sencillo) encadena `draftBook` → `readBook` 
 
 ## Un proyecto en marcha
 
-Pestañas: **Avance · Proceso · Subtareas · Versiones**, y bajo «Más»: lectura del libro, asignar personas por nombre
-y escribir de nuevo todas las subtareas.
+Pestañas: **Avance · Proceso · Subtareas · Versiones**. Un proyecto de varios libros tiene además, bajo «Más», la
+pantalla donde se lee cada libro.
 
 - **Proceso** (`ProjectPlanView`): el editor sobre una copia. La barra de «Cambios sin guardar» dice qué tareas se
   quitan y cuántas subtareas se cierran, qué tareas cambian de pasos, y si se crearán o cerrarán subtareas. Al
-  guardar (`saveProjectChanges`), quien ya tomó una subtarea la conserva.
+  guardar (`saveProjectChanges`), quien ya tomó una subtarea la conserva. En «Más ajustes» de una tarea: limitarla a
+  algunos capítulos o porciones, y marcar que revisa texto ya entregado.
 - **Subtareas** (`ProjectWorkView`): lo mismo que la vista previa, con el estado de cada una en Door43 (libre, de
-  quién, hecha, por crear). Aquí se añade una a mano o se parte un capítulo.
-- «Limitar a una parte del libro o a personas concretas» (en «Más ajustes» de una tarea) abre el editor antiguo de
-  esa tarea (`TeamsView`), que conserva lo que el editor nuevo no cubre.
+  quién, hecha, por crear). Tocar una subtarea permite dársela a alguien del equipo de su tarea, o liberarla. Aquí
+  también se añade una a mano, se parte un capítulo y se vuelve a leer el libro.
+
+No queda ningún editor antiguo: las pantallas de «Fases y tareas» por pasos, «Asignar personas» y «Crear subtareas»
+se retiraron el 2 de octubre de 2026 (sus direcciones llevan a «Subtareas»).
 
 ## Plantillas (`TemplatesView`)
 
