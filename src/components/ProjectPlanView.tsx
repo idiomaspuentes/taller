@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { tallerConfig } from "../../taller.config";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
@@ -15,11 +14,11 @@ import { DEFAULT_SOURCE_PACKAGE, resolveSourcePackage, sourcePackageFor, sourceP
 import { loadLocalWorkflows, mergeWorkflowCatalogs, normalizeWorkflowTemplate, saveLocalWorkflows } from "../domain/store";
 import { localizeName } from "../domain/templateNames";
 import { WORKFLOWS_SCHEMA, type AssignmentsDoc, type InventoryDoc } from "../domain/types";
-import { workflowProblems } from "../domain/workflowCheck";
 import { boardToWorkflowTemplate, upgradeBoardToWorkflow, workflowUpdateFor } from "../domain/workflows";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { PlanEditor } from "./PlanEditor";
+import { planProblems } from "./planIssueText";
 
 type Props = {
   session: GtSession;
@@ -28,8 +27,6 @@ type Props = {
   inventory: InventoryDoc | null;
   /** The project as it was saved: the app takes it as the one in hand. */
   onSaved: (board: AssignmentsDoc) => void;
-  /** The old, detailed editor of one task (a window of the book, people by name). */
-  onOpenScope: (taskId: string) => void;
   announce: (msg: string) => void;
 };
 
@@ -37,7 +34,7 @@ type Props = {
  * «Proceso» of a project under way: the same editor as a template or a draft, on a copy. Nothing changes for the
  * team until «Guardar cambios», which says first what the change does to the work that already exists.
  */
-export function ProjectPlanView({ session, pmOrg, board, inventory, onSaved, onOpenScope, announce }: Props) {
+export function ProjectPlanView({ session, pmOrg, board, inventory, onSaved, announce }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [edited, setEditedDoc] = useState<AssignmentsDoc>(board);
@@ -83,7 +80,7 @@ export function ProjectPlanView({ session, pmOrg, board, inventory, onSaved, onO
   const templates = useMemo(() => [...loadLocalWorkflows().workflows, ...shippedWorkflows()], []);
   const process = templates.find((workflow) => workflow.id === board.workflowId);
   const update = workflowUpdateFor(edited, templates);
-  const problems = useMemo(() => (dirty ? workflowProblems(boardToWorkflowTemplate(edited, { id: edited.workflowId ?? "project", name: edited.title || edited.projectId }), { tools, languages: tallerConfig.uiLanguages }) : []), [dirty, edited, tools]);
+  const problems = useMemo(() => (dirty ? planProblems(planOfBoard(edited), t, language) : []), [dirty, edited, t, language]);
   const impact = useMemo(() => planImpact(planOfBoard(board), planOfBoard(edited)), [board, edited]);
   const closing = impact.removedTasks.reduce((sum, task) => sum + work.workOf(task.id), 0);
   const relays = inventory && dirty ? workChanged(board, edited, inventory) : false;
@@ -203,7 +200,7 @@ export function ProjectPlanView({ session, pmOrg, board, inventory, onSaved, onO
         resourceNames={edited.settings?.resourceNames}
         teams={teams}
         readOnly={Boolean(busy)}
-        onOpenScope={dirty ? undefined : onOpenScope}
+        book={inventory ? { code: (edited.books?.[0] || edited.book).toUpperCase(), portions: inventory.portions.map((portion) => ({ id: portion.id || portion.ref, ref: portion.ref, chapter: portion.chapter })) } : undefined}
         workOf={work.workOf}
       />
 

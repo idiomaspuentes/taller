@@ -7,8 +7,11 @@ import { scopeFromRules, uid } from "./assignment";
 import { makePhase, slugifyPhase } from "./phaseSlug";
 import type { AssignmentsDoc, Phase, ProjectTask, ScopeKey, ScopeRule, StepClosing, TaskStep, TaskTemplate, WaitRule, WorkflowTemplate } from "./types";
 
-/** A task as the editor sees it: what a template says of it, plus who does it when a project says so. */
-export type PlanTask = TaskTemplate;
+/**
+ * A task as the editor sees it: what a template says of it, plus what only a project can say (the part of the book
+ * it covers, and that it goes over text already delivered).
+ */
+export type PlanTask = TaskTemplate & Partial<Pick<ProjectTask, "scriptureScope" | "reviewsPrincipal">>;
 export type Plan = { phases: Phase[]; tasks: PlanTask[] };
 
 export function orderedPhases(plan: Pick<Plan, "phases">): Phase[] {
@@ -309,3 +312,22 @@ export function planImpact(before: Plan, after: Plan): { removedTasks: PlanTask[
   });
   return { removedTasks, changedSteps };
 }
+
+/** What stands in the way of saving a plan, said so that the screen can put it in the person's language. */
+export type PlanIssue = { kind: "no-tasks" } | { kind: "phase-unnamed" } | { kind: "task-unnamed"; phase: string } | { kind: "step-unnamed"; task: string } | { kind: "no-steps"; task: string } | { kind: "scope-empty"; task: string };
+
+export function planIssues(plan: Plan): PlanIssue[] {
+  const out: PlanIssue[] = [];
+  if (!plan.tasks.length) out.push({ kind: "no-tasks" });
+  const phaseName = new Map(plan.phases.map((phase) => [phase.id, phase.name]));
+  if (plan.phases.some((phase) => !phase.name.trim())) out.push({ kind: "phase-unnamed" });
+  for (const task of plan.tasks) {
+    if (!task.name.trim()) out.push({ kind: "task-unnamed", phase: phaseName.get(task.phaseId) ?? "" });
+    if (!task.steps?.length) out.push({ kind: "no-steps", task: task.name });
+    else if (task.steps.some((step) => !step.name.trim())) out.push({ kind: "step-unnamed", task: task.name });
+    const scope = task.scriptureScope;
+    if ((scope?.mode === "chapters" && !scope.chapters.length) || (scope?.mode === "portions" && !scope.portionIds.length)) out.push({ kind: "scope-empty", task: task.name });
+  }
+  return out;
+}
+

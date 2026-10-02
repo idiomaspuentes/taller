@@ -53,7 +53,6 @@ import {
   fetchOrg,
   allowPmOrgTeamToEdit,
   listPmProjects,
-  saveProjectToDcs,
   listUserOrgs,
   loadAssignmentsFromDcs,
   loadInventoryFromDcs,
@@ -68,9 +67,6 @@ import { SignInModal } from "./components/SignIn";
 import { SetupGate } from "./components/SetupGate";
 import { WorkspaceDialog } from "./components/WorkspaceDialog";
 import { BookStepView } from "./components/BookStepView";
-import { TeamsView } from "./components/TeamsView";
-import { AssignView } from "./components/AssignView";
-import { PublishView } from "./components/PublishView";
 import { AdvanceView } from "./components/AdvanceView";
 import { AfinacionView } from "./components/AfinacionView";
 import { AlineacionView } from "./components/AlineacionView";
@@ -145,9 +141,10 @@ function writeSetupDone(): void {
  * Where a project opens: on how it is going once it has subtareas, on the subtareas it would lay out when the book
  * was read and none exists yet, and on its process while there is no reading of the book to lay anything out with.
  */
-function landingStep(hasTasks: boolean, hasInventory: boolean, issues: number): StepId {
-  if (!hasInventory) return hasTasks ? "tareas" : "inventario";
+function landingStep(hasTasks: boolean, hasInventory: boolean, issues: number, severalBooks: boolean): StepId {
   if (!hasTasks) return "tareas";
+  // A book is read from its subtareas screen; a project of several books has a screen to read each.
+  if (!hasInventory) return severalBooks ? "inventario" : "subtareas";
   return issues > 0 ? "avance" : "subtareas";
 }
 
@@ -666,7 +663,7 @@ export function App() {
         if (result.found) {
           updateBoard(result.board);
           setBook(code);
-          const land: StepId = landingStep(result.board.teams.length > 0, Boolean(result.inventory), result.issueCount);
+          const land: StepId = landingStep(result.board.teams.length > 0, Boolean(result.inventory), result.issueCount, (result.board.books?.length ?? 1) > 1);
           if (route.step === "inventario" && land !== "inventario") {
             navigate({ name: "proyecto", projectId: code, step: land });
           }
@@ -788,7 +785,7 @@ export function App() {
         persistSessionInventory(normalized);
       }
       updateBoard(result.board);
-      const land: StepId = landingStep(result.board.teams.length > 0, Boolean(result.inventory), result.issueCount);
+      const land: StepId = landingStep(result.board.teams.length > 0, Boolean(result.inventory), result.issueCount, (result.board.books?.length ?? 1) > 1);
       navigate({ name: "proyecto", projectId: normalizeProjectId(book), step: land });
       announce(
         result.issueCount > 0
@@ -1234,6 +1231,7 @@ export function App() {
                 view={route.step}
                 setupDone={setupDone}
                 hasInventory={hasInventory}
+                severalBooks={(board.books?.length ?? 1) > 1}
                 onChange={goToStep}
               />
             </div>
@@ -1557,75 +1555,23 @@ export function App() {
           />
         ) : null}
 
-        {route.name === "proyecto" && effectiveCanManage && route.step === "tareas" && !route.taskId && session && pmOrg ? (
-          <ProjectPlanView
+        {route.name === "proyecto" && effectiveCanManage && route.step === "tareas" && session && pmOrg ? (
+          <ProjectPlanView key={board.projectId} session={session} pmOrg={pmOrg} board={board} inventory={inventory} onSaved={updateBoard} announce={announce} />
+        ) : null}
+        {route.name === "proyecto" && effectiveCanManage && route.step === "subtareas" && session && pmOrg ? (
+          <ProjectWorkView
             key={board.projectId}
             session={session}
             pmOrg={pmOrg}
             board={board}
             inventory={inventory}
             onSaved={updateBoard}
-            onOpenScope={(taskId) => navigate({ name: "proyecto", projectId: route.projectId, step: "tareas", taskId })}
-            announce={announce}
-          />
-        ) : null}
-        {route.name === "proyecto" && effectiveCanManage && route.step === "subtareas" && session && pmOrg && inventory ? (
-          <ProjectWorkView key={board.projectId} session={session} pmOrg={pmOrg} board={board} inventory={inventory} onSaved={updateBoard} announce={announce} />
-        ) : null}
-
-        {route.name === "proyecto" && effectiveCanManage && route.step === "tareas" && (route.taskId || !session || !pmOrg) ? (
-          <TeamsView
-            board={board}
-            inventory={inventory}
-            onChange={(next) => {
-              // The detailed editor of one task writes what it changes: there is no «unsaved» bar on that screen.
-              const doc = updateBoard(next);
-              if (session && pmOrg && route.taskId) {
-                void saveProjectToDcs({ session, org: pmOrg, lang, book: doc.projectId, assignments: doc, inventory: null }).catch((err) => announce(explainError(err)));
-              }
+            onInventory={(next) => {
+              const normalized = normalizeInventory({ ...next, lang: next.lang || lang, contentOrg: next.contentOrg || contentOrg });
+              setInventory(normalized);
+              persistSessionInventory(normalized);
             }}
-            session={session}
-            pmOrg={pmOrg}
-            orgs={orgs}
-            onPmOrgChange={workspace ? () => undefined : setPmOrg}
-            announce={announce}
-            focusTaskId={route.taskId}
-            onFocusTaskConsumed={() =>
-              navigate({ name: "proyecto", projectId: route.projectId, step: "tareas" })
-            }
-            onEditTask={(taskId) =>
-              navigate({ name: "proyecto", projectId: route.projectId, step: "tareas", taskId })
-            }
-            onOpenPlantillas={() => navigate({ name: "plantillas" })}
-          />
-        ) : null}
-
-        {route.name === "proyecto" && effectiveCanManage && route.step === "asignar" ? (
-          inventory ? (
-            <AssignView
-              inventory={inventory}
-              board={board}
-              onChange={updateBoard}
-              announce={announce}
-              onGoTareas={() => goToStep("tareas")}
-            />
-          ) : (
-            <Alert>
-              <AlertDescription>
-                {t("app.needsInventory")}
-              </AlertDescription>
-            </Alert>
-          )
-        ) : null}
-
-        {route.name === "proyecto" && effectiveCanManage && route.step === "entregar" ? (
-          <PublishView
-            board={board}
-            inventory={inventory}
-            session={session}
-            pmOrg={pmOrg}
-            onImported={updateBoard}
-            onGoToMyTasks={() => navigate({ name: "mis-tareas" })}
+            onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
             announce={announce}
           />
         ) : null}

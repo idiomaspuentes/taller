@@ -54,6 +54,8 @@ export function normalizeProjectStep(raw: string | undefined): StepId {
   if (raw === "equipos") return "tareas";
   // Old step name conflated “project = book”; inventory is the step, not the id.
   if (raw === "libro") return "inventario";
+  // Handing work out and writing the subtareas are done from the subtareas screen now.
+  if (raw === "asignar" || raw === "entregar") return "subtareas";
   return PROJECT_STEPS.includes(raw as StepId) ? (raw as StepId) : "tareas";
 }
 

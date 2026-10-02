@@ -4,8 +4,8 @@ import { useT, type MessageKey } from "../i18n/messages";
 
 /**
  * Screens inside a project. The URL keeps one id per screen. Four are what a project is looked at through every day
- * (how it is going, its process, its subtareas, its published versions); the rest are tools for whoever needs to go
- * further (the reading of the book, handing work to people by name, writing the subtareas again) and sit under «Más».
+ * (how it is going, its process, its subtareas, its published versions). A project of several books also has, under
+ * «Más», the screen where each book is read. `asignar` and `entregar` are old addresses: they land on the subtareas.
  */
 export type StepId = "avance" | "tareas" | "subtareas" | "publicar" | "inventario" | "asignar" | "entregar";
 
@@ -16,16 +16,12 @@ const MAIN: { id: StepId; label: MessageKey }[] = [
   { id: "publicar", label: "pn.version" },
 ];
 
-const MORE: { id: StepId; label: MessageKey; hint: MessageKey }[] = [
-  { id: "inventario", label: "pn.book", hint: "pn.bookHint" },
-  { id: "asignar", label: "st.assign", hint: "pn.assignHint" },
-  { id: "entregar", label: "pn.sync", hint: "pn.syncHint" },
-];
+const MORE: { id: StepId; label: MessageKey; hint: MessageKey }[] = [{ id: "inventario", label: "pn.book", hint: "pn.bookHint" }];
 
 /** A screen that needs the book to have been read is closed until it has. */
 export function stepEnabled(id: StepId, setupDone: boolean, hasInventory: boolean): boolean {
   if (!setupDone) return false;
-  if (id === "inventario" || id === "tareas") return true;
+  if (id === "inventario" || id === "tareas" || id === "subtareas") return true;
   return hasInventory;
 }
 
@@ -33,11 +29,13 @@ type Props = {
   view: StepId;
   setupDone: boolean;
   hasInventory: boolean;
+  /** A project of several books: each is read on its own, on a screen kept under «Más». */
+  severalBooks?: boolean;
   onChange: (id: StepId) => void;
 };
 
 /** The screens of a project as tabs, with the less usual ones under «Más». */
-export function StepNav({ view, setupDone, hasInventory, onChange }: Props) {
+export function StepNav({ view, setupDone, hasInventory, severalBooks, onChange }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
@@ -65,6 +63,7 @@ export function StepNav({ view, setupDone, hasInventory, onChange }: Props) {
           </button>
         ))}
       </div>
+      {severalBooks || inMore ? (
       <div className="pn__more" ref={menu}>
         <button type="button" className="pn__tab" aria-haspopup="menu" aria-expanded={open} data-on={inMore ? "true" : undefined} onClick={() => setOpen(!open)}>
           {inMore ? t(MORE.find((row) => row.id === view)!.label) : t("pn.more")} <ChevronDown size={14} aria-hidden />
@@ -91,6 +90,7 @@ export function StepNav({ view, setupDone, hasInventory, onChange }: Props) {
           </div>
         ) : null}
       </div>
+      ) : null}
     </nav>
   );
 }

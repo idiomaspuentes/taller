@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { tallerConfig } from "../../taller.config";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
@@ -15,11 +14,11 @@ import { phasesAtStart, tasksWithoutTeam } from "../domain/startBook";
 import { loadLocalWorkflows, mergeWorkflowCatalogs, normalizeWorkflowTemplate, saveLocalWorkflows } from "../domain/store";
 import { localizeName } from "../domain/templateNames";
 import { WORKFLOWS_SCHEMA, type AssignmentsDoc, type InventoryDoc } from "../domain/types";
-import { workflowProblems } from "../domain/workflowCheck";
 import { boardToWorkflowTemplate } from "../domain/workflows";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { PlanEditor } from "./PlanEditor";
+import { planProblems } from "./planIssueText";
 import { PlanFrame } from "./PlanFrame";
 import { WorkPreview } from "./WorkPreview";
 
@@ -79,33 +78,38 @@ export function DraftProjectView({ session, pmOrg, draft, processName, onDraft, 
   }, [session, pmOrg, draft.lang]);
 
   /** Read the book with the cuts the draft asks for; a reading in hand that already has them is kept. */
-  async function read(settings: AssignmentsDoc["settings"]): Promise<InventoryDoc | null> {
+  async function read(settings: AssignmentsDoc["settings"], quiet = false): Promise<InventoryDoc | null> {
     const wanted = JSON.stringify(settings?.portionStarts ?? {});
     if (inventory && readFor.current === wanted && portionsMatchStarts(settings, inventory)) return inventory;
-    setError("");
-    setReading(t("sb.stageReading"));
+    if (!quiet) {
+      setError("");
+      setReading(t("sb.stageReading"));
+    }
     try {
-      const next = await readBook({ book, lang: draft.lang, contentOrg: draft.contentOrg, settings }, (message) => setReading(message));
+      const next = await readBook({ book, lang: draft.lang, contentOrg: draft.contentOrg, settings }, (message) => !quiet && setReading(message));
       readFor.current = wanted;
       setInventory(next);
       return next;
     } catch (err) {
-      setError(explainError(err));
+      if (!quiet) setError(explainError(err));
       return null;
     } finally {
-      setReading("");
+      if (!quiet) setReading("");
     }
   }
+
+  // The book is read as soon as the draft opens: the process can then speak of its chapters and portions.
+  useEffect(() => {
+    void read(draft.settings, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function go(next: Step) {
     setStep(next);
     if (next === "work") void read(draft.settings);
   }
 
-  const problems = useMemo(() => {
-    const asTemplate = boardToWorkflowTemplate(draft, { id: draft.workflowId ?? "draft", name: draft.title || name });
-    return workflowProblems(asTemplate, { tools, languages: tallerConfig.uiLanguages });
-  }, [draft, name, tools]);
+  const problems = useMemo(() => planProblems(planOfBoard(draft), t, language), [draft, t, language]);
   const loose = tasksWithoutTeam(draft);
 
   async function create() {
@@ -284,7 +288,7 @@ export function DraftProjectView({ session, pmOrg, draft, processName, onDraft, 
       ) : null}
 
       {step === "plan" ? (
-        <PlanEditor plan={planOfBoard(draft)} onChange={(plan) => onDraft(boardWithPlan(draft, plan))} tools={tools} resourceNames={draft.settings?.resourceNames} teams={teams} readOnly={Boolean(stage)} />
+        <PlanEditor plan={planOfBoard(draft)} onChange={(plan) => onDraft(boardWithPlan(draft, plan))} tools={tools} resourceNames={draft.settings?.resourceNames} teams={teams} readOnly={Boolean(stage)} book={inventory ? { code: book, portions: inventory.portions.map((portion) => ({ id: portion.id || portion.ref, ref: portion.ref, chapter: portion.chapter })) } : undefined} />
       ) : reading ? (
         <div className="hub-panel dp-reading" role="status">
           <span className="dp-spinner" aria-hidden />

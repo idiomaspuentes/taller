@@ -33,7 +33,7 @@ import { localizeScope } from "../domain/scopeNames";
 import type { SolverApp } from "../domain/solvers";
 import { teamAccess, type TeamOption } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
-import { SCOPE_KEYS, type ChecklistQuestion, type Localized, type Phase, type ResourceNames, type ScopeKey, type StepClosing, type TaskStep } from "../domain/types";
+import { SCOPE_KEYS, filtersForResource, type ArticleFilter, type ChecklistQuestion, type Localized, type Phase, type ResourceNames, type ScopeKey, type StepClosing, type TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { MinLevelField } from "./MinLevelField";
@@ -53,8 +53,11 @@ type Props = {
   teams?: TeamOptions | null;
   /** Read only: the plan is shown, nothing can be changed. */
   readOnly?: boolean;
-  /** A project under way: opens the old, detailed editor of what a task covers (a window of the book, people by name). */
-  onOpenScope?: (taskId: string) => void;
+  /**
+   * The book of a project, once it was read: a task can then be limited to some of its chapters or portions, and say
+   * that it goes over text already delivered. Absent in a template, which is of no book.
+   */
+  book?: { code: string; portions: { id: string; ref: string; chapter: number }[] };
   /** How many subtareas each task already has, by task id: removing one of those asks first. */
   workOf?: (taskId: string) => number;
 };
@@ -62,6 +65,7 @@ type Props = {
 type Named = { name: string; names?: Localized };
 const CLOSING_KEY: Record<StepClosing, MessageKey> = { self: "pe.closeSelf", approval: "pe.closeApproval", consensus: "pe.closeConsensus", checklist: "pe.closeChecklist", automatic: "pe.closeAutomatic" };
 const CLOSING_HELP: Record<StepClosing, MessageKey> = { self: "st.helpSelf", approval: "pe.helpApproval", consensus: "st.helpConsensus", checklist: "st.helpChecklist", automatic: "st.helpAutomatic" };
+const FILTER_KEY: Record<ArticleFilter, MessageKey> = { pending: "pe.fPending", all: "pe.fAll", translated: "pe.fTranslated", english: "pe.fEnglish", incomplete: "pe.fIncomplete", missing: "pe.fMissing" };
 type StepScopeId = NonNullable<TaskStep["scope"]>;
 const STEP_SCOPES: StepScopeId[] = ["subtask", "unit", "chapter-once"];
 const STEP_SCOPE_KEY: Record<StepScopeId, MessageKey> = { subtask: "st.scopeSubtask", unit: "st.scopeUnit", "chapter-once": "st.scopeOnce" };
@@ -71,7 +75,7 @@ const STEP_SCOPE_KEY: Record<StepScopeId, MessageKey> = { subtask: "st.scopeSubt
  * in detail beside it. A template, a project about to be created and a project under way are edited here alike; only
  * what the host does with the result differs.
  */
-export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOnly, onOpenScope, workOf }: Props) {
+export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOnly, book, workOf }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const phases = useMemo(() => orderedPhases(plan), [plan]);
@@ -391,6 +395,25 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
           </div>
           <small className="pe-hint">{resources.length ? t("pe.worksHint") : t("pe.generalHint")}</small>
         </div>
+        {resources.length ? (
+          <div className="pe-field">
+            <span className="pe-label">{t("pe.includes")}</span>
+            <div className="pe-includes">
+              {row.rules.map((rule) => (
+                <label key={rule.resource}>
+                  <span>{resourceName(rule.resource)}</span>
+                  <select className="af-input" value={rule.articleFilter} disabled={!canEdit} onChange={(e) => patch({ rules: row.rules.map((item) => (item.resource === rule.resource ? { ...item, articleFilter: e.target.value as ArticleFilter } : item)) })}>
+                    {filtersForResource(rule.resource).map((id) => (
+                      <option key={id} value={id}>
+                        {t(FILTER_KEY[id])}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {resources.length ? (
           <div className="pe-field">
@@ -426,7 +449,7 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
 
         <div className="pe-field">
           {canEdit ? (
-            <WaitsEditor board={{ teams: plan.tasks as never, phases: plan.phases }} taskId={row.id} value={row.waitsFor ?? []} onChange={(next) => patch({ waitsFor: next.length ? next : undefined })} />
+            <WaitsEditor board={{ teams: plan.tasks as never, phases: plan.phases }} taskId={row.id} phaseId={row.phaseId} value={row.waitsFor ?? []} onChange={(next) => patch({ waitsFor: next.length ? next : undefined })} />
           ) : (
             <>
               <span className="pe-label">{t("wa.label")}</span>
@@ -505,10 +528,62 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
               </label>
               <textarea id="pe-task-desc" className="af-textarea" rows={2} value={row.description ?? ""} disabled={!canEdit} onChange={(e) => patch({ description: e.target.value || undefined })} />
             </div>
-            {onOpenScope ? (
-              <button type="button" className="pe-link" onClick={() => onOpenScope(row.id)}>
-                {t("pe.openScope")}
-              </button>
+            {book ? (
+              <div className="pe-field">
+                <label className="pe-label" htmlFor="pe-scope-mode">
+                  {t("pe.bookPart")}
+                </label>
+                <select
+                  id="pe-scope-mode"
+                  className="af-input"
+                  value={row.scriptureScope?.mode === "chapters" || row.scriptureScope?.mode === "portions" ? row.scriptureScope.mode : "project"}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    patch({
+                      scriptureScope: e.target.value === "chapters" ? { mode: "chapters", book: book.code, chapters: [] } : e.target.value === "portions" ? { mode: "portions", book: book.code, portionIds: [] } : { mode: "project" },
+                    })
+                  }
+                >
+                  <option value="project">{t("pe.bookWhole")}</option>
+                  <option value="chapters">{t("pe.bookChapters")}</option>
+                  <option value="portions">{t("pe.bookPortions")}</option>
+                </select>
+                {row.scriptureScope?.mode === "chapters" ? (
+                  <div className="pe-chips">
+                    {[...new Set(book.portions.map((portion) => portion.chapter))].map((chapter) => {
+                      const scope = row.scriptureScope as { mode: "chapters"; book: string; chapters: number[] };
+                      const on = scope.chapters.includes(chapter);
+                      return (
+                        <button key={chapter} type="button" className="pe-chip" aria-pressed={on} disabled={!canEdit} onClick={() => patch({ scriptureScope: { ...scope, chapters: on ? scope.chapters.filter((c) => c !== chapter) : [...scope.chapters, chapter].sort((x, y) => x - y) } })}>
+                          {chapter}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                {row.scriptureScope?.mode === "portions" ? (
+                  <div className="pe-chips">
+                    {book.portions.map((portion) => {
+                      const scope = row.scriptureScope as { mode: "portions"; book: string; portionIds: string[] };
+                      const on = scope.portionIds.includes(portion.id);
+                      return (
+                        <button key={portion.id} type="button" className="pe-chip" aria-pressed={on} disabled={!canEdit} onClick={() => patch({ scriptureScope: { ...scope, portionIds: on ? scope.portionIds.filter((id) => id !== portion.id) : [...scope.portionIds, portion.id] } })}>
+                          {portion.ref.replace(/^[A-Z0-9]{3}\s+/, "").replace("-", "–")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {book && resources.some((key) => key === "tpl" || key === "tps") ? (
+              <label className="pe-check">
+                <input type="checkbox" checked={Boolean(row.reviewsPrincipal)} disabled={!canEdit} onChange={(e) => patch({ reviewsPrincipal: e.target.checked ? true : undefined })} />
+                <span>
+                  {t("pe.reviews")}
+                  <small className="pe-hint">{t("pe.reviewsHint")}</small>
+                </span>
+              </label>
             ) : null}
           </div>
         ) : null}

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { tallerConfig } from "../../taller.config";
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,12 +14,12 @@ import { localized, shippedWorkflows } from "../domain/processes";
 import { DEFAULT_SOLVERS_CATALOG, type SolverApp } from "../domain/solvers";
 import { loadLocalWorkflows, mergeWorkflowCatalogs, normalizeWorkflowTemplate, saveLocalWorkflows } from "../domain/store";
 import { PM_REPO_NAME, WORKFLOWS_SCHEMA, type WorkflowTemplate, type WorkflowsCatalog } from "../domain/types";
-import { workflowProblems } from "../domain/workflowCheck";
 import { emptyWorkflow } from "../domain/workflows";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { PlanEditor } from "./PlanEditor";
 import { PlanFrame } from "./PlanFrame";
+import { planProblems } from "./planIssueText";
 
 type Props = {
   session: GtSession;
@@ -130,7 +129,7 @@ export function TemplatesView({ session, pmOrg, lang, canManage, announce, focus
     onSelectWorkflow(NEW_TEMPLATE);
   }
 
-  const problems = useMemo(() => (draft && !readOnly ? workflowProblems(draft, { tools, languages: tallerConfig.uiLanguages }) : []), [draft, readOnly, tools]);
+  const problems = useMemo(() => (draft && !readOnly ? [...(draft.name.trim() ? [] : [t("tp.needName")]), ...planProblems(planOfWorkflow(draft), t, language)] : []), [draft, readOnly, t, language]);
 
   async function save() {
     if (!draft || readOnly) return;

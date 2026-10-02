@@ -16,6 +16,8 @@ type Props = {
   board: Pick<AssignmentsDoc, "teams" | "phases">;
   /** The task being edited; `null` for a task not saved yet. */
   taskId: string | null;
+  /** The phase of that task: it is not offered, since a task cannot wait for its own phase. */
+  phaseId?: string;
   value: WaitRule[];
   onChange: (next: WaitRule[]) => void;
 };
@@ -36,7 +38,7 @@ const SCOPE_KEY: Record<WaitScope, MessageKey> = {
  * «Esperar a»: pick what must be closed before this task can start.
  * Closed by default; opens with «+ Esperar a otra tarea».
  */
-export function WaitsEditor({ board, taskId, value, onChange }: Props) {
+export function WaitsEditor({ board, taskId, phaseId, value, onChange }: Props) {
   const t = useT();
   const [adding, setAdding] = useState(false);
   const [target, setTarget] = useState("");
@@ -111,7 +113,7 @@ export function WaitsEditor({ board, taskId, value, onChange }: Props) {
                   {t("wa.task").replace("{name}", task.name)}
                 </SelectItem>
               ))}
-              {board.phases.map((p) => (
+              {board.phases.filter((p) => p.id !== phaseId).map((p) => (
                 <SelectItem key={`p:${p.id}`} value={`p:${p.id}`}>
                   {t("wa.phase").replace("{name}", p.name)}
                 </SelectItem>

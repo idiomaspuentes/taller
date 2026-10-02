@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { bookLabel } from "../domain/books";
@@ -26,6 +26,10 @@ type Props = {
   busy?: boolean;
   /** What each subtarea is in Door43 once the project exists, by the key of its work order. */
   stateOf?: (order: WorkOrder) => { label: string; tone: "open" | "taken" | "done" } | undefined;
+  /** What can be done with one subtarea (who has it, hand it to somebody). With it, a subtarea opens when pressed. */
+  orderPanel?: (order: WorkOrder, close: () => void) => ReactNode;
+  /** The name people gave a team, from the name Door43 keeps. */
+  teamName?: (name: string) => string;
 };
 
 const NOTICE_KEY: Record<StartNotice, MessageKey> = { "no-notes": "sb.noNotes", "no-questions": "sb.noQuestions", "no-second-text": "sb.noSecondText" };
@@ -34,7 +38,7 @@ const NOTICE_KEY: Record<StartNotice, MessageKey> = { "no-notes": "sb.noNotes", 
  * The subtareas a project lays out, phase by phase and task by task: what «Crear proyecto» will write, seen before it
  * does. Here is also where the book is cut differently, and where a subtarea the book does not give is added by hand.
  */
-export function WorkPreview({ board, inventory, onSettings, onPortionStarts, busy, stateOf }: Props) {
+export function WorkPreview({ board, inventory, onSettings, onPortionStarts, busy, stateOf, orderPanel, teamName }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const orders = useMemo(() => publishableWorkOrders(board, inventory), [board, inventory]);
@@ -44,6 +48,7 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
   const book = (board.books?.[0] || board.book).toUpperCase();
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [adding, setAdding] = useState<string | null>(null);
+  const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [portionId, setPortionId] = useState("");
   const [section, setSection] = useState<"portions" | "units" | null>(null);
@@ -203,7 +208,7 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
                       >
                         {isOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
                         <span className="wp-task__name">{name(task)}</span>
-                        <span className="wp-task__meta">{own?.orgTeamName ? displayOrgTeamName(own.orgTeamName) : t("wp.noTeam")}</span>
+                        <span className="wp-task__meta">{own?.orgTeamName ? (teamName?.(own.orgTeamName) ?? displayOrgTeamName(own.orgTeamName)) : t("wp.noTeam")}</span>
                         <span className="wp-task__count" data-none={rows.length ? undefined : "true"}>
                           {rows.length}
                         </span>
@@ -251,6 +256,9 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
                         </div>
                       </form>
                     ) : null}
+                    {isOpen && orderPanel && rows.some((order) => order.key === openOrder) ? (
+                      <div className="wp-order-panel">{orderPanel(rows.find((order) => order.key === openOrder)!, () => setOpenOrder(null))}</div>
+                    ) : null}
                     {isOpen ? (
                       rows.length ? (
                         <ul className="wp-orders">
@@ -259,8 +267,17 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
                             const state = stateOf?.(order);
                             return (
                               <li key={order.key} className="wp-order" data-extra={extra ? "true" : undefined} data-tone={state?.tone}>
-                                <span>{order.label}</span>
-                                {state ? <small>{state.label}</small> : extra ? <small>{t("wp.byHand")}</small> : null}
+                                {orderPanel ? (
+                                  <button type="button" className="wp-order__open" aria-expanded={openOrder === order.key} onClick={() => setOpenOrder(openOrder === order.key ? null : order.key)}>
+                                    <span>{order.label}</span>
+                                    {state ? <small>{state.label}</small> : null}
+                                  </button>
+                                ) : (
+                                  <>
+                                    <span>{order.label}</span>
+                                    {state ? <small>{state.label}</small> : extra ? <small>{t("wp.byHand")}</small> : null}
+                                  </>
+                                )}
                                 {extra && onSettings ? (
                                   <button type="button" aria-label={t("wp.remove").replace("{title}", order.label)} onClick={() => onSettings(removeExtraWork(board.settings, order.itemIds[0]!.slice("extra:".length)))}>
                                     <X size={14} aria-hidden />
