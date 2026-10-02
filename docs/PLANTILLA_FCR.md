@@ -450,3 +450,30 @@ escrita arriba y el uso real debajo, marcando dónde el texto se aparta de la de
 
 **Dónde se consulta:** al traducir (para seguir lo ya hecho), en palabras clave de Afinación (para
 ser consistente con libros anteriores), al alinear y en Armonización.
+
+### El puente por el inglés (extrapolación)
+
+- **Traducción** asocia una palabra en español con una del **inglés**.
+- **Afinación** asocia una palabra en español con una del **idioma original**.
+- El **inglés ya está alineado** con el original (ULT y UST).
+
+Entonces se puede deducir: español → inglés → original. Sirve para tres cosas:
+
+1. **Unir las dos clases de entrada del glosario.** La decisión «*redeem* → redimir» de Traducción y
+   la decisión «λυτρόω → redimir» de Afinación quedan como **la misma entrada**, vista desde los dos
+   lados.
+2. **Ayudar a Traducción antes de Afinación.** Quien traduce *redeem* en Tito 2:14 puede ver cómo
+   Afinación tradujo en otros libros la palabra griega que está debajo de ese *redeem*.
+3. **Proponer la alineación.** Si el borrador en español sigue al inglés, y el inglés está alineado,
+   se puede **sugerir** la alineación del español con el original para que quien alinea solo
+   confirme o corrija.
+
+**Límites:**
+- **En un versículo concreto es confiable:** la alineación del inglés dice exactamente qué palabra
+  griega hay debajo de *ese* *redeem*.
+- **Como regla general es solo una pista:** una palabra inglesa puede traducir varias palabras
+  griegas, y una griega se traduce con varias inglesas. Fuera del versículo, lo deducido se muestra
+  como «probable», con su conteo, nunca como decisión.
+- El **UST** se aleja más del original: su puente es menos preciso que el del ULT.
+- Lo deducido **nunca se guarda solo** como decisión ni como alineación: siempre lo confirma una
+  persona.
