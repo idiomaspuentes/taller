@@ -79,20 +79,19 @@ export function NoteQuote({ sources, book, chapter, verse, quote, occurrence }: 
   );
 }
 
-/** The source texts of the whole chapter, to read the note in its place: one text at a time on a phone. */
+/** The source texts of the whole chapter, to read the help in its place: one text at a time, each in full. */
 export function ChapterSources({ sources, chapter, from, to }: { sources: HelpSource[]; chapter: number; from?: number; to?: number }) {
   const t = useT();
   const [shown, setShown] = useState(0);
-  if (!sources.length) return null;
+  if (!sources.length) return <p className="hs-wait">{t("hs.loading")}</p>;
   const source = sources[Math.min(shown, sources.length - 1)]!;
   const verses = Object.keys(source.verses)
     .map(Number)
     .sort((a, b) => a - b);
   return (
-    <details className="hs-chapter">
-      <summary>{t("hs.chapter").replace("{n}", String(chapter)).replace("{texts}", sources.map((row) => row.short).join(" · "))}</summary>
+    <div className="hs-chapter">
       {sources.length > 1 ? (
-        <div className="mde-kinds" role="tablist">
+        <div className="mde-kinds" role="tablist" aria-label={t("hs.whichText")}>
           {sources.map((row, index) => (
             <button key={row.short} type="button" role="tab" className="mde-kind" aria-selected={index === shown} onClick={() => setShown(index)}>
               {row.short}
@@ -100,14 +99,15 @@ export function ChapterSources({ sources, chapter, from, to }: { sources: HelpSo
           ))}
         </div>
       ) : null}
+      {from ? <p className="hs-wait">{t("hs.passageMarked").replace("{ref}", `${chapter}:${from}${to && to > from ? `–${to}` : ""}`)}</p> : null}
       <div className="hs-chapter__text">
         {verses.map((verse) => (
           // The verses of the passage in hand stand out; the rest of the chapter is there to read around them.
-          <span key={verse} className="hs-v" data-here={from && verse >= from && verse <= (to ?? from) ? "true" : undefined}>
-            <sup>{verse}</sup> {source.verses[verse]}{" "}
-          </span>
+          <p key={verse} className="hs-v" data-here={from && verse >= from && verse <= (to ?? from) ? "true" : undefined}>
+            <sup>{verse}</sup> {source.verses[verse]}
+          </p>
         ))}
       </div>
-    </details>
+    </div>
   );
 }

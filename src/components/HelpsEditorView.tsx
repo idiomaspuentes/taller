@@ -108,6 +108,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [openingPr, setOpeningPr] = useState(false);
   const [error, setError] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [pane, setPane] = useState<"edit" | "chapter">("edit");
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -518,10 +519,28 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         </Alert>
       ) : null}
 
+      {wantsSources && range && !busy ? (
+        // What is long and only read (the chapter in the source texts) has its own tab: the work area keeps to the helps.
+        <div className="fam-tabs" role="tablist">
+          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "edit"} onClick={() => setPane("edit")}>
+            {t("hs.tabEdit")}
+          </button>
+          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "chapter"} onClick={() => setPane("chapter")}>
+            {t("hs.tabChapter").replace("{n}", String(range.chapter))}
+          </button>
+        </div>
+      ) : null}
+      {wantsSources && range && !busy ? (
+        <div className="scripture-editor__body" role="tabpanel" hidden={pane !== "chapter"}>
+          <ChapterSources sources={sources} chapter={range.chapter} from={range.from} to={range.to} />
+        </div>
+      ) : null}
+
       {busy ? (
         <p className="scripture-editor__loading">{t("he.loading")}</p>
       ) : (
-        <div className="scripture-editor__body">
+        // Kept mounted under the other tab, so that what is being written is not lost by going to read.
+        <div className="scripture-editor__body" role="tabpanel" hidden={wantsSources && pane !== "edit"}>
           {!session ? (
             <p className="text-sm text-muted-foreground">
               {t("he.offlineHint")}
@@ -531,7 +550,6 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               {t("he.oneResource")}
             </p>
           )}
-          {wantsSources && range ? <ChapterSources sources={sources} chapter={range.chapter} from={range.from} to={range.to} /> : null}
           {items.map((item) => (
             <div key={item.id} className="scripture-editor__verse">
               <div className="scripture-editor__verse-head">

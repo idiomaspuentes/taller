@@ -2190,5 +2190,8 @@
   "hs.notFound": "não foi possível localizar a frase",
   "hs.wholeVerse": "todo o versículo",
   "hs.seeVerse": "Ver {ref} completo",
-  "hs.chapter": "Ler o capítulo {n} ({texts})"
+  "hs.tabEdit": "Traduzir",
+  "hs.tabChapter": "Capítulo {n}",
+  "hs.whichText": "Texto fonte",
+  "hs.passageMarked": "Sua passagem ({ref}) está destacada."
 }
