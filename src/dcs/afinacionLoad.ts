@@ -50,6 +50,11 @@ export type AfinacionNotesData = {
   /** The draft and the aligned English text of the whole book, to show the other uses of a term. */
   bookDraft: BookVerseMap;
   bookGateway: BookVerseMap;
+  /**
+   * The texts the draft is read against, whole book: the original first, then the literal and the simple English.
+   * Each with its alignment, to mark in it the words a note is about.
+   */
+  references: { id: "orig" | "ult" | "ust"; label: string; book: BookVerseMap; alignments?: AlignmentMap }[];
   /** General levels; the views count with the levels of the task's team (`levelBook`). */
   levels: Record<string, PersonLevel>;
   levelBook: LevelBook;
@@ -177,8 +182,9 @@ export async function loadAfinacionNotes(params: {
   const draftVerses = (draftUsj && verseTextsFromUsj(draftUsj, WHOLE_CHAPTER(chapter))) || {};
 
   const gatewayKind = resource === "tps" ? "UST" : "ULT";
-  const [gatewayUsfm, originalRaw, tnRaw] = await Promise.all([
+  const [gatewayUsfm, otherUsfm, originalRaw, tnRaw] = await Promise.all([
     readRaw(session, pkg.owner, resource === "tps" ? pkg.ust : pkg.ult, bookUsfmName(target.book)),
+    readRaw(session, pkg.owner, resource === "tps" ? pkg.ult : pkg.ust, bookUsfmName(target.book)),
     (() => {
       const ref = originalTextRef(target.book);
       return readRaw(session, ref.owner, ref.repo, ref.filepath);
@@ -239,6 +245,16 @@ export async function loadAfinacionNotes(params: {
     preferredTerms,
     bookDraft: bookVerses(draftUsj),
     bookGateway: bookVerses(gateway?.usj ?? null),
+    references: (() => {
+      const other = otherUsfm ? tryParseUsjWithAlignments(otherUsfm) : null;
+      const ult = resource === "tps" ? other : gateway;
+      const ust = resource === "tps" ? gateway : other;
+      return [
+        { id: "orig" as const, label: originalTextRef(target.book).label, book: bookVerses(originalUsj) },
+        ...(ult ? [{ id: "ult" as const, label: "ULT", book: bookVerses(ult.usj), alignments: ult.alignments }] : []),
+        ...(ust ? [{ id: "ust" as const, label: "UST", book: bookVerses(ust.usj), alignments: ust.alignments }] : []),
+      ];
+    })(),
     levels: pmConfig.levels,
     levelBook: pmConfig,
     notesSource: `${pkg.owner}/${sourceRepo}`,

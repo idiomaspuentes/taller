@@ -13,7 +13,7 @@ import { HelpMessages } from "./HelpMessages";
 import { termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, termLabel, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
 import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
-import { matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
+import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
   mergeDecisionFiles,
   reviewersToNotifyAfterEdit,
@@ -123,7 +123,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** How many messages each note has for the team that will work on the notes. */
   const [noteMessages, setNoteMessages] = useState<Record<string, number>>({});
   /** What the draft is compared with, kept from one item to the next. */
-  const [compare, setCompare] = useState<"ult" | "orig" | "article" | "note" | "book">("ult");
+  /** The help or context open under the answer: the article, the note, the renderings in the book. */
+  const [compare, setCompare] = useState<"article" | "note" | "book">("article");
+  /** The text the draft is read against: the original unless the person chose another. */
+  const [refText, setRefText] = useState<"orig" | "ult" | "ust">("orig");
+  /** «Revisar» (the item in hand) or «Capítulo» (whole chapters of a text, to read around it). */
+  const [pane, setPane] = useState<"review" | "chapter">("review");
+  const [readChapter, setReadChapter] = useState(0);
   /** The article open to be read in full: its path, and its text once it arrives (`null` = it could not be read). */
   const [reading, setReading] = useState<{ path: string; body?: string | null } | null>(null);
   const [stepDone, setStepDone] = useState(false);
@@ -325,8 +331,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id, verseText]);
 
-  const origTokens = item ? tokenizeVersePlainText(data?.originalVerses[item.verse] ?? "") : [];
-  const origMarked = item && item.quote ? matchHelpQuoteToTokenIndices(origTokens, item.quote, item.occurrence) : [];
 
   // Words step: how this term was rendered in every use across the book.
   const termSlug = item && "termSlug" in item ? (item as TermItem).termSlug : "";
@@ -466,18 +470,28 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const messageKeyOf = stepProp === "notas" ? (item?.id ?? "") : termKey;
   const messagesHere = noteMessages[messageKeyOf] ?? 0;
   const compareTabs = [
-    { id: "ult" as const, label: data?.gatewayLabel || "ULT" },
-    { id: "orig" as const, label: t("af.tabOriginal") },
     ...(stepProp === "notas" ? [{ id: "article" as const, label: t("af.tabArticle") }] : [{ id: "book" as const, label: t("af.inWholeBook") }]),
     { id: "note" as const, label: `${t(stepProp === "notas" ? "af.tabNote" : "af.tabMessage")}${messagesHere ? ` · ${messagesHere}` : ""}` },
   ];
+  const helpsTab = compareTabs.some((tab) => tab.id === compare) ? compare : compareTabs[0]!.id;
+  // The words the item is about, marked in the text it is read against: in the original from the quote, in the
+  // English texts through their alignment with it.
+  const reference = data?.references.find((row) => row.id === refText) ?? data?.references[0];
+  const refVerse = item && reference ? (reference.book[`${item.chapter}:${item.verse}`] ?? "") : "";
+  const refMarked = useMemo(() => {
+    if (!item || !reference || !refVerse) return [] as number[];
+    if (reference.id === "orig") return item.quote ? matchHelpQuoteToTokenIndices(tokenizeVersePlainText(refVerse), item.quote, item.occurrence) : [];
+    return alignedGatewayQuoteForHelpQuote({ verseText: refVerse, quote: item.quote, occurrence: item.occurrence, alignments: reference.alignments, book: data!.book, chapter: item.chapter, verse: item.verse }).tokenIndices;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, reference?.id, refVerse]);
+  const lastChapter = useMemo(() => Math.max(0, ...Object.keys(reference?.book ?? {}).map((key) => Number(key.split(":")[0]))), [reference]);
   // The article is read when its tab is opened, and again for each new figure while it stays open.
   useEffect(() => {
-    if (compare !== "article" || !item) return;
+    if (helpsTab !== "article" || !item) return;
     const path = articlePathOf(item.supportRef);
     if (path && reading?.path !== path) void readArticle(path);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compare, item?.id]);
+  }, [helpsTab, item?.id]);
 
   return (
     <div className="af af--round">
@@ -506,42 +520,94 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       ) : null}
 
       {data && item ? (
+        <div className="fam-tabs af-panes" role="tablist">
+          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "review"} onClick={() => setPane("review")}>
+            {t("af.paneReview")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className="fam-tab"
+            aria-selected={pane === "chapter"}
+            onClick={() => {
+              setReadChapter(item.chapter);
+              setPane("chapter");
+            }}
+          >
+            {t("af.paneChapter")}
+          </button>
+        </div>
+      ) : null}
+
+      {data && item && pane === "chapter" ? (
+        // Whole chapters of the text chosen, to read the item in its place: the original unless another is chosen.
+        <section className="af-chapter">
+          <div className="af-ref__bar">
+            <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
+              {data.references.map((row) => (
+                <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
+                  {row.id === "orig" ? t("af.tabOriginal") : row.label}
+                </button>
+              ))}
+            </div>
+            <label className="af-pick">
+              <span className="sr-only">{t("af.chapterPick")}</span>
+              <select value={readChapter || item.chapter} onChange={(e) => setReadChapter(Number(e.target.value))}>
+                {Array.from({ length: Math.max(lastChapter, item.chapter) }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {t("af.chapterN").replace("{n}", String(n))}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} aria-hidden />
+            </label>
+          </div>
+          <div className={reference?.id === "orig" ? "af-chapter__text af-orig" : "af-chapter__text"} lang={reference?.id === "orig" ? "grc" : undefined}>
+            {Object.entries(reference?.book ?? {})
+              .filter(([key]) => Number(key.split(":")[0]) === (readChapter || item.chapter))
+              .sort(([a], [b]) => Number(a.split(":")[1]) - Number(b.split(":")[1]))
+              .map(([key, text]) => {
+                const verse = Number(key.split(":")[1]);
+                return (
+                  <p key={key} className="hs-v" data-here={(readChapter || item.chapter) === item.chapter && verse === item.verse ? "true" : undefined}>
+                    <sup>{verse}</sup> {text}
+                  </p>
+                );
+              })}
+          </div>
+        </section>
+      ) : null}
+
+      {data && item && pane === "review" ? (
         <>
           <section className="af-focus" aria-label={t("af.noteAria")}>
+            {/* What this item is: the category of the note (or the key term). Everything below is about it. */}
             <div className="af-focus__top">
-              {groups.length > 1 ? (
-                // Which figure is reviewed: one picker instead of a row of every kind of the chapter.
-                <label className="af-pick">
-                  <span className="sr-only">{t(stepProp === "notas" ? "af.figuresAria" : "af.category")}</span>
-                  <select
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value);
-                      setPosition(0);
-                    }}
-                  >
-                    {[{ category: "all", label: "", items: data.items }, ...groups].map((group) => {
-                      const done = summary ? group.items.filter((row) => summary.items.find((tally) => tally.itemId === row.id)?.state === "agreed").length : 0;
-                      const name = group.category === "all" ? t("af.allFigures") : stepProp === "notas" ? articleShortName(group.items[0]!, articles[articlePathOf(group.items[0]!.supportRef)], (label) => localizeAfinacion(label, language)) : localizeAfinacion(group.label, language);
-                      return (
-                        <option key={group.category} value={group.category}>
-                          {`${name} · ${done}/${group.items.length}`}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <ChevronDown size={14} aria-hidden />
-                </label>
-              ) : null}
+              <p className="af-kind">{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
               {tally ? <span className="af-state" data-state={tally.state}>{t(STATE_KEY[tally.state])}</span> : null}
             </div>
-            <h2 className="af-phrase">
-              {stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}
-            </h2>
+            <h2 className="af-category">{stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
+
+            {/* 1. Where it is: marked in the text the draft is read against, the original unless another is chosen. */}
+            <div className="af-ref">
+              <div className="af-ref__bar">
+                <span className="af-lbl">{t("af.marked")}</span>
+                <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
+                  {(data.references ?? []).map((row) => (
+                    <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
+                      {row.id === "orig" ? t("af.tabOriginal") : row.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
+                <Words text={refVerse} marked={refMarked} />
+              </span>
+            </div>
 
             <div className="af-draft">
               <div className="af-draft__bar">
-                <span className="af-lbl">{t("af.draftAt").replace("{res}", data.resource === "tps" ? "TPS" : "TPL").replace("{ref}", `${item.chapter}:${item.verse}`)}</span>
+                <span className="af-lbl">{t("af.draftStep").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</span>
                 {fixing ? null : (
                   <button
                     type="button"
@@ -572,34 +638,66 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : (
                 <>
                   <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
-                  <p className="af-hint">{item.phrase ? t("af.tapPhrase").replace("{p}", item.phrase) : termSlug ? t("af.tapTerm") : t("af.tapNote")}</p>
+                  <p className="af-hint">{t(termSlug ? "af.tapTerm" : "af.tapMarked")}</p>
                 </>
               )}
             </div>
 
-            {/* What the draft is compared with: one at a time, the English text first. */}
-            <div className="af-compare-tabs" role="tablist" aria-label={t("af.compareWith")}>
+            <div className="af-ask">
+              <p className="af-lbl">{t("af.judgeStep")}</p>
+              <p className="af-question">{stepProp === "notas" ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)) : t(QUESTION[stepProp][data.resource])}</p>
+              {stepProp === "notas" ? <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p> : null}
+              {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
+              {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
+              {pending ? (
+                <div className="af-why">
+                  <label htmlFor="af-note" className="af-lbl">
+                    {pending === "revise" ? t("af.whatChange") : t("af.whatObjection")}
+                  </label>
+                  <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                </div>
+              ) : null}
+              <div className="af-buttons af-answer">
+                <Button type="button" size="lg" disabled={saving} onClick={() => void answer("approved")}>
+                  {t("rv.approved")}
+                </Button>
+                <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("revise")}>
+                  {t("rv.revise")}
+                </Button>
+                <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("rejected")}>
+                  {t("rv.rejected")}
+                </Button>
+              </div>
+              {tally ? <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} /> : null}
+              {others.length ? (
+                <ul className="af-others" aria-label={t("af.teamAria")}>
+                  {others.map((a) => (
+                    <li key={a.reviewer}>
+                      <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
+                      {a.note ? `: ${a.note}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            {/* Helps and context, one at a time: they explain the category, they are not what is judged. */}
+            <p className="af-lbl af-helps-title">{t("af.helps")}</p>
+            <div className="af-compare-tabs" role="tablist" aria-label={t("af.helps")}>
               {compareTabs.map((tab) => (
-                <button key={tab.id} type="button" role="tab" className="mde-kind" aria-selected={compare === tab.id} onClick={() => setCompare(tab.id)}>
+                <button key={tab.id} type="button" role="tab" className="mde-kind" aria-selected={helpsTab === tab.id} onClick={() => setCompare(tab.id)}>
                   {tab.label}
                 </button>
               ))}
             </div>
             <div className="af-compare-pane" role="tabpanel">
-              {compare === "ult" ? (
-                <Words text={data.gatewayVerses[item.verse] ?? ""} marked={item.phraseTokens} />
-              ) : compare === "orig" ? (
-                <span className="af-orig" lang="grc">
-                  <Words text={data.originalVerses[item.verse] ?? ""} marked={origMarked} />
-                </span>
-              ) : compare === "article" ? (
+              {helpsTab === "article" ? (
                 <>
                   {articles[articlePathOf(item.supportRef)]?.question ? <p className="af-article-q">{articles[articlePathOf(item.supportRef)]!.question}</p> : null}
                   {reading?.path === articlePathOf(item.supportRef) ? (
                     reading.body === undefined ? <p className="af-hint">{t("af.loadingArticle")}</p> : reading.body ? <HelpMarkdownView content={reading.body} /> : <p className="af-hint">{t("af.noArticle")}</p>
                   ) : null}
                 </>
-              ) : compare === "note" ? (
+              ) : helpsTab === "note" ? (
                 <>
                   {item.note ? <HelpMarkdownView className="af-note af-note--md" content={item.note} /> : null}
                   {session && ctx?.pmOrg && ctx.projectId && (stepProp === "notas" || termSlug) ? (
@@ -669,53 +767,41 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : null}
             </div>
 
-            <div className="af-ask">
-              <p className="af-question">{stepProp === "notas" ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)) : t(QUESTION[stepProp][data.resource])}</p>
-              {stepProp === "notas" ? <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p> : null}
-              {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
-              {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
-              {pending ? (
-                <div className="af-why">
-                  <label htmlFor="af-note" className="af-lbl">
-                    {pending === "revise" ? t("af.whatChange") : t("af.whatObjection")}
-                  </label>
-                  <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-                </div>
-              ) : null}
-              <div className="af-buttons af-answer">
-                <Button type="button" size="lg" disabled={saving} onClick={() => void answer("approved")}>
-                  {t("rv.approved")}
-                </Button>
-                <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("revise")}>
-                  {t("rv.revise")}
-                </Button>
-                <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("rejected")}>
-                  {t("rv.rejected")}
-                </Button>
-              </div>
-              {tally ? <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} /> : null}
-              {others.length ? (
-                <ul className="af-others" aria-label={t("af.teamAria")}>
-                  {others.map((a) => (
-                    <li key={a.reviewer}>
-                      <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
-                      {a.note ? `: ${a.note}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
           </section>
 
           <nav className="af-nav" aria-label={t("af.notesNavAria")}>
-            <Button type="button" variant="secondary" disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
-              <ChevronLeft size={16} aria-hidden /> {t("af.prev")}
+            <Button type="button" variant="secondary" aria-label={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
+              <ChevronLeft size={16} aria-hidden /> <span className="af-nav__word">{t("af.prev")}</span>
             </Button>
-            <span className="af-count">
-              {t("af.countOf").replace("{a}", String(Math.min(position + 1, total))).replace("{b}", String(total))}
-            </span>
-            <Button type="button" variant="secondary" disabled={position >= total - 1} onClick={() => setPosition((p) => p + 1)}>
-              {t("af.next")} <ChevronRight size={16} aria-hidden />
+            <div className="af-nav__mid">
+              {groups.length > 1 ? (
+              // Which figure is reviewed: one picker instead of a row of every kind of the chapter.
+              <label className="af-pick">
+                <span className="sr-only">{t(stepProp === "notas" ? "af.figuresAria" : "af.category")}</span>
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    setPosition(0);
+                  }}
+                >
+                  {[{ category: "all", label: "", items: data.items }, ...groups].map((group) => {
+                    const done = summary ? group.items.filter((row) => summary.items.find((tally) => tally.itemId === row.id)?.state === "agreed").length : 0;
+                    const name = group.category === "all" ? t("af.allFigures") : stepProp === "notas" ? articleShortName(group.items[0]!, articles[articlePathOf(group.items[0]!.supportRef)], (label) => localizeAfinacion(label, language)) : localizeAfinacion(group.label, language);
+                    return (
+                      <option key={group.category} value={group.category}>
+                        {`${name} · ${done}/${group.items.length}`}
+                      </option>
+                    );
+                  })}
+                </select>
+                <ChevronDown size={14} aria-hidden />
+              </label>
+              ) : null}
+              <span className="af-count">{t("af.countOf").replace("{a}", String(Math.min(position + 1, total))).replace("{b}", String(total))}</span>
+            </div>
+            <Button type="button" variant="secondary" aria-label={t("af.next")} disabled={position >= total - 1} onClick={() => setPosition((p) => p + 1)}>
+              <span className="af-nav__word">{t("af.next")}</span> <ChevronRight size={16} aria-hidden />
             </Button>
           </nav>
         </>
