@@ -256,7 +256,8 @@ siguen creando a mano. Prueba: `verify:start-book`.
 siguiente mientras las demás siguen en el anterior. Por eso: (1) cuando la primera fase del libro más reciente va por
 el 70 %, Proyectos avisa a quien coordina y ofrece «Empezar el libro siguiente»; (2) en «Mis tareas», lo libre de una
 tarea se ofrece para el libro más antiguo que todavía tiene trabajo abierto de esa tarea, y lo del libro siguiente
-queda en «Del siguiente libro» hasta que el equipo termine el actual. Pruebas: `verify:start-book`,
+queda en «Del siguiente libro» hasta que el equipo termine el actual. (3) La entrega que cruza ese 70 % menciona a
+quien coordina los equipos de la primera fase en la conversación de esa subtarea: le llega como aviso, una sola vez. Pruebas: `verify:start-book`,
 `verify:my-tasks-board`.
 
 **Pendiente:** que la plantilla de la organización guarde sus equipos (hoy se heredan del libro anterior), crear las

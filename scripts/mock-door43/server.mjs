@@ -41,6 +41,8 @@ let issues;
 let comments;
 let labels;
 let milestones;
+/** Notification threads: a mention in a comment tells the person mentioned, as Door43 does. */
+let notifications = [];
 /** "owner/name" → pull requests of that repository. */
 let pulls;
 let log;
@@ -395,6 +397,15 @@ async function handle(req, res) {
     // Only Ana coordinates; the others are plain members.
     return json(res, user.login === "ana" ? [{ id: 10, name: "managers", organization: { name: PM_ORG, username: PM_ORG } }] : [{ id: 11, name: "Equipo", organization: { name: PM_ORG, username: PM_ORG } }]);
   }
+  if (api === "/notifications" && req.method === "GET") {
+    return json(res, user ? notifications.filter((thread) => thread.to === user.login && thread.unread).map(({ to, ...thread }) => thread) : []);
+  }
+  const threadMatch = /^\/notifications\/threads\/(\d+)$/.exec(api);
+  if (threadMatch && req.method === "PATCH") {
+    const thread = notifications.find((row) => row.id === Number(threadMatch[1]) && row.to === user?.login);
+    if (thread) thread.unread = false;
+    return json(res, thread ? { id: thread.id, unread: false } : { message: "not found" }, thread ? 205 : 404);
+  }
   if (api === "/notifications" || api.startsWith("/notifications/")) return json(res, []);
   if (api === "/user/orgs") return json(res, [{ id: 1, name: PM_ORG, username: PM_ORG }, { id: 2, name: CONTENT_ORG, username: CONTENT_ORG }]);
   // POST /orgs/{org}/repos (and the older /org/{org}/repos): a new repository, with a first file when asked.
@@ -627,6 +638,10 @@ async function handle(req, res) {
           const body = await readBody(req);
           const c = { id: list.length + 1, body: body.body, user, created_at: new Date().toISOString() };
           comments.set(number, [...list, c]);
+          for (const [, login] of String(body.body).matchAll(/@([a-z0-9_-]+)/gi)) {
+            if (login === user.login || !Object.values(USERS).some((u) => u.login === login)) continue;
+            notifications.push({ id: notifications.length + 1, to: login, unread: true, updated_at: c.created_at, subject: { title: issue.title, type: "Issue", url: `http://localhost:${PORT}/api/v1/repos/${PM_ORG}/taller/issues/${number}` }, repository: { full_name: `${PM_ORG}/taller` } });
+          }
           issue.updated_at = c.created_at;
           log.push({ at: c.created_at, user: user.login, write: `comment #${number}`, text: String(body.body).split("\n")[0] });
           return json(res, c, 201);

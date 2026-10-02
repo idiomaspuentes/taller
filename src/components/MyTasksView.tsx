@@ -26,6 +26,7 @@ import {
   unclaimIssue,
 } from "../dcs/issues";
 import { ensurePortionPr, submitPortionPrApproval } from "../dcs/portionPr";
+import { notifyNextBook } from "../dcs/startBook";
 import { closeSubtask } from "../dcs/closeSubtask";
 import {
   parsePortionPrMarker,
@@ -550,6 +551,10 @@ export function MyTasksView({
       });
       const own = { host: session.host, username: session.username, pmOrg };
       recordOwnClose(own, issue.number);
+      // Books overlap by phase: when this delivery is the one that calls for the next book, and no later book is
+      // open yet, whoever coordinates is told. It never holds up the delivery.
+      const startOf = (doc: AssignmentsDoc) => Date.parse(doc.workflowAppliedAt ?? "");
+      if (!projects.some((bucket) => startOf(bucket.board) > startOf(board))) void notifyNextBook({ session, pmOrg, board, issueNumber: issue.number }).catch(() => undefined);
       const conflictCount = merge.conflicts.length;
       let conflictNote = "";
       if (posted) {

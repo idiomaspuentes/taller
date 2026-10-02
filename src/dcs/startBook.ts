@@ -1,9 +1,10 @@
 import type { GtSession } from "./auth";
-import { listProjectIssues, publishWorkOrders } from "./issues";
+import { commentOnIssue, listProjectIssues, loadPmConfig, publishWorkOrders } from "./issues";
 import { loadAssignmentsFromDcs, saveProjectToDcs } from "./persist";
 import { bookName, normalizeProjectId } from "../domain/books";
 import { issueTaskId } from "../domain/myTasks";
-import { inheritTeams, nextBookHint, type NextBookHint } from "../domain/startBook";
+import { coordinatorsOf } from "../domain/levels";
+import { firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, type NextBookHint } from "../domain/startBook";
 import { emptyAssignments } from "../domain/store";
 import type { AssignmentsDoc, InventoryDoc, WorkflowTemplate } from "../domain/types";
 import { applyWorkflowToBoard } from "../domain/workflows";
@@ -69,4 +70,22 @@ export async function loadNextBookHint(params: { session: GtSession; pmOrg: stri
   if (!newest) return null;
   const { issues } = await listProjectIssues(session, pmOrg, newest.projectId);
   return nextBookHint(newest, issues.map((issue) => ({ taskId: issueTaskId(issue), closed: issue.state === "closed" })));
+}
+
+/**
+ * After a delivery: if it is the one that takes the first phase of the book past the mark, mention whoever
+ * coordinates that phase in the conversation of the subtarea, so it reaches them as a notice. Best effort: a
+ * delivery never fails because the notice could not be sent. Returns who was told.
+ */
+export async function notifyNextBook(params: { session: GtSession; pmOrg: string; board: AssignmentsDoc; issueNumber: number }): Promise<string[]> {
+  const { session, pmOrg, board } = params;
+  const { issues } = await listProjectIssues(session, pmOrg, board.projectId);
+  const hint = reachesNextBook(board, issues.map((issue) => ({ taskId: issueTaskId(issue), closed: issue.state === "closed", number: issue.number })), params.issueNumber);
+  if (!hint) return [];
+  const config = await loadPmConfig(session, pmOrg);
+  const who = [...new Set(firstPhaseTeams(board).flatMap((team) => coordinatorsOf(config, team)))];
+  if (!who.length) return [];
+  const book = bookName(board.projectId) || board.projectId;
+  await commentOnIssue(session, pmOrg, params.issueNumber, `${who.map((login) => `@${login}`).join(" ")} ${hint.phase} de ${book} va en ${hint.done} de ${hint.total}. Conviene empezar ya el libro siguiente, para que el equipo lo encuentre listo al terminar este.`);
+  return who;
 }

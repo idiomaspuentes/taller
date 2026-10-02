@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { bookSize, inheritTeams, nextBookHint, phasesAtStart, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
+import { bookSize, firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, phasesAtStart, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
 import type { AssignmentsDoc, InventoryDoc, Portion } from "../src/domain/types";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 
@@ -70,6 +70,15 @@ test("se avisa de empezar el libro siguiente cuando la primera fase va por el 70
   assert.equal(nextBookHint(board, work(6, 4, 9)), null, "al 60 % todavía no");
   assert.deepEqual(nextBookHint(board, work(7, 3, 9)), { projectId: "TIT", phase: "Traducción", done: 7, total: 10 }, "las otras fases no cuentan");
   assert.equal(nextBookHint(board, []), null, "sin subtareas no se sabe");
+});
+
+test("a quien coordina se le avisa una sola vez: con la entrega que cruza la marca", () => {
+  const board = fresh("TIT");
+  const work = Array.from({ length: 10 }, (_, i) => ({ number: i + 1, taskId: "tpl", closed: i < 6 }));
+  assert.equal(reachesNextBook(board, work, 7)?.done, 7, "la séptima de diez cruza el 70 %");
+  assert.equal(reachesNextBook(board, work.map((row) => (row.number === 7 ? { ...row, closed: true } : row)), 8), null, "la octava ya no avisa");
+  assert.equal(reachesNextBook(board, work.map((row) => ({ ...row, closed: row.number < 5 })), 5), null, "la quinta todavía no");
+  assert.deepEqual(firstPhaseTeams({ ...board, teams: board.teams.map((t) => ({ ...t, orgTeamName: t.phaseId === board.phases[0]!.id ? "Traducción" : "Otro" })) }), ["Traducción"]);
 });
 
 console.log(`\nverify-start-book: ${passed} checks passed.`);

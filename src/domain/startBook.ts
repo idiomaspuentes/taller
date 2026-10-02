@@ -99,3 +99,19 @@ export function nextBookHint(board: Pick<AssignmentsDoc, "projectId" | "phases" 
   if (!mine.length || done / mine.length < NEXT_BOOK_AT) return null;
   return { projectId: board.projectId, phase: first.name, done, total: mine.length };
 }
+
+/**
+ * Did closing this one subtarea take the first phase past the point where the next book should be started? True
+ * only for the delivery that crosses it, so whoever coordinates is told once and not at every delivery after it.
+ */
+export function reachesNextBook(board: Pick<AssignmentsDoc, "projectId" | "phases" | "teams">, work: { taskId: string; closed: boolean; number: number }[], closedNumber: number): NextBookHint | null {
+  const after = nextBookHint(board, work.map((row) => (row.number === closedNumber ? { ...row, closed: true } : row)));
+  const before = nextBookHint(board, work.map((row) => (row.number === closedNumber ? { ...row, closed: false } : row)));
+  return after && !before ? after : null;
+}
+
+/** Who is told: the coordinators of the teams of the first phase. */
+export function firstPhaseTeams(board: Pick<AssignmentsDoc, "phases" | "teams">): string[] {
+  const first = [...board.phases].sort((a, b) => a.order - b.order)[0];
+  return [...new Set(board.teams.filter((task) => task.phaseId === first?.id).map((task) => task.orgTeamName ?? "").filter(Boolean))];
+}
