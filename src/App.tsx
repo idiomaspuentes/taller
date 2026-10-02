@@ -61,6 +61,7 @@ import {
 import { loadPmConfig, pullIssues } from "./dcs/issues";
 import { useConversationActivity } from "./useConversationActivity";
 import { generateInventory } from "./worker/client";
+import { startBook, type StartStage } from "./dcs/startBook";
 import { SignInModal } from "./components/SignIn";
 import { SetupGate } from "./components/SetupGate";
 import { WorkspaceDialog } from "./components/WorkspaceDialog";
@@ -836,6 +837,35 @@ export function App() {
     }
   }
 
+  /** «Empezar un libro»: everything from the process to the subtareas, then the project is the one in hand. */
+  async function onStartBook(input: { book: string; workflowId: string }, onStage: (stage: StartStage, detail?: string) => void) {
+    const template = projectTemplates().find((workflow) => workflow.id === input.workflowId);
+    if (!session || !pmOrg || !template) throw new Error(tNow("app.signInPickOrg"));
+    const started = await startBook({
+      session,
+      pmOrg,
+      lang,
+      contentOrg,
+      book: input.book,
+      template,
+      earlierProjects: [...projects].reverse().map((project) => project.projectId),
+      onStage,
+    });
+    const { board: doc, inventory: found } = started;
+    saveLocalAssignments(doc);
+    upsertLocalProjectIndex(lang, { projectId: doc.projectId, title: doc.title, kind: doc.kind, books: doc.books });
+    setProjects(loadLocalProjectsIndex(lang));
+    setBook(doc.projectId);
+    setInventariarBook(doc.projectId);
+    setBoard(doc);
+    setInventory(found);
+    persistSessionInventory(found);
+    void saveProjectsIndexToDcs(session, pmOrg, lang, loadLocalProjectsIndex(lang)).catch(() => {
+      /* optional index sync */
+    });
+    return started;
+  }
+
   function onLangChange(next: string) {
     const code = normalizeLangCode(next);
     setLang(code);
@@ -1299,8 +1329,16 @@ export function App() {
               id: workflow.id,
               name: localized(workflow.name, workflow.names, uiLanguage),
               description: workflow.descriptions?.[uiLanguage] ?? workflow.description,
+              phases: workflow.phases.length,
+              tasks: workflow.tasks.length,
             }))}
             onCreateProject={onCreateProject}
+            onStartBook={session && pmOrg ? onStartBook : undefined}
+            onOpenStep={(code, step) => {
+              onBookChange(code);
+              navigate({ name: "proyecto", projectId: code, step });
+            }}
+            onGoToTasks={() => navigate({ name: "mis-tareas" })}
           />
         ) : null}
 

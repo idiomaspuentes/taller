@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { BOOKS, bookLabel, bookName, isBookProjectId, normalizeProjectId } from "../domain/books";
 import { useT } from "../i18n/messages";
+import { StartBookPanel } from "./StartBookPanel";
 import { useUiLanguage } from "../i18n/language";
 import { languageDisplayName, type LanguageOption } from "../domain/languages";
 import type { ProjectIndexEntry, ProjectKind } from "../domain/types";
@@ -26,7 +27,8 @@ export type CreateProjectInput = {
 };
 
 /** A template to start a project from. */
-export type ProjectTemplateOption = { id: string; name: string; description?: string };
+export type ProjectTemplateOption = { id: string; name: string; description?: string; phases?: number; tasks?: number };
+type StartBookProps = Parameters<typeof StartBookPanel>[0];
 
 type Props = {
   lang: string;
@@ -38,6 +40,10 @@ type Props = {
   templates: ProjectTemplateOption[];
   onOpenProject: (projectId: string) => void;
   onCreateProject: (input: CreateProjectInput) => void;
+  /** Start a book in one action (process, reading the book, saving, subtareas). Absent when not signed in. */
+  onStartBook?: StartBookProps["onStart"];
+  onOpenStep?: (projectId: string, step: "inventario" | "tareas") => void;
+  onGoToTasks?: () => void;
 };
 
 function slugifyThematic(raw: string): string {
@@ -59,7 +65,12 @@ export function ProjectsView({
   templates,
   onOpenProject,
   onCreateProject,
+  onStartBook,
+  onOpenStep,
+  onGoToTasks,
 }: Props) {
+  /** `book`: start a book (the usual way). `other`: a project of several books, set up by hand. */
+  const [creating, setCreating] = useState<"book" | "other" | null>(null);
   const t = useT();
   const language = useUiLanguage();
   const [kind, setKind] = useState<ProjectKind>("book");
@@ -130,12 +141,42 @@ export function ProjectsView({
             {canManage ? t("pj.ledeManage") : "."}
           </p>
         </div>
-        {canManage && !createOpen ? (
-          <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
-            {t("pj.new")}
+        {canManage && !createOpen && !creating ? (
+          <Button
+            type="button"
+            onClick={() => {
+              if (onStartBook) setCreating("book");
+              else setCreateOpen(true);
+            }}
+          >
+            {onStartBook ? t("sb.title") : t("pj.new")}
           </Button>
         ) : null}
       </div>
+
+      {canManage && creating === "book" && onStartBook ? (
+        <>
+          <StartBookPanel
+            templates={templates.map((row) => ({ id: row.id, name: row.name, description: row.description, phases: row.phases ?? 0, tasks: row.tasks ?? 0 }))}
+            taken={projects.filter((p) => p.kind === "book").map((p) => p.projectId)}
+            onStart={onStartBook}
+            onOpen={(id, step) => onOpenStep?.(id, step)}
+            onGoToTasks={() => onGoToTasks?.()}
+            onCancel={() => setCreating(null)}
+          />
+          <button
+            type="button"
+            className="text-xs text-muted-foreground underline"
+            onClick={() => {
+              setCreating(null);
+              setKind("thematic");
+              setCreateOpen(true);
+            }}
+          >
+            {t("sb.otherKind")}
+          </button>
+        </>
+      ) : null}
 
       {!list.length ? (
         <div className="hub-empty">

@@ -239,6 +239,22 @@ una decisión acordada se ven en «Por acordar» y las acepta o descarta quien c
   lo toma, cómo se completa, qué abarca, botón, descripción y preguntas de sí/no. También «recorre cada unidad» y la
   espera al proyecto fuente. Falta rediseñar el flujo completo de crear proyectos y tareas (en conversación).
 
+### Fase 9 · Empezar un libro en un paso — hecha (2 de octubre de 2026)
+
+**Por qué:** el proceso se repite igual para cada libro, pero crear un proyecto pasaba por seis pantallas y pedía
+lo que la plantilla ya sabe. Debe poder delegarse sin entrenamiento.
+
+**Lo que quedó:** en Proyectos, «Empezar un libro» pide dos cosas (qué libro y cómo se trabaja) y hace el resto
+sola: aplica el proceso, **trae los equipos del último libro hecho con ese proceso**, lee el libro y lo divide,
+guarda el proyecto y deja listas las subtareas. Al terminar muestra cómo quedan las fases (cuál puede empezar y a
+cuál espera cada una), avisa en una línea si al libro le falta algo en el origen (sin detenerse) y ofrece el único
+ajuste habitual, partir un capítulo largo. «Ajustar este proyecto» abre las pantallas de siempre. Si es el primer
+libro con ese proceso, dice cuántas tareas no tienen equipo y lleva a elegirlos. Los proyectos de varios libros se
+siguen creando a mano. Prueba: `verify:start-book`.
+
+**Pendiente:** que la plantilla de la organización guarde sus equipos (hoy se heredan del libro anterior), crear las
+subtareas de cada fase cuando le toca en vez de todas el primer día, y rediseñar «Ajustar este proyecto».
+
 ## 4. Orden y dependencias
 
 ```text
