@@ -206,6 +206,14 @@ export function releaseStep(
   });
 }
 
+/**
+ * A step that closes by consensus item by item is completed by its tool, when every item is agreed (see
+ * `reviewRound.ts`): approving it from the list would close it with items still in dispute.
+ */
+export function closesInItsTool(step: TaskStep): boolean {
+  return step.closing === "consensus" && Boolean(step.solverAppId);
+}
+
 export function canApproveStep(
   login: string,
   progress: TaskProgressMarker,
@@ -213,6 +221,7 @@ export function canApproveStep(
   fallbackAuthor?: string,
 ): boolean {
   if (stepClaimMode(step) === "none") return false;
+  if (closesInItsTool(step)) return false;
   if (isStepDone(progress, step.id)) return false;
   const user = login.trim().toLowerCase();
   if (!user) return false;
@@ -234,6 +243,7 @@ export function isStepComplete(
   if (isStepDone(progress, step.id)) return true;
   const mode = stepClaimMode(step);
   if (mode === "none") return false;
+  if (closesInItsTool(step)) return false;
 
   const runtime = getStepRuntime(progress, step.id);
   const approvals = new Set(runtime.approvals.map((a) => a.toLowerCase()));
@@ -258,6 +268,8 @@ export function isStepComplete(
   const seatedApprovals = runtime.assignees.filter((a) =>
     approvals.has(a.toLowerCase()),
   );
+  // Consensus without items (an agreement of the team): everybody who sat down must agree, not just the minimum.
+  if (step.closing === "consensus") return runtime.assignees.length >= min && seatedApprovals.length === runtime.assignees.length;
   return seatedApprovals.length >= min;
 }
 

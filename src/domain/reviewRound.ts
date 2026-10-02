@@ -23,6 +23,11 @@ export type ReviewDecision = CheckingDecision & {
   textHash?: string;
   /** The proposal or objection this answer was made with (see alignmentDecision.ts). */
   proposalId?: string;
+  /**
+   * The team's final decision on this item, after talking it over: recorded by the team's coordinator or a persona
+   * habilitada of the team, with what was agreed in `note`. It settles the item for everybody.
+   */
+  final?: boolean;
 };
 
 export type ReviewThresholds = {
@@ -45,6 +50,8 @@ export type ItemTally = {
   agreeIndependent: number;
   /** Logins with an objection or a change proposal still open. */
   open: string[];
+  /** The final decision that settled the item, when there is one. */
+  decided?: { by: string; note?: string; at: string };
 };
 
 /** Small stable fingerprint of a verse's plain text (whitespace and NFC normalised). */
@@ -82,6 +89,8 @@ export function tallyItem(params: {
   /** Logins who wrote the text under review: they may answer but never count as independent. */
   authors: string[];
   thresholds: ReviewThresholds;
+  /** Logins who may record the team's final decision. A `final` answer of anybody else is an ordinary answer. */
+  confirmers?: string[];
 }): ItemTally {
   const { itemId, currentHash, levels, thresholds } = params;
   const authors = new Set(params.authors.map((a) => a.trim().toLowerCase()));
@@ -105,6 +114,19 @@ export function tallyItem(params: {
       open.push(d.reviewer);
     }
   }
+  // A final decision on the text as it is now settles the item, unless somebody objects after it.
+  const confirmers = new Set((params.confirmers ?? []).map((c) => c.trim().toLowerCase()));
+  const final = mine
+    .filter((d) => d.final === true && confirmers.has(d.reviewer.trim().toLowerCase()))
+    .filter((d) => !(currentHash !== undefined && d.textHash !== undefined && d.textHash !== currentHash))
+    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+  if (final) {
+    const after = answers.filter((d) => d.status !== "approved" && Date.parse(d.timestamp) > Date.parse(final.timestamp)).map((d) => d.reviewer);
+    if (!after.length) {
+      return { itemId, state: "agreed", answers, stale, agree, agreeIndependent, open: [], decided: { by: final.reviewer, note: final.note, at: final.timestamp } };
+    }
+  }
+
   const agreed = agree >= thresholds.minAgree && agreeIndependent >= thresholds.minIndependent && open.length === 0;
   const state: ItemState = agreed ? "agreed" : open.length > 0 ? "disputed" : "pending";
   return { itemId, state, answers, stale, agree, agreeIndependent, open };
@@ -151,6 +173,8 @@ export function summarizeRound(params: {
   thresholds: ReviewThresholds;
   /** People asked to take part; used to say who has not answered. */
   reviewers?: string[];
+  /** Logins who may record the team's final decision. */
+  confirmers?: string[];
 }): RoundSummary {
   const items = params.itemIds.map((itemId) =>
     tallyItem({
@@ -160,6 +184,7 @@ export function summarizeRound(params: {
       levels: params.levels,
       authors: [...params.authors, ...(params.authorsByItem?.[itemId] ?? [])],
       thresholds: params.thresholds,
+      confirmers: params.confirmers,
     }),
   );
   const agreed = items.filter((i) => i.state === "agreed").length;

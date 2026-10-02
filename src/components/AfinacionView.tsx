@@ -18,7 +18,10 @@ import {
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
-import { levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
+import { canConfirmForTeam, confirmersOf, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
+import { closesInItsTool } from "../domain/stepClaim";
+import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { FinalDecision, RoundPanel } from "./RoundPanel";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import type { ProjectTask } from "../domain/types";
@@ -111,6 +114,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [fixReason, setFixReason] = useState("");
   const [preferredTerms, setPreferredTerms] = useState<PreferredTerms>({});
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
+  const [stepDone, setStepDone] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -173,11 +178,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   const thresholds = { minAgree: taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
   const me = (session?.username ?? "").toLowerCase();
+  // The team's final decision on a disputed item: its coordinator or a persona habilitada of the team.
+  const confirmers = useMemo(() => confirmersOf(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
+  const canConfirm = Boolean(session) && canConfirmForTeam(data?.levelBook, task?.orgTeamName, me);
+  const closesHere = Boolean(taskStep && closesInItsTool(taskStep) && ctx?.issueNumber);
   const verseText = item ? data?.draftVerses[item.verse] ?? "" : "";
   const hash = textFingerprint(verseText);
 
   const tally = item && data
-    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds })
+    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers })
     : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -193,11 +202,81 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             levels: teamLevels,
             authors: [],
             thresholds,
+            confirmers,
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, decisions, thresholds.minAgree, thresholds.minIndependent],
+    [data, decisions, thresholds.minAgree, thresholds.minIndependent, teamLevels, confirmers],
   );
+
+  // Was this step already closed in the subtarea?
+  useEffect(() => {
+    if (!session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
+    let cancelled = false;
+    void stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
+      .then((done) => !cancelled && setStepDone(done))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [session, ctx?.pmOrg, ctx?.issueNumber, taskStep?.id]);
+
+  /** Every item is agreed: the step is completed in the subtarea, so the task can move on. */
+  async function closeRound() {
+    if (!session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
+    setClosing(true);
+    setError("");
+    try {
+      await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id });
+      setStepDone(true);
+      announce(t("round.closedNow"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  /** The team's final decision on the item in view, after talking it over. */
+  async function decide(text: string) {
+    if (!session || !data || !item || !ctx) return;
+    setSaving(true);
+    setError("");
+    try {
+      const decision: ReviewDecision = {
+        itemId: item.id,
+        ref: { start: { chapter: item.chapter, verse: item.verse } },
+        sessionId: String(ctx.issueNumber || ctx.taskId),
+        stageId: "afinacion",
+        status: "approved",
+        reviewer: session.username,
+        timestamp: new Date().toISOString(),
+        note: text,
+        textHash: hash,
+        final: true,
+      };
+      await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
+      setDecisions((prev) => [...prev, decision]);
+      announce(t("round.decisionSaved"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function jumpToItem(id: string) {
+    setCategory("all");
+    const at = groups.flatMap((g) => g.items).findIndex((i) => i.id === id);
+    if (at >= 0) setPosition(at);
+  }
+
+  function labelOfItem(id: string): string {
+    const found = data?.items.find((i) => i.id === id);
+    if (!found) return id;
+    const what = "termSlug" in found ? termLabel((found as TermItem).termSlug, termTitles) : found.phrase || found.quote || "";
+    return `${found.chapter}:${found.verse}${what ? ` · ${what}` : ""}`;
+  }
 
   // Changing item: show what this person already answered (their words and their note).
   useEffect(() => {
@@ -378,6 +457,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       ) : null}
       {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
 
+      {summary ? (
+        <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} />
+      ) : null}
+
       {data && item ? (
         <>
           <section className="af-dock" aria-label={t("af.versesAria")}>
@@ -532,6 +615,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 {t("rv.rejected")}
               </Button>
             </div>
+            {tally ? <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} /> : null}
             {others.length ? (
               <ul className="af-others" aria-label={t("af.teamAria")}>
                 {others.map((a) => (

@@ -119,6 +119,12 @@ export function canConfirmForTeam(book: LevelBook | undefined, teamName: string 
   return isCoordinatorOf(book, teamName, login) || resolveLevel(book, teamName, login) === "habilitada";
 }
 
+/** Everybody who may confirm a team's final decision: its coordinators and its personas habilitadas. */
+export function confirmersOf(book: LevelBook | undefined, teamName: string | undefined): string[] {
+  const enabled = Object.entries(levelsForTeam(book, teamName)).filter(([, level]) => level === "habilitada").map(([login]) => login);
+  return [...new Set([...coordinatorsOf(book, teamName), ...enabled])];
+}
+
 export function normalizeTeamLevels(raw: unknown): Record<string, Record<string, PersonLevel>> {
   const out: Record<string, Record<string, PersonLevel>> = {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;

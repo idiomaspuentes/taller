@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
+import { closesInItsTool } from "../domain/stepClaim";
+import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { RoundPanel } from "./RoundPanel";
 import {
   DndContext,
   DragOverlay,
@@ -342,6 +345,8 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [stepDone, setStepDone] = useState(false);
+  const [closingRound, setClosingRound] = useState(false);
 
   const editable = mode === "alinear" || Boolean(proposing);
   const sensors = useSensors(
@@ -470,8 +475,37 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, effective, proposals, groups, thresholds.minAgree, thresholds.minIndependent],
+    [data, effective, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels],
   );
+
+  // The review of the alignment closes here, by consensus, when the step says so (objections are settled as team
+  // decisions in the conversation, so there is no final decision to record on this screen).
+  const closesHere = mode === "revisar" && Boolean(taskStep && closesInItsTool(taskStep) && ctx?.issueNumber);
+  useEffect(() => {
+    if (!session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
+    let cancelled = false;
+    void stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
+      .then((done) => !cancelled && setStepDone(done))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [session, ctx?.pmOrg, ctx?.issueNumber, taskStep?.id]);
+
+  async function closeRound() {
+    if (!session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
+    setClosingRound(true);
+    setError("");
+    try {
+      await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id });
+      setStepDone(true);
+      announce(t("round.closedNow"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setClosingRound(false);
+    }
+  }
 
   useEffect(() => {
     setSelectedWords([]);
@@ -970,6 +1004,21 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         </Alert>
       ) : null}
       {busy ? <p className="hub-hint">{t("al.loading")}</p> : null}
+
+      {mode === "revisar" && summary && data ? (
+        <RoundPanel
+          summary={summary}
+          labelOf={(id) => `${data.book} ${id.replace(/^al:/, "")}`}
+          onJump={(id) => {
+            const at = data.verses.findIndex((v) => itemId(data.chapter, v.verse) === id);
+            if (at >= 0) void goTo(at);
+          }}
+          closesHere={closesHere}
+          stepDone={stepDone}
+          busy={closingRound}
+          onClose={() => void closeRound()}
+        />
+      ) : null}
 
       {data && verse ? (
         <>

@@ -101,10 +101,10 @@ function reset() {
         id: "afinar-tpl-1", name: "Afinar TPL 1", resource: "tpl", phaseId: "p2", memberIds: ["ana", "bea", "carla"], minLevel: "practicante",
         scope: ["tpl"], rules: [{ resource: "tpl", articleFilter: "pending" }], waitsFor: [{ taskId: "tpl-1", scope: "chapter" }],
         steps: [
-          { id: "notas", name: "Revisar notas", solverAppId: "afinar-notas", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
-          { id: "palabras", name: "Revisar palabras clave", solverAppId: "afinar-palabras", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
+          { id: "notas", closing: "consensus", name: "Revisar notas", solverAppId: "afinar-notas", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
+          { id: "palabras", closing: "consensus", name: "Revisar palabras clave", solverAppId: "afinar-palabras", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
           { id: "alinear", name: "Alinear", solverAppId: "afinar-alineacion", claimMode: "exclusive" },
-          { id: "revisar-alineacion", name: "Revisar la alineación", solverAppId: "afinar-alineacion", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
+          { id: "revisar-alineacion", closing: "consensus", name: "Revisar la alineación", solverAppId: "afinar-alineacion", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
         ],
       },
     ],

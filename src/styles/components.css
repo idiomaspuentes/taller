@@ -6962,3 +6962,19 @@ button.al-box--read { cursor: pointer; }
   color: var(--text-muted);
   font-weight: 400;
 }
+
+/* ---- how a round of review stands (RoundPanel) ---- */
+.round { display: grid; gap: 0.5rem; }
+.round__done { margin: 0; padding: 0.625rem 0.875rem; border-radius: var(--radius-md); background: var(--success-100); color: var(--success-700); font-weight: 600; }
+.round__ready { display: grid; gap: 0.625rem; padding: 0.875rem; border: 1px solid var(--success-500); border-radius: var(--radius-lg); background: var(--surface); }
+.round__ready p { margin: 0; font-weight: 600; }
+.round__ready button { min-height: 48px; font-size: 1rem; }
+.round__meeting { padding: 0.75rem 0.875rem; border-radius: var(--radius-lg); background: var(--warning-100); color: var(--warning-700); }
+.round__toggle { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; cursor: pointer; text-align: left; min-height: 32px; }
+.round__hint { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-muted); }
+.round__meeting .round__hint { color: inherit; }
+.round__list { display: grid; gap: 0.375rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.round__item { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; width: 100%; min-height: 44px; padding: 0.5rem 0.75rem; border: 0; border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.round__who { color: var(--text-muted); font-size: 0.875rem; }
+.round__decided { margin: 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--success-100); color: var(--success-700); font-size: 0.9375rem; }
+.round__decide { display: grid; gap: 0.375rem; padding: 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); }

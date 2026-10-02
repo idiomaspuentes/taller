@@ -1385,5 +1385,20 @@
   "org.unsetCoordinator": "Quitar coordinación",
   "org.nowCoordinator": "@{who} ahora coordina {team}",
   "org.notCoordinator": "@{who} ya no coordina {team}",
-  "org.noCoordinator": "Este equipo todavía no tiene quien lo coordine. Quien coordina asigna los niveles y confirma las decisiones del equipo."
+  "org.noCoordinator": "Este equipo todavía no tiene quien lo coordine. Quien coordina asigna los niveles y confirma las decisiones del equipo.",
+  "round.aria": "Cómo va la revisión",
+  "round.closed": "Revisión cerrada: todo quedó de acuerdo.",
+  "round.allAgreed": "Todo quedó de acuerdo. Ya se puede cerrar la revisión para que la tarea siga.",
+  "round.close": "Cerrar la revisión",
+  "round.closing": "Cerrando…",
+  "round.closedNow": "Revisión cerrada.",
+  "round.disputedOne": "{n} punto sin acuerdo",
+  "round.disputedMany": "{n} puntos sin acuerdo",
+  "round.meetingHint": "Para conversarlo en equipo. Después, quien coordina registra la decisión.",
+  "round.decide": "Registrar la decisión del equipo",
+  "round.whatAgreed": "¿Qué acordó el equipo?",
+  "round.decideHint": "Queda registrado con tu nombre y vale para todo el equipo.",
+  "round.saveDecision": "Guardar la decisión",
+  "round.decisionSaved": "Decisión del equipo guardada.",
+  "round.decidedBy": "Decisión del equipo, registrada por @{who}:"
 }

@@ -59,7 +59,8 @@
     "translations:apply": "tsx --tsconfig tsconfig.scripts.json scripts/translations/apply.mts",
     "verify:my-tasks-board": "tsx --tsconfig tsconfig.scripts.json scripts/verify-my-tasks-board.mts",
     "verify:decoupling": "tsx --tsconfig tsconfig.scripts.json scripts/verify-decoupling.mts",
-    "verify:levels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-levels.mts"
+    "verify:levels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-levels.mts",
+    "verify:consensus": "tsx --tsconfig tsconfig.scripts.json scripts/verify-consensus.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
