@@ -117,6 +117,9 @@ const CATEGORY_LABEL: Record<string, string> = {
   "grammar-connect-exceptions": "Excepciones",
 };
 
+/** The Academy articles this app knows by a short name, to offer them where a link to one is put in. */
+export const KNOWN_ARTICLES: { slug: string; label: string }[] = Object.entries(CATEGORY_LABEL).map(([slug, label]) => ({ slug, label }));
+
 /** `rc://*​/ta/man/translate/figs-metaphor` → `figs-metaphor`. */
 export function categoryFromSupportRef(ref: string): string {
   const clean = ref.trim().replace(/[?#].*$/, "").replace(/\/+$/, "");

@@ -1,3 +1,5 @@
+import { MarkdownEditor } from "./MarkdownEditor";
+import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -527,14 +529,27 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 <Label htmlFor={`help-${item.id}`}>{item.label}</Label>
                 <p className="scripture-editor__source">{item.meta}</p>
               </div>
-              <textarea
-                id={`help-${item.id}`}
-                className="scripture-editor__input"
-                rows={item.kind === "markdown" ? 8 : 4}
-                value={item.text}
-                onChange={(e) => updateItem(item.id, { text: e.target.value })}
-                placeholder={t("he.textPlaceholder")}
-              />
+              {item.secondaryLabel ? (
+                // A question and its answer are plain sentences.
+                <textarea
+                  id={`help-${item.id}`}
+                  className="scripture-editor__input"
+                  rows={4}
+                  value={item.text}
+                  onChange={(e) => updateItem(item.id, { text: e.target.value })}
+                  placeholder={t("he.textPlaceholder")}
+                />
+              ) : (
+                <MarkdownEditor
+                  id={`help-${item.id}`}
+                  rows={item.kind === "markdown" ? 8 : 4}
+                  book={ctx?.book}
+                  // A note keeps its line breaks written out in its table file; an article is markdown as it is.
+                  value={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
+                  onChange={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
+                  placeholder={t("he.textPlaceholder")}
+                />
+              )}
               {item.secondaryLabel ? (
                 <label className="grid gap-1">
                   <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>

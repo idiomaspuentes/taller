@@ -72,6 +72,7 @@
     "verify:study-notes": "tsx --tsconfig tsconfig.scripts.json scripts/verify-study-notes.mts",
     "verify:group-reading": "tsx --tsconfig tsconfig.scripts.json scripts/verify-group-reading.mts",
     "verify:checklist-ready": "tsx --tsconfig tsconfig.scripts.json scripts/verify-checklist-ready.mts",
+    "verify:help-markup": "tsx --tsconfig tsconfig.scripts.json scripts/verify-help-markup.mts",
     "verify:review-items": "tsx --tsconfig tsconfig.scripts.json scripts/verify-review-items.mts",
     "verify:project-issues": "tsx --tsconfig tsconfig.scripts.json scripts/verify-project-issues.mts",
     "verify:extra-work": "tsx --tsconfig tsconfig.scripts.json scripts/verify-extra-work.mts",
