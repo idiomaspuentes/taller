@@ -288,7 +288,7 @@
   "org.people": "Pessoas",
   "org.seeBoard": "Ver quadro",
   "org.loadingPeople": "Carregando pessoas…",
-  "org.levelOf": "Nível de @{who}",
+  "org.levelOf": "Nível de @{who} nesta equipe",
   "org.noLevel": "Sem nível",
   "org.remove": "Remover",
   "org.nobody": "Ninguém nesta equipe ainda.",
@@ -1308,7 +1308,6 @@
   "profile.role": "Papel",
   "profile.roleCoordination": "Coordenação",
   "profile.roleMember": "Pessoa da equipe",
-  "profile.level": "Seu nível",
   "profile.teams": "Equipes no Door43",
   "profile.noName": "Adicione seu nome no Door43 para sua equipe reconhecer você.",
   "profile.loadError": "Não foi possível carregar seu perfil do Door43. Verifique sua conexão.",
@@ -1380,5 +1379,11 @@
   "tb.stepUndo": "Desmarcar",
   "tb.stepFinishNamed": "Terminei «{step}»",
   "wf.fromShipped": "+ A partir de «{name}»",
-  "wf.createdShipped": "Modelo «{name}» criado (salve para publicá-lo)."
+  "wf.createdShipped": "Modelo «{name}» criado (salve para publicá-lo).",
+  "org.coordinator": "Coordena",
+  "org.setCoordinator": "Tornar coordenador",
+  "org.unsetCoordinator": "Remover coordenação",
+  "org.nowCoordinator": "@{who} agora coordena {team}",
+  "org.notCoordinator": "@{who} não coordena mais {team}",
+  "org.noCoordinator": "Esta equipe ainda não tem quem a coordene. Quem coordena atribui os níveis e confirma as decisões da equipe."
 }

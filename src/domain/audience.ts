@@ -3,7 +3,7 @@ import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned } from "../dcs/issues";
 import { issueTaskId } from "./myTasks";
-import { levelRequirementText, meetsLevel, type PersonLevel } from "./levels";
+import { levelRequirementText, meetsLevel, meetsTeamLevel, resolveLevel, type LevelSource } from "./levels";
 import type { AssignmentsDoc } from "./types";
 import { waitBlocks, waitReason } from "./waits";
 
@@ -45,9 +45,10 @@ export function audienceOf(params: {
   project: AudienceProject;
   session: Pick<GtSession, "username" | "teams">;
   pmOrg: string;
-  myLevel?: PersonLevel;
+  /** My level, or the organization's levels to look it up for the task's team. */
+  myLevel?: LevelSource;
 }): Audience {
-  const { issue, project, session, pmOrg, myLevel } = params;
+  const { issue, project, session, pmOrg } = params;
   const taskId = issueTaskId(issue);
   const task = taskId ? project.board.teams.find((t) => t.id === taskId) : undefined;
 
@@ -60,13 +61,14 @@ export function audienceOf(params: {
   else if (isIssueUnassigned(issue) && (onTeamOfTask(session, pmOrg, task?.orgTeamName) || (decision && inTaskPeople))) relation = "free";
   if (relation === "other") return { relation, notify: false };
 
+  const level = resolveLevel(params.myLevel, task?.orgTeamName, session.username);
   let hold: AudienceHold | undefined;
   const blocks = project.openIssues ? waitBlocks(issue, project.board, project.openIssues) : [];
   if (blocks.length) {
     hold = { kind: "espera", text: waitReason(blocks, project.board) };
-  } else if (!decision && task?.minLevel && !meetsLevel(myLevel, task.minLevel)) {
+  } else if (!decision && task?.minLevel && !meetsTeamLevel(params.myLevel, task.orgTeamName, session.username, task.minLevel)) {
     hold = { kind: "nivel", text: levelRequirementText(task.minLevel) };
-  } else if (!meetsLevel(myLevel, undefined)) {
+  } else if (!meetsLevel(level, undefined)) {
     // Oyente: watches, never gets work.
     hold = { kind: "nivel", text: "Solo observas" };
   }

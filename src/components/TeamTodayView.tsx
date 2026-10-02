@@ -10,7 +10,7 @@ import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeName, localizeToday } from "../domain/templateNames";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { PersonLevel } from "../domain/levels";
+import type { LevelBook } from "../domain/levels";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -48,7 +48,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   const [reminded, setReminded] = useState<Set<number>>(new Set());
-  const [levels, setLevels] = useState<Record<string, PersonLevel>>({});
+  const [levels, setLevels] = useState<LevelBook>({ levels: {} });
   const [assigning, setAssigning] = useState<number | null>(null);
   const [pick, setPick] = useState("");
   const [open, setOpen] = useState<Set<TodayGroup>>(new Set(["decisions", "stuck", "waiting", "running"]));
@@ -63,7 +63,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
         loadPmConfig(session, pmOrg).catch(() => null),
       ]);
       setProjects(loadedProjects);
-      setLevels(config?.levels ?? {});
+      setLevels(config ?? { levels: {} });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

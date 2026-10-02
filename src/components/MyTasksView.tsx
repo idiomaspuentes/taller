@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
-import { levelOf, type PersonLevel } from "../domain/levels";
+import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
 import { boardCount, buildBoard, type BoardCard } from "../domain/myTasksBoard";
 import { ConfirmDialog, MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
@@ -160,7 +160,8 @@ export function MyTasksView({
   const [conflictIssues, setConflictIssues] = useState<DcsIssue[]>([]);
   const [closedIssues, setClosedIssues] = useState<DcsIssue[]>([]);
   const [confirm, setConfirm] = useState<{ title: string; text: string; yes: string; run: () => void } | null>(null);
-  const [myLevel, setMyLevel] = useState<PersonLevel | undefined>(undefined);
+  // The organization's levels: my level depends on the team of each task.
+  const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
   const [solversCatalog, setSolversCatalog] =
     useState<SolversCatalog>(DEFAULT_SOLVERS_CATALOG);
 
@@ -296,7 +297,7 @@ export function MyTasksView({
     if (!pmOrg) return;
     let cancelled = false;
     void loadPmConfig(session, pmOrg).then((config) => {
-      if (!cancelled) setMyLevel(levelOf(config.levels, session.username));
+      if (!cancelled) setMyLevel(config);
     });
     return () => {
       cancelled = true;

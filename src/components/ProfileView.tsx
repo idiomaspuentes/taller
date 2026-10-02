@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { dcsConfig } from "../dcs/config";
 import type { GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
-import { levelOf, type PersonLevel } from "../domain/levels";
+import { isCoordinatorOf, resolveLevel, type LevelBook } from "../domain/levels";
 import { displayName, initialsOf, levelName, memberSince, publicProfileUrl, safeLink, settingsUrl } from "../domain/profile";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
@@ -44,7 +44,7 @@ export function ProfileView({ session, pmOrg, workspaceName, onSignOut }: Props)
   const language = useUiLanguage();
   const [user, setUser] = useState<DcsUser | null>(null);
   const [failed, setFailed] = useState(false);
-  const [level, setLevel] = useState<PersonLevel | undefined>(undefined);
+  const [levelBook, setLevelBook] = useState<LevelBook | undefined>(undefined);
   const [pictureFailed, setPictureFailed] = useState(false);
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export function ProfileView({ session, pmOrg, workspaceName, onSignOut }: Props)
     if (!pmOrg) return;
     let live = true;
     void loadPmConfig(session, pmOrg)
-      .then((config) => live && setLevel(levelOf(config.levels, session.username)))
+      .then((config) => live && setLevelBook(config))
       .catch(() => undefined);
     return () => {
       live = false;
@@ -148,15 +148,20 @@ export function ProfileView({ session, pmOrg, workspaceName, onSignOut }: Props)
         <dl className="profile__list">
           {workspaceName ? <Row label={t("profile.workspace")}>{workspaceName}</Row> : null}
           <Row label={t("profile.role")}>{session.canManage ? t("profile.roleCoordination") : t("profile.roleMember")}</Row>
-          {level ? <Row label={t("profile.level")}>{levelName(level, language)}</Row> : null}
           {teams.length ? (
             <Row label={t("profile.teams")}>
               <span className="profile__chips">
-                {teams.map((team) => (
-                  <span key={team} className="profile__chip">
-                    {team}
-                  </span>
-                ))}
+                {teams.map((team) => {
+                  // The level is the one in that team: each team has its own ladder.
+                  const level = resolveLevel(levelBook, team, session.username);
+                  const extra = [isCoordinatorOf(levelBook, team, session.username) ? t("org.coordinator") : "", level ? levelName(level, language) : ""].filter(Boolean).join(" · ");
+                  return (
+                    <span key={team} className="profile__chip">
+                      {team}
+                      {extra ? <span className="profile__chip-note"> · {extra}</span> : null}
+                    </span>
+                  );
+                })}
               </span>
             </Row>
           ) : null}

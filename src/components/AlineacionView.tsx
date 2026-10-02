@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { levelsForTeam } from "../domain/levels";
 import {
   DndContext,
   DragOverlay,
@@ -414,6 +415,8 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
 
   const me = (session?.username ?? "").toLowerCase();
   const taskStep = task?.steps?.find((s) => s.id === ctx?.stepId);
+  // Who counts for the minimum is decided by the levels of this task's team.
+  const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   const thresholds = { minAgree: taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
   const hashOf = (v: AlignmentVerse) => alignmentFingerprint(v.draft, groups[v.verse] ?? []);
   // When the team decides not to change the alignment, the open answer that came with the
@@ -449,7 +452,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const needsWork = (v: AlignmentVerse) => (mode === "alinear" ? !isDone(v) : pendingForMe(v));
   const tally =
     verse && data
-      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: effective, currentHash: hashOf(verse), levels: data.levels, authors: authorsOf(verse), thresholds })
+      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: effective, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds })
       : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -460,7 +463,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
             itemIds: data.verses.map((v) => itemId(data.chapter, v.verse)),
             decisions: effective,
             currentHashes: Object.fromEntries(data.verses.map((v) => [itemId(data.chapter, v.verse), alignmentFingerprint(v.draft, groups[v.verse] ?? [])])),
-            levels: data.levels,
+            levels: teamLevels,
             authors: [],
             authorsByItem: Object.fromEntries(data.verses.map((v) => [itemId(data.chapter, v.verse), authorsOf(v)])),
             thresholds,

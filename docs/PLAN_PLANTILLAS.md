@@ -90,7 +90,24 @@ Lo planeado era:
 **Listo cuando:** `verify:templates` pasa, la plantilla del FCR se lee del JSON y la app se ve igual
 en español y en portugués.
 
-### Fase 2 · Personas: coordinador y nivel por fase
+### Fase 2 · Personas: coordinador y nivel por equipo — hecha (1 de octubre de 2026)
+
+**Lo que quedó:** el nivel de una persona es **por equipo** (cada pista de cada fase tiene su equipo, así que cada
+fase tiene su propia escala) y cada equipo tiene **coordinadores**. Se guardan en `config.json` del espacio
+(`teamLevels`, `coordinators`), junto al nivel general de antes (`levels`), que sigue valiendo en un equipo hasta que
+ese equipo registra el primero propio. En **Organización**, quien administra nombra coordinadores; el coordinador (o
+quien administra) asigna los niveles de su equipo; el resto los ve. En un equipo con niveles propios, quien no tiene
+nivel ahí solo puede tomar lo que no pide nivel. `canConfirmForTeam` ya dice quién puede confirmar una decisión final
+(lo usa la fase 3). Pruebas: `verify:levels`.
+
+**Límites conocidos:**
+- El equipo se identifica por su nombre: si se renombra en Door43, sus niveles hay que volver a ponerlos.
+- Para guardar un nivel, la coordinadora necesita permiso de escritura en el repositorio de tareas.
+- Las decisiones de alineación (votos) todavía cuentan con el nivel general, no con el del equipo.
+
+Lo planeado era:
+
+#### Personas: coordinador y nivel por fase
 - `config.json` del espacio: por equipo, su **coordinador**; por persona, su **nivel en cada fase**
   (lectura del nivel único actual como valor para todas las fases).
 - El coordinador asigna niveles de su equipo desde Organización.

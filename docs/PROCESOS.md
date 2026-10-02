@@ -112,7 +112,7 @@ Lo que sigue dentro del código, y en qué fase del plan sale
 |---|---|---|
 | **Los recursos** (TPL, TPS, notas, preguntas, palabras, academia) y que el trabajo se reparta en porciones de un libro de la Biblia | `ScopeKey`, el inventario, `workOrder.ts` | Fase 8, «tipo de trabajo» |
 | **Las pantallas de las herramientas** (editor de texto, ayudas, afinación, alineación). El paquete elige cuáles usa y cómo se llaman; las pantallas son código | `src/components/*View.tsx` | Se agregan pantallas nuevas según haga falta; una herramienta externa no necesita código |
-| **Los cuatro niveles** y sus nombres | `levels.ts` | Fase 2 |
+| **Los cuatro niveles** y sus nombres. Quién tiene cada nivel sí es dato: se asigna por equipo en Organización | `levels.ts` | Fase 8 |
 | **El motor todavía no obedece `closing`, `checklist` ni `scope`**: los lee, los valida y los guarda, pero un paso se sigue completando con «Terminé» o «Aprobar» | `stepClaim.ts` | Fases 3 a 5 |
 | **Publicar una versión** del texto | `PublishView`, `release.ts` | Fase 6 |
 | Textos de ayuda en español dentro del modelo | `types.ts` | Fase 8 |

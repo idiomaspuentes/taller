@@ -18,7 +18,7 @@ import {
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
-import { levelOf, meetsLevel } from "../domain/levels";
+import { levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import type { ProjectTask } from "../domain/types";
@@ -169,13 +169,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const item: NoteItem | undefined = visible[Math.min(position, Math.max(visible.length - 1, 0))];
 
   const taskStep = task?.steps?.find((s) => s.id === (ctx?.stepId || stepProp));
+  // Who counts for the minimum is decided by the levels of this task's team.
+  const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   const thresholds = { minAgree: taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
   const me = (session?.username ?? "").toLowerCase();
   const verseText = item ? data?.draftVerses[item.verse] ?? "" : "";
   const hash = textFingerprint(verseText);
 
   const tally = item && data
-    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: data.levels, authors: [], thresholds })
+    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds })
     : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -188,7 +190,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             itemIds: data.items.map((i) => i.id),
             decisions,
             currentHashes: Object.fromEntries(data.items.map((i) => [i.id, textFingerprint(data.draftVerses[i.verse] ?? "")])),
-            levels: data.levels,
+            levels: teamLevels,
             authors: [],
             thresholds,
           })
@@ -226,7 +228,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         : null,
     [data, termSlug, decisions, preferredTerms],
   );
-  const canChoosePreferred = Boolean(data) && meetsLevel(levelOf(data?.levels, me), "habilitada");
+  const canChoosePreferred = Boolean(data) && meetsLevel(levelOf(teamLevels, me), "habilitada");
 
   async function choosePreferred(text: string) {
     if (!session || !data || !termSlug) return;

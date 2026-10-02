@@ -1,6 +1,6 @@
 import type { DcsTeam } from "@ip-lms/dcs-client";
 import type { ScopeKey } from "./types";
-import { normalizeLevels, type PersonLevel } from "./levels";
+import { normalizeCoordinators, normalizeLevels, normalizeTeamLevels, type PersonLevel } from "./levels";
 import { defaultTaRepo, defaultTwRepo } from "./books";
 import { PM_REPO_NAME } from "./types";
 
@@ -30,8 +30,12 @@ export type PmConfig = {
    * preguntas → `{lang}_tq`.
    */
   resourceRepos: Partial<Record<ScopeKey, string>>;
-  /** Level of each person (lowercase login). Missing = not filtered. */
+  /** General level of each person (lowercase login), from before levels were per team. Missing = not filtered. */
   levels: Record<string, PersonLevel>;
+  /** Level of each person in each team (lowercase team name → login). See `LevelBook` in `levels.ts`. */
+  teamLevels: Record<string, Record<string, PersonLevel>>;
+  /** Coordinators of each team (lowercase team name → logins). */
+  coordinators: Record<string, string[]>;
 };
 
 export const DEFAULT_PM_CONFIG: PmConfig = {
@@ -40,6 +44,8 @@ export const DEFAULT_PM_CONFIG: PmConfig = {
   teamPrefix: `${DEFAULT_PM_NAMESPACE}-`,
   resourceRepos: {},
   levels: {},
+  teamLevels: {},
+  coordinators: {},
 };
 
 export function normalizePmConfig(raw: unknown): PmConfig {
@@ -65,7 +71,15 @@ export function normalizePmConfig(raw: unknown): PmConfig {
       }
     }
   }
-  return { namespaceId, managerTeam, teamPrefix, resourceRepos, levels: normalizeLevels(row.levels) };
+  return {
+    namespaceId,
+    managerTeam,
+    teamPrefix,
+    resourceRepos,
+    levels: normalizeLevels(row.levels),
+    teamLevels: normalizeTeamLevels(row.teamLevels),
+    coordinators: normalizeCoordinators(row.coordinators),
+  };
 }
 
 /** Root label applied to every platform issue — primary search filter. */

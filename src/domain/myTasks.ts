@@ -29,7 +29,7 @@ import {
 } from "./taskProgress";
 import type { AssignmentsDoc, ProjectTask, TaskStep } from "./types";
 import { parseWorkOrderMarker } from "./workOrder";
-import { meetsLevel, type PersonLevel } from "./levels";
+import { meetsTeamLevel, type LevelSource } from "./levels";
 
 export type MyTasksFilter = "mine" | "all" | "available";
 
@@ -111,14 +111,14 @@ export function canClaimIssue(
   pmOrg: string,
   issue: DcsIssue,
   board: AssignmentsDoc,
-  /** The signed-in person's level (see `levels.ts`); unknown = not filtered. */
-  myLevel?: PersonLevel,
+  /** The signed-in person's level, or the organization's levels to look it up for the task's team; unknown = not filtered. */
+  myLevel?: LevelSource,
 ): boolean {
   if (!projectAllowsSelfAssign(board) || !isIssueUnassigned(issue)) return false;
   if (session.canManage) return true;
   const taskId = issueTaskId(issue);
   const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
-  if (!meetsLevel(myLevel, task?.minLevel)) return false;
+  if (!meetsTeamLevel(myLevel, task?.orgTeamName, session.username, task?.minLevel)) return false;
   const orgTeamName = task?.orgTeamName;
   if (!orgTeamName) return false;
   return (session.teams ?? []).some(

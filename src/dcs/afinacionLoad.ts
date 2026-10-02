@@ -18,7 +18,7 @@ import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { DEFAULT_SOURCE_PACKAGE, originalTextRef, type SourcePackage } from "../domain/sourcePackage";
 import { tryParseUsj, tryParseUsjWithAlignments, verseTextsFromUsj, type VerseTextMap } from "../domain/usfmAst";
 import type { UsjDocument } from "@usfm-tools/usj-core";
-import type { PersonLevel } from "../domain/levels";
+import type { LevelBook, PersonLevel } from "../domain/levels";
 
 export type AfinacionStep = "notas" | "palabras";
 
@@ -48,7 +48,9 @@ export type AfinacionNotesData = {
   /** The draft and the aligned English text of the whole book, to show the other uses of a term. */
   bookDraft: BookVerseMap;
   bookGateway: BookVerseMap;
+  /** General levels; the views count with the levels of the task's team (`levelBook`). */
   levels: Record<string, PersonLevel>;
+  levelBook: LevelBook;
   notesSource: string;
   /** The package the step read from. */
   sourcePackage: SourcePackage;
@@ -187,6 +189,7 @@ export async function loadAfinacionNotes(params: {
     bookDraft: bookVerses(draftUsj),
     bookGateway: bookVerses(gateway?.usj ?? null),
     levels: pmConfig.levels,
+    levelBook: pmConfig,
     notesSource: `${pkg.owner}/${sourceRepo}`,
     sourcePackage: pkg,
   };

@@ -17,7 +17,7 @@ import {
   mirroredOrgTeamName,
 } from "../domain/roles";
 import { loadPmConfig, savePmConfig } from "../dcs/issues";
-import { LEVEL_ORDER, levelLabel, isLevel, levelOf, type PersonLevel } from "../domain/levels";
+import { LEVEL_ORDER, coordinatorsOf, isCoordinatorOf, isLevel, levelLabel, levelOf, levelsForTeam, withCoordinator, withTeamLevel, type PersonLevel } from "../domain/levels";
 import type { PmConfig } from "../domain/roles";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -88,16 +88,13 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
     [session],
   );
 
-  /** Save one person's level in the org config (empty = remove it). */
-  async function setLevel(login: string, level: PersonLevel | "") {
+  /** Save one person's level in one team (empty = remove it). Each team has its own ladder. */
+  async function setLevel(teamName: string, login: string, level: PersonLevel | "") {
     if (!pmConfig) return;
     const key = login.trim().toLowerCase();
-    const levels = { ...pmConfig.levels };
-    if (level) levels[key] = level;
-    else delete levels[key];
     setLevelSaving(key);
     try {
-      const next = { ...pmConfig, levels };
+      const next = { ...pmConfig, ...withTeamLevel(pmConfig, teamName, login, level) };
       await savePmConfig(session, pmOrg, next);
       setPmConfig(next);
       announce(
@@ -105,6 +102,22 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
           ? t("org.nowLevel").replace("{who}", login).replace("{level}", levelLabel(level, language).toLowerCase())
           : t("org.noLevelSet").replace("{who}", login),
       );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLevelSaving(null);
+    }
+  }
+
+  /** Make a person a coordinator of a team, or stop being one. Only who manages the organization decides this. */
+  async function setCoordinator(teamName: string, login: string, on: boolean) {
+    if (!pmConfig) return;
+    setLevelSaving(login.trim().toLowerCase());
+    try {
+      const next = { ...pmConfig, ...withCoordinator(pmConfig, teamName, login, on) };
+      await savePmConfig(session, pmOrg, next);
+      setPmConfig(next);
+      announce(t(on ? "org.nowCoordinator" : "org.notCoordinator").replace("{who}", login).replace("{team}", friendlyName(teamName)));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -130,7 +143,9 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       ]);
       setPmConfig(loadedConfig);
       setTeamPrefix(loadedConfig.teamPrefix);
-      const tas = orgTeams.filter((t) => isPmOrgTeamName(t.name, loadedConfig.teamPrefix));
+      // The teams of the app, and the ones the person belongs to (a coordinator sets levels in their own team).
+      const mine = new Set((session.teams ?? []).filter((t) => t.organization?.name === pmOrg).map((t) => t.name));
+      const tas = orgTeams.filter((t) => isPmOrgTeamName(t.name, loadedConfig.teamPrefix) || mine.has(t.name));
       // Workers only keep TAS (system) teams; extra DCS org teams stay manager-only.
       setTeams(canManage ? orgTeams : tas);
       setMembers(orgMembers);
@@ -185,8 +200,8 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
   );
 
   const tasTeams = useMemo(
-    () => teams.filter((t) => isPmOrgTeamName(t.name, teamPrefix)),
-    [teams, teamPrefix],
+    () => teams.filter((t) => isPmOrgTeamName(t.name, teamPrefix) || (session.teams ?? []).some((own) => own.organization?.name === pmOrg && own.name === t.name)),
+    [teams, teamPrefix, session.teams, pmOrg],
   );
 
   const visibleTeams = useMemo(
@@ -499,6 +514,10 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                         </Button>
                       </div>
 
+                      {pmConfig && !coordinatorsOf(pmConfig, team.name).length ? (
+                        <p className="hub-team__note">{t("org.noCoordinator")}</p>
+                      ) : null}
+
                       {membersLoading ? (
                         <p className="text-sm text-muted-foreground">{t("org.loadingPeople")}</p>
                       ) : (
@@ -509,13 +528,19 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                                 <span className="hub-team__person-name">{m.name}</span>
                                 <span className="hub-team__person-id">@{m.id}</span>
                               </span>
-                              {canManage && pmConfig ? (
+                              {pmConfig && isCoordinatorOf(pmConfig, team.name, m.id) ? (
+                                <span className="hub-team__coordinator">{t("org.coordinator")}</span>
+                              ) : null}
+                              {pmConfig && !(canManage || isCoordinatorOf(pmConfig, team.name, session.username)) && levelOf(levelsForTeam(pmConfig, team.name), m.id) ? (
+                                <span className="hub-team__level-text">{levelLabel(levelOf(levelsForTeam(pmConfig, team.name), m.id)!, language)}</span>
+                              ) : null}
+                              {pmConfig && (canManage || isCoordinatorOf(pmConfig, team.name, session.username)) ? (
                                 <select
                                   className="hub-team__level"
                                   aria-label={t("org.levelOf").replace("{who}", m.id)}
-                                  value={levelOf(pmConfig.levels, m.id) ?? ""}
+                                  value={levelOf(levelsForTeam(pmConfig, team.name), m.id) ?? ""}
                                   disabled={levelSaving === m.id.toLowerCase()}
-                                  onChange={(e) => void setLevel(m.id, isLevel(e.target.value) ? e.target.value : "")}
+                                  onChange={(e) => void setLevel(team.name, m.id, isLevel(e.target.value) ? e.target.value : "")}
                                 >
                                   <option value="">{t("org.noLevel")}</option>
                                   {LEVEL_ORDER.map((level) => (
@@ -524,6 +549,17 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                                     </option>
                                   ))}
                                 </select>
+                              ) : null}
+                              {canManage && pmConfig ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={levelSaving === m.id.toLowerCase()}
+                                  onClick={() => void setCoordinator(team.name, m.id, !isCoordinatorOf(pmConfig, team.name, m.id))}
+                                >
+                                  {isCoordinatorOf(pmConfig, team.name, m.id) ? t("org.unsetCoordinator") : t("org.setCoordinator")}
+                                </Button>
                               ) : null}
                               {canManage ? (
                                 <Button

@@ -4,7 +4,7 @@ import { isIssueAssignedTo, issueIsInProgress } from "../dcs/issues";
 import { attentionRank, rowActivity, type RowActivity } from "./attention";
 import { audienceOf } from "./audience";
 import { isDecisionIssue } from "./decisionAccess";
-import type { PersonLevel } from "./levels";
+import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
 import { canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
@@ -73,7 +73,7 @@ export type BoardInput = {
   /** My subtareas closed lately. */
   closedIssues: DcsIssue[];
   cursor: ReadCursorDoc;
-  myLevel?: PersonLevel;
+  myLevel?: LevelSource;
 };
 
 export type Board = Record<BoardGroup, BoardCard[]>;

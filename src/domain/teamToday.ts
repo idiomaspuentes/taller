@@ -1,6 +1,6 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { isIssueUnassigned } from "../dcs/issues";
-import { levelOf, meetsLevel, type PersonLevel } from "./levels";
+import { meetsTeamLevel, type LevelBook, type PersonLevel } from "./levels";
 import { DECISION_DAYS } from "./alignmentDecision";
 import { isDecisionIssue } from "./decisionAccess";
 import { issueTaskId } from "./myTasks";
@@ -62,14 +62,15 @@ function assigneeOf(issue: DcsIssue): string | undefined {
  * leaving out whoever has it now.
  */
 export function assignCandidates(
-  task: Pick<ProjectTask, "memberIds" | "minLevel"> | undefined,
-  levels: Record<string, PersonLevel> | undefined,
+  task: Pick<ProjectTask, "memberIds" | "minLevel" | "orgTeamName"> | undefined,
+  /** Levels of the people, or the organization's book: the level that counts is the one in the task's team. */
+  levels: Record<string, PersonLevel> | LevelBook | undefined,
   current?: string,
 ): string[] {
   const now = current?.trim().toLowerCase();
   return (task?.memberIds ?? [])
     .filter((login) => login.trim().toLowerCase() !== now)
-    .filter((login) => meetsLevel(levelOf(levels, login), task?.minLevel))
+    .filter((login) => meetsTeamLevel(levels, task?.orgTeamName, login, task?.minLevel))
     .sort((a, b) => a.localeCompare(b, "es"));
 }
 
@@ -78,7 +79,7 @@ export function classifyToday(params: {
   board: Pick<AssignmentsDoc, "teams" | "phases">;
   now: Date;
   /** Levels of the people (see `levels.ts`), to offer only those who can take the task. */
-  levels?: Record<string, PersonLevel>;
+  levels?: Record<string, PersonLevel> | LevelBook;
   thresholds?: Partial<TodayThresholds>;
 }): Record<TodayGroup, TodayRow[]> {
   const { issues, board, now } = params;

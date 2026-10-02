@@ -6,7 +6,7 @@ import { readRaw, groupDraftBranches } from "./afinacionLoad";
 import { alignmentOfDraft, type AlignmentSourceRef } from "./alignmentStore";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { loadPmConfig } from "./issues";
-import type { PersonLevel } from "../domain/levels";
+import type { LevelBook, PersonLevel } from "../domain/levels";
 import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -41,7 +41,9 @@ export type AlineacionData = {
   referenceLabel: string;
   source: AlignmentSourceRef;
   verses: AlignmentVerse[];
+  /** General levels; the views count with the levels of the task's team (`levelBook`). */
   levels: Record<string, PersonLevel>;
+  levelBook: LevelBook;
 };
 
 function verseNumber(sid: string, chapter: number): number | null {
@@ -126,5 +128,6 @@ export async function loadAlineacion(params: {
     source,
     verses,
     levels: pmConfig.levels,
+    levelBook: pmConfig,
   };
 }

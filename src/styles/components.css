@@ -6939,3 +6939,26 @@ button.al-box--read { cursor: pointer; }
   flex-wrap: wrap;
   gap: 8px;
 }
+
+.hub-team__coordinator,
+.hub-team__level-text {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-100);
+  color: var(--accent-700);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hub-team__level-text {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+.hub-team__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.profile__chip-note {
+  color: var(--text-muted);
+  font-weight: 400;
+}

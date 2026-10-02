@@ -288,7 +288,7 @@
   "org.people": "Personas",
   "org.seeBoard": "Ver tablero",
   "org.loadingPeople": "Cargando personas…",
-  "org.levelOf": "Nivel de @{who}",
+  "org.levelOf": "Nivel de @{who} en este equipo",
   "org.noLevel": "Sin nivel",
   "org.remove": "Quitar",
   "org.nobody": "Nadie en este equipo todavía.",
@@ -1308,7 +1308,6 @@
   "profile.role": "Rol",
   "profile.roleCoordination": "Coordinación",
   "profile.roleMember": "Persona del equipo",
-  "profile.level": "Tu nivel",
   "profile.teams": "Equipos en Door43",
   "profile.noName": "Añade tu nombre en Door43 para que tu equipo te reconozca.",
   "profile.loadError": "No se pudo cargar tu perfil de Door43. Revisa tu conexión.",
@@ -1380,5 +1379,11 @@
   "tb.stepUndo": "Desmarcar",
   "tb.stepFinishNamed": "Terminé «{step}»",
   "wf.fromShipped": "+ Desde «{name}»",
-  "wf.createdShipped": "Plantilla «{name}» creada (guarda para publicarla)."
+  "wf.createdShipped": "Plantilla «{name}» creada (guarda para publicarla).",
+  "org.coordinator": "Coordina",
+  "org.setCoordinator": "Hacer coordinador",
+  "org.unsetCoordinator": "Quitar coordinación",
+  "org.nowCoordinator": "@{who} ahora coordina {team}",
+  "org.notCoordinator": "@{who} ya no coordina {team}",
+  "org.noCoordinator": "Este equipo todavía no tiene quien lo coordine. Quien coordina asigna los niveles y confirma las decisiones del equipo."
 }
