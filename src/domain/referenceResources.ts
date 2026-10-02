@@ -422,6 +422,21 @@ export async function loadEnglishWordsForRange(
   return { items, failed: false };
 }
 
+/**
+ * The introductions a person reads before working on a passage: the note that introduces the book and the one that
+ * introduces the chapter (rows `front:intro` and `N:intro` of the notes). Empty text when the notes have none.
+ */
+export async function loadIntroNotes(session: GtSession, book: string, chapter: number): Promise<{ book: string; chapter: string }> {
+  const code = (book || "").toUpperCase();
+  if (!code) return { book: "", chapter: "" };
+  const rows = await loadEnglishTsv(session, "en_tn", helpsTsvFilename("notas", code)).catch(() => [] as Record<string, string>[]);
+  const noteAt = (reference: string) => {
+    const row = rows.find((r) => (r.Reference || r.reference || "").trim().toLowerCase() === reference);
+    return row ? normalizeHelpText(row.Note || row.note || row.OccurrenceNote || "").trim() : "";
+  };
+  return { book: noteAt("front:intro"), chapter: noteAt(`${chapter}:intro`) };
+}
+
 /** Compact English TN/TQ for the same verse range (best-effort). */
 export async function loadEnglishHelpsForRange(
   session: GtSession,

@@ -52,6 +52,7 @@ import { normalizeSourcePackage } from "./sourcePackage";
 import { scopeFromRules, uid } from "./assignment";
 import { ensurePhaseSlug, makePhase } from "./phaseSlug";
 import { normalizeWaitRules } from "./waitRules";
+import { normalizeHandoffUnits } from "./handoff";
 import { isLevel } from "./levels";
 import {
   isBookProjectId,
@@ -800,6 +801,8 @@ function normalizeProjectSettings(raw: unknown): ProjectSettings | undefined {
   if (principalPasses) settings.principalPasses = principalPasses;
   const sourcePackage = normalizeSourcePackage(row.sourcePackage);
   if (sourcePackage) settings.sourcePackage = sourcePackage;
+  const handoffUnits = normalizeHandoffUnits(row.handoffUnits);
+  if (handoffUnits) settings.handoffUnits = handoffUnits;
   return Object.keys(settings).length ? settings : undefined;
 }
 
@@ -900,6 +903,7 @@ export function normalizeAssignmentsDoc(
     settings?: unknown;
     workflowId?: unknown;
     workflowAppliedAt?: unknown;
+    workflowVersion?: unknown;
   };
   const people = normalizePeople(row.people);
   const rawTaskList =
@@ -928,6 +932,7 @@ export function normalizeAssignmentsDoc(
   });
   const settings = normalizeProjectSettings(row.settings);
   const workflowId = String(row.workflowId ?? "").trim() || undefined;
+  const workflowVersion = Number.isInteger(Number(row.workflowVersion)) && Number(row.workflowVersion) > 0 ? Number(row.workflowVersion) : undefined;
   const workflowAppliedAt =
     typeof row.workflowAppliedAt === "string" && row.workflowAppliedAt.trim()
       ? row.workflowAppliedAt.trim()
@@ -950,6 +955,7 @@ export function normalizeAssignmentsDoc(
     assignments,
     activeTeamId,
     workflowId,
+    workflowVersion,
     workflowAppliedAt,
   };
 }
@@ -1037,6 +1043,7 @@ export function toPersistDoc(doc: AssignmentsDoc): AssignmentsPersistDoc {
     tasks,
     assignments: normalizeAssignments(doc.assignments),
     workflowId: String(doc.workflowId ?? "").trim() || undefined,
+    workflowVersion: Number.isInteger(Number(doc.workflowVersion)) && Number(doc.workflowVersion) > 0 ? Number(doc.workflowVersion) : undefined,
     workflowAppliedAt:
       typeof doc.workflowAppliedAt === "string" && doc.workflowAppliedAt.trim()
         ? doc.workflowAppliedAt.trim()

@@ -522,6 +522,7 @@ export function TeamsView({
   const scopeCtx: ScriptureScopeContext = {
     projectBooks,
     fallbackBook: projectBooks[0] || board.book,
+    handoffUnits: board.settings?.handoffUnits,
   };
 
   function buildScriptureScope(): ScriptureScope | undefined {

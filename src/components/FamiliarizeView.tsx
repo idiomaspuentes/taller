@@ -17,6 +17,7 @@ import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import {
   englishScriptureKindRef,
   loadEnglishScriptureKindUsfm,
+  loadIntroNotes,
   loadNotesForRange,
   type EnglishScriptureRef,
   type NotesLoadResult,
@@ -25,6 +26,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UsfmReferencePane } from "./UsfmReferencePane";
+import { HelpMarkdownView } from "./HelpMarkdownView";
 import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
@@ -119,6 +121,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const [ult, setUlt] = useState<ScripturePane>(EMPTY_SCRIPTURE);
   const [ust, setUst] = useState<ScripturePane>(EMPTY_SCRIPTURE);
   const [notes, setNotes] = useState<NotesLoadResult>(EMPTY_NOTES);
+  const [intros, setIntros] = useState<{ book: string; chapter: string }>({ book: "", chapter: "" });
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const [loggedIn, setLoggedIn] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -163,11 +166,13 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
         }
       }
 
-      const [ultLoaded, ustLoaded, notesLoaded] = await Promise.all([
+      const [ultLoaded, ustLoaded, notesLoaded, introsLoaded] = await Promise.all([
         loadEnglishScriptureKindUsfm(sess, "ult", decoded.book),
         loadEnglishScriptureKindUsfm(sess, "ust", decoded.book),
         loadNotesForRange(sess, decoded, refRange, pmConfig),
+        loadIntroNotes(sess, decoded.book, refRange.chapter),
       ]);
+      setIntros(introsLoaded);
 
       setUlt(
         ultLoaded
@@ -260,6 +265,34 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
           className="scripture-editor__workspace"
           aria-label={t("fa.readAria")}
         >
+          {intros.book || intros.chapter ? (
+            <section className="scripture-editor__ref-card">
+              <p className="scripture-editor__kicker">{t("fa.introsTitle")}</p>
+              <p className="scripture-editor__hint">{t("fa.introsLede")}</p>
+              {intros.book ? (
+                <details className="fam-intro">
+                  <summary>{t("fa.bookIntro")}</summary>
+                  <HelpMarkdownView content={intros.book} />
+                </details>
+              ) : null}
+              {intros.chapter && range ? (
+                <details className="fam-intro" open>
+                  <summary>{t("fa.chapterIntro").replace("{n}", String(range.chapter))}</summary>
+                  <HelpMarkdownView content={intros.chapter} />
+                </details>
+              ) : null}
+              {ctx && range ? (
+                <a
+                  className="fam-intro__link"
+                  href={`https://study.translationcore.com/read/en/bible/chapter/${encodeURIComponent(`${ctx.book.toLowerCase()} ${range.chapter}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("fa.readChapter")}
+                </a>
+              ) : null}
+            </section>
+          ) : null}
           <ScriptureCard
             kicker={t("fa.literal")}
             title={t("se.ultEnglish")}

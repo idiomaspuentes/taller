@@ -472,6 +472,9 @@ export type ProjectIndexEntry = {
   updated_at?: string;
 };
 
+/** What moves together from one phase to the next: see `handoff.ts`. Only split chapters are listed. */
+export type HandoffUnit = { id: string; label?: string; portionIds: string[] };
+
 /**
  * Per-project policies persisted on `assignments.json`.
  * Defaults are all off / omitted.
@@ -497,6 +500,8 @@ export type ProjectSettings = {
   principalPasses?: PrincipalPassMark[];
   /** Notes, words and texts the Afinación reads; the default is unfoldingWord's English package. */
   sourcePackage?: SourcePackage;
+  /** Chapters split into stretches that move on by themselves. A chapter not listed here is one unit. */
+  handoffUnits?: HandoffUnit[];
 };
 
 /** Persisted deliverable + local board state for one project. */
@@ -530,6 +535,8 @@ export type AssignmentsDoc = {
   activeTeamId?: string;
   /** Org workflow this board was snapshotted from (if any). */
   workflowId?: string;
+  /** The version of that workflow when it was applied: what an update is compared with. */
+  workflowVersion?: number;
   workflowAppliedAt?: string;
 };
 
@@ -554,6 +561,7 @@ export type AssignmentsPersistDoc = {
   tasks: ProjectTask[];
   assignments: Assignment[];
   workflowId?: string;
+  workflowVersion?: number;
   workflowAppliedAt?: string;
 };
 

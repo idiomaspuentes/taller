@@ -6984,3 +6984,27 @@ button.al-box--read { cursor: pointer; }
 .al-modes button { min-height: 40px; padding: 0 1rem; border: 0; border-radius: var(--radius-full); background: none; color: var(--text-muted); font: inherit; font-weight: 600; cursor: pointer; }
 .al-modes button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 .al-verse-tab[data-state="taken"] { opacity: 0.6; }
+
+/* ---- handoff units of a book (HandoffUnitsPanel) ---- */
+.handoff { display: grid; gap: 0.5rem; }
+.handoff__title { margin: 0; font-size: 1rem; font-weight: 700; }
+.handoff__lede, .handoff__hint, .handoff__summary { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+.handoff__summary { color: var(--text); font-weight: 600; }
+.handoff__list { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.handoff__chapter { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.handoff__chapter[data-split] { border-color: var(--primary); }
+.handoff__head { display: flex; justify-content: space-between; gap: 0.75rem; width: 100%; min-height: 44px; padding: 0 0.875rem; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; align-items: center; }
+.handoff__name { font-weight: 600; }
+.handoff__state { color: var(--text-muted); font-size: 0.875rem; }
+.handoff__body { display: grid; gap: 0.5rem; padding: 0 0.875rem 0.875rem; }
+.handoff__portions { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+.handoff__portions li { display: grid; gap: 0.25rem; }
+.handoff__portion { padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--surface-muted); font-variant-numeric: tabular-nums; }
+.handoff__cut { display: inline-flex; align-items: center; gap: 0.375rem; justify-self: start; min-height: 36px; padding: 0 0.625rem; border: 1px dashed var(--border-strong); border-radius: var(--radius-full); background: none; color: var(--text-muted); font: inherit; font-size: 0.8125rem; cursor: pointer; }
+.handoff__cut svg { width: 14px; height: 14px; }
+.handoff__cut[aria-pressed="true"] { border-style: solid; border-color: var(--primary); background: var(--accent-50); color: var(--accent-700); font-weight: 600; }
+
+/* ---- introductions read before working on a passage ---- */
+.fam-intro { border-top: 1px solid var(--border); padding: 0.5rem 0; }
+.fam-intro summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.fam-intro__link { display: inline-block; margin-top: 0.5rem; font-size: 0.9375rem; text-decoration: underline; }

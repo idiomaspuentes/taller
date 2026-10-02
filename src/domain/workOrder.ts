@@ -417,6 +417,7 @@ export function publishableWorkOrders(
   const scopeCtx: ScriptureScopeContext = {
     projectBooks: board.books?.length ? board.books : [board.book],
     fallbackBook,
+    handoffUnits: board.settings?.handoffUnits,
   };
 
   const open: WorkOrder[] = [];

@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 3,
+      "version": 4,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -552,7 +552,13 @@
               "taskId": "tpl",
               "scope": "chapter"
             }
-          ]
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         },
         {
           "id": "afinar-tps",
@@ -639,7 +645,13 @@
               "taskId": "tps",
               "scope": "chapter"
             }
-          ]
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         },
         {
           "id": "armonizar-notas",
@@ -810,7 +822,13 @@
               "phaseId": "fcr-afinacion",
               "scope": "chapter"
             }
-          ]
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         },
         {
           "id": "armonizar-palabras",
@@ -908,7 +926,13 @@
               "phaseId": "fcr-afinacion",
               "scope": "chapter"
             }
-          ]
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         },
         {
           "id": "armonizar-preguntas",
@@ -983,7 +1007,13 @@
               "phaseId": "fcr-afinacion",
               "scope": "chapter"
             }
-          ]
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         },
         {
           "id": "validar",
@@ -1049,7 +1079,13 @@
               "phaseId": "fcr-armonizacion",
               "scope": "chapter"
             }
-          ]
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         }
       ],
       "releaseProfiles": [
@@ -1067,13 +1103,12 @@
     {
       "id": "fcr-familiarize",
       "name": "Familiarizar",
-      "description": "Lee el capítulo en TranslationCore Study. Solo lectura.",
-      "kind": "url",
-      "launchUrl": "https://study.translationcore.com/read/{lang}/bible/chapter/{book}%20{chapter}",
-      "lang": "en",
-      "openMode": "external",
+      "description": "Introducción al libro y al capítulo, el pasaje en inglés y sus notas. Solo lectura.",
+      "launchUrl": "/#/solver/familiarize?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
       "supersedes": [
-        "/solver/familiarize",
+        "study.translationcore.com",
         "solver-stub"
       ]
     },

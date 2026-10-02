@@ -116,7 +116,20 @@ Lo planeado era:
 **Listo cuando:** una persona es habilitada en Traducción y aprendiz en Afinación, y cada fase la
 trata según su nivel ahí.
 
-### Fase 3 · Cerrar un paso por consenso
+### Fase 3 · Cerrar un paso por consenso — hecha (1 de octubre de 2026)
+
+**Lo que quedó:** un paso con `closing: consensus` ya no se completa con «Aprobar». Con herramienta por ítems
+(Afinación), lo completa la herramienta cuando todo está de acuerdo: muestra lo que quedó sin acuerdo (la lista para
+la reunión) y «Cerrar la revisión». Lo disputado se resuelve con la **decisión del equipo**, registrada con su razón
+por el coordinador o una persona habilitada; una objeción posterior lo reabre y un cambio de texto la anula. Sin
+herramienta (acuerdo del equipo), deben aprobar todas las personas sentadas. Pruebas: `verify:consensus`.
+
+**Corrección pedida:** nadie hace un capítulo entero. La alineación es **un solo paso compartido**: cada persona toma
+versículos, y lo que termina pasa a que lo revisen las demás. Una subtarea libre cuyo paso siguiente es del equipo ya
+no se ofrece como «Empezar» (que se la daba entera a una persona): la gente **se suma al paso** y la subtarea sigue
+siendo del equipo; la entrega quien participó.
+
+#### Lo planeado era
 - El cierre de un paso `consensus` lo decide el resumen de la ronda (`summarizeRound`), no los
   «Aprobar»: completo cuando todos los ítems están de acuerdo.
 - **Decisión final** para un ítem en disputa: la registra el coordinador o una persona habilitada del
@@ -127,7 +140,19 @@ trata según su nivel ahí.
 **Listo cuando:** un paso de Afinación con una objeción abierta no se completa, y se completa al
 registrar la decisión final.
 
-### Fase 4 · Preparar el libro y crear el proyecto
+### Fase 4 · Preparar el libro y crear el proyecto — hecha (1 de octubre de 2026)
+
+**Lo que quedó:** al crear un proyecto se elige el **proceso** (la plantilla; ya no se pide «primera fase») y el
+proyecto nace con sus fases, tareas y pasos, y recuerda la versión (`workflowVersion`). En **Preparar → Libro**, debajo
+del inventario, se define **qué pasa junto de una fase a la siguiente**: cada capítulo entero, o un capítulo largo
+partido en tramos (`settings.handoffUnits`). Las tareas que reciben una unidad (Afinación, Armonización, Validación)
+tienen una subtarea por unidad; Traducción sigue por porción. La espera «por capítulo» se cuenta por unidad, así que
+cada tramo avanza solo. La **familiarización** se hace una vez por persona y capítulo (`scope: chapter-once`) y su
+pantalla muestra la introducción al libro y al capítulo. Pruebas: `verify:handoff`.
+
+**Límites:** cambiar los cortes después de crear subtareas pide volver a «Entregar» para que sigan el nuevo corte.
+
+#### Lo planeado era
 - Asistente de tres pasos: **plantilla → libro → unidades de traspaso → revisar y crear**. Sin
   «primera fase». El proyecto guarda `workflowId` y `workflowVersion`.
 - **Unidades de traspaso:** por defecto un capítulo; se puede partir un capítulo en tramos de

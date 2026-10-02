@@ -14,7 +14,11 @@ import { defaultContentOrg, normalizeProjectId, projectDisplayName } from "./dom
 import { normalizeLangCode, type LanguageOption } from "./domain/languages";
 import { mergeOrgs, orgSlug } from "./domain/orgs";
 import { loadDoor43Languages } from "./dcs/languages";
-import { slugifyPhase } from "./domain/phaseSlug";
+import { applyWorkflowToBoard } from "./domain/workflows";
+import { localized, shippedWorkflows } from "./domain/processes";
+import { loadLocalWorkflows } from "./domain/store";
+import type { WorkflowTemplate } from "./domain/types";
+import { HandoffUnitsPanel } from "./components/HandoffUnitsPanel";
 import type { AssignmentsDoc, InventoryDoc, ProjectIndexEntry } from "./domain/types";
 import {
   emptyAssignments,
@@ -793,23 +797,19 @@ export function App() {
     setInventariarBook(nextBoard.books[0] || code);
   }
 
+  /** Templates a project can start from: the organization's own first, then the ones shipped with the app. */
+  function projectTemplates(): WorkflowTemplate[] {
+    const own = loadLocalWorkflows().workflows;
+    const ids = new Set(own.map((workflow) => workflow.id));
+    return [...own, ...shippedWorkflows().filter((workflow) => !ids.has(workflow.id))];
+  }
+
   function onCreateProject(input: CreateProjectInput) {
     const meta = resolveProjectMeta(input);
-    const base = emptyAssignments(meta.projectId, lang, contentOrg, pmOrg);
-    const phaseName = input.firstPhaseName?.trim();
-    const doc = {
-      ...base,
-      title: meta.title,
-      kind: meta.kind,
-      books: meta.books,
-      phases: phaseName
-        ? base.phases.map((p, i) =>
-            i === 0
-              ? { ...p, name: phaseName, slug: slugifyPhase(phaseName) || p.slug }
-              : p,
-          )
-        : base.phases,
-    };
+    const base = { ...emptyAssignments(meta.projectId, lang, contentOrg, pmOrg), title: meta.title, kind: meta.kind, books: meta.books };
+    // The project starts as a copy of its template: its phases, tasks and steps, and the version it was copied at.
+    const template = projectTemplates().find((workflow) => workflow.id === input.workflowId);
+    const doc = template ? applyWorkflowToBoard(base, template) : base;
     saveLocalAssignments(doc);
     upsertLocalProjectIndex(lang, {
       projectId: meta.projectId,
@@ -1252,6 +1252,11 @@ export function App() {
               onBookChange(code);
               navigate({ name: "proyecto", projectId: code, step: "inventario" });
             }}
+            templates={projectTemplates().map((workflow) => ({
+              id: workflow.id,
+              name: localized(workflow.name, workflow.names, uiLanguage),
+              description: workflow.descriptions?.[uiLanguage] ?? workflow.description,
+            }))}
             onCreateProject={onCreateProject}
           />
         ) : null}
@@ -1338,6 +1343,17 @@ export function App() {
             onGenerate={() => void generate()}
             onLoadFile={onLoadFile}
             onContinue={() => goToStep("tareas")}
+          />
+        ) : null}
+        {route.name === "proyecto" && effectiveCanManage && route.step === "inventario" && inventory ? (
+          <HandoffUnitsPanel
+            portions={inventory.portions}
+            units={board.settings?.handoffUnits}
+            onChange={(units) => {
+              const { handoffUnits: _previous, ...rest } = board.settings ?? {};
+              updateBoard({ ...board, settings: units.length ? { ...rest, handoffUnits: units } : rest });
+              announce(t("ho.changed"));
+            }}
           />
         ) : null}
 

@@ -30,6 +30,7 @@ export function applyWorkflowToBoard(
     teams,
     activeTeamId: teams[0]?.id ?? "",
     workflowId: wf.id,
+    workflowVersion: wf.version,
     workflowAppliedAt: new Date().toISOString(),
   };
 }

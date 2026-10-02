@@ -1,6 +1,6 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
-import { isIssueAssignedTo, issueIsInProgress } from "../dcs/issues";
+import { isIssueAssignedTo, isIssueUnassigned, issueIsInProgress } from "../dcs/issues";
 import { attentionRank, rowActivity, type RowActivity } from "./attention";
 import { audienceOf } from "./audience";
 import { isDecisionIssue } from "./decisionAccess";
@@ -8,6 +8,7 @@ import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
 import { canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
 
@@ -60,6 +61,8 @@ export type BoardCard = {
   activity: RowActivity;
   /** Mine to deliver (assigned to me), so «Entregar» can be offered in the card's menu. */
   canDeliver: boolean;
+  /** `issue` carries once-per-chapter steps I did elsewhere that are not saved in this subtarea yet. */
+  onceApplied: boolean;
   /** Mine, and the project lets people give work back. */
   canRelease: boolean;
 };
@@ -123,6 +126,7 @@ export function buildBoard(input: BoardInput): Board {
   const login = session.username;
   const board: Board = { decide: [], doing: [], todo: [], reviews: [], free: [], waiting: [], done: [] };
   const seen = new Set<number>();
+  const onceApplied = new Set<number>();
 
   const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => {
     const task = taskOf(issue, bucket);
@@ -146,6 +150,7 @@ export function buildBoard(input: BoardInput): Board {
       activity: rowActivity(cursor, issue.number, { decision: group === "decide" }),
       canDeliver: mineAssigned && (issueIsInProgress(issue) || steps.length > 0) && group !== "done",
       canRelease: mineAssigned && group !== "done" && Boolean(bucket?.browseProject || session.canManage),
+      onceApplied: onceApplied.has(issue.number),
       ...extra,
     };
   };
@@ -159,11 +164,15 @@ export function buildBoard(input: BoardInput): Board {
   }
 
   for (const bucket of projects) {
-    for (const issue of bucket.issues) {
-      if (seen.has(issue.number) || (issue.state ?? "open").toLowerCase() === "closed") continue;
-      const audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
-      const task = taskOf(issue, bucket);
+    for (const raw of bucket.issues) {
+      if (seen.has(raw.number) || (raw.state ?? "open").toLowerCase() === "closed") continue;
+      const task = taskOf(raw, bucket);
       const steps = task?.steps ?? [];
+      // Steps done once per chapter (reading it) that I already did in another subtarea count as done in this one.
+      const once = isIssueAssignedTo(raw, login) || isIssueUnassigned(raw) ? withOnceSteps(login, raw, steps, bucket.issues, (other) => taskOf(other, bucket)) : { issue: raw, changed: false };
+      const issue = once.issue;
+      if (once.changed) onceApplied.add(issue.number);
+      const audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
       const seated = steps.some((s) => (s.claimMode === "exclusive" || s.claimMode === "pool") && isStepActor(login, parseTaskProgressMarker(issue.body ?? ""), s, assigneeOf(issue)));
       const mine = audience.relation === "mine";
       if (audience.relation === "other" && !seated) continue;

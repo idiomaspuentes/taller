@@ -663,6 +663,8 @@ export function MyTasksView({
       onPrimary: (card) => {
         const board = card.bucket?.board;
         const a = card.action;
+        // Steps done once per chapter that count here are saved with the first thing the person does on the card.
+        if (card.onceApplied) void setIssueTaskProgress(session, pmOrg, card.issue, parseTaskProgressMarker(card.issue.body)).catch(() => undefined);
         if (a.kind === "vote") return onOpenThread(card.issue.number);
         if (!board) return;
         if (a.kind === "begin") return void begin(card.issue, board, a.step);

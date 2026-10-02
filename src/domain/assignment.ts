@@ -10,6 +10,7 @@ import {
   type InventoryTask,
   type ItemType,
   type Person,
+  type HandoffUnit,
   type Portion,
   type ScopeKey,
   type ScopeRule,
@@ -30,9 +31,12 @@ import {
   SCOPE_LABEL,
 } from "./types";
 import { flattenTasks, groupPortionsByChapter, portionKey } from "./chapters";
+import { unitsOfChapter } from "./handoff";
 
 /** Optional project context for {@link ScriptureScope} mode `project`. */
 export type ScriptureScopeContext = {
+  /** Chapters split into stretches that move on by themselves (see `handoff.ts`). */
+  handoffUnits?: HandoffUnit[];
   projectBooks?: string[];
   /** Implied book when portions omit `portion.book` (single-book inventory). */
   fallbackBook?: string;
@@ -870,6 +874,7 @@ function countWorkItem(counts: Record<ScopeKey, number>, item: WorkItem): void {
 function bundleUnits(
   team: Team,
   portions: Portion[],
+  ctx: ScriptureScopeContext = {},
 ): {
   id: string;
   grain: BundleGrain;
@@ -899,19 +904,23 @@ function bundleUnits(
       };
     });
   }
-  return groupPortionsByChapter(scoped).map((group) => {
+  return groupPortionsByChapter(scoped).flatMap((group) => {
     const ids = group.portions.map(portionKey);
     const refs = group.portions.map((portion) => portion.ref);
     if (grain === "chapter") {
-      return {
-        id: `chapter:${group.chapter}`,
-        grain,
-        label: `Capítulo ${group.chapter}`,
-        chapter: group.chapter,
-        portionIds: ids,
-        portionRefs: refs,
-        portions: group.portions,
-      };
+      // A chapter is one unit of handoff, unless the book's plan splits it into stretches.
+      return unitsOfChapter(ctx.handoffUnits, group.chapter, ids).map((unit) => {
+        const own = group.portions.filter((portion) => unit.portionIds.includes(portionKey(portion)));
+        return {
+          id: unit.id,
+          grain: grain as BundleGrain,
+          label: unit.label,
+          chapter: group.chapter,
+          portionIds: unit.portionIds,
+          portionRefs: own.map((portion) => portion.ref),
+          portions: own,
+        };
+      });
     }
     return {
       id: `chapter-portions:${group.chapter}:${[...ids].sort().join(",")}`,
@@ -937,7 +946,7 @@ export function bundlesInScope(
   if (!bundleEnabled(team)) return [];
   const scopedPortions = portionsForTask(team, portions, ctx);
   const bundles: ScopeBundle[] = [];
-  for (const unit of bundleUnits(team, scopedPortions)) {
+  for (const unit of bundleUnits(team, scopedPortions, ctx)) {
     const scopedTeam = teamForBundleUnit(team, unit.portionIds, unit.chapter);
     const items = workItemsInScope(scopedTeam, scopedPortions, articles, ctx);
     if (!items.length) continue;

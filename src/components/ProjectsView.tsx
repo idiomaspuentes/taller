@@ -21,9 +21,12 @@ export type CreateProjectInput = {
   title: string;
   kind: ProjectKind;
   books: string[];
-  /** Custom name for the first phase; empty → "Fase 1". */
-  firstPhaseName?: string;
+  /** The template the project starts from (its phases, tasks and steps); empty = start blank. */
+  workflowId?: string;
 };
+
+/** A template to start a project from. */
+export type ProjectTemplateOption = { id: string; name: string; description?: string };
 
 type Props = {
   lang: string;
@@ -31,6 +34,8 @@ type Props = {
   projects: ProjectIndexEntry[];
   currentProjectId: string;
   canManage: boolean;
+  /** Templates a project can start from: the ones shipped with the app and the organization's own. */
+  templates: ProjectTemplateOption[];
   onOpenProject: (projectId: string) => void;
   onCreateProject: (input: CreateProjectInput) => void;
 };
@@ -51,6 +56,7 @@ export function ProjectsView({
   projects,
   currentProjectId,
   canManage,
+  templates,
   onOpenProject,
   onCreateProject,
 }: Props) {
@@ -61,7 +67,10 @@ export function ProjectsView({
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedBooks, setSelectedBooks] = useState<string[]>(["GEN", "EXO"]);
-  const [firstPhaseName, setFirstPhaseName] = useState("");
+  const [workflowId, setWorkflowId] = useState("");
+  // The first template is the usual one; the person can still start blank.
+  const chosenWorkflow = workflowId || templates[0]?.id || "";
+  const BLANK = "__blank__";
   const [createOpen, setCreateOpen] = useState(false);
 
   const list = useMemo(() => {
@@ -86,7 +95,7 @@ export function ProjectsView({
   }
 
   function submitCreate() {
-    const phaseName = firstPhaseName.trim() || undefined;
+    const workflow = chosenWorkflow === BLANK ? undefined : chosenWorkflow || undefined;
     if (kind === "book") {
       const id = normalizeProjectId(bookCode);
       onCreateProject({
@@ -94,10 +103,9 @@ export function ProjectsView({
         title: bookName(id),
         kind: "book",
         books: [id],
-        firstPhaseName: phaseName,
+        workflowId: workflow,
       });
       setCreateOpen(false);
-      setFirstPhaseName("");
       return;
     }
     const id = normalizeProjectId(slug.trim() || slugifyThematic(title));
@@ -107,10 +115,9 @@ export function ProjectsView({
       title: title.trim(),
       kind: "thematic",
       books: selectedBooks.map(normalizeProjectId),
-      firstPhaseName: phaseName,
+      workflowId: workflow,
     });
     setCreateOpen(false);
-    setFirstPhaseName("");
   }
 
   return (
@@ -261,15 +268,22 @@ export function ProjectsView({
             </>
           )}
           <div className="grid gap-1.5">
-            <Label htmlFor="create-phase">{t("pj.firstPhase")}</Label>
-            <Input
-              id="create-phase"
-              value={firstPhaseName}
-              onChange={(e) => setFirstPhaseName(e.target.value)}
-              placeholder={t("pj.firstPhasePlaceholder")}
-            />
+            <Label htmlFor="create-template">{t("pj.template")}</Label>
+            <Select value={chosenWorkflow || BLANK} onValueChange={setWorkflowId}>
+              <SelectTrigger id="create-template" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+                <SelectItem value={BLANK}>{t("pj.templateBlank")}</SelectItem>
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
-              {t("pj.firstPhaseHelp")}
+              {templates.find((template) => template.id === chosenWorkflow)?.description || t("pj.templateHelp")}
             </p>
           </div>
           <div>

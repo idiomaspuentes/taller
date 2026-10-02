@@ -60,6 +60,7 @@
     "verify:my-tasks-board": "tsx --tsconfig tsconfig.scripts.json scripts/verify-my-tasks-board.mts",
     "verify:decoupling": "tsx --tsconfig tsconfig.scripts.json scripts/verify-decoupling.mts",
     "verify:levels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-levels.mts",
+    "verify:handoff": "tsx --tsconfig tsconfig.scripts.json scripts/verify-handoff.mts",
     "verify:consensus": "tsx --tsconfig tsconfig.scripts.json scripts/verify-consensus.mts"
   },
   "dependencies": {

@@ -233,6 +233,34 @@ await test("una tarea del equipo con todos sus pasos hechos la entrega quien par
   assert.equal(where(boardFor([stranger]), stranger.number), undefined, "quien no participó no la ve para entregar");
 });
 
+await test("lo que se hace una vez por capítulo (familiarizarse) cuenta como hecho en las demás porciones de ese capítulo", () => {
+  const oncePlan = {
+    ...plan,
+    teams: [
+      ...plan.teams,
+      { id: "leer", name: "Traducir Notas", phaseId: "p1", memberIds: ["carla"], orgTeamName: "Equipo", rules: [], steps: [{ id: "familiarizar", name: "Familiarizarse", scope: "chapter-once" }, { id: "borrador", name: "Borrador" }] },
+    ],
+  } as unknown as AssignmentsDoc;
+  const chapterIssue = (title: string, chapter: number, extra: Parameters<typeof issue>[0] | object = {}) => {
+    const made = issue({ task: "leer", title, assignee: "carla", ...(extra as object) });
+    (made.labels as { id: number; name: string }[]).push({ id: 9, name: `pm/cap:${chapter}` });
+    return made;
+  };
+  const first = chapterIssue("NEH 2:1-8 · Traducir Notas", 2, { started: true, progress: { done: ["familiarizar"], seats: { familiarizar: ["carla"] } } });
+  const second = chapterIssue("NEH 2:9-20 · Traducir Notas", 2);
+  const other = chapterIssue("NEH 3:1-5 · Traducir Notas", 3);
+  const issues = [first, second, other];
+  const bucket: MyTasksProjectBucket = { projectId: "NEH", title: "Nehemías", browseProject: true, board: oncePlan, issues, openIssues: issues };
+  const board = buildBoard({ session: carla, pmOrg: PM, projects: [bucket], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  const same = where(board, second.number)!;
+  assert.equal(same.stepsDone, 1, "la otra porción del capítulo 2 ya trae la lectura hecha");
+  assert.equal(same.nextStep?.id, "borrador");
+  assert.equal(same.onceApplied, true);
+  const next = where(board, other.number)!;
+  assert.equal(next.stepsDone, 0, "el capítulo 3 es otro capítulo: hay que leerlo");
+  assert.equal(next.onceApplied, false);
+});
+
 await test("las decisiones van primero, con «Votar»", () => {
   const conflict = issue({ task: "tpl", title: "NEH 2 · Traducir TPL", assignee: "carla", state: "closed" });
   const mine = issue({ task: "tpl", title: "NEH 7 · Traducir TPL", assignee: "carla", started: true });

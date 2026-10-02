@@ -1,5 +1,6 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
-import type { AssignmentsDoc, ProjectTask, WaitRule, WaitScope } from "./types";
+import type { AssignmentsDoc, HandoffUnit, ProjectTask, WaitRule, WaitScope } from "./types";
+import { unitIdOfWork } from "./handoff";
 import { WAIT_SCOPE_LABEL, isWaitScope, normalizeWaitRules } from "./waitRules";
 
 export { WAIT_SCOPE_LABEL, isWaitScope, normalizeWaitRules };
@@ -48,10 +49,16 @@ function portionIdsOf(issue: DcsIssue): string[] {
   return parseWorkOrderMarker(issue.body)?.portionIds ?? [];
 }
 
-function sameScope(scope: WaitScope, waiting: DcsIssue, blocker: DcsIssue): boolean {
+function sameScope(scope: WaitScope, waiting: DcsIssue, blocker: DcsIssue, units?: HandoffUnit[]): boolean {
   if (scope === "all") return true;
   const chapterA = chapterFromIssue(waiting);
   const chapterB = chapterFromIssue(blocker);
+  // «El capítulo» is the unit of handoff: a chapter split into stretches waits stretch by stretch.
+  if (scope === "chapter" && units?.length && chapterA && chapterA === chapterB) {
+    const a = portionIdsOf(waiting);
+    const b = portionIdsOf(blocker);
+    if (a.length && b.length) return unitIdOfWork(units, a, chapterA) === unitIdOfWork(units, b, chapterB);
+  }
   if (scope === "portion") {
     const a = portionIdsOf(waiting);
     const b = portionIdsOf(blocker);
@@ -78,7 +85,7 @@ export type WaitBlock = {
  */
 export function waitBlocks(
   issue: DcsIssue,
-  board: Pick<AssignmentsDoc, "teams">,
+  board: Pick<AssignmentsDoc, "teams"> & Partial<Pick<AssignmentsDoc, "settings">>,
   openIssues: DcsIssue[],
 ): WaitBlock[] {
   const taskId = issueTaskId(issue);
@@ -94,7 +101,7 @@ export function waitBlocks(
         other.number !== issue.number &&
         other.state !== "closed" &&
         targetIds.has(issueTaskId(other)) &&
-        sameScope(rule.scope, issue, other),
+        sameScope(rule.scope, issue, other, board.settings?.handoffUnits),
     );
     if (holding.length) blocks.push({ rule, issues: holding });
   }
