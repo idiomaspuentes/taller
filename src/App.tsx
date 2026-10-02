@@ -992,7 +992,12 @@ export function App() {
         navigate({ name: "solver-lab" });
         return;
       }
-      if (window.history.length > 1) window.close();
+      // A tool opened in its own window goes away with it; one opened in place goes back to the tasks. Closing the
+      // window in the second case left the person with nothing on screen.
+      if (window.opener) {
+        window.close();
+        return;
+      }
       navigate({ name: "mis-tareas" });
     };
     return (

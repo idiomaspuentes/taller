@@ -1288,7 +1288,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setLoadStuck(false);
       return;
     }
-    const timer = window.setTimeout(() => setLoadStuck(true), 8000);
+    // On a real server the helps beside the draft take well over eight seconds; offering to redo a draft that is
+    // already on screen reads as if something had gone wrong.
+    const timer = window.setTimeout(() => setLoadStuck(true), 25000);
     return () => window.clearTimeout(timer);
   }, [draftLoading, recreating, bootPending]);
 
