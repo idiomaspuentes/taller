@@ -1,7 +1,7 @@
 import glossary from "../i18n/locales/glossary.pt.json";
 /**
  * Person levels for a function (from the FCR qualification rubric):
- * oyente observes, aprendiz works with a person beside them, practicante works
+ * oyente (shown as «Observador», the name the FCR guide uses; the stored id stays) observes, aprendiz works with a person beside them, practicante works
  * alone and is reviewed, persona habilitada carries the function and counts
  * for the minimums. The level lives in the org config, next to the teams.
  */
@@ -10,7 +10,7 @@ export type PersonLevel = "oyente" | "aprendiz" | "practicante" | "habilitada";
 export const LEVEL_ORDER: PersonLevel[] = ["oyente", "aprendiz", "practicante", "habilitada"];
 
 export const LEVEL_LABEL: Record<PersonLevel, string> = {
-  oyente: "Oyente",
+  oyente: "Observador",
   aprendiz: "Aprendiz",
   practicante: "Practicante",
   habilitada: "Persona habilitada",

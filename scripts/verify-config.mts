@@ -179,7 +179,7 @@ await test("las razones de espera y de nivel se muestran en el idioma de la inte
   assert.equal(localizeHold("Espera a «Traducir TPL» de @ana y 2 más", "pt"), "Aguarda «Traduzir TPL» de @ana e mais 2");
   assert.equal(localizeHold("Espera a «Afinar TPL»", "pt"), "Aguarda «Afinar TPL»");
   assert.equal(localizeHold("Pide nivel persona habilitada", "pt"), "Exige nível pessoa habilitada");
-  assert.equal(localizeHold("Pide nivel oyente", "pt"), "Exige nível ouvinte");
+  assert.equal(localizeHold("Pide nivel observador", "pt"), "Exige nível observador");
   assert.equal(localizeHold("Solo observas", "pt"), "Você só observa");
   assert.equal(localizeHold("Solo observas", "es"), "Solo observas", "en español no cambia");
   assert.equal(localizeHold("Algo que no se conoce", "pt"), "Algo que no se conoce");
@@ -246,7 +246,7 @@ await test("el perfil: lo que se muestra viene de Door43 y para cambiarlo se env
   assert.equal(memberSince("no es fecha", "es"), "");
   assert.equal(memberSince(undefined, "es"), "");
   assert.equal(levelName("habilitada", "pt"), "Pessoa habilitada");
-  assert.equal(levelName("oyente", "es"), "Oyente");
+  assert.equal(levelName("oyente", "es"), "Observador");
   assert.equal(safeLink("https://example.org/a"), "https://example.org/a");
   assert.equal(safeLink("example.org"), "https://example.org/", "sin protocolo se asume https");
   assert.equal(safeLink("javascript:alert(1)"), "", "nunca un enlace que ejecute código");

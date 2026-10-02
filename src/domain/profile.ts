@@ -43,8 +43,8 @@ export function memberSince(created: string | undefined, language: UiLanguage): 
 }
 
 const LEVEL_NAMES: Record<UiLanguage, Record<PersonLevel, string>> = {
-  es: { oyente: "Oyente", aprendiz: "Aprendiz", practicante: "Practicante", habilitada: "Persona habilitada" },
-  pt: { oyente: "Ouvinte", aprendiz: "Aprendiz", practicante: "Praticante", habilitada: "Pessoa habilitada" },
+  es: { oyente: "Observador", aprendiz: "Aprendiz", practicante: "Practicante", habilitada: "Persona habilitada" },
+  pt: { oyente: "Observador", aprendiz: "Aprendiz", practicante: "Praticante", habilitada: "Pessoa habilitada" },
 };
 
 export const levelName = (level: PersonLevel, language: UiLanguage): string => LEVEL_NAMES[language][level];

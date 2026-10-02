@@ -26,7 +26,7 @@
     "Sin asignar": "Sem atribuição"
   },
   "levels": {
-    "oyente": "ouvinte",
+    "observador": "observador",
     "aprendiz": "aprendiz",
     "practicante": "praticante",
     "persona habilitada": "pessoa habilitada"
@@ -389,7 +389,7 @@
     "REV": "Apocalipse"
   },
   "levelNames": {
-    "oyente": "Ouvinte",
+    "oyente": "Observador",
     "aprendiz": "Aprendiz",
     "practicante": "Praticante",
     "habilitada": "Pessoa habilitada"
