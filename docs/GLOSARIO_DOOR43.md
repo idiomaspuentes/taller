@@ -130,6 +130,49 @@ Para no recorrer todos los libros cada vez, se guarda un **índice generado** (n
 que se actualiza cuando un capítulo sale de Afinación. Puede ir como archivo adjunto de cada release
 o en un repositorio aparte de datos generados **(por decidir)**.
 
+## 3b. Crear una entrada con un toque sobre el inglés
+
+Como el inglés (ULT y UST) **siempre está alineado** con el original, quien traduce no necesita saber
+griego ni hebreo para registrar bien una entrada:
+
+1. Toca la palabra del inglés que quiere agregar (*redeem* en Tito 2:14).
+2. La app lee la alineación de **ese versículo** y encuentra la palabra del original que está debajo
+   (λυτρόω).
+3. La persona escribe la traducción y, si quiere, el significado y la razón.
+4. La entrada queda guardada **por la palabra del original**, con el término inglés y el versículo
+   como ejemplo.
+
+Con esto casi todas las entradas nacen ya unidas al original, y el archivo de «solo inglés» queda
+para lo que no está alineado (palabras de las notas o de los artículos).
+
+### El problema: palabras pequeñas alineadas junto a la principal
+
+A veces el grupo alineado trae también un artículo, una preposición o una conjunción (en griego,
+«el» junto al sustantivo; en hebreo, prefijos como «en», «y», «el» pegados a la palabra). Si se
+guardaran todas, la entrada quedaría sucia. Cuatro defensas:
+
+- **Filtrar por clase de palabra.** Los textos originales traen la morfología de cada palabra. Se
+  toma solo la **palabra de contenido** (sustantivo, verbo, adjetivo, adverbio) y se dejan fuera
+  artículos, preposiciones, conjunciones y partículas.
+- **En hebreo, quitar los prefijos.** El texto ya separa el prefijo de la palabra base; se usa el
+  lema y el Strong de la **base**.
+- **Si queda más de una candidata, se pregunta.** La app muestra las palabras del grupo con su glosa
+  en inglés, la de contenido ya marcada, y la persona confirma con un toque. En la mayoría de los
+  casos solo queda una y no se pregunta nada.
+- **Corregir después.** Si una entrada quedó atada a la palabra equivocada, cualquier persona
+  habilitada de Afinación la reasigna; se une con la entrada correcta sin perder el historial.
+
+### Cuando sí son varias palabras
+
+Algunas entradas son **expresiones** a propósito: «Hijo del Hombre», «reino de Dios». Ahí la persona
+selecciona varias palabras del inglés y la entrada se guarda con la **secuencia** de lemas. El filtro
+de palabras pequeñas no se aplica dentro de una expresión elegida a mano.
+
+### Lo mismo, desde el español
+
+Después de Afinación, el TPL y el TPS también están alineados: el mismo toque funciona sobre una
+palabra en **español**.
+
 ## 4. Que no se vuelva una lista larga y pesada
 
 El glosario **no se lee como lista**. Nadie debería tener que abrirlo y recorrerlo.
