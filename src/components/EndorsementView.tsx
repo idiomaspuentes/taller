@@ -6,12 +6,14 @@ import { loadPersonDocs, savePersonDoc } from "../dcs/checkStore";
 import { loadUnitTexts, type ChecklistData, type ChecklistText } from "../dcs/checklistLoad";
 import { commentOnIssue } from "../dcs/issues";
 import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { loadUnitToPublish, recordEndorsement } from "../dcs/unitPublish";
+import { ownerTaskOf } from "../domain/resourceOwner";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../domain/endorsement";
 import { canConfirmForTeam, coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { stepMinAssignees } from "../domain/stepClaim";
-import type { ChecklistQuestion, ProjectTask } from "../domain/types";
+import type { ChecklistQuestion } from "../domain/types";
 import { SCOPE_LABEL, type ScopeKey } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
@@ -28,15 +30,8 @@ type UnitData = Omit<ChecklistData, "kind" | "items" | "fromSource">;
 const TEXTS: ChecklistText[] = ["tpl", "tps"];
 const blank = (by: string): EndorsementReport => ({ by, answers: {}, concerns: [], delivered: false, at: "" });
 
-/** The task that last worked on a resource before this one: whoever maintains it now. */
-function ownerOf(resource: string, data: UnitData): ProjectTask | undefined {
-  if (!data.board || !data.task) return undefined;
-  const order = new Map(data.board.phases.map((phase) => [phase.id, phase.order]));
-  const mine = order.get(data.task.phaseId) ?? 0;
-  return data.board.teams
-    .filter((task) => task.id !== data.task!.id && (order.get(task.phaseId) ?? 0) < mine && task.rules.some((rule) => rule.resource === resource))
-    .sort((a, b) => (order.get(b.phaseId) ?? 0) - (order.get(a.phaseId) ?? 0))[0];
-}
+/** What a committee endorses of a unit, when its board does not say otherwise: the two texts and their helps. */
+const ENDORSED = ["tpl", "tps", "notas", "preguntas"];
 
 /**
  * A committee endorses a unit. Each member reads it alone and hands in a report (the questions come from the step's
@@ -125,6 +120,8 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     setSaving(true);
     setError("");
     try {
+      // What was endorsed is kept piece by piece, so publishing can tell whether anything changed afterwards.
+      await recordEndorsement(session, await loadUnitToPublish({ session, ctx, resources: ENDORSED }), ctx.issueNumber);
       await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, t("en.endorsedNote").replace("{n}", String(tally.supporters.length)).replace("{of}", String(tally.delivered.length)).replace("{who}", tally.supporters.map((s) => `@${s}`).join(", ")));
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       setStepDone(true);
@@ -144,7 +141,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     try {
       const byOwner = new Map<string, string[]>();
       for (const c of [...tally.objections, ...tally.observations]) {
-        const owner = ownerOf(c.about, data);
+        const owner = ownerTaskOf(c.about, data.board, data.task);
         const who = coordinatorsOf(data.levelBook, owner?.orgTeamName).map((login) => `@${login}`).join(" ") || (owner?.name ?? c.about);
         byOwner.set(who, [...(byOwner.get(who) ?? []), `- ${c.kind === "objection" ? t("en.objection") : t("en.observation")}${c.where ? ` (${c.where})` : ""}: ${c.text} — @${c.by}`]);
       }

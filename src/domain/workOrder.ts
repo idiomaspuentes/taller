@@ -588,3 +588,44 @@ export function workOrderIssueBody(order: WorkOrder): string {
 export function workOrderIssueTitle(order: WorkOrder): string {
   return `${order.book} ${order.label}`;
 }
+
+/**
+ * What a work order is, however its key was written: the task and the items it covers. The key of the same work
+ * differs between a subtarea planned without a person and the same one once somebody has it (passages are named
+ * by their id in one and by their reference in the other), so the key alone would plan finished work again.
+ */
+export function workIdentity(teamId: string, itemIds: string[]): string | null {
+  return itemIds.length ? `${teamId}\u0000${[...itemIds].sort().join("\u0001")}` : null;
+}
+
+/** The subtareas that already exist, found by key or, failing that, by what they cover. */
+export function indexWorkIssues<T extends { body?: string }>(issues: T[]): {
+  find: (order: Pick<WorkOrder, "key" | "teamId" | "itemIds">) => T | undefined;
+  add: (order: Pick<WorkOrder, "key" | "teamId" | "itemIds">, issue: T) => void;
+} {
+  const byKey = new Map<string, T>();
+  const byIdentity = new Map<string, T>();
+  for (const issue of issues) {
+    const marker = parseWorkOrderMarker(issue.body);
+    if (!marker) continue;
+    byKey.set(marker.key, issue);
+    const identity = workIdentity(marker.teamId, marker.itemIds);
+    // The first one stands: the original subtarea, not a later copy of it.
+    if (identity && !byIdentity.has(identity)) byIdentity.set(identity, issue);
+  }
+  return {
+    find: (order) => byKey.get(order.key) ?? byIdentity.get(workIdentity(order.teamId, order.itemIds) ?? ""),
+    add: (order, issue) => {
+      byKey.set(order.key, issue);
+      const identity = workIdentity(order.teamId, order.itemIds);
+      if (identity && !byIdentity.has(identity)) byIdentity.set(identity, issue);
+    },
+  };
+}
+
+/** Is a subtarea still part of the plan? By key, or by what it covers. */
+export function planKeeps(orders: Pick<WorkOrder, "key" | "teamId" | "itemIds">[]): (marker: Pick<WorkOrderMarker, "key" | "teamId" | "itemIds">) => boolean {
+  const keys = new Set(orders.map((order) => order.key));
+  const identities = new Set(orders.map((order) => workIdentity(order.teamId, order.itemIds)).filter((id): id is string => Boolean(id)));
+  return (marker) => keys.has(marker.key) || identities.has(workIdentity(marker.teamId, marker.itemIds) ?? "");
+}

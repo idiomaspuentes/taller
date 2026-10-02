@@ -7043,3 +7043,9 @@ button.al-box--read { cursor: pointer; }
 .en-report { display: grid; gap: 0.25rem; padding: 0.625rem 0; border-top: 1px solid var(--border); font-size: 0.9375rem; }
 .en-report p { margin: 0; }
 .en-report p[data-kind="objection"] { color: var(--warning-700); }
+
+/* ---- publishing a unit (PublishUnitView) ---- */
+.pu-list { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.pu-list li { padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--surface-muted); overflow-wrap: anywhere; }
+.pu-list li[data-ok="true"] { background: var(--success-100); color: var(--success-700); }
+.pu-list li[data-ok="false"] { background: var(--warning-100); color: var(--warning-700); }

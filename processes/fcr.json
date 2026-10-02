@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 7,
+      "version": 8,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -50,6 +50,15 @@
           },
           "slug": "validacion",
           "order": 3
+        },
+        {
+          "id": "fcr-publicacion",
+          "name": "Publicación",
+          "names": {
+            "pt": "Publicação"
+          },
+          "slug": "publicacion",
+          "order": 4
         }
       ],
       "tasks": [
@@ -1113,6 +1122,83 @@
           },
           "distributeUnit": "chapter",
           "distributePolicy": "manual"
+        },
+        {
+          "id": "publicar",
+          "name": "Publicar",
+          "names": {
+            "pt": "Publicar"
+          },
+          "phaseId": "fcr-publicacion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "notas",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "preguntas",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "comprobar",
+              "name": "Comprobaciones",
+              "names": {
+                "pt": "Verificações"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "description": "Formato, que no falte nada y que sea exactamente lo que avaló el comité. Se completa solo cuando todo pasa.",
+              "descriptions": {
+                "pt": "Formato, que não falte nada e que seja exatamente o que o comitê avalizou. Completa-se sozinho quando tudo passa."
+              },
+              "closing": "automatic",
+              "scope": "unit",
+              "solverAppId": "fcr-publicar"
+            },
+            {
+              "id": "publicar",
+              "name": "Publicar",
+              "names": {
+                "pt": "Publicar"
+              },
+              "actionLabel": "Publicar",
+              "actionLabels": {
+                "pt": "Publicar"
+              },
+              "description": "La unidad avalada pasa a la rama publicada de cada recurso. No se edita contenido.",
+              "descriptions": {
+                "pt": "A unidade avalizada passa para o ramo publicado de cada recurso. Não se edita conteúdo."
+              },
+              "closing": "automatic",
+              "scope": "unit",
+              "solverAppId": "fcr-publicar"
+            }
+          ],
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "taskId": "validar",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         }
       ],
       "releaseProfiles": [
@@ -1296,6 +1382,25 @@
         },
         "decision": {
           "mode": "decision"
+        }
+      }
+    },
+    {
+      "id": "fcr-publicar",
+      "name": "Publicación de una unidad",
+      "description": "Comprueba la unidad avalada y la pasa a la rama publicada de cada recurso.",
+      "launchUrl": "/#/solver/publicar?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true,
+      "stepParams": {
+        "comprobar": {
+          "mode": "comprobar",
+          "aligned": "tpl,tps"
+        },
+        "publicar": {
+          "mode": "publicar",
+          "aligned": "tpl,tps"
         }
       }
     }

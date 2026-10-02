@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { request } from "@ip-lms/dcs-client";
 import { stepNeedsOpenPortionPr, taskWorksOnSharedDraft } from "../src/domain/portionPr";
 import type { AssignmentsDoc, InventoryDoc, Portion, ProjectTask, TaskStep } from "../src/domain/types";
-import { planUnassignedLots, publishableWorkOrders, taskResource } from "../src/domain/workOrder";
+import { encodeWorkOrderMarker, indexWorkIssues, parseWorkOrderMarker, planKeeps, planUnassignedLots, publishableWorkOrders, taskResource, type WorkOrder } from "../src/domain/workOrder";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -72,6 +72,19 @@ await test("una tarea que recorre cada unidad tiene una subtarea por capítulo, 
   const everyUnit = publishableWorkOrders({ teams: [task("armonizar-palabras", ["palabras"], { ...base, everyUnit: true })], assignments: [], people: [], phases: [], book: "TIT" } as unknown as AssignmentsDoc, twoChapters);
   assert.deepEqual(everyUnit.map((order) => order.chapter), [2, 3], "una por capítulo");
   assert.ok(everyUnit.every((order) => order.resource === "palabras" && order.itemIds.every((id) => id.startsWith("porcion:"))));
+});
+
+await test("el mismo trabajo se reconoce aunque su clave esté escrita de otra forma: no se planifica dos veces", () => {
+  // Planned without a person, the passage is named by its id; once somebody has it, by its reference.
+  const free = { key: "TIT|tpl|tpl|TIT-02-05|porcion:TIT 2:11-13", teamId: "tpl", itemIds: ["porcion:TIT 2:11-13"] };
+  const taken = { key: "TIT|tpl|tpl|TIT 2:11-13|porcion:TIT 2:11-13", teamId: "tpl", itemIds: ["porcion:TIT 2:11-13"] };
+  const body = (order: typeof free) => encodeWorkOrderMarker({ ...order, book: "TIT", resource: "tpl", portionIds: [], teamName: "", chapter: 2, itemTypes: [], label: "" } as unknown as WorkOrder);
+  const delivered = { number: 14, state: "closed", body: body(free) };
+  const known = indexWorkIssues([delivered, { number: 20, state: "open", body: body({ key: "k", teamId: "tps", itemIds: ["porcion:TIT 2:11-13"] }) }]);
+  assert.equal(known.find(taken)?.number, 14, "la subtarea entregada es la misma");
+  assert.equal(known.find({ key: "otra", teamId: "tpl", itemIds: ["porcion:TIT 2:14"] }), undefined);
+  assert.equal(known.find({ key: "vacía", teamId: "tpl", itemIds: [] }), undefined, "sin ítems solo cuenta la clave");
+  assert.equal(planKeeps([taken])(parseWorkOrderMarker(delivered.body)!), true, "y sigue en el plan: no es huérfana");
 });
 
 const step = (extra: Partial<TaskStep>): TaskStep => ({ id: "s", name: "s", ...extra }) as TaskStep;

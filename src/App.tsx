@@ -21,6 +21,7 @@ import type { WorkflowTemplate } from "./domain/types";
 import { HandoffUnitsPanel } from "./components/HandoffUnitsPanel";
 import { ChecklistView } from "./components/ChecklistView";
 import { EndorsementView } from "./components/EndorsementView";
+import { PublishUnitView } from "./components/PublishUnitView";
 import type { AssignmentsDoc, InventoryDoc, ProjectIndexEntry } from "./domain/types";
 import {
   emptyAssignments,
@@ -908,6 +909,7 @@ export function App() {
     route.name === "solver-afinar" ||
     route.name === "solver-checklist" ||
     route.name === "solver-aval" ||
+    route.name === "solver-publicar" ||
     route.name === "solver-review"
   ) {
     const onSolverClose = () => {
@@ -938,6 +940,15 @@ export function App() {
           <HelpsEditorView
             key={sessionEpoch}
             ctxEncoded={route.ctx}
+            announce={announce}
+            onClose={onSolverClose}
+          />
+        ) : route.name === "solver-publicar" ? (
+          <PublishUnitView
+            key={`${sessionEpoch}-${route.mode}`}
+            ctxEncoded={route.ctx}
+            mode={route.mode === "publicar" ? "publicar" : "comprobar"}
+            aligned={route.aligned.split(",").filter(Boolean)}
             announce={announce}
             onClose={onSolverClose}
           />

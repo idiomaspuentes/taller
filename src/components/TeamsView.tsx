@@ -71,7 +71,8 @@ import {
   saveTeamPresets,
 } from "../domain/store";
 import { formatTaskClaimSummary } from "../domain/stepClaim";
-import { applyWorkflowToBoard, boardToWorkflowTemplate } from "../domain/workflows";
+import { applyWorkflowToBoard, boardToWorkflowTemplate, upgradeBoardToWorkflow, workflowUpdateFor } from "../domain/workflows";
+import { shippedWorkflows } from "../domain/processes";
 import { filterTeamsEligibleForTask } from "../domain/teamEligibility";
 import { orgOptionLabel, orgSlug } from "../domain/orgs";
 import { DEFAULT_SOURCE_PACKAGE, resolveSourcePackage, sourcePackageFor, sourcePackageLang } from "../domain/sourcePackage";
@@ -325,6 +326,8 @@ export function TeamsView({
   const [workflowsCatalog, setWorkflowsCatalog] = useState<WorkflowsCatalog>(() =>
     loadLocalWorkflows(),
   );
+  // A project made from a process that has a newer version now: the shipped ones first, then the organization's.
+  const processUpdate = workflowUpdateFor(board, [...shippedWorkflows(), ...workflowsCatalog.workflows]);
   const [applyWorkflowId, setApplyWorkflowId] = useState("");
   const [applyBusy, setApplyBusy] = useState(false);
   const [solversCatalog, setSolversCatalog] =
@@ -2437,6 +2440,24 @@ export function TeamsView({
 
   return (
     <div className="hub">
+      {processUpdate ? (
+        <div className="af-stale" role="status">
+          <p style={{ margin: 0 }}>{t("tv.processUpdate").replace("{name}", processUpdate.name).replace("{v}", String(processUpdate.version))}</p>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              const result = upgradeBoardToWorkflow(board, processUpdate);
+              onChange(result.board);
+              const added = [...result.phases, ...result.tasks, ...result.steps];
+              announce(added.length ? t("tv.processUpdated").replace("{what}", added.join(", ")) : t("tv.processUpdatedPlain"));
+            }}
+          >
+            {t("tv.processUpdateDo")}
+          </Button>
+        </div>
+      ) : null}
       <div className="hub-header">
         <div>
           <h1 className="hub-title">{t("tv.phasesAndTasks")}</h1>

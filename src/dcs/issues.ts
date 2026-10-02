@@ -51,7 +51,9 @@ import {
 import { normalizeProjectId } from "../domain/books";
 import {
   encodeWorkOrderMarker,
+  indexWorkIssues,
   parseWorkOrderMarker,
+  planKeeps,
   workOrderIssueBody,
   workOrderIssueTitle,
   publishableWorkOrders,
@@ -591,28 +593,25 @@ export async function previewPublishWorkOrders(params: {
     namespaceId: pmConfig.namespaceId,
   });
 
-  const byKey = new Map<string, DcsIssue>();
+  const known = indexWorkIssues(existing);
   let existingOpen = 0;
   for (const issue of existing) {
-    const marker = parseWorkOrderMarker(issue.body);
-    if (!marker) continue;
-    byKey.set(marker.key, issue);
-    if (issue.state !== "closed") existingOpen += 1;
+    if (parseWorkOrderMarker(issue.body) && issue.state !== "closed") existingOpen += 1;
   }
 
-  const keepKeys = new Set(orders.map((order) => order.key));
+  const keeps = planKeeps(orders);
   let created = 0;
   let updated = 0;
   let closed = 0;
   for (const order of orders) {
-    if (byKey.has(order.key)) updated += 1;
+    if (known.find(order)) updated += 1;
     else created += 1;
   }
   if (retireOrphans) {
     for (const issue of existing) {
       if (issue.state === "closed") continue;
       const marker = parseWorkOrderMarker(issue.body);
-      if (!marker || keepKeys.has(marker.key)) continue;
+      if (!marker || keeps(marker)) continue;
       closed += 1;
     }
   }
@@ -661,17 +660,14 @@ export async function publishWorkOrders(params: {
     namespaceId,
   });
 
-  const byKey = new Map<string, DcsIssue>();
-  for (const issue of existing) {
-    const marker = parseWorkOrderMarker(issue.body);
-    if (marker) byKey.set(marker.key, issue);
-  }
+  // By key, or by what the subtarea covers: the same work must never be planned twice (see `workIdentity`).
+  const known = indexWorkIssues(existing);
 
   let created = 0;
   let updated = 0;
   let closed = 0;
   const results: DcsIssue[] = [];
-  const keepKeys = new Set(orders.map((order) => order.key));
+  const keeps = planKeeps(orders);
 
   for (let i = 0; i < orders.length; i++) {
     const order = orders[i];
@@ -703,7 +699,7 @@ export async function publishWorkOrders(params: {
 
     const title = workOrderIssueTitle(order);
     const body = workOrderIssueBody(order);
-    const found = byKey.get(order.key);
+    const found = known.find(order);
 
     if (found) {
       // A closed subtarea means the work finished; the plan carries no "reopen" signal,
@@ -735,7 +731,7 @@ export async function publishWorkOrders(params: {
       });
       created += 1;
       results.push(issue);
-      byKey.set(order.key, issue);
+      known.add(order, issue);
     }
   }
 
@@ -743,7 +739,7 @@ export async function publishWorkOrders(params: {
     for (const issue of existing) {
       if (issue.state === "closed") continue;
       const marker = parseWorkOrderMarker(issue.body);
-      if (!marker || keepKeys.has(marker.key)) continue;
+      if (!marker || keeps(marker)) continue;
       try {
         const closedIssue = await editIssue(config, org, PM_REPO_NAME, issue.number, {
           token: session.token,
@@ -827,24 +823,20 @@ export async function createReviewIssues(params: {
     maxPages: 20,
     namespaceId,
   });
-  const byKey = new Map<string, DcsIssue>();
-  for (const issue of existing) {
-    const marker = parseWorkOrderMarker(issue.body);
-    if (marker) byKey.set(marker.key, issue);
-  }
+  const known = indexWorkIssues(existing);
 
   const result: ReviewIssuesResult = { created: [], existing: [], reassigned: [], otherOpen: [] };
-  const keys = new Set(orders.map((o) => o.key));
+  const keeps = planKeeps(orders);
   for (const issue of existing) {
     if (issue.state === "closed") continue;
     const marker = parseWorkOrderMarker(issue.body);
-    if (marker && marker.teamId === task.id && !keys.has(marker.key)) result.otherOpen.push(issue);
+    if (marker && marker.teamId === task.id && !keeps(marker)) result.otherOpen.push(issue);
   }
 
   const labelCache = new Map<string, number>();
   const milestoneCache = new Map<string, number>();
   for (const order of orders) {
-    const found = byKey.get(order.key);
+    const found = known.find(order);
     if (found) {
       result.existing.push(found);
       const want = order.assignee?.personId;
@@ -878,7 +870,7 @@ export async function createReviewIssues(params: {
       assignees: order.assignee ? [order.assignee.personId] : undefined,
     });
     result.created.push(issue);
-    byKey.set(order.key, issue);
+    known.add(order, issue);
   }
   return result;
 }
