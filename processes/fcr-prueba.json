@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 10,
+      "version": 11,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -125,27 +125,6 @@
               "excludePriorStepIds": [
                 "borrador"
               ]
-            },
-            {
-              "id": "grupal",
-              "name": "Revisión grupal",
-              "names": {
-                "pt": "Revisão em grupo"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "solverAppId": "fcr-group-review",
-              "closing": "approval",
-              "claimMode": "pool",
-              "minAssignees": 1,
-              "maxAssignees": 1,
-              "excludeIssueAssignee": true,
-              "excludePriorStepIds": [
-                "borrador",
-                "pares"
-              ]
             }
           ],
           "minLevel": "practicante",
@@ -213,27 +192,6 @@
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
-              ]
-            },
-            {
-              "id": "grupal",
-              "name": "Revisión grupal",
-              "names": {
-                "pt": "Revisão em grupo"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "solverAppId": "fcr-group-review",
-              "closing": "approval",
-              "claimMode": "pool",
-              "minAssignees": 1,
-              "maxAssignees": 1,
-              "excludeIssueAssignee": true,
-              "excludePriorStepIds": [
-                "borrador",
-                "pares"
               ]
             }
           ],
@@ -477,6 +435,66 @@
           "solverAppId": "helps-review"
         },
         {
+          "id": "revision-grupal",
+          "name": "Revisión grupal",
+          "names": {
+            "pt": "Revisão em grupo"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "lectura",
+              "name": "Lectura grupal",
+              "names": {
+                "pt": "Leitura em grupo"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "El equipo lee junto todo lo traducido del capítulo, pasaje por pasaje a medida que llega, y se pone de acuerdo.",
+              "descriptions": {
+                "pt": "A equipe lê junto tudo o que foi traduzido do capítulo, passagem por passagem conforme chega, e entra em acordo."
+              },
+              "solverAppId": "fcr-group-reading",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 8,
+              "minIndependent": 1
+            }
+          ],
+          "minLevel": "practicante",
+          "waitsFor": [
+            {
+              "taskId": "tpl",
+              "scope": "chapter",
+              "partial": true
+            },
+            {
+              "taskId": "tps",
+              "scope": "chapter",
+              "partial": true
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        },
+        {
           "id": "afinar-tpl",
           "name": "Afinar TPL",
           "names": {
@@ -559,6 +577,10 @@
           "waitsFor": [
             {
               "taskId": "tpl",
+              "scope": "chapter"
+            },
+            {
+              "taskId": "revision-grupal",
               "scope": "chapter"
             }
           ],
@@ -652,6 +674,10 @@
           "waitsFor": [
             {
               "taskId": "tps",
+              "scope": "chapter"
+            },
+            {
+              "taskId": "revision-grupal",
               "scope": "chapter"
             }
           ],

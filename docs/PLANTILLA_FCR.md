@@ -88,9 +88,8 @@ fuente en inglés. Los recursos de apoyo se escriben sin mirar el TPL ni el TPS 
 | 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura: nota de introducción al libro, nota de introducción al capítulo y el capítulo | Lo marca quien lo hace |
 | 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de texto bíblico | Lo marca quien lo hace |
 | 3 | Revisión en pares | Revisar | Otra persona del equipo, no quien hizo el borrador | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
-| 4 | Revisión grupal | Revisar | Personas del equipo que no hicieron el borrador ni la revisión en pares | 2 | Revisión del borrador | Otra persona lo aprueba (las 2) |
-
-**Al entregar:** el texto de la porción pasa al borrador del grupo.
+**Al entregar:** el texto de la porción pasa al borrador del grupo, y queda a la vista en la revisión grupal
+del capítulo (3.7).
 
 ### 3.3 Traducir Notas · 3.4 Traducir Preguntas
 
@@ -110,6 +109,27 @@ porciones de ese capítulo, y la introducción al libro se lee una sola vez. Lo 
 familiarización del TPL y del TPS.
 
 Las ayudas **no llevan revisión grupal**.
+
+### 3.7 Revisión grupal (TPL + TPS, por capítulo)
+
+Una subtarea por capítulo (o por tramo, si el capítulo se partió). No es un paso de cada porción: el equipo
+lee junto **todo lo traducido del capítulo**, sobre el borrador del grupo, con el TPL y el TPS lado a lado.
+
+| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
+|---|------|-------|-------|---------|-------------|--------------------|
+| 1 | Lectura grupal | Revisar | El equipo de traducción (también quienes tradujeron) | 2 a 8 | Lectura grupal | Todo llegó y cada versículo está acordado |
+
+**Espera a:** Traducir TPL y Traducir TPS del mismo capítulo, **de forma parcial**: se puede empezar en cuanto
+se entrega la primera porción, y las demás aparecen a medida que llegan («Todavía en traducción» mientras
+tanto).
+
+**Cómo se acuerda un versículo:** dos personas habilitadas de acuerdo, al menos una que no lo tradujo, y
+ninguna duda abierta. Cualquiera puede corregir el versículo en el borrador del grupo; al corregirlo, quienes
+ya habían dado su acuerdo son avisados y vuelven a mirarlo. Un versículo ya acordado se reabre con una duda
+o una corrección.
+
+**Se cierra** cuando llegaron todas las porciones de los dos textos y todo está acordado. La Afinación del
+capítulo espera a este cierre.
 
 ### 3.5 Traducir Palabras · 3.6 Traducir Academia
 
@@ -318,7 +338,7 @@ Usa las mismas piezas. Sirve para comprobar que el diseño no depende del FCR.
 | Fase | Tarea | Pasos | Se completa cuando |
 |------|-------|-------|--------------------|
 | 1 · Borrador | Traducir | Estudiar con el TPL, el TPS y las ayudas → Borrador | Lo marca quien lo hace |
-| 2 · Revisión del equipo | Revisar | Revisión en pares → Revisión grupal | Consenso por ítem (versículo) |
+| 2 · Revisión del equipo | Revisar | Revisión en pares (por porción) → Revisión grupal (por capítulo, 3.7) | Consenso por ítem (versículo) |
 | 3 · Comprobación con la comunidad | Comprobar | Una persona del equipo lee el texto con la comunidad y registra las respuestas a las **Preguntas** | Lista de comprobación por pregunta: ¿respondieron lo esperado? Si «no»: corregir el texto |
 | 4 · Consultor | Validar | Revisión del consultor | Otra persona lo aprueba |
 | 5 · Publicación | Publicar | Formato y publicar | Lo marca quien lo hace |

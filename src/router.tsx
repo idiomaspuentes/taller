@@ -35,6 +35,7 @@ export type AppRoute =
   | { name: "solver-helps"; ctx: string }
   | { name: "solver-familiarize"; ctx: string }
   | { name: "solver-review"; ctx: string; mode: "pair" | "group" }
+  | { name: "solver-lectura"; ctx: string }
   /** Afinación review step (`notas`, later `palabras`, `alineacion`). */
   | { name: "solver-afinar"; ctx: string; step: string; mode?: string }
   /** A step that closes by a checklist: `items` is what it goes over, `text` the text(s) it is checked against. */
@@ -112,6 +113,9 @@ export function parseHash(hash: string): AppRoute {
   }
   if (parts[0] === "solver" && parts[1] === "publicar") {
     return { name: "solver-publicar", ctx: params.get("ctx") || "", mode: params.get("mode") || "comprobar", aligned: params.get("aligned") || "", endorsed: params.get("endorsed") || undefined, articles: params.get("articles") || undefined };
+  }
+  if (parts[0] === "solver" && parts[1] === "lectura") {
+    return { name: "solver-lectura", ctx: params.get("ctx") || "" };
   }
   if (parts[0] === "solver" && parts[1] === "aval") {
     return { name: "solver-aval", ctx: params.get("ctx") || "", mode: params.get("mode") || "reporte" };
@@ -199,6 +203,8 @@ export function routeToHash(route: AppRoute): string {
       return `#/solver/checklist?items=${encodeURIComponent(route.items)}&text=${encodeURIComponent(route.text)}${route.only ? `&only=${encodeURIComponent(route.only)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-review":
       return `#/solver/review?mode=${route.mode}&ctx=${encodeURIComponent(route.ctx)}`;
+    case "solver-lectura":
+      return `#/solver/lectura?ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-lab":
       return "#/lab";
   }

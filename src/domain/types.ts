@@ -371,6 +371,12 @@ export type WaitRule = {
    * project closed the task for the same chapter: «what they already published».
    */
   source?: boolean;
+  /**
+   * Part of the awaited work is enough to start: the task is free as soon as one of the passages it covers is
+   * closed, and goes on while the rest arrives. Several partial rules count together: what any of them waits for
+   * is enough. Finishing is another matter, and is the tool's (it knows what has not arrived yet).
+   */
+  partial?: boolean;
 };
 
 /**

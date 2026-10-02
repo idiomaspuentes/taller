@@ -33,15 +33,16 @@ En cada paso, anota: ¿se entendió sin ayuda?, ¿cuánto tardó?, ¿qué mensaj
 
 **Dudoso:** ¿quien coordina sin ser dueño de la organización tiene permiso de escritura en el repositorio `taller`?
 
-## 2. Traducción (dos personas + dos para la grupal)
+## 2. Traducción (dos personas, y el equipo para la grupal)
 
 | # | Qué | Se espera |
 |---|-----|-----------|
 | 2.1 | A toma «Traducir TPL · 3 Juan 1:1–4»: estudiar, borrador, «Listo para revisión» | Se abre una revisión en Door43 a nombre de A |
 | 2.2 | B se suma a «Revisión en pares» y aprueba | B ve **el borrador de A**, no uno propio vacío |
 | 2.3 | A aprueba su propia revisión en pares | No da error (Door43 no deja aprobar el PR propio; la app lo deja como comentario) |
-| 2.4 | C y D hacen la revisión grupal | El paso se completa con la segunda aprobación |
-| 2.5 | A pulsa **Entregar** | La subtarea se cierra y el texto llega al borrador grupal |
+| 2.4 | A pulsa **Entregar** | La subtarea se cierra y el texto llega al borrador grupal |
+| 2.5 | C abre «Revisión grupal · 3 Juan 1:1–15» | Aparece en cuanto hay una porción entregada: se lee esa, y las demás dicen «Todavía en traducción» |
+| 2.5b | C y D dan su acuerdo, uno corrige un versículo, otro deja una duda | El versículo corregido pide mirarlo de nuevo; el de la duda no queda acordado; no se puede cerrar hasta que lleguen todas las porciones |
 | 2.6 | Repetir 2.1–2.5 con «Traducir Notas» de la misma porción | Se entrega en el repositorio de **notas**, no en el del texto |
 
 **Dudoso:** 2.3 y 2.5 dependen de respuestas de Door43 que el simulador imita; es lo primero que hay que mirar.

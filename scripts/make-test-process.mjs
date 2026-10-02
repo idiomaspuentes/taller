@@ -1,6 +1,8 @@
 /**
  * Writes `processes/fcr-prueba.json`: the FCR as it is, with one number lowered so that three people can walk a book
- * from end to end on a test server. Same phases, tasks, steps and tools; only the group review asks for fewer. Run it again whenever `processes/fcr.json` changes:
+ * from end to end on a test server. Same phases, tasks, steps and tools; a review that asks for «two others»
+ * besides the author and the pair reviewer asks for one. (Since the group review became a task of the whole
+ * chapter, the FCR has no such step and this copy is the FCR as it is.) Run it again whenever `processes/fcr.json` changes:
  *
  *   node scripts/make-test-process.mjs
  */

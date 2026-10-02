@@ -109,6 +109,10 @@ export function waitBlocks(
   const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
   if (!task?.waitsFor?.length) return [];
   const blocks: WaitBlock[] = [];
+  // Partial rules hold the task only while none of them has anything closed.
+  const partial: WaitBlock[] = [];
+  let someArrived = false;
+  const mine = portionIdsOf(issue);
   for (const rule of task.waitsFor) {
     if (rule.source) {
       const held = sourceHolds(rule, issue, sourceIssues);
@@ -125,8 +129,17 @@ export function waitBlocks(
         targetIds.has(issueTaskId(other)) &&
         sameScope(rule.scope, issue, other, board.settings?.handoffUnits),
     );
+    if (rule.partial) {
+      // Only open subtareas are known here: a passage of this task that no open one covers is one that was closed.
+      // (Subtareas are published together, so a task with none open in this stretch has closed them all.)
+      const stillOpen = new Set(holding.flatMap(portionIdsOf));
+      if (!holding.length || mine.some((id) => !stillOpen.has(id))) someArrived = true;
+      else partial.push({ rule, issues: holding });
+      continue;
+    }
     if (holding.length) blocks.push({ rule, issues: holding });
   }
+  if (!someArrived) blocks.push(...partial);
   return blocks;
 }
 

@@ -264,7 +264,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         : canApprove
           ? t(mine ? "rv.agreeOwn" : "rv.readThenApprove")
           : canTake
-            ? t("rv.takeFirst")
+            ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
               ? t("rv.waitingReviewers")
               : seated

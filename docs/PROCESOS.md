@@ -125,6 +125,7 @@ Lo que sigue dentro del código, y en qué fase del plan sale
 | Plantilla | `nextBookAt` | Qué parte de la primera fase debe estar entregada (entre 0 y 1) para avisar a quien coordina de empezar el libro siguiente. Si no se dice, 0.7. |
 | Tarea | `everyUnit: true` | La tarea recorre **cada unidad** de su alcance (cada capítulo o tramo), tenga o no artículos pendientes. Para revisiones de lo que ya existe. |
 | Tarea | `waitsFor[].source: true` | La tarea que se espera es del **proyecto fuente**: el mismo libro, en la organización del paquete de recursos de origen. Libre solo cuando ese proyecto la cerró para el mismo capítulo. |
+| Tarea | `waitsFor[].partial: true` | Basta **una parte** de lo esperado para empezar: la tarea queda libre cuando se cierra la primera porción de las que cubre, y sigue mientras llega el resto. Varias reglas parciales cuentan juntas (basta lo de cualquiera). Cuándo se puede terminar lo decide la herramienta. |
 | Paso | `closing: "automatic"` | Lo completa su herramienta, sin que nadie lo marque. Una tarea con todos sus pasos automáticos se entrega sola. |
 | Herramienta | `stepParams.<paso>.only: "linked"` | (Lista de comprobación) Recorre solo los ítems que enlazan un artículo. |
 | Herramienta | `stepParams.<paso>.aligned: "tpl,tps"` | (Publicación) Textos que deben estar alineados para publicarse. |

@@ -16,6 +16,8 @@ import {
   waitWouldLoop,
 } from "../src/domain/waits";
 import { normalizeWaitRules } from "../src/domain/waitRules";
+import { issueTaskId as issueTaskIdOf } from "../src/domain/myTasks";
+import { encodeWorkOrderMarker } from "../src/domain/workOrder";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -200,6 +202,20 @@ test("las esperas se guardan en el plan y sobreviven a una plantilla", () => {
   assert.deepEqual(applied.teams.find((t) => t.id === "afinar-tpl")!.waitsFor, [{ taskId: "tpl", scope: "portion" }]);
   const reloaded = normalizeTeams(JSON.parse(JSON.stringify(applied.teams)), []);
   assert.deepEqual(reloaded.find((t) => t.id === "armonizar-notas")!.waitsFor, board.teams.find((t) => t.id === "armonizar-notas")!.waitsFor);
+});
+
+test("una espera parcial deja empezar cuando llega el primer pasaje, y varias cuentan juntas", () => {
+  const order = (number: number, taskId: string, portionIds: string[]): DcsIssue =>
+    ({ number, state: "open", title: `TIT 1:1–3 · ${taskId}`, body: encodeWorkOrderMarker({ key: `k${number}`, book: "TIT", teamId: taskId, resource: "tpl", portionIds, itemIds: [] } as never), labels: [{ name: `pm/tarea:${taskId}` }, { name: "pm/cap:1" }] }) as unknown as DcsIssue;
+  const board = {
+    teams: [task("tpl", "Traducir TPL", "p1"), task("tps", "Traducir TPS", "p1"), task("grupal", "Revisión grupal", "p1", [{ taskId: "tpl", scope: "chapter", partial: true }, { taskId: "tps", scope: "chapter", partial: true }])],
+  } as unknown as AssignmentsDoc;
+  const reading = order(9, "grupal", ["a", "b"]);
+  const all = [reading, order(1, "tpl", ["a"]), order(2, "tpl", ["b"]), order(3, "tps", ["a"]), order(4, "tps", ["b"])];
+  assert.equal(issueTaskIdOf(reading), "grupal");
+  assert.equal(waitBlocks(reading, board, all).length, 2, "nada entregado: espera");
+  assert.equal(waitBlocks(reading, board, all.filter((i) => i.number !== 2)).length, 0, "un pasaje del TPL entregado basta, aunque el TPS no tenga ninguno");
+  assert.deepEqual(normalizeWaitRules([{ taskId: "tpl", scope: "chapter", partial: true }]), [{ taskId: "tpl", scope: "chapter", partial: true }]);
 });
 
 console.log(`\nverify-waits: ${passed} checks passed.`);

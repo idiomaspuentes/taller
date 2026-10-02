@@ -260,8 +260,12 @@ if (fcr) {
   const issue = (taskId: string, chapter: number): DcsIssue =>
     ({ id: ++n, number: n, title: `TIT ${chapter}:1–3 · ${taskId}`, state: "open", body: "", labels: [{ name: `pm/tarea:${taskId}` }, { name: `pm/cap:${chapter}` }], assignee: null, assignees: [] }) as unknown as DcsIssue;
 
-  test("FCR: Traducción se familiariza, hace el borrador y lo revisa; los artículos no se familiarizan", () => {
-    assert.deepEqual(team("tpl").steps!.map((s) => s.id), ["familiarizar", "borrador", "pares", "grupal"]);
+  test("FCR: Traducción se familiariza, hace el borrador y lo revisa en pares; la revisión grupal es del entregable entero", () => {
+    assert.deepEqual(team("tpl").steps!.map((s) => s.id), ["familiarizar", "borrador", "pares"]);
+    const reading = team("revision-grupal");
+    assert.deepEqual(reading.rules.map((r) => r.resource), ["tpl", "tps"], "se leen los dos textos juntos");
+    assert.deepEqual(reading.steps!.map((s) => [s.id, s.closing, s.claimMode]), [["lectura", "consensus", "pool"]]);
+    assert.deepEqual(reading.waitsFor, [{ taskId: "tpl", scope: "chapter", partial: true }, { taskId: "tps", scope: "chapter", partial: true }], "empieza con el primer pasaje que llega");
     assert.deepEqual(team("notas-ayuda").steps!.map((s) => s.id), ["familiarizar", "borrador", "pares"]);
     assert.deepEqual(team("palabras-ayuda").steps!.map((s) => s.id), ["borrador", "pares"]);
     assert.equal(team("tpl").steps![0]!.scope, "chapter-once");
@@ -294,22 +298,27 @@ if (fcr) {
   });
 
   test("FCR: un capítulo recorre el flujo en orden", () => {
-    const tpl1 = issue("tpl", 1), tps1 = issue("tps", 1), tpl2 = issue("tpl", 2);
+    const tpl1 = issue("tpl", 1), tps1 = issue("tps", 1), tpl2 = issue("tpl", 2), tps2 = issue("tps", 2);
     const notas = issue("notas-ayuda", 1), academia = issue("academia-ayuda", 1);
     const afTpl1 = issue("afinar-tpl", 1), afTps1 = issue("afinar-tps", 1), afTpl2 = issue("afinar-tpl", 2);
     const arm = issue("armonizar-notas", 1), armQ = issue("armonizar-preguntas", 1);
     const val = issue("validar", 1);
-    const all = [tpl1, tps1, tpl2, notas, academia, afTpl1, afTps1, afTpl2, arm, armQ, val];
+    const grupal1 = issue("revision-grupal", 1), grupal2 = issue("revision-grupal", 2);
+    const all = [tpl1, tps1, tpl2, tps2, notas, academia, grupal1, grupal2, afTpl1, afTps1, afTpl2, arm, armQ, val];
     const waiting = (i: DcsIssue, open = all) => waitBlocks(i, board, open).length > 0;
 
     assert.ok(waiting(afTpl1) && waiting(afTps1), "la Afinación espera a su Traducción");
-    const afterTpl1 = all.filter((i) => i !== tpl1);
-    assert.equal(waiting(afTpl1, afterTpl1), false, "cerrado el TPL del capítulo 1 se habilita Afinar TPL");
+    assert.ok(waiting(grupal1), "sin nada entregado, la revisión grupal espera");
+    assert.equal(waiting(grupal1, all.filter((i) => i !== tpl1)), false, "con el TPL del capítulo entregado ya se puede empezar a leer, aunque falte el TPS");
+    assert.equal(waiting(grupal2, all.filter((i) => i !== tpl1)), true, "el capítulo 2 espera a lo suyo");
+    assert.equal(waiting(afTpl1, all.filter((i) => i !== tpl1)), true, "Afinar TPL espera también a la revisión grupal");
+    assert.deepEqual(newlyEnabled(tpl1, board, all).map((i) => i.number), [grupal1.number]);
+    const afterTpl1 = all.filter((i) => i !== tpl1 && i !== grupal1);
+    assert.equal(waiting(afTpl1, afterTpl1), false, "cerrados el TPL y la revisión grupal del capítulo 1 se habilita Afinar TPL");
     assert.equal(waiting(afTps1, afterTpl1), true, "Afinar TPS sigue esperando al TPS");
     assert.equal(waiting(afTpl2, afterTpl1), true, "el capítulo 2 espera a su propio TPL");
-    assert.deepEqual(newlyEnabled(tpl1, board, all).map((i) => i.number), [afTpl1.number]);
 
-    const tuned = all.filter((i) => ![tpl1, tps1, afTpl1, afTps1].includes(i));
+    const tuned = all.filter((i) => ![tpl1, tps1, grupal1, afTpl1, afTps1].includes(i));
     assert.equal(waiting(arm, tuned), true, "Notas y Academia esperan también a sus ayudas");
     const ready = tuned.filter((i) => i !== notas && i !== academia);
     assert.equal(waiting(arm, ready), false, "con los dos textos afinados y sus ayudas, la pista arranca");

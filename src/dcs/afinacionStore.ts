@@ -104,22 +104,29 @@ export function appendMyDecision(
   book: string,
   decision: ReviewDecision,
 ): Promise<void> {
+  return appendMyDecisions(session, target, book, [decision]);
+}
+
+/** Several answers given at once (a whole passage agreed) are one write. */
+export function appendMyDecisions(session: GtSession, target: RepoTarget, book: string, decisions: ReviewDecision[]): Promise<void> {
+  if (!decisions.length) return Promise.resolve();
   const filepath = decisionsFilePath(book, session.username);
   const key = `${target.owner}/${target.repo}@${target.branch ?? ""}:${filepath}`;
-  const next = (turns.get(key) ?? Promise.resolve()).catch(() => undefined).then(() => appendDecisionNow(session, target, book, filepath, decision));
+  const next = (turns.get(key) ?? Promise.resolve()).catch(() => undefined).then(() => appendDecisionsNow(session, target, book, filepath, decisions));
   turns.set(key, next);
   return next;
 }
 
-async function appendDecisionNow(session: GtSession, target: RepoTarget, book: string, filepath: string, decision: ReviewDecision): Promise<void> {
+async function appendDecisionsNow(session: GtSession, target: RepoTarget, book: string, filepath: string, decisions: ReviewDecision[]): Promise<void> {
   for (let attempt = 1; attempt <= 4; attempt++) {
     const existing = await readRepoFile(session, target, filepath);
     const file = (existing && parseDecisionsFile(existing.text, book)) || { book: book.toUpperCase(), decisions: [] };
-    file.decisions = [...file.decisions, decision];
+    file.decisions = [...file.decisions, ...decisions];
     try {
       await createOrUpdateContents(dcsConfig(session.host), target.owner, target.repo, filepath, {
-        content: `${JSON.stringify(file, null, 2)}\n`,
-        message: `TAS: respuesta de revisión ${book.toUpperCase()} · ${decision.itemId}`,
+        content: `${JSON.stringify(file, null, 2)}
+`,
+        message: `TAS: respuesta de revisión ${book.toUpperCase()} · ${decisions.length === 1 ? decisions[0]!.itemId : `${decisions.length} respuestas`}`,
         sha: existing?.sha,
         branch: target.branch,
         token: session.token,

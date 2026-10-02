@@ -87,6 +87,7 @@ import { SolverLabView } from "./components/SolverLabView";
 import { PortionReviewView } from "./components/PortionReviewView";
 import { TemplatesView } from "./components/TemplatesView";
 import { StudyNotesDrawer } from "./components/StudyNotesDrawer";
+import { GroupReadingView } from "./components/GroupReadingView";
 import { DraftProjectView } from "./components/DraftProjectView";
 import { clearProjectDraft, loadProjectDraft, saveProjectDraft } from "./domain/draftProject";
 import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView";
@@ -982,6 +983,7 @@ export function App() {
     route.name === "solver-afinar" ||
     route.name === "solver-checklist" ||
     route.name === "solver-aval" ||
+    route.name === "solver-lectura" ||
     route.name === "solver-publicar" ||
     route.name === "solver-review"
   ) {
@@ -1032,6 +1034,8 @@ export function App() {
             announce={announce}
             onClose={onSolverClose}
           />
+        ) : route.name === "solver-lectura" ? (
+          <GroupReadingView key={sessionEpoch} ctxEncoded={route.ctx} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-aval" ? (
           <EndorsementView key={`${sessionEpoch}-${route.mode}`} ctxEncoded={route.ctx} mode={route.mode === "decision" ? "decision" : "reporte"} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-checklist" ? (
