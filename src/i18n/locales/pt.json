@@ -1970,10 +1970,10 @@
   "sb.noTeamsOne": "Em {book} falta dizer que equipe faz uma tarefa. Ninguém poderá pegá-la até então.",
   "fa.lede": "Leia cada parte em ordem e marque ao terminar. Se parar no meio, retoma de onde ficou.",
   "fa.progress": "{done} de {total} lido",
-  "fa.passage": "A passagem, em seus dois textos",
+  "fa.passage": "A passagem em seu capítulo",
   "fa.passageHint": "O literal mostra como o original diz; o simples, o que quer dizer. Compare versículo por versículo.",
-  "fa.wholeChapter": "Ver o capítulo {n} completo",
-  "fa.onlyPassage": "Ver só a passagem",
+  "fa.wholeChapter": "O capítulo {n} completo",
+  "fa.onlyPassage": "Só a minha passagem",
   "fa.read": "lido",
   "fa.readNext": "Lido, continuar",
   "fa.readLast": "Lido",
@@ -2028,5 +2028,8 @@
   "se.written": "{n} de {total} com texto",
   "se.sourceWhole": "ver a passagem toda",
   "se.sourceVerseOnly": "ver só o versículo",
-  "se.finishShort": "Terminei"
+  "se.finishShort": "Terminei",
+  "fa.scope": "Quanto do capítulo aparece",
+  "fa.yourPassage": "Sua passagem",
+  "fa.chapterHint": "Leia o capítulo inteiro para entender de onde vem e para onde vai a sua passagem, que está marcada. O literal mostra como o original diz; o simples, o que quer dizer."
 }

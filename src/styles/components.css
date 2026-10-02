@@ -7422,3 +7422,8 @@ input.pf-name { font-size: 1.625rem; }
   .se-finish-label { display: none; }
   .se-finish-short { display: inline; }
 }
+.fam-scope { display: inline-grid; grid-template-columns: 1fr 1fr; justify-self: start; }
+.fam-scope .pe-seg__opt { padding: 0 0.875rem; }
+.fam-text__around { opacity: 0.72; }
+.fam-text__passage { margin: 0.375rem -0.375rem; padding: 0.375rem 0.5rem 0.5rem; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--accent-300); box-shadow: inset 3px 0 0 var(--accent-500); }
+.fam-text__mark { margin: 0 0 0.125rem; font-size: 0.6875rem; font-weight: 700; color: var(--accent-700); }

@@ -43,13 +43,32 @@ const EMPTY_NOTES: NotesLoadResult = { notes: [], source: "none", owner: "", rep
 type SectionId = "book" | "chapter" | "passage" | "notes";
 const SECTION_TITLE: Record<SectionId, MessageKey> = { book: "fa.bookIntro", chapter: "fa.chapterIntro", passage: "fa.passage", notes: "fa.notesTitle" };
 
-function Text({ title, range, pane }: { title: string; range: RefRange; pane: ScripturePane }) {
+/**
+ * One source text. With `chapter`, the whole chapter is shown and the passage in hand stands out inside it: what
+ * comes before and after is there to be read, in a quieter tone.
+ */
+function Text({ title, range, chapter, pane }: { title: string; range: RefRange; chapter: RefRange | null; pane: ScripturePane }) {
   const t = useT();
   const hasText = Boolean(pane.usfm.trim() || Object.keys(pane.verses).length);
+  const label = pane.meta?.label || title;
+  const part = (r: RefRange) => <UsfmReferencePane usfm={pane.usfm} range={r} label={label} fallbackVerses={pane.usfm ? extractDraftVerses(pane.usfm, r).verses : pane.verses} />;
   return (
     <div className="fam-text">
-      <p className="fam-text__title">{pane.meta?.label || title}</p>
-      {hasText ? <UsfmReferencePane usfm={pane.usfm} range={range} label={pane.meta?.label || title} fallbackVerses={pane.verses} /> : <p className="pe-hint">{t("fa.loadFailed").replace("{what}", pane.meta?.short || title)}</p>}
+      <p className="fam-text__title">{label}</p>
+      {!hasText ? (
+        <p className="pe-hint">{t("fa.loadFailed").replace("{what}", pane.meta?.short || title)}</p>
+      ) : chapter ? (
+        <>
+          {range.from > chapter.from ? <div className="fam-text__around">{part({ chapter: range.chapter, from: chapter.from, to: range.from - 1 })}</div> : null}
+          <div className="fam-text__passage" aria-label={t("fa.yourPassage")}>
+            <p className="fam-text__mark">{t("fa.yourPassage")}</p>
+            {part(range)}
+          </div>
+          {chapter.to > range.to ? <div className="fam-text__around">{part({ chapter: range.chapter, from: range.to + 1, to: chapter.to })}</div> : null}
+        </>
+      ) : (
+        part(range)
+      )}
     </div>
   );
 }
@@ -74,7 +93,8 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState<SectionId | null>(null);
-  const [wholeChapter, setWholeChapter] = useState(false);
+  /** The whole chapter is read, with the passage marked in it; the person can narrow it to the passage alone. */
+  const [wholeChapter, setWholeChapter] = useState(true);
   const [done, setDone] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [doubt, setDoubt] = useState("");
@@ -199,8 +219,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     const last = Math.max(range.to, ...Object.keys(all).map(Number).filter((n) => Number.isFinite(n)));
     return { chapter: range.chapter, from: 1, to: last };
   }, [range, ult.usfm, ust.usfm]);
-  const shown = wholeChapter && chapterRange ? chapterRange : range;
-  const paneFor = (pane: ScripturePane): ScripturePane => (wholeChapter && chapterRange && pane.usfm ? { ...pane, verses: extractDraftVerses(pane.usfm, chapterRange).verses } : pane);
+  const hasAround = Boolean(range && chapterRange && (chapterRange.to > range.to || range.from > chapterRange.from));
 
   const byVerse = useMemo(() => {
     const groups = new Map<string, ReferenceHelpRow[]>();
@@ -212,7 +231,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   }, [notes.notes]);
 
   function body(id: SectionId) {
-    if (!range || !shown) return null;
+    if (!range) return null;
     if (id === "book" || id === "chapter") {
       return (
         <>
@@ -224,16 +243,21 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     if (id === "passage") {
       return (
         <>
-          <p className="pe-hint">{t("fa.passageHint")}</p>
-          <div className="fam-texts">
-            <Text title={t("se.ultEnglish")} range={shown} pane={paneFor(ult)} />
-            <Text title={t("se.ustEnglish")} range={shown} pane={paneFor(ust)} />
-          </div>
-          {chapterRange && (chapterRange.to > range.to || range.from > 1) ? (
-            <button type="button" className="pe-link" onClick={() => setWholeChapter(!wholeChapter)}>
-              {t(wholeChapter ? "fa.onlyPassage" : "fa.wholeChapter").replace("{n}", String(range.chapter))}
-            </button>
+          <p className="pe-hint">{t(hasAround && wholeChapter ? "fa.chapterHint" : "fa.passageHint")}</p>
+          {hasAround ? (
+            <div className="pe-seg fam-scope" role="radiogroup" aria-label={t("fa.scope")}>
+              <button type="button" role="radio" aria-checked={wholeChapter} className="pe-seg__opt" onClick={() => setWholeChapter(true)}>
+                {t("fa.wholeChapter").replace("{n}", String(range.chapter))}
+              </button>
+              <button type="button" role="radio" aria-checked={!wholeChapter} className="pe-seg__opt" onClick={() => setWholeChapter(false)}>
+                {t("fa.onlyPassage")}
+              </button>
+            </div>
           ) : null}
+          <div className="fam-texts">
+            <Text title={t("se.ultEnglish")} range={range} chapter={hasAround && wholeChapter ? chapterRange : null} pane={ult} />
+            <Text title={t("se.ustEnglish")} range={range} chapter={hasAround && wholeChapter ? chapterRange : null} pane={ust} />
+          </div>
         </>
       );
     }

@@ -1970,10 +1970,10 @@
   "sb.noTeamsOne": "En {book} falta decir qué equipo hace una tarea. Nadie podrá tomarla hasta entonces.",
   "fa.lede": "Lee cada parte en orden y márcala al terminarla. Si lo dejas a medias, se retoma donde quedaste.",
   "fa.progress": "{done} de {total} leído",
-  "fa.passage": "El pasaje, en sus dos textos",
+  "fa.passage": "El pasaje en su capítulo",
   "fa.passageHint": "El literal muestra cómo lo dice el original; el simple, qué quiere decir. Compáralos versículo por versículo.",
-  "fa.wholeChapter": "Ver el capítulo {n} completo",
-  "fa.onlyPassage": "Ver solo el pasaje",
+  "fa.wholeChapter": "El capítulo {n} completo",
+  "fa.onlyPassage": "Solo mi pasaje",
   "fa.read": "leído",
   "fa.readNext": "Leído, seguir",
   "fa.readLast": "Leído",
@@ -2028,5 +2028,8 @@
   "se.written": "{n} de {total} con texto",
   "se.sourceWhole": "ver todo el pasaje",
   "se.sourceVerseOnly": "ver solo el versículo",
-  "se.finishShort": "Terminé"
+  "se.finishShort": "Terminé",
+  "fa.scope": "Cuánto del capítulo se muestra",
+  "fa.yourPassage": "Tu pasaje",
+  "fa.chapterHint": "Lee el capítulo entero para entender de dónde viene y a dónde va tu pasaje, que está marcado. El literal muestra cómo lo dice el original; el simple, qué quiere decir."
 }
