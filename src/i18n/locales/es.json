@@ -2202,5 +2202,7 @@
   "af.chapterN": "Capítulo {n}",
   "af.theWords": "Tu traducción de lo resaltado",
   "af.theMarked": "lo resaltado en la referencia",
-  "af.theTerm": "el término"
+  "af.theTerm": "el término",
+  "af.draftLabel": "Borrador {res}",
+  "af.draftSoFar": "Lo que el borrador del grupo tiene hasta ahora."
 }

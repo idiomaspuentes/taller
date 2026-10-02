@@ -130,6 +130,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** «Revisar» (the item in hand) or «Capítulo» (whole chapters of a text, to read around it). */
   const [pane, setPane] = useState<"review" | "chapter">("review");
   const [readChapter, setReadChapter] = useState(0);
+  /** The text read in «Leer el capítulo»: the original, an English text, or what the team's draft has so far. */
+  const [chapterText, setChapterText] = useState<"orig" | "ult" | "ust" | "draft">("orig");
   /** The article open to be read in full: its path, and its text once it arrives (`null` = it could not be read). */
   const [reading, setReading] = useState<{ path: string; body?: string | null } | null>(null);
   const [stepDone, setStepDone] = useState(false);
@@ -496,6 +498,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [item?.id, reference?.id, refVerse]);
   /** What is marked in the reference, to say in the draft which words to look for. */
   const markedWords = useMemo(() => wordsAt(refVerse, refMarked), [refVerse, refMarked]);
+  const chapterTexts = useMemo(
+    () => (data ? [...data.references, { id: "draft" as const, label: t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL"), book: data.bookDraft }] : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data],
+  );
+  const chapterSource = chapterTexts.find((row) => row.id === chapterText) ?? chapterTexts[0];
   const lastChapter = useMemo(() => Math.max(0, ...Object.keys(reference?.book ?? {}).map((key) => Number(key.split(":")[0]))), [reference]);
   // The article is read when its tab is opened, and again for each new figure while it stays open.
   useEffect(() => {
@@ -556,8 +564,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         <section className="af-chapter">
           <div className="af-ref__bar">
             <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
-              {data.references.map((row) => (
-                <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
+              {chapterTexts.map((row) => (
+                <button key={row.id} type="button" role="tab" aria-selected={chapterSource?.id === row.id} onClick={() => setChapterText(row.id)}>
                   {row.id === "orig" ? t("af.tabOriginal") : row.label}
                 </button>
               ))}
@@ -574,8 +582,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               <ChevronDown size={14} aria-hidden />
             </label>
           </div>
-          <div className={reference?.id === "orig" ? "af-chapter__text af-orig" : "af-chapter__text"} lang={reference?.id === "orig" ? "grc" : undefined}>
-            {Object.entries(reference?.book ?? {})
+          {chapterSource?.id === "draft" ? <p className="af-hint">{t("af.draftSoFar")}</p> : null}
+          <div className={chapterSource?.id === "orig" ? "af-chapter__text af-orig" : "af-chapter__text"} lang={chapterSource?.id === "orig" ? "grc" : undefined}>
+            {Object.entries(chapterSource?.book ?? {})
               .filter(([key]) => Number(key.split(":")[0]) === (readChapter || item.chapter))
               .sort(([a], [b]) => Number(a.split(":")[1]) - Number(b.split(":")[1]))
               .map(([key, text]) => {

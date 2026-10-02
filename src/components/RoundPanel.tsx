@@ -22,6 +22,8 @@ export function RoundPanel(props: {
   const { summary } = props;
   const [open, setOpen] = useState(true);
   if (!summary.items.length) return null;
+  // Nothing to say yet (no meeting needed, nothing to close): no empty box taking room.
+  if (!props.stepDone && !(summary.complete && props.closesHere) && !summary.meeting.length) return null;
 
   return (
     <section className="round" aria-label={t("round.aria")}>
