@@ -7695,3 +7695,21 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .af-res { padding: 0 0.5rem; border-radius: 999px; background: var(--accent-600, var(--primary)); color: #fff; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.02em; }
 /* The header of the refining round stays at the top while the card scrolls: the way back, the glossary and the notes are always at hand. */
 .af--round > .th { position: sticky; top: -0.75rem; z-index: 20; }
+/* Refining, the answer always at hand: one bar at the bottom with the arrows at its ends. */
+.af-bar-answer { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0.375rem; }
+.af-bar-answer__yes { min-height: 44px; }
+.af-bar-answer > :nth-child(3) { min-height: 44px; }
+/* The draft as text whose words are tapped: only what is chosen gets a frame. */
+.af-draft__words .af-words { gap: 0.125rem 0.125rem; line-height: 1.7; }
+.af-draft__words .af-word--tap { min-height: 0; min-width: 0; padding: 0.0625rem 0.1875rem; border: 1px solid transparent; border-radius: 4px; background: none; font-size: 1.0625rem; text-decoration: underline dotted var(--border-strong); text-underline-offset: 4px; }
+.af-draft__words .af-word--tap[data-selected="true"] { border-color: var(--accent-500); background: var(--accent-100); text-decoration: none; }
+/* How the team stands, before answering. */
+.af-team { padding: 0.375rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); font-size: 0.8125rem; }
+.af-team summary { min-height: 28px; display: flex; align-items: center; color: var(--text-muted); cursor: pointer; }
+.af-team[data-state="agreed"] { background: var(--success-100); }
+.af-team[data-state="agreed"] summary { color: var(--success-700); font-weight: 600; }
+.af-team[data-state="disputed"] { background: var(--warning-100); }
+.af-team[data-state="disputed"] summary { color: var(--warning-700); font-weight: 600; }
+.af-guide summary { min-height: 28px; font-size: 0.8125rem; color: var(--primary); cursor: pointer; }
+.af-help-pane { display: grid; gap: 0.5rem; font-size: 0.9375rem; }
+.af-focus__top .af-count { font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
