@@ -164,40 +164,67 @@ pantalla muestra la introducción al libro y al capítulo. Pruebas: `verify:hand
 **Listo cuando:** se crea Tito con la plantilla del FCR en un minuto, el Salmo 119 se puede partir,
 y cada tramo avanza solo.
 
-### Fase 5 · Armonización
-- Tres pistas en la plantilla (Notas + Academia, Palabras, Preguntas).
-- Herramienta de **lista de comprobación por ítem**, con las listas A a F como datos.
-- **Cita generada** de cada nota desde el TPL alineado; marcar las notas de un versículo como
-  pendientes cuando Afinación cambia ese versículo.
-- Las tres salidas de un «no»: corregir, crear (nota o artículo nuevo), **pedir el cambio a
-  Afinación** con la razón; el ítem queda «en consulta».
-- Paso final «Acuerdo del equipo» con la regla `consensus` de la fase 3.
-- Corregir una cita seleccionando palabras del TPL (deducir el original por la alineación).
+### Fase 5 · Armonización — hecha (2 de octubre de 2026)
 
-**Listo cuando:** la corrida de Tito 2 en Armonización se puede hacer entera en la app.
+**Lo que quedó:** las tres pistas de la plantilla (Notas + Academia, Palabras, Preguntas) y la herramienta de
+**lista de comprobación por ítem** (`#/solver/checklist`), con las preguntas de sí/no como datos del paso. Cada ítem
+se muestra junto al TPL (y al TPS), con la **cita generada** desde el texto alineado. Un «no» pide qué se hizo: «lo
+corregí», «creé lo que faltaba» o «pedí el cambio a quien mantiene el texto» (queda **en consulta**, avisa en la
+conversación y no deja cerrar el paso). Las respuestas llevan la huella del versículo: si Afinación lo cambia, quedan
+pendientes otra vez. La lista de Academia recorre solo las notas que enlazan un artículo (`only: linked`). Armonizar
+Palabras tiene una subtarea por capítulo (`everyUnit`). Las listas muestran las notas y preguntas **del equipo** (el
+borrador grupal de ese trabajo). Cierra con «Acuerdo del equipo». Pruebas: `verify:checklist`.
 
-### Fase 6 · Validación y Publicación
-- Revisión pastoral **a ciegas**: las inquietudes de los demás se ven al entregar el reporte propio.
-- Regla del aval configurable (hoy: objeciones a la vista; sin consenso, mayoría).
-- **Aval pendiente:** cada observación va a su dueño y la unidad regresa al mismo comité.
-- Publicación por unidad, con pasos `automatic` (mini-apps de comprobación y de publicación).
+**Límites:** corregir una cita seleccionando palabras del TPL no está hecho (hoy se corrige en el editor de ayudas).
 
-### Fase 7 · Glosario y registro de traducciones
-- Repositorio `<idioma>_tg` y lectura/escritura desde Taller ([GLOSARIO_DOOR43.md](GLOSARIO_DOOR43.md)).
-- Crear una entrada con un toque sobre una palabra alineada; filtro de palabras pequeñas.
-- Mostrar las entradas en contexto, buscador y «cambios recientes».
-- Índice de «cómo se tradujo antes» desde las alineaciones de todos los libros.
-- Proponer la alineación con el puente por el inglés.
+### Fase 6 · Validación y Publicación — hecha (2 de octubre de 2026)
 
-Puede adelantarse en paralelo desde la fase 3: no depende de las fases 4 a 6.
+**Validación:** revisión pastoral **a ciegas** (nadie ve otro reporte antes de entregar el suyo), decisión del comité
+por la regla del paso (`decisionRule`: mayoría o unanimidad, con las objeciones a la vista) y «dejar pendiente», que
+envía cada inquietud a quien mantiene ese recurso. Al conceder el aval se guarda **qué se avaló**, versículo por
+versículo y fila por fila. Pruebas: `verify:endorsement`.
 
-### Fase 8 · Abrir el motor a otros procesos
-- Interfaz de **tipo de trabajo** (de dónde salen las unidades, qué herramientas, dónde se entrega);
-  mover lo de la Biblia y las ayudas a ese adaptador.
-- **Espera entre proyectos** («lo que el FCR ya publicó»).
-- Segunda plantilla: traducción a una lengua minoritaria.
-- Actualizar un proyecto a una versión nueva de su plantilla, con reglas seguras.
-- Un solo editor de tareas para Plantillas y para el proyecto.
+**Publicación:** una tarea `publicar` por unidad con dos pasos `automatic`. Las comprobaciones corren al abrir y, si
+todo pasa, el paso se completa solo: versículos completos, textos alineados, filas de ayudas enteras y **que sea
+exactamente lo avalado**. Si algo falla, la publicación se detiene y se avisa al dueño. Publicar pasa la unidad a la
+rama publicada de cada recurso por un pull request, sin tocar el resto del archivo; con rama protegida, la solicitud
+queda abierta para quien tenga permiso. Una tarea con todos sus pasos automáticos se entrega sola. Pruebas:
+`verify:unit-publish`.
+
+**Límites:** se publican los textos y las tablas (notas y preguntas); los artículos de Palabras y Academia todavía no.
+
+### Fase 7 · Glosario y registro de traducciones — hecha en su primera versión (2 de octubre de 2026)
+
+**Lo que quedó:** el glosario vive en `<idioma>_tg` de la organización de contenido, con el formato de
+[GLOSARIO_DOOR43.md](GLOSARIO_DOOR43.md); el repositorio se crea con la primera entrada. Se abre **en el pasaje**
+(desde el editor de texto y desde Afinación) o se **busca**; «Por acordar» lista las propuestas. Una entrada nace con
+un toque sobre una palabra del inglés alineado: la app llega a la palabra del original y deja fuera artículos,
+preposiciones, conjunciones, partículas y prefijos hebreos; varios toques forman una expresión. Cada entrada muestra
+**cómo se tradujo antes** en el libro (calculado desde la alineación) y dónde el texto **se aparta** de una decisión
+acordada. Crear o trabajar una propuesta es un commit; cambiar lo acordado es un pull request. Pruebas:
+`verify:glossary`.
+
+**Límites:** «cómo se tradujo antes» mira el libro en curso, no todos (falta el índice generado); falta la vista de
+«cambios recientes»; las propuestas de cambio se aprueban hoy en Door43; proponer la alineación con el puente por el
+inglés no está hecho.
+
+### Fase 8 · Abrir el motor a otros procesos — hecha en parte (2 de octubre de 2026)
+
+**Hecho:**
+- **Actualizar un proyecto** a la versión nueva de su proceso: aviso en «Fases y tareas»; agrega fases, tareas y pasos
+  que faltan y completa ajustes, sin cambiar ni quitar nada del proyecto. Prueba: `verify:workflow-upgrade`.
+- **Espera entre proyectos:** una regla `{ "taskId": "publicar", "scope": "chapter", "source": true }` espera a que el
+  **proyecto fuente** (el mismo libro, en la organización del paquete de recursos de origen) cierre esa tarea para ese
+  capítulo.
+- **Segundo proceso:** `processes/lengua-minoritaria.json` (borrador y revisión del equipo → comunidad → consultor →
+  publicación) funciona con el mismo motor y sin código propio. No está activado en `taller.config.ts`. Prueba:
+  `verify:second-process`.
+
+**Pendiente:**
+- La interfaz de **tipo de trabajo**: los recursos (`tpl`, `tps`, `notas`…) y sus nombres siguen fijos en el código.
+  El segundo proceso usa `tpl` para su texto y lo vería rotulado «TPL».
+- **Un solo editor de tareas** para Plantillas y para el proyecto (los campos nuevos de un paso se editan hoy en el
+  JSON del paquete).
 
 ## 4. Orden y dependencias
 

@@ -950,6 +950,7 @@ export function App() {
             ctxEncoded={route.ctx}
             mode={route.mode === "publicar" ? "publicar" : "comprobar"}
             aligned={route.aligned.split(",").filter(Boolean)}
+            needsEndorsement={route.endorsed !== "no"}
             announce={announce}
             onClose={onSolverClose}
           />

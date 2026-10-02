@@ -22,6 +22,8 @@ type Props = {
   mode: "comprobar" | "publicar";
   /** Texts that must be aligned to be published (the process says which). */
   aligned: string[];
+  /** The unit must be what a committee endorsed. A process without a committee says no. */
+  needsEndorsement: boolean;
   onClose: () => void;
   announce: (msg: string) => void;
 };
@@ -50,7 +52,7 @@ const OUTCOME_KEY: Record<PublishOutcome["status"], MessageKey> = { published: "
  * completed without anybody marking it. A person only steps in when a check fails (it goes to whoever maintains
  * that resource) or to confirm the publication.
  */
-export function PublishUnitView({ ctxEncoded, mode, aligned, onClose, announce }: Props) {
+export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, onClose, announce }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [session] = useState<GtSession | undefined>(() => loadSession());
@@ -93,8 +95,8 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, onClose, announce }
       const wanted = [...new Set((peek.task?.rules ?? []).map((rule) => rule.resource as string))];
       const loaded = await loadUnitToPublish({ session, ctx: decoded, resources: wanted.length ? wanted : ["tpl", "tps", "notas", "preguntas"] });
       setUnit(loaded);
-      const endorsement = await loadEndorsement(session, loaded).catch(() => null);
-      const found = unitProblems(loaded, { aligned: alignedKey.split(",").filter(Boolean), endorsement: endorsement?.fingerprints ?? null, needsEndorsement: true });
+      const endorsement = needsEndorsement ? await loadEndorsement(session, loaded).catch(() => null) : null;
+      const found = unitProblems(loaded, { aligned: alignedKey.split(",").filter(Boolean), endorsement: endorsement?.fingerprints ?? null, needsEndorsement });
       setProblems(found);
       const done = decoded.pmOrg && decoded.issueNumber && decoded.stepId ? await stepIsDone({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false) : false;
       setStepDone(done);
@@ -108,7 +110,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, onClose, announce }
     } finally {
       setBusy(false);
     }
-  }, [ctxEncoded, session, mode, alignedKey, finishStep, announce]);
+  }, [ctxEncoded, session, mode, alignedKey, needsEndorsement, finishStep, announce]);
 
   useEffect(() => {
     void load();
@@ -222,9 +224,11 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, onClose, announce }
                   <span aria-hidden>✓</span> {label(r.resource)}: {r.draft ? t(r.kind === "usfm" ? "pu.okText" : "pu.okTable") : t("pu.o.nothing")}
                 </li>
               ))}
-              <li data-ok="true">
-                <span aria-hidden>✓</span> {t("pu.okEndorsed")}
-              </li>
+              {needsEndorsement ? (
+                <li data-ok="true">
+                  <span aria-hidden>✓</span> {t("pu.okEndorsed")}
+                </li>
+              ) : null}
             </ul>
           )}
           {mode === "comprobar" && stepDone ? <p className="round__done">{t("pu.checksPassed")}</p> : null}

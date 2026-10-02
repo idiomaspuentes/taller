@@ -22,10 +22,12 @@ export function normalizeWaitRules(raw: unknown): WaitRule[] | undefined {
     const phaseId = String(item.phaseId ?? "").trim();
     if ((taskId ? 1 : 0) + (phaseId ? 1 : 0) !== 1) continue;
     const scope: WaitScope = isWaitScope(item.scope) ? item.scope : "portion";
-    const key = `${taskId ? "t" : "p"}:${taskId || phaseId}:${scope}`;
+    // A wait on the source project names one of its tasks; it has no phases of ours to point at.
+    const source = item.source === true && Boolean(taskId);
+    const key = `${source ? "s" : taskId ? "t" : "p"}:${taskId || phaseId}:${scope}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    rules.push(taskId ? { taskId, scope } : { phaseId, scope });
+    rules.push(source ? { taskId, scope, source: true } : taskId ? { taskId, scope } : { phaseId, scope });
   }
   return rules.length ? rules : undefined;
 }

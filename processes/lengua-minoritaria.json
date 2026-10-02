@@ -1,0 +1,417 @@
+{
+  "schema": "taller-process-1",
+  "id": "lm",
+  "name": "Traducción a una lengua minoritaria",
+  "workflows": [
+    {
+      "id": "lm-biblia",
+      "name": "Biblia en una lengua minoritaria",
+      "names": {
+        "pt": "Bíblia em uma língua minoritária"
+      },
+      "version": 1,
+      "description": "Un equipo de hablantes traduce un libro desde los recursos que el proyecto fuente ya publicó, lo comprueba con su comunidad y con un consultor, y lo publica capítulo por capítulo.",
+      "descriptions": {
+        "pt": "Uma equipe de falantes traduz um livro a partir dos recursos que o projeto fonte já publicou, verifica com sua comunidade e com um consultor, e publica capítulo por capítulo."
+      },
+      "phases": [
+        {
+          "id": "lm-borrador",
+          "name": "Borrador y revisión del equipo",
+          "names": {
+            "pt": "Rascunho e revisão da equipe"
+          },
+          "slug": "borrador",
+          "order": 0
+        },
+        {
+          "id": "lm-comunidad",
+          "name": "Comprobación con la comunidad",
+          "names": {
+            "pt": "Verificação com a comunidade"
+          },
+          "slug": "comunidad",
+          "order": 1
+        },
+        {
+          "id": "lm-consultor",
+          "name": "Consultor",
+          "names": {
+            "pt": "Consultor"
+          },
+          "slug": "consultor",
+          "order": 2
+        },
+        {
+          "id": "lm-publicacion",
+          "name": "Publicación",
+          "names": {
+            "pt": "Publicação"
+          },
+          "slug": "publicacion",
+          "order": 3
+        }
+      ],
+      "tasks": [
+        {
+          "id": "traducir",
+          "name": "Traducir",
+          "names": {
+            "pt": "Traduzir"
+          },
+          "phaseId": "lm-borrador",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "waitsFor": [
+            {
+              "taskId": "publicar",
+              "scope": "chapter",
+              "source": true
+            }
+          ],
+          "steps": [
+            {
+              "id": "estudiar",
+              "name": "Estudiar el pasaje",
+              "names": {
+                "pt": "Estudar a passagem"
+              },
+              "actionLabel": "Estudiar",
+              "actionLabels": {
+                "pt": "Estudar"
+              },
+              "description": "Lee el pasaje en los textos fuente, con sus notas y preguntas.",
+              "descriptions": {
+                "pt": "Leia a passagem nos textos fonte, com suas notas e perguntas."
+              },
+              "solverAppId": "lm-estudiar",
+              "closing": "self",
+              "scope": "chapter-once"
+            },
+            {
+              "id": "borrador",
+              "name": "Borrador",
+              "names": {
+                "pt": "Rascunho"
+              },
+              "actionLabel": "Traducir",
+              "actionLabels": {
+                "pt": "Traduzir"
+              },
+              "description": "Escribe tu traducción de la porción.",
+              "descriptions": {
+                "pt": "Escreva sua tradução da porção."
+              },
+              "solverAppId": "lm-traducir",
+              "closing": "self"
+            },
+            {
+              "id": "pares",
+              "name": "Revisión en pares",
+              "names": {
+                "pt": "Revisão em pares"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Otra persona del equipo revisa el borrador contigo.",
+              "descriptions": {
+                "pt": "Outra pessoa da equipe revisa o rascunho com você."
+              },
+              "solverAppId": "lm-pares",
+              "closing": "approval",
+              "claimMode": "exclusive",
+              "includeAuthorInApproval": true,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador"
+              ]
+            },
+            {
+              "id": "grupal",
+              "name": "Revisión del equipo",
+              "names": {
+                "pt": "Revisão da equipe"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "El equipo lee la porción y la aprueba.",
+              "descriptions": {
+                "pt": "A equipe lê a porção e a aprova."
+              },
+              "solverAppId": "lm-equipo",
+              "closing": "approval",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 4,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador",
+                "pares"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "comunidad",
+          "name": "Comprobar con la comunidad",
+          "names": {
+            "pt": "Verificar com a comunidade"
+          },
+          "phaseId": "lm-comunidad",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "everyUnit": true,
+          "waitsFor": [
+            {
+              "taskId": "traducir",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual",
+          "steps": [
+            {
+              "id": "preguntas",
+              "name": "Preguntas a la comunidad",
+              "names": {
+                "pt": "Perguntas à comunidade"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "description": "Una persona del equipo lee el texto con la comunidad y registra cómo respondieron cada pregunta.",
+              "descriptions": {
+                "pt": "Uma pessoa da equipe lê o texto com a comunidade e registra como responderam a cada pergunta."
+              },
+              "solverAppId": "lm-lista",
+              "closing": "checklist",
+              "scope": "unit",
+              "checklist": [
+                {
+                  "id": "esperado",
+                  "text": "¿Respondieron lo esperado?",
+                  "texts": {
+                    "pt": "Responderam o esperado?"
+                  }
+                },
+                {
+                  "id": "natural",
+                  "text": "¿El texto les sonó natural?",
+                  "texts": {
+                    "pt": "O texto soou natural para eles?"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "consultor",
+          "name": "Revisión del consultor",
+          "names": {
+            "pt": "Revisão do consultor"
+          },
+          "phaseId": "lm-consultor",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "everyUnit": true,
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "taskId": "comunidad",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual",
+          "steps": [
+            {
+              "id": "revision",
+              "name": "Revisión del consultor",
+              "names": {
+                "pt": "Revisão do consultor"
+              },
+              "actionLabel": "Aprobar",
+              "actionLabels": {
+                "pt": "Aprovar"
+              },
+              "description": "El consultor revisa el capítulo con el equipo y lo aprueba.",
+              "descriptions": {
+                "pt": "O consultor revisa o capítulo com a equipe e o aprova."
+              },
+              "closing": "approval",
+              "scope": "unit",
+              "claimMode": "exclusive"
+            }
+          ]
+        },
+        {
+          "id": "publicar",
+          "name": "Publicar",
+          "names": {
+            "pt": "Publicar"
+          },
+          "phaseId": "lm-publicacion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "taskId": "consultor",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual",
+          "steps": [
+            {
+              "id": "comprobar",
+              "name": "Comprobaciones",
+              "names": {
+                "pt": "Verificações"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "description": "Formato y que no falte ningún versículo. Se completa solo cuando todo pasa.",
+              "descriptions": {
+                "pt": "Formato e que não falte nenhum versículo. Completa-se sozinho quando tudo passa."
+              },
+              "closing": "automatic",
+              "scope": "unit",
+              "solverAppId": "lm-publicar"
+            },
+            {
+              "id": "publicar",
+              "name": "Publicar",
+              "names": {
+                "pt": "Publicar"
+              },
+              "actionLabel": "Publicar",
+              "actionLabels": {
+                "pt": "Publicar"
+              },
+              "description": "El capítulo aprobado pasa a la rama publicada.",
+              "descriptions": {
+                "pt": "O capítulo aprovado passa para o ramo publicado."
+              },
+              "closing": "automatic",
+              "scope": "unit",
+              "solverAppId": "lm-publicar"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "id": "lm-estudiar",
+      "name": "Estudiar el pasaje",
+      "description": "El pasaje en los textos fuente, con sus ayudas. Solo lectura.",
+      "launchUrl": "/#/solver/familiarize?ctx={context}",
+      "kind": "app",
+      "openMode": "tab"
+    },
+    {
+      "id": "lm-traducir",
+      "name": "Traducir",
+      "description": "Editor de la traducción, por porción.",
+      "launchUrl": "/#/solver/scripture?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "resources": [
+        "tpl"
+      ]
+    },
+    {
+      "id": "lm-pares",
+      "name": "Revisión en pares",
+      "description": "Otra persona revisa el borrador.",
+      "launchUrl": "/#/solver/review?mode=pair&ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true
+    },
+    {
+      "id": "lm-equipo",
+      "name": "Revisión del equipo",
+      "description": "El equipo revisa el borrador.",
+      "launchUrl": "/#/solver/review?mode=group&ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true
+    },
+    {
+      "id": "lm-lista",
+      "name": "Preguntas a la comunidad",
+      "description": "Cada pregunta del capítulo, con lo que respondió la comunidad.",
+      "launchUrl": "/#/solver/checklist?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true,
+      "stepParams": {
+        "preguntas": {
+          "items": "preguntas",
+          "text": "tpl"
+        }
+      }
+    },
+    {
+      "id": "lm-publicar",
+      "name": "Publicación de un capítulo",
+      "description": "Comprueba el capítulo aprobado y lo pasa a la rama publicada.",
+      "launchUrl": "/#/solver/publicar?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true,
+      "stepParams": {
+        "comprobar": {
+          "mode": "comprobar",
+          "endorsed": "no"
+        },
+        "publicar": {
+          "mode": "publicar",
+          "endorsed": "no"
+        }
+      }
+    }
+  ],
+  "glossary": {
+    "pt": {}
+  }
+}

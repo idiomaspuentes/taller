@@ -116,3 +116,24 @@ Lo que sigue dentro del código, y en qué fase del plan sale
 | **El motor todavía no obedece `closing`, `checklist` ni `scope`**: los lee, los valida y los guarda, pero un paso se sigue completando con «Terminé» o «Aprobar» | `stepClaim.ts` | Fases 3 a 5 |
 | **Publicar una versión** del texto | `PublishView`, `release.ts` | Fase 6 |
 | Textos de ayuda en español dentro del modelo | `types.ts` | Fase 8 |
+
+## Ajustes agregados el 2 de octubre de 2026
+
+| Dónde | Campo | Qué dice |
+|---|---|---|
+| Tarea | `everyUnit: true` | La tarea recorre **cada unidad** de su alcance (cada capítulo o tramo), tenga o no artículos pendientes. Para revisiones de lo que ya existe. |
+| Tarea | `waitsFor[].source: true` | La tarea que se espera es del **proyecto fuente**: el mismo libro, en la organización del paquete de recursos de origen. Libre solo cuando ese proyecto la cerró para el mismo capítulo. |
+| Paso | `closing: "automatic"` | Lo completa su herramienta, sin que nadie lo marque. Una tarea con todos sus pasos automáticos se entrega sola. |
+| Herramienta | `stepParams.<paso>.only: "linked"` | (Lista de comprobación) Recorre solo los ítems que enlazan un artículo. |
+| Herramienta | `stepParams.<paso>.aligned: "tpl,tps"` | (Publicación) Textos que deben estar alineados para publicarse. |
+| Herramienta | `stepParams.<paso>.endorsed: "no"` | (Publicación) El proceso no tiene comité: no se exige el aval. |
+
+Un catálogo de herramientas guardado por la organización recibe solo los parámetros que le falten; lo que la
+organización cambió se respeta.
+
+**Un proyecto y la versión de su proceso.** El proyecto recuerda con qué versión se creó (`workflowVersion`). Cuando el
+paquete sube de versión, «Fases y tareas» ofrece actualizarlo: se agregan fases, tareas y pasos nuevos y se completan
+ajustes que faltaban. Nada se cambia ni se quita.
+
+**Otro proceso.** `processes/lengua-minoritaria.json` es un segundo paquete de ejemplo. Para usarlo se importa en
+`taller.config.ts` y se agrega a `processes`. `npm run verify:second-process` comprueba que el motor lo ejecuta.

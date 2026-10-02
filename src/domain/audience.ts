@@ -31,6 +31,7 @@ export type AudienceProject = {
   board: Pick<AssignmentsDoc, "teams" | "phases">;
   /** Open subtareas of the project; needed to know what still waits. */
   openIssues?: DcsIssue[];
+  sourceIssues?: DcsIssue[];
 };
 
 /** Member of the org team linked to the task (managers do not count: they see everything anyway). */
@@ -63,7 +64,7 @@ export function audienceOf(params: {
 
   const level = resolveLevel(params.myLevel, task?.orgTeamName, session.username);
   let hold: AudienceHold | undefined;
-  const blocks = project.openIssues ? waitBlocks(issue, project.board, project.openIssues) : [];
+  const blocks = project.openIssues ? waitBlocks(issue, project.board, project.openIssues, project.sourceIssues) : [];
   if (blocks.length) {
     hold = { kind: "espera", text: waitReason(blocks, project.board) };
   } else if (!decision && task?.minLevel && !meetsTeamLevel(params.myLevel, task.orgTeamName, session.username, task.minLevel)) {

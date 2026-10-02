@@ -5,6 +5,7 @@ import {
   isIssueAssignedTo,
   isIssueUnassigned,
   listMyIssues,
+  listProjectIssues,
   listProjectOpenIssues,
 } from "../dcs/issues";
 import { loadAssignmentsFromDcs, listPmProjects } from "../dcs/persist";
@@ -30,6 +31,7 @@ import {
 import type { AssignmentsDoc, ProjectTask, TaskStep } from "./types";
 import { parseWorkOrderMarker } from "./workOrder";
 import { meetsTeamLevel, type LevelSource } from "./levels";
+import { resolveSourcePackage } from "./sourcePackage";
 
 export type MyTasksFilter = "mine" | "all" | "available";
 
@@ -45,6 +47,8 @@ export type MyTasksProjectBucket = {
    * tasks are still waiting for others (see `waits.ts`); absent = unknown.
    */
   openIssues?: DcsIssue[];
+  /** Every subtarea of the source project, when the plan waits on it (see `WaitRule.source`); absent = unknown. */
+  sourceIssues?: DcsIssue[];
 };
 
 /**
@@ -211,6 +215,13 @@ export async function loadMyTasksProjects(params: {
         ? await listProjectOpenIssues(session, pmOrg, projectId).catch(() => undefined)
         : undefined;
 
+    // A plan that waits on the source project needs that project's subtareas: the same book, in the organization
+    // the source resources come from.
+    const waitsOnSource = doc.teams.some((t) => t.waitsFor?.some((rule) => rule.source));
+    const sourceIssues = waitsOnSource
+      ? await listProjectIssues(session, resolveSourcePackage(doc.settings).owner, projectId).then((found) => found.issues).catch(() => undefined)
+      : undefined;
+
     buckets.push({
       projectId: doc.projectId || projectId,
       title: doc.title || titleById.get(projectId.toUpperCase()) || projectId,
@@ -218,6 +229,7 @@ export async function loadMyTasksProjects(params: {
       board: doc,
       issues,
       openIssues,
+      sourceIssues,
     });
   }
 

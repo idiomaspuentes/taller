@@ -2,7 +2,10 @@
 
 Borrador del 1 de octubre de 2026. Cómo mejorar el glosario de decisiones de traducción y cómo
 guardarlo en Door43 como un tipo de recurso nuevo. La idea del glosario está en la sección 12 de
-[PLANTILLA_FCR.md](PLANTILLA_FCR.md). Nada de esto está construido.
+[PLANTILLA_FCR.md](PLANTILLA_FCR.md). La primera versión está construida (2 de octubre de 2026): el
+repositorio, las entradas, el toque sobre el inglés alineado, la vista del pasaje, el buscador y «cómo se tradujo
+antes» en el libro en curso. Faltan el índice de todos los libros, los cambios recientes y el informe de consistencia
+como comprobación antes de publicar.
 
 **Comprobado hoy en Door43:** el catálogo reconoce una lista cerrada de 25 temas («Aligned Bible»,
 «TSV Translation Notes», «TSV Translation Words Links», «Translation Words»…). Ninguno es un

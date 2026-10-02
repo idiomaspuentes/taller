@@ -23,7 +23,8 @@ export function pruneWaitRules(task: ProjectTask, board: Pick<AssignmentsDoc, "t
   const taskIds = new Set(board.teams.map((t) => t.id));
   const phaseIds = new Set(board.phases.map((p) => p.id));
   const kept = (task.waitsFor ?? []).filter((rule) =>
-    rule.taskId ? taskIds.has(rule.taskId) && rule.taskId !== task.id : Boolean(rule.phaseId && phaseIds.has(rule.phaseId)),
+    // A wait on the source project names a task this project does not have: it always stays.
+    rule.source ? Boolean(rule.taskId) : rule.taskId ? taskIds.has(rule.taskId) && rule.taskId !== task.id : Boolean(rule.phaseId && phaseIds.has(rule.phaseId)),
   );
   return kept.length ? kept : undefined;
 }
@@ -32,7 +33,7 @@ export function pruneWaitRules(task: ProjectTask, board: Pick<AssignmentsDoc, "t
 export function waitWouldLoop(board: Pick<AssignmentsDoc, "teams">, taskId: string, rule: WaitRule): boolean {
   const byId = new Map(board.teams.map((t) => [t.id, t]));
   const targets = (r: WaitRule): string[] =>
-    r.taskId ? [r.taskId] : board.teams.filter((t) => t.phaseId === r.phaseId).map((t) => t.id);
+    r.source ? [] : r.taskId ? [r.taskId] : board.teams.filter((t) => t.phaseId === r.phaseId).map((t) => t.id);
   const stack = targets(rule);
   const seen = new Set<string>();
   while (stack.length) {
@@ -75,9 +76,23 @@ function sameScope(scope: WaitScope, waiting: DcsIssue, blocker: DcsIssue, units
 
 export type WaitBlock = {
   rule: WaitRule;
-  /** Open subtareas that still hold this one back. */
+  /** Open subtareas that still hold this one back. Empty for a wait on the source project that has not started there. */
   issues: DcsIssue[];
 };
+
+/**
+ * A wait on the source project: free only when that project has the task for the same chapter and closed it.
+ * `sourceIssues` are all its subtareas, open and closed; `undefined` = they could not be read, so it still waits.
+ */
+function sourceHolds(rule: WaitRule, issue: DcsIssue, sourceIssues: DcsIssue[] | undefined): DcsIssue[] | null {
+  if (!sourceIssues) return [];
+  // Passages are numbered by each project: across projects only the chapter can be compared.
+  const scope: WaitScope = rule.scope === "all" ? "all" : "chapter";
+  const theirs = sourceIssues.filter((other) => issueTaskId(other) === rule.taskId && sameScope(scope, issue, other));
+  if (!theirs.length) return [];
+  const open = theirs.filter((other) => other.state !== "closed");
+  return open.length ? open : null;
+}
 
 /**
  * What holds `issue` back. `openIssues` are the OPEN subtareas of the project.
@@ -87,12 +102,19 @@ export function waitBlocks(
   issue: DcsIssue,
   board: Pick<AssignmentsDoc, "teams"> & Partial<Pick<AssignmentsDoc, "settings">>,
   openIssues: DcsIssue[],
+  /** Every subtarea of the source project, for the rules that wait on it (see `WaitRule.source`). */
+  sourceIssues?: DcsIssue[],
 ): WaitBlock[] {
   const taskId = issueTaskId(issue);
   const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
   if (!task?.waitsFor?.length) return [];
   const blocks: WaitBlock[] = [];
   for (const rule of task.waitsFor) {
+    if (rule.source) {
+      const held = sourceHolds(rule, issue, sourceIssues);
+      if (held) blocks.push({ rule, issues: held });
+      continue;
+    }
     const targetIds = new Set(
       rule.taskId ? [rule.taskId] : board.teams.filter((t) => t.phaseId === rule.phaseId).map((t) => t.id),
     );
@@ -119,6 +141,7 @@ export function waitReason(
 ): string {
   if (!blocks.length) return "";
   const first = blocks[0]!;
+  if (first.rule.source) return `Espera a que el proyecto fuente lo publique${blocks.length > 1 ? ` y ${blocks.length - 1} más` : ""}`;
   const name = first.rule.taskId
     ? board.teams.find((t) => t.id === first.rule.taskId)?.name || "otra tarea"
     : board.phases.find((p) => p.id === first.rule.phaseId)?.name || "otra fase";

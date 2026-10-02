@@ -354,6 +354,12 @@ export type WaitRule = {
   taskId?: string;
   phaseId?: string;
   scope: WaitScope;
+  /**
+   * The awaited task is not of this project: it is a task of the **source project**, the project of the same book
+   * in the organization the source resources come from (`settings.sourcePackage`). The work is free only once that
+   * project closed the task for the same chapter: «what they already published».
+   */
+  source?: boolean;
 };
 
 /**

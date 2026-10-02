@@ -128,6 +128,11 @@ export async function loadChecklist(params: {
       raw = await readRaw(session, pkg.owner, pkg.tn, helpsTsvFilename("notas", book));
       fromSource = Boolean(raw);
     }
+    if (!raw && kind === "preguntas") {
+      // The questions repository sits beside the notes one: `en_tn` → `en_tq`.
+      raw = await readRaw(session, pkg.owner, pkg.tn.replace(/_tn$/, "_tq"), helpsTsvFilename("preguntas", book));
+      fromSource = Boolean(raw);
+    }
   }
   if (!raw) throw new Error(`No se pudo leer ${kind === "palabras" ? "la lista de palabras clave" : kind === "notas" ? "las notas" : "las preguntas"} de este libro.`);
   const rows = parseTsvTable(raw).rows;

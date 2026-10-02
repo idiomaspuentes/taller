@@ -88,6 +88,8 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
   for (const task of tasks) {
     const targets: string[] = [];
     for (const wait of list(task.waitsFor)) {
+      // A wait on the source project is about another project's task: it is not part of this one's order.
+      if (wait.source === true) continue;
       if (text(wait.taskId)) targets.push(text(wait.taskId));
       if (text(wait.phaseId)) targets.push(...[...taskPhase].filter(([, phase]) => phase === text(wait.phaseId)).map(([taskId]) => taskId));
     }
@@ -112,6 +114,10 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
       const taskId = text(wait.taskId);
       const phaseId = text(wait.phaseId);
       if (Boolean(taskId) === Boolean(phaseId)) problems.push(`${where}: cada «espera a» nombra una tarea o una fase, no las dos ni ninguna.`);
+      if (wait.source === true) {
+        if (!taskId) problems.push(`${where}: una espera al proyecto fuente nombra una tarea de ese proyecto.`);
+        continue;
+      }
       if (taskId && !taskIds.has(taskId)) problems.push(`${where}: espera a la tarea «${taskId}», que no existe.`);
       if (phaseId && !phaseIds.has(phaseId)) problems.push(`${where}: espera a la fase «${phaseId}», que no existe.`);
       if (phaseId && phaseId === text(task.phaseId)) problems.push(`${where}: espera a su propia fase.`);

@@ -602,7 +602,7 @@ export function MyTasksView({
     const audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
     if (audience.hold) return audience.hold;
     if (bucket.openIssues) {
-      const blocks = waitBlocks(issue, bucket.board, bucket.openIssues);
+      const blocks = waitBlocks(issue, bucket.board, bucket.openIssues, bucket.sourceIssues);
       if (blocks.length) return { kind: "espera", text: waitReason(blocks, bucket.board) };
     }
     return undefined;
