@@ -4,11 +4,13 @@ import { App } from "./App";
 import { applyMockSessionFromUrl } from "./devMockSession";
 import { startManifest } from "./manifest";
 import { applyServerFromUrl } from "./serverChoice";
+import { installTypingMode } from "./typingMode";
 import "./index.css";
 
 applyMockSessionFromUrl();
 applyServerFromUrl();
 startManifest();
+installTypingMode();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

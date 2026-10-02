@@ -7622,3 +7622,23 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .hs-source summary { min-height: 28px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); cursor: pointer; }
 .hs-source .af-note { font-size: 0.9375rem; }
 .fam__body[hidden] { display: none; }
+/*
+ * Writing on a phone (see typingMode.ts): the keyboard covers half the screen. What is pinned gives way, so that
+ * what is left is the field and what it is written from.
+ */
+:root[data-typing="true"] .bottom-nav,
+:root[data-typing="true"] .snd-button,
+:root[data-typing="true"] .th-below,
+:root[data-typing="true"] .af-figures { display: none; }
+:root[data-typing="true"] .af-nav,
+:root[data-typing="true"] .fam__finish,
+:root[data-typing="true"] .af-dock,
+:root[data-typing="true"] .scripture-editor__head { position: static; }
+:root[data-typing="true"] .af-dock { max-height: none; box-shadow: none; }
+/* The notes panel is written in too: it takes the room above the keyboard instead of hanging from the bottom. */
+:root[data-typing="true"] .snd-panel { top: 0.5rem; bottom: calc(0.5rem + var(--keyboard, 0px)); max-height: none; }
+/* The format buttons stay at hand while the text scrolls under them. */
+:root[data-typing="true"] .mde-bar { position: sticky; top: 0; z-index: 3; }
+/* Where the page does not shrink for the keyboard, room is left under the last field so it can be scrolled clear. */
+:root[data-typing="true"] .fam__body,
+:root[data-typing="true"] .af { padding-bottom: calc(1.5rem + var(--keyboard, 0px)); }
