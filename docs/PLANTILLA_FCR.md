@@ -418,13 +418,28 @@ glosario registra **qué palabra en español usamos** y por qué.
 - **Quién acuerda un cambio:** el **equipo que lo propone** (por ejemplo, Afinación del TPL mientras
   revisa palabras clave). No hay un equipo dueño del glosario.
 
+### Alcance: general, no de un libro
+
+Tanto el glosario como el registro de «cómo se tradujo antes» son **de todo el idioma**, no de un
+proyecto: reúnen **todos los libros** que el FCR ha trabajado en español (y otro aparte para
+portugués). Quien afina Tito ve cómo se tradujo esa palabra en Nehemías, en Rut y en cualquier otro
+libro ya afinado.
+
+Consecuencias:
+- No vive dentro de un proyecto ni desaparece al terminar un libro: pertenece al **espacio de
+  trabajo** del idioma.
+- El registro desde la alineación se arma **recorriendo todos los libros alineados** del idioma, y
+  se actualiza cada vez que un capítulo sale de Afinación.
+- Es la primera pieza de Taller que **cruza libros**: las palabras clave de Afinación comparan dentro
+  del libro y, con esto, también contra los libros anteriores.
+
 ### Cómo se tradujo antes (desde la alineación)
 
 Además de las decisiones escritas, hace falta poder preguntar: **¿cómo ha traducido Afinación esta
 palabra hasta ahora?** La alineación lo responde sin que nadie lo anote:
 
-- Para una palabra del original (por su lema), se juntan **todos los versículos ya afinados** donde
-  aparece y **qué palabras en español** quedaron alineadas con ella.
+- Para una palabra del original (por su lema), se juntan **todos los versículos ya afinados, de
+  todos los libros,** donde aparece y **qué palabras en español** quedaron alineadas con ella.
 - Se muestra agrupado y contado: «λυτρόω → *redimir* (4 veces), *rescatar* (1 vez)», con cada
   versículo para leerlo en contexto.
 - Se distingue el **TPL** del **TPS**, porque traducen distinto a propósito.
