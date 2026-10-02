@@ -62,7 +62,7 @@ export async function startBook(params: {
   return { board, inventory, created: result.created };
 }
 
-export type TeamOptions = { teams: TeamOption[]; needs: (task: ProjectTask) => string[] };
+export type TeamOptions = { teams: TeamOption[]; needs: (task: Pick<ProjectTask, "scope" | "rules">) => string[] };
 
 /** The teams of the organization with what each may edit, and which repositories a task writes to. */
 export async function loadTeamOptions(params: { session: GtSession; pmOrg: string; lang: string }): Promise<TeamOptions> {

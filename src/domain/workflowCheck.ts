@@ -106,7 +106,7 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
     if (!phaseIds.has(text(task.phaseId))) problems.push(`${where}: su fase «${text(task.phaseId)}» no existe.`);
     if (task.minLevel !== undefined && !(LEVEL_ORDER as string[]).includes(text(task.minLevel))) problems.push(`${where}: el nivel «${text(task.minLevel)}» no existe.`);
     const rules = list(task.rules);
-    if (!rules.length) problems.push(`${where}: no dice sobre qué recurso trabaja (rules).`);
+    if (!rules.length && task.general !== true) problems.push(`${where}: no dice sobre qué recurso trabaja (rules).`);
     for (const rule of rules) if (!(SCOPE_KEYS as string[]).includes(text(rule.resource))) problems.push(`${where}: el recurso «${text(rule.resource)}» no existe.`);
     if (toolIds && text(task.solverAppId) && !toolIds.has(text(task.solverAppId))) problems.push(`${where}: la herramienta «${text(task.solverAppId)}» no está en el catálogo.`);
 

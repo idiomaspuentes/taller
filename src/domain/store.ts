@@ -570,6 +570,7 @@ export function normalizeTeams(raw: unknown, people: Person[]): ProjectTask[] {
         memberIds,
         scope: scope.length ? scope : legacyScope,
         rules,
+        ...(item.general === true && !rules.length ? { general: true } : {}),
         scriptureScope,
         grain,
         grainChapter: Number.isFinite(grainChapter) && grainChapter > 0 ? grainChapter : undefined,
@@ -1385,7 +1386,8 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
     ? (item.scope as unknown[]).map(String).filter(isScopeKey)
     : [];
   const rules = normalizeRules(item.rules, legacyScope).map(stripRuleForPreset);
-  if (!rules.length) return null;
+  // A task says what it works on, or says that it is general work.
+  if (!rules.length && item.general !== true) return null;
   const name = String(item.name ?? "").trim();
   if (!name) return null;
   const bundle = normalizeBundle(item.bundle);
@@ -1400,6 +1402,7 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
     description: String(item.description ?? "").trim() || undefined,
     phaseId: String(item.phaseId ?? "").trim() || "phase-default",
     rules,
+    ...(!rules.length ? { general: true } : {}),
     distributeUnit: normalizeDistributeUnit(item.distributeUnit, bundle),
     distributePolicy: normalizeDistributePolicy(item.distributePolicy),
         everyUnit: item.everyUnit === true ? true : undefined,

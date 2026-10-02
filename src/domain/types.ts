@@ -216,6 +216,11 @@ export type ProjectTask = {
    * each with its own inventory-backed filter and grain.
    */
   rules: ScopeRule[];
+  /**
+   * General work: the task is not about a resource of the book. The app lays out nothing for it by itself; its
+   * subtareas are the ones somebody adds by hand (see `extraWork.ts`).
+   */
+  general?: boolean;
   /** Scripture window; omit = whole project books. */
   scriptureScope?: ScriptureScope;
   grain?: AssignmentGrain;
@@ -379,6 +384,11 @@ export type TaskTemplate = {
   description?: string;
   phaseId: string;
   rules: ScopeRule[];
+  /**
+   * General work: the task is not about a resource of the book. The app lays out nothing for it by itself; its
+   * subtareas are the ones somebody adds by hand (see `extraWork.ts`).
+   */
+  general?: boolean;
   distributeUnit?: DistributeUnit;
   distributePolicy?: DistributePolicy;
   /**

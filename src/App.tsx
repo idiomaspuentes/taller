@@ -88,7 +88,7 @@ import { HelpsEditorView } from "./components/HelpsEditorView";
 import { FamiliarizeView } from "./components/FamiliarizeView";
 import { SolverLabView } from "./components/SolverLabView";
 import { PortionReviewView } from "./components/PortionReviewView";
-import { WorkflowsView } from "./components/WorkflowsView";
+import { TemplatesView } from "./components/TemplatesView";
 import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView";
 import { AppNav } from "./components/AppNav";
 import { PushPrompt } from "./components/PushPrompt";
@@ -1402,9 +1402,10 @@ export function App() {
         ) : null}
 
         {route.name === "plantillas" && session ? (
-          <WorkflowsView
+          <TemplatesView
             session={session}
             pmOrg={pmOrg}
+            lang={lang}
             canManage={effectiveCanManage}
             announce={announce}
             focusWorkflowId={route.workflowId}
