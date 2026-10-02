@@ -235,8 +235,9 @@ una decisión acordada se ven en «Por acordar» y las acepta o descarta quien c
 - La interfaz de **tipo de trabajo**: las claves de los recursos (`tpl`, `tps`, `notas`…) y dónde se guarda cada uno
   siguen en el código. Sus **nombres** ya vienen del proceso (`resourceNames`): el segundo proceso llama «Biblia» a
   su texto, en las pantallas del proyecto, en los títulos de las subtareas y en las herramientas.
-- **Un solo editor de tareas** para Plantillas y para el proyecto (los campos nuevos de un paso se editan hoy en el
-  JSON del paquete).
+- El **editor de pasos** ya es uno solo para Plantillas y para el proyecto (`StepsEditor`): nombre, herramienta, quién
+  lo toma, cómo se completa, qué abarca, botón, descripción y preguntas de sí/no. También «recorre cada unidad» y la
+  espera al proyecto fuente. Falta rediseñar el flujo completo de crear proyectos y tareas (en conversación).
 
 ## 4. Orden y dependencias
 

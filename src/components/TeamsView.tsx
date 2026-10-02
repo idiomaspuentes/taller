@@ -124,7 +124,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ChevronDown, X } from "lucide-react";
-import { StepClaimPolicyPanel } from "./StepClaimPolicyPanel";
+import { StepsEditor } from "./StepsEditor";
+import { EveryUnitField } from "./EveryUnitField";
 import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeScope } from "../domain/scopeNames";
@@ -322,9 +323,8 @@ export function TeamsView({
   const [draftReviewsPrincipal, setDraftReviewsPrincipal] = useState(false);
   const [draftWaits, setDraftWaits] = useState<WaitRule[]>([]);
   const [draftMinLevel, setDraftMinLevel] = useState<PersonLevel | undefined>(undefined);
+  const [draftEveryUnit, setDraftEveryUnit] = useState(false);
   const [draftReviewRef, setDraftReviewRef] = useState("");
-  const [stepSolverId, setStepSolverId] = useState<string | null>(null);
-  const [claimPolicyStepId, setClaimPolicyStepId] = useState<string | null>(null);
   const [workflowsCatalog, setWorkflowsCatalog] = useState<WorkflowsCatalog>(() =>
     loadLocalWorkflows(),
   );
@@ -698,10 +698,9 @@ export function TeamsView({
     setDraftSteps([]);
     setDraftWaits([]);
     setDraftMinLevel(undefined);
+    setDraftEveryUnit(false);
     setDraftReviewsPrincipal(false);
     setDraftReviewRef("");
-    setStepSolverId(null);
-    setClaimPolicyStepId(null);
     setPackaging("separate");
     setDistributeUnit("portion");
     setDistributePolicy("contiguous");
@@ -874,21 +873,6 @@ export function TeamsView({
     void syncPresets(next);
   }
 
-  function patchDraftStep(stepId: string, next: TaskStep) {
-    setDraftSteps((prev) => prev.map((s) => (s.id === stepId ? next : s)));
-  }
-
-  function moveDraftStep(stepId: string, dir: -1 | 1) {
-    setDraftSteps((prev) => {
-      const steps = [...prev];
-      const i = steps.findIndex((s) => s.id === stepId);
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= steps.length) return prev;
-      [steps[i], steps[j]] = [steps[j], steps[i]];
-      return steps;
-    });
-  }
-
   function saveTeam() {
     const name = teamName.trim();
     const cleanRules = rulesFromDraft(draft, {
@@ -932,6 +916,7 @@ export function TeamsView({
         : undefined,
       waitsFor: pruneWaitRules({ id: editingId ?? "", waitsFor: draftWaits } as Team, board),
       minLevel: draftMinLevel,
+      everyUnit: draftEveryUnit || undefined,
       reviewsPrincipal: draftReviewsPrincipal || undefined,
       reviewRef: draftReviewsPrincipal ? draftReviewRef.trim() || undefined : undefined,
     };
@@ -979,10 +964,9 @@ export function TeamsView({
     setDraftSteps(team.steps?.length ? structuredClone(team.steps) : []);
     setDraftWaits(team.waitsFor?.length ? structuredClone(team.waitsFor) : []);
     setDraftMinLevel(team.minLevel);
+    setDraftEveryUnit(Boolean(team.everyUnit));
     setDraftReviewsPrincipal(Boolean(team.reviewsPrincipal));
     setDraftReviewRef(team.reviewRef ?? "");
-    setStepSolverId(null);
-    setClaimPolicyStepId(null);
     setDraft(loaded.draft);
     setPackaging(loaded.packaging);
     setDistributeUnit(loaded.distributeUnit);
@@ -1484,144 +1468,13 @@ export function TeamsView({
                 </div>
                 <WaitsEditor board={board} taskId={editingId} value={draftWaits} onChange={setDraftWaits} />
                 <MinLevelField id="task-min-level" value={draftMinLevel} onChange={setDraftMinLevel} />
+                <EveryUnitField value={draftEveryUnit} onChange={setDraftEveryUnit} />
                 <div className="grid gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>{t("tv.stepsTitle")}</Label>
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() =>
-                        setDraftSteps((prev) => [...prev, { id: uid(), name: t("tv.stepDefault") }])
-                      }
-                    >
-                      {t("tv.addStep")}
-                    </button>
-                  </div>
+                  <Label>{t("tv.stepsTitle")}</Label>
                   <p className="text-xs text-muted-foreground">
                     {t("tv.stepsHelp")}
                   </p>
-                  {draftSteps.length ? (
-                    <ol className="wf-steps">
-                      {draftSteps.map((step, idx) => {
-                        const stepSolver = solversCatalog.solvers.find(
-                          (s) => s.id === step.solverAppId,
-                        );
-                        const editingStepSolver = stepSolverId === step.id;
-                        return (
-                          <li key={step.id} className="wf-step">
-                            <div className="wf-step__lead">
-                              <span className="wf-step__index" aria-hidden>
-                                {idx + 1}
-                              </span>
-                              {draftSteps.length > 1 ? (
-                                <div className="wf-step__reorder">
-                                  <button
-                                    type="button"
-                                    className="wf-step__reorder-btn"
-                                    disabled={idx === 0}
-                                    aria-label={t("tv.stepUp").replace("{n}", String(idx + 1))}
-                                    onClick={() => moveDraftStep(step.id, -1)}
-                                  >
-                                    ↑
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="wf-step__reorder-btn"
-                                    disabled={idx >= draftSteps.length - 1}
-                                    aria-label={t("tv.stepDown").replace("{n}", String(idx + 1))}
-                                    onClick={() => moveDraftStep(step.id, 1)}
-                                  >
-                                    ↓
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                            <div className="wf-step__body">
-                              <Input
-                                value={step.name}
-                                onChange={(e) =>
-                                  patchDraftStep(step.id, { ...step, name: e.target.value })
-                                }
-                                className="wf-step__name"
-                                aria-label={t("tv.stepN").replace("{n}", String(idx + 1))}
-                                placeholder={t("tv.stepN").replace("{n}", String(idx + 1))}
-                              />
-                              <div className="wf-step__tool">
-                                {editingStepSolver ? (
-                                  <Select
-                                    value={step.solverAppId || "none"}
-                                    onValueChange={(v) => {
-                                      patchDraftStep(step.id, {
-                                        ...step,
-                                        solverAppId: v === "none" ? undefined : v,
-                                      });
-                                      setStepSolverId(null);
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-8 w-full max-w-[14rem]">
-                                      <SelectValue placeholder={t("tv.toolAria")} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="none">{t("tv.noTool")}</SelectItem>
-                                      {solversCatalog.solvers.map((app) => (
-                                        <SelectItem key={app.id} value={app.id}>
-                                          {app.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : step.solverAppId ? (
-                                  <button
-                                    type="button"
-                                    className="wf-step__tool-chip"
-                                    onClick={() => {
-                                      setStepSolverId(step.id);
-                                      setClaimPolicyStepId(null);
-                                    }}
-                                  >
-                                    {stepSolver?.name ?? t("tv.toolAria")}
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="wf-step__tool-add"
-                                    onClick={() => {
-                                      setStepSolverId(step.id);
-                                      setClaimPolicyStepId(null);
-                                    }}
-                                  >
-                                    {t("tv.addToolShort")}
-                                  </button>
-                                )}
-                              </div>
-                              <StepClaimPolicyPanel
-                                step={step}
-                                steps={draftSteps}
-                                stepIndex={idx}
-                                expanded={claimPolicyStepId === step.id}
-                                onExpandedChange={(open) => {
-                                  setClaimPolicyStepId(open ? step.id : null);
-                                  if (open) setStepSolverId(null);
-                                }}
-                                onChange={(next) => patchDraftStep(step.id, next)}
-                              />
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              aria-label={t("tv.removeStepAria").replace("{n}", String(idx + 1))}
-                              onClick={() =>
-                                setDraftSteps((prev) => prev.filter((s) => s.id !== step.id))
-                              }
-                            >
-                              ×
-                            </Button>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  ) : null}
+                  <StepsEditor steps={draftSteps} onChange={setDraftSteps} tools={solversCatalog.solvers} />
                 </div>
                 {descOpen ? (
                   <div className="grid gap-1.5">

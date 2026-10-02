@@ -43,20 +43,28 @@ export function WaitsEditor({ board, taskId, value, onChange }: Props) {
   const [scope, setScope] = useState<WaitScope>("portion");
   const [error, setError] = useState("");
 
-  const visible = value.filter((rule) => targetName(rule, board));
+  /** A wait on the source project names a task of that project, by its id there. */
+  const [sourceTask, setSourceTask] = useState("");
+  const visible = value.filter((rule) => rule.source || targetName(rule, board));
+  const nameOf = (rule: WaitRule) => (rule.source ? t("wa.sourceName").replace("{task}", rule.taskId ?? "") : targetName(rule, board) ?? "");
   const others = board.teams.filter((t) => t.id !== taskId);
 
   function add() {
     if (!target) return;
-    const rule: WaitRule = target.startsWith("t:")
-      ? { taskId: target.slice(2), scope }
-      : { phaseId: target.slice(2), scope };
+    if (target === "source" && !sourceTask.trim()) return;
+    const rule: WaitRule =
+      target === "source"
+        ? // Passages are numbered by each project: across projects the chapter is what can be compared.
+          { taskId: sourceTask.trim(), scope: scope === "all" ? "all" : "chapter", source: true }
+        : target.startsWith("t:")
+          ? { taskId: target.slice(2), scope }
+          : { phaseId: target.slice(2), scope };
     if (taskId && waitWouldLoop(board, taskId, rule)) {
       setError(t("wa.loopError"));
       return;
     }
     const dup = value.some(
-      (r) => r.taskId === rule.taskId && r.phaseId === rule.phaseId && r.scope === rule.scope,
+      (r) => r.taskId === rule.taskId && r.phaseId === rule.phaseId && r.scope === rule.scope && Boolean(r.source) === Boolean(rule.source),
     );
     if (!dup) onChange([...value, rule]);
     setTarget("");
@@ -71,17 +79,17 @@ export function WaitsEditor({ board, taskId, value, onChange }: Props) {
         <ul className="flex flex-wrap gap-1.5" aria-label={t("wa.listAria")}>
           {visible.map((rule) => (
             <li
-              key={`${rule.taskId ?? ""}${rule.phaseId ?? ""}${rule.scope}`}
+              key={`${rule.source ? "s" : ""}${rule.taskId ?? ""}${rule.phaseId ?? ""}${rule.scope}`}
               className="inline-flex items-center gap-1 rounded-full border bg-card py-1 pl-2.5 pr-1 text-xs"
             >
               <span>
                 {rule.taskId ? "" : t("wa.phasePrefix")}
-                {targetName(rule, board)} · {t(SCOPE_KEY[rule.scope])}
+                {nameOf(rule)} · {t(SCOPE_KEY[rule.scope])}
               </span>
               <button
                 type="button"
                 className="rounded-full px-1.5 text-muted-foreground hover:text-foreground"
-                aria-label={t("wa.removeAria").replace("{name}", targetName(rule, board) ?? "")}
+                aria-label={t("wa.removeAria").replace("{name}", nameOf(rule))}
                 onClick={() => onChange(value.filter((r) => r !== rule))}
               >
                 ×
@@ -108,8 +116,16 @@ export function WaitsEditor({ board, taskId, value, onChange }: Props) {
                   {t("wa.phase").replace("{name}", p.name)}
                 </SelectItem>
               ))}
+              <SelectItem value="source">{t("wa.source")}</SelectItem>
             </SelectContent>
           </Select>
+          {target === "source" ? (
+            <label className="grid gap-1 text-xs">
+              <span>{t("wa.sourceTask")}</span>
+              <input className="af-input" value={sourceTask} placeholder="publicar" onChange={(e) => setSourceTask(e.target.value)} />
+              <span className="text-muted-foreground">{t("wa.sourceHelp")}</span>
+            </label>
+          ) : null}
           <Select value={scope} onValueChange={(v) => setScope(v as WaitScope)}>
             <SelectTrigger className="w-full" aria-label={t("wa.howMuchAria")}>
               <SelectValue />

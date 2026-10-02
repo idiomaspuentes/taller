@@ -10,7 +10,6 @@ import {
 } from "../domain/solvers";
 import type {
   ScopeKey,
-  TaskStep,
   TaskTemplate,
   WorkflowTemplate,
   WorkflowsCatalog,
@@ -30,7 +29,8 @@ import { formatTaskClaimSummary } from "../domain/stepClaim";
 import { emptyWorkflow } from "../domain/workflows";
 import { localized, shippedWorkflows } from "../domain/processes";
 import { ensurePhaseSlug, makePhase, slugifyPhase } from "../domain/phaseSlug";
-import { StepClaimPolicyPanel } from "./StepClaimPolicyPanel";
+import { StepsEditor } from "./StepsEditor";
+import { EveryUnitField } from "./EveryUnitField";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,9 +104,6 @@ export function WorkflowsView({
   const [editingName, setEditingName] = useState(false);
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [resourceMenuOpen, setResourceMenuOpen] = useState(false);
-  const [stepMenuId, setStepMenuId] = useState<string | null>(null);
-  const [stepSolverId, setStepSolverId] = useState<string | null>(null);
-  const [claimPolicyStepId, setClaimPolicyStepId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!pmOrg) {
@@ -177,8 +174,6 @@ export function WorkflowsView({
     setTemplateMenuOpen(false);
     setCreateMenuOpen(false);
     setResourceMenuOpen(false);
-    setStepMenuId(null);
-    setStepSolverId(null);
     setEditingName(Boolean(opts?.rename));
     onSelectWorkflow?.(wf.id);
     requestAnimationFrame(() => {
@@ -334,75 +329,6 @@ export function WorkflowsView({
   function setTaskResources(taskId: string, resources: ScopeKey[]) {
     const rules = resources.map(defaultRule);
     updateTask(taskId, { rules: rules.length ? rules : [defaultRule("tpl")] });
-  }
-
-  function updateStep(taskId: string, stepId: string, patch: Partial<TaskStep>) {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        tasks: prev.tasks.map((t) => {
-          if (t.id !== taskId) return t;
-          const steps = (t.steps ?? []).map((s) =>
-            s.id === stepId ? { ...s, ...patch } : s,
-          );
-          return { ...t, steps };
-        }),
-      };
-    });
-    setDirty(true);
-  }
-
-  function addStep(taskId: string) {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        tasks: prev.tasks.map((t) => {
-          if (t.id !== taskId) return t;
-          const nextIndex = (t.steps?.length ?? 0) + 1;
-          const step: TaskStep = { id: uid(), name: tNow("tv.stepN").replace("{n}", String(nextIndex)) };
-          return { ...t, steps: [...(t.steps ?? []), step] };
-        }),
-      };
-    });
-    setStepMenuId(null);
-    setStepSolverId(null);
-    setDirty(true);
-  }
-
-  function removeStep(taskId: string, stepId: string) {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        tasks: prev.tasks.map((t) =>
-          t.id === taskId
-            ? { ...t, steps: (t.steps ?? []).filter((s) => s.id !== stepId) }
-            : t,
-        ),
-      };
-    });
-    setDirty(true);
-  }
-
-  function moveStep(taskId: string, stepId: string, dir: -1 | 1) {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        tasks: prev.tasks.map((t) => {
-          if (t.id !== taskId) return t;
-          const steps = [...(t.steps ?? [])];
-          const i = steps.findIndex((s) => s.id === stepId);
-          const j = i + dir;
-          if (i < 0 || j < 0 || j >= steps.length) return t;
-          [steps[i], steps[j]] = [steps[j], steps[i]];
-          return { ...t, steps };
-        }),
-      };
-    });
-    setDirty(true);
   }
 
   async function save() {
@@ -873,8 +799,6 @@ export function WorkflowsView({
                       const next = isEditing ? null : task.id;
                       setTaskEditId(next);
                       setResourceMenuOpen(false);
-                      setStepMenuId(null);
-                      setStepSolverId(null);
                       if (next) {
                         setSolverPickerOpen(
                           Boolean(task.solverAppId) && !(task.steps?.length),
@@ -971,7 +895,6 @@ export function WorkflowsView({
                                       aria-expanded={resourceMenuOpen}
                                       onClick={() => {
                                         setResourceMenuOpen((v) => !v);
-                                        setStepMenuId(null);
                                       }}
                                     >
                                       {t("wf.addResource")}
@@ -1070,6 +993,10 @@ export function WorkflowsView({
                             </section>
 
                             <section className="wf-editor-block">
+                              <EveryUnitField value={Boolean(task.everyUnit)} disabled={!canManage} onChange={(next) => updateTask(task.id, { everyUnit: next || undefined })} />
+                            </section>
+
+                            <section className="wf-editor-block">
                               <WaitsEditor
                                 board={{ teams: draft.tasks as unknown as ProjectTask[], phases: draft.phases }}
                                 taskId={task.id}
@@ -1086,205 +1013,18 @@ export function WorkflowsView({
                                 </p>
                               </header>
 
-                              {showSteps ? (
-                                <ol className="wf-steps">
-                                  {(task.steps ?? []).map((step, idx) => {
-                                    const stepSolver = solvers.solvers.find(
-                                      (s) => s.id === step.solverAppId,
-                                    );
-                                    const stepMenuOpen = stepMenuId === step.id;
-                                    const editingStepSolver = stepSolverId === step.id;
-                                    return (
-                                      <li key={step.id} className="wf-step">
-                                        <div className="wf-step__lead">
-                                          <span className="wf-step__index" aria-hidden>
-                                            {idx + 1}
-                                          </span>
-                                          {canManage && (task.steps?.length ?? 0) > 1 ? (
-                                            <div className="wf-step__reorder">
-                                              <button
-                                                type="button"
-                                                className="wf-step__reorder-btn"
-                                                disabled={idx === 0}
-                                                aria-label={t("tv.stepUp").replace("{n}", String(idx + 1))}
-                                                onClick={() => moveStep(task.id, step.id, -1)}
-                                              >
-                                                ↑
-                                              </button>
-                                              <button
-                                                type="button"
-                                                className="wf-step__reorder-btn"
-                                                disabled={idx >= (task.steps?.length ?? 0) - 1}
-                                                aria-label={t("tv.stepDown").replace("{n}", String(idx + 1))}
-                                                onClick={() => moveStep(task.id, step.id, 1)}
-                                              >
-                                                ↓
-                                              </button>
-                                            </div>
-                                          ) : null}
-                                        </div>
-                                        <div className="wf-step__body">
-                                          <Input
-                                            value={step.name}
-                                            disabled={!canManage}
-                                            onChange={(e) =>
-                                              updateStep(task.id, step.id, {
-                                                name: e.target.value,
-                                              })
-                                            }
-                                            className="wf-step__name"
-                                            aria-label={t("tv.stepN").replace("{n}", String(idx + 1))}
-                                            placeholder={t("tv.stepN").replace("{n}", String(idx + 1))}
-                                          />
-                                          <div className="wf-step__tool">
-                                            {editingStepSolver ? (
-                                              <Select
-                                                value={step.solverAppId || "none"}
-                                                disabled={!canManage}
-                                                onValueChange={(v) => {
-                                                  updateStep(task.id, step.id, {
-                                                    solverAppId:
-                                                      v === "none" ? undefined : v,
-                                                  });
-                                                  setStepSolverId(null);
-                                                }}
-                                              >
-                                                <SelectTrigger className="h-8 w-full max-w-[14rem]">
-                                                  <SelectValue placeholder={t("tv.toolAria")} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="none">
-                                                    {t("tv.noTool")}
-                                                  </SelectItem>
-                                                  {solvers.solvers.map((app) => (
-                                                    <SelectItem key={app.id} value={app.id}>
-                                                      {app.name}
-                                                    </SelectItem>
-                                                  ))}
-                                                </SelectContent>
-                                              </Select>
-                                            ) : step.solverAppId ? (
-                                              <button
-                                                type="button"
-                                                className="wf-step__tool-chip"
-                                                disabled={!canManage}
-                                                onClick={() => {
-                                                  setStepSolverId(step.id);
-                                                  setStepMenuId(null);
-                                                }}
-                                              >
-                                                {stepSolver?.name ?? t("tv.toolAria")}
-                                              </button>
-                                            ) : canManage ? (
-                                              <button
-                                                type="button"
-                                                className="wf-step__tool-add"
-                                                onClick={() => {
-                                                  setStepSolverId(step.id);
-                                                  setStepMenuId(null);
-                                                }}
-                                              >
-                                                {t("tv.addToolShort")}
-                                              </button>
-                                            ) : null}
-                                          </div>
-
-                                          <StepClaimPolicyPanel
-                                            step={step}
-                                            steps={task.steps ?? []}
-                                            stepIndex={idx}
-                                            expanded={claimPolicyStepId === step.id}
-                                            onExpandedChange={(open) => {
-                                              setClaimPolicyStepId(open ? step.id : null);
-                                              if (open) setStepMenuId(null);
-                                            }}
-                                            onChange={(next) =>
-                                              updateStep(task.id, step.id, next)
-                                            }
-                                            canManage={canManage}
-                                          />
-                                        </div>
-                                        {canManage ? (
-                                          <div className="phases-section__tools wf-step__more">
-                                            <Button
-                                              type="button"
-                                              size="sm"
-                                              variant="ghost"
-                                              aria-expanded={stepMenuOpen}
-                                              aria-label={t("wf.moreStep").replace("{n}", String(idx + 1))}
-                                              onClick={() => {
-                                                setStepMenuId(stepMenuOpen ? null : step.id);
-                                                setResourceMenuOpen(false);
-                                                setStepSolverId(null);
-                                              }}
-                                            >
-                                              ⋯
-                                            </Button>
-                                            {stepMenuOpen ? (
-                                              <div
-                                                className="phases-menu phases-menu--end"
-                                                role="menu"
-                                              >
-                                                <button
-                                                  type="button"
-                                                  role="menuitem"
-                                                  className="phases-menu__item"
-                                                  onClick={() => {
-                                                    setStepMenuId(null);
-                                                    setStepSolverId(step.id);
-                                                  }}
-                                                >
-                                                  {step.solverAppId ? t("wf.changeTool") : t("wf.addTool")}
-                                                </button>
-                                                {step.solverAppId ? (
-                                                  <button
-                                                    type="button"
-                                                    role="menuitem"
-                                                    className="phases-menu__item"
-                                                    onClick={() => {
-                                                      setStepMenuId(null);
-                                                      updateStep(task.id, step.id, {
-                                                        solverAppId: undefined,
-                                                      });
-                                                    }}
-                                                  >
-                                                    {t("wf.removeTool")}
-                                                  </button>
-                                                ) : null}
-                                                <button
-                                                  type="button"
-                                                  role="menuitem"
-                                                  className="phases-menu__item phases-menu__item--danger"
-                                                  onClick={() => {
-                                                    setStepMenuId(null);
-                                                    removeStep(task.id, step.id);
-                                                  }}
-                                                >
-                                                  {t("wf.removeStep")}
-                                                </button>
-                                              </div>
-                                            ) : null}
-                                          </div>
-                                        ) : null}
-                                      </li>
-                                    );
-                                  })}
-                                </ol>
+                              {showSteps || canManage ? (
+                                <StepsEditor
+                                  steps={task.steps ?? []}
+                                  onChange={(next) => updateTask(task.id, { steps: next.length ? next : undefined })}
+                                  tools={solvers.solvers}
+                                  canManage={canManage}
+                                />
                               ) : (
                                 <p className="wf-editor-block__empty">
                                   {t("wf.noChecklist")}
                                 </p>
                               )}
-
-                              {canManage ? (
-                                <button
-                                  type="button"
-                                  className="wf-add-step"
-                                  onClick={() => addStep(task.id)}
-                                >
-                                  {t("wf.addStep")}
-                                </button>
-                              ) : null}
                             </section>
 
                             <div className="wf-editor-footer">
@@ -1307,8 +1047,6 @@ export function WorkflowsView({
                                 onClick={() => {
                                   setTaskEditId(null);
                                   setResourceMenuOpen(false);
-                                  setStepMenuId(null);
-                                  setStepSolverId(null);
                                   setSolverPickerOpen(false);
                                 }}
                               >
