@@ -1,4 +1,4 @@
-import { createOrUpdateContents, DcsApiError } from "@ip-lms/dcs-client";
+import { createOrUpdateContents, DcsApiError, getContents } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { groupDraftBranches, readRaw } from "./afinacionLoad";
 import { readRepoFile } from "./afinacionStore";
@@ -7,17 +7,20 @@ import { loadPersonDocs, savePersonDoc, type CheckTarget } from "./checkStore";
 import { dcsConfig } from "./config";
 import { loadPmConfig } from "./issues";
 import { loadAssignmentsFromDcs } from "./persist";
-import { createPull, deleteGitRef, ensureBranchFrom, getBranchSha, getDefaultBranch, getPullByBranches, mergePull } from "./pulls";
+import { branchExists, createPull, deleteGitRef, ensureBranchFrom, getBranchSha, getDefaultBranch, getPullByBranches, mergePull } from "./pulls";
 import { readTeamHelps } from "./teamHelps";
 import { bookUsfmName } from "../prep/discover";
 import { resolveHelpsTarget } from "../domain/helpsTarget";
 import type { LevelBook } from "../domain/levels";
-import { DEFAULT_PM_CONFIG } from "../domain/roles";
+import { DEFAULT_PM_CONFIG, resolveResourceRepo } from "../domain/roles";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
-import type { AssignmentsDoc, ProjectTask, TaskStep } from "../domain/types";
+import type { AssignmentsDoc, ProjectTask, ScopeKey, TaskStep } from "../domain/types";
 import {
+  articleFingerprints,
+  articlesOfUnit,
+  checkUnitArticles,
   checkAgainstEndorsement,
   checkUnitTable,
   checkUnitText,
@@ -44,6 +47,9 @@ const UNIT_FILES: Record<string, { kind: UnitFileKind; source?: "ult" | "ust"; c
   tps: { kind: "usfm", source: "ust" },
   notas: { kind: "tsv", content: ["Note"], quoted: true },
   preguntas: { kind: "tsv", content: ["Question", "Response"] },
+  // Articles belong to the whole language: the unit carries the ones its notes and key terms link to.
+  academia: { kind: "articles" },
+  palabras: { kind: "articles" },
 };
 
 export const isUnitResource = (resource: string): boolean => resource in UNIT_FILES;
@@ -60,7 +66,11 @@ export type UnitResource = {
   published: { text: string; sha: string } | null;
   /** Verses the source text has in this unit (texts only): what the draft must cover. */
   expectedVerses: number[];
+  /** The articles the unit links to, as the team has them and as they are published (articles only). */
+  articles?: UnitArticle[];
 };
+
+export type UnitArticle = { path: string; text: string; published: { text: string; sha: string } | null };
 
 export type UnitToPublish = {
   book: string;
@@ -95,6 +105,17 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
 
   const resources: UnitResource[] = [];
   let store: CheckTarget | null = null;
+  // Which articles the unit links to is read once: from the team's notes and from the list of key terms.
+  let linked: ReturnType<typeof articlesOfUnit> | null = null;
+  const linkedArticles = async () => {
+    if (linked) return linked;
+    const [notes, terms] = await Promise.all([
+      readTeamHelps({ session, ctx, pmConfig, board, kind: "notas" }).catch(() => null),
+      readRaw(session, pkg.owner, pkg.twl, `twl_${book}.tsv`),
+    ]);
+    linked = articlesOfUnit({ notesTsv: notes?.text ?? null, termsTsv: terms, range });
+    return linked;
+  };
   for (const resource of params.resources.filter(isUnitResource)) {
     const spec = UNIT_FILES[resource]!;
     let owner = "";
@@ -102,6 +123,43 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
     let filepath = "";
     let draft: UnitResource["draft"] = null;
     let expectedVerses: number[] = [];
+    if (spec.kind === "articles") {
+      owner = (ctx.contentOrg || "").trim();
+      repo = resolveResourceRepo(resource as ScopeKey, ctx.lang, pmConfig) ?? "";
+      if (!owner || !repo) continue;
+      const defaultBranch = await getDefaultBranch(config, owner, repo, session.token).catch(() => "");
+      if (!defaultBranch) continue;
+      // The team's articles are on the group draft of the work on them; with no such branch there is nothing new.
+      const tasks = (board?.teams ?? []).filter((t) => t.rules.some((rule) => rule.resource === resource)).reverse();
+      let branch: string | undefined;
+      for (const candidate of [...new Set(tasks.flatMap((t) => groupDraftBranches(book, t.id)))]) {
+        if (await branchExists(config, owner, repo, candidate, session.token).catch(() => false)) {
+          branch = candidate;
+          break;
+        }
+      }
+      const articles: UnitArticle[] = [];
+      if (branch) {
+        const wanted = (await linkedArticles())[resource as "academia" | "palabras"];
+        // An Academia article is a folder of files; a Palabras article is one file.
+        const paths = (
+          await Promise.all(
+            wanted.map(async (path) => {
+              if (/\.md$/.test(path)) return [path];
+              const listing = await getContents(config, owner, repo, path, { ref: branch, token: session.token }).catch(() => null);
+              return Array.isArray(listing) ? listing.filter((entry) => entry.type === "file").map((entry) => entry.path) : [];
+            }),
+          )
+        ).flat();
+        for (const path of paths) {
+          const mine = await readRepoFile(session, { owner, repo, branch }, path).catch(() => null);
+          if (!mine) continue;
+          articles.push({ path, text: mine.text, published: await readRepoFile(session, { owner, repo, branch: defaultBranch }, path).catch(() => null) });
+        }
+      }
+      resources.push({ resource, kind: "articles", owner, repo, filepath: "", draft: branch ? { text: "", branch } : null, defaultBranch, published: null, expectedVerses: [], articles });
+      continue;
+    }
     if (spec.kind === "usfm") {
       const target = resolveScriptureTarget({ ...ctx, resource }, pmConfig);
       if ("error" in target) continue;
@@ -138,7 +196,7 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
 export function unitFingerprints(unit: UnitToPublish): UnitFingerprints {
   const out: UnitFingerprints = {};
   for (const r of unit.resources) {
-    out[r.resource] = r.kind === "usfm" ? textFingerprints(r.draft?.text ?? null, unit.range) : tableFingerprints(r.draft?.text ?? null, unit.range);
+    out[r.resource] = r.kind === "articles" ? articleFingerprints(r.articles ?? []) : r.kind === "usfm" ? textFingerprints(r.draft?.text ?? null, unit.range) : tableFingerprints(r.draft?.text ?? null, unit.range);
   }
   return out;
 }
@@ -163,7 +221,9 @@ export function unitProblems(unit: UnitToPublish, params: { aligned: string[]; e
   const problems: UnitProblem[] = [];
   for (const r of unit.resources) {
     const spec = UNIT_FILES[r.resource]!;
-    if (r.kind === "usfm") {
+    if (r.kind === "articles") {
+      problems.push(...checkUnitArticles(r.resource, r.articles ?? []));
+    } else if (r.kind === "usfm") {
       problems.push(...checkUnitText({ resource: r.resource, usfm: r.draft?.text ?? null, range: unit.range, expectedVerses: r.expectedVerses, aligned: params.aligned.includes(r.resource) }));
     } else if (r.draft) {
       // A helps table the team did not work on has nothing to publish, and nothing to check.
@@ -183,10 +243,17 @@ export type PublishOutcome = {
   reason?: string;
 };
 
-/** The published file as it would be with the unit in it. */
-export function withUnit(unit: UnitToPublish, r: UnitResource): string | null {
+export type UnitFileChange = { path: string; content: string };
+
+/**
+ * What publishing would write for a resource: the published file with the unit in it, or each article that differs
+ * from the published one. `null` when the team has no version of the resource; empty when it is already published.
+ */
+export function unitChanges(unit: UnitToPublish, r: UnitResource): UnitFileChange[] | null {
   if (!r.draft) return null;
-  return r.kind === "usfm" ? publishUnitUsfm(r.published?.text ?? null, r.draft.text, unit.range) : publishUnitTsv(r.published?.text ?? null, r.draft.text, unit.range);
+  if (r.kind === "articles") return (r.articles ?? []).filter((a) => a.text !== a.published?.text).map((a) => ({ path: a.path, content: a.text }));
+  const next = r.kind === "usfm" ? publishUnitUsfm(r.published?.text ?? null, r.draft.text, unit.range) : publishUnitTsv(r.published?.text ?? null, r.draft.text, unit.range);
+  return r.published && next === r.published.text ? [] : [{ path: r.filepath, content: next }];
 }
 
 /**
@@ -198,19 +265,19 @@ export async function publishUnit(params: { session: GtSession; unit: UnitToPubl
   const config = dcsConfig(session.host);
   const outcomes: PublishOutcome[] = [];
   for (const r of unit.resources) {
-    const next = withUnit(unit, r);
-    if (next === null) {
+    const changes = unitChanges(unit, r);
+    if (changes === null) {
       outcomes.push({ resource: r.resource, status: "nothing" });
       continue;
     }
-    if (r.published && next === r.published.text) {
+    if (!changes.length) {
       outcomes.push({ resource: r.resource, status: "unchanged" });
       continue;
     }
     const message = `Taller: publicar ${unit.book} ${unitSlug(unit.range)} · ${params.note}`;
     // An empty repository has no branch to start from: the first file goes straight to the published branch.
     if (!(await getBranchSha(config, r.owner, r.repo, r.defaultBranch, session.token))) {
-      await createOrUpdateContents(config, r.owner, r.repo, r.filepath, { content: next, message, branch: r.defaultBranch, token: session.token });
+      for (const change of changes) await createOrUpdateContents(config, r.owner, r.repo, change.path, { content: change.content, message, branch: r.defaultBranch, token: session.token });
       outcomes.push({ resource: r.resource, status: "published" });
       continue;
     }
@@ -222,9 +289,11 @@ export async function publishUnit(params: { session: GtSession; unit: UnitToPubl
       await ensureBranchFrom(config, r.owner, r.repo, head, session.token, r.defaultBranch);
       pull = null;
     }
-    const onHead = await readRepoFile(session, { owner: r.owner, repo: r.repo, branch: head }, r.filepath);
-    if (!onHead || onHead.text !== next) {
-      await createOrUpdateContents(config, r.owner, r.repo, r.filepath, { content: next, message, sha: onHead?.sha, branch: head, token: session.token });
+    for (const change of changes) {
+      const onHead = await readRepoFile(session, { owner: r.owner, repo: r.repo, branch: head }, change.path);
+      if (!onHead || onHead.text !== change.content) {
+        await createOrUpdateContents(config, r.owner, r.repo, change.path, { content: change.content, message, sha: onHead?.sha, branch: head, token: session.token });
+      }
     }
     pull ??= await createPull(config, r.owner, r.repo, { title: message, body: `Unidad avalada, publicada desde Taller.\n\n${params.note}`, head, base: r.defaultBranch, token: session.token });
     try {

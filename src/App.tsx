@@ -951,6 +951,7 @@ export function App() {
             mode={route.mode === "publicar" ? "publicar" : "comprobar"}
             aligned={route.aligned.split(",").filter(Boolean)}
             needsEndorsement={route.endorsed !== "no"}
+            articles={(route.articles ?? "").split(",").filter(Boolean)}
             announce={announce}
             onClose={onSolverClose}
           />

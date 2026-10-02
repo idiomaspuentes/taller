@@ -31,7 +31,7 @@ const TEXTS: ChecklistText[] = ["tpl", "tps"];
 const blank = (by: string): EndorsementReport => ({ by, answers: {}, concerns: [], delivered: false, at: "" });
 
 /** What a committee endorses of a unit, when its board does not say otherwise: the two texts and their helps. */
-const ENDORSED = ["tpl", "tps", "notas", "preguntas"];
+const ENDORSED = ["tpl", "tps", "notas", "preguntas", "academia", "palabras"];
 
 /**
  * A committee endorses a unit. Each member reads it alone and hands in a report (the questions come from the step's

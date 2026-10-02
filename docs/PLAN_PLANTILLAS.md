@@ -193,7 +193,9 @@ rama publicada de cada recurso por un pull request, sin tocar el resto del archi
 queda abierta para quien tenga permiso. Una tarea con todos sus pasos automáticos se entrega sola. Pruebas:
 `verify:unit-publish`.
 
-**Límites:** se publican los textos y las tablas (notas y preguntas); los artículos de Palabras y Academia todavía no.
+**Artículos:** los de Academia que enlazan las notas de la unidad y los de Palabras de sus términos clave se
+comprueban y se publican con la primera unidad que los usa (`articles` en los parámetros de la herramienta). También
+entran en lo que el comité avala.
 
 ### Fase 7 · Glosario y registro de traducciones — hecha en su primera versión (2 de octubre de 2026)
 

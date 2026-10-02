@@ -1611,5 +1611,8 @@
   "ck.quotePickHint": "Toque no texto as palavras a que a nota se refere.",
   "ck.quoteSave": "Salvar a citação",
   "ck.quoteSaved": "Citação salva.",
-  "ck.quoteNotAligned": "Essas palavras não estão alinhadas com o original: não é possível obter a citação."
+  "ck.quoteNotAligned": "Essas palavras não estão alinhadas com o original: não é possível obter a citação.",
+  "pu.okArticles": "artigos vinculados e completos: {n}",
+  "pu.willChangeArticles": "arquivos de artigos a publicar: {n}",
+  "pu.p.articleEmpty": "artigos vazios:"
 }

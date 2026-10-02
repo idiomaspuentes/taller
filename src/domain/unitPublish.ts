@@ -7,7 +7,8 @@ import { isValidBookUsfm, listVerseSpans, type RefRange } from "./usfmEdit";
  */
 
 /** A resource of the unit: a text (USFM) or a helps table (TSV). */
-export type UnitFileKind = "usfm" | "tsv";
+/** `articles`: the support articles the unit links to (they belong to the whole language, not to a chapter). */
+export type UnitFileKind = "usfm" | "tsv" | "articles";
 
 /** Fingerprint of every piece of a resource inside the unit: per verse of a text, per row of a table. */
 export type UnitFingerprints = Record<string, Record<string, string>>;
@@ -26,6 +27,7 @@ export type UnitCheckId =
   | "row-empty"
   | "row-quote"
   | "row-support"
+  | "article-empty"
   | "changed-since-endorsement"
   | "not-endorsed";
 
@@ -252,6 +254,44 @@ export function publishUnitTsv(published: string | null, draft: string, range: R
   }
   place();
   return `${[into.header.join("\t"), ...lines].join(into.eol)}${into.eol}`;
+}
+
+// ---------------------------------------------------------------- articles
+
+/**
+ * The support articles a unit links to: the Academia articles its notes point at (a folder each) and the Palabras
+ * articles of its key terms (a file each). They are published with the first unit that uses them.
+ */
+export function articlesOfUnit(params: { notesTsv: string | null; termsTsv: string | null; range: RefRange }): { academia: string[]; palabras: string[] } {
+  const linked = (tsv: string | null, columnName: string, pattern: RegExp, toPath: (match: RegExpExecArray) => string): string[] => {
+    if (!tsv) return [];
+    const table = readTable(tsv);
+    const refAt = column(table, "Reference");
+    const at = column(table, columnName);
+    if (refAt < 0 || at < 0) return [];
+    const out = new Set<string>();
+    for (const row of table.rows) {
+      if (!rowInRange(params.range, row.cells[refAt] ?? "")) continue;
+      const match = pattern.exec((row.cells[at] ?? "").trim());
+      if (match) out.add(toPath(match));
+    }
+    return [...out].sort();
+  };
+  return {
+    academia: linked(params.notesTsv, "SupportReference", /^rc:\/\/[^/]+\/ta\/man\/([^/\s]+)\/([^/\s]+)$/, (m) => `${m[1]}/${m[2]}`),
+    palabras: linked(params.termsTsv, "TWLink", /^rc:\/\/[^/]+\/tw\/dict\/(bible\/[^/\s]+\/[^/\s]+)$/, (m) => `${m[1]}.md`),
+  };
+}
+
+/** Articles of the unit that are empty in the team's version. */
+export function checkUnitArticles(resource: string, files: { path: string; text: string }[]): UnitProblem[] {
+  const empty = files.filter((file) => !file.text.trim()).map((file) => file.path);
+  return empty.length ? [{ id: "article-empty", resource, where: empty }] : [];
+}
+
+/** What each article of the unit says, by path. */
+export function articleFingerprints(files: { path: string; text: string }[]): Record<string, string> {
+  return Object.fromEntries(files.map((file) => [file.path, textFingerprint(file.text.replace(/\r\n/g, "\n").trim())]));
 }
 
 // ---------------------------------------------------------------- the endorsement

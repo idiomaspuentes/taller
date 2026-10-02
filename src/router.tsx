@@ -40,7 +40,7 @@ export type AppRoute =
   /** A committee endorses a unit: `reporte` (a member's report) or `decision`. */
   | { name: "solver-aval"; ctx: string; mode: string }
   /** Publishing one unit: `comprobar` (the checks) or `publicar`. `aligned`: texts that must be aligned. */
-  | { name: "solver-publicar"; ctx: string; mode: string; aligned: string; endorsed?: string }
+  | { name: "solver-publicar"; ctx: string; mode: string; aligned: string; endorsed?: string; articles?: string }
   /** Sandbox: launch solvers without Entregar / issues. `#/lab` or `#/solver-lab`. */
   | { name: "solver-lab" };
 
@@ -107,7 +107,7 @@ export function parseHash(hash: string): AppRoute {
     return { name: "solver-review", ctx: params.get("ctx") || "", mode };
   }
   if (parts[0] === "solver" && parts[1] === "publicar") {
-    return { name: "solver-publicar", ctx: params.get("ctx") || "", mode: params.get("mode") || "comprobar", aligned: params.get("aligned") || "", endorsed: params.get("endorsed") || undefined };
+    return { name: "solver-publicar", ctx: params.get("ctx") || "", mode: params.get("mode") || "comprobar", aligned: params.get("aligned") || "", endorsed: params.get("endorsed") || undefined, articles: params.get("articles") || undefined };
   }
   if (parts[0] === "solver" && parts[1] === "aval") {
     return { name: "solver-aval", ctx: params.get("ctx") || "", mode: params.get("mode") || "reporte" };
@@ -185,7 +185,7 @@ export function routeToHash(route: AppRoute): string {
     case "glosario":
       return route.book && route.chapter ? `#/glosario?libro=${encodeURIComponent(route.book)}&c=${route.chapter}&de=${route.from ?? 1}&a=${route.to ?? 200}` : "#/glosario";
     case "solver-publicar":
-      return `#/solver/publicar?mode=${encodeURIComponent(route.mode)}&aligned=${encodeURIComponent(route.aligned)}${route.endorsed ? `&endorsed=${encodeURIComponent(route.endorsed)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
+      return `#/solver/publicar?mode=${encodeURIComponent(route.mode)}&aligned=${encodeURIComponent(route.aligned)}${route.endorsed ? `&endorsed=${encodeURIComponent(route.endorsed)}` : ""}${route.articles ? `&articles=${encodeURIComponent(route.articles)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-aval":
       return `#/solver/aval?mode=${encodeURIComponent(route.mode)}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-checklist":

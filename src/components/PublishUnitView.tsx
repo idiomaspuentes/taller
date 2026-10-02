@@ -5,7 +5,7 @@ import { loadSession, type GtSession } from "../dcs/auth";
 import { closeIssue, commentOnIssue } from "../dcs/issues";
 import { getPmIssue } from "../dcs/portionPr";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
-import { loadEndorsement, loadUnitToPublish, publishUnit, unitProblems, withUnit, type PublishOutcome, type UnitToPublish } from "../dcs/unitPublish";
+import { loadEndorsement, loadUnitToPublish, publishUnit, unitChanges, unitProblems, type PublishOutcome, type UnitToPublish } from "../dcs/unitPublish";
 import { canConfirmForTeam, coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
 import { ownerTaskOf } from "../domain/resourceOwner";
@@ -22,6 +22,8 @@ type Props = {
   mode: "comprobar" | "publicar";
   /** Texts that must be aligned to be published (the process says which). */
   aligned: string[];
+  /** Article resources published with the unit, besides what the task's rules name (the process says which). */
+  articles: string[];
   /** The unit must be what a committee endorsed. A process without a committee says no. */
   needsEndorsement: boolean;
   onClose: () => void;
@@ -44,6 +46,7 @@ const PROBLEM_KEY: Record<UnitCheckId, MessageKey> = {
   "row-support": "pu.p.rowSupport",
   "changed-since-endorsement": "pu.p.changed",
   "not-endorsed": "pu.p.notEndorsed",
+  "article-empty": "pu.p.articleEmpty",
 };
 const OUTCOME_KEY: Record<PublishOutcome["status"], MessageKey> = { published: "pu.o.published", unchanged: "pu.o.unchanged", waiting: "pu.o.waiting", nothing: "pu.o.nothing" };
 
@@ -52,7 +55,8 @@ const OUTCOME_KEY: Record<PublishOutcome["status"], MessageKey> = { published: "
  * completed without anybody marking it. A person only steps in when a check fails (it goes to whoever maintains
  * that resource) or to confirm the publication.
  */
-export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, onClose, announce }: Props) {
+export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndorsement, onClose, announce }: Props) {
+  const articlesKey = articles.join(",");
   const t = useT();
   const language = useUiLanguage();
   const [session] = useState<GtSession | undefined>(() => loadSession());
@@ -92,7 +96,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, o
     try {
       // Which resources make the unit comes from the rules of the task that publishes it.
       const peek = await loadUnitToPublish({ session, ctx: decoded, resources: [] });
-      const wanted = [...new Set((peek.task?.rules ?? []).map((rule) => rule.resource as string))];
+      const wanted = [...new Set([...(peek.task?.rules ?? []).map((rule) => rule.resource as string), ...articlesKey.split(",").filter(Boolean)])];
       const loaded = await loadUnitToPublish({ session, ctx: decoded, resources: wanted.length ? wanted : ["tpl", "tps", "notas", "preguntas"] });
       setUnit(loaded);
       const endorsement = needsEndorsement ? await loadEndorsement(session, loaded).catch(() => null) : null;
@@ -110,7 +114,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, o
     } finally {
       setBusy(false);
     }
-  }, [ctxEncoded, session, mode, alignedKey, needsEndorsement, finishStep, announce]);
+  }, [ctxEncoded, session, mode, alignedKey, articlesKey, needsEndorsement, finishStep, announce]);
 
   useEffect(() => {
     void load();
@@ -123,7 +127,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, o
   const title = unit?.step ? localized(unit.step.name, unit.step.names, language) : t("pu.title");
   /** What publishing would change, per resource. */
   const plan = useMemo(
-    () => (unit ? unit.resources.map((r) => ({ resource: r.resource, changes: r.draft ? withUnit(unit, r) !== (r.published?.text ?? null) : false, hasDraft: Boolean(r.draft) })) : []),
+    () => (unit ? unit.resources.map((r) => ({ resource: r.resource, changes: unitChanges(unit, r)?.length ?? 0, articles: r.kind === "articles", hasDraft: Boolean(r.draft) })) : []),
     [unit],
   );
   const line = (problem: UnitProblem) =>
@@ -221,7 +225,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, o
             <ul className="pu-list">
               {unit.resources.map((r) => (
                 <li key={r.resource} data-ok="true">
-                  <span aria-hidden>✓</span> {label(r.resource)}: {r.draft ? t(r.kind === "usfm" ? "pu.okText" : "pu.okTable") : t("pu.o.nothing")}
+                  <span aria-hidden>✓</span> {label(r.resource)}: {r.draft ? (r.kind === "articles" ? t("pu.okArticles").replace("{n}", String(r.articles?.length ?? 0)) : t(r.kind === "usfm" ? "pu.okText" : "pu.okTable")) : t("pu.o.nothing")}
                 </li>
               ))}
               {needsEndorsement ? (
@@ -244,7 +248,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, o
               <ul className="pu-list">
                 {plan.map((row) => (
                   <li key={row.resource}>
-                    {label(row.resource)}: {!row.hasDraft ? t("pu.o.nothing") : row.changes ? t("pu.willChange") : t("pu.o.unchanged")}
+                    {label(row.resource)}: {!row.hasDraft ? t("pu.o.nothing") : !row.changes ? t("pu.o.unchanged") : row.articles ? t("pu.willChangeArticles").replace("{n}", String(row.changes)) : t("pu.willChange")}
                   </li>
                 ))}
               </ul>

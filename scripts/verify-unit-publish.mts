@@ -4,6 +4,9 @@
  */
 import assert from "node:assert/strict";
 import {
+  articleFingerprints,
+  articlesOfUnit,
+  checkUnitArticles,
   checkAgainstEndorsement,
   checkUnitTable,
   checkUnitText,
@@ -106,6 +109,15 @@ test("lo que cambió después del aval se detecta por versículo y por fila", ()
   assert.equal(checkAgainstEndorsement(now, null)[0]!.id, "not-endorsed");
   // Re-aligning a verse does not change its words: the endorsement still holds.
   assert.deepEqual(textFingerprints(draft.replace('x-content="d"', 'x-content="otra"'), chapter2), textFingerprints(draft, chapter2));
+});
+
+test("los artículos de una unidad son los que enlazan sus notas y sus palabras clave", () => {
+  const notes = [TN_HEAD, "1:1	aaaa		rc://*/ta/man/translate/figs-idiom	q	1	N", "2:1	bbbb		rc://*/ta/man/translate/figs-you	q	1	N", "2:9	cccc		rc://es-419/ta/man/translate/figs-you	q	1	N", "2:10	dddd			q	1	sin artículo", ""].join("\n");
+  const terms = ["Reference	ID	Tags	OrigWords	Occurrence	TWLink", "2:11	w001	keyterm	χάρις	1	rc://*/tw/dict/bible/kt/grace", "2:13	w002	keyterm	Θεοῦ	1	rc://*/tw/dict/bible/kt/god", "3:1	w003		x	1	rc://*/tw/dict/bible/other/ruler", ""].join("\n");
+  assert.deepEqual(articlesOfUnit({ notesTsv: notes, termsTsv: terms, range: { chapter: 2, from: 1, to: 15 } }), { academia: ["translate/figs-you"], palabras: ["bible/kt/god.md", "bible/kt/grace.md"] });
+  assert.deepEqual(articlesOfUnit({ notesTsv: null, termsTsv: null, range: chapter2 }), { academia: [], palabras: [] });
+  assert.deepEqual(checkUnitArticles("academia", [{ path: "translate/figs-you/01.md", text: "Texto" }, { path: "translate/figs-you/title.md", text: "  " }]), [{ id: "article-empty", resource: "academia", where: ["translate/figs-you/title.md"] }]);
+  assert.equal(articleFingerprints([{ path: "a.md", text: "uno\r\n" }])["a.md"], articleFingerprints([{ path: "a.md", text: "uno" }])["a.md"]);
 });
 
 test("el nombre de la unidad", () => {

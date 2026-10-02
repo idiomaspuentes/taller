@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 8,
+      "version": 9,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -1396,11 +1396,13 @@
       "stepParams": {
         "comprobar": {
           "mode": "comprobar",
-          "aligned": "tpl,tps"
+          "aligned": "tpl,tps",
+          "articles": "academia,palabras"
         },
         "publicar": {
           "mode": "publicar",
-          "aligned": "tpl,tps"
+          "aligned": "tpl,tps",
+          "articles": "academia,palabras"
         }
       }
     }
