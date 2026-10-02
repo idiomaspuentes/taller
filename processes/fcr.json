@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 4,
+      "version": 5,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -681,7 +681,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
                 {
@@ -725,7 +725,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
                 {
@@ -769,7 +769,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
                 {
@@ -854,7 +854,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
                 {
@@ -884,7 +884,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
                 {
@@ -958,7 +958,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
                 {
@@ -1218,6 +1218,41 @@
       "supersedes": [
         "solver-stub"
       ]
+    },
+    {
+      "id": "fcr-checklist",
+      "name": "Lista de comprobación",
+      "description": "Cada nota, palabra o pregunta del pasaje, con sus preguntas de sí o no frente a los textos afinados.",
+      "launchUrl": "/#/solver/checklist?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true,
+      "stepParams": {
+        "notas-tpl": {
+          "items": "notas",
+          "text": "tpl"
+        },
+        "notas-tps": {
+          "items": "notas",
+          "text": "tpl,tps"
+        },
+        "academia": {
+          "items": "notas",
+          "text": "tpl"
+        },
+        "palabras-tpl": {
+          "items": "palabras",
+          "text": "tpl"
+        },
+        "palabras-tps": {
+          "items": "palabras",
+          "text": "tpl,tps"
+        },
+        "preguntas-textos": {
+          "items": "preguntas",
+          "text": "tpl,tps"
+        }
+      }
     }
   ],
   "glossary": {

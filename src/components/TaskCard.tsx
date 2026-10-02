@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
 import type { BoardCard } from "../domain/myTasksBoard";
-import { canApproveStep, canClaimStep, isStepActor, isStepUnlocked, stepClaimMode } from "../domain/stepClaim";
+import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode } from "../domain/stepClaim";
 import { parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeHold, localizeName } from "../domain/templateNames";
@@ -96,7 +96,7 @@ export function TaskCard(props: Props) {
   const mine = assigneeOf(card).toLowerCase() === props.login.toLowerCase();
   // The step in hand is a free one: the person says when it is done (the tool cannot know, above all an outside one).
   const stepInHand = action.kind === "continue" ? action.step : undefined;
-  const canFinishStep = Boolean(stepInHand && mine && card.started && stepClaimMode(stepInHand) === "none");
+  const canFinishStep = Boolean(stepInHand && mine && card.started && stepClaimMode(stepInHand) === "none" && !closesInItsTool(stepInHand));
 
   const menuItems: { id: string; label: string; run: () => void; danger?: boolean }[] = [];
   if (steps.length && card.group !== "done") menuItems.push({ id: "steps", label: stepsOpen ? t("tb.hideSteps") : t("tb.showSteps"), run: () => setStepsOpen((v) => !v) });
@@ -197,7 +197,7 @@ export function TaskCard(props: Props) {
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onApproveStep(step)}>
                     {t("mt.approve")}
                   </Button>
-                ) : mine && stepClaimMode(step) === "none" && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
+                ) : mine && stepClaimMode(step) === "none" && !closesInItsTool(step) && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onToggleStep(step)}>
                     {done ? t("tb.stepUndo") : t("tb.stepFinish")}
                   </Button>

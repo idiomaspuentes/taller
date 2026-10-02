@@ -1,0 +1,88 @@
+import { DcsApiError, createOrUpdateContents, getContents, getRawContent, type ContentsResponse } from "@ip-lms/dcs-client";
+import type { GtSession } from "./auth";
+import { dcsConfig } from "./config";
+import type { CheckAnswer } from "../domain/checklist";
+
+/**
+ * Where the answers of a checklist are kept: one JSON file per person, on a branch of its own in the content
+ * repository (people can write there; nothing is added to the published branch). The branch is created from the
+ * default one the first time somebody answers.
+ */
+export const CHECKS_BRANCH = "taller-checks";
+
+export type CheckTarget = { owner: string; repo: string; defaultBranch?: string };
+
+const dirOf = (key: string): string => `checklists/${key}`;
+const fileOf = (key: string, login: string): string => `${dirOf(key)}/${login.trim().toLowerCase()}.json`;
+
+const isNotFound = (err: unknown): boolean => err instanceof DcsApiError && err.status === 404;
+const isShaConflict = (err: unknown): boolean => err instanceof DcsApiError && (err.status === 409 || err.status === 422);
+
+function decode(content: string): string {
+  const binary = atob(content.replace(/\s+/g, ""));
+  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+}
+
+function parse(text: string): CheckAnswer[] {
+  try {
+    const rows = JSON.parse(text) as unknown;
+    return Array.isArray(rows) ? (rows as CheckAnswer[]).filter((row) => row && typeof row.itemId === "string" && typeof row.questionId === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Everybody's answers of one checklist. An empty list when nobody has answered (or the branch does not exist). */
+export async function loadCheckAnswers(session: GtSession, target: CheckTarget, key: string): Promise<CheckAnswer[]> {
+  const config = dcsConfig(session.host);
+  let entries: ContentsResponse[] = [];
+  try {
+    const listing = await getContents(config, target.owner, target.repo, dirOf(key), { ref: CHECKS_BRANCH, token: session.token });
+    entries = Array.isArray(listing) ? listing : [];
+  } catch (err) {
+    if (isNotFound(err)) return [];
+    throw err;
+  }
+  const files = await Promise.all(
+    entries
+      .filter((entry) => entry.type === "file" && entry.name.endsWith(".json"))
+      .map((entry) => getRawContent(config, target.owner, target.repo, entry.path, { ref: CHECKS_BRANCH, token: session.token }).then(parse).catch(() => [] as CheckAnswer[])),
+  );
+  return files.flat();
+}
+
+/** Add answers to the signed-in person's own file. Retries once when the file moved meanwhile. */
+export async function appendCheckAnswers(session: GtSession, target: CheckTarget, key: string, answers: CheckAnswer[]): Promise<void> {
+  const config = dcsConfig(session.host);
+  const filepath = fileOf(key, session.username);
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    let existing: { text: string; sha: string } | null = null;
+    let branchExists = true;
+    try {
+      const hit = await getContents(config, target.owner, target.repo, filepath, { ref: CHECKS_BRANCH, token: session.token });
+      if (!Array.isArray(hit) && hit.content !== undefined) existing = { text: decode(hit.content), sha: hit.sha };
+    } catch (err) {
+      if (!isNotFound(err)) throw err;
+      // The file is missing: either nobody of this person answered yet, or the branch itself does not exist.
+      try {
+        await getContents(config, target.owner, target.repo, "", { ref: CHECKS_BRANCH, token: session.token });
+      } catch (inner) {
+        if (isNotFound(inner)) branchExists = false;
+        else throw inner;
+      }
+    }
+    const content = `${JSON.stringify([...(existing ? parse(existing.text) : []), ...answers], null, 2)}\n`;
+    try {
+      await createOrUpdateContents(config, target.owner, target.repo, filepath, {
+        content,
+        message: `Taller: lista de comprobación ${key}`,
+        sha: existing?.sha,
+        ...(branchExists ? { branch: CHECKS_BRANCH } : { branch: target.defaultBranch, new_branch: CHECKS_BRANCH }),
+        token: session.token,
+      });
+      return;
+    } catch (err) {
+      if (!isShaConflict(err) || attempt === 2) throw err;
+    }
+  }
+}

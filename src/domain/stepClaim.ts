@@ -207,11 +207,11 @@ export function releaseStep(
 }
 
 /**
- * A step that closes by consensus item by item is completed by its tool, when every item is agreed (see
- * `reviewRound.ts`): approving it from the list would close it with items still in dispute.
+ * A step that closes item by item (by consensus, or by a checklist) is completed by its tool, when every item is
+ * settled (see `reviewRound.ts` and `checklist.ts`): completing it from the list would close it with items open.
  */
 export function closesInItsTool(step: TaskStep): boolean {
-  return step.closing === "consensus" && Boolean(step.solverAppId);
+  return (step.closing === "consensus" || step.closing === "checklist") && Boolean(step.solverAppId);
 }
 
 export function canApproveStep(

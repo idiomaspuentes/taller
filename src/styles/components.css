@@ -7008,3 +7008,23 @@ button.al-box--read { cursor: pointer; }
 .fam-intro { border-top: 1px solid var(--border); padding: 0.5rem 0; }
 .fam-intro summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
 .fam-intro__link { display: inline-block; margin-top: 0.5rem; font-size: 0.9375rem; text-decoration: underline; }
+
+/* ---- checklist step (ChecklistView) ---- */
+.ck-verse mark { background: var(--accent-100); color: inherit; border-radius: 3px; padding: 0 2px; }
+.ck-quote { display: block; margin-top: 0.25rem; font-size: 0.875rem; color: var(--text-muted); }
+.ck-quote[data-found="false"] { color: var(--warning-700); }
+.ck-list { padding: 0.625rem 0.875rem; border-radius: var(--radius-lg); background: var(--surface-muted); }
+.ck-list summary { min-height: 32px; font-weight: 700; cursor: pointer; }
+.ck-list[data-kind="ck.openList"], .ck-list[data-kind="ck.consultList"] { background: var(--warning-100); color: var(--warning-700); }
+.ck-questions { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.ck-question { display: grid; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.ck-question__text { margin: 0; font-weight: 600; }
+.ck-question__scope { font-weight: 400; color: var(--text-muted); font-size: 0.875rem; }
+.ck-question__buttons { display: flex; gap: 0.5rem; }
+.ck-question__buttons button { min-height: 48px; min-width: 88px; font-size: 1rem; }
+.ck-question__outcome { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.9375rem; }
+.ck-question__outcome[data-outcome="consult"], .ck-question__outcome[data-outcome="none"] { background: var(--warning-100); color: var(--warning-700); }
+.ck-no { display: grid; gap: 0.375rem; padding: 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); }
+.ck-no__outcomes { display: grid; gap: 0.375rem; }
+.ck-no__outcomes button { min-height: 44px; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ck-no__outcomes button[aria-pressed="true"] { border-color: var(--primary); background: var(--accent-50); font-weight: 600; }

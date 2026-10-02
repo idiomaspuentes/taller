@@ -19,6 +19,7 @@ import { localized, shippedWorkflows } from "./domain/processes";
 import { loadLocalWorkflows } from "./domain/store";
 import type { WorkflowTemplate } from "./domain/types";
 import { HandoffUnitsPanel } from "./components/HandoffUnitsPanel";
+import { ChecklistView } from "./components/ChecklistView";
 import type { AssignmentsDoc, InventoryDoc, ProjectIndexEntry } from "./domain/types";
 import {
   emptyAssignments,
@@ -903,6 +904,7 @@ export function App() {
     route.name === "solver-helps" ||
     route.name === "solver-familiarize" ||
     route.name === "solver-afinar" ||
+    route.name === "solver-checklist" ||
     route.name === "solver-review"
   ) {
     const onSolverClose = () => {
@@ -933,6 +935,15 @@ export function App() {
           <HelpsEditorView
             key={sessionEpoch}
             ctxEncoded={route.ctx}
+            announce={announce}
+            onClose={onSolverClose}
+          />
+        ) : route.name === "solver-checklist" ? (
+          <ChecklistView
+            key={`${sessionEpoch}-${route.items}-${route.text}`}
+            ctxEncoded={route.ctx}
+            kind={route.items === "preguntas" || route.items === "palabras" ? route.items : "notas"}
+            texts={route.text.split(",").filter((x): x is "tpl" | "tps" => x === "tpl" || x === "tps")}
             announce={announce}
             onClose={onSolverClose}
           />
