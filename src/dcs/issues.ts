@@ -643,6 +643,11 @@ export async function publishWorkOrders(params: {
    * Existing issues keep their state: closed ones stay closed.
    */
   retireOrphans?: boolean;
+  /**
+   * Leave whoever has a subtarea where they are unless the plan itself names somebody. For publishing again from a
+   * screen that only changed the plan: people take work in Door43, and the plan in hand may not know it yet.
+   */
+  keepAssignees?: boolean;
   onProgress?: (progress: PublishProgress) => void;
 }): Promise<{ created: number; updated: number; closed: number; issues: DcsIssue[] }> {
   const { session, org, board, inventory, onProgress } = params;
@@ -705,7 +710,7 @@ export async function publishWorkOrders(params: {
           title,
           body,
           milestone: milestoneId,
-          assignees: order.assignee ? [order.assignee.personId] : [],
+          ...(params.keepAssignees && !order.assignee ? {} : { assignees: order.assignee ? [order.assignee.personId] : [] }),
         });
         if (labelIds.length) {
           try {

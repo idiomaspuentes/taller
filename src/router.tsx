@@ -46,7 +46,7 @@ export type AppRoute =
   /** Sandbox: launch solvers without Entregar / issues. `#/lab` or `#/solver-lab`. */
   | { name: "solver-lab" };
 
-const PROJECT_STEPS: StepId[] = ["inventario", "tareas", "asignar", "entregar", "avance", "publicar"];
+const PROJECT_STEPS: StepId[] = ["avance", "tareas", "subtareas", "publicar", "inventario", "asignar", "entregar"];
 
 /** Map legacy URL segments → current step ids. */
 export function normalizeProjectStep(raw: string | undefined): StepId {

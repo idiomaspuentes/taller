@@ -185,9 +185,12 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
     select({ kind: "phase", phaseId: made.id });
   }
   function newTask(phaseId: string) {
+    // Whoever does the phase does its new task too, until somebody says otherwise.
+    const shared = phaseTeam(phaseId);
     const made = addTask(plan, phaseId, t("pe.newTaskName"));
     const first = made.plan.tasks.find((row) => row.id === made.id)?.steps?.[0];
-    onChange(first ? patchStep(made.plan, made.id, first.id, { name: t("pe.newStepName") }) : made.plan);
+    const named = first ? patchStep(made.plan, made.id, first.id, { name: t("pe.newStepName") }) : made.plan;
+    onChange(shared ? patchTask(named, made.id, { orgTeamId: shared.orgTeamId, orgTeamName: shared.orgTeamName }) : named);
     select({ kind: "task", taskId: made.id });
     setOpenTasks((prev) => new Set(prev).add(made.id));
   }

@@ -103,7 +103,9 @@ import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin, isProductionHost } from "./domain/qaAdmin";
 import { UserMenu } from "./components/UserMenu";
 import { resolveResourceRepo } from "./domain/roles";
-import { StepNav, SubStepTabs, stepEnabled, type StepId } from "./components/StepNav";
+import { StepNav, stepEnabled, type StepId } from "./components/StepNav";
+import { ProjectPlanView } from "./components/ProjectPlanView";
+import { ProjectWorkView } from "./components/ProjectWorkView";
 import { landingRoute, useHashRoute } from "./router";
 import { decodeSolverLaunchContext } from "./domain/solverLaunch";
 import { isLabLaunch } from "./domain/solverLab";
@@ -136,6 +138,16 @@ function writeSetupDone(): void {
   } catch {
     /* quota */
   }
+}
+
+/**
+ * Where a project opens: on how it is going once it has subtareas, on the subtareas it would lay out when the book
+ * was read and none exists yet, and on its process while there is no reading of the book to lay anything out with.
+ */
+function landingStep(hasTasks: boolean, hasInventory: boolean, issues: number): StepId {
+  if (!hasInventory) return hasTasks ? "tareas" : "inventario";
+  if (!hasTasks) return "tareas";
+  return issues > 0 ? "avance" : "subtareas";
 }
 
 export function App() {
@@ -653,11 +665,7 @@ export function App() {
         if (result.found) {
           updateBoard(result.board);
           setBook(code);
-          const land: StepId = result.board.teams.length
-            ? result.inventory
-              ? "asignar"
-              : "tareas"
-            : "inventario";
+          const land: StepId = landingStep(result.board.teams.length > 0, Boolean(result.inventory), result.issueCount);
           if (route.step === "inventario" && land !== "inventario") {
             navigate({ name: "proyecto", projectId: code, step: land });
           }
@@ -779,11 +787,7 @@ export function App() {
         persistSessionInventory(normalized);
       }
       updateBoard(result.board);
-      const land: StepId = result.board.teams.length
-        ? result.inventory
-          ? "asignar"
-          : "tareas"
-        : "inventario";
+      const land: StepId = landingStep(result.board.teams.length > 0, Boolean(result.inventory), result.issueCount);
       navigate({ name: "proyecto", projectId: normalizeProjectId(book), step: land });
       announce(
         result.issueCount > 0
@@ -1229,7 +1233,6 @@ export function App() {
                 view={route.step}
                 setupDone={setupDone}
                 hasInventory={hasInventory}
-                hasTeams={board.teams.length > 0}
                 onChange={goToStep}
               />
             </div>
@@ -1522,15 +1525,6 @@ export function App() {
           </Alert>
         ) : null}
 
-        {route.name === "proyecto" && effectiveCanManage ? (
-          <SubStepTabs
-            view={route.step}
-            setupDone={setupDone}
-            hasInventory={hasInventory}
-            onChange={goToStep}
-          />
-        ) : null}
-
         {route.name === "proyecto" && effectiveCanManage && route.step === "inventario" ? (
           <BookStepView
             book={book}
@@ -1562,7 +1556,23 @@ export function App() {
           />
         ) : null}
 
-        {route.name === "proyecto" && effectiveCanManage && route.step === "tareas" ? (
+        {route.name === "proyecto" && effectiveCanManage && route.step === "tareas" && !route.taskId && session && pmOrg ? (
+          <ProjectPlanView
+            key={board.projectId}
+            session={session}
+            pmOrg={pmOrg}
+            board={board}
+            inventory={inventory}
+            onSaved={updateBoard}
+            onOpenScope={(taskId) => navigate({ name: "proyecto", projectId: route.projectId, step: "tareas", taskId })}
+            announce={announce}
+          />
+        ) : null}
+        {route.name === "proyecto" && effectiveCanManage && route.step === "subtareas" && session && pmOrg && inventory ? (
+          <ProjectWorkView key={board.projectId} session={session} pmOrg={pmOrg} board={board} inventory={inventory} onSaved={updateBoard} announce={announce} />
+        ) : null}
+
+        {route.name === "proyecto" && effectiveCanManage && route.step === "tareas" && (route.taskId || !session || !pmOrg) ? (
           <TeamsView
             board={board}
             inventory={inventory}
