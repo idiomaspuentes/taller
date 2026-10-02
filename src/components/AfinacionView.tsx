@@ -8,6 +8,7 @@ import { formatChatEvent } from "../domain/chatEvent";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
+import { BookA, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { HelpMessages } from "./HelpMessages";
 import { termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, termLabel, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
@@ -110,7 +111,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [selected, setSelected] = useState<number[]>([]);
   const [note, setNote] = useState("");
   const [pending, setPending] = useState<ReviewStance | null>(null);
-  const [dockOpen, setDockOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -122,6 +122,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [articles, setArticles] = useState<Record<string, ArticleInfo>>({});
   /** How many messages each note has for the team that will work on the notes. */
   const [noteMessages, setNoteMessages] = useState<Record<string, number>>({});
+  /** What the draft is compared with, kept from one item to the next. */
+  const [compare, setCompare] = useState<"ult" | "orig" | "article" | "note" | "book">("ult");
   /** The article open to be read in full: its path, and its text once it arrives (`null` = it could not be read). */
   const [reading, setReading] = useState<{ path: string; body?: string | null } | null>(null);
   const [stepDone, setStepDone] = useState(false);
@@ -193,7 +195,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
   async function readArticle(path: string) {
     if (!session || !ctx || !data) return;
-    if (reading?.path === path) return void setReading(null);
+    if (reading?.path === path && reading.body !== undefined) return;
     setReading({ path });
     const body = await loadArticleBody(session, ctx, data.sourcePackage, path).catch(() => null);
     setReading((current) => (current?.path === path ? { path, body } : current));
@@ -461,34 +463,36 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }
 
   const total = visible.length;
+  const messageKeyOf = stepProp === "notas" ? (item?.id ?? "") : termKey;
+  const messagesHere = noteMessages[messageKeyOf] ?? 0;
+  const compareTabs = [
+    { id: "ult" as const, label: data?.gatewayLabel || "ULT" },
+    { id: "orig" as const, label: t("af.tabOriginal") },
+    ...(stepProp === "notas" ? [{ id: "article" as const, label: t("af.tabArticle") }] : [{ id: "book" as const, label: t("af.inWholeBook") }]),
+    { id: "note" as const, label: `${t(stepProp === "notas" ? "af.tabNote" : "af.tabMessage")}${messagesHere ? ` · ${messagesHere}` : ""}` },
+  ];
+  // The article is read when its tab is opened, and again for each new figure while it stays open.
+  useEffect(() => {
+    if (compare !== "article" || !item) return;
+    const path = articlePathOf(item.supportRef);
+    if (path && reading?.path !== path) void readArticle(path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compare, item?.id]);
 
   return (
     <div className="af af--round">
       <ToolHeader
         title={t(TITLE[stepProp])}
         onBack={onClose}
-        meta={data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
+        meta={[data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : "", summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
         actions={
-          <>
-          {data ? (
-            <a className="scripture-editor__glossary" href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200`} target="_blank" rel="noreferrer">
-              {t("gl.open")}
+          data ? (
+            <a className="th-icon" href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200`} target="_blank" rel="noreferrer" aria-label={t("gl.open")} title={t("gl.open")}>
+              <BookA size={18} aria-hidden />
             </a>
-          ) : null}
-          </>
+          ) : null
         }
-      >
-        {summary ? (
-          <div className="af-progress" aria-label={t("af.progressAria")}>
-            <span>
-              {t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data?.items.length ?? 0))}
-            </span>
-            <span className="af-bar">
-              <i style={{ width: `${data?.items.length ? (summary.agreed / data.items.length) * 100 : 0}%` }} />
-            </span>
-          </div>
-        ) : null}
-      </ToolHeader>
+      />
 
       {error ? (
         <Alert variant="destructive">
@@ -501,160 +505,107 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} />
       ) : null}
 
-      {data && data.items.length && groups.length > 1 ? (
-        <div className="af-figures" role="group" aria-label={t(stepProp === "notas" ? "af.figuresAria" : "af.category")}>
-          {[{ category: "all", label: "", items: data.items }, ...groups].map((group) => {
-            const done = summary ? group.items.filter((row) => summary.items.find((tally) => tally.itemId === row.id)?.state === "agreed").length : 0;
-            return (
-              <button
-                key={group.category}
-                type="button"
-                className="af-figure"
-                aria-pressed={category === group.category}
-                data-done={done === group.items.length ? "true" : undefined}
-                onClick={() => {
-                  setCategory(group.category);
-                  setPosition(0);
-                }}
-              >
-                {group.category === "all" ? t("af.allFigures") : stepProp === "notas" ? articleShortName(group.items[0]!, articles[articlePathOf(group.items[0]!.supportRef)], (label) => localizeAfinacion(label, language)) : localizeAfinacion(group.label, language)}
-                <span>
-                  {done}/{group.items.length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
       {data && item ? (
         <>
-          <section className="af-dock" aria-label={t("af.versesAria")}>
-            <div className="af-dock__bar">
-              <strong>
-                {data.book} {item.chapter}:{item.verse}
-              </strong>
-              <button type="button" className="af-link" onClick={() => setDockOpen((v) => !v)} aria-expanded={dockOpen}>
-                {dockOpen ? t("af.hideOriginal") : t("af.showOriginal")}
-              </button>
-            </div>
-            {dockOpen ? (
-              <>
-                <div className="af-row af-row--ref">
-                  <span className="af-lbl">{data.originalLabel}</span>
-                  <span className="af-orig" lang="grc">
-                    <Words text={data.originalVerses[item.verse] ?? ""} marked={origMarked} />
-                  </span>
-                </div>
-                <div className="af-row af-row--ref">
-                  <span className="af-lbl">{t("af.english").replace("{label}", data.gatewayLabel)}</span>
-                  <Words text={data.gatewayVerses[item.verse] ?? ""} marked={item.phraseTokens} />
-                </div>
-              </>
-            ) : null}
-            <div className="af-row">
-              <span className="af-lbl">{t("af.draft").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</span>
-              <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
-            </div>
-            <div className="af-actions">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setFixText(verseText);
-                  setFixing(true);
-                }}
-              >
-                {t("af.fixVerse")}
-              </Button>
-            </div>
-            {fixing ? (
-              <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
-                <label htmlFor="af-fix-text" className="af-lbl">
-                  {t("af.verseText")}
+          <section className="af-focus" aria-label={t("af.noteAria")}>
+            <div className="af-focus__top">
+              {groups.length > 1 ? (
+                // Which figure is reviewed: one picker instead of a row of every kind of the chapter.
+                <label className="af-pick">
+                  <span className="sr-only">{t(stepProp === "notas" ? "af.figuresAria" : "af.category")}</span>
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      setPosition(0);
+                    }}
+                  >
+                    {[{ category: "all", label: "", items: data.items }, ...groups].map((group) => {
+                      const done = summary ? group.items.filter((row) => summary.items.find((tally) => tally.itemId === row.id)?.state === "agreed").length : 0;
+                      const name = group.category === "all" ? t("af.allFigures") : stepProp === "notas" ? articleShortName(group.items[0]!, articles[articlePathOf(group.items[0]!.supportRef)], (label) => localizeAfinacion(label, language)) : localizeAfinacion(group.label, language);
+                      return (
+                        <option key={group.category} value={group.category}>
+                          {`${name} · ${done}/${group.items.length}`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <ChevronDown size={14} aria-hidden />
                 </label>
-                <textarea id="af-fix-text" className="af-textarea" rows={4} value={fixText} onChange={(e) => setFixText(e.target.value)} />
-                <label htmlFor="af-fix-reason" className="af-lbl">
-                  {t("af.why")}
-                </label>
-                <input id="af-fix-reason" className="af-input" value={fixReason} onChange={(e) => setFixReason(e.target.value)} />
-                <p className="af-hint">{t("af.fixHint")}</p>
-                <div className="af-buttons">
-                  <Button type="button" disabled={saving || !fixText.trim()} onClick={() => void saveFix()}>
-                    {saving ? t("af.saving") : t("af.saveFix")}
-                  </Button>
-                  <Button type="button" variant="secondary" onClick={() => setFixing(false)}>
-                    {t("af.cancel")}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="af-card" aria-label={t("af.noteAria")}>
-            <div className="af-card__top">
-              <span className="af-chip">{stepProp === "notas" ? t("af.figureOf").replace("{ref}", `${item.chapter}:${item.verse}`) : localizeAfinacion(item.categoryLabel, language)}</span>
+              ) : null}
               {tally ? <span className="af-state" data-state={tally.state}>{t(STATE_KEY[tally.state])}</span> : null}
             </div>
-            {stepProp === "notas" ? (
-              <>
-                <h2 className="af-phrase">{nameOf(item)}</h2>
-                {articles[articlePathOf(item.supportRef)]?.question ? <p className="af-article-q">{articles[articlePathOf(item.supportRef)]!.question}</p> : null}
-                <p className="af-where">
-                  {item.phrase ? t("af.whereEnglish").replace("{label}", data.gatewayLabel).replace("{p}", item.phrase) : item.quote ? t("af.whereOriginal").replace("{p}", item.quote) : t("af.wholeVerse")}
-                </p>
-                <div className="af-links">
-                  {articlePathOf(item.supportRef) ? (
-                    <button type="button" className="af-link" aria-expanded={reading?.path === articlePathOf(item.supportRef)} onClick={() => void readArticle(articlePathOf(item.supportRef))}>
-                      {t(reading?.path === articlePathOf(item.supportRef) ? "af.hideArticle" : "af.readArticle")}
-                    </button>
-                  ) : null}
+            <h2 className="af-phrase">
+              {stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}
+            </h2>
+
+            <div className="af-draft">
+              <div className="af-draft__bar">
+                <span className="af-lbl">{t("af.draftAt").replace("{res}", data.resource === "tps" ? "TPS" : "TPL").replace("{ref}", `${item.chapter}:${item.verse}`)}</span>
+                {fixing ? null : (
+                  <button
+                    type="button"
+                    className="af-link"
+                    onClick={() => {
+                      setFixText(verseText);
+                      setFixing(true);
+                    }}
+                  >
+                    {t("af.fixShort")}
+                  </button>
+                )}
+              </div>
+              {fixing ? (
+                <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
+                  <textarea id="af-fix-text" className="af-textarea" rows={4} value={fixText} aria-label={t("af.verseText")} onChange={(e) => setFixText(e.target.value)} />
+                  <input id="af-fix-reason" className="af-input" value={fixReason} placeholder={t("af.why")} aria-label={t("af.why")} onChange={(e) => setFixReason(e.target.value)} />
+                  <p className="af-hint">{t("af.fixHint")}</p>
+                  <div className="af-row-buttons">
+                    <Button type="button" size="sm" disabled={saving || !fixText.trim()} onClick={() => void saveFix()}>
+                      {saving ? t("af.saving") : t("af.saveFix")}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setFixing(false)}>
+                      {t("af.cancel")}
+                    </Button>
+                  </div>
                 </div>
-                {reading?.path === articlePathOf(item.supportRef) ? (
-                  <div className="af-article">{reading.body === undefined ? <p className="af-hint">{t("af.loadingArticle")}</p> : reading.body ? <HelpMarkdownView content={reading.body} /> : <p className="af-hint">{t("af.noArticle")}</p>}</div>
-                ) : null}
-                {item.note ? (
-                  <details className="af-note-box">
-                    <summary>
-                      {t("af.seeNote")}
-                      {noteMessages[item.id] ? ` · ${t(noteMessages[item.id] === 1 ? "hm.countOne" : "hm.countMany").replace("{n}", String(noteMessages[item.id]))}` : ""}
-                    </summary>
-                    <HelpMarkdownView className="af-note af-note--md" content={item.note} />
-                    {session && ctx?.pmOrg && ctx.projectId ? (
-                      // Refining is about the text, not the notes: a disagreement with a note is left for whoever harmonizes it.
-                      <HelpMessages
-                        key={item.id}
-                        session={session}
-                        pmOrg={ctx.pmOrg}
-                        lang={ctx.lang}
-                        projectId={ctx.projectId}
-                        book={data.book}
-                        chapter={item.chapter}
-                        verse={item.verse}
-                        about={item.id}
-                        resource="notas"
-                        taskName={ctx.taskName}
-                        lede={t("hm.ledeLeave")}
-                        onCount={(count) => setNoteMessages((prev) => (prev[item.id] === count ? prev : { ...prev, [item.id]: count }))}
-                      />
-                    ) : null}
-                  </details>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <h2 className="af-phrase">{termSlug ? `${termLabel(termSlug, termTitles)}${item.phrase ? ` · «${item.phrase}»` : ""}` : item.phrase ? `«${item.phrase}»` : item.quote ? item.quote : t("af.wholeVerse")}</h2>
-                {item.note ? <HelpMarkdownView className="af-note af-note--md" content={item.note} /> : null}
-                {termSlug && session && ctx?.pmOrg && ctx.projectId ? (
-                  // The same as with a note: what the refiners would change in the term's article is left for whoever harmonizes the words.
-                  <details className="af-note-box">
-                    <summary>
-                      {t("hm.aboutTerm")}
-                      {noteMessages[termKey] ? ` · ${t(noteMessages[termKey] === 1 ? "hm.countOne" : "hm.countMany").replace("{n}", String(noteMessages[termKey]))}` : ""}
-                    </summary>
+              ) : (
+                <>
+                  <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
+                  <p className="af-hint">{item.phrase ? t("af.tapPhrase").replace("{p}", item.phrase) : termSlug ? t("af.tapTerm") : t("af.tapNote")}</p>
+                </>
+              )}
+            </div>
+
+            {/* What the draft is compared with: one at a time, the English text first. */}
+            <div className="af-compare-tabs" role="tablist" aria-label={t("af.compareWith")}>
+              {compareTabs.map((tab) => (
+                <button key={tab.id} type="button" role="tab" className="mde-kind" aria-selected={compare === tab.id} onClick={() => setCompare(tab.id)}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="af-compare-pane" role="tabpanel">
+              {compare === "ult" ? (
+                <Words text={data.gatewayVerses[item.verse] ?? ""} marked={item.phraseTokens} />
+              ) : compare === "orig" ? (
+                <span className="af-orig" lang="grc">
+                  <Words text={data.originalVerses[item.verse] ?? ""} marked={origMarked} />
+                </span>
+              ) : compare === "article" ? (
+                <>
+                  {articles[articlePathOf(item.supportRef)]?.question ? <p className="af-article-q">{articles[articlePathOf(item.supportRef)]!.question}</p> : null}
+                  {reading?.path === articlePathOf(item.supportRef) ? (
+                    reading.body === undefined ? <p className="af-hint">{t("af.loadingArticle")}</p> : reading.body ? <HelpMarkdownView content={reading.body} /> : <p className="af-hint">{t("af.noArticle")}</p>
+                  ) : null}
+                </>
+              ) : compare === "note" ? (
+                <>
+                  {item.note ? <HelpMarkdownView className="af-note af-note--md" content={item.note} /> : null}
+                  {session && ctx?.pmOrg && ctx.projectId && (stepProp === "notas" || termSlug) ? (
+                    // Refining is about the text, not the helps: a disagreement with a note or a term is left for whoever harmonizes it.
                     <HelpMessages
-                      key={termKey}
+                      key={stepProp === "notas" ? item.id : termKey}
                       session={session}
                       pmOrg={ctx.pmOrg}
                       lang={ctx.lang}
@@ -662,119 +613,109 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                       book={data.book}
                       chapter={item.chapter}
                       verse={item.verse}
-                      about={termKey}
-                      resource="palabras"
+                      about={stepProp === "notas" ? item.id : termKey}
+                      resource={stepProp === "notas" ? "notas" : "palabras"}
                       taskName={ctx.taskName}
-                      lede={t("hm.ledeLeaveTerm")}
-                      onCount={(count) => setNoteMessages((prev) => (prev[termKey] === count ? prev : { ...prev, [termKey]: count }))}
+                      lede={t(stepProp === "notas" ? "hm.ledeLeave" : "hm.ledeLeaveTerm")}
+                      onCount={(count) => setNoteMessages((prev) => (prev[messageKeyOf] === count ? prev : { ...prev, [messageKeyOf]: count }))}
                     />
-                  </details>
-                ) : null}
-              </>
-            )}
-            {comparison ? (
-              <div className="af-compare" aria-label={t("af.compareAria")}>
-                <p className="af-lbl">{t("af.inWholeBook")}</p>
-                {preferredTerms[termSlug] ? (
-                  <p className="af-preferred">
-                    {t("af.preferred")}<b>«{preferredTerms[termSlug]!.text}»</b>
-                    {canChoosePreferred ? (
-                      <button type="button" className="af-use" disabled={saving} onClick={() => void choosePreferred("")}>
-                        {t("af.remove")}
-                      </button>
-                    ) : null}
-                  </p>
-                ) : null}
-                {comparison.renderings.length ? (
-                  <ul className="af-renderings">
-                    {comparison.renderings.map((r) => (
-                      <li key={r.text} className="af-rendering">
-                        <b>«{r.text}»</b> · {r.uses.length} {r.uses.length === 1 ? t("af.useOne") : t("af.useMany")}
-                        {canChoosePreferred && preferredTerms[termSlug]?.text.trim().toLowerCase() !== r.text.trim().toLowerCase() ? (
-                          <button type="button" className="af-use" disabled={saving} onClick={() => void choosePreferred(r.text)}>
-                            {t("af.usePreferred")}
-                          </button>
-                        ) : null}
-                        <span className="af-uses">
-                          {r.uses.map((u) => (
-                            <button key={u.id} type="button" className="af-use" onClick={() => jumpToUse(u)}>
-                              {u.chapter}:{u.verse}
+                  ) : null}
+                </>
+              ) : comparison ? (
+                <div className="af-compare" aria-label={t("af.compareAria")}>
+                  {preferredTerms[termSlug] ? (
+                    <p className="af-preferred">
+                      {t("af.preferred")}<b>«{preferredTerms[termSlug]!.text}»</b>
+                      {canChoosePreferred ? (
+                        <button type="button" className="af-use" disabled={saving} onClick={() => void choosePreferred("")}>
+                          {t("af.remove")}
+                        </button>
+                      ) : null}
+                    </p>
+                  ) : null}
+                  {comparison.renderings.length ? (
+                    <ul className="af-renderings">
+                      {comparison.renderings.map((r) => (
+                        <li key={r.text} className="af-rendering">
+                          <b>«{r.text}»</b> · {r.uses.length} {r.uses.length === 1 ? t("af.useOne") : t("af.useMany")}
+                          {canChoosePreferred && preferredTerms[termSlug]?.text.trim().toLowerCase() !== r.text.trim().toLowerCase() ? (
+                            <button type="button" className="af-use" disabled={saving} onClick={() => void choosePreferred(r.text)}>
+                              {t("af.usePreferred")}
                             </button>
-                          ))}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="af-hint">{t("af.nobodyMarked")}</p>
-                )}
-                {comparison.differing.length ? (
-                  <p className="af-stale">
-                    {t(comparison.differing.length === 1 ? "af.differOne" : "af.differMany")
-                      .replace("{n}", String(comparison.differing.length))
-                      .replace("{list}", comparison.differing.map((u) => `${u.chapter}:${u.verse}`).join(", "))}
-                  </p>
-                ) : null}
-                {comparison.renderings.length > 1 ? (
-                  <p className="af-stale">{t("af.manyRenderings").replace("{n}", String(comparison.renderings.length))}</p>
-                ) : null}
-                {comparison.unmarked.length ? (
-                  <p className="af-hint">
-                    {t(comparison.unmarked.length === 1 ? "af.unmarkedOne" : "af.unmarkedMany").replace("{n}", String(comparison.unmarked.length))}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            <p className="af-question">{stepProp === "notas" ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)) : t(QUESTION[stepProp][data.resource])}</p>
-            {stepProp === "notas" ? <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p> : null}
-            <p className="af-hint">
-              {item.phrase ? t("af.tapPhrase").replace("{p}", item.phrase) : termSlug ? t("af.tapTerm") : t("af.tapNote")}
-            </p>
-
-            {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
-            {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
-
-            {pending ? (
-              <div className="af-why">
-                <label htmlFor="af-note" className="af-lbl">
-                  {pending === "revise" ? t("af.whatChange") : t("af.whatObjection")}
-                </label>
-                <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-              </div>
-            ) : null}
-            <div className="af-buttons af-answer">
-              <Button type="button" size="lg" disabled={saving} onClick={() => void answer("approved")}>
-                {t("rv.approved")}
-              </Button>
-              <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("revise")}>
-                {t("rv.revise")}
-              </Button>
-              <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("rejected")}>
-                {t("rv.rejected")}
-              </Button>
+                          ) : null}
+                          <span className="af-uses">
+                            {r.uses.map((u) => (
+                              <button key={u.id} type="button" className="af-use" onClick={() => jumpToUse(u)}>
+                                {u.chapter}:{u.verse}
+                              </button>
+                            ))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="af-hint">{t("af.nobodyMarked")}</p>
+                  )}
+                  {comparison.differing.length ? (
+                    <p className="af-stale">
+                      {t(comparison.differing.length === 1 ? "af.differOne" : "af.differMany")
+                        .replace("{n}", String(comparison.differing.length))
+                        .replace("{list}", comparison.differing.map((u) => `${u.chapter}:${u.verse}`).join(", "))}
+                    </p>
+                  ) : null}
+                  {comparison.renderings.length > 1 ? <p className="af-stale">{t("af.manyRenderings").replace("{n}", String(comparison.renderings.length))}</p> : null}
+                  {comparison.unmarked.length ? <p className="af-hint">{t(comparison.unmarked.length === 1 ? "af.unmarkedOne" : "af.unmarkedMany").replace("{n}", String(comparison.unmarked.length))}</p> : null}
+                </div>
+              ) : null}
             </div>
-            {tally ? <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} /> : null}
-            {others.length ? (
-              <ul className="af-others" aria-label={t("af.teamAria")}>
-                {others.map((a) => (
-                  <li key={a.reviewer}>
-                    <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
-                    {a.note ? `: ${a.note}` : ""}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+
+            <div className="af-ask">
+              <p className="af-question">{stepProp === "notas" ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)) : t(QUESTION[stepProp][data.resource])}</p>
+              {stepProp === "notas" ? <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p> : null}
+              {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
+              {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
+              {pending ? (
+                <div className="af-why">
+                  <label htmlFor="af-note" className="af-lbl">
+                    {pending === "revise" ? t("af.whatChange") : t("af.whatObjection")}
+                  </label>
+                  <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                </div>
+              ) : null}
+              <div className="af-buttons af-answer">
+                <Button type="button" size="lg" disabled={saving} onClick={() => void answer("approved")}>
+                  {t("rv.approved")}
+                </Button>
+                <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("revise")}>
+                  {t("rv.revise")}
+                </Button>
+                <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void answer("rejected")}>
+                  {t("rv.rejected")}
+                </Button>
+              </div>
+              {tally ? <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} /> : null}
+              {others.length ? (
+                <ul className="af-others" aria-label={t("af.teamAria")}>
+                  {others.map((a) => (
+                    <li key={a.reviewer}>
+                      <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
+                      {a.note ? `: ${a.note}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           </section>
 
           <nav className="af-nav" aria-label={t("af.notesNavAria")}>
             <Button type="button" variant="secondary" disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
-              {t("af.prev")}
+              <ChevronLeft size={16} aria-hidden /> {t("af.prev")}
             </Button>
             <span className="af-count">
               {t("af.countOf").replace("{a}", String(Math.min(position + 1, total))).replace("{b}", String(total))}
             </span>
             <Button type="button" variant="secondary" disabled={position >= total - 1} onClick={() => setPosition((p) => p + 1)}>
-              {t("af.next")}
+              {t("af.next")} <ChevronRight size={16} aria-hidden />
             </Button>
           </nav>
         </>
