@@ -5,6 +5,10 @@
  */
 import assert from "node:assert/strict";
 import { request } from "@ip-lms/dcs-client";
+import { mergeAlignmentIntoUsfm } from "@usfm-tools/editor-core";
+import type { AlignmentGroup } from "@usfm-tools/types";
+import { alignmentOfDraft } from "../src/dcs/alignmentStore";
+import { alignmentHash } from "../src/domain/alignmentHash";
 import { stepNeedsOpenPortionPr, taskWorksOnSharedDraft } from "../src/domain/portionPr";
 import type { AssignmentsDoc, InventoryDoc, Portion, ProjectTask, TaskStep } from "../src/domain/types";
 import { encodeWorkOrderMarker, indexWorkIssues, parseWorkOrderMarker, planKeeps, planUnassignedLots, publishableWorkOrders, taskResource, type WorkOrder } from "../src/domain/workOrder";
@@ -85,6 +89,26 @@ await test("el mismo trabajo se reconoce aunque su clave esté escrita de otra f
   assert.equal(known.find({ key: "otra", teamId: "tpl", itemIds: ["porcion:TIT 2:14"] }), undefined);
   assert.equal(known.find({ key: "vacía", teamId: "tpl", itemIds: [] }), undefined, "sin ítems solo cuenta la clave");
   assert.equal(planKeeps([taken])(parseWorkOrderMarker(delivered.body)!), true, "y sigue en el plan: no es huérfana");
+});
+
+await test("una alineación de palabras no contiguas se guarda y se vuelve a leer igual", () => {
+  // «que … sean» goes with one word of the original, and «los hombres mayores», in between, with another.
+  const usfm = ["\\id TIT", "\\c 2", "\\p", "\\v 2 que los hombres mayores sean sobrios", ""].join("\n");
+  const src = (content: string) => ({ strong: content, lemma: content, content, occurrence: 1, occurrences: 1 });
+  const tgt = (word: string) => ({ word, occurrence: 1, occurrences: 1 });
+  const groups: AlignmentGroup[] = [
+    { sources: [src("einai")], targets: [tgt("que"), tgt("sean")] },
+    { sources: [src("presbytas")], targets: [tgt("los"), tgt("hombres"), tgt("mayores")] },
+    { sources: [src("nephalious")], targets: [tgt("sobrios")] },
+  ];
+  const source = { id: "unfoldingWord/el-x-koine_ugnt", layerDir: "el-x-koine_ugnt" };
+  const doc = alignmentOfDraft(usfm, "TIT", source);
+  const saved = mergeAlignmentIntoUsfm(usfm, { ...doc, verses: { "TIT 2:2": groups } });
+  const back = alignmentOfDraft(saved, "TIT", source).verses["TIT 2:2"] ?? [];
+  const lines = (list: AlignmentGroup[]) => list.map((g) => `${g.sources.map((s) => s.content).join("+")}=${g.targets.map((t) => t.word).join(" ")}`).sort();
+  assert.deepEqual(lines(back), lines(groups), "cada palabra del original conserva sus palabras, sin fundirse con la vecina");
+  const draftWords = ["que", "los", "hombres", "mayores", "sean", "sobrios"];
+  assert.equal(alignmentHash(draftWords, back), alignmentHash(draftWords, alignmentOfDraft(mergeAlignmentIntoUsfm(saved, { ...doc, verses: { "TIT 2:2": back } }), "TIT", source).verses["TIT 2:2"] ?? []), "y la marca «Terminé» sigue valiendo al recargar");
 });
 
 const step = (extra: Partial<TaskStep>): TaskStep => ({ id: "s", name: "s", ...extra }) as TaskStep;
