@@ -124,6 +124,33 @@ export function categoryFromSupportRef(ref: string): string {
   return (clean.split("/").pop() ?? "").trim().toLowerCase();
 }
 
+/**
+ * Where the article lives in an Academy repository: `rc://*​/ta/man/translate/figs-metaphor` →
+ * `translate/figs-metaphor` (its `title.md`, `sub-title.md` and `01.md` are in that folder). Empty when the note
+ * points to no article.
+ */
+export function articlePathOf(supportRef: string): string {
+  const clean = supportRef.trim().replace(/[?#].*$/, "").replace(/\/+$/, "");
+  const m = /\/ta\/man\/(.+)$/.exec(clean);
+  if (m) return m[1]!.toLowerCase();
+  // A bare `translate/figs-metaphor`, or only the slug: articles about translating are in `translate`.
+  if (!clean || clean.includes("://")) return "";
+  return clean.includes("/") ? clean.toLowerCase() : `translate/${clean.toLowerCase()}`;
+}
+
+/** What an Academy article is called and what it answers, as its repository says it. */
+export type ArticleInfo = { title: string; question?: string; /** Read from the team's own Academy (its language) and not from the source package. */ own?: boolean };
+
+/**
+ * The name shown for the figure or topic a note points to: the title of its Academy article in the team's
+ * language when the team translated it; else the name this app knows it by; else the title in the source package.
+ */
+export function articleName(item: Pick<NoteItem, "category" | "categoryLabel">, info: ArticleInfo | undefined, known: (label: string) => string): string {
+  if (info?.own && info.title) return info.title;
+  if (CATEGORY_LABEL[item.category]) return known(item.categoryLabel);
+  return info?.title || known(item.categoryLabel);
+}
+
 export function categoryLabel(category: string): string {
   if (!category) return "Información general";
   const known = CATEGORY_LABEL[category];

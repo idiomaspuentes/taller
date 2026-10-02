@@ -84,4 +84,18 @@ test("orden por versículo y grupos por categoría en orden de aparición", () =
   ]);
 });
 
+{
+  const { articlePathOf, articleName } = await import("../src/domain/afinacionNotes");
+  assert.equal(articlePathOf("rc://*/ta/man/translate/figs-metaphor"), "translate/figs-metaphor");
+  assert.equal(articlePathOf("rc://en/ta/man/checking/acceptable/"), "checking/acceptable");
+  assert.equal(articlePathOf("figs-activepassive"), "translate/figs-activepassive");
+  assert.equal(articlePathOf(""), "");
+  const metaphor = { category: "figs-metaphor", categoryLabel: "Metáfora" };
+  const same = (label: string) => label;
+  assert.equal(articleName(metaphor, { title: "La metáfora", own: true }, same), "La metáfora", "el título que el equipo le dio en su Academia");
+  assert.equal(articleName(metaphor, { title: "Metaphor" }, same), "Metáfora", "sin traducir, el nombre conocido y no el inglés");
+  assert.equal(articleName({ category: "figs-newthing", categoryLabel: "Newthing" }, { title: "A New Thing" }, same), "A New Thing", "un artículo que la app no conoce lleva su título");
+  console.log("ok  cada nota lleva al artículo de la Academia que nombra su figura");
+}
+
 console.log(`\nverify-afinacion-notes: ${passed} checks passed.`);

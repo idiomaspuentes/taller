@@ -6,12 +6,12 @@ import { dcsConfig } from "./config";
 import { loadPmConfig } from "./issues";
 import { readTeamHelps } from "./teamHelps";
 import { parseTsvTable } from "../prep/tsv";
-import { attachPhrases, parseNoteRows, type NoteItem } from "../domain/afinacionNotes";
+import { attachPhrases, parseNoteRows, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { parseArticleTitle, parseTermRows, termArticlePath, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
 import { loadPreferredTerms } from "./afinacionStore";
 import { collectVerseTextsFromContent } from "@usfm-tools/usj-core";
 import { bookUsfmName } from "../prep/discover";
-import { helpsTsvFilename } from "../domain/helpsTarget";
+import { helpsTsvFilename, resolveHelpsTarget } from "../domain/helpsTarget";
 import { bookOnlyBranchName, bookBranchName, taskTrunkBranchName } from "../domain/portionPr";
 import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
@@ -98,6 +98,42 @@ export async function loadTermTitles(session: GtSession, pkg: SourcePackage, use
   return titles;
 }
 
+const firstLine = (text: string | null) => (text ?? "").split(/\r?\n/).map((line) => line.replace(/^#+\s*/, "").trim()).find(Boolean) ?? "";
+
+/**
+ * The title and the question of every Academy article the notes point to, after the screen is up. The team's own
+ * Academy is read first (its language); an article it has not translated is read from the source package.
+ */
+export async function loadArticleInfo(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, paths: string[]): Promise<Record<string, ArticleInfo>> {
+  const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
+  const own = resolveHelpsTarget({ ...ctx, resource: "academia" }, pmConfig);
+  const out: Record<string, ArticleInfo> = {};
+  const todo = [...new Set(paths.filter(Boolean))];
+  for (let i = 0; i < todo.length; i += 8) {
+    await Promise.all(
+      todo.slice(i, i + 8).map(async (path) => {
+        const read = (owner: string, repo: string) => Promise.all([readRaw(session, owner, repo, `${path}/title.md`), readRaw(session, owner, repo, `${path}/sub-title.md`)]);
+        const mine = "error" in own ? [null, null] : await read(own.owner, own.repo);
+        if (firstLine(mine[0])) {
+          out[path] = { title: firstLine(mine[0]), question: firstLine(mine[1]) || undefined, own: true };
+          return;
+        }
+        const theirs = await read(pkg.owner, pkg.ta);
+        if (firstLine(theirs[0])) out[path] = { title: firstLine(theirs[0]), question: firstLine(theirs[1]) || undefined };
+      }),
+    );
+  }
+  return out;
+}
+
+/** The article itself, to read it in full: the team's translation when there is one, else the source package's. */
+export async function loadArticleBody(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, path: string): Promise<string | null> {
+  const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
+  const own = resolveHelpsTarget({ ...ctx, resource: "academia" }, pmConfig);
+  const mine = "error" in own ? null : await readRaw(session, own.owner, own.repo, `${path}/01.md`);
+  return mine?.trim() ? mine : readRaw(session, pkg.owner, pkg.ta, `${path}/01.md`);
+}
+
 /** Branches where the group draft of the task being reviewed can live, most specific first. */
 export function groupDraftBranches(book: string, sourceTaskId: string): string[] {
   return [bookBranchName(book, sourceTaskId), taskTrunkBranchName(book, sourceTaskId), bookOnlyBranchName(book)];
@@ -165,7 +201,9 @@ export async function loadAfinacionNotes(params: {
 
   const tsvRows = parseTsvTable(tnRaw).rows;
   const termUses = step === "palabras" ? parseTermRows(tsvRows) : [];
-  let rawItems = step === "palabras" ? termUses.filter((u) => u.chapter === chapter) : parseNoteRows(tsvRows, chapter);
+  // What is checked is the text against the figure or topic an Academy article explains: a note that points to no
+  // article names nothing to check, and is left out of the round.
+  let rawItems = step === "palabras" ? termUses.filter((u) => u.chapter === chapter) : parseNoteRows(tsvRows, chapter).filter((note) => note.category);
   if (step === "notas" && params.board) {
     // Which notes there are, and what each points at, comes from the source package; the wording shown is the
     // team's own translation of that note (same id) once it exists.

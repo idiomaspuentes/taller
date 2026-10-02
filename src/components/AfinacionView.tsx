@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { loadAfinacionNotes, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
+import { loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
 import { appendMyDecision, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
 import { commentOnIssue } from "../dcs/issues";
 import { formatChatEvent } from "../domain/chatEvent";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
-import { groupByCategory, type NoteItem } from "../domain/afinacionNotes";
+import { articleName, articlePathOf, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
+import { HelpMarkdownView } from "./HelpMarkdownView";
 import { compareTermRenderings, termLabel, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
 import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
@@ -115,6 +116,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [fixReason, setFixReason] = useState("");
   const [preferredTerms, setPreferredTerms] = useState<PreferredTerms>({});
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
+  const [articles, setArticles] = useState<Record<string, ArticleInfo>>({});
+  /** The article open to be read in full: its path, and its text once it arrives (`null` = it could not be read). */
+  const [reading, setReading] = useState<{ path: string; body?: string | null } | null>(null);
   const [stepDone, setStepDone] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -166,6 +170,29 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       cancelled = true;
     };
   }, [session, data?.step, data?.termUses]);
+
+  // The Academy articles the notes point to: what each figure is called, and what the article answers.
+  useEffect(() => {
+    if (!session?.token || !ctx || !data || data.step !== "notas" || !data.items.length) return;
+    let cancelled = false;
+    void loadArticleInfo(session, ctx, data.sourcePackage, data.items.map((note) => articlePathOf(note.supportRef)))
+      .then((found) => !cancelled && setArticles(found))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, data?.step, data?.items]);
+
+  const nameOf = (note: Pick<NoteItem, "category" | "categoryLabel" | "supportRef">) => articleName(note, articles[articlePathOf(note.supportRef)], (label) => localizeAfinacion(label, language));
+
+  async function readArticle(path: string) {
+    if (!session || !ctx || !data) return;
+    if (reading?.path === path) return void setReading(null);
+    setReading({ path });
+    const body = await loadArticleBody(session, ctx, data.sourcePackage, path).catch(() => null);
+    setReading((current) => (current?.path === path ? { path, body } : current));
+  }
 
   const groups = useMemo(() => (data ? groupByCategory(data.items) : []), [data]);
   const visible = useMemo(
@@ -275,7 +302,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   function labelOfItem(id: string): string {
     const found = data?.items.find((i) => i.id === id);
     if (!found) return id;
-    const what = "termSlug" in found ? termLabel((found as TermItem).termSlug, termTitles) : found.phrase || found.quote || "";
+    const what = "termSlug" in found ? termLabel((found as TermItem).termSlug, termTitles) : [nameOf(found), found.phrase ? `«${found.phrase}»` : ""].filter(Boolean).join(" ");
     return `${found.chapter}:${found.verse}${what ? ` · ${what}` : ""}`;
   }
 
@@ -467,6 +494,32 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} />
       ) : null}
 
+      {data && data.items.length && groups.length > 1 ? (
+        <div className="af-figures" role="group" aria-label={t(stepProp === "notas" ? "af.figuresAria" : "af.category")}>
+          {[{ category: "all", label: "", items: data.items }, ...groups].map((group) => {
+            const done = summary ? group.items.filter((row) => summary.items.find((tally) => tally.itemId === row.id)?.state === "agreed").length : 0;
+            return (
+              <button
+                key={group.category}
+                type="button"
+                className="af-figure"
+                aria-pressed={category === group.category}
+                data-done={done === group.items.length ? "true" : undefined}
+                onClick={() => {
+                  setCategory(group.category);
+                  setPosition(0);
+                }}
+              >
+                {group.category === "all" ? t("af.allFigures") : stepProp === "notas" ? nameOf(group.items[0]!) : localizeAfinacion(group.label, language)}
+                <span>
+                  {done}/{group.items.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       {data && item ? (
         <>
           <section className="af-dock" aria-label={t("af.versesAria")}>
@@ -534,13 +587,39 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
           <section className="af-card" aria-label={t("af.noteAria")}>
             <div className="af-card__top">
-              <span className="af-chip">{localizeAfinacion(item.categoryLabel, language)}</span>
+              <span className="af-chip">{stepProp === "notas" ? t("af.figureOf").replace("{ref}", `${item.chapter}:${item.verse}`) : localizeAfinacion(item.categoryLabel, language)}</span>
               {tally ? <span className="af-state" data-state={tally.state}>{t(STATE_KEY[tally.state])}</span> : null}
             </div>
-            <h2 className="af-phrase">
-              {termSlug ? `${termLabel(termSlug, termTitles)}${item.phrase ? ` · «${item.phrase}»` : ""}` : item.phrase ? `«${item.phrase}»` : item.quote ? item.quote : t("af.wholeVerse")}
-            </h2>
-            {item.note ? <p className="af-note">{item.note}</p> : null}
+            {stepProp === "notas" ? (
+              <>
+                <h2 className="af-phrase">{nameOf(item)}</h2>
+                {articles[articlePathOf(item.supportRef)]?.question ? <p className="af-article-q">{articles[articlePathOf(item.supportRef)]!.question}</p> : null}
+                <p className="af-where">
+                  {item.phrase ? t("af.whereEnglish").replace("{label}", data.gatewayLabel).replace("{p}", item.phrase) : item.quote ? t("af.whereOriginal").replace("{p}", item.quote) : t("af.wholeVerse")}
+                </p>
+                <div className="af-links">
+                  {articlePathOf(item.supportRef) ? (
+                    <button type="button" className="af-link" aria-expanded={reading?.path === articlePathOf(item.supportRef)} onClick={() => void readArticle(articlePathOf(item.supportRef))}>
+                      {t(reading?.path === articlePathOf(item.supportRef) ? "af.hideArticle" : "af.readArticle")}
+                    </button>
+                  ) : null}
+                </div>
+                {reading?.path === articlePathOf(item.supportRef) ? (
+                  <div className="af-article">{reading.body === undefined ? <p className="af-hint">{t("af.loadingArticle")}</p> : reading.body ? <HelpMarkdownView content={reading.body} /> : <p className="af-hint">{t("af.noArticle")}</p>}</div>
+                ) : null}
+                {item.note ? (
+                  <details className="af-note-box">
+                    <summary>{t("af.seeNote")}</summary>
+                    <p className="af-note">{item.note}</p>
+                  </details>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <h2 className="af-phrase">{termSlug ? `${termLabel(termSlug, termTitles)}${item.phrase ? ` · «${item.phrase}»` : ""}` : item.phrase ? `«${item.phrase}»` : item.quote ? item.quote : t("af.wholeVerse")}</h2>
+                {item.note ? <p className="af-note">{item.note}</p> : null}
+              </>
+            )}
             {comparison ? (
               <div className="af-compare" aria-label={t("af.compareAria")}>
                 <p className="af-lbl">{t("af.inWholeBook")}</p>
@@ -594,7 +673,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 ) : null}
               </div>
             ) : null}
-            <p className="af-question">{t(QUESTION[stepProp][data.resource])}</p>
+            <p className="af-question">{stepProp === "notas" ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)) : t(QUESTION[stepProp][data.resource])}</p>
+            {stepProp === "notas" ? <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p> : null}
             <p className="af-hint">
               {item.phrase ? t("af.tapPhrase").replace("{p}", item.phrase) : termSlug ? t("af.tapTerm") : t("af.tapNote")}
             </p>
@@ -645,27 +725,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {t("af.next")}
             </Button>
           </nav>
-          <div className="af-filter">
-            <label htmlFor="af-cat" className="af-lbl">
-              {t("af.category")}
-            </label>
-            <select
-              id="af-cat"
-              className="af-input"
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setPosition(0);
-              }}
-            >
-              <option value="all">{t("af.allCats").replace("{n}", String(data.items.length))}</option>
-              {groups.map((g) => (
-                <option key={g.category} value={g.category}>
-                  {localizeAfinacion(g.label, language)} ({g.items.length})
-                </option>
-              ))}
-            </select>
-          </div>
         </>
       ) : null}
 
