@@ -1,4 +1,6 @@
 import { StudyNotesPanel } from "./StudyNotesPanel";
+import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { bookLabel } from "../domain/books";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
@@ -24,6 +26,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { resolveScriptureTarget, type ScriptureTarget } from "../domain/scriptureTarget";
 import {
   decodeSolverLaunchContext,
+  encodeSolverLaunchContext,
   type SolverLaunchContext,
 } from "../domain/solverLaunch";
 import { isLabLaunch, labWriteDecision, launchDraftSlot } from "../domain/solverLab";
@@ -50,7 +53,6 @@ import {
   loadEnglishWordsForRange,
   loadNotesForRange,
   looksLikeMarkdown,
-  primaryEnglishKind,
   type EnglishScriptureRef,
   type ReferenceHelpRow,
 } from "../domain/referenceResources";
@@ -134,7 +136,10 @@ function canJoinRows(cur: VerseDraft, next: VerseDraft, range: RefRange | null):
 function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
   return a.length === b.length && a.every((d, i) => slotKey(d) === slotKey(b[i]!) && d.text === b[i]!.text);
 }
-type ResourceTab = "ult" | "ust" | "notas" | "preguntas" | "apuntes";
+/** The helps beside the draft. The source texts are no longer a tab: they stay on screen above the helps. */
+type ResourceTab = "notas" | "preguntas" | "apuntes";
+/** Which source text is shown above the helps. */
+type SourceView = "both" | "ult" | "ust";
 type MobilePanel = "editor" | "recursos";
 function bootBranchHint(err: unknown, fallback: string): string {
   if (err instanceof BootstrapError && err.ref) return err.ref;
@@ -836,9 +841,16 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [wordsFailed, setWordsFailed] = useState(false);
   const [questionsFailed, setQuestionsFailed] = useState(false);
   const [studyNoteCount, setStudyNoteCount] = useState(0);
-  const [resourceTab, setResourceTab] = useState<ResourceTab>(() =>
-    primaryEnglishKind(decodeSolverLaunchContext(ctxEncoded)?.resource),
-  );
+  const [resourceTab, setResourceTab] = useState<ResourceTab>("notas");
+  const [sourceView, setSourceView] = useState<SourceView>("both");
+  /** Show the source of the whole passage instead of only the verse being written. */
+  const [wholeSource, setWholeSource] = useState(false);
+  /** Show only the helps of the verse being written; off = the whole passage. */
+  const [onlyVerse, setOnlyVerse] = useState(true);
+  const [stepDone, setStepDone] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  /** Counts edits, so that a save that ends while the person kept typing does not call the draft saved. */
+  const editCount = useRef(0);
   const [hoveredHelp, setHoveredHelp] = useState<ReferenceHelpRow | null>(null);
   const [activeHelp, setActiveHelp] = useState<ReferenceHelpRow | null>(null);
   const [wordFilter, setWordFilter] = useState<WordFilter | null>(null);
@@ -1282,7 +1294,6 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     const next = decodeSolverLaunchContext(ctxEncoded);
     setCtx(next);
     setRange(rangeFromLaunch(next));
-    setResourceTab(primaryEnglishKind(next?.resource));
   }, [ctxEncoded]);
 
   useEffect(() => {
@@ -1299,8 +1310,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const title = useMemo(() => {
     if (!ctx) return t("se.draft");
     const res = ctx.resourceName || (ctx.resource || "tpl").toUpperCase();
-    return `${ctx.book} ${ctx.ref} · ${res}`;
-  }, [ctx]);
+    return `${bookLabel(ctx.book, language)} ${ctx.ref} · ${res}`;
+  }, [ctx, language]);
+  const written = drafts.filter((d) => d.text.trim()).length;
+  // The source shown follows the verse being written (a bridge shows all its verses); with none in hand, the passage.
+  const activeRow = drafts.find((d) => d.from === activeVerse);
+  const sourceRange = range && activeVerse && !wholeSource ? { chapter: range.chapter, from: activeVerse, to: activeRow?.to ?? activeVerse } : range;
+  /** The same passage in the study tool, without the step: reading it again completes nothing. */
+  const studyHref = ctx && !isLabLaunch(ctx) ? `#/solver/familiarize?ctx=${encodeURIComponent(encodeSolverLaunchContext({ ...ctx, stepId: undefined, stepName: undefined }))}` : "";
 
   const lab = Boolean(ctx && isLabLaunch(ctx));
   const write = ctx ? labWriteDecision(ctx) : null;
@@ -1340,14 +1357,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       : write?.mode === "blocked"
         ? loc(write.reason)
         : t("se.labLocal");
-  const highlightPane = resourceTab === "ust" ? ust : ult;
   const focusedHelp = activeHelp ?? hoveredHelp;
-  const quoteHighlight = highlightForHelp(
-    focusedHelp,
-    highlightPane,
-    range,
-    Boolean(activeHelp && focusedHelp && activeHelp.id === focusedHelp.id),
-  );
+  const pinned = Boolean(activeHelp && focusedHelp && activeHelp.id === focusedHelp.id);
+  // Both source texts are on screen, so the phrase a help is about is marked in each.
+  const ultHighlight = highlightForHelp(focusedHelp, ult, range, pinned);
+  const ustHighlight = highlightForHelp(focusedHelp, ust, range, pinned);
   const activeHelpKey = activeHelp ? helpKey(activeHelp) : null;
   const displayQuotes = useMemo(() => {
     const map = new Map<string, string>();
@@ -1367,19 +1381,17 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       : words;
     return sortHelpByScriptureOrder([...notesShown, ...wordsShown], ult, ust, range);
   }, [notes, words, wordFilter, filterPane, range, ult, ust]);
+  /** The helps of the verse in hand (a help of no verse, like a chapter note, is of every verse). */
+  const ofVerse = <T extends ReferenceHelpRow>(items: T[]): T[] => (onlyVerse && activeVerse && !wordFilter ? items.filter((item) => !item.verse || item.verse === activeVerse) : items);
+  const shownHelps = ofVerse(mixedHelps);
+  const shownQuestions = ofVerse(questions);
 
   function activateHelp(item: ReferenceHelpRow) {
     setActiveHelp(item);
     setActiveVerse(item.verse);
-    if (!item.quote?.trim() && !displayQuotes.get(helpKey(item))) return;
-    if (resourceTab === "notas" || resourceTab === "preguntas") {
-      if (paneHasText(ult)) setResourceTab("ult");
-      else if (paneHasText(ust)) setResourceTab("ust");
-    }
   }
 
-  function selectHelpFromWord(info: WordClickInfo) {
-    const source: "ult" | "ust" = resourceTab === "ust" ? "ust" : "ult";
+  function selectHelpFromWord(info: WordClickInfo, source: "ult" | "ust") {
     const pane = source === "ust" ? ust : ult;
     const next: WordFilter = { ...info, source };
     const matches = [...notes, ...words].filter((item) =>
@@ -1409,6 +1421,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   }
 
   function updateVerse(key: string, text: string) {
+    editCount.current += 1;
     editedVerses.current.add(key);
     setDrafts((prev) => {
       const next = prev.map((d) => (slotKey(d) === key ? { ...d, text } : d));
@@ -1419,6 +1432,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   }
 
   function replaceRows(index: number, count: number, rows: VerseDraft[]) {
+    editCount.current += 1;
     for (const row of rows) editedVerses.current.add(slotKey(row));
     const next = [...drafts.slice(0, index), ...rows, ...drafts.slice(index + count)];
     setDrafts(next);
@@ -1445,24 +1459,26 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     announce(t("se.splitAnnounce").replace("{a}", String(cur.from)).replace("{b}", String(cur.to)));
   }
 
-  async function save() {
-    if (!ctx || !range) return;
+  /** `quiet`: a save the app does by itself while the person writes says nothing; the state beside the title does. */
+  async function save(quiet = false): Promise<boolean> {
+    if (!ctx || !range) return false;
+    const editsAtStart = editCount.current;
     persistLocal(drafts, branch);
     if (!session) {
-      announce(t("se.savedLocalAnnounce"));
-      return;
+      if (!quiet) announce(t("se.savedLocalAnnounce"));
+      return false;
     }
     if (isLabLaunch(ctx)) {
       const decision = labWriteDecision(ctx);
       if (decision.mode === "local") {
         setDirty(false);
         setSavedOnce(true);
-        announce(t("se.savedLocalAnnounce"));
-        return;
+        if (!quiet) announce(t("se.savedLocalAnnounce"));
+        return true;
       }
       if (decision.mode === "blocked") {
         setError(decision.reason);
-        return;
+        return false;
       }
     }
     const pmConfig = ctx.pmOrg
@@ -1471,7 +1487,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     const target = resolveScriptureTarget(ctx, pmConfig);
     if ("error" in target) {
       setError(target.error);
-      return;
+      return false;
     }
     const head = branch || portionPrBranchFromCtx(ctx);
     setSaving(true);
@@ -1484,7 +1500,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         drafts,
       );
       const nextUsfm = kept.usfm;
-      if (kept.clearedVerses.length) {
+      if (kept.clearedVerses.length && !quiet) {
         announce(t("se.alignmentLost").replace("{list}", kept.clearedVerses.join(", ")));
       }
       const message = `TAS: ${target.book} ${ctx.ref} (${ctx.resource || "tpl"}) · #${ctx.issueNumber || "—"}`;
@@ -1514,10 +1530,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setSha(saved.sha ?? sha);
       setBranch(saved.branch || head);
       setCreatedNew(false);
-      setDirty(false);
+      // What was written while this save was on its way is still to be saved.
+      if (editCount.current === editsAtStart) setDirty(false);
       setSavedOnce(true);
       persistLocal(drafts, saved.branch || head);
-      announce(t("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${saved.branch || head}`));
+      if (!quiet) announce(t("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${saved.branch || head}`));
+      return true;
     } catch (err) {
       setError(
         explainRepoFileError(err, {
@@ -1528,17 +1546,61 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           creating: !sha,
         }),
       );
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
-  async function openPr() {
-    if (!session || !ctx) return;
+  // The draft saves itself a moment after the person stops writing. Nothing is lost by closing the screen.
+  useEffect(() => {
+    if (!dirty || saving || recreating || openingPr || finishing || !session || !ctx || !drafts.length) return;
+    const timer = window.setTimeout(() => void save(true), 3500);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, saving, drafts, recreating, openingPr, finishing]);
+
+  // Whether the step this editor was opened for is already completed: «Terminé» is then not offered again.
+  useEffect(() => {
+    if (!session || !ctx?.stepId || !ctx.issueNumber || lab) return;
+    let alive = true;
+    stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId })
+      .then((done) => alive && setStepDone(done))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, ctx?.issueNumber, ctx?.stepId]);
+
+  /**
+   * «Terminé el borrador»: what is written is saved, the review is opened in Door43 and the step is completed, in
+   * one action. Before, these were three (save, «Listo para revisión», and «Terminé» back in the list).
+   */
+  async function finish() {
+    if (!session || !ctx?.stepId || !ctx.issueNumber) return;
+    setFinishing(true);
+    setError("");
+    try {
+      if (dirty && !(await save(true))) return;
+      const opened = await openPr();
+      if (!opened) return;
+      await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
+      announce(t("se.finished"));
+      onClose();
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setFinishing(false);
+    }
+  }
+
+  async function openPr(): Promise<boolean> {
+    if (!session || !ctx) return false;
     setOpeningPr(true);
     setError("");
     try {
-      if (dirty) await save();
+      if (dirty) await save(true);
       const issue = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
       const board = await loadAssignmentsFromDcs(
         session,
@@ -1565,8 +1627,10 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           ? t("se.reviewOpened")
           : t("se.reviewWasOpen"),
       );
+      return true;
     } catch (err) {
       setError(explainError(err));
+      return false;
     } finally {
       setOpeningPr(false);
     }
@@ -1776,6 +1840,19 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     </a>
                   </p>
                 ) : null}
+                {!lab && ctx && range ? (
+                  // On a phone the header has no room for these two: they are here.
+                  <p className="scripture-editor__details-row se-details-links">
+                    <a href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}`} target="_blank" rel="noreferrer">
+                      {t("gl.open")}
+                    </a>
+                    {studyHref ? (
+                      <a href={studyHref} target="_blank" rel="noreferrer">
+                        {t("se.study")}
+                      </a>
+                    ) : null}
+                  </p>
+                ) : null}
                 {canRecreate ? (
                   <div className="scripture-editor__details-actions">
                     <RecreateActionButton
@@ -1793,47 +1870,38 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               {t("gl.open")}
             </a>
           ) : null}
-          {lab ? null : prUrl ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="scripture-editor__icon-btn"
-              aria-label={t("se.openDoor43")}
-              onClick={() => window.open(prUrl, "_blank", "noopener,noreferrer")}
-            >
+          {studyHref ? (
+            <a className="scripture-editor__glossary" href={studyHref} target="_blank" rel="noreferrer">
+              {t("se.study")}
+            </a>
+          ) : null}
+          <p className="scripture-editor__save-state se-head-state" data-tone={saveState.tone} role="status">
+            <span className="scripture-editor__save-dot" aria-hidden />
+            {saveState.text}
+          </p>
+          {dirty || !session ? (
+            <Button type="button" size="sm" variant="ghost" className="scripture-editor__icon-btn" aria-label={saving ? t("se.savingAria") : t("se.save")} disabled={recreating || saving || !drafts.length} onClick={() => void save()}>
+              <Save className="scripture-editor__action-icon" aria-hidden />
+              <span className="scripture-editor__action-label">{saving ? t("se.saving") : t("se.save")}</span>
+            </Button>
+          ) : null}
+          {lab ? null : ctx?.stepId && !stepDone ? (
+            <Button type="button" size="sm" className="scripture-editor__save" disabled={recreating || finishing || openingPr || saving || !session || !ctx.issueNumber || !written} onClick={() => void finish()}>
+              <Check className="scripture-editor__action-icon" aria-hidden />
+              <span className="se-finish-label">{finishing ? t("se.finishing") : t("se.finish")}</span>
+              <span className="se-finish-short">{finishing ? "…" : t("se.finishShort")}</span>
+            </Button>
+          ) : prUrl ? (
+            <Button type="button" size="sm" variant="outline" className="scripture-editor__icon-btn" aria-label={t("se.openDoor43")} onClick={() => window.open(prUrl, "_blank", "noopener,noreferrer")}>
               <ExternalLink className="scripture-editor__action-icon" aria-hidden />
               <span className="scripture-editor__action-label">{t("se.openDoor43")}</span>
             </Button>
           ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="scripture-editor__icon-btn"
-              aria-label={openingPr ? t("se.openingReview") : t("se.readyForReview")}
-              disabled={recreating || openingPr || !session || !ctx?.issueNumber}
-              onClick={() => void openPr()}
-            >
+            <Button type="button" size="sm" variant="outline" className="scripture-editor__icon-btn" aria-label={openingPr ? t("se.openingReview") : t("se.readyForReview")} disabled={recreating || openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
               <Check className="scripture-editor__action-icon" aria-hidden />
-              <span className="scripture-editor__action-label">
-                {openingPr ? t("se.opening") : t("se.readyForReview")}
-              </span>
+              <span className="scripture-editor__action-label">{openingPr ? t("se.opening") : t("se.readyForReview")}</span>
             </Button>
           )}
-          <Button
-            type="button"
-            size="sm"
-            className="scripture-editor__save"
-            aria-label={saving ? t("se.savingAria") : t("se.save")}
-            disabled={recreating || saving || !drafts.length || (!dirty && Boolean(session))}
-            onClick={() => void save()}
-          >
-            <Save className="scripture-editor__action-icon" aria-hidden />
-            <span className="scripture-editor__action-label">
-              {saving ? t("se.saving") : t("se.save")}
-            </span>
-          </Button>
         </div>
       </header>
 
@@ -1867,27 +1935,54 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
       <div className="scripture-editor__workspace">
         <aside className="scripture-editor__refs" aria-label={t("se.refsAria")}>
+          <div className="se-sources">
+            <div className="se-sources__head">
+              <span className="se-sources__title">
+                {activeVerse && range && !wholeSource ? t("se.sourceOfVerse").replace("{ref}", `${range.chapter}:${activeVerse}`) : t("se.source")}
+                {activeVerse && range ? (
+                  <button type="button" className="se-sources__whole" onClick={() => setWholeSource(!wholeSource)}>
+                    {t(wholeSource ? "se.sourceVerseOnly" : "se.sourceWhole")}
+                  </button>
+                ) : null}
+              </span>
+              <div className="pe-seg se-sources__seg" role="radiogroup" aria-label={t("se.sourceWhich")}>
+                {(["both", "ult", "ust"] as const).map((id) => (
+                  <button key={id} type="button" role="radio" aria-checked={sourceView === id} className="pe-seg__opt" onClick={() => setSourceView(id)}>
+                    {id === "both" ? t("se.sourceBoth") : id === "ult" ? "ULT" : "UST"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="se-sources__texts" data-view={sourceView}>
+              {sourceView !== "ust" ? (
+                <div className="se-source">
+                  <p className="se-source__name">{t("se.literal")}</p>
+                  <ScriptureTab title={t("se.ultEnglish")} range={sourceRange} pane={ult} activeVerse={activeVerse} loggedIn={loggedIn} loading={ultLoading} highlight={ultHighlight} onWordClick={(info) => selectHelpFromWord(info, "ult")} />
+                </div>
+              ) : null}
+              {sourceView !== "ult" ? (
+                <div className="se-source">
+                  <p className="se-source__name">{t("se.simple")}</p>
+                  <ScriptureTab title={t("se.ustEnglish")} range={sourceRange} pane={ust} activeVerse={activeVerse} loggedIn={loggedIn} loading={ustLoading} highlight={ustHighlight} onWordClick={(info) => selectHelpFromWord(info, "ust")} />
+                </div>
+              ) : null}
+            </div>
+          </div>
           <Tabs
             value={resourceTab}
             onValueChange={(value) => setResourceTab(value as ResourceTab)}
-            className="scripture-editor__ref-tabs"
+            className="scripture-editor__ref-tabs se-helps"
           >
             <TabsList className="scripture-editor__ref-tablist">
-              <TabsTrigger value="ult">ULT</TabsTrigger>
-              <TabsTrigger value="ust">UST</TabsTrigger>
               <TabsTrigger value="notas">
                 <span className="scripture-editor__tab-full">{t("se.tabNotesFull")}</span>
                 <span className="scripture-editor__tab-short">{t("se.tabNotesShort")}</span>
-                {mixedHelps.length ? (
-                  <span className="scripture-editor__tab-count">{mixedHelps.length}</span>
-                ) : null}
+                {shownHelps.length ? <span className="scripture-editor__tab-count">{shownHelps.length}</span> : null}
               </TabsTrigger>
               <TabsTrigger value="preguntas">
                 <span className="scripture-editor__tab-full">{t("se.tabQuestionsFull")}</span>
                 <span className="scripture-editor__tab-short">{t("se.tabQuestionsShort")}</span>
-                {questions.length ? (
-                  <span className="scripture-editor__tab-count">{questions.length}</span>
-                ) : null}
+                {shownQuestions.length ? <span className="scripture-editor__tab-count">{shownQuestions.length}</span> : null}
               </TabsTrigger>
               {session && ctx?.projectId && ctx.pmOrg && range ? (
                 <TabsTrigger value="apuntes">
@@ -1896,36 +1991,18 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                 </TabsTrigger>
               ) : null}
             </TabsList>
+            {activeVerse && range && resourceTab !== "apuntes" && !wordFilter ? (
+              <label className="se-only">
+                <input type="checkbox" checked={onlyVerse} onChange={(e) => setOnlyVerse(e.target.checked)} />
+                <span>{t("se.onlyVerse").replace("{ref}", `${range.chapter}:${activeVerse}`)}</span>
+              </label>
+            ) : null}
             {session && ctx?.projectId && ctx.pmOrg && range ? (
               // Kept mounted so that its count shows on the tab before it is opened.
               <div role="tabpanel" hidden={resourceTab !== "apuntes"} className="scripture-editor__tab-pane">
                 <StudyNotesPanel session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} onCount={setStudyNoteCount} />
               </div>
             ) : null}
-            <TabsContent value="ult" className="scripture-editor__tab-pane">
-              <ScriptureTab
-                title={t("se.ultEnglish")}
-                range={range}
-                pane={ult}
-                activeVerse={activeVerse}
-                loggedIn={loggedIn}
-                loading={ultLoading}
-                highlight={quoteHighlight}
-                onWordClick={selectHelpFromWord}
-              />
-            </TabsContent>
-            <TabsContent value="ust" className="scripture-editor__tab-pane">
-              <ScriptureTab
-                title={t("se.ustEnglish")}
-                range={range}
-                pane={ust}
-                activeVerse={activeVerse}
-                loggedIn={loggedIn}
-                loading={ustLoading}
-                highlight={resourceTab === "ust" ? quoteHighlight : null}
-                onWordClick={selectHelpFromWord}
-              />
-            </TabsContent>
             <TabsContent value="notas" className="scripture-editor__tab-pane">
               {wordFilter ? (
                 <div className="scripture-editor__help-filter">
@@ -1946,7 +2023,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               ) : null}
               <HelpBlock
                 title={t("se.notesAndWords")}
-                items={mixedHelps}
+                items={shownHelps}
                 displayQuotes={displayQuotes}
                 loggedIn={loggedIn}
                 failed={notesFailed && wordsFailed}
@@ -1966,7 +2043,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             <TabsContent value="preguntas" className="scripture-editor__tab-pane">
               <HelpBlock
                 title={t("se.questions")}
-                items={questions}
+                items={shownQuestions}
                 displayQuotes={displayQuotes}
                 loggedIn={loggedIn}
                 failed={questionsFailed}
@@ -1989,14 +2066,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         >
           <div className="scripture-editor__draft-head">
             <p className="scripture-editor__eyebrow">{t("se.yourDraftRes").replace("{res}", resourceCode)}</p>
-            <p
-              className="scripture-editor__save-state"
-              data-tone={saveState.tone}
-              role="status"
-            >
-              <span className="scripture-editor__save-dot" aria-hidden />
-              {saveState.text}
-            </p>
+            {drafts.length ? <p className="se-written">{t("se.written").replace("{n}", String(written)).replace("{total}", String(drafts.length))}</p> : null}
           </div>
           {labNote ? (
             <p className="scripture-editor__lab-note">
@@ -2029,6 +2099,21 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                       </label>
                     </div>
                     <div className="scripture-editor__verse-body">
+                      {activeVerse === d.from && (ult.verses[d.from] || ust.verses[d.from]) ? (
+                        // On a phone the source texts are on another panel: the verse being written brings its own.
+                        <div className="se-peek">
+                          {ult.verses[d.from] ? (
+                            <p>
+                              <b>ULT</b> {ult.verses[d.from]}
+                            </p>
+                          ) : null}
+                          {ust.verses[d.from] ? (
+                            <p>
+                              <b>UST</b> {ust.verses[d.from]}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <textarea
                         id={`v-${key}`}
                         className="scripture-editor__input"

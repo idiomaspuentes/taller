@@ -2013,5 +2013,20 @@
   "sn.mineShared": "mío, compartido",
   "sn.shareIt": "Compartir",
   "sn.unshare": "Dejar de compartir",
-  "sn.remove": "Borrar el apunte"
+  "sn.remove": "Borrar el apunte",
+  "se.study": "Estudio",
+  "se.finish": "Terminé el borrador",
+  "se.finishing": "Enviando a revisión…",
+  "se.finished": "Borrador terminado: quedó guardado y listo para revisión.",
+  "se.source": "Texto de origen",
+  "se.sourceOfVerse": "Texto de origen · {ref}",
+  "se.sourceWhich": "Qué texto de origen se muestra",
+  "se.sourceBoth": "Los dos",
+  "se.literal": "Literal (ULT)",
+  "se.simple": "Simple (UST)",
+  "se.onlyVerse": "Solo lo del versículo {ref}",
+  "se.written": "{n} de {total} con texto",
+  "se.sourceWhole": "ver todo el pasaje",
+  "se.sourceVerseOnly": "ver solo el versículo",
+  "se.finishShort": "Terminé"
 }

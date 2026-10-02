@@ -7386,3 +7386,39 @@ input.pf-name { font-size: 1.625rem; }
 .sn-note__actions { display: flex; align-items: center; gap: 0.75rem; }
 .sn-note__actions button { display: inline-flex; align-items: center; min-height: 28px; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
 .sn-note__actions button:hover { color: var(--text); }
+
+/* ---------- Draft editor: the source texts stay on screen, the helps follow the verse in hand ---------- */
+.scripture-editor--split .scripture-editor__refs { display: flex; flex-direction: column; min-height: 0; gap: 0.5rem; }
+.se-sources { display: grid; gap: 0.375rem; flex: 0 1 auto; min-height: 0; max-height: 46%; padding-top: 0.5rem; }
+.se-sources__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.375rem; }
+.se-sources__title { font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
+.se-sources__seg { display: inline-grid; grid-template-columns: repeat(3, auto); padding: 0.125rem; }
+.se-sources__seg .pe-seg__opt { min-height: 28px; padding: 0 0.5rem; font-size: 0.75rem; }
+.se-sources__texts { display: grid; gap: 0.5rem; min-height: 0; overflow: auto; }
+.se-source { padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); }
+.se-source__name { margin: 0 0 0.25rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+.se-source .scripture-editor__tab-body { padding: 0; }
+.scripture-editor--split .se-helps { flex: 1 1 0; min-height: 8rem; height: auto; }
+.se-only { display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.125rem 0; font-size: 0.8125rem; color: var(--text-muted); }
+.se-head-state { margin: 0; white-space: nowrap; }
+.se-written { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
+.se-peek { display: none; gap: 0.25rem; margin-bottom: 0.375rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.875rem; color: var(--text-muted); }
+.se-peek p { margin: 0; }
+.se-peek b { font-size: 0.6875rem; color: var(--accent-700); margin-right: 0.25rem; }
+.scripture-editor--split .scripture-editor__input { field-sizing: content; }
+/* One panel at a time (a phone): the verse being written brings its own source texts. */
+@media (max-width: 48rem) {
+  .se-peek { display: grid; }
+  .se-sources { max-height: none; }
+  .se-head-state { display: none; }
+}
+.se-sources__whole { margin-left: 0.5rem; padding: 0; border: 0; background: none; color: var(--primary); font-size: 0.75rem; font-weight: 400; text-decoration: underline; cursor: pointer; }
+.se-finish-short { display: none; }
+.se-details-links { display: none; gap: 1rem; }
+@media (max-width: 48rem) {
+  .scripture-editor--split .se-head-state { display: none; }
+  .scripture-editor--split .scripture-editor__actions > .scripture-editor__glossary { display: none; }
+  .se-details-links { display: flex; }
+  .se-finish-label { display: none; }
+  .se-finish-short { display: inline; }
+}

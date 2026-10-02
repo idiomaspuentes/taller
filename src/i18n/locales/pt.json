@@ -2013,5 +2013,20 @@
   "sn.mineShared": "meu, compartilhado",
   "sn.shareIt": "Compartilhar",
   "sn.unshare": "Deixar de compartilhar",
-  "sn.remove": "Apagar a anotação"
+  "sn.remove": "Apagar a anotação",
+  "se.study": "Estudo",
+  "se.finish": "Terminei o rascunho",
+  "se.finishing": "Enviando para revisão…",
+  "se.finished": "Rascunho terminado: ficou salvo e pronto para revisão.",
+  "se.source": "Texto de origem",
+  "se.sourceOfVerse": "Texto de origem · {ref}",
+  "se.sourceWhich": "Que texto de origem aparece",
+  "se.sourceBoth": "Os dois",
+  "se.literal": "Literal (ULT)",
+  "se.simple": "Simples (UST)",
+  "se.onlyVerse": "Só o do versículo {ref}",
+  "se.written": "{n} de {total} com texto",
+  "se.sourceWhole": "ver a passagem toda",
+  "se.sourceVerseOnly": "ver só o versículo",
+  "se.finishShort": "Terminei"
 }
