@@ -840,8 +840,8 @@
   "rv.approved": "De acuerdo",
   "rv.revise": "Propongo un cambio",
   "rv.rejected": "Tengo una objeción",
-  "af.qNotasTpl": "¿El TPL conserva esta forma ({figure}), como está en el original?",
-  "af.qNotasTps": "¿El TPS la dice de forma sencilla, sin dejar la figura ({figure}) tal cual?",
+  "af.qNotasTpl": "¿El TPL conserva {words} en la forma de {figure}, como está en el original?",
+  "af.qNotasTps": "¿El TPS dice {words} de forma sencilla, sin dejar la forma de {figure} tal cual?",
   "af.qPalabrasTpl": "¿Este término está traducido como en el resto del libro?",
   "af.qPalabrasTps": "¿Este término mantiene el mismo sentido que en el resto del libro?",
   "af.titleNotas": "Desafíos de traducción",
@@ -2191,7 +2191,7 @@
   "af.tabMessage": "Mensaje",
   "af.kindNote": "Desafío de traducción · {ref}",
   "af.kindTerm": "Palabra clave · {ref}",
-  "af.marked": "1 · Lo resaltado es esto",
+  "af.marked": "1 · Dónde aparece",
   "af.readAgainst": "Texto de referencia",
   "af.draftStep": "2 · ¿Qué palabras de tu {res} le corresponden?",
   "af.tapMarked": "Toca en tu traducción las palabras que traducen lo resaltado.",
@@ -2200,5 +2200,6 @@
   "af.paneReview": "Revisar",
   "af.paneChapter": "Leer el capítulo",
   "af.chapterPick": "Capítulo",
-  "af.chapterN": "Capítulo {n}"
+  "af.chapterN": "Capítulo {n}",
+  "af.theWords": "las palabras que le corresponden"
 }

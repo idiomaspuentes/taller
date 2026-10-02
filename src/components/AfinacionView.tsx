@@ -467,6 +467,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }
 
   const total = visible.length;
+  /** The words of the draft the person marked, in order; a gap between them is said with «…». */
+  const chosenWords = useMemo(() => {
+    const words = wordSpans(verseText);
+    const picked = [...selected].sort((x, y) => x - y);
+    return picked.map((index, at) => `${at && index !== picked[at - 1]! + 1 ? "… " : ""}${words[index]?.text ?? ""}`).join(" ")
+      // Punctuation at either end is not part of what is asked about.
+      .replace(/^[\s.,;:!?¡¿«»“”"'()]+|[\s.,;:!?¡¿«»“”"'()]+$/g, "");
+  }, [selected, verseText]);
   const messageKeyOf = stepProp === "notas" ? (item?.id ?? "") : termKey;
   const messagesHere = noteMessages[messageKeyOf] ?? 0;
   const compareTabs = [
@@ -645,7 +653,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
             <div className="af-ask">
               <p className="af-lbl">{t("af.judgeStep")}</p>
-              <p className="af-question">{stepProp === "notas" ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)) : t(QUESTION[stepProp][data.resource])}</p>
+              <p className="af-question">
+                {stepProp === "notas"
+                  ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
+                  : t(QUESTION[stepProp][data.resource])}
+              </p>
               {stepProp === "notas" ? <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p> : null}
               {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
               {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
