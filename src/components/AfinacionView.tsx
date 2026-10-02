@@ -467,14 +467,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }
 
   const total = visible.length;
-  /** The words of the draft the person marked, in order; a gap between them is said with «…». */
-  const chosenWords = useMemo(() => {
-    const words = wordSpans(verseText);
-    const picked = [...selected].sort((x, y) => x - y);
+  /** Words of a verse by their positions, in order; a gap between them is said with «…». */
+  const wordsAt = (text: string, positions: number[]) => {
+    const words = wordSpans(text);
+    const picked = [...positions].sort((x, y) => x - y);
     return picked.map((index, at) => `${at && index !== picked[at - 1]! + 1 ? "… " : ""}${words[index]?.text ?? ""}`).join(" ")
       // Punctuation at either end is not part of what is asked about.
       .replace(/^[\s.,;:!?¡¿«»“”"'()]+|[\s.,;:!?¡¿«»“”"'()]+$/g, "");
-  }, [selected, verseText]);
+  };
+  /** The words of the draft the person marked. */
+  const chosenWords = useMemo(() => wordsAt(verseText, selected), [selected, verseText]);
   const messageKeyOf = stepProp === "notas" ? (item?.id ?? "") : termKey;
   const messagesHere = noteMessages[messageKeyOf] ?? 0;
   const compareTabs = [
@@ -492,6 +494,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     return alignedGatewayQuoteForHelpQuote({ verseText: refVerse, quote: item.quote, occurrence: item.occurrence, alignments: reference.alignments, book: data!.book, chapter: item.chapter, verse: item.verse }).tokenIndices;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id, reference?.id, refVerse]);
+  /** What is marked in the reference, to say in the draft which words to look for. */
+  const markedWords = useMemo(() => wordsAt(refVerse, refMarked), [refVerse, refMarked]);
   const lastChapter = useMemo(() => Math.max(0, ...Object.keys(reference?.book ?? {}).map((key) => Number(key.split(":")[0]))), [reference]);
   // The article is read when its tab is opened, and again for each new figure while it stays open.
   useEffect(() => {
@@ -650,7 +654,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : (
                 <>
                   <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
-                  <p className="af-hint">{t(termSlug ? "af.tapTerm" : "af.tapMarked").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p>
+                  <p className="af-hint">
+                    {t("af.tapMarked")
+                      .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
+                      .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}
+                  </p>
                 </>
               )}
             </div>

@@ -886,7 +886,6 @@
   "af.manyRenderings": "Hay {n} traducciones distintas de este término.",
   "af.unmarkedOne": "Sin marcar: {n} uso.",
   "af.unmarkedMany": "Sin marcar: {n} usos.",
-  "af.tapTerm": "Toca en el {res} las palabras que traducen el término.",
   "af.staleMine": "El versículo cambió después de tu respuesta. Vuelve a revisarlo.",
   "af.myAnswer": "Tu respuesta: {stance}",
   "af.whatChange": "¿Qué cambio propones?",
@@ -2194,12 +2193,14 @@
   "af.marked": "1 · Referencia",
   "af.readAgainst": "Texto de referencia",
   "af.draftStep": "2 · Traducción",
-  "af.tapMarked": "Toca en el {res} las palabras que traducen lo resaltado.",
+  "af.tapMarked": "Toca en el {res} las palabras que traducen {marked}.",
   "af.judgeStep": "3 · ¿Cumplen la regla?",
   "af.helps": "Ayudas",
   "af.paneReview": "Revisar",
   "af.paneChapter": "Leer el capítulo",
   "af.chapterPick": "Capítulo",
   "af.chapterN": "Capítulo {n}",
-  "af.theWords": "las palabras que le corresponden"
+  "af.theWords": "las palabras que le corresponden",
+  "af.theMarked": "lo resaltado en la referencia",
+  "af.theTerm": "el término"
 }
