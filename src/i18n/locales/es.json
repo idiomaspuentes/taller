@@ -2040,7 +2040,7 @@
   "rv.approvedDone": "Aprobado. La revisión quedó completa.",
   "rv.approvedWait": "Aprobado. Falta que apruebe alguien más.",
   "rv.changesAsked": "Pido cambios:",
-  "rv.changesSent": "Le pediste cambios a quien escribió el borrador.",
+  "rv.changesSent": "Pediste cambios. El borrador volvió a quien lo escribió.",
   "rv.stepDone": "Esta revisión ya está completa.",
   "rv.youApproved": "Ya aprobaste. Falta que apruebe alguien más.",
   "rv.agreeOwn": "Lee los comentarios. Cuando estés de acuerdo con cómo quedó, dilo.",
@@ -2075,5 +2075,11 @@
   "rv.agree": "Estoy de acuerdo",
   "rv.take": "Tomar esta revisión",
   "rv.finishDraftFirst": "Tu borrador todavía no está terminado: la revisión empieza cuando lo termines.",
-  "rv.draftNotFinished": "El borrador todavía no está terminado. Puedes leerlo y comentar; la revisión empieza cuando se termine."
+  "rv.draftNotFinished": "El borrador todavía no está terminado. Puedes leerlo y comentar; la revisión empieza cuando se termine.",
+  "rv.changesForYou": "Te pidieron cambios. Lee los comentarios, corrige tu borrador desde Mis tareas y termínalo otra vez.",
+  "rv.youAskedChanges": "Pediste cambios. Cuando el borrador se termine otra vez, vuelve aquí para revisarlo.",
+  "rv.changesPending": "Se pidieron cambios al borrador. La revisión sigue cuando se termine otra vez.",
+  "rv.keptOut": "Puedes leer y comentar. Esta revisión la hacen personas que no escribieron ni revisaron antes este borrador.",
+  "tb.changesForYou": "Te pidieron cambios. Lee los comentarios de la revisión, corrige y termina otra vez.",
+  "tb.changesWait": "Se pidieron cambios. Falta que @{who} termine otra vez."
 }

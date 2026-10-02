@@ -17,7 +17,7 @@ import { englishScriptureKindRef, loadEnglishScriptureKindUsfm, loadNotesForRang
 import { diffWords, parseRefComment, refComment, reviewItems, type ReviewItem } from "../domain/reviewItems";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
-import { approveStep, canApproveStep, canClaimStep, claimStep, isStepUnlocked } from "../domain/stepClaim";
+import { approveStep, askForChanges, canApproveStep, canAskForChanges, canClaimStep, changesPending, claimStep, isEligibleForStep, isStepUnlocked } from "../domain/stepClaim";
 import { getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
@@ -167,6 +167,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const approved = Boolean(runtime?.approvals.some((login) => login.toLowerCase() === me.toLowerCase()));
   // A review starts when what comes before it (the draft) is finished.
   const unlocked = Boolean(step && isStepUnlocked(steps, progress, step.id));
+  const canSendBack = Boolean(step && me && canAskForChanges(me, steps, progress, step));
+  // The work was sent back to its author and is not handed in again yet.
+  const sentBack = Boolean(step && changesPending(steps, progress, step));
+  // The process keeps whoever wrote or already reviewed the draft out of this review.
+  const keptOut = Boolean(step && me && !seated && !isEligibleForStep(me, undefined, progress, step, author));
   const canTake = Boolean(step && me && canClaimStep(me, steps, progress, step, undefined, author));
   const canApprove = Boolean(unlocked && step && me && canApproveStep(me, progress, step, author));
 
@@ -233,6 +238,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       if (!session || !ctx || !marker) return;
       const body = `${askChanges && draftOwner && !mine ? `@${draftOwner} ` : ""}${askChanges ? `${tNow("rv.changesAsked")} ` : ""}${text.trim()}`;
       await commentOnPortionPr(session, marker, ref ? refComment(ctx.book, ref, body) : body);
+      if (askChanges && step) {
+        // The draft goes back to its author. Read again first: a seat or an approval saved meanwhile is kept.
+        const fresh = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
+        const next = askForChanges(parseTaskProgressMarker(fresh.body), steps, step, me);
+        setIssue(await setIssueTaskProgress(session, ctx.pmOrg, fresh, next));
+      }
       setCommenting("");
       announce(tNow(askChanges ? "rv.changesSent" : "pr.commentSent"));
       await loadComments(session, marker).catch(() => undefined);
@@ -260,7 +271,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       : approved
         ? t("rv.youApproved")
         : !unlocked
-          ? t(mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
+          ? t(sentBack ? (mine ? "rv.changesForYou" : seated ? "rv.youAskedChanges" : "rv.changesPending") : mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
           ? t(mine ? "rv.agreeOwn" : "rv.readThenApprove")
           : canTake
@@ -269,7 +280,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ? t("rv.waitingReviewers")
               : seated
                 ? t("rv.seatedWait")
-                : t("rv.onlyRead");
+                : keptOut
+                  ? t("rv.keptOut")
+                  : t("rv.onlyRead");
 
   return (
     <div className="scripture-editor fam">
@@ -390,7 +403,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 <Composer
                   placeholder={t("rv.generalPlaceholder")}
                   busy={acting}
-                  actions={[{ label: t("rv.comment"), run: (text) => comment("", text) }, ...(canApprove && !mine ? [{ label: t("rv.askChanges"), run: (text: string) => comment("", text, true) }] : [])]}
+                  actions={[{ label: t("rv.comment"), run: (text) => comment("", text) }, ...(canSendBack && !mine ? [{ label: t("rv.askChanges"), run: (text: string) => comment("", text, true) }] : [])]}
                 />
               </section>
             </>

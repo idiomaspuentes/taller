@@ -2040,7 +2040,7 @@
   "rv.approvedDone": "Aprovado. A revisão ficou completa.",
   "rv.approvedWait": "Aprovado. Falta mais alguém aprovar.",
   "rv.changesAsked": "Peço mudanças:",
-  "rv.changesSent": "Você pediu mudanças a quem escreveu o rascunho.",
+  "rv.changesSent": "Você pediu mudanças. O rascunho voltou para quem o escreveu.",
   "rv.stepDone": "Esta revisão já está completa.",
   "rv.youApproved": "Você já aprovou. Falta mais alguém aprovar.",
   "rv.agreeOwn": "Leia os comentários. Quando estiver de acordo com o resultado, diga.",
@@ -2075,5 +2075,11 @@
   "rv.agree": "Estou de acordo",
   "rv.take": "Pegar esta revisão",
   "rv.finishDraftFirst": "Seu rascunho ainda não está terminado: a revisão começa quando você terminar.",
-  "rv.draftNotFinished": "O rascunho ainda não está terminado. Você pode ler e comentar; a revisão começa quando terminar."
+  "rv.draftNotFinished": "O rascunho ainda não está terminado. Você pode ler e comentar; a revisão começa quando terminar.",
+  "rv.changesForYou": "Pediram mudanças. Leia os comentários, corrija seu rascunho em Minhas tarefas e termine de novo.",
+  "rv.youAskedChanges": "Você pediu mudanças. Quando o rascunho for terminado de novo, volte aqui para revisar.",
+  "rv.changesPending": "Pediram mudanças no rascunho. A revisão continua quando for terminado de novo.",
+  "rv.keptOut": "Você pode ler e comentar. Esta revisão é feita por pessoas que não escreveram nem revisaram antes este rascunho.",
+  "tb.changesForYou": "Pediram mudanças. Leia os comentários da revisão, corrija e termine de novo.",
+  "tb.changesWait": "Pediram mudanças. Falta @{who} terminar de novo."
 }

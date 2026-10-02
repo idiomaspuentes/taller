@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
 import type { BoardCard } from "../domain/myTasksBoard";
-import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode } from "../domain/stepClaim";
+import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending } from "../domain/stepClaim";
 import { parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeHold, localizeName } from "../domain/templateNames";
@@ -94,6 +94,8 @@ export function TaskCard(props: Props) {
   const progress = parseTaskProgressMarker(card.issue.body ?? "");
   const hasTool = action.kind === "begin" || action.kind === "continue";
   const mine = assigneeOf(card).toLowerCase() === props.login.toLowerCase();
+  // A reviewer sent the work back: its author is told why it is theirs again, and the reviewers what they wait for.
+  if (card.group !== "done" && steps.some((step) => changesPending(steps, progress, step))) status = mine ? t("tb.changesForYou") : t("tb.changesWait").replace("{who}", assigneeOf(card));
   // The step in hand is a free one: the person says when it is done (the tool cannot know, above all an outside one).
   const stepInHand = action.kind === "continue" ? action.step : undefined;
   const canFinishStep = Boolean(stepInHand && mine && card.started && stepClaimMode(stepInHand) === "none" && !closesInItsTool(stepInHand));

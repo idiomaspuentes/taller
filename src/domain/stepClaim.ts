@@ -294,6 +294,42 @@ export function approveStep(
   return next;
 }
 
+/** The step whose work a review looks at (the draft): the first step it excludes, else the one right before it. */
+export function reviewedStepId(steps: TaskStep[], step: TaskStep): string | undefined {
+  const named = step.excludePriorStepIds?.[0];
+  if (named && steps.some((row) => row.id === named)) return named;
+  const at = steps.findIndex((row) => row.id === step.id);
+  return at > 0 ? steps[at - 1]!.id : undefined;
+}
+
+/** Whoever sits on a review that is open may send the work back, once it was handed in. */
+export function canAskForChanges(login: string, steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep): boolean {
+  const user = login.trim().toLowerCase();
+  if (!user || stepClaimMode(step) === "none" || closesInItsTool(step) || isStepDone(progress, step.id)) return false;
+  const reviewed = reviewedStepId(steps, step);
+  if (!reviewed || !isStepDone(progress, reviewed)) return false;
+  return getStepRuntime(progress, step.id).assignees.some((seat) => seat.toLowerCase() === user);
+}
+
+/**
+ * A reviewer asks for changes: the work goes back to its author (their step is open again, so it is theirs to do
+ * in their list), and the approvals given so far no longer count, since what they approved is going to change.
+ * The reviewers keep their seats: when the author hands the work in again, the review is theirs to finish.
+ */
+export function askForChanges(progress: TaskProgressMarker, steps: TaskStep[], step: TaskStep, login: string): TaskProgressMarker {
+  if (!canAskForChanges(login, steps, progress, step)) return progress;
+  const reviewed = reviewedStepId(steps, step)!;
+  const reopened = { ...progress, doneStepIds: progress.doneStepIds.filter((id) => id !== reviewed) };
+  return withStepRuntime(reopened, step.id, { ...getStepRuntime(progress, step.id), approvals: [] });
+}
+
+/** A review whose work was sent back and not handed in again yet: somebody sits on it, and it is locked. */
+export function changesPending(steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep): boolean {
+  if (isStepDone(progress, step.id) || !getStepRuntime(progress, step.id).assignees.length) return false;
+  const reviewed = reviewedStepId(steps, step);
+  return Boolean(reviewed && !isStepDone(progress, reviewed));
+}
+
 /** Whether this step should appear as a claimable card for the user. */
 export function isStepClaimableForUser(
   login: string,

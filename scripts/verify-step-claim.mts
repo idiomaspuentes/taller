@@ -7,6 +7,10 @@ import {
   canClaimStep,
   claimStep,
   approveStep,
+  askForChanges,
+  canAskForChanges,
+  changesPending,
+  reviewedStepId,
   isStepComplete,
   isStepUnlocked,
   stepClaimMode,
@@ -142,5 +146,26 @@ assert(
   ]) === "Uno · Varios 3",
   "task mix Uno · Varios 3",
 );
+
+// Asking for changes: the draft goes back to its author, the approvals no longer count, the reviewer keeps the seat.
+{
+  const done = (ids: string[], seats: Record<string, { assignees: string[]; approvals: string[] }>) => ({ ...parseTaskProgressMarker(""), doneStepIds: ids, steps: seats });
+  const reviewing = done(["draft"], { pair: { assignees: ["bob"], approvals: ["alice"] } });
+  assert(reviewedStepId(steps, pair) === "draft" && reviewedStepId(steps, group) === "draft", "a review looks at the draft");
+  assert(canAskForChanges("bob", steps, reviewing, pair), "the seated reviewer may ask for changes");
+  assert(!canAskForChanges("carol", steps, reviewing, pair), "somebody who did not take the review may not");
+  assert(!canAskForChanges("bob", steps, done([], { pair: { assignees: ["bob"], approvals: [] } }), pair), "nothing to send back before the draft is handed in");
+  const back = askForChanges(reviewing, steps, pair, "bob");
+  assert(!back.doneStepIds.includes("draft"), "the draft is open again");
+  assert(back.steps?.pair?.assignees.includes("bob") && back.steps.pair.approvals.length === 0, "seat kept, approvals dropped");
+  assert(!isStepUnlocked(steps, back, "pair") && changesPending(steps, back, pair), "the review waits for the draft");
+  assert(askForChanges(reviewing, steps, pair, "carol") === reviewing, "asking without a seat changes nothing");
+  const again = { ...back, doneStepIds: [...back.doneStepIds, "draft"] };
+  assert(!changesPending(steps, again, pair) && canApproveStep("bob", again, pair, "alice"), "handed in again, the same reviewer approves");
+  // From the group review the draft goes back too, and the pair review already done stays done.
+  const inGroup = done(["draft", "pair"], { pair: { assignees: ["bob"], approvals: ["bob", "alice"] }, group: { assignees: ["carol", "dave"], approvals: ["dave"] } });
+  const fromGroup = askForChanges(inGroup, steps, group, "carol");
+  assert(!fromGroup.doneStepIds.includes("draft") && fromGroup.doneStepIds.includes("pair") && fromGroup.steps?.group?.approvals.length === 0, "group review sends the draft back");
+}
 
 console.log("verify-step-claim: ok");
