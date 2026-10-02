@@ -31,11 +31,31 @@ const golden = JSON.parse(read("golden-tit-prep.json")) as Record<string, unknow
 delete (result as Record<string, unknown>).generated_at;
 delete golden.generated_at;
 
+// The port grew after the Python script was retired: each portion now also says whether the two texts cover it.
+// Those fields are checked on their own and left out of the comparison with the old output, which must still match.
+type Row = Record<string, unknown>;
+const ADDED = ["tpl", "tps", "tpl_items", "tps_items"];
+const counts = (result as { counts: Row }).counts;
+const portions = (result as { chapters: { portions: Row[] }[] }).chapters.flatMap((chapter) => chapter.portions);
+const problems: string[] = [];
+for (const portion of portions) {
+  if (portion.tpl !== 1) problems.push(`porción ${String(portion.ref)}: tpl debería ser 1`);
+  if (portion.tps !== 0) problems.push(`porción ${String(portion.ref)}: sin UST, tps debería ser 0`);
+  if (!Array.isArray(portion.tpl_items) || portion.tpl_items.length !== 1) problems.push(`porción ${String(portion.ref)}: falta su ítem de TPL`);
+  if (!Array.isArray(portion.tps_items) || portion.tps_items.length !== 0) problems.push(`porción ${String(portion.ref)}: sin UST no hay ítem de TPS`);
+}
+if (counts.tpl !== portions.length || counts.tps !== 0) problems.push("los totales de tpl/tps no cuadran con las porciones");
+if (problems.length) {
+  console.error(["Campos de TPL/TPS:", ...problems].join("\n"));
+  process.exit(1);
+}
+for (const row of [counts, ...portions]) for (const key of ADDED) delete row[key];
+
 const resultText = JSON.stringify(result, null, 2);
 const goldenText = JSON.stringify(golden, null, 2);
 
 if (resultText === goldenText) {
-  console.log("OK — TS port matches the Python golden output byte-for-byte (minus generated_at).");
+  console.log("verify-prep: ok (matches the Python golden output; the TPL/TPS fields added since are consistent).");
   process.exit(0);
 }
 

@@ -90,13 +90,14 @@ export const NEXT_BOOK_AT = 0.7;
  * Given the newest book and all its subtareas (as task ids and whether each is closed), says whether its first
  * phase is far enough along that the next book should be started now.
  */
-export function nextBookHint(board: Pick<AssignmentsDoc, "projectId" | "phases" | "teams">, work: { taskId: string; closed: boolean }[]): NextBookHint | null {
+export function nextBookHint(board: Pick<AssignmentsDoc, "projectId" | "phases" | "teams"> & Partial<Pick<AssignmentsDoc, "settings">>, work: { taskId: string; closed: boolean }[]): NextBookHint | null {
   const first = [...board.phases].sort((a, b) => a.order - b.order)[0];
   if (!first) return null;
   const tasks = new Set(board.teams.filter((task) => task.phaseId === first.id).map((task) => task.id));
   const mine = work.filter((row) => tasks.has(row.taskId));
   const done = mine.filter((row) => row.closed).length;
-  if (!mine.length || done / mine.length < NEXT_BOOK_AT) return null;
+  // The process may say when; a project made before it did uses the usual mark.
+  if (!mine.length || done / mine.length < (board.settings?.nextBookAt ?? NEXT_BOOK_AT)) return null;
   return { projectId: board.projectId, phase: first.name, done, total: mine.length };
 }
 
@@ -104,7 +105,7 @@ export function nextBookHint(board: Pick<AssignmentsDoc, "projectId" | "phases" 
  * Did closing this one subtarea take the first phase past the point where the next book should be started? True
  * only for the delivery that crosses it, so whoever coordinates is told once and not at every delivery after it.
  */
-export function reachesNextBook(board: Pick<AssignmentsDoc, "projectId" | "phases" | "teams">, work: { taskId: string; closed: boolean; number: number }[], closedNumber: number): NextBookHint | null {
+export function reachesNextBook(board: Pick<AssignmentsDoc, "projectId" | "phases" | "teams"> & Partial<Pick<AssignmentsDoc, "settings">>, work: { taskId: string; closed: boolean; number: number }[], closedNumber: number): NextBookHint | null {
   const after = nextBookHint(board, work.map((row) => (row.number === closedNumber ? { ...row, closed: true } : row)));
   const before = nextBookHint(board, work.map((row) => (row.number === closedNumber ? { ...row, closed: false } : row)));
   return after && !before ? after : null;

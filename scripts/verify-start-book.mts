@@ -70,6 +70,9 @@ test("se avisa de empezar el libro siguiente cuando la primera fase va por el 70
   assert.equal(nextBookHint(board, work(6, 4, 9)), null, "al 60 % todavía no");
   assert.deepEqual(nextBookHint(board, work(7, 3, 9)), { projectId: "TIT", phase: "Traducción", done: 7, total: 10 }, "las otras fases no cuentan");
   assert.equal(nextBookHint(board, []), null, "sin subtareas no se sabe");
+  assert.equal(nextBookHint({ ...board, settings: { nextBookAt: 0.5 } }, work(5, 5))?.done, 5, "el proceso puede pedirlo antes");
+  assert.equal(nextBookHint({ ...board, settings: { nextBookAt: 0.9 } }, work(8, 2)), null, "o más tarde");
+  assert.equal(applyWorkflowToBoard(empty("RUT"), { ...fcr, nextBookAt: 0.6 }).settings?.nextBookAt, 0.6, "y el proyecto lo recibe de su plantilla");
 });
 
 test("a quien coordina se le avisa una sola vez: con la entrega que cruza la marca", () => {

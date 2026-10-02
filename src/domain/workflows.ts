@@ -23,7 +23,7 @@ export function applyWorkflowToBoard(
     requiredPhaseIds: p.requiredPhaseIds.filter((id) => phaseIds.has(id)),
   }));
   const { releaseProfiles: _previous, resourceNames: _names, ...kept } = board.settings ?? {};
-  const settings = wf.resourceNames ? { ...kept, resourceNames: wf.resourceNames } : kept;
+  const settings = { ...kept, ...(wf.resourceNames ? { resourceNames: wf.resourceNames } : {}), ...(wf.nextBookAt ? { nextBookAt: wf.nextBookAt } : {}) };
   return {
     ...board,
     settings: releaseProfiles?.length ? { ...settings, releaseProfiles } : settings,
@@ -230,6 +230,7 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
       ...(profiles.length ? { releaseProfiles: profiles } : {}),
       // Names the project lacks come from the process; a name the project has stays.
       ...(wf.resourceNames ? { resourceNames: { ...wf.resourceNames, ...board.settings?.resourceNames } } : {}),
+      ...(wf.nextBookAt && board.settings?.nextBookAt === undefined ? { nextBookAt: wf.nextBookAt } : {}),
     },
     // `workflowAppliedAt` stays: it is when the project started, which tells which book came first.
     workflowVersion: wf.version,

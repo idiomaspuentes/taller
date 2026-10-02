@@ -122,6 +122,7 @@ Lo que sigue dentro del código, y en qué fase del plan sale
 | Dónde | Campo | Qué dice |
 |---|---|---|
 | Plantilla | `resourceNames` | Cómo llama el proceso a cada recurso: `{ "tpl": { "name": "Biblia", "names": { "pt": "Bíblia" } } }`. Se copia al proyecto; lo que no se nombra conserva el nombre usual. |
+| Plantilla | `nextBookAt` | Qué parte de la primera fase debe estar entregada (entre 0 y 1) para avisar a quien coordina de empezar el libro siguiente. Si no se dice, 0.7. |
 | Tarea | `everyUnit: true` | La tarea recorre **cada unidad** de su alcance (cada capítulo o tramo), tenga o no artículos pendientes. Para revisiones de lo que ya existe. |
 | Tarea | `waitsFor[].source: true` | La tarea que se espera es del **proyecto fuente**: el mismo libro, en la organización del paquete de recursos de origen. Libre solo cuando ese proyecto la cerró para el mismo capítulo. |
 | Paso | `closing: "automatic"` | Lo completa su herramienta, sin que nadie lo marque. Una tarea con todos sus pasos automáticos se entrega sola. |

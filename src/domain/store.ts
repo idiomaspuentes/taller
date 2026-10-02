@@ -399,7 +399,12 @@ function normalizeScriptureScope(raw: unknown): ScriptureScope | undefined {
   return undefined;
 }
 
-/** `{ pt: "…" }`: only non-empty strings survive; nothing is invented. */
+/** A share between 0 and 1 (both excluded), or nothing. */
+export function normalizeShare(raw: unknown): number | undefined {
+  const value = Number(raw);
+  return raw !== undefined && raw !== null && Number.isFinite(value) && value > 0 && value < 1 ? value : undefined;
+}
+
 /** Keep only names of resources the engine knows, each with a non-empty name. */
 export function normalizeResourceNames(raw: unknown): ResourceNames | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -414,6 +419,7 @@ export function normalizeResourceNames(raw: unknown): ResourceNames | undefined 
   return Object.keys(out).length ? out : undefined;
 }
 
+/** `{ pt: "…" }`: only non-empty strings survive; nothing is invented. */
 export function normalizeLocalized(raw: unknown): Localized | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const out: Localized = {};
@@ -816,6 +822,8 @@ function normalizeProjectSettings(raw: unknown): ProjectSettings | undefined {
   if (releaseProfiles) settings.releaseProfiles = releaseProfiles;
   const resourceNames = normalizeResourceNames(row.resourceNames);
   if (resourceNames) settings.resourceNames = resourceNames;
+  const nextBookAt = normalizeShare(row.nextBookAt);
+  if (nextBookAt !== undefined) settings.nextBookAt = nextBookAt;
   const principalPasses = normalizePrincipalPasses(row.principalPasses);
   if (principalPasses) settings.principalPasses = principalPasses;
   const sourcePackage = normalizeSourcePackage(row.sourcePackage);
@@ -1438,6 +1446,7 @@ export function normalizeWorkflowTemplate(raw: unknown): WorkflowTemplate | null
     tasks,
     ...(releaseProfiles ? { releaseProfiles } : {}),
     ...(normalizeResourceNames(item.resourceNames) ? { resourceNames: normalizeResourceNames(item.resourceNames) } : {}),
+    ...(normalizeShare(item.nextBookAt) !== undefined ? { nextBookAt: normalizeShare(item.nextBookAt) } : {}),
   };
 }
 

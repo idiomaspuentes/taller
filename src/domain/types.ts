@@ -453,6 +453,11 @@ export type WorkflowTemplate = {
   releaseProfiles?: ReleaseProfile[];
   /** What this process calls each resource it works on. Copied into project settings too. */
   resourceNames?: ResourceNames;
+  /**
+   * How much of the first phase must be delivered (0 to 1) before whoever coordinates is told to start the next
+   * book. Copied into project settings; 0.7 when the process does not say.
+   */
+  nextBookAt?: number;
 };
 
 export type WorkflowsCatalog = {
@@ -529,6 +534,8 @@ export type ProjectSettings = {
   releaseProfiles?: ReleaseProfile[];
   /** What the project's process calls each resource (see `resourceNames.ts`); absent = the usual names. */
   resourceNames?: ResourceNames;
+  /** Share of the first phase delivered at which the next book is called for (see `startBook.ts`). */
+  nextBookAt?: number;
   /** Scripture tasks already passed into the borrador principal (release gate). */
   principalPasses?: PrincipalPassMark[];
   /** Notes, words and texts the Afinación reads; the default is unfoldingWord's English package. */
