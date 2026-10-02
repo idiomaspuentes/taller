@@ -1122,7 +1122,7 @@
   "pr.yourDraft": "tu borrador",
   "pr.draftOf": "el borrador de @{who}",
   "pr.online": "{mode} · en línea",
-  "pr.reviewOf": "Revisión de {draft}",
+  "pr.reviewOf": "Revisión: {draft}",
   "pr.noReviewYet": "Sin revisión todavía",
   "pr.merged": " · guardado en el borrador grupal",
   "pr.subtask": " · subtarea #{n}",

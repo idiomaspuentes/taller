@@ -27,6 +27,8 @@ export type DcsPull = {
   state: string;
   html_url: string;
   merged?: boolean;
+  /** Who opened it. */
+  user?: { login?: string };
   mergeable?: boolean;
   draft?: boolean;
   head?: { ref?: string; sha?: string };

@@ -52,7 +52,7 @@ export async function saveVerseAlignment(params: {
   verse: number;
   groups: AlignmentGroup[];
   source: AlignmentSourceRef;
-}): Promise<{ usfm: string }> {
+}): Promise<{ usfm: string; stored: AlignmentGroup[] }> {
   const { session, target, filepath, book, source } = params;
   const key = verseKey(book, params.chapter, params.verse);
   // A linked word is the word alone: "Hacalías." is saved as "Hacalías", or the period would be written twice.
@@ -80,8 +80,12 @@ export async function saveVerseAlignment(params: {
       if (!isShaConflict(err) || attempt === 3) throw err;
     }
   }
-  await saveLayerVerse({ ...params, groups });
-  return { usfm };
+  // What the marks of the draft can hold is what counts as saved: words that are not next to each other but go
+  // with the same original word come back as one box with its neighbours. The layer keeps that same form, and the
+  // caller gets it too, so the screen and any «Terminé» mark describe what a reload will show.
+  const stored = alignmentOfDraft(usfm, book, source).verses[key] ?? [];
+  await saveLayerVerse({ ...params, groups: stored });
+  return { usfm, stored };
 }
 
 /** Same verse in `alignments/{source}/{BOOK}.alignment.json`, merged with whatever is there now. */

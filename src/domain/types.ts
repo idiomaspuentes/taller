@@ -225,6 +225,11 @@ export type ProjectTask = {
   bundle?: TeamBundle;
   distributeUnit?: DistributeUnit;
   distributePolicy?: DistributePolicy;
+  /**
+   * The task goes over every unit of its scope (each chapter, or each stretch of a split one), whether or not that
+   * unit has articles left to work on: a review of what is already there, like checking the key terms of a chapter.
+   */
+  everyUnit?: boolean;
   /** Assigned DCS organization team (reusable across projects). */
   orgTeamId?: number;
   orgTeamName?: string;
@@ -364,6 +369,11 @@ export type TaskTemplate = {
   rules: ScopeRule[];
   distributeUnit?: DistributeUnit;
   distributePolicy?: DistributePolicy;
+  /**
+   * The task goes over every unit of its scope (each chapter, or each stretch of a split one), whether or not that
+   * unit has articles left to work on: a review of what is already there, like checking the key terms of a chapter.
+   */
+  everyUnit?: boolean;
   bundle?: { enabled: boolean; grain: BundleGrain };
   orgTeamId?: number;
   orgTeamName?: string;
@@ -449,6 +459,11 @@ export type TeamPreset = {
   bundle?: { enabled: boolean; grain: BundleGrain };
   distributeUnit?: DistributeUnit;
   distributePolicy?: DistributePolicy;
+  /**
+   * The task goes over every unit of its scope (each chapter, or each stretch of a split one), whether or not that
+   * unit has articles left to work on: a review of what is already there, like checking the key terms of a chapter.
+   */
+  everyUnit?: boolean;
 };
 
 export type Assignment = {

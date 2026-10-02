@@ -4,7 +4,7 @@
  * It does nothing in a real build, and only accepts the test people of that server, whose
  * tokens are not real credentials.
  */
-const MOCK_USERS = ["ana", "bea", "carla"];
+const MOCK_USERS = ["ana", "bea", "carla", "dina", "eva"];
 const SCOPES = ["read:user", "read:organization", "write:repository", "write:issue", "write:organization", "read:notification", "write:notification"];
 
 export function applyMockSessionFromUrl(): void {

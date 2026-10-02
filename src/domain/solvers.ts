@@ -238,9 +238,17 @@ export function upgradeShippedTools(catalog: SolversCatalog, shipped: SolversCat
     if (def.supersedes?.some((old) => app.launchUrl.includes(old))) {
       next = { ...next, launchUrl: def.launchUrl, kind: def.kind, openMode: def.openMode, lang: def.lang ?? app.lang, description: def.description ?? app.description };
     }
-    // Catalogs saved before a field existed take it from the shipped tool.
-    const missing = Object.keys(def.stepParams ?? {}).filter((stepId) => !app.stepParams?.[stepId]);
-    if (missing.length) next = { ...next, stepParams: { ...def.stepParams, ...app.stepParams } };
+    // Catalogs saved before a field existed take it from the shipped tool: a step the saved tool lacks, or a
+    // parameter a saved step lacks. What the organization set itself is kept.
+    const shippedParams = def.stepParams ?? {};
+    const lacks = Object.keys(shippedParams).some(
+      (stepId) => !app.stepParams?.[stepId] || Object.keys(shippedParams[stepId]!).some((key) => !(key in app.stepParams![stepId]!)),
+    );
+    if (lacks) {
+      const merged = { ...shippedParams, ...app.stepParams };
+      for (const stepId of Object.keys(shippedParams)) merged[stepId] = { ...shippedParams[stepId], ...app.stepParams?.[stepId] };
+      next = { ...next, stepParams: merged };
+    }
     if (def.needsIssue && app.needsIssue === undefined) next = { ...next, needsIssue: true };
     if (next === app) return app;
     changed = true;

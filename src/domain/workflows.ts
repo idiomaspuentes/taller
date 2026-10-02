@@ -53,6 +53,7 @@ function taskFromTemplate(
     scriptureScope: { mode: "project" },
     distributeUnit: t.distributeUnit,
     distributePolicy: t.distributePolicy,
+    everyUnit: t.everyUnit,
     bundle: t.bundle
       ? {
           enabled: t.bundle.enabled,
@@ -89,6 +90,7 @@ export function boardToWorkflowTemplate(
     })),
     distributeUnit: t.distributeUnit,
     distributePolicy: t.distributePolicy,
+    everyUnit: t.everyUnit,
     bundle: t.bundle
       ? { enabled: t.bundle.enabled, grain: t.bundle.grain }
       : undefined,

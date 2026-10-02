@@ -781,6 +781,14 @@ function workItemsInScope(
       });
     }
   }
+  if (team.everyUnit) {
+    // The unit itself is the work: every passage of it, and no article list (an article is shared by the whole
+    // book, so it would be planned once and leave the other units without a subtarea).
+    for (const portion of portionsMatchingGrain(team, portions, ctx)) {
+      items.push({ type: "porcion", id: portion.ref, portionId: portionKey(portion) });
+    }
+    return items;
+  }
   if (showsPortionRows(team)) {
     const scoped = portionsMatchingGrain(team, portions, ctx);
     for (const portion of scoped) {

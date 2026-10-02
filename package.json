@@ -63,6 +63,8 @@
     "verify:endorsement": "tsx --tsconfig tsconfig.scripts.json scripts/verify-endorsement.mts",
     "verify:checklist": "tsx --tsconfig tsconfig.scripts.json scripts/verify-checklist.mts",
     "verify:handoff": "tsx --tsconfig tsconfig.scripts.json scripts/verify-handoff.mts",
+    "verify:delivery": "tsx --tsconfig tsconfig.scripts.json scripts/verify-delivery.mts",
+    "check:door43-api": "node scripts/check-door43-api.mjs",
     "verify:consensus": "tsx --tsconfig tsconfig.scripts.json scripts/verify-consensus.mts"
   },
   "dependencies": {

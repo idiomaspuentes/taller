@@ -21,6 +21,8 @@ type Props = {
   /** What the checklist goes over, and the text each item is checked against: the process says it per step. */
   kind: ChecklistKind;
   texts: ChecklistText[];
+  /** Go over only the items that link to a support article. */
+  onlyLinked?: boolean;
   onClose: () => void;
   announce: (msg: string) => void;
 };
@@ -49,7 +51,7 @@ function Verse({ text, marked }: { text: string; marked: number[] }) {
  * the step. The screen knows how to show notes, questions and terms beside a text; which questions are asked, and of
  * what, comes from the template.
  */
-export function ChecklistView({ ctxEncoded, kind, texts, onClose, announce }: Props) {
+export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, announce }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [session] = useState<GtSession | undefined>(() => loadSession());
@@ -58,7 +60,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onClose, announce }: Pr
   const [answers, setAnswers] = useState<CheckAnswer[]>([]);
   const [position, setPosition] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [closing, setSaving] = useState(false);
+  /** Answers on their way to Door43. */
+  const [writing, setWriting] = useState(0);
+  const saving = closing || writing > 0;
   const [error, setError] = useState("");
   const [stepDone, setStepDone] = useState(false);
   /** A «no» being explained: which question, what was done about it and the note. */
@@ -75,7 +80,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onClose, announce }: Pr
     setBusy(true);
     setError("");
     try {
-      const loaded = await loadChecklist({ session, ctx: decoded, kind, texts: textsKey.split(",").filter(Boolean) as ChecklistText[] });
+      const loaded = await loadChecklist({ session, ctx: decoded, kind, texts: textsKey.split(",").filter(Boolean) as ChecklistText[], onlyLinked });
       setData(loaded);
       const key = `${(decoded.book || decoded.projectId).toUpperCase()}.${decoded.issueNumber || decoded.taskId}.${decoded.stepId || "paso"}`;
       setAnswers(await loadCheckAnswers(session, loaded.target, key));
@@ -114,18 +119,23 @@ export function ChecklistView({ ctxEncoded, kind, texts, onClose, announce }: Pr
     return [...new Set(awaited.filter((task) => task.rules.some((rule) => texts.includes(rule.resource as ChecklistText))).flatMap((task) => coordinatorsOf(data.levelBook, task.orgTeamName)))];
   }, [data, textsKey]);
 
+  /**
+   * An answer shows at once and is written behind: the person goes on to the next question without waiting for
+   * Door43. If the write fails the answer is taken back and the error is said.
+   */
   async function save(next: CheckAnswer[], said: string) {
     if (!session || !data) return;
-    setSaving(true);
+    setAnswers((prev) => [...prev, ...next]);
+    setWriting((n) => n + 1);
     setError("");
     try {
       await appendCheckAnswers(session, data.target, storeKey, next);
-      setAnswers((prev) => [...prev, ...next]);
       announce(said);
     } catch (err) {
+      setAnswers((prev) => prev.filter((row) => !next.includes(row)));
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setSaving(false);
+      setWriting((n) => n - 1);
     }
   }
 
@@ -305,10 +315,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onClose, announce }: Pr
                       {question.per === "verse" ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
                     </p>
                     <div className="ck-question__buttons">
-                      <Button type="button" variant={answer?.value === "yes" ? "default" : "outline"} aria-pressed={answer?.value === "yes"} disabled={saving || stepDone} onClick={() => void save([stamp(answerItemId, question.id, "yes")], t("ck.saved"))}>
+                      <Button type="button" variant={answer?.value === "yes" ? "default" : "outline"} aria-pressed={answer?.value === "yes"} disabled={closing || stepDone} onClick={() => void save([stamp(answerItemId, question.id, "yes")], t("ck.saved"))}>
                         {t("ck.yes")}
                       </Button>
-                      <Button type="button" variant={answer?.value === "no" ? "default" : "outline"} aria-pressed={answer?.value === "no"} disabled={saving || stepDone} onClick={() => setDraft({ answerItemId, questionId: question.id, outcome: answer?.outcome ?? "fixed", note: answer?.note ?? "" })}>
+                      <Button type="button" variant={answer?.value === "no" ? "default" : "outline"} aria-pressed={answer?.value === "no"} disabled={closing || stepDone} onClick={() => setDraft({ answerItemId, questionId: question.id, outcome: answer?.outcome ?? "fixed", note: answer?.note ?? "" })}>
                         {t("ck.no")}
                       </Button>
                     </div>

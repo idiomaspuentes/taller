@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 6,
+      "version": 7,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -932,7 +932,8 @@
             "grain": "chapter"
           },
           "distributeUnit": "chapter",
-          "distributePolicy": "manual"
+          "distributePolicy": "manual",
+          "everyUnit": true
         },
         {
           "id": "armonizar-preguntas",
@@ -1264,7 +1265,8 @@
         },
         "academia": {
           "items": "notas",
-          "text": "tpl"
+          "text": "tpl",
+          "only": "linked"
         },
         "palabras-tpl": {
           "items": "palabras",

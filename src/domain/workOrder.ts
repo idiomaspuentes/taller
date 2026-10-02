@@ -179,7 +179,7 @@ export function workOrdersFromAssignments(
     let resource: ScopeKey | "bundle" = "bundle";
     let portionId = "";
     if (row.bundleId) {
-      resource = "bundle";
+      resource = taskResource(team);
       const bundle = bundlesInScope(
         team,
         inventory.portions,
@@ -201,7 +201,7 @@ export function workOrdersFromAssignments(
           .find((t) => t.id === parsed.id);
         portionId = task?.portionId ?? "";
       } else if (row.itemType === "porcion") {
-        resource = "tpl";
+        resource = taskResource(team);
         portionId = row.itemId;
       } else if (row.itemType === "articulo") {
         const article = inventory.articles.find(
@@ -306,10 +306,27 @@ function buildWorkOrder(params: {
   };
 }
 
-function workItemResource(item: WorkItem): ScopeKey | "bundle" {
+/**
+ * The resource a task works on, read from its rules: the one it names, `tpl` when it names none (the oldest
+ * boards), and `bundle` when it names several (a review that goes over more than one resource).
+ */
+export function taskResource(team: Team): ScopeKey | "bundle" {
+  const named = [...new Set((team.rules ?? []).map((rule) => rule.resource))];
+  if (named.length === 1) return named[0];
+  return named.length ? "bundle" : "tpl";
+}
+
+/** A passage carries no resource of its own: it is whatever the task works on. */
+function workItemResource(item: WorkItem, team: Team): ScopeKey | "bundle" {
   if (item.resource) return item.resource;
-  if (item.type === "porcion") return "tpl";
+  if (item.type === "porcion") return taskResource(team);
   return "bundle";
+}
+
+/** The resource of a packaged unit: the one its items share, or else what the task works on. */
+function packagedResource(resources: ScopeKey[], team: Team): ScopeKey | "bundle" {
+  if (resources.length === 1) return resources[0];
+  return resources.length ? "bundle" : taskResource(team);
 }
 
 /**
@@ -344,8 +361,7 @@ export function planUnassignedLots(
     if (packaged) {
       const extracted = itemsFromBundle(bundle);
       if (!extracted.itemIds.length) continue;
-      const resource: ScopeKey | "bundle" =
-        extracted.resources.length === 1 ? extracted.resources[0] : "bundle";
+      const resource = packagedResource(extracted.resources, team);
       orders.push(
         buildWorkOrder({
           team,
@@ -363,7 +379,7 @@ export function planUnassignedLots(
 
     const groups = new Map<ScopeKey | "bundle", WorkItem[]>();
     for (const item of bundle.items) {
-      const resource = workItemResource(item);
+      const resource = workItemResource(item, team);
       const list = groups.get(resource) ?? [];
       list.push(item);
       groups.set(resource, list);
@@ -489,8 +505,7 @@ export function planWorkOrders(
     for (const bundle of chunk) {
       const extracted = itemsFromBundle(bundle);
       if (!extracted.itemIds.length) continue;
-      const resource: ScopeKey | "bundle" =
-        extracted.resources.length === 1 ? extracted.resources[0] : "bundle";
+      const resource = packagedResource(extracted.resources, team);
       orders.push(
         buildWorkOrder({
           team,

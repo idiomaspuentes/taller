@@ -4,6 +4,7 @@ import type { GtSession } from "./auth";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { dcsConfig } from "./config";
 import { loadPmConfig } from "./issues";
+import { readTeamHelps } from "./teamHelps";
 import { parseTsvTable } from "../prep/tsv";
 import { attachPhrases, parseNoteRows, type NoteItem } from "../domain/afinacionNotes";
 import { parseArticleTitle, parseTermRows, termArticlePath, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
@@ -19,6 +20,7 @@ import { DEFAULT_SOURCE_PACKAGE, originalTextRef, type SourcePackage } from "../
 import { tryParseUsj, tryParseUsjWithAlignments, verseTextsFromUsj, type VerseTextMap } from "../domain/usfmAst";
 import type { UsjDocument } from "@usfm-tools/usj-core";
 import type { LevelBook, PersonLevel } from "../domain/levels";
+import type { AssignmentsDoc } from "../domain/types";
 
 export type AfinacionStep = "notas" | "palabras";
 
@@ -112,6 +114,8 @@ export async function loadAfinacionNotes(params: {
   sourceTaskId: string;
   pkg?: SourcePackage;
   pmConfig?: PmConfig;
+  /** The project's plan: with it, each note is shown as the team translated it, when it already has. */
+  board?: AssignmentsDoc | null;
 }): Promise<AfinacionNotesData> {
   const { session, ctx } = params;
   const pkg = params.pkg ?? DEFAULT_SOURCE_PACKAGE;
@@ -161,7 +165,16 @@ export async function loadAfinacionNotes(params: {
 
   const tsvRows = parseTsvTable(tnRaw).rows;
   const termUses = step === "palabras" ? parseTermRows(tsvRows) : [];
-  const rawItems = step === "palabras" ? termUses.filter((u) => u.chapter === chapter) : parseNoteRows(tsvRows, chapter);
+  let rawItems = step === "palabras" ? termUses.filter((u) => u.chapter === chapter) : parseNoteRows(tsvRows, chapter);
+  if (step === "notas" && params.board) {
+    // Which notes there are, and what each points at, comes from the source package; the wording shown is the
+    // team's own translation of that note (same id) once it exists.
+    const own = await readTeamHelps({ session, ctx, pmConfig, board: params.board, kind: "notas" }).catch(() => null);
+    if (own) {
+      const worded = new Map(parseNoteRows(parseTsvTable(own.text).rows, chapter).map((note) => [note.id, note.note]));
+      rawItems = (rawItems as NoteItem[]).map((note) => (worded.get(note.id)?.trim() ? { ...note, note: worded.get(note.id)! } : note));
+    }
+  }
   const items = attachPhrases(rawItems, {
     book: target.book,
     verseTexts: gatewayVerses,

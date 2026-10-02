@@ -1,7 +1,7 @@
 import { bookName } from "./books";
 import { slugifyPhase } from "./phaseSlug";
 import type { TaskStep } from "./types";
-import { stepClaimMode } from "./stepClaim";
+import { closesInItsTool, stepClaimMode } from "./stepClaim";
 
 export const PORTION_PR_SCHEMA = "gateway-portion-pr-1" as const;
 
@@ -408,8 +408,19 @@ export function stepCompletesDraftForReview(
 }
 
 export function stepNeedsOpenPortionPr(step: TaskStep): boolean {
+  // A step closed inside its own tool (a consensus round, a checklist) works on the shared draft: there is no
+  // personal draft to review, so no pull request either.
+  if (closesInItsTool(step)) return false;
   const mode = stepClaimMode(step);
   return mode === "exclusive" || mode === "pool";
+}
+
+/**
+ * A task whose every step is done in a shared tool leaves nothing in a personal draft: delivering it only closes
+ * the subtarea.
+ */
+export function taskWorksOnSharedDraft(steps: TaskStep[] | undefined): boolean {
+  return Boolean(steps?.length) && steps!.every(closesInItsTool);
 }
 
 /** Review comment posted when TAS Aprobar hits a linked PR. */

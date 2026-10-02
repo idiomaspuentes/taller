@@ -4,6 +4,7 @@ import { groupDraftBranches, readRaw } from "./afinacionLoad";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import type { CheckTarget } from "./checkStore";
 import { loadPmConfig } from "./issues";
+import { readTeamHelps } from "./teamHelps";
 import { loadAssignmentsFromDcs } from "./persist";
 import { parseNoteRows } from "../domain/afinacionNotes";
 import { parseTermRows } from "../domain/afinacionWords";
@@ -93,7 +94,14 @@ export async function loadUnitTexts(params: { session: GtSession; ctx: SolverLau
   return { book, chapter: ctx.chapter, texts, target: { owner: home.owner, repo: home.repo }, levelBook: pmConfig, board, task, step };
 }
 
-export async function loadChecklist(params: { session: GtSession; ctx: SolverLaunchContext; kind: ChecklistKind; texts: ChecklistText[] }): Promise<ChecklistData> {
+export async function loadChecklist(params: {
+  session: GtSession;
+  ctx: SolverLaunchContext;
+  kind: ChecklistKind;
+  texts: ChecklistText[];
+  /** Only the items that link to a support article (a step that checks those articles). */
+  onlyLinked?: boolean;
+}): Promise<ChecklistData> {
   const { session, ctx, kind } = params;
   const book = (ctx.book || ctx.projectId || "").toUpperCase();
   const chapter = ctx.chapter;
@@ -114,7 +122,8 @@ export async function loadChecklist(params: { session: GtSession; ctx: SolverLau
   if (kind === "palabras") {
     raw = await readRaw(session, pkg.owner, pkg.twl, `twl_${book}.tsv`);
   } else {
-    raw = helps.filepath ? await readRaw(session, helps.owner, helps.repo, helps.filepath) : null;
+    // The team's own notes or questions as they stand now: the group draft of that work, or what is published.
+    raw = (await readTeamHelps({ session, ctx, pmConfig, board, kind }))?.text ?? null;
     if (!raw && kind === "notas") {
       raw = await readRaw(session, pkg.owner, pkg.tn, helpsTsvFilename("notas", book));
       fromSource = Boolean(raw);
@@ -141,7 +150,7 @@ export async function loadChecklist(params: { session: GtSession; ctx: SolverLau
       items.push({ id, chapter, verse: Number(match[2]), title: (row.Question ?? row.question ?? "").trim(), body: (row.Response ?? row.response ?? "").trim() });
     }
   }
-  items = items.filter((item) => inRange(item.verse)).sort((a, b) => a.verse - b.verse);
+  items = items.filter((item) => inRange(item.verse) && (!params.onlyLinked || Boolean(item.supportRef))).sort((a, b) => a.verse - b.verse);
 
   const texts: ChecklistData["texts"] = {};
   await Promise.all(

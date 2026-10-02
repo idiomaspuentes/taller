@@ -18,6 +18,18 @@ const fileOf = (key: string, login: string): string => `${dirOf(key)}/${login.tr
 const isNotFound = (err: unknown): boolean => err instanceof DcsApiError && err.status === 404;
 const isShaConflict = (err: unknown): boolean => err instanceof DcsApiError && (err.status === 409 || err.status === 422);
 
+/**
+ * Writes to the same file go one after another. Answering several questions in a row would otherwise send two
+ * writes at once: both find the file missing (or at the same version) and Door43 refuses the second.
+ */
+const turns = new Map<string, Promise<unknown>>();
+function inTurn<T>(file: string, job: () => Promise<T>): Promise<T> {
+  const next = (turns.get(file) ?? Promise.resolve()).catch(() => undefined).then(job);
+  turns.set(file, next);
+  return next;
+}
+const ATTEMPTS = 4;
+
 function decode(content: string): string {
   const binary = atob(content.replace(/\s+/g, ""));
   return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
@@ -52,10 +64,35 @@ export async function loadCheckAnswers(session: GtSession, target: CheckTarget, 
 }
 
 /** Add answers to the signed-in person's own file. Retries once when the file moved meanwhile. */
-export async function appendCheckAnswers(session: GtSession, target: CheckTarget, key: string, answers: CheckAnswer[]): Promise<void> {
-  const config = dcsConfig(session.host);
+export function appendCheckAnswers(session: GtSession, target: CheckTarget, key: string, answers: CheckAnswer[]): Promise<void> {
   const filepath = fileOf(key, session.username);
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const file = `${target.owner}/${target.repo}/${filepath}`;
+  // Answers given while a write is on its way wait together and go in the next one: a person answering four
+  // questions in a row makes one or two writes, not four.
+  const batch = waiting.get(file) ?? { answers: [], done: [] };
+  waiting.set(file, batch);
+  batch.answers.push(...answers);
+  return new Promise<void>((resolve, reject) => {
+    batch.done.push({ resolve, reject });
+    void inTurn(file, async () => {
+      const mine = waiting.get(file);
+      if (!mine?.answers.length) return;
+      waiting.delete(file);
+      try {
+        await appendNow(session, target, key, filepath, mine.answers);
+        for (const waiter of mine.done) waiter.resolve();
+      } catch (err) {
+        for (const waiter of mine.done) waiter.reject(err);
+      }
+    });
+  });
+}
+
+const waiting = new Map<string, { answers: CheckAnswer[]; done: { resolve: () => void; reject: (err: unknown) => void }[] }>();
+
+async function appendNow(session: GtSession, target: CheckTarget, key: string, filepath: string, answers: CheckAnswer[]): Promise<void> {
+  const config = dcsConfig(session.host);
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     let existing: { text: string; sha: string } | null = null;
     let branchExists = true;
     try {
@@ -82,7 +119,7 @@ export async function appendCheckAnswers(session: GtSession, target: CheckTarget
       });
       return;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 2) throw err;
+      if (!isShaConflict(err) || attempt === ATTEMPTS) throw err;
     }
   }
 }
@@ -114,10 +151,14 @@ export async function loadPersonDocs<T>(session: GtSession, target: CheckTarget,
 }
 
 /** Replace the signed-in person's own document. Retries once when the file moved meanwhile. */
-export async function savePersonDoc<T>(session: GtSession, target: CheckTarget, key: string, doc: T): Promise<void> {
-  const config = dcsConfig(session.host);
+export function savePersonDoc<T>(session: GtSession, target: CheckTarget, key: string, doc: T): Promise<void> {
   const filepath = fileOf(key, session.username);
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  return inTurn(`${target.owner}/${target.repo}/${filepath}`, () => saveDocNow(session, target, key, filepath, doc));
+}
+
+async function saveDocNow<T>(session: GtSession, target: CheckTarget, key: string, filepath: string, doc: T): Promise<void> {
+  const config = dcsConfig(session.host);
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     let sha: string | undefined;
     let branchExists = true;
     try {
@@ -142,7 +183,7 @@ export async function savePersonDoc<T>(session: GtSession, target: CheckTarget, 
       });
       return;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 2) throw err;
+      if (!isShaConflict(err) || attempt === ATTEMPTS) throw err;
     }
   }
 }

@@ -138,7 +138,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       if (!sourceTaskId) {
         throw new Error(tNow("af.noSource"));
       }
-      const loaded = await loadAfinacionNotes({ session, ctx: decoded, sourceTaskId, step: stepProp, pkg: resolveSourcePackage(board?.settings) });
+      const loaded = await loadAfinacionNotes({ session, ctx: decoded, sourceTaskId, step: stepProp, pkg: resolveSourcePackage(board?.settings), board });
       setData(loaded);
       setPreferredTerms(loaded.preferredTerms);
       const files = await loadDecisionFiles(session, { owner: loaded.draft.owner, repo: loaded.draft.repo, branch: loaded.draft.branch }, loaded.book);

@@ -1122,7 +1122,7 @@
   "pr.yourDraft": "seu rascunho",
   "pr.draftOf": "o rascunho de @{who}",
   "pr.online": "{mode} · online",
-  "pr.reviewOf": "Revisão de {draft}",
+  "pr.reviewOf": "Revisão: {draft}",
   "pr.noReviewYet": "Sem revisão ainda",
   "pr.merged": " · salvo no rascunho do grupo",
   "pr.subtask": " · subtarefa #{n}",

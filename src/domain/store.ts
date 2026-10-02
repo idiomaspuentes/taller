@@ -557,6 +557,7 @@ export function normalizeTeams(raw: unknown, people: Person[]): ProjectTask[] {
         bundle,
         distributeUnit: normalizeDistributeUnit(item.distributeUnit, bundle),
         distributePolicy: normalizeDistributePolicy(item.distributePolicy),
+        everyUnit: item.everyUnit === true ? true : undefined,
         orgTeamId: Number.isFinite(orgTeamId) && orgTeamId > 0 ? orgTeamId : undefined,
         orgTeamName: String(item.orgTeamName ?? "").trim() || undefined,
         solverAppId: String(item.solverAppId ?? "").trim() || undefined,
@@ -1324,6 +1325,7 @@ export function normalizeTeamPresets(raw: unknown): TeamPreset[] {
         bundle: bundle ? { enabled: bundle.enabled, grain: bundle.grain } : undefined,
         distributeUnit: normalizeDistributeUnit(item.distributeUnit, bundle),
         distributePolicy: normalizeDistributePolicy(item.distributePolicy),
+        everyUnit: item.everyUnit === true ? true : undefined,
       };
     })
     .filter((row) => row.name && row.rules.length);
@@ -1375,6 +1377,7 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
     rules,
     distributeUnit: normalizeDistributeUnit(item.distributeUnit, bundle),
     distributePolicy: normalizeDistributePolicy(item.distributePolicy),
+        everyUnit: item.everyUnit === true ? true : undefined,
     bundle: bundle ? { enabled: bundle.enabled, grain: bundle.grain } : undefined,
     orgTeamId: Number.isFinite(orgTeamId) && orgTeamId > 0 ? orgTeamId : undefined,
     orgTeamName: String(item.orgTeamName ?? "").trim() || undefined,

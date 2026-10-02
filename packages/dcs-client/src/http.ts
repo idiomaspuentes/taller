@@ -57,7 +57,11 @@ export async function request<T>(config: DcsClientConfig, options: RequestOption
 
     if (response.ok) {
       if (response.status === 204) return undefined as T;
-      return (await response.json()) as T;
+      // Some operations answer 200 or 201 with no body at all (merging a pull request is one): that is a success,
+      // not unreadable JSON.
+      const text = await response.text();
+      if (!text.trim()) return undefined as T;
+      return JSON.parse(text) as T;
     }
 
     if (RETRYABLE_STATUSES.has(response.status) && attempt < MAX_RETRIES) {

@@ -170,9 +170,12 @@ export async function ensurePortionPr(
     session, owner, repo, book, taskId, phaseSlug, filepath,
   });
   const bookBranch = resolved.bookBranch;
+  // The work branch belongs to whoever has the subtarea, not to whoever asks: a reviewer who takes a step, or a
+  // coordinator who delivers, must land on the author's review instead of opening one of their own.
+  const author = issue.assignee?.login || issue.assignees?.[0]?.login || ctx.username || session.username;
   const head = portionPrBranchName({
     book,
-    username: ctx.username || session.username,
+    username: author,
     taskId,
     issueNumber: issue.number,
   });
@@ -201,14 +204,14 @@ export async function ensurePortionPr(
     phaseSlug,
     filepath,
     taskBranch: head,
-    username: ctx.username || session.username,
+    username: author,
     issueNumber: issue.number,
   });
   const workHead = task.workBranch;
   const base = bookBranch;
   const owned = {
     book,
-    username: ctx.username || session.username,
+    username: author,
     taskId,
     issueNumber: issue.number,
   };
@@ -306,16 +309,20 @@ export async function submitPortionPrApproval(
   marker: PortionPrMarker,
   params: { stepName: string; issueNumber: number },
 ): Promise<DcsPullReview> {
-  await loadLinkedPull(session, marker);
+  const pull = await loadLinkedPull(session, marker);
   const config = dcsConfig(session.host);
   const body = portionPrApprovalReviewBody(params);
+  // Door43 refuses an approval of one's own pull request (422). When a step also asks for the author's agreement,
+  // it is left on the review as a comment; the approval that counts for the step is the one kept in the subtarea.
+  const own = (pull.user?.login || "").toLowerCase() === session.username.toLowerCase();
+  const event = own ? "COMMENT" : "APPROVED";
   let review = await createPullReview(
     config,
     marker.owner,
     marker.repo,
     marker.number,
     session.token,
-    { body, event: "APPROVED" },
+    { body, event },
   );
   if (pullReviewNeedsSubmit(review.state) && review.id) {
     review = await submitPullReview(
@@ -325,7 +332,7 @@ export async function submitPortionPrApproval(
       marker.number,
       review.id,
       session.token,
-      { body, event: "APPROVED" },
+      { body, event },
     );
   }
   return review;

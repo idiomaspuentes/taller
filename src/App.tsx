@@ -808,7 +808,8 @@ export function App() {
 
   function onCreateProject(input: CreateProjectInput) {
     const meta = resolveProjectMeta(input);
-    const base = { ...emptyAssignments(meta.projectId, lang, contentOrg, pmOrg), title: meta.title, kind: meta.kind, books: meta.books };
+    // People take the work themselves (nobody is handed a whole chapter); whoever coordinates can turn it off.
+    const base = { ...emptyAssignments(meta.projectId, lang, contentOrg, pmOrg), title: meta.title, kind: meta.kind, books: meta.books, settings: { allowSelfAssign: true } };
     // The project starts as a copy of its template: its phases, tasks and steps, and the version it was copied at.
     const template = projectTemplates().find((workflow) => workflow.id === input.workflowId);
     const doc = template ? applyWorkflowToBoard(base, template) : base;
@@ -944,8 +945,9 @@ export function App() {
           <EndorsementView key={`${sessionEpoch}-${route.mode}`} ctxEncoded={route.ctx} mode={route.mode === "decision" ? "decision" : "reporte"} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-checklist" ? (
           <ChecklistView
-            key={`${sessionEpoch}-${route.items}-${route.text}`}
+            key={`${sessionEpoch}-${route.items}-${route.text}-${route.only ?? ""}`}
             ctxEncoded={route.ctx}
+            onlyLinked={route.only === "linked"}
             kind={route.items === "preguntas" || route.items === "palabras" ? route.items : "notas"}
             texts={route.text.split(",").filter((x): x is "tpl" | "tps" => x === "tpl" || x === "tps")}
             announce={announce}

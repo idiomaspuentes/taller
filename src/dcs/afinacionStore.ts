@@ -94,15 +94,25 @@ export async function loadDecisionFiles(
   return files.filter((f): f is CheckingDecisionsFile => f !== null);
 }
 
-/** Add one answer to the signed-in person's own file. Retries once if the file moved meanwhile. */
-export async function appendMyDecision(
+/** Writes to a person's file go one after another: two answers given in a row must not race each other. */
+const turns = new Map<string, Promise<unknown>>();
+
+/** Add one answer to the signed-in person's own file. Retries if the file moved meanwhile. */
+export function appendMyDecision(
   session: GtSession,
   target: RepoTarget,
   book: string,
   decision: ReviewDecision,
 ): Promise<void> {
   const filepath = decisionsFilePath(book, session.username);
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const key = `${target.owner}/${target.repo}@${target.branch ?? ""}:${filepath}`;
+  const next = (turns.get(key) ?? Promise.resolve()).catch(() => undefined).then(() => appendDecisionNow(session, target, book, filepath, decision));
+  turns.set(key, next);
+  return next;
+}
+
+async function appendDecisionNow(session: GtSession, target: RepoTarget, book: string, filepath: string, decision: ReviewDecision): Promise<void> {
+  for (let attempt = 1; attempt <= 4; attempt++) {
     const existing = await readRepoFile(session, target, filepath);
     const file = (existing && parseDecisionsFile(existing.text, book)) || { book: book.toUpperCase(), decisions: [] };
     file.decisions = [...file.decisions, decision];
@@ -116,7 +126,7 @@ export async function appendMyDecision(
       });
       return;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 2) throw err;
+      if (!isShaConflict(err) || attempt === 4) throw err;
     }
   }
 }

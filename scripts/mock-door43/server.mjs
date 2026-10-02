@@ -6,12 +6,14 @@
  *   is written here. Nothing is sent to Door43.
  * - unfoldingWord's public repositories (original texts, notes, words) are read
  *   from qa.door43.org, anonymously and read only, and cached.
- * - People sign in with test tokens: `token-ana`, `token-bea`, `token-carla`.
+ * - People sign in with test tokens: `token-ana`, `token-bea`, `token-carla`, `token-dina`, `token-eva`.
  *
- * Debug: GET /__mock/files?repo=owner/name&branch=x, GET /__mock/log, POST /__mock/reset
+ * Debug: GET /__mock/files?repo=owner/name&branch=x, GET /__mock/log, POST /__mock/reset,
+ * GET /__mock/dump (the whole state, to keep it across a restart) and POST /__mock/load (put it back).
  */
 import http from "node:http";
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 
 const PORT = Number(process.env.MOCK_PORT || 8787);
 const REAL = "https://qa.door43.org";
@@ -22,6 +24,8 @@ const USERS = {
   "token-ana": { id: 1, login: "ana", full_name: "Ana" },
   "token-bea": { id: 2, login: "bea", full_name: "Bea" },
   "token-carla": { id: 3, login: "carla", full_name: "Carla" },
+  "token-dina": { id: 4, login: "dina", full_name: "Dina" },
+  "token-eva": { id: 5, login: "eva", full_name: "Eva" },
 };
 
 let counter = 0;
@@ -37,6 +41,8 @@ let issues;
 let comments;
 let labels;
 let milestones;
+/** "owner/name" → pull requests of that repository. */
+let pulls;
 let log;
 let issueCounter;
 const cache = new Map();
@@ -75,13 +81,52 @@ function doneSteps(taskId) {
 <!-- gateway-task-progress ${JSON.stringify({ v: 2, doneStepIds: steps.split(","), steps: {} })} -->`;
 }
 
+/** Where the published files of the real organization are read from (read only, public). */
+const SEED_HOST = "https://git.door43.org";
+const CONTENT_REPOS = ["es-419_glt", "es-419_gst", "es-419_tn", "es-419_tq", "es-419_tw", "es-419_ta"];
+/** Files read once from the real Door43 (read only) and put back after every reset: `[repo, branch, path, text]`. */
+let seeded = [];
+
+/**
+ * MOCK_SEED_BOOK=TIT: start from what is published for that book in the real organization, so a walk through the
+ * process uses real texts, notes and questions. The two texts are also placed on the group-draft branches of the
+ * translation tasks (`tit/tpl`, `tit/tps`), as if Traducción had delivered them.
+ */
+async function seedFromReal(book) {
+  const code = book.toUpperCase();
+  const numbers = { TIT: "57", NEH: "16", RUT: "08", JON: "32", EST: "17", "3JN": "65" };
+  const usfm = `${numbers[code] || "00"}-${code}.usfm`;
+  const wanted = [
+    ["es-419_glt", usfm, ["master", `${code.toLowerCase()}/tpl`]],
+    ["es-419_gst", usfm, ["master", `${code.toLowerCase()}/tps`]],
+    ["es-419_tn", `tn_${code}.tsv`, ["master"]],
+    ["es-419_tq", `tq_${code}.tsv`, ["master"]],
+  ];
+  for (const [repo, path, branches] of wanted) {
+    try {
+      const r = await fetch(`${SEED_HOST}/${CONTENT_ORG}/${repo}/raw/branch/master/${path}`, { headers: { "user-agent": "GatewayTasks-mock/0.1" } });
+      if (!r.ok) {
+        console.log(`seed: ${repo}/${path} → ${r.status} (se deja vacío)`);
+        continue;
+      }
+      const text = await r.text();
+      for (const branch of branches) seeded.push([repo, branch, path, text]);
+      console.log(`seed: ${repo}/${path} (${text.length} bytes) → ${branches.join(", ")}`);
+    } catch (err) {
+      console.log(`seed: ${repo}/${path} falló: ${err}`);
+    }
+  }
+  reset();
+}
+
 function workOrder(n, taskId, portion, assignee, created, updated, title) {
   const marker = JSON.stringify({ schema: "gateway-work-order-1", key: `${taskId}|${portion}`, book: "NEH", teamId: taskId, resource: "tpl", portionIds: [portion], itemIds: [] });
   return {
     id: n, number: n, title, state: "open",
     // MOCK_DONE_STEPS="afinar-tpl-1:notas,palabras": start a task with some steps already done, to try a later one.
     body: `<!-- gateway-work-order ${marker} -->${doneSteps(taskId)}`,
-    labels: [{ id: 1, name: `pm/tarea:${taskId}` }],
+    labels: [{ id: 0, name: "pm" }, { id: 1, name: `pm/tarea:${taskId}` }],
+    milestone: { id: 1, title: "NEH", state: "open" },
     assignee: assignee ? USERS[`token-${assignee}`] : null,
     assignees: assignee ? [USERS[`token-${assignee}`]] : [],
     created_at: ago(created), updated_at: ago(updated), comments: 0,
@@ -90,8 +135,11 @@ function workOrder(n, taskId, portion, assignee, created, updated, title) {
 
 function reset() {
   repos = new Map();
+  pulls = new Map();
   repos.set(`${PM_ORG}/taller`, { defaultBranch: "main", branches: new Map() });
-  repos.set(`${CONTENT_ORG}/es-419_glt`, { defaultBranch: "master", branches: new Map() });
+  // The content repositories of the space: the two texts and the four helps.
+  for (const name of CONTENT_REPOS) repos.set(`${CONTENT_ORG}/${name}`, { defaultBranch: "master", branches: new Map([["master", new Map()]]) });
+  for (const [repo, branch, path, text] of seeded) put(`${CONTENT_ORG}/${repo}`, branch, path, text);
   const board = {
     schema: "gateway-assignments-1", projectId: "NEH", book: "NEH", title: "Nehemías", lang: "es-419", contentOrg: CONTENT_ORG, pmOrg: PM_ORG,
     settings: { allowSelfAssign: true },
@@ -117,7 +165,7 @@ function reset() {
     ],
   };
   put(`${PM_ORG}/taller`, "main", "es-419/NEH/assignments.json", JSON.stringify(board, null, 2));
-  put(`${PM_ORG}/taller`, "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada" } }));
+  put(`${PM_ORG}/taller`, "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada", dina: "habilitada", eva: "habilitada" } }));
   put(`${CONTENT_ORG}/es-419_glt`, "neh", "16-NEH.usfm", DRAFT);
   issues = [
     workOrder(1, "afinar-tpl-1", "c1", null, 6, 6, "NEH 1 · Afinar TPL 1"),
@@ -130,6 +178,75 @@ function reset() {
   log = [];
 }
 reset();
+
+/**
+ * The commit a branch points at. The mock keeps no history: the id is derived from the files of the branch, so it
+ * changes with every write and a branch made from another starts at the same commit. A branch with no files has no
+ * ref, like an empty repository.
+ */
+function headSha(files) {
+  if (!files || !files.size) return null;
+  const hash = createHash("sha1");
+  for (const path of [...files.keys()].sort()) hash.update(`${path}:${files.get(path).sha}\n`);
+  return hash.digest("hex");
+}
+
+function cloneFiles(files) {
+  return new Map([...files].map(([k, v]) => [k, { ...v }]));
+}
+
+/** A branch by name, or the one whose head is that commit. */
+function branchByRef(repo, ref) {
+  if (!ref) return undefined;
+  if (repo.branches.has(ref)) return repo.branches.get(ref);
+  for (const files of repo.branches.values()) if (headSha(files) === ref) return files;
+  return undefined;
+}
+
+function pullView(repoKey, repo, pull) {
+  const head = repo.branches.get(pull.head);
+  const base = repo.branches.get(pull.base);
+  return {
+    number: pull.number, title: pull.title, body: pull.body, state: pull.state, merged: pull.merged, mergeable: pull.state === "open",
+    html_url: `http://localhost:${PORT}/${repoKey}/pulls/${pull.number}`, user: pull.user,
+    head: { ref: pull.head, sha: headSha(head) || pull.headSha }, base: { ref: pull.base, sha: headSha(base) || "" }, merge_base: pull.mergeBase,
+  };
+}
+
+/** Files of the head branch that differ from the base. */
+function changedFiles(repo, pull) {
+  const head = repo.branches.get(pull.head) || new Map();
+  const base = repo.branches.get(pull.base) || new Map();
+  const out = [];
+  for (const [path, file] of head) {
+    const there = base.get(path);
+    if (!there) out.push({ filename: path, status: "added", additions: file.text.split("\n").length, deletions: 0 });
+    else if (there.text !== file.text) out.push({ filename: path, status: "modified", additions: 1, deletions: 1 });
+  }
+  return out;
+}
+
+/**
+ * Merge without history: a file the base has not touched since the pull was opened takes the head's version; when
+ * both changed it and the lines still match one to one (edits inside verses or rows), each line takes whichever
+ * side changed it; otherwise the head wins. Enough to walk a delivery; it is not git's merge.
+ */
+function mergeInto(repo, pull) {
+  const head = repo.branches.get(pull.head);
+  if (!repo.branches.has(pull.base)) repo.branches.set(pull.base, new Map());
+  const base = repo.branches.get(pull.base);
+  for (const [path, file] of head) {
+    const there = base.get(path);
+    const origin = pull.snapshot.get(path);
+    if (there && there.text === file.text) continue;
+    let text = file.text;
+    if (there && origin && there.text !== origin.text) {
+      const [o, a, b] = [origin.text.split("\n"), there.text.split("\n"), file.text.split("\n")];
+      if (o.length === a.length && o.length === b.length) text = o.map((line, i) => (b[i] !== line ? b[i] : a[i])).join("\n");
+    }
+    base.set(path, { text, sha: nextSha() });
+  }
+}
 
 function contentEntry(path, file) {
   return { name: path.split("/").pop(), path, sha: file.sha, size: file.text.length, type: "file" };
@@ -170,8 +287,8 @@ function handleContents(req, res, url, user, owner, name, path, body) {
   if (!repo) return json(res, { message: "repository does not exist" }, 404);
   const method = req.method;
   if (method === "GET") {
-    const branch = url.searchParams.get("ref") || repo.defaultBranch;
-    const files = repo.branches.get(branch);
+    // `ref` is a branch or a commit, as in the real API.
+    const files = branchByRef(repo, url.searchParams.get("ref") || repo.defaultBranch);
     if (!files) return json(res, { message: "branch not found" }, 404);
     const file = files.get(path);
     if (file) {
@@ -189,11 +306,14 @@ function handleContents(req, res, url, user, owner, name, path, body) {
     return children.size ? json(res, [...children.values()]) : json(res, { message: "path not found" }, 404);
   }
   if (!user) return json(res, { message: "token is required" }, 401);
-  const branch = body.branch || repo.defaultBranch;
-  if (!repo.branches.has(branch)) {
-    if (body.new_branch) repo.branches.set(branch, new Map());
-    else return json(res, { message: "branch not found" }, 404);
+  // `new_branch`: the commit goes to a new branch started from `branch` (or the default one), as in the real API.
+  const from = body.branch || repo.defaultBranch;
+  const branch = body.new_branch || from;
+  if (body.new_branch) {
+    if (repo.branches.has(body.new_branch)) return json(res, { message: "branch already exists" }, 409);
+    repo.branches.set(body.new_branch, cloneFiles(repo.branches.get(from) || new Map()));
   }
+  if (!repo.branches.has(branch)) return json(res, { message: "branch not found" }, 404);
   const files = repo.branches.get(branch);
   const existing = files.get(path);
   if (method === "POST") {
@@ -234,6 +354,26 @@ async function handle(req, res) {
     return json(res, { ok: true });
   }
   if (p === "/__mock/log") return json(res, log);
+  if (p === "/__mock/dump") {
+    const plain = (map) => [...map].map(([branch, files]) => [branch, [...files]]);
+    return json(res, {
+      repos: [...repos].map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, branches: plain(repo.branches) }]),
+      pulls: [...pulls].map(([key, list]) => [key, list.map((pull) => ({ ...pull, snapshot: [...pull.snapshot] }))]),
+      issues, comments: [...comments], labels, milestones, issueCounter, counter,
+    });
+  }
+  if (p === "/__mock/load" && req.method === "POST") {
+    const state = await readBody(req);
+    repos = new Map(state.repos.map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, branches: new Map(repo.branches.map(([branch, files]) => [branch, new Map(files)])) }]));
+    pulls = new Map(state.pulls.map(([key, list]) => [key, list.map((pull) => ({ ...pull, snapshot: new Map(pull.snapshot) }))]));
+    issues = state.issues;
+    comments = new Map(state.comments);
+    labels = state.labels;
+    milestones = state.milestones;
+    issueCounter = state.issueCounter;
+    counter = state.counter;
+    return json(res, { ok: true, issues: issues.length });
+  }
   if (p === "/__mock/files") {
     const repo = repos.get(url.searchParams.get("repo") || "");
     const files = repo?.branches.get(url.searchParams.get("branch") || repo?.defaultBranch || "");
@@ -268,6 +408,11 @@ async function handle(req, res) {
     const mine = url.searchParams.get("assigned") === "true";
     let list = issues.filter((i) => state === "all" || i.state === state);
     if (mine && user) list = list.filter((i) => i.assignees.some((a) => a.login === user.login));
+    // Like the real API: only the issues of the given milestones (a project) and with every given label.
+    const wantedMilestones = (url.searchParams.get("milestones") || "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (wantedMilestones.length) list = list.filter((i) => i.milestone && wantedMilestones.includes(i.milestone.title));
+    const wantedLabels = (url.searchParams.get("labels") || "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (wantedLabels.length) list = list.filter((i) => !i.labels.length || wantedLabels.every((name) => i.labels.some((l) => l.name === name)));
     return json(res, Number(url.searchParams.get("page") || 1) > 1 ? [] : list.map(issueView), 200, { "x-total-count": String(list.length) });
   }
 
@@ -282,20 +427,142 @@ async function handle(req, res) {
       return handleContents(req, res, url, user, owner, name, decodeURIComponent(rest.slice("contents/".length)), body);
     }
     if (rest === "") return json(res, { name, owner: { login: owner }, full_name: repoKey, default_branch: repos.get(repoKey).defaultBranch, permissions: { admin: true, push: true, pull: true } });
-    if (rest === "branches" && req.method === "GET") return json(res, [...repos.get(repoKey).branches.keys()].map((b) => ({ name: b })));
+    if (rest === "branches" && req.method === "GET") return json(res, [...repos.get(repoKey).branches].map(([b, files]) => ({ name: b, commit: { id: headSha(files) || "" } })));
     if (rest === "branches" && req.method === "POST") {
       const body = await readBody(req);
       const repo = repos.get(repoKey);
-      const from = repo.branches.get(body.old_branch_name || repo.defaultBranch);
+      // From a branch name or from a commit (`old_ref_name`), as the real API accepts.
+      const from = branchByRef(repo, body.old_branch_name || body.old_ref_name) || repo.branches.get(repo.defaultBranch);
       if (!from) return json(res, { message: "branch not found" }, 404);
       if (repo.branches.has(body.new_branch_name)) return json(res, { message: "branch already exists" }, 409);
-      repo.branches.set(body.new_branch_name, new Map([...from].map(([k, v]) => [k, { ...v }])));
+      repo.branches.set(body.new_branch_name, cloneFiles(from));
       log.push({ at: new Date().toISOString(), user: user?.login, write: `branch ${repoKey}@${body.new_branch_name}` });
       return json(res, { name: body.new_branch_name }, 201);
     }
+    // ---- git refs: where a branch points, moving it, deleting it ----
+    const refMatch = /^git\/refs\/heads\/(.+)$/.exec(rest);
+    if (refMatch) {
+      const repo = repos.get(repoKey);
+      const branch = refMatch[1].split("/").map(decodeURIComponent).join("/");
+      const refOf = (name) => ({ ref: `refs/heads/${name}`, object: { sha: headSha(repo.branches.get(name)), type: "commit" } });
+      if (req.method === "GET") {
+        if (headSha(repo.branches.get(branch))) return json(res, [refOf(branch)]);
+        // Like Gitea: with no exact ref, the ones under that prefix.
+        const under = [...repo.branches.keys()].filter((name) => name.startsWith(`${branch}/`) && headSha(repo.branches.get(name)));
+        return under.length ? json(res, under.map(refOf)) : json(res, { message: "ref not found" }, 404);
+      }
+      if (!user) return json(res, { message: "token is required" }, 401);
+      if (req.method === "DELETE") {
+        if (!repo.branches.has(branch)) return json(res, { message: "ref not found" }, 404);
+        repo.branches.delete(branch);
+        log.push({ at: new Date().toISOString(), user: user.login, write: `delete ref ${repoKey}@${branch}` });
+        res.writeHead(204);
+        return res.end();
+      }
+      if (req.method === "PATCH") {
+        const body = await readBody(req);
+        const from = branchByRef(repo, body.sha);
+        if (!from) return json(res, { message: "sha not found" }, 404);
+        repo.branches.set(branch, cloneFiles(from));
+        log.push({ at: new Date().toISOString(), user: user.login, write: `move ref ${repoKey}@${branch}` });
+        return json(res, refOf(branch));
+      }
+    }
+    const blobMatch = /^git\/blobs\/(.+)$/.exec(rest);
+    if (blobMatch && req.method === "GET") {
+      for (const files of repos.get(repoKey).branches.values()) {
+        for (const file of files.values()) {
+          if (file.sha === blobMatch[1]) return json(res, { sha: file.sha, encoding: "base64", content: Buffer.from(file.text, "utf-8").toString("base64") });
+        }
+      }
+      return json(res, { message: "blob not found" }, 404);
+    }
+
+    // ---- pull requests: one per subtarea, merged on delivery ----
+    if (rest === "pulls" || rest.startsWith("pulls/")) {
+      const repo = repos.get(repoKey);
+      const list = pulls.get(repoKey) || [];
+      pulls.set(repoKey, list);
+      if (rest === "pulls" && req.method === "GET") {
+        const state = url.searchParams.get("state") || "open";
+        return json(res, list.filter((pull) => state === "all" || pull.state === state).map((pull) => pullView(repoKey, repo, pull)));
+      }
+      if (rest === "pulls" && req.method === "POST") {
+        if (!user) return json(res, { message: "token is required" }, 401);
+        const body = await readBody(req);
+        if (!repo.branches.has(body.head) || !repo.branches.has(body.base)) return json(res, { message: "branch not found" }, 404);
+        if (list.some((pull) => pull.state === "open" && pull.head === body.head && pull.base === body.base)) return json(res, { message: "pull request already exists for these targets" }, 409);
+        const pull = {
+          number: list.length + 1, title: String(body.title || ""), body: String(body.body || ""), state: "open", merged: false, user,
+          head: body.head, base: body.base, mergeBase: headSha(repo.branches.get(body.base)), snapshot: cloneFiles(repo.branches.get(body.base)), reviews: [],
+        };
+        list.push(pull);
+        log.push({ at: new Date().toISOString(), user: user.login, write: `pull ${repoKey}#${pull.number} ${body.head} → ${body.base}` });
+        return json(res, pullView(repoKey, repo, pull), 201);
+      }
+      const diff = /^pulls\/(\d+)\.diff$/.exec(rest);
+      if (diff) {
+        const pull = list.find((x) => x.number === Number(diff[1]));
+        if (!pull) return json(res, { message: "pull request not found" }, 404);
+        res.writeHead(200, { "content-type": "text/plain" });
+        return res.end(changedFiles(repo, pull).map((f) => `diff --git a/${f.filename} b/${f.filename}\n`).join(""));
+      }
+      const byNumber = /^pulls\/(\d+)(?:\/(merge|files|reviews)(?:\/(\d+))?)?$/.exec(rest);
+      if (byNumber) {
+        const pull = list.find((x) => x.number === Number(byNumber[1]));
+        if (!pull) return json(res, { message: "pull request not found" }, 404);
+        const kind = byNumber[2];
+        if (!kind && req.method === "GET") return json(res, pullView(repoKey, repo, pull));
+        if (kind === "files" && req.method === "GET") return json(res, changedFiles(repo, pull));
+        if (kind === "reviews" && req.method === "GET") return json(res, pull.reviews);
+        if (!user) return json(res, { message: "token is required" }, 401);
+        if (!kind && req.method === "PATCH") {
+          const body = await readBody(req);
+          if (typeof body.state === "string" && !pull.merged) pull.state = body.state;
+          if (typeof body.title === "string") pull.title = body.title;
+          return json(res, pullView(repoKey, repo, pull));
+        }
+        if (kind === "reviews" && req.method === "POST") {
+          const body = await readBody(req);
+          let review = byNumber[3] ? pull.reviews.find((r) => r.id === Number(byNumber[3])) : undefined;
+          if (byNumber[3] && !review) return json(res, { message: "review not found" }, 404);
+          const state = { APPROVE: "APPROVED", APPROVED: "APPROVED", REQUEST_CHANGES: "REQUEST_CHANGES", COMMENT: "COMMENT" }[String(body.event || "").toUpperCase()] || "PENDING";
+          if (!review) {
+            // Gitea refuses an approval of one's own pull request.
+            if (state === "APPROVED" && pull.user.login === user.login) return json(res, { message: "approve your own pull is not allowed" }, 422);
+            review = { id: pull.reviews.length + 1, user, body: String(body.body || ""), state, commit_id: headSha(repo.branches.get(pull.head)) };
+            pull.reviews.push(review);
+          } else {
+            review.state = state;
+            if (typeof body.body === "string") review.body = body.body;
+          }
+          log.push({ at: new Date().toISOString(), user: user.login, write: `review ${repoKey}#${pull.number} ${review.state}` });
+          return json(res, review);
+        }
+        if (kind === "merge" && req.method === "POST") {
+          if (pull.merged) return json(res, { message: "pull request already merged" }, 405);
+          if (pull.state !== "open") return json(res, { message: "pull request is closed" }, 405);
+          if (!repo.branches.has(pull.head)) return json(res, { message: "head branch not found" }, 404);
+          pull.headSha = headSha(repo.branches.get(pull.head));
+          mergeInto(repo, pull);
+          pull.state = "closed";
+          pull.merged = true;
+          log.push({ at: new Date().toISOString(), user: user.login, write: `merge ${repoKey}#${pull.number} ${pull.head} → ${pull.base}` });
+          res.writeHead(200);
+          return res.end();
+        }
+      }
+      // GET pulls/{base}/{head}: the open pull between two branches (branch names may contain slashes).
+      if (req.method === "GET") {
+        const tail = decodeURIComponent(rest.slice("pulls/".length));
+        const pull = list.find((x) => x.state === "open" && `${x.base}/${x.head}` === tail) || list.find((x) => `${x.base}/${x.head}` === tail);
+        return pull ? json(res, pullView(repoKey, repo, pull)) : json(res, { message: "pull request not found" }, 404);
+      }
+    }
+
     const branchGet = /^branches\/(.+)$/.exec(rest);
     if (branchGet && req.method === "GET") {
-      return repos.get(repoKey).branches.has(decodeURIComponent(branchGet[1])) ? json(res, { name: decodeURIComponent(branchGet[1]), commit: { id: nextSha() } }) : json(res, { message: "branch not found" }, 404);
+      return repos.get(repoKey).branches.has(decodeURIComponent(branchGet[1])) ? json(res, { name: decodeURIComponent(branchGet[1]), commit: { id: headSha(repos.get(repoKey).branches.get(decodeURIComponent(branchGet[1]))) || "" } }) : json(res, { message: "branch not found" }, 404);
     }
     if (repoKey === `${PM_ORG}/taller`) {
       if (rest === "labels" && req.method === "GET") return json(res, labels);
@@ -392,4 +659,7 @@ http
       if (!res.headersSent) json(res, { message: String(err) }, 500);
     });
   })
-  .listen(PORT, () => console.log(`mock Door43 on http://localhost:${PORT} (users: ${Object.keys(USERS).join(", ")})`));
+  .listen(PORT, () => {
+    console.log(`mock Door43 on http://localhost:${PORT} (users: ${Object.keys(USERS).join(", ")})`);
+    if (process.env.MOCK_SEED_BOOK) void seedFromReal(process.env.MOCK_SEED_BOOK);
+  });

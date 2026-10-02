@@ -473,9 +473,26 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const mineToAlign = (v: AlignmentVerse) => !shared || ownerOf(v) === me;
   const needsWork = (v: AlignmentVerse) => (mode === "alinear" ? !isDone(v) && (mineToAlign(v) || !ownerOf(v)) : pendingForMe(v));
   const editable = (mode === "alinear" && Boolean(verse) && mineToAlign(verse!)) || Boolean(proposing);
+  // In a shared step everybody aligns some verses and reviews the rest: whoever finished a verse stands behind it,
+  // so that mark counts as their agreement (never as an independent one). Without it a team of three could not
+  // reach an agreement of three on any verse.
+  const counted = useMemo(() => {
+    if (!shared || !data) return effective;
+    const own: ReviewDecision[] = [];
+    for (const v of data.verses) {
+      const hash = alignmentFingerprint(v.draft, groups[v.verse] ?? []);
+      const id = itemId(data.chapter, v.verse);
+      for (const d of effective) {
+        if (d.itemId !== doneId(data.chapter, v.verse) || d.textHash !== hash) continue;
+        own.push({ ...d, itemId: id, status: "approved" });
+      }
+    }
+    return [...own, ...effective];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared, data, effective, groups]);
   const tally =
     verse && data
-      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: effective, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds })
+      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds })
       : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -484,7 +501,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       data
         ? summarizeRound({
             itemIds: data.verses.map((v) => itemId(data.chapter, v.verse)),
-            decisions: effective,
+            decisions: counted,
             currentHashes: Object.fromEntries(data.verses.map((v) => [itemId(data.chapter, v.verse), alignmentFingerprint(v.draft, groups[v.verse] ?? [])])),
             levels: teamLevels,
             authors: [],
@@ -493,7 +510,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, effective, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels],
+    [data, counted, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels],
   );
 
   // The review of the alignment closes here, by consensus, when the step says so (objections are settled as team
@@ -655,12 +672,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
     }
   }
 
-  async function saveVerseOf(target: AlignmentVerse): Promise<boolean> {
-    if (!session || !data) return false;
+  /** Saves a verse. Returns its links as they were stored (what a reload will show), or `null` if it failed. */
+  async function saveVerseOf(target: AlignmentVerse): Promise<AlignmentGroup[] | null> {
+    if (!session || !data) return null;
     setSaving(true);
     setError("");
     try {
-      await saveVerseAlignment({
+      const saved = await saveVerseAlignment({
         session,
         target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch },
         filepath: data.draft.filepath,
@@ -670,19 +688,20 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         groups: groups[target.verse] ?? [],
         source: data.source,
       });
+      setGroups((prev) => ({ ...prev, [target.verse]: saved.stored }));
       setDirty((prev) => ({ ...prev, [target.verse]: false }));
       announce(t("al.saved").replace("{ref}", `${data.book} ${data.chapter}:${target.verse}`));
-      return true;
+      return saved.stored;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      return false;
+      return null;
     } finally {
       setSaving(false);
     }
   }
 
-  async function saveVerse(): Promise<boolean> {
-    return verse ? saveVerseOf(verse) : false;
+  async function saveVerse(): Promise<AlignmentGroup[] | null> {
+    return verse ? saveVerseOf(verse) : null;
   }
 
   /** Change verse; what was edited in this one is saved first, so nothing is left only in memory. */
@@ -755,7 +774,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
 
   async function markDone() {
     if (!session || !data || !verse || !ctx) return;
-    if (dirty[verse.verse] && !(await saveVerse())) return;
+    // The mark carries the hash of the verse as it is stored, not as it was in memory before saving.
+    let stored = groups[verse.verse] ?? [];
+    if (dirty[verse.verse]) {
+      const saved = await saveVerse();
+      if (!saved) return;
+      stored = saved;
+    }
     setSaving(true);
     setError("");
     try {
@@ -767,7 +792,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         status: "approved",
         reviewer: session.username,
         timestamp: new Date().toISOString(),
-        textHash: hashOf(verse),
+        textHash: alignmentFingerprint(verse.draft, stored),
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);

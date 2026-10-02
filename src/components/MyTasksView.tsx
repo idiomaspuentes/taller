@@ -31,6 +31,7 @@ import {
   parsePortionPrMarker,
   stepCompletesDraftForReview,
   stepNeedsOpenPortionPr,
+  taskWorksOnSharedDraft,
 } from "../domain/portionPr";
 import { teamPhaseLabel } from "../domain/assignment";
 import {
@@ -543,6 +544,7 @@ export function MyTasksView({
         issue,
         resource,
         lang,
+        sharedDraft: taskWorksOnSharedDraft(board.teams.find((task) => task.id === issueTaskId(issue))?.steps),
         ensurePr: async () =>
           (await ensurePortionPr({ session, pmOrg, lang, contentOrg, board, issue })).issue,
       });
