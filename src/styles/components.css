@@ -7315,3 +7315,7 @@ input.pf-name { font-size: 1.625rem; }
 .pp-source { display: grid; gap: 0.5rem; }
 @media (min-width: 560px) { .pp-source { grid-template-columns: 1fr 8rem; } }
 .pp-source label { display: grid; gap: 0.25rem; }
+/* On a phone the bar of sections sits at the bottom: what must stay in reach stays above it. */
+@media (max-width: 719px) {
+  body:has(.bottom-nav) .pf-footer { bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px)); }
+}
