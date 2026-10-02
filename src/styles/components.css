@@ -6978,3 +6978,9 @@ button.al-box--read { cursor: pointer; }
 .round__who { color: var(--text-muted); font-size: 0.875rem; }
 .round__decided { margin: 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--success-100); color: var(--success-700); font-size: 0.9375rem; }
 .round__decide { display: grid; gap: 0.375rem; padding: 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); }
+
+/* ---- shared alignment step: align or review ---- */
+.al-modes { display: inline-flex; gap: 2px; margin-top: 0.375rem; padding: 2px; border-radius: var(--radius-full); background: var(--surface-muted); }
+.al-modes button { min-height: 40px; padding: 0 1rem; border: 0; border-radius: var(--radius-full); background: none; color: var(--text-muted); font: inherit; font-weight: 600; cursor: pointer; }
+.al-modes button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.al-verse-tab[data-state="taken"] { opacity: 0.6; }

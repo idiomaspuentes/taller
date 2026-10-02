@@ -206,6 +206,33 @@ await test("en mi tarea, terminado el borrador, la revisión en pares espera a q
   assert.equal(where(build([taken]), taken.number)!.action.kind, "approveStep", "con alguien revisando, a la autora le toca confirmar");
 });
 
+await test("una tarea libre cuyo paso siguiente es de todo el equipo: me sumo al paso, nadie se queda con la subtarea entera", () => {
+  const shared = issue({ task: "afinar", title: "NEH 5 · Afinar TPL" });
+  const card = where(boardFor([shared]), shared.number)!;
+  assert.equal(card.group, "reviews");
+  assert.equal(card.action.kind, "claimStep");
+  assert.equal(card.action.kind === "claimStep" && card.action.step.id, "notas");
+
+  const second = issue({ task: "afinar", title: "NEH 5 · Afinar TPL", progress: { done: ["notas"] } });
+  const next = where(boardFor([second]), second.number)!;
+  assert.equal(next.action.kind === "claimStep" && next.action.step.id, "alinear", "se ofrece el paso que sigue, no uno ya terminado");
+
+  const seated = issue({ task: "afinar", title: "NEH 5 · Afinar TPL", progress: { seats: { notas: ["carla"] } } });
+  const mine = where(boardFor([seated]), seated.number)!;
+  assert.equal(mine.group, "doing");
+  assert.equal(mine.action.kind, "continue");
+});
+
+await test("una tarea del equipo con todos sus pasos hechos la entrega quien participó", () => {
+  const finished = issue({ task: "afinar", title: "NEH 5 · Afinar TPL", progress: { done: ["notas", "alinear"], seats: { notas: ["carla", "bea"] } } });
+  const card = where(boardFor([finished]), finished.number)!;
+  assert.equal(card.group, "doing");
+  assert.equal(card.action.kind, "deliver");
+  assert.equal(card.canDeliver, true);
+  const stranger = issue({ task: "afinar", title: "NEH 6 · Afinar TPL", progress: { done: ["notas", "alinear"], seats: { notas: ["bea", "ana"] } } });
+  assert.equal(where(boardFor([stranger]), stranger.number), undefined, "quien no participó no la ve para entregar");
+});
+
 await test("las decisiones van primero, con «Votar»", () => {
   const conflict = issue({ task: "tpl", title: "NEH 2 · Traducir TPL", assignee: "carla", state: "closed" });
   const mine = issue({ task: "tpl", title: "NEH 7 · Traducir TPL", assignee: "carla", started: true });

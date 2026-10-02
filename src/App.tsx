@@ -941,6 +941,7 @@ export function App() {
             key={`${sessionEpoch}-alineacion`}
             ctxEncoded={route.ctx}
             mode={route.mode === "revisar" ? "revisar" : "alinear"}
+            shared={route.mode === "ambos"}
             announce={announce}
             onClose={onSolverClose}
           />

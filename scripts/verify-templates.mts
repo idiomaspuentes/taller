@@ -189,6 +189,9 @@ test("el catálogo guardado de una organización se pone al día con lo que trae
   assert.equal(editor.launchUrl, "/#/nuevo?ctx={context}");
   assert.equal(editor.name, "Mi editor", "el nombre que puso la organización se conserva");
   assert.deepEqual(editor.stepParams, { repaso: { mode: "revisar" } });
+  const later = normalizeSolversCatalog({ solvers: [{ ...shipped.solvers[0]!, stepParams: { repaso: { mode: "revisar" }, otro: { mode: "ambos" } } }] });
+  const again = upgradeShippedTools({ ...upgraded, solvers: upgraded.solvers.map((tool) => (tool.id === "editor" ? { ...tool, stepParams: { repaso: { mode: "propio" } } } : tool)) }, later);
+  assert.deepEqual(again.solvers.find((tool) => tool.id === "editor")!.stepParams, { repaso: { mode: "propio" }, otro: { mode: "ambos" } }, "llega el parámetro nuevo y se respeta el que la organización cambió");
   assert.ok(upgraded.solvers.some((tool) => tool.id === "propia"));
   assert.equal(upgradeShippedTools(upgraded, shipped), upgraded, "al día: no cambia nada ni se vuelve a guardar");
   assert.deepEqual(withShippedTools(upgraded, shipped).solvers.map((tool) => tool.id), ["editor", "propia", "extra"]);
@@ -264,13 +267,12 @@ if (fcr) {
     assert.equal(team("tpl").steps![0]!.scope, "chapter-once");
   });
 
-  test("FCR: la Afinación cierra por consenso y la alineación la hace una persona que otras revisan", () => {
+  test("FCR: la Afinación cierra por consenso; nadie alinea un capítulo entero: se toman versículos y se revisan al terminar", () => {
     for (const id of ["afinar-tpl", "afinar-tps"]) {
       const steps = team(id).steps!;
-      assert.deepEqual(steps.map((s) => s.id), ["notas", "palabras", "alinear", "revisar-alineacion"]);
-      assert.deepEqual(steps.map((s) => s.closing), ["consensus", "consensus", "self", "consensus"]);
-      assert.equal(steps[2]!.claimMode, "exclusive");
-      assert.deepEqual(steps[3]!.excludePriorStepIds, ["alinear"], "quien alineó no revisa su propia alineación");
+      assert.deepEqual(steps.map((s) => s.id), ["notas", "palabras", "alineacion"]);
+      assert.deepEqual(steps.map((s) => s.closing), ["consensus", "consensus", "consensus"]);
+      assert.equal(steps[2]!.claimMode, "pool", "la alineación es de todo el equipo: cada quien toma versículos y los demás revisan");
       assert.equal(steps[0]!.minAssignees, 3);
       assert.equal(steps[0]!.minIndependent, 2);
       assert.equal(steps[1]!.scope, "unit", "las palabras clave se revisan por capítulo, no por porción");

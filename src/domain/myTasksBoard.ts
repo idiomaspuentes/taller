@@ -179,8 +179,21 @@ export function buildBoard(input: BoardInput): Board {
       }
       if (audience.relation === "free") {
         const can = canClaimIssue(session as GtSession, pmOrg, issue, bucket.board, myLevel);
-        const first = steps[0];
-        board.free.push(card(issue, bucket, "free", can ? { kind: "begin", step: first } : { kind: "none", why: "hold" }));
+        const progress = parseTaskProgressMarker(issue.body ?? "");
+        const next = steps.find((s) => !progress.doneStepIds.includes(s.id));
+        const tookPart = steps.some((s) => getStepRuntime(progress, s.id).assignees.some((a) => a.toLowerCase() === login.toLowerCase()));
+        if (steps.length && !next) {
+          // Every step is done and the subtarea belongs to the team: whoever took part delivers it.
+          if (tookPart) board.doing.push(card(issue, bucket, "doing", { kind: "deliver" }, { canDeliver: true }));
+          continue;
+        }
+        if (next && stepClaimMode(next) !== "none") {
+          // A step of the whole team: people join the step, and the subtarea stays with the team. Nobody takes it whole.
+          if (isStepActor(login, progress, next, assigneeOf(issue))) board.doing.push(card(issue, bucket, "doing", { kind: "continue", step: next }));
+          else if (can && canClaimStep(login, steps, progress, next, undefined, assigneeOf(issue))) board.reviews.push(card(issue, bucket, "reviews", { kind: "claimStep", step: next }));
+          continue;
+        }
+        board.free.push(card(issue, bucket, "free", can ? { kind: "begin", step: next } : { kind: "none", why: "hold" }));
         continue;
       }
       // Mine (assigned) or seated in one of its steps.

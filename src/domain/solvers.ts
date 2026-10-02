@@ -239,7 +239,8 @@ export function upgradeShippedTools(catalog: SolversCatalog, shipped: SolversCat
       next = { ...next, launchUrl: def.launchUrl, kind: def.kind, openMode: def.openMode, lang: def.lang ?? app.lang, description: def.description ?? app.description };
     }
     // Catalogs saved before a field existed take it from the shipped tool.
-    if (def.stepParams && !app.stepParams) next = { ...next, stepParams: def.stepParams };
+    const missing = Object.keys(def.stepParams ?? {}).filter((stepId) => !app.stepParams?.[stepId]);
+    if (missing.length) next = { ...next, stepParams: { ...def.stepParams, ...app.stepParams } };
     if (def.needsIssue && app.needsIssue === undefined) next = { ...next, needsIssue: true };
     if (next === app) return app;
     changed = true;

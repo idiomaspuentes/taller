@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 2,
+      "version": 3,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -525,48 +525,25 @@
               "minIndependent": 2
             },
             {
-              "id": "alinear",
-              "name": "Alinear",
+              "id": "alineacion",
+              "name": "Alineación",
               "names": {
-                "pt": "Alinhar"
+                "pt": "Alinhamento"
               },
               "actionLabel": "Alinear",
               "actionLabels": {
                 "pt": "Alinhar"
               },
-              "description": "Una persona une el borrador con el original, versículo por versículo.",
+              "description": "Cada persona toma los versículos que va a alinear; lo que termina pasa a que lo revisen las demás.",
               "descriptions": {
-                "pt": "Uma pessoa une o rascunho com o original, versículo por versículo."
-              },
-              "solverAppId": "afinar-alineacion",
-              "closing": "self",
-              "claimMode": "exclusive",
-              "excludeIssueAssignee": true
-            },
-            {
-              "id": "revisar-alineacion",
-              "name": "Revisar la alineación",
-              "names": {
-                "pt": "Revisar o alinhamento"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "description": "Otras personas revisan lo alineado y responden por versículo.",
-              "descriptions": {
-                "pt": "Outras pessoas revisam o alinhamento e respondem por versículo."
+                "pt": "Cada pessoa pega os versículos que vai alinhar; o que termina passa para a revisão das demais."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "consensus",
               "claimMode": "pool",
-              "minAssignees": 2,
-              "maxAssignees": 4,
-              "minIndependent": 2,
-              "excludePriorStepIds": [
-                "alinear"
-              ],
-              "excludeIssueAssignee": true
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
             }
           ],
           "minLevel": "aprendiz",
@@ -635,48 +612,25 @@
               "minIndependent": 2
             },
             {
-              "id": "alinear",
-              "name": "Alinear",
+              "id": "alineacion",
+              "name": "Alineación",
               "names": {
-                "pt": "Alinhar"
+                "pt": "Alinhamento"
               },
               "actionLabel": "Alinear",
               "actionLabels": {
                 "pt": "Alinhar"
               },
-              "description": "Una persona une el borrador con el original, versículo por versículo.",
+              "description": "Cada persona toma los versículos que va a alinear; lo que termina pasa a que lo revisen las demás.",
               "descriptions": {
-                "pt": "Uma pessoa une o rascunho com o original, versículo por versículo."
-              },
-              "solverAppId": "afinar-alineacion",
-              "closing": "self",
-              "claimMode": "exclusive",
-              "excludeIssueAssignee": true
-            },
-            {
-              "id": "revisar-alineacion",
-              "name": "Revisar la alineación",
-              "names": {
-                "pt": "Revisar o alinhamento"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "description": "Otras personas revisan lo alineado y responden por versículo.",
-              "descriptions": {
-                "pt": "Outras pessoas revisam o alinhamento e respondem por versículo."
+                "pt": "Cada pessoa pega os versículos que vai alinhar; o que termina passa para a revisão das demais."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "consensus",
               "claimMode": "pool",
-              "minAssignees": 2,
-              "maxAssignees": 4,
-              "minIndependent": 2,
-              "excludePriorStepIds": [
-                "alinear"
-              ],
-              "excludeIssueAssignee": true
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
             }
           ],
           "minLevel": "aprendiz",
@@ -1205,6 +1159,9 @@
       "kind": "app",
       "openMode": "tab",
       "stepParams": {
+        "alineacion": {
+          "mode": "ambos"
+        },
         "revisar-alineacion": {
           "mode": "revisar"
         }

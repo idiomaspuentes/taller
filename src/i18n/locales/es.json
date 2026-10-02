@@ -1400,5 +1400,13 @@
   "round.decideHint": "Queda registrado con tu nombre y vale para todo el equipo.",
   "round.saveDecision": "Guardar la decisión",
   "round.decisionSaved": "Decisión del equipo guardada.",
-  "round.decidedBy": "Decisión del equipo, registrada por @{who}:"
+  "round.decidedBy": "Decisión del equipo, registrada por @{who}:",
+  "al.take": "Tomar este versículo",
+  "al.taken": "Versículo {n}: lo tienes tú.",
+  "al.released": "Versículo {n}: lo soltaste.",
+  "al.takenBy": "Lo está alineando @{who}",
+  "al.release": "Soltar",
+  "al.modesAria": "Qué quieres hacer",
+  "al.modeAlign": "Alinear",
+  "al.modeReview": "Revisar"
 }

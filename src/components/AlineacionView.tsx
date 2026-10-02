@@ -61,6 +61,11 @@ export type AlineacionMode = "alinear" | "revisar";
 type Props = {
   ctxEncoded: string;
   mode: AlineacionMode;
+  /**
+   * One step for the whole team: each person takes the verses they will align, and what is finished goes on to
+   * review by the others, verse by verse. Without it the screen is one or the other, as the step says.
+   */
+  shared?: boolean;
   onClose: () => void;
   announce: (msg: string) => void;
 };
@@ -76,6 +81,9 @@ const boxDropId = (id: string) => `box-${id}`;
 const itemId = (chapter: number, verse: number) => `al:${chapter}:${verse}`;
 /** «Terminé»: whoever aligned a verse says it is ready to be reviewed. */
 const doneId = (chapter: number, verse: number) => `al-done:${chapter}:${verse}`;
+/** «Lo tomo»: who is aligning a verse, so two people do not work the same one. A note `released` gives it back. */
+const takeId = (chapter: number, verse: number) => `al-take:${chapter}:${verse}`;
+const RELEASED = "released";
 
 type DragData =
   | { type: "word"; indices: number[] }
@@ -317,7 +325,8 @@ function Bank({ children, editable }: { children: ReactNode; editable: boolean }
  * dragging (long press) works too. Whoever reviews sees the same boxes
  * read-only and answers.
  */
-export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
+export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, onClose, announce }: Props) {
+  const [mode, setMode] = useState<AlineacionMode>(initialMode);
   const t = useT();
   const language = useUiLanguage();
   const stanceLabel = (status: string) => t(STANCE_KEY[status as ReviewStance] ?? "rv.approved");
@@ -348,7 +357,6 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const [stepDone, setStepDone] = useState(false);
   const [closingRound, setClosingRound] = useState(false);
 
-  const editable = mode === "alinear" || Boolean(proposing);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
@@ -454,7 +462,17 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
   const authoredByMe = (v: AlignmentVerse) => authorsOf(v).some((a) => a.trim().toLowerCase() === me);
   /** In review: finished by its author, not written by me, and not answered by me since it last changed. */
   const pendingForMe = (v: AlignmentVerse) => isDone(v) && !answeredByMe(v) && !authoredByMe(v);
-  const needsWork = (v: AlignmentVerse) => (mode === "alinear" ? !isDone(v) : pendingForMe(v));
+  /** Shared step: who took the verse to align it (the latest «lo tomo» that was not given back). */
+  const ownerOf = (v: AlignmentVerse): string => {
+    if (!data) return "";
+    const id = takeId(data.chapter, v.verse);
+    const last = decisions.filter((d) => d.itemId === id).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+    return last && last.note !== RELEASED ? last.reviewer.trim().toLowerCase() : "";
+  };
+  /** In a shared step a verse is aligned only by whoever took it; otherwise by whoever has the step. */
+  const mineToAlign = (v: AlignmentVerse) => !shared || ownerOf(v) === me;
+  const needsWork = (v: AlignmentVerse) => (mode === "alinear" ? !isDone(v) && (mineToAlign(v) || !ownerOf(v)) : pendingForMe(v));
+  const editable = (mode === "alinear" && Boolean(verse) && mineToAlign(verse!)) || Boolean(proposing);
   const tally =
     verse && data
       ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: effective, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds })
@@ -480,7 +498,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
 
   // The review of the alignment closes here, by consensus, when the step says so (objections are settled as team
   // decisions in the conversation, so there is no final decision to record on this screen).
-  const closesHere = mode === "revisar" && Boolean(taskStep && closesInItsTool(taskStep) && ctx?.issueNumber);
+  const closesHere = (shared || mode === "revisar") && Boolean(taskStep && closesInItsTool(taskStep) && ctx?.issueNumber);
   useEffect(() => {
     if (!session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
     let cancelled = false;
@@ -709,6 +727,32 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     onClose();
   }
 
+  /** Shared step: take the verse in view to align it, or give it back. */
+  async function takeVerse(release = false) {
+    if (!session || !data || !verse || !ctx) return;
+    setSaving(true);
+    setError("");
+    try {
+      const decision: ReviewDecision = {
+        itemId: takeId(data.chapter, verse.verse),
+        ref: { start: { chapter: data.chapter, verse: verse.verse } },
+        sessionId: String(ctx.issueNumber || ctx.taskId),
+        stageId: "afinacion",
+        status: "approved",
+        reviewer: session.username,
+        timestamp: new Date().toISOString(),
+        ...(release ? { note: RELEASED } : {}),
+      };
+      await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
+      setDecisions((prev) => [...prev, decision]);
+      announce(n(release ? "al.released" : "al.taken", verse.verse));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function markDone() {
     if (!session || !data || !verse || !ctx) return;
     if (dirty[verse.verse] && !(await saveVerse())) return;
@@ -904,6 +948,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
     if (openFor(v).length) return { id: "discussion", mark: "…", label: t("al.stDiscussion") };
     if (mode === "alinear") {
       if (isDone(v)) return { id: "done", mark: "✓", label: t("al.stDone") };
+      if (shared && ownerOf(v) && ownerOf(v) !== me) return { id: "taken", mark: "·", label: t("al.takenBy").replace("{who}", ownerOf(v)) };
       if (verseComplete(v, groups[v.verse] ?? [])) return { id: "complete", mark: "○", label: t("al.stComplete") };
       return { id: "pending", mark: "", label: t("al.stPending") };
     }
@@ -983,6 +1028,16 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
         </button>
         <div className="af-title">
           <h1>{title}</h1>
+          {shared ? (
+            <div className="al-modes" role="tablist" aria-label={t("al.modesAria")}>
+              <button type="button" role="tab" aria-selected={mode === "alinear"} onClick={() => setMode("alinear")}>
+                {t("al.modeAlign")}
+              </button>
+              <button type="button" role="tab" aria-selected={mode === "revisar"} onClick={() => setMode("revisar")}>
+                {t("al.modeReview")}
+              </button>
+            </div>
+          ) : null}
           <p>{data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}</p>
         </div>
         {data ? (
@@ -1005,7 +1060,7 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
       ) : null}
       {busy ? <p className="hub-hint">{t("al.loading")}</p> : null}
 
-      {mode === "revisar" && summary && data ? (
+      {(shared || mode === "revisar") && summary && data ? (
         <RoundPanel
           summary={summary}
           labelOf={(id) => `${data.book} ${id.replace(/^al:/, "")}`}
@@ -1187,9 +1242,29 @@ export function AlineacionView({ ctxEncoded, mode, onClose, announce }: Props) {
           </div>
 
           <div className="al-actionbar" role="region" aria-label={t("al.actionsAria")}>
-            {mode === "alinear" ? (
+            {mode === "alinear" && !mineToAlign(verse) ? (
+              <div className="al-actionbar__row">
+                {ownerOf(verse) ? (
+                  <span className="al-actionbar__flag">{t("al.takenBy").replace("{who}", ownerOf(verse))}</span>
+                ) : readyToReview ? (
+                  <span className="al-actionbar__flag">{t("al.stDone")}</span>
+                ) : (
+                  <Button type="button" onClick={() => void takeVerse()} disabled={saving}>
+                    {saving ? t("al.saving") : t("al.take")}
+                  </Button>
+                )}
+                <Button type="button" variant="outline" disabled={position >= data.verses.length - 1} onClick={() => void goTo(position + 1)}>
+                  {t("al.continue")}
+                </Button>
+              </div>
+            ) : mode === "alinear" ? (
               <>
                 <div className="al-actionbar__row">
+                  {shared && !readyToReview ? (
+                    <Button type="button" variant="ghost" disabled={saving} onClick={() => void takeVerse(true)}>
+                      {t("al.release")}
+                    </Button>
+                  ) : null}
                   <Button type="button" variant="outline" disabled={!canUndo} onClick={undo}>
                     {t("al.undo")}
                   </Button>

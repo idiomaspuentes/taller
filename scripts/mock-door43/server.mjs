@@ -68,11 +68,19 @@ function ago(days) {
   return new Date(Date.now() - days * 86_400_000).toISOString();
 }
 
+function doneSteps(taskId) {
+  const [id, steps] = (process.env.MOCK_DONE_STEPS || "").split(":");
+  if (id !== taskId || !steps) return "";
+  return `
+<!-- gateway-task-progress ${JSON.stringify({ v: 2, doneStepIds: steps.split(","), steps: {} })} -->`;
+}
+
 function workOrder(n, taskId, portion, assignee, created, updated, title) {
   const marker = JSON.stringify({ schema: "gateway-work-order-1", key: `${taskId}|${portion}`, book: "NEH", teamId: taskId, resource: "tpl", portionIds: [portion], itemIds: [] });
   return {
     id: n, number: n, title, state: "open",
-    body: `<!-- gateway-work-order ${marker} -->`,
+    // MOCK_DONE_STEPS="afinar-tpl-1:notas,palabras": start a task with some steps already done, to try a later one.
+    body: `<!-- gateway-work-order ${marker} -->${doneSteps(taskId)}`,
     labels: [{ id: 1, name: `pm/tarea:${taskId}` }],
     assignee: assignee ? USERS[`token-${assignee}`] : null,
     assignees: assignee ? [USERS[`token-${assignee}`]] : [],
@@ -91,20 +99,19 @@ function reset() {
     phases: [{ id: "p1", name: "Traducción", slug: "traduccion", order: 0 }, { id: "p2", name: "Afinación", slug: "afinacion", order: 1 }],
     teams: [
       {
-        id: "tpl-1", name: "Traducir TPL 1", resource: "tpl", phaseId: "p1", memberIds: ["ana", "bea", "carla"], scope: ["tpl"], rules: [{ resource: "tpl", articleFilter: "pending" }],
+        id: "tpl-1", name: "Traducir TPL 1", resource: "tpl", phaseId: "p1", memberIds: ["ana", "bea", "carla"], orgTeamName: "Equipo", scope: ["tpl"], rules: [{ resource: "tpl", articleFilter: "pending" }],
         // MOCK_TPL_STEPS=1: the translation task with a free step and a pair review, to try marking a step done.
         ...(process.env.MOCK_TPL_STEPS === "1"
           ? { steps: [{ id: "borrador", name: "Borrador", solverAppId: "tpl-translate" }, { id: "pares", name: "Revisión en pares", claimMode: "exclusive", excludeIssueAssignee: true, includeAuthorInApproval: true, excludePriorStepIds: ["borrador"] }] }
           : {}),
       },
       {
-        id: "afinar-tpl-1", name: "Afinar TPL 1", resource: "tpl", phaseId: "p2", memberIds: ["ana", "bea", "carla"], minLevel: "practicante",
+        id: "afinar-tpl-1", name: "Afinar TPL 1", resource: "tpl", phaseId: "p2", memberIds: ["ana", "bea", "carla"], orgTeamName: "Equipo", minLevel: "practicante",
         scope: ["tpl"], rules: [{ resource: "tpl", articleFilter: "pending" }], waitsFor: [{ taskId: "tpl-1", scope: "chapter" }],
         steps: [
           { id: "notas", closing: "consensus", name: "Revisar notas", solverAppId: "afinar-notas", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
           { id: "palabras", closing: "consensus", name: "Revisar palabras clave", solverAppId: "afinar-palabras", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
-          { id: "alinear", name: "Alinear", solverAppId: "afinar-alineacion", claimMode: "exclusive" },
-          { id: "revisar-alineacion", closing: "consensus", name: "Revisar la alineación", solverAppId: "afinar-alineacion", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
+          { id: "alineacion", closing: "consensus", name: "Alineación", solverAppId: "afinar-alineacion", claimMode: "pool", minAssignees: 2, maxAssignees: 3, minIndependent: 1 },
         ],
       },
     ],
