@@ -90,7 +90,13 @@ function reset() {
     people: [{ id: "ana", name: "Ana" }, { id: "bea", name: "Bea" }, { id: "carla", name: "Carla" }],
     phases: [{ id: "p1", name: "Traducción", slug: "traduccion", order: 0 }, { id: "p2", name: "Afinación", slug: "afinacion", order: 1 }],
     teams: [
-      { id: "tpl-1", name: "Traducir TPL 1", resource: "tpl", phaseId: "p1", memberIds: ["ana", "bea", "carla"], scope: ["tpl"], rules: [{ resource: "tpl", articleFilter: "pending" }] },
+      {
+        id: "tpl-1", name: "Traducir TPL 1", resource: "tpl", phaseId: "p1", memberIds: ["ana", "bea", "carla"], scope: ["tpl"], rules: [{ resource: "tpl", articleFilter: "pending" }],
+        // MOCK_TPL_STEPS=1: the translation task with a free step and a pair review, to try marking a step done.
+        ...(process.env.MOCK_TPL_STEPS === "1"
+          ? { steps: [{ id: "borrador", name: "Borrador", solverAppId: "tpl-translate" }, { id: "pares", name: "Revisión en pares", claimMode: "exclusive", excludeIssueAssignee: true, includeAuthorInApproval: true, excludePriorStepIds: ["borrador"] }] }
+          : {}),
+      },
       {
         id: "afinar-tpl-1", name: "Afinar TPL 1", resource: "tpl", phaseId: "p2", memberIds: ["ana", "bea", "carla"], minLevel: "practicante",
         scope: ["tpl"], rules: [{ resource: "tpl", articleFilter: "pending" }], waitsFor: [{ taskId: "tpl-1", scope: "chapter" }],

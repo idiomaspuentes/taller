@@ -31,6 +31,8 @@ export type CardHandlers = {
   onOpenNewTab: (card: BoardCard) => void;
   onClaimStep: (card: BoardCard, step: NonNullable<BoardCard["nextStep"]>) => void;
   onApproveStep: (card: BoardCard, step: NonNullable<BoardCard["nextStep"]>) => void;
+  /** A free step: mark it done, or take that back. */
+  onToggleStep: (card: BoardCard, step: NonNullable<BoardCard["nextStep"]>) => void;
   isExternal: (card: BoardCard) => boolean;
 };
 
@@ -146,6 +148,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
                     onOpenNewTab={() => handlers.onOpenNewTab(card)}
                     onClaimStep={(step) => handlers.onClaimStep(card, step)}
                     onApproveStep={(step) => handlers.onApproveStep(card, step)}
+                    onToggleStep={(step) => handlers.onToggleStep(card, step)}
                   />
                 ))}
               </div>

@@ -8,7 +8,7 @@ import type { PersonLevel } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
 import { canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
-import { allStepsDone, parseTaskProgressMarker } from "./taskProgress";
+import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
 
 /**
@@ -106,6 +106,9 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
   const next = steps.find((s) => !progress.doneStepIds.includes(s.id))!;
   const mode = stepClaimMode(next);
   if (mode === "none") return { action: mine ? { kind: "continue", step: next } : { kind: "none", why: "assigneeDelivers" }, next };
+  // The author of the text is part of a pair review, but there is nothing to confirm until someone takes it.
+  const seats = getStepRuntime(progress, next.id).assignees;
+  if (!seats.length && !canClaimStep(login, steps, progress, next, undefined, assignee)) return { action: { kind: "none", why: "othersReview" }, next };
   if (isStepActor(login, progress, next, assignee)) {
     // Seated: my part is to do it (open its tool) and, in a review, approve it.
     if (canApproveStep(login, progress, next, assignee) && !next.solverAppId) return { action: { kind: "approveStep", step: next }, next };
@@ -183,7 +186,8 @@ export function buildBoard(input: BoardInput): Board {
       // Mine (assigned) or seated in one of its steps.
       if (steps.length) {
         const { action } = stepAction(login, steps, issue, mine);
-        const group: BoardGroup = issueIsInProgress(issue) || seated ? "doing" : "todo";
+        // My own task is under way only once I started it; a task of someone else is, as soon as I sit in one of its steps.
+        const group: BoardGroup = issueIsInProgress(issue) || (seated && !mine) ? "doing" : "todo";
         const shown = group === "todo" && action.kind === "continue" ? { kind: "begin" as const, step: action.step } : action;
         board[group].push(card(issue, bucket, group, shown));
       } else {

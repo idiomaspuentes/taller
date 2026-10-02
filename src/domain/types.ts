@@ -163,6 +163,8 @@ export type TeamBundle = {
 export type Phase = {
   id: string;
   name: string;
+  /** The name in other interface languages (`{ pt: "Tradução" }`); `name` is the fallback. */
+  names?: Localized;
   /**
    * Stable git prefix (`{slug}/{book}`). Persisted so a later rename of
    * `name` does not move existing branches.
@@ -193,6 +195,8 @@ export type ScriptureScope =
 export type ProjectTask = {
   id: string;
   name: string;
+  /** The name in other interface languages; `name` is the fallback. */
+  names?: Localized;
   /** Free-text note (legacy phase hint may still appear here on old docs). */
   description: string;
   /** Owning phase. Required on new tasks; backfilled on load. */
@@ -260,10 +264,47 @@ export type ProjectTask = {
  */
 export type StepClaimMode = "none" | "exclusive" | "pool";
 
+/** Text per interface language code (`es`, `pt`, …). A process defines its own words; the engine has none. */
+export type Localized = Partial<Record<string, string>>;
+
+/**
+ * How a step is completed. The process chooses; the engine only knows these mechanics.
+ * - `self`: the person doing it marks it done.
+ * - `approval`: someone else approves it.
+ * - `consensus`: item by item, until every item is agreed (a final decision settles what is disputed).
+ * - `checklist`: item by item, yes/no questions (see `checklist`).
+ * - `automatic`: a tool completes it when its checks pass.
+ */
+export type StepClosing = "self" | "approval" | "consensus" | "checklist" | "automatic";
+
+/** What a step covers: one subtarea (default), the whole handoff unit, or a chapter once per person. */
+export type StepScope = "subtask" | "unit" | "chapter-once";
+
+/** One yes/no question of a `checklist` step, asked for every item (or once per verse). */
+export type ChecklistQuestion = {
+  id: string;
+  text: string;
+  texts?: Localized;
+  /** `item` (default): asked for each item. `verse`: asked once for each verse. */
+  per?: "item" | "verse";
+};
+
 export type TaskStep = {
   id: string;
   name: string;
+  /** The name in other interface languages; `name` is the fallback. */
+  names?: Localized;
+  /** What the big button says («Revisar», «Votar»). Without it the engine words the mechanics. */
+  actionLabel?: string;
+  actionLabels?: Localized;
+  /** How the step is completed. Omitted: derived from `claimMode` (none → self, otherwise approval). */
+  closing?: StepClosing;
+  /** Questions of a `checklist` step. */
+  checklist?: ChecklistQuestion[];
+  /** What the step covers. Omitted: one subtarea. */
+  scope?: StepScope;
   description?: string;
+  descriptions?: Localized;
   solverAppId?: string;
   /** Default `none` — free checklist toggle. */
   claimMode?: StepClaimMode;
@@ -315,6 +356,7 @@ export type WaitRule = {
 export type TaskTemplate = {
   id: string;
   name: string;
+  names?: Localized;
   description?: string;
   phaseId: string;
   rules: ScopeRule[];
@@ -376,7 +418,11 @@ export const WORKFLOWS_SCHEMA = "gateway-workflows-1" as const;
 export type WorkflowTemplate = {
   id: string;
   name: string;
+  names?: Localized;
+  /** Goes up every time the template is saved; a project records the one it was created from. */
+  version?: number;
   description?: string;
+  descriptions?: Localized;
   phases: Phase[];
   tasks: TaskTemplate[];
   /** Copied into project settings when the template is applied. */

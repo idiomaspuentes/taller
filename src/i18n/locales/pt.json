@@ -1377,5 +1377,8 @@
   "tb.releaseTitle": "Devolver esta tarefa?",
   "tb.join": "Participar de «{step}»",
   "tb.approveStep": "Aprovar «{step}»",
-  "tb.joinShort": "Participar"
+  "tb.joinShort": "Participar",
+  "tb.stepFinish": "Terminei",
+  "tb.stepUndo": "Desmarcar",
+  "tb.stepFinishNamed": "Terminei «{step}»"
 }

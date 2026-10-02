@@ -43,6 +43,7 @@ function taskFromTemplate(
   return {
     id: t.id || uid(),
     name: t.name,
+    names: t.names,
     description: t.description ?? "",
     phaseId: phaseIds.has(t.phaseId) ? t.phaseId : phases[0]?.id ?? "phase-default",
     memberIds: [],
@@ -75,6 +76,7 @@ export function boardToWorkflowTemplate(
   const tasks: TaskTemplate[] = board.teams.map((t) => ({
     id: t.id,
     name: t.name,
+    names: t.names,
     description: t.description?.trim() || undefined,
     phaseId: t.phaseId,
     rules: t.rules.map((r) => ({

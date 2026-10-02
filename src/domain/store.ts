@@ -43,6 +43,10 @@ import {
   SCOPE_KEYS,
   WORKFLOWS_SCHEMA,
   distributeUnitFromBundleGrain,
+  type Localized,
+  type StepClosing,
+  type StepScope,
+  type ChecklistQuestion,
 } from "./types";
 import { normalizeSourcePackage } from "./sourcePackage";
 import { scopeFromRules, uid } from "./assignment";
@@ -304,15 +308,17 @@ export function normalizePhases(raw: unknown, tasks: ProjectTask[]): Phase[] {
       if (seen.has(id)) continue;
       seen.add(id);
       const name = String(item.name ?? "").trim() || `Fase ${order + 1}`;
-      phases.push(
-        makePhase({
+      const names = normalizeLocalized(item.names);
+      phases.push({
+        ...makePhase({
           id,
           name,
           slug: item.slug,
           description: String(item.description ?? "").trim() || undefined,
           order: Number.isFinite(Number(item.order)) ? Number(item.order) : order,
         }),
-      );
+        ...(names ? { names } : {}),
+      });
       order += 1;
     }
     if (phases.length) {
@@ -391,6 +397,36 @@ function normalizeScriptureScope(raw: unknown): ScriptureScope | undefined {
   return undefined;
 }
 
+/** `{ pt: "…" }`: only non-empty strings survive; nothing is invented. */
+export function normalizeLocalized(raw: unknown): Localized | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Localized = {};
+  for (const [lang, text] of Object.entries(raw as Record<string, unknown>)) {
+    const value = String(text ?? "").trim();
+    if (/^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(lang) && value) out[lang] = value;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+const STEP_CLOSINGS: StepClosing[] = ["self", "approval", "consensus", "checklist", "automatic"];
+const STEP_SCOPES: StepScope[] = ["subtask", "unit", "chapter-once"];
+
+function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: ChecklistQuestion[] = [];
+  const seen = new Set<string>();
+  for (const row of raw) {
+    if (!row || typeof row !== "object") continue;
+    const item = row as Partial<ChecklistQuestion>;
+    const id = String(item.id ?? "").trim();
+    const text = String(item.text ?? "").trim();
+    if (!id || !text || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, text, texts: normalizeLocalized(item.texts), per: item.per === "verse" ? "verse" : undefined });
+  }
+  return out.length ? out : undefined;
+}
+
 export function normalizeTaskSteps(raw: unknown): TaskStep[] {
   if (!Array.isArray(raw)) return [];
   const steps: TaskStep[] = [];
@@ -447,10 +483,20 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
         ? Boolean(item.excludeIssueAssignee) || undefined
         : undefined;
 
+    const closing = STEP_CLOSINGS.includes(item.closing as StepClosing) ? (item.closing as StepClosing) : undefined;
+    const scope = STEP_SCOPES.includes(item.scope as StepScope) && item.scope !== "subtask" ? (item.scope as StepScope) : undefined;
+
     steps.push({
       id,
       name,
+      names: normalizeLocalized(item.names),
+      actionLabel: String(item.actionLabel ?? "").trim() || undefined,
+      actionLabels: normalizeLocalized(item.actionLabels),
+      closing,
+      checklist: normalizeChecklist(item.checklist),
+      scope,
       description: String(item.description ?? "").trim() || undefined,
+      descriptions: normalizeLocalized(item.descriptions),
       solverAppId: String(item.solverAppId ?? "").trim() || undefined,
       claimMode: claimMode === "none" ? undefined : claimMode,
       minAssignees,
@@ -494,6 +540,7 @@ export function normalizeTeams(raw: unknown, people: Person[]): ProjectTask[] {
       return {
         id: String(item.id || uid()),
         name: String(item.name ?? "").trim(),
+        names: normalizeLocalized(item.names),
         description: String(item.description ?? ""),
         phaseId,
         memberIds,
@@ -1313,6 +1360,7 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
   return {
     id: String(item.id || uid()),
     name,
+    names: normalizeLocalized(item.names),
     description: String(item.description ?? "").trim() || undefined,
     phaseId: String(item.phaseId ?? "").trim() || "phase-default",
     rules,
@@ -1347,10 +1395,16 @@ export function normalizeWorkflowTemplate(raw: unknown): WorkflowTemplate | null
     ...profile,
     requiredPhaseIds: profile.requiredPhaseIds.filter((id) => phaseIds.has(id)),
   }));
+  const version = Number(item.version);
+  const names = normalizeLocalized(item.names);
+  const descriptions = normalizeLocalized(item.descriptions);
   return {
     id: String(item.id || uid()),
     name,
+    ...(names ? { names } : {}),
+    ...(Number.isInteger(version) && version > 0 ? { version } : {}),
     description: String(item.description ?? "").trim() || undefined,
+    ...(descriptions ? { descriptions } : {}),
     phases,
     tasks,
     ...(releaseProfiles ? { releaseProfiles } : {}),

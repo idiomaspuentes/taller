@@ -177,6 +177,35 @@ await test("en mi tarea, si el paso siguiente es una revisión de otras personas
   assert.equal(card.action.kind === "none" && card.action.why, "othersReview");
 });
 
+await test("en mi tarea, terminado el borrador, la revisión en pares espera a que alguien la tome: no me pide aprobar todavía", () => {
+  const pairPlan = {
+    ...plan,
+    teams: [
+      ...plan.teams,
+      {
+        id: "pares", name: "Traducir TPL", phaseId: "p1", memberIds: ["carla", "bea"], orgTeamName: "Equipo", rules: [],
+        steps: [
+          { id: "borrador", name: "Borrador" },
+          { id: "pares", name: "Revisión en pares", claimMode: "exclusive", excludeIssueAssignee: true, includeAuthorInApproval: true, excludePriorStepIds: ["borrador"] },
+        ],
+      },
+    ],
+  } as unknown as AssignmentsDoc;
+  const bucketOf = (issues: DcsIssue[]): MyTasksProjectBucket => ({ projectId: "NEH", title: "Nehemías", browseProject: true, board: pairPlan, issues, openIssues: issues });
+  const build = (issues: DcsIssue[]) => buildBoard({ session: carla, pmOrg: PM, projects: [bucketOf(issues)], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+
+  const fresh = issue({ task: "pares", title: "NEH 2 · Traducir TPL", assignee: "carla" });
+  assert.equal(where(build([fresh]), fresh.number)!.group, "todo", "sin empezar, no está en curso");
+
+  const drafted = issue({ task: "pares", title: "NEH 2 · Traducir TPL", assignee: "carla", started: true, progress: { done: ["borrador"] } });
+  const waiting = where(build([drafted]), drafted.number)!;
+  assert.equal(waiting.action.kind, "none");
+  assert.equal(waiting.action.kind === "none" && waiting.action.why, "othersReview");
+
+  const taken = issue({ task: "pares", title: "NEH 2 · Traducir TPL", assignee: "carla", started: true, progress: { done: ["borrador"], seats: { pares: ["bea"] } } });
+  assert.equal(where(build([taken]), taken.number)!.action.kind, "approveStep", "con alguien revisando, a la autora le toca confirmar");
+});
+
 await test("las decisiones van primero, con «Votar»", () => {
   const conflict = issue({ task: "tpl", title: "NEH 2 · Traducir TPL", assignee: "carla", state: "closed" });
   const mine = issue({ task: "tpl", title: "NEH 7 · Traducir TPL", assignee: "carla", started: true });

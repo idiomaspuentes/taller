@@ -1377,5 +1377,8 @@
   "tb.releaseTitle": "¿Devolver esta tarea?",
   "tb.join": "Sumarme a «{step}»",
   "tb.approveStep": "Aprobar «{step}»",
-  "tb.joinShort": "Sumarme"
+  "tb.joinShort": "Sumarme",
+  "tb.stepFinish": "Terminé",
+  "tb.stepUndo": "Desmarcar",
+  "tb.stepFinishNamed": "Terminé «{step}»"
 }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
 import type { BoardCard } from "../domain/myTasksBoard";
-import { canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "../domain/stepClaim";
+import { canApproveStep, canClaimStep, isStepActor, isStepUnlocked, stepClaimMode } from "../domain/stepClaim";
 import { parseTaskProgressMarker } from "../domain/taskProgress";
 import { localizeHold, localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
@@ -28,6 +28,8 @@ type Props = {
   onOpenNewTab?: () => void;
   onClaimStep: (step: TaskStep) => void;
   onApproveStep: (step: TaskStep) => void;
+  /** A free step (no seats): mark it done, or take that back. */
+  onToggleStep: (step: TaskStep) => void;
 };
 
 function assigneeOf(card: BoardCard): string {
@@ -86,6 +88,10 @@ export function TaskCard(props: Props) {
   const steps = card.task?.steps ?? [];
   const progress = parseTaskProgressMarker(card.issue.body ?? "");
   const hasTool = action.kind === "begin" || action.kind === "continue";
+  const mine = assigneeOf(card).toLowerCase() === props.login.toLowerCase();
+  // The step in hand is a free one: the person says when it is done (the tool cannot know, above all an outside one).
+  const stepInHand = action.kind === "continue" ? action.step : undefined;
+  const canFinishStep = Boolean(stepInHand && mine && card.started && stepClaimMode(stepInHand) === "none");
 
   const menuItems: { id: string; label: string; run: () => void; danger?: boolean }[] = [];
   if (steps.length && card.group !== "done") menuItems.push({ id: "steps", label: stepsOpen ? t("tb.hideSteps") : t("tb.showSteps"), run: () => setStepsOpen((v) => !v) });
@@ -186,6 +192,10 @@ export function TaskCard(props: Props) {
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onApproveStep(step)}>
                     {t("mt.approve")}
                   </Button>
+                ) : mine && stepClaimMode(step) === "none" && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
+                  <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onToggleStep(step)}>
+                    {done ? t("tb.stepUndo") : t("tb.stepFinish")}
+                  </Button>
                 ) : null}
               </li>
             );
@@ -194,9 +204,16 @@ export function TaskCard(props: Props) {
       ) : null}
 
       {label ? (
-        <Button type="button" size="lg" className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
-          {props.busy ? t("tb.working") : label}
-        </Button>
+        <div className="task-card__actions">
+          <Button type="button" size="lg" className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
+            {props.busy ? t("tb.working") : label}
+          </Button>
+          {canFinishStep && stepInHand ? (
+            <Button type="button" size="lg" variant="outline" className="task-card__action" disabled={props.busy} onClick={() => props.onToggleStep(stepInHand)}>
+              {t("tb.stepFinishNamed").replace("{step}", localizeName(stepInHand.name, language))}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </article>
   );

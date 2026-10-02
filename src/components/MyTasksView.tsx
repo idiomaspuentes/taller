@@ -29,6 +29,7 @@ import { ensurePortionPr, submitPortionPrApproval } from "../dcs/portionPr";
 import { closeSubtask } from "../dcs/closeSubtask";
 import {
   parsePortionPrMarker,
+  stepCompletesDraftForReview,
   stepNeedsOpenPortionPr,
 } from "../domain/portionPr";
 import { teamPhaseLabel } from "../domain/assignment";
@@ -62,6 +63,8 @@ import {
 import {
   getStepRuntime,
   parseTaskProgressMarker,
+  toggleStepDone,
+  withStepRuntime,
 } from "../domain/taskProgress";
 import type { AssignmentsDoc, TaskStep } from "../domain/types";
 import type { ReadCursorDoc } from "../domain/readCursor";
@@ -449,6 +452,31 @@ export function MyTasksView({
     }
   }
 
+  /** A free step (nobody has to take or approve it): the person doing it says it is done, or takes that back. */
+  async function toggleFreeStep(issue: DcsIssue, board: AssignmentsDoc, step: TaskStep) {
+    const steps = board.teams.find((task) => task.id === issueTaskId(issue))?.steps ?? [];
+    const current = parseTaskProgressMarker(issue.body);
+    const wasDone = current.doneStepIds.includes(step.id);
+    let next = toggleStepDone(current, step.id);
+    // Seat the person on the step, so later steps can exclude whoever did this one.
+    if (!wasDone) {
+      const runtime = getStepRuntime(next, step.id);
+      if (!runtime.assignees.length) next = withStepRuntime(next, step.id, { ...runtime, assignees: [session.username] });
+    }
+    setActing(issue.number);
+    setError("");
+    try {
+      const updated = await setIssueTaskProgress(session, pmOrg, issue, next);
+      if (!wasDone && stepCompletesDraftForReview(steps, step.id)) await tryEnsurePortionPr(updated, board);
+      announce(t(wasDone ? "mt.stepUnmarked" : "mt.stepMarked").replace("{n}", String(issue.number)));
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setActing(null);
+    }
+  }
+
   async function claimStepOnIssue(
     issue: DcsIssue,
     board: AssignmentsDoc,
@@ -667,6 +695,7 @@ export function MyTasksView({
       },
       onClaimStep: (card, step) => card.bucket && void claimStepOnIssue(card.issue, card.bucket.board, step),
       onApproveStep: (card, step) => card.bucket && void approveStepOnIssue(card.issue, card.bucket.board, step),
+      onToggleStep: (card, step) => card.bucket && void toggleFreeStep(card.issue, card.bucket.board, step),
     };
     const count = boardCount(taskBoard);
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);
