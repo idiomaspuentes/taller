@@ -18,6 +18,8 @@ export type AppRoute =
   | { name: "conflicto-prueba" }
   | { name: "equipo"; orgTeam: string }
   | { name: "proyectos" }
+  /** A project being prepared, before it is created (`DraftProjectView`). */
+  | { name: "proyecto-nuevo" }
   /**
    * `projectId` is the project slug: today usually a book code (`NEH`),
    * later may be thematic / multi-book (`pentateuco-r1`). Not always a book.
@@ -121,6 +123,7 @@ export function parseHash(hash: string): AppRoute {
   }
   if (parts[0] === "proyectos") {
     if (parts.length === 1) return { name: "proyectos" };
+    if (parts[1] === "nuevo") return { name: "proyecto-nuevo" };
     const projectId = normalizeProjectId(parts[1]);
     // #/proyectos/:projectId/tareas/:taskId
     if (parts[2] === "tareas" && parts[3]) {
@@ -165,6 +168,8 @@ export function routeToHash(route: AppRoute): string {
         : "#/plantillas";
     case "proyectos":
       return "#/proyectos";
+    case "proyecto-nuevo":
+      return "#/proyectos/nuevo";
     case "proyecto": {
       const base = `#/proyectos/${encodeURIComponent(route.projectId)}/${route.step}`;
       if (route.step === "tareas" && route.taskId) {

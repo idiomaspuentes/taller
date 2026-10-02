@@ -20,6 +20,8 @@ type Props = {
   /** Books that already have a project: they are opened, not started again. */
   taken: string[];
   onStart: (input: { book: string; workflowId: string }, onStage: (stage: StartStage, detail?: string) => void) => Promise<StartedProject>;
+  /** Prepare the project without creating it: the process can be adjusted first. An empty `workflowId` starts from nothing. */
+  onAdjust?: (input: { book: string; workflowId: string }) => Promise<void>;
   onOpen: (projectId: string, step: "inventario" | "tareas") => void;
   onGoToTasks: () => void;
   onCancel: () => void;
@@ -35,7 +37,7 @@ const NOTICE_KEY: Record<StartNotice, MessageKey> = { "no-notes": "sb.noNotes", 
  * «Empezar un libro»: which book and how the team works. Everything else a process repeats for every book (its
  * phases, tasks, steps and teams) comes with the process; the app reads the book and lays out the work by itself.
  */
-export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks, onCancel, phaseTeams }: Props) {
+export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, onGoToTasks, onCancel, phaseTeams }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const free = BOOKS.filter((b) => !taken.includes(b.code));
@@ -44,6 +46,20 @@ export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks,
   const [stage, setStage] = useState<{ at: StartStage; detail?: string } | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState<StartedProject | null>(null);
+  const [adjusting, setAdjusting] = useState(false);
+
+  async function adjust() {
+    if (!book || !onAdjust) return;
+    setError("");
+    setAdjusting(true);
+    try {
+      await onAdjust({ book, workflowId });
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setAdjusting(false);
+    }
+  }
   const name = book ? bookLabel(book, language) : "";
 
   async function start() {
@@ -130,7 +146,16 @@ export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks,
             </span>
           </label>
         ))}
-        {!templates.length ? <p className="af-stale">{t("sb.noTemplates")}</p> : null}
+        {onAdjust ? (
+          <label className="sb-template" data-on={workflowId === "" ? "true" : "false"}>
+            <input type="radio" name="sb-template" checked={workflowId === ""} onChange={() => setWorkflowId("")} />
+            <span>
+              <b>{t("sb.blank")}</b>
+              <small>{t("sb.blankHint")}</small>
+            </span>
+          </label>
+        ) : null}
+        {!templates.length && !onAdjust ? <p className="af-stale">{t("sb.noTemplates")}</p> : null}
       </fieldset>
 
       {error ? (
@@ -154,10 +179,17 @@ export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks,
         </ol>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{t("sb.what")}</p>
-          <Button type="button" size="lg" disabled={!book || !workflowId} onClick={() => void start()}>
-            {t("sb.start").replace("{book}", name)}
-          </Button>
+          <p className="text-sm text-muted-foreground">{t(workflowId ? "sb.what" : "sb.whatBlank")}</p>
+          {workflowId ? (
+            <Button type="button" size="lg" disabled={!book || adjusting} onClick={() => void start()}>
+              {t("sb.start").replace("{book}", name)}
+            </Button>
+          ) : null}
+          {onAdjust ? (
+            <Button type="button" size="lg" variant={workflowId ? "outline" : "default"} disabled={!book || adjusting} onClick={() => void adjust()}>
+              {adjusting ? t("sb.preparing") : t(workflowId ? "sb.adjustFirst" : "sb.build")}
+            </Button>
+          ) : null}
         </>
       )}
     </div>

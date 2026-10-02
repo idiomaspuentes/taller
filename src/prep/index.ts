@@ -4,7 +4,7 @@
  */
 
 import { detectBookCode, parseUsfmEvents } from "./parseUsfm";
-import { splitPortions } from "./chunks";
+import { splitPortions, type PortionStarts } from "./chunks";
 import { buildInventory } from "./inventory";
 import { emitJson, inventoryToDict } from "./emit";
 
@@ -18,6 +18,8 @@ export type PrepInput = {
   hasUst?: boolean;
   ustPath?: string;
   chapterFilter?: number | null;
+  /** Portions cut where the project says, instead of where the source does (see `regroupPortions`). */
+  portionStarts?: PortionStarts;
   generatedAt?: string;
 };
 
@@ -31,6 +33,7 @@ function prepareInventory(input: PrepInput) {
   const events = parseUsfmEvents(usfm);
   const { portions, warnings } = splitPortions(book, events, {
     chapterFilter: input.chapterFilter ?? null,
+    starts: input.portionStarts,
   });
 
   return buildInventory({

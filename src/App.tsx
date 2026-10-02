@@ -62,7 +62,7 @@ import {
 import { loadPmConfig, pullIssues } from "./dcs/issues";
 import { useConversationActivity } from "./useConversationActivity";
 import { generateInventory } from "./worker/client";
-import { loadNextBookHint, loadTeamOptions, setTaskTeams, startBook, type StartStage } from "./dcs/startBook";
+import { draftBook, loadNextBookHint, loadTeamOptions, setTaskTeams, startBook, type StartStage, type StartedBook } from "./dcs/startBook";
 import { SignInModal } from "./components/SignIn";
 import { SetupGate } from "./components/SetupGate";
 import { WorkspaceDialog } from "./components/WorkspaceDialog";
@@ -89,6 +89,8 @@ import { FamiliarizeView } from "./components/FamiliarizeView";
 import { SolverLabView } from "./components/SolverLabView";
 import { PortionReviewView } from "./components/PortionReviewView";
 import { TemplatesView } from "./components/TemplatesView";
+import { DraftProjectView } from "./components/DraftProjectView";
+import { clearProjectDraft, loadProjectDraft, saveProjectDraft } from "./domain/draftProject";
 import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView";
 import { AppNav } from "./components/AppNav";
 import { PushPrompt } from "./components/PushPrompt";
@@ -256,6 +258,13 @@ export function App() {
   const myTasksActive =
     route.name === "mis-tareas" || route.name === "conversacion" || route.name === "conflicto-prueba" || route.name === "equipo";
   const [qaAdminOpen, setQaAdminOpen] = useState(false);
+  const [draft, setDraft] = useState<AssignmentsDoc | null>(() => loadProjectDraft(lang, contentOrg, pmOrg));
+  // A draft that was created stays on screen (its summary) until the person leaves; elsewhere it is gone.
+  useEffect(() => {
+    if (route.name !== "proyecto-nuevo" && draft && !loadProjectDraft(lang, contentOrg, pmOrg)) setDraft(null);
+    if (route.name === "proyecto-nuevo" && !draft) navigate({ name: "proyectos" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.name]);
   const projectStep: StepId | null = route.name === "proyecto" ? route.step : null;
 
   function setViewModeAndPersist(mode: ViewMode) {
@@ -839,6 +848,34 @@ export function App() {
     }
   }
 
+  /** A project that now exists in Door43 becomes the one in hand. */
+  function adoptProject(started: StartedBook) {
+    const { board: doc, inventory: found } = started;
+    saveLocalAssignments(doc);
+    upsertLocalProjectIndex(lang, { projectId: doc.projectId, title: doc.title, kind: doc.kind, books: doc.books });
+    setProjects(loadLocalProjectsIndex(lang));
+    setBook(doc.projectId);
+    setInventariarBook(doc.projectId);
+    setBoard(doc);
+    setInventory(found);
+    persistSessionInventory(found);
+    if (session && pmOrg) {
+      void saveProjectsIndexToDcs(session, pmOrg, lang, loadLocalProjectsIndex(lang)).catch(() => {
+        /* optional index sync */
+      });
+    }
+  }
+
+  /** «Ajustar antes de crear»: the project as a draft on this device; nothing is written until it is created. */
+  async function onAdjustBook(input: { book: string; workflowId: string }) {
+    if (!session || !pmOrg) throw new Error(tNow("app.signInPickOrg"));
+    const template = projectTemplates().find((workflow) => workflow.id === input.workflowId);
+    const doc = await draftBook({ session, pmOrg, lang, contentOrg, book: input.book, template, earlierProjects: [...projects].reverse().map((project) => project.projectId) });
+    saveProjectDraft(doc);
+    setDraft(doc);
+    navigate({ name: "proyecto-nuevo" });
+  }
+
   /** «Empezar un libro»: everything from the process to the subtareas, then the project is the one in hand. */
   async function onStartBook(input: { book: string; workflowId: string }, onStage: (stage: StartStage, detail?: string) => void) {
     const template = projectTemplates().find((workflow) => workflow.id === input.workflowId);
@@ -1113,7 +1150,7 @@ export function App() {
                     {
                       id: "proyectos",
                       label: t("nav.projects"),
-                      active: route.name === "proyectos" || route.name === "proyecto",
+                      active: route.name === "proyectos" || route.name === "proyecto" || route.name === "proyecto-nuevo",
                       onSelect: () => navigate({ name: "proyectos" }),
                     },
                     {
@@ -1336,6 +1373,19 @@ export function App() {
             }))}
             onCreateProject={onCreateProject}
             onStartBook={session && pmOrg ? onStartBook : undefined}
+            onAdjustBook={session && pmOrg ? onAdjustBook : undefined}
+            draft={
+              draft
+                ? {
+                    projectId: draft.projectId,
+                    onContinue: () => navigate({ name: "proyecto-nuevo" }),
+                    onDiscard: () => {
+                      clearProjectDraft(lang);
+                      setDraft(null);
+                    },
+                  }
+                : undefined
+            }
             phaseTeams={
               session && pmOrg
                 ? {
@@ -1361,6 +1411,43 @@ export function App() {
                 ? () => loadNextBookHint({ session, pmOrg, lang, contentOrg, projects: projects.filter((project) => project.kind === "book").map((project) => project.projectId) })
                 : undefined
             }
+          />
+        ) : null}
+
+        {route.name === "proyecto-nuevo" && session && effectiveCanManage && draft ? (
+          <DraftProjectView
+            key={draft.projectId}
+            session={session}
+            pmOrg={pmOrg}
+            draft={draft}
+            processName={(() => {
+              const workflow = projectTemplates().find((row) => row.id === draft.workflowId);
+              return workflow ? localized(workflow.name, workflow.names, uiLanguage) : undefined;
+            })()}
+            onDraft={(next) => {
+              saveProjectDraft(next);
+              setDraft(next);
+            }}
+            onDiscard={() => {
+              clearProjectDraft(lang);
+              setDraft(null);
+              navigate({ name: "proyectos" });
+            }}
+            onLeave={() => navigate({ name: "proyectos" })}
+            onCreated={(started) => {
+              clearProjectDraft(lang);
+              adoptProject(started);
+            }}
+            onOpenProject={(code) => {
+              setDraft(null);
+              onBookChange(code);
+              navigate({ name: "proyecto", projectId: code, step: "avance" });
+            }}
+            onGoToTasks={() => {
+              setDraft(null);
+              navigate({ name: "mis-tareas" });
+            }}
+            announce={announce}
           />
         ) : null}
 

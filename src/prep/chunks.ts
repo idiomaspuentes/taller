@@ -37,10 +37,49 @@ function flush(
   return index + 1;
 }
 
+/** Where the portions of a chapter start, by chapter: the verses whoever prepares the book chose instead of the source's own cuts. */
+export type PortionStarts = Record<number, number[]>;
+
+/**
+ * The portions of the chapters named in `starts`, cut again at those verses. The verses of a chapter stay the same
+ * and in the same order; only where one portion ends and the next begins changes. Other chapters are left alone.
+ */
+export function regroupPortions(portions: Portion[], starts: PortionStarts | undefined): Portion[] {
+  if (!starts || !Object.keys(starts).length) return portions;
+  const out: Portion[] = [];
+  const done = new Set<number>();
+  for (const portion of portions) {
+    const cuts = starts[portion.chapter];
+    if (!cuts?.length) {
+      out.push(portion);
+      continue;
+    }
+    if (done.has(portion.chapter)) continue;
+    done.add(portion.chapter);
+    const own = portions.filter((row) => row.chapter === portion.chapter);
+    const verses = own.flatMap((row) => row.verses);
+    const at = new Set(cuts);
+    let group: number[] = [];
+    let index = 1;
+    const close = () => {
+      if (!group.length) return;
+      out.push(new Portion({ book: portion.book, chapter: portion.chapter, index, verses: group, source: own[0]!.source, tsSid: "" }));
+      index += 1;
+      group = [];
+    };
+    for (const verse of verses) {
+      if (at.has(verse)) close();
+      group.push(verse);
+    }
+    close();
+  }
+  return out;
+}
+
 export function splitPortions(
   book: string,
   events: UsfmEvent[],
-  options: { chapterFilter?: number | null } = {},
+  options: { chapterFilter?: number | null; starts?: PortionStarts } = {},
 ): { portions: Portion[]; warnings: string[] } {
   const chapterFilter = options.chapterFilter ?? null;
   const portions: Portion[] = [];
@@ -138,9 +177,9 @@ export function splitPortions(
     }
   }
 
-  let finalPortions = portions;
+  let finalPortions = regroupPortions(portions, options.starts);
   if (chapterFilter !== null) {
-    finalPortions = portions.filter((p) => p.chapter === chapterFilter);
+    finalPortions = finalPortions.filter((p) => p.chapter === chapterFilter);
     const prefix = `${book} ${chapterFilter}:`;
     warnings = warnings.filter(
       (w) => w.startsWith(prefix) || (w.startsWith(`${book}:`) && w.includes("no tiene")),

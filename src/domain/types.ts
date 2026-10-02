@@ -518,6 +518,18 @@ export type ProjectIndexEntry = {
   updated_at?: string;
 };
 
+/**
+ * A subtarea added by hand to a task: work the book does not give by itself («Revisar la introducción», a second look
+ * at one passage). It follows the team and the steps of its task.
+ */
+export type ExtraWork = {
+  id: string;
+  taskId: string;
+  title: string;
+  /** The portion of the book it is about, when it is about one: the tools of the task open on it. */
+  portionId?: string;
+};
+
 /** What moves together from one phase to the next: see `handoff.ts`. Only split chapters are listed. */
 export type HandoffUnit = { id: string; label?: string; portionIds: string[] };
 
@@ -552,6 +564,13 @@ export type ProjectSettings = {
   sourcePackage?: SourcePackage;
   /** Chapters split into stretches that move on by themselves. A chapter not listed here is one unit. */
   handoffUnits?: HandoffUnit[];
+  /**
+   * Portions cut where the project chose instead of where the source does: by book, by chapter, the verses at which
+   * a portion starts. Decided before the project is created; the subtareas are laid out on these portions.
+   */
+  portionStarts?: Record<string, Record<string, number[]>>;
+  /** Subtareas somebody added by hand, beside the ones the book gives (see `extraWork.ts`). */
+  extraWork?: ExtraWork[];
 };
 
 /** Persisted deliverable + local board state for one project. */

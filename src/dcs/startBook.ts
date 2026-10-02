@@ -9,35 +9,36 @@ import { coordinatorsOf } from "../domain/levels";
 import { firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, type NextBookHint, type TeamOption } from "../domain/startBook";
 import { reposForTask } from "../domain/roles";
 import { emptyAssignments, mergePeople } from "../domain/store";
+import { portionStartsOfBook } from "../domain/extraWork";
+import { tNow } from "../i18n/messages";
 import type { AssignmentsDoc, InventoryDoc, ProjectTask, WorkflowTemplate } from "../domain/types";
 import { applyWorkflowToBoard } from "../domain/workflows";
 import { generateInventory } from "../worker/client";
 
 export type StartStage = "process" | "reading" | "saving" | "tasks";
 
-export type StartedBook = { board: AssignmentsDoc; inventory: InventoryDoc; created: number };
+export type StartedBook = { board: AssignmentsDoc; inventory: InventoryDoc; created: number; warnings?: string[] };
 
 /**
- * Start a book: apply the process, bring the teams of the last book done with it, read and divide the book, save
- * the project and lay out its subtareas. One action for the person; each stage is reported as it begins.
+ * The project of a book before anything is written: the process applied (or nothing, to build it by hand), with the
+ * teams of the last book done with the same process. What a person may still adjust before creating it.
  */
-export async function startBook(params: {
+export async function draftBook(params: {
   session: GtSession;
   pmOrg: string;
   lang: string;
   contentOrg: string;
   book: string;
-  template: WorkflowTemplate;
+  /** Absent: a project built by hand, with no process behind it. */
+  template?: WorkflowTemplate;
   /** Projects that already exist, newest first: the first one made with the same process lends its teams. */
   earlierProjects: string[];
-  onStage: (stage: StartStage, detail?: string) => void;
-}): Promise<StartedBook> {
-  const { session, pmOrg, lang, contentOrg, template, onStage } = params;
+}): Promise<AssignmentsDoc> {
+  const { session, pmOrg, lang, contentOrg, template } = params;
   const book = normalizeProjectId(params.book);
-
-  onStage("process");
   // People take the work themselves (nobody is handed a whole chapter); whoever coordinates can turn it off.
   const base: AssignmentsDoc = { ...emptyAssignments(book, lang, contentOrg, pmOrg), title: bookName(book), kind: "book", books: [book], settings: { allowSelfAssign: true } };
+  if (!template) return base;
   let board = applyWorkflowToBoard(base, template);
   for (const id of params.earlierProjects) {
     if (normalizeProjectId(id) === book) continue;
@@ -47,19 +48,77 @@ export async function startBook(params: {
       break;
     }
   }
+  return board;
+}
 
-  onStage("reading");
-  const inventory = await generateInventory({ book, lang, contentOrg }, (message) => onStage("reading", message));
-  if (!inventory.portions.length) throw new Error("No se encontraron porciones en el texto de origen de este libro.");
+/** Read a book and divide it into portions, cut where the project says when it cut any by hand. */
+export async function readBook(params: { book: string; lang: string; contentOrg: string; settings?: AssignmentsDoc["settings"] }, onProgress: (message: string) => void = () => undefined): Promise<InventoryDoc> {
+  const book = normalizeProjectId(params.book);
+  const inventory = await generateInventory({ book, lang: params.lang, contentOrg: params.contentOrg, portionStarts: portionStartsOfBook(params.settings, book) }, onProgress);
+  if (!inventory.portions.length) throw new Error(tNow("sb.noPortions"));
+  return inventory;
+}
+
+/**
+ * Write a project that was only a draft: the teams its tasks name get their people (and the repositories they
+ * lack), the project is saved and its subtareas are laid out. Until this runs, nothing of the project is in Door43.
+ */
+export async function createProject(params: {
+  session: GtSession;
+  pmOrg: string;
+  board: AssignmentsDoc;
+  inventory: InventoryDoc;
+  onStage: (stage: StartStage, detail?: string) => void;
+}): Promise<StartedBook> {
+  const { session, pmOrg, inventory, onStage } = params;
+  let board = params.board;
+  const book = board.projectId;
+  const lang = board.lang;
 
   onStage("saving");
+  // A task that names a team but has nobody yet (the team came with the template, or was chosen in the draft).
+  const warnings: string[] = [];
+  const pending = board.teams.filter((task) => (task.orgTeamId || task.orgTeamName) && !task.memberIds.length);
+  if (pending.length) {
+    const teams = await listPmOrgTeams(session, pmOrg);
+    const choice: Record<string, TeamOption> = {};
+    for (const task of pending) {
+      const team = teams.find((row) => (task.orgTeamId ? row.id === task.orgTeamId : row.name === task.orgTeamName));
+      if (team) choice[task.id] = { id: team.id, name: team.name, description: team.description, canEdit: teamCanEdit(team), unitsMap: team.units_map, repos: [], allRepos: false };
+    }
+    const placed = await placeTaskTeams({ session, pmOrg, board, choice });
+    board = placed.board;
+    warnings.push(...placed.warnings);
+  }
   await saveProjectToDcs({ session, org: pmOrg, lang, book, assignments: board, inventory });
 
   onStage("tasks");
   const result = await publishWorkOrders({ session, org: pmOrg, board, inventory, onProgress: (p) => onStage("tasks", `${p.done} / ${p.total}`) });
   board = { ...board, settings: { ...board.settings, lastPublish: { at: new Date().toISOString(), created: result.created, updated: result.updated } } };
   await saveProjectToDcs({ session, org: pmOrg, lang, book, assignments: board, inventory });
-  return { board, inventory, created: result.created };
+  return { board, inventory, created: result.created, warnings };
+}
+
+/**
+ * Start a book in one action: apply the process, bring the teams of the last book done with it, read and divide the
+ * book, save the project and lay out its subtareas. Each stage is reported as it begins.
+ */
+export async function startBook(params: {
+  session: GtSession;
+  pmOrg: string;
+  lang: string;
+  contentOrg: string;
+  book: string;
+  template: WorkflowTemplate;
+  earlierProjects: string[];
+  onStage: (stage: StartStage, detail?: string) => void;
+}): Promise<StartedBook> {
+  const { session, pmOrg, lang, contentOrg, onStage } = params;
+  onStage("process");
+  const board = await draftBook(params);
+  onStage("reading");
+  const inventory = await readBook({ book: params.book, lang, contentOrg, settings: board.settings }, (message) => onStage("reading", message));
+  return createProject({ session, pmOrg, board, inventory, onStage });
 }
 
 export type TeamOptions = { teams: TeamOption[]; needs: (task: Pick<ProjectTask, "scope" | "rules">) => string[] };
@@ -81,10 +140,10 @@ export async function loadTeamOptions(params: { session: GtSession; pmOrg: strin
 }
 
 /**
- * Give each task its chosen team and its people, and save the project. A task the team cannot take (it lacks a
+ * Give each task its chosen team and its people (nothing is saved). A task the team cannot take (it lacks a
  * repository and it cannot be given) is left as it was and told.
  */
-export async function setTaskTeams(params: {
+export async function placeTaskTeams(params: {
   session: GtSession;
   pmOrg: string;
   board: AssignmentsDoc;
@@ -111,8 +170,14 @@ export async function setTaskTeams(params: {
       warnings.add(err instanceof Error ? err.message : String(err));
     }
   }
-  if (board !== params.board) await saveProjectToDcs({ session, org: pmOrg, lang: board.lang, book: board.projectId, assignments: board, inventory: null });
   return { board, warnings: [...warnings] };
+}
+
+/** {@link placeTaskTeams}, and the project saved with them. */
+export async function setTaskTeams(params: { session: GtSession; pmOrg: string; board: AssignmentsDoc; choice: Record<string, TeamOption> }): Promise<{ board: AssignmentsDoc; warnings: string[] }> {
+  const placed = await placeTaskTeams(params);
+  if (placed.board !== params.board) await saveProjectToDcs({ session: params.session, org: params.pmOrg, lang: placed.board.lang, book: placed.board.projectId, assignments: placed.board, inventory: null });
+  return placed;
 }
 
 /**

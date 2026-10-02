@@ -6,6 +6,8 @@ export type GenerateRequest = {
   book: string;
   lang: string;
   contentOrg: string;
+  /** Where the portions of a chapter start, by chapter, when the project cut them its own way. */
+  portionStarts?: Record<number, number[]>;
 };
 
 export type ProgressMessage = { type: "progress"; requestId: string; message: string };

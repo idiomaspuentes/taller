@@ -7220,3 +7220,71 @@ input.pf-name { font-size: 1.625rem; }
 .tp-card__name { font-size: 1.0625rem; font-weight: 700; }
 .tp-card__meta { font-size: 0.8125rem; color: var(--text-muted); }
 .tp-card__desc { font-size: 0.875rem; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---------- Draft project: what will be laid out, and how the book is cut ---------- */
+.dp-stages { width: 100%; grid-template-columns: repeat(3, 1fr); }
+.dp-reading { display: flex; align-items: center; gap: 0.75rem; grid-template-columns: none; }
+.dp-reading p { margin: 0; color: var(--text-muted); }
+.dp-spinner { width: 1.125rem; height: 1.125rem; border-radius: 999px; border: 2px solid var(--accent-200); border-top-color: var(--accent-500); animation: dp-spin 0.8s linear infinite; }
+@keyframes dp-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dp-spinner { animation: none; } }
+.dp-template { max-width: 34rem; }
+.hub-draft { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; padding: 0.875rem 1rem; border: 1px dashed var(--accent-400); border-radius: var(--radius-lg); background: var(--accent-50); }
+.hub-draft p { margin: 0; }
+.hub-draft__kind { font-size: 0.75rem; font-weight: 700; color: var(--accent-700); }
+.hub-draft__name { font-size: 1.0625rem; font-weight: 700; }
+.hub-draft__hint { font-size: 0.8125rem; color: var(--text-muted); }
+.wp { display: grid; gap: 0.875rem; }
+.wp-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin: 0; }
+@media (min-width: 640px) { .wp-stats { grid-template-columns: repeat(4, 1fr); } }
+.wp-stats div { padding: 0.625rem 0.75rem; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); }
+.wp-stats dt { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+.wp-stats dd { margin: 0; font-family: var(--font-display); font-size: 1.375rem; font-weight: 700; }
+.wp-tools { display: grid; gap: 0.5rem; }
+@media (min-width: 640px) { .wp-tools { grid-template-columns: repeat(2, 1fr); } }
+.wp-tool { display: grid; gap: 0.125rem; padding: 0.625rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: inherit; text-align: left; cursor: pointer; }
+.wp-tool[aria-expanded="true"] { border-color: var(--accent-500); background: var(--accent-50); }
+.wp-tool__name { font-weight: 700; font-size: 0.9375rem; }
+.wp-tool__hint { font-size: 0.8125rem; color: var(--text-muted); }
+.wp-phase { display: grid; gap: 0.375rem; }
+.wp-phase__head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; padding: 0 0.25rem; }
+.wp-phase__head h3 { margin: 0; font-size: 1rem; font-weight: 700; }
+.wp-phase__head span { font-size: 0.8125rem; color: var(--text-muted); }
+.wp-tasks { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.wp-task + .wp-task { border-top: 1px solid var(--border); }
+.wp-task__row { display: flex; align-items: center; gap: 0.25rem; padding-right: 0.375rem; }
+.wp-task__main { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 auto; min-width: 0; min-height: 48px; padding: 0.375rem 0.5rem 0.375rem 0.75rem; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.wp-task__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-task__meta { margin-left: auto; font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap; }
+@media (max-width: 520px) { .wp-task__meta { display: none; } }
+.wp-task__count { min-width: 2rem; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.8125rem; font-weight: 700; text-align: center; }
+.wp-task__count[data-none="true"] { background: var(--surface-muted); color: var(--text-muted); }
+.wp-orders { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0; padding: 0 0.75rem 0.75rem 2.25rem; list-style: none; }
+.wp-order { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.1875rem 0.625rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.8125rem; }
+.wp-order small { color: var(--text-muted); font-size: 0.75rem; }
+.wp-order[data-extra="true"] { border-color: var(--accent-300); background: var(--accent-50); }
+.wp-order[data-tone="taken"] { border-color: var(--warning-500); }
+.wp-order[data-tone="done"] { background: var(--success-100); border-color: transparent; color: var(--success-700); }
+.wp-order button { display: grid; place-items: center; width: 1.25rem; height: 1.25rem; padding: 0; border: 0; border-radius: 999px; background: none; color: var(--text-muted); cursor: pointer; }
+.wp-order button:hover { background: var(--danger-100); color: var(--danger-700); }
+.wp-none { padding: 0 0.75rem 0.75rem 2.25rem; }
+.wp-add { display: grid; gap: 0.5rem; padding: 0.625rem 0.75rem 0.75rem 2.25rem; background: var(--surface-muted); }
+.pc { display: grid; gap: 0.5rem; }
+.pc-list { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.pc-chapter { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.pc-chapter__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; min-height: 44px; padding: 0.375rem 0.75rem; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.pc-chapter__name { font-weight: 700; }
+.pc-chapter__state { font-size: 0.8125rem; color: var(--text-muted); }
+.pc-chapter__body { display: grid; gap: 0.5rem; padding: 0 0.75rem 0.75rem; }
+.pc-portions { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.pc-portion { display: grid; gap: 0.25rem; }
+.pc-portion__row { display: flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0.25rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.pc-portion__ref { font-weight: 600; font-variant-numeric: tabular-nums; }
+.pc-portion__size { font-size: 0.8125rem; color: var(--text-muted); }
+.pc-act { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: auto; min-height: 32px; padding: 0 0.5rem; border: 0; border-radius: var(--radius-sm); background: none; color: var(--primary); font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.pc-act:hover { background: var(--accent-50); }
+.pc-cut { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.875rem; }
+.pc-join { display: inline-flex; align-items: center; gap: 0.25rem; justify-self: center; min-height: 28px; margin: 0.125rem 0; padding: 0 0.625rem; border: 1px dashed var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-muted); font-size: 0.75rem; cursor: pointer; }
+.pc-join:hover { border-color: var(--accent-400); color: var(--accent-700); }
+.pc-apply { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.625rem 0.75rem; border-radius: var(--radius-md); background: var(--warning-100); color: var(--warning-700); font-size: 0.875rem; }
+.pc-apply p { margin: 0; }

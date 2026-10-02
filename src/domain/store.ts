@@ -1,3 +1,4 @@
+import { normalizeExtraWork, normalizePortionStarts } from "./extraWork";
 import { scopeFolder, scopeKey } from "./scope";
 import {
   ASSIGNMENTS_SCHEMA,
@@ -831,6 +832,10 @@ function normalizeProjectSettings(raw: unknown): ProjectSettings | undefined {
   if (sourcePackage) settings.sourcePackage = sourcePackage;
   const handoffUnits = normalizeHandoffUnits(row.handoffUnits);
   if (handoffUnits) settings.handoffUnits = handoffUnits;
+  const portionStarts = normalizePortionStarts(row.portionStarts);
+  if (portionStarts) settings.portionStarts = portionStarts;
+  const extraWork = normalizeExtraWork(row.extraWork);
+  if (extraWork) settings.extraWork = extraWork;
   return Object.keys(settings).length ? settings : undefined;
 }
 

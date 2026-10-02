@@ -19,7 +19,7 @@ function getWorker(): Worker {
 }
 
 export function generateInventory(
-  params: { book: string; lang: string; contentOrg: string },
+  params: { book: string; lang: string; contentOrg: string; portionStarts?: Record<number, number[]> },
   onProgress: (message: string) => void,
 ): Promise<InventoryDoc> {
   const w = getWorker();

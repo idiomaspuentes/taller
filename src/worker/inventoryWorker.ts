@@ -29,7 +29,7 @@ function defaultRepos(lang: string, contentOrg: string): { org: string; taRepo: 
 }
 
 ctx.onmessage = async (event) => {
-  const { requestId, book, lang, contentOrg } = event.data;
+  const { requestId, book, lang, contentOrg, portionStarts } = event.data;
   const onProgress = (message: string) => ctx.postMessage({ type: "progress", requestId, message });
   try {
     const files = await fetchBookFiles(book, onProgress);
@@ -42,6 +42,7 @@ ctx.onmessage = async (event) => {
       tq: files.tq ? { path: `tq_${book}.tsv`, text: files.tq } : null,
       twl: files.twl ? { path: `twl_${book}.tsv`, text: files.twl } : null,
       hasUst: Boolean(files.ust),
+      portionStarts,
     });
 
     onProgress("Revisando artículos…");

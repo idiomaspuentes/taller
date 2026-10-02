@@ -45,6 +45,9 @@ type Props = {
   onCreateProject: (input: CreateProjectInput) => void;
   /** Start a book in one action (process, reading the book, saving, subtareas). Absent when not signed in. */
   onStartBook?: StartBookProps["onStart"];
+  onAdjustBook?: StartBookProps["onAdjust"];
+  /** A project being prepared on this device and not created yet. */
+  draft?: { projectId: string; onContinue: () => void; onDiscard: () => void };
   /** One team per phase: offered after starting a book, and here while the open project still has tasks without one. */
   phaseTeams?: StartBookProps["phaseTeams"];
   pendingTeams?: { board: Parameters<typeof PhaseTeamsPanel>[0]["board"]; onSaved: Parameters<typeof PhaseTeamsPanel>[0]["onSaved"] };
@@ -74,6 +77,8 @@ export function ProjectsView({
   onOpenProject,
   onCreateProject,
   onStartBook,
+  onAdjustBook,
+  draft,
   phaseTeams,
   pendingTeams,
   onOpenStep,
@@ -201,8 +206,9 @@ export function ProjectsView({
         <>
           <StartBookPanel
             templates={templates.map((row) => ({ id: row.id, name: row.name, description: row.description, phases: row.phases ?? 0, tasks: row.tasks ?? 0 }))}
-            taken={projects.filter((p) => p.kind === "book").map((p) => p.projectId)}
+            taken={[...projects.filter((p) => p.kind === "book").map((p) => p.projectId), ...(draft ? [draft.projectId] : [])]}
             onStart={onStartBook}
+            onAdjust={onAdjustBook}
             onOpen={(id, step) => onOpenStep?.(id, step)}
             onGoToTasks={() => onGoToTasks?.()}
             onCancel={() => setCreating(null)}
@@ -220,6 +226,32 @@ export function ProjectsView({
             {t("sb.otherKind")}
           </button>
         </>
+      ) : null}
+
+      {canManage && draft && !creating ? (
+        <div className="hub-draft">
+          <div>
+            <p className="hub-draft__kind">{t("dp.cardKind")}</p>
+            <p className="hub-draft__name">{isBookProjectId(draft.projectId) ? bookLabel(draft.projectId, language) : draft.projectId}</p>
+            <p className="hub-draft__hint">{t("dp.cardHint")}</p>
+          </div>
+          <div className="pf-footer__actions">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-destructive"
+              onClick={() => {
+                if (window.confirm(t("dp.confirmDiscard"))) draft.onDiscard();
+              }}
+            >
+              {t("dp.discard")}
+            </Button>
+            <Button type="button" size="sm" onClick={draft.onContinue}>
+              {t("dp.continue")}
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {!list.length ? (

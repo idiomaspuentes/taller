@@ -22,6 +22,7 @@ import {
 } from "./assignment";
 import { portionKey, verseRangeLabel } from "./chapters";
 import { isScopedReview, reviewWorkOrders } from "./reviewTask";
+import { extraWorkOrders } from "./extraWork";
 
 export const WORK_ORDER_SCHEMA = "gateway-work-order-1";
 
@@ -466,7 +467,7 @@ export function publishableWorkOrders(
     }
   }
 
-  return named([...assigned, ...open], board.settings?.resourceNames);
+  return [...named([...assigned, ...open], board.settings?.resourceNames), ...extraWorkOrders(board, inventory)];
 }
 
 /** Subtareas titled with the name the project's process gives each resource («2:11–13 · Biblia»). */
@@ -584,7 +585,8 @@ export function workOrderIssueBody(order: WorkOrder): string {
     "",
     `- Tarea: **${order.teamName}**`,
     `- Proyecto: **${order.book}**`,
-    `- Capítulo: **${order.chapter}**`,
+    // Work about the book in general (added by hand) belongs to no chapter.
+    ...(order.chapter > 0 ? [`- Capítulo: **${order.chapter}**`] : []),
     order.assignee ? `- Asignado a: **${order.assignee.person}** (@${order.assignee.personId})` : "- Sin asignar",
     "",
     "### Trabajos",
