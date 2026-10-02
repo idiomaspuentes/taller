@@ -16,6 +16,10 @@ import { closesInItsTool } from "../domain/stepClaim";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { scopeLabel } from "../domain/resourceNames";
+import { originalTokens, quoteFromSelection } from "../domain/quoteFromSelection";
+import { DEFAULT_PM_CONFIG } from "../domain/roles";
+import { verseFromSid } from "../domain/usfmAst";
+import { saveNoteQuote } from "../dcs/teamHelps";
 
 type Props = {
   ctxEncoded: string;
@@ -31,17 +35,23 @@ type Props = {
 const OUTCOME_KEY: Record<CheckOutcome, MessageKey> = { fixed: "ck.fixed", created: "ck.created", consult: "ck.consult" };
 const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.chapter}:${item.verse}`;
 
-/** A verse with the words a quote points at marked. */
-function Verse({ text, marked }: { text: string; marked: number[] }) {
+/** A verse with the words a quote points at marked. With `onToggle`, each word can be marked or unmarked. */
+function Verse({ text, marked, onToggle }: { text: string; marked: number[]; onToggle?: (index: number) => void }) {
   const tokens = tokenizeVersePlainText(text);
   const on = new Set(marked);
   return (
     <span className="ck-verse">
-      {tokens.map((token, index) => (
-        <span key={index}>
-          {on.has(index) ? <mark>{token}</mark> : token}{" "}
-        </span>
-      ))}
+      {tokens.map((token, index) =>
+        onToggle ? (
+          <button key={index} type="button" className="ck-word" aria-pressed={on.has(index)} onClick={() => onToggle(index)}>
+            {token}
+          </button>
+        ) : (
+          <span key={index}>
+            {on.has(index) ? <mark>{token}</mark> : token}{" "}
+          </span>
+        ),
+      )}
     </span>
   );
 }
@@ -68,8 +78,12 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const [stepDone, setStepDone] = useState(false);
   /** A «no» being explained: which question, what was done about it and the note. */
   const [draft, setDraft] = useState<{ answerItemId: string; questionId: string; outcome: CheckOutcome; note: string } | null>(null);
+  /** Fixing the quote of the note in view: the words marked in the text so far. */
+  const [picking, setPicking] = useState<number[] | null>(null);
 
   const textsKey = texts.join(",");
+  /** A note's quote is fixed on the first text of the step, the one its quote is read against. */
+  const canPick = (resource: ChecklistText) => kind === "notas" && resource === texts[0] && Boolean(data?.original) && !data?.fromSource;
   /** What the project's process calls each text. */
   const textLabel = (resource: ChecklistText) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
   const storeKey = ctx ? `${(ctx.book || ctx.projectId).toUpperCase()}.${ctx.issueNumber || ctx.taskId}.${ctx.stepId || "paso"}` : "";
@@ -160,6 +174,32 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${who ? `${who} ` : ""}Consulta sobre ${texts.map((x) => textLabel(x)).join(" y ")} ${where}: ${draft.note.trim()}`).catch(() => undefined);
     }
     setDraft(null);
+  }
+
+  /** The quote of the note in view becomes the words of the original under the words marked in the text. */
+  async function saveQuote(resource: ChecklistText) {
+    if (!session || !ctx || !data || !item || !picking?.length) return;
+    const text = data.texts[resource];
+    const sid = Object.keys(text?.alignments ?? {}).find((key) => verseFromSid(key, item.chapter) === item.verse);
+    const found = quoteFromSelection({
+      verseTokens: tokenizeVersePlainText(text?.verses[item.verse] ?? ""),
+      selected: picking,
+      groups: sid ? text!.alignments![sid]! : [],
+      original: originalTokens(data.original ?? "", item.chapter, item.verse),
+    });
+    if (!found) return setError(t("ck.quoteNotAligned"));
+    setSaving(true);
+    setError("");
+    try {
+      await saveNoteQuote({ session, ctx, pmConfig: data.pmConfig ?? DEFAULT_PM_CONFIG, board: data.board, noteId: item.id, quote: found.quote, occurrence: found.occurrence });
+      setData({ ...data, items: data.items.map((row) => (row.id === item.id ? { ...row, quote: found.quote, occurrence: found.occurrence } : row)) });
+      setPicking(null);
+      announce(t("ck.quoteSaved"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function closeStep() {
@@ -281,11 +321,36 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               return (
                 <div key={resource} className="af-row">
                   <span className="af-lbl">{textLabel(resource)}</span>
-                  {verse ? <Verse text={verse} marked={hit?.tokenIndices ?? []} /> : <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>}
+                  {verse ? (
+                    <Verse
+                      text={verse}
+                      marked={canPick(resource) && picking ? picking : hit?.tokenIndices ?? []}
+                      onToggle={canPick(resource) && picking ? (index) => setPicking(picking.includes(index) ? picking.filter((i) => i !== index) : [...picking, index]) : undefined}
+                    />
+                  ) : (
+                    <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>
+                  )}
                   {item.quote && verse ? (
                     <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
                       {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", textLabel(resource))}
                     </span>
+                  ) : null}
+                  {canPick(resource) && verse && !stepDone ? (
+                    picking ? (
+                      <span className="af-buttons">
+                        <span className="af-hint">{t("ck.quotePickHint")}</span>
+                        <Button type="button" size="sm" disabled={closing || !picking.length} onClick={() => void saveQuote(resource)}>
+                          {t("ck.quoteSave")}
+                        </Button>
+                        <Button type="button" size="sm" variant="secondary" disabled={closing} onClick={() => setPicking(null)}>
+                          {t("af.cancel")}
+                        </Button>
+                      </span>
+                    ) : (
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setPicking(hit?.tokenIndices ?? [])}>
+                        {t("ck.quoteFix")}
+                      </Button>
+                    )
                   ) : null}
                 </div>
               );

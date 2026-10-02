@@ -1606,5 +1606,10 @@
   "gl.changeDrop": "Dejar la decisión como está",
   "gl.changeWaits": "Espera a quien coordina o a una persona habilitada.",
   "gl.changeAccepted": "Cambio aceptado: es la nueva decisión.",
-  "gl.changeDropped": "Se dejó la decisión como estaba."
+  "gl.changeDropped": "Se dejó la decisión como estaba.",
+  "ck.quoteFix": "Corregir la cita",
+  "ck.quotePickHint": "Toca en el texto las palabras a las que se refiere la nota.",
+  "ck.quoteSave": "Guardar la cita",
+  "ck.quoteSaved": "Cita guardada.",
+  "ck.quoteNotAligned": "Esas palabras no están alineadas con el original: no se puede sacar la cita."
 }

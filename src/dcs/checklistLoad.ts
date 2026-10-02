@@ -10,10 +10,10 @@ import { parseNoteRows } from "../domain/afinacionNotes";
 import { parseTermRows } from "../domain/afinacionWords";
 import { helpsTsvFilename, resolveHelpsTarget } from "../domain/helpsTarget";
 import type { LevelBook } from "../domain/levels";
-import { DEFAULT_PM_CONFIG } from "../domain/roles";
+import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
-import { resolveSourcePackage } from "../domain/sourcePackage";
+import { originalTextRef, resolveSourcePackage } from "../domain/sourcePackage";
 import type { AssignmentsDoc, ProjectTask, TaskStep } from "../domain/types";
 import { tryParseUsjWithAlignments, verseTextsFromUsj, type VerseTextMap } from "../domain/usfmAst";
 import { portionRange } from "../domain/usfmEdit";
@@ -47,6 +47,10 @@ export type ChecklistData = {
   items: ChecklistItem[];
   /** True when the items were read from the source language because the translated ones were not found. */
   fromSource: boolean;
+  /** The book in the original language, for working out a quote from marked words (notes only). */
+  original?: string | null;
+  /** The organization's settings as loaded, for writing back to the team's helps. */
+  pmConfig?: PmConfig;
   texts: Partial<Record<ChecklistText, ChecklistTextData>>;
   /** Where the answers are kept. */
   target: CheckTarget;
@@ -165,5 +169,7 @@ export async function loadChecklist(params: {
     }),
   );
 
-  return { book, chapter, kind, items, fromSource, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
+  const originalRef = kind === "notas" ? originalTextRef(book) : null;
+  const original = originalRef ? await readRaw(session, originalRef.owner, originalRef.repo, originalRef.filepath) : null;
+  return { book, chapter, kind, items, fromSource, original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
 }

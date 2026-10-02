@@ -175,7 +175,9 @@ pendientes otra vez. La lista de Academia recorre solo las notas que enlazan un 
 Palabras tiene una subtarea por capítulo (`everyUnit`). Las listas muestran las notas y preguntas **del equipo** (el
 borrador grupal de ese trabajo). Cierra con «Acuerdo del equipo». Pruebas: `verify:checklist`.
 
-**Límites:** corregir una cita seleccionando palabras del TPL no está hecho (hoy se corrige en el editor de ayudas).
+**Corregir una cita:** en la lista de notas, «Corregir la cita» deja marcar las palabras en el TPL; la app saca la
+cita del original por la alineación (en el orden del original, con «&» entre palabras separadas) y la guarda en las
+notas del equipo. Prueba: `verify:quote-selection`.
 
 ### Fase 6 · Validación y Publicación — hecha (2 de octubre de 2026)
 
