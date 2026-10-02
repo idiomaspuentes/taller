@@ -113,6 +113,7 @@ import {
 } from "./viewMode";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { explainError } from "./dcs/userError";
 
 /** Pages that keep the phone's bottom bar: the daily places and the personal ones. */
 const BOTTOM_NAV_ROUTES: string[] = ["avisos", "mis-tareas", "perfil", "hoy", "proyectos", "organizacion", "plantillas", "glosario"];
@@ -658,7 +659,7 @@ export function App() {
           );
         }
       } catch (err) {
-        if (!cancelled) announce(err instanceof Error ? err.message : String(err));
+        if (!cancelled) announce(explainError(err));
       } finally {
         if (!cancelled) setHydrating(false);
       }
@@ -727,7 +728,7 @@ export function App() {
       setJobMessage("Listo.");
     } catch (err) {
       setJobMessage("");
-      announce(err instanceof Error ? err.message : String(err));
+      announce(explainError(err));
     } finally {
       setGenerating(false);
     }
@@ -741,7 +742,7 @@ export function App() {
         if (!isInventoryDoc(parsed)) throw new Error(tNow("app.badInventory"));
         ingestBookInventory(normalizeInventory(parsed), "inventario");
       } catch (err) {
-        announce(err instanceof Error ? err.message : String(err));
+        announce(explainError(err));
       }
     };
     reader.readAsText(file);
@@ -782,7 +783,7 @@ export function App() {
       );
       setWorkspaceOpen(false);
     } catch (err) {
-      announce(err instanceof Error ? err.message : String(err));
+      announce(explainError(err));
     } finally {
       setHydrating(false);
     }

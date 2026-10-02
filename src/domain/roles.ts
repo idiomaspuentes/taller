@@ -180,6 +180,19 @@ export function isPmOrgTeamName(
   return name.startsWith(teamPrefix);
 }
 
+/**
+ * The name a team is shown with. Door43 only keeps letters, digits and hyphens in a team's name, so the name the
+ * person typed («Revisión de notas») is kept in its description; it is used when it still matches the team's name.
+ */
+export function orgTeamLabel(
+  team: { name: string; description?: string },
+  teamPrefix: string = DEFAULT_PM_CONFIG.teamPrefix,
+): string {
+  const typed = team.description?.trim();
+  const bare = displayOrgTeamName(team.name, teamPrefix);
+  return typed && slugTeamName(typed) === slugTeamName(bare) ? typed : bare;
+}
+
 /** Human label for an org team — strips the internal DCS prefix (`pm-…`). */
 export function displayOrgTeamName(
   name: string,

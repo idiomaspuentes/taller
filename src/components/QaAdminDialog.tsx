@@ -49,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   open: boolean;
@@ -67,7 +68,7 @@ type GhostCommit = { ref: string; sha: string; verse: string | null };
 
 function errorText(err: unknown): string {
   if (err instanceof DcsApiError) return `${err.message} (HTTP ${err.status})`;
-  return err instanceof Error ? err.message : String(err);
+  return explainError(err);
 }
 
 function seen(value: boolean): string {

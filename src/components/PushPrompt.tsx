@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { browserPushDeps, enablePush, pushState, type PushState } from "../push";
 import type { GtSession } from "../dcs/auth";
 import { useT } from "../i18n/messages";
+import { explainError } from "../dcs/userError";
 
 const DISMISSED = "taller-push-prompt-dismissed";
 
@@ -57,7 +58,7 @@ export function PushPrompt({ session }: { session: Pick<GtSession, "token" | "ho
       setState(next);
       if (next === "denied") dismiss();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }

@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { explainError } from "../dcs/userError";
 
 const fill = (text: string, values: Record<string, string>) =>
   text.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? "");
@@ -83,7 +84,7 @@ export function PrincipalPassControl({
     try {
       setPreview(await loadPrincipalReviewPreview(passParams));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -99,7 +100,7 @@ export function PrincipalPassControl({
       announce(loc(principalPassToast(result)));
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
       if (review) {
         setPreview(null);
         try {

@@ -5,6 +5,7 @@ import { useNotificationPermission } from "../browserNotifications";
 import { useT } from "../i18n/messages";
 import { loadSession } from "../dcs/auth";
 import { browserPushDeps, disablePush, enablePush, pushState, type PushState } from "../push";
+import { explainError } from "../dcs/userError";
 
 /**
  * "Avisos del navegador": asks Notification permission only on click.
@@ -30,7 +31,7 @@ export function BrowserNotifyToggle() {
     try {
       setPush(on ? await enablePush(pushDeps, session) : await disablePush(pushDeps, session));
     } catch (err) {
-      setPushError(err instanceof Error ? err.message : String(err));
+      setPushError(explainError(err));
     } finally {
       setPushBusy(false);
     }

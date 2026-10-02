@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "../i18n/messages";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession;
@@ -75,7 +76,7 @@ export function TeamBoardView({
       );
       setAllowByProject(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -105,7 +106,7 @@ export function TeamBoardView({
       announce(t("tb.took").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(null);
     }

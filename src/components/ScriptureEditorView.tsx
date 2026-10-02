@@ -102,6 +102,7 @@ import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeName } from "../domain/templateNames";
+import { explainError } from "../dcs/userError";
 
 const EMPTY_PANE: ScripturePane = { usfm: "", verses: {}, meta: null };
 
@@ -1258,7 +1259,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       }
     } catch (err) {
       if (stillThisLoad()) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(explainError(err));
         setNotesLoading(false);
         setDraftLoading(false);
         setBootPending(false);
@@ -1561,7 +1562,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           : t("se.reviewWasOpen"),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setOpeningPr(false);
     }

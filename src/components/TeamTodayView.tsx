@@ -12,6 +12,7 @@ import { localizeName, localizeToday } from "../domain/templateNames";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { LevelBook } from "../domain/levels";
 import { Button } from "@/components/ui/button";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession;
@@ -65,7 +66,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
       setProjects(loadedProjects);
       setLevels(config ?? { levels: {} });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
       setLoaded(true);
@@ -97,7 +98,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
       setReminded((prev) => new Set(prev).add(row.issue.number));
       announce(t("td.didRemind").replace("{who}", row.assignee));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     }
   }
 
@@ -107,7 +108,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
       setReminded((prev) => new Set(prev).add(row.issue.number));
       announce(who.length ? t("td.didRemindMany").replace("{who}", who.map((w) => `@${w}`).join(", ")) : t("td.allVoted"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     }
   }
 
@@ -122,7 +123,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
       setPick("");
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
       setBusy(false);
     }
   }

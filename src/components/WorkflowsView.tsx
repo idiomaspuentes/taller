@@ -49,6 +49,7 @@ import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeName } from "../domain/templateNames";
 import { localizeScope } from "../domain/scopeNames";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession;
@@ -123,7 +124,7 @@ export function WorkflowsView({
       const sol = await loadSolversCatalog(session, pmOrg);
       setSolvers(sol);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -362,7 +363,7 @@ export function WorkflowsView({
           : t("tv.savedLocal").replace("{name}", normalized.name),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -387,7 +388,7 @@ export function WorkflowsView({
       }
       announce(t("wf.deleted"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }

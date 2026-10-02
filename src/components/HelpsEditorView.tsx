@@ -42,6 +42,7 @@ import { localizeName } from "../domain/templateNames";
 import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   ctxEncoded: string;
@@ -284,7 +285,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setDirty(usedCache);
       if (usedCache) announce(tNow("se.restored"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -409,7 +410,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       persistLocal(items, head);
       announce(tNow("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${head}`));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -448,7 +449,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           : tNow("se.reviewWasOpen"),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setOpeningPr(false);
     }

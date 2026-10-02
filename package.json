@@ -68,6 +68,7 @@
     "verify:workflow-upgrade": "tsx --tsconfig tsconfig.scripts.json scripts/verify-workflow-upgrade.mts",
     "verify:glossary": "tsx --tsconfig tsconfig.scripts.json scripts/verify-glossary.mts",
     "verify:start-book": "tsx --tsconfig tsconfig.scripts.json scripts/verify-start-book.mts",
+    "verify:user-error": "tsx --tsconfig tsconfig.scripts.json scripts/verify-user-error.mts",
     "verify:quote-selection": "tsx --tsconfig tsconfig.scripts.json scripts/verify-quote-selection.mts",
     "verify:second-process": "tsx --tsconfig tsconfig.scripts.json scripts/verify-second-process.mts",
     "check:door43-api": "node scripts/check-door43-api.mjs",

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   item: ThreadItem;
@@ -67,7 +68,7 @@ export function DecisionCard({
     try {
       return { prepared: await definition.prepare(target, env) };
     } catch (err) {
-      return { prepareError: err instanceof Error ? err.message : String(err) };
+      return { prepareError: explainError(err) };
     }
   }, [demoPrepared, definition, target, env]);
 
@@ -108,7 +109,7 @@ export function DecisionCard({
       }
       await onRun!(option.id, target);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(null);
     }

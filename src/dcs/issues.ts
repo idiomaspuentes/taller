@@ -626,6 +626,9 @@ export async function previewPublishWorkOrders(params: {
   };
 }
 
+/** How many subtareas are written to Door43 at the same time when a plan is published. */
+const PUBLISH_AT_ONCE = 4;
+
 /**
  * Publish work orders as issues in the PM repo. Idempotent via the HTML marker key.
  */
@@ -669,71 +672,69 @@ export async function publishWorkOrders(params: {
   const results: DcsIssue[] = [];
   const keeps = planKeeps(orders);
 
-  for (let i = 0; i < orders.length; i++) {
-    const order = orders[i];
-    onProgress?.({
-      total: orders.length,
-      done: i,
-      created,
-      updated,
-      current: order.label,
-    });
-
-    const labelNames = pmIssueLabelNames(order, namespaceId);
+  // Labels and the milestone are shared by many subtareas: they are made first, one at a time, so that two
+  // subtareas never try to create the same one. The subtareas themselves then go a few at a time, which is what
+  // takes long on a real server.
+  const prepared: { order: (typeof orders)[number]; labelIds: number[]; milestoneId: number | undefined }[] = [];
+  for (const order of orders) {
     const labelIds: number[] = [];
-    for (const name of labelNames) {
+    for (const name of pmIssueLabelNames(order, namespaceId)) {
       try {
-        labelIds.push(
-          await ensureLabel(session, org, name, labelColorFor(name, namespaceId), labelCache),
-        );
+        labelIds.push(await ensureLabel(session, org, name, labelColorFor(name, namespaceId), labelCache));
       } catch {
         /* label creation may fail without admin; continue without it */
       }
     }
-    const milestoneId = await ensureMilestone(
-      session,
-      org,
-      projectId,
-      milestoneCache,
-    );
+    prepared.push({ order, labelIds, milestoneId: await ensureMilestone(session, org, projectId, milestoneCache) });
+  }
 
-    const title = workOrderIssueTitle(order);
-    const body = workOrderIssueBody(order);
-    const found = known.find(order);
+  let finished = 0;
+  let next = 0;
+  async function worker() {
+    while (next < prepared.length) {
+      const { order, labelIds, milestoneId } = prepared[next++];
+      const title = workOrderIssueTitle(order);
+      const body = workOrderIssueBody(order);
+      const found = known.find(order);
 
-    if (found) {
-      // A closed subtarea means the work finished; the plan carries no "reopen" signal,
-      // so publishing again only refreshes its text and never touches its state.
-      const edited = await editIssue(config, org, PM_REPO_NAME, found.number, {
-        token: session.token,
-        title,
-        body,
-        milestone: milestoneId,
-        assignees: order.assignee ? [order.assignee.personId] : [],
-      });
-      if (labelIds.length) {
-        try {
-          await addIssueLabels(config, org, PM_REPO_NAME, found.number, labelIds, session.token);
-        } catch {
-          /* ignore */
+      if (found) {
+        // A closed subtarea means the work finished; the plan carries no "reopen" signal,
+        // so publishing again only refreshes its text and never touches its state.
+        const edited = await editIssue(config, org, PM_REPO_NAME, found.number, {
+          token: session.token,
+          title,
+          body,
+          milestone: milestoneId,
+          assignees: order.assignee ? [order.assignee.personId] : [],
+        });
+        if (labelIds.length) {
+          try {
+            await addIssueLabels(config, org, PM_REPO_NAME, found.number, labelIds, session.token);
+          } catch {
+            /* ignore */
+          }
         }
+        updated += 1;
+        results.push(edited);
+      } else {
+        const issue = await createIssue(config, org, PM_REPO_NAME, {
+          token: session.token,
+          title,
+          body,
+          milestone: milestoneId,
+          labels: labelIds,
+          assignees: order.assignee ? [order.assignee.personId] : undefined,
+        });
+        created += 1;
+        results.push(issue);
+        known.add(order, issue);
       }
-      updated += 1;
-      results.push(edited);
-    } else {
-      const issue = await createIssue(config, org, PM_REPO_NAME, {
-        token: session.token,
-        title,
-        body,
-        milestone: milestoneId,
-        labels: labelIds,
-        assignees: order.assignee ? [order.assignee.personId] : undefined,
-      });
-      created += 1;
-      results.push(issue);
-      known.add(order, issue);
+      finished += 1;
+      onProgress?.({ total: orders.length, done: finished, created, updated, current: order.label });
     }
   }
+  onProgress?.({ total: orders.length, done: 0, created, updated, current: orders[0]?.label ?? "" });
+  await Promise.all(Array.from({ length: Math.min(PUBLISH_AT_ONCE, prepared.length) }, worker));
 
   if (retireOrphans) {
     for (const issue of existing) {

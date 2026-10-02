@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import type { DcsTeam } from "@ip-lms/dcs-client";
 import { Button } from "@/components/ui/button";
+import { orgTeamLabel } from "../domain/roles";
 import { phasesWithoutTeam } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
 import type { AssignmentsDoc } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   board: AssignmentsDoc;
@@ -28,12 +30,13 @@ export function PhaseTeamsPanel({ board, loadTeams, onSave, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let alive = true;
     loadTeams()
       .then((rows) => alive && setTeams(rows))
-      .catch((err) => alive && setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => alive && setError(explainError(err)));
     return () => {
       alive = false;
     };
@@ -41,7 +44,7 @@ export function PhaseTeamsPanel({ board, loadTeams, onSave, onSaved }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!phases.length && !warnings.length) return null;
+  if (!phases.length && !warnings.length && !saved) return null;
 
   async function save() {
     const picked: Record<string, DcsTeam> = {};
@@ -55,9 +58,10 @@ export function PhaseTeamsPanel({ board, loadTeams, onSave, onSaved }: Props) {
     try {
       const result = await onSave(board, picked);
       setWarnings(result.warnings);
+      setSaved(true);
       onSaved(result.board);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -65,7 +69,7 @@ export function PhaseTeamsPanel({ board, loadTeams, onSave, onSaved }: Props) {
 
   const tasks = phases.reduce((sum, phase) => sum + phase.tasks.length, 0);
   return (
-    <div className="af-stale sb-teams">
+    <div className={phases.length || warnings.length ? "af-stale sb-teams" : "sb-teams sb-teams--done"} role="status">
       {phases.length ? (
         <>
           <p style={{ margin: 0 }}>{t("sb.noTeams").replace("{n}", String(tasks))}</p>
@@ -76,7 +80,7 @@ export function PhaseTeamsPanel({ board, loadTeams, onSave, onSaved }: Props) {
                 <option value="">{teams ? t("sb.pickTeam") : t("sb.loadingTeams")}</option>
                 {(teams ?? []).map((team) => (
                   <option key={team.id} value={String(team.id)}>
-                    {team.name}
+                    {orgTeamLabel(team)}
                   </option>
                 ))}
               </select>

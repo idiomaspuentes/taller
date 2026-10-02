@@ -23,6 +23,7 @@ import {
 } from "../domain/glossary";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession;
@@ -99,7 +100,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
         setCanAgree(Boolean(book) && (book!.levels?.[me] === "habilitada" || Object.values(book!.coordinators ?? {}).some((list) => list.includes(me))));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -168,7 +169,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       }
       setDraft(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -185,7 +186,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       if (accept) setGlossary({ ...glossary, entries: glossary.entries.map((entry) => (entry.id === change.after.id ? change.after : entry)) });
       announce(t(accept ? "gl.changeAccepted" : "gl.changeDropped"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }

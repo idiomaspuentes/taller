@@ -55,6 +55,7 @@ import { Button } from "@/components/ui/button";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
+import { explainError } from "../dcs/userError";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -536,7 +537,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       setStepDone(true);
       announce(t("round.closedNow"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setClosingRound(false);
     }
@@ -693,7 +694,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       announce(t("al.saved").replace("{ref}", `${data.book} ${data.chapter}:${target.verse}`));
       return saved.stored;
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
       return null;
     } finally {
       setSaving(false);
@@ -766,7 +767,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       setDecisions((prev) => [...prev, decision]);
       announce(n(release ? "al.released" : "al.taken", verse.verse));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -799,7 +800,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       announce(n("al.verseDone", verse.verse));
       moveOnAfterAction();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -828,7 +829,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
       moveOnAfterAction();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -915,7 +916,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       setSentIssue(opened.issue.number);
       announce(n("al.decisionOpened", opened.issue.number));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }

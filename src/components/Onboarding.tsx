@@ -5,6 +5,7 @@ import type { GtSession } from "../dcs/auth";
 import { useT } from "../i18n/messages";
 import { canPromptInstall, isInstalled, onInstallChange, promptInstall } from "../installPrompt";
 import { browserPushDeps, enablePush, pushState, type PushState } from "../push";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: Pick<GtSession, "token" | "host" | "username">;
@@ -54,7 +55,7 @@ export function Onboarding({ session, onHide }: Props) {
     try {
       setPush(await enablePush(deps, session));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }

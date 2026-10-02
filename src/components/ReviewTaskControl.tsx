@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession | null;
@@ -144,7 +145,7 @@ export function ReviewTaskControl({
       announce(text);
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }

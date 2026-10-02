@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession | null;
@@ -83,7 +84,7 @@ export function ReleaseVersionControl({
         if (!cancelled) setDecisions(rows);
       })
       .catch((err) => {
-        if (!cancelled) setDecisionsError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setDecisionsError(explainError(err));
       });
     return () => {
       cancelled = true;
@@ -148,7 +149,7 @@ export function ReleaseVersionControl({
       });
       setConfirm((c) => (c && c.profile.id === profile.id && c.now === now ? { ...c, identity } : c));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     }
   }
 
@@ -169,7 +170,7 @@ export function ReleaseVersionControl({
       setConfirm(null);
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }

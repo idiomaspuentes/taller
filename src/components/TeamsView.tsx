@@ -128,8 +128,10 @@ import { StepsEditor } from "./StepsEditor";
 import { EveryUnitField } from "./EveryUnitField";
 import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
+import { localizeName } from "../domain/templateNames";
 import { localizeScope } from "../domain/scopeNames";
 import { bookLabel } from "../domain/books";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   board: AssignmentsDoc;
@@ -764,7 +766,7 @@ export function TeamsView({
           : t("tv.savedLocal").replace("{name}", wf.name),
       );
     } catch (err) {
-      announce(err instanceof Error ? err.message : String(err));
+      announce(explainError(err));
     } finally {
       setApplyBusy(false);
     }
@@ -828,7 +830,7 @@ export function TeamsView({
     try {
       await saveTeamPresetsToDcs(session, pmOrg, next);
     } catch (err) {
-      announce(err instanceof Error ? err.message : String(err));
+      announce(explainError(err));
     }
   }
 
@@ -1041,7 +1043,7 @@ export function TeamsView({
       setAssignEligible(eligible);
       setAssignIneligible(ineligible);
     } catch (err) {
-      setAssignError(err instanceof Error ? err.message : String(err));
+      setAssignError(explainError(err));
     } finally {
       setAssignLoading(false);
     }
@@ -1078,7 +1080,7 @@ export function TeamsView({
       setAssignTask(null);
       await refreshOrgTeams();
     } catch (err) {
-      setAssignError(err instanceof Error ? err.message : String(err));
+      setAssignError(explainError(err));
     } finally {
       setAssignBusyId(null);
     }
@@ -2423,13 +2425,14 @@ export function TeamsView({
         ) : null}
         {board.workflowId ? (
           <p className="basis-full text-xs text-muted-foreground">
-            {t("tv.applied")}<code className="font-mono">{board.workflowId}</code>
+            {t("tv.applied")}
+            {localizeName([...shippedWorkflows(), ...workflowsCatalog.workflows].find((wf) => wf.id === board.workflowId)?.name ?? board.workflowId, language)}
             {board.workflowAppliedAt
               ? ` · ${new Date(board.workflowAppliedAt).toLocaleString(language)}`
               : ""}
           </p>
         ) : null}
-        {!workflowsCatalog.workflows.length ? (
+        {!workflowsCatalog.workflows.length && !board.workflowId ? (
           <p className="basis-full text-xs text-muted-foreground">
             {t("tv.noTemplatesYet")}{" "}
             {onOpenPlantillas ? (
@@ -2613,11 +2616,6 @@ export function TeamsView({
                   <span className="phases-section__count">
                     {t(phaseTasks.length === 1 ? "tv.tasksOne" : "tv.tasksMany").replace("{n}", String(phaseTasks.length))}
                   </span>
-                  {editingPhaseId === phase.id ? null : (
-                    <span className="phases-section__slug" title={t("tv.shortIdAria")}>
-                      {ensurePhaseSlug(phase)}
-                    </span>
-                  )}
                 </div>
                 <div className="phases-section__tools">
                   <Button

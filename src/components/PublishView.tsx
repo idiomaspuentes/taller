@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   board: AssignmentsDoc;
@@ -168,7 +169,7 @@ export function PublishView({
       setDelivered({ kind: "dcs", at: Date.now(), detail: path });
       announce(t("pb.savedIn").replace("{path}", path));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -192,7 +193,7 @@ export function PublishView({
       setPreview(next);
       setConfirmOpen(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setPreviewing(false);
     }
@@ -278,7 +279,7 @@ export function PublishView({
         document.querySelector(".app-main")?.scrollTo({ top: 0, behavior: "smooth" });
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
       setProgress("");
@@ -303,7 +304,7 @@ export function PublishView({
       onImported({ ...board, assignments });
       announce(n("pb.syncedFrom", issues.length));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -325,7 +326,7 @@ export function PublishView({
         setDelivered(null);
         announce(t("pb.imported"));
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(explainError(err));
       }
     };
     reader.readAsText(file);

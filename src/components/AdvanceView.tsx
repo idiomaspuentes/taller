@@ -13,6 +13,7 @@ import { scopeLabel } from "../domain/resourceNames";
 import { PrincipalPassControl } from "./PrincipalPassControl";
 import { ReleaseVersionControl } from "./ReleaseVersionControl";
 import { ReviewTaskControl } from "./ReviewTaskControl";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   /** "tareas": per-task actions (Avance). "version": publish a version (Publicar). */
@@ -49,7 +50,7 @@ export function AdvanceView({ section, board, inventory, onChange, session, pmOr
       })
       .catch((err) => {
         if (!cancelled) {
-          setPassError(`No se pudieron leer las subtareas: ${err instanceof Error ? err.message : String(err)}`);
+          setPassError(`No se pudieron leer las subtareas: ${explainError(err)}`);
         }
       });
     return () => {

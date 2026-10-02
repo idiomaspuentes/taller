@@ -31,6 +31,7 @@ import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeName } from "../domain/templateNames";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   ctxEncoded: string;
@@ -198,7 +199,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
         setError(tNow("fa.nothingLoaded"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }

@@ -31,6 +31,7 @@ import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeAfinacion } from "../domain/afinacionNames";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   ctxEncoded: string;
@@ -231,7 +232,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       setStepDone(true);
       announce(t("round.closedNow"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setClosing(false);
     }
@@ -259,7 +260,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       setDecisions((prev) => [...prev, decision]);
       announce(t("round.decisionSaved"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -323,7 +324,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       setPreferredTerms(next);
       announce(text ? t("af.preferredSet").replace("{text}", text) : t("af.preferredCleared"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -362,7 +363,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
       if (position < visible.length - 1) setPosition((p) => p + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -420,7 +421,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         ).catch(() => undefined);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }

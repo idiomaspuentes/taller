@@ -16,6 +16,7 @@ import { scopeLabel } from "../domain/resourceNames";
 import type { UnitCheckId, UnitProblem } from "../domain/unitPublish";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   ctxEncoded: string;
@@ -118,7 +119,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
         announce(tNow("pu.checksPassed"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -157,7 +158,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
       setTold(true);
       announce(t("pu.told"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setWorking(false);
     }
@@ -184,7 +185,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
       if (ctx.contentOrg && ctx.lang) await saveBookRenderings(session, ctx.contentOrg, ctx.lang, unit.book, publishedTextsOf(unit)).catch((err) => console.warn("glossary index not renewed", err));
       announce(t("pu.published"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setWorking(false);
     }

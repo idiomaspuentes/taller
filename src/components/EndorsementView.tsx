@@ -17,6 +17,7 @@ import type { ChecklistQuestion } from "../domain/types";
 import { scopeLabel } from "../domain/resourceNames";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   ctxEncoded: string;
@@ -73,7 +74,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
         setStepDone(await stepIsDone({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -109,7 +110,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       }
       announce(said);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -127,7 +128,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       setStepDone(true);
       announce(t("en.endorsed"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -149,7 +150,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, body);
       announce(t("en.sentBack"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }

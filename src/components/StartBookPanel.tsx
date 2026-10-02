@@ -10,6 +10,7 @@ import type { AssignmentsDoc, InventoryDoc } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { localizeName } from "../domain/templateNames";
+import { explainError } from "../dcs/userError";
 
 export type StartTemplateOption = { id: string; name: string; description?: string; phases: number; tasks: number };
 export type StartedProject = { board: AssignmentsDoc; inventory: InventoryDoc; created: number };
@@ -53,7 +54,7 @@ export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks,
       // Only the count of subtareas is worth showing; what the reader reports while it works is for developers.
       setDone(await onStart({ book, workflowId }, (at, detail) => setStage({ at, detail: at === "tasks" ? detail : undefined })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setStage(null);
     }

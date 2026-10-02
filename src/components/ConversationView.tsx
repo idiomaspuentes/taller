@@ -68,6 +68,7 @@ import { tNow, useT } from "../i18n/messages";
 import { getUiLanguage, useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeName } from "../domain/templateNames";
+import { explainError } from "../dcs/userError";
 
 export type ConversationDemo = {
   issue: DcsIssue;
@@ -335,7 +336,7 @@ function ConversationThread({
       } catch (err) {
         if (cancelled) return;
         if (isNotFound(err)) setLoad({ status: "missing" });
-        else setLoad({ status: "error", message: err instanceof Error ? err.message : String(err) });
+        else setLoad({ status: "error", message: explainError(err) });
       }
     })();
     return () => {
@@ -449,7 +450,7 @@ function ConversationThread({
         openSolverApp(app, ctx);
         announce(tNow("cv.openingApp").replace("{app}", app.name).replace("{ref}", `${ctx.book} ${ctx.ref}`));
       } catch (err) {
-        announce(err instanceof Error ? err.message : String(err));
+        announce(explainError(err));
       }
     },
     [announce],

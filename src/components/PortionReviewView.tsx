@@ -22,6 +22,7 @@ import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeName } from "../domain/templateNames";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   ctxEncoded: string;
@@ -90,7 +91,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setFiles(nextFiles);
       setDiff(nextDiff);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -128,7 +129,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       );
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(false);
     }
@@ -145,7 +146,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setComment("");
       announce(tNow("pr.commentSent"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(false);
     }

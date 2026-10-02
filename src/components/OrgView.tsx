@@ -10,7 +10,7 @@ import {
   removePmOrgTeamMember,
 } from "../dcs/persist";
 import type { Person } from "../domain/types";
-import {
+import { orgTeamLabel,
   DEFAULT_PM_CONFIG,
   displayOrgTeamName,
   isPmOrgTeamName,
@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession;
@@ -103,7 +104,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
           : t("org.noLevelSet").replace("{who}", login),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setLevelSaving(null);
     }
@@ -119,7 +120,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       setPmConfig(next);
       announce(t(on ? "org.nowCoordinator" : "org.notCoordinator").replace("{who}", login).replace("{team}", friendlyName(teamName)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setLevelSaving(null);
     }
@@ -151,7 +152,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       setMembers(orgMembers);
       void refreshCounts(tas);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
       setLoaded(true);
@@ -250,14 +251,14 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
     setBusy(true);
     setError("");
     try {
-      const team = await createPmOrgTeam(session, pmOrg, name);
+      const team = await createPmOrgTeam(session, pmOrg, name, withoutPrefix);
       setNewTeamName("");
-      announce(t("org.teamCreated").replace("{team}", friendlyName(team.name)));
+      announce(t("org.teamCreated").replace("{team}", orgTeamLabel(team, teamPrefix)));
       await reload();
       setSelectedTeamId(team.id);
       setCreateOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -280,7 +281,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       setPersonQuery("");
       if (list.length > 0) setAddOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActingUser(null);
     }
@@ -298,7 +299,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       announce(t("org.memberRemoved").replace("{who}", username));
       if (canManage && list.length === 0) setAddOpen(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActingUser(null);
     }
@@ -460,7 +461,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
 
           <div className="hub-board" role="list">
             {visibleTeams.map((team) => {
-              const label = friendlyName(team.name);
+              const label = orgTeamLabel(team, teamPrefix);
               const isTas = isPmOrgTeamName(team.name, teamPrefix);
               const expanded = selectedTeamId === team.id;
               const count = memberCounts[team.id];

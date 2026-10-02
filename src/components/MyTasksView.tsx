@@ -83,6 +83,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { recordOwnAction, recordOwnClose } from "../domain/pendingEvents";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession;
@@ -188,7 +189,7 @@ export function MyTasksView({
       setClosedIssues(closed);
       setSolversCatalog(catalog);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
       setLoaded(true);
@@ -352,7 +353,7 @@ export function MyTasksView({
         await reload();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(null);
     }
@@ -376,7 +377,7 @@ export function MyTasksView({
       }
     } catch (err) {
       announce(
-        t("mt.reviewFailed").replace("{err}", err instanceof Error ? err.message : String(err)),
+        t("mt.reviewFailed").replace("{err}", explainError(err)),
       );
     }
   }
@@ -415,7 +416,7 @@ export function MyTasksView({
       announce(t("mt.tookStep").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(null);
     }
@@ -449,7 +450,7 @@ export function MyTasksView({
       );
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(null);
     }
@@ -474,7 +475,7 @@ export function MyTasksView({
       announce(t(wasDone ? "mt.stepUnmarked" : "mt.stepMarked").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(null);
     }
@@ -579,7 +580,7 @@ export function MyTasksView({
       );
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(null);
     }
@@ -596,7 +597,7 @@ export function MyTasksView({
       announce(t("mt.released").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setActing(null);
     }
@@ -631,7 +632,7 @@ export function MyTasksView({
         await claimIssue(session, pmOrg, issue.number);
         announce(t("mt.tookIssue").replace("{n}", String(issue.number)));
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(explainError(err));
         setActing(null);
         return;
       }

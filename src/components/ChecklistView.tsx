@@ -20,6 +20,7 @@ import { originalTokens, quoteFromSelection } from "../domain/quoteFromSelection
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { verseFromSid } from "../domain/usfmAst";
 import { saveNoteQuote } from "../dcs/teamHelps";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   ctxEncoded: string;
@@ -104,7 +105,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         setStepDone(await stepIsDone({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setBusy(false);
     }
@@ -149,7 +150,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       announce(said);
     } catch (err) {
       setAnswers((prev) => prev.filter((row) => !next.includes(row)));
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setWriting((n) => n - 1);
     }
@@ -196,7 +197,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       setPicking(null);
       announce(t("ck.quoteSaved"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -210,7 +211,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       setStepDone(true);
       announce(t("ck.stepClosed"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }

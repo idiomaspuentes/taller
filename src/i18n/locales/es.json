@@ -1691,5 +1691,10 @@
   "sb.portionMany": "{n} porciones",
   "tb.group.later": "Del siguiente libro",
   "sb.nextBook": "{phase} de {book} va en {done} de {total}. Para que ese equipo no se quede sin trabajo, conviene empezar ya el libro siguiente.",
-  "sb.nextBookDo": "Empezar el libro siguiente"
+  "sb.nextBookDo": "Empezar el libro siguiente",
+  "err.notActivated": "Tu cuenta de Door43 todavía no está activada. Busca el correo de confirmación de Door43 y ábrelo, o pide a quien coordina que la active. Después vuelve a entrar.",
+  "err.forbidden": "Door43 no permite hacer esto con tu cuenta. Pide a quien coordina que revise tus permisos.",
+  "err.busy": "Door43 está recibiendo demasiadas peticiones. Espera un momento y vuelve a intentarlo.",
+  "err.server": "Door43 no está respondiendo bien ahora mismo. Vuelve a intentarlo en unos minutos.",
+  "err.network": "No hay conexión con Door43. Revisa tu internet y vuelve a intentarlo."
 }

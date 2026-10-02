@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { explainError } from "../dcs/userError";
 
 type Props = {
   session: GtSession;
@@ -28,7 +29,7 @@ const RESOURCE_LABEL = "TPL";
 
 function errorText(err: unknown): string {
   if (err instanceof DcsApiError) return `${err.message} (HTTP ${err.status})`;
-  return err instanceof Error ? err.message : String(err);
+  return explainError(err);
 }
 
 function seen(value: boolean): string {
