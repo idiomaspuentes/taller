@@ -7,7 +7,36 @@ import { activeScope, issueInScope } from "../domain/scope";
  * limited to the project's own repository. They arrive even for issues the app does not know as
  * subtareas, so a mention is never invisible inside the app.
  */
-export type MentionRow = { id: number; issue: number; title: string; at: string };
+export type MentionRow = {
+  id: number;
+  issue: number;
+  title: string;
+  at: string;
+  /** What was said to this person, and by whom, when it could be read. */
+  text?: string;
+  by?: string;
+};
+
+type CommentRow = { body?: string; user?: { login?: string }; created_at?: string };
+
+/**
+ * What a notification is about, in the words of whoever wrote it: the latest comment that names this person, or
+ * else the latest by somebody else. Mentions at the start and hidden marks are left out; it is cut to a few lines.
+ */
+export function mentionText(comments: CommentRow[], login: string): { text: string; by: string } | null {
+  const me = login.trim().toLowerCase();
+  const others = comments.filter((row) => typeof row.body === "string" && (row.user?.login ?? "").toLowerCase() !== me);
+  const named = others.filter((row) => new RegExp(`@${me.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`, "i").test(row.body!));
+  const pick = (named.length ? named : others).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
+  if (!pick) return null;
+  const text = pick
+    .body!.replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/^(\s*@[\w-]+)+[\s,:]*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return null;
+  return { text: text.length > 220 ? `${text.slice(0, 217).trimEnd()}…` : text, by: pick.user?.login ?? "" };
+}
 
 type Thread = {
   id: number;
@@ -68,7 +97,21 @@ export async function listMentions(session: GtSession, org: string, repo: string
   if (!res.ok) return [];
   const rows = mentionRows((await res.json()) as Thread[], org, repo);
   const keep = await Promise.all(rows.map((row) => belongsToSpace(session, org, repo, row.issue, doFetch)));
-  return rows.filter((_, i) => keep[i]);
+  const mine = rows.filter((_, i) => keep[i]);
+  // What each one says, so the list can be read without opening every conversation. A row whose comments cannot
+  // be read still shows, by its title.
+  return Promise.all(
+    mine.map(async (row) => {
+      try {
+        const got = await doFetch(`${base}/repos/${org}/${repo}/issues/${row.issue}/comments`, { headers: headers(session) });
+        const list = got.ok ? ((await got.json()) as unknown) : null;
+        const said = Array.isArray(list) ? mentionText(list as CommentRow[], session.username) : null;
+        return said ? { ...row, ...said } : row;
+      } catch {
+        return row;
+      }
+    }),
+  );
 }
 
 export async function markMentionRead(session: GtSession, id: number, doFetch: typeof fetch = fetch): Promise<void> {

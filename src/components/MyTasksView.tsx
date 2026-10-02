@@ -885,7 +885,19 @@ export function MyTasksView({
           <div className="grid gap-2 p-3">
             {mentions.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2">
-                <span className="min-w-0 font-semibold">{row.title}</span>
+                <span className="min-w-0 grid gap-0.5">
+                  {row.text ? (
+                    <>
+                      <span>{localizeThread(row.text, language)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {row.by ? `@${row.by} · ` : ""}
+                        {row.title}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-semibold">{row.title}</span>
+                  )}
+                </span>
                 <Button
                   type="button"
                   size="sm"

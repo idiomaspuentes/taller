@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { issueNumberOf, listMentions, markMentionRead, markSeen, mentionRows, withoutSeen } from "../src/dcs/mentions";
+import { issueNumberOf, listMentions, markMentionRead, markSeen, mentionRows, mentionText, withoutSeen } from "../src/dcs/mentions";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void> | void) {
@@ -65,6 +65,20 @@ await test("la lista de lo visto se recorta para no crecer sin fin", () => {
   for (let i = 1; i <= 30; i++) seen = markSeen(seen, { id: i, at: `2026-10-01T10:${String(i).padStart(2, "0")}:00Z` }, 10);
   assert.equal(Object.keys(seen).length, 10);
   assert.ok("30" in seen && !("1" in seen), "se olvidan las más viejas");
+});
+
+await test("el aviso muestra lo que te dijeron: el último comentario que te nombra", () => {
+  const comments = [
+    { body: "@ana ¿puedes mirar esto?", user: { login: "bea" }, created_at: "2026-10-01T10:00:00Z" },
+    { body: "<!-- gt:marca -->\n@ana @carla Traducción de 3 Juan va en 15 de 21.\nConviene empezar ya el libro siguiente.", user: { login: "bea" }, created_at: "2026-10-02T10:00:00Z" },
+    { body: "Listo, gracias.", user: { login: "carla" }, created_at: "2026-10-03T10:00:00Z" },
+    { body: "@ana nota para mí", user: { login: "ana" }, created_at: "2026-10-04T10:00:00Z" },
+  ];
+  assert.deepEqual(mentionText(comments, "ana"), { text: "Traducción de 3 Juan va en 15 de 21. Conviene empezar ya el libro siguiente.", by: "bea" });
+  assert.deepEqual(mentionText(comments.slice(0, 3), "dina"), { text: "Listo, gracias.", by: "carla" }, "sin mención: lo último que dijo otra persona");
+  assert.deepEqual(mentionText([{ body: "@ana primero", user: { login: "bea" }, created_at: "1" }, { body: "@anabel después", user: { login: "bea" }, created_at: "2" }], "ana")?.text, "primero", "«@anabel» no es «@ana»");
+  assert.equal(mentionText([], "ana"), null);
+  assert.equal(mentionText([{ body: "x".repeat(400), user: { login: "bea" } }], "ana")!.text.length, 218);
 });
 
 console.log(`\nverify-mentions: ${passed} checks passed.`);
