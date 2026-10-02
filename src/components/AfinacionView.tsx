@@ -837,7 +837,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             <p className="af-lbl">{t("af.judgeStep")}</p>
             <p className="af-question">
               {stepProp === "notas"
-                ? t(QUESTION[stepProp][data.resource]).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
+                ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
                 : t(QUESTION[stepProp][data.resource])}
             </p>
             {stepProp === "notas" ? (
