@@ -1,4 +1,4 @@
-import { activeScope, issueInScope, scopeFolder, scopeLabelName, scopedMilestone } from "../domain/scope";
+import { activeScope, issueInScope, projectFromMilestone, scopeFolder, scopeLabelName, scopedMilestone } from "../domain/scope";
 import {
   addIssueAssignees,
   addIssueLabels,
@@ -195,9 +195,21 @@ async function searchPmIssues(
     more = batch.length === 50;
     page += 1;
   }
-  return issues.filter(
-    (issue) => isPmNamespacedIssue(issue, namespaceId) && isGatewayTasksRepo(issue) && issueInScope(issue),
+  return issuesOfMilestones(
+    issues.filter((issue) => isPmNamespacedIssue(issue, namespaceId) && isGatewayTasksRepo(issue) && issueInScope(issue)),
+    opts.milestones,
   );
+}
+
+/**
+ * Only the issues of the projects asked for. Door43 ignores a milestone filter that names a milestone it does not
+ * have (a project that has no subtareas yet) and answers with every issue of the organization: taking that answer as
+ * «the subtareas of this project» made starting a second book close all the subtareas of the first.
+ */
+export function issuesOfMilestones<T extends { milestone?: { title?: string } | null }>(issues: T[], projects: string[] | undefined): T[] {
+  if (!projects?.length) return issues;
+  const wanted = new Set(projects.map((id) => projectFromMilestone(id).toUpperCase()));
+  return issues.filter((issue) => wanted.has(projectFromMilestone(issue.milestone?.title).toUpperCase()));
 }
 
 export async function loadPmConfig(session: GtSession, org: string): Promise<PmConfig> {

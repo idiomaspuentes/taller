@@ -45,6 +45,8 @@ function toApi(issue: FakeIssue) {
     body: issue.body,
     state: issue.state,
     labels: [],
+    // Every subtarea of a project carries its milestone: that is how they are told from another project's.
+    milestone: { id: 1, title: "NEH" },
     assignees: issue.assignees.map((login) => ({ login })),
     assignee: issue.assignees[0] ? { login: issue.assignees[0] } : null,
     html_url: `https://qa.door43.org/${ORG}/${PM}/issues/${issue.number}`,

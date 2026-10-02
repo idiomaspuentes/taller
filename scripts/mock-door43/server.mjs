@@ -432,8 +432,10 @@ async function handle(req, res) {
     const mine = url.searchParams.get("assigned") === "true";
     let list = issues.filter((i) => state === "all" || i.state === state);
     if (mine && user) list = list.filter((i) => i.assignees.some((a) => a.login === user.login));
-    // Like the real API: only the issues of the given milestones (a project) and with every given label.
-    const wantedMilestones = (url.searchParams.get("milestones") || "").split(",").map((x) => x.trim()).filter(Boolean);
+    // Like the real API: only the issues of the given milestones (a project) and with every given label. And like
+    // the real API (seen on qa.door43.org, October 2026): a milestone that does not exist is not a filter at all,
+    // and every issue comes back.
+    const wantedMilestones = (url.searchParams.get("milestones") || "").split(",").map((x) => x.trim()).filter((title) => title && milestones.some((m) => m.title === title));
     if (wantedMilestones.length) list = list.filter((i) => i.milestone && wantedMilestones.includes(i.milestone.title));
     const wantedLabels = (url.searchParams.get("labels") || "").split(",").map((x) => x.trim()).filter(Boolean);
     if (wantedLabels.length) list = list.filter((i) => !i.labels.length || wantedLabels.every((name) => i.labels.some((l) => l.name === name)));
