@@ -1968,7 +1968,7 @@
   "pw.openThread": "Abrir su conversación",
   "pj.updated": "cambió el {date}",
   "sb.noTeamsOne": "En {book} falta decir qué equipo hace una tarea. Nadie podrá tomarla hasta entonces.",
-  "fa.lede": "Lee cada parte en orden y márcala al terminarla. Si lo dejas a medias, se retoma donde quedaste.",
+  "fa.lede": "Lee cada parte y márcala al terminarla. Si lo dejas a medias, se retoma donde quedaste.",
   "fa.progress": "{done} de {total} leído",
   "fa.passage": "El pasaje en su capítulo",
   "fa.passageHint": "El literal muestra cómo lo dice el original; el simple, qué quiere decir. Compáralos versículo por versículo.",
@@ -2031,5 +2031,10 @@
   "se.finishShort": "Terminé",
   "fa.scope": "Cuánto del capítulo se muestra",
   "fa.yourPassage": "Tu pasaje",
-  "fa.chapterHint": "Lee el capítulo entero para entender de dónde viene y a dónde va tu pasaje, que está marcado. El literal muestra cómo lo dice el original; el simple, qué quiere decir."
+  "fa.chapterHint": "Lee el capítulo entero para entender de dónde viene y a dónde va tu pasaje, que está marcado. El literal muestra cómo lo dice el original; el simple, qué quiere decir.",
+  "fa.partsAria": "Partes del estudio",
+  "fa.tabBook": "El libro",
+  "fa.tabChapter": "El capítulo",
+  "fa.tabPassage": "El pasaje",
+  "fa.tabNotes": "Notas"
 }

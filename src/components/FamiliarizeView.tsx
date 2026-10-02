@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronRight } from "lucide-react";
+import { Check, NotebookPen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession } from "../dcs/auth";
@@ -92,7 +92,9 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [open, setOpen] = useState<SectionId | null>(null);
+  /** The tab in view: one of the parts to read, or the person's notes. */
+  const [open, setOpen] = useState<SectionId | "apuntes" | null>(null);
+  const [noteCount, setNoteCount] = useState(0);
   /** The whole chapter is read, with the passage marked in it; the person can narrow it to the passage alone. */
   const [wholeChapter, setWholeChapter] = useState(true);
   const [done, setDone] = useState(false);
@@ -100,7 +102,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const [doubt, setDoubt] = useState("");
   const [doubtSent, setDoubtSent] = useState(false);
   const [sending, setSending] = useState(false);
-  const refs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -166,7 +168,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   // The first section still to read opens by itself once everything is loaded.
   useEffect(() => {
     if (busy || !ctx || !range) return;
-    setOpen((current) => current ?? sections.find((id) => !seen.has(markId(id))) ?? null);
+    setOpen((current) => current ?? sections.find((id) => !seen.has(markId(id))) ?? sections[0] ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, sections.join(",")]);
 
@@ -175,8 +177,9 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     const next = new Set(markFamiliarizeSeen(ctx.username, ctx.lang, markId(id)));
     setSeen(next);
     const following = sections.slice(sections.indexOf(id) + 1).find((row) => !next.has(markId(row))) ?? null;
-    setOpen(following);
-    if (following) window.requestAnimationFrame(() => refs.current[following]?.scrollIntoView({ block: "start", behavior: "smooth" }));
+    if (following) setOpen(following);
+    // The next part starts at its top; when none is left, the bar at the bottom offers to finish.
+    if (following) window.requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0 }));
   }
 
   async function finish() {
@@ -285,6 +288,10 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     );
   }
 
+  const current = open ?? sections[0] ?? null;
+  const canNote = Boolean(ctx?.projectId && ctx.pmOrg && loadSession()?.token);
+  /** Short names for the tabs; the panel below carries the full title. */
+  const tabName = (id: SectionId) => (id === "book" ? t("fa.tabBook") : id === "chapter" ? t("fa.tabChapter") : id === "passage" ? t("fa.tabPassage") : `${t("fa.tabNotes")} ${notes.notes.length}`);
   const title = (id: SectionId) => (id === "chapter" && range ? t("fa.chapterIntro").replace("{n}", String(range.chapter)) : id === "notes" ? `${t("fa.notesTitle")} (${notes.notes.length})` : t(SECTION_TITLE[id]));
   const passageName = ctx ? `${bookLabel(ctx.book, language)} ${ctx.ref}` : t("fa.title");
 
@@ -320,65 +327,65 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
       {busy ? (
         <p className="scripture-editor__loading">{t("fa.loading")}</p>
       ) : loggedIn && range ? (
-        <div className="fam__body" aria-label={t("fa.readAria")}>
-          {done ? <p className="fam__done">{t("fa.alreadyDone")}</p> : <p className="fam__lede">{t("fa.lede")}</p>}
-          <ol className="fam__sections">
-            {sections.map((id, index) => {
-              const isOpen = open === id;
-              const readIt = isRead(id);
-              return (
-                <li
-                  key={id}
-                  className="fam-section"
-                  data-read={readIt ? "true" : undefined}
-                  ref={(node) => {
-                    refs.current[id] = node;
-                  }}
-                >
-                  <button type="button" className="fam-section__head" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : id)}>
-                    <span className="fam-section__n" aria-hidden>
-                      {readIt ? <Check size={14} /> : index + 1}
-                    </span>
-                    <span className="fam-section__title">{title(id)}</span>
-                    <span className="fam-section__state">{readIt ? t("fa.read") : ""}</span>
-                    {isOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-                  </button>
-                  {isOpen ? (
-                    <div className="fam-section__body">
-                      {body(id)}
-                      {!readIt ? (
-                        <Button type="button" className="justify-self-start" onClick={() => read(id)}>
-                          <Check size={16} aria-hidden /> {t(sections.slice(index + 1).some((row) => !isRead(row)) ? "fa.readNext" : "fa.readLast")}
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-
-          {ctx?.projectId && ctx.pmOrg && loadSession() ? (
-            <section className="fam-notes-box">
-              <h2 className="fam-notes-box__title">{t("sn.title")}</h2>
-              <p className="pe-hint">{t("sn.lede")}</p>
-              <StudyNotesPanel session={loadSession()!} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} />
-            </section>
+        <>
+        <div className="fam-tabs" role="tablist" aria-label={t("fa.partsAria")}>
+          {sections.map((id, index) => (
+            <button key={id} type="button" role="tab" className="fam-tab" aria-selected={current === id} data-read={isRead(id) ? "true" : undefined} onClick={() => setOpen(id)}>
+              <span className="fam-tab__n" aria-hidden>
+                {isRead(id) ? <Check size={12} /> : index + 1}
+              </span>
+              {tabName(id)}
+            </button>
+          ))}
+          {canNote ? (
+            <button type="button" role="tab" className="fam-tab fam-tab--notes" aria-selected={current === "apuntes"} onClick={() => setOpen("apuntes")}>
+              <NotebookPen size={14} aria-hidden /> {t("sn.tab")}
+              {noteCount ? <span className="fam-tab__count">{noteCount}</span> : null}
+            </button>
           ) : null}
+        </div>
+        <div className="fam__body" aria-label={t("fa.readAria")} ref={bodyRef}>
+          {done ? <p className="fam__done">{t("fa.alreadyDone")}</p> : null}
 
-          {ctx?.issueNumber ? (
-            <section className="fam-doubt">
-              <label className="pe-label" htmlFor="fam-doubt">
-                {t("fa.doubtTitle")}
-              </label>
-              <p className="pe-hint">{t("fa.doubtHint")}</p>
-              <textarea id="fam-doubt" className="af-textarea" rows={3} value={doubt} placeholder={t("fa.doubtPlaceholder")} onChange={(e) => setDoubt(e.target.value)} />
-              <div className="fam-doubt__row">
-                <Button type="button" size="sm" variant="outline" disabled={sending || !doubt.trim()} onClick={() => void sendDoubt()}>
-                  {sending ? t("wf.saving") : t("fa.doubtSend")}
-                </Button>
-                {doubtSent ? <span className="af-saved">{t("fa.doubtSent")}</span> : null}
-              </div>
+          {sections.map((id, index) =>
+            current === id ? (
+              <section key={id} className="fam-panel" role="tabpanel">
+                <h2 className="fam-panel__title">{title(id)}</h2>
+                {body(id)}
+                {!isRead(id) ? (
+                  <Button type="button" className="justify-self-start" onClick={() => read(id)}>
+                    <Check size={16} aria-hidden /> {t(sections.slice(index + 1).some((row) => !isRead(row)) ? "fa.readNext" : "fa.readLast")}
+                  </Button>
+                ) : (
+                  <p className="fam-panel__read">
+                    <Check size={14} aria-hidden /> {t("fa.read")}
+                  </p>
+                )}
+              </section>
+            ) : null,
+          )}
+
+          {canNote && ctx ? (
+            // Kept mounted, so that its count shows on the tab and what is being written is not lost by changing tab.
+            <section className="fam-panel" role="tabpanel" hidden={current !== "apuntes"}>
+              <h2 className="fam-panel__title">{t("sn.title")}</h2>
+              <p className="pe-hint">{t("sn.lede")}</p>
+              <StudyNotesPanel session={loadSession()!} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} onCount={setNoteCount} />
+              {ctx.issueNumber ? (
+                <div className="fam-doubt">
+                  <label className="pe-label" htmlFor="fam-doubt">
+                    {t("fa.doubtTitle")}
+                  </label>
+                  <p className="pe-hint">{t("fa.doubtHint")}</p>
+                  <textarea id="fam-doubt" className="af-textarea" rows={3} value={doubt} placeholder={t("fa.doubtPlaceholder")} onChange={(e) => setDoubt(e.target.value)} />
+                  <div className="fam-doubt__row">
+                    <Button type="button" size="sm" variant="outline" disabled={sending || !doubt.trim()} onClick={() => void sendDoubt()}>
+                      {sending ? t("wf.saving") : t("fa.doubtSend")}
+                    </Button>
+                    {doubtSent ? <span className="af-saved">{t("fa.doubtSent")}</span> : null}
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : null}
 
@@ -395,6 +402,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             )}
           </div>
         </div>
+        </>
       ) : null}
     </div>
   );
