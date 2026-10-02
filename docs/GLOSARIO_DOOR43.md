@@ -130,7 +130,43 @@ Para no recorrer todos los libros cada vez, se guarda un **índice generado** (n
 que se actualiza cuando un capítulo sale de Afinación. Puede ir como archivo adjunto de cada release
 o en un repositorio aparte de datos generados **(por decidir)**.
 
-## 4. Riesgos
+## 4. Que no se vuelva una lista larga y pesada
+
+El glosario **no se lee como lista**. Nadie debería tener que abrirlo y recorrerlo.
+
+**a) Se muestra en contexto.** Quien trabaja Tito 2:11-15 ve solo las entradas de las palabras que
+están en esos cinco versículos: cinco o seis, no cinco mil. Aparecen junto al texto, en el momento
+en que hacen falta.
+
+**b) Se busca, no se recorre.** Un buscador por palabra en español, en inglés o del original, y por
+versículo. La búsqueda encuentra cualquier forma de la palabra.
+
+**c) Vistas cortas en lugar de «todo»:**
+- **De este capítulo / de este libro:** las palabras que aparecen ahí.
+- **Cambios recientes:** lo que cambió desde la última vez que la persona miró. Es lo que Traducción
+  necesita para aprender, y son pocas líneas por semana.
+- **Por acordar:** las propuestas que esperan a un equipo.
+- **Esenciales:** las palabras clave marcadas como tales (unas decenas), para quien empieza.
+
+**d) Se mantiene pequeño por diseño.** Solo entra lo que **aporta una decisión**:
+- una palabra con más de una traducción posible, o que costó;
+- algo que el equipo acordó o cambió.
+
+Lo que siempre se traduce igual y sin duda **no necesita entrada**: ya se ve en «cómo se tradujo
+antes», que se calcula solo. Así el glosario crece con las decisiones, no con el vocabulario.
+
+**e) Cada entrada es corta a la vista:** palabra, traducción y dónde vale. La razón, las
+alternativas, lo que se evita y los ejemplos se abren al tocarla.
+
+**f) Limpieza.** Dos entradas de la misma palabra y sentido se pueden **unir**; una que dejó de
+usarse se **archiva** (no se borra, para conservar el historial).
+
+**En Door43**, el tamaño tampoco es problema: unos miles de filas de texto pesan poco. Si un archivo
+crece demasiado para editarlo con comodidad, se parte por la letra inicial del lema sin cambiar el
+formato. Quien abra el repositorio a mano verá archivos largos, pero ese no es el uso previsto: el
+`README.md` lo dice y remite a la app.
+
+## 5. Riesgos
 
 - **Choques al editar el mismo archivo.** Se reducen con una fila por línea, archivos por idioma de
   origen y cambios pequeños.
@@ -139,7 +175,7 @@ o en un repositorio aparte de datos generados **(por decidir)**.
 - **Strong y lemas en hebreo** tienen casos con dos formas (lo escrito y lo leído). Se usa el lema
   del texto de alineación (UHB), igual que en la herramienta de alineación.
 
-## 5. Por decidir
+## 6. Por decidir
 
 1. El nombre del identificador (`tg`) y del tema.
 2. Si el índice generado va en las releases o en un repositorio aparte.
