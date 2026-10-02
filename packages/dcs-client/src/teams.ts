@@ -10,6 +10,8 @@ export interface DcsTeam {
   /** Absent only in malformed/edge-case API responses — a real team always belongs to an org. */
   organization?: { id: number; name: string };
   units?: string[];
+  /** What the team may do per unit (`repo.code`: `read` | `write` | …). Current servers answer with this and leave `permission` as `none` when it is set. */
+  units_map?: Record<string, string>;
 }
 
 /**
@@ -69,6 +71,8 @@ export interface CreateTeamParams {
   includesAllRepositories?: boolean;
   /** Gitea unit keys. Defaults to `["repo.code"]`. Pass `["repo.code", "repo.issues"]` when the team needs issue write. */
   units?: string[];
+  /** Per-unit access (`{ "repo.code": "write" }`). Current servers need this to grant anything but read: `permission` alone is ignored when `units` is sent. */
+  unitsMap?: Record<string, string>;
   token: string;
 }
 
@@ -93,6 +97,7 @@ export function createTeam(config: DcsClientConfig, org: string, params: CreateT
       can_create_org_repo: params.canCreateOrgRepo ?? false,
       includes_all_repositories: params.includesAllRepositories ?? false,
       units: params.units ?? ["repo.code"],
+      units_map: params.unitsMap,
     },
   });
 }

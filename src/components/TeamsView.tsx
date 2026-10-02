@@ -130,7 +130,7 @@ import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeName } from "../domain/templateNames";
 import { PhaseTeamsPanel } from "./PhaseTeamsPanel";
-import { setPhaseTeams } from "../dcs/startBook";
+import { loadTeamOptions, setTaskTeams } from "../dcs/startBook";
 import { localizeScope } from "../domain/scopeNames";
 import { bookLabel } from "../domain/books";
 import { explainError } from "../dcs/userError";
@@ -2391,8 +2391,8 @@ export function TeamsView({
           key={board.projectId}
           mode="all"
           board={board}
-          loadTeams={() => listPmOrgTeams(session, pmOrg)}
-          onSave={(doc, choice, replace) => setPhaseTeams({ session, pmOrg, board: doc, choice, replace })}
+          loadTeams={() => loadTeamOptions({ session, pmOrg, lang: board.lang })}
+          onSave={(doc, choice) => setTaskTeams({ session, pmOrg, board: doc, choice })}
           onSaved={onChange}
         />
       ) : null}

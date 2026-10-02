@@ -101,7 +101,10 @@ export async function createPmOrgTeam(
   return createTeam(dcsConfig(session.host), org, {
     name: name.trim(),
     description: description.trim() || undefined,
-    permission: "read",
+    // The team exists to do work: it may edit (and open reviews on) the repositories it is given, and only those.
+    permission: "write",
+    units: ["repo.code", "repo.issues", "repo.pulls"],
+    unitsMap: { "repo.code": "write", "repo.issues": "write", "repo.pulls": "write" },
     canCreateOrgRepo: false,
     includesAllRepositories: false,
     token: session.token,

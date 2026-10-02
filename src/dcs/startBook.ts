@@ -1,13 +1,15 @@
-import type { DcsTeam } from "@ip-lms/dcs-client";
+import { listTeamRepos, type DcsTeam } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { assignOrgTeamToTask, commentOnIssue, listProjectIssues, loadPmConfig, publishWorkOrders } from "./issues";
-import { loadAssignmentsFromDcs, saveProjectToDcs } from "./persist";
+import { dcsConfig } from "./config";
+import { listPmOrgTeams, loadAssignmentsFromDcs, saveProjectToDcs } from "./persist";
 import { bookName, normalizeProjectId } from "../domain/books";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
-import { firstPhaseTeams, inheritTeams, nextBookHint, phaseTeams, phasesWithoutTeam, reachesNextBook, type NextBookHint } from "../domain/startBook";
+import { firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, type NextBookHint, type TeamOption } from "../domain/startBook";
+import { reposForTask } from "../domain/roles";
 import { emptyAssignments, mergePeople } from "../domain/store";
-import type { AssignmentsDoc, InventoryDoc, WorkflowTemplate } from "../domain/types";
+import type { AssignmentsDoc, InventoryDoc, ProjectTask, WorkflowTemplate } from "../domain/types";
 import { applyWorkflowToBoard } from "../domain/workflows";
 import { generateInventory } from "../worker/client";
 
@@ -60,37 +62,55 @@ export async function startBook(params: {
   return { board, inventory, created: result.created };
 }
 
+export type TeamOptions = { teams: TeamOption[]; needs: (task: ProjectTask) => string[] };
+
+/** The teams of the organization with what each may edit, and which repositories a task writes to. */
+export async function loadTeamOptions(params: { session: GtSession; pmOrg: string; lang: string }): Promise<TeamOptions> {
+  const { session, pmOrg, lang } = params;
+  const config = dcsConfig(session.host);
+  const [pmConfig, rows] = await Promise.all([loadPmConfig(session, pmOrg), listPmOrgTeams(session, pmOrg)]);
+  const teams = await Promise.all(
+    rows.map(async (team): Promise<TeamOption> => {
+      const allRepos = Boolean((team as { includes_all_repositories?: boolean }).includes_all_repositories);
+      // A team that cannot be read is shown as having nothing: choosing it says what it will be given.
+      const repos = allRepos ? [] : await listTeamRepos(config, team.id, session.token, { limit: 100 }).then((list) => list.map((repo) => repo.name)).catch(() => []);
+      // What counts is whether it may write code; the server reports that per unit and leaves the old field empty.
+      const code = team.units_map?.["repo.code"] as TeamOption["permission"] | undefined;
+      return { id: team.id, name: team.name, description: team.description, permission: code ?? team.permission, repos, allRepos };
+    }),
+  );
+  return { teams, needs: (task) => reposForTask(task, lang, pmConfig) };
+}
+
 /**
- * One team per phase: every task of the phase that has nobody gets the chosen team and its people, and the project
- * is saved. With `replace`, the tasks that already had a team get the chosen one too (changing who does a phase).
- * A task the team cannot take (it lacks a repository and it cannot be given) is left as it was and told.
+ * Give each task its chosen team and its people, and save the project. A task the team cannot take (it lacks a
+ * repository and it cannot be given) is left as it was and told.
  */
-export async function setPhaseTeams(params: {
+export async function setTaskTeams(params: {
   session: GtSession;
   pmOrg: string;
   board: AssignmentsDoc;
-  choice: Record<string, DcsTeam>;
-  replace?: boolean;
+  /** The team for each task, by task id. */
+  choice: Record<string, TeamOption>;
 }): Promise<{ board: AssignmentsDoc; warnings: string[] }> {
   const { session, pmOrg, choice } = params;
   const pmConfig = await loadPmConfig(session, pmOrg);
   const warnings = new Set<string>();
   let board = params.board;
-  for (const phase of params.replace ? phaseTeams(board) : phasesWithoutTeam(board)) {
-    const orgTeam = choice[phase.id];
-    if (!orgTeam) continue;
-    for (const task of phase.tasks) {
-      try {
-        const done = await assignOrgTeamToTask({ session, org: pmOrg, lang: board.lang, task, orgTeam, grantMissingRepos: true, pullMembers: true, pmConfig });
-        for (const warning of done.warnings) warnings.add(warning);
-        board = {
-          ...board,
-          people: mergePeople(board.people, done.memberLogins.map((login) => ({ id: login, name: login }))),
-          teams: board.teams.map((row) => (row.id === task.id ? done.task : row)),
-        };
-      } catch (err) {
-        warnings.add(err instanceof Error ? err.message : String(err));
-      }
+  for (const task of params.board.teams) {
+    const picked = choice[task.id];
+    if (!picked) continue;
+    try {
+      const orgTeam: DcsTeam = { id: picked.id, name: picked.name, description: picked.description, permission: picked.permission };
+      const done = await assignOrgTeamToTask({ session, org: pmOrg, lang: board.lang, task, orgTeam, grantMissingRepos: true, pullMembers: true, pmConfig });
+      for (const warning of done.warnings) warnings.add(warning);
+      board = {
+        ...board,
+        people: mergePeople(board.people, done.memberLogins.map((login) => ({ id: login, name: login }))),
+        teams: board.teams.map((row) => (row.id === task.id ? done.task : row)),
+      };
+    } catch (err) {
+      warnings.add(err instanceof Error ? err.message : String(err));
     }
   }
   if (board !== params.board) await saveProjectToDcs({ session, org: pmOrg, lang: board.lang, book: board.projectId, assignments: board, inventory: null });

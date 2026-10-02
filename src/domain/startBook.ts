@@ -66,6 +66,31 @@ export function phaseTeams(board: Pick<AssignmentsDoc, "phases" | "teams">): Pha
     .filter((phase) => phase.tasks.length);
 }
 
+/** A team of the organization as the chooser needs it: what it may do and on which repositories. */
+export type TeamOption = {
+  id: number;
+  name: string;
+  description?: string;
+  permission: "none" | "read" | "write" | "admin" | "owner";
+  /** Repositories the team was given; ignored when it has all of the organization's. */
+  repos: string[];
+  allRepos: boolean;
+};
+
+export type TeamAccess = {
+  /** `edits`: can already write everything; `will-get`: may write, but lacks repositories; `read-only`: may not write. */
+  state: "edits" | "will-get" | "read-only";
+  missing: string[];
+};
+
+/** Whether a team can edit the repositories a task (or a phase) writes to, and which ones it still lacks. */
+export function teamAccess(team: Pick<TeamOption, "permission" | "repos" | "allRepos">, needed: string[]): TeamAccess {
+  const has = new Set(team.repos.map((repo) => repo.toLowerCase()));
+  const missing = team.allRepos ? [] : needed.filter((repo) => !has.has(repo.toLowerCase()));
+  if (team.permission === "read" || team.permission === "none") return { state: "read-only", missing };
+  return { state: missing.length ? "will-get" : "edits", missing };
+}
+
 export type PhaseStart = {
   id: string;
   name: string;

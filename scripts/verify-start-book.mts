@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { bookSize, firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, phasesAtStart, phaseTeams, phasesWithoutTeam, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
+import { bookSize, firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, phasesAtStart, phaseTeams, phasesWithoutTeam, teamAccess, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
 import type { AssignmentsDoc, InventoryDoc, Portion } from "../src/domain/types";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 
@@ -37,6 +37,11 @@ test("el libro nuevo hereda los equipos del libro anterior hecho con el mismo pr
   assert.deepEqual(byPhase.map((phase) => phase.id), [...fresh("RUT").phases].sort((x, y) => x.order - y.order).map((phase) => phase.id), "se elige un equipo por fase, en el orden del proceso");
   assert.equal(byPhase.reduce((sum, phase) => sum + phase.tasks.length, 0), fresh("RUT").teams.length);
   assert.deepEqual(phasesWithoutTeam(ruth), [], "y cuando todas tienen equipo no se pregunta nada");
+  const needed = ["taller", "es-419_tn"];
+  assert.equal(teamAccess({ permission: "write", repos: ["taller", "es-419_tn", "es-419_tq"], allRepos: false }, needed).state, "edits", "un equipo que ya edita lo que la tarea escribe va primero");
+  assert.deepEqual(teamAccess({ permission: "write", repos: ["taller"], allRepos: false }, needed), { state: "will-get", missing: ["es-419_tn"] }, "al que le falta un repositorio se le dice cuál recibirá");
+  assert.equal(teamAccess({ permission: "owner", repos: [], allRepos: true }, needed).state, "edits", "quien tiene todos los repositorios puede con cualquier tarea");
+  assert.equal(teamAccess({ permission: "read", repos: needed, allRepos: false }, needed).state, "read-only", "y tener el repositorio sin poder escribir no es poder editar");
   const first = fresh("RUT").phases.slice().sort((x, y) => x.order - y.order)[0].id;
   const given = { ...fresh("RUT"), teams: fresh("RUT").teams.map((task, i) => (task.phaseId === first ? { ...task, orgTeamId: 7, orgTeamName: "pm-traduccion" } : task)) };
   assert.equal(phaseTeams(given).find((phase) => phase.id === first)?.orgTeamName, "pm-traduccion", "para cambiarlo, cada fase muestra el equipo que tiene");

@@ -51,7 +51,6 @@ import { DEFAULT_HOST } from "./dcs/config";
 import { installSessionExpiryGuard } from "./dcs/sessionExpiry";
 import {
   fetchOrg,
-  listPmOrgTeams,
   listPmProjects,
   listUserOrgs,
   loadAssignmentsFromDcs,
@@ -62,7 +61,7 @@ import {
 import { loadPmConfig, pullIssues } from "./dcs/issues";
 import { useConversationActivity } from "./useConversationActivity";
 import { generateInventory } from "./worker/client";
-import { loadNextBookHint, setPhaseTeams, startBook, type StartStage } from "./dcs/startBook";
+import { loadNextBookHint, loadTeamOptions, setTaskTeams, startBook, type StartStage } from "./dcs/startBook";
 import { SignInModal } from "./components/SignIn";
 import { SetupGate } from "./components/SetupGate";
 import { WorkspaceDialog } from "./components/WorkspaceDialog";
@@ -1339,9 +1338,9 @@ export function App() {
             phaseTeams={
               session && pmOrg
                 ? {
-                    loadTeams: () => listPmOrgTeams(session, pmOrg),
-                    onSave: async (doc, choice, replace) => {
-                      const saved = await setPhaseTeams({ session, pmOrg, board: doc, choice, replace });
+                    loadTeams: () => loadTeamOptions({ session, pmOrg, lang }),
+                    onSave: async (doc, choice) => {
+                      const saved = await setTaskTeams({ session, pmOrg, board: doc, choice });
                       saveLocalAssignments(saved.board);
                       if (saved.board.projectId === board.projectId) setBoard(saved.board);
                       return saved;
