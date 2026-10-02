@@ -1,4 +1,5 @@
 import { HelpMessages } from "./HelpMessages";
+import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -141,6 +142,55 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     return [...new Set(awaited.filter((task) => task.rules.some((rule) => texts.includes(rule.resource as ChecklistText))).flatMap((task) => coordinatorsOf(data.levelBook, task.orgTeamName)))];
   }, [data, textsKey]);
 
+  // What this checklist needs done before it: the helps translated and each text aligned. What is missing is said,
+  // and its team told, instead of checking against half-done work.
+  const missing = useMemo<MissingWork[]>(
+    () => (data ? missingWork({ helps: kind, fromSource: data.fromSource, chapter: data.chapter, verses: data.items.map((row) => row.verse), texts: texts.map((resource) => ({ resource, ...data.texts[resource] })) }) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, kind, textsKey],
+  );
+  /** The coordinators of the teams whose work a missing piece is: of the tasks, among those this one waits for, that work on that resource. */
+  const ownersOf = (resource: string) => {
+    if (!data?.board || !data.task) return [] as string[];
+    const awaited = (data.task.waitsFor ?? []).flatMap((rule) => (rule.taskId ? data.board!.teams.filter((task) => task.id === rule.taskId) : data.board!.teams.filter((task) => task.phaseId === rule.phaseId)));
+    return [...new Set(awaited.filter((task) => task.rules.some((rule) => rule.resource === resource)).flatMap((task) => coordinatorsOf(data.levelBook, task.orgTeamName)))];
+  };
+  const missingText = (row: MissingWork) =>
+    row.kind === "helps"
+      ? t("ck.missHelps").replace("{what}", scopeLabel(row.resource, data?.board?.settings?.resourceNames, language))
+      : t(row.kind === "text" ? (row.verses.length === 1 ? "ck.missTextOne" : "ck.missText") : row.verses.length === 1 ? "ck.missAlignmentOne" : "ck.missAlignment").replace("{text}", scopeLabel(row.resource, data?.board?.settings?.resourceNames, language)).replace("{verses}", verseList(row.verses));
+  const missingKey = `taller.ck-told.${storeKey}.${missing.map((row) => `${row.kind}:${row.resource}:${"verses" in row ? row.verses.join(",") : ""}`).join("|")}`;
+  const [told, setTold] = useState(false);
+  useEffect(() => {
+    try {
+      setTold(Boolean(missing.length) && window.localStorage.getItem(missingKey) === "1");
+    } catch {
+      setTold(false);
+    }
+  }, [missingKey, missing.length]);
+
+  /** Tell the teams whose work is missing, in the conversation of this subtarea: each coordinator is named with what is theirs. */
+  async function tellMissing() {
+    if (!session || !ctx?.pmOrg || !ctx.issueNumber || !data || !missing.length) return;
+    setSaving(true);
+    setError("");
+    try {
+      const lines = missing.map((row) => `- ${ownersOf(row.resource).map((login) => `@${login}`).join(" ")} ${missingText(row)}`.replace("-  ", "- "));
+      await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${t("ck.missComment").replace("{where}", `${data.book} ${ctx.ref || data.chapter}`)}\n${lines.join("\n")}`);
+      try {
+        window.localStorage.setItem(missingKey, "1");
+      } catch {
+        /* told all the same */
+      }
+      setTold(true);
+      announce(t("ck.missTold"));
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   /**
    * An answer shows at once and is written behind: the person goes on to the next question without waiting for
    * Door43. If the write fails the answer is taken back and the error is said.
@@ -267,7 +317,25 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         </Alert>
       ) : null}
       {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
-      {data?.fromSource ? <p className="af-stale">{t("ck.fromSource")}</p> : null}
+      {data && missing.length ? (
+        <div className="ck-missing" role="status">
+          <p className="ck-missing__title">{t("ck.missTitle")}</p>
+          <ul>
+            {missing.map((row) => (
+              <li key={`${row.kind}-${row.resource}`}>{missingText(row)}</li>
+            ))}
+          </ul>
+          {ctx?.issueNumber ? (
+            told ? (
+              <p className="af-hint">{t("ck.missAlreadyTold")}</p>
+            ) : (
+              <Button type="button" size="sm" disabled={saving} onClick={() => void tellMissing()}>
+                {t("ck.missTell")}
+              </Button>
+            )
+          ) : null}
+        </div>
+      ) : null}
       {data && !questions.length ? <p className="af-stale">{t("ck.noQuestions")}</p> : null}
       {data && !data.items.length ? <p className="hub-hint">{t("ck.noItems")}</p> : null}
 
@@ -341,7 +409,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                       {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", textLabel(resource))}
                     </span>
                   ) : null}
-                  {canPick(resource) && verse && !stepDone ? (
+                  {canPick(resource) && verse && !stepDone && !verseIsAligned(data.texts[resource]?.alignments, item.chapter, item.verse) ? (
+                    <span className="af-hint">{t("ck.quoteNeedsAlignment")}</span>
+                  ) : canPick(resource) && verse && !stepDone ? (
                     picking ? (
                       <span className="af-buttons">
                         <span className="af-hint">{t("ck.quotePickHint")}</span>

@@ -7541,3 +7541,8 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 }
 /* Messages about one help, between the teams that meet it at different phases. */
 .hm { display: grid; gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border); }
+/* What a checklist needs done before it and is missing. */
+.ck-missing { display: grid; gap: 0.5rem; justify-items: start; padding: 0.75rem; border-radius: var(--radius-md); background: var(--warning-100); color: var(--warning-700); font-size: 0.9375rem; }
+.ck-missing p, .ck-missing ul { margin: 0; }
+.ck-missing ul { padding-left: 1.125rem; }
+.ck-missing__title { font-weight: 700; }

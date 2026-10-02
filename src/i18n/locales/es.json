@@ -1421,7 +1421,6 @@
   "ck.title": "Lista de comprobación",
   "ck.progressAria": "Avance de la comprobación",
   "ck.nChecked": "{a} de {n} comprobados",
-  "ck.fromSource": "Todavía no hay notas traducidas de este libro: se muestran las del idioma fuente.",
   "ck.noQuestions": "Este paso no tiene preguntas de comprobación en su plantilla.",
   "ck.noItems": "No hay nada que comprobar en este pasaje.",
   "ck.standingAria": "Cómo va la comprobación",
@@ -2143,5 +2142,16 @@
   "hm.countOne": "{n} mensaje",
   "hm.countMany": "{n} mensajes",
   "hm.aboutTerm": "Mensaje sobre este término",
-  "hm.ledeLeaveTerm": "¿Cambiarías algo en el artículo o en la traducción de este término? Aquí no se cambia: déjalo dicho y lo verá el equipo que revise las palabras."
+  "hm.ledeLeaveTerm": "¿Cambiarías algo en el artículo o en la traducción de este término? Aquí no se cambia: déjalo dicho y lo verá el equipo que revise las palabras.",
+  "ck.missTitle": "Falta trabajo anterior para poder armonizar esto",
+  "ck.missHelps": "{what}: todavía no están traducidas (se muestran las del idioma fuente).",
+  "ck.missText": "{text}: no hay texto en los versículos {verses}.",
+  "ck.missAlignment": "{text}: falta alinear los versículos {verses}.",
+  "ck.missTell": "Avisar a los equipos que les toca",
+  "ck.missTold": "Aviso enviado a los equipos.",
+  "ck.missAlreadyTold": "Ya se avisó a los equipos. Cuando terminen, vuelve a abrir esta lista.",
+  "ck.missComment": "Para armonizar {where} falta trabajo anterior:",
+  "ck.quoteNeedsAlignment": "Este versículo no está alineado: la cita se podrá corregir cuando lo esté.",
+  "ck.missTextOne": "{text}: no hay texto en el versículo {verses}.",
+  "ck.missAlignmentOne": "{text}: falta alinear el versículo {verses}."
 }
