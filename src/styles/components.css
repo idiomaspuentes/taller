@@ -4235,36 +4235,6 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
   font-weight: 600;
 }
 
-.portion-review__files {
-  margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.8125rem;
-  color: var(--muted);
-}
-.portion-review__files code {
-  color: var(--text);
-}
-.portion-review__diff {
-  margin: 0;
-  max-height: 28rem;
-  overflow: auto;
-  padding: 0.75rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md, 0.5rem);
-  background: color-mix(in srgb, var(--surface) 70%, var(--bg));
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.portion-review__comment {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
 /* —— Workflow templates (hub chrome) —— */
 .workflows-picker {
   display: flex;
@@ -7456,3 +7426,39 @@ input.pf-name { font-size: 1.625rem; }
 .snd-panel[hidden] { display: none; }
 .snd-panel__head { display: flex; align-items: center; justify-content: space-between; }
 .snd-panel__head h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+/* Reviewing a draft: the passage piece by piece, what changed marked by words, comments where they belong. */
+.rv-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 1rem; }
+.rv-bar__count { flex: 1 1 10rem; margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+.rv-toggle { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 32px; font-size: 0.875rem; cursor: pointer; }
+.rv-list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.rv-item { display: grid; gap: 0.5rem; padding: 0.75rem 0.875rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.rv-item[data-state="changed"], .rv-item[data-state="new"] { border-left: 3px solid var(--accent-400); }
+.rv-item[data-state="removed"] { border-left: 3px solid var(--destructive); }
+.rv-item__head { display: flex; align-items: baseline; gap: 0.5rem; }
+.rv-item__ref { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent-700); }
+.rv-item__state { font-size: 0.75rem; color: var(--text-muted); }
+.rv-item__text { margin: 0; font-size: 1.0625rem; line-height: 1.6; white-space: pre-wrap; }
+.rv-item__text--none { font-size: 0.9375rem; color: var(--text-faint); font-style: italic; }
+.rv-item__text ins { padding: 0 0.125rem; border-radius: 3px; background: var(--success-100); color: var(--success-700); text-decoration: none; }
+.rv-item__text del { padding: 0 0.125rem; border-radius: 3px; background: color-mix(in srgb, var(--destructive) 10%, transparent); color: var(--text-muted); }
+.rv-sources { display: grid; gap: 0.25rem; margin: 0; padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); font-size: 0.875rem; color: var(--text-muted); }
+.rv-sources > div { display: grid; grid-template-columns: 2.5rem 1fr; gap: 0.5rem; }
+.rv-sources dt { font-size: 0.6875rem; font-weight: 700; line-height: 1.9; }
+.rv-sources dd { margin: 0; }
+.rv-notes summary { min-height: 28px; font-size: 0.8125rem; color: var(--primary); cursor: pointer; }
+.rv-notes .fam-notes { margin-top: 0.375rem; }
+.rv-item__add { display: inline-flex; align-items: center; justify-self: start; gap: 0.375rem; min-height: 32px; padding: 0; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; cursor: pointer; }
+.rv-item__add:hover { text-decoration: underline; }
+.rv-comments { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.rv-comment { padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--accent-50); }
+.rv-comment p { margin: 0; }
+.rv-comment__text { white-space: pre-wrap; }
+.rv-comment__meta { font-size: 0.75rem; color: var(--text-muted); }
+.rv-composer { display: grid; gap: 0.375rem; }
+.rv-composer__row { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.rv-general { display: grid; gap: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+.rv-empty { display: grid; gap: 0.625rem; justify-items: start; padding: 1rem; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); color: var(--text-muted); }
+.rv-empty p { margin: 0; }
+/* A tool with its own bar at the bottom: the notes button stays clear of it. */
+body:has(.fam__finish) .snd-button { bottom: 8rem; }
+body:has(.fam__finish) .snd-panel { bottom: 11.5rem; max-height: min(34rem, calc(100dvh - 13rem)); }

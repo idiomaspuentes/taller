@@ -80,8 +80,9 @@ function stripAlignment(text: string): string {
   out = out.replace(/\\f\s[\s\S]*?\\f\*/g, " ");
   out = out.replace(/\\x\s[\s\S]*?\\x\*/g, " ");
   out = out.replace(/\\(?:s\d?|ms\d?|mr|r|d|sp|cl|cd|rem)(?=\s|$)[^\n]*/g, " ");
-  out = out.replace(/\\zaln-s\s+\|[^\\]*\*/g, "");
-  out = out.replace(/\\zaln-e\*/g, "");
+  // A milestone ends in `\*`: read without its backslash, the attributes were left in the text.
+  out = out.replace(/\\zaln-s\s*\|[^\\]*\\?\*/g, "");
+  out = out.replace(/\\zaln-e\\?\*/g, "");
   out = out.replace(/\\w\s+([^\\|]+)\|[^\\]*\\w\*/g, "$1");
   out = out.replace(/\\w\s+([^\\*]+)\\w\*/g, "$1");
   out = out.replace(/\\[a-zA-Z0-9-]+\*?/g, " ");
