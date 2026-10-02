@@ -2141,5 +2141,7 @@
   "hm.placeholder": "Escreva uma mensagem…",
   "hm.send": "Deixar a mensagem",
   "hm.countOne": "{n} mensagem",
-  "hm.countMany": "{n} mensagens"
+  "hm.countMany": "{n} mensagens",
+  "hm.aboutTerm": "Mensagem sobre este termo",
+  "hm.ledeLeaveTerm": "Mudaria algo no artigo ou na tradução deste termo? Aqui não muda: deixe dito e a equipe que revisar as palavras verá."
 }

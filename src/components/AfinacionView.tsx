@@ -8,6 +8,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { HelpMessages } from "./HelpMessages";
+import { termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, termLabel, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
 import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
@@ -326,6 +327,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
   // Words step: how this term was rendered in every use across the book.
   const termSlug = item && "termSlug" in item ? (item as TermItem).termSlug : "";
+  const termKey = termSlug ? termMessageKey((item as TermItem).termKind, termSlug) : "";
   const comparison = useMemo(
     () =>
       data && termSlug
@@ -642,6 +644,30 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               <>
                 <h2 className="af-phrase">{termSlug ? `${termLabel(termSlug, termTitles)}${item.phrase ? ` · «${item.phrase}»` : ""}` : item.phrase ? `«${item.phrase}»` : item.quote ? item.quote : t("af.wholeVerse")}</h2>
                 {item.note ? <p className="af-note">{item.note}</p> : null}
+                {termSlug && session && ctx?.pmOrg && ctx.projectId ? (
+                  // The same as with a note: what the refiners would change in the term's article is left for whoever harmonizes the words.
+                  <details className="af-note-box">
+                    <summary>
+                      {t("hm.aboutTerm")}
+                      {noteMessages[termKey] ? ` · ${t(noteMessages[termKey] === 1 ? "hm.countOne" : "hm.countMany").replace("{n}", String(noteMessages[termKey]))}` : ""}
+                    </summary>
+                    <HelpMessages
+                      key={termKey}
+                      session={session}
+                      pmOrg={ctx.pmOrg}
+                      lang={ctx.lang}
+                      projectId={ctx.projectId}
+                      book={data.book}
+                      chapter={item.chapter}
+                      verse={item.verse}
+                      about={termKey}
+                      resource="palabras"
+                      taskName={ctx.taskName}
+                      lede={t("hm.ledeLeaveTerm")}
+                      onCount={(count) => setNoteMessages((prev) => (prev[termKey] === count ? prev : { ...prev, [termKey]: count }))}
+                    />
+                  </details>
+                ) : null}
               </>
             )}
             {comparison ? (

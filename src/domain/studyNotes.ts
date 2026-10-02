@@ -117,6 +117,14 @@ export function notesByResource(notes: StudyNote[], resource: string | undefined
   return { own: notes.filter((note) => !note.resource || note.resource === mine), others: notes.filter((note) => note.resource && note.resource !== mine) };
 }
 
+/**
+ * What a message about a key term names: the term, not one of its uses, since what is said about its article or its
+ * translation holds wherever it appears.
+ */
+export function termMessageKey(kind: string, slug: string): string {
+  return `tw:${kind.trim().toLowerCase()}/${slug.trim().toLowerCase()}`;
+}
+
 /** The shared messages left about one help of a book, oldest first: what a later team finds when it gets to it. */
 export function messagesAbout(notes: StudyNote[], book: string, about: string): StudyNote[] {
   const code = book.toUpperCase();

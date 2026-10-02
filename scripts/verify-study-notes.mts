@@ -4,7 +4,7 @@
  *   npm run verify:study-notes
  */
 import assert from "node:assert/strict";
-import { messagesAbout, normalizeStudyNotes, notesByResource, studyNotesFor, studyNotesPath, visibleStudyNotes, type StudyNote } from "../src/domain/studyNotes";
+import { messagesAbout, termMessageKey, normalizeStudyNotes, notesByResource, studyNotesFor, studyNotesPath, visibleStudyNotes, type StudyNote } from "../src/domain/studyNotes";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -55,6 +55,7 @@ test("un mensaje sobre una nota llega a quien trabaje esa nota después: se busc
   const other = { ...note("m3", "ana", true, 1, 3), about: "zzz9" };
   assert.deepEqual(messagesAbout([left, mine, other, note("m4", "ana", true, 1, 3)], "3jn", "abc1").map((n) => n.id), ["m1"], "solo los compartidos de esa nota");
   assert.equal(normalizeStudyNotes({ notes: [{ id: "x", book: "3JN", chapter: 1, text: "a", about: " abc1 " }] }, "ana")[0]!.about, "abc1");
+  assert.equal(termMessageKey("KT", "Truth"), "tw:kt/truth", "de un término se habla una vez, no por cada uso");
 });
 
 console.log(`\nverify-study-notes: ${passed} checks passed.`);

@@ -1,4 +1,5 @@
 import { HelpMessages } from "./HelpMessages";
+import { termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }, [data, textsKey]);
   const summary = useMemo(() => summarizeChecklist({ items: checkItems, questions, answers, currentHashes: hashes }), [checkItems, questions, answers, hashes]);
   const item = data?.items[Math.min(position, Math.max((data?.items.length ?? 1) - 1, 0))];
+  // A message about a key term names the term (it holds for every use of it); about a note or a question, that row.
+  const [termKind, ...termSlug] = (item?.supportRef ?? "").split("/");
+  const messageKey = kind === "palabras" && termKind && termSlug.length ? termMessageKey(termKind, termSlug.join("/")) : (item?.id ?? "");
   const tally = item ? summary.items.find((row) => row.itemId === item.id) : undefined;
   const closesHere = Boolean(data?.step && closesInItsTool(data.step) && ctx?.issueNumber);
 
@@ -369,7 +373,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             {item.supportRef ? <p className="af-hint">{t("ck.support").replace("{ref}", item.supportRef)}</p> : null}
             {session && ctx?.pmOrg && ctx.projectId && data ? (
               // What the teams before this one said about this very help (those who refined the text, say).
-              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={item.id} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} />
+              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} />
             ) : null}
             {editorHref ? (
               <a className="af-link" href={editorHref} target="_blank" rel="noopener noreferrer">
