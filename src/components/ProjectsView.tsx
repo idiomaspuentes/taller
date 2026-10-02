@@ -51,7 +51,7 @@ type Props = {
   /** One team per phase: offered after starting a book, and here while the open project still has tasks without one. */
   phaseTeams?: StartBookProps["phaseTeams"];
   pendingTeams?: { board: Parameters<typeof PhaseTeamsPanel>[0]["board"]; onSaved: Parameters<typeof PhaseTeamsPanel>[0]["onSaved"] };
-  onOpenStep?: (projectId: string, step: "inventario" | "tareas") => void;
+  onOpenStep?: (projectId: string, step: "subtareas" | "tareas") => void;
   onGoToTasks?: () => void;
   /** Whether it is time to start the next book (the first phase of the newest one is nearly done). */
   loadNextBookHint?: () => Promise<NextBookHint | null>;

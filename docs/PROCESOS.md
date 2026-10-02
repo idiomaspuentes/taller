@@ -21,7 +21,7 @@ fase, una tarea, un paso o una herramienta de un proceso.
 | | Dónde vive | Quién lo cambia | Para qué |
 |---|---|---|---|
 | **El paquete** | `processes/*.json`, en el repositorio de la app | Quien mantiene la app | Las plantillas y herramientas de fábrica, con sus nombres en cada idioma |
-| **Desde la app** | `workflows.json` y `solvers.json`, en el repositorio de tareas de la organización en Door43 | Quien coordina, en **Plantillas** | Copias propias: se parte de una plantilla de fábrica («+ Desde …») o de cero, y se ajusta |
+| **Desde la app** | `workflows.json` y `solvers.json`, en el repositorio de tareas de la organización en Door43 | Quien coordina, en **Plantillas** | Copias propias: se copia una plantilla incluida o se empieza de cero, y se ajusta (ver `docs/PROYECTOS.md`) |
 
 Un proyecto guarda una **copia** de la plantilla con la que se creó. Cambiar la plantilla no cambia
 los proyectos ya creados.
@@ -134,7 +134,7 @@ Un catálogo de herramientas guardado por la organización recibe solo los pará
 organización cambió se respeta.
 
 **Un proyecto y la versión de su proceso.** El proyecto recuerda con qué versión se creó (`workflowVersion`). Cuando el
-paquete sube de versión, «Fases y tareas» ofrece actualizarlo: se agregan fases, tareas y pasos nuevos y se completan
+paquete sube de versión, «Proceso» ofrece traer lo nuevo: se agregan fases, tareas y pasos nuevos y se completan
 ajustes que faltaban. Nada se cambia ni se quita.
 
 **Otro proceso.** `processes/lengua-minoritaria.json` es un segundo paquete de ejemplo. Para usarlo se importa en

@@ -20,6 +20,7 @@ La app del equipo FCR de Idiomas Puentes para el trabajo de traducción: lo que 
 - **Primera pantalla** de bienvenida y tarjeta de primeros pasos; estados vacíos que distinguen «sin tareas todavía» de «al día».
 - **Configuración en un archivo** y **espacios de trabajo**: varios equipos (por idioma o no) en la misma organización o en organizaciones distintas, sin mezclarse (`scope`).
 - **Español y portugués**: bienvenida, inicio de sesión, menús, Ahora, Mis tareas, Equipo hoy, Avisos (incluidos mensajes y nombres de las plantillas de flujo).
+- **Proyectos y plantillas con un solo editor** (2 de octubre, sin publicar todavía): borrador antes de crear, vista previa de subtareas, unir o partir porciones, subtareas a mano, y cambios a un proyecto en marcha con aviso de a qué afectan. Ver [`PROYECTOS.md`](PROYECTOS.md).
 - Puentes: diseño visual, PWA instalable, acceso por LAN para probar en el teléfono, mock de Door43 para pruebas con varias personas.
 
 **Probado de verdad:** lo de la alineación y las decisiones con tres usuarios en el mock; los avisos push de punta a punta con un teléfono real; la bienvenida, los primeros pasos y las pantallas en portugués en el navegador (móvil y escritorio).

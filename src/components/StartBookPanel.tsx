@@ -22,7 +22,7 @@ type Props = {
   onStart: (input: { book: string; workflowId: string }, onStage: (stage: StartStage, detail?: string) => void) => Promise<StartedProject>;
   /** Prepare the project without creating it: the process can be adjusted first. An empty `workflowId` starts from nothing. */
   onAdjust?: (input: { book: string; workflowId: string }) => Promise<void>;
-  onOpen: (projectId: string, step: "inventario" | "tareas") => void;
+  onOpen: (projectId: string, step: "subtareas" | "tareas") => void;
   onGoToTasks: () => void;
   onCancel: () => void;
   /** Choosing one team per phase right after starting. Absent = the project's own screen is the only way. */
@@ -101,7 +101,7 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
           <Button type="button" size="lg" onClick={onGoToTasks}>
             {t("sb.goToTasks")}
           </Button>
-          <Button type="button" size="lg" variant="outline" onClick={() => onOpen(done.board.projectId, "inventario")}>
+          <Button type="button" size="lg" variant="outline" onClick={() => onOpen(done.board.projectId, "subtareas")}>
             {t("sb.split")}
           </Button>
           <Button type="button" variant="ghost" onClick={() => onOpen(done.board.projectId, "tareas")}>

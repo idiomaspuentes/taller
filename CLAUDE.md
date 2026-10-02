@@ -52,5 +52,6 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 | La alineación y sus decisiones | `docs/AFINACION_PROXIMOS_PASOS.md` |
 | Avisos con la app cerrada | `push-worker/README.md` |
 | Cambiar la bienvenida, los equipos, los idiomas | `docs/CONFIGURACION.md` |
+| Crear o cambiar un proyecto o una plantilla (pantallas, editor, borrador) | `docs/PROYECTOS.md` |
 | Definir o cambiar un proceso (plantillas, herramientas) | `docs/PROCESOS.md`, `processes/` |
 | El FCR tal como lo trabaja el equipo | `docs/PLANTILLA_FCR.md`, `docs/CORRIDA_EN_FRIO_FCR.md` |

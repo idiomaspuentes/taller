@@ -53,6 +53,7 @@ import {
   fetchOrg,
   allowPmOrgTeamToEdit,
   listPmProjects,
+  saveProjectToDcs,
   listUserOrgs,
   loadAssignmentsFromDcs,
   loadInventoryFromDcs,
@@ -1576,7 +1577,13 @@ export function App() {
           <TeamsView
             board={board}
             inventory={inventory}
-            onChange={updateBoard}
+            onChange={(next) => {
+              // The detailed editor of one task writes what it changes: there is no «unsaved» bar on that screen.
+              const doc = updateBoard(next);
+              if (session && pmOrg && route.taskId) {
+                void saveProjectToDcs({ session, org: pmOrg, lang, book: doc.projectId, assignments: doc, inventory: null }).catch((err) => announce(explainError(err)));
+              }
+            }}
             session={session}
             pmOrg={pmOrg}
             orgs={orgs}
