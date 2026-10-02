@@ -1,173 +1,169 @@
-# Plantillas y creación de proyectos: revisión y plan
+# Plan técnico: plantillas, proyectos y el FCR completo
 
-Revisión del 1 de octubre de 2026, hecha leyendo el código. Todavía **no hay cambios**: esto es el
-diagnóstico y lo que propongo hacer, por fases.
+Reescrito el 1 de octubre de 2026, después de documentar el proceso con la persona dueña. Reemplaza
+la versión anterior de este plan.
 
-La meta: que Taller sirva de verdad para el FCR **y** para otros procesos en el futuro, sin que la
-app tenga que «saber» cómo se llama cada paso del FCR.
+**Qué hay que construir** está en:
+- [PLANTILLA_FCR.md](PLANTILLA_FCR.md): la plantilla para leer (fases, tareas, pasos, reglas de
+  cierre, citas de las notas, glosario).
+- [CORRIDA_EN_FRIO_FCR.md](CORRIDA_EN_FRIO_FCR.md): la historia de Tito 2, equipo por equipo.
+- [FCR_EN_TALLER.md](FCR_EN_TALLER.md): el FCR y lo que se respondió.
+- [GLOSARIO_DOOR43.md](GLOSARIO_DOOR43.md): el glosario como recurso de Door43.
+
+Este documento dice **en qué orden** y **qué cambia en el código**.
 
 ---
 
-## 1. Cómo funciona hoy
+## 1. De dónde partimos (confirmado en el código)
+
+**Lo que sirve:** los pasos ya son datos (`TaskStep`): quién, cuántos asientos, exclusiones,
+herramienta, «espera a», nivel mínimo. «Mis tareas» ya trabaja con cualquier plantilla.
+
+**Lo que falta o estorba:**
+
+| # | Problema | Dónde |
+|---|----------|-------|
+| A | La plantilla del FCR es código, con nombres solo en español; el portugués sale de buscar y reemplazar frases | `fcrTemplate.ts`, `templateNames.ts` |
+| B | El paso se completa por «Aprobar» de las personas, no por consenso de los ítems | `stepClaim.ts:229` frente a `reviewRound.ts` |
+| C | Un solo nivel por persona; el FCR lo pide por fase, asignado por el coordinador del equipo | `levels.ts`, `config.json` |
+| D | No existe el coordinador de un equipo | — |
+| E | La espera es «por capítulo» fija; no se puede partir un capítulo largo ni agrupar a mano | `waits.ts`, `WaitScope` |
+| F | Crear un proyecto pide «primera fase» y la plantilla se aplica después, reemplazando todo | `ProjectsView.tsx:263`, `TeamsView.tsx:715` |
+| G | La copia de la plantilla no tiene versión; re-aplicar puede dejar subtareas huérfanas | `workflows.ts:11` |
+| H | No hay validador; los errores se «arreglan» en silencio | `store.ts:1331` |
+| I | Recursos y unidades fijos a la Biblia y las seis ayudas | `types.ts:31-87` |
+| J | Dos editores de tareas distintos | `WorkflowsView.tsx`, `TeamsView.tsx` |
+| K | No hay lista de comprobación por ítem, ni «consulta al dueño», ni devolución con regreso | — |
+| L | Nada cruza libros (glosario, cómo se tradujo antes) | — |
+
+## 2. El modelo al que vamos
 
 ```text
-Plantilla (org)            workflows.json · WorkflowTemplate
-  └─ Fases → Tareas → Pasos (nombre, herramienta, quién lo toma, espera a…, nivel)
-
-Proyecto                   assignments.json · AssignmentsDoc
-  └─ COPIA de la plantilla (fases + tareas), sin versión
-        └─ Subtareas       issues de Door43 (una por porción × tarea)
-              └─ Progreso de pasos en el cuerpo del issue (por id de paso)
+Espacio de trabajo (idioma)
+ ├─ Glosario y registro de traducciones        ← cruza libros
+ ├─ Equipos, con coordinador y niveles por fase
+ └─ Proyecto (libro)  ── plantilla + versión
+     ├─ Unidades de traspaso (capítulo, o tramos)   ← las define quien coordina el libro
+     └─ Fase → Tarea → Subtarea (porción) → Paso → Ítem
 ```
 
-Para crear un proyecto hoy, quien coordina:
+**Un paso declara** (todo datos):
+- nombre y texto del botón, por idioma;
+- quién: nivel mínimo en la fase, exclusiones, asientos;
+- herramienta;
+- **regla de cierre**, una de cinco:
+  `self` (lo marca quien lo hace) · `approval` (otra persona lo aprueba) · `consensus` (consenso por
+  ítem, con decisión final) · `checklist` (preguntas de sí o no por ítem) · `automatic`
+  (comprobación automática);
+- para `consensus`: mínimo de acuerdos e independientes, y quién confirma la decisión final;
+- para `checklist`: las preguntas, por idioma, y las salidas de un «no»;
+- **alcance del paso:** por porción, por unidad de traspaso (palabras clave) o por capítulo
+  (familiarización, una vez por persona).
 
-1. **Proyectos → Nuevo**: elige libro (o «temático» + libros) y escribe el **nombre de la primera fase**
-   (`ProjectsView.tsx:263`).
-2. Entra al proyecto en **Preparar → Libro** (inventario).
-3. Va a **Preparar → Tareas**, elige una plantilla y la **aplica** (`TeamsView.tsx:715`). Eso
-   **reemplaza** todas las fases y tareas (`workflows.ts:11`), incluida la «primera fase» del paso 1.
-4. **Repartir → Asignar**, **Entregar** (crea los issues), **Avance**, **Publicar**.
+## 3. Fases de trabajo
 
-La plantilla del FCR está escrita como código (`domain/fcrTemplate.ts`), y se copia al catálogo con
-«Crear desde FCR» (`WorkflowsView.tsx:203`).
+Cada fase deja la app funcionando y sigue leyendo los proyectos existentes.
 
-## 2. Lo que encontré
+### Fase 1 · La plantilla como datos (sin cambios visibles)
+- Tipos nuevos en `types.ts`: nombres por idioma (`string | { es, pt }`), `actionLabel`, `closing`,
+  `checklist`, `stepScope`. Lectura de los formatos actuales sin romper nada.
+- `templates/fcr.json` con la plantilla de [PLANTILLA_FCR.md](PLANTILLA_FCR.md), en español y
+  portugués. `fcrTemplate.ts` pasa a leer ese archivo.
+- `validateTemplate()` con mensajes legibles + `verify:templates`. Fin de los arreglos silenciosos.
+- Campo `version` en la plantilla.
+- «Mis tareas» y los avisos toman el nombre y el botón de la plantilla por id y por idioma; el
+  glosario de nombres queda solo para datos antiguos.
 
-### A. El motor ya es bastante genérico… en los pasos
-Lo bueno: **los pasos son datos**. Quién toma un paso (`claimMode` none / exclusive / pool, mínimos,
-exclusiones), qué espera a qué (`waitsFor`), el nivel mínimo y la herramienta salen de la plantilla.
-Por eso «Mis tareas» puede funcionar con cualquier proceso, y esa es la base que hay que conservar.
+**Listo cuando:** `verify:templates` pasa, la plantilla del FCR se lee del JSON y la app se ve igual
+en español y en portugués.
 
-### B. Pero la *unidad de trabajo* es fija: la Biblia y las seis ayudas del FCR
-- Los recursos son una lista cerrada: `ScopeKey = "notas" | "preguntas" | "academia" | "palabras" | "tpl" | "tps"`
-  (`types.ts:31-33`).
-- El inventario tiene un campo por recurso (`Portion.tplItems`, `notasItems`, … en `types.ts:65-87`)
-  y sale de los repos de unfoldingWord.
-- Las subtareas siempre son «porción × tarea» de un libro de la Biblia (`workOrder.ts`).
-- `ProjectTask` lleva campos que solo tienen sentido en el FCR: `reviewsPrincipal`, `reviewRef`,
-  `reviewAssigneeId` (`types.ts:241-254`).
+### Fase 2 · Personas: coordinador y nivel por fase
+- `config.json` del espacio: por equipo, su **coordinador**; por persona, su **nivel en cada fase**
+  (lectura del nivel único actual como valor para todas las fases).
+- El coordinador asigna niveles de su equipo desde Organización.
+- `audience.ts` y `levels.ts` usan el nivel de la fase de la tarea.
 
-Otro proceso (por ejemplo, revisar un curso, grabar audio o traducir un manual) **no tiene dónde
-entrar**: no tiene porciones ni TPL.
+**Listo cuando:** una persona es habilitada en Traducción y aprendiz en Afinación, y cada fase la
+trata según su nivel ahí.
 
-### C. Hay palabras del FCR dentro del motor
-- Textos en español escritos dentro del modelo (`GRAIN_LABEL`, `articleFilterHelp`,
-  `scriptureIntro`… en `types.ts:543-860`; el cuerpo del issue en `workOrder.ts:555`).
-- Herramientas del FCR que la app vuelve a agregar a mano si faltan (`issues.ts:296-300`
-  `fcr-pair-review`, `fcr-group-review`, `fcr-familiarize`).
-- Los niveles (oyente, aprendiz, practicante, habilitada) vienen de la rúbrica del FCR y son fijos
-  (`levels.ts:7`).
-- Etiquetas de la interfaz que suponen el FCR, como «Revisiones que puedes tomar» (ya cambiada a
-  «Puedes sumarte»).
+### Fase 3 · Cerrar un paso por consenso
+- El cierre de un paso `consensus` lo decide el resumen de la ronda (`summarizeRound`), no los
+  «Aprobar»: completo cuando todos los ítems están de acuerdo.
+- **Decisión final** para un ítem en disputa: la registra el coordinador o una persona habilitada del
+  equipo, con su razón; queda en el historial de la subtarea.
+- Vista «lo que quedó sin acuerdo» para preparar la reunión.
+- Las herramientas de Afinación (notas, palabras, alineación) usan la misma pieza.
 
-### D. Los nombres solo están en un idioma
-Fases, tareas y pasos se guardan en español. Para mostrarlos en portugués, la app **busca y reemplaza
-frases** con un glosario (`templateNames.ts:16`, `glossary.pt.json`). Funciona con la plantilla de
-fábrica, pero un nombre nuevo o editado se queda en español, y el reemplazo de trozos de texto es
-frágil («Alinear» dentro de «Revisar la alineación»).
+**Listo cuando:** un paso de Afinación con una objeción abierta no se completa, y se completa al
+registrar la decisión final.
 
-### E. Crear un proyecto está desordenado
-- Pide el **nombre de la primera fase**, que se pierde al aplicar la plantilla.
-- La plantilla se elige **después**, en una pestaña aparte, y nada obliga a elegirla.
-- El inventario se prepara **antes** de saber qué recursos pide la plantilla.
-- Seis pantallas en cuatro etapas para algo que, para el FCR, es «este libro, con esta plantilla».
+### Fase 4 · Preparar el libro y crear el proyecto
+- Asistente de tres pasos: **plantilla → libro → unidades de traspaso → revisar y crear**. Sin
+  «primera fase». El proyecto guarda `workflowId` y `workflowVersion`.
+- **Unidades de traspaso:** por defecto un capítulo; se puede partir un capítulo en tramos de
+  porciones. Las esperas entre fases se cuentan por unidad (`WaitScope` nuevo: `unit`).
+- La **familiarización** como paso con alcance «capítulo, una vez por persona», mostrando las notas
+  de introducción al libro y al capítulo.
+- Las palabras clave de Afinación con alcance «unidad de traspaso».
 
-### F. La copia no tiene versión y re-aplicar es peligroso
-- El proyecto guarda `workflowId` y la fecha, **no la versión**. Si se mejora la plantilla, los
-  proyectos no se enteran, y no hay forma de ver qué cambió ni de actualizar.
-- **Aplicar otra vez reemplaza todo**, aunque ya haya issues publicados: solo un
-  `window.confirm`. Los issues usan `pm/tarea:<id>` y el progreso usa el **id de cada paso**; si
-  cambian los ids, quedan subtareas huérfanas o progreso perdido.
+**Listo cuando:** se crea Tito con la plantilla del FCR en un minuto, el Salmo 119 se puede partir,
+y cada tramo avanza solo.
 
-### G. No hay validación, hay «arreglos silenciosos»
-`normalizeWorkflowTemplate` (`store.ts:1331`) corrige en silencio: una tarea con una fase que no
-existe pasa a la primera fase, y lo demás se descarta sin avisar. No hay un validador que diga
-«el paso X espera a una tarea que no existe» o «dos pasos con el mismo id».
+### Fase 5 · Armonización
+- Tres pistas en la plantilla (Notas + Academia, Palabras, Preguntas).
+- Herramienta de **lista de comprobación por ítem**, con las listas A a F como datos.
+- **Cita generada** de cada nota desde el TPL alineado; marcar las notas de un versículo como
+  pendientes cuando Afinación cambia ese versículo.
+- Las tres salidas de un «no»: corregir, crear (nota o artículo nuevo), **pedir el cambio a
+  Afinación** con la razón; el ítem queda «en consulta».
+- Paso final «Acuerdo del equipo» con la regla `consensus` de la fase 3.
+- Corregir una cita seleccionando palabras del TPL (deducir el original por la alineación).
 
-### H. Dos editores para lo mismo
-Las tareas se editan en **Plantillas** (`WorkflowsView.tsx`, 1375 líneas) y otra vez en el proyecto
-(`TeamsView.tsx`, 3095 líneas), con pantallas y opciones distintas. «Guardar como plantilla» copia
-del proyecto a la plantilla, y así las dos versiones se separan con el tiempo.
+**Listo cuando:** la corrida de Tito 2 en Armonización se puede hacer entera en la app.
 
----
+### Fase 6 · Validación y Publicación
+- Revisión pastoral **a ciegas**: las inquietudes de los demás se ven al entregar el reporte propio.
+- Regla del aval configurable (hoy: objeciones a la vista; sin consenso, mayoría).
+- **Aval pendiente:** cada observación va a su dueño y la unidad regresa al mismo comité.
+- Publicación por unidad, con pasos `automatic` (mini-apps de comprobación y de publicación).
 
-## 3. Decisiones que propongo
+### Fase 7 · Glosario y registro de traducciones
+- Repositorio `<idioma>_tg` y lectura/escritura desde Taller ([GLOSARIO_DOOR43.md](GLOSARIO_DOOR43.md)).
+- Crear una entrada con un toque sobre una palabra alineada; filtro de palabras pequeñas.
+- Mostrar las entradas en contexto, buscador y «cambios recientes».
+- Índice de «cómo se tradujo antes» desde las alineaciones de todos los libros.
+- Proponer la alineación con el puente por el inglés.
 
-1. **Tres capas separadas**:
-   - **Motor**: proyectos, fases, tareas, subtareas y pasos, con las mecánicas (tomar, sumarse,
-     aprobar, esperar, entregar, niveles). No sabe nada del FCR.
-   - **Tipo de trabajo** (adaptador): de dónde salen las unidades (porciones de un libro, artículos,
-     una lista escrita a mano), qué herramientas hay y cómo se entrega el resultado. «Biblia y
-     ayudas» es el primero. Agregamos un segundo, **«Lista»** (unidades escritas a mano o pegadas de
-     una hoja de cálculo), para probar que el motor de verdad es genérico.
-   - **Plantilla** (solo datos): fases, tareas y pasos, nombres por idioma, qué tipo de trabajo usa
-     y la versión.
-2. **Nombres por idioma en la plantilla**: `name: { es: "Revisar notas", pt: "Revisar notas" }`.
-   Se puede seguir leyendo un texto simple (cuenta para todos los idiomas). El glosario queda solo
-   para las plantillas antiguas.
-3. **`actionLabel` por paso, opcional y por idioma**: lo que dice el botón grande («Revisar»,
-   «Votar», «Grabar»). Si falta, se usa la regla de la mecánica: «Sumarme a «paso»», «Aprobar
-   «paso»», «Empezar» o «Seguir».
-4. **Los ids son para siempre**: ids de fase, tarea y paso estables y generados. El nombre se puede
-   cambiar libremente porque la app muestra el nombre por el id y no por el título del issue.
-5. **Copia con versión, no enlace vivo**: el proyecto guarda `workflowId` + `workflowVersion`.
-   Cuando hay una versión nueva, quien coordina ve **qué cambió** y la aplica con reglas seguras:
-   - agregar tareas o pasos y renombrar: siempre;
-   - quitar o reordenar: solo si no hay subtareas abiertas que dependan de eso;
-   - cambiar un id: nunca.
-6. **Crear proyecto = elegir plantilla + alcance**, en tres pasos:
-   1. **¿Qué proceso?** Las plantillas, con su descripción, más «Empezar en blanco».
-   2. **¿Sobre qué?** Lo pide el tipo de trabajo: libro(s) para la Biblia, la lista para «Lista».
-   3. **Revisar y crear**: resumen (fases, tareas, equipos que faltan, herramientas que faltan) y un
-      botón. El inventario se prepara solo, y solo para los recursos que pide la plantilla.
+Puede adelantarse en paralelo desde la fase 3: no depende de las fases 4 a 6.
 
-   Desaparece «nombre de la primera fase» y desaparece «Aplicar plantilla» dentro del proyecto
-   (se reemplaza por «Actualizar a la versión N»).
-7. **Un solo editor de tareas**: el mismo componente en Plantillas y en el proyecto. El proyecto solo
-   agrega lo que es suyo (alcance, equipo, personas).
-8. **Un validador** (`validateTemplate`) que devuelve problemas legibles, usado al guardar, al
-   aplicar y en un script `verify:templates`. Nada de arreglos silenciosos.
-9. **Plantillas de fábrica como archivos de datos** (JSON en `templates/`), no como funciones. La del
-   FCR pasa a ser `templates/fcr.json`; quien quiera otro proceso escribe otro archivo o lo arma en
-   Plantillas.
+### Fase 8 · Abrir el motor a otros procesos
+- Interfaz de **tipo de trabajo** (de dónde salen las unidades, qué herramientas, dónde se entrega);
+  mover lo de la Biblia y las ayudas a ese adaptador.
+- **Espera entre proyectos** («lo que el FCR ya publicó»).
+- Segunda plantilla: traducción a una lengua minoritaria.
+- Actualizar un proyecto a una versión nueva de su plantilla, con reglas seguras.
+- Un solo editor de tareas para Plantillas y para el proyecto.
 
-## 4. Fases de trabajo
+## 4. Orden y dependencias
 
-Cada fase deja la app funcionando y no rompe proyectos existentes (se siguen leyendo
-`gateway-assignments-2` y `gateway-workflows-1`).
+```text
+1 Plantilla como datos ─▶ 2 Personas ─▶ 3 Consenso ─▶ 4 Preparar libro ─▶ 5 Armonización ─▶ 6 Validación y Publicación
+                                              └──────▶ 7 Glosario (en paralelo)
+                                                                                              8 Otros procesos
+```
 
-**Fase 1: Plantilla como datos claros (bajo riesgo)**
-- Nombres por idioma y `actionLabel` en fases, tareas y pasos, con lectura de los formatos antiguos.
-- `validateTemplate` + `verify:templates`. El editor de Plantillas muestra los problemas.
-- Campo `version` en la plantilla, que sube al guardar.
-- FCR como `templates/fcr.json` con nombres en español y portugués; el glosario de plantillas queda
-  solo para datos viejos.
-- «Mis tareas» y los avisos muestran el nombre por id, en el idioma de la persona.
+Las fases 1 a 3 son las de menor riesgo y arreglan lo que el FCR ya usa hoy (Traducción y
+Afinación). La 4 cambia cómo se crean los proyectos. Las 5 y 6 son trabajo nuevo.
 
-**Fase 2: Crear proyecto en tres pasos**
-- Asistente nuevo (plantilla → alcance → revisar). Sin «primera fase».
-- El proyecto guarda `workflowId` + `workflowVersion`.
-- El inventario se prepara según la plantilla.
-- Se quita «Aplicar plantilla» de Preparar → Tareas para proyectos con plantilla.
+## 5. Lo que no cambia
 
-**Fase 3: Actualizar un proyecto a una versión nueva de su plantilla**
-- Comparación (agregado / renombrado / quitado) y reglas seguras.
-- Bloquear cambios de id y quitar algo con subtareas abiertas.
+- Las subtareas siguen siendo issues de Door43; el progreso sigue en el cuerpo del issue.
+- Una rama y un pull request por subtarea de texto.
+- Los espacios de trabajo (`scope.ts`) y la configuración (`taller.config.ts`).
+- Los proyectos existentes se siguen leyendo sin migración.
 
-**Fase 4: Tipo de trabajo (adaptadores)**
-- Interfaz `WorkSource` (unidades, inventario, herramientas, entrega).
-- Mover lo de la Biblia y las ayudas (`ScopeKey`, inventario por porción, `reviewsPrincipal`…) al
-  adaptador «Biblia y ayudas».
-- Segundo adaptador «Lista» para un proceso sin Biblia.
-- Sacar del motor los textos y las herramientas del FCR (`issues.ts:296`, `types.ts:543+`).
-- Niveles con nombres configurables en `taller.config.ts` (el orden y la lógica siguen iguales).
+## 6. Pendiente de decidir
 
-**Fase 5: Un solo editor**
-- Unificar `WorkflowsView` y `TeamsView` en un editor de tareas compartido.
-
-## 5. Lo que necesito saber para la fase 4
-
-Qué otros procesos imaginan en los próximos meses (aunque sea a grandes rasgos: qué se reparte, quién
-lo hace, dónde queda el resultado). Eso decide qué debe poder describir un «tipo de trabajo». Las
-fases 1 a 3 no dependen de esa respuesta.
+1. La regla definitiva del aval (fase 6).
+2. El nombre del recurso del glosario y dónde va su índice (fase 7).
+3. La «copia de práctica» del Aprendiz: aceptada, sin fecha.
