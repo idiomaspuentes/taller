@@ -477,3 +477,9 @@ Entonces se puede deducir: español → inglés → original. Sirve para tres co
 - El **UST** se aleja más del original: su puente es menos preciso que el del ULT.
 - Lo deducido **nunca se guarda solo** como decisión ni como alineación: siempre lo confirma una
   persona.
+
+**Qué registra Traducción (confirmado):** solo entradas del glosario para las palabras **muy
+repetidas** o que **costaron**. No alinea su borrador con el inglés palabra por palabra. Por eso la
+propuesta de alineación (punto 3) se apoya en esas entradas y en lo ya alineado en otros libros, y
+será una ayuda parcial: acierta en las palabras con decisión registrada y deja el resto a quien
+alinea.
