@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { TeamOptions } from "../dcs/startBook";
 import { explainError } from "../dcs/userError";
+import { bookLabel, isBookProjectId } from "../domain/books";
 import { orgTeamLabel } from "../domain/roles";
 import { phaseTeams, phasesWithoutTeam, teamAccess, type TeamOption } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
@@ -150,7 +151,7 @@ export function PhaseTeamsPanel({ board, mode = "missing", loadTeams, onSave, on
               <p className="text-sm text-muted-foreground" style={{ margin: 0 }}>{t("sb.teamsLede")}</p>
             </div>
           ) : (
-            <p style={{ margin: 0 }}>{t("sb.noTeams").replace("{n}", String(count))}</p>
+            <p style={{ margin: 0 }}>{t(count === 1 ? "sb.noTeamsOne" : "sb.noTeams").replace("{n}", String(count)).replace("{book}", isBookProjectId(board.projectId) ? bookLabel(board.projectId, language) : board.title || board.projectId)}</p>
           )}
           {phases.map((phase) => {
             const values = new Set(phase.tasks.map(valueOf));

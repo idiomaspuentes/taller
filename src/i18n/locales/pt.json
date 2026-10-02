@@ -217,7 +217,7 @@
   "app.projectCreated": "Projeto {title} criado.",
   "app.inventory": "Inventário: {p} porções, {a} artigos.",
   "pj.title": "Projetos",
-  "pj.ledeIn": "Quadro de projetos em {lang}",
+  "pj.ledeIn": "Os livros em que a equipe de {lang} trabalha",
   "pj.ledeManage": ". Abra um para ver como está, ajustar o processo ou as subtarefas.",
   "pj.new": "Novo projeto",
   "pj.none": "Ainda não há projetos.",
@@ -1679,7 +1679,7 @@
   "sb.noNotes": "Este livro não tem notas na origem: as tarefas de notas ficarão vazias.",
   "sb.noQuestions": "Este livro não tem perguntas na origem.",
   "sb.noSecondText": "O segundo texto de origem deste livro não foi encontrado.",
-  "sb.noTeams": "Falta dizer que equipe faz {n} tarefas. Ninguém poderá pegá-las até então. Escolha uma por fase, ou por tarefa se não for a mesma; na próxima vez virão deste livro.",
+  "sb.noTeams": "Em {book} falta dizer que equipe faz {n} tarefas. Ninguém poderá pegá-las até então. Escolha uma por fase, ou por tarefa se não for a mesma.",
   "sb.pickTeam": "Escolha uma equipe…",
   "sb.loadingTeams": "Carregando equipes…",
   "sb.saveTeams": "Salvar as equipes",
@@ -1700,7 +1700,7 @@
   "sb.goToTasks": "Ver as tarefas",
   "sb.split": "Ver e ajustar as subtarefas",
   "sb.adjust": "Ajustar o processo deste projeto",
-  "sb.otherKind": "Criar outro tipo de projeto (vários livros, à mão)",
+  "sb.otherKind": "Criar um projeto de vários livros",
   "sb.chapterOne": "{n} capítulo",
   "sb.chapterMany": "{n} capítulos",
   "sb.portionOne": "{n} porção",
@@ -1965,5 +1965,7 @@
   "pw.noPeople": "A tarefa não tem equipe com pessoas",
   "pw.give": "Atribuir",
   "pw.release": "Liberar",
-  "pw.openThread": "Abrir a conversa"
+  "pw.openThread": "Abrir a conversa",
+  "pj.updated": "mudou em {date}",
+  "sb.noTeamsOne": "Em {book} falta dizer que equipe faz uma tarefa. Ninguém poderá pegá-la até então."
 }

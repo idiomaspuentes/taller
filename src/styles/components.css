@@ -7337,3 +7337,5 @@ input.pf-name { font-size: 1.625rem; }
 .pw-order__row select { flex: 1 1 12rem; width: auto; }
 .wp-order__open { flex-direction: row; white-space: nowrap; }
 .wp-order__open span, .wp-order__open small { display: inline; }
+.pj-card[data-current="true"] { border-color: var(--accent-400); box-shadow: inset 3px 0 0 var(--accent-500); }
+.pj-card:disabled { cursor: default; }

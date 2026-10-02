@@ -8,7 +8,6 @@ import { PhaseTeamsPanel } from "./PhaseTeamsPanel";
 import { useUiLanguage } from "../i18n/language";
 import { languageDisplayName, type LanguageOption } from "../domain/languages";
 import type { ProjectIndexEntry, ProjectKind } from "../domain/types";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -260,46 +259,22 @@ export function ProjectsView({
           {canManage ? t("pj.noneManage") : ""}
         </div>
       ) : (
-        <div className="hub-board" role="list">
+        <ul className="tp-list">
           {list.map((project) => {
-            const booksLabel =
-              project.kind === "book"
-                ? project.projectId
-                : project.books.length
-                  ? project.books.join(", ")
-                  : t("pj.noBooks");
+            const isBook = project.kind === "book" && isBookProjectId(project.projectId);
             return (
-              <button
-                key={project.projectId}
-                type="button"
-                role="listitem"
-                className="hub-row"
-                data-current={project.projectId === currentProjectId ? "true" : "false"}
-                onClick={() => onOpenProject(project.projectId)}
-                disabled={!canManage}
-              >
-                <span
-                  className="hub-row-strip"
-                  data-kind={project.kind}
-                  aria-hidden
-                />
-                <span className="hub-row-body">
-                  <span className="hub-row-title">{project.kind === "book" && isBookProjectId(project.projectId) ? bookLabel(project.projectId, language) : project.title}</span>
-                  <span className="hub-row-meta">
-                    <Badge variant="outline">
-                      {project.kind === "book" ? t("pj.kindBook") : t("pj.kindThematic")}
-                    </Badge>
-                    <span className="font-mono">{project.projectId}</span>
-                    <span>{booksLabel}</span>
+              <li key={project.projectId}>
+                <button type="button" className="tp-card pj-card" data-current={project.projectId === currentProjectId ? "true" : undefined} onClick={() => onOpenProject(project.projectId)} disabled={!canManage}>
+                  <span className="tp-card__name">{isBook ? bookLabel(project.projectId, language) : project.title}</span>
+                  <span className="tp-card__meta">
+                    {project.kind === "book" ? t("pj.kindBook") : `${t("pj.kindThematic")} · ${project.books.length ? project.books.join(", ") : t("pj.noBooks")}`}
+                    {project.updated_at ? ` · ${t("pj.updated").replace("{date}", new Date(project.updated_at).toLocaleDateString(language))}` : ""}
                   </span>
-                </span>
-                {canManage ? (
-                  <span className="text-xs text-muted-foreground">{t("pj.open")}</span>
-                ) : null}
-              </button>
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       {canManage && createOpen ? (
