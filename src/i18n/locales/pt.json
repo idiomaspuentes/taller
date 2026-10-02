@@ -1614,5 +1614,8 @@
   "ck.quoteNotAligned": "Essas palavras não estão alinhadas com o original: não é possível obter a citação.",
   "pu.okArticles": "artigos vinculados e completos: {n}",
   "pu.willChangeArticles": "arquivos de artigos a publicar: {n}",
-  "pu.p.articleEmpty": "artigos vazios:"
+  "pu.p.articleEmpty": "artigos vazios:",
+  "pu.glossary": "Avisos do glossário",
+  "pu.glossaryHint": "O texto usa outra tradução que a acordada. Não interrompe a publicação: serve para revisar se for preciso.",
+  "pu.glossaryAgreed": "foi acordado «{rendering}» e aqui diz"
 }

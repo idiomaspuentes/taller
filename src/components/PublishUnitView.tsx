@@ -3,10 +3,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { closeIssue, commentOnIssue } from "../dcs/issues";
-import { saveBookRenderings } from "../dcs/glossaryStore";
+import { loadGlossary, saveBookRenderings } from "../dcs/glossaryStore";
 import { getPmIssue } from "../dcs/portionPr";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
-import { loadEndorsement, loadUnitToPublish, publishedTextsOf, publishUnit, unitChanges, unitProblems, type PublishOutcome, type UnitToPublish } from "../dcs/unitPublish";
+import { glossaryNotices, loadEndorsement, loadUnitToPublish, publishedTextsOf, publishUnit, unitChanges, unitProblems, type GlossaryNotice, type PublishOutcome, type UnitToPublish } from "../dcs/unitPublish";
 import { canConfirmForTeam, coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
 import { ownerTaskOf } from "../domain/resourceOwner";
@@ -70,6 +70,8 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
   const [error, setError] = useState("");
   const [stepDone, setStepDone] = useState(false);
   const [told, setTold] = useState(false);
+  /** Where the unit departs from agreed glossary entries: shown, never a reason to stop. */
+  const [notices, setNotices] = useState<GlossaryNotice[]>([]);
   const alignedKey = aligned.join(",");
 
   /** The step is over: mark it, and deliver the subtarea when every step of it was done by a tool. */
@@ -103,6 +105,11 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
       const endorsement = needsEndorsement ? await loadEndorsement(session, loaded).catch(() => null) : null;
       const found = unitProblems(loaded, { aligned: alignedKey.split(",").filter(Boolean), endorsement: endorsement?.fingerprints ?? null, needsEndorsement });
       setProblems(found);
+      if (decoded.contentOrg && decoded.lang) {
+        void loadGlossary(session, decoded.contentOrg, decoded.lang)
+          .then((glossary) => setNotices(glossaryNotices(loaded, glossary.entries)))
+          .catch(() => setNotices([]));
+      }
       const done = decoded.pmOrg && decoded.issueNumber && decoded.stepId ? await stepIsDone({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false) : false;
       setStepDone(done);
       // The checks step needs nobody: when everything passes it completes itself.
@@ -240,6 +247,21 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
             </ul>
           )}
           {mode === "comprobar" && stepDone ? <p className="round__done">{t("pu.checksPassed")}</p> : null}
+        </section>
+      ) : null}
+
+      {notices.length ? (
+        <section className="af-card" aria-label={t("pu.glossary")}>
+          <h2 className="af-phrase">{t("pu.glossary")}</h2>
+          <p className="af-hint">{t("pu.glossaryHint")}</p>
+          <ul className="pu-list">
+            {notices.map((notice) => (
+              <li key={`${notice.resource}-${notice.entry.id}`}>
+                {label(notice.resource)} · {notice.entry.lemma}: {t("pu.glossaryAgreed").replace("{rendering}", notice.entry.rendering)}{" "}
+                {notice.found.map((row) => `«${row.rendering}» (${row.examples.join(", ")})`).join("; ")}
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 

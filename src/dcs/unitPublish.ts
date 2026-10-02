@@ -9,6 +9,8 @@ import { loadPmConfig } from "./issues";
 import { loadAssignmentsFromDcs } from "./persist";
 import { branchExists, createPull, deleteGitRef, ensureBranchFrom, getBranchSha, getDefaultBranch, getPullByBranches, mergePull } from "./pulls";
 import { readTeamHelps } from "./teamHelps";
+import { alignedVersesOf } from "./glossaryStore";
+import { departuresFrom, type GlossaryEntry, type RenderingCount } from "../domain/glossary";
 import { bookUsfmName } from "../prep/discover";
 import { resolveHelpsTarget } from "../domain/helpsTarget";
 import type { LevelBook } from "../domain/levels";
@@ -318,4 +320,30 @@ export async function publishUnit(params: { session: GtSession; unit: UnitToPubl
     }
   }
   return outcomes;
+}
+
+export type GlossaryNotice = { resource: string; entry: GlossaryEntry; found: RenderingCount[] };
+
+/**
+ * Where the texts of the unit use a wording an agreed glossary entry does not allow. It is a notice for whoever
+ * publishes, not a check: wordings vary for good reasons, and the committee already endorsed the unit.
+ */
+export function glossaryNotices(unit: UnitToPublish, entries: GlossaryEntry[]): GlossaryNotice[] {
+  const out: GlossaryNotice[] = [];
+  for (const r of unit.resources) {
+    if (r.kind !== "usfm" || !r.draft) continue;
+    const all = alignedVersesOf(r.draft.text, unit.book);
+    const mine = Object.fromEntries(
+      Object.entries(all).filter(([ref]) => {
+        const match = /(\d+):(\d+)$/.exec(ref);
+        return Boolean(match) && Number(match![1]) === unit.range.chapter && Number(match![2]) >= unit.range.from && Number(match![2]) <= unit.range.to;
+      }),
+    );
+    for (const entry of entries) {
+      if (entry.status !== "agreed" || !(entry.scope === "all" || entry.scope === r.resource)) continue;
+      const found = departuresFrom(entry, mine);
+      if (found.length) out.push({ resource: r.resource, entry, found });
+    }
+  }
+  return out;
 }

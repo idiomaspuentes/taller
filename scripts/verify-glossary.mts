@@ -132,6 +132,8 @@ test("donde el texto se aparta de una decisión acordada", () => {
   const agreed = { ...redeem, rendering: "redimi", variants: [], alternatives: ["rescat: liberación física"] };
   assert.deepEqual(departuresFrom(agreed, verses).map((r) => r.rendering), ["liberó"]);
   assert.deepEqual(departuresFrom({ ...agreed, status: "proposed" }, verses), [], "una propuesta no obliga");
+  // The decision is written as «redimir»; the text says «redimiese». It is the same word.
+  assert.deepEqual(departuresFrom({ ...redeem, alternatives: [], variants: [] }, verses).map((r) => r.rendering), ["liberó"], "una forma conjugada no es apartarse");
 });
 
 console.log(`\nverify-glossary: ${passed} checks passed.`);

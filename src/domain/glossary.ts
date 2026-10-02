@@ -219,12 +219,26 @@ export function renderingsOf(strong: string, verses: Record<string, AlignmentGro
   return [...counts.values()].sort((a, b) => b.count - a.count || a.rendering.localeCompare(b.rendering));
 }
 
+/**
+ * Is a wording the decided one, allowing for inflection? «redimiese» is «redimir»: every word of the decision has a
+ * word in the text that starts the same (four letters, or the whole word when it is shorter). It errs on the side of
+ * accepting: a notice about a departure should be worth reading.
+ */
+function sameWording(text: string, decided: string): boolean {
+  if (text.includes(decided)) return true;
+  const words = text.split(/\s+/).filter(Boolean);
+  return decided.split(/\s+/).filter(Boolean).every((want) => {
+    const root = want.slice(0, Math.min(4, want.length));
+    return words.some((word) => word.startsWith(root));
+  });
+}
+
 /** Where an aligned text departs from an agreed entry: verses that use a wording the entry does not allow. */
 export function departuresFrom(entry: GlossaryEntry, verses: Record<string, AlignmentGroup[]>): RenderingCount[] {
   if (entry.status !== "agreed" || !entry.rendering) return [];
   const allowed = [entry.rendering, ...entry.alternatives.map((a) => a.split(":")[0] ?? ""), ...entry.variants].map(fold).filter(Boolean);
   const first = entry.strong.split(";")[0] ?? "";
-  return renderingsOf(first, verses).filter((r) => !allowed.some((a) => fold(r.rendering).includes(a)));
+  return renderingsOf(first, verses).filter((r) => !allowed.some((a) => sameWording(fold(r.rendering), a)));
 }
 
 // ---------------------------------------------------------------- the index of every book
