@@ -2185,5 +2185,10 @@
   "mde.otherBookHint": "TIT",
   "mde.linkText": "Texto que aparece",
   "mde.url": "Endereço",
-  "mde.insert": "Inserir"
+  "mde.insert": "Inserir",
+  "hs.loading": "Carregando os textos fonte…",
+  "hs.notFound": "não foi possível localizar a frase",
+  "hs.wholeVerse": "todo o versículo",
+  "hs.seeVerse": "Ver {ref} completo",
+  "hs.chapter": "Ler o capítulo {n} ({texts})"
 }

@@ -19,6 +19,11 @@ export type HelpsDraftItem = {
   secondaryLabel?: string;
   filepath: string;
   kind: "tsv" | "markdown";
+  /** A note: where it is and what it quotes of the original, to show the phrase in the source texts. */
+  chapter?: number;
+  verse?: number;
+  quote?: string;
+  occurrence?: number;
 };
 
 function matchPortion(inventory: InventoryDoc, portionId: string): Portion | undefined {
@@ -111,6 +116,11 @@ export function applyHelpsTsvEdits(
   return serializeTsv(headers, next);
 }
 
+function placeOf(row: Record<string, string>): { chapter?: number; verse?: number } {
+  const parsed = parseVerseRef(row.Reference || row.reference || "");
+  return parsed ? { chapter: parsed.chapter, verse: parsed.verses[0] } : {};
+}
+
 export function tsvRowsToDraftItems(
   resource: "notas" | "preguntas",
   filepath: string,
@@ -126,6 +136,9 @@ export function tsvRowsToDraftItems(
         text: row.Note || "",
         filepath,
         kind: "tsv",
+        ...placeOf(row),
+        quote: (row.Quote || "").trim(),
+        occurrence: Math.max(1, parseInt(row.Occurrence || "1", 10) || 1),
       };
     }
     return {
@@ -137,6 +150,7 @@ export function tsvRowsToDraftItems(
       secondaryLabel: "Respuesta",
       filepath,
       kind: "tsv",
+      ...placeOf(row),
     };
   });
 }

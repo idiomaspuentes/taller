@@ -1,3 +1,5 @@
+import { ChapterSources, NoteQuote, useHelpSources } from "./HelpSources";
+import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -457,6 +459,12 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     }
   }
 
+  // A note or a question is translated beside the source texts of its chapter; an article is not of one passage.
+  const isNotes = target?.resource === "notas";
+  const wantsSources = target?.kind === "tsv";
+  const range = ctx ? portionRange(ctx.ref, ctx.chapter) : null;
+  const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
+
   return (
     <div className="scripture-editor">
       <header className="scripture-editor__head">
@@ -523,12 +531,21 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               {t("he.oneResource")}
             </p>
           )}
+          {wantsSources && range ? <ChapterSources sources={sources} chapter={range.chapter} from={range.from} to={range.to} /> : null}
           {items.map((item) => (
             <div key={item.id} className="scripture-editor__verse">
               <div className="scripture-editor__verse-head">
-                <Label htmlFor={`help-${item.id}`}>{item.label}</Label>
-                <p className="scripture-editor__source">{item.meta}</p>
+                {isNotes && item.chapter && item.verse ? (
+                  // A note is named by where it is; what it is about is said in the source texts, below.
+                  <Label htmlFor={`help-${item.id}`}>{`${item.chapter}:${item.verse}`}</Label>
+                ) : (
+                  <>
+                    <Label htmlFor={`help-${item.id}`}>{item.label}</Label>
+                    <p className="scripture-editor__source">{item.meta}</p>
+                  </>
+                )}
               </div>
+              {isNotes && item.chapter && item.verse ? <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> : null}
               {item.secondaryLabel ? (
                 // A question and its answer are plain sentences.
                 <textarea

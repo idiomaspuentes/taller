@@ -7578,3 +7578,21 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .mde-kind[aria-selected="true"] { border-color: var(--accent-500); background: var(--accent-50); color: var(--accent-800); font-weight: 600; }
 .mde-row { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; }
 .mde-field { display: grid; gap: 0.125rem; flex: 1 1 6rem; min-width: 0; font-size: 0.75rem; color: var(--text-muted); }
+/* What a help is about in the source texts, and the chapter around it. */
+.hs-quote { display: grid; gap: 0.25rem; }
+.hs-phrases { display: grid; gap: 0.125rem; margin: 0; }
+.hs-phrases > div { display: grid; grid-template-columns: 2.5rem 1fr; gap: 0.5rem; align-items: baseline; }
+.hs-phrases dt { font-size: 0.6875rem; font-weight: 700; color: var(--text-muted); }
+.hs-phrases dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.hs-none { font-weight: 400; font-size: 0.875rem; color: var(--text-faint); }
+.hs-wait { margin: 0; font-size: 0.8125rem; color: var(--text-faint); }
+.hs-verse summary, .hs-chapter summary { min-height: 32px; font-size: 0.8125rem; color: var(--primary); cursor: pointer; }
+.hs-verse p { margin: 0.25rem 0 0; font-size: 0.9375rem; color: var(--text-muted); line-height: 1.55; }
+.hs-verse b { font-size: 0.6875rem; color: var(--text-muted); }
+.hs-mark { padding: 0 0.125rem; border-radius: 3px; background: var(--warning-100); color: var(--warning-700); font-weight: 700; }
+.hs-chapter { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.hs-chapter[open] { display: grid; gap: 0.5rem; }
+.hs-chapter__text { max-height: 45dvh; overflow-y: auto; font-size: 0.9375rem; line-height: 1.6; }
+.hs-v { opacity: 0.6; }
+.hs-v[data-here="true"] { opacity: 1; }
+.hs-v sup { font-weight: 700; color: var(--accent-700); }
