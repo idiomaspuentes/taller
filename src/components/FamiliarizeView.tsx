@@ -3,7 +3,7 @@ import { Check, NotebookPen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession } from "../dcs/auth";
-import { commentOnIssue, loadPmConfig } from "../dcs/issues";
+import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -99,9 +99,6 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   const [wholeChapter, setWholeChapter] = useState(true);
   const [done, setDone] = useState(false);
   const [finishing, setFinishing] = useState(false);
-  const [doubt, setDoubt] = useState("");
-  const [doubtSent, setDoubtSent] = useState(false);
-  const [sending, setSending] = useState(false);
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
@@ -195,23 +192,6 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     } catch (err) {
       setError(explainError(err));
       setFinishing(false);
-    }
-  }
-
-  async function sendDoubt() {
-    const sess = loadSession();
-    const text = doubt.trim();
-    if (!ctx?.issueNumber || !sess?.token || !text) return;
-    setSending(true);
-    setError("");
-    try {
-      await commentOnIssue(sess, ctx.pmOrg, ctx.issueNumber, t("fa.doubtComment").replace("{ref}", `${ctx.book} ${ctx.ref}`).replace("{text}", text));
-      setDoubt("");
-      setDoubtSent(true);
-    } catch (err) {
-      setError(explainError(err));
-    } finally {
-      setSending(false);
     }
   }
 
@@ -366,22 +346,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             <section className="fam-panel" role="tabpanel" hidden={current !== "apuntes"}>
               <h2 className="fam-panel__title">{t("sn.title")}</h2>
               <p className="pe-hint">{t("sn.lede")}</p>
-              <StudyNotesPanel session={loadSession()!} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} onCount={setNoteCount} />
-              {ctx.issueNumber ? (
-                <div className="fam-doubt">
-                  <label className="pe-label" htmlFor="fam-doubt">
-                    {t("fa.doubtTitle")}
-                  </label>
-                  <p className="pe-hint">{t("fa.doubtHint")}</p>
-                  <textarea id="fam-doubt" className="af-textarea" rows={3} value={doubt} placeholder={t("fa.doubtPlaceholder")} onChange={(e) => setDoubt(e.target.value)} />
-                  <div className="fam-doubt__row">
-                    <Button type="button" size="sm" variant="outline" disabled={sending || !doubt.trim()} onClick={() => void sendDoubt()}>
-                      {sending ? t("wf.saving") : t("fa.doubtSend")}
-                    </Button>
-                    {doubtSent ? <span className="af-saved">{t("fa.doubtSent")}</span> : null}
-                  </div>
-                </div>
-              ) : null}
+              <StudyNotesPanel session={loadSession()!} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} issueNumber={ctx.issueNumber || undefined} onCount={setNoteCount} />
             </section>
           ) : null}
 

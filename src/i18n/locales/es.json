@@ -1991,7 +1991,7 @@
   "fa.introEnglish": "Todavía no está traducida: se muestra en inglés.",
   "sn.title": "Mis apuntes",
   "sn.tab": "Apuntes",
-  "sn.lede": "Lo que descubras o quieras tener en cuenta. Lo vuelves a ver al traducir y revisar este pasaje.",
+  "sn.lede": "Escribe lo que descubras o quieras recordar de este pasaje. Lo vuelves a ver al traducirlo.",
   "sn.kind": "Tipo de apunte",
   "sn.found": "Descubrí",
   "sn.remember": "Tener en cuenta",
@@ -2009,8 +2009,8 @@
   "sn.noneRead": "No hay apuntes de este pasaje.",
   "sn.chapter": "Capítulo {n}",
   "sn.book": "El libro",
-  "sn.mine": "mío, privado",
-  "sn.mineShared": "mío, compartido",
+  "sn.mine": "solo tú",
+  "sn.mineShared": "compartido",
   "sn.shareIt": "Compartir",
   "sn.unshare": "Dejar de compartir",
   "sn.remove": "Borrar el apunte",
@@ -2036,5 +2036,11 @@
   "fa.tabBook": "El libro",
   "fa.tabChapter": "El capítulo",
   "fa.tabPassage": "El pasaje",
-  "fa.tabNotes": "Notas"
+  "fa.tabNotes": "Notas",
+  "sn.placeholder": "Escribe un apunte…",
+  "sn.keep": "Guardar para mí",
+  "sn.ask": "Preguntar al equipo",
+  "sn.savedMine": "Guardado. Solo tú lo ves.",
+  "sn.savedShared": "Compartido con el equipo.",
+  "sn.asked": "Pregunta enviada a la conversación de la tarea."
 }

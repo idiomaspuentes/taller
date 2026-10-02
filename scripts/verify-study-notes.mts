@@ -26,6 +26,9 @@ test("al trabajar un pasaje salen primero sus versículos, luego el capítulo y 
   const here = studyNotesFor(visibleStudyNotes(all, "ana"), { book: "3jn", chapter: 1, from: 1, to: 4 });
   assert.deepEqual(here.map((n) => n.id), ["a", "c", "b", "f"]);
   assert.deepEqual(studyNotesFor(all, { book: "3JN", chapter: 1 }).map((n) => n.id).sort(), ["a", "b", "c", "d", "e", "f"], "sin pasaje, todo el capítulo");
+  const about = { ...note("p", "ana", true, 1, 5), to: 8 };
+  assert.deepEqual(studyNotesFor([about], { book: "3JN", chapter: 1, from: 7, to: 10 }).map((n) => n.id), ["p"], "un apunte de un pasaje sale donde sus versículos se cruzan con los que se trabajan");
+  assert.deepEqual(studyNotesFor([about], { book: "3JN", chapter: 1, from: 9, to: 10 }), []);
 });
 
 test("cada persona tiene su archivo, y lo que dice un archivo es de su dueño", () => {

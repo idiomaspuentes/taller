@@ -1991,7 +1991,7 @@
   "fa.introEnglish": "Ainda não está traduzida: é mostrada em inglês.",
   "sn.title": "Minhas anotações",
   "sn.tab": "Anotações",
-  "sn.lede": "O que você descobrir ou quiser levar em conta. Você volta a ver ao traduzir e revisar esta passagem.",
+  "sn.lede": "Escreva o que descobrir ou quiser lembrar desta passagem. Você volta a ver ao traduzir.",
   "sn.kind": "Tipo de anotação",
   "sn.found": "Descobri",
   "sn.remember": "Levar em conta",
@@ -2009,8 +2009,8 @@
   "sn.noneRead": "Não há anotações desta passagem.",
   "sn.chapter": "Capítulo {n}",
   "sn.book": "O livro",
-  "sn.mine": "meu, privado",
-  "sn.mineShared": "meu, compartilhado",
+  "sn.mine": "só você",
+  "sn.mineShared": "compartilhado",
   "sn.shareIt": "Compartilhar",
   "sn.unshare": "Deixar de compartilhar",
   "sn.remove": "Apagar a anotação",
@@ -2036,5 +2036,11 @@
   "fa.tabBook": "O livro",
   "fa.tabChapter": "O capítulo",
   "fa.tabPassage": "A passagem",
-  "fa.tabNotes": "Notas"
+  "fa.tabNotes": "Notas",
+  "sn.placeholder": "Escreva uma anotação…",
+  "sn.keep": "Guardar para mim",
+  "sn.ask": "Perguntar à equipe",
+  "sn.savedMine": "Guardado. Só você vê.",
+  "sn.savedShared": "Compartilhado com a equipe.",
+  "sn.asked": "Pergunta enviada à conversa da tarefa."
 }

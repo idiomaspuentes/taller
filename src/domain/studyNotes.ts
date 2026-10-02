@@ -17,6 +17,8 @@ export type StudyNote = {
   chapter: number;
   /** The verse it is about; absent = the chapter, or the book, in general. */
   verse?: number;
+  /** The last verse, when it is about a passage and not one verse. */
+  to?: number;
   kind: StudyNoteKind;
   text: string;
   /** Shown to the whole team. A note that is not shared is only shown to its author. */
@@ -49,13 +51,14 @@ export function normalizeStudyNotes(raw: unknown, owner: string): StudyNote[] {
     const chapter = Number(row.chapter);
     if (!id || !text || !book || !(chapter >= 0) || out.some((have) => have.id === id)) continue;
     const verse = Number(row.verse);
+    const to = Number(row.to);
     out.push({
       id,
       // A file is its owner's: whatever it says, its notes are theirs.
       by: owner,
       book,
       chapter: Math.floor(chapter),
-      ...(Number.isInteger(verse) && verse > 0 ? { verse } : {}),
+      ...(Number.isInteger(verse) && verse > 0 ? { verse, ...(Number.isInteger(to) && to > verse ? { to } : {}) } : {}),
       kind: row.kind === "remember" ? "remember" : "found",
       text,
       shared: row.shared === true,
@@ -77,7 +80,8 @@ export function visibleStudyNotes(all: StudyNote[], me: string): StudyNote[] {
  */
 export function studyNotesFor(notes: StudyNote[], where: { book: string; chapter: number; from?: number; to?: number }): StudyNote[] {
   const book = where.book.toUpperCase();
-  const inPassage = (note: StudyNote) => note.chapter === where.chapter && note.verse !== undefined && (where.from === undefined || (note.verse >= where.from && note.verse <= (where.to ?? where.from)));
+  // A note about a passage matters wherever its verses and the ones in hand overlap.
+  const inPassage = (note: StudyNote) => note.chapter === where.chapter && note.verse !== undefined && (where.from === undefined || (note.verse <= (where.to ?? where.from) && (note.to ?? note.verse) >= where.from));
   const rank = (note: StudyNote) => (inPassage(note) ? 0 : note.chapter === where.chapter && note.verse === undefined ? 1 : note.chapter === 0 ? 2 : 3);
   return notes
     .filter((note) => note.book === book && (note.chapter === where.chapter || note.chapter === 0))

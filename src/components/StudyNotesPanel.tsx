@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lightbulb, Pin, Trash2, Users } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
+import { commentOnIssue } from "../dcs/issues";
 import { changeMyStudyNotes, loadStudyNotes } from "../dcs/studyNotes";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { studyNotesFor, type StudyNote, type StudyNoteKind } from "../domain/studyNotes";
+import { studyNotesFor, type StudyNote } from "../domain/studyNotes";
 import { useT } from "../i18n/messages";
 
 type Props = {
@@ -15,28 +16,27 @@ type Props = {
   projectId: string;
   book: string;
   chapter: number;
-  /** The verses of the passage in hand: a note can be about one of them. */
+  /** The verses of the passage in hand: what is written here is about them. */
   from?: number;
   to?: number;
-  /** Only read: the notes are shown and none is added (a tool where writing them would be out of place). */
-  readOnly?: boolean;
+  /** The subtarea whose conversation a question to the team goes to. Absent: asking is not offered. */
+  issueNumber?: number;
   /** How many notes there are for the passage, once known. */
   onCount?: (count: number) => void;
 };
 
 /**
- * «Apuntes»: what the person found out or wants to keep in mind about a passage, their own and the ones the team
- * shared. Written while studying; shown again wherever the same passage is worked on.
+ * «Apuntes»: one box to write in and three things to do with what was written: keep it, share it with the team, or
+ * ask the team about it. Below, what the person and the team already wrote about the passage. No kinds, no settings:
+ * a note is about the passage in hand, and whether the team sees it is the button pressed.
  */
-export function StudyNotesPanel({ session, pmOrg, lang, projectId, book, chapter, from, to, readOnly, onCount }: Props) {
+export function StudyNotesPanel({ session, pmOrg, lang, projectId, book, chapter, from, to, issueNumber, onCount }: Props) {
   const t = useT();
   const [notes, setNotes] = useState<StudyNote[] | null>(null);
   const [text, setText] = useState("");
-  const [kind, setKind] = useState<StudyNoteKind>("found");
-  const [verse, setVerse] = useState("");
-  const [shared, setShared] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [said, setSaid] = useState("");
   const me = session.username.toLowerCase();
 
   useEffect(() => {
@@ -47,7 +47,10 @@ export function StudyNotesPanel({ session, pmOrg, lang, projectId, book, chapter
     return () => {
       alive = false;
     };
-  }, [session, pmOrg, lang, projectId]);
+    // By what the session is, not by the object: a host that hands a new one on every render must not make the
+    // notes load again (and show the list as it was before the last one was written).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.token, session.host, pmOrg, lang, projectId]);
 
   const here = useMemo(() => studyNotesFor(notes ?? [], { book, chapter, from, to }), [notes, book, chapter, from, to]);
   useEffect(() => {
@@ -55,13 +58,15 @@ export function StudyNotesPanel({ session, pmOrg, lang, projectId, book, chapter
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [here.length, notes]);
 
-  async function change(next: (mine: StudyNote[]) => StudyNote[], optimistic: (all: StudyNote[]) => StudyNote[]) {
+  async function change(next: (mine: StudyNote[]) => StudyNote[], optimistic: (all: StudyNote[]) => StudyNote[], done = "") {
     setBusy(true);
     setError("");
+    setSaid("");
     const before = notes;
     setNotes(optimistic(notes ?? []));
     try {
       await changeMyStudyNotes({ session, pmOrg, lang, projectId }, next);
+      setSaid(done);
     } catch (err) {
       setNotes(before);
       setError(explainError(err));
@@ -70,66 +75,66 @@ export function StudyNotesPanel({ session, pmOrg, lang, projectId, book, chapter
     }
   }
 
-  function add() {
+  function keep(shared: boolean) {
     const body = text.trim();
     if (!body) return;
-    const note: StudyNote = { id: `n-${uid().slice(0, 8)}`, by: me, book: book.toUpperCase(), chapter, ...(verse ? { verse: Number(verse) } : {}), kind, text: body, shared, at: new Date().toISOString() };
+    const note: StudyNote = { id: `n-${uid().slice(0, 8)}`, by: me, book: book.toUpperCase(), chapter, ...(from ? { verse: from, ...(to && to > from ? { to } : {}) } : {}), kind: "found", text: body, shared, at: new Date().toISOString() };
     setText("");
     void change(
       (mine) => [...mine, note],
       (all) => [...all, note],
+      t(shared ? "sn.savedShared" : "sn.savedMine"),
     );
   }
 
-  const verses = from !== undefined ? Array.from({ length: (to ?? from) - from + 1 }, (_, index) => from + index) : [];
-  const where = (note: StudyNote) => (note.verse ? `${note.chapter}:${note.verse}` : note.chapter ? t("sn.chapter").replace("{n}", String(note.chapter)) : t("sn.book"));
+  /** A question goes to the conversation of the task, where the team answers, and stays here as a shared note. */
+  async function ask() {
+    const body = text.trim();
+    if (!body || !issueNumber) return;
+    setBusy(true);
+    setError("");
+    setSaid("");
+    try {
+      await commentOnIssue(session, pmOrg, issueNumber, t("fa.doubtComment").replace("{ref}", `${book} ${where({ chapter, verse: from, to })}`).replace("{text}", body));
+      setText("");
+      setSaid(t("sn.asked"));
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const where = (note: Pick<StudyNote, "chapter" | "verse" | "to">) => (note.verse ? `${note.chapter}:${note.verse}${note.to && note.to > note.verse ? `–${note.to}` : ""}` : note.chapter ? t("sn.chapter").replace("{n}", String(note.chapter)) : t("sn.book"));
 
   return (
     <div className="sn">
-      {!readOnly ? (
-        <form
-          className="sn-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            add();
-          }}
-        >
-          <div className="pe-seg sn-kinds" role="radiogroup" aria-label={t("sn.kind")}>
-            <button type="button" role="radio" aria-checked={kind === "found"} className="pe-seg__opt" onClick={() => setKind("found")}>
-              <Lightbulb size={14} aria-hidden /> {t("sn.found")}
-            </button>
-            <button type="button" role="radio" aria-checked={kind === "remember"} className="pe-seg__opt" onClick={() => setKind("remember")}>
-              <Pin size={14} aria-hidden /> {t("sn.remember")}
-            </button>
-          </div>
-          <textarea className="af-textarea" rows={2} value={text} placeholder={t(kind === "found" ? "sn.foundPlaceholder" : "sn.rememberPlaceholder")} aria-label={t("sn.text")} onChange={(e) => setText(e.target.value)} />
-          <div className="sn-form__row">
-            {verses.length ? (
-              <select className="af-input pe-auto" value={verse} aria-label={t("sn.about")} onChange={(e) => setVerse(e.target.value)}>
-                <option value="">{t("sn.wholePassage")}</option>
-                {verses.map((v) => (
-                  <option key={v} value={v}>
-                    {chapter}:{v}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            <label className="pe-check">
-              <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
-              <span>{t("sn.share")}</span>
-            </label>
-            <Button type="submit" size="sm" disabled={busy || !text.trim()}>
-              {t("sn.add")}
+      <div className="sn-form">
+        <textarea className="af-textarea" rows={3} value={text} placeholder={t("sn.placeholder")} aria-label={t("sn.text")} onChange={(e) => setText(e.target.value)} />
+        <div className="sn-form__row">
+          <Button type="button" size="sm" disabled={busy || !text.trim()} onClick={() => keep(false)}>
+            {t("sn.keep")}
+          </Button>
+          <Button type="button" size="sm" variant="outline" disabled={busy || !text.trim()} onClick={() => keep(true)}>
+            {t("sn.share")}
+          </Button>
+          {issueNumber ? (
+            <Button type="button" size="sm" variant="ghost" disabled={busy || !text.trim()} onClick={() => void ask()}>
+              {t("sn.ask")}
             </Button>
-          </div>
-          <p className="pe-hint">{t(shared ? "sn.sharedHint" : "sn.privateHint")}</p>
-        </form>
-      ) : null}
-      {error ? (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
-        </p>
-      ) : null}
+          ) : null}
+        </div>
+        {said ? (
+          <p className="af-saved" role="status">
+            {said}
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        ) : null}
+      </div>
 
       {notes === null ? (
         <p className="pe-hint">{t("sn.loading")}</p>
@@ -138,49 +143,49 @@ export function StudyNotesPanel({ session, pmOrg, lang, projectId, book, chapter
           {here.map((note) => {
             const mine = note.by.toLowerCase() === me;
             return (
-              <li key={`${note.by}-${note.id}`} className="sn-note" data-kind={note.kind}>
-                <p className="sn-note__meta">
-                  {note.kind === "found" ? <Lightbulb size={14} aria-hidden /> : <Pin size={14} aria-hidden />}
-                  <b>{where(note)}</b>
-                  <span>{mine ? t(note.shared ? "sn.mineShared" : "sn.mine") : `@${note.by}`}</span>
-                  {note.shared && mine ? <Users size={13} aria-hidden /> : null}
-                </p>
+              <li key={`${note.by}-${note.id}`} className="sn-note" data-shared={note.shared ? "true" : undefined}>
                 <p className="sn-note__text">{note.text}</p>
-                {mine && !readOnly ? (
-                  <div className="sn-note__actions">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void change(
-                          (rows) => rows.map((row) => (row.id === note.id ? { ...row, shared: !row.shared } : row)),
-                          (all) => all.map((row) => (row.id === note.id && row.by.toLowerCase() === me ? { ...row, shared: !row.shared } : row)),
-                        )
-                      }
-                    >
-                      {t(note.shared ? "sn.unshare" : "sn.shareIt")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      aria-label={t("sn.remove")}
-                      onClick={() =>
-                        void change(
-                          (rows) => rows.filter((row) => row.id !== note.id),
-                          (all) => all.filter((row) => !(row.id === note.id && row.by.toLowerCase() === me)),
-                        )
-                      }
-                    >
-                      <Trash2 size={13} aria-hidden />
-                    </button>
-                  </div>
-                ) : null}
+                <p className="sn-note__meta">
+                  <span>{where(note)}</span>
+                  <span>{mine ? t(note.shared ? "sn.mineShared" : "sn.mine") : `@${note.by}`}</span>
+                  {mine ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          void change(
+                            (rows) => rows.map((row) => (row.id === note.id ? { ...row, shared: !row.shared } : row)),
+                            (all) => all.map((row) => (row.id === note.id && row.by.toLowerCase() === me ? { ...row, shared: !row.shared } : row)),
+                          )
+                        }
+                      >
+                        {t(note.shared ? "sn.unshare" : "sn.shareIt")}
+                      </button>
+                      <button
+                        type="button"
+                        className="sn-note__del"
+                        disabled={busy}
+                        aria-label={t("sn.remove")}
+                        title={t("sn.remove")}
+                        onClick={() =>
+                          void change(
+                            (rows) => rows.filter((row) => row.id !== note.id),
+                            (all) => all.filter((row) => !(row.id === note.id && row.by.toLowerCase() === me)),
+                          )
+                        }
+                      >
+                        <Trash2 size={13} aria-hidden />
+                      </button>
+                    </>
+                  ) : null}
+                </p>
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="pe-hint">{t(readOnly ? "sn.noneRead" : "sn.none")}</p>
+        <p className="pe-hint">{t("sn.none")}</p>
       )}
     </div>
   );
