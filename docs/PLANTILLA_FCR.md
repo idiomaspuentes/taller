@@ -396,8 +396,25 @@ glosario registra **qué palabra en español usamos** y por qué.
 - En **palabras clave:** se ve la decisión anterior junto a los versículos donde aparece la palabra.
 - En cualquier momento, como **lista para consultar y buscar**.
 
+**Reglas (confirmadas el 1 de octubre de 2026):**
+- **Crear:** cualquiera del FCR puede crear una entrada nueva.
+- **Cambiar:** una entrada existente solo se cambia **por consenso**.
+- **Aprender de los cambios:** cuando una fase posterior cambia una decisión, el equipo de
+  **Traducción lo ve** (qué cambió y por qué), para que sus próximos borradores ya la sigan.
+- **Es una guía**, no una obligación: el texto puede apartarse cuando el contexto lo pide.
+- **Varios significados:** una misma palabra puede tener más de un sentido, cada uno con su
+  traducción y sus ejemplos.
+- **Variantes:** cada entrada agrupa las formas de la palabra (conjugaciones, plurales, género), para
+  encontrarla aunque esté escrita distinto: «redimir, redimiese, redimió, redención».
+- **Un glosario por idioma:** español y portugués por separado.
+
+**Cómo agrupar las variantes (propuesta):**
+- **Idioma original:** por el **lema** de la palabra (y su número de Strong), que ya viene en los
+  textos griego y hebreo. Todas las formas de λυτρόω caen solas en la misma entrada.
+- **Español:** las formas se van juntando **solas** desde los textos alineados (cada vez que ese lema
+  se tradujo), y se pueden agregar a mano.
+- **Inglés:** una lista de formas escrita a mano, con ayuda de la lista de palabras (TWL).
+
 **Por confirmar:**
-1. ¿Cualquiera del FCR puede **agregar** una entrada, o cualquiera **propone** y un equipo la
-   aprueba? ¿Cuál equipo?
-2. ¿Una decisión del glosario es **obligatoria** (el texto debe seguirla) o es una **guía**?
-3. ¿Un glosario por idioma (español y portugués por separado)?
+1. ¿El consenso para cambiar una entrada es del **equipo que propone el cambio**, o hay un equipo
+   dueño del glosario?
