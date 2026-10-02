@@ -599,7 +599,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             {/* 1. Where it is: marked in the text the draft is read against, the original unless another is chosen. */}
             <div className="af-ref">
               <div className="af-ref__bar">
-                <span className="af-lbl">{t("af.marked")}</span>
+                <span className="af-lbl">{t("af.marked").replace("{text}", reference?.id === "orig" || !reference ? t("af.inOriginal") : reference.label)}</span>
                 <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
                   {(data.references ?? []).map((row) => (
                     <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
