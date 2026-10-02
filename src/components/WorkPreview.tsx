@@ -12,6 +12,7 @@ import type { AssignmentsDoc, InventoryDoc, ProjectSettings } from "../domain/ty
 import { publishableWorkOrders, type WorkOrder } from "../domain/workOrder";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
+import { DEFAULT_MAX_CHAPTER_VERSES, longChapters, splitChapter } from "../domain/handoff";
 import { HandoffUnitsPanel } from "./HandoffUnitsPanel";
 import { PortionCutsPanel } from "./PortionCutsPanel";
 
@@ -46,6 +47,9 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
   const [title, setTitle] = useState("");
   const [portionId, setPortionId] = useState("");
   const [section, setSection] = useState<"portions" | "units" | null>(null);
+  const max = board.settings?.maxChapterVerses ?? DEFAULT_MAX_CHAPTER_VERSES;
+  const long = useMemo(() => longChapters(inventory.portions, board.settings?.handoffUnits, max), [inventory.portions, board.settings?.handoffUnits, max]);
+  const splitCount = board.settings?.handoffUnits?.length ?? 0;
   const byTask = useMemo(() => {
     const map = new Map<string, WorkOrder[]>();
     for (const order of orders) map.set(order.teamId, [...(map.get(order.teamId) ?? []), order]);
@@ -89,18 +93,68 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
         </p>
       ))}
 
-      {onPortionStarts || onSettings ? (
+      {onPortionStarts ? (
         <div className="wp-tools">
-          {onPortionStarts ? (
-            <button type="button" className="wp-tool" aria-expanded={section === "portions"} onClick={() => setSection(section === "portions" ? null : "portions")}>
-              <span className="wp-tool__name">{t("wp.cutPortions")}</span>
-              <span className="wp-tool__hint">{t("wp.cutPortionsHint")}</span>
-            </button>
-          ) : null}
-          {onSettings && size.portions > size.chapters ? (
-            <button type="button" className="wp-tool" aria-expanded={section === "units"} onClick={() => setSection(section === "units" ? null : "units")}>
-              <span className="wp-tool__name">{t("wp.splitChapters")}</span>
-              <span className="wp-tool__hint">{t("wp.splitChaptersHint")}</span>
+          <button type="button" className="wp-tool" aria-expanded={section === "portions"} onClick={() => setSection(section === "portions" ? null : "portions")}>
+            <span className="wp-tool__name">{t("wp.cutPortions")}</span>
+            <span className="wp-tool__hint">{t("wp.cutPortionsHint")}</span>
+          </button>
+        </div>
+      ) : null}
+      {onSettings && long.length ? (
+        <div className="wp-suggest" role="status">
+          <p className="wp-suggest__title">{t(long.length === 1 ? "wp.longOne" : "wp.longMany").replace("{n}", String(long.length)).replace("{max}", String(max))}</p>
+          <ul>
+            {long.map((row) => (
+              <li key={row.chapter}>
+                {t("wp.longRow")
+                  .replace("{chapter}", String(row.chapter))
+                  .replace("{verses}", String(row.verses))
+                  .replace("{parts}", String(row.cuts.length + 1))}
+              </li>
+            ))}
+          </ul>
+          <div className="wp-suggest__actions">
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                let units = board.settings?.handoffUnits;
+                for (const row of long) units = splitChapter(units, row.chapter, row.portionIds, row.cuts);
+                onSettings({ ...board.settings, handoffUnits: units });
+                setSection("units");
+              }}
+            >
+              {t("wp.splitSuggested")}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setSection(section === "units" ? null : "units")}>
+              {t("wp.splitChoose")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {onSettings && size.portions > size.chapters ? (
+        <div className="wp-limit">
+          <label>
+            {t("wp.limitA")}{" "}
+            <input
+              className="af-input pe-num"
+              type="number"
+              min={1}
+              value={max}
+              disabled={busy}
+              aria-label={t("wp.limitAria")}
+              onChange={(e) => {
+                const value = Math.floor(Number(e.target.value));
+                if (value >= 1) onSettings({ ...board.settings, maxChapterVerses: value });
+              }}
+            />{" "}
+            {t("wp.limitB")}
+          </label>
+          {!long.length ? (
+            <button type="button" className="pe-link" aria-expanded={section === "units"} onClick={() => setSection(section === "units" ? null : "units")}>
+              {t(splitCount ? "wp.seeSplit" : "wp.splitAnyway")}
             </button>
           ) : null}
         </div>

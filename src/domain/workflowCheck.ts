@@ -56,6 +56,7 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
   if (!text(raw.id)) problems.push(`«${name}»: falta el id de la plantilla.`);
   if (!text(raw.name)) problems.push(`«${name}»: falta el nombre de la plantilla.`);
   if (raw.version !== undefined && !(Number.isInteger(raw.version) && Number(raw.version) > 0)) problems.push(`«${name}»: la versión debe ser un número entero mayor que cero.`);
+  if (raw.maxChapterVerses !== undefined && !(Number.isInteger(raw.maxChapterVerses) && Number(raw.maxChapterVerses) >= 1)) problems.push(`«${name}»: el máximo de versículos por capítulo debe ser un número entero mayor que cero.`);
   checkLocalized(raw.names, `«${name}»`, languages, problems);
 
   const phases = list(raw.phases);

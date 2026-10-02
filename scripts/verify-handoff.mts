@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
-import { cutsOfChapter, normalizeHandoffUnits, splitChapter, unitIdOfPortion, unitsOfChapter } from "../src/domain/handoff";
+import { cutsOfChapter, longChapters, normalizeHandoffUnits, splitChapter, suggestedCuts, unitIdOfPortion, unitsOfChapter } from "../src/domain/handoff";
 import { normalizeAssignmentsDoc } from "../src/domain/store";
 import type { AssignmentsDoc, InventoryDoc, Portion, ProjectTask } from "../src/domain/types";
 import { waitBlocks } from "../src/domain/waits";
@@ -108,6 +108,20 @@ test("cada tramo pasa solo a la fase siguiente: el segundo no frena al primero",
   const wholeBoard = { teams: [byPortion, byUnit], phases: [] } as unknown as AssignmentsDoc;
   const wholeTune = issueOf(planUnassignedLots(byUnit, inventory, "PSA", {}).find((o) => o.chapter === 3)!, "afinar");
   assert.equal(waitBlocks(wholeTune, wholeBoard, [...firstHalfDone.filter((i) => !tune.includes(i)), wholeTune]).length, 1, "sin partir, el capítulo espera a todas sus porciones");
+});
+
+test("un capítulo que pasa del máximo de versículos se sugiere partir, en tramos parejos y sin pasarse", () => {
+  assert.deepEqual(suggestedCuts([10, 10, 10], 40), [], "si cabe entero no se parte");
+  assert.deepEqual(suggestedCuts([10, 12, 9, 11, 10], 40), [1], "52 versículos: dos tramos de 22 y 30, no 40 y 12");
+  assert.deepEqual(suggestedCuts([20, 20, 20, 20, 20, 16], 40), [1, 3], "116 versículos: tres tramos de 40, 40 y 36");
+  assert.deepEqual(suggestedCuts([50, 5], 40), [0], "una porción más larga que el máximo queda sola");
+  assert.deepEqual(suggestedCuts([60], 40), [], "con una sola porción no hay dónde cortar");
+  const portion = (chapter: number, index: number, verses: number) => ({ id: `c${chapter}p${index}`, ref: `${chapter}:${index}`, chapter, verses: Array.from({ length: verses }, (_, i) => i + 1) });
+  const portions = [portion(1, 1, 20), portion(2, 1, 25), portion(2, 2, 25), portion(3, 1, 30), portion(3, 2, 30)];
+  assert.deepEqual(longChapters(portions, undefined, 40).map((row) => [row.chapter, row.verses, row.cuts]), [[2, 50, [0]], [3, 60, [0]]]);
+  const split = splitChapter(undefined, 2, ["c2p1", "c2p2"], [0]);
+  assert.deepEqual(longChapters(portions, split, 40).map((row) => row.chapter), [3], "el que ya se partió no se vuelve a sugerir");
+  assert.deepEqual(longChapters(portions, undefined, 60), [], "y el máximo lo dice el proyecto");
 });
 
 console.log(`\nverify-handoff: ${passed} checks passed.`);

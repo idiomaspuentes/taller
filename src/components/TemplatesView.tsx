@@ -9,6 +9,7 @@ import { loadWorkflowsFromDcs, saveWorkflowsToDcs } from "../dcs/persist";
 import { loadTeamOptions, type TeamOptions } from "../dcs/startBook";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
+import { DEFAULT_MAX_CHAPTER_VERSES } from "../domain/handoff";
 import { planOfWorkflow, workflowWithPlan } from "../domain/plan";
 import { localized, shippedWorkflows } from "../domain/processes";
 import { DEFAULT_SOLVERS_CATALOG, type SolverApp } from "../domain/solvers";
@@ -232,6 +233,22 @@ export function TemplatesView({ session, pmOrg, lang, canManage, announce, focus
             {t("wf.addDescMenu")}
           </button>
         )}
+        <label className="tp-limit">
+          {t("wp.limitA")}{" "}
+          <input
+            className="af-input pe-num"
+            type="number"
+            min={1}
+            value={draft.maxChapterVerses ?? DEFAULT_MAX_CHAPTER_VERSES}
+            disabled={readOnly}
+            aria-label={t("wp.limitAria")}
+            onChange={(e) => {
+              const value = Math.floor(Number(e.target.value));
+              if (value >= 1) change({ ...draft, maxChapterVerses: value });
+            }}
+          />{" "}
+          {t("wp.limitB")}
+        </label>
         <PlanEditor plan={planOfWorkflow(draft)} onChange={(plan) => change(workflowWithPlan(draft, plan))} tools={tools} resourceNames={draft.resourceNames} teams={pmOrg ? teams : undefined} readOnly={readOnly} />
       </PlanFrame>
     );

@@ -47,7 +47,10 @@ dos pantallas:
    - **Cambiar las porciones**: unir dos o partir una en dos (`settings.portionStarts`). El lector del libro corta
      donde el proyecto dice y cuenta qué cae en cada porción. Solo antes de crear: las subtareas se escriben sobre
      esas porciones.
-   - **Partir un capítulo largo** en tramos que avanzan por separado (`settings.handoffUnits`).
+   - **Partir un capítulo largo** en tramos que avanzan por separado (`settings.handoffUnits`). No es un botón
+     fijo: la app lo **sugiere** cuando un capítulo pasa de un máximo de versículos (`maxChapterVerses`, 40 si nadie
+     dice otra cosa), con los cortes ya propuestos en tramos parejos. El máximo lo dice la plantilla y se puede
+     cambiar en el proyecto, ahí mismo.
    - **Añadir una subtarea a mano** a cualquier tarea (`settings.extraWork`), sobre una porción o sobre el libro en
      general. Sigue al equipo y los pasos de su tarea. Una tarea de *trabajo general* solo tiene de estas.
 

@@ -23,7 +23,7 @@ export function applyWorkflowToBoard(
     requiredPhaseIds: p.requiredPhaseIds.filter((id) => phaseIds.has(id)),
   }));
   const { releaseProfiles: _previous, resourceNames: _names, ...kept } = board.settings ?? {};
-  const settings = { ...kept, ...(wf.resourceNames ? { resourceNames: wf.resourceNames } : {}), ...(wf.nextBookAt ? { nextBookAt: wf.nextBookAt } : {}) };
+  const settings = { ...kept, ...(wf.resourceNames ? { resourceNames: wf.resourceNames } : {}), ...(wf.nextBookAt ? { nextBookAt: wf.nextBookAt } : {}), ...(wf.maxChapterVerses ? { maxChapterVerses: wf.maxChapterVerses } : {}) };
   return {
     ...board,
     settings: releaseProfiles?.length ? { ...settings, releaseProfiles } : settings,
@@ -117,6 +117,7 @@ export function boardToWorkflowTemplate(
     tasks,
     ...(releaseProfiles?.length ? { releaseProfiles } : {}),
     ...(board.settings?.resourceNames ? { resourceNames: board.settings.resourceNames } : {}),
+    ...(board.settings?.maxChapterVerses ? { maxChapterVerses: board.settings.maxChapterVerses } : {}),
   };
 }
 
@@ -233,6 +234,7 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
       // Names the project lacks come from the process; a name the project has stays.
       ...(wf.resourceNames ? { resourceNames: { ...wf.resourceNames, ...board.settings?.resourceNames } } : {}),
       ...(wf.nextBookAt && board.settings?.nextBookAt === undefined ? { nextBookAt: wf.nextBookAt } : {}),
+      ...(wf.maxChapterVerses && board.settings?.maxChapterVerses === undefined ? { maxChapterVerses: wf.maxChapterVerses } : {}),
     },
     // `workflowAppliedAt` stays: it is when the project started, which tells which book came first.
     workflowVersion: wf.version,

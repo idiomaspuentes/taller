@@ -468,6 +468,11 @@ export type WorkflowTemplate = {
    * book. Copied into project settings; 0.7 when the process does not say.
    */
   nextBookAt?: number;
+  /**
+   * The most verses a chapter may have and still move from one phase to the next in one piece. A longer chapter is
+   * suggested to be split into stretches. Copied into project settings; 40 when the process does not say.
+   */
+  maxChapterVerses?: number;
 };
 
 export type WorkflowsCatalog = {
@@ -558,6 +563,11 @@ export type ProjectSettings = {
   resourceNames?: ResourceNames;
   /** Share of the first phase delivered at which the next book is called for (see `startBook.ts`). */
   nextBookAt?: number;
+  /**
+   * The most verses a chapter may have and still move from one phase to the next in one piece. A longer chapter is
+   * suggested to be split into stretches. See `handoff.ts`.
+   */
+  maxChapterVerses?: number;
   /** Scripture tasks already passed into the borrador principal (release gate). */
   principalPasses?: PrincipalPassMark[];
   /** Notes, words and texts the Afinación reads; the default is unfoldingWord's English package. */

@@ -7319,3 +7319,9 @@ input.pf-name { font-size: 1.625rem; }
 @media (max-width: 719px) {
   body:has(.bottom-nav) .pf-footer { bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px)); }
 }
+.wp-suggest { display: grid; gap: 0.375rem; padding: 0.75rem 0.875rem; border-radius: var(--radius-md); background: var(--warning-100); color: var(--warning-700); font-size: 0.875rem; }
+.wp-suggest p, .wp-suggest ul { margin: 0; }
+.wp-suggest ul { padding-left: 1.125rem; }
+.wp-suggest__title { font-weight: 700; }
+.wp-suggest__actions { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.25rem; }
+.wp-limit, .tp-limit { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 1rem; font-size: 0.875rem; color: var(--text-muted); }

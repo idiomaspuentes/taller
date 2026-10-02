@@ -1922,5 +1922,15 @@
   "pw.createMissing": "Crearlas",
   "pw.toCreate": "por crear",
   "pw.free": "libre",
-  "pw.done": "hecha"
+  "pw.done": "hecha",
+  "wp.longOne": "Un capítulo tiene más de {max} versículos. Conviene partirlo en tramos para que avance por partes de una fase a la otra.",
+  "wp.longMany": "{n} capítulos tienen más de {max} versículos. Conviene partirlos en tramos para que avancen por partes de una fase a la otra.",
+  "wp.longRow": "Capítulo {chapter}: {verses} versículos, en {parts} tramos",
+  "wp.splitSuggested": "Partir como se sugiere",
+  "wp.splitChoose": "Elegir dónde",
+  "wp.limitA": "Sugerir partir un capítulo cuando pase de",
+  "wp.limitB": "versículos",
+  "wp.limitAria": "Máximo de versículos de un capítulo sin partir",
+  "wp.splitAnyway": "Partir un capítulo de todos modos",
+  "wp.seeSplit": "Ver los capítulos partidos"
 }

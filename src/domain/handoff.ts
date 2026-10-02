@@ -82,3 +82,47 @@ export function cutsOfChapter(units: HandoffUnit[] | undefined, chapter: number,
   }
   return cuts;
 }
+
+/** The most verses a chapter moves on with in one piece, when neither the project nor its process says. */
+export const DEFAULT_MAX_CHAPTER_VERSES = 40;
+
+/**
+ * Where to cut a chapter so that no stretch has more than `max` verses, as evenly as its portions allow: the fewest
+ * stretches that fit, each filled up to an even share before the next starts. Cuts fall between portions (the indexes
+ * after which to cut); a portion longer than `max` stays whole, alone in its stretch.
+ */
+export function suggestedCuts(verseCounts: number[], max: number): number[] {
+  const total = verseCounts.reduce((sum, n) => sum + n, 0);
+  if (max < 1 || total <= max || verseCounts.length < 2) return [];
+  const share = total / Math.ceil(total / max);
+  const cuts: number[] = [];
+  let run = 0;
+  verseCounts.forEach((count, index) => {
+    if (index === verseCounts.length - 1) return;
+    run += count;
+    const next = verseCounts[index + 1]!;
+    // Close the stretch when the next portion would take it past the limit, or further from the even share.
+    if (run + next > max || Math.abs(run - share) <= Math.abs(run + next - share)) {
+      cuts.push(index);
+      run = 0;
+    }
+  });
+  return cuts;
+}
+
+export type LongChapter = { chapter: number; verses: number; portionIds: string[]; cuts: number[] };
+
+/** The chapters still in one piece that have more verses than `max` and can be split: what to suggest splitting. */
+export function longChapters(portions: { id: string; ref: string; chapter: number; verses: number[] }[], units: HandoffUnit[] | undefined, max: number): LongChapter[] {
+  const byChapter = new Map<number, typeof portions>();
+  for (const portion of portions) byChapter.set(portion.chapter, [...(byChapter.get(portion.chapter) ?? []), portion]);
+  const out: LongChapter[] = [];
+  for (const [chapter, own] of [...byChapter].sort((a, b) => a[0] - b[0])) {
+    const ids = own.map((portion) => portion.id || portion.ref);
+    const verses = own.reduce((sum, portion) => sum + portion.verses.length, 0);
+    if (verses <= max || own.length < 2 || cutsOfChapter(units, chapter, ids).length) continue;
+    const cuts = suggestedCuts(own.map((portion) => portion.verses.length), max);
+    if (cuts.length) out.push({ chapter, verses, portionIds: ids, cuts });
+  }
+  return out;
+}

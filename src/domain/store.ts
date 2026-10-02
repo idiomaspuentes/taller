@@ -400,6 +400,12 @@ function normalizeScriptureScope(raw: unknown): ScriptureScope | undefined {
   return undefined;
 }
 
+/** A whole number of verses, at least one, or nothing. */
+export function normalizeMaxVerses(raw: unknown): number | undefined {
+  const value = Math.floor(Number(raw));
+  return raw !== undefined && raw !== null && Number.isFinite(value) && value >= 1 ? value : undefined;
+}
+
 /** A share between 0 and 1 (both excluded), or nothing. */
 export function normalizeShare(raw: unknown): number | undefined {
   const value = Number(raw);
@@ -826,6 +832,8 @@ function normalizeProjectSettings(raw: unknown): ProjectSettings | undefined {
   if (resourceNames) settings.resourceNames = resourceNames;
   const nextBookAt = normalizeShare(row.nextBookAt);
   if (nextBookAt !== undefined) settings.nextBookAt = nextBookAt;
+  const maxChapterVerses = normalizeMaxVerses(row.maxChapterVerses);
+  if (maxChapterVerses !== undefined) settings.maxChapterVerses = maxChapterVerses;
   const principalPasses = normalizePrincipalPasses(row.principalPasses);
   if (principalPasses) settings.principalPasses = principalPasses;
   const sourcePackage = normalizeSourcePackage(row.sourcePackage);
@@ -1455,6 +1463,7 @@ export function normalizeWorkflowTemplate(raw: unknown): WorkflowTemplate | null
     ...(releaseProfiles ? { releaseProfiles } : {}),
     ...(normalizeResourceNames(item.resourceNames) ? { resourceNames: normalizeResourceNames(item.resourceNames) } : {}),
     ...(normalizeShare(item.nextBookAt) !== undefined ? { nextBookAt: normalizeShare(item.nextBookAt) } : {}),
+    ...(normalizeMaxVerses(item.maxChapterVerses) !== undefined ? { maxChapterVerses: normalizeMaxVerses(item.maxChapterVerses) } : {}),
   };
 }
 
