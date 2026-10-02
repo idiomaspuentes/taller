@@ -20,12 +20,18 @@ En cada paso, anota: ¿se entendió sin ayuda?, ¿cuánto tardó?, ¿qué mensaj
 
 | # | Qué | Se espera |
 |---|-----|-----------|
-| 1.1 | Proyectos → **Empezar un libro** → 3 Juan → FCR → Empezar | Cuatro etapas en pantalla y, al final, «3 Juan está en marcha» |
+| 1.1 | Proyectos → **Empezar un libro** → 3 Juan → FCR → Empezar | Las etapas en pantalla y, al final, «3 Juan está en marcha» |
 | 1.2 | Leer el resumen | Traducción «lista para empezar»; las demás fases dicen a cuál esperan |
-| 1.3 | Si es el primer libro con el FCR en QA | Avisa de cuántas tareas no tienen equipo y lleva a elegirlos |
+| 1.3 | Si es el primer libro con el FCR en QA | Avisa de cuántas tareas no tienen equipo y pide uno por fase (o por tarea) |
 | 1.4 | Mirar en Door43 el repositorio `taller` | Las subtareas existen como incidencias, con su hito y etiquetas |
+| 1.5 | Otro libro con **Ajustar antes de crear** | Abre un borrador: nada en Door43 hasta «Crear proyecto» |
+| 1.6 | En el borrador: «Subtareas que se crearán» → añadir una a mano, unir dos porciones | El total cambia; al crear, las incidencias salen así |
+| 1.7 | En el proyecto: **Proceso** → añadir o quitar una tarea → Guardar cambios | Antes de guardar dice qué subtareas se cierran o se crean |
+| 1.8 | **Subtareas** → tocar una → Asignar a alguien, y Liberar | La incidencia cambia de persona en Door43 |
 
-**Dudoso:** ¿quien coordina tiene permiso de escritura en el repositorio `taller`? Sin él, este paso falla.
+**Probado en QA el 2 de octubre de 2026** con `abelperez`: 1.1 (3 Juan), 1.5 a 1.8 (2 Juan) y guardar una plantilla.
+
+**Dudoso:** ¿quien coordina sin ser dueño de la organización tiene permiso de escritura en el repositorio `taller`?
 
 ## 2. Traducción (dos personas + dos para la grupal)
 
