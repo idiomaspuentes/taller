@@ -31,6 +31,17 @@ export function tasksWithoutTeam(board: AssignmentsDoc): ProjectTask[] {
   return board.teams.filter((task) => !task.orgTeamName && !task.orgTeamId && !task.memberIds.length);
 }
 
+export type PhaseWithoutTeam = { id: string; name: string; tasks: ProjectTask[] };
+
+/** The phases that still have tasks nobody is set to do, in order, each with those tasks. */
+export function phasesWithoutTeam(board: Pick<AssignmentsDoc, "phases" | "teams">): PhaseWithoutTeam[] {
+  const loose = tasksWithoutTeam(board as AssignmentsDoc);
+  return [...board.phases]
+    .sort((a, b) => a.order - b.order)
+    .map((phase) => ({ id: phase.id, name: phase.name, tasks: loose.filter((task) => task.phaseId === phase.id) }))
+    .filter((phase) => phase.tasks.length);
+}
+
 export type PhaseStart = {
   id: string;
   name: string;

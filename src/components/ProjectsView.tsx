@@ -4,6 +4,7 @@ import { localizeName } from "../domain/templateNames";
 import { BOOKS, bookLabel, bookName, isBookProjectId, normalizeProjectId } from "../domain/books";
 import { useT } from "../i18n/messages";
 import { StartBookPanel } from "./StartBookPanel";
+import { PhaseTeamsPanel } from "./PhaseTeamsPanel";
 import { useUiLanguage } from "../i18n/language";
 import { languageDisplayName, type LanguageOption } from "../domain/languages";
 import type { ProjectIndexEntry, ProjectKind } from "../domain/types";
@@ -44,6 +45,9 @@ type Props = {
   onCreateProject: (input: CreateProjectInput) => void;
   /** Start a book in one action (process, reading the book, saving, subtareas). Absent when not signed in. */
   onStartBook?: StartBookProps["onStart"];
+  /** One team per phase: offered after starting a book, and here while the open project still has tasks without one. */
+  phaseTeams?: StartBookProps["phaseTeams"];
+  pendingTeams?: { board: Parameters<typeof PhaseTeamsPanel>[0]["board"]; onSaved: Parameters<typeof PhaseTeamsPanel>[0]["onSaved"] };
   onOpenStep?: (projectId: string, step: "inventario" | "tareas") => void;
   onGoToTasks?: () => void;
   /** Whether it is time to start the next book (the first phase of the newest one is nearly done). */
@@ -70,6 +74,8 @@ export function ProjectsView({
   onOpenProject,
   onCreateProject,
   onStartBook,
+  phaseTeams,
+  pendingTeams,
   onOpenStep,
   onGoToTasks,
   loadNextBookHint,
@@ -187,6 +193,10 @@ export function ProjectsView({
         </div>
       ) : null}
 
+      {canManage && !creating && phaseTeams && pendingTeams ? (
+        <PhaseTeamsPanel key={pendingTeams.board.projectId} board={pendingTeams.board} {...phaseTeams} onSaved={pendingTeams.onSaved} />
+      ) : null}
+
       {canManage && creating === "book" && onStartBook ? (
         <>
           <StartBookPanel
@@ -196,6 +206,7 @@ export function ProjectsView({
             onOpen={(id, step) => onOpenStep?.(id, step)}
             onGoToTasks={() => onGoToTasks?.()}
             onCancel={() => setCreating(null)}
+            phaseTeams={phaseTeams}
           />
           <button
             type="button"

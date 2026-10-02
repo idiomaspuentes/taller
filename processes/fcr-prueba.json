@@ -1,0 +1,1241 @@
+{
+  "schema": "taller-process-1",
+  "id": "fcr-prueba",
+  "name": "FCR de prueba",
+  "workflows": [
+    {
+      "id": "fcr-prueba",
+      "name": "FCR de prueba (tres personas)",
+      "names": {
+        "pt": "FCR de teste (três pessoas)"
+      },
+      "version": 9,
+      "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
+      "descriptions": {
+        "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
+      },
+      "phases": [
+        {
+          "id": "fcr-traduccion",
+          "name": "Traducción",
+          "names": {
+            "pt": "Tradução"
+          },
+          "slug": "traduccion",
+          "order": 0
+        },
+        {
+          "id": "fcr-afinacion",
+          "name": "Afinación",
+          "names": {
+            "pt": "Afinação"
+          },
+          "slug": "afinacion",
+          "order": 1
+        },
+        {
+          "id": "fcr-armonizacion",
+          "name": "Armonización",
+          "names": {
+            "pt": "Harmonização"
+          },
+          "slug": "armonizacion",
+          "order": 2
+        },
+        {
+          "id": "fcr-validacion",
+          "name": "Validación",
+          "names": {
+            "pt": "Validação"
+          },
+          "slug": "validacion",
+          "order": 3
+        },
+        {
+          "id": "fcr-publicacion",
+          "name": "Publicación",
+          "names": {
+            "pt": "Publicação"
+          },
+          "slug": "publicacion",
+          "order": 4
+        }
+      ],
+      "tasks": [
+        {
+          "id": "tpl",
+          "name": "Traducir TPL",
+          "names": {
+            "pt": "Traduzir TPL"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "familiarizar",
+              "name": "Familiarizarse",
+              "names": {
+                "pt": "Familiarizar-se"
+              },
+              "actionLabel": "Estudiar",
+              "actionLabels": {
+                "pt": "Estudar"
+              },
+              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "descriptions": {
+                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+              },
+              "solverAppId": "fcr-familiarize",
+              "closing": "self",
+              "scope": "chapter-once"
+            },
+            {
+              "id": "borrador",
+              "name": "Borrador",
+              "names": {
+                "pt": "Rascunho"
+              },
+              "actionLabel": "Traducir",
+              "actionLabels": {
+                "pt": "Traduzir"
+              },
+              "solverAppId": "tpl-translate",
+              "closing": "self"
+            },
+            {
+              "id": "pares",
+              "name": "Revisión en pares",
+              "names": {
+                "pt": "Revisão em pares"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "fcr-pair-review",
+              "closing": "approval",
+              "claimMode": "exclusive",
+              "includeAuthorInApproval": true,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador"
+              ]
+            },
+            {
+              "id": "grupal",
+              "name": "Revisión grupal",
+              "names": {
+                "pt": "Revisão em grupo"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "fcr-group-review",
+              "closing": "approval",
+              "claimMode": "pool",
+              "minAssignees": 1,
+              "maxAssignees": 1,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador",
+                "pares"
+              ]
+            }
+          ],
+          "minLevel": "practicante",
+          "solverAppId": "tpl-translate"
+        },
+        {
+          "id": "tps",
+          "name": "Traducir TPS",
+          "names": {
+            "pt": "Traduzir TPS"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "familiarizar",
+              "name": "Familiarizarse",
+              "names": {
+                "pt": "Familiarizar-se"
+              },
+              "actionLabel": "Estudiar",
+              "actionLabels": {
+                "pt": "Estudar"
+              },
+              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "descriptions": {
+                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+              },
+              "solverAppId": "fcr-familiarize",
+              "closing": "self",
+              "scope": "chapter-once"
+            },
+            {
+              "id": "borrador",
+              "name": "Borrador",
+              "names": {
+                "pt": "Rascunho"
+              },
+              "actionLabel": "Traducir",
+              "actionLabels": {
+                "pt": "Traduzir"
+              },
+              "solverAppId": "tps-translate",
+              "closing": "self"
+            },
+            {
+              "id": "pares",
+              "name": "Revisión en pares",
+              "names": {
+                "pt": "Revisão em pares"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "fcr-pair-review",
+              "closing": "approval",
+              "claimMode": "exclusive",
+              "includeAuthorInApproval": true,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador"
+              ]
+            },
+            {
+              "id": "grupal",
+              "name": "Revisión grupal",
+              "names": {
+                "pt": "Revisão em grupo"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "fcr-group-review",
+              "closing": "approval",
+              "claimMode": "pool",
+              "minAssignees": 1,
+              "maxAssignees": 1,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador",
+                "pares"
+              ]
+            }
+          ],
+          "minLevel": "practicante",
+          "solverAppId": "tps-translate"
+        },
+        {
+          "id": "notas-ayuda",
+          "name": "Traducir Notas",
+          "names": {
+            "pt": "Traduzir Notas"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "notas",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "familiarizar",
+              "name": "Familiarizarse",
+              "names": {
+                "pt": "Familiarizar-se"
+              },
+              "actionLabel": "Estudiar",
+              "actionLabels": {
+                "pt": "Estudar"
+              },
+              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "descriptions": {
+                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+              },
+              "solverAppId": "fcr-familiarize",
+              "closing": "self",
+              "scope": "chapter-once"
+            },
+            {
+              "id": "borrador",
+              "name": "Borrador",
+              "names": {
+                "pt": "Rascunho"
+              },
+              "actionLabel": "Traducir",
+              "actionLabels": {
+                "pt": "Traduzir"
+              },
+              "solverAppId": "helps-review",
+              "closing": "self"
+            },
+            {
+              "id": "pares",
+              "name": "Revisión en pares",
+              "names": {
+                "pt": "Revisão em pares"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "helps-review",
+              "closing": "approval",
+              "claimMode": "exclusive",
+              "includeAuthorInApproval": true,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador"
+              ]
+            }
+          ],
+          "minLevel": "practicante",
+          "solverAppId": "helps-review"
+        },
+        {
+          "id": "preguntas-ayuda",
+          "name": "Traducir Preguntas",
+          "names": {
+            "pt": "Traduzir Perguntas"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "preguntas",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "familiarizar",
+              "name": "Familiarizarse",
+              "names": {
+                "pt": "Familiarizar-se"
+              },
+              "actionLabel": "Estudiar",
+              "actionLabels": {
+                "pt": "Estudar"
+              },
+              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "descriptions": {
+                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+              },
+              "solverAppId": "fcr-familiarize",
+              "closing": "self",
+              "scope": "chapter-once"
+            },
+            {
+              "id": "borrador",
+              "name": "Borrador",
+              "names": {
+                "pt": "Rascunho"
+              },
+              "actionLabel": "Traducir",
+              "actionLabels": {
+                "pt": "Traduzir"
+              },
+              "solverAppId": "helps-review",
+              "closing": "self"
+            },
+            {
+              "id": "pares",
+              "name": "Revisión en pares",
+              "names": {
+                "pt": "Revisão em pares"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "helps-review",
+              "closing": "approval",
+              "claimMode": "exclusive",
+              "includeAuthorInApproval": true,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador"
+              ]
+            }
+          ],
+          "minLevel": "practicante",
+          "solverAppId": "helps-review"
+        },
+        {
+          "id": "palabras-ayuda",
+          "name": "Traducir Palabras",
+          "names": {
+            "pt": "Traduzir Palavras"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "palabras",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "borrador",
+              "name": "Borrador",
+              "names": {
+                "pt": "Rascunho"
+              },
+              "actionLabel": "Traducir",
+              "actionLabels": {
+                "pt": "Traduzir"
+              },
+              "solverAppId": "helps-review",
+              "closing": "self"
+            },
+            {
+              "id": "pares",
+              "name": "Revisión en pares",
+              "names": {
+                "pt": "Revisão em pares"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "helps-review",
+              "closing": "approval",
+              "claimMode": "exclusive",
+              "includeAuthorInApproval": true,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador"
+              ]
+            }
+          ],
+          "minLevel": "practicante",
+          "solverAppId": "helps-review"
+        },
+        {
+          "id": "academia-ayuda",
+          "name": "Traducir Academia",
+          "names": {
+            "pt": "Traduzir Academia"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "academia",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "borrador",
+              "name": "Borrador",
+              "names": {
+                "pt": "Rascunho"
+              },
+              "actionLabel": "Traducir",
+              "actionLabels": {
+                "pt": "Traduzir"
+              },
+              "solverAppId": "helps-review",
+              "closing": "self"
+            },
+            {
+              "id": "pares",
+              "name": "Revisión en pares",
+              "names": {
+                "pt": "Revisão em pares"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "solverAppId": "helps-review",
+              "closing": "approval",
+              "claimMode": "exclusive",
+              "includeAuthorInApproval": true,
+              "excludeIssueAssignee": true,
+              "excludePriorStepIds": [
+                "borrador"
+              ]
+            }
+          ],
+          "minLevel": "practicante",
+          "solverAppId": "helps-review"
+        },
+        {
+          "id": "afinar-tpl",
+          "name": "Afinar TPL",
+          "names": {
+            "pt": "Afinar TPL"
+          },
+          "phaseId": "fcr-afinacion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "notas",
+              "name": "Desafíos de traducción",
+              "names": {
+                "pt": "Desafios de tradução"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada desafío del capítulo, cotejado con el original: marca las palabras del borrador y responde.",
+              "descriptions": {
+                "pt": "Cada desafio do capítulo, comparado com o original: marque as palavras do rascunho e responda."
+              },
+              "solverAppId": "afinar-notas",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
+            },
+            {
+              "id": "palabras",
+              "name": "Palabras clave",
+              "names": {
+                "pt": "Palavras-chave"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada término: compara cómo se tradujo en todos los versículos donde aparece.",
+              "descriptions": {
+                "pt": "Cada termo: compare como foi traduzido em todos os versículos onde aparece."
+              },
+              "solverAppId": "afinar-palabras",
+              "closing": "consensus",
+              "scope": "unit",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
+            },
+            {
+              "id": "alineacion",
+              "name": "Alineación",
+              "names": {
+                "pt": "Alinhamento"
+              },
+              "actionLabel": "Alinear",
+              "actionLabels": {
+                "pt": "Alinhar"
+              },
+              "description": "Cada persona toma los versículos que va a alinear; lo que termina pasa a que lo revisen las demás.",
+              "descriptions": {
+                "pt": "Cada pessoa pega os versículos que vai alinhar; o que termina passa para a revisão das demais."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
+            }
+          ],
+          "minLevel": "aprendiz",
+          "waitsFor": [
+            {
+              "taskId": "tpl",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        },
+        {
+          "id": "afinar-tps",
+          "name": "Afinar TPS",
+          "names": {
+            "pt": "Afinar TPS"
+          },
+          "phaseId": "fcr-afinacion",
+          "rules": [
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "notas",
+              "name": "Desafíos de traducción",
+              "names": {
+                "pt": "Desafios de tradução"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada desafío del capítulo, cotejado con el original: marca las palabras del borrador y responde.",
+              "descriptions": {
+                "pt": "Cada desafio do capítulo, comparado com o original: marque as palavras do rascunho e responda."
+              },
+              "solverAppId": "afinar-notas",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
+            },
+            {
+              "id": "palabras",
+              "name": "Palabras clave",
+              "names": {
+                "pt": "Palavras-chave"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada término: compara cómo se tradujo en todos los versículos donde aparece.",
+              "descriptions": {
+                "pt": "Cada termo: compare como foi traduzido em todos os versículos onde aparece."
+              },
+              "solverAppId": "afinar-palabras",
+              "closing": "consensus",
+              "scope": "unit",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
+            },
+            {
+              "id": "alineacion",
+              "name": "Alineación",
+              "names": {
+                "pt": "Alinhamento"
+              },
+              "actionLabel": "Alinear",
+              "actionLabels": {
+                "pt": "Alinhar"
+              },
+              "description": "Cada persona toma los versículos que va a alinear; lo que termina pasa a que lo revisen las demás.",
+              "descriptions": {
+                "pt": "Cada pessoa pega os versículos que vai alinhar; o que termina passa para a revisão das demais."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
+              "minIndependent": 2
+            }
+          ],
+          "minLevel": "aprendiz",
+          "waitsFor": [
+            {
+              "taskId": "tps",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        },
+        {
+          "id": "armonizar-notas",
+          "name": "Armonizar Notas y Academia",
+          "names": {
+            "pt": "Harmonizar Notas e Academia"
+          },
+          "phaseId": "fcr-armonizacion",
+          "rules": [
+            {
+              "resource": "notas",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "academia",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "notas-tpl",
+              "name": "Notas frente al TPL",
+              "names": {
+                "pt": "Notas diante do TPL"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "solverAppId": "fcr-checklist",
+              "closing": "checklist",
+              "checklist": [
+                {
+                  "id": "sentido",
+                  "text": "¿Tiene sentido con el texto del TPL?",
+                  "texts": {
+                    "pt": "Faz sentido com o texto do TPL?"
+                  }
+                },
+                {
+                  "id": "util",
+                  "text": "¿Es útil: el traductor sabe qué hacer con la dificultad?",
+                  "texts": {
+                    "pt": "É útil: o tradutor sabe o que fazer com a dificuldade?"
+                  }
+                },
+                {
+                  "id": "alternativa",
+                  "text": "¿La traducción alternativa encaja exactamente en la frase que reemplaza?",
+                  "texts": {
+                    "pt": "A tradução alternativa encaixa exatamente na frase que substitui?"
+                  }
+                },
+                {
+                  "id": "cobertura",
+                  "text": "¿Cada dificultad del TPL tiene una nota que la explique?",
+                  "texts": {
+                    "pt": "Cada dificuldade do TPL tem uma nota que a explique?"
+                  },
+                  "per": "verse"
+                }
+              ]
+            },
+            {
+              "id": "notas-tps",
+              "name": "Notas frente al TPS",
+              "names": {
+                "pt": "Notas diante do TPS"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "solverAppId": "fcr-checklist",
+              "closing": "checklist",
+              "checklist": [
+                {
+                  "id": "explica",
+                  "text": "¿Explica bien el texto del TPS?",
+                  "texts": {
+                    "pt": "Explica bem o texto do TPS?"
+                  }
+                },
+                {
+                  "id": "camino",
+                  "text": "¿Ayuda a ver cómo el TPS llegó ahí desde el TPL?",
+                  "texts": {
+                    "pt": "Ajuda a ver como o TPS chegou ali a partir do TPL?"
+                  }
+                },
+                {
+                  "id": "coincide",
+                  "text": "Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?",
+                  "texts": {
+                    "pt": "Quando a nota menciona o TPS, coincide com o que o TPS diz?"
+                  }
+                },
+                {
+                  "id": "diferencias",
+                  "text": "¿Cada diferencia importante entre el TPL y el TPS tiene una nota?",
+                  "texts": {
+                    "pt": "Cada diferença importante entre o TPL e o TPS tem uma nota?"
+                  },
+                  "per": "verse"
+                }
+              ]
+            },
+            {
+              "id": "academia",
+              "name": "Academia",
+              "names": {
+                "pt": "Academia"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "solverAppId": "fcr-checklist",
+              "closing": "checklist",
+              "checklist": [
+                {
+                  "id": "pertinente",
+                  "text": "¿El artículo enlazado enseña el tipo de dificultad que señala la nota?",
+                  "texts": {
+                    "pt": "O artigo vinculado ensina o tipo de dificuldade que a nota aponta?"
+                  }
+                },
+                {
+                  "id": "publicado",
+                  "text": "¿El artículo está publicado en este idioma?",
+                  "texts": {
+                    "pt": "O artigo está publicado neste idioma?"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "acuerdo",
+              "name": "Acuerdo del equipo",
+              "names": {
+                "pt": "Acordo da equipe"
+              },
+              "actionLabel": "Acordar",
+              "actionLabels": {
+                "pt": "Acordar"
+              },
+              "description": "Todo el equipo de la pista está de acuerdo en qué se deja y qué se modifica.",
+              "descriptions": {
+                "pt": "Toda a equipe da trilha concorda sobre o que fica e o que se modifica."
+              },
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6
+            }
+          ],
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "taskId": "notas-ayuda",
+              "scope": "chapter"
+            },
+            {
+              "taskId": "academia-ayuda",
+              "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        },
+        {
+          "id": "armonizar-palabras",
+          "name": "Armonizar Palabras",
+          "names": {
+            "pt": "Harmonizar Palavras"
+          },
+          "phaseId": "fcr-armonizacion",
+          "rules": [
+            {
+              "resource": "palabras",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "palabras-tpl",
+              "name": "Palabras frente al TPL",
+              "names": {
+                "pt": "Palavras diante do TPL"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "solverAppId": "fcr-checklist",
+              "closing": "checklist",
+              "checklist": [
+                {
+                  "id": "definicion",
+                  "text": "¿La definición del artículo es correcta para este contexto?",
+                  "texts": {
+                    "pt": "A definição do artigo está correta para este contexto?"
+                  }
+                },
+                {
+                  "id": "cobertura",
+                  "text": "¿Cada palabra difícil del TPL tiene su artículo?",
+                  "texts": {
+                    "pt": "Cada palavra difícil do TPL tem seu artigo?"
+                  },
+                  "per": "verse"
+                }
+              ]
+            },
+            {
+              "id": "palabras-tps",
+              "name": "Sugerencias frente al TPS",
+              "names": {
+                "pt": "Sugestões diante do TPS"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "solverAppId": "fcr-checklist",
+              "closing": "checklist",
+              "checklist": [
+                {
+                  "id": "sugerencia",
+                  "text": "¿La forma en que el TPS dice el término aparece en las sugerencias de traducción del artículo?",
+                  "texts": {
+                    "pt": "A forma como o TPS diz o termo aparece nas sugestões de tradução do artigo?"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "acuerdo",
+              "name": "Acuerdo del equipo",
+              "names": {
+                "pt": "Acordo da equipe"
+              },
+              "actionLabel": "Acordar",
+              "actionLabels": {
+                "pt": "Acordar"
+              },
+              "description": "Todo el equipo de la pista está de acuerdo en qué se deja y qué se modifica.",
+              "descriptions": {
+                "pt": "Toda a equipe da trilha concorda sobre o que fica e o que se modifica."
+              },
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6
+            }
+          ],
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "taskId": "palabras-ayuda",
+              "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual",
+          "everyUnit": true
+        },
+        {
+          "id": "armonizar-preguntas",
+          "name": "Armonizar Preguntas",
+          "names": {
+            "pt": "Harmonizar Perguntas"
+          },
+          "phaseId": "fcr-armonizacion",
+          "rules": [
+            {
+              "resource": "preguntas",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "preguntas-textos",
+              "name": "Preguntas frente a los textos",
+              "names": {
+                "pt": "Perguntas diante dos textos"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "solverAppId": "fcr-checklist",
+              "closing": "checklist",
+              "checklist": [
+                {
+                  "id": "responde",
+                  "text": "¿Se puede responder con el TPL y el TPS afinados?",
+                  "texts": {
+                    "pt": "Pode ser respondida com o TPL e o TPS afinados?"
+                  }
+                },
+                {
+                  "id": "coincide",
+                  "text": "¿La respuesta sugerida coincide con lo que dicen los textos?",
+                  "texts": {
+                    "pt": "A resposta sugerida coincide com o que os textos dizem?"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "acuerdo",
+              "name": "Acuerdo del equipo",
+              "names": {
+                "pt": "Acordo da equipe"
+              },
+              "actionLabel": "Acordar",
+              "actionLabels": {
+                "pt": "Acordar"
+              },
+              "description": "Todo el equipo de la pista está de acuerdo en qué se deja y qué se modifica.",
+              "descriptions": {
+                "pt": "Toda a equipe da trilha concorda sobre o que fica e o que se modifica."
+              },
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6
+            }
+          ],
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "taskId": "preguntas-ayuda",
+              "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        },
+        {
+          "id": "validar",
+          "name": "Validar",
+          "names": {
+            "pt": "Validar"
+          },
+          "phaseId": "fcr-validacion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "revision",
+              "name": "Revisión pastoral",
+              "names": {
+                "pt": "Revisão pastoral"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada pastor lee el paquete, registra sus inquietudes y entrega su reporte: fidelidad, claridad y utilidad.",
+              "descriptions": {
+                "pt": "Cada pastor lê o pacote, registra suas inquietações e entrega seu relatório: fidelidade, clareza e utilidade."
+              },
+              "closing": "approval",
+              "scope": "unit",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 4,
+              "minIndependent": 2,
+              "solverAppId": "fcr-aval",
+              "checklist": [
+                {
+                  "id": "fiel",
+                  "text": "¿Comunica fielmente el mensaje del pasaje?",
+                  "texts": {
+                    "pt": "Comunica fielmente a mensagem da passagem?"
+                  }
+                },
+                {
+                  "id": "claro",
+                  "text": "¿Se entiende, tanto para quien empieza como para quien tiene experiencia?",
+                  "texts": {
+                    "pt": "Dá para entender, tanto para quem começa como para quem tem experiência?"
+                  }
+                },
+                {
+                  "id": "util",
+                  "text": "¿Ayuda a reconocer y resolver dificultades reales de traducción?",
+                  "texts": {
+                    "pt": "Ajuda a reconhecer e resolver dificuldades reais de tradução?"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "decision",
+              "name": "Decisión del comité",
+              "names": {
+                "pt": "Decisão do comitê"
+              },
+              "actionLabel": "Decidir",
+              "actionLabels": {
+                "pt": "Decidir"
+              },
+              "description": "Con los reportes entregados, el comité decide el aval.",
+              "descriptions": {
+                "pt": "Com os relatórios entregues, o comitê decide o aval."
+              },
+              "closing": "consensus",
+              "scope": "unit",
+              "claimMode": "exclusive",
+              "solverAppId": "fcr-aval",
+              "decisionRule": "majority"
+            }
+          ],
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "phaseId": "fcr-armonizacion",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        },
+        {
+          "id": "publicar",
+          "name": "Publicar",
+          "names": {
+            "pt": "Publicar"
+          },
+          "phaseId": "fcr-publicacion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "notas",
+              "articleFilter": "pending"
+            },
+            {
+              "resource": "preguntas",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "comprobar",
+              "name": "Comprobaciones",
+              "names": {
+                "pt": "Verificações"
+              },
+              "actionLabel": "Comprobar",
+              "actionLabels": {
+                "pt": "Verificar"
+              },
+              "description": "Formato, que no falte nada y que sea exactamente lo que avaló el comité. Se completa solo cuando todo pasa.",
+              "descriptions": {
+                "pt": "Formato, que não falte nada e que seja exatamente o que o comitê avalizou. Completa-se sozinho quando tudo passa."
+              },
+              "closing": "automatic",
+              "scope": "unit",
+              "solverAppId": "fcr-publicar"
+            },
+            {
+              "id": "publicar",
+              "name": "Publicar",
+              "names": {
+                "pt": "Publicar"
+              },
+              "actionLabel": "Publicar",
+              "actionLabels": {
+                "pt": "Publicar"
+              },
+              "description": "La unidad avalada pasa a la rama publicada de cada recurso. No se edita contenido.",
+              "descriptions": {
+                "pt": "A unidade avalizada passa para o ramo publicado de cada recurso. Não se edita conteúdo."
+              },
+              "closing": "automatic",
+              "scope": "unit",
+              "solverAppId": "fcr-publicar"
+            }
+          ],
+          "minLevel": "habilitada",
+          "waitsFor": [
+            {
+              "taskId": "validar",
+              "scope": "chapter"
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        }
+      ],
+      "releaseProfiles": [
+        {
+          "id": "version-validada",
+          "name": "Versión validada",
+          "requiredPhaseIds": [
+            "fcr-validacion"
+          ]
+        }
+      ]
+    }
+  ],
+  "tools": [],
+  "glossary": {
+    "pt": {
+      "Flujo de Creación de Recursos": "Fluxo de Criação de Recursos",
+      "Traducción": "Tradução",
+      "Afinación": "Afinação",
+      "Armonización": "Harmonização",
+      "Validación": "Validação",
+      "Traducir TPL": "Traduzir TPL",
+      "Traducir TPS": "Traduzir TPS",
+      "Traducir Notas": "Traduzir Notas",
+      "Traducir Preguntas": "Traduzir Perguntas",
+      "Traducir Palabras": "Traduzir Palavras",
+      "Traducir Academia": "Traduzir Academia",
+      "Armonizar ": "Harmonizar ",
+      "Borrador": "Rascunho",
+      "Revisión en pares": "Revisão em pares",
+      "Revisión grupal": "Revisão em grupo",
+      "Revisar palabras clave": "Revisar palavras-chave",
+      "Revisar la alineación": "Revisar o alinhamento",
+      "Alinear": "Alinhar",
+      "Ajustar a los textos afinados": "Ajustar aos textos afinados",
+      "Cierre independiente": "Fechamento independente",
+      "Decisión pastoral": "Decisão pastoral"
+    }
+  }
+}

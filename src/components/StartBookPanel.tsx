@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { StartStage } from "../dcs/startBook";
 import { BOOKS, bookLabel } from "../domain/books";
-import { bookSize, phasesAtStart, startNotices, tasksWithoutTeam, type StartNotice } from "../domain/startBook";
+import { bookSize, phasesAtStart, startNotices, type StartNotice } from "../domain/startBook";
+import { PhaseTeamsPanel } from "./PhaseTeamsPanel";
 import type { AssignmentsDoc, InventoryDoc } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -21,6 +22,8 @@ type Props = {
   onOpen: (projectId: string, step: "inventario" | "tareas") => void;
   onGoToTasks: () => void;
   onCancel: () => void;
+  /** Choosing one team per phase right after starting. Absent = the project's own screen is the only way. */
+  phaseTeams?: Pick<Parameters<typeof PhaseTeamsPanel>[0], "loadTeams" | "onSave">;
 };
 
 const STAGES: StartStage[] = ["process", "reading", "saving", "tasks"];
@@ -31,7 +34,7 @@ const NOTICE_KEY: Record<StartNotice, MessageKey> = { "no-notes": "sb.noNotes", 
  * «Empezar un libro»: which book and how the team works. Everything else a process repeats for every book (its
  * phases, tasks, steps and teams) comes with the process; the app reads the book and lays out the work by itself.
  */
-export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks, onCancel }: Props) {
+export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks, onCancel, phaseTeams }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const free = BOOKS.filter((b) => !taken.includes(b.code));
@@ -59,7 +62,6 @@ export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks,
   if (done) {
     const size = bookSize(done.inventory);
     const process = templates.find((row) => row.id === done.board.workflowId)?.name ?? "";
-    const loose = tasksWithoutTeam(done.board);
     return (
       <div className="hub-panel sb">
         <h2 className="sb-title">{t("sb.doneTitle").replace("{book}", name)}</h2>
@@ -77,14 +79,7 @@ export function StartBookPanel({ templates, taken, onStart, onOpen, onGoToTasks,
         {startNotices(done.inventory).map((notice) => (
           <p key={notice} className="af-stale">{t(NOTICE_KEY[notice])}</p>
         ))}
-        {loose.length ? (
-          <div className="af-stale">
-            <p style={{ margin: 0 }}>{t("sb.noTeams").replace("{n}", String(loose.length))}</p>
-            <Button type="button" size="sm" className="mt-2" onClick={() => onOpen(done.board.projectId, "tareas")}>
-              {t("sb.setTeams")}
-            </Button>
-          </div>
-        ) : null}
+        {phaseTeams ? <PhaseTeamsPanel board={done.board} {...phaseTeams} onSaved={(board) => setDone({ ...done, board })} /> : null}
         <div className="grid gap-2">
           <Button type="button" size="lg" onClick={onGoToTasks}>
             {t("sb.goToTasks")}

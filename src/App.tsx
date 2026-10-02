@@ -51,6 +51,7 @@ import { DEFAULT_HOST } from "./dcs/config";
 import { installSessionExpiryGuard } from "./dcs/sessionExpiry";
 import {
   fetchOrg,
+  listPmOrgTeams,
   listPmProjects,
   listUserOrgs,
   loadAssignmentsFromDcs,
@@ -61,7 +62,7 @@ import {
 import { loadPmConfig, pullIssues } from "./dcs/issues";
 import { useConversationActivity } from "./useConversationActivity";
 import { generateInventory } from "./worker/client";
-import { loadNextBookHint, startBook, type StartStage } from "./dcs/startBook";
+import { loadNextBookHint, setPhaseTeams, startBook, type StartStage } from "./dcs/startBook";
 import { SignInModal } from "./components/SignIn";
 import { SetupGate } from "./components/SetupGate";
 import { WorkspaceDialog } from "./components/WorkspaceDialog";
@@ -1334,6 +1335,20 @@ export function App() {
             }))}
             onCreateProject={onCreateProject}
             onStartBook={session && pmOrg ? onStartBook : undefined}
+            phaseTeams={
+              session && pmOrg
+                ? {
+                    loadTeams: () => listPmOrgTeams(session, pmOrg),
+                    onSave: async (doc, choice) => {
+                      const saved = await setPhaseTeams({ session, pmOrg, board: doc, choice });
+                      saveLocalAssignments(saved.board);
+                      if (saved.board.projectId === board.projectId) setBoard(saved.board);
+                      return saved;
+                    },
+                  }
+                : undefined
+            }
+            pendingTeams={board.workflowId && projects.some((project) => project.projectId === board.projectId) ? { board, onSaved: () => undefined } : undefined}
             onOpenStep={(code, step) => {
               onBookChange(code);
               navigate({ name: "proyecto", projectId: code, step });

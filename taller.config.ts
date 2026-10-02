@@ -1,5 +1,9 @@
 import type { TallerConfig } from "./src/config/types";
 import fcr from "./processes/fcr.json";
+import fcrPrueba from "./processes/fcr-prueba.json";
+
+// Only while developing: the FCR with the group review left to one person, to walk a book between three people on the test server.
+const DEV = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
 
 /**
  * Taller's settings for one organization. To reuse this app for another team, change this file:
@@ -47,7 +51,7 @@ export const tallerConfig: TallerConfig = {
 
   // The processes the team works with: templates (phases, tasks, steps), the tools the steps open and their words.
   // Each one is a JSON file; add or replace files here to work with another process. The engine has none of its own.
-  processes: [fcr],
+  processes: DEV ? [fcr, fcrPrueba] : [fcr],
 
   // The first screen, per interface language.
   welcome: {
