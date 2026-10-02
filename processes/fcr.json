@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 5,
+      "version": 6,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -1052,7 +1052,31 @@
               "claimMode": "pool",
               "minAssignees": 2,
               "maxAssignees": 4,
-              "minIndependent": 2
+              "minIndependent": 2,
+              "solverAppId": "fcr-aval",
+              "checklist": [
+                {
+                  "id": "fiel",
+                  "text": "¿Comunica fielmente el mensaje del pasaje?",
+                  "texts": {
+                    "pt": "Comunica fielmente a mensagem da passagem?"
+                  }
+                },
+                {
+                  "id": "claro",
+                  "text": "¿Se entiende, tanto para quien empieza como para quien tiene experiencia?",
+                  "texts": {
+                    "pt": "Dá para entender, tanto para quem começa como para quem tem experiência?"
+                  }
+                },
+                {
+                  "id": "util",
+                  "text": "¿Ayuda a reconocer y resolver dificultades reales de traducción?",
+                  "texts": {
+                    "pt": "Ajuda a reconhecer e resolver dificuldades reais de tradução?"
+                  }
+                }
+              ]
             },
             {
               "id": "decision",
@@ -1068,9 +1092,11 @@
               "descriptions": {
                 "pt": "Com os relatórios entregues, o comitê decide o aval."
               },
-              "closing": "self",
+              "closing": "consensus",
               "scope": "unit",
-              "claimMode": "exclusive"
+              "claimMode": "exclusive",
+              "solverAppId": "fcr-aval",
+              "decisionRule": "majority"
             }
           ],
           "minLevel": "habilitada",
@@ -1251,6 +1277,23 @@
         "preguntas-textos": {
           "items": "preguntas",
           "text": "tpl,tps"
+        }
+      }
+    },
+    {
+      "id": "fcr-aval",
+      "name": "Aval del comité",
+      "description": "Cada pastor entrega su reporte sin ver los de los demás; después el comité decide.",
+      "launchUrl": "/#/solver/aval?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true,
+      "stepParams": {
+        "revision": {
+          "mode": "reporte"
+        },
+        "decision": {
+          "mode": "decision"
         }
       }
     }

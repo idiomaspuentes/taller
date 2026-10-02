@@ -153,8 +153,10 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
       const closing = step.closing === undefined ? undefined : text(step.closing);
       if (closing !== undefined && !CLOSINGS.includes(closing)) problems.push(`${at}: «${closing}» no es una regla de cierre (${CLOSINGS.join(", ")}).`);
       if (closing === "checklist" && !list(step.checklist).length) problems.push(`${at}: se cierra con una lista de comprobación, pero no tiene preguntas.`);
-      if (closing !== "checklist" && step.checklist !== undefined) problems.push(`${at}: tiene preguntas de comprobación, pero no se cierra con ellas (closing: "checklist").`);
+      // Questions also serve a report each person hands in (closing: "approval"); elsewhere they would never be asked.
+      if (closing !== "checklist" && closing !== "approval" && step.checklist !== undefined) problems.push(`${at}: tiene preguntas, pero ni se cierra con ellas (closing: "checklist") ni son las de un reporte (closing: "approval").`);
       if (closing === "approval" && stepClaimMode(typed) === "none") problems.push(`${at}: lo aprueba otra persona, así que alguien tiene que poder tomarlo (exclusive o pool).`);
+      if (step.decisionRule !== undefined && !["majority", "unanimous"].includes(text(step.decisionRule))) problems.push(`${at}: la regla de decisión es "majority" o "unanimous".`);
       if (step.scope !== undefined && !STEP_SCOPES.includes(text(step.scope))) problems.push(`${at}: «${text(step.scope)}» no es un alcance de paso (${STEP_SCOPES.join(", ")}).`);
       const questionIds = new Set<string>();
       for (const question of list(step.checklist)) {

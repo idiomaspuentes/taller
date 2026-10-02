@@ -35,6 +35,8 @@ export type AppRoute =
   | { name: "solver-afinar"; ctx: string; step: string; mode?: string }
   /** A step that closes by a checklist: `items` is what it goes over, `text` the text(s) it is checked against. */
   | { name: "solver-checklist"; ctx: string; items: string; text: string }
+  /** A committee endorses a unit: `reporte` (a member's report) or `decision`. */
+  | { name: "solver-aval"; ctx: string; mode: string }
   /** Sandbox: launch solvers without Entregar / issues. `#/lab` or `#/solver-lab`. */
   | { name: "solver-lab" };
 
@@ -93,6 +95,9 @@ export function parseHash(hash: string): AppRoute {
   if (parts[0] === "solver" && parts[1] === "review") {
     const mode = params.get("mode") === "group" ? "group" : "pair";
     return { name: "solver-review", ctx: params.get("ctx") || "", mode };
+  }
+  if (parts[0] === "solver" && parts[1] === "aval") {
+    return { name: "solver-aval", ctx: params.get("ctx") || "", mode: params.get("mode") || "reporte" };
   }
   if (parts[0] === "solver" && parts[1] === "checklist") {
     return { name: "solver-checklist", ctx: params.get("ctx") || "", items: params.get("items") || "notas", text: params.get("text") || "tpl" };
@@ -164,6 +169,8 @@ export function routeToHash(route: AppRoute): string {
       return `#/solver/familiarize?ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-afinar":
       return `#/solver/afinar?step=${encodeURIComponent(route.step)}${route.mode ? `&mode=${encodeURIComponent(route.mode)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
+    case "solver-aval":
+      return `#/solver/aval?mode=${encodeURIComponent(route.mode)}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-checklist":
       return `#/solver/checklist?items=${encodeURIComponent(route.items)}&text=${encodeURIComponent(route.text)}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-review":

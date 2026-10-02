@@ -7028,3 +7028,18 @@ button.al-box--read { cursor: pointer; }
 .ck-no__outcomes { display: grid; gap: 0.375rem; }
 .ck-no__outcomes button { min-height: 44px; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .ck-no__outcomes button[aria-pressed="true"] { border-color: var(--primary); background: var(--accent-50); font-weight: 600; }
+
+/* ---- committee endorsement (EndorsementView) ---- */
+.en-texts { padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.en-texts summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.en-verse { padding: 0.5rem 0; border-top: 1px solid var(--border); }
+.en-verse p { margin: 0.25rem 0 0; }
+.en-sub { margin: 0.5rem 0 0; font-size: 1rem; }
+.en-concerns { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.en-concerns li { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--surface-muted); }
+.en-concerns li[data-kind="objection"] { background: var(--warning-100); color: var(--warning-700); }
+.en-concerns li[data-withdrawn] { opacity: 0.55; text-decoration: line-through; }
+.en-tally { margin: 0; font-size: 1.125rem; font-weight: 700; }
+.en-report { display: grid; gap: 0.25rem; padding: 0.625rem 0; border-top: 1px solid var(--border); font-size: 0.9375rem; }
+.en-report p { margin: 0; }
+.en-report p[data-kind="objection"] { color: var(--warning-700); }

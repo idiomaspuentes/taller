@@ -303,6 +303,8 @@ export type TaskStep = {
   checklist?: ChecklistQuestion[];
   /** What the step covers. Omitted: one subtarea. */
   scope?: StepScope;
+  /** A committee's decision: how it is taken when its members do not all agree. Omitted: by majority. */
+  decisionRule?: "majority" | "unanimous";
   description?: string;
   descriptions?: Localized;
   solverAppId?: string;

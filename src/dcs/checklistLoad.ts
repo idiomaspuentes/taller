@@ -70,6 +70,29 @@ async function loadText(session: GtSession, ctx: SolverLaunchContext, resource: 
   return { verses: verseTextsFromUsj(parsed.usj, WHOLE_CHAPTER(ctx.chapter)) ?? {}, alignments: parsed.alignments, branch: found.branch };
 }
 
+/** The texts of a unit, and where its review documents are kept: what a screen needs to show a unit to its reviewers. */
+export async function loadUnitTexts(params: { session: GtSession; ctx: SolverLaunchContext; texts: ChecklistText[] }): Promise<Omit<ChecklistData, "kind" | "items" | "fromSource">> {
+  const { session, ctx } = params;
+  const book = (ctx.book || ctx.projectId || "").toUpperCase();
+  if (!book || !ctx.chapter) throw new Error("Falta el libro o el capítulo en la tarea.");
+  const [pmConfig, board] = await Promise.all([
+    ctx.pmOrg ? loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : Promise.resolve(DEFAULT_PM_CONFIG),
+    loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg).catch(() => null),
+  ]);
+  const task = board?.teams.find((t) => t.id === ctx.taskId) ?? null;
+  const step = task?.steps?.find((s) => s.id === ctx.stepId) ?? null;
+  const home = resolveScriptureTarget({ ...ctx, resource: params.texts[0] ?? "tpl" }, pmConfig);
+  if ("error" in home) throw new Error(home.error);
+  const texts: ChecklistData["texts"] = {};
+  await Promise.all(
+    params.texts.map(async (resource) => {
+      const text = await loadText(session, ctx, resource, board, pmConfig);
+      if (text) texts[resource] = text;
+    }),
+  );
+  return { book, chapter: ctx.chapter, texts, target: { owner: home.owner, repo: home.repo }, levelBook: pmConfig, board, task, step };
+}
+
 export async function loadChecklist(params: { session: GtSession; ctx: SolverLaunchContext; kind: ChecklistKind; texts: ChecklistText[] }): Promise<ChecklistData> {
   const { session, ctx, kind } = params;
   const book = (ctx.book || ctx.projectId || "").toUpperCase();

@@ -20,6 +20,7 @@ import { loadLocalWorkflows } from "./domain/store";
 import type { WorkflowTemplate } from "./domain/types";
 import { HandoffUnitsPanel } from "./components/HandoffUnitsPanel";
 import { ChecklistView } from "./components/ChecklistView";
+import { EndorsementView } from "./components/EndorsementView";
 import type { AssignmentsDoc, InventoryDoc, ProjectIndexEntry } from "./domain/types";
 import {
   emptyAssignments,
@@ -905,6 +906,7 @@ export function App() {
     route.name === "solver-familiarize" ||
     route.name === "solver-afinar" ||
     route.name === "solver-checklist" ||
+    route.name === "solver-aval" ||
     route.name === "solver-review"
   ) {
     const onSolverClose = () => {
@@ -938,6 +940,8 @@ export function App() {
             announce={announce}
             onClose={onSolverClose}
           />
+        ) : route.name === "solver-aval" ? (
+          <EndorsementView key={`${sessionEpoch}-${route.mode}`} ctxEncoded={route.ctx} mode={route.mode === "decision" ? "decision" : "reporte"} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-checklist" ? (
           <ChecklistView
             key={`${sessionEpoch}-${route.items}-${route.text}`}

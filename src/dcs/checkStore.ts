@@ -86,3 +86,63 @@ export async function appendCheckAnswers(session: GtSession, target: CheckTarget
     }
   }
 }
+
+/** One whole document per person (a report), kept beside the checklists. */
+export async function loadPersonDocs<T>(session: GtSession, target: CheckTarget, key: string): Promise<{ login: string; doc: T }[]> {
+  const config = dcsConfig(session.host);
+  let entries: ContentsResponse[] = [];
+  try {
+    const listing = await getContents(config, target.owner, target.repo, dirOf(key), { ref: CHECKS_BRANCH, token: session.token });
+    entries = Array.isArray(listing) ? listing : [];
+  } catch (err) {
+    if (isNotFound(err)) return [];
+    throw err;
+  }
+  const docs = await Promise.all(
+    entries
+      .filter((entry) => entry.type === "file" && entry.name.endsWith(".json"))
+      .map(async (entry) => {
+        try {
+          const text = await getRawContent(config, target.owner, target.repo, entry.path, { ref: CHECKS_BRANCH, token: session.token });
+          return { login: entry.name.replace(/\.json$/, ""), doc: JSON.parse(text) as T };
+        } catch {
+          return null;
+        }
+      }),
+  );
+  return docs.filter((row): row is { login: string; doc: T } => row !== null);
+}
+
+/** Replace the signed-in person's own document. Retries once when the file moved meanwhile. */
+export async function savePersonDoc<T>(session: GtSession, target: CheckTarget, key: string, doc: T): Promise<void> {
+  const config = dcsConfig(session.host);
+  const filepath = fileOf(key, session.username);
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    let sha: string | undefined;
+    let branchExists = true;
+    try {
+      const hit = await getContents(config, target.owner, target.repo, filepath, { ref: CHECKS_BRANCH, token: session.token });
+      if (!Array.isArray(hit)) sha = hit.sha;
+    } catch (err) {
+      if (!isNotFound(err)) throw err;
+      try {
+        await getContents(config, target.owner, target.repo, "", { ref: CHECKS_BRANCH, token: session.token });
+      } catch (inner) {
+        if (isNotFound(inner)) branchExists = false;
+        else throw inner;
+      }
+    }
+    try {
+      await createOrUpdateContents(config, target.owner, target.repo, filepath, {
+        content: `${JSON.stringify(doc, null, 2)}\n`,
+        message: `Taller: reporte ${key}`,
+        sha,
+        ...(branchExists ? { branch: CHECKS_BRANCH } : { branch: target.defaultBranch, new_branch: CHECKS_BRANCH }),
+        token: session.token,
+      });
+      return;
+    } catch (err) {
+      if (!isShaConflict(err) || attempt === 2) throw err;
+    }
+  }
+}

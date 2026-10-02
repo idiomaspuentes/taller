@@ -211,7 +211,7 @@ export function releaseStep(
  * settled (see `reviewRound.ts` and `checklist.ts`): completing it from the list would close it with items open.
  */
 export function closesInItsTool(step: TaskStep): boolean {
-  return (step.closing === "consensus" || step.closing === "checklist") && Boolean(step.solverAppId);
+  return (step.closing === "consensus" || step.closing === "checklist" || step.closing === "automatic") && Boolean(step.solverAppId);
 }
 
 export function canApproveStep(

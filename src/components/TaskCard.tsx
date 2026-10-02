@@ -193,7 +193,7 @@ export function TaskCard(props: Props) {
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onClaimStep(step)}>
                     {t("tb.joinShort")}
                   </Button>
-                ) : approve ? (
+                ) : approve && !(step.solverAppId && step.checklist?.length) ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onApproveStep(step)}>
                     {t("mt.approve")}
                   </Button>

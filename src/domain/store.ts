@@ -497,6 +497,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       closing,
       checklist: normalizeChecklist(item.checklist),
       scope,
+      ...(item.decisionRule === "unanimous" || item.decisionRule === "majority" ? { decisionRule: item.decisionRule } : {}),
       description: String(item.description ?? "").trim() || undefined,
       descriptions: normalizeLocalized(item.descriptions),
       solverAppId: String(item.solverAppId ?? "").trim() || undefined,
