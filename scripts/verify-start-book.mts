@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { bookSize, firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, phasesAtStart, phasesWithoutTeam, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
+import { bookSize, firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, phasesAtStart, phaseTeams, phasesWithoutTeam, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
 import type { AssignmentsDoc, InventoryDoc, Portion } from "../src/domain/types";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 
@@ -37,6 +37,12 @@ test("el libro nuevo hereda los equipos del libro anterior hecho con el mismo pr
   assert.deepEqual(byPhase.map((phase) => phase.id), [...fresh("RUT").phases].sort((x, y) => x.order - y.order).map((phase) => phase.id), "se elige un equipo por fase, en el orden del proceso");
   assert.equal(byPhase.reduce((sum, phase) => sum + phase.tasks.length, 0), fresh("RUT").teams.length);
   assert.deepEqual(phasesWithoutTeam(ruth), [], "y cuando todas tienen equipo no se pregunta nada");
+  const first = fresh("RUT").phases.slice().sort((x, y) => x.order - y.order)[0].id;
+  const given = { ...fresh("RUT"), teams: fresh("RUT").teams.map((task, i) => (task.phaseId === first ? { ...task, orgTeamId: 7, orgTeamName: "pm-traduccion" } : task)) };
+  assert.equal(phaseTeams(given).find((phase) => phase.id === first)?.orgTeamName, "pm-traduccion", "para cambiarlo, cada fase muestra el equipo que tiene");
+  const split = { ...given, teams: given.teams.map((task, i) => (task.phaseId === first && i === given.teams.findIndex((row) => row.phaseId === first) ? { ...task, orgTeamId: 9, orgTeamName: "pm-otro" } : task)) };
+  const mixed = phaseTeams(split).find((phase) => phase.id === first);
+  assert.equal(mixed?.mixed && mixed.tasks.length > 1 ? mixed.orgTeamName : "sin-varias-tareas", mixed && mixed.tasks.length > 1 ? undefined : "sin-varias-tareas", "y una fase con equipos distintos lo dice en vez de elegir uno");
 });
 
 test("no se hereda de otro proceso, ni se pisa lo que la plantilla ya dice", () => {

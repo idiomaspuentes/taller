@@ -42,6 +42,30 @@ export function phasesWithoutTeam(board: Pick<AssignmentsDoc, "phases" | "teams"
     .filter((phase) => phase.tasks.length);
 }
 
+export type PhaseTeam = {
+  id: string;
+  name: string;
+  tasks: ProjectTask[];
+  /** The team every task of the phase has; absent when none has one, or when they differ. */
+  orgTeamId?: number;
+  orgTeamName?: string;
+  /** Its tasks do not all have the same team: some task was given its own. */
+  mixed: boolean;
+};
+
+/** Every phase that has tasks, in order, with the team that does it today. */
+export function phaseTeams(board: Pick<AssignmentsDoc, "phases" | "teams">): PhaseTeam[] {
+  return [...board.phases]
+    .sort((a, b) => a.order - b.order)
+    .map((phase): PhaseTeam => {
+      const tasks = board.teams.filter((task) => task.phaseId === phase.id);
+      const names = new Set(tasks.map((task) => task.orgTeamName ?? ""));
+      const one = names.size === 1 && tasks[0]?.orgTeamName ? tasks[0] : undefined;
+      return { id: phase.id, name: phase.name, tasks, orgTeamId: one?.orgTeamId, orgTeamName: one?.orgTeamName, mixed: names.size > 1 };
+    })
+    .filter((phase) => phase.tasks.length);
+}
+
 export type PhaseStart = {
   id: string;
   name: string;

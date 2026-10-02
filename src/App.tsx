@@ -1340,8 +1340,8 @@ export function App() {
               session && pmOrg
                 ? {
                     loadTeams: () => listPmOrgTeams(session, pmOrg),
-                    onSave: async (doc, choice) => {
-                      const saved = await setPhaseTeams({ session, pmOrg, board: doc, choice });
+                    onSave: async (doc, choice, replace) => {
+                      const saved = await setPhaseTeams({ session, pmOrg, board: doc, choice, replace });
                       saveLocalAssignments(saved.board);
                       if (saved.board.projectId === board.projectId) setBoard(saved.board);
                       return saved;

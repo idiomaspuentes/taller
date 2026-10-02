@@ -129,6 +129,8 @@ import { EveryUnitField } from "./EveryUnitField";
 import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeName } from "../domain/templateNames";
+import { PhaseTeamsPanel } from "./PhaseTeamsPanel";
+import { setPhaseTeams } from "../dcs/startBook";
 import { localizeScope } from "../domain/scopeNames";
 import { bookLabel } from "../domain/books";
 import { explainError } from "../dcs/userError";
@@ -2383,6 +2385,17 @@ export function TeamsView({
           ) : null}
         </div>
       </div>
+
+      {session && pmOrg && board.teams.length ? (
+        <PhaseTeamsPanel
+          key={board.projectId}
+          mode="all"
+          board={board}
+          loadTeams={() => listPmOrgTeams(session, pmOrg)}
+          onSave={(doc, choice, replace) => setPhaseTeams({ session, pmOrg, board: doc, choice, replace })}
+          onSaved={onChange}
+        />
+      ) : null}
 
       <div className="workflow-apply">
         <div className="grid min-w-[12rem] flex-1 gap-1.5">

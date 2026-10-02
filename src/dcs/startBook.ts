@@ -5,7 +5,7 @@ import { loadAssignmentsFromDcs, saveProjectToDcs } from "./persist";
 import { bookName, normalizeProjectId } from "../domain/books";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
-import { firstPhaseTeams, inheritTeams, nextBookHint, phasesWithoutTeam, reachesNextBook, type NextBookHint } from "../domain/startBook";
+import { firstPhaseTeams, inheritTeams, nextBookHint, phaseTeams, phasesWithoutTeam, reachesNextBook, type NextBookHint } from "../domain/startBook";
 import { emptyAssignments, mergePeople } from "../domain/store";
 import type { AssignmentsDoc, InventoryDoc, WorkflowTemplate } from "../domain/types";
 import { applyWorkflowToBoard } from "../domain/workflows";
@@ -62,19 +62,21 @@ export async function startBook(params: {
 
 /**
  * One team per phase: every task of the phase that has nobody gets the chosen team and its people, and the project
- * is saved. A task the team cannot take (it lacks a repository and it cannot be given) is left as it was and told.
+ * is saved. With `replace`, the tasks that already had a team get the chosen one too (changing who does a phase).
+ * A task the team cannot take (it lacks a repository and it cannot be given) is left as it was and told.
  */
 export async function setPhaseTeams(params: {
   session: GtSession;
   pmOrg: string;
   board: AssignmentsDoc;
   choice: Record<string, DcsTeam>;
+  replace?: boolean;
 }): Promise<{ board: AssignmentsDoc; warnings: string[] }> {
   const { session, pmOrg, choice } = params;
   const pmConfig = await loadPmConfig(session, pmOrg);
   const warnings = new Set<string>();
   let board = params.board;
-  for (const phase of phasesWithoutTeam(board)) {
+  for (const phase of params.replace ? phaseTeams(board) : phasesWithoutTeam(board)) {
     const orgTeam = choice[phase.id];
     if (!orgTeam) continue;
     for (const task of phase.tasks) {
