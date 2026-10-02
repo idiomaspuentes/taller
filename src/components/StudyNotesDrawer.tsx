@@ -44,8 +44,8 @@ export function StudyNotesDrawer({ ctxEncoded }: { ctxEncoded: string }) {
   if (!ctx?.projectId || !ctx.pmOrg || !ctx.book || !session?.token || ctx.lab) return null;
   return (
     <>
-      <button type="button" className="snd-button" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <NotebookPen size={16} aria-hidden /> {t("sn.tab")}
+      <button type="button" className="snd-button" aria-label={t("sn.tab")} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <NotebookPen size={16} aria-hidden /> <span className="snd-label">{t("sn.tab")}</span>
         {count ? <span className="snd-count">{count}</span> : null}
       </button>
       {/* Kept mounted, so that the count is known before it is opened. */}

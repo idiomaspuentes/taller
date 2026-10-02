@@ -145,6 +145,14 @@ export type ArticleInfo = { title: string; question?: string; /** Read from the 
  * The name shown for the figure or topic a note points to: the title of its Academy article in the team's
  * language when the team translated it; else the name this app knows it by; else the title in the source package.
  */
+/**
+ * The same, for a narrow place (the list of the figures of a chapter): the short name this app knows the figure by,
+ * when it knows one, since an article's title can be a whole sentence.
+ */
+export function articleShortName(item: Pick<NoteItem, "category" | "categoryLabel">, info: ArticleInfo | undefined, known: (label: string) => string): string {
+  return CATEGORY_LABEL[item.category] ? known(item.categoryLabel) : articleName(item, info, known);
+}
+
 export function articleName(item: Pick<NoteItem, "category" | "categoryLabel">, info: ArticleInfo | undefined, known: (label: string) => string): string {
   if (info?.own && info.title) return info.title;
   if (CATEGORY_LABEL[item.category]) return known(item.categoryLabel);

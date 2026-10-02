@@ -5,7 +5,7 @@ import { appendMyDecision, loadDecisionFiles, savePreferredTerm, saveCorrection 
 import { commentOnIssue } from "../dcs/issues";
 import { formatChatEvent } from "../domain/chatEvent";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
-import { articleName, articlePathOf, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
+import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { compareTermRenderings, termLabel, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
 import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
@@ -457,7 +457,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const total = visible.length;
 
   return (
-    <div className="af">
+    <div className="af af--round">
       <header className="af-head">
         <button type="button" className="af-back" onClick={onClose} aria-label={t("af.back")}>
           {t("af.backArrow")}
@@ -510,7 +510,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   setPosition(0);
                 }}
               >
-                {group.category === "all" ? t("af.allFigures") : stepProp === "notas" ? nameOf(group.items[0]!) : localizeAfinacion(group.label, language)}
+                {group.category === "all" ? t("af.allFigures") : stepProp === "notas" ? articleShortName(group.items[0]!, articles[articlePathOf(group.items[0]!.supportRef)], (label) => localizeAfinacion(label, language)) : localizeAfinacion(group.label, language)}
                 <span>
                   {done}/{group.items.length}
                 </span>
@@ -533,13 +533,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             </div>
             {dockOpen ? (
               <>
-                <div className="af-row">
+                <div className="af-row af-row--ref">
                   <span className="af-lbl">{data.originalLabel}</span>
                   <span className="af-orig" lang="grc">
                     <Words text={data.originalVerses[item.verse] ?? ""} marked={origMarked} />
                   </span>
                 </div>
-                <div className="af-row">
+                <div className="af-row af-row--ref">
                   <span className="af-lbl">{t("af.english").replace("{label}", data.gatewayLabel)}</span>
                   <Words text={data.gatewayVerses[item.verse] ?? ""} marked={item.phraseTokens} />
                 </div>
@@ -690,7 +690,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
             ) : null}
-            <div className="af-buttons">
+            <div className="af-buttons af-answer">
               <Button type="button" size="lg" disabled={saving} onClick={() => void answer("approved")}>
                 {t("rv.approved")}
               </Button>
