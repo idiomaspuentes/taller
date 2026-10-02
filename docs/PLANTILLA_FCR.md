@@ -85,7 +85,7 @@ fuente en inglés. Los recursos de apoyo se escriben sin mirar el TPL ni el TPS 
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura del capítulo (TranslationCore Study) | Lo marca quien lo hace |
+| 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura: nota de introducción al libro, nota de introducción al capítulo y el capítulo | Lo marca quien lo hace |
 | 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de texto bíblico | Lo marca quien lo hace |
 | 3 | Revisión en pares | Revisar | Otra persona del equipo, no quien hizo el borrador | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
 | 4 | Revisión grupal | Revisar | Personas del equipo que no hicieron el borrador ni la revisión en pares | 2 | Revisión del borrador | Otra persona lo aprueba (las 2) |
@@ -132,7 +132,8 @@ el artículo no depende de un pasaje.
 equipos distintos.
 **Espera a:** la Traducción de ese texto, **de toda la unidad de traspaso**.
 **Quién:** al menos 2 personas habilitadas con dominio del idioma bíblico y ajenas al borrador; el
-grupo reúne 3 o más.
+grupo reúne 3 o más. En principio, las **mismas personas** hacen los cuatro pasos. Un cambio
+acordado lo escribe **cualquier persona habilitada del equipo**.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
@@ -167,8 +168,14 @@ el TPL y el TPS.
 **Tres pistas**, cada una con su equipo y su coordinador.
 **Espera a:** la Afinación del TPL **y** del TPS, y la Traducción de las ayudas de esa pista, todo de
 la misma unidad de traspaso. Sin los dos textos afinados y sus ayudas listas, la pista no avanza.
-**Quién:** personas habilitadas en Armonización. Cierra una persona distinta de quien preparó el
-recurso.
+**Quién:** personas habilitadas en Armonización. Cada pista **cierra por consenso del equipo**:
+todos de acuerdo sobre qué se deja y qué se modifica. Normalmente en reunión, salvo que la
+herramienta registre la discusión y el acuerdo. (La guía pública habla de un «cierre independiente»
+de una sola persona: hay que alinearla.)
+
+**La cita de cada nota** no se traduce en Traducción: la nota conserva su cita en griego o hebreo, y
+la cita en español **se genera sola** desde el TPL alineado. Aquí se comprueba si lo generado tiene
+sentido con la nota.
 
 ### 5.1 Armonizar Notas y Academia
 
@@ -177,7 +184,7 @@ recurso.
 | 1 | Notas frente al TPL | Comprobar | Equipo de la pista | 1 o más | Notas con el TPL a la vista | Lista de comprobación por nota (A) |
 | 2 | Notas frente al TPS | Comprobar | Equipo de la pista | 1 o más | Notas con el TPL y el TPS a la vista | Lista de comprobación por nota (B) |
 | 3 | Academia | Comprobar | Equipo de la pista | 1 o más | Artículo enlazado por cada nota | Lista de comprobación (C) |
-| 4 | Cierre independiente | Cerrar | Habilitada que no preparó ni ajustó el recurso | 1 | Resumen de lo comprobado | Otra persona lo aprueba |
+| 4 | Acuerdo del equipo | Acordar | Todo el equipo de la pista | todos | Resumen de lo modificado, creado y consultado | Consenso por ítem: todos de acuerdo sobre dejar o modificar; lo confirma el coordinador o una habilitada |
 
 **Lista A · cada nota frente al TPL**
 1. ¿Tiene sentido con el texto del TPL?
@@ -201,7 +208,7 @@ recurso.
 |---|------|-------|-------|---------|-------------|--------------------|
 | 1 | Palabras frente al TPL | Comprobar | Equipo de la pista | 1 o más | Término, artículo y TPL | Lista de comprobación por término (D) |
 | 2 | Sugerencias frente al TPS | Comprobar | Equipo de la pista | 1 o más | Término, artículo y TPS | Lista de comprobación por término (E) |
-| 3 | Cierre independiente | Cerrar | Habilitada que no preparó ni ajustó | 1 | Resumen | Otra persona lo aprueba |
+| 3 | Acuerdo del equipo | Acordar | Todo el equipo de la pista | todos | Resumen | Consenso por ítem; lo confirma el coordinador o una habilitada |
 
 **Lista D · cada término frente al TPL**
 1. ¿La definición del artículo es correcta para este contexto?
@@ -215,7 +222,7 @@ recurso.
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
 | 1 | Preguntas frente a los textos | Comprobar | Equipo de la pista | 1 o más | Pregunta, respuesta, TPL y TPS | Lista de comprobación por pregunta (F) |
-| 2 | Cierre independiente | Cerrar | Habilitada que no preparó ni ajustó | 1 | Resumen | Otra persona lo aprueba |
+| 2 | Acuerdo del equipo | Acordar | Todo el equipo de la pista | todos | Resumen | Consenso por ítem; lo confirma el coordinador o una habilitada |
 
 **Lista F · cada pregunta**
 1. ¿Se puede responder con el TPL y el TPS afinados?
@@ -227,7 +234,7 @@ recurso.
 |--------|-----------------|
 | **Corregir aquí** | La persona edita la nota, el artículo o la pregunta y la respuesta pasa a «sí». |
 | **Crear lo que falta** | Se crea una nota nueva, o un **artículo nuevo** de Palabras o Academia, que queda como trabajo de esta fase. |
-| **Enviar a Afinación** | Si el problema está en el TPL o el TPS, se avisa al equipo de Afinación, que es el dueño. El ítem queda «en consulta» hasta que respondan. |
+| **Pedir el cambio a Afinación** | Si el problema está en el TPL o el TPS, se le pide el cambio al equipo de Afinación, **con la razón**. Armonización nunca edita esos textos. El ítem queda «en consulta» hasta que respondan. |
 
 ---
 
@@ -241,11 +248,14 @@ recurso.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Revisión pastoral | Revisar | Pastores habilitados | 2 o más | Lectura del paquete, versículo por versículo | Cada pastor da su juicio |
+| 1 | Revisión pastoral | Revisar | Pastores habilitados | 2 o más | Lectura del paquete, con registro de inquietudes | Cada pastor entrega su reporte |
 | 2 | Decisión del comité | Decidir | Coordinador del comité | 1 | Resumen de juicios y objeciones | Regla del aval (abajo) |
 
 **Cada pastor responde tres preguntas:** ¿comunica fielmente el mensaje?, ¿se entiende?, ¿ayuda a
 resolver dificultades reales de traducción? Puede dejar **observaciones** y **objeciones**.
+
+**Revisión a ciegas:** cada pastor puede empezar en cuanto llega la unidad. Solo ve las inquietudes
+de los demás **después de entregar su propio reporte**.
 
 **Regla del aval (por confirmar, todavía no es definitiva):**
 - Toda objeción queda **a la vista de todos los pastores** antes de decidir.

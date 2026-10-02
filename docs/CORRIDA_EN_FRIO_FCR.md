@@ -5,7 +5,7 @@ capítulo recorre el FCR. **No supone ninguna app:** cuenta qué recibe cada per
 qué consulta, qué hace exactamente y a quién le entrega.
 
 Las personas son inventadas. Los pasos vienen de [PLANTILLA_FCR.md](PLANTILLA_FCR.md). Donde tuve
-que suponer algo para poder contar la historia, lo marco con **❓** para que lo corrijas. Al final de
+que suponer algo para poder contar la historia, lo pregunté; las respuestas están al final y ya están incorporadas. Al final de
 cada escena anoto **lo que se necesita** para que ese paso funcione, sin decir cómo se resuelve.
 
 Las cantidades (9 notas, 7 palabras, qué artículo falta) y los ejemplos de correcciones son
@@ -87,15 +87,17 @@ el TPS en español.
 ### 1A. Equipo del TPL
 
 **Marta (coordinadora)** recibe el aviso de Débora. Reparte: 2:1-10 a Sofía, 2:11-15 a Luis. Iván,
-que es aprendiz, hará 2:11-15 como práctica al lado de Luis ❓ (la «copia de práctica» todavía se
-lleva fuera).
+que es aprendiz, hace la **misma porción** que Luis, 2:11-15, como práctica: su borrador no se
+entrega, y después lo comparan (por ahora, fuera de cualquier herramienta).
 
 #### Paso 1 · Familiarizarse (Luis)
 - **Recibe:** su porción, 2:11-15.
-- **Qué hace:** lee Tito 2 completo, de corrido, en el ULT y en el UST. Lo hace **una vez para el
-  capítulo**; como es su primera tarea en Tito, lee también el capítulo 1 para entrar en la carta ❓.
+- **Qué hace:** lee la **nota de introducción a Tito** y la **nota de introducción al capítulo 2**
+  (están entre las notas en inglés). Después lee el capítulo 2 en el ULT y el UST, **lo suficiente
+  para entender su porción**. No hace falta leer los capítulos anteriores.
 - **Para qué:** saber quién escribe (Pablo), a quién (Tito, en Creta), de qué viene hablando (cómo
   deben vivir distintos grupos) y a dónde va (la gracia como razón de todo eso).
+- La introducción al libro se lee una vez; la del capítulo y el capítulo, una vez por capítulo.
 - **Termina cuando:** él mismo dice que ya lo leyó.
 
 #### Paso 2 · Borrador (Luis)
@@ -150,8 +152,8 @@ Igual que el TPL, con Pablo como coordinador y Rut y Diego traduciendo. Las dife
 **Ester (coordinadora)** reparte las 9 notas de 2:11-15 a Joel.
 
 #### Paso 1 · Familiarizarse (Joel)
-- **Qué hace:** lee la **introducción a Tito** (está entre las notas en inglés: autor, destinatarios,
-  temas), la **introducción al capítulo 2** y **el capítulo 2 completo** en el ULT.
+- **Qué hace:** lo mismo que Luis: la **nota de introducción a Tito**, la **nota de introducción al
+  capítulo 2** y el capítulo 2 en el ULT, lo suficiente para entender los pasajes de sus notas.
 - **Para qué:** cuando una nota dice «Pablo habla de Jesús como si…», Joel sabe quién habla, a quién
   y en qué momento del argumento.
 - La introducción al libro la lee una sola vez; el capítulo, una vez.
@@ -162,8 +164,8 @@ Igual que el TPL, con Pablo como coordinador y Rut y Diego traduciendo. Las dife
   Academia enlazado. **No** mira el TPL ni el TPS en español.
 - **Qué hace exactamente:** traduce cada nota. En la de 2:14 escribe: «Pablo habla de Jesús como si
   estuviera liberando esclavos de su malvado amo…». La **cita** (la frase del texto a la que la nota
-  se ata) la traduce él mismo del ULT, porque todavía no existe el TPL afinado; Armonización la
-  ajustará después.
+  se ata) **no la traduce**: la nota conserva su cita en griego o hebreo. La cita en español se
+  generará sola más adelante, a partir del TPL ya alineado.
 - **Termina cuando:** dice «terminé».
 
 #### Paso 3 · Revisión en pares (Lidia)
@@ -204,7 +206,8 @@ Empieza cuando el **capítulo 2 completo** del TPL salió de Traducción. El equ
 mismo en paralelo con su texto.
 
 **Rubén (coordinador)** recibe el capítulo 2 del TPL. Convoca a Elena, Tomás y Priscila, que leen
-griego y no escribieron el borrador. Mateo, practicante, participa pero no cuenta para el mínimo.
+griego y no escribieron el borrador. Mateo, practicante, participa pero no cuenta para el mínimo. En principio, **las
+mismas personas** hacen los cuatro pasos.
 
 ### Paso 1 · Desafíos de traducción
 - **Reciben:** el borrador del TPL del capítulo 2 y las notas en inglés del capítulo, que señalan
@@ -220,8 +223,10 @@ griego y no escribieron el borrador. Mateo, practicante, participa pero no cuent
   nuestro Salvador», por la construcción griega. Elena está de acuerdo; Priscila pone una objeción.
 - **Sin acuerdo en 2:13:** Rubén cita una reunión. Hablan veinte minutos y acuerdan la redacción de
   Tomás. **Rubén registra la decisión final** y deja escrito el porqué.
+- **Quién escribe el cambio:** lo deciden en el momento; cualquier persona habilitada del equipo
+  puede hacerlo. Esta vez lo escribe Tomás.
 - **Termina cuando:** todos los desafíos tienen acuerdo, por las respuestas o por la decisión
-  registrada. El texto del TPL se cambia donde se acordó.
+  registrada, y el texto del TPL quedó cambiado donde se acordó.
 
 ### Paso 2 · Palabras clave
 - **Reciben:** la lista de palabras del inglés (TWL) del capítulo 2: qué palabra clave hay en qué
@@ -262,7 +267,7 @@ contar a los independientes.
 **Josué (coordinador)** espera tres cosas del capítulo 2: el TPL afinado, el TPS afinado y las ayudas
 de cada pista. Cuando las tiene, cada pista arranca.
 
-### 3A. Pista Notas y Academia (Marcos prepara, Dina cierra)
+### 3A. Pista Notas y Academia (Marcos prepara; acuerda el equipo)
 
 #### Paso 1 · Notas frente al TPL (Marcos)
 - **Recibe:** las notas traducidas del capítulo 2 y el TPL afinado.
@@ -271,11 +276,16 @@ de cada pista. Cuando las tiene, cada pista arranca.
   2. ¿Es útil: el traductor sabe qué hacer?
   3. ¿La traducción alternativa encaja exactamente en la frase que reemplaza?
   4. (Por versículo) ¿Cada dificultad del TPL tiene su nota?
-- En la nota de 2:14, la **cita** que Joel tradujo dice «nos rescatara de toda maldad», pero el TPL
-  afinado dice «nos redimiese de toda iniquidad». Pregunta 1: **no**. Marcos **corrige la cita** para
-  que coincida con el TPL. Ahora sí.
-- En 2:13 el TPL cambió en Afinación («nuestro gran Dios y Salvador»). La nota ya no explica bien la
-  frase: Marcos la ajusta.
+- La **cita en español** de cada nota aparece ahora **generada automáticamente**: como el TPL ya
+  está alineado con el griego, se sabe qué palabras del TPL corresponden a la cita griega de la nota.
+  Marcos mira lo que se generó y si tiene sentido con lo que la nota dice.
+- En la nota de 2:14 se generó «nos redimiese de toda iniquidad». La nota habla de «liberar
+  esclavos»: tiene sentido. Pregunta 1: **sí**.
+- En 2:13 el TPL cambió en Afinación («nuestro gran Dios y Salvador»). La cita generada es correcta,
+  pero la nota explica la redacción anterior: Marcos **modifica la nota**.
+- En 2:11 la cita generada sale partida y no se entiende. La nota está bien; el problema parece estar
+  en el TPL o en su alineación. Marcos **no toca el TPL**: pide el cambio al equipo de Rubén
+  (Afinación), **con la razón**. La nota queda en consulta hasta que respondan.
 - En 2:12 encuentra una dificultad sin nota. **Crea la nota que falta.**
 
 #### Paso 2 · Notas frente al TPS (Marcos)
@@ -290,12 +300,15 @@ de cada pista. Cuando las tiene, cada pista arranca.
 - Por cada nota que enlaza un artículo: ¿el artículo enseña la dificultad que la nota señala? ¿Está
   publicado en español? Los dos sí.
 
-#### Paso 4 · Cierre independiente (Dina)
-- **Recibe:** el resumen de lo que Marcos comprobó, corrigió, creó y consultó.
-- **Qué hace:** revisa las notas cambiadas y las nuevas, y una muestra del resto ❓. Marcos puede
-  explicarle sus decisiones. Dina **cierra**.
+#### Paso 4 · Acuerdo del equipo (Marcos, Dina y Josué)
+- **Reciben:** el resumen de lo que Marcos comprobó, modificó, creó y consultó.
+- **Qué hacen:** el equipo de la pista revisa cada punto donde hubo un «no» y decide **entre todos**
+  si se deja así o se modifica. **Todos deben estar de acuerdo.** Normalmente es una reunión; si
+  hubiera una herramienta que registre la discusión y el acuerdo, puede hacerse sin reunirse.
+- **Termina cuando:** hay consenso sobre todos los puntos, y Josué (o una persona habilitada del
+  equipo) lo confirma.
 
-### 3B. Pista Palabras (Abigail prepara, Marcos cierra)
+### 3B. Pista Palabras (Abigail prepara; acuerda el equipo)
 - **Recibe:** el artículo nuevo «redimir» y la lista de palabras del capítulo, con el TPL afinado.
 - **Qué hace:** término por término: ¿la definición del artículo sirve para este contexto del TPL?
   ¿Cada palabra difícil tiene artículo?
@@ -303,14 +316,14 @@ de cada pista. Cuando las tiene, cada pista arranca.
   **enlaza**.
 - Opcional, frente al TPS: el TPS dice «seamos libres» para «redimir». Abigail agrega esa forma a las
   sugerencias de traducción del artículo.
-- **Marcos cierra.**
+- **El equipo acuerda** los cambios, igual que en la pista de Notas.
 
-### 3C. Pista Preguntas (Dina prepara, Abigail cierra)
+### 3C. Pista Preguntas (Dina prepara; acuerda el equipo)
 - Pregunta por pregunta: ¿se puede responder con el TPL y el TPS afinados? ¿La respuesta sugerida
   coincide con los textos?
 - La respuesta de 2:14 decía «redimirnos del desenfreno»; el TPL dice «de toda iniquidad». Dina
   ajusta la respuesta.
-- **Abigail cierra.**
+- **El equipo acuerda** los cambios.
 
 **Josué** ve las tres pistas cerradas: el capítulo 2 está **armonizado**.
 
@@ -318,8 +331,8 @@ de cada pista. Cuando las tiene, cada pista arranca.
 
 **Lo que se necesita:** que la pista no arranque hasta tener los dos textos y sus ayudas; recorrer
 los ítems con sus preguntas de sí o no; las tres salidas de un «no» (corregir, crear, consultar al
-dueño); saber qué quedó en consulta; el resumen para quien cierra; que quien cierra no sea quien
-preparó.
+dueño); saber qué quedó en consulta; el resumen para el acuerdo del equipo; registrar la discusión y el
+acuerdo; generar la cita en español de cada nota desde la alineación.
 
 ---
 
@@ -329,24 +342,30 @@ preparó.
 y Academia. Lo comparte con la Pastora Hulda y el Pastor Natán.
 
 ### Paso 1 · Revisión pastoral (cada uno por su cuenta)
-- **Qué hacen:** leen el capítulo con sus recursos, completo o una muestra que cada uno elige.
+- **Cuándo:** en cuanto el capítulo llega, cada pastor puede empezar. No hay que esperar una reunión.
+- **Qué hacen:** leen el capítulo con sus recursos, completo o una muestra que cada uno elige, y van
+  dejando registradas sus **inquietudes**.
 - **Responden tres preguntas:** ¿comunica fielmente el mensaje?, ¿se entiende?, ¿ayuda a resolver
   dificultades reales de traducción?
-- La Pastora Hulda deja una **objeción** en 2:9: la palabra para «esclavos» puede leerse mal en
-  algunas comunidades. El Pastor Natán deja una observación menor sobre una nota.
+- **Cada uno revisa a ciegas:** un pastor **no ve** las inquietudes de los demás hasta que termina y
+  **entrega su propio reporte**. Así cada juicio es independiente.
+- La Pastora Hulda entrega su reporte con una **objeción** en 2:9: la palabra para «esclavos» puede
+  leerse mal en algunas comunidades. El Pastor Natán entrega el suyo con una observación menor sobre
+  una nota. Al entregar, cada uno ve lo que dejaron los otros.
 
 ### Paso 2 · Decisión del comité
-- Los tres ven la objeción y la observación.
+- Con los tres reportes entregados, los tres ven la objeción y la observación.
 - Eliseo deja el **aval pendiente** y canaliza: la objeción de 2:9 va a **Rubén** (es del TPL); la
   observación de la nota va a **Josué**.
 - El equipo de Rubén la evalúa y decide mantener la palabra, agregando una explicación; Josué pide
-  una nota nueva para 2:9, que Marcos crea y Dina cierra.
+  una nota nueva para 2:9, que Marcos crea y el equipo acuerda.
 - El capítulo vuelve **al mismo comité**. La Pastora Hulda retira la objeción. Los tres apoyan:
-  **aval concedido**. (Si no hubiera consenso, se decidiría por mayoría ❓.)
+  **aval concedido**. (Si no hubiera consenso, se decidiría por mayoría.)
 
 **Entrega a:** Benjamín, de informática.
 
-**Lo que se necesita:** leer el paquete junto; que la objeción quede a la vista de todos; devolver
+**Lo que se necesita:** leer el paquete junto; registrar inquietudes mientras se lee; que las de
+los demás solo se vean después de entregar el reporte propio; devolver
 un punto concreto al dueño correcto y que regrese al mismo comité; registrar el aval: quiénes, cuándo
 y sobre qué versión exacta.
 
@@ -385,15 +404,21 @@ Tito, ya puede empezar el capítulo 2.
 6. **Lo que una persona necesita ver cambia en cada paso;** lo que hace (responder, comentar,
    corregir, aprobar) se repite.
 
-## Dudas que salieron al escribir (❓)
+## Respuestas a las dudas (1 de octubre de 2026)
 
-1. Al familiarizarse por primera vez con un libro, ¿se lee solo el capítulo o también lo anterior?
-2. El **Aprendiz** en Traducción: ¿hace la misma porción que otra persona, como Iván con Luis?
-3. La **cita** de una nota en Traducción: ¿la traduce quien traduce la nota, a partir del ULT?
-4. En el **cierre independiente** de Armonización: ¿quien cierra revisa todo, o lo cambiado y una
-   muestra?
-5. En Afinación, ¿las mismas personas hacen los cuatro pasos, o puede cambiar el grupo entre pasos?
-6. Cuando Afinación cambia el texto del TPL (paso 1 o 2), ¿lo edita una persona designada, o
-   cualquiera del grupo?
-7. ¿El comité pastoral valida **capítulo por capítulo** en cuanto llega, o se reúne cada cierto
-   tiempo con lo que haya?
+Ya incorporadas en la historia:
+
+1. **Familiarizarse:** nota de introducción al libro, nota de introducción al capítulo y el capítulo
+   de la porción, lo suficiente para entenderla.
+2. **Aprendiz:** hace la misma porción que otra persona.
+3. **La cita de una nota** no se traduce: la nota conserva su cita en griego o hebreo, y la cita en
+   español **se genera sola** desde el TPL alineado. Armonización comprueba si lo generado tiene
+   sentido con la nota; si no, modifica la nota o **pide** el cambio del TPL o TPS a Afinación, con
+   la razón.
+4. **Armonización cierra por consenso del equipo**, no por una sola persona: todos de acuerdo sobre
+   dejar o modificar. (La guía pública habla de un «cierre independiente»: hay que alinearla.)
+5. **Afinación:** en principio, las mismas personas en los cuatro pasos.
+6. **Quién escribe un cambio acordado:** cualquier persona habilitada del equipo. Afinación mantiene
+   el TPL y el TPS desde que los recibe.
+7. **Validación:** cada pastor empieza en cuanto llega el capítulo y registra sus inquietudes; solo
+   ve las de los demás **después de entregar su reporte**.
