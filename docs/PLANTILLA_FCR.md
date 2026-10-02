@@ -353,3 +353,51 @@ como están; cada unidad se publica al recibir el aval, de forma casi automátic
      Así se corrige sin saber el idioma original y sin pasar por informática.
 - Con el camino 2, una cita solo necesita a Afinación cuando el problema está en el **texto** o en su
   **alineación**, no en la nota.
+
+## 12. El glosario de decisiones de traducción
+
+**Qué es:** una lista aparte, común a todo el FCR, donde se registra **cómo decidimos traducir**
+ciertas palabras: palabras clave y palabras que fueron difíciles. No pertenece a un libro ni a una
+fase; sirve para las ocasiones futuras.
+
+**No es lo mismo que Palabras:** el artículo de Palabras explica **qué significa** un término. El
+glosario registra **qué palabra en español usamos** y por qué.
+
+**Dos clases de entrada:**
+- **Del inglés al español:** un término del ULT, del UST o de las ayudas (por ejemplo, *blessed* →
+  «bendito»).
+- **Del idioma original al español:** una palabra griega o hebrea (por ejemplo, λυτρόω →
+  «redimir»).
+
+**Qué guarda cada entrada (propuesta):**
+
+| Campo | Ejemplo |
+|-------|---------|
+| Término de origen e idioma | λυτρόω (griego) |
+| Traducción acordada | redimir |
+| Otras traducciones aceptadas, y cuándo | «rescatar», en el TPS |
+| Traducciones que se evitan, y por qué | «liberar»: pierde la idea del precio |
+| Dónde aplica | TPL / TPS / ayudas |
+| Razón de la decisión | Conserva la metáfora del rescate |
+| Ejemplos | Tito 2:14 |
+| Artículo de Palabras relacionado | redimir, redentor, redención |
+| Quién lo decidió y cuándo | Afinación del TPL, 1 oct 2026 |
+| Estado | propuesta / acordada |
+
+**Dónde nace una entrada:**
+- En **Afinación, palabras clave:** cuando el equipo unifica cómo se traduce una palabra, esa
+  decisión se guarda en el glosario con un toque.
+- En **Traducción:** quien traduce o revisa puede **proponer** una entrada cuando una palabra le
+  costó.
+- En **Armonización:** al comprobar Palabras frente al TPL.
+
+**Dónde se usa:**
+- Al **traducir:** el glosario avisa cuando el texto fuente tiene un término con decisión registrada.
+- En **palabras clave:** se ve la decisión anterior junto a los versículos donde aparece la palabra.
+- En cualquier momento, como **lista para consultar y buscar**.
+
+**Por confirmar:**
+1. ¿Cualquiera del FCR puede **agregar** una entrada, o cualquiera **propone** y un equipo la
+   aprueba? ¿Cuál equipo?
+2. ¿Una decisión del glosario es **obligatoria** (el texto debe seguirla) o es una **guía**?
+3. ¿Un glosario por idioma (español y portugués por separado)?
