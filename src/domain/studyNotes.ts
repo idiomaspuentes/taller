@@ -28,6 +28,11 @@ export type StudyNote = {
   resourceName?: string;
   /** The task it was written in («Traducir TPL», «Afinar TPL»): where it comes from, for whoever reads it later. */
   task?: string;
+  /**
+   * The help this is a message about (the id of a translation note, a question or a term in its file): left by a
+   * team whose work is not that help, for the team that will work on it.
+   */
+  about?: string;
   text: string;
   /** Shown to the whole team. A note that is not shared is only shown to its author. */
   shared: boolean;
@@ -71,6 +76,7 @@ export function normalizeStudyNotes(raw: unknown, owner: string): StudyNote[] {
       ...(String(row.resource ?? "").trim() ? { resource: String(row.resource).trim().toLowerCase() } : {}),
       ...(String(row.resourceName ?? "").trim() ? { resourceName: String(row.resourceName).trim() } : {}),
       ...(String(row.task ?? "").trim() ? { task: String(row.task).trim() } : {}),
+      ...(String(row.about ?? "").trim() ? { about: String(row.about).trim() } : {}),
       text,
       shared: row.shared === true,
       at: String(row.at ?? ""),
@@ -109,5 +115,11 @@ export function notesByResource(notes: StudyNote[], resource: string | undefined
   const mine = (resource ?? "").trim().toLowerCase();
   if (!mine) return { own: notes, others: [] };
   return { own: notes.filter((note) => !note.resource || note.resource === mine), others: notes.filter((note) => note.resource && note.resource !== mine) };
+}
+
+/** The shared messages left about one help of a book, oldest first: what a later team finds when it gets to it. */
+export function messagesAbout(notes: StudyNote[], book: string, about: string): StudyNote[] {
+  const code = book.toUpperCase();
+  return notes.filter((note) => note.shared && note.about === about && note.book === code).sort((a, b) => a.at.localeCompare(b.at));
 }
 

@@ -2135,5 +2135,11 @@
   "af.hideArticle": "Ocultar el artículo",
   "af.loadingArticle": "Cargando el artículo…",
   "af.noArticle": "No se pudo leer este artículo.",
-  "af.seeNote": "Ver la nota de traducción"
+  "af.seeNote": "Ver la nota de traducción",
+  "hm.ledeLeave": "¿No estás de acuerdo con esta nota? Aquí no se cambia: deja dicho qué cambiarías y lo verá el equipo que revise las notas en español.",
+  "hm.ledeRead": "Mensajes de equipos anteriores sobre esto. Puedes responder.",
+  "hm.placeholder": "Escribe un mensaje…",
+  "hm.send": "Dejar el mensaje",
+  "hm.countOne": "{n} mensaje",
+  "hm.countMany": "{n} mensajes"
 }

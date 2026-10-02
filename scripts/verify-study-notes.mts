@@ -4,7 +4,7 @@
  *   npm run verify:study-notes
  */
 import assert from "node:assert/strict";
-import { normalizeStudyNotes, notesByResource, studyNotesFor, studyNotesPath, visibleStudyNotes, type StudyNote } from "../src/domain/studyNotes";
+import { messagesAbout, normalizeStudyNotes, notesByResource, studyNotesFor, studyNotesPath, visibleStudyNotes, type StudyNote } from "../src/domain/studyNotes";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -47,6 +47,14 @@ test("los apuntes son del recurso en el que se escribieron: primero los de ese r
   assert.deepEqual(notesByResource([ofText, ofNotes, general], undefined).others, [], "en una tarea de varios recursos se ven todos juntos");
   const read = normalizeStudyNotes({ notes: [{ id: "x", book: "3JN", chapter: 1, text: "a", resource: "NOTAS", resourceName: " Notas ", task: "Traducir Notas" }] }, "bea")[0]!;
   assert.deepEqual([read.resource, read.resourceName, read.task], ["notas", "Notas", "Traducir Notas"]);
+});
+
+test("un mensaje sobre una nota llega a quien trabaje esa nota después: se busca por la nota, no por el pasaje", () => {
+  const left = { ...note("m1", "ana", true, 1, 3), about: "abc1", resource: "notas", task: "Afinar TPL" };
+  const mine = { ...note("m2", "bea", false, 1, 3), about: "abc1" };
+  const other = { ...note("m3", "ana", true, 1, 3), about: "zzz9" };
+  assert.deepEqual(messagesAbout([left, mine, other, note("m4", "ana", true, 1, 3)], "3jn", "abc1").map((n) => n.id), ["m1"], "solo los compartidos de esa nota");
+  assert.equal(normalizeStudyNotes({ notes: [{ id: "x", book: "3JN", chapter: 1, text: "a", about: " abc1 " }] }, "ana")[0]!.about, "abc1");
 });
 
 console.log(`\nverify-study-notes: ${passed} checks passed.`);

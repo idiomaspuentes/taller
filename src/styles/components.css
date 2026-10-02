@@ -7539,3 +7539,5 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
   /* Room under the last card, so that its buttons can be scrolled clear of the notes button. */
   .af--round .af-nav { margin-top: 3.25rem; }
 }
+/* Messages about one help, between the teams that meet it at different phases. */
+.hm { display: grid; gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border); }

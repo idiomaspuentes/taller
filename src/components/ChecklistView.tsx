@@ -1,3 +1,4 @@
+import { HelpMessages } from "./HelpMessages";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -366,6 +367,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             {item.title ? <h2 className="af-phrase">{item.title}</h2> : null}
             {item.body ? <p className="af-note">{item.body}</p> : null}
             {item.supportRef ? <p className="af-hint">{t("ck.support").replace("{ref}", item.supportRef)}</p> : null}
+            {session && ctx?.pmOrg && ctx.projectId && data ? (
+              // What the teams before this one said about this very help (those who refined the text, say).
+              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={item.id} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} />
+            ) : null}
             {editorHref ? (
               <a className="af-link" href={editorHref} target="_blank" rel="noopener noreferrer">
                 {t("ck.openEditor")}

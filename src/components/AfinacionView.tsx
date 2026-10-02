@@ -7,6 +7,7 @@ import { formatChatEvent } from "../domain/chatEvent";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
+import { HelpMessages } from "./HelpMessages";
 import { compareTermRenderings, termLabel, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
 import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
@@ -117,6 +118,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [preferredTerms, setPreferredTerms] = useState<PreferredTerms>({});
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
   const [articles, setArticles] = useState<Record<string, ArticleInfo>>({});
+  /** How many messages each note has for the team that will work on the notes. */
+  const [noteMessages, setNoteMessages] = useState<Record<string, number>>({});
   /** The article open to be read in full: its path, and its text once it arrives (`null` = it could not be read). */
   const [reading, setReading] = useState<{ path: string; body?: string | null } | null>(null);
   const [stepDone, setStepDone] = useState(false);
@@ -609,8 +612,29 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 ) : null}
                 {item.note ? (
                   <details className="af-note-box">
-                    <summary>{t("af.seeNote")}</summary>
+                    <summary>
+                      {t("af.seeNote")}
+                      {noteMessages[item.id] ? ` · ${t(noteMessages[item.id] === 1 ? "hm.countOne" : "hm.countMany").replace("{n}", String(noteMessages[item.id]))}` : ""}
+                    </summary>
                     <p className="af-note">{item.note}</p>
+                    {session && ctx?.pmOrg && ctx.projectId ? (
+                      // Refining is about the text, not the notes: a disagreement with a note is left for whoever harmonizes it.
+                      <HelpMessages
+                        key={item.id}
+                        session={session}
+                        pmOrg={ctx.pmOrg}
+                        lang={ctx.lang}
+                        projectId={ctx.projectId}
+                        book={data.book}
+                        chapter={item.chapter}
+                        verse={item.verse}
+                        about={item.id}
+                        resource="notas"
+                        taskName={ctx.taskName}
+                        lede={t("hm.ledeLeave")}
+                        onCount={(count) => setNoteMessages((prev) => (prev[item.id] === count ? prev : { ...prev, [item.id]: count }))}
+                      />
+                    ) : null}
                   </details>
                 ) : null}
               </>
