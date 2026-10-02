@@ -840,8 +840,8 @@
   "rv.approved": "De acordo",
   "rv.revise": "Proponho uma mudança",
   "rv.rejected": "Tenho uma objeção",
-  "af.qNotasTpl": "O TPL conserva {words} na forma de «{figure}», como está no original?",
-  "af.qNotasTps": "O TPS diz {words} de forma simples, sem deixar a forma de «{figure}» tal como está?",
+  "af.qNotasTpl": "{words} reproduz a forma de «{figure}» tal como está no original?",
+  "af.qNotasTps": "{words} expressa de forma simples o que no original é «{figure}»?",
   "af.qPalabrasTpl": "Este termo está traduzido como no resto do livro?",
   "af.qPalabrasTps": "Este termo mantém o mesmo sentido que no resto do livro?",
   "af.titleNotas": "Desafios de tradução",
@@ -2200,7 +2200,7 @@
   "af.paneChapter": "Ler o capítulo",
   "af.chapterPick": "Capítulo",
   "af.chapterN": "Capítulo {n}",
-  "af.theWords": "as palavras que lhe correspondem",
+  "af.theWords": "Sua tradução do destacado",
   "af.theMarked": "o destacado na referência",
   "af.theTerm": "o termo"
 }
