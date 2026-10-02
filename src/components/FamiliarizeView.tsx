@@ -27,6 +27,7 @@ import { portionRange, type RefRange } from "../domain/usfmEdit";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
+import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { UsfmReferencePane } from "./UsfmReferencePane";
 
@@ -346,7 +347,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             <section className="fam-panel" role="tabpanel" hidden={current !== "apuntes"}>
               <h2 className="fam-panel__title">{t("sn.title")}</h2>
               <p className="pe-hint">{t("sn.lede")}</p>
-              <StudyNotesPanel session={loadSession()!} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} issueNumber={ctx.issueNumber || undefined} onCount={setNoteCount} />
+              <StudyNotesPanel session={loadSession()!} {...studyNotesProps(ctx, language)} onCount={setNoteCount} />
             </section>
           ) : null}
 

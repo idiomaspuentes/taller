@@ -2042,5 +2042,10 @@
   "sn.ask": "Perguntar à equipe",
   "sn.savedMine": "Guardado. Só você vê.",
   "sn.savedShared": "Compartilhado com a equipe.",
-  "sn.asked": "Pergunta enviada à conversa da tarefa."
+  "sn.asked": "Pergunta enviada à conversa da tarefa.",
+  "sn.ledeAny": "O que você e a equipe anotaram desta passagem, em qualquer fase. O que escrever aqui fica para quem trabalhar depois.",
+  "sn.noneOfResource": "Ainda não há anotações de {res} nesta passagem.",
+  "sn.othersOne": "Ver {n} anotação de outro recurso",
+  "sn.othersMany": "Ver {n} anotações de outros recursos",
+  "sn.hideOthers": "Ocultar os de outros recursos"
 }

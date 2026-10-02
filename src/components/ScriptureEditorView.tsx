@@ -1,3 +1,4 @@
+import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { bookLabel } from "../domain/books";
@@ -2000,7 +2001,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             {session && ctx?.projectId && ctx.pmOrg && range ? (
               // Kept mounted so that its count shows on the tab before it is opened.
               <div role="tabpanel" hidden={resourceTab !== "apuntes"} className="scripture-editor__tab-pane">
-                <StudyNotesPanel session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={range.chapter} from={range.from} to={range.to} issueNumber={ctx.issueNumber || undefined} onCount={setStudyNoteCount} />
+                <StudyNotesPanel session={session} {...studyNotesProps(ctx, language)} onCount={setStudyNoteCount} />
               </div>
             ) : null}
             <TabsContent value="notas" className="scripture-editor__tab-pane">

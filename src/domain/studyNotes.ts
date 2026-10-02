@@ -20,6 +20,14 @@ export type StudyNote = {
   /** The last verse, when it is about a passage and not one verse. */
   to?: number;
   kind: StudyNoteKind;
+  /**
+   * The resource it is about (the text, the notes, the questions…) and what the process calls it. A note is of the
+   * resource it was written while working on; absent = of the passage in general (a task of several resources).
+   */
+  resource?: string;
+  resourceName?: string;
+  /** The task it was written in («Traducir TPL», «Afinar TPL»): where it comes from, for whoever reads it later. */
+  task?: string;
   text: string;
   /** Shown to the whole team. A note that is not shared is only shown to its author. */
   shared: boolean;
@@ -60,6 +68,9 @@ export function normalizeStudyNotes(raw: unknown, owner: string): StudyNote[] {
       chapter: Math.floor(chapter),
       ...(Number.isInteger(verse) && verse > 0 ? { verse, ...(Number.isInteger(to) && to > verse ? { to } : {}) } : {}),
       kind: row.kind === "remember" ? "remember" : "found",
+      ...(String(row.resource ?? "").trim() ? { resource: String(row.resource).trim().toLowerCase() } : {}),
+      ...(String(row.resourceName ?? "").trim() ? { resourceName: String(row.resourceName).trim() } : {}),
+      ...(String(row.task ?? "").trim() ? { task: String(row.task).trim() } : {}),
       text,
       shared: row.shared === true,
       at: String(row.at ?? ""),
@@ -88,3 +99,15 @@ export function studyNotesFor(notes: StudyNote[], where: { book: string; chapter
     .filter((note) => note.verse === undefined || where.from === undefined || inPassage(note))
     .sort((a, b) => rank(a) - rank(b) || (a.verse ?? 0) - (b.verse ?? 0) || a.at.localeCompare(b.at));
 }
+
+/**
+ * The notes of a passage as whoever works on one resource needs them: first the ones of that resource and the ones
+ * of no resource in particular, then, apart, the ones written about the other resources of the same passage.
+ * Working on no resource in particular (a task of several), every note is «own».
+ */
+export function notesByResource(notes: StudyNote[], resource: string | undefined): { own: StudyNote[]; others: StudyNote[] } {
+  const mine = (resource ?? "").trim().toLowerCase();
+  if (!mine) return { own: notes, others: [] };
+  return { own: notes.filter((note) => !note.resource || note.resource === mine), others: notes.filter((note) => note.resource && note.resource !== mine) };
+}
+

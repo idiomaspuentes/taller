@@ -4,7 +4,7 @@
  *   npm run verify:study-notes
  */
 import assert from "node:assert/strict";
-import { normalizeStudyNotes, studyNotesFor, studyNotesPath, visibleStudyNotes, type StudyNote } from "../src/domain/studyNotes";
+import { normalizeStudyNotes, notesByResource, studyNotesFor, studyNotesPath, visibleStudyNotes, type StudyNote } from "../src/domain/studyNotes";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -36,6 +36,17 @@ test("cada persona tiene su archivo, y lo que dice un archivo es de su dueño", 
   const read = normalizeStudyNotes({ notes: [{ id: "x", by: "otra", book: "3jn", chapter: 1, text: " Hola ", shared: true }, { id: "x", book: "3JN", chapter: 1, text: "repetida" }, { id: "y", book: "3JN", chapter: 1, text: "" }] }, "valeska");
   assert.deepEqual(read.map((n) => [n.id, n.by, n.book, n.text, n.shared, n.kind]), [["x", "valeska", "3JN", "Hola", true, "found"]]);
   assert.deepEqual(normalizeStudyNotes(null, "valeska"), []);
+});
+
+test("los apuntes son del recurso en el que se escribieron: primero los de ese recurso, aparte los de los demás", () => {
+  const ofText = { ...note("t", "ana", true, 1, 1), resource: "tpl", resourceName: "TPL", task: "Traducir TPL" };
+  const ofNotes = { ...note("n", "bea", true, 1, 1), resource: "notas", resourceName: "Notas", task: "Traducir Notas" };
+  const general = note("g", "ana", true, 1);
+  const split = notesByResource([ofText, ofNotes, general], "TPL");
+  assert.deepEqual([split.own.map((n) => n.id), split.others.map((n) => n.id)], [["t", "g"], ["n"]]);
+  assert.deepEqual(notesByResource([ofText, ofNotes, general], undefined).others, [], "en una tarea de varios recursos se ven todos juntos");
+  const read = normalizeStudyNotes({ notes: [{ id: "x", book: "3JN", chapter: 1, text: "a", resource: "NOTAS", resourceName: " Notas ", task: "Traducir Notas" }] }, "bea")[0]!;
+  assert.deepEqual([read.resource, read.resourceName, read.task], ["notas", "Notas", "Traducir Notas"]);
 });
 
 console.log(`\nverify-study-notes: ${passed} checks passed.`);

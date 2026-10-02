@@ -2042,5 +2042,10 @@
   "sn.ask": "Preguntar al equipo",
   "sn.savedMine": "Guardado. Solo tú lo ves.",
   "sn.savedShared": "Compartido con el equipo.",
-  "sn.asked": "Pregunta enviada a la conversación de la tarea."
+  "sn.asked": "Pregunta enviada a la conversación de la tarea.",
+  "sn.ledeAny": "Lo que tú y el equipo anotaron de este pasaje, en cualquier fase. Lo que escribas aquí queda para quien lo trabaje después.",
+  "sn.noneOfResource": "Todavía no hay apuntes de {res} en este pasaje.",
+  "sn.othersOne": "Ver {n} apunte de otro recurso",
+  "sn.othersMany": "Ver {n} apuntes de otros recursos",
+  "sn.hideOthers": "Ocultar los de otros recursos"
 }

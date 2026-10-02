@@ -86,6 +86,7 @@ import { FamiliarizeView } from "./components/FamiliarizeView";
 import { SolverLabView } from "./components/SolverLabView";
 import { PortionReviewView } from "./components/PortionReviewView";
 import { TemplatesView } from "./components/TemplatesView";
+import { StudyNotesDrawer } from "./components/StudyNotesDrawer";
 import { DraftProjectView } from "./components/DraftProjectView";
 import { clearProjectDraft, loadProjectDraft, saveProjectDraft } from "./domain/draftProject";
 import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView";
@@ -1065,6 +1066,8 @@ export function App() {
             onClose={onSolverClose}
           />
         )}
+        {/* The study tool and the draft editor have their own notes tab; every other tool gets them here. */}
+        {"ctx" in route && route.name !== "solver-scripture" && route.name !== "solver-familiarize" ? <StudyNotesDrawer key={route.ctx} ctxEncoded={route.ctx} /> : null}
         {signInModal}
       </div>
     );
