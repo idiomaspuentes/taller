@@ -79,3 +79,23 @@ export function startNotices(inventory: Pick<InventoryDoc, "portions">): StartNo
 export function bookSize(inventory: Pick<InventoryDoc, "portions">): { chapters: number; portions: number } {
   return { chapters: new Set(inventory.portions.map((p) => p.chapter)).size, portions: inventory.portions.length };
 }
+
+export type NextBookHint = { projectId: string; phase: string; done: number; total: number };
+
+/** From how much of the first phase is closed it is time to have the next book ready. */
+export const NEXT_BOOK_AT = 0.7;
+
+/**
+ * Books overlap by phase: the team of the first phase must find the next book waiting when it finishes this one.
+ * Given the newest book and all its subtareas (as task ids and whether each is closed), says whether its first
+ * phase is far enough along that the next book should be started now.
+ */
+export function nextBookHint(board: Pick<AssignmentsDoc, "projectId" | "phases" | "teams">, work: { taskId: string; closed: boolean }[]): NextBookHint | null {
+  const first = [...board.phases].sort((a, b) => a.order - b.order)[0];
+  if (!first) return null;
+  const tasks = new Set(board.teams.filter((task) => task.phaseId === first.id).map((task) => task.id));
+  const mine = work.filter((row) => tasks.has(row.taskId));
+  const done = mine.filter((row) => row.closed).length;
+  if (!mine.length || done / mine.length < NEXT_BOOK_AT) return null;
+  return { projectId: board.projectId, phase: first.name, done, total: mine.length };
+}

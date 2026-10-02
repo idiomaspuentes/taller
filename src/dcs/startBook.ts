@@ -1,8 +1,9 @@
 import type { GtSession } from "./auth";
-import { publishWorkOrders } from "./issues";
+import { listProjectIssues, publishWorkOrders } from "./issues";
 import { loadAssignmentsFromDcs, saveProjectToDcs } from "./persist";
 import { bookName, normalizeProjectId } from "../domain/books";
-import { inheritTeams } from "../domain/startBook";
+import { issueTaskId } from "../domain/myTasks";
+import { inheritTeams, nextBookHint, type NextBookHint } from "../domain/startBook";
 import { emptyAssignments } from "../domain/store";
 import type { AssignmentsDoc, InventoryDoc, WorkflowTemplate } from "../domain/types";
 import { applyWorkflowToBoard } from "../domain/workflows";
@@ -55,4 +56,17 @@ export async function startBook(params: {
   board = { ...board, settings: { ...board.settings, lastPublish: { at: new Date().toISOString(), created: result.created, updated: result.updated } } };
   await saveProjectToDcs({ session, org: pmOrg, lang, book, assignments: board, inventory });
   return { board, inventory, created: result.created };
+}
+
+/**
+ * Whether the next book should be started now: looks at the book started last and how far its first phase is.
+ * `null` when it is not time yet, or when it cannot be told.
+ */
+export async function loadNextBookHint(params: { session: GtSession; pmOrg: string; lang: string; contentOrg: string; projects: string[] }): Promise<NextBookHint | null> {
+  const { session, pmOrg, lang, contentOrg } = params;
+  const boards = (await Promise.all(params.projects.map((id) => loadAssignmentsFromDcs(session, pmOrg, lang, id, contentOrg).catch(() => null)))).filter((board): board is AssignmentsDoc => Boolean(board?.workflowAppliedAt));
+  const newest = boards.sort((a, b) => Date.parse(b.workflowAppliedAt!) - Date.parse(a.workflowAppliedAt!))[0];
+  if (!newest) return null;
+  const { issues } = await listProjectIssues(session, pmOrg, newest.projectId);
+  return nextBookHint(newest, issues.map((issue) => ({ taskId: issueTaskId(issue), closed: issue.state === "closed" })));
 }

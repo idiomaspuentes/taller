@@ -61,7 +61,7 @@ import {
 import { loadPmConfig, pullIssues } from "./dcs/issues";
 import { useConversationActivity } from "./useConversationActivity";
 import { generateInventory } from "./worker/client";
-import { startBook, type StartStage } from "./dcs/startBook";
+import { loadNextBookHint, startBook, type StartStage } from "./dcs/startBook";
 import { SignInModal } from "./components/SignIn";
 import { SetupGate } from "./components/SetupGate";
 import { WorkspaceDialog } from "./components/WorkspaceDialog";
@@ -1339,6 +1339,11 @@ export function App() {
               navigate({ name: "proyecto", projectId: code, step });
             }}
             onGoToTasks={() => navigate({ name: "mis-tareas" })}
+            loadNextBookHint={
+              session && pmOrg
+                ? () => loadNextBookHint({ session, pmOrg, lang, contentOrg, projects: projects.filter((project) => project.kind === "book").map((project) => project.projectId) })
+                : undefined
+            }
           />
         ) : null}
 

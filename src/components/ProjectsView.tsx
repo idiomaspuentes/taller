@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { NextBookHint } from "../domain/startBook";
+import { localizeName } from "../domain/templateNames";
 import { BOOKS, bookLabel, bookName, isBookProjectId, normalizeProjectId } from "../domain/books";
 import { useT } from "../i18n/messages";
 import { StartBookPanel } from "./StartBookPanel";
@@ -44,6 +46,8 @@ type Props = {
   onStartBook?: StartBookProps["onStart"];
   onOpenStep?: (projectId: string, step: "inventario" | "tareas") => void;
   onGoToTasks?: () => void;
+  /** Whether it is time to start the next book (the first phase of the newest one is nearly done). */
+  loadNextBookHint?: () => Promise<NextBookHint | null>;
 };
 
 function slugifyThematic(raw: string): string {
@@ -68,7 +72,21 @@ export function ProjectsView({
   onStartBook,
   onOpenStep,
   onGoToTasks,
+  loadNextBookHint,
 }: Props) {
+  const [hint, setHint] = useState<NextBookHint | null>(null);
+  const projectCount = projects.length;
+  useEffect(() => {
+    let live = true;
+    if (!loadNextBookHint) return;
+    void loadNextBookHint()
+      .then((found) => live && setHint(found))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectCount]);
   /** `book`: start a book (the usual way). `other`: a project of several books, set up by hand. */
   const [creating, setCreating] = useState<"book" | "other" | null>(null);
   const t = useT();
@@ -153,6 +171,21 @@ export function ProjectsView({
           </Button>
         ) : null}
       </div>
+
+      {canManage && hint && !creating && onStartBook ? (
+        <div className="af-stale" role="status">
+          <p style={{ margin: 0 }}>
+            {t("sb.nextBook")
+              .replace("{phase}", localizeName(hint.phase, language))
+              .replace("{book}", isBookProjectId(hint.projectId) ? bookLabel(hint.projectId, language) : hint.projectId)
+              .replace("{done}", String(hint.done))
+              .replace("{total}", String(hint.total))}
+          </p>
+          <Button type="button" size="sm" className="mt-2" onClick={() => setCreating("book")}>
+            {t("sb.nextBookDo")}
+          </Button>
+        </div>
+      ) : null}
 
       {canManage && creating === "book" && onStartBook ? (
         <>

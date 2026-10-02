@@ -1684,5 +1684,8 @@
   "sb.chapterOne": "{n} capítulo",
   "sb.chapterMany": "{n} capítulos",
   "sb.portionOne": "{n} porção",
-  "sb.portionMany": "{n} porções"
+  "sb.portionMany": "{n} porções",
+  "tb.group.later": "Do próximo livro",
+  "sb.nextBook": "{phase} de {book} está em {done} de {total}. Para que essa equipe não fique sem trabalho, convém começar já o próximo livro.",
+  "sb.nextBookDo": "Começar o próximo livro"
 }

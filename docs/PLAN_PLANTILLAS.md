@@ -252,6 +252,13 @@ ajuste habitual, partir un capítulo largo. «Ajustar este proyecto» abre las p
 libro con ese proceso, dice cuántas tareas no tienen equipo y lleva a elegirlos. Los proyectos de varios libros se
 siguen creando a mano. Prueba: `verify:start-book`.
 
+**Los libros se solapan por fases.** Cada equipo trabaja un libro a la vez, pero la primera fase pasa al libro
+siguiente mientras las demás siguen en el anterior. Por eso: (1) cuando la primera fase del libro más reciente va por
+el 70 %, Proyectos avisa a quien coordina y ofrece «Empezar el libro siguiente»; (2) en «Mis tareas», lo libre de una
+tarea se ofrece para el libro más antiguo que todavía tiene trabajo abierto de esa tarea, y lo del libro siguiente
+queda en «Del siguiente libro» hasta que el equipo termine el actual. Pruebas: `verify:start-book`,
+`verify:my-tasks-board`.
+
 **Pendiente:** que la plantilla de la organización guarde sus equipos (hoy se heredan del libro anterior), crear las
 subtareas de cada fase cuando le toca en vez de todas el primer día, y rediseñar «Ajustar este proyecto».
 

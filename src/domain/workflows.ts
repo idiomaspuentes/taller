@@ -231,8 +231,8 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
       // Names the project lacks come from the process; a name the project has stays.
       ...(wf.resourceNames ? { resourceNames: { ...wf.resourceNames, ...board.settings?.resourceNames } } : {}),
     },
+    // `workflowAppliedAt` stays: it is when the project started, which tells which book came first.
     workflowVersion: wf.version,
-    workflowAppliedAt: new Date().toISOString(),
   };
   return out;
 }

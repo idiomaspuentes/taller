@@ -309,4 +309,26 @@ await test("el lugar se lee del título: libro y capítulo, o libro y versículo
   assert.deepEqual(placeOf({ title: "1SA 3 · TPL" } as DcsIssue), { book: "1SA", place: "3" });
 });
 
+await test("un libro a la vez por equipo: lo libre del libro siguiente espera aparte hasta terminar el actual", () => {
+  // Translation already has the next book; the first one still has open work of that task.
+  const titus = [issue({ task: "simple", title: "TIT 3 · Traducir Notas" }), issue({ task: "simple", title: "TIT 2 · Traducir Notas", assignee: "bea" })];
+  const ruth = [issue({ task: "simple", title: "RUT 1 · Traducir Notas" })];
+  const bucket = (projectId: string, at: string, issues: DcsIssue[]): MyTasksProjectBucket => ({ projectId, title: projectId, browseProject: true, board: { ...plan, projectId, workflowAppliedAt: at }, issues, openIssues: issues });
+  const build = (projects: MyTasksProjectBucket[]) => buildBoard({ session: carla, pmOrg: PM, projects, decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+
+  const both = build([bucket("RUT", "2026-11-01T00:00:00Z", ruth), bucket("TIT", "2026-10-01T00:00:00Z", titus)]);
+  assert.equal(where(both, titus[0]!.number)!.group, "free", "el libro en curso se ofrece");
+  assert.equal(where(both, ruth[0]!.number)!.group, "later", "el siguiente espera aparte");
+
+  // Titus has no open work of that task left: Ruth moves up by itself.
+  const done = build([bucket("RUT", "2026-11-01T00:00:00Z", ruth), bucket("TIT", "2026-10-01T00:00:00Z", [])]);
+  assert.equal(where(done, ruth[0]!.number)!.group, "free");
+  const stillOpen = build([bucket("RUT", "2026-11-01T00:00:00Z", ruth), bucket("TIT", "2026-10-01T00:00:00Z", [titus[1]!])]);
+  assert.equal(where(stillOpen, ruth[0]!.number)!.group, "later", "mientras alguien del equipo siga en el libro actual");
+
+  // Projects with no start date cannot be ordered: nothing is held back.
+  const undated = build([bucket("RUT", "", ruth), bucket("TIT", "", titus)]);
+  assert.equal(where(undated, ruth[0]!.number)!.group, "free");
+});
+
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

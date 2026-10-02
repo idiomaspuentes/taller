@@ -18,10 +18,10 @@ import type { ProjectTask, TaskStep } from "./types";
  * See docs/PLAN_MIS_TAREAS.md.
  */
 
-export type BoardGroup = "decide" | "doing" | "todo" | "reviews" | "free" | "waiting" | "done";
+export type BoardGroup = "decide" | "doing" | "todo" | "reviews" | "free" | "later" | "waiting" | "done";
 
 /** The order the groups are shown in; the first ones are open, the rest folded. */
-export const GROUP_ORDER: BoardGroup[] = ["decide", "doing", "todo", "reviews", "free", "waiting", "done"];
+export const GROUP_ORDER: BoardGroup[] = ["decide", "doing", "todo", "reviews", "free", "later", "waiting", "done"];
 export const OPEN_GROUPS: BoardGroup[] = ["decide", "doing", "todo", "reviews"];
 
 export type CardAction =
@@ -124,7 +124,7 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
 export function buildBoard(input: BoardInput): Board {
   const { session, pmOrg, projects, cursor, myLevel } = input;
   const login = session.username;
-  const board: Board = { decide: [], doing: [], todo: [], reviews: [], free: [], waiting: [], done: [] };
+  const board: Board = { decide: [], doing: [], todo: [], reviews: [], free: [], later: [], waiting: [], done: [] };
   const seen = new Set<number>();
   const onceApplied = new Set<number>();
 
@@ -234,11 +234,42 @@ export function buildBoard(input: BoardInput): Board {
     board.done.push(card(issue, bucket, "done", { kind: "none", why: "done" }));
   }
 
+  oneBookAtATime(board, projects);
+
   for (const group of GROUP_ORDER) {
     if (group === "done") board.done.sort((a, b) => Date.parse(b.issue.closed_at ?? b.issue.updated_at ?? "") - Date.parse(a.issue.closed_at ?? a.issue.updated_at ?? ""));
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
   }
   return board;
+}
+
+/** When a project was started, to tell which of two books came first. Unknown = no order can be told. */
+const startedAt = (bucket: MyTasksProjectBucket): number => Date.parse(bucket.board.workflowAppliedAt ?? bucket.board.exported_at ?? "");
+
+/**
+ * A team works one book at a time, but the books overlap by phase: the next book exists before the team finishes
+ * the one in hand. Free work of a task is offered for the earliest book that still has open work of that task; the
+ * same task in later books waits under «Del siguiente libro», and moves up by itself when the earlier book is done.
+ */
+function oneBookAtATime(board: Board, projects: MyTasksProjectBucket[]): void {
+  const current = new Map<string, MyTasksProjectBucket>();
+  for (const bucket of projects) {
+    const at = startedAt(bucket);
+    if (Number.isNaN(at)) continue;
+    const open = bucket.openIssues ?? bucket.issues;
+    for (const taskId of new Set(open.map((issue) => issueTaskId(issue)).filter(Boolean))) {
+      const before = current.get(taskId);
+      if (!before || at < startedAt(before)) current.set(taskId, bucket);
+    }
+  }
+  const stay: BoardCard[] = [];
+  for (const row of board.free) {
+    const first = row.task && row.bucket ? current.get(row.task.id) : undefined;
+    const later = Boolean(first) && first !== row.bucket && !Number.isNaN(startedAt(row.bucket!)) && startedAt(row.bucket!) > startedAt(first!);
+    if (later) board.later.push({ ...row, group: "later" });
+    else stay.push(row);
+  }
+  board.free = stay;
 }
 
 /** The one card that is «what to do now»: a decision, then work in progress, then work to start, then a review. */

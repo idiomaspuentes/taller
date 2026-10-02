@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { bookSize, inheritTeams, phasesAtStart, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
+import { bookSize, inheritTeams, nextBookHint, phasesAtStart, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
 import type { AssignmentsDoc, InventoryDoc, Portion } from "../src/domain/types";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 
@@ -58,6 +58,18 @@ test("se dice el tamaño del libro y lo que le falta en el origen, sin detener n
   assert.deepEqual(startNotices(whole), []);
   const bare = { portions: [portion(1, { notas: 0, preguntas: 0, tps: 0 })] } as unknown as InventoryDoc;
   assert.deepEqual(startNotices(bare), ["no-notes", "no-questions", "no-second-text"]);
+});
+
+test("se avisa de empezar el libro siguiente cuando la primera fase va por el 70 %", () => {
+  const board = fresh("TIT");
+  const work = (closed: number, open: number, other = 0) => [
+    ...Array.from({ length: closed }, () => ({ taskId: "tpl", closed: true })),
+    ...Array.from({ length: open }, () => ({ taskId: "tps", closed: false })),
+    ...Array.from({ length: other }, () => ({ taskId: "afinar-tpl", closed: false })),
+  ];
+  assert.equal(nextBookHint(board, work(6, 4, 9)), null, "al 60 % todavía no");
+  assert.deepEqual(nextBookHint(board, work(7, 3, 9)), { projectId: "TIT", phase: "Traducción", done: 7, total: 10 }, "las otras fases no cuentan");
+  assert.equal(nextBookHint(board, []), null, "sin subtareas no se sabe");
 });
 
 console.log(`\nverify-start-book: ${passed} checks passed.`);
