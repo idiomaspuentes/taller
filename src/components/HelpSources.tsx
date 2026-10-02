@@ -1,3 +1,10 @@
+import { readRaw } from "../dcs/afinacionLoad";
+import { loadAssignmentsFromDcs } from "../dcs/persist";
+import { tsvRowId, type HelpsDraftItem } from "../domain/helpsDraft";
+import { helpsTsvFilename, type HelpsTarget } from "../domain/helpsTarget";
+import type { SolverLaunchContext } from "../domain/solverLaunch";
+import { resolveSourcePackage, sourcePackageLang } from "../domain/sourcePackage";
+import { parseTsvTable } from "../prep/tsv";
 import { useEffect, useState } from "react";
 import type { AlignmentMap } from "@usfm-tools/types";
 import type { GtSession } from "../dcs/auth";
@@ -110,4 +117,49 @@ export function ChapterSources({ sources, chapter, from, to }: { sources: HelpSo
       </div>
     </div>
   );
+}
+
+export type SourceHelp = { text: string; secondary?: string };
+
+/**
+ * Each help as the source package has it (the English note, question or article being translated), by the id of
+ * the item in hand. A table file is read once for all its rows; an article, each from its own file.
+ */
+export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunchContext | null, target: HelpsTarget | null, items: HelpsDraftItem[]): { helps: Record<string, SourceHelp>; lang: string } {
+  const [helps, setHelps] = useState<Record<string, SourceHelp>>({});
+  const [lang, setLang] = useState("");
+  const paths = items.map((item) => item.filepath).join("|");
+  useEffect(() => {
+    if (!session?.token || !ctx || !target || !items.length) return;
+    let alive = true;
+    void (async () => {
+      const board = await loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg).catch(() => null);
+      const pkg = resolveSourcePackage(board?.settings);
+      if (alive) setLang(sourcePackageLang(pkg));
+      const out: Record<string, SourceHelp> = {};
+      if (target.kind === "tsv") {
+        const questions = target.resource === "preguntas";
+        // The questions repository sits beside the notes one: `en_tn` → `en_tq`.
+        const raw = await readRaw(session, pkg.owner, questions ? pkg.tn.replace(/_tn$/, "_tq") : pkg.tn, helpsTsvFilename(questions ? "preguntas" : "notas", target.book));
+        for (const row of raw ? parseTsvTable(raw).rows : []) {
+          const id = tsvRowId(row);
+          if (id) out[id] = questions ? { text: row.Question || "", secondary: row.Response || "" } : { text: row.Note || "" };
+        }
+      } else {
+        const repo = target.resource === "academia" ? pkg.ta : pkg.tw;
+        await Promise.all(
+          items.map(async (item) => {
+            const raw = await readRaw(session, pkg.owner, repo, item.filepath);
+            if (raw?.trim()) out[item.id] = { text: raw };
+          }),
+        );
+      }
+      if (alive) setHelps(out);
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, session?.host, ctx?.projectId, target?.resource, target?.kind, paths]);
+  return { helps, lang };
 }

@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clock3, Pencil } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -270,17 +271,15 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
 
   return (
     <div className="scripture-editor fam">
-      <header className="scripture-editor__head fam-head">
-        <div className="fam-head__name">
-          <h1 className="scripture-editor__title">{place}</h1>
-          <p className="scripture-editor__meta">
+      <ToolHeader
+        title={place}
+        onBack={onClose}
+        meta={
+          <>
             {[stepName, ctx?.taskName ? localizeName(ctx.taskName, language) : "", progress && progress.items ? t("gr.progress").replace("{n}", String(progress.agreed)).replace("{of}", String(progress.items)) : ""].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
-          {t("se.close")}
-        </Button>
-      </header>
+          </>
+        }
+      />
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">

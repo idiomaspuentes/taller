@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -161,15 +162,11 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
 
   return (
     <div className="af en">
-      <header className="af-head">
-        <button type="button" className="af-back" onClick={onClose} aria-label={t("af.back")}>
-          {t("af.backArrow")}
-        </button>
-        <div className="af-title">
-          <h1>{title}</h1>
-          <p>{data ? `${data.book} ${ctx?.ref || data.chapter}` : ""}</p>
-        </div>
-      </header>
+      <ToolHeader
+        title={title}
+        onBack={onClose}
+        meta={data ? `${data.book} ${ctx?.ref || data.chapter}` : ""}
+      />
 
       {error ? (
         <Alert variant="destructive">

@@ -1108,7 +1108,7 @@
   "he.saveLocal": "Salvar local",
   "he.loading": "Carregando auxílios…",
   "he.offlineHint": "Você pode redigir sem rede. Ao entrar, Salvar envia o seu rascunho desta subtarefa (não o rascunho principal). A revisão é aberta com Pronto para revisão.",
-  "he.oneResource": "Um recurso por abertura. Lista desta porção; o resto do arquivo não é tocado.",
+  "he.oneResource": "Aqui estão só as ajudas da sua passagem. O resto do arquivo não muda.",
   "he.textPlaceholder": "Texto…",
   "he.noItems": "Não há itens deste auxílio na porção.",
   "pr.needSession": "A revisão requer conexão e login no Taller.",
@@ -2193,5 +2193,8 @@
   "hs.tabEdit": "Traduzir",
   "hs.tabChapter": "Capítulo {n}",
   "hs.whichText": "Texto fonte",
-  "hs.passageMarked": "Sua passagem ({ref}) está destacada."
+  "hs.passageMarked": "Sua passagem ({ref}) está destacada.",
+  "he.save": "Guardar",
+  "hs.sourceHelp": "Texto fonte ({lang})",
+  "hs.sourceArticle": "Ver o artigo fonte ({lang})"
 }

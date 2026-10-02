@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
@@ -463,19 +464,20 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
   return (
     <div className="af af--round">
-      <header className="af-head">
-        <button type="button" className="af-back" onClick={onClose} aria-label={t("af.back")}>
-          {t("af.backArrow")}
-        </button>
-        <div className="af-title">
-          <h1>{t(TITLE[stepProp])}</h1>
-          <p>{data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}</p>
+      <ToolHeader
+        title={t(TITLE[stepProp])}
+        onBack={onClose}
+        meta={data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
+        actions={
+          <>
           {data ? (
             <a className="scripture-editor__glossary" href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200`} target="_blank" rel="noreferrer">
               {t("gl.open")}
             </a>
           ) : null}
-        </div>
+          </>
+        }
+      >
         {summary ? (
           <div className="af-progress" aria-label={t("af.progressAria")}>
             <span>
@@ -486,7 +488,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             </span>
           </div>
         ) : null}
-      </header>
+      </ToolHeader>
 
       {error ? (
         <Alert variant="destructive">

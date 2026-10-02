@@ -1,4 +1,7 @@
-import { ChapterSources, NoteQuote, useHelpSources } from "./HelpSources";
+import { bookLabel } from "../domain/books";
+import { ChapterSources, NoteQuote, useHelpSources, useSourceHelps } from "./HelpSources";
+import { HelpMarkdownView } from "./HelpMarkdownView";
+import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
@@ -302,8 +305,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   const title = useMemo(() => {
     if (!ctx) return "Ayudas";
-    return `${ctx.book} ${ctx.ref} · ${ctx.resourceName || (ctx.resource || "").toUpperCase()}`;
-  }, [ctx]);
+    return `${bookLabel(ctx.book, language)} ${ctx.ref}`;
+  }, [ctx, language]);
 
   function persistLocal(nextItems: HelpsDraftItem[], nextBranch: string) {
     if (!ctx) return;
@@ -464,54 +467,28 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const isNotes = target?.resource === "notas";
   const wantsSources = target?.kind === "tsv";
   const range = ctx ? portionRange(ctx.ref, ctx.chapter) : null;
+  const { helps: sourceHelps, lang: sourceLang } = useSourceHelps(session, ctx, target, items);
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 
   return (
-    <div className="scripture-editor">
-      <header className="scripture-editor__head">
-        <div className="min-w-0">
-          <p className="scripture-editor__kicker">
-            {ctx && isLabLaunch(ctx) ? t("he.kickerLab") : t("he.kicker")}
-          </p>
-          <h1 className="scripture-editor__title">{title}</h1>
-          <p className="scripture-editor__meta">
-            {ctx?.taskName ? `${localizeName(ctx.taskName, language)} · ` : ""}
-            {target ? `${target.owner}/${target.repo}` : "…"}
-            {target?.filepath ? `/${target.filepath}` : ""}
-            {ctx?.issueNumber ? ` · #${ctx.issueNumber}` : ""}
-          </p>
-        </div>
-        <div className="scripture-editor__actions">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t("se.close")}
-          </Button>
-          {ctx && isLabLaunch(ctx) ? null : prUrl ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => window.open(prUrl, "_blank", "noopener,noreferrer")}
-            >
-              {t("se.openDoor43")}
+    <div className="scripture-editor fam">
+      <ToolHeader
+        title={title}
+        onBack={onClose}
+        meta={ctx?.taskName ? localizeName(ctx.taskName, language) : undefined}
+        actions={
+          <>
+            {ctx && isLabLaunch(ctx) ? null : prUrl ? null : (
+              <Button type="button" size="sm" variant="outline" disabled={busy || openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
+                {openingPr ? t("se.opening") : t("se.readyForReview")}
+              </Button>
+            )}
+            <Button type="button" size="sm" disabled={busy || saving || !items.length || (!dirty && Boolean(session))} onClick={() => void save()}>
+              {saving ? t("se.saving") : t("he.save")}
             </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || openingPr || !session || !ctx?.issueNumber}
-              onClick={() => void openPr()}
-            >
-              {openingPr ? t("se.opening") : t("se.readyForReview")}
-            </Button>
-          )}
-          <Button
-            type="button"
-            disabled={busy || saving || !items.length || (!dirty && Boolean(session))}
-            onClick={() => void save()}
-          >
-            {saving ? t("se.saving") : session ? t("he.saveDraft") : t("he.saveLocal")}
-          </Button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">
@@ -531,7 +508,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         </div>
       ) : null}
       {wantsSources && range && !busy ? (
-        <div className="scripture-editor__body" role="tabpanel" hidden={pane !== "chapter"}>
+        <div className="fam__body" role="tabpanel" hidden={pane !== "chapter"}>
           <ChapterSources sources={sources} chapter={range.chapter} from={range.from} to={range.to} />
         </div>
       ) : null}
@@ -540,7 +517,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         <p className="scripture-editor__loading">{t("he.loading")}</p>
       ) : (
         // Kept mounted under the other tab, so that what is being written is not lost by going to read.
-        <div className="scripture-editor__body" role="tabpanel" hidden={wantsSources && pane !== "edit"}>
+        <div className="fam__body" role="tabpanel" hidden={wantsSources && pane !== "edit"}>
           {!session ? (
             <p className="text-sm text-muted-foreground">
               {t("he.offlineHint")}
@@ -564,6 +541,14 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 )}
               </div>
               {isNotes && item.chapter && item.verse ? <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> : null}
+              {sourceHelps[item.id]?.text ? (
+                // What is being translated: the help as the source package has it.
+                <details className="hs-source" open={item.kind === "tsv"}>
+                  <summary>{t(item.kind === "tsv" ? "hs.sourceHelp" : "hs.sourceArticle").replace("{lang}", sourceLang.toUpperCase())}</summary>
+                  <HelpMarkdownView className="af-note af-note--md" content={noteFromTsv(sourceHelps[item.id]!.text)} />
+                  {sourceHelps[item.id]!.secondary ? <HelpMarkdownView className="af-note af-note--md" content={noteFromTsv(sourceHelps[item.id]!.secondary!)} /> : null}
+                </details>
+              ) : null}
               {item.secondaryLabel ? (
                 // A question and its answer are plain sentences.
                 <textarea

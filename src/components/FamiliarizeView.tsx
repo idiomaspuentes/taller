@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, NotebookPen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -278,17 +279,15 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
 
   return (
     <div className="scripture-editor fam">
-      <header className="scripture-editor__head fam-head">
-        <div className="fam-head__name">
-          <h1 className="scripture-editor__title">{passageName}</h1>
-          <p className="scripture-editor__meta">
+      <ToolHeader
+        title={passageName}
+        onBack={onClose}
+        meta={
+          <>
             {[t("fa.title"), ctx?.taskName ? localizeName(ctx.taskName, language) : "", sections.length && !busy ? t("fa.progress").replace("{done}", String(readCount)).replace("{total}", String(sections.length)) : ""].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
-          {t("se.close")}
-        </Button>
-      </header>
+          </>
+        }
+      />
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">

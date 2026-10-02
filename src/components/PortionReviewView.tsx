@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { Check, MessageSquare } from "lucide-react";
@@ -275,18 +276,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   return (
     <div className="scripture-editor fam">
-      <header className="scripture-editor__head fam-head">
-        <div className="fam-head__name">
-          <h1 className="scripture-editor__title">{passageName}</h1>
-          <p className="scripture-editor__meta">
+      <ToolHeader
+        title={passageName}
+        onBack={onClose}
+        meta={
+          <>
             {[stepName, ctx?.taskName ? localizeName(ctx.taskName, language) : "", draftOwner ? (mine ? t("pr.yourDraft") : t("pr.draftOf").replace("{who}", draftOwner)) : ""].filter(Boolean).join(" · ")}
             {pull?.merged ? t("pr.merged") : ""}
-          </p>
-        </div>
-        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
-          {t("se.close")}
-        </Button>
-      </header>
+          </>
+        }
+      />
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">

@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
@@ -1048,12 +1049,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
 
   return (
     <div className="af al">
-      <header className="af-head">
-        <button type="button" className="af-back" onClick={() => void leave()} aria-label={t("al.back")}>
-          {t("al.backArrow")}
-        </button>
-        <div className="af-title">
-          <h1>{title}</h1>
+      <ToolHeader
+        title={title}
+        onBack={() => void leave()}
+        meta={data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
+      >
           {shared ? (
             <div className="al-modes" role="tablist" aria-label={t("al.modesAria")}>
               <button type="button" role="tab" aria-selected={mode === "alinear"} onClick={() => setMode("alinear")}>
@@ -1064,8 +1064,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
               </button>
             </div>
           ) : null}
-          <p>{data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}</p>
-        </div>
         {data ? (
           <div className="af-progress" aria-label={t("al.progressAria")}>
             <span>{(mode === "alinear" ? t("al.versesDone").replace("{a}", String(doneCount)) : t("al.versesAgreed").replace("{a}", String(summary?.agreed ?? 0))).replace("{b}", String(data.verses.length))}</span>
@@ -1077,7 +1075,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
             ) : null}
           </div>
         ) : null}
-      </header>
+      </ToolHeader>
 
       {error ? (
         <Alert variant="destructive">

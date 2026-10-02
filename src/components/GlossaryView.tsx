@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { OriginalWord } from "@usfm-tools/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -207,15 +208,11 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
 
   return (
     <div className="af gl">
-      <header className="af-head">
-        <button type="button" className="af-back" onClick={onClose} aria-label={t("af.back")}>
-          {t("af.backArrow")}
-        </button>
-        <div className="af-title">
-          <h1>{t("gl.title")}</h1>
-          <p>{passage ? `${passage.book} ${passage.chapter}${passage.to >= 200 ? "" : passage.from === passage.to ? `:${passage.from}` : `:${passage.from}–${passage.to}`}` : t("gl.lede")}</p>
-        </div>
-      </header>
+      <ToolHeader
+        title={t("gl.title")}
+        onBack={onClose}
+        meta={passage ? `${passage.book} ${passage.chapter}${passage.to >= 200 ? "" : passage.from === passage.to ? `:${passage.from}` : `:${passage.from}–${passage.to}`}` : t("gl.lede")}
+      />
 
       {error ? (
         <Alert variant="destructive">

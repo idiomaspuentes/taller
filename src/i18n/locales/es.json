@@ -1108,7 +1108,7 @@
   "he.saveLocal": "Guardar local",
   "he.loading": "Cargando ayudas…",
   "he.offlineHint": "Puedes redactar sin red. Al iniciar sesión, Guardar sube tu borrador de esta subtarea (no el borrador principal). La revisión se abre con Listo para revisión.",
-  "he.oneResource": "Un recurso por lanzamiento. Lista de esta porción; el resto del archivo no se toca.",
+  "he.oneResource": "Aquí están solo las ayudas de tu pasaje. Lo demás del archivo no cambia.",
   "he.textPlaceholder": "Texto…",
   "he.noItems": "No hay ítems de esta ayuda en la porción.",
   "pr.needSession": "La reseña requiere conexión e inicio de sesión en Taller.",
@@ -2193,5 +2193,8 @@
   "hs.tabEdit": "Traducir",
   "hs.tabChapter": "Capítulo {n}",
   "hs.whichText": "Texto fuente",
-  "hs.passageMarked": "Tu pasaje ({ref}) está resaltado."
+  "hs.passageMarked": "Tu pasaje ({ref}) está resaltado.",
+  "he.save": "Guardar",
+  "hs.sourceHelp": "Texto fuente ({lang})",
+  "hs.sourceArticle": "Ver el artículo fuente ({lang})"
 }

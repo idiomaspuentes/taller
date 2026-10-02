@@ -1,3 +1,4 @@
+import { ToolHeader } from "./ToolHeader";
 import { HelpMessages } from "./HelpMessages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { categoryFromSupportRef, categoryLabel } from "../domain/afinacionNotes";
@@ -296,14 +297,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
   return (
     <div className="af ck">
-      <header className="af-head">
-        <button type="button" className="af-back" onClick={onClose} aria-label={t("af.back")}>
-          {t("af.backArrow")}
-        </button>
-        <div className="af-title">
-          <h1>{stepName}</h1>
-          <p>{data ? `${data.book} ${ctx?.ref || data.chapter}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}</p>
-        </div>
+      <ToolHeader
+        title={stepName}
+        onBack={onClose}
+        meta={data ? `${data.book} ${ctx?.ref || data.chapter}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
+      >
         {data ? (
           <div className="af-progress" aria-label={t("ck.progressAria")}>
             <span>{t("ck.nChecked").replace("{a}", String(summary.done)).replace("{n}", String(data.items.length))}</span>
@@ -312,7 +310,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             </span>
           </div>
         ) : null}
-      </header>
+      </ToolHeader>
 
       {error ? (
         <Alert variant="destructive">
