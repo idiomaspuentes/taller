@@ -7691,3 +7691,5 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
   .af-nav__mid { flex: 1 1 auto; }
   .af-nav__mid .af-pick { max-width: 100%; }
 }
+.af-draft__name { display: inline-flex; align-items: center; gap: 0.375rem; }
+.af-res { padding: 0 0.5rem; border-radius: 999px; background: var(--accent-600, var(--primary)); color: #fff; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.02em; }

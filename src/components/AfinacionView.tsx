@@ -599,7 +599,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             {/* 1. Where it is: marked in the text the draft is read against, the original unless another is chosen. */}
             <div className="af-ref">
               <div className="af-ref__bar">
-                <span className="af-lbl">{t("af.marked").replace("{text}", reference?.id === "orig" || !reference ? t("af.inOriginal") : reference.label)}</span>
+                <span className="af-lbl">{t("af.marked")}</span>
                 <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
                   {(data.references ?? []).map((row) => (
                     <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
@@ -615,7 +615,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
             <div className="af-draft">
               <div className="af-draft__bar">
-                <span className="af-lbl">{t("af.draftStep").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</span>
+                <span className="af-draft__name">
+                  <span className="af-lbl">{t("af.draftStep")}</span>
+                  {/* Which text the words tapped belong to: the literal or the simple translation. */}
+                  <span className="af-res">{data.resource === "tps" ? "TPS" : "TPL"}</span>
+                </span>
                 {fixing ? null : (
                   <button
                     type="button"
@@ -646,7 +650,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : (
                 <>
                   <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
-                  <p className="af-hint">{t(termSlug ? "af.tapTerm" : "af.tapMarked")}</p>
+                  <p className="af-hint">{t(termSlug ? "af.tapTerm" : "af.tapMarked").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p>
                 </>
               )}
             </div>
