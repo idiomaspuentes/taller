@@ -7087,6 +7087,8 @@ button.al-box--read { cursor: pointer; }
 .sb-teams__task .sb-teams__row { font-weight: 400; }
 .sb-teams__toggle { justify-self: start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
 .sb-teams__note { color: var(--text-muted); font-size: 0.8125rem; }
+.hub-team__readonly { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--warning-100, #fdecc8); font-size: 0.875rem; }
+.sb-teams__readonly { display: grid; gap: 0.375rem; justify-items: start; padding: 0.625rem 0.75rem; border-radius: var(--radius-sm); background: var(--warning-100, #fdecc8); font-size: 0.875rem; }
 .sb-teams__title { margin: 0 0 0.125rem; font-size: 1rem; font-weight: 700; }
 .sb-teams--done { padding: 0.625rem 0.75rem; border-radius: var(--radius-sm); background: var(--success-100); color: var(--success-700); font-weight: 600; }
 .sb fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }

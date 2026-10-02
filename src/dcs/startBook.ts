@@ -2,7 +2,7 @@ import { listTeamRepos, type DcsTeam } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { assignOrgTeamToTask, commentOnIssue, listProjectIssues, loadPmConfig, publishWorkOrders } from "./issues";
 import { dcsConfig } from "./config";
-import { listPmOrgTeams, loadAssignmentsFromDcs, saveProjectToDcs } from "./persist";
+import { listPmOrgTeams, loadAssignmentsFromDcs, saveProjectToDcs, teamCanEdit } from "./persist";
 import { bookName, normalizeProjectId } from "../domain/books";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
@@ -74,9 +74,7 @@ export async function loadTeamOptions(params: { session: GtSession; pmOrg: strin
       const allRepos = Boolean((team as { includes_all_repositories?: boolean }).includes_all_repositories);
       // A team that cannot be read is shown as having nothing: choosing it says what it will be given.
       const repos = allRepos ? [] : await listTeamRepos(config, team.id, session.token, { limit: 100 }).then((list) => list.map((repo) => repo.name)).catch(() => []);
-      // What counts is whether it may write code; the server reports that per unit and leaves the old field empty.
-      const code = team.units_map?.["repo.code"] as TeamOption["permission"] | undefined;
-      return { id: team.id, name: team.name, description: team.description, permission: code ?? team.permission, repos, allRepos };
+      return { id: team.id, name: team.name, description: team.description, canEdit: teamCanEdit(team), unitsMap: team.units_map, repos, allRepos };
     }),
   );
   return { teams, needs: (task) => reposForTask(task, lang, pmConfig) };
@@ -101,7 +99,7 @@ export async function setTaskTeams(params: {
     const picked = choice[task.id];
     if (!picked) continue;
     try {
-      const orgTeam: DcsTeam = { id: picked.id, name: picked.name, description: picked.description, permission: picked.permission };
+      const orgTeam: DcsTeam = { id: picked.id, name: picked.name, description: picked.description, permission: picked.canEdit ? "write" : "read" };
       const done = await assignOrgTeamToTask({ session, org: pmOrg, lang: board.lang, task, orgTeam, grantMissingRepos: true, pullMembers: true, pmConfig });
       for (const warning of done.warnings) warnings.add(warning);
       board = {

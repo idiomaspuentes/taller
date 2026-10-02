@@ -2,6 +2,7 @@ import {
   createOrUpdateContents,
   createOrgRepo,
   createTeam,
+  editTeam,
   getContents,
   getRawContent,
   getRepo,
@@ -103,12 +104,27 @@ export async function createPmOrgTeam(
     description: description.trim() || undefined,
     // The team exists to do work: it may edit (and open reviews on) the repositories it is given, and only those.
     permission: "write",
-    units: ["repo.code", "repo.issues", "repo.pulls"],
-    unitsMap: { "repo.code": "write", "repo.issues": "write", "repo.pulls": "write" },
+    units: EDIT_UNITS,
+    unitsMap: Object.fromEntries(EDIT_UNITS.map((unit) => [unit, "write"])),
     canCreateOrgRepo: false,
     includesAllRepositories: false,
     token: session.token,
   });
+}
+
+/** The units a working team needs to write to: the text, the subtareas and the reviews. */
+const EDIT_UNITS = ["repo.code", "repo.issues", "repo.pulls"];
+
+/** Whether a team may edit the repositories it is given. The server says it per unit; older ones in `permission`. */
+export function teamCanEdit(team: Pick<DcsTeam, "permission" | "units_map">): boolean {
+  const code = team.units_map?.["repo.code"] ?? team.permission;
+  return code === "write" || code === "admin" || code === "owner";
+}
+
+/** Let a team edit the repositories it is given (and only those). What else it could already do is kept. */
+export async function allowPmOrgTeamToEdit(session: GtSession, team: Pick<DcsTeam, "id" | "name" | "description" | "units_map">): Promise<DcsTeam> {
+  const unitsMap = { ...team.units_map, ...Object.fromEntries(EDIT_UNITS.map((unit) => [unit, "write"])) };
+  return editTeam(dcsConfig(session.host), team.id, { token: session.token, name: team.name, description: team.description, unitsMap });
 }
 
 export async function listPmOrgTeamMembers(

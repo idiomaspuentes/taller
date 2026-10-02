@@ -20,6 +20,8 @@ type Props = {
   /** Gives each task its chosen team (by task id); returns the project as it was saved. */
   onSave: (board: AssignmentsDoc, choice: Record<string, TeamOption>) => Promise<{ board: AssignmentsDoc; warnings: string[] }>;
   onSaved: (board: AssignmentsDoc) => void;
+  /** Lets a team that may only read edit the repositories it is given. Absent for who cannot manage teams. */
+  onAllowEdit?: (team: TeamOption) => Promise<void>;
 };
 
 /**
@@ -27,7 +29,7 @@ type Props = {
  * translates the notes is not always the one that translates the text). Each list puts first the teams that can
  * already edit what the task writes, and says what a chosen team still lacks.
  */
-export function PhaseTeamsPanel({ board, mode = "missing", loadTeams, onSave, onSaved }: Props) {
+export function PhaseTeamsPanel({ board, mode = "missing", loadTeams, onSave, onSaved, onAllowEdit }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const all = mode === "all";
@@ -83,6 +85,20 @@ export function PhaseTeamsPanel({ board, mode = "missing", loadTeams, onSave, on
       onSaved(result.board);
       // What each team can edit may have changed with what was just given.
       void loadTeams().then(setOptions).catch(() => undefined);
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function allowEdit(list: TeamOption[]) {
+    if (!onAllowEdit) return;
+    setBusy(true);
+    setError("");
+    try {
+      for (const team of list) await onAllowEdit(team);
+      setOptions(await loadTeams());
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -178,7 +194,16 @@ export function PhaseTeamsPanel({ board, mode = "missing", loadTeams, onSave, on
               </div>
             );
           })}
-          {readOnly.length ? <p className="sb-teams__note" style={{ margin: 0 }}>{t("sb.teamReadOnly").replace("{teams}", readOnly.map((team) => orgTeamLabel(team)).join(", "))}</p> : null}
+          {readOnly.length ? (
+            <div className="sb-teams__readonly">
+              <p style={{ margin: 0 }}>{t(onAllowEdit ? "sb.teamReadOnly" : "sb.teamReadOnlyAsk").replace("{teams}", readOnly.map((team) => orgTeamLabel(team)).join(", "))}</p>
+              {onAllowEdit ? (
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void allowEdit(readOnly)}>
+                  {t("sb.allowEdit")}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <Button type="button" size="sm" disabled={busy || !changed.length} onClick={() => void save()}>
             {busy ? t("sb.savingTeams") : t("sb.saveTeams")}
           </Button>

@@ -110,6 +110,8 @@ export interface EditTeamParams {
   canCreateOrgRepo?: boolean;
   includesAllRepositories?: boolean;
   units?: string[];
+  /** Per-unit access; see {@link CreateTeamParams.unitsMap}. */
+  unitsMap?: Record<string, string>;
 }
 
 /** PATCH /teams/{id} */
@@ -129,6 +131,7 @@ export function editTeam(
       can_create_org_repo: params.canCreateOrgRepo,
       includes_all_repositories: params.includesAllRepositories,
       units: params.units,
+      units_map: params.unitsMap,
     },
   });
 }

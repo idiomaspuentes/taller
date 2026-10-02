@@ -51,6 +51,7 @@ import { DEFAULT_HOST } from "./dcs/config";
 import { installSessionExpiryGuard } from "./dcs/sessionExpiry";
 import {
   fetchOrg,
+  allowPmOrgTeamToEdit,
   listPmProjects,
   listUserOrgs,
   loadAssignmentsFromDcs,
@@ -1339,6 +1340,7 @@ export function App() {
               session && pmOrg
                 ? {
                     loadTeams: () => loadTeamOptions({ session, pmOrg, lang }),
+                    onAllowEdit: canManage ? async (team) => void (await allowPmOrgTeamToEdit(session, { ...team, units_map: team.unitsMap })) : undefined,
                     onSave: async (doc, choice) => {
                       const saved = await setTaskTeams({ session, pmOrg, board: doc, choice });
                       saveLocalAssignments(saved.board);

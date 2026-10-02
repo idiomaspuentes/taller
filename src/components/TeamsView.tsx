@@ -80,6 +80,7 @@ import { displayOrgTeamName, isPmOrgTeamName, type TeamRepoEligibility } from ".
 import type { GtSession } from "../dcs/auth";
 import {
   listPmOrgMembers,
+  allowPmOrgTeamToEdit,
   listPmOrgTeams,
   listPmOrgTeamMembers,
   loadTeamPresetsFromDcs,
@@ -2393,6 +2394,7 @@ export function TeamsView({
           board={board}
           loadTeams={() => loadTeamOptions({ session, pmOrg, lang: board.lang })}
           onSave={(doc, choice) => setTaskTeams({ session, pmOrg, board: doc, choice })}
+          onAllowEdit={session.canManage ? async (team) => void (await allowPmOrgTeamToEdit(session, { ...team, units_map: team.unitsMap })) : undefined}
           onSaved={onChange}
         />
       ) : null}

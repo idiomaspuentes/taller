@@ -24,7 +24,7 @@ type Props = {
   onGoToTasks: () => void;
   onCancel: () => void;
   /** Choosing one team per phase right after starting. Absent = the project's own screen is the only way. */
-  phaseTeams?: Pick<Parameters<typeof PhaseTeamsPanel>[0], "loadTeams" | "onSave">;
+  phaseTeams?: Pick<Parameters<typeof PhaseTeamsPanel>[0], "loadTeams" | "onSave" | "onAllowEdit">;
 };
 
 const STAGES: StartStage[] = ["process", "reading", "saving", "tasks"];

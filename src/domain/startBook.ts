@@ -71,7 +71,10 @@ export type TeamOption = {
   id: number;
   name: string;
   description?: string;
-  permission: "none" | "read" | "write" | "admin" | "owner";
+  /** May write to the repositories it has (not only read them). */
+  canEdit: boolean;
+  /** What it may do per unit, as the server keeps it: kept so that allowing it to edit changes nothing else. */
+  unitsMap?: Record<string, string>;
   /** Repositories the team was given; ignored when it has all of the organization's. */
   repos: string[];
   allRepos: boolean;
@@ -84,10 +87,10 @@ export type TeamAccess = {
 };
 
 /** Whether a team can edit the repositories a task (or a phase) writes to, and which ones it still lacks. */
-export function teamAccess(team: Pick<TeamOption, "permission" | "repos" | "allRepos">, needed: string[]): TeamAccess {
+export function teamAccess(team: Pick<TeamOption, "canEdit" | "repos" | "allRepos">, needed: string[]): TeamAccess {
   const has = new Set(team.repos.map((repo) => repo.toLowerCase()));
   const missing = team.allRepos ? [] : needed.filter((repo) => !has.has(repo.toLowerCase()));
-  if (team.permission === "read" || team.permission === "none") return { state: "read-only", missing };
+  if (!team.canEdit) return { state: "read-only", missing };
   return { state: missing.length ? "will-get" : "edits", missing };
 }
 

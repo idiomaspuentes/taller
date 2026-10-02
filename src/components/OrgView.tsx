@@ -3,6 +3,8 @@ import type { DcsTeam } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import {
   addPmOrgTeamMember,
+  allowPmOrgTeamToEdit,
+  teamCanEdit,
   createPmOrgTeam,
   listPmOrgMembers,
   listPmOrgTeamMembers,
@@ -233,6 +235,21 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       return hay.includes(q);
     });
   }, [available, personQuery]);
+
+  /** Let a team edit the repositories it is given: without it its people can only read, whatever task they get. */
+  async function allowEdit(team: DcsTeam) {
+    setBusy(true);
+    setError("");
+    try {
+      await allowPmOrgTeamToEdit(session, team);
+      announce(t("org.canEditNow").replace("{team}", orgTeamLabel(team, teamPrefix)));
+      await reload();
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function toggleTeam(id: number) {
     setSelectedTeamId((prev) => (prev === id ? null : id));
@@ -517,6 +534,16 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
 
                       {pmConfig && !coordinatorsOf(pmConfig, team.name).length ? (
                         <p className="hub-team__note">{t("org.noCoordinator")}</p>
+                      ) : null}
+                      {!teamCanEdit(team) ? (
+                        <div className="hub-team__readonly">
+                          <span>{t(canManage ? "org.readOnly" : "org.readOnlyAsk")}</span>
+                          {canManage ? (
+                            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void allowEdit(team)}>
+                              {t("org.allowEdit")}
+                            </Button>
+                          ) : null}
+                        </div>
                       ) : null}
 
                       {membersLoading ? (
