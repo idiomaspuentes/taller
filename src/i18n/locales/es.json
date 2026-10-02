@@ -2187,11 +2187,8 @@
   "af.tabMessage": "Mensaje",
   "af.kindNote": "Desafío de traducción · {ref}",
   "af.kindTerm": "Palabra clave · {ref}",
-  "af.marked": "1 · Referencia",
   "af.readAgainst": "Texto de referencia",
-  "af.draftStep": "2 · Traducción",
   "af.tapMarked": "Toca en el {res} las palabras que traducen {marked}.",
-  "af.judgeStep": "3 · ¿Cumplen la regla?",
   "af.helps": "Ayudas",
   "af.paneReview": "Revisar",
   "af.paneChapter": "Leer el capítulo",
@@ -2211,5 +2208,13 @@
   "af.teamNobody": "Nadie más ha respondido todavía.",
   "af.otherAnswer": "Otra respuesta",
   "af.send": "Enviar",
-  "af.pickFirst": "Toca primero las palabras de tu traducción"
+  "af.pickFirst": "Toca primero las palabras de tu traducción",
+  "af.step1": "Paso 1 de 2 · ¿Qué traduce lo resaltado?",
+  "af.step2": "Paso 2 de 2 · ¿Cumple la regla?",
+  "af.refLabel": "Referencia",
+  "af.draftLabel2": "Traducción",
+  "af.confirmWords": "Esto lo traduce",
+  "af.notThere": "No está en la traducción",
+  "af.changeWords": "Cambiar",
+  "af.nothingChosen": "(sin palabras)"
 }

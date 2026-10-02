@@ -7715,3 +7715,21 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .af-focus__top .af-count { font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* Until a word is chosen the hint that asks for it stands out. */
 .af-draft .af-hint[data-needed="true"] { color: var(--accent-800); font-weight: 600; }
+/* Refining: the answer under the question; moving between items at the top of the card. */
+.af-decide { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+.af-decide > button { min-height: 44px; }
+.af-step { display: inline-flex; align-items: center; gap: 0.125rem; }
+.af-step .th-icon { width: 36px; height: 36px; border: 0; background: none; cursor: pointer; }
+.af-step .th-icon:disabled { opacity: 0.35; cursor: default; }
+/* Refining in two steps: which words render what is marked, then whether they keep the rule. */
+.af-stepname { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--accent-700); }
+.af-recap { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); }
+.af-recap p { margin: 0; line-height: 1.6; }
+.af-recap .af-orig { font-size: 1rem; }
+.af-step .af-count { white-space: nowrap; }
+/* Nothing in the refining round may widen the page: its parts shrink to the screen instead. */
+.af.af--round { grid-template-columns: minmax(0, 1fr); overflow-x: clip; }
+.af--round > * { min-width: 0; }
+.af-focus__top { min-width: 0; }
+.af-focus__top .af-pick { flex: 1 1 auto; min-width: 0; }
+.af-focus__top .af-pick select { width: 100%; }

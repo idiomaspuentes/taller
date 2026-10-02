@@ -1,5 +1,5 @@
 import { ToolHeader } from "./ToolHeader";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
 import { appendMyDecision, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
@@ -112,7 +112,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [pending, setPending] = useState<ReviewStance | null>(null);
   /** «Otra respuesta» was pressed: the two other answers are offered in the card. */
   const [choosing, setChoosing] = useState(false);
-  const askRef = useRef<HTMLDivElement | null>(null);
+  /** Step 2: the words of the translation are confirmed; what is asked now is whether they keep the rule. */
+  const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -333,8 +334,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     setNote(saved?.note ?? "");
     setPending(null);
     setChoosing(false);
+    setConfirmed(Boolean(saved));
+    // The person's own answers arrive after the item is shown: an item they answered opens at its second step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item?.id, verseText]);
+  }, [item?.id, verseText, decisions.length]);
 
 
   // Words step: how this term was rendered in every use across the book.
@@ -737,7 +740,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             ) : (
               <span />
             )}
-            <span className="af-count">{t("af.countOf").replace("{a}", String(Math.min(position + 1, total))).replace("{b}", String(total))}</span>
+            <span className="af-step">
+              <button type="button" className="th-icon" aria-label={t("af.prev")} title={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
+                <ChevronLeft size={18} aria-hidden />
+              </button>
+              <span className="af-count">{t("af.countOf").replace("{a}", String(Math.min(position + 1, total))).replace("{b}", String(total))}</span>
+              <button type="button" className="th-icon" aria-label={t("af.next")} title={t("af.next")} disabled={position >= total - 1} onClick={() => setPosition((p) => p + 1)}>
+                <ChevronRight size={18} aria-hidden />
+              </button>
+            </span>
           </div>
           <p className="af-kind">{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
           <h2 className="af-category">{stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
@@ -766,155 +777,177 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             </details>
           ) : null}
 
+          {!confirmed ? (
+            // Step 1 of 2: which words of the translation render what is marked in the reference.
+            <>
+              <p className="af-stepname">{t("af.step1")}</p>
           {/* 1. Where it is: marked in the text the draft is read against, the original unless another is chosen. */}
-          <div className="af-ref">
-            <div className="af-ref__bar">
-              <span className="af-lbl">{t("af.marked")}</span>
-              <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
-                {(data.references ?? []).map((row) => (
-                  <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
-                    {row.id === "orig" ? t("af.tabOriginal") : row.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
-              <Words text={refVerse} marked={refMarked} />
-            </span>
-          </div>
-
-          {/* 2. The words of the translation that render it: tapped in the draft. */}
-          <div className="af-draft">
-            <div className="af-draft__bar">
-              <span className="af-draft__name">
-                <span className="af-lbl">{t("af.draftStep")}</span>
-                {/* Which text the words tapped belong to: the literal or the simple translation. */}
-                <span className="af-res">{data.resource === "tps" ? "TPS" : "TPL"}</span>
-              </span>
-              {fixing ? null : (
-                <button
-                  type="button"
-                  className="af-link"
-                  onClick={() => {
-                    setFixText(verseText);
-                    setFixing(true);
-                  }}
-                >
-                  {t("af.fixShort")}
-                </button>
-              )}
-            </div>
-            {fixing ? (
-              <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
-                <textarea id="af-fix-text" className="af-textarea" rows={4} value={fixText} aria-label={t("af.verseText")} onChange={(e) => setFixText(e.target.value)} />
-                <input id="af-fix-reason" className="af-input" value={fixReason} placeholder={t("af.why")} aria-label={t("af.why")} onChange={(e) => setFixReason(e.target.value)} />
-                <p className="af-hint">{t("af.fixHint")}</p>
-                <div className="af-row-buttons">
-                  <Button type="button" size="sm" disabled={saving || !fixText.trim()} onClick={() => void saveFix()}>
-                    {saving ? t("af.saving") : t("af.saveFix")}
-                  </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setFixing(false)}>
-                    {t("af.cancel")}
-                  </Button>
+            <div className="af-ref">
+              <div className="af-ref__bar">
+                <span className="af-lbl">{t("af.refLabel")}</span>
+                <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
+                  {(data.references ?? []).map((row) => (
+                    <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
+                      {row.id === "orig" ? t("af.tabOriginal") : row.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <>
-                <span className="af-draft__words">
-                  <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
+              <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
+                <Words text={refVerse} marked={refMarked} />
+              </span>
+            </div>
+  
+            {/* 2. The words of the translation that render it: tapped in the draft. */}
+            <div className="af-draft">
+              <div className="af-draft__bar">
+                <span className="af-draft__name">
+                  <span className="af-lbl">{t("af.draftLabel2")}</span>
+                  {/* Which text the words tapped belong to: the literal or the simple translation. */}
+                  <span className="af-res">{data.resource === "tps" ? "TPS" : "TPL"}</span>
                 </span>
-                <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
-                  {t("af.tapMarked")
-                    .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
-                    .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* 3. Whether those words keep the rule of the TPL or the TPS. The answer is in the bar at the bottom. */}
-          <div className="af-ask" ref={askRef}>
-            <p className="af-lbl">{t("af.judgeStep")}</p>
-            <p className="af-question">
-              {stepProp === "notas"
-                ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
-                : t(QUESTION[stepProp][data.resource])}
-            </p>
-            {stepProp === "notas" ? (
-              <details className="af-guide">
-                <summary>{t(data.resource === "tps" ? "af.guideAskTps" : "af.guideAskTpl")}</summary>
-                <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
-              </details>
-            ) : null}
-            {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
-            {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
-            {choosing && !pending ? (
-              <div className="af-row-buttons">
-                <Button type="button" variant="outline" onClick={() => setPending("revise")}>
-                  {t("rv.revise")}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setPending("rejected")}>
-                  {t("rv.rejected")}
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setChoosing(false)}>
-                  {t("af.cancel")}
-                </Button>
-              </div>
-            ) : null}
-            {pending ? (
-              <div className="af-why">
-                <label htmlFor="af-note" className="af-lbl">
-                  {pending === "revise" ? t("af.whatChange") : t("af.whatObjection")}
-                </label>
-                <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-                <div className="af-row-buttons">
-                  <Button type="button" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
-                    {saving ? t("af.saving") : t("af.send")}
-                  </Button>
-                  <Button
+                {fixing ? null : (
+                  <button
                     type="button"
-                    variant="ghost"
+                    className="af-link"
                     onClick={() => {
-                      setPending(null);
-                      setChoosing(false);
+                      setFixText(verseText);
+                      setFixing(true);
                     }}
                   >
+                    {t("af.fixShort")}
+                  </button>
+                )}
+              </div>
+              {fixing ? (
+                <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
+                  <textarea id="af-fix-text" className="af-textarea" rows={4} value={fixText} aria-label={t("af.verseText")} onChange={(e) => setFixText(e.target.value)} />
+                  <input id="af-fix-reason" className="af-input" value={fixReason} placeholder={t("af.why")} aria-label={t("af.why")} onChange={(e) => setFixReason(e.target.value)} />
+                  <p className="af-hint">{t("af.fixHint")}</p>
+                  <div className="af-row-buttons">
+                    <Button type="button" size="sm" disabled={saving || !fixText.trim()} onClick={() => void saveFix()}>
+                      {saving ? t("af.saving") : t("af.saveFix")}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setFixing(false)}>
+                      {t("af.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <span className="af-draft__words">
+                    <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
+                  </span>
+                  <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
+                    {t("af.tapMarked")
+                      .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
+                      .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}
+                  </p>
+                </>
+              )}
+            </div>
+  
+              <div className="af-decide">
+                <Button type="button" disabled={needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => setConfirmed(true)}>
+                  <Check size={16} aria-hidden /> {t("af.confirmWords")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    // Missing from the translation: what is left is to propose a change or object.
+                    setConfirmed(true);
+                    setChoosing(true);
+                  }}
+                >
+                  {t("af.notThere")}
+                </Button>
+              </div>
+            </>
+          ) : (
+            // Step 2 of 2: whether those words keep the rule of the TPL or the TPS.
+            <>
+              <p className="af-stepname">{t("af.step2")}</p>
+              <div className="af-recap">
+                <p>
+                  <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
+                    {markedWords || t("af.theMarked")}
+                  </span>
+                  <span aria-hidden> → </span>
+                  <span className="af-res">{data.resource === "tps" ? "TPS" : "TPL"}</span> <b>{chosenWords || t("af.nothingChosen")}</b>
+                </p>
+                <button type="button" className="af-link" onClick={() => setConfirmed(false)}>
+                  {t("af.changeWords")}
+                </button>
+              </div>
+          {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
+            <div className="af-ask">
+                            <p className="af-question">
+                {stepProp === "notas"
+                  ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
+                  : t(QUESTION[stepProp][data.resource])}
+              </p>
+              {stepProp === "notas" ? (
+                <details className="af-guide">
+                  <summary>{t(data.resource === "tps" ? "af.guideAskTps" : "af.guideAskTpl")}</summary>
+                  <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
+                </details>
+              ) : null}
+              {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
+              {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
+              {!choosing && !pending ? (
+                // The decision sits under what is decided. Agreeing is about the words chosen: none chosen, nothing to agree with yet.
+                <div className="af-decide">
+                  <Button type="button" disabled={saving || needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => void answer("approved")}>
+                    <Check size={16} aria-hidden /> {t("rv.approved")}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={saving} onClick={() => setChoosing(true)}>
+                    {t("af.otherAnswer")}
+                  </Button>
+                </div>
+              ) : null}
+              {choosing && !pending ? (
+                <div className="af-row-buttons">
+                  <Button type="button" variant="outline" onClick={() => setPending("revise")}>
+                    {t("rv.revise")}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setPending("rejected")}>
+                    {t("rv.rejected")}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setChoosing(false)}>
                     {t("af.cancel")}
                   </Button>
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+              {pending ? (
+                <div className="af-why">
+                  <label htmlFor="af-note" className="af-lbl">
+                    {pending === "revise" ? t("af.whatChange") : t("af.whatObjection")}
+                  </label>
+                  <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                  <div className="af-row-buttons">
+                    <Button type="button" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
+                      {saving ? t("af.saving") : t("af.send")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setPending(null);
+                        setChoosing(false);
+                      }}
+                    >
+                      {t("af.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            </>
+          )}
         </section>
       ) : null}
 
-      {data && item && pane === "review" ? (
-        // The answer, always at hand: answering goes on to the next item by itself, so the arrows are secondary.
-        <nav className="af-nav af-bar-answer" aria-label={t("af.notesNavAria")}>
-          <Button type="button" variant="ghost" size="icon" aria-label={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
-            <ChevronLeft size={18} aria-hidden />
-          </Button>
-          {/* Agreeing is about the words chosen: with none chosen there is nothing to agree with yet. */}
-          <Button type="button" className="af-bar-answer__yes" disabled={saving || needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => void answer("approved")}>
-            <Check size={16} aria-hidden /> {t("rv.approved")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            aria-expanded={choosing || Boolean(pending)}
-            disabled={saving}
-            onClick={() => {
-              setChoosing(true);
-              window.requestAnimationFrame(() => askRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
-            }}
-          >
-            {t("af.otherAnswer")}
-          </Button>
-          <Button type="button" variant="ghost" size="icon" aria-label={t("af.next")} disabled={position >= total - 1} onClick={() => setPosition((p) => p + 1)}>
-            <ChevronRight size={18} aria-hidden />
-          </Button>
-        </nav>
-      ) : null}
 
       {data && !item && !busy ? (
         <div className="hub-empty-panel">
