@@ -3,7 +3,7 @@ import type { OriginalWord } from "@usfm-tools/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
-import { loadGlossary, loadPassageContext, saveGlossaryEntry, type Glossary, type PassageContext } from "../dcs/glossaryStore";
+import { loadGlossary, loadGlossaryChanges, loadPassageContext, saveGlossaryEntry, settleGlossaryChange, type Glossary, type GlossaryChange, type PassageContext } from "../dcs/glossaryStore";
 import { loadPmConfig } from "../dcs/issues";
 import {
   baseStrong,
@@ -54,6 +54,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<{ ref: string; word: string; sources: OriginalWord[]; offered: OriginalWord[] }[]>([]);
   const [draft, setDraft] = useState<{ entry: GlossaryEntry; before?: GlossaryEntry } | null>(null);
+  const [changes, setChanges] = useState<GlossaryChange[]>([]);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -69,6 +70,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       ]);
       setGlossary(loaded);
       setContext(ctx);
+      setChanges(await loadGlossaryChanges(session, loaded).catch(() => []));
       if (!canManage && pmOrg) {
         const book = await loadPmConfig(session, pmOrg).catch(() => null);
         const me = session.username.toLowerCase();
@@ -137,6 +139,23 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
     }
   }
 
+  /** Who may agree settles a proposed change: it becomes the decision, or it is dropped. */
+  async function settle(change: GlossaryChange, accept: boolean) {
+    if (!glossary) return;
+    setSaving(true);
+    setError("");
+    try {
+      await settleGlossaryChange(session, glossary, change, accept);
+      setChanges((prev) => prev.filter((row) => row.number !== change.number));
+      if (accept) setGlossary({ ...glossary, entries: glossary.entries.map((entry) => (entry.id === change.after.id ? change.after : entry)) });
+      announce(t(accept ? "gl.changeAccepted" : "gl.changeDropped"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const field = (label: MessageKey, value: string, onChange: (value: string) => void, hint?: MessageKey, rows = 1) => (
     <label className="gl-field">
       <span className="af-lbl">{t(label)}</span>
@@ -172,7 +191,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
             {([...(passage ? (["passage"] as View[]) : []), "search", "pending"] as View[]).map((id) => (
               <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}>
                 {t(id === "passage" ? "gl.viewPassage" : id === "search" ? "gl.viewSearch" : "gl.viewPending")}
-                {id === "pending" ? ` (${entries.filter((e) => e.status === "proposed").length})` : ""}
+                {id === "pending" ? ` (${entries.filter((e) => e.status === "proposed").length + changes.length})` : ""}
               </button>
             ))}
           </div>
@@ -218,7 +237,33 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
             </section>
           ) : null}
 
-          {!shown.length ? (
+          {view === "pending" && changes.length ? (
+            <ul className="gl-list">
+              {changes.map((change) => (
+                <li key={change.number} className="af-card">
+                  <p className="gl-entry__head">
+                    <b>{change.before.rendering} → {change.after.rendering}</b>
+                    <span className="af-lbl">{t("gl.changeBy").replace("{who}", change.by)}</span>
+                  </p>
+                  <p className="af-hint">{change.after.lemma}{change.after.english.length ? ` · ${change.after.english.join(", ")}` : ""}</p>
+                  {change.after.note && change.after.note !== change.before.note ? <p className="af-note">{change.after.note}</p> : null}
+                  {canAgree ? (
+                    <div className="af-buttons">
+                      <Button type="button" size="sm" disabled={saving} onClick={() => void settle(change, true)}>
+                        {t("gl.changeAccept")}
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => void settle(change, false)}>
+                        {t("gl.changeDrop")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="af-hint">{t("gl.changeWaits")}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {!shown.length && !(view === "pending" && changes.length) ? (
             <p className="hub-hint">{t(view === "search" ? (query.trim() ? "gl.noneFound" : "gl.typeToSearch") : view === "pending" ? "gl.nonePending" : "gl.nonePassage")}</p>
           ) : (
             <ul className="gl-list">

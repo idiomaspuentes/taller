@@ -462,6 +462,15 @@ export async function ensureBranchFromDefault(
   return ensureBranchFrom(config, owner, repo, branch, token, base);
 }
 
+/** GET /repos/{owner}/{repo}/pulls: the open pull requests of a repository. */
+export async function listOpenPulls(config: DcsClientConfig, owner: string, repo: string, token: string): Promise<DcsPull[]> {
+  return request<DcsPull[]>(config, {
+    path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`,
+    query: { state: "open", limit: "50" },
+    token,
+  });
+}
+
 export async function closePull(
   config: DcsClientConfig,
   owner: string,

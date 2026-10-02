@@ -205,8 +205,8 @@ acordada. Crear o trabajar una propuesta es un commit; cambiar lo acordado es un
 `verify:glossary`.
 
 **Límites:** «cómo se tradujo antes» mira el libro en curso, no todos (falta el índice generado); falta la vista de
-«cambios recientes»; las propuestas de cambio se aprueban hoy en Door43; proponer la alineación con el puente por el
-inglés no está hecho.
+«cambios recientes»; proponer la alineación con el puente por el inglés no está hecho. Las propuestas de cambio a
+una decisión acordada se ven en «Por acordar» y las acepta o descarta quien coordina o una persona habilitada.
 
 ### Fase 8 · Abrir el motor a otros procesos — hecha en parte (2 de octubre de 2026)
 

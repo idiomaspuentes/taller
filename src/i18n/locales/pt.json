@@ -1600,5 +1600,11 @@
   "gl.sendProposal": "Enviar a proposta de alteração",
   "gl.saved": "Entrada salva.",
   "gl.proposed": "Proposta enviada à equipe.",
-  "gl.open": "Glossário"
+  "gl.open": "Glossário",
+  "gl.changeBy": "Alteração proposta por @{who}",
+  "gl.changeAccept": "Aceitar a alteração",
+  "gl.changeDrop": "Deixar a decisão como está",
+  "gl.changeWaits": "Aguarda quem coordena ou uma pessoa habilitada.",
+  "gl.changeAccepted": "Alteração aceita: é a nova decisão.",
+  "gl.changeDropped": "A decisão foi mantida como estava."
 }

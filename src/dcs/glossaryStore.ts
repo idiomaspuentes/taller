@@ -5,7 +5,7 @@ import { groupDraftBranches, readRaw } from "./afinacionLoad";
 import { readRepoFile } from "./afinacionStore";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { dcsConfig } from "./config";
-import { createPull, ensureBranchFrom, getDefaultBranch, getPullByBranches } from "./pulls";
+import { closePull, createPull, ensureBranchFrom, getDefaultBranch, getPullByBranches, listOpenPulls, mergePull } from "./pulls";
 import { ensureContentRepo } from "./repoFile";
 import { bookUsfmName } from "../prep/discover";
 import {
@@ -127,6 +127,43 @@ async function saveNow(params: { session: GtSession; owner: string; lang: string
   if (!propose) return { status: "saved" };
   const pull = (await getPullByBranches(config, owner, repo, base, branch, session.token)) ?? (await createPull(config, owner, repo, { title: message, body: params.reason || "Cambio a una decisión acordada, propuesto desde Taller.", head: branch, base, token: session.token }));
   return { status: "proposed", pullUrl: pull.html_url };
+}
+
+// ---------------------------------------------------------------- changes proposed to agreed entries
+
+export type GlossaryChange = {
+  /** The pull request that carries the change. */
+  number: number;
+  url: string;
+  by: string;
+  /** The entry as the team agreed it, and as the proposal leaves it. */
+  before: GlossaryEntry;
+  after: GlossaryEntry;
+};
+
+/** Changes to agreed entries that wait for the team: the open pull requests made from this screen. */
+export async function loadGlossaryChanges(session: GtSession, glossary: Glossary): Promise<GlossaryChange[]> {
+  if (!glossary.exists) return [];
+  const config = dcsConfig(session.host);
+  const pulls = await listOpenPulls(config, glossary.owner, glossary.repo, session.token).catch(() => []);
+  const out: GlossaryChange[] = [];
+  for (const pull of pulls) {
+    const head = pull.head?.ref ?? "";
+    const id = /^glosario\/([a-z0-9]+)-/.exec(head)?.[1];
+    const before = id ? glossary.entries.find((entry) => entry.id === id) : undefined;
+    if (!id || !before) continue;
+    const files = await Promise.all(GLOSSARY_FILES.map((file) => readRepoFile(session, { owner: glossary.owner, repo: glossary.repo, branch: head }, file).catch(() => null)));
+    const after = files.flatMap((file) => (file ? parseGlossary(file.text) : [])).find((entry) => entry.id === id);
+    if (after) out.push({ number: pull.number, url: pull.html_url, by: pull.user?.login ?? "", before, after });
+  }
+  return out;
+}
+
+/** The team settles a proposed change: it becomes the agreed entry, or it is dropped. */
+export async function settleGlossaryChange(session: GtSession, glossary: Glossary, change: GlossaryChange, accept: boolean): Promise<void> {
+  const config = dcsConfig(session.host);
+  if (accept) await mergePull(config, glossary.owner, glossary.repo, change.number, session.token, `Glosario: «${change.after.lemma}» → ${change.after.rendering}`);
+  else await closePull(config, glossary.owner, glossary.repo, change.number, session.token);
 }
 
 // ---------------------------------------------------------------- the passage a glossary is opened from
