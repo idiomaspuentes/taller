@@ -13,6 +13,8 @@ import {
   entryFromSources,
   glossaryFileFor,
   groupOfWord,
+  indexRenderings,
+  renderingsAcross,
   newGlossaryId,
   parseGlossary,
   renderingsOf,
@@ -114,6 +116,16 @@ test("cómo se tradujo antes sale de la alineación, con cuántas veces y dónde
     { rendering: "redimiese", count: 1, examples: ["TIT 2:14"] },
   ]);
   assert.deepEqual(renderingsOf("", verses), []);
+});
+
+test("el índice de un libro tiene todas sus palabras, y varios libros se suman", () => {
+  const titus = indexRenderings({ "TIT 2:14": verses["TIT 2:14"]!, "TIT 3:5": verses["TIT 3:5"]! });
+  const luke = indexRenderings({ "LUK 24:21": verses["LUK 24:21"]! });
+  assert.deepEqual(Object.keys(luke), ["G30840", "G54850"]);
+  assert.deepEqual(titus["G30840"], renderingsOf("G30840", { "TIT 2:14": verses["TIT 2:14"]!, "TIT 3:5": verses["TIT 3:5"]! }), "igual que mirar una sola palabra");
+  assert.deepEqual(renderingsAcross("G30840", [titus, luke]), renderingsOf("G30840", verses), "sumar los libros da lo mismo que tenerlos juntos");
+  assert.deepEqual(renderingsAcross("b:G54850", [titus, luke]).map((r) => r.rendering), ["gracia"]);
+  assert.deepEqual(renderingsAcross("G00000", [titus, luke]), []);
 });
 
 test("donde el texto se aparta de una decisión acordada", () => {

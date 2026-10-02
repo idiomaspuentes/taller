@@ -245,6 +245,17 @@ export type PublishOutcome = {
 
 export type UnitFileChange = { path: string; content: string };
 
+/** The texts of the book as they are published once the unit is in: what the glossary's index is made from. */
+export function publishedTextsOf(unit: UnitToPublish): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const r of unit.resources) {
+    if (r.kind !== "usfm") continue;
+    const text = unitChanges(unit, r)?.[0]?.content ?? r.published?.text;
+    if (text) out[r.resource] = text;
+  }
+  return out;
+}
+
 /**
  * What publishing would write for a resource: the published file with the unit in it, or each article that differs
  * from the published one. `null` when the team has no version of the resource; empty when it is already published.

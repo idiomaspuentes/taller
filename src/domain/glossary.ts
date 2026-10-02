@@ -226,3 +226,47 @@ export function departuresFrom(entry: GlossaryEntry, verses: Record<string, Alig
   const first = entry.strong.split(";")[0] ?? "";
   return renderingsOf(first, verses).filter((r) => !allowed.some((a) => fold(r.rendering).includes(a)));
 }
+
+// ---------------------------------------------------------------- the index of every book
+
+/** How each word of the original was translated in one aligned text, by Strong number. */
+export type RenderingIndex = Record<string, RenderingCount[]>;
+
+/** The index of one book, as kept in `index/<BOOK>.json` of the glossary repository. It is generated, never edited. */
+export type BookRenderings = { book: string; generated: string; texts: Record<string, RenderingIndex> };
+
+/** Every word of the original in an aligned text with its wordings, in one pass. */
+export function indexRenderings(verses: Record<string, AlignmentGroup[]>): RenderingIndex {
+  const byStrong = new Map<string, Map<string, RenderingCount>>();
+  for (const [ref, groups] of Object.entries(verses)) {
+    for (const group of groups) {
+      const rendering = group.targets.map((t) => t.word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")).filter(Boolean).join(" ").toLowerCase();
+      if (!rendering) continue;
+      for (const strong of new Set(group.sources.map((s) => baseStrong(s.strong)).filter(Boolean))) {
+        const counts = byStrong.get(strong) ?? new Map<string, RenderingCount>();
+        byStrong.set(strong, counts);
+        const hit = counts.get(rendering) ?? { rendering, count: 0, examples: [] };
+        hit.count++;
+        if (hit.examples.length < 3) hit.examples.push(ref);
+        counts.set(rendering, hit);
+      }
+    }
+  }
+  const sorted = (counts: Map<string, RenderingCount>) => [...counts.values()].sort((a, b) => b.count - a.count || a.rendering.localeCompare(b.rendering));
+  return Object.fromEntries([...byStrong].sort(([a], [b]) => a.localeCompare(b)).map(([strong, counts]) => [strong, sorted(counts)]));
+}
+
+/** The wordings of a word across several books: counts added up, a few examples kept. */
+export function renderingsAcross(strong: string, indexes: RenderingIndex[]): RenderingCount[] {
+  const wanted = baseStrong(strong);
+  const total = new Map<string, RenderingCount>();
+  for (const index of indexes) {
+    for (const row of index[wanted] ?? []) {
+      const hit = total.get(row.rendering) ?? { rendering: row.rendering, count: 0, examples: [] };
+      hit.count += row.count;
+      for (const example of row.examples) if (hit.examples.length < 3) hit.examples.push(example);
+      total.set(row.rendering, hit);
+    }
+  }
+  return [...total.values()].sort((a, b) => b.count - a.count || a.rendering.localeCompare(b.rendering));
+}

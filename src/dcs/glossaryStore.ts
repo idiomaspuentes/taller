@@ -1,4 +1,4 @@
-import { createOrUpdateContents, DcsApiError } from "@ip-lms/dcs-client";
+import { createOrUpdateContents, DcsApiError, getContents, getRawContent } from "@ip-lms/dcs-client";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { groupDraftBranches, readRaw } from "./afinacionLoad";
@@ -10,6 +10,9 @@ import { ensureContentRepo } from "./repoFile";
 import { bookUsfmName } from "../prep/discover";
 import {
   changeNeedsAgreement,
+  indexRenderings,
+  type BookRenderings,
+  type RenderingIndex,
   GLOSSARY_FILES,
   glossaryFileFor,
   parseGlossary,
@@ -212,11 +215,59 @@ export async function loadPassageContext(params: { session: GtSession; owner: st
   const repo = defaultScriptureRepo("tpl", params.lang);
   if (repo) {
     const found = await tryReadExistingBookUsfm({ session, owner: params.owner, repo, filepath: bookUsfmName(book), branches: [...groupDraftBranches(book, "tpl"), undefined] }).catch(() => null);
-    const team = found ? tryParseUsjWithAlignments(found.text) : null;
-    for (const [sid, groups] of Object.entries(team?.alignments ?? {})) {
-      const match = /(\d+):(\d+)/.exec(sid);
-      if (match) teamVerses[`${book} ${match[1]}:${match[2]}`] = groups;
-    }
+    if (found) Object.assign(teamVerses, alignedVersesOf(found.text, book));
   }
   return { book, chapter, verses, teamVerses };
+}
+
+// ---------------------------------------------------------------- the generated index
+
+const INDEX_DIR = "index";
+
+/** Verses of an aligned book by reference («TIT 2:14»), as the index and the glossary read them. */
+export function alignedVersesOf(usfm: string, book: string): Record<string, AlignmentGroup[]> {
+  const out: Record<string, AlignmentGroup[]> = {};
+  const parsed = tryParseUsjWithAlignments(usfm);
+  for (const [sid, groups] of Object.entries(parsed?.alignments ?? {})) {
+    const match = /(\d+):(\d+)/.exec(sid);
+    if (match) out[`${book.toUpperCase()} ${match[1]}:${match[2]}`] = groups;
+  }
+  return out;
+}
+
+/**
+ * Keep the index of one book: how each word of the original is translated in its published texts. It is generated
+ * (nobody edits it) and renewed every time a unit of the book is published.
+ */
+export async function saveBookRenderings(session: GtSession, owner: string, lang: string, book: string, texts: Record<string, string>): Promise<void> {
+  const repo = glossaryRepoName(lang);
+  const config = dcsConfig(session.host);
+  await ensureContentRepo(session, owner, repo);
+  const branch = await getDefaultBranch(config, owner, repo, session.token);
+  const code = book.toUpperCase();
+  const doc: BookRenderings = { book: code, generated: new Date().toISOString(), texts: Object.fromEntries(Object.entries(texts).map(([text, usfm]) => [text, indexRenderings(alignedVersesOf(usfm, code))])) };
+  const path = `${INDEX_DIR}/${code}.json`;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const current = await readRepoFile(session, { owner, repo, branch }, path);
+    try {
+      await createOrUpdateContents(config, owner, repo, path, { content: `${JSON.stringify(doc)}\n`, message: `Taller: índice de traducciones de ${code}`, sha: current?.sha, branch, token: session.token });
+      return;
+    } catch (err) {
+      if (!isConflict(err) || attempt === 3) throw err;
+    }
+  }
+}
+
+/** The index of every book that has one, for one text (`tpl`, `tps`). Empty when there is none yet. */
+export async function loadRenderingIndexes(session: GtSession, glossary: Glossary, text: string): Promise<{ book: string; index: RenderingIndex }[]> {
+  if (!glossary.exists) return [];
+  const config = dcsConfig(session.host);
+  const listing = await getContents(config, glossary.owner, glossary.repo, INDEX_DIR, { token: session.token }).catch(() => null);
+  if (!Array.isArray(listing)) return [];
+  const docs = await Promise.all(
+    listing
+      .filter((entry) => entry.type === "file" && entry.name.endsWith(".json"))
+      .map((entry) => getRawContent(config, glossary.owner, glossary.repo, entry.path, { token: session.token }).then((raw) => JSON.parse(raw) as BookRenderings).catch(() => null)),
+  );
+  return docs.filter((doc): doc is BookRenderings => Boolean(doc?.book && doc.texts?.[text])).map((doc) => ({ book: doc.book, index: doc.texts[text]! }));
 }

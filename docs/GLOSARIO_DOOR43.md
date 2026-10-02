@@ -130,8 +130,8 @@ tienen la misma necesidad, y un formato compartido vale más que uno propio.
 | Dónde el texto se aparta de una decisión | Comparar lo anterior con el glosario |
 
 Para no recorrer todos los libros cada vez, se guarda un **índice generado** (no editable a mano)
-que se actualiza cuando un capítulo sale de Afinación. Puede ir como archivo adjunto de cada release
-o en un repositorio aparte de datos generados **(por decidir)**.
+que se actualiza cuando se **publica** una unidad del libro. Decidido el 2 de octubre de 2026: va dentro del
+mismo repositorio, en `index/<LIBRO>.json` (un solo lugar y los mismos permisos).
 
 ## 3b. Crear una entrada con un toque sobre el inglés
 

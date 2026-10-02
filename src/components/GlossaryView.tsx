@@ -3,7 +3,7 @@ import type { OriginalWord } from "@usfm-tools/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
-import { loadGlossary, loadGlossaryChanges, loadPassageContext, saveGlossaryEntry, settleGlossaryChange, type Glossary, type GlossaryChange, type PassageContext } from "../dcs/glossaryStore";
+import { loadGlossary, loadGlossaryChanges, loadPassageContext, loadRenderingIndexes, saveGlossaryEntry, settleGlossaryChange, type Glossary, type GlossaryChange, type PassageContext } from "../dcs/glossaryStore";
 import { loadPmConfig } from "../dcs/issues";
 import {
   baseStrong,
@@ -14,8 +14,10 @@ import {
   groupOfWord,
   isContentWord,
   newGlossaryId,
-  renderingsOf,
+  indexRenderings,
+  renderingsAcross,
   searchGlossary,
+  type RenderingIndex,
   type GlossaryEntry,
   type GlossaryScope,
 } from "../domain/glossary";
@@ -55,6 +57,8 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
   const [picked, setPicked] = useState<{ ref: string; word: string; sources: OriginalWord[]; offered: OriginalWord[] }[]>([]);
   const [draft, setDraft] = useState<{ entry: GlossaryEntry; before?: GlossaryEntry } | null>(null);
   const [changes, setChanges] = useState<GlossaryChange[]>([]);
+  /** The generated index of the published books (literal text): how each word was translated in all of them. */
+  const [indexes, setIndexes] = useState<{ book: string; index: RenderingIndex }[]>([]);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -71,6 +75,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       setGlossary(loaded);
       setContext(ctx);
       setChanges(await loadGlossaryChanges(session, loaded).catch(() => []));
+      setIndexes(await loadRenderingIndexes(session, loaded, "tpl").catch((err) => (console.warn("glossary index not read", err), [])));
       if (!canManage && pmOrg) {
         const book = await loadPmConfig(session, pmOrg).catch(() => null);
         const me = session.username.toLowerCase();
@@ -164,7 +169,10 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
     </label>
   );
 
-  const before = (entry: GlossaryEntry) => (context ? renderingsOf(entry.strong.split(";")[0] ?? "", context.teamVerses) : []);
+  // Every published book, and the book in hand as the team has it now (fresher than its published index).
+  const live = useMemo(() => (context ? indexRenderings(context.teamVerses) : null), [context]);
+  const before = (entry: GlossaryEntry) =>
+    renderingsAcross(entry.strong.split(";")[0] ?? "", [...indexes.filter((row) => row.book !== context?.book).map((row) => row.index), ...(live ? [live] : [])]);
 
   return (
     <div className="af gl">
@@ -309,7 +317,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
             {draft.entry.lemma} {draft.entry.english.length ? `· ${draft.entry.english.join(", ")}` : ""}
           </h2>
           {draft.before?.status === "agreed" ? <p className="af-stale">{t("gl.agreedHint")}</p> : null}
-          {context && before(draft.entry).length ? (
+          {before(draft.entry).length ? (
             <p className="af-hint">
               {t("gl.before")} {before(draft.entry).slice(0, 6).map((r) => `${r.rendering} (${r.count})`).join(", ")}
             </p>

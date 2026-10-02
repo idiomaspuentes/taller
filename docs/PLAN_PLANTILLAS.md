@@ -208,8 +208,11 @@ preposiciones, conjunciones, partículas y prefijos hebreos; varios toques forma
 acordada. Crear o trabajar una propuesta es un commit; cambiar lo acordado es un pull request. Pruebas:
 `verify:glossary`.
 
-**Límites:** «cómo se tradujo antes» mira el libro en curso, no todos (falta el índice generado); falta la vista de
-«cambios recientes»; proponer la alineación con el puente por el inglés no está hecho. Las propuestas de cambio a
+**Índice de todos los libros:** al publicar una unidad se regenera `index/<LIBRO>.json` en el repositorio del
+glosario (cada palabra del original con sus traducciones, por texto). «Cómo se tradujo antes» suma todos los libros
+publicados y, para el libro en curso, lo que el equipo tiene ahora.
+
+**Límites:** falta la vista de «cambios recientes» y el informe de consistencia como comprobación antes de publicar; proponer la alineación con el puente por el inglés no está hecho. Las propuestas de cambio a
 una decisión acordada se ven en «Por acordar» y las acepta o descarta quien coordina o una persona habilitada.
 
 ### Fase 8 · Abrir el motor a otros procesos — hecha en parte (2 de octubre de 2026)

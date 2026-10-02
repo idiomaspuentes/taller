@@ -3,9 +3,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { closeIssue, commentOnIssue } from "../dcs/issues";
+import { saveBookRenderings } from "../dcs/glossaryStore";
 import { getPmIssue } from "../dcs/portionPr";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
-import { loadEndorsement, loadUnitToPublish, publishUnit, unitChanges, unitProblems, type PublishOutcome, type UnitToPublish } from "../dcs/unitPublish";
+import { loadEndorsement, loadUnitToPublish, publishedTextsOf, publishUnit, unitChanges, unitProblems, type PublishOutcome, type UnitToPublish } from "../dcs/unitPublish";
 import { canConfirmForTeam, coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
 import { ownerTaskOf } from "../domain/resourceOwner";
@@ -171,6 +172,9 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
         await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, t("pu.publishedNote").replace("{unit}", unitName).replace("{what}", what));
         await finishStep(ctx, unit);
       }
+      // The glossary's «how it was translated before» covers every published book: renew this book's part. It is
+      // an aid, so failing to write it never undoes a publication.
+      if (ctx.contentOrg && ctx.lang) await saveBookRenderings(session, ctx.contentOrg, ctx.lang, unit.book, publishedTextsOf(unit)).catch((err) => console.warn("glossary index not renewed", err));
       announce(t("pu.published"));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
