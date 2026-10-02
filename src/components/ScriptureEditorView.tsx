@@ -1,3 +1,4 @@
+import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
@@ -138,7 +139,7 @@ function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
   return a.length === b.length && a.every((d, i) => slotKey(d) === slotKey(b[i]!) && d.text === b[i]!.text);
 }
 /** The helps beside the draft. The source texts are no longer a tab: they stay on screen above the helps. */
-type ResourceTab = "notas" | "preguntas" | "apuntes";
+type ResourceTab = "notas" | "preguntas" | "apuntes" | "revision";
 /** Which source text is shown above the helps. */
 type SourceView = "both" | "ult" | "ust";
 type MobilePanel = "editor" | "recursos";
@@ -833,6 +834,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [branch, setBranch] = useState("");
   const [targetRepo, setTargetRepo] = useState<{ owner: string; repo: string } | null>(null);
   const [prUrl, setPrUrl] = useState("");
+  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
   const [ult, setUlt] = useState<ScripturePane>(EMPTY_PANE);
   const [ust, setUst] = useState<ScripturePane>(EMPTY_PANE);
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
@@ -1247,6 +1249,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             if (visible.marker) {
               head = visible.marker.head;
               setPrUrl(visible.marker.htmlUrl);
+              // What the reviewers said is shown next to the draft: the author corrects with it in view.
+              void loadReviewComments(sess, visible.marker)
+                .then((rows) => {
+                  if (!stillThisLoad()) return;
+                  setReviewComments(rows);
+                  if (rows.length) setResourceTab("revision");
+                })
+                .catch(() => undefined);
               setBranch(head);
               await readExisting(target, [head]);
             } else {
@@ -1985,6 +1995,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                 <span className="scripture-editor__tab-short">{t("se.tabQuestionsShort")}</span>
                 {shownQuestions.length ? <span className="scripture-editor__tab-count">{shownQuestions.length}</span> : null}
               </TabsTrigger>
+              {reviewComments.length ? (
+                <TabsTrigger value="revision">
+                  {t("se.tabReview")}
+                  <span className="scripture-editor__tab-count">{reviewComments.length}</span>
+                </TabsTrigger>
+              ) : null}
               {session && ctx?.projectId && ctx.pmOrg && range ? (
                 <TabsTrigger value="apuntes">
                   {t("sn.tab")}
@@ -1992,12 +2008,23 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                 </TabsTrigger>
               ) : null}
             </TabsList>
-            {activeVerse && range && resourceTab !== "apuntes" && !wordFilter ? (
+            {activeVerse && range && resourceTab !== "apuntes" && resourceTab !== "revision" && !wordFilter ? (
               <label className="se-only">
                 <input type="checkbox" checked={onlyVerse} onChange={(e) => setOnlyVerse(e.target.checked)} />
                 <span>{t("se.onlyVerse").replace("{ref}", `${range.chapter}:${activeVerse}`)}</span>
               </label>
             ) : null}
+            <TabsContent value="revision" className="scripture-editor__tab-pane">
+              <p className="pe-hint">{t("se.reviewLede")}</p>
+              <ul className="rv-comments">
+                {[...reviewComments].reverse().map((row) => (
+                  <li key={row.id} className="rv-comment">
+                    <p className="rv-comment__text">{row.text}</p>
+                    <p className="rv-comment__meta">{[row.ref, row.by ? `@${row.by}` : "", row.at ? new Date(row.at).toLocaleDateString(language, { day: "numeric", month: "short" }) : ""].filter(Boolean).join(" · ")}</p>
+                  </li>
+                ))}
+              </ul>
+            </TabsContent>
             {session && ctx?.projectId && ctx.pmOrg && range ? (
               // Kept mounted so that its count shows on the tab before it is opened.
               <div role="tabpanel" hidden={resourceTab !== "apuntes"} className="scripture-editor__tab-pane">
@@ -2069,6 +2096,19 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             <p className="scripture-editor__eyebrow">{t("se.yourDraftRes").replace("{res}", resourceCode)}</p>
             {drafts.length ? <p className="se-written">{t("se.written").replace("{n}", String(written)).replace("{total}", String(drafts.length))}</p> : null}
           </div>
+          {reviewComments.length && !stepDone ? (
+            // On a phone the comments are behind «Recursos»: said here, where the author is writing.
+            <button
+              type="button"
+              className="se-review-note"
+              onClick={() => {
+                setResourceTab("revision");
+                setMobilePanel("recursos");
+              }}
+            >
+              {t(reviewComments.length === 1 ? "se.reviewNoteOne" : "se.reviewNoteMany").replace("{n}", String(reviewComments.length))}
+            </button>
+          ) : null}
           {labNote ? (
             <p className="scripture-editor__lab-note">
               <Info className="scripture-editor__lab-icon" aria-hidden />

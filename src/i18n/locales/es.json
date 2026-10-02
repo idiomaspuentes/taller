@@ -2076,10 +2076,14 @@
   "rv.take": "Tomar esta revisión",
   "rv.finishDraftFirst": "Tu borrador todavía no está terminado: la revisión empieza cuando lo termines.",
   "rv.draftNotFinished": "El borrador todavía no está terminado. Puedes leerlo y comentar; la revisión empieza cuando se termine.",
-  "rv.changesForYou": "Te pidieron cambios. Lee los comentarios, corrige tu borrador desde Mis tareas y termínalo otra vez.",
+  "rv.changesForYou": "Te pidieron cambios. Corrige tu borrador desde Mis tareas (verás estos comentarios en la pestaña «Revisión») y termínalo otra vez.",
   "rv.youAskedChanges": "Pediste cambios. Cuando el borrador se termine otra vez, vuelve aquí para revisarlo.",
   "rv.changesPending": "Se pidieron cambios al borrador. La revisión sigue cuando se termine otra vez.",
   "rv.keptOut": "Puedes leer y comentar. Esta revisión la hacen personas que no escribieron ni revisaron antes este borrador.",
-  "tb.changesForYou": "Te pidieron cambios. Lee los comentarios de la revisión, corrige y termina otra vez.",
-  "tb.changesWait": "Se pidieron cambios. Falta que @{who} termine otra vez."
+  "tb.changesForYou": "Te pidieron cambios. Abre tu borrador: los comentarios están en la pestaña «Revisión». Corrige y termina otra vez.",
+  "tb.changesWait": "Se pidieron cambios. Falta que @{who} termine otra vez.",
+  "se.tabReview": "Revisión",
+  "se.reviewLede": "Lo que comentaron quienes revisaron tu borrador, lo más reciente primero.",
+  "se.reviewNoteOne": "Hay {n} comentario de la revisión. Verlo",
+  "se.reviewNoteMany": "Hay {n} comentarios de la revisión. Verlos"
 }

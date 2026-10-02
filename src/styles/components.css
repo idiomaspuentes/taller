@@ -7462,3 +7462,4 @@ input.pf-name { font-size: 1.625rem; }
 /* A tool with its own bar at the bottom: the notes button stays clear of it. */
 body:has(.fam__finish) .snd-button { bottom: 8rem; }
 body:has(.fam__finish) .snd-panel { bottom: 11.5rem; max-height: min(34rem, calc(100dvh - 13rem)); }
+.se-review-note { justify-self: start; align-self: flex-start; min-height: 32px; padding: 0.25rem 0.75rem; border: 1px solid var(--accent-200); border-radius: 999px; background: var(--accent-50); color: var(--accent-800); font-size: 0.8125rem; font-weight: 600; cursor: pointer; }

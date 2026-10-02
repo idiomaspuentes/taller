@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listIssueComments, type DcsIssue } from "@ip-lms/dcs-client";
+import type { DcsIssue } from "@ip-lms/dcs-client";
 import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { dcsConfig } from "../dcs/config";
 import { loadPmConfig, setIssueTaskProgress } from "../dcs/issues";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
 import { readRepoFile } from "../dcs/repoFile";
+import { loadReviewComments, type ReviewComment as Comment } from "../dcs/reviewComments";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
 import { englishScriptureKindRef, loadEnglishScriptureKindUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
-import { diffWords, parseRefComment, refComment, reviewItems, type ReviewItem } from "../domain/reviewItems";
+import { diffWords, refComment, reviewItems, type ReviewItem } from "../domain/reviewItems";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { approveStep, askForChanges, canApproveStep, canAskForChanges, canClaimStep, changesPending, claimStep, isEligibleForStep, isStepUnlocked } from "../domain/stepClaim";
@@ -38,10 +38,6 @@ type Props = {
 };
 
 type Source = { short: string; verses: VerseTextMap };
-type Comment = { id: number; by: string; ref: string; text: string; at: string };
-
-/** Comments the app leaves for itself on the pull request (markers): not part of the conversation. */
-const isMachineComment = (body: string) => /<!--\s*(tas|gateway)[:-]/.test(body);
 
 /** One box to write a comment in; `Enter` alone makes a new line, so a comment can have several. */
 function Composer({ placeholder, busy, actions }: { placeholder: string; busy: boolean; actions: { label: string; primary?: boolean; run: (text: string) => Promise<boolean> }[] }) {
@@ -88,14 +84,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [acting, setActing] = useState(false);
   const [error, setError] = useState("");
 
-  const loadComments = useCallback(async (sess: GtSession, linked: PortionPrMarker) => {
-    const rows = await listIssueComments(dcsConfig(sess.host), linked.owner, linked.repo, linked.number, sess.token);
-    setComments(
-      rows
-        .filter((row) => row.body && !isMachineComment(row.body))
-        .map((row) => ({ id: row.id, by: row.user?.login ?? "", at: row.created_at ?? "", ...parseRefComment(row.body ?? "") })),
-    );
-  }, []);
+  const loadComments = useCallback(async (sess: GtSession, linked: PortionPrMarker) => setComments(await loadReviewComments(sess, linked)), []);
 
   const load = useCallback(async () => {
     if (!ctx) return void setError(tNow("se.badContext"));
