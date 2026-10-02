@@ -273,6 +273,12 @@ export type StepClaimMode = "none" | "exclusive" | "pool";
 export type Localized = Partial<Record<string, string>>;
 
 /**
+ * The name a process gives a resource: one process works on «TPL» and «TPS», another calls its only text «Biblia».
+ * The resource keys are how the engine stores and delivers; the names are the process's own.
+ */
+export type ResourceNames = Partial<Record<ScopeKey, { name: string; names?: Localized }>>;
+
+/**
  * How a step is completed. The process chooses; the engine only knows these mechanics.
  * - `self`: the person doing it marks it done.
  * - `approval`: someone else approves it.
@@ -445,6 +451,8 @@ export type WorkflowTemplate = {
   tasks: TaskTemplate[];
   /** Copied into project settings when the template is applied. */
   releaseProfiles?: ReleaseProfile[];
+  /** What this process calls each resource it works on. Copied into project settings too. */
+  resourceNames?: ResourceNames;
 };
 
 export type WorkflowsCatalog = {
@@ -519,6 +527,8 @@ export type ProjectSettings = {
   };
   /** «Publicar versión» profiles (phase dependencies). */
   releaseProfiles?: ReleaseProfile[];
+  /** What the project's process calls each resource (see `resourceNames.ts`); absent = the usual names. */
+  resourceNames?: ResourceNames;
   /** Scripture tasks already passed into the borrador principal (release gate). */
   principalPasses?: PrincipalPassMark[];
   /** Notes, words and texts the Afinación reads; the default is unfoldingWord's English package. */

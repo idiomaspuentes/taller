@@ -221,8 +221,9 @@ inglés no está hecho.
   `verify:second-process`.
 
 **Pendiente:**
-- La interfaz de **tipo de trabajo**: los recursos (`tpl`, `tps`, `notas`…) y sus nombres siguen fijos en el código.
-  El segundo proceso usa `tpl` para su texto y lo vería rotulado «TPL».
+- La interfaz de **tipo de trabajo**: las claves de los recursos (`tpl`, `tps`, `notas`…) y dónde se guarda cada uno
+  siguen en el código. Sus **nombres** ya vienen del proceso (`resourceNames`): el segundo proceso llama «Biblia» a
+  su texto, en las pantallas del proyecto, en los títulos de las subtareas y en las herramientas.
 - **Un solo editor de tareas** para Plantillas y para el proyecto (los campos nuevos de un paso se editan hoy en el
   JSON del paquete).
 

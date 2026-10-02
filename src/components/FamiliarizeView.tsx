@@ -229,7 +229,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
           </h1>
           <p className="scripture-editor__meta">
             {ctx?.taskName ? `${localizeName(ctx.taskName, language)} · ` : ""}
-            {ctx?.resource ? ctx.resource.toUpperCase() : ""}
+            {ctx?.resourceName || (ctx?.resource ? ctx.resource.toUpperCase() : "")}
             {ctx?.issueNumber ? ` · #${ctx.issueNumber}` : ""}
             {t("fa.metaTail")}
           </p>

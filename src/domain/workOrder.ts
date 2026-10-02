@@ -6,7 +6,7 @@ import type {
   ScopeKey,
   Team,
 } from "./types";
-import { bundleGrainForDistributeUnit, SCOPE_LABEL } from "./types";
+import { bundleGrainForDistributeUnit, SCOPE_LABEL, type ResourceNames } from "./types";
 import {
   bundleEnabled,
   bundlesInScope,
@@ -466,7 +466,17 @@ export function publishableWorkOrders(
     }
   }
 
-  return [...assigned, ...open];
+  return named([...assigned, ...open], board.settings?.resourceNames);
+}
+
+/** Subtareas titled with the name the project's process gives each resource («2:11–13 · Biblia»). */
+function named(orders: WorkOrder[], names: ResourceNames | undefined): WorkOrder[] {
+  if (!names) return orders;
+  return orders.map((order) => {
+    const own = order.resource === "bundle" ? undefined : names[order.resource]?.name;
+    const cut = order.label.lastIndexOf(" · ");
+    return own && cut >= 0 ? { ...order, label: `${order.label.slice(0, cut)} · ${own}` } : order;
+  });
 }
 
 /**

@@ -14,7 +14,7 @@ import { localized } from "../domain/processes";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { stepMinAssignees } from "../domain/stepClaim";
 import type { ChecklistQuestion } from "../domain/types";
-import { SCOPE_LABEL, type ScopeKey } from "../domain/types";
+import { scopeLabel } from "../domain/resourceNames";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 
@@ -156,7 +156,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   }
 
   const title = data?.step ? localized(data.step.name, data.step.names, language) : t("en.title");
-  const aboutLabel = (resource: string) => SCOPE_LABEL[resource as ScopeKey] ?? resource;
+  const aboutLabel = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
 
   return (
     <div className="af en">

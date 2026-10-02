@@ -2,7 +2,7 @@ import { projectFromMilestone } from "./scope";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { usfmStudyBookId } from "./books";
 import { resolveTaskPhaseName, resolveTaskPhaseSlug } from "./phaseSlug";
-import type { AssignmentsDoc } from "./types";
+import type { AssignmentsDoc, ScopeKey } from "./types";
 import { parseWorkOrderMarker } from "./workOrder";
 import { isUrlSolver, URL_TOOL_DEFAULT_LANG, type SolverApp } from "./solvers";
 import { parsePmFacetValue } from "./roles";
@@ -20,6 +20,8 @@ export type SolverLaunchContext = {
   book: string;
   chapter: number;
   resource: string;
+  /** What the project's process calls that resource, when it gives it a name of its own. */
+  resourceName?: string;
   /** Board phase that owns this task (UI grouping only; not used in new git refs). */
   phaseSlug: string;
   /** Display name of that phase (solver labels). */
@@ -115,6 +117,7 @@ export function decodeSolverLaunchContext(encoded: string): SolverLaunchContext 
       book: String(parsed.book ?? ""),
       chapter: Number(parsed.chapter) || 0,
       resource: String(parsed.resource ?? ""),
+      resourceName: String(parsed.resourceName ?? "").trim() || undefined,
       phaseSlug: String(parsed.phaseSlug ?? "").trim(),
       phaseName: String(parsed.phaseName ?? "").trim() || undefined,
       ref: String(parsed.ref ?? ""),
@@ -178,6 +181,7 @@ export function buildSolverLaunchContext(params: {
     book,
     chapter: chapterFromIssue(params.issue),
     resource,
+    resourceName: params.board.settings?.resourceNames?.[resource as ScopeKey]?.name,
     phaseSlug: resolveTaskPhaseSlug(params.board, taskId),
     phaseName: resolveTaskPhaseName(params.board, taskId) || undefined,
     ref: refFromIssueTitle(params.issue.title),

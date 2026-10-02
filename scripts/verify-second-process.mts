@@ -14,6 +14,7 @@ import { normalizeWaitRules } from "../src/domain/waitRules";
 import { pruneWaitRules, waitBlocks, waitReason, waitWouldLoop } from "../src/domain/waits";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 import { processProblems } from "../src/domain/workflowCheck";
+import { scopeLabel } from "../src/domain/resourceNames";
 import { publishableWorkOrders, type WorkOrder, encodeWorkOrderMarker } from "../src/domain/workOrder";
 
 let passed = 0;
@@ -58,6 +59,15 @@ const issue = (number: number, teamId: string, chapter: number, state: "open" | 
     labels: [{ name: `pm/tarea:${teamId}` }, { name: `pm/cap:${chapter}` }],
     body: encodeWorkOrderMarker({ key: `k${number}`, teamId, book: "TIT", resource: "tpl", portionIds: [], itemIds: [`porcion:TIT ${chapter}:1-15`] } as unknown as WorkOrder),
   }) as unknown as DcsIssue;
+
+test("el proceso le pone su nombre a los recursos: su texto es «Biblia», no «TPL»", () => {
+  assert.equal(scopeLabel("tpl", board.settings?.resourceNames), "Biblia");
+  assert.equal(scopeLabel("tpl", board.settings?.resourceNames, "pt"), "Bíblia");
+  assert.equal(scopeLabel("notas", board.settings?.resourceNames), "Notas", "lo que no renombra conserva el nombre usual");
+  assert.equal(scopeLabel("tpl", undefined), "TPL", "un proyecto sin nombres propios no cambia");
+  const titles = publishableWorkOrders(board, inventory).filter((order) => order.teamId === "traducir").map((order) => order.label);
+  assert.ok(titles.every((title) => title.endsWith(" · Biblia")), titles.join(" | "));
+});
 
 test("la espera al proyecto fuente sobrevive a guardar y leer, y no se confunde con una tarea propia", () => {
   const rule = { taskId: "publicar", scope: "chapter", source: true } as const;

@@ -1293,7 +1293,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   const title = useMemo(() => {
     if (!ctx) return t("se.draft");
-    const res = (ctx.resource || "tpl").toUpperCase();
+    const res = ctx.resourceName || (ctx.resource || "tpl").toUpperCase();
     return `${ctx.book} ${ctx.ref} · ${res}`;
   }, [ctx]);
 
@@ -1312,7 +1312,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   );
   const showDetails = hasGitDetails || canRecreate;
   const loggedIn = Boolean(session);
-  const resourceCode = (ctx?.resource || "tpl").toUpperCase();
+  const resourceCode = ctx?.resourceName || (ctx?.resource || "tpl").toUpperCase();
   const labLocal = lab && write?.mode !== "dcs";
   const saveState: { tone: "busy" | "dirty" | "saved" | "idle"; text: string } =
     recreating

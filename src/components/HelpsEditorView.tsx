@@ -296,7 +296,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   const title = useMemo(() => {
     if (!ctx) return "Ayudas";
-    return `${ctx.book} ${ctx.ref} · ${(ctx.resource || "").toUpperCase()}`;
+    return `${ctx.book} ${ctx.ref} · ${ctx.resourceName || (ctx.resource || "").toUpperCase()}`;
   }, [ctx]);
 
   function persistLocal(nextItems: HelpsDraftItem[], nextBranch: string) {

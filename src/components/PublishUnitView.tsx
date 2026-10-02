@@ -11,7 +11,7 @@ import { localized } from "../domain/processes";
 import { ownerTaskOf } from "../domain/resourceOwner";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
-import { SCOPE_LABEL, type ScopeKey } from "../domain/types";
+import { scopeLabel } from "../domain/resourceNames";
 import type { UnitCheckId, UnitProblem } from "../domain/unitPublish";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
@@ -116,7 +116,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, needsEndorsement, o
     void load();
   }, [load]);
 
-  const label = (resource: string) => SCOPE_LABEL[resource as ScopeKey] ?? resource;
+  const label = (resource: string) => scopeLabel(resource, unit?.board?.settings?.resourceNames, language);
   const unitName = unit ? `${unit.book} ${ctx?.ref || unit.chapter}` : "";
   const me = (session?.username ?? "").toLowerCase();
   const canPublish = Boolean(session) && (session!.canManage || canConfirmForTeam(unit?.levelBook, unit?.task?.orgTeamName, me));

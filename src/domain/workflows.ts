@@ -22,7 +22,8 @@ export function applyWorkflowToBoard(
     ...p,
     requiredPhaseIds: p.requiredPhaseIds.filter((id) => phaseIds.has(id)),
   }));
-  const { releaseProfiles: _previous, ...settings } = board.settings ?? {};
+  const { releaseProfiles: _previous, resourceNames: _names, ...kept } = board.settings ?? {};
+  const settings = wf.resourceNames ? { ...kept, resourceNames: wf.resourceNames } : kept;
   return {
     ...board,
     settings: releaseProfiles?.length ? { ...settings, releaseProfiles } : settings,
@@ -113,6 +114,7 @@ export function boardToWorkflowTemplate(
     phases,
     tasks,
     ...(releaseProfiles?.length ? { releaseProfiles } : {}),
+    ...(board.settings?.resourceNames ? { resourceNames: board.settings.resourceNames } : {}),
   };
 }
 
@@ -223,7 +225,12 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
     ...board,
     phases,
     teams,
-    settings: profiles.length ? { ...board.settings, releaseProfiles: profiles } : board.settings,
+    settings: {
+      ...board.settings,
+      ...(profiles.length ? { releaseProfiles: profiles } : {}),
+      // Names the project lacks come from the process; a name the project has stays.
+      ...(wf.resourceNames ? { resourceNames: { ...wf.resourceNames, ...board.settings?.resourceNames } } : {}),
+    },
     workflowVersion: wf.version,
     workflowAppliedAt: new Date().toISOString(),
   };

@@ -42,7 +42,6 @@ import {
   scriptureIntro,
   stayInChapterHelp,
   SCOPE_KEYS,
-  SCOPE_LABEL,
   WORKFLOWS_SCHEMA,
 } from "../domain/types";
 import { ensurePhaseSlug, makePhase, slugifyPhase } from "../domain/phaseSlug";
@@ -73,6 +72,7 @@ import {
 import { formatTaskClaimSummary } from "../domain/stepClaim";
 import { applyWorkflowToBoard, boardToWorkflowTemplate, upgradeBoardToWorkflow, workflowUpdateFor } from "../domain/workflows";
 import { shippedWorkflows } from "../domain/processes";
+import { scopeLabel } from "../domain/resourceNames";
 import { filterTeamsEligibleForTask } from "../domain/teamEligibility";
 import { orgOptionLabel, orgSlug } from "../domain/orgs";
 import { DEFAULT_SOURCE_PACKAGE, resolveSourcePackage, sourcePackageFor, sourcePackageLang } from "../domain/sourcePackage";
@@ -296,6 +296,8 @@ export function TeamsView({
   const t = useT();
   const language = useUiLanguage();
   const loc = (text: string) => localizeScope(text, language);
+  /** What this project's process calls a resource. */
+  const resName = (resource: string) => scopeLabel(resource, board.settings?.resourceNames, language, loc);
   const [personName, setPersonName] = useState("");
   const [teamName, setTeamName] = useState("");
   const [description, setDescription] = useState("");
@@ -1805,7 +1807,7 @@ export function TeamsView({
                           className="rounded-full"
                           onClick={() => toggleResource(key)}
                         >
-                          + {loc(SCOPE_LABEL[key])}
+                          + {resName(key)}
                         </Button>
                       ))}
                     </div>
@@ -1833,7 +1835,7 @@ export function TeamsView({
                           )
                         : null;
                       const summary = [
-                        loc(SCOPE_LABEL[key]),
+                        resName(key),
                         resourceShowsFilter(key)
                           ? articleFilterLabel(key, row.articleFilter, row.grain)
                           : null,
@@ -1867,7 +1869,7 @@ export function TeamsView({
                             </button>
                             <button
                               type="button"
-                              aria-label={t("tv.removeRes").replace("{res}", loc(SCOPE_LABEL[key]))}
+                              aria-label={t("tv.removeRes").replace("{res}", resName(key))}
                               className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
                               onClick={() => toggleResource(key)}
                             >
@@ -1946,7 +1948,7 @@ export function TeamsView({
                                       patchResource(key, { itemIds: e.target.value })
                                     }
                                     placeholder={t("tv.concretePlaceholder")}
-                                    aria-label={t("tv.concreteAria").replace("{res}", loc(SCOPE_LABEL[key]))}
+                                    aria-label={t("tv.concreteAria").replace("{res}", resName(key))}
                                   />
                                   <p className="text-xs text-muted-foreground">
                                     {t("tv.concreteHelp")}
@@ -2840,7 +2842,7 @@ export function TeamsView({
                   .filter((row): row is Person => Boolean(row));
                 const rules = teamRules(team);
                 const resourceBit = rules.length
-                  ? rules.map((rule) => loc(SCOPE_LABEL[rule.resource])).join(" · ")
+                  ? rules.map((rule) => resName(rule.resource)).join(" · ")
                   : loc("Sin recursos");
                 const summary = `${resourceBit} · ${loc(DISTRIBUTE_UNIT_LABEL[resolveDistributeUnit(team)])} · ${t(members.length === 1 ? "tv.memberOne" : "tv.memberMany").replace("{n}", String(members.length))}`;
                 const claimSummary = loc(formatTaskClaimSummary(team.steps));

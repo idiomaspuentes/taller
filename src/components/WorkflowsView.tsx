@@ -15,7 +15,8 @@ import type {
   WorkflowTemplate,
   WorkflowsCatalog,
 } from "../domain/types";
-import { SCOPE_KEYS, SCOPE_LABEL, WORKFLOWS_SCHEMA } from "../domain/types";
+import { SCOPE_KEYS, WORKFLOWS_SCHEMA } from "../domain/types";
+import { scopeLabel } from "../domain/resourceNames";
 import type { ProjectTask } from "../domain/types";
 import { WaitsEditor } from "./WaitsEditor";
 import { MinLevelField } from "./MinLevelField";
@@ -86,6 +87,8 @@ export function WorkflowsView({
   const [solvers, setSolvers] = useState<SolversCatalog>(DEFAULT_SOLVERS_CATALOG);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<WorkflowTemplate | null>(null);
+  /** What the template in hand calls a resource. */
+  const resName = (resource: string) => scopeLabel(resource, draft?.resourceNames, language, loc);
   const [taskEditId, setTaskEditId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -847,7 +850,7 @@ export function WorkflowsView({
                   </div>
 
                   {phaseTasks.map((task) => {
-                    const resources = task.rules.map((r) => loc(SCOPE_LABEL[r.resource])).join(" · ");
+                    const resources = task.rules.map((r) => resName(r.resource)).join(" · ");
                     const solver = solvers.solvers.find((s) => s.id === task.solverAppId);
                     const stepCount = task.steps?.length ?? 0;
                     const isEditing = taskEditId === task.id;
@@ -942,12 +945,12 @@ export function WorkflowsView({
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {taskResources.map((key) => (
                                   <Badge key={key} variant="secondary" className="gap-1 pr-1">
-                                    {loc(SCOPE_LABEL[key])}
+                                    {resName(key)}
                                     {canManage ? (
                                       <button
                                         type="button"
                                         className="rounded-sm px-1 text-muted-foreground hover:text-foreground"
-                                        aria-label={t("tv.removeRes").replace("{res}", loc(SCOPE_LABEL[key]))}
+                                        aria-label={t("tv.removeRes").replace("{res}", resName(key))}
                                         onClick={() =>
                                           setTaskResources(
                                             task.id,
@@ -989,7 +992,7 @@ export function WorkflowsView({
                                               ]);
                                             }}
                                           >
-                                            {loc(SCOPE_LABEL[key])}
+                                            {resName(key)}
                                           </button>
                                         ))}
                                       </div>

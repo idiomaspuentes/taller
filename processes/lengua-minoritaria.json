@@ -335,7 +335,21 @@
             }
           ]
         }
-      ]
+      ],
+      "resourceNames": {
+        "tpl": {
+          "name": "Biblia",
+          "names": {
+            "pt": "Bíblia"
+          }
+        },
+        "preguntas": {
+          "name": "Preguntas",
+          "names": {
+            "pt": "Perguntas"
+          }
+        }
+      }
     }
   ],
   "tools": [

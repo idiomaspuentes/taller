@@ -15,6 +15,7 @@ import { textFingerprint } from "../domain/reviewRound";
 import { closesInItsTool } from "../domain/stepClaim";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
+import { scopeLabel } from "../domain/resourceNames";
 
 type Props = {
   ctxEncoded: string;
@@ -27,7 +28,6 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-const TEXT_LABEL: Record<ChecklistText, string> = { tpl: "TPL", tps: "TPS" };
 const OUTCOME_KEY: Record<CheckOutcome, MessageKey> = { fixed: "ck.fixed", created: "ck.created", consult: "ck.consult" };
 const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.chapter}:${item.verse}`;
 
@@ -70,6 +70,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const [draft, setDraft] = useState<{ answerItemId: string; questionId: string; outcome: CheckOutcome; note: string } | null>(null);
 
   const textsKey = texts.join(",");
+  /** What the project's process calls each text. */
+  const textLabel = (resource: ChecklistText) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
   const storeKey = ctx ? `${(ctx.book || ctx.projectId).toUpperCase()}.${ctx.issueNumber || ctx.taskId}.${ctx.stepId || "paso"}` : "";
 
   const load = useCallback(async () => {
@@ -155,7 +157,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     if (draft.outcome === "consult" && ctx.pmOrg && ctx.issueNumber) {
       const where = `${data?.book ?? ""} ${item.chapter}:${item.verse}`;
       const who = owners.map((login) => `@${login}`).join(" ");
-      await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${who ? `${who} ` : ""}Consulta sobre ${texts.map((x) => TEXT_LABEL[x]).join(" y ")} ${where}: ${draft.note.trim()}`).catch(() => undefined);
+      await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${who ? `${who} ` : ""}Consulta sobre ${texts.map((x) => textLabel(x)).join(" y ")} ${where}: ${draft.note.trim()}`).catch(() => undefined);
     }
     setDraft(null);
   }
@@ -278,11 +280,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               const hit = item.quote && verse ? alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: item.chapter, verse: item.verse }) : null;
               return (
                 <div key={resource} className="af-row">
-                  <span className="af-lbl">{TEXT_LABEL[resource]}</span>
-                  {verse ? <Verse text={verse} marked={hit?.tokenIndices ?? []} /> : <span className="af-hint">{t("ck.noText").replace("{text}", TEXT_LABEL[resource])}</span>}
+                  <span className="af-lbl">{textLabel(resource)}</span>
+                  {verse ? <Verse text={verse} marked={hit?.tokenIndices ?? []} /> : <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>}
                   {item.quote && verse ? (
                     <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
-                      {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", TEXT_LABEL[resource])}
+                      {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", textLabel(resource))}
                     </span>
                   ) : null}
                 </div>

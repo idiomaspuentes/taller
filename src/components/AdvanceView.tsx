@@ -9,7 +9,7 @@ import {
   recordPrincipalPass,
 } from "../domain/principalPass";
 import type { AssignmentsDoc, InventoryDoc, Phase, Team } from "../domain/types";
-import { SCOPE_LABEL } from "../domain/types";
+import { scopeLabel } from "../domain/resourceNames";
 import { PrincipalPassControl } from "./PrincipalPassControl";
 import { ReleaseVersionControl } from "./ReleaseVersionControl";
 import { ReviewTaskControl } from "./ReviewTaskControl";
@@ -92,7 +92,7 @@ export function AdvanceView({ section, board, inventory, onChange, session, pmOr
         <div className="advance-task__head">
           <h3 className="advance-task__title">{team.name}</h3>
           <p className="advance-task__meta">
-            {rules.map((rule) => SCOPE_LABEL[rule.resource]).join(" · ") || "Sin recursos"}
+            {rules.map((rule) => scopeLabel(rule.resource, board.settings?.resourceNames)).join(" · ") || "Sin recursos"}
           </p>
         </div>
         {controls ? (

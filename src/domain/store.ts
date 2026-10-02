@@ -41,6 +41,7 @@ import {
   DISTRIBUTE_POLICIES,
   DISTRIBUTE_UNITS,
   SCOPE_KEYS,
+  type ResourceNames,
   WORKFLOWS_SCHEMA,
   distributeUnitFromBundleGrain,
   type Localized,
@@ -399,6 +400,20 @@ function normalizeScriptureScope(raw: unknown): ScriptureScope | undefined {
 }
 
 /** `{ pt: "…" }`: only non-empty strings survive; nothing is invented. */
+/** Keep only names of resources the engine knows, each with a non-empty name. */
+export function normalizeResourceNames(raw: unknown): ResourceNames | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: ResourceNames = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(SCOPE_KEYS as string[]).includes(key) || !value || typeof value !== "object") continue;
+    const name = String((value as { name?: unknown }).name ?? "").trim();
+    if (!name) continue;
+    const names = normalizeLocalized((value as { names?: unknown }).names);
+    out[key as ScopeKey] = names ? { name, names } : { name };
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 export function normalizeLocalized(raw: unknown): Localized | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const out: Localized = {};
@@ -799,6 +814,8 @@ function normalizeProjectSettings(raw: unknown): ProjectSettings | undefined {
   }
   const releaseProfiles = normalizeReleaseProfiles(row.releaseProfiles);
   if (releaseProfiles) settings.releaseProfiles = releaseProfiles;
+  const resourceNames = normalizeResourceNames(row.resourceNames);
+  if (resourceNames) settings.resourceNames = resourceNames;
   const principalPasses = normalizePrincipalPasses(row.principalPasses);
   if (principalPasses) settings.principalPasses = principalPasses;
   const sourcePackage = normalizeSourcePackage(row.sourcePackage);
@@ -1420,6 +1437,7 @@ export function normalizeWorkflowTemplate(raw: unknown): WorkflowTemplate | null
     phases,
     tasks,
     ...(releaseProfiles ? { releaseProfiles } : {}),
+    ...(normalizeResourceNames(item.resourceNames) ? { resourceNames: normalizeResourceNames(item.resourceNames) } : {}),
   };
 }
 

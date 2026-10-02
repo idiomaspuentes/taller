@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AssignmentsDoc, InventoryDoc, Team } from "../domain/types";
-import { SCOPE_LABEL } from "../domain/types";
+import { scopeLabel } from "../domain/resourceNames";
 import type { GtSession } from "../dcs/auth";
 import { DEFAULT_PM_CONFIG, displayOrgTeamName, type PmConfig } from "../domain/roles";
 import {
@@ -86,7 +86,7 @@ export function ReviewTaskControl({
   const projectBooks = board.books?.length ? board.books : [board.book];
   const scope = parseReviewRef(team.reviewRef, projectBooks);
   const resources = reviewResources(team);
-  const resourceNames = resources.map((r) => localizeScope(SCOPE_LABEL[r], language)).join(t("rt.and"));
+  const resourceNames = resources.map((r) => scopeLabel(r, board.settings?.resourceNames, language, (text) => localizeScope(text, language))).join(t("rt.and"));
   const signedIn = Boolean(session && pmOrg);
   const loading = signedIn && access === undefined;
   const { candidates, source } = useMemo(
