@@ -2210,5 +2210,6 @@
   "af.teamOpenMany": "{who} não estão de acordo",
   "af.teamNobody": "Ninguém mais respondeu ainda.",
   "af.otherAnswer": "Outra resposta",
-  "af.send": "Enviar"
+  "af.send": "Enviar",
+  "af.pickFirst": "Toque primeiro as palavras da sua tradução"
 }

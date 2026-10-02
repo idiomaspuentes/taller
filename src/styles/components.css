@@ -7713,3 +7713,5 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .af-guide summary { min-height: 28px; font-size: 0.8125rem; color: var(--primary); cursor: pointer; }
 .af-help-pane { display: grid; gap: 0.5rem; font-size: 0.9375rem; }
 .af-focus__top .af-count { font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* Until a word is chosen the hint that asks for it stands out. */
+.af-draft .af-hint[data-needed="true"] { color: var(--accent-800); font-weight: 600; }

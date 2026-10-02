@@ -480,6 +480,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       // Punctuation at either end is not part of what is asked about.
       .replace(/^[\s.,;:!?¡¿«»“”"'()]+|[\s.,;:!?¡¿«»“”"'()]+$/g, "");
   };
+  /** «De acuerdo» waits for the words of the draft that render what is marked (a verse with no text has none to pick). */
+  const needsWords = !selected.length && Boolean(verseText.trim());
   /** The words of the draft the person marked. */
   const chosenWords = useMemo(() => wordsAt(verseText, selected), [selected, verseText]);
   const messageKeyOf = stepProp === "notas" ? (item?.id ?? "") : termKey;
@@ -821,7 +823,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 <span className="af-draft__words">
                   <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
                 </span>
-                <p className="af-hint">
+                <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
                   {t("af.tapMarked")
                     .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
                     .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}
@@ -892,7 +894,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           <Button type="button" variant="ghost" size="icon" aria-label={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
             <ChevronLeft size={18} aria-hidden />
           </Button>
-          <Button type="button" className="af-bar-answer__yes" disabled={saving} onClick={() => void answer("approved")}>
+          {/* Agreeing is about the words chosen: with none chosen there is nothing to agree with yet. */}
+          <Button type="button" className="af-bar-answer__yes" disabled={saving || needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => void answer("approved")}>
             <Check size={16} aria-hidden /> {t("rv.approved")}
           </Button>
           <Button
