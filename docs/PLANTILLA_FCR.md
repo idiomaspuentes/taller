@@ -415,6 +415,23 @@ glosario registra **qué palabra en español usamos** y por qué.
   se tradujo), y se pueden agregar a mano.
 - **Inglés:** una lista de formas escrita a mano, con ayuda de la lista de palabras (TWL).
 
-**Por confirmar:**
-1. ¿El consenso para cambiar una entrada es del **equipo que propone el cambio**, o hay un equipo
-   dueño del glosario?
+- **Quién acuerda un cambio:** el **equipo que lo propone** (por ejemplo, Afinación del TPL mientras
+  revisa palabras clave). No hay un equipo dueño del glosario.
+
+### Cómo se tradujo antes (desde la alineación)
+
+Además de las decisiones escritas, hace falta poder preguntar: **¿cómo ha traducido Afinación esta
+palabra hasta ahora?** La alineación lo responde sin que nadie lo anote:
+
+- Para una palabra del original (por su lema), se juntan **todos los versículos ya afinados** donde
+  aparece y **qué palabras en español** quedaron alineadas con ella.
+- Se muestra agrupado y contado: «λυτρόω → *redimir* (4 veces), *rescatar* (1 vez)», con cada
+  versículo para leerlo en contexto.
+- Se distingue el **TPL** del **TPS**, porque traducen distinto a propósito.
+- Solo cuenta lo que **ya pasó por Afinación**; lo que sigue en borrador se muestra aparte.
+
+Esto es **lo que se hizo**; el glosario es **lo que se decidió**. Se muestran juntos: la decisión
+escrita arriba y el uso real debajo, marcando dónde el texto se aparta de la decisión.
+
+**Dónde se consulta:** al traducir (para seguir lo ya hecho), en palabras clave de Afinación (para
+ser consistente con libros anteriores), al alinear y en Armonización.
