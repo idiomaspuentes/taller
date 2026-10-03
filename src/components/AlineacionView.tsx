@@ -194,7 +194,6 @@ function Box({
   draft,
   gloss,
   compact,
-  next,
   selected,
   selectedRef,
   editable,
@@ -208,8 +207,6 @@ function Box({
   gloss: string[];
   /** An empty box that is not being filled: one slim line instead of a tall drop area. */
   compact: boolean;
-  /** The first box with nothing in it: where the next word most likely goes. */
-  next?: boolean;
   selected: boolean;
   selectedRef: number | null;
   editable: boolean;
@@ -226,7 +223,6 @@ function Box({
       className="al-box"
       data-merged={merged ? "true" : undefined}
       data-compact={compact ? "true" : undefined}
-      data-next={next ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
       data-over={isOver && editable ? "true" : undefined}
       onClick={(e) => {
@@ -1010,9 +1006,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
     const first = bankWords.current?.querySelector<HTMLElement>(".al-word:not([data-aligned])");
     first?.scrollIntoView({ block: "nearest" });
   }, [verse?.verse]);
-  /** The first word still to place, and the first box with nothing in it: the likeliest next move. */
+  /** The first word still to place: named in the hint before anything is placed. */
   const nextWord = verse ? verse.draft.find((_, i) => !aligned[i])?.surface : undefined;
-  const nextBoxId = boxes.find((box) => box.alignedSourceWords.length === 0)?.id;
   const canSeparate = Boolean(oneBox && oneBox.groupIndex !== null && (oneBox.targetTokens.length > 1 || oneBox.alignedSourceWords.length > 1));
   const title = mode === "alinear" ? t("al.titleAlign") : t("al.titleReview");
   const openHere = verse ? openFor(verse) : [];
@@ -1195,8 +1190,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       box={box}
                       draft={verse.draft}
                       gloss={verse.gloss}
-                      compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id) && box.id !== nextBoxId}
-                      next={editable && box.id === nextBoxId}
+                      compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id)}
                       selected={selectedBoxes.includes(box.id)}
                       selectedRef={selectedRef?.boxId === box.id ? selectedRef.refIndex : null}
                       editable={editable}
