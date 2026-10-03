@@ -5730,7 +5730,6 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
 .al-chip__word { font-weight: 600; touch-action: manipulation; }
 .al-chip__x { min-width: 1.75rem; min-height: 2rem; height: 2rem; color: var(--text-muted); font-size: 1rem; line-height: 1; }
 .al-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.al-pager { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-muted); }
 
 .af-preferred { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin: 0; padding: 0.375rem 0.625rem; background: var(--accent-100); border-radius: var(--radius-md); font-size: 0.875rem; }
 
@@ -7752,7 +7751,6 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 .al-actionbar__row--one { flex-wrap: nowrap; }
 .al-actionbar__row--one > button[data-size="icon"] { flex: 0 0 auto; }
 @media (max-width: 40rem) {
-  .al .al-pager { display: none; }
   .al-word { min-height: 2.25rem; padding: 0.125rem 0.5rem; font-size: 0.9375rem; }
   .al-grid { gap: 0.5rem; }
   .al-box { flex: 1 1 auto; min-width: 6rem; }
@@ -7799,7 +7797,6 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
   .al-verse-tab { min-width: 2.25rem; min-height: 2.25rem; padding: 0 0.5rem; font-size: 0.875rem; }
 }
 /* Compact: no air that does not help to see the verse and its boxes at once. */
-.al-clear { margin: 0.25rem 0 0; text-align: end; font-size: 0.8125rem; }
 /* The bank is read as text and worked with the thumb: it keeps room around the verse and under the controls. */
 .al-bank { padding: 0.75rem 0.875rem 0; }
 .al-bank__bar { margin-bottom: 0.625rem; }
@@ -7919,3 +7916,15 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
   .fx-head { padding-inline: 1.25rem 3rem; }
   .fx-foot { padding-inline: 1.25rem; gap: 1.25rem; }
 }
+.al-short { display: none; }
+/* The action bar is one row on a phone: small icon buttons, and labels that give way before they push the row out. */
+@media (max-width: 40rem) {
+  .al-actionbar__row--one { gap: 0.25rem; }
+  .al-actionbar__row--one > button:not([data-size="icon"]) { flex: 1 1 auto; }
+  .al-long { display: none; }
+  .al-short { display: inline; }
+  .al-actionbar__row--one > button[data-size="icon"] { width: 2.5rem; min-width: 2.5rem; padding: 0; }
+  .al-actionbar__row--one > button:not([data-size="icon"]) { min-width: 0; padding-inline: 0.625rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+/* The bar's one column may shrink to the screen: left to its content, a long label pushed the row past the edge. */
+.al-actionbar { grid-template-columns: minmax(0, 1fr); }

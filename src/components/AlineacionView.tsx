@@ -1,7 +1,7 @@
 import { draftTaskId } from "../dcs/afinacionLoad";
 import { saveCorrection } from "../dcs/afinacionStore";
 import { ChapterReader } from "./ChapterReader";
-import { BookOpen, Redo2, Undo2 } from "lucide-react";
+import { BookOpen, Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
@@ -1260,13 +1260,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                     />
                   ))}
                 </div>
-                {current.length ? (
-                  <p className="al-clear">
-                    <button type="button" className="af-link" onClick={() => change([])}>
-                      {t("al.clearVerse")}
-                    </button>
-                  </p>
-                ) : null}
               </section>
             </div>
             <DragOverlay>{dragging ? <span className="al-word al-word--ghost">{dragging}</span> : null}</DragOverlay>
@@ -1503,18 +1496,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
             </section>
           )}
 
-          <div className="al-pager">
-            <Button type="button" variant="outline" disabled={position === 0} onClick={() => void goTo(position - 1)}>
-              {t("al.prev")}
-            </Button>
-            <span>
-              {t("af.countOf").replace("{a}", String(position + 1)).replace("{b}", String(data.verses.length))}
-            </span>
-            <Button type="button" variant="outline" disabled={position >= data.verses.length - 1} onClick={() => void goTo(position + 1)}>
-              {t("al.next")}
-            </Button>
-          </div>
-
           <div className="al-actionbar" role="region" aria-label={t("al.actionsAria")}>
             {mode === "alinear" && !mineToAlign(verse) ? (
               <div className="al-actionbar__row">
@@ -1547,13 +1528,25 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                   <Button type="button" variant="ghost" size="icon" aria-label={t("al.redo")} title={t("al.redo")} disabled={!canRedo} onClick={redo}>
                     <Redo2 size={18} aria-hidden />
                   </Button>
+                  <Button type="button" variant="ghost" size="icon" aria-label={t("al.clearVerse")} title={t("al.clearVerse")} disabled={!current.length} onClick={() => change([])}>
+                    <Eraser size={18} aria-hidden />
+                  </Button>
                   {complete && !readyToReview ? (
-                    <Button type="button" onClick={() => void markDone()} disabled={saving}>
-                      {saving ? t("al.saving") : t("al.markDone")}
+                    <Button type="button" className="al-actionbar__main" aria-label={t("al.markDone")} onClick={() => void markDone()} disabled={saving}>
+                      {saving ? (
+                        t("al.saving")
+                      ) : (
+                        <>
+                          {/* The whole sentence where it fits; on a phone, beside three icons and "Guardar", the verb alone. */}
+                          <span className="al-long">{t("al.markDone")}</span>
+                          <span className="al-short">{t("al.markDoneShort")}</span>
+                        </>
+                      )}
                     </Button>
                   ) : null}
                   <Button type="button" variant={complete && !readyToReview ? "outline" : "default"} onClick={() => void saveAndNext()} disabled={saving}>
-                    {saving ? t("al.saving") : dirty[verse.verse] ? t("al.saveNext") : t("al.continue")}
+                    {/* Beside "Terminé", which is the main way on, saving alone has a short name: the bar is one row on a phone. */}
+                    {saving ? t("al.saving") : dirty[verse.verse] ? t(complete && !readyToReview ? "al.saveShort" : "al.saveNext") : t("al.continue")}
                   </Button>
                 </div>
               </>
@@ -1569,6 +1562,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                   </Button>
                   <Button type="button" variant="outline" disabled={!canRedo} onClick={redo}>
                     {t("al.redo")}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={!current.length} onClick={() => change([])}>
+                    {t("al.clearVerse")}
                   </Button>
                 </div>
                 <div className="al-actionbar__row">

@@ -951,8 +951,6 @@
   "al.question": "¿Cada palabra del original está unida a lo que la traduce?",
   "al.myAnswer": "Tu respuesta: {stance}",
   "al.staleMine": "Cambió la alineación después de tu respuesta. Vuelve a revisarla.",
-  "al.prev": "← Anterior",
-  "al.next": "Siguiente →",
   "al.actionsAria": "Acciones",
   "al.undo": "Deshacer",
   "al.redo": "Rehacer",
@@ -2376,5 +2374,7 @@
   "fx.rMeaning": "Significado",
   "fx.rGrammar": "Gramática",
   "fx.rOther": "Otro",
-  "fx.askNeeds": "Para pedir al grupo, marca un motivo o escribe qué debe revisar."
+  "fx.askNeeds": "Para pedir al grupo, marca un motivo o escribe qué debe revisar.",
+  "al.saveShort": "Guardar",
+  "al.markDoneShort": "Terminé"
 }

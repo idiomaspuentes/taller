@@ -951,8 +951,6 @@
   "al.question": "Cada palavra do original está ligada ao que a traduz?",
   "al.myAnswer": "Sua resposta: {stance}",
   "al.staleMine": "O alinhamento mudou depois da sua resposta. Revise de novo.",
-  "al.prev": "← Anterior",
-  "al.next": "Próximo →",
   "al.actionsAria": "Ações",
   "al.undo": "Desfazer",
   "al.redo": "Refazer",
@@ -2376,5 +2374,7 @@
   "fx.rMeaning": "Significado",
   "fx.rGrammar": "Gramática",
   "fx.rOther": "Outro",
-  "fx.askNeeds": "Para pedir ao grupo, marque um motivo ou escreva o que deve revisar."
+  "fx.askNeeds": "Para pedir ao grupo, marque um motivo ou escreva o que deve revisar.",
+  "al.saveShort": "Salvar",
+  "al.markDoneShort": "Terminei"
 }
