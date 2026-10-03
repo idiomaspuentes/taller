@@ -293,7 +293,9 @@ function Box({
 }
 
 const BANK_HEIGHT_KEY = "taller.al-bank-height";
-const BANK_MIN = 64;
+// The least the bank can be: its bar, one line of the verse and its foot. Lower, the foot with the grip is cut off
+// and there is no way to make it taller again.
+const BANK_MIN = 144;
 
 function savedBankHeight(): number | null {
   try {
