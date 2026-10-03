@@ -7997,3 +7997,13 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 @media (max-width: 40rem) {
   .app-main--chat .chat-header { border-radius: 0; }
 }
+/* Notices: every row says where it belongs, and the free ones are grouped under their book and phase. */
+.hub-place { font-size: 0.75rem; line-height: 1.35; color: var(--text-muted); }
+.hub-groups { display: grid; }
+.hub-group { display: grid; padding: 0.25rem 0.75rem 0.5rem; }
+.hub-group + .hub-group { border-top: 1px solid var(--border); }
+.hub-group__name { margin: 0; padding: 0.5rem 0 0.25rem; font-size: 0.8125rem; font-weight: 700; color: var(--accent-700); }
+.hub-free { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.375rem 0.75rem; padding: 0.4375rem 0; }
+.hub-free + .hub-free { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.hub-free__name { flex: 1 1 12rem; min-width: 0; display: grid; gap: 0.0625rem; }
+.hub-free__actions { flex: 0 0 auto; display: flex; gap: 0.375rem; }

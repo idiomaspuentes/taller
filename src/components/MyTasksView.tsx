@@ -11,6 +11,7 @@ import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeHold, localizeName } from "../domain/templateNames";
+import { projectDisplayName } from "../domain/books";
 import { localizeThread } from "../domain/threadNames";
 import type { MentionRow } from "../dcs/mentions";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -34,7 +35,6 @@ import {
   stepNeedsOpenPortionPr,
   taskWorksOnSharedDraft,
 } from "../domain/portionPr";
-import { teamPhaseLabel } from "../domain/assignment";
 import {
   canClaimIssue,
   canUnassignIssue,
@@ -120,10 +120,24 @@ type AttentionRow = {
   decide?: boolean;
 };
 
-function taskLabelFor(issue: DcsIssue, board: AssignmentsDoc): string {
+/**
+ * Where a subtarea belongs, for the lists that mix books and phases: the book, the phase, the task. A row that
+ * only says "1:1–3 · Academia" does not say of which book, nor whether it is to translate it or to review it.
+ */
+function placeOf(issue: DcsIssue, bucket: MyTasksProjectBucket, language: "es" | "pt"): { book: string; phase: string; task: string } {
   const taskId = issueTaskId(issue);
-  const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
-  return task ? teamPhaseLabel(task) : "";
+  const task = taskId ? bucket.board.teams.find((row) => row.id === taskId) : undefined;
+  const phase = task ? bucket.board.phases.find((row) => row.id === task.phaseId) : undefined;
+  return {
+    book: projectDisplayName(bucket.projectId, language),
+    phase: phase ? localizeName(phase.name, language) : "",
+    task: task ? localizeName(task.name, language) : "",
+  };
+}
+
+/** The passage in a thread's title: "3JN 1:1–4 · TPS" → "1:1–4". Empty when the title is not a passage. */
+function passageOf(title: string): string {
+  return /^[A-Z0-9]{3}\s+(\d[\d:–\-,\s]*)/i.exec(title)?.[1]?.trim() ?? "";
 }
 
 function shortTitle(issue: DcsIssue): string {
@@ -277,10 +291,34 @@ export function MyTasksView({
       freeRows.filter(({ issue, bucket }) => audienceOf({ issue, project: bucket, session, pmOrg, myLevel }).notify),
     [freeRows, session, pmOrg, myLevel],
   );
+  /** Every subtarea known, by its number: a mention names only the number of its thread. */
+  const placeByNumber = useMemo(() => {
+    const map = new Map<number, { issue: DcsIssue; bucket: MyTasksProjectBucket }>();
+    for (const bucket of projects) for (const issue of [...(bucket.openIssues ?? []), ...bucket.issues]) map.set(issue.number, { issue, bucket });
+    return map;
+  }, [projects]);
   const freeNew = useMemo(
     () => freeReady.filter(({ issue }) => rowActivity(cursor, issue.number).isNew),
     [freeReady, cursor],
   );
+  /** The free subtareas under the book and the phase they belong to, in the order they came. */
+  const freeGroups = useMemo(() => {
+    const groups: { key: string; name: string; rows: { issue: DcsIssue; bucket: MyTasksProjectBucket; task: string }[] }[] = [];
+    for (const { issue, bucket } of freeNew) {
+      const place = placeOf(issue, bucket, language);
+      const name = [place.book, place.phase].filter(Boolean).join(" · ");
+      let group = groups.find((row) => row.key === name);
+      if (!group) groups.push((group = { key: name, name, rows: [] }));
+      group.rows.push({ issue, bucket, task: place.task });
+    }
+    return groups;
+  }, [freeNew, language]);
+  const mentionPlace = (number: number): string => {
+    const found = placeByNumber.get(number);
+    if (!found) return "";
+    const place = placeOf(found.issue, found.bucket, language);
+    return [place.book, place.phase, place.task].filter(Boolean).join(" · ");
+  };
   const heldNumbers = useMemo(() => {
     const held: number[] = [];
     for (const bucket of projects) {
@@ -822,7 +860,8 @@ export function MyTasksView({
           <div>
             {attentionRows.map((row) => {
               const { issue, bucket, activity } = row;
-              const resource = bucket ? taskLabelFor(issue, bucket.board) || bucket.title : "";
+              const place = bucket ? placeOf(issue, bucket, language) : null;
+              const resource = place ? [place.book, place.phase, place.task].filter(Boolean).join(" · ") : "";
               const line = previewLine(activity.latest, (text) => localizeThread(text, language));
               return (
                 <button
@@ -887,17 +926,11 @@ export function MyTasksView({
             {mentions.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0 grid gap-0.5">
-                  {row.text ? (
-                    <>
-                      <span>{localizeThread(row.text, language)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {row.by ? `@${row.by} · ` : ""}
-                        {row.title}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="font-semibold">{row.title}</span>
-                  )}
+                  {row.text ? <span>{localizeThread(row.text, language)}</span> : <span className="font-semibold">{row.title}</span>}
+                  <span className="hub-place">
+                    {/* The place says the book and the task in words; of the thread's own title only the passage is left to add. */}
+                    {[row.by ? `@${row.by}` : "", mentionPlace(row.issue) || (row.text ? row.title : ""), mentionPlace(row.issue) && row.text ? passageOf(row.title) : ""].filter(Boolean).join(" · ")}
+                  </span>
                 </span>
                 <Button
                   type="button"
@@ -925,24 +958,32 @@ export function MyTasksView({
               {freeNew.length}
             </span>
           </div>
-          <div className="grid gap-2 p-3">
-            {freeNew.map(({ issue, bucket }) => (
-              <div key={issue.number} className="flex flex-wrap items-center justify-between gap-2">
-                <span className="min-w-0 font-semibold">{localizeName(shortTitle(issue), language)}</span>
-                <span className="flex gap-2">
-                  {isDecisionIssue(issue) ? (
-                    <Button type="button" size="sm" onClick={() => onOpenThread(issue.number)}>
-                      {t("mt.vote")}
-                    </Button>
-                  ) : (
-                    <Button type="button" size="sm" onClick={() => void begin(issue, bucket.board)}>
-                      {t("mt.takeAndStart")}
-                    </Button>
-                  )}
-                  <Button type="button" size="sm" variant="ghost" onClick={() => onMarkSeen?.(issue.number)}>
-                    {t("push.later")}
-                  </Button>
-                </span>
+          <div className="hub-groups">
+            {freeGroups.map((group) => (
+              <div key={group.key} className="hub-group">
+                <p className="hub-group__name">{group.name}</p>
+                {group.rows.map(({ issue, bucket, task }) => (
+                  <div key={issue.number} className="hub-free">
+                    <span className="hub-free__name">
+                      <span className="font-semibold">{localizeName(shortTitle(issue), language)}</span>
+                      {task && !localizeName(shortTitle(issue), language).includes(task) ? <span className="hub-place">{task}</span> : null}
+                    </span>
+                    <span className="hub-free__actions">
+                      {isDecisionIssue(issue) ? (
+                        <Button type="button" size="sm" onClick={() => onOpenThread(issue.number)}>
+                          {t("mt.vote")}
+                        </Button>
+                      ) : (
+                        <Button type="button" size="sm" onClick={() => void begin(issue, bucket.board)}>
+                          {t("mt.takeAndStart")}
+                        </Button>
+                      )}
+                      <Button type="button" size="sm" variant="ghost" onClick={() => onMarkSeen?.(issue.number)}>
+                        {t("push.later")}
+                      </Button>
+                    </span>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
