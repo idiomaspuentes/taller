@@ -2396,5 +2396,20 @@
   "af.savedAlike": "Guardado: de acuerdo en {n} apariciones.",
   "al.takeOver": "Tomarlo yo",
   "al.takeHint": "Nadie ha alineado este versículo. Tómalo para alinearlo; los demás lo revisarán.",
-  "al.takenHint": "@{who} tomó este versículo y aún no lo termina. Puedes seguir con otro, o tomarlo si quedó sin atender."
+  "al.takenHint": "@{who} tomó este versículo y aún no lo termina. Puedes seguir con otro, o tomarlo si quedó sin atender.",
+  "wp.loadTitle": "Carga por persona",
+  "wp.loadOk": "Ningún paso deja a una persona sola con más de {max} ítems en una subtarea, ni a más de {wait} personas esperando a una.",
+  "wp.loadFlagsOne": "{n} paso carga demasiado a una sola persona",
+  "wp.loadFlagsMany": "{n} pasos cargan demasiado a una sola persona",
+  "wp.loadSolo": "{task} › {step}: una sola persona con {size} en {where}. El límite es {max}.",
+  "wp.loadWaiting": "{task} › {step}: {n} personas esperan a que una sola termine ({size} en {where}).",
+  "wp.loadHint": "Para repartirlo: corta porciones más pequeñas, o cambia el paso en «Proceso» para que lo tomen varias personas.",
+  "wp.loadStepSolo": "{step}: 1 persona · hasta {size} por subtarea",
+  "wp.loadStepPool": "{step}: entre {min} y {max} personas · hasta {size} por subtarea",
+  "wp.loadStepsAria": "Carga de cada paso",
+  "wp.approx": "unos {n}",
+  "wp.unitVerses": "versículos",
+  "wp.unitNotes": "notas",
+  "wp.unitQuestions": "preguntas",
+  "wp.unitItems": "ítems"
 }

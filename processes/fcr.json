@@ -1412,7 +1412,15 @@
         "tps"
       ],
       "kind": "app",
-      "openMode": "tab"
+      "openMode": "tab",
+      "walks": {
+        "unit": "notes",
+        "approx": true,
+        "label": "desafíos",
+        "labels": {
+          "pt": "desafios"
+        }
+      }
     },
     {
       "id": "afinar-palabras",
@@ -1424,7 +1432,16 @@
         "tps"
       ],
       "kind": "app",
-      "openMode": "tab"
+      "openMode": "tab",
+      "walks": {
+        "unit": "verses",
+        "times": 5,
+        "approx": true,
+        "label": "términos",
+        "labels": {
+          "pt": "termos"
+        }
+      }
     },
     {
       "id": "afinar-alineacion",

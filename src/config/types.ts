@@ -101,5 +101,10 @@ export type TallerConfig = {
   workspaces: Workspace[];
   /** The processes this organization works with. Their templates and tools are data: see `processes/`. */
   processes: ProcessPackage[];
+  /**
+   * When a step shares its work out badly, shown in red before a project is created: the most items one person
+   * should finish alone in a subtarea, and the most people who should wait for one person. Default: 40 and 2.
+   */
+  workLoad?: { soloItems?: number; waiting?: number };
   welcome: Record<UiLanguage, WelcomeCopy>;
 };

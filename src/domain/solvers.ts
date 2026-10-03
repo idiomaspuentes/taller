@@ -44,6 +44,26 @@ export type SolverApp = {
    * It lets one screen serve two steps of a process without the screen knowing the process.
    */
   stepParams?: Record<string, Record<string, string>>;
+  /**
+   * What a person goes through one by one in this tool, so the load of a step can be read before anybody works
+   * (see `processLoad`). Without it a step is as big as its subtarea.
+   */
+  walks?: ToolWalk;
+};
+
+export type WalkUnit = "verses" | "notes" | "questions" | "items";
+export const WALK_UNITS: WalkUnit[] = ["verses", "notes", "questions", "items"];
+
+export type ToolWalk = {
+  /** What is counted in the book: the verses of the passage, its notes, its questions, or the items of the subtarea. */
+  unit: WalkUnit;
+  /** How many things there are for each one counted, when the book does not say it (key terms per verse). */
+  times?: number;
+  /** The count is a ceiling or an estimate. */
+  approx?: boolean;
+  /** What the tool calls them, when it is not the unit («términos»). */
+  label?: string;
+  labels?: Partial<Record<string, string>>;
 };
 
 export type SolversCatalog = {
@@ -130,6 +150,17 @@ export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
         if (Object.keys(clean).length) stepParams[stepId] = clean as Record<string, string>;
       }
     }
+    const rawWalk = rowApp.walks && typeof rowApp.walks === "object" ? rowApp.walks : undefined;
+    const walks: ToolWalk | undefined =
+      rawWalk && WALK_UNITS.includes(rawWalk.unit)
+        ? {
+            unit: rawWalk.unit,
+            ...(Number(rawWalk.times) > 0 ? { times: Number(rawWalk.times) } : {}),
+            ...(rawWalk.approx === true ? { approx: true } : {}),
+            ...(String(rawWalk.label ?? "").trim() ? { label: String(rawWalk.label).trim() } : {}),
+            ...(rawWalk.labels && typeof rawWalk.labels === "object" ? { labels: rawWalk.labels } : {}),
+          }
+        : undefined;
     const supersedes = Array.isArray(rowApp.supersedes) ? rowApp.supersedes.map(String).map((x) => x.trim()).filter(Boolean) : [];
     solvers.push({
       id,
@@ -143,6 +174,7 @@ export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
       ...(rowApp.needsIssue === true ? { needsIssue: true } : {}),
       ...(supersedes.length ? { supersedes } : {}),
       ...(Object.keys(stepParams).length ? { stepParams } : {}),
+      ...(walks ? { walks } : {}),
     });
   }
   return { schema: SOLVERS_SCHEMA, solvers };

@@ -84,6 +84,28 @@ Lo que un paso puede abrir: una pantalla de Taller o un sitio de fuera.
 | `needsIssue` | Necesita una subtarea real (no se puede probar en el laboratorio) |
 | `stepParams` | Parámetros extra según el paso: una misma pantalla sirve a dos pasos (`{ "revisar-alineacion": { "mode": "revisar" } }`) |
 | `supersedes` | Trozos de direcciones viejas: la copia guardada de una organización se pone al día sola |
+| `walks` | Qué recorre una persona, uno por uno, en la herramienta: `unit` (`verses`, `notes`, `questions` o `items`), `times` (cuántos hay por cada uno, si el libro no lo dice), `approx` y `label` / `labels` (cómo los llama). Con eso se calcula la carga de un paso; ver «Carga por persona» |
+
+### Carga por persona: cómo se ve un proceso mal repartido
+
+Un proceso puede estar bien armado y aun así repartir mal el trabajo: una persona sola con 110 términos mientras
+otras tres esperan. Eso solo se ve cuando el proceso se encuentra con un libro, así que se calcula ahí
+(`src/domain/processLoad.ts`): para cada paso, cuántas personas lo toman, cuánto mide su subtarea más grande y
+cuántas personas esperan a que termine.
+
+- **Dónde se ve:** en «Subtareas que se crearán», antes de crear el proyecto, y en la pantalla «Subtareas» de un
+  proyecto. Arriba, en rojo, los pasos que cargan demasiado a una persona; dentro de cada tarea, la carga de cada
+  paso.
+- **Las reglas:** ningún paso que toma **una sola persona** debe pasar de **40 ítems** en una subtarea, y no deben
+  quedar **más de 2 personas** esperando a una. Una organización cambia esos números con `workLoad` en
+  `taller.config.ts`.
+- **Cuánto mide una subtarea:** lo que su herramienta dice que recorre (`walks`); si no lo dice, de qué está hecha
+  la subtarea: los versículos de un texto, las notas o las preguntas de sus pasajes, sus artículos.
+- **Qué no cuenta:** un paso que se hace una vez por capítulo o por unidad, una lista de comprobación y un paso
+  que completa su herramienta sola.
+- **La prueba:** `npm run verify:process-load` corre las reglas sobre el proceso de fábrica con un libro del
+  tamaño de Hageo y guarda la lista de lo que hoy se marca. Un cambio al proceso que agregue una línea a esa lista
+  es una decisión que alguien toma, no algo que se cuela.
 
 ### `glossary`: nombres de planes antiguos
 

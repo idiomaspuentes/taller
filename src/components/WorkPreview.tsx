@@ -5,7 +5,10 @@ import { bookLabel } from "../domain/books";
 import { portionKey, verseRangeLabel } from "../domain/chapters";
 import { addExtraWork, isExtraItemId, removeExtraWork } from "../domain/extraWork";
 import { orderedPhases, planOfBoard, tasksOfPhase } from "../domain/plan";
+import { processLoad, toolsWithWalks, type StepLoad } from "../domain/processLoad";
+import { loadLimits } from "../domain/processes";
 import { displayOrgTeamName } from "../domain/roles";
+import { DEFAULT_SOLVERS_CATALOG, type SolverApp, type WalkUnit } from "../domain/solvers";
 import { bookSize, startNotices, type StartNotice } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
 import type { AssignmentsDoc, InventoryDoc, ProjectSettings } from "../domain/types";
@@ -19,6 +22,8 @@ import { PortionCutsPanel } from "./PortionCutsPanel";
 type Props = {
   board: AssignmentsDoc;
   inventory: InventoryDoc;
+  /** The organization's tools, when the host has read them; the shipped ones otherwise. */
+  tools?: SolverApp[];
   /** Change what the project adds to its process (subtareas by hand, chapters split into stretches). Absent: read only. */
   onSettings?: (settings: ProjectSettings) => void;
   /** Cut the portions differently; the host reads the book again. Absent: the portions are fixed (the project exists). */
@@ -32,13 +37,14 @@ type Props = {
   teamName?: (name: string) => string;
 };
 
+const UNIT_KEY: Record<WalkUnit, MessageKey> = { verses: "wp.unitVerses", notes: "wp.unitNotes", questions: "wp.unitQuestions", items: "wp.unitItems" };
 const NOTICE_KEY: Record<StartNotice, MessageKey> = { "no-notes": "sb.noNotes", "no-questions": "sb.noQuestions", "no-second-text": "sb.noSecondText" };
 
 /**
  * The subtareas a project lays out, phase by phase and task by task: what «Crear proyecto» will write, seen before it
  * does. Here is also where the book is cut differently, and where a subtarea the book does not give is added by hand.
  */
-export function WorkPreview({ board, inventory, onSettings, onPortionStarts, busy, stateOf, orderPanel, teamName }: Props) {
+export function WorkPreview({ board, inventory, tools, onSettings, onPortionStarts, busy, stateOf, orderPanel, teamName }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const orders = useMemo(() => publishableWorkOrders(board, inventory), [board, inventory]);
@@ -55,12 +61,26 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
   const max = board.settings?.maxChapterVerses ?? DEFAULT_MAX_CHAPTER_VERSES;
   const long = useMemo(() => longChapters(inventory.portions, board.settings?.handoffUnits, max), [inventory.portions, board.settings?.handoffUnits, max]);
   const splitCount = board.settings?.handoffUnits?.length ?? 0;
+  const limits = loadLimits();
+  const load = useMemo(() => processLoad(board, inventory, orders, toolsWithWalks(tools ?? [], DEFAULT_SOLVERS_CATALOG.solvers), limits), [board, inventory, orders, tools, limits.soloItems, limits.waiting]);
+  const flagged = load.filter((row) => row.flags.length);
   const byTask = useMemo(() => {
     const map = new Map<string, WorkOrder[]>();
     for (const order of orders) map.set(order.teamId, [...(map.get(order.teamId) ?? []), order]);
     return map;
   }, [orders]);
   const name = (row: { name: string; names?: Partial<Record<string, string>> }) => localizeName(row.names?.[language] ?? row.name, language);
+
+  /** «unos 115 términos», «44 ítems»: the size of a step's largest subtarea, in the tool's own word when it has one. */
+  const sizeOf = (row: StepLoad) => `${row.approx ? t("wp.approx").replace("{n}", String(row.largest)) : row.largest} ${row.walk?.labels?.[language] ?? row.walk?.label ?? t(UNIT_KEY[row.unit])}`;
+  const stepName = (row: StepLoad) => {
+    const step = board.teams.find((task) => task.id === row.taskId)?.steps?.find((s) => s.id === row.stepId);
+    return step ? name(step) : row.stepId;
+  };
+  const taskName = (row: StepLoad) => {
+    const task = board.teams.find((x) => x.id === row.taskId);
+    return task ? name(task) : row.taskId;
+  };
 
   function add(taskId: string) {
     if (!onSettings || !title.trim()) return;
@@ -97,6 +117,34 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
           {t(NOTICE_KEY[notice])}
         </p>
       ))}
+
+      {load.length ? (
+        <section className="wp-load" data-flagged={flagged.length ? "true" : undefined} role="status" aria-label={t("wp.loadTitle")}>
+          <p className="wp-load__title">{flagged.length ? t(flagged.length === 1 ? "wp.loadFlagsOne" : "wp.loadFlagsMany").replace("{n}", String(flagged.length)) : t("wp.loadTitle")}</p>
+          {flagged.length ? (
+            <>
+              <ul>
+                {flagged.flatMap((row) =>
+                  row.flags.map((flag) => (
+                    <li key={`${row.taskId}-${row.stepId}-${flag}`}>
+                      {t(flag === "solo" ? "wp.loadSolo" : "wp.loadWaiting")
+                        .replace("{task}", taskName(row))
+                        .replace("{step}", stepName(row))
+                        .replace("{size}", sizeOf(row))
+                        .replace("{where}", row.largestLabel)
+                        .replace("{max}", String(limits.soloItems))
+                        .replace("{n}", String(row.waiting))}
+                    </li>
+                  )),
+                )}
+              </ul>
+              <p>{t("wp.loadHint")}</p>
+            </>
+          ) : (
+            <p>{t("wp.loadOk").replace("{max}", String(limits.soloItems)).replace("{wait}", String(limits.waiting))}</p>
+          )}
+        </section>
+      ) : null}
 
       {onPortionStarts ? (
         <div className="wp-tools">
@@ -258,6 +306,21 @@ export function WorkPreview({ board, inventory, onSettings, onPortionStarts, bus
                     ) : null}
                     {isOpen && orderPanel && rows.some((order) => order.key === openOrder) ? (
                       <div className="wp-order-panel">{orderPanel(rows.find((order) => order.key === openOrder)!, () => setOpenOrder(null))}</div>
+                    ) : null}
+                    {isOpen && load.some((row) => row.taskId === task.id) ? (
+                      <ul className="wp-steps" aria-label={t("wp.loadStepsAria")}>
+                        {load
+                          .filter((row) => row.taskId === task.id)
+                          .map((row) => (
+                            <li key={row.stepId} data-flagged={row.flags.length ? "true" : undefined}>
+                              {t(row.solo ? "wp.loadStepSolo" : "wp.loadStepPool")
+                                .replace("{step}", stepName(row))
+                                .replace("{min}", String(row.people.min))
+                                .replace("{max}", String(row.people.max))
+                                .replace("{size}", sizeOf(row))}
+                            </li>
+                          ))}
+                      </ul>
                     ) : null}
                     {isOpen ? (
                       rows.length ? (

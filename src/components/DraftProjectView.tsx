@@ -298,6 +298,7 @@ export function DraftProjectView({ session, pmOrg, draft, processName, onDraft, 
         <WorkPreview
           board={draft}
           inventory={inventory}
+          tools={tools}
           busy={busy}
           onSettings={(settings) => onDraft({ ...draft, settings })}
           onPortionStarts={(settings) => {

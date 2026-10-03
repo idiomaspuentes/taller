@@ -1,4 +1,5 @@
 import { tallerConfig } from "../../taller.config";
+import { DEFAULT_LOAD_LIMITS, type LoadLimits } from "./processLoad";
 import type { ProcessPackage } from "../config/types";
 import { DEFAULT_SOLVERS_CATALOG } from "./solvers";
 import { normalizeWorkflowTemplate } from "./store";
@@ -12,6 +13,11 @@ import { processProblems } from "./workflowCheck";
  */
 
 /** Templates shipped with the app, as the process packages define them. */
+/** The limits of a well shared out step: the organization's, over the engine's. */
+export function loadLimits(): LoadLimits {
+  return { ...DEFAULT_LOAD_LIMITS, ...tallerConfig.workLoad };
+}
+
 export function shippedWorkflows(packages: ProcessPackage[] = tallerConfig.processes): WorkflowTemplate[] {
   const out: WorkflowTemplate[] = [];
   const seen = new Set<string>();

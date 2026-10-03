@@ -1,6 +1,6 @@
 import { LEVEL_ORDER } from "./levels";
 import type { ProcessPackage } from "../config/types";
-import type { SolverApp } from "./solvers";
+import { WALK_UNITS, type SolverApp } from "./solvers";
 import { stepClaimMode, stepMaxAssignees, stepMinAssignees } from "./stepClaim";
 import { SCOPE_KEYS } from "./types";
 
@@ -197,6 +197,12 @@ export function processProblems(pack: ProcessPackage, opts: { tools: SolverApp[]
     toolIds.add(id);
     for (const resource of Array.isArray(tool.resources) ? tool.resources.map(String) : []) {
       if (!(SCOPE_KEYS as string[]).includes(resource)) problems.push(`herramienta «${id}»: el recurso «${resource}» no existe.`);
+    }
+    if (tool.walks !== undefined) {
+      const walk = isObject(tool.walks) ? tool.walks : {};
+      if (!(WALK_UNITS as string[]).includes(text(walk.unit))) problems.push(`herramienta «${id}»: «walks.unit» debe ser uno de ${WALK_UNITS.join(", ")}.`);
+      if (walk.times !== undefined && !(Number(walk.times) > 0)) problems.push(`herramienta «${id}»: «walks.times» debe ser un número mayor que cero.`);
+      checkLocalized(walk.labels, `herramienta «${id}» (walks)`, opts.languages, problems);
     }
   }
   const workflowIds = new Set<string>();
