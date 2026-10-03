@@ -3,7 +3,7 @@ import { saveCorrection } from "../dcs/afinacionStore";
 import { ChapterReader } from "./ChapterReader";
 import { Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
@@ -313,12 +313,83 @@ function Box({
   );
 }
 
+const BANK_HEIGHT_KEY = "taller.al-bank-height";
+const BANK_MIN = 64;
+
+function savedBankHeight(): number | null {
+  try {
+    const n = Number(window.localStorage.getItem(BANK_HEIGHT_KEY));
+    return n >= BANK_MIN ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The words of the draft, in a box whose height the person chooses: dragging its bottom edge, or with a button
+ * that opens it to the whole verse and back. Reading the verse well is part of deciding the alignment.
+ */
 function Bank({ children, editable }: { children: ReactNode; editable: boolean }) {
   const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id: BANK_ID, disabled: !editable });
+  const [height, setHeight] = useState<number | null>(() => savedBankHeight());
+  const [open, setOpen] = useState(false);
+  const drag = useRef<{ y: number; h: number; last?: number } | null>(null);
+  const box = useRef<HTMLDivElement | null>(null);
+  const keep = (h: number | null) => {
+    setHeight(h);
+    try {
+      if (h) window.localStorage.setItem(BANK_HEIGHT_KEY, String(Math.round(h)));
+      else window.localStorage.removeItem(BANK_HEIGHT_KEY);
+    } catch {
+      /* the size is a convenience */
+    }
+  };
+  const max = () => Math.round(window.innerHeight * 0.7);
   return (
-    <div ref={setNodeRef} className="al-bank" data-over={isOver ? "true" : undefined} role="region" aria-label={t("al.bankAria")}>
+    <div
+      ref={(node) => {
+        setNodeRef(node);
+        box.current = node;
+      }}
+      className="al-bank"
+      data-over={isOver ? "true" : undefined}
+      data-open={open ? "true" : undefined}
+      style={!open && height ? { maxHeight: height } : undefined}
+      role="region"
+      aria-label={t("al.bankAria")}
+    >
       {children}
+      <div className="al-bank__foot">
+        <button
+          type="button"
+          className="al-bank__grip"
+          aria-label={t("al.bankResize")}
+          title={t("al.bankResize")}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            drag.current = { y: e.clientY, h: box.current?.getBoundingClientRect().height ?? BANK_MIN };
+            setOpen(false);
+          }}
+          onPointerMove={(e) => {
+            if (!drag.current) return;
+            const next = Math.min(max(), Math.max(BANK_MIN, drag.current.h + e.clientY - drag.current.y));
+            drag.current = { ...drag.current, last: next };
+            setHeight(next);
+          }}
+          onPointerUp={() => {
+            // The height dragged to is kept for next time (read from the drag: the state may not be updated yet).
+            if (drag.current?.last) keep(drag.current.last);
+            drag.current = null;
+          }}
+          onDoubleClick={() => setOpen(!open)}
+        >
+          <span aria-hidden />
+        </button>
+        <button type="button" className="af-link al-bank__size" onClick={() => setOpen(!open)}>
+          {t(open ? "al.bankLess" : "al.bankMore")}
+        </button>
+      </div>
     </div>
   );
 }
@@ -352,8 +423,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [dirty, setDirty] = useState<Record<number, boolean>>({});
   const [history, setHistory] = useState<Record<number, { past: AlignmentGroup[][]; future: AlignmentGroup[][] }>>({});
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
-  /** The words already placed are hidden in the bank (they are in their boxes) unless asked for. */
-  const [showPlaced, setShowPlaced] = useState(false);
   const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
   const [selectedRef, setSelectedRef] = useState<{ boxId: string; refIndex: number } | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -1040,11 +1109,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       {t("af.fixShort")}
                     </button>
                   ) : null}
-                  {verse.draft.length > pendingWords ? (
-                    <button type="button" className="af-link" aria-pressed={showPlaced} onClick={() => setShowPlaced(!showPlaced)}>
-                      {t(showPlaced ? "al.hidePlaced" : "al.showPlaced")}
-                    </button>
-                  ) : null}
                 </div>
                 {fixing ? (
                   <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
@@ -1062,7 +1126,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                   </div>
                 ) : null}
                 <div className="al-bank__words">
-                  {verse.draft.map((token, i) => (showPlaced || aligned[i] !== true || selectedWords.includes(i)) ? (
+                  {verse.draft.map((token, i) => (
                     <BankWord
                       key={`${i}-${token.surface}`}
                       token={token}
@@ -1073,7 +1137,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       disabled={!editable}
                       onTap={tapWord}
                     />
-                  ) : null)}
+                  ))}
                 </div>
               </Bank>
 
