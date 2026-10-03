@@ -1,6 +1,6 @@
 /** What a word of the original means: which entry its Strong's number points to, and which sense is the verse's. */
 import assert from "node:assert/strict";
-import { glossOfWord, normalizeLexiconFile, refsInclude, sensesOfWord, strongParts } from "../src/domain/lexicon";
+import { glossOfWord, lexiconReport, normalizeLexiconFile, refsInclude, sensesOfWord, strongCode, strongParts } from "../src/domain/lexicon";
 import { lexiconRepos } from "../src/dcs/lexicon";
 
 let passed = 0;
@@ -97,6 +97,36 @@ test("lo que dice la configuración manda, por lengua original", () => {
   assert.deepEqual(lexiconRepos(workspace, "hebrew"), [{ owner: "es-419_gl", repo: "pt-br_uhl" }]);
   assert.deepEqual(lexiconRepos(workspace, "greek"), [{ owner: "pt-br_gl", repo: "pt-br_ugl" }]);
   assert.deepEqual(lexiconRepos(undefined, "greek"), []);
+});
+
+const labels = { word: "Palabra", lemma: "Lema", entry: "Entrada", verse: "Versículo", shown: "Sentido mostrado", missing: "(el léxico no tiene entrada)", from: "Enviado desde Taller por" };
+
+test("un reporte lleva al léxico la palabra, su entrada, el versículo y lo que la persona vio", () => {
+  const issue = lexiconReport({
+    text: "  «para» debería ser «porque» aquí.  ",
+    surface: "γὰρ",
+    lemma: "γάρ",
+    part: { kind: "greek", number: 1063, letter: "" },
+    at: { book: "3JN", chapter: 1, verse: 7 },
+    shown: "para, porque — marcador de causa",
+    username: "ana",
+    labels,
+  });
+  assert.equal(issue.title, "G1063 γάρ · 3JN 1:7: «para» debería ser «porque» aquí.");
+  assert.ok(issue.body.startsWith("«para» debería ser «porque» aquí."));
+  assert.ok(issue.body.includes("- Palabra: γὰρ (Lema γάρ)"));
+  assert.ok(issue.body.includes("- Entrada: G1063 · `content/1063.json`"));
+  assert.ok(issue.body.includes("- Versículo: 3JN 1:7"));
+  assert.ok(issue.body.includes("- Sentido mostrado: para, porque — marcador de causa"));
+  assert.ok(issue.body.endsWith("- Enviado desde Taller por @ana"));
+});
+
+test("un reporte de una palabra que el léxico no tiene lo dice, y un texto largo no hace un título largo", () => {
+  const issue = lexiconReport({ text: "x".repeat(200), surface: "בָּרָא", lemma: "בָּרָא", part: { kind: "hebrew", number: 1254, letter: "a" }, at: { book: "GEN", chapter: 1, verse: 1 }, shown: "", username: "bea", labels });
+  assert.ok(issue.title.startsWith("H1254a בָּרָא · GEN 1:1: "));
+  assert.ok(issue.title.length < 110);
+  assert.ok(issue.body.includes("- Sentido mostrado: (el léxico no tiene entrada)"));
+  assert.equal(strongCode({ kind: "hebrew", number: 776, letter: "" }), "H0776");
 });
 
 console.log(`\nverify-lexicon: ${passed} checks passed.`);

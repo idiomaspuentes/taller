@@ -141,3 +141,43 @@ export function glossOfWord(file: LexiconFile, at: { book: string; chapter: numb
   const { here } = sensesOfWord(file, at, letter);
   return here[0]?.glosses?.[0] ?? file.brief.split(",")[0]?.trim() ?? "";
 }
+
+/** How a Strong's number is written for a person: G5228, H0776, H1254a. */
+export function strongCode(part: StrongPart): string {
+  return part.kind === "greek" ? `G${part.number}` : `H${String(part.number).padStart(4, "0")}${part.letter}`;
+}
+
+/**
+ * The issue a person's report about an entry becomes. Whoever keeps the lexicon reads it away from the app, so it
+ * carries what the person was looking at: the word, its entry, the verse and the sense shown. `labels` are the
+ * words of the list, in the language the person works in.
+ */
+export function lexiconReport(input: {
+  text: string;
+  surface: string;
+  lemma: string;
+  part: StrongPart;
+  at: { book: string; chapter: number; verse: number };
+  /** The glosses and definition shown for the verse, if the lexicon had the word. */
+  shown: string;
+  username: string;
+  labels: { word: string; lemma: string; entry: string; verse: string; shown: string; missing: string; from: string };
+}): { title: string; body: string } {
+  const { labels, part } = input;
+  const said = input.text.trim().replace(/\s+/g, " ");
+  const ref = `${input.at.book} ${input.at.chapter}:${input.at.verse}`;
+  const code = strongCode(part);
+  return {
+    title: `${code} ${input.lemma || input.surface} · ${ref}: ${said.length > 70 ? `${said.slice(0, 69)}…` : said}`,
+    body: [
+      input.text.trim(),
+      "",
+      "---",
+      `- ${labels.word}: ${input.surface}${input.lemma && input.lemma !== input.surface ? ` (${labels.lemma} ${input.lemma})` : ""}`,
+      `- ${labels.entry}: ${code} · \`content/${part.number}.json\``,
+      `- ${labels.verse}: ${ref}`,
+      `- ${labels.shown}: ${input.shown || labels.missing}`,
+      `- ${labels.from} @${input.username}`,
+    ].join("\n"),
+  };
+}

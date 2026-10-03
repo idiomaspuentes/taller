@@ -2238,5 +2238,18 @@
   "lx.comments": "Para traducir:",
   "lx.origin": "Origen:",
   "lx.pending": "La traducción de esta entrada está pendiente de revisión.",
-  "lx.separate": "Sacar esta palabra de la caja"
+  "lx.separate": "Sacar esta palabra de la caja",
+  "lx.report": "Reportar un cambio en esta entrada",
+  "lx.reportAsk": "¿Qué habría que cambiar?",
+  "lx.reportHint": "Llega a quienes mantienen el léxico, con la palabra y el versículo. Tu nombre de usuario queda en el reporte.",
+  "lx.reportSend": "Enviar reporte",
+  "lx.reportSending": "Enviando…",
+  "lx.reportSent": "Reporte enviado. Gracias.",
+  "lx.reportSee": "Ver el reporte n.º {n}",
+  "lx.rWord": "Palabra",
+  "lx.rEntry": "Entrada",
+  "lx.rVerse": "Versículo",
+  "lx.rShown": "Sentido mostrado",
+  "lx.rMissing": "(el léxico no tiene entrada)",
+  "lx.rFrom": "Enviado desde Taller por"
 }

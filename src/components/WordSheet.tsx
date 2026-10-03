@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { Workspace } from "../config/types";
+import type { LexiconRepo, Workspace } from "../config/types";
 import type { GtSession } from "../dcs/auth";
-import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
-import { sensesOfWord, strongParts, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
+import { lexiconRepos, loadLexiconEntry, reportLexiconEntry } from "../dcs/lexicon";
+import { explainError } from "../dcs/userError";
+import { lexiconReport, sensesOfWord, strongCode, strongParts, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 
 /** A word of the original as the text tags it. */
 export type SheetWord = { surface: string; lemma: string; strong: string };
 
-type Found = { part: StrongPart; file: LexiconFile | null };
+type Found = { part: StrongPart; file: LexiconFile | null; repo: LexiconRepo | undefined };
 
 function Sense({ sense }: { sense: LexiconSense }) {
   const t = useT();
@@ -43,6 +44,7 @@ function Sense({ sense }: { sense: LexiconSense }) {
 /**
  * What a word of the original means, over the tool: the sense the lexicon gives for the verse in hand first, the
  * word's other senses one tap away. A sheet from the bottom on a phone, where the thumb is; a dialog on a desk.
+ * Whoever sees something wrong in an entry says so from here, and it reaches the people who keep the lexicon.
  */
 export function WordSheet({
   word,
@@ -64,17 +66,31 @@ export function WordSheet({
   const t = useT();
   const language = useUiLanguage();
   const [found, setFound] = useState<Found[] | null>(null);
+  /** The report being written about the entry; `null` while nobody is writing one. */
+  const [report, setReport] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<{ number: number; url: string } | null>(null);
+  const [error, setError] = useState("");
   const strong = word?.strong ?? "";
 
   useEffect(() => {
     let alive = true;
     setFound(null);
+    setReport(null);
+    setSent(null);
+    setError("");
     if (!strong || !session) {
       setFound([]);
       return;
     }
-    const parts = strongParts(strong);
-    void Promise.all(parts.map(async (part) => ({ part, file: await loadLexiconEntry(session, lexiconRepos(workspace, part.kind), part.number) }))).then((rows) => {
+    void Promise.all(
+      strongParts(strong).map(async (part) => {
+        const repos = lexiconRepos(workspace, part.kind);
+        const entry = await loadLexiconEntry(session, repos, part.number);
+        // With no entry, a report (the word is missing) goes to the first lexicon the workspace reads.
+        return { part, file: entry?.file ?? null, repo: entry?.repo ?? repos[0] };
+      }),
+    ).then((rows) => {
       if (alive) setFound(rows);
     });
     return () => {
@@ -84,10 +100,35 @@ export function WordSheet({
 
   const parts = strongParts(strong);
   const hebrew = parts[0]?.kind === "hebrew";
-  const first = found?.find((row) => row.file)?.file;
-  const firstEntries = first && found ? sensesOfWord(first, at, found.find((row) => row.file)?.part.letter).entries : [];
-  const pos = firstEntries[0]?.pos?.join(", ");
+  const main = found?.find((row) => row.file) ?? found?.[0];
+  const mainSenses = main?.file ? sensesOfWord(main.file, at, main.part.letter) : undefined;
+  const pos = mainSenses?.entries[0]?.pos?.join(", ");
   const credit = workspace?.lexicons?.credit?.[language];
+
+  async function send() {
+    if (!word || !session || !main?.repo || !report?.trim()) return;
+    setSending(true);
+    setError("");
+    try {
+      const shown = mainSenses?.here[0];
+      const issue = lexiconReport({
+        text: report,
+        surface: word.surface,
+        lemma: word.lemma,
+        part: main.part,
+        at,
+        shown: shown ? [shown.glosses?.join(", "), shown.definition].filter(Boolean).join(" — ") : "",
+        username: session.username,
+        labels: { word: t("lx.rWord"), lemma: t("lx.lemma"), entry: t("lx.rEntry"), verse: t("lx.rVerse"), shown: t("lx.rShown"), missing: t("lx.rMissing"), from: t("lx.rFrom") },
+      });
+      setSent(await reportLexiconEntry(session, main.repo, issue));
+      setReport(null);
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <Dialog open={Boolean(word)} onOpenChange={(open) => (open ? undefined : onClose())}>
@@ -98,9 +139,7 @@ export function WordSheet({
               <DialogTitle className="ws-word" lang={hebrew ? "hbo" : "grc"} dir={hebrew ? "rtl" : undefined}>
                 {word.surface}
               </DialogTitle>
-              <p className="ws-meta">
-                {[word.lemma && word.lemma !== word.surface ? `${t("lx.lemma")} ${word.lemma}` : "", pos, parts.map((p) => `${p.kind === "greek" ? "G" : "H"}${p.number}${p.letter}`).join(" · ")].filter(Boolean).join(" · ")}
-              </p>
+              <p className="ws-meta">{[word.lemma && word.lemma !== word.surface ? `${t("lx.lemma")} ${word.lemma}` : "", pos, parts.map(strongCode).join(" · ")].filter(Boolean).join(" · ")}</p>
             </header>
 
             {found === null ? <p className="af-hint">{t("lx.loading")}</p> : null}
@@ -147,6 +186,41 @@ export function WordSheet({
                 {t("lx.separate")}
               </Button>
             ) : null}
+
+            {report !== null ? (
+              <div className="ws-report" role="group" aria-label={t("lx.report")}>
+                <label className="af-lbl" htmlFor="ws-report-text">
+                  {t("lx.reportAsk")}
+                </label>
+                <textarea id="ws-report-text" className="af-textarea" rows={3} value={report} autoFocus onChange={(e) => setReport(e.target.value)} />
+                <p className="ws-meta">{t("lx.reportHint")}</p>
+                {error ? (
+                  <p className="ws-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <div className="af-row-buttons">
+                  <Button type="button" size="sm" disabled={sending || !report.trim()} onClick={() => void send()}>
+                    {sending ? t("lx.reportSending") : t("lx.reportSend")}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={sending} onClick={() => setReport(null)}>
+                    {t("af.cancel")}
+                  </Button>
+                </div>
+              </div>
+            ) : sent ? (
+              <p className="ws-sent" role="status">
+                {t("lx.reportSent")}{" "}
+                <a href={sent.url} target="_blank" rel="noreferrer">
+                  {t("lx.reportSee").replace("{n}", String(sent.number))}
+                </a>
+              </p>
+            ) : found !== null && session && main?.repo ? (
+              <button type="button" className="af-link ws-report-open" onClick={() => setReport("")}>
+                {t("lx.report")}
+              </button>
+            ) : null}
+
             {credit && found?.some((row) => row.file) ? <p className="ws-credit">{credit}</p> : null}
           </>
         ) : null}
