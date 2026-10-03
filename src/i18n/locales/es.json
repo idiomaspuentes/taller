@@ -42,7 +42,7 @@
   "onboarding.greeting": "Hola, {name}",
   "onboarding.lead": "Para empezar con buen pie:",
   "onboarding.installTitle": "Instala la app en tu dispositivo",
-  "onboarding.installText": "En el teléfono o en la computadora: abre el menú del navegador y elige «Instalar» o «Añadir a la pantalla de inicio». Así la tienes a un toque.",
+  "onboarding.installText": "Abre el menú del navegador y elige «Instalar» o «Añadir a la pantalla de inicio». Sirve en el teléfono y en la computadora.",
   "onboarding.installDone": "Ya la tienes instalada.",
   "onboarding.installButton": "Instalar",
   "onboarding.pushTitle": "Activa los avisos",
@@ -2379,5 +2379,7 @@
   "al.talkOpen": "Ver y responder",
   "al.talkHow": "Para abrir otra, usa «Corregir o comentar».",
   "al.fixOrAsk": "Corregir o comentar",
-  "fx.title": "Corregir o comentar el versículo"
+  "fx.title": "Corregir o comentar el versículo",
+  "onboarding.installReady": "Un toque y queda en tu pantalla de inicio o en tu escritorio, como cualquier otra app.",
+  "onboarding.installIos": "En iPhone o iPad: toca el botón Compartir de Safari y elige «Añadir a pantalla de inicio»."
 }

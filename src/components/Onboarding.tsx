@@ -31,6 +31,15 @@ function Step({ done, icon, title, text, children }: { done: boolean; icon: Reac
  * The first thing someone sees after signing in for the first time: three small steps instead of an empty screen.
  * The person hides it when they are done; it never comes back for them on this device.
  */
+/**
+ * An iPhone or an iPad: their browser never offers the install prompt, so the button cannot show there and the
+ * way is its Share menu. (An iPad says it is a Mac; the touch points tell them apart.)
+ */
+function isAppleTouch(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 export function Onboarding({ session, onHide }: Props) {
   const t = useT();
   const deps = useMemo(() => browserPushDeps(), []);
@@ -68,9 +77,9 @@ export function Onboarding({ session, onHide }: Props) {
       </h2>
       <p className="onboarding__lead">{t("onboarding.lead")}</p>
       <ul className="onboarding__steps">
-        <Step done={installed} icon={<MonitorSmartphone />} title={t("onboarding.installTitle")} text={installed ? t("onboarding.installDone") : t("onboarding.installText")}>
+        <Step done={installed} icon={<MonitorSmartphone />} title={t("onboarding.installTitle")} text={installed ? t("onboarding.installDone") : canPromptInstall() ? t("onboarding.installReady") : isAppleTouch() ? t("onboarding.installIos") : t("onboarding.installText")}>
           {!installed && canPromptInstall() ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => void promptInstall()}>
+            <Button type="button" size="sm" onClick={() => void promptInstall()}>
               {t("onboarding.installButton")}
             </Button>
           ) : null}
