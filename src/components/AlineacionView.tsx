@@ -1108,19 +1108,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
           </ul>
         </div>
       ) : null}
-      {openHere.length ? (
-        <div className="af-hint" role="status">
-          {t("al.inDiscussion")}
-          <ul className="al-decisions">
-            {openHere.map((p) => (
-              <li key={p.id}>
-                {t(p.kind === "proposal" ? "al.proposalBy" : "al.objectionBy").replace("{by}", p.by)}
-                {p.issue ? <> · <a href={`#/mis-tareas/${p.issue}`}>{n("al.voteComment", p.issue)}</a></> : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </>
   );
 
@@ -1164,7 +1151,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                         setFixing(true);
                       }}
                     >
-                      {t("af.fixShort")}
+                      {t("al.fixOrAsk")}
                     </button>
                   ) : null
                 }
@@ -1406,6 +1393,26 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
               );
             })}
           </nav>
+
+          {openHere.length ? (
+            <section className="al-talk" role="status" aria-label={t("al.talkTitle")}>
+              <p className="al-talk__title">{t("al.talkTitle")}</p>
+              <ul>
+                {openHere.map((p) => (
+                  <li key={p.id}>
+                    <p className="al-talk__who">{t(p.kind === "proposal" ? "al.talkProposal" : "al.talkObjection").replace("{by}", p.by)}</p>
+                    {p.note ? <p className="al-talk__note">«{p.note}»</p> : null}
+                    {p.issue ? (
+                      <a className="btn al-talk__go" data-variant="outline" data-size="sm" href={`#/mis-tareas/${p.issue}`}>
+                        {t("al.talkOpen")}
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {mode === "alinear" ? <p className="ws-meta">{t("al.talkHow")}</p> : null}
+            </section>
+          ) : null}
 
           {editable ? (
             dnd

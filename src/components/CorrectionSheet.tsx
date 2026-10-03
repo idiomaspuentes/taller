@@ -79,9 +79,9 @@ export function CorrectionSheet({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next || busy ? undefined : onClose())}>
-      <DialogContent className="fix-sheet" aria-label={t("af.fixAria")}>
+      <DialogContent className="fix-sheet" aria-label={t("fx.title")}>
         <header className="fx-head">
-          <DialogTitle className="fx-title">{t("af.fixAria")}</DialogTitle>
+          <DialogTitle className="fx-title">{t("fx.title")}</DialogTitle>
           <p className="ws-meta">{refLabel}</p>
         </header>
 

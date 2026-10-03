@@ -913,10 +913,6 @@
   "al.teamAsked": "A equipe pediu para ajustar este versículo:",
   "al.objectionHeld": "Há uma objeção que procedeu.",
   "al.seeDecision": "ver a decisão",
-  "al.inDiscussion": "Em discussão da equipe:",
-  "al.proposalBy": "Proposta de @{by}",
-  "al.objectionBy": "Objeção de @{by}",
-  "al.voteComment": "votar e comentar (#{n})",
   "al.stDiscussion": "em discussão da equipe",
   "al.stDone": "concluído",
   "al.stComplete": "completo, falta concluir",
@@ -2376,5 +2372,12 @@
   "fx.rOther": "Outro",
   "fx.askNeeds": "Para pedir ao grupo, marque um motivo ou escreva o que deve revisar.",
   "al.saveShort": "Salvar",
-  "al.markDoneShort": "Terminei"
+  "al.markDoneShort": "Terminei",
+  "al.talkTitle": "Em discussão da equipe",
+  "al.talkObjection": "@{by} pede ao grupo revisar este versículo:",
+  "al.talkProposal": "@{by} propõe uma mudança neste versículo:",
+  "al.talkOpen": "Ver e responder",
+  "al.talkHow": "Para abrir outra, use «Corrigir ou comentar».",
+  "al.fixOrAsk": "Corrigir ou comentar",
+  "fx.title": "Corrigir ou comentar o versículo"
 }
