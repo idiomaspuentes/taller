@@ -7889,3 +7889,27 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
   .al-bank__foot { justify-content: flex-start; }
   .al-bank__fix { position: static; margin-inline-start: 0.875rem; }
 }
+/* Aligning is done across the screen: the verse on one side, its boxes on the other. On a desk the tool takes the
+   width there is, instead of the reading column the other tools keep. */
+@media (min-width: 1024px) {
+  .af.al { max-width: min(84rem, 100%); padding-inline: 1.5rem; }
+  .al-layout { grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); gap: 1rem; }
+  .al-bank__words .al-word { font-size: 1.0625rem; }
+  .al-grid { gap: 0.5rem; }
+}
+/* On a desk the correction is read side by side: what the verse is read against and what the change does on
+   the left, the verse and the reason on the right. */
+@media (min-width: 1024px) {
+  .fix-sheet { width: min(64rem, calc(100vw - 4rem)); }
+  .fx-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem 1.25rem; padding: 1rem 1.25rem; }
+  .fx-body > .fx-ref { grid-column: 1; grid-row: 1; }
+  .fx-body > label.fx-field { grid-column: 2; grid-row: 1; }
+  .fx-body > .fx-effect { grid-column: 1; grid-row: 2; align-self: start; }
+  .fx-body > div.fx-field { grid-column: 2; grid-row: 2; }
+  .fx-body > .ws-error { grid-column: 1 / -1; }
+  .fx-ref__text { max-height: 12rem; font-size: 1rem; }
+  .fx-ref__text.af-orig { font-size: 1.1875rem; }
+  .fx-field .af-textarea { min-height: 7rem; }
+  .fx-head { padding-inline: 1.25rem 3rem; }
+  .fx-foot { padding-inline: 1.25rem; gap: 1.25rem; }
+}
