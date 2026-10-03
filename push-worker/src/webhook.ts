@@ -1,4 +1,5 @@
 /** What Door43 tells the Worker (a Gitea webhook) turned into who to notify and what to say. */
+import { BOOK_NAMES } from "./books";
 
 /** `grouped` is what the app shows when several notices share a tag; `{n}` is their count. */
 export type Notice = { login: string; title: string; body: string; url: string; tag: string; grouped?: string };
@@ -40,7 +41,16 @@ export function readableLine(body: string, max = 140): string {
 }
 
 type Person = { login?: string };
-type Issue = { number?: number; title?: string; html_url?: string; assignees?: Person[]; assignee?: Person | null };
+type Issue = {
+  number?: number;
+  title?: string;
+  body?: string;
+  html_url?: string;
+  assignees?: Person[];
+  assignee?: Person | null;
+  milestone?: { title?: string } | null;
+  labels?: { name?: string }[];
+};
 export type GiteaPayload = {
   action?: string;
   issue?: Issue;
@@ -62,10 +72,28 @@ export function hostOf(payload: GiteaPayload): string | null {
 
 const lower = (login: string | undefined) => (login ?? "").toLowerCase();
 
-/** The name of a subtarea in a notice: its number and its title, shortened. */
-function subtarea(issue: Issue): string {
-  const t = (issue.title ?? "").trim();
-  return `#${issue.number ?? "?"}${t ? ` ${t.length > 60 ? `${t.slice(0, 59)}…` : t}` : ""}`;
+const shorten = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
+
+/**
+ * The name of a subtarea in a notice, for somebody who reads it on a lock screen with several books under way:
+ * "3 Juan 1:5–8 · Alinear TPL". The title alone ("3JN 1:5–8 · TPL") gives the book as a code and does not say
+ * what is to be done; the subtarea carries both: its book in its milestone and labels, its task in its body.
+ */
+export function subtarea(issue: Issue): string {
+  const title = (issue.title ?? "").trim();
+  const code = [issue.milestone?.title, issue.labels?.find((l) => l.name?.startsWith("pm/libro:"))?.name?.slice("pm/libro:".length), /^([A-Z0-9]{3})\s/i.exec(title)?.[1]]
+    .map((c) => (c ?? "").toUpperCase())
+    .find((c) => BOOK_NAMES[c]);
+  const task = /^- Tarea: \*\*(.+?)\*\*/m.exec(issue.body ?? "")?.[1]?.trim() ?? "";
+  const phase = /^- Fase: \*\*(.+?)\*\*/m.exec(issue.body ?? "")?.[1]?.trim() ?? "";
+  // The title without the book's code; and without the resource at its end when the task's name already says it.
+  let rest = code ? title.replace(new RegExp(`^${code}\\s+`, "i"), "") : title;
+  const tail = / · ([^·]+)$/.exec(rest)?.[1];
+  if (tail && task && task.toLowerCase().includes(tail.toLowerCase())) rest = rest.slice(0, -(tail.length + 3));
+  // A subtarea named after its task ("Leer la carta completa en voz alta") is not told twice.
+  // "3 Juan 1:5–8" reads as one reference; a subtarea that is not a passage is set apart from its book.
+  const parts = [[code ? BOOK_NAMES[code] : "", rest].filter(Boolean).join(/^\d/.test(rest) ? " " : " · "), task && !rest.toLowerCase().includes(task.toLowerCase()) ? task : "", phase];
+  return shorten(parts.filter(Boolean).join(" · ") || `#${issue.number ?? "?"}`, 90);
 }
 
 /**

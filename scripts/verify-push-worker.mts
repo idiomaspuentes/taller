@@ -5,7 +5,9 @@
 import assert from "node:assert/strict";
 import { createHandler } from "../push-worker/src/index";
 import { MAX_DEVICES } from "../push-worker/src/store";
-import { mentionsIn, noticesFor, readableLine } from "../push-worker/src/webhook";
+import { mentionsIn, noticesFor, readableLine, subtarea } from "../push-worker/src/webhook";
+import { BOOK_NAMES } from "../push-worker/src/books";
+import { BOOKS } from "../src/domain/books";
 import type { Env } from "../push-worker/src/env";
 
 let passed = 0;
@@ -198,9 +200,34 @@ await test("qué se lee en el aviso: se menciona sin confundir correos, se quita
   assert.equal(readableLine("x".repeat(300)).length, 140);
   const n = noticesFor("issue_comment", comment("@bea mira esto", "ana"), "https://app.example.org/");
   assert.deepEqual(n.map((x) => [x.login, x.url]), [["bea", "https://app.example.org/#/mis-tareas/7"]]);
-  assert.match(n[0]!.title, /^Te mencionaron en #7 NEH 1:1/);
+  assert.equal(n[0]!.title, "Te mencionaron en Nehemías 1:1 · Decidir: objeción de @bea");
   assert.deepEqual(noticesFor("issue_comment", { ...comment("x"), action: "edited" }, "https://a"), [], "solo comentarios nuevos");
   assert.deepEqual(noticesFor("push", comment("@bea"), "https://a"), [], "otros eventos no avisan");
+});
+
+await test("el aviso nombra la subtarea con el libro en palabras y la tarea, no con su código y su número", async () => {
+  const body = ["## 1:5–8 · TPL", "", "- Tarea: **Alinear TPL**", "- Proyecto: **3JN**", "- Capítulo: **1**"].join("\n");
+  const issue = { number: 67, title: "3JN 1:5–8 · TPL", body, milestone: { title: "3JN" }, labels: [{ name: "pm" }, { name: "pm/libro:3JN" }] };
+  assert.equal(subtarea(issue), "3 Juan 1:5–8 · Alinear TPL");
+  const assigned = noticesFor("issues", { action: "assigned", issue, assignee: { login: "bea" }, sender: { login: "ana" }, repository: repo }, "https://app.example.org");
+  assert.deepEqual(assigned.map((n) => [n.title, n.body]), [["Te asignaron una subtarea", "3 Juan 1:5–8 · Alinear TPL"]]);
+});
+
+await test("el libro sale del hito, de la etiqueta o del título, y la fase se dice cuando la subtarea la trae", async () => {
+  assert.equal(subtarea({ number: 1, title: "2JN 1:1–3 · Academia", body: "- Tarea: **Traducir Academia**" }), "2 Juan 1:1–3 · Traducir Academia");
+  assert.equal(subtarea({ number: 2, title: "1:9–11 · Preguntas", body: "- Tarea: **Traducir Preguntas**", labels: [{ name: "pm/libro:2JN" }] }), "2 Juan 1:9–11 · Traducir Preguntas");
+  assert.equal(subtarea({ number: 3, title: "3JN 1:1–4 · TPL", body: "- Tarea: **Alinear TPL**\n- Fase: **Afinación**", milestone: { title: "3JN" } }), "3 Juan 1:1–4 · Alinear TPL · Afinación");
+});
+
+await test("una subtarea que se llama como su tarea no se dice dos veces, y sin datos queda su título o su número", async () => {
+  assert.equal(subtarea({ number: 4, title: "Leer la carta completa en voz alta", body: "- Tarea: **Leer la carta completa en voz alta**", milestone: { title: "2JN" } }), "2 Juan · Leer la carta completa en voz alta");
+  assert.equal(subtarea({ number: 5, title: "Algo sin libro" }), "Algo sin libro");
+  assert.equal(subtarea({ number: 6 }), "#6");
+  assert.ok(subtarea({ number: 7, title: "x".repeat(200) }).length <= 90);
+});
+
+await test("los nombres de los libros del Worker son los de la app", async () => {
+  assert.deepEqual(BOOK_NAMES, Object.fromEntries(BOOKS.filter((b) => /^[A-Z0-9]{3}$/.test(b.code)).map((b) => [b.code, b.name])));
 });
 
 console.log(`\nverify-push-worker: ${passed} checks passed.`);
