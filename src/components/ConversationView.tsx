@@ -648,7 +648,11 @@ function ConversationThread({
               <ArrowLeft aria-hidden className="size-4" />
               <span className="chat-back__label">{t("nav.myTasks")}</span>
             </button>
-            <h1 className="chat-header__title">{title}</h1>
+            {/* The name and what it belongs to, one block beside the way back: the same short header the tools have. */}
+            <div className="chat-header__name">
+              <h1 className="chat-header__title">{title}</h1>
+              {subline.length ? <p className="chat-header__sub">{subline.join(" · ")}</p> : null}
+            </div>
             <div className="chat-header__actions">
               {solver && launchCtx ? (
                 solver.kind === "url" || solver.openMode === "external" ? (
@@ -713,7 +717,6 @@ function ConversationThread({
               ) : null}
             </div>
           </div>
-          {subline.length ? <p className="chat-header__sub">{subline.join(" · ")}</p> : null}
           {solverBlock ? <p className="chat-header__sub">{loc(solverBlock)}</p> : null}
           {demo ? (
             <p className="chat-header__sub">{demo.notice || t("cv.demoNotice")}</p>
