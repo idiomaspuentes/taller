@@ -44,7 +44,7 @@ import {
   slugifyPhase,
 } from "../src/domain/phaseSlug.ts";
 import type { TaskStep } from "../src/domain/types.ts";
-import { applyHelpsTsvEdits, tsvRowInPortion } from "../src/domain/helpsDraft.ts";
+import { applyHelpsTsvEdits, selectTsvRowsForPortion, tsvRowInPortion } from "../src/domain/helpsDraft.ts";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -230,6 +230,18 @@ const patched = applyHelpsTsvEdits(tsv, [{ id: "n001", fields: { Note: "nuevo" }
 assert(patched.includes("nuevo") && patched.includes("keep"), "tsv edit one row");
 assert(tsvRowInPortion({ Reference: "1:2" }, { ref: "1:1–3", chapter: 1 }), "row in range");
 assert(!tsvRowInPortion({ Reference: "2:1" }, { ref: "1:1–3", chapter: 1 }), "row other chapter");
+
+{
+  // The plan lists the ids of the source helps; the file in the team's language has its own.
+  const inventory = { portions: [{ id: "3JN-01-01", ref: "3JN 1:1-4", preguntasItems: [{ id: "r3ao" }, { id: "yuwd" }], notasItems: [{ id: "w99t" }, { id: "intr" }] }], articles: [] } as never;
+  const launch = { portionIds: ["3JN-01-01"], itemIds: ["porcion:3JN 1:1-4"], ref: "1:1–4", chapter: 1 };
+  const questions = [{ Reference: "1:1", ID: "h8qz" }, { Reference: "1:4", ID: "ktw5" }, { Reference: "1:5", ID: "zzzz" }];
+  const picked = selectTsvRowsForPortion(questions, { ...launch, resource: "preguntas" }, inventory).map((r) => r.ID);
+  assert(picked.join() === "h8qz,ktw5", "las preguntas del pasaje salen aunque sus ids no sean los del inventario");
+  const notes = [{ Reference: "1:intro", ID: "intr" }, { Reference: "1:1", ID: "rni7" }, { Reference: "1:1", ID: "w99t" }, { Reference: "1:9", ID: "far1" }, { Reference: "1:intro", ID: "otra" }];
+  const pickedNotes = selectTsvRowsForPortion(notes, { ...launch, resource: "notas" }, inventory).map((r) => r.ID);
+  assert(pickedNotes.join() === "intr,rni7,w99t", "las notas de sus versículos y las que el plan le da por id; no la introducción de otro");
+}
 
 for (const resource of ["tpl", "TPS"]) {
   assert(closeIssueBlockReason(resource, "none"), `${resource}: sin PR no cierra el issue`);

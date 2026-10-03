@@ -92,14 +92,27 @@ export function tsvRowInPortion(
   return false;
 }
 
+/**
+ * The helps of a passage: every row of the file that falls on its verses, and those the plan lists by id.
+ *
+ * The plan's inventory is taken from the source helps, and a file in the team's language may carry other ids
+ * (questions written anew, notes added). Trusting the ids alone hid those rows from who translates: the
+ * questions of a passage came back empty and its notes, half. The verses are what the passage is; the ids add
+ * what the plan gives it from outside them (an introduction).
+ */
 export function selectTsvRowsForPortion(
   rows: Record<string, string>[],
   ctx: Pick<SolverLaunchContext, "resource" | "portionIds" | "itemIds" | "ref" | "chapter">,
   inventory: InventoryDoc | null,
 ): Record<string, string>[] {
   const ids = tsvIdsForLaunch(ctx, inventory);
-  if (ids) return rows.filter((row) => ids.has(tsvRowId(row)));
-  return rows.filter((row) => tsvRowInPortion(row, ctx));
+  if (!ids) return rows.filter((row) => tsvRowInPortion(row, ctx));
+  const range = portionRange(ctx.ref, 0);
+  const onItsVerses = (row: Record<string, string>) => {
+    const parsed = parseVerseRef(row.Reference || row.reference || "");
+    return Boolean(parsed && range && parsed.chapter === range.chapter && parsed.verses.some((v) => v >= range.from && v <= range.to));
+  };
+  return rows.filter((row) => ids.has(tsvRowId(row)) || onItsVerses(row));
 }
 
 export function applyHelpsTsvEdits(
