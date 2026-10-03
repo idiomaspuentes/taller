@@ -1,4 +1,6 @@
 import { draftTaskId } from "../dcs/afinacionLoad";
+import { saveCorrection } from "../dcs/afinacionStore";
+import { ChapterReader } from "./ChapterReader";
 import { Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -51,7 +53,7 @@ import { shortGloss } from "../domain/alignmentGloss";
 import { AlignmentBoxes } from "./AlignmentBoxes";
 import { groupsAfterTextEdit, objectedBoxKeys, sameText, tokensFromText, viewFromTokens, wordDiff } from "../domain/verseEditView";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
-import { resolveSourcePackage } from "../domain/sourcePackage";
+import { DEFAULT_SOURCE_PACKAGE, resolveSourcePackage, type SourcePackage } from "../domain/sourcePackage";
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -338,6 +340,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [session] = useState<GtSession | undefined>(() => loadSession());
   const [ctx, setCtx] = useState<SolverLaunchContext | null>(null);
   const [data, setData] = useState<AlineacionData | null>(null);
+  /** The source package the project reads from: for reading the chapter in the other texts. */
+  const [pkg, setPkg] = useState<SourcePackage>(DEFAULT_SOURCE_PACKAGE);
+  const [pane, setPane] = useState<"align" | "chapter">("align");
+  /** Correcting the text of the verse in view, with why. */
+  const [fixing, setFixing] = useState<{ text: string; why: string } | null>(null);
   const [task, setTask] = useState<ProjectTask | null>(null);
   const [decisions, setDecisions] = useState<ReviewDecision[]>([]);
   const [position, setPosition] = useState(0);
@@ -390,6 +397,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       if (!sourceTaskId) {
         throw new Error(tNow("al.noSource"));
       }
+      setPkg(resolveSourcePackage(board?.settings));
       const loaded = await loadAlineacion({ session, ctx: decoded, sourceTaskId, pkg: resolveSourcePackage(board?.settings) });
       // Everything is read before anything is shown: a verse must not look unfinished for a moment
       // because the decisions and answers about it have not arrived yet.
@@ -753,6 +761,23 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
     onClose();
   }
 
+  /** Correct the text of the verse in view on the group's draft; what is aligned of the words that stay is kept. */
+  async function saveFix() {
+    if (!session || !data || !verse || !fixing || !fixing.text.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      await saveCorrection({ session, target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, filepath: data.draft.filepath, chapter: data.chapter, verse: verse.verse, text: fixing.text.trim(), reason: fixing.why, book: data.book });
+      setFixing(null);
+      announce(t("af.corrected").replace("{ref}", `${data.book} ${data.chapter}:${verse.verse}`));
+      await load();
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   /** Shared step: take the verse in view to align it, or give it back. */
   async function takeVerse(release = false) {
     if (!session || !data || !verse || !ctx) return;
@@ -1004,12 +1029,38 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
               <Bank editable={editable}>
                 <div className="al-bank__bar">
                   <p className="af-lbl">{pendingWords ? (pendingWords === 1 ? t("al.toPlaceOne") : t("al.toPlaceMany").replace("{n}", String(pendingWords))) : t("al.allPlacedShort")}</p>
+                  {mode === "alinear" && !fixing ? (
+                    <button
+                      type="button"
+                      className="af-link"
+                      disabled={Boolean(dirty[verse.verse])}
+                      title={dirty[verse.verse] ? t("al.saveBeforeFix") : undefined}
+                      onClick={() => setFixing({ text: verse.text, why: "" })}
+                    >
+                      {t("af.fixShort")}
+                    </button>
+                  ) : null}
                   {verse.draft.length > pendingWords ? (
                     <button type="button" className="af-link" aria-pressed={showPlaced} onClick={() => setShowPlaced(!showPlaced)}>
                       {t(showPlaced ? "al.hidePlaced" : "al.showPlaced")}
                     </button>
                   ) : null}
                 </div>
+                {fixing ? (
+                  <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
+                    <textarea className="af-textarea" rows={3} value={fixing.text} aria-label={t("af.verseText")} onChange={(e) => setFixing({ ...fixing, text: e.target.value })} />
+                    <input className="af-input" value={fixing.why} placeholder={t("af.why")} aria-label={t("af.why")} onChange={(e) => setFixing({ ...fixing, why: e.target.value })} />
+                    <p className="af-hint">{t("al.fixHint")}</p>
+                    <div className="af-row-buttons">
+                      <Button type="button" size="sm" disabled={saving || !fixing.text.trim() || fixing.text.trim() === verse.text.trim()} onClick={() => void saveFix()}>
+                        {saving ? t("af.saving") : t("af.saveFix")}
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setFixing(null)}>
+                        {t("af.cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="al-bank__words">
                   {verse.draft.map((token, i) => (showPlaced || aligned[i] !== true || selectedWords.includes(i)) ? (
                     <BankWord
@@ -1089,6 +1140,20 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         ) : null}
       </ToolHeader>
 
+      {data && verse && session ? (
+        <div className="fam-tabs af-panes" role="tablist">
+          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "align"} onClick={() => setPane("align")}>
+            {t(mode === "revisar" ? "al.paneReview" : "al.paneAlign")}
+          </button>
+          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "chapter"} onClick={() => setPane("chapter")}>
+            {t("af.paneChapter")}
+          </button>
+        </div>
+      ) : null}
+      {data && verse && session && pane === "chapter" ? (
+        <ChapterReader session={session} book={data.book} pkg={pkg} draft={data.draft} draftLabel={t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")} chapter={data.chapter} from={verse.verse} />
+      ) : null}
+
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -1111,7 +1176,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         />
       ) : null}
 
-      {data && verse ? (
+      {data && verse && pane === "align" ? (
         <>
           <nav className="al-verses" aria-label={t("al.versesNav")}>
             {data.verses.map((v, i) => {

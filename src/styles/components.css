@@ -7766,3 +7766,10 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
   body:has(.af.al) .snd-button { top: 0.4375rem; bottom: auto; right: 0.75rem; height: 40px; min-height: 40px; border-color: transparent; box-shadow: none; background: none; }
   body:has(.af.al) .snd-panel { top: 3.5rem; bottom: auto; max-height: calc(100dvh - 4.5rem - var(--keyboard, 0px)); }
 }
+/* On a phone the words still to place are one row that slides sideways: a long verse never covers the boxes. */
+@media (max-width: 40rem) {
+  .al-bank { max-height: none; }
+  .al-bank__words { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 0.25rem; }
+  .al-bank__words .al-word { flex: 0 0 auto; }
+}
+.al-bank .af-fix { margin-bottom: 0.5rem; }

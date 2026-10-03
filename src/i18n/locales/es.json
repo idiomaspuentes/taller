@@ -2226,5 +2226,11 @@
   "al.toPlaceMany": "Faltan colocar {n} palabras",
   "al.allPlacedShort": "Todas las palabras están colocadas",
   "al.showPlaced": "Ver todas",
-  "al.hidePlaced": "Solo las que faltan"
+  "al.hidePlaced": "Solo las que faltan",
+  "cr.loading": "Cargando los textos…",
+  "cr.none": "No se pudo leer ningún texto de este libro.",
+  "al.paneAlign": "Alinear",
+  "al.paneReview": "Revisar",
+  "al.fixHint": "La corrección se escribe en el borrador del grupo. Lo alineado de las palabras que no cambian se conserva; las nuevas quedan por colocar.",
+  "al.saveBeforeFix": "Guarda primero la alineación de este versículo"
 }

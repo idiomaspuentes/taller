@@ -80,6 +80,28 @@ function bookVerses(usj: UsjDocument | null): BookVerseMap {
 
 const WHOLE_CHAPTER = (chapter: number) => ({ chapter, from: 1, to: 200 });
 
+export type ChapterText = { id: "orig" | "ult" | "ust" | "draft"; label: string; book: BookVerseMap };
+
+/**
+ * The texts a chapter is read in, whole book: the original, the literal and the simple English, and the group's
+ * draft as it is now. A text that cannot be read is left out.
+ */
+export async function loadChapterTexts(params: { session: GtSession; book: string; pkg: SourcePackage; draft: { owner: string; repo: string; branch: string; filepath: string }; draftLabel: string }): Promise<ChapterText[]> {
+  const { session, book, pkg, draft } = params;
+  const ref = originalTextRef(book);
+  const [orig, ult, ust, own] = await Promise.all([
+    readRaw(session, ref.owner, ref.repo, ref.filepath),
+    readRaw(session, pkg.owner, pkg.ult, bookUsfmName(book)),
+    readRaw(session, pkg.owner, pkg.ust, bookUsfmName(book)),
+    getRawContent(dcsConfig(session.host), draft.owner, draft.repo, draft.filepath, { token: session.token, ref: draft.branch }).catch(() => null),
+  ]);
+  const rows: [ChapterText["id"], string, string | null][] = [["orig", "Original", orig], ["ult", "ULT", ult], ["ust", "UST", ust], ["draft", params.draftLabel, own]];
+  return rows.flatMap(([id, label, raw]) => {
+    const verses = raw ? bookVerses(tryParseUsj(raw)) : {};
+    return Object.keys(verses).length ? [{ id, label, book: verses }] : [];
+  });
+}
+
 export async function readRaw(session: GtSession, owner: string, repo: string, filepath: string): Promise<string | null> {
   try {
     return await getRawContent(dcsConfig(session.host), owner, repo, filepath, { token: session.token });
