@@ -9,7 +9,7 @@ import {
 import type { AlignmentDocument, AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
-import { readRepoFile, isShaConflict, type RepoTarget } from "./afinacionStore";
+import { readRepoFile, isWriteRace, raceDelay, type RepoTarget } from "./afinacionStore";
 import { withoutPunctuation } from "../domain/alignmentKeep";
 
 /**
@@ -77,7 +77,8 @@ export async function saveVerseAlignment(params: {
       });
       break;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 3) throw err;
+      if (!isWriteRace(err) || attempt === 3) throw err;
+      await raceDelay(attempt);
     }
   }
   // What the marks of the draft can hold is what counts as saved: words that are not next to each other but go
@@ -120,7 +121,8 @@ async function saveLayerVerse(params: {
       });
       return;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 3) throw err;
+      if (!isWriteRace(err) || attempt === 3) throw err;
+      await raceDelay(attempt);
     }
   }
 }

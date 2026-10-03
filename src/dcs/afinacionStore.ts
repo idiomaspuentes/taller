@@ -31,6 +31,19 @@ export function isShaConflict(err: unknown): boolean {
   return err instanceof DcsApiError && (err.status === 409 || err.status === 422);
 }
 
+/**
+ * A write that lost a race and is worth one more try. Besides the stale-file answers (409, 422), Door43 answers 403
+ * to one of two people who save to the same branch at the same moment, each in a file of their own: seen when a
+ * team answered a review together, where it was told to the person as "your account may not do this". A real
+ * refusal still fails after the tries.
+ */
+export function isWriteRace(err: unknown): boolean {
+  return isShaConflict(err) || (err instanceof DcsApiError && err.status === 403);
+}
+
+/** A short wait before trying again, longer each time and never the same for two people. */
+export const raceDelay = (attempt: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, 250 * attempt + Math.random() * 400));
+
 export async function readRepoFile(
   session: GtSession,
   target: RepoTarget,
@@ -133,7 +146,8 @@ async function appendDecisionsNow(session: GtSession, target: RepoTarget, book: 
       });
       return;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 4) throw err;
+      if (!isWriteRace(err) || attempt === 4) throw err;
+      await raceDelay(attempt);
     }
   }
 }
@@ -175,7 +189,8 @@ export async function saveCorrection(params: {
       });
       return { clearedVerses: kept.clearedVerses, reducedVerses: kept.reducedVerses, usfm: kept.usfm };
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 3) throw err;
+      if (!isWriteRace(err) || attempt === 3) throw err;
+      await raceDelay(attempt);
     }
   }
   throw new Error("El borrador grupal cambió mientras se guardaba. Inténtalo de nuevo.");
@@ -210,7 +225,8 @@ export async function savePreferredTerm(params: {
       });
       return next;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === 3) throw err;
+      if (!isWriteRace(err) || attempt === 3) throw err;
+      await raceDelay(attempt);
     }
   }
   throw new Error("La lista de traducciones preferidas cambió mientras se guardaba. Inténtalo de nuevo.");

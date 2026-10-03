@@ -1,3 +1,4 @@
+import { isWriteRace, raceDelay } from "./afinacionStore";
 import { DcsApiError, createOrUpdateContents, getContents, getRawContent, type ContentsResponse } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
@@ -16,7 +17,6 @@ const dirOf = (key: string): string => `checklists/${key}`;
 const fileOf = (key: string, login: string): string => `${dirOf(key)}/${login.trim().toLowerCase()}.json`;
 
 const isNotFound = (err: unknown): boolean => err instanceof DcsApiError && err.status === 404;
-const isShaConflict = (err: unknown): boolean => err instanceof DcsApiError && (err.status === 409 || err.status === 422);
 
 /**
  * Writes to the same file go one after another. Answering several questions in a row would otherwise send two
@@ -119,7 +119,8 @@ async function appendNow(session: GtSession, target: CheckTarget, key: string, f
       });
       return;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === ATTEMPTS) throw err;
+      if (!isWriteRace(err) || attempt === ATTEMPTS) throw err;
+      await raceDelay(attempt);
     }
   }
 }
@@ -183,7 +184,8 @@ async function saveDocNow<T>(session: GtSession, target: CheckTarget, key: strin
       });
       return;
     } catch (err) {
-      if (!isShaConflict(err) || attempt === ATTEMPTS) throw err;
+      if (!isWriteRace(err) || attempt === ATTEMPTS) throw err;
+      await raceDelay(attempt);
     }
   }
 }
