@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BellRing, Check, ListChecks, Smartphone } from "lucide-react";
+import { BellRing, Check, ListChecks, MonitorSmartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
 import { useT } from "../i18n/messages";
@@ -68,7 +68,7 @@ export function Onboarding({ session, onHide }: Props) {
       </h2>
       <p className="onboarding__lead">{t("onboarding.lead")}</p>
       <ul className="onboarding__steps">
-        <Step done={installed} icon={<Smartphone />} title={t("onboarding.installTitle")} text={installed ? t("onboarding.installDone") : t("onboarding.installText")}>
+        <Step done={installed} icon={<MonitorSmartphone />} title={t("onboarding.installTitle")} text={installed ? t("onboarding.installDone") : t("onboarding.installText")}>
           {!installed && canPromptInstall() ? (
             <Button type="button" size="sm" variant="outline" onClick={() => void promptInstall()}>
               {t("onboarding.installButton")}
