@@ -1,5 +1,5 @@
 {
-  "_": "Entries the UBS dictionary lacks for a number the UGNT uses, translated from the English Greek Lexicon (git.door43.org/test_org/en_ugl, CC BY-SA 4.0). Machine translated, pending review by the team. Keyed by Strong's number as the file is named.",
+  "_": "Entries the UBS dictionary lacks for a number the UGNT uses, translated from the Dodson Greek Lexicon (John Jeffrey Dodson, public domain) as packaged in translationCore's English Greek Lexicon (git.door43.org/test_org/en_ugl). Machine translated, pending review by the team. Keyed by Strong's number as the file is named.",
   "1510": { "lemma": "εἰμί", "es": { "glosses": ["ser", "estar", "existir"], "definition": "ser, existir." } },
   "2411": { "lemma": "ἱερόν", "es": { "glosses": ["templo"], "definition": "templo, ya sea el edificio entero o, específicamente, los atrios exteriores, abiertos a los adoradores." } },
   "3440": { "lemma": "μόνον", "es": { "glosses": ["solo", "solamente", "únicamente"], "definition": "solo, solamente, únicamente." } },

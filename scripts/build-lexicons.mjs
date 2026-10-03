@@ -45,10 +45,23 @@ const SOURCE_FILES = {
 /** The credit lines the UBS asks for, word for word. */
 const ADDITIONS_DIR = path.join(HERE, "lexicon-additions");
 
-/** The English lexicons the added entries were translated from. */
+/**
+ * The English lexicons the added entries were translated from. They are the ones translationCore bundles and
+ * gateway-edit reads (repackaged at git.door43.org/test_org); their text comes from these two works.
+ */
 const ADDED_FROM = {
-  greek: { id: "en_ugl", title: "English Greek Lexicon", url: "https://git.door43.org/test_org/en_ugl", credit: "English Greek Lexicon, version 0.1, unfoldingWord (Door43 World Missions Community), CC BY-SA 4.0." },
-  hebrew: { id: "en_uhl", title: "English Hebrew Lexicon", url: "https://git.door43.org/test_org/en_uhl", credit: "English Hebrew Lexicon, version 0.1, unfoldingWord (Open Scriptures Hebrew Bible Project), CC BY-SA 4.0." },
+  greek: {
+    id: "en_ugl",
+    title: "Dodson Greek Lexicon",
+    url: "https://github.com/biblicalhumanities/Dodson-Greek-Lexicon",
+    credit: "Greek-English Lexicon by John Jeffrey Dodson, in the public domain (CC0), from github.com/biblicalhumanities/Dodson-Greek-Lexicon; as packaged in the English Greek Lexicon of translationCore (unfoldingWord), git.door43.org/test_org/en_ugl.",
+  },
+  hebrew: {
+    id: "en_uhl",
+    title: "Strong's Hebrew Dictionary (Open Scriptures Hebrew Bible Project)",
+    url: "https://github.com/openscriptures/HebrewLexicon",
+    credit: "Strong's Hebrew Dictionary as edited in the OSHB Hebrew Lexicon (HebrewStrong.xml) by the Open Scriptures Hebrew Bible Project, CC BY 4.0, the text of Strong's being in the public domain; as packaged in the English Hebrew Lexicon of translationCore (unfoldingWord), git.door43.org/test_org/en_uhl.",
+  },
 };
 
 const CREDIT = {
@@ -290,6 +303,7 @@ dublin_core:
   conformsto: 'rc0.2'
   contributor:
     - 'United Bible Societies'
+    - '${greek ? "John Jeffrey Dodson" : "Open Scriptures Hebrew Bible Project"}'
     - 'unfoldingWord'
     - 'Idiomas Puentes'
   creator: 'United Bible Societies'
