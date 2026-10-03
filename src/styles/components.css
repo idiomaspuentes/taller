@@ -8039,3 +8039,13 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 /* A quote inside a quote, in the helps editor: set in a step. */
 blockquote[data-depth="2"] { margin-left: 1.25rem; }
 blockquote[data-depth="3"] { margin-left: 2.5rem; }
+
+/* On a phone every control of a tool is at least a finger wide: the secondary ones (a small button, a fold, a link
+   that acts) were 19 to 32 px tall. The words of a verse stay as they are: they are text that is tapped. */
+@media (max-width: 767px), (pointer: coarse) {
+  .af .btn[data-size="default"], .fam .btn[data-size="default"] { min-height: 40px; }
+  .af .btn[data-size="sm"], .fam .btn[data-size="sm"], .scripture-editor .btn[data-size="sm"] { min-height: 36px; }
+  .hs-verse > summary, .hs-source > summary, .af-team > summary { min-height: 36px; display: flex; align-items: center; }
+  .af-ref__texts button, .gr-text__actions button, .rv-toggle { min-height: 36px; }
+  .af-link { min-height: 36px; display: inline-flex; align-items: center; }
+}

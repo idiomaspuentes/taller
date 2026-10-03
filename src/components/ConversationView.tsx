@@ -1,3 +1,4 @@
+import { bookLabel } from "../domain/books";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, MoreHorizontal, SendHorizontal, TextQuote } from "lucide-react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -610,7 +611,9 @@ function ConversationThread({
 
   const now = new Date();
   const failed = sources.filter((s) => s.status === "error");
-  const title = header?.title || issue?.title || `Subtarea #${issueNumber}`;
+  // The book in words ("3 Juan 1:5–8 · TPL"), as the tools name the same passage: a subtarea's title carries its code.
+  const rawTitle = header?.title || issue?.title || `Subtarea #${issueNumber}`;
+  const title = rawTitle.replace(/^([A-Z0-9]{3})(?=\s)/, (code) => bookLabel(code, language));
   const doorUrl = issue?.html_url || door43IssueUrl(session, pmOrg, issueNumber);
   const subline = [
     header?.taskLabel ? localizeName(header.taskLabel, language) : "",

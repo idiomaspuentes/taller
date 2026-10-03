@@ -1,3 +1,4 @@
+import { toolHeading } from "./toolHeading";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
@@ -1788,7 +1789,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             <span className="scripture-editor__action-label">{t("se.close")}</span>
           </Button>
           <span className="scripture-editor__head-rule" aria-hidden />
-          <h1 className="scripture-editor__title">{title}</h1>
+          {/* The same name as the other tools: the passage, and under it the step and the task. */}
+          <div className="th-name">
+            <h1>{toolHeading(ctx, language, title).title}</h1>
+            {toolHeading(ctx, language, title).where ? <p>{toolHeading(ctx, language, title).where}</p> : null}
+          </div>
           {lab ? (
             <Badge variant="outline" className="scripture-editor__status">
               {t("se.lab")}
