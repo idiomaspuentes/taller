@@ -220,6 +220,16 @@ export function collectHelpsArticleRefs(
     out.push({ id, path, title });
   }
 
+  // A subtarea that names its articles (`articulo:figs-metaphor`) is about those and no others: the ones still to
+  // be translated. Listing every article of its passage instead showed the translator the 26 already done beside
+  // the one to do, and left out an article that belongs to another passage of the book.
+  const named = ctx.itemIds.filter((raw) => raw.startsWith("articulo:")).map((raw) => raw.slice("articulo:".length).trim()).filter(Boolean);
+  for (const id of named) {
+    const article = inventory ? lookupArticle(inventory, id) : undefined;
+    push(article?.id || id, article?.path || id, article?.title);
+  }
+  if (named.length) return out;
+
   if (inventory) {
     for (const pid of ctx.portionIds) {
       const portion = matchPortion(inventory, pid);

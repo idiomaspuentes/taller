@@ -343,4 +343,14 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(mergeTsvRows(merged, work, source) === merged, "entregar dos veces no cambia nada");
 }
 
+{
+  // A subtarea of articles lists the articles it names, not every article of its passage.
+  const { collectHelpsArticleRefs } = await import("../src/domain/helpsDraft.ts");
+  const inventory = { portions: [{ id: "HAG-01-01", ref: "HAG 1:1-11", palabras: [{ id: "king" }, { id: "bear" }, { id: "age-timeperiod" }] }], articles: [{ id: "king", path: "bible/other/king", title: "rey" }, { id: "bear", path: "bible/other/bear" }, { id: "age-timeperiod", path: "bible/other/age-timeperiod" }, { id: "bear-carryburden", path: "bible/other/bear-carryburden" }] } as never;
+  const named = collectHelpsArticleRefs({ resource: "palabras", portionIds: ["HAG-01-01"], itemIds: ["articulo:age-timeperiod", "articulo:bear-carryburden"] }, inventory);
+  assert(named.map((r) => r.path).join() === "bible/other/age-timeperiod,bible/other/bear-carryburden", "solo los artículos que la subtarea nombra, también el de otro pasaje");
+  const all = collectHelpsArticleRefs({ resource: "palabras", portionIds: ["HAG-01-01"], itemIds: ["porcion:HAG 1:1-11"] }, inventory);
+  assert(all.length === 3, "sin artículos nombrados, los del pasaje");
+}
+
 console.log("verify-portion-pr: ok");
