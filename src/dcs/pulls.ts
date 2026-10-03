@@ -13,6 +13,7 @@ import {
   type ArchiveRefAction,
 } from "../domain/portionPr";
 import { isSessionExpiredError } from "./sessionExpiry";
+import { forgetBranches } from "./branchList";
 
 export type DcsGitRef = {
   ref: string;
@@ -173,6 +174,7 @@ export async function createBranchAt(
     token,
     body: { new_branch_name: branch, old_ref_name: sha },
   });
+  forgetBranches(config, owner, repo);
 }
 
 /** `GET /branches/{name}`: false for a missing branch and for a ghost git ref. */

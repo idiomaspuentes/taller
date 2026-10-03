@@ -1,3 +1,4 @@
+import { knownBranches, onlyExisting } from "./branchList";
 import { createOrUpdateContents, DcsApiError, getContents } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { groupDraftBranches, readRaw } from "./afinacionLoad";
@@ -134,7 +135,8 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
       // The team's articles are on the group draft of the work on them; with no such branch there is nothing new.
       const tasks = (board?.teams ?? []).filter((t) => t.rules.some((rule) => rule.resource === resource)).reverse();
       let branch: string | undefined;
-      for (const candidate of [...new Set(tasks.flatMap((t) => groupDraftBranches(book, t.id)))]) {
+      const names = await knownBranches(config, owner, repo, session.token);
+      for (const candidate of onlyExisting([...new Set(tasks.flatMap((t) => groupDraftBranches(book, t.id)))], names)) {
         if (await branchExists(config, owner, repo, candidate, session.token).catch(() => false)) {
           branch = candidate;
           break;

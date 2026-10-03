@@ -1,3 +1,4 @@
+import { knownBranches, onlyExisting } from "./branchList";
 import { createOrUpdateContents, DcsApiError, getRawContent } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
@@ -33,7 +34,8 @@ export async function readTeamHelps(params: {
     undefined,
   ];
   const config = dcsConfig(session.host);
-  for (const branch of branches) {
+  const names = await knownBranches(config, helps.owner, helps.repo, session.token);
+  for (const branch of onlyExisting(branches, names)) {
     try {
       const text = await getRawContent(config, helps.owner, helps.repo, helps.filepath, { token: session.token, ...(branch ? { ref: branch } : {}) });
       if (text.trim()) return { text, branch };

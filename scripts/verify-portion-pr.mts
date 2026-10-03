@@ -322,4 +322,13 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(none.kind === "no-source", "sin SHA en ningún lado: no se crea nada");
 }
 
+{
+  // Only the branches a repository has are asked for a text.
+  const { branchNamesFromRefs, onlyExisting } = await import("../src/dcs/branchList.ts");
+  const names = branchNamesFromRefs([{ ref: "refs/heads/master" }, { ref: "refs/heads/3jn/tpl" }, { ref: "refs/tags/v1" }, {}]);
+  assert([...names].join() === "master,3jn/tpl", "las ramas salen de refs/heads, con sus barras");
+  assert(onlyExisting(["3jn/tpl", "t/3jn/tpl", "3jn", undefined], names).join("|") === "3jn/tpl|", "solo se preguntan las que existen, en su orden, y la rama por defecto");
+  assert(onlyExisting(["a", "b"], null).length === 2, "sin lista se preguntan todas, como antes");
+}
+
 console.log("verify-portion-pr: ok");

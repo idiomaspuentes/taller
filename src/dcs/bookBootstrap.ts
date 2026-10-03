@@ -1,3 +1,4 @@
+import { knownBranches, onlyExisting } from "./branchList";
 import { DcsApiError } from "@ip-lms/dcs-client";
 import { loadEnglishScriptureKindUsfm } from "../domain/referenceResources";
 import {
@@ -104,8 +105,10 @@ export async function tryReadExistingBookUsfm(params: {
     seen.add(key);
     refs.push(key || undefined);
   }
+  // Only the branches the repository has are asked: the others would each be a failed request.
+  const names = refs.some(Boolean) ? await knownBranches(dcsConfig(params.session.host), params.owner, params.repo, params.session.token) : null;
   const reads = await Promise.all(
-    refs.map(async (branch) => {
+    onlyExisting(refs, names).map(async (branch) => {
       try {
         const found = await tryRead(
           params.session,
