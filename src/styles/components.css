@@ -5762,10 +5762,16 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
 
 /* Alineación: glosa en inglés, cajas vacías compactas, texto de referencia y revisión en lista */
 .al-ref__gloss { font-size: 0.6875rem; font-weight: 600; color: var(--accent-700); max-width: 9rem; line-height: 1.2; }
-.al-box[data-compact="true"] { min-width: 5rem; border-style: dashed; background: transparent; }
+/* An empty box is the target the person taps or drops a word on, so it must not look switched off:
+   same white surface as a filled box, with the accent on the dashed edge and on the plus saying "a word goes here". */
+.al-box[data-compact="true"] { min-width: 5rem; align-self: flex-start; border-style: dashed; border-color: var(--accent-400); cursor: pointer; }
+.al-box[data-compact="true"]:active { background: var(--accent-50); }
+@media (hover: hover) { .al-box[data-compact="true"]:hover { border-color: var(--accent-500); background: var(--accent-50); } }
+/* A word dragged over it: the drop state wins over the resting look, whatever the order of the rules. */
+.al-box[data-compact="true"][data-over="true"] { border-style: solid; border-color: var(--accent-500); background: var(--accent-100); }
 .al-box[data-compact="true"] .al-box__head { border-bottom: 0; align-items: center; }
 .al-box[data-compact="true"] .al-box__body { display: none; }
-.al-box__plus { align-self: center; margin-inline: 0.125rem 0.375rem; font-size: 1.25rem; line-height: 1; color: var(--text-muted); }
+.al-box__plus { flex: 0 0 auto; display: grid; place-items: center; align-self: center; width: 1.25rem; height: 1.25rem; margin-inline: 0.125rem 0.25rem; border-radius: 999px; background: var(--accent-100); font-size: 1rem; font-weight: 700; line-height: 1; color: var(--accent-700); }
 .al-reference { padding: 0.375rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font-size: 0.875rem; }
 .al-reference summary { cursor: pointer; font-weight: 700; color: var(--text-muted); min-height: 2rem; display: flex; align-items: center; }
 .al-reference p { margin: 0.25rem 0 0.125rem; line-height: 1.45; }
