@@ -7802,3 +7802,8 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
   .af.al { gap: 0.5rem; }
   .al-verses { padding: 0; }
 }
+/* The action bar sits on the bottom edge even when the verse is short: the tool is a column that fills the screen and
+   the bar is pushed to its end, over the padding the screen keeps for the last content. */
+.af.al { display: flex; flex-direction: column; }
+.af.al > * { flex: 0 0 auto; min-width: 0; }
+.af.al > .al-actionbar { margin-top: auto; margin-bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); }
