@@ -271,28 +271,28 @@ if (fcr) {
     assert.equal(team("tpl").steps![0]!.scope, "chapter-once");
   });
 
-  test("FCR: la Afinación son tres tareas por texto; desafíos y alineación con quien la hace y dos que confirman, palabras clave en ronda abierta", () => {
+  test("FCR: la Afinación son tres tareas por texto; desafíos y palabras clave en ronda abierta, la alineación con quien la hace y dos que revisan", () => {
     for (const res of ["tpl", "tps"]) {
       const challenges = team(`desafios-${res}`), words = team(`palabras-${res}`), align = team(`alinear-${res}`);
-      assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar", "confirmar"], ["revisar"], ["alinear", "revisar-alineacion"]]);
+      assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar"], ["revisar"], ["alinear", "revisar-alineacion"]]);
       assert.equal(challenges.bundle?.enabled ?? false, false, "los desafíos se reparten por porción, como la traducción");
       assert.equal(words.bundle?.grain, "chapter", "las palabras clave se revisan por capítulo, para ver la consistencia");
       assert.equal(align.bundle?.enabled ?? false, false, "la alineación se reparte por porción");
-      for (const task of [challenges, align]) {
-        const [doIt, confirm] = task.steps!;
-        assert.equal(doIt!.claimMode, "exclusive", `${task.id}: una persona la toma`);
-        assert.equal(confirm!.claimMode, "pool");
-        assert.equal(confirm!.minAssignees, 2, `${task.id}: confirman otras dos personas`);
-        assert.equal(confirm!.closing, "consensus");
-        assert.deepEqual(confirm!.excludePriorStepIds, [doIt!.id], "quien la hizo no la confirma");
+      // Alignment is somebody's work that others review: one person takes it, two others confirm.
+      const [doIt, confirm] = align.steps!;
+      assert.equal(doIt!.claimMode, "exclusive", "una persona alinea");
+      assert.equal(confirm!.claimMode, "pool");
+      assert.equal(confirm!.minAssignees, 2, "revisan otras dos personas");
+      assert.equal(confirm!.closing, "consensus");
+      assert.deepEqual(confirm!.excludePriorStepIds, [doIt!.id], "quien alineó no revisa su alineación");
+      // Challenges and key terms are answers to what is already there: nobody has to be the first on all of them.
+      for (const task of [challenges, words]) {
+        const [round] = task.steps!;
+        assert.equal(round!.claimMode, "pool", `${task.id}: cualquiera del equipo entra, nadie la toma para sí`);
+        assert.equal(round!.closing, "consensus");
+        assert.equal(round!.minAgree, 3, `${task.id}: tres personas de acuerdo en cada ítem`);
+        assert.equal(round!.excludePriorStepIds, undefined, "no hay un primer paso del que quedar fuera");
       }
-      assert.equal(challenges.steps![1]!.minAgree, 3, "quien revisó y las dos que confirman");
-      // Key terms: nobody has to be the first on all of them. Anyone answers any term; three agree on each.
-      const [round] = words.steps!;
-      assert.equal(round!.claimMode, "pool", "cualquiera del equipo entra, nadie la toma para sí");
-      assert.equal(round!.closing, "consensus");
-      assert.equal(round!.minAgree, 3, "tres personas de acuerdo en cada término");
-      assert.equal(round!.excludePriorStepIds, undefined, "no hay un primer paso del que quedar fuera");
     }
   });
 

@@ -148,21 +148,22 @@ el artículo no depende de un pasaje.
 
 **Propósito:** volver a anclar el TPL y el TPS al idioma original.
 
-**Tareas:** tres por texto, en este orden, cada una con un paso de hacer y otro de confirmar. Las del TPL
-y las del TPS avanzan a la vez y pueden tener equipos distintos.
+**Tareas:** tres por texto, en este orden. Desafíos y Palabras clave son una ronda abierta de un solo paso;
+Alinear tiene un paso de hacer y otro de revisar. Las del TPL y las del TPS avanzan a la vez y pueden tener
+equipos distintos.
 
-| Tarea | Subtareas | Espera a | Paso 1 (una persona la toma) | Paso 2 (confirman) |
+| Tarea | Subtareas | Espera a | Paso 1 | Paso 2 |
 |-------|-----------|----------|------------------------------|--------------------|
-| **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y la revisión grupal, del capítulo | Revisar desafíos: responde cada figura de la porción; se completa sola al responder todas | Confirmar desafíos |
+| **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y la revisión grupal, del capítulo | Revisar desafíos, en **ronda abierta**: cualquiera contesta cualquier figura de la porción; tres personas de acuerdo en cada una | (no hay: es un solo paso) |
 | **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave, en **ronda abierta**: cualquiera contesta cualquier término; tres personas de acuerdo en cada uno | (no hay: es un solo paso) |
 | **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear los versículos de la porción; lo marca quien lo hace | Revisar la alineación |
 
-**Quién confirma:** al menos otras dos personas del equipo que no hicieron el paso 1 (pueden sumarse
-hasta seis). Un ítem queda **acordado cuando 3 personas habilitadas están de acuerdo** (quien revisó y
-dos que confirman) **y nadie tiene una objeción abierta**: con una objeción hace falta consenso, y lo
-disputado va a la lista de la reunión del equipo, donde el coordinador o una persona habilitada registra
-la decisión. Cada persona más que confirma suma confianza al ítem. Quien confirma empieza con las
-palabras que eligió quien revisó.
+**Quién entra y cuándo queda acordado:** en Desafíos y Palabras clave, entre dos y seis personas del equipo,
+sin que nadie quede fuera; en Alinear, revisan al menos otras dos que no alinearon. Un ítem queda **acordado
+cuando 3 personas habilitadas están de acuerdo y nadie tiene una objeción abierta**: con una objeción hace falta
+consenso, y lo disputado va a la lista de la reunión del equipo, donde el coordinador o una persona habilitada
+registra la decisión. Cada persona más que responde suma confianza al ítem. Quien llega después empieza con las
+palabras que eligió quien llegó primero.
 **Quién puede tomarlas:** Aprendiz o más. Un cambio acordado lo escribe **cualquier persona habilitada
 del equipo**.
 
@@ -179,6 +180,12 @@ del equipo**.
 - La pregunta cambia con el texto: el **TPL** debe conservar la forma del original; el **TPS** debe decirla
   de forma sencilla (la pasiva en activa, la metáfora explicada o como símil).
 - Una nota que no enlaza ningún artículo no señala nada que comprobar y no entra en la ronda.
+
+**Desafíos y palabras clave son rondas abiertas.** No hay «una persona revisa y otras confirman»: nadie carga con
+ser la primera en todas las notas o en todos los términos. Quien llega primero a un ítem marca qué lo traduce;
+quien llega después lo ve marcado y confirma o dice qué no comparte; cada ítem queda acordado con tres personas de
+acuerdo. La herramienta abre en el primero que a la persona le falta. La alineación sí conserva sus dos pasos,
+porque es el trabajo de una persona que otras revisan.
 
 **Cómo se revisan las palabras clave:**
 - Es **una ronda abierta**, no «una persona revisa y otras confirman». Nadie tiene que ser la primera en todos los
