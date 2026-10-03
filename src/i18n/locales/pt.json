@@ -2212,7 +2212,6 @@
   "al.allPlacedShort": "Tudo colocado",
   "cr.loading": "Carregando os textos…",
   "cr.none": "Não foi possível ler nenhum texto deste livro.",
-  "al.fixHint": "A correção é escrita no rascunho do grupo. O alinhado das palavras que não mudam se conserva; as novas ficam por colocar.",
   "al.saveBeforeFix": "Guarde primeiro o alinhamento deste versículo",
   "al.bankResize": "Arraste para mudar a altura",
   "al.bankMore": "Ampliar",
@@ -2251,5 +2250,15 @@
   "lx.rVerse": "Versículo",
   "lx.rShown": "Sentido mostrado",
   "lx.rMissing": "(o léxico não tem entrada)",
-  "lx.rFrom": "Enviado do Taller por"
+  "lx.rFrom": "Enviado do Taller por",
+  "fx.why": "Por quê, ou o que o grupo deve revisar",
+  "fx.whyHint": "Opcional se corrigir agora; necessário para pedir ao grupo",
+  "fx.fixNow": "Corrigir agora",
+  "fx.fixNowHint": "Altera o rascunho do grupo neste momento.",
+  "fx.ask": "Pedir ao grupo",
+  "fx.askHint": "Não altera nada: deixa seu comentário como uma decisão que os outros respondem.",
+  "fx.askHintText": "Não altera nada: propõe este texto como uma decisão que os outros respondem.",
+  "fx.toPlaceOne": "Ficará 1 palavra por colocar. O alinhado das demais se conserva.",
+  "fx.toPlaceMany": "Ficarão {n} palavras por colocar. O alinhado das demais se conserva.",
+  "fx.keeps": "O alinhado das palavras que ficam se conserva."
 }

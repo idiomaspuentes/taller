@@ -65,6 +65,7 @@ import { tallerConfig, workspaceOfOrg } from "../config";
 import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
 import { strongParts } from "../domain/lexicon";
 import { WordSheet } from "./WordSheet";
+import { CorrectionSheet } from "./CorrectionSheet";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -390,7 +391,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [pkg, setPkg] = useState<SourcePackage>(DEFAULT_SOURCE_PACKAGE);
   const [pane, setPane] = useState<"align" | "chapter">("align");
   /** Correcting the text of the verse in view, with why. */
-  const [fixing, setFixing] = useState<{ text: string; why: string } | null>(null);
+  const [fixing, setFixing] = useState(false);
+  /** What went wrong inside the correction sheet: shown there, not behind it. */
+  const [fixError, setFixError] = useState("");
   const [task, setTask] = useState<ProjectTask | null>(null);
   const [decisions, setDecisions] = useState<ReviewDecision[]>([]);
   const [position, setPosition] = useState(0);
@@ -808,17 +811,64 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   }
 
   /** Correct the text of the verse in view on the group's draft; what is aligned of the words that stay is kept. */
-  async function saveFix() {
-    if (!session || !data || !verse || !fixing || !fixing.text.trim()) return;
+  async function saveFix(text: string, why: string) {
+    if (!session || !data || !verse || !text.trim()) return;
     setSaving(true);
-    setError("");
+    setFixError("");
     try {
-      await saveCorrection({ session, target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, filepath: data.draft.filepath, chapter: data.chapter, verse: verse.verse, text: fixing.text.trim(), reason: fixing.why, book: data.book });
-      setFixing(null);
+      await saveCorrection({ session, target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, filepath: data.draft.filepath, chapter: data.chapter, verse: verse.verse, text: text.trim(), reason: why, book: data.book });
+      setFixing(false);
       announce(t("af.corrected").replace("{ref}", `${data.book} ${data.chapter}:${verse.verse}`));
       await load();
     } catch (err) {
-      setError(explainError(err));
+      setFixError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /**
+   * Leave the verse for the group instead of changing it: the comment, with the wording proposed if the person
+   * wrote one, becomes a decision of the team in its own subtarea. Nothing is written to the draft.
+   */
+  async function askGroup(text: string, why: string) {
+    if (!session || !data || !verse || !ctx || !why.trim()) return;
+    const textChanged = Boolean(text.trim()) && !sameText(text, verse.text);
+    const sid = `${data.book} ${data.chapter}:${verse.verse}`;
+    setSaving(true);
+    setFixError("");
+    try {
+      const target = { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch };
+      const hash = alignmentFingerprint(verse.draft, current);
+      const opened = await openAlignmentDecision({
+        session,
+        pmOrg: ctx.pmOrg,
+        task: { projectId: ctx.projectId, taskId: ctx.taskId, taskName: ctx.taskName || ctx.taskId, resource: data.resource, parentIssue: ctx.issueNumber },
+        target,
+        draftFilepath: data.draft.filepath,
+        source: data.source,
+        book: data.book,
+        chapter: data.chapter,
+        verse: verse.verse,
+        kind: textChanged ? "proposal" : "objection",
+        note: why,
+        baseHash: hash,
+        before: current,
+        // With a wording proposed, the links follow the words that stay; the new ones are left to place.
+        ...(textChanged ? { proposed: groupsAfterTextEdit(current, verse.text, text), newText: text.trim() } : { words: [] }),
+        view: viewFromTokens({ rtl: data.originalRtl, original: verse.original, gloss: verse.gloss, draftBefore: verse.draft, draftAfter: textChanged ? tokensFromText(text, sid) : verse.draft }),
+        oldText: verse.text,
+        aligners: authorsAt(verse, hash),
+        thresholds,
+      });
+      setFixing(false);
+      const [files, loadedProposals] = await Promise.all([loadDecisionFiles(session, target, data.book), loadProposalFiles(session, target, data.book)]);
+      setDecisions(mergeDecisionFiles(files));
+      setProposals(loadedProposals);
+      setSentIssue(opened.issue.number);
+      announce(n("al.decisionOpened", opened.issue.number));
+    } catch (err) {
+      setFixError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -1083,13 +1133,16 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
               <Bank
                 editable={editable}
                 foot={
-                  mode === "alinear" && !fixing ? (
+                  mode === "alinear" ? (
                     <button
                       type="button"
                       className="af-link al-bank__fix"
                       disabled={Boolean(dirty[verse.verse])}
                       title={dirty[verse.verse] ? t("al.saveBeforeFix") : undefined}
-                      onClick={() => setFixing({ text: verse.text, why: "" })}
+                      onClick={() => {
+                        setFixError("");
+                        setFixing(true);
+                      }}
                     >
                       {t("af.fixShort")}
                     </button>
@@ -1112,21 +1165,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                   </div>
                   <p className="af-lbl">{pendingWords ? (pendingWords === 1 ? t("al.toPlaceOne") : t("al.toPlaceMany").replace("{n}", String(pendingWords))) : t("al.allPlacedShort")}</p>
                 </div>
-                {fixing ? (
-                  <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
-                    <textarea className="af-textarea" rows={3} value={fixing.text} aria-label={t("af.verseText")} onChange={(e) => setFixing({ ...fixing, text: e.target.value })} />
-                    <input className="af-input" value={fixing.why} placeholder={t("af.why")} aria-label={t("af.why")} onChange={(e) => setFixing({ ...fixing, why: e.target.value })} />
-                    <p className="af-hint">{t("al.fixHint")}</p>
-                    <div className="af-row-buttons">
-                      <Button type="button" size="sm" disabled={saving || !fixing.text.trim() || fixing.text.trim() === verse.text.trim()} onClick={() => void saveFix()}>
-                        {saving ? t("af.saving") : t("af.saveFix")}
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => setFixing(null)}>
-                        {t("af.cancel")}
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
                 {bankText === "orig" ? (
                   <p className="al-bank__text af-orig" lang="grc" dir={data.originalRtl ? "rtl" : undefined}>
                     {verse.original.map((token) => token.surface).join(" ")}
@@ -1227,6 +1265,22 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
 
   return (
     <div className="af al">
+      {data && verse ? (
+        <CorrectionSheet
+          open={fixing}
+          refLabel={`${data.book} ${data.chapter}:${verse.verse}`}
+          text={verse.text}
+          references={[
+            { id: "orig", label: data.originalLabel, text: verse.original.map((token) => token.surface).join(" "), lang: data.originalRtl ? "hbo" : "grc", rtl: data.originalRtl, original: true },
+            ...(verse.reference ? [{ id: "ref", label: data.referenceLabel, text: verse.reference, lang: "en" }] : []),
+          ]}
+          busy={saving}
+          error={fixError}
+          onFix={(text, why) => void saveFix(text, why)}
+          onAsk={(text, why) => void askGroup(text, why)}
+          onClose={() => setFixing(false)}
+        />
+      ) : null}
       <WordSheet
         word={sheetToken ? { surface: sheetToken.surface, lemma: sheetToken.lemma, strong: sheetToken.strong } : null}
         at={{ book: data?.book ?? "", chapter: data?.chapter ?? 0, verse: verse?.verse ?? 0 }}
