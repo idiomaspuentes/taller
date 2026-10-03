@@ -15,7 +15,7 @@ import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
 import { englishScriptureKindRef, loadEnglishScriptureKindUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
-import { diffWords, refComment, reviewItems, type ReviewItem } from "../domain/reviewItems";
+import { articleItems, diffWords, refComment, reviewItems, type ReviewItem } from "../domain/reviewItems";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { approveStep, askForChanges, canApproveStep, canAskForChanges, canClaimStep, changesPending, claimStep, isEligibleForStep, isStepUnlocked } from "../domain/stepClaim";
@@ -126,11 +126,20 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const [nextPull, files] = await Promise.all([loadLinkedPull(sess, linked), loadLinkedPullFiles(sess, linked).catch(() => [])]);
       setPull(nextPull);
       void loadComments(sess, linked).catch(() => setComments([]));
-      const filename = files.map((file) => file.filename).find((name) => /\.(usfm|sfm|tsv)$/i.test(name)) ?? bookUsfmName(ctx.book);
-      const read = (branch: string) =>
-        readRepoFile({ session: sess, owner: linked.owner, repo: linked.repo, filepath: filename, branch })
+      const names = files.map((file) => file.filename);
+      const readAt = (filepath: string, branch: string) =>
+        readRepoFile({ session: sess, owner: linked.owner, repo: linked.repo, filepath, branch })
           .then((file) => file.text)
           .catch(() => null);
+      const articles = names.filter((name) => /\.md$/i.test(name));
+      if (articles.length && !names.some((name) => /\.(usfm|sfm|tsv)$/i.test(name))) {
+        // A draft of articles: each one is a piece, whole.
+        const read = await Promise.all(articles.map(async (name) => ({ filename: name, now: (await readAt(name, linked.head)) ?? "", before: (await readAt(name, linked.base)) ?? "" })));
+        setItems(articleItems(read));
+        return;
+      }
+      const filename = names.find((name) => /\.(usfm|sfm|tsv)$/i.test(name)) ?? bookUsfmName(ctx.book);
+      const read = (branch: string) => readAt(filename, branch);
       const [now, before] = await Promise.all([read(linked.head), read(linked.base)]);
       // Once the draft is in the team's text its own copy may be gone: what is reviewed then is the team's text.
       setItems(reviewItems({ filename, now: now ?? before ?? "", before: before ?? "", range }));
@@ -296,6 +305,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       {busy ? (
         <p className="scripture-editor__loading">{t("pr.loading")}</p>
       ) : issue && range ? (
+        <>
         <div className="fam__body">
           {!marker ? (
             <div className="rv-empty">
@@ -346,8 +356,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                       ) : null}
                       {item.state === "empty" ? (
                         <p className="rv-item__text rv-item__text--none">{t("rv.notWritten")}</p>
+                      ) : !item.chapter && !(item.state === "changed" && showChanges) && item.state !== "removed" ? (
+                        // An article is read with its headings and lists; its marks are shown only where words are compared.
+                        <HelpMarkdownView className="rv-item__text rv-item__text--article" content={item.now} />
                       ) : (
-                        <p className="rv-item__text">
+                        <p className={`rv-item__text${item.chapter ? "" : " rv-item__text--raw"}`}>
                           {item.state === "changed" && showChanges
                             ? diffWords(item.before, item.now).map((part, index) => (part.kind === "same" ? part.text : part.kind === "added" ? <ins key={index}>{part.text}</ins> : <del key={index}>{part.text}</del>))
                             : item.state === "removed"
@@ -397,8 +410,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             </>
           )}
 
-          {status ? (
-            <div className="fam__finish">
+        </div>
+          {/* Without a draft there is nothing to read yet: the empty state says so, and a second line saying "you can read it" contradicted it. */}
+          {status && marker ? (
+            <div className="tool-foot">
               <p>{status}</p>
               {stepDone || approved ? (
                 <Button type="button" onClick={onClose}>
@@ -415,7 +430,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ) : null}
             </div>
           ) : null}
-        </div>
+        </>
       ) : null}
     </div>
   );

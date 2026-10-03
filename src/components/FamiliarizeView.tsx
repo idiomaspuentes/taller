@@ -350,7 +350,8 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             </section>
           ) : null}
 
-          <div className="fam__finish">
+        </div>
+          <div className="tool-foot">
             <p>{done ? t("fa.alreadyDone") : allRead ? t("fa.readyToFinish") : t("fa.leftToRead").replace("{n}", String(sections.length - readCount))}</p>
             {done ? (
               <Button type="button" onClick={onClose}>
@@ -362,7 +363,6 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
               </Button>
             )}
           </div>
-        </div>
         </>
       ) : null}
     </div>

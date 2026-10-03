@@ -8007,3 +8007,13 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 .hub-free + .hub-free { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .hub-free__name { flex: 1 1 12rem; min-width: 0; display: grid; gap: 0.0625rem; }
 .hub-free__actions { flex: 0 0 auto; display: flex; gap: 0.375rem; }
+/* The foot of a tool: where it says how far along the work is and where it is finished. A bar at the bottom edge,
+   the same in every tool; a card floating over the text covered the line being read. */
+.tool-foot { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border-strong); box-shadow: 0 -4px 12px rgb(0 0 0 / 0.06); }
+.tool-foot p { flex: 1 1 10rem; min-width: 0; margin: 0; font-size: 0.8125rem; line-height: 1.35; color: var(--text-muted); }
+.tool-foot > button, .tool-foot__actions > button { min-height: 2.5rem; }
+.tool-foot__actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; }
+.fam:has(> .tool-foot) .fam__body { padding-bottom: 1rem; }
+:root[data-typing="true"] .tool-foot { display: none; }
+.rv-item__text--article { max-height: 60dvh; overflow-y: auto; }
+.rv-item__text--raw { white-space: pre-wrap; }

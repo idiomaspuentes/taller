@@ -276,7 +276,8 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
         onBack={onClose}
         meta={
           <>
-            {[stepName, ctx?.taskName ? localizeName(ctx.taskName, language) : "", progress && progress.items ? t("gr.progress").replace("{n}", String(progress.agreed)).replace("{of}", String(progress.items)) : ""].filter(Boolean).join(" · ")}
+            {/* How far along it is, is said at the foot: here it pushed the name of the step out of a phone's width. */}
+            {[stepName, ctx?.taskName && localizeName(ctx.taskName, language) !== stepName ? localizeName(ctx.taskName, language) : ""].filter(Boolean).join(" · ")}
           </>
         }
       />
@@ -290,6 +291,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
       {busy ? (
         <p className="scripture-editor__loading">{t("gr.loading")}</p>
       ) : data && progress ? (
+        <>
         <div className="fam__body">
           <div className="rv-bar">
             <p className="rv-bar__count">{t("gr.lede").replace("{n}", String(minAgree))}</p>
@@ -346,7 +348,8 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
             );
           })}
 
-          <div className="fam__finish">
+        </div>
+          <div className="tool-foot">
             <p>
               {stepDone
                 ? t("gr.alreadyClosed")
@@ -372,7 +375,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
               </Button>
             ) : null}
           </div>
-        </div>
+        </>
       ) : null}
     </div>
   );

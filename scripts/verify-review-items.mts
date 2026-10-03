@@ -4,7 +4,7 @@
  *   npm run verify:review-items
  */
 import assert from "node:assert/strict";
-import { diffWords, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
+import { articleItems, diffWords, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -64,6 +64,17 @@ test("un comentario sobre un versículo dice cuál, y se vuelve a encontrar junt
   assert.equal(body, "**3JN 1:2** — ¿«amado» o «querido»?");
   assert.deepEqual(parseRefComment(body), { ref: "1:2", text: "¿«amado» o «querido»?" });
   assert.deepEqual(parseRefComment("Buen trabajo"), { ref: "", text: "Buen trabajo" });
+});
+
+test("un borrador de artículos se revisa artículo por artículo, nombrado por su título", () => {
+  const items = articleItems([
+    { filename: "translate/figs-metaphor/01.md", now: "### Descripción\n\nUna metáfora es…", before: "### Description\n\nA metaphor is…" },
+    { filename: "translate/figs-metaphor/title.md", now: "Metáfora", before: "" },
+    { filename: "bible/kt/love.md", now: "# amor, amar\n\nIgual.", before: "# amor, amar\n\nIgual." },
+    { filename: "tn_3JN.tsv", now: "x", before: "" },
+  ]);
+  assert.deepEqual(items.map((item) => [item.ref, item.state]), [["Descripción", "changed"], ["figs-metaphor (title)", "new"], ["amor, amar", "same"]]);
+  assert.deepEqual(parseRefComment(refComment("3jn", "amor, amar", "Falta el segundo sentido.")), { ref: "amor, amar", text: "Falta el segundo sentido." });
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

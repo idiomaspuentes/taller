@@ -132,6 +132,23 @@ export function reviewItems(params: { filename: string; now: string; before: str
   return [];
 }
 
+/**
+ * The articles of a draft (Academia, Palabras), one piece each: an article is not of one verse, so it is named by
+ * its own title, or by its folder when it has none yet.
+ */
+export function articleItems(files: { filename: string; now: string; before: string }[]): ReviewItem[] {
+  return files
+    .filter((file) => file.filename.toLowerCase().endsWith(".md"))
+    .map((file) => {
+      const heading = (file.now || file.before).match(/^#{1,6}\s+(.+?)\s*#*$/m)?.[1]?.trim();
+      const parts = file.filename.replace(/\.md$/i, "").split("/");
+      // `translate/figs-metaphor/01` is the article `figs-metaphor`; `bible/kt/love` is `love`.
+      const folder = /^\d+$|^(title|sub-title)$/i.test(parts[parts.length - 1] ?? "") ? (parts[parts.length - 2] ?? file.filename) : (parts[parts.length - 1] ?? file.filename);
+      const part = /^(title|sub-title)$/i.test(parts[parts.length - 1] ?? "") ? ` (${parts[parts.length - 1]})` : "";
+      return { key: file.filename, ref: `${heading || folder}${heading ? "" : part}`, chapter: 0, verse: 0, now: file.now.trim(), before: file.before.trim(), state: stateOf(file.before.trim(), file.now.trim()) };
+    });
+}
+
 /** A comment about one piece starts with where it is, so it can be shown next to it again. */
 export function refComment(book: string, ref: string, text: string): string {
   return `**${book.toUpperCase()} ${ref}** — ${text.trim()}`;
@@ -140,5 +157,8 @@ export function refComment(book: string, ref: string, text: string): string {
 /** The reference a comment was written about (`1:2`), and what it says without it; `ref` empty when it has none. */
 export function parseRefComment(body: string): { ref: string; text: string } {
   const m = body.match(/^\*\*[A-Z0-9]{3}\s+(\d+:\d+(?:[–-]\d+)?[a-z]?)\*\*\s*[—-]\s*/);
-  return m ? { ref: m[1]!.replace("-", "–"), text: body.slice(m[0].length).trim() } : { ref: "", text: body.trim() };
+  if (m) return { ref: m[1]!.replace("-", "–"), text: body.slice(m[0].length).trim() };
+  // About an article, which is named by its title instead of a verse.
+  const article = body.match(/^\*\*[A-Z0-9]{3}\s+([^*\n]+?)\*\*\s*[—-]\s*/);
+  return article ? { ref: article[1]!.trim(), text: body.slice(article[0].length).trim() } : { ref: "", text: body.trim() };
 }

@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 12,
+      "version": 13,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -253,7 +253,7 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
@@ -321,7 +321,7 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
@@ -371,7 +371,7 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
@@ -421,7 +421,7 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "solverAppId": "helps-review",
+              "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
               "includeAuthorInApproval": true,
@@ -1502,7 +1502,7 @@
     {
       "id": "fcr-pair-review",
       "name": "Revisión en pares",
-      "description": "Cambios del borrador de esta subtarea. Aprobar en Mis tareas.",
+      "description": "El borrador de la subtarea pieza por pieza (versículo, nota, pregunta o artículo), con lo que cambió. Aquí se comenta, se piden cambios y se aprueba.",
       "launchUrl": "/#/solver/review?mode=pair&ctx={context}",
       "kind": "app",
       "openMode": "tab",

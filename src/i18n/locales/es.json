@@ -2381,5 +2381,9 @@
   "al.fixOrAsk": "Corregir o comentar",
   "fx.title": "Corregir o comentar el versículo",
   "onboarding.installReady": "Un toque y queda en tu pantalla de inicio o en tu escritorio, como cualquier otra app.",
-  "onboarding.installIos": "En iPhone o iPad: toca el botón Compartir de Safari y elige «Añadir a pantalla de inicio»."
+  "onboarding.installIos": "En iPhone o iPad: toca el botón Compartir de Safari y elige «Añadir a pantalla de inicio».",
+  "he.footOffline": "Sin sesión: lo que escribas queda en este dispositivo.",
+  "he.footInReview": "Ya está en revisión. Lo que guardes se suma a ella.",
+  "he.footUnsaved": "Hay cambios sin guardar.",
+  "he.footSaved": "Todo guardado. Cuando termines, pásalo a revisión."
 }

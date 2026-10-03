@@ -475,19 +475,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       <ToolHeader
         title={title}
         onBack={onClose}
-        meta={ctx?.taskName ? localizeName(ctx.taskName, language) : undefined}
-        actions={
-          <>
-            {ctx && isLabLaunch(ctx) ? null : prUrl ? null : (
-              <Button type="button" size="sm" variant="outline" disabled={busy || openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
-                {openingPr ? t("se.opening") : t("se.readyForReview")}
-              </Button>
-            )}
-            <Button type="button" size="sm" disabled={busy || saving || !items.length || (!dirty && Boolean(session))} onClick={() => void save()}>
-              {saving ? t("se.saving") : t("he.save")}
-            </Button>
-          </>
-        }
+        meta={[ctx?.stepName ? localizeName(ctx.stepName, language) : "", ctx?.taskName ? localizeName(ctx.taskName, language) : ""].filter(Boolean).join(" · ") || undefined}
       />
 
       {error ? (
@@ -589,6 +577,23 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               {t("he.noItems")}
             </p>
           ) : null}
+        </div>
+      )}
+
+      {/* Saving and handing in sit at the foot, as in the other tools: in the header they left no room for the passage. */}
+      {busy ? null : (
+        <div className="tool-foot">
+          <p>{!session ? t("he.footOffline") : prUrl ? t("he.footInReview") : dirty ? t("he.footUnsaved") : t("he.footSaved")}</p>
+          <div className="tool-foot__actions">
+            {ctx && isLabLaunch(ctx) ? null : prUrl ? null : (
+              <Button type="button" variant="outline" disabled={openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
+                {openingPr ? t("se.opening") : t("se.readyForReview")}
+              </Button>
+            )}
+            <Button type="button" disabled={saving || !items.length || (!dirty && Boolean(session))} onClick={() => void save()}>
+              {saving ? t("se.saving") : t("he.save")}
+            </Button>
+          </div>
         </div>
       )}
     </div>
