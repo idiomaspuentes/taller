@@ -63,7 +63,7 @@ import { localizeThread } from "../domain/threadNames";
 import { explainError } from "../dcs/userError";
 import { tallerConfig, workspaceOfOrg } from "../config";
 import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
-import { strongParts } from "../domain/lexicon";
+import { glossesInclude, strongParts, type LexiconFile } from "../domain/lexicon";
 import { WordSheet } from "./WordSheet";
 import { CorrectionSheet } from "./CorrectionSheet";
 
@@ -200,6 +200,7 @@ function Box({
   gloss,
   compact,
   selected,
+  hinted,
   editable,
   onTap,
   onWord,
@@ -212,6 +213,8 @@ function Box({
   /** An empty box that is not being filled: one slim line instead of a tall drop area. */
   compact: boolean;
   selected: boolean;
+  /** The lexicon gives the draft word in hand as a rendering of this box's word. */
+  hinted?: boolean;
   editable: boolean;
   onTap: (boxId: string) => void;
   /** A word of the original was tapped: show what it means. */
@@ -228,6 +231,7 @@ function Box({
       data-merged={merged ? "true" : undefined}
       data-compact={compact ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
+      data-hint={hinted ? "true" : undefined}
       data-over={isOver && editable ? "true" : undefined}
       onClick={(e) => {
         if (!editable || (e.target as HTMLElement).closest("[data-no-box-select]")) return;
@@ -405,6 +409,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [bankText, setBankText] = useState<"draft" | "orig" | "ref">("draft");
   const bankWords = useRef<HTMLDivElement | null>(null);
   const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
+  /** The lexicon entry of each word of the original of the verse in view, by its place in the verse. */
+  const [verseLex, setVerseLex] = useState<Record<number, LexiconFile>>({});
   /** The word of the original whose meaning is shown over the tool. */
   const [sheet, setSheet] = useState<{ boxId: string; refIndex: number } | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -1062,6 +1068,18 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   }, [verse?.verse]);
   /** The first word still to place: named in the hint before anything is placed. */
   const nextWord = verse ? verse.draft.find((_, i) => !aligned[i])?.surface : undefined;
+  /**
+   * The boxes the lexicon points to for the word of the draft in hand: those whose word of the original has it,
+   * or a form of it, among its glosses. A hint for where to look, said as such; the person decides.
+   */
+  const hinted = useMemo(() => {
+    const out = new Set<string>();
+    if (!verse || selectedWords.length !== 1) return out;
+    const word = verse.draft[selectedWords[0]!]?.surface ?? "";
+    for (const box of boxes) if (box.targetTokenIndices.some((i) => verseLex[i] && glossesInclude(verseLex[i]!, word))) out.add(box.id);
+    return out;
+  }, [boxes, selectedWords, verse, verseLex]);
+  const hintedWords = boxes.filter((box) => hinted.has(box.id)).map((box) => box.targetTokens.map((token) => token.surface).join(" "));
   const canSeparate = Boolean(oneBox && oneBox.groupIndex !== null && (oneBox.targetTokens.length > 1 || oneBox.alignedSourceWords.length > 1));
   const title = mode === "alinear" ? t("al.titleAlign") : t("al.titleReview");
   const openHere = verse ? openFor(verse) : [];
@@ -1194,7 +1212,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                   <p className="af-hint">
                     {selectedWords.length
                       ? selectedWords.length === 1
-                        ? t("al.guideWord").replace("{word}", verse.draft[selectedWords[0]!]?.surface ?? "")
+                        ? `${t("al.guideWord").replace("{word}", verse.draft[selectedWords[0]!]?.surface ?? "")}${hintedWords.length ? ` ${t("al.guideHint").replace("{words}", hintedWords.join(", "))}` : ""}`
                         : n("al.guideWords", selectedWords.length)
                       : t("al.boxChosen")}
                   </p>
@@ -1234,6 +1252,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       gloss={verse.gloss}
                       compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id)}
                       selected={selectedBoxes.includes(box.id)}
+                      hinted={hinted.has(box.id)}
                       editable={editable}
                       onTap={tapBox}
                       onWord={(boxId, refIndex) => setSheet({ boxId, refIndex })}
@@ -1256,10 +1275,25 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
 
   const workspace = ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined;
   // The entries of the verse in view are asked for as it opens, so a tap on a word answers at once.
+  // They are kept too: a word of the draft, once chosen, is looked for among their glosses.
+  const verseKey = verse ? `${data?.book} ${data?.chapter}:${verse.verse}` : "";
   useEffect(() => {
+    setVerseLex({});
     if (!session || !verse) return;
-    for (const token of verse.original) for (const part of strongParts(token.strong)) void loadLexiconEntry(session, lexiconRepos(workspace, part.kind), part.number);
-  }, [session, verse, workspace]);
+    let alive = true;
+    verse.original.forEach((token, index) => {
+      const part = strongParts(token.strong).at(-1);
+      if (!part) return;
+      void loadLexiconEntry(session, lexiconRepos(workspace, part.kind), part.number).then((found) => {
+        if (alive && found) setVerseLex((prev) => ({ ...prev, [index]: found.file }));
+      });
+    });
+    return () => {
+      alive = false;
+    };
+    // The verse object is made anew on every edit; its entries only change with the verse itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, verseKey, workspace]);
   const sheetBox = sheet ? boxes.find((b) => b.id === sheet.boxId) : undefined;
   const sheetToken = sheet && verse ? verse.original[sheet.refIndex] : undefined;
 

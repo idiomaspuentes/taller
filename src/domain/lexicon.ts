@@ -181,3 +181,47 @@ export function lexiconReport(input: {
     ].join("\n"),
   };
 }
+
+/** Letters only, without accents or case: «Nombre,» and «nombre» are the same word. */
+function fold(word: string): string {
+  return word
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Words that join others in a gloss ("salir de", "a causa de") and say nothing of its meaning. */
+const JOINING = new Set("a al de del el la los las lo un una unos unas y o que en por para con se su sus es no".split(" "));
+
+/**
+ * Whether two words are forms of the same one. The draft inflects («salieron») and the lexicon cites («salir»):
+ * with no dictionary of the language, a long shared beginning is taken as the same word. It can be wrong both
+ * ways (an irregular form is missed, two words of one root are taken together); it feeds a hint, not a decision.
+ */
+function sameWord(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4) return false;
+  let shared = 0;
+  while (shared < a.length && shared < b.length && a[shared] === b[shared]) shared++;
+  return shared >= 4 && shared >= Math.min(a.length, b.length) - 2 && shared * 2 >= Math.max(a.length, b.length);
+}
+
+/**
+ * Whether the lexicon gives a word of the draft as a rendering of this word of the original, in any of its
+ * senses. A gloss of several words matches by the ones that carry meaning; a gloss that is one word, by it.
+ */
+export function glossesInclude(file: LexiconFile, draftWord: string): boolean {
+  const word = fold(draftWord);
+  if (!word) return false;
+  const glosses = file.entries.length ? file.entries.flatMap((e) => e.senses.flatMap((s) => s.glosses ?? [])) : file.brief.split(",");
+  for (const gloss of glosses) {
+    const tokens = fold(gloss).split(" ").filter(Boolean);
+    if (!tokens.length) continue;
+    const meaningful = tokens.length === 1 ? tokens : tokens.filter((token) => !JOINING.has(token));
+    if (meaningful.some((token) => sameWord(token, word))) return true;
+  }
+  return false;
+}

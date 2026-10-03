@@ -2367,5 +2367,6 @@
   "mo.infinitive_construct": "infinitivo construto",
   "mo.qal_passive": "qal passivo",
   "lx.morph": "Morfologia",
-  "lx.strong": "Strong"
+  "lx.strong": "Strong",
+  "al.guideHint": "O léxico sugere: {words}."
 }

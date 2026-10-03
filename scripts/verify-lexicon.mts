@@ -1,6 +1,6 @@
 /** What a word of the original means: which entry its Strong's number points to, and which sense is the verse's. */
 import assert from "node:assert/strict";
-import { glossOfWord, lexiconReport, normalizeLexiconFile, refsInclude, sensesOfWord, strongCode, strongParts } from "../src/domain/lexicon";
+import { glossesInclude, glossOfWord, lexiconReport, normalizeLexiconFile, refsInclude, sensesOfWord, strongCode, strongParts } from "../src/domain/lexicon";
 import { lexiconRepos } from "../src/dcs/lexicon";
 
 let passed = 0;
@@ -127,6 +127,29 @@ test("un reporte de una palabra que el léxico no tiene lo dice, y un texto larg
   assert.ok(issue.title.length < 110);
   assert.ok(issue.body.includes("- Sentido mostrado: (el léxico no tiene entrada)"));
   assert.equal(strongCode({ kind: "hebrew", number: 776, letter: "" }), "H0776");
+});
+
+test("una palabra del borrador se reconoce entre las glosas aunque esté conjugada o lleve signos", () => {
+  const salir = normalizeLexiconFile({ brief: "salir de", long: "", entries: [{ strong: "G1831", lemma: "ἐξέρχομαι", senses: [{ glosses: ["salir de", "partir de"] }] }] })!;
+  assert.equal(glossesInclude(salir, "salieron"), true);
+  assert.equal(glossesInclude(salir, "Salieron,"), true);
+  assert.equal(glossesInclude(salir, "recibir"), false);
+  const nombre = normalizeLexiconFile({ brief: "nombre", long: "", entries: [{ strong: "G3686", lemma: "ὄνομα", senses: [{ glosses: ["persona"] }, { glosses: ["nombre"] }] }] })!;
+  assert.equal(glossesInclude(nombre, "Nombre,"), true);
+});
+
+test("las palabras que solo unen («de», «por») no hacen coincidir una glosa de varias palabras, pero sí una de una sola", () => {
+  const salir = normalizeLexiconFile({ brief: "salir de", long: "", entries: [{ strong: "G1831", lemma: "ἐξέρχομαι", senses: [{ glosses: ["salir de"] }] }] })!;
+  const apo = normalizeLexiconFile({ brief: "de", long: "", entries: [{ strong: "G575", lemma: "ἀπό", senses: [{ glosses: ["de", "desde"] }] }] })!;
+  assert.equal(glossesInclude(salir, "de"), false);
+  assert.equal(glossesInclude(apo, "de"), true);
+  assert.equal(glossesInclude(apo, "del"), false);
+});
+
+test("un léxico sencillo, sin sentidos, se compara por su glosa breve", () => {
+  const file = normalizeLexiconFile({ brief: "templo, santuario", long: "templo." })!;
+  assert.equal(glossesInclude(file, "templos"), true);
+  assert.equal(glossesInclude(file, ""), false);
 });
 
 console.log(`\nverify-lexicon: ${passed} checks passed.`);
