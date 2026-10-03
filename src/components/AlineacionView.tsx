@@ -195,7 +195,6 @@ function Box({
   gloss,
   compact,
   next,
-  slot,
   selected,
   selectedRef,
   editable,
@@ -211,7 +210,6 @@ function Box({
   compact: boolean;
   /** The first box with nothing in it: where the next word most likely goes. */
   next?: boolean;
-  slot: number;
   selected: boolean;
   selectedRef: number | null;
   editable: boolean;
@@ -226,7 +224,6 @@ function Box({
       ref={setNodeRef}
       role="group"
       className="al-box"
-      data-slot={box.groupIndex !== null ? slot : undefined}
       data-merged={merged ? "true" : undefined}
       data-compact={compact ? "true" : undefined}
       data-next={next ? "true" : undefined}
@@ -1192,7 +1189,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
               ) : null}
               <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
                 <div className="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
-                  {boxes.map((box, i) => (
+                  {boxes.map((box) => (
                     <Box
                       key={box.id}
                       box={box}
@@ -1200,7 +1197,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       gloss={verse.gloss}
                       compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id) && box.id !== nextBoxId}
                       next={editable && box.id === nextBoxId}
-                      slot={i % 6}
                       selected={selectedBoxes.includes(box.id)}
                       selectedRef={selectedRef?.boxId === box.id ? selectedRef.refIndex : null}
                       editable={editable}
