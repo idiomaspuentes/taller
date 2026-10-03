@@ -1,3 +1,4 @@
+import { draftTaskId } from "../dcs/afinacionLoad";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
@@ -381,7 +382,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       const board = await loadAssignmentsFromDcs(session, decoded.pmOrg, decoded.lang, decoded.projectId, decoded.contentOrg);
       const thisTask = board?.teams.find((t) => t.id === decoded.taskId) ?? null;
       setTask(thisTask);
-      const sourceTaskId = thisTask?.waitsFor?.find((w) => w.taskId)?.taskId;
+      // The text read is the one its translation task writes, wherever this task stands in the phase.
+      const sourceTaskId = (board && draftTaskId(board.teams, decoded.resource)) || thisTask?.waitsFor?.find((w) => w.taskId)?.taskId;
       if (!sourceTaskId) {
         throw new Error(tNow("al.noSource"));
       }
@@ -1052,7 +1054,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       <ToolHeader
         title={title}
         onBack={() => void leave()}
-        meta={data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
+        meta={data ? `${data.book} ${ctx?.ref || data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
       >
           {shared ? (
             <div className="al-modes" role="tablist" aria-label={t("al.modesAria")}>

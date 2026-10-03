@@ -148,41 +148,45 @@ el artículo no depende de un pasaje.
 
 **Propósito:** volver a anclar el TPL y el TPS al idioma original.
 
-**Tareas:** **Afinar TPL** y **Afinar TPS**, con las mismas etapas; pueden avanzar a la vez con
-equipos distintos.
-**Espera a:** la Traducción de ese texto, **de toda la unidad de traspaso**.
-**Quién:** al menos 2 personas habilitadas con dominio del idioma bíblico y ajenas al borrador; el
-grupo reúne 3 o más. En principio, las **mismas personas** hacen los cuatro pasos. Un cambio
-acordado lo escribe **cualquier persona habilitada del equipo**.
+**Tareas:** tres por texto, en este orden, cada una con un paso de hacer y otro de confirmar. Las del TPL
+y las del TPS avanzan a la vez y pueden tener equipos distintos.
 
-| # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
-|---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Desafíos de traducción | Revisar | Equipo de Afinación; al menos 2 habilitadas que no escribieron el borrador | 3 a 6 | Cada figura o tema del capítulo, frente al original y al borrador | Consenso por ítem (cada figura señalada) |
-| 2 | Palabras clave | Revisar | Igual | 3 a 6 | Términos comparados en todo el libro | Consenso por ítem (cada término) |
-| 3 | Alinear | Alinear | Una persona del equipo, no quien tiene la subtarea | 1 | Alineación | Lo marca quien lo hace (todas las palabras del borrador colocadas) |
-| 4 | Revisar la alineación | Revisar | Otras personas del equipo, no quien alineó | 2 a 4 | Revisión de la alineación | Consenso por ítem (cada versículo) |
+| Tarea | Subtareas | Espera a | Paso 1 (una persona la toma) | Paso 2 (confirman) |
+|-------|-----------|----------|------------------------------|--------------------|
+| **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y la revisión grupal, del capítulo | Revisar desafíos: responde cada figura de la porción; se completa sola al responder todas | Confirmar desafíos |
+| **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave: cada término del capítulo, comparado con el resto del libro | Confirmar palabras clave |
+| **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear los versículos de la porción; lo marca quien lo hace | Revisar la alineación |
 
-**Cómo funciona el paso 1, desafíos de traducción:**
+**Quién confirma:** al menos otras dos personas del equipo que no hicieron el paso 1 (pueden sumarse
+hasta seis). Un ítem queda **acordado cuando 3 personas habilitadas están de acuerdo** (quien revisó y
+dos que confirman) **y nadie tiene una objeción abierta**: con una objeción hace falta consenso, y lo
+disputado va a la lista de la reunión del equipo, donde el coordinador o una persona habilitada registra
+la decisión. Cada persona más que confirma suma confianza al ítem. Quien confirma empieza con las
+palabras que eligió quien revisó.
+**Quién puede tomarlas:** Aprendiz o más. Un cambio acordado lo escribe **cualquier persona habilitada
+del equipo**.
+
+**Cómo se revisan los desafíos de traducción:**
 - No se revisa la nota: se revisa **el texto** frente a la figura o el tema que la nota señala.
 - Qué figuras hay en el capítulo se sabe por las **notas de traducción**: cada nota enlaza un **artículo de
   la Academia** (`SupportReference`: metáfora, voz pasiva, modismo…) y dice a qué palabras del original se
   refiere (`Quote`). Esas palabras se resaltan en el original y, por la alineación, en el inglés.
 - Cada figura se muestra con el **título del artículo** (el que el equipo le dio en su Academia, si ya lo
   tradujo) y la pregunta que el artículo responde; el artículo completo y la nota están a un toque.
-- Arriba se ven **todas las figuras del capítulo** con cuántas hay de cada una, para revisar, por ejemplo,
-  todas las metáforas seguidas.
+- Un selector arriba de la tarjeta filtra por figura (todas las metáforas seguidas, por ejemplo).
+- Cada figura se revisa en dos pasos: **qué palabras del texto traducen lo resaltado** en la referencia
+  (el original por defecto, o el ULT/UST), y **si esas palabras cumplen la regla** del texto.
 - La pregunta cambia con el texto: el **TPL** debe conservar la forma del original; el **TPS** debe decirla
   de forma sencilla (la pasiva en activa, la metáfora explicada o como símil).
 - Una nota que no enlaza ningún artículo no señala nada que comprobar y no entra en la ronda.
 
-**Cómo funciona el paso 2, palabras clave:**
+**Cómo se revisan las palabras clave:**
 - Se revisa **por capítulo** (o por tramo, si el capítulo se partió), no por porción.
 - La **lista de palabras del inglés (TWL)** es el mapa: dice qué palabras clave hay en el capítulo y
   en qué versículo está cada una, con el enlace a su **artículo de Palabras** (qué significa y a qué
   se refiere).
-- Se avanza **palabra por palabra**. Para cada una, la herramienta muestra **todos los versículos ya
-  traducidos donde aparece**, uno debajo de otro, como hace translationCore, para comparar cómo se
-  tradujo en cada caso.
+- Se avanza **palabra por palabra**. Al elegir las palabras que traducen el término, la herramienta
+  muestra **cómo se eligió en sus otros lugares** del libro y avisa si la elección no coincide.
 - Dos comprobaciones por palabra: que esté traducida **correctamente** respecto al idioma original,
   y que su traducción sea **consistente** en todos los lugares.
 

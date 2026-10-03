@@ -335,6 +335,11 @@ export type TaskStep = {
    * must not have written the text. Omitted = 0.
    */
   minIndependent?: number;
+  /**
+   * Review rounds: how many must agree for an item to be agreed, when it is not the seats of the step: a
+   * confirmation by two people of what a third reviewed asks for three. Omitted = `minAssignees`.
+   */
+  minAgree?: number;
   /** Logins who were assignees on these prior steps cannot claim this step. */
   excludePriorStepIds?: string[];
   /**

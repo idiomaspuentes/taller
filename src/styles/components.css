@@ -7733,3 +7733,10 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .af-focus__top { min-width: 0; }
 .af-focus__top .af-pick { flex: 1 1 auto; min-width: 0; }
 .af-focus__top .af-pick select { width: 100%; }
+/* Refining: the reviewer's progress, and for a key term how it was rendered in its other places. */
+.af-team--done { background: var(--success-100); color: var(--success-700); font-weight: 600; }
+p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
+.af-elsewhere { display: grid; gap: 0.25rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--surface); }
+.af-elsewhere ul { display: grid; gap: 0.125rem; margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
+.af-elsewhere li span { color: var(--text-muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.af-elsewhere li[data-preferred="true"] b { color: var(--success-700); }

@@ -533,6 +533,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       minAssignees,
       maxAssignees,
       minIndependent,
+      ...(claimMode === "pool" && Number(item.minAgree) >= 1 ? { minAgree: Math.floor(Number(item.minAgree)) } : {}),
       excludePriorStepIds: excludePriorStepIds?.length ? excludePriorStepIds : undefined,
       excludeIssueAssignee,
       includeAuthorInApproval: includeAuthorInApproval || undefined,

@@ -1,7 +1,7 @@
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
+import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
 import { appendMyDecision, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
 import { commentOnIssue } from "../dcs/issues";
 import { formatChatEvent } from "../domain/chatEvent";
@@ -155,9 +155,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     setError("");
     try {
       const board = await loadAssignmentsFromDcs(session, decoded.pmOrg, decoded.lang, decoded.projectId, decoded.contentOrg);
-      const thisTask = board?.teams.find((t) => t.id === decoded.taskId) ?? null;
+      const found = board?.teams.find((t) => t.id === decoded.taskId) ?? null;
+      // Whose levels count: the task's team, or without one, the team of its phase (the tasks of a phase share it).
+      const phaseTeam = found && !found.orgTeamName ? board?.teams.find((t) => t.phaseId === found.phaseId && t.orgTeamName)?.orgTeamName : undefined;
+      const thisTask = found && phaseTeam ? { ...found, orgTeamName: phaseTeam } : found;
       setTask(thisTask);
-      const sourceTaskId = thisTask?.waitsFor?.find((w) => w.taskId)?.taskId;
+      // The text read is the one its translation task writes, wherever this task stands in the phase.
+      const sourceTaskId = (board && draftTaskId(board.teams, decoded.resource)) || thisTask?.waitsFor?.find((w) => w.taskId)?.taskId;
       if (!sourceTaskId) {
         throw new Error(tNow("af.noSource"));
       }
@@ -222,7 +226,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const taskStep = task?.steps?.find((s) => s.id === (ctx?.stepId || stepProp));
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
-  const thresholds = { minAgree: taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
+  const thresholds = { minAgree: taskStep?.minAgree ?? taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
+  /** The first step of a task: one person answers every item; the step is theirs, and ends when nothing is left. */
+  const reviewing = taskStep?.closing === "automatic" && taskStep.claimMode === "exclusive";
   const me = (session?.username ?? "").toLowerCase();
   // The team's final decision on a disputed item: its coordinator or a persona habilitada of the team.
   const confirmers = useMemo(() => confirmersOf(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
@@ -266,6 +272,24 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       cancelled = true;
     };
   }, [session, ctx?.pmOrg, ctx?.issueNumber, taskStep?.id]);
+
+  const answeredByMe = useMemo(() => {
+    if (!data) return 0;
+    return data.items.filter((row) => {
+      const hash = textFingerprint(data.draftVerses[row.verse] ?? "");
+      return decisions.some((d) => d.itemId === row.id && d.reviewer.trim().toLowerCase() === me && (d.textHash === undefined || d.textHash === hash));
+    }).length;
+  }, [data, decisions, me]);
+  useEffect(() => {
+    if (!reviewing || stepDone || !data?.items.length || answeredByMe < data.items.length || !session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
+    void completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
+      .then(() => {
+        setStepDone(true);
+        announce(t("af.reviewDone"));
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewing, stepDone, answeredByMe, data?.items.length]);
 
   /** Every item is agreed: the step is completed in the subtarea, so the task can move on. */
   async function closeRound() {
@@ -330,7 +354,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     const saved = decisions
       .filter((d) => d.itemId === item.id && d.reviewer.trim().toLowerCase() === me)
       .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
-    setSelected(saved?.selectedText ? wordsOfSelection(verseText, saved.selectedText) : []);
+    // Confirming what someone else answered starts from the words they chose: the question is whether those are right.
+    const theirs = saved
+      ? undefined
+      : decisions
+          .filter((d) => d.itemId === item.id && d.selectedText && d.reviewer.trim().toLowerCase() !== me)
+          .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+    const words = saved?.selectedText ?? theirs?.selectedText;
+    setSelected(words ? wordsOfSelection(verseText, words) : []);
     setNote(saved?.note ?? "");
     setPending(null);
     setChoosing(false);
@@ -526,7 +557,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       <ToolHeader
         title={t(TITLE[stepProp])}
         onBack={onClose}
-        meta={[data ? `${data.book} ${data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : "", summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
+        meta={[data ? `${data.book} ${ctx?.ref || data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : "", summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
         actions={
           data ? (
             <a className="th-icon" href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200`} target="_blank" rel="noreferrer" aria-label={t("gl.open")} title={t("gl.open")}>
@@ -753,12 +784,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           <p className="af-kind">{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
           <h2 className="af-category">{stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
 
+          {reviewing ? (
+            <p className={answeredByMe >= data.items.length ? "af-team af-team--done" : "af-team"}>
+              {stepDone ? t("af.reviewDoneShort") : t("af.reviewProgress").replace("{n}", String(answeredByMe)).replace("{of}", String(data.items.length))}
+            </p>
+          ) : null}
           {/* How the team stands on it, and what the others said: before answering, not after. */}
-          {tally ? (
+          {tally && !reviewing ? (
             <details className="af-team" data-state={tally.state}>
               <summary>
                 {tally.state === "agreed"
-                  ? t("af.teamAgreed")
+                  ? t("af.teamAgreed").replace("{n}", String(tally.agree))
                   : [t("af.teamCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree)), tally.open.length ? t(tally.open.length === 1 ? "af.teamOpenOne" : "af.teamOpenMany").replace("{who}", tally.open.map((who) => `@${who}`).join(", ")) : ""].filter(Boolean).join(" · ")}
               </summary>
               {others.length ? (
@@ -838,7 +874,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <span className="af-draft__words">
                     <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
                   </span>
-                  <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
+                  {comparison && comparison.renderings.length ? (
+                  // Consistency: what was chosen as the rendering of this term in its other places.
+                  <div className="af-elsewhere">
+                    <p className="af-lbl">{t("af.elsewhere")}</p>
+                    <ul>
+                      {comparison.renderings.map((r) => (
+                        <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
+                          <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {chosenWords && !comparison.renderings.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-stale">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
+                  </div>
+                ) : null}
+                <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
                     {t("af.tapMarked")
                       .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
                       .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}

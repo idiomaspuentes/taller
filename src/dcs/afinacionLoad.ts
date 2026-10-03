@@ -21,6 +21,7 @@ import { tryParseUsj, tryParseUsjWithAlignments, verseTextsFromUsj, type VerseTe
 import type { UsjDocument } from "@usfm-tools/usj-core";
 import type { LevelBook, PersonLevel } from "../domain/levels";
 import type { AssignmentsDoc } from "../domain/types";
+import { parseRefRange } from "../domain/usfmEdit";
 
 export type AfinacionStep = "notas" | "palabras";
 
@@ -139,6 +140,20 @@ export async function loadArticleBody(session: GtSession, ctx: SolverLaunchConte
   return mine?.trim() ? mine : readRaw(session, pkg.owner, pkg.ta, `${path}/01.md`);
 }
 
+/**
+ * The task that writes the text a refining task works on: the first task of the plan with that resource (its
+ * translation). Its group draft is what every later task reads and corrects, however many tasks stand between.
+ */
+export function draftTaskId(teams: { id: string; rules: { resource: string }[] }[], resource: string): string | undefined {
+  return teams.find((task) => task.rules.some((rule) => rule.resource === resource))?.id;
+}
+
+/** The verses a subtarea covers, from its place (`1:1–4`); a whole chapter (`1`) covers them all. */
+export function verseRangeOf(ctx: Pick<SolverLaunchContext, "ref" | "chapter">): { from: number; to: number } | null {
+  const range = parseRefRange(ctx.ref || "");
+  return range && range.chapter === ctx.chapter ? { from: range.from, to: range.to } : null;
+}
+
 /** Branches where the group draft of the task being reviewed can live, most specific first. */
 export function groupDraftBranches(book: string, sourceTaskId: string): string[] {
   return [bookBranchName(book, sourceTaskId), taskTrunkBranchName(book, sourceTaskId), bookOnlyBranchName(book)];
@@ -219,6 +234,9 @@ export async function loadAfinacionNotes(params: {
       rawItems = (rawItems as NoteItem[]).map((note) => (worded.get(note.id)?.trim() ? { ...note, note: worded.get(note.id)! } : note));
     }
   }
+  // A subtarea of a passage reviews the items of its verses; the comparison across the book still sees them all.
+  const covered = verseRangeOf(ctx);
+  if (covered) rawItems = rawItems.filter((item) => item.verse >= covered.from && item.verse <= covered.to);
   const items = attachPhrases(rawItems, {
     book: target.book,
     verseTexts: gatewayVerses,

@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 11,
+      "version": 12,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -495,85 +495,19 @@
           "distributePolicy": "manual"
         },
         {
-          "id": "afinar-tpl",
-          "name": "Afinar TPL",
+          "id": "desafios-tpl",
+          "name": "Desafíos TPL",
           "names": {
-            "pt": "Afinar TPL"
+            "pt": "Desafios TPL"
           },
           "phaseId": "fcr-afinacion",
+          "minLevel": "aprendiz",
           "rules": [
             {
               "resource": "tpl",
               "articleFilter": "pending"
             }
           ],
-          "steps": [
-            {
-              "id": "notas",
-              "name": "Desafíos de traducción",
-              "names": {
-                "pt": "Desafios de tradução"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "description": "Cada desafío del capítulo, cotejado con el original: marca las palabras del borrador y responde.",
-              "descriptions": {
-                "pt": "Cada desafio do capítulo, comparado com o original: marque as palavras do rascunho e responda."
-              },
-              "solverAppId": "afinar-notas",
-              "closing": "consensus",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "minIndependent": 2
-            },
-            {
-              "id": "palabras",
-              "name": "Palabras clave",
-              "names": {
-                "pt": "Palavras-chave"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "description": "Cada término: compara cómo se tradujo en todos los versículos donde aparece.",
-              "descriptions": {
-                "pt": "Cada termo: compare como foi traduzido em todos os versículos onde aparece."
-              },
-              "solverAppId": "afinar-palabras",
-              "closing": "consensus",
-              "scope": "unit",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "minIndependent": 2
-            },
-            {
-              "id": "alineacion",
-              "name": "Alineación",
-              "names": {
-                "pt": "Alinhamento"
-              },
-              "actionLabel": "Alinear",
-              "actionLabels": {
-                "pt": "Alinhar"
-              },
-              "description": "Cada persona toma los versículos que va a alinear; lo que termina pasa a que lo revisen las demás.",
-              "descriptions": {
-                "pt": "Cada pessoa pega os versículos que vai alinhar; o que termina passa para a revisão das demais."
-              },
-              "solverAppId": "afinar-alineacion",
-              "closing": "consensus",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "minIndependent": 2
-            }
-          ],
-          "minLevel": "aprendiz",
           "waitsFor": [
             {
               "taskId": "tpl",
@@ -584,93 +518,203 @@
               "scope": "chapter"
             }
           ],
+          "steps": [
+            {
+              "id": "revisar",
+              "name": "Revisar desafíos",
+              "names": {
+                "pt": "Revisar desafios"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada figura o tema de la porción: qué palabras del texto la traducen y si cumplen la regla del texto.",
+              "descriptions": {
+                "pt": "Cada figura ou tema da porção: quais palavras do texto a traduzem e se cumprem a regra do texto."
+              },
+              "solverAppId": "afinar-notas",
+              "closing": "automatic",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "confirmar",
+              "name": "Confirmar desafíos",
+              "names": {
+                "pt": "Confirmar desafios"
+              },
+              "actionLabel": "Confirmar",
+              "actionLabels": {
+                "pt": "Confirmar"
+              },
+              "description": "Al menos otras dos personas confirman cada figura revisada, o dicen qué no comparten.",
+              "descriptions": {
+                "pt": "Pelo menos outras duas pessoas confirmam cada figura revisada, ou dizem o que não compartilham."
+              },
+              "solverAppId": "afinar-notas",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6,
+              "minAgree": 3,
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "revisar"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "palabras-tpl",
+          "name": "Palabras clave TPL",
+          "names": {
+            "pt": "Palavras-chave TPL"
+          },
+          "phaseId": "fcr-afinacion",
+          "minLevel": "aprendiz",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "waitsFor": [
+            {
+              "taskId": "desafios-tpl",
+              "scope": "chapter"
+            }
+          ],
           "bundle": {
             "enabled": true,
             "grain": "chapter"
           },
           "distributeUnit": "chapter",
-          "distributePolicy": "manual"
+          "distributePolicy": "manual",
+          "steps": [
+            {
+              "id": "revisar",
+              "name": "Revisar palabras clave",
+              "names": {
+                "pt": "Revisar palavras-chave"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada término del capítulo: qué palabras lo traducen, comparadas con cómo se tradujo en el resto del libro.",
+              "descriptions": {
+                "pt": "Cada termo do capítulo: quais palavras o traduzem, comparadas com como foi traduzido no resto do livro."
+              },
+              "solverAppId": "afinar-palabras",
+              "closing": "automatic",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "confirmar",
+              "name": "Confirmar palabras clave",
+              "names": {
+                "pt": "Confirmar palavras-chave"
+              },
+              "actionLabel": "Confirmar",
+              "actionLabels": {
+                "pt": "Confirmar"
+              },
+              "description": "Al menos otras dos personas confirman cada término revisado, o dicen qué no comparten.",
+              "descriptions": {
+                "pt": "Pelo menos outras duas pessoas confirmam cada termo revisado, ou dizem o que não compartilham."
+              },
+              "solverAppId": "afinar-palabras",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6,
+              "minAgree": 3,
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "revisar"
+              ]
+            }
+          ]
         },
         {
-          "id": "afinar-tps",
-          "name": "Afinar TPS",
+          "id": "alinear-tpl",
+          "name": "Alinear TPL",
           "names": {
-            "pt": "Afinar TPS"
+            "pt": "Alinhar TPL"
           },
           "phaseId": "fcr-afinacion",
+          "minLevel": "aprendiz",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "waitsFor": [
+            {
+              "taskId": "palabras-tpl",
+              "scope": "chapter"
+            }
+          ],
+          "steps": [
+            {
+              "id": "alinear",
+              "name": "Alinear",
+              "names": {
+                "pt": "Alinhar"
+              },
+              "actionLabel": "Alinear",
+              "actionLabels": {
+                "pt": "Alinhar"
+              },
+              "description": "Une cada palabra del original con lo que la traduce en el texto de la porción.",
+              "descriptions": {
+                "pt": "Une cada palavra do original com o que a traduz no texto da porção."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "self",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "revisar-alineacion",
+              "name": "Revisar la alineación",
+              "names": {
+                "pt": "Revisar o alinhamento"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Otras dos personas revisan cada versículo alineado.",
+              "descriptions": {
+                "pt": "Outras duas pessoas revisam cada versículo alinhado."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6,
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "alinear"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "desafios-tps",
+          "name": "Desafíos TPS",
+          "names": {
+            "pt": "Desafios TPS"
+          },
+          "phaseId": "fcr-afinacion",
+          "minLevel": "aprendiz",
           "rules": [
             {
               "resource": "tps",
               "articleFilter": "pending"
             }
           ],
-          "steps": [
-            {
-              "id": "notas",
-              "name": "Desafíos de traducción",
-              "names": {
-                "pt": "Desafios de tradução"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "description": "Cada desafío del capítulo, cotejado con el original: marca las palabras del borrador y responde.",
-              "descriptions": {
-                "pt": "Cada desafio do capítulo, comparado com o original: marque as palavras do rascunho e responda."
-              },
-              "solverAppId": "afinar-notas",
-              "closing": "consensus",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "minIndependent": 2
-            },
-            {
-              "id": "palabras",
-              "name": "Palabras clave",
-              "names": {
-                "pt": "Palavras-chave"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "description": "Cada término: compara cómo se tradujo en todos los versículos donde aparece.",
-              "descriptions": {
-                "pt": "Cada termo: compare como foi traduzido em todos os versículos onde aparece."
-              },
-              "solverAppId": "afinar-palabras",
-              "closing": "consensus",
-              "scope": "unit",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "minIndependent": 2
-            },
-            {
-              "id": "alineacion",
-              "name": "Alineación",
-              "names": {
-                "pt": "Alinhamento"
-              },
-              "actionLabel": "Alinear",
-              "actionLabels": {
-                "pt": "Alinhar"
-              },
-              "description": "Cada persona toma los versículos que va a alinear; lo que termina pasa a que lo revisen las demás.",
-              "descriptions": {
-                "pt": "Cada pessoa pega os versículos que vai alinhar; o que termina passa para a revisão das demais."
-              },
-              "solverAppId": "afinar-alineacion",
-              "closing": "consensus",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "minIndependent": 2
-            }
-          ],
-          "minLevel": "aprendiz",
           "waitsFor": [
             {
               "taskId": "tps",
@@ -681,12 +725,188 @@
               "scope": "chapter"
             }
           ],
+          "steps": [
+            {
+              "id": "revisar",
+              "name": "Revisar desafíos",
+              "names": {
+                "pt": "Revisar desafios"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada figura o tema de la porción: qué palabras del texto la traducen y si cumplen la regla del texto.",
+              "descriptions": {
+                "pt": "Cada figura ou tema da porção: quais palavras do texto a traduzem e se cumprem a regra do texto."
+              },
+              "solverAppId": "afinar-notas",
+              "closing": "automatic",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "confirmar",
+              "name": "Confirmar desafíos",
+              "names": {
+                "pt": "Confirmar desafios"
+              },
+              "actionLabel": "Confirmar",
+              "actionLabels": {
+                "pt": "Confirmar"
+              },
+              "description": "Al menos otras dos personas confirman cada figura revisada, o dicen qué no comparten.",
+              "descriptions": {
+                "pt": "Pelo menos outras duas pessoas confirmam cada figura revisada, ou dizem o que não compartilham."
+              },
+              "solverAppId": "afinar-notas",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6,
+              "minAgree": 3,
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "revisar"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "palabras-tps",
+          "name": "Palabras clave TPS",
+          "names": {
+            "pt": "Palavras-chave TPS"
+          },
+          "phaseId": "fcr-afinacion",
+          "minLevel": "aprendiz",
+          "rules": [
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            }
+          ],
+          "waitsFor": [
+            {
+              "taskId": "desafios-tps",
+              "scope": "chapter"
+            }
+          ],
           "bundle": {
             "enabled": true,
             "grain": "chapter"
           },
           "distributeUnit": "chapter",
-          "distributePolicy": "manual"
+          "distributePolicy": "manual",
+          "steps": [
+            {
+              "id": "revisar",
+              "name": "Revisar palabras clave",
+              "names": {
+                "pt": "Revisar palavras-chave"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Cada término del capítulo: qué palabras lo traducen, comparadas con cómo se tradujo en el resto del libro.",
+              "descriptions": {
+                "pt": "Cada termo do capítulo: quais palavras o traduzem, comparadas com como foi traduzido no resto do livro."
+              },
+              "solverAppId": "afinar-palabras",
+              "closing": "automatic",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "confirmar",
+              "name": "Confirmar palabras clave",
+              "names": {
+                "pt": "Confirmar palavras-chave"
+              },
+              "actionLabel": "Confirmar",
+              "actionLabels": {
+                "pt": "Confirmar"
+              },
+              "description": "Al menos otras dos personas confirman cada término revisado, o dicen qué no comparten.",
+              "descriptions": {
+                "pt": "Pelo menos outras duas pessoas confirmam cada termo revisado, ou dizem o que não compartilham."
+              },
+              "solverAppId": "afinar-palabras",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6,
+              "minAgree": 3,
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "revisar"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "alinear-tps",
+          "name": "Alinear TPS",
+          "names": {
+            "pt": "Alinhar TPS"
+          },
+          "phaseId": "fcr-afinacion",
+          "minLevel": "aprendiz",
+          "rules": [
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            }
+          ],
+          "waitsFor": [
+            {
+              "taskId": "palabras-tps",
+              "scope": "chapter"
+            }
+          ],
+          "steps": [
+            {
+              "id": "alinear",
+              "name": "Alinear",
+              "names": {
+                "pt": "Alinhar"
+              },
+              "actionLabel": "Alinear",
+              "actionLabels": {
+                "pt": "Alinhar"
+              },
+              "description": "Une cada palabra del original con lo que la traduce en el texto de la porción.",
+              "descriptions": {
+                "pt": "Une cada palavra do original com o que a traduz no texto da porção."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "self",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "revisar-alineacion",
+              "name": "Revisar la alineación",
+              "names": {
+                "pt": "Revisar o alinhamento"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Otras dos personas revisan cada versículo alineado.",
+              "descriptions": {
+                "pt": "Outras duas pessoas revisam cada versículo alinhado."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 6,
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "alinear"
+              ]
+            }
+          ]
         },
         {
           "id": "armonizar-notas",
@@ -1261,7 +1481,14 @@
       "Alinear": "Alinhar",
       "Ajustar a los textos afinados": "Ajustar aos textos afinados",
       "Cierre independiente": "Fechamento independente",
-      "Decisión pastoral": "Decisão pastoral"
+      "Decisión pastoral": "Decisão pastoral",
+      "Desafíos de traducción": "Desafios de tradução",
+      "Palabras clave": "Palavras-chave",
+      "Alineación": "Alinhamento",
+      "Afinar TPL": "Afinar TPL",
+      "Afinar TPS": "Afinar TPS",
+      "Desafíos ": "Desafios ",
+      "Confirmar ": "Confirmar "
     }
   }
 }

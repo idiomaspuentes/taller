@@ -2201,7 +2201,7 @@
   "af.draftSoFar": "Lo que el borrador del grupo tiene hasta ahora.",
   "af.guideAskTpl": "¿Qué pide el TPL?",
   "af.guideAskTps": "¿Qué pide el TPS?",
-  "af.teamAgreed": "El equipo está de acuerdo",
+  "af.teamAgreed": "Acordado · {n} de acuerdo",
   "af.teamCount": "Equipo: {n} de {of} de acuerdo",
   "af.teamOpenOne": "{who} no está de acuerdo",
   "af.teamOpenMany": "{who} no están de acuerdo",
@@ -2216,5 +2216,10 @@
   "af.confirmWords": "Esto lo traduce",
   "af.notThere": "No está en la traducción",
   "af.changeWords": "Cambiar",
-  "af.nothingChosen": "(sin palabras)"
+  "af.nothingChosen": "(sin palabras)",
+  "af.reviewDone": "Terminaste la revisión. Ahora la confirman otras dos personas.",
+  "af.reviewDoneShort": "Revisión terminada: la confirman otras dos personas.",
+  "af.reviewProgress": "Respondiste {n} de {of}",
+  "af.elsewhere": "Así se tradujo en otros lugares",
+  "af.differsElsewhere": "«{words}» no coincide con cómo se tradujo en otros lugares."
 }

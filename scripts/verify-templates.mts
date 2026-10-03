@@ -271,15 +271,22 @@ if (fcr) {
     assert.equal(team("tpl").steps![0]!.scope, "chapter-once");
   });
 
-  test("FCR: la Afinación cierra por consenso; nadie alinea un capítulo entero: se toman versículos y se revisan al terminar", () => {
-    for (const id of ["afinar-tpl", "afinar-tps"]) {
-      const steps = team(id).steps!;
-      assert.deepEqual(steps.map((s) => s.id), ["notas", "palabras", "alineacion"]);
-      assert.deepEqual(steps.map((s) => s.closing), ["consensus", "consensus", "consensus"]);
-      assert.equal(steps[2]!.claimMode, "pool", "la alineación es de todo el equipo: cada quien toma versículos y los demás revisan");
-      assert.equal(steps[0]!.minAssignees, 3);
-      assert.equal(steps[0]!.minIndependent, 2);
-      assert.equal(steps[1]!.scope, "unit", "las palabras clave se revisan por capítulo, no por porción");
+  test("FCR: la Afinación son tres tareas por texto, cada una con quien la hace y dos que confirman", () => {
+    for (const res of ["tpl", "tps"]) {
+      const challenges = team(`desafios-${res}`), words = team(`palabras-${res}`), align = team(`alinear-${res}`);
+      assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar", "confirmar"], ["revisar", "confirmar"], ["alinear", "revisar-alineacion"]]);
+      assert.equal(challenges.bundle?.enabled ?? false, false, "los desafíos se reparten por porción, como la traducción");
+      assert.equal(words.bundle?.grain, "chapter", "las palabras clave se revisan por capítulo, para ver la consistencia");
+      assert.equal(align.bundle?.enabled ?? false, false, "la alineación se reparte por porción");
+      for (const task of [challenges, words, align]) {
+        const [doIt, confirm] = task.steps!;
+        assert.equal(doIt!.claimMode, "exclusive", `${task.id}: una persona la toma`);
+        assert.equal(confirm!.claimMode, "pool");
+        assert.equal(confirm!.minAssignees, 2, `${task.id}: confirman otras dos personas`);
+        assert.equal(confirm!.closing, "consensus");
+        assert.deepEqual(confirm!.excludePriorStepIds, [doIt!.id], "quien la hizo no la confirma");
+      }
+      assert.equal(challenges.steps![1]!.minAgree, 3, "quien revisó y las dos que confirman");
     }
   });
 
@@ -300,11 +307,12 @@ if (fcr) {
   test("FCR: un capítulo recorre el flujo en orden", () => {
     const tpl1 = issue("tpl", 1), tps1 = issue("tps", 1), tpl2 = issue("tpl", 2), tps2 = issue("tps", 2);
     const notas = issue("notas-ayuda", 1), academia = issue("academia-ayuda", 1);
-    const afTpl1 = issue("afinar-tpl", 1), afTps1 = issue("afinar-tps", 1), afTpl2 = issue("afinar-tpl", 2);
+    const afTpl1 = issue("desafios-tpl", 1), afTps1 = issue("desafios-tps", 1), afTpl2 = issue("desafios-tpl", 2);
+    const wordsTpl1 = issue("palabras-tpl", 1), alignTpl1 = issue("alinear-tpl", 1);
     const arm = issue("armonizar-notas", 1), armQ = issue("armonizar-preguntas", 1);
     const val = issue("validar", 1);
     const grupal1 = issue("revision-grupal", 1), grupal2 = issue("revision-grupal", 2);
-    const all = [tpl1, tps1, tpl2, tps2, notas, academia, grupal1, grupal2, afTpl1, afTps1, afTpl2, arm, armQ, val];
+    const all = [tpl1, tps1, tpl2, tps2, notas, academia, grupal1, grupal2, afTpl1, afTps1, afTpl2, wordsTpl1, alignTpl1, arm, armQ, val];
     const waiting = (i: DcsIssue, open = all) => waitBlocks(i, board, open).length > 0;
 
     assert.ok(waiting(afTpl1) && waiting(afTps1), "la Afinación espera a su Traducción");
@@ -317,8 +325,12 @@ if (fcr) {
     assert.equal(waiting(afTpl1, afterTpl1), false, "cerrados el TPL y la revisión grupal del capítulo 1 se habilita Afinar TPL");
     assert.equal(waiting(afTps1, afterTpl1), true, "Afinar TPS sigue esperando al TPS");
     assert.equal(waiting(afTpl2, afterTpl1), true, "el capítulo 2 espera a su propio TPL");
+    assert.equal(waiting(wordsTpl1, afterTpl1), true, "las palabras clave esperan a los desafíos del capítulo");
+    assert.equal(waiting(wordsTpl1, afterTpl1.filter((i) => i !== afTpl1)), false);
+    assert.equal(waiting(alignTpl1, afterTpl1.filter((i) => i !== afTpl1)), true, "la alineación espera a las palabras clave");
+    assert.equal(waiting(alignTpl1, afterTpl1.filter((i) => i !== afTpl1 && i !== wordsTpl1)), false);
 
-    const tuned = all.filter((i) => ![tpl1, tps1, grupal1, afTpl1, afTps1].includes(i));
+    const tuned = all.filter((i) => ![tpl1, tps1, grupal1, afTpl1, afTps1, wordsTpl1, alignTpl1].includes(i));
     assert.equal(waiting(arm, tuned), true, "Notas y Academia esperan también a sus ayudas");
     const ready = tuned.filter((i) => i !== notas && i !== academia);
     assert.equal(waiting(arm, ready), false, "con los dos textos afinados y sus ayudas, la pista arranca");
@@ -327,7 +339,7 @@ if (fcr) {
   });
 
   test("FCR: quién puede tomar cada cosa", () => {
-    assert.equal(team("afinar-tpl").minLevel, "aprendiz");
+    assert.equal(team("desafios-tpl").minLevel, "aprendiz");
     assert.equal(team("tpl").minLevel, "practicante");
     for (const id of ["armonizar-notas", "armonizar-preguntas", "armonizar-palabras", "validar"]) assert.equal(team(id).minLevel, "habilitada", id);
   });

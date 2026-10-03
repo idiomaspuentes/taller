@@ -2,7 +2,7 @@ import { tokenizeDocument, tokenizeOriginalDocument, type OriginalWordToken, typ
 import { parseUsfmToUsj } from "@usfm-tools/usfm-readonly-react";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
-import { readRaw, groupDraftBranches } from "./afinacionLoad";
+import { readRaw, groupDraftBranches, verseRangeOf } from "./afinacionLoad";
 import { alignmentOfDraft, type AlignmentSourceRef } from "./alignmentStore";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { loadPmConfig } from "./issues";
@@ -98,9 +98,12 @@ export async function loadAlineacion(params: {
   const gatewayVerses = (gateway && verseTextsFromUsj(gateway.usj, { chapter, from: 1, to: 200 })) || {};
 
   const verses: AlignmentVerse[] = [];
+  // A subtarea of a passage aligns the verses of its passage.
+  const covered = verseRangeOf(params.ctx);
   for (const [sid, tokens] of Object.entries(draftTokens)) {
     const verse = verseNumber(sid, chapter);
     if (verse === null) continue;
+    if (covered && (verse < covered.from || verse > covered.to)) continue;
     const originalSid = Object.keys(originalTokens).find((k) => verseNumber(k, chapter) === verse);
     const original = originalSid ? originalTokens[originalSid]! : [];
     const key = Object.keys(saved).find((k) => verseNumber(k, chapter) === verse);
