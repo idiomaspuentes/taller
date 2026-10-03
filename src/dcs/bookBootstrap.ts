@@ -475,6 +475,49 @@ export async function ensureBookUsfm(
   };
 }
 
+/**
+ * The help file of a book (its notes, its questions) on the group draft of the task that translates it.
+ *
+ * A book the team has never worked has no such file yet, and the helps editor could not open: it read the file and
+ * failed. The Scripture editor starts a new book from the source text; this does the same for a help: the first
+ * person who opens the task puts the source's rows on the group draft, and every passage starts from them, so each
+ * one changes only its own rows.
+ */
+export async function ensureHelpsFileFromSource(params: {
+  session: GtSession;
+  owner: string;
+  repo: string;
+  filepath: string;
+  book: string;
+  taskId?: string;
+  phaseSlug?: string;
+  /** Reads the file as the source package has it; null when it has none. */
+  source: () => Promise<string | null>;
+}): Promise<{ text: string; sha?: string; bookBranch: string; created: boolean } | null> {
+  const { session, owner, repo, filepath, book, taskId, phaseSlug } = params;
+  const config = dcsConfig(session.host);
+  const defaultBranch = await getDefaultBranch(config, owner, repo, session.token);
+  const { bookBranch } = await resolveBookBranchName({ session, owner, repo, book, taskId, phaseSlug });
+  const onBook = await tryRead(session, owner, repo, filepath, bookBranch);
+  if (onBook) return { ...onBook, bookBranch, created: false };
+  const text = await params.source();
+  if (!text?.trim()) return null;
+  const saved = await writeOnBookBranch({
+    session,
+    owner,
+    repo,
+    filepath,
+    bookBranch,
+    defaultBranch,
+    content: text,
+    message: `TAS: crear ${filepath} en ${bookBranch} desde la fuente`,
+    step: "file-create",
+    book,
+    taskId,
+  });
+  return { text, sha: saved.sha, bookBranch, created: true };
+}
+
 export async function ensureTaskBranchFromBook(params: {
   session: GtSession;
   owner: string;

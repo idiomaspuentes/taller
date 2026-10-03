@@ -1,3 +1,7 @@
+import { helpsTsvFilename } from "../domain/helpsTarget";
+import { ensureHelpsFileFromSource } from "../dcs/bookBootstrap";
+import { readRaw } from "../dcs/afinacionLoad";
+import { resolveSourcePackage } from "../domain/sourcePackage";
 import { bookLabel } from "../domain/books";
 import { ChapterSources, NoteQuote, useHelpSources, useSourceHelps } from "./HelpSources";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -219,13 +223,27 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
 
       if (resolved.kind === "tsv" && resolved.filepath) {
         try {
-          const file = await readFilePreferBranch(
-            sess,
-            resolved.owner,
-            resolved.repo,
-            resolved.filepath,
-            head,
-          );
+          const filepath = resolved.filepath;
+          const file = await readFilePreferBranch(sess, resolved.owner, resolved.repo, filepath, head).catch(async (err) => {
+            if (lab) throw err;
+            // A book the team has not worked yet: its rows are taken from the source and translated in place.
+            const board = await loadAssignmentsFromDcs(sess, decoded.pmOrg, decoded.lang, decoded.projectId, decoded.contentOrg).catch(() => null);
+            const pkg = resolveSourcePackage(board?.settings);
+            const questions = resolved.resource === "preguntas";
+            const started = await ensureHelpsFileFromSource({
+              session: sess,
+              owner: resolved.owner,
+              repo: resolved.repo,
+              filepath,
+              book: resolved.book,
+              taskId: decoded.taskId,
+              phaseSlug: decoded.phaseSlug,
+              source: () => readRaw(sess, pkg.owner, questions ? pkg.tn.replace(/_tn$/, "_tq") : pkg.tn, helpsTsvFilename(questions ? "preguntas" : "notas", resolved.book)),
+            });
+            if (!started) throw err;
+            if (started.created) announce(tNow("he.startedFromSource"));
+            return { text: started.text, sha: started.sha } as FileMeta;
+          });
           setFiles({ [resolved.filepath]: file });
           const { rows } = parseTsvTable(file.text);
           const tsvResource = resolved.resource === "preguntas" ? "preguntas" : "notas";

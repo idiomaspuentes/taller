@@ -2386,5 +2386,6 @@
   "he.footInReview": "Ya está en revisión. Lo que guardes se suma a ella.",
   "he.footUnsaved": "Hay cambios sin guardar.",
   "he.footSaved": "Todo guardado. Cuando termines, pásalo a revisión.",
-  "en.noReportsYet": "Todavía no hay reportes"
+  "en.noReportsYet": "Todavía no hay reportes",
+  "he.startedFromSource": "Este libro todavía no tenía estas ayudas: se empezó con las de la fuente. Tradúcelas aquí mismo."
 }
