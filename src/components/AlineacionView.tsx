@@ -218,6 +218,7 @@ function Box({
   draft,
   gloss,
   compact,
+  next,
   slot,
   selected,
   selectedRef,
@@ -232,6 +233,8 @@ function Box({
   gloss: string[];
   /** An empty box that is not being filled: one slim line instead of a tall drop area. */
   compact: boolean;
+  /** The first box with nothing in it: where the next word most likely goes. */
+  next?: boolean;
   slot: number;
   selected: boolean;
   selectedRef: number | null;
@@ -250,6 +253,7 @@ function Box({
       data-slot={box.groupIndex !== null ? slot : undefined}
       data-merged={merged ? "true" : undefined}
       data-compact={compact ? "true" : undefined}
+      data-next={next ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
       data-over={isOver && editable ? "true" : undefined}
       onClick={(e) => {
@@ -423,6 +427,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [dirty, setDirty] = useState<Record<number, boolean>>({});
   const [history, setHistory] = useState<Record<number, { past: AlignmentGroup[][]; future: AlignmentGroup[][] }>>({});
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
+  /** The English verse shown inside the bank, for reading the draft against it. */
+  const [showUlt, setShowUlt] = useState(false);
+  const bankWords = useRef<HTMLDivElement | null>(null);
   const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
   const [selectedRef, setSelectedRef] = useState<{ boxId: string; refIndex: number } | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -1027,8 +1034,15 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const readyToReview = verse ? isDone(verse) : false;
   const complete = verse ? verseComplete(verse, current) : false;
   const pendingWords = aligned.filter((a) => !a).length;
-  const pendingBoxes = boxes.filter((b) => b.groupIndex === null).length;
   const oneBox = selectedBoxes.length === 1 ? boxes.find((b) => b.id === selectedBoxes[0]) : undefined;
+  // On a new verse the bank shows the first word still to place, not the start of a verse already half done.
+  useEffect(() => {
+    const first = bankWords.current?.querySelector<HTMLElement>(".al-word:not([data-aligned])");
+    first?.scrollIntoView({ block: "nearest" });
+  }, [verse?.verse]);
+  /** The first word still to place, and the first box with nothing in it: the likeliest next move. */
+  const nextWord = verse ? verse.draft.find((_, i) => !aligned[i])?.surface : undefined;
+  const nextBoxId = boxes.find((box) => box.alignedSourceWords.length === 0)?.id;
   const canSeparate = Boolean(oneBox && oneBox.groupIndex !== null && (oneBox.targetTokens.length > 1 || oneBox.alignedSourceWords.length > 1));
   const title = mode === "alinear" ? t("al.titleAlign") : t("al.titleReview");
   const openHere = verse ? openFor(verse) : [];
@@ -1098,6 +1112,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
               <Bank editable={editable}>
                 <div className="al-bank__bar">
                   <p className="af-lbl">{pendingWords ? (pendingWords === 1 ? t("al.toPlaceOne") : t("al.toPlaceMany").replace("{n}", String(pendingWords))) : t("al.allPlacedShort")}</p>
+                  {verse.reference ? (
+                    <button type="button" className="af-link" aria-pressed={showUlt} onClick={() => setShowUlt(!showUlt)}>
+                      {data.referenceLabel}
+                    </button>
+                  ) : null}
                   {mode === "alinear" && !fixing ? (
                     <button
                       type="button"
@@ -1125,7 +1144,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                     </div>
                   </div>
                 ) : null}
-                <div className="al-bank__words">
+                {showUlt && verse.reference ? <p className="al-bank__ult">{verse.reference}</p> : null}
+                <div className="al-bank__words" ref={bankWords}>
                   {verse.draft.map((token, i) => (
                     <BankWord
                       key={`${i}-${token.surface}`}
@@ -1141,11 +1161,53 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                 </div>
               </Bank>
 
+              {/* What to do now, between the words and the boxes: it changes with what is selected. */}
+              <div className="al-guide" role="status">
+                {selectedWords.length || selectedBoxes.length ? (
+                  <>
+                    <p className="af-hint">
+                      {selectedWords.length
+                        ? selectedWords.length === 1
+                          ? t("al.guideWord").replace("{word}", verse.draft[selectedWords[0]!]?.surface ?? "")
+                          : n("al.guideWords", selectedWords.length)
+                        : t("al.boxChosen")}
+                    </p>
+                    <div className="al-actions">
+                      {selectedBoxes.length >= 2 ? (
+                        <Button type="button" size="sm" variant="outline" onClick={join}>
+                          {t("al.mergeBoxes")}
+                        </Button>
+                      ) : null}
+                      {canSeparate ? (
+                        <Button type="button" size="sm" variant="outline" onClick={separate}>
+                          {t("al.separate")}
+                        </Button>
+                      ) : null}
+                      {selectedBoxes.length ? (
+                        <Button type="button" size="sm" variant="outline" onClick={emptyBoxes}>
+                          {t("al.emptyBox")}
+                        </Button>
+                      ) : null}
+                      <Button type="button" size="sm" variant="ghost" onClick={clearSelection}>
+                        {t("al.clearSel")}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="af-hint">
+                    {nextWord ? t("al.guideNext").replace("{word}", nextWord) : readyToReview ? t("al.readyForReview") : t("al.allPlacedGo")}
+                    {current.length && !nextWord ? (
+                      <>
+                        {" "}
+                        <button type="button" className="af-link" onClick={() => change([])}>
+                          {t("al.clearVerse")}
+                        </button>
+                      </>
+                    ) : null}
+                  </p>
+                )}
+              </div>
               <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
-                <p className="af-lbl">
-                  {data.originalLabel} · {data.book} {data.chapter}:{verse.verse}
-                </p>
-                {reference}
                 <div className="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
                   {boxes.map((box, i) => (
                     <Box
@@ -1153,7 +1215,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       box={box}
                       draft={verse.draft}
                       gloss={verse.gloss}
-                      compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id)}
+                      compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id) && box.id !== nextBoxId}
+                      next={editable && box.id === nextBoxId}
                       slot={i % 6}
                       selected={selectedBoxes.includes(box.id)}
                       selectedRef={selectedRef?.boxId === box.id ? selectedRef.refIndex : null}
@@ -1179,27 +1242,22 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       <ToolHeader
         title={title}
         onBack={() => void leave()}
-        meta={data ? `${data.book} ${ctx?.ref || data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
+        meta={[
+          data ? `${data.book} ${ctx?.ref || data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : "",
+          data ? (mode === "alinear" ? t("al.metaDone").replace("{a}", String(doneCount)) : t("al.metaAgreed").replace("{a}", String(summary?.agreed ?? 0))).replace("{b}", String(data.verses.length)) : "",
+          data && mode === "revisar" && toAnswer ? t("al.toAnswerShort").replace("{n}", String(toAnswer)) : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       >
-          {shared ? (
-            <div className="al-modes" role="tablist" aria-label={t("al.modesAria")}>
-              <button type="button" role="tab" aria-selected={mode === "alinear"} onClick={() => setMode("alinear")}>
-                {t("al.modeAlign")}
-              </button>
-              <button type="button" role="tab" aria-selected={mode === "revisar"} onClick={() => setMode("revisar")}>
-                {t("al.modeReview")}
-              </button>
-            </div>
-          ) : null}
-        {data ? (
-          <div className="af-progress" aria-label={t("al.progressAria")}>
-            <span>{(mode === "alinear" ? t("al.versesDone").replace("{a}", String(doneCount)) : t("al.versesAgreed").replace("{a}", String(summary?.agreed ?? 0))).replace("{b}", String(data.verses.length))}</span>
-            <span className="af-bar">
-              <i style={{ width: `${data.verses.length ? ((mode === "alinear" ? doneCount : summary?.agreed ?? 0) / data.verses.length) * 100 : 0}%` }} />
-            </span>
-            {mode === "revisar" ? (
-              <span>{toAnswer === 0 ? t("al.nothingToAnswer") : toAnswer === 1 ? t("al.oneToAnswer") : n("al.nToAnswer", toAnswer)}</span>
-            ) : null}
+        {shared ? (
+          <div className="al-modes" role="tablist" aria-label={t("al.modesAria")}>
+            <button type="button" role="tab" aria-selected={mode === "alinear"} onClick={() => setMode("alinear")}>
+              {t("al.modeAlign")}
+            </button>
+            <button type="button" role="tab" aria-selected={mode === "revisar"} onClick={() => setMode("revisar")}>
+              {t("al.modeReview")}
+            </button>
           </div>
         ) : null}
       </ToolHeader>
@@ -1315,43 +1373,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                 </div>
               ) : null}
               {decisionNotes}
-              <p className="af-hint">
-                {selectedWords.length
-                  ? selectedWords.length === 1
-                    ? t("al.touchedOne")
-                    : n("al.touchedMany", selectedWords.length)
-                  : selectedBoxes.length
-                    ? t("al.boxChosen")
-                    : t("al.tapHint")}
-              </p>
-              <div className="al-actions">
-                <Button type="button" variant="outline" disabled={selectedBoxes.length < 2} onClick={join}>
-                  {t("al.mergeBoxes")}
-                </Button>
-                <Button type="button" variant="outline" disabled={!canSeparate} onClick={separate}>
-                  {t("al.separate")}
-                </Button>
-                <Button type="button" variant="outline" disabled={!selectedBoxes.length} onClick={emptyBoxes}>
-                  {t("al.emptyBox")}
-                </Button>
-                <Button type="button" variant="ghost" disabled={!selectedWords.length && !selectedBoxes.length} onClick={clearSelection}>
-                  {t("al.clearSel")}
-                </Button>
-                <Button type="button" variant="ghost" disabled={!current.length} onClick={() => change([])}>
-                  {t("al.clearVerse")}
-                </Button>
-              </div>
-              {readyToReview ? <p className="af-hint" role="status">{t("al.readyForReview")}</p> : null}
-              {!complete ? (
-                <p className="af-stale" role="status">
-                  {pendingWords === 1 ? t("al.missingWordsOne") : n("al.missingWordsMany", pendingWords)}
-                </p>
-              ) : (
-                <p className="af-hint" role="status">
-                  {t("al.allPlaced")}
-                  {pendingBoxes ? (pendingBoxes === 1 ? t("al.emptyBoxesOne") : n("al.emptyBoxesMany", pendingBoxes)) : ""}
-                </p>
-              )}
             </section>
           ) : (
             <section className="af-card" aria-label={t("al.yourAnswerAria")}>
