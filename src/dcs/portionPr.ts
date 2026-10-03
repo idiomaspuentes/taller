@@ -1,3 +1,4 @@
+import { mergeTsvRows } from "../domain/helpsDraft";
 import {
   createIssueComment,
   DcsApiError,
@@ -440,9 +441,32 @@ export async function mergePortionPrIfOpen(
         `TAS entrega #${issue.number}`,
       );
     } catch (err) {
-      throw new Error(
-        `No se pudo guardar la subtarea en el borrador grupal: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      // Two passages that changed neighbouring rows of one help file do not merge as lines: put this one's rows in.
+      const tables = files.map((row) => row.filename || "").filter((name) => /\.tsv$/i.test(name));
+      if (!tables.length || !pull.merge_base || !marker.base) {
+        throw new Error(
+          `No se pudo guardar la subtarea en el borrador grupal: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      for (const filepath of tables) {
+        const at = { session, owner: marker.owner, repo: marker.repo, filepath };
+        const [work, ancestor] = await Promise.all([readOrNull({ ...at, branch: marker.head }), readOrNull({ ...at, branch: pull.merge_base })]);
+        if (!work) continue;
+        for (let attempt = 0; ; attempt++) {
+          const trunk = await readRepoFile({ ...at, branch: marker.base });
+          const content = mergeTsvRows(trunk.text, work.text, ancestor?.text ?? "");
+          if (content === trunk.text) break;
+          try {
+            await writeRepoFile({ ...at, branch: marker.base, content, sha: trunk.sha, step: "trunk-merge", message: `TAS entrega #${issue.number}: filas de ${filepath}` });
+            break;
+          } catch (writeErr) {
+            // Somebody else delivered in between: read the group's file again and put the rows in once more.
+            if (attempt >= 2 || !(writeErr instanceof BootstrapError && (writeErr.status === 409 || writeErr.status === 422))) throw writeErr;
+          }
+        }
+      }
+      await createIssueComment(config, marker.owner, marker.repo, marker.number, `Filas de #${issue.number} puestas en «${marker.base}» una por una (las líneas vecinas de otro pasaje impedían la fusión Git). El PR se cierra sin fusión Git.`, session.token);
+      await closePull(config, marker.owner, marker.repo, marker.number, session.token);
     }
     return { status: "merged", conflicts: [], pullUrl };
   }

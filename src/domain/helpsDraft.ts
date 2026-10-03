@@ -129,6 +129,42 @@ export function applyHelpsTsvEdits(
   return serializeTsv(headers, next);
 }
 
+/**
+ * A passage's rows put into the group's help file, row by row.
+ *
+ * Every passage of a book works on the same file, each on its own rows. Two passages that sit next to each other
+ * change neighbouring lines, and Door43 refuses to merge the second one although nobody touched the same row. So
+ * the delivery does not merge lines: it takes the group's file as it is now and replaces the rows this draft
+ * changed since it started (`ancestor`), adding the ones it added. A row the draft left alone keeps what the group
+ * has, whoever changed it meanwhile.
+ */
+export function mergeTsvRows(trunk: string, work: string, ancestor: string): string {
+  const trunkTable = parseTsvTable(trunk);
+  const workTable = parseTsvTable(work);
+  if (!trunkTable.headers.length) return work;
+  const key = (row: Record<string, string>, index: number) => tsvRowId(row) || `#${index}`;
+  const same = (x: Record<string, string>, y: Record<string, string>) => trunkTable.headers.every((h) => (x[h] ?? "") === (y[h] ?? ""));
+  const before = new Map(parseTsvTable(ancestor).rows.map((row, index) => [key(row, index), row]));
+  const mine = new Map(workTable.rows.map((row, index) => [key(row, index), row]));
+  const out = trunkTable.rows.map((row, index) => {
+    const id = key(row, index);
+    const changed = mine.get(id);
+    const was = before.get(id);
+    return changed && (!was || !same(changed, was)) ? changed : row;
+  });
+  // Rows the draft added go after the row they followed in the draft.
+  const have = new Set(trunkTable.rows.map(key));
+  workTable.rows.forEach((row, index) => {
+    const id = key(row, index);
+    if (have.has(id) || before.has(id)) return;
+    const previous = index > 0 ? key(workTable.rows[index - 1]!, index - 1) : "";
+    const at = previous ? out.findIndex((r, i) => key(r, i) === previous) : -1;
+    out.splice(at >= 0 ? at + 1 : out.length, 0, row);
+    have.add(id);
+  });
+  return serializeTsv(trunkTable.headers, out);
+}
+
 function placeOf(row: Record<string, string>): { chapter?: number; verse?: number } {
   const parsed = parseVerseRef(row.Reference || row.reference || "");
   return parsed ? { chapter: parsed.chapter, verse: parsed.verses[0] } : {};

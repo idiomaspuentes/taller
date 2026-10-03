@@ -331,4 +331,16 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(onlyExisting(["a", "b"], null).length === 2, "sin lista se preguntan todas, como antes");
 }
 
+{
+  // Two passages of one help file, delivered one after the other: each one's rows go in, nobody's are lost.
+  const { mergeTsvRows } = await import("../src/domain/helpsDraft.ts");
+  const T = (rows: string[][]) => ["Reference\tID\tNote", ...rows.map((r) => r.join("\t"))].join("\n") + "\n";
+  const source = T([["1:15", "a1", "in English"], ["2:1", "b1", "in English"], ["2:9", "b2", "in English"], ["2:10", "c1", "in English"]]);
+  const trunk = T([["1:15", "a1", "en español"], ["2:1", "b1", "in English"], ["2:9", "b2", "in English"], ["2:10", "c1", "en español"]]);
+  const work = T([["1:15", "a1", "in English"], ["2:1", "b1", "nota uno"], ["2:1", "nueva", "añadida"], ["2:9", "b2", "nota dos"], ["2:10", "c1", "in English"]]);
+  const merged = mergeTsvRows(trunk, work, source);
+  assert(merged === T([["1:15", "a1", "en español"], ["2:1", "b1", "nota uno"], ["2:1", "nueva", "añadida"], ["2:9", "b2", "nota dos"], ["2:10", "c1", "en español"]]), "las filas del pasaje entran y las de los vecinos se conservan");
+  assert(mergeTsvRows(merged, work, source) === merged, "entregar dos veces no cambia nada");
+}
+
 console.log("verify-portion-pr: ok");
