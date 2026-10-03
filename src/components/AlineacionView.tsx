@@ -1282,7 +1282,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         />
       ) : null}
       <WordSheet
-        word={sheetToken ? { surface: sheetToken.surface, lemma: sheetToken.lemma, strong: sheetToken.strong } : null}
+        word={sheetToken ? { surface: sheetToken.surface, lemma: sheetToken.lemma, strong: sheetToken.strong, morph: sheetToken.morph } : null}
         at={{ book: data?.book ?? "", chapter: data?.chapter ?? 0, verse: verse?.verse ?? 0 }}
         session={session ?? null}
         workspace={workspace}

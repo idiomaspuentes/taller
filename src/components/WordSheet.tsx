@@ -6,11 +6,12 @@ import type { GtSession } from "../dcs/auth";
 import { lexiconRepos, loadLexiconEntry, reportLexiconEntry } from "../dcs/lexicon";
 import { explainError } from "../dcs/userError";
 import { lexiconReport, sensesOfWord, strongCode, strongParts, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
-import { useT } from "../i18n/messages";
+import { describeMorph, type MorphLabel } from "../domain/morphology";
+import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 
 /** A word of the original as the text tags it. */
-export type SheetWord = { surface: string; lemma: string; strong: string };
+export type SheetWord = { surface: string; lemma: string; strong: string; morph?: string };
 
 type Found = { part: StrongPart; file: LexiconFile | null; repo: LexiconRepo | undefined };
 
@@ -104,6 +105,9 @@ export function WordSheet({
   const mainSenses = main?.file ? sensesOfWord(main.file, at, main.part.letter) : undefined;
   const pos = mainSenses?.entries[0]?.pos?.join(", ");
   const credit = workspace?.lexicons?.credit?.[language];
+  // The grammar of this very form, from the text; the lexicon's part of speech only when the text gives none.
+  const say = (labels: MorphLabel[]) => labels.map((label) => ("key" in label ? t(`mo.${label.key}` as MessageKey) : label.text)).join(", ");
+  const morph = describeMorph(word?.morph).map(say).filter(Boolean);
 
   async function send() {
     if (!word || !session || !main?.repo || !report?.trim()) return;
@@ -139,8 +143,27 @@ export function WordSheet({
               <DialogTitle className="ws-word" lang={hebrew ? "hbo" : "grc"} dir={hebrew ? "rtl" : undefined}>
                 {word.surface}
               </DialogTitle>
-              <p className="ws-meta">{[word.lemma && word.lemma !== word.surface ? `${t("lx.lemma")} ${word.lemma}` : "", pos, parts.map(strongCode).join(" · ")].filter(Boolean).join(" · ")}</p>
             </header>
+            <dl className="ws-facts">
+              {word.lemma ? (
+                <div>
+                  <dt>{t("lx.lemma")}</dt>
+                  <dd lang={hebrew ? "hbo" : "grc"}>{word.lemma}</dd>
+                </div>
+              ) : null}
+              {morph.length || pos ? (
+                <div>
+                  <dt>{t("lx.morph")}</dt>
+                  <dd>{morph.length ? morph.join(" + ") : pos}</dd>
+                </div>
+              ) : null}
+              {parts.length ? (
+                <div>
+                  <dt>{t("lx.strong")}</dt>
+                  <dd>{parts.map(strongCode).join(" · ")}</dd>
+                </div>
+              ) : null}
+            </dl>
 
             {found === null ? <p className="af-hint">{t("lx.loading")}</p> : null}
             {found !== null && !found.some((row) => row.file) ? <p className="af-hint">{t("lx.none")}</p> : null}
