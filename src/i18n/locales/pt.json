@@ -2251,8 +2251,8 @@
   "lx.rShown": "Sentido mostrado",
   "lx.rMissing": "(o léxico não tem entrada)",
   "lx.rFrom": "Enviado do Taller por",
-  "fx.why": "Por quê, ou o que o grupo deve revisar",
-  "fx.whyHint": "Opcional se corrigir agora; necessário para pedir ao grupo",
+  "fx.why": "Detalhe do motivo",
+  "fx.whyHint": "Explique mais, se precisar (opcional)",
   "fx.fixNow": "Corrigir agora",
   "fx.fixNowHint": "Altera o rascunho do grupo neste momento.",
   "fx.ask": "Pedir ao grupo",
@@ -2368,5 +2368,13 @@
   "mo.qal_passive": "qal passivo",
   "lx.morph": "Morfologia",
   "lx.strong": "Strong",
-  "al.guideHint": "O léxico sugere: {words}."
+  "al.guideHint": "O léxico sugere: {words}.",
+  "fx.reasons": "Motivo da mudança",
+  "fx.rSpelling": "Ortografia",
+  "fx.rPunctuation": "Pontuação",
+  "fx.rWordChoice": "Escolha de palavra",
+  "fx.rMeaning": "Significado",
+  "fx.rGrammar": "Gramática",
+  "fx.rOther": "Outro",
+  "fx.askNeeds": "Para pedir ao grupo, marque um motivo ou escreva o que deve revisar."
 }

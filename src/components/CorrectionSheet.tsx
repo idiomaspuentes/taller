@@ -2,7 +2,17 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { sameText, wordDiff } from "../domain/verseEditView";
-import { useT } from "../i18n/messages";
+import { useT, type MessageKey } from "../i18n/messages";
+
+/** The usual reasons to change a verse, one tap each, so the reason does not have to be typed every time. */
+const REASONS: { id: string; label: MessageKey }[] = [
+  { id: "spelling", label: "fx.rSpelling" },
+  { id: "punctuation", label: "fx.rPunctuation" },
+  { id: "wordChoice", label: "fx.rWordChoice" },
+  { id: "meaning", label: "fx.rMeaning" },
+  { id: "grammar", label: "fx.rGrammar" },
+  { id: "other", label: "fx.rOther" },
+];
 
 /** A text the verse is read against while it is corrected. */
 export type CorrectionReference = { id: string; label: string; text: string; lang?: string; rtl?: boolean; original?: boolean };
@@ -40,6 +50,7 @@ export function CorrectionSheet({
   const t = useT();
   const [draft, setDraft] = useState(text);
   const [why, setWhy] = useState("");
+  const [reasons, setReasons] = useState<string[]>([]);
   const [refId, setRefId] = useState(references[0]?.id ?? "");
   /** Which of the two ways out is under way: its button says so, the other only waits. */
   const [acting, setActing] = useState<"fix" | "ask" | null>(null);
@@ -52,11 +63,15 @@ export function CorrectionSheet({
     if (!open) return;
     setDraft(text);
     setWhy("");
+    setReasons([]);
     setRefId((id) => (references.some((r) => r.id === id) ? id : (references[0]?.id ?? "")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, text]);
 
   const reference = references.find((r) => r.id === refId) ?? references[0];
+  // What is kept with the change, and what the group reads: the reasons chosen, then what the person wrote.
+  const chosen = REASONS.filter((r) => reasons.includes(r.id)).map((r) => t(r.label));
+  const reason = [chosen.join(", "), why.trim()].filter(Boolean).join(": ");
   const changed = Boolean(draft.trim()) && !sameText(draft, text);
   const diff = changed ? wordDiff(text, draft) : [];
   // A piece of the diff may hold several words in a row.
@@ -108,10 +123,17 @@ export function CorrectionSheet({
             </div>
           ) : null}
 
-          <label className="fx-field">
-            <span className="af-lbl">{t("fx.why")}</span>
-            <textarea className="af-textarea" rows={2} value={why} placeholder={t("fx.whyHint")} onChange={(e) => setWhy(e.target.value)} />
-          </label>
+          <div className="fx-field" role="group" aria-label={t("fx.reasons")}>
+            <span className="af-lbl">{t("fx.reasons")}</span>
+            <div className="fx-reasons">
+              {REASONS.map((r) => (
+                <button key={r.id} type="button" aria-pressed={reasons.includes(r.id)} onClick={() => setReasons((prev) => (prev.includes(r.id) ? prev.filter((id) => id !== r.id) : [...prev, r.id]))}>
+                  {t(r.label)}
+                </button>
+              ))}
+            </div>
+            <textarea className="af-textarea" rows={2} value={why} aria-label={t("fx.why")} placeholder={t("fx.whyHint")} onChange={(e) => setWhy(e.target.value)} />
+          </div>
 
           {error ? (
             <p className="ws-error" role="alert">
@@ -124,7 +146,7 @@ export function CorrectionSheet({
           <div className="fx-choice">
             <Button type="button" disabled={busy || !changed} onClick={() => {
                 setActing("fix");
-                onFix(draft.trim(), why.trim());
+                onFix(draft.trim(), reason);
               }}
             >
               {busy && acting === "fix" ? t("af.saving") : t("fx.fixNow")}
@@ -132,14 +154,14 @@ export function CorrectionSheet({
             <p className="ws-meta">{t("fx.fixNowHint")}</p>
           </div>
           <div className="fx-choice">
-            <Button type="button" variant="outline" disabled={busy || !why.trim()} onClick={() => {
+            <Button type="button" variant="outline" disabled={busy || !reason} onClick={() => {
                 setActing("ask");
-                onAsk(draft.trim(), why.trim());
+                onAsk(draft.trim(), reason);
               }}
             >
               {busy && acting === "ask" ? t("lx.reportSending") : t("fx.ask")}
             </Button>
-            <p className="ws-meta">{changed ? t("fx.askHintText") : t("fx.askHint")}</p>
+            <p className="ws-meta">{!reason ? t("fx.askNeeds") : changed ? t("fx.askHintText") : t("fx.askHint")}</p>
           </div>
         </footer>
       </DialogContent>
