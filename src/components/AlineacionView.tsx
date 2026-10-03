@@ -308,7 +308,7 @@ function savedBankHeight(): number | null {
  * The words of the draft, in a box whose height the person chooses: dragging its bottom edge, or with a button
  * that opens it to the whole verse and back. Reading the verse well is part of deciding the alignment.
  */
-function Bank({ children, editable }: { children: ReactNode; editable: boolean }) {
+function Bank({ children, editable, foot }: { children: ReactNode; editable: boolean; foot?: ReactNode }) {
   const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id: BANK_ID, disabled: !editable });
   const [height, setHeight] = useState<number | null>(() => savedBankHeight());
@@ -340,6 +340,7 @@ function Bank({ children, editable }: { children: ReactNode; editable: boolean }
     >
       {children}
       <div className="al-bank__foot">
+        {foot}
         <button
           type="button"
           className="al-bank__grip"
@@ -402,8 +403,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [dirty, setDirty] = useState<Record<number, boolean>>({});
   const [history, setHistory] = useState<Record<number, { past: AlignmentGroup[][]; future: AlignmentGroup[][] }>>({});
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
-  /** The English verse shown inside the bank, for reading the draft against it. */
-  const [showUlt, setShowUlt] = useState(false);
+  /** The text the bank shows: the draft (the one whose words are placed), the original, or the English. */
+  const [bankText, setBankText] = useState<"draft" | "orig" | "ref">("draft");
   const bankWords = useRef<HTMLDivElement | null>(null);
   const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
   const [selectedRef, setSelectedRef] = useState<{ boxId: string; refIndex: number } | null>(null);
@@ -1083,25 +1084,37 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const dnd = verse && data ? (
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
             <div className="al-layout">
-              <Bank editable={editable}>
-                <div className="al-bank__bar">
-                  <p className="af-lbl">{pendingWords ? (pendingWords === 1 ? t("al.toPlaceOne") : t("al.toPlaceMany").replace("{n}", String(pendingWords))) : t("al.allPlacedShort")}</p>
-                  {verse.reference ? (
-                    <button type="button" className="af-link" aria-pressed={showUlt} onClick={() => setShowUlt(!showUlt)}>
-                      {data.referenceLabel}
-                    </button>
-                  ) : null}
-                  {mode === "alinear" && !fixing ? (
+              <Bank
+                editable={editable}
+                foot={
+                  mode === "alinear" && !fixing ? (
                     <button
                       type="button"
-                      className="af-link"
+                      className="af-link al-bank__fix"
                       disabled={Boolean(dirty[verse.verse])}
                       title={dirty[verse.verse] ? t("al.saveBeforeFix") : undefined}
                       onClick={() => setFixing({ text: verse.text, why: "" })}
                     >
                       {t("af.fixShort")}
                     </button>
-                  ) : null}
+                  ) : null
+                }
+              >
+                <div className="al-bank__bar">
+                  <div className="af-ref__texts" role="tablist" aria-label={t("al.bankTexts")}>
+                    <button type="button" role="tab" aria-selected={bankText === "draft"} onClick={() => setBankText("draft")}>
+                      {t("al.bankDraft")}
+                    </button>
+                    <button type="button" role="tab" aria-selected={bankText === "orig"} onClick={() => setBankText("orig")}>
+                      {t("af.tabOriginal")}
+                    </button>
+                    {verse.reference ? (
+                      <button type="button" role="tab" aria-selected={bankText === "ref"} onClick={() => setBankText("ref")}>
+                        {data.referenceLabel}
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="af-lbl">{pendingWords ? (pendingWords === 1 ? t("al.toPlaceOne") : t("al.toPlaceMany").replace("{n}", String(pendingWords))) : t("al.allPlacedShort")}</p>
                 </div>
                 {fixing ? (
                   <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
@@ -1118,8 +1131,14 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                     </div>
                   </div>
                 ) : null}
-                {showUlt && verse.reference ? <p className="al-bank__ult">{verse.reference}</p> : null}
-                <div className="al-bank__words" ref={bankWords}>
+                {bankText === "orig" ? (
+                  <p className="al-bank__text af-orig" lang="grc" dir={data.originalRtl ? "rtl" : undefined}>
+                    {verse.original.map((token) => token.surface).join(" ")}
+                  </p>
+                ) : bankText === "ref" ? (
+                  <p className="al-bank__text">{verse.reference}</p>
+                ) : null}
+                <div className="al-bank__words" ref={bankWords} hidden={bankText !== "draft"}>
                   {verse.draft.map((token, i) => (
                     <BankWord
                       key={`${i}-${token.surface}`}

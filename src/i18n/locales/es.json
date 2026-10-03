@@ -925,7 +925,6 @@
   "al.stOwn": "lo alineaste tú",
   "al.stAnswered": "ya lo respondiste",
   "al.stToAnswer": "por responder",
-  "al.english": "Texto en inglés ({label})",
   "al.yourDraft": "Tu borrador",
   "al.back": "Volver",
   "al.backArrow": "← Volver",
@@ -2223,5 +2222,8 @@
   "al.toAnswerShort": "{n} por responder",
   "al.guideNext": "Toca «{word}» y luego la caja de la palabra que traduce. También puedes arrastrarla.",
   "al.guideWord": "Toca la caja donde va «{word}».",
-  "al.guideWords": "Toca la caja donde van las {n} palabras."
+  "al.guideWords": "Toca la caja donde van las {n} palabras.",
+  "al.bankTexts": "Texto que se muestra",
+  "al.bankDraft": "Borrador",
+  "al.english": "Texto en inglés ({label})"
 }
