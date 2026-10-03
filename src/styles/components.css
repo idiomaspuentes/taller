@@ -7800,9 +7800,15 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 }
 /* Compact: no air that does not help to see the verse and its boxes at once. */
 .al-clear { margin: 0.25rem 0 0; text-align: end; font-size: 0.8125rem; }
-.al-bank { padding: 0.5rem 0.5rem 0; }
-.al-bank__foot { min-height: 22px; margin: 0.125rem -0.5rem 0; }
-.al-bank__grip { height: 22px; }
+/* The bank is read as text and worked with the thumb: it keeps room around the verse and under the controls. */
+.al-bank { padding: 0.75rem 0.875rem 0; }
+.al-bank__bar { margin-bottom: 0.625rem; }
+.al-bank__words, .al-bank__text { padding-bottom: 0.625rem; }
+.al-bank__words { gap: 0.3125rem 0.3125rem; }
+.al-bank__foot { min-height: 38px; margin: 0 -0.875rem; }
+.al-bank__grip { height: 38px; }
+.al-bank__size { right: 0.875rem; font-size: 0.8125rem; }
+.al-bank__fix { left: 0.875rem; font-size: 0.8125rem; }
 .th-icon[aria-pressed="true"] { background: var(--accent-100); color: var(--accent-700); }
 @media (max-width: 40rem) {
   .af.al { gap: 0.5rem; }
@@ -7873,3 +7879,13 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 .fx-reasons { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-bottom: 0.25rem; }
 .fx-reasons button { min-height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-size: 0.875rem; color: var(--text); cursor: pointer; }
 .fx-reasons button[aria-pressed="true"] { border-color: var(--accent-500); background: var(--accent-100); color: var(--accent-800); font-weight: 700; }
+.al-bank__bar { flex-wrap: wrap; row-gap: 0.375rem; }
+/* Beside the boxes, on a wide screen, the bank is a column of its own: wide enough for its bar, and as tall as
+   the verse needs. The height a person chose on a phone is for a bank that sits above the boxes, not this one. */
+@media (min-width: 768px) {
+  .al-layout { grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr); }
+  .al-bank { top: 0.5rem; max-height: calc(100dvh - 9rem) !important; }
+  .al-bank__grip, .al-bank__size { display: none; }
+  .al-bank__foot { justify-content: flex-start; }
+  .al-bank__fix { position: static; margin-inline-start: 0.875rem; }
+}
