@@ -4,9 +4,13 @@
  * Strong's number, in the language of the team, in the layout Door43 lexicons use (`content/<number>.json`,
  * with `brief` and `long`, as translationCore and gateway-edit expect).
  *
- * The source is the UBS dictionaries (github.com/ubsicap/ubs-open-license, CC BY-SA 4.0), which come as one
- * large file per language. Nothing is translated here: the text is theirs, reshaped. What this adds is the
- * list of senses with the verses each one applies to, so a tool can show the sense of the verse in hand.
+ * The main source is the UBS dictionaries (github.com/ubsicap/ubs-open-license, CC BY-SA 4.0), which come as
+ * one large file per language; their text is reshaped, not translated. What this adds is the list of senses
+ * with the verses each one applies to, so a tool can show the sense of the verse in hand.
+ *
+ * The UBS dictionaries lack a few very frequent words (εἰμί, עַל, כֹּל…). Those are filled in from
+ * scripts/lexicon-additions/, translated from the English lexicons of Door43 (CC BY-SA 4.0 too), so the
+ * repositories stand on their own: a tool reads one place and finds every word of the text.
  *
  *   node scripts/build-lexicons.mjs                 # writes ../lexicons/<repo>
  *   node scripts/build-lexicons.mjs --coverage      # also checks every Strong's of the UGNT and the UHB
@@ -39,6 +43,14 @@ const SOURCE_FILES = {
 };
 
 /** The credit lines the UBS asks for, word for word. */
+const ADDITIONS_DIR = path.join(HERE, "lexicon-additions");
+
+/** The English lexicons the added entries were translated from. */
+const ADDED_FROM = {
+  greek: { id: "en_ugl", title: "English Greek Lexicon", url: "https://git.door43.org/test_org/en_ugl", credit: "English Greek Lexicon, version 0.1, unfoldingWord (Door43 World Missions Community), CC BY-SA 4.0." },
+  hebrew: { id: "en_uhl", title: "English Hebrew Lexicon", url: "https://git.door43.org/test_org/en_uhl", credit: "English Hebrew Lexicon, version 0.1, unfoldingWord (Open Scriptures Hebrew Bible Project), CC BY-SA 4.0." },
+};
+
 const CREDIT = {
   greek:
     "UBS Dictionary of New Testament Greek, © United Bible Societies, 2023. Adapted from Semantic Dictionary of Biblical Greek: © United Bible Societies 2018-2023, which is adapted from Greek-English Lexicon of the New Testament: Based on Semantic Domains, Eds. J P Louw, Eugene Albert Nida © United Bible Societies 1988, 1989.",
@@ -254,7 +266,12 @@ function summarize(entries) {
     const gloss = sense.glosses?.[0];
     if (gloss && !firsts.includes(gloss)) firsts.push(gloss);
   }
-  const line = (sense) => [sense.definition, sense.glosses?.join(", ")].filter(Boolean).join(": ");
+  // "definition: glosses", with no "." before the colon, and the glosses left out when they only repeat it.
+  const line = (sense) => {
+    const definition = (sense.definition ?? "").replace(/[.;:]+$/, "");
+    const glosses = sense.glosses?.join(", ") ?? "";
+    return definition && glosses && !definition.toLowerCase().startsWith(glosses.toLowerCase()) ? `${definition}: ${glosses}` : definition || glosses;
+  };
   const long = all.length === 1 ? line(all[0]) : all.map((sense, i) => `${i + 1}) ${line(sense)}`).join(" ");
   return { brief: firsts.slice(0, 4).join(", "), long };
 }
@@ -273,6 +290,7 @@ dublin_core:
   conformsto: 'rc0.2'
   contributor:
     - 'United Bible Societies'
+    - 'unfoldingWord'
     - 'Idiomas Puentes'
   creator: 'United Bible Societies'
   description: '${description.replace(/'/g, "''")}'
@@ -293,6 +311,10 @@ dublin_core:
       identifier: '${greek ? "ubs-dgnt" : "ubs-dbh"}'
       language: '${target.srcLang}'
       version: '${target.sourceVersion}'
+    -
+      identifier: '${target.id}'
+      language: 'en'
+      version: '0.1'
   subject: '${greek ? "Greek Lexicon" : "Hebrew-Aramaic Lexicon"}'
   title: '${title}'
   type: 'dict'
@@ -318,6 +340,7 @@ projects:
 function readme(target, stats) {
   const greek = target.kind === "greek";
   const credit = CREDIT[target.kind];
+  const added = ADDED_FROM[target.kind];
   if (target.ui === "pt") {
     return `# ${target.repo}
 
@@ -330,6 +353,14 @@ Este recurso é uma **adaptação** do ${greek ? "UBS Dictionary of the Greek Ne
 > ${credit}
 
 Esta adaptação é distribuída sob a mesma licença (ver \`LICENSE.md\`). As Sociedades Bíblicas Unidas não revisaram nem endossam esta adaptação.
+
+### Entradas acrescentadas
+
+A fonte ainda não tem entrada para algumas palavras muito frequentes do texto original. Essas ${stats.added} entradas foram **traduzidas** do [${added.title}](${added.url}) e levam \`"source": "${added.id}"\`:
+
+> ${added.credit}
+
+A tradução foi feita com assistência automática e ainda não foi revisada por uma pessoa; por isso essas entradas levam \`"review": "pending"\`. Do original inglês foram traduzidos o significado e a origem da palavra; a lista de equivalências da versão King James não foi incluída. Os textos traduzidos estão em \`scripts/lexicon-additions/\` do repositório \`taller\`.
 
 ## O que foi alterado
 
@@ -370,6 +401,7 @@ O texto das definições e das glosas é o da fonte (versão ${target.sourceVers
 - Sentidos: ${stats.senses}
 - Sentidos ainda em inglês: ${stats.sensesInEnglish}
 - Definições ainda em inglês: ${stats.definitionsInEnglish}
+- Entradas acrescentadas do ${added.id}: ${stats.added}
 
 Gerado em ${TODAY} com \`scripts/build-lexicons.mjs\` do repositório \`taller\` de Idiomas Puentes. Não edite \`content/\` à mão: as correções são feitas no script ou na fonte.
 `;
@@ -385,6 +417,14 @@ Este recurso es una **adaptación** del ${greek ? "UBS Dictionary of the Greek N
 > ${credit}
 
 Esta adaptación se distribuye bajo la misma licencia (ver \`LICENSE.md\`). Las Sociedades Bíblicas Unidas no han revisado ni avalan esta adaptación.
+
+### Entradas añadidas
+
+La fuente todavía no tiene entrada para algunas palabras muy frecuentes del texto original. Esas ${stats.added} entradas se **tradujeron** del [${added.title}](${added.url}) y llevan \`"source": "${added.id}"\`:
+
+> ${added.credit}
+
+La traducción se hizo con asistencia automática y todavía no la ha revisado una persona; por eso esas entradas llevan \`"review": "pending"\`. ${greek ? "" : "Del original inglés se tradujeron el significado y el origen de la palabra; la lista de equivalencias de la versión King James no se incluyó. "}Los textos traducidos están en \`scripts/lexicon-additions/\` del repositorio \`taller\`.
 
 ## Qué se cambió
 
@@ -425,13 +465,14 @@ El texto de las definiciones y de las glosas es el de la fuente (versión ${targ
 - Sentidos: ${stats.senses}
 - Sentidos todavía en inglés: ${stats.sensesInEnglish}
 - Definiciones todavía en inglés: ${stats.definitionsInEnglish}
+- Entradas añadidas del ${added.id}: ${stats.added}
 
 Generado el ${TODAY} con \`scripts/build-lexicons.mjs\` del repositorio \`taller\` de Idiomas Puentes. No edites \`content/\` a mano: las correcciones se hacen en el guion o en la fuente.
 `;
 }
 
 async function buildTarget(target, dictionaries, original) {
-  const report = { senses: 0, sensesInEnglish: 0, definitionsInEnglish: 0, unknownRefs: { count: 0 }, unknownPos: new Set(), noStrong: 0, leftoverMarks: 0, byLemma: 0 };
+  const report = { senses: 0, sensesInEnglish: 0, definitionsInEnglish: 0, unknownRefs: { count: 0 }, unknownPos: new Set(), noStrong: 0, leftoverMarks: 0, byLemma: 0, added: 0 };
   const english = sensesById(dictionaries[target.english]);
   const files = new Map();
   let entries = 0;
@@ -465,6 +506,23 @@ async function buildTarget(target, dictionaries, original) {
     }
   }
 
+  // What the source lacks and the text uses, from the translated additions. Only where there is nothing:
+  // the day the source gains the entry, the source wins.
+  const additions = await loadJson(path.join(ADDITIONS_DIR, `${target.id}.json`));
+  for (const [key, added] of Object.entries(additions)) {
+    const number = Number(key);
+    const text = added?.[target.ui];
+    if (!number || !text || files.has(number)) continue;
+    const sense = { definition: text.definition, glosses: text.glosses };
+    if (text.etymology) sense.etymology = text.etymology;
+    const strong = target.kind === "greek" ? `G${number}` : `H${String(number).padStart(4, "0")}`;
+    // Said in the entry itself: where it comes from, and that a person has not reviewed the translation yet.
+    files.set(number, [{ strong, lemma: added.lemma, senses: [sense], source: ADDED_FROM[target.kind].id, review: "pending" }]);
+    entries += 1;
+    report.senses += 1;
+    report.added += 1;
+  }
+
   const repo = path.join(OUT, target.repo);
   const content = path.join(repo, "content");
   await rm(content, { recursive: true, force: true });
@@ -481,7 +539,7 @@ async function buildTarget(target, dictionaries, original) {
     if (Buffer.byteLength(body) > largest.bytes) largest = { number, bytes: Buffer.byteLength(body) };
     await writeFile(path.join(content, `${number}.json`), body);
   }
-  const stats = { files: files.size, entries, senses: report.senses, sensesInEnglish: report.sensesInEnglish, definitionsInEnglish: report.definitionsInEnglish };
+  const stats = { files: files.size, entries, senses: report.senses, sensesInEnglish: report.sensesInEnglish, definitionsInEnglish: report.definitionsInEnglish, added: report.added };
   await writeFile(path.join(repo, "manifest.yaml"), manifest(target, files.size));
   await writeFile(path.join(repo, "README.md"), readme(target, stats));
   await copyFile(path.join(SOURCES_DIR, "LICENSE.md"), path.join(repo, "LICENSE.md"));
@@ -491,6 +549,7 @@ async function buildTarget(target, dictionaries, original) {
   console.log(`  largest file: ${largest.number}.json, ${(largest.bytes / 1024).toFixed(0)} KB`);
   console.log(`  still in English: ${report.sensesInEnglish} senses, ${report.definitionsInEnglish} definitions`);
   console.log(`  filed by lemma, under the number the text uses: ${report.byLemma}`);
+  console.log(`  added from ${ADDED_FROM[target.kind].id}, translated: ${report.added}`);
   console.log(`  left out: ${report.noStrong} entries with no Strong's number`);
   if (report.unknownRefs.count) console.log(`  references to a book outside the 66: ${report.unknownRefs.count}`);
   if (report.unknownPos.size) console.log(`  grammar labels with no translation: ${[...report.unknownPos].join(", ")}`);
