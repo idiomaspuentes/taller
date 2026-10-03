@@ -1,7 +1,7 @@
 import { draftTaskId } from "../dcs/afinacionLoad";
 import { saveCorrection } from "../dcs/afinacionStore";
 import { ChapterReader } from "./ChapterReader";
-import { Redo2, Undo2 } from "lucide-react";
+import { BookOpen, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
@@ -93,8 +93,7 @@ const RELEASED = "released";
 
 type DragData =
   | { type: "word"; indices: number[] }
-  | { type: "chip"; boxId: string; transIndex: number }
-  | { type: "merge"; boxId: string };
+  | { type: "chip"; boxId: string; transIndex: number };
 
 /** What a reviewer sees of the verse: the draft words and every link, so any change makes old answers stale. */
 function alignmentFingerprint(draft: WordToken[], groups: AlignmentGroup[]): string {
@@ -190,29 +189,6 @@ function PlacedWord({
   );
 }
 
-function MergeGrip({ boxId, disabled }: { boxId: string; disabled: boolean }) {
-  const t = useT();
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `merge-${boxId}`,
-    data: { type: "merge", boxId } satisfies DragData,
-    disabled,
-  });
-  return (
-    <button
-      type="button"
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className="al-grip"
-      data-dragging={isDragging ? "true" : undefined}
-      aria-label={t("al.mergeGrip")}
-      data-no-box-select
-    >
-      ⠿
-    </button>
-  );
-}
-
 function Box({
   box,
   draft,
@@ -262,7 +238,6 @@ function Box({
       }}
     >
       <div className="al-box__head">
-        {editable ? <MergeGrip boxId={box.id} disabled={false} /> : null}
         <div className="al-box__refs">
           {box.targetTokens.map((tok, i) => {
             const refIndex = box.targetTokenIndices[i] ?? 0;
@@ -741,7 +716,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
     const data = e.active.data.current as DragData | undefined;
     if (data?.type === "word") setDragging(verse?.draft[data.indices[0]!]?.surface ?? null);
     if (data?.type === "chip") setDragging(verse?.draft[data.transIndex]?.surface ?? null);
-    if (data?.type === "merge") setDragging(t("al.mergeBoxes"));
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -758,8 +732,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
     } else if (from.type === "chip") {
       if (toBox && toBox !== from.boxId) put(toBox, [from.transIndex]);
       else if (overId === BANK_ID) removeWord(from.boxId, from.transIndex);
-    } else if (from.type === "merge" && toBox && toBox !== from.boxId) {
-      change(mergeAlignmentBoxes(verse.original, verse.draft, current, [from.boxId, toBox], toBox));
     }
   }
 
@@ -1047,6 +1019,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const title = mode === "alinear" ? t("al.titleAlign") : t("al.titleReview");
   const openHere = verse ? openFor(verse) : [];
   const realignHere = verse ? realignFor(verse) : [];
+  /** The tools card has something to show: a proposal being written, or notes of decisions taken. */
+  const hasTools = (mode === "revisar" && proposing && Boolean(baseVerse)) || Boolean(sentIssue) || (mode === "alinear" && realignHere.length > 0);
   const decisionNotes = (
     <>
       {sentIssue ? (
@@ -1161,52 +1135,42 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                 </div>
               </Bank>
 
-              {/* What to do now, between the words and the boxes: it changes with what is selected. */}
-              <div className="al-guide" role="status">
-                {selectedWords.length || selectedBoxes.length ? (
-                  <>
-                    <p className="af-hint">
-                      {selectedWords.length
-                        ? selectedWords.length === 1
-                          ? t("al.guideWord").replace("{word}", verse.draft[selectedWords[0]!]?.surface ?? "")
-                          : n("al.guideWords", selectedWords.length)
-                        : t("al.boxChosen")}
-                    </p>
-                    <div className="al-actions">
-                      {selectedBoxes.length >= 2 ? (
-                        <Button type="button" size="sm" variant="outline" onClick={join}>
-                          {t("al.mergeBoxes")}
-                        </Button>
-                      ) : null}
-                      {canSeparate ? (
-                        <Button type="button" size="sm" variant="outline" onClick={separate}>
-                          {t("al.separate")}
-                        </Button>
-                      ) : null}
-                      {selectedBoxes.length ? (
-                        <Button type="button" size="sm" variant="outline" onClick={emptyBoxes}>
-                          {t("al.emptyBox")}
-                        </Button>
-                      ) : null}
-                      <Button type="button" size="sm" variant="ghost" onClick={clearSelection}>
-                        {t("al.clearSel")}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
+              {/* What to do with what is chosen; before the first word, how it works. The rest is in the boxes. */}
+              {selectedWords.length || selectedBoxes.length ? (
+                <div className="al-guide" role="status">
                   <p className="af-hint">
-                    {nextWord ? t("al.guideNext").replace("{word}", nextWord) : readyToReview ? t("al.readyForReview") : t("al.allPlacedGo")}
-                    {current.length && !nextWord ? (
-                      <>
-                        {" "}
-                        <button type="button" className="af-link" onClick={() => change([])}>
-                          {t("al.clearVerse")}
-                        </button>
-                      </>
-                    ) : null}
+                    {selectedWords.length
+                      ? selectedWords.length === 1
+                        ? t("al.guideWord").replace("{word}", verse.draft[selectedWords[0]!]?.surface ?? "")
+                        : n("al.guideWords", selectedWords.length)
+                      : t("al.boxChosen")}
                   </p>
-                )}
-              </div>
+                  <div className="al-actions">
+                    {selectedBoxes.length >= 2 ? (
+                      <Button type="button" size="sm" variant="outline" onClick={join}>
+                        {t("al.mergeBoxes")}
+                      </Button>
+                    ) : null}
+                    {canSeparate ? (
+                      <Button type="button" size="sm" variant="outline" onClick={separate}>
+                        {t("al.separate")}
+                      </Button>
+                    ) : null}
+                    {selectedBoxes.length ? (
+                      <Button type="button" size="sm" variant="outline" onClick={emptyBoxes}>
+                        {t("al.emptyBox")}
+                      </Button>
+                    ) : null}
+                    <Button type="button" size="sm" variant="ghost" onClick={clearSelection}>
+                      {t("al.clearSel")}
+                    </Button>
+                  </div>
+                </div>
+              ) : !current.length && nextWord ? (
+                <p className="af-hint al-guide" role="status">
+                  {t("al.guideNext").replace("{word}", nextWord)}
+                </p>
+              ) : null}
               <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
                 <div className="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
                   {boxes.map((box, i) => (
@@ -1231,6 +1195,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                     />
                   ))}
                 </div>
+                {current.length ? (
+                  <p className="al-clear">
+                    <button type="button" className="af-link" onClick={() => change([])}>
+                      {t("al.clearVerse")}
+                    </button>
+                  </p>
+                ) : null}
               </section>
             </div>
             <DragOverlay>{dragging ? <span className="al-word al-word--ghost">{dragging}</span> : null}</DragOverlay>
@@ -1249,6 +1220,20 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         ]
           .filter(Boolean)
           .join(" · ")}
+        actions={
+          data && verse && session ? (
+            <button
+              type="button"
+              className="th-icon"
+              aria-pressed={pane === "chapter"}
+              aria-label={t("af.paneChapter")}
+              title={t("af.paneChapter")}
+              onClick={() => setPane(pane === "chapter" ? "align" : "chapter")}
+            >
+              <BookOpen size={20} aria-hidden />
+            </button>
+          ) : undefined
+        }
       >
         {shared ? (
           <div className="al-modes" role="tablist" aria-label={t("al.modesAria")}>
@@ -1262,16 +1247,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         ) : null}
       </ToolHeader>
 
-      {data && verse && session ? (
-        <div className="fam-tabs af-panes" role="tablist">
-          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "align"} onClick={() => setPane("align")}>
-            {t(mode === "revisar" ? "al.paneReview" : "al.paneAlign")}
-          </button>
-          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "chapter"} onClick={() => setPane("chapter")}>
-            {t("af.paneChapter")}
-          </button>
-        </div>
-      ) : null}
       {data && verse && session && pane === "chapter" ? (
         <ChapterReader session={session} book={data.book} pkg={pkg} draft={data.draft} draftLabel={t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")} chapter={data.chapter} from={verse.verse} />
       ) : null}
@@ -1351,7 +1326,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
             </section>
           )}
 
-          {editable ? (
+          {editable && !hasTools ? null : editable ? (
             <section className="af-card al-tools" aria-label={t("al.toolsAria")}>
               {mode === "revisar" && proposing && baseVerse ? (
                 <div className="al-textedit">

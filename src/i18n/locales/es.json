@@ -897,7 +897,6 @@
   "af.noNotes": "No hay figuras señaladas en este capítulo",
   "af.notesFrom": "Las notas se leen de {src}.",
   "al.removeFromBox": "Quitar «{w}» de esta caja",
-  "al.mergeGrip": "Arrastra esta caja sobre otra para juntarlas",
   "al.bankAria": "Palabras de tu borrador",
   "al.noSource": "Esta tarea no dice qué texto alinea. Quien administra debe añadir «Esperar a» la traducción en la tarea.",
   "al.mergeBoxes": "Juntar cajas",
@@ -2211,11 +2210,9 @@
   "af.differsElsewhere": "«{words}» no coincide con cómo se tradujo en otros lugares.",
   "al.toPlaceOne": "Falta colocar 1 palabra",
   "al.toPlaceMany": "Faltan colocar {n} palabras",
-  "al.allPlacedShort": "Todas las palabras están colocadas",
+  "al.allPlacedShort": "Todo colocado",
   "cr.loading": "Cargando los textos…",
   "cr.none": "No se pudo leer ningún texto de este libro.",
-  "al.paneAlign": "Alinear",
-  "al.paneReview": "Revisar",
   "al.fixHint": "La corrección se escribe en el borrador del grupo. Lo alineado de las palabras que no cambian se conserva; las nuevas quedan por colocar.",
   "al.saveBeforeFix": "Guarda primero la alineación de este versículo",
   "al.bankResize": "Arrastra para cambiar la altura",
@@ -2226,6 +2223,5 @@
   "al.toAnswerShort": "{n} por responder",
   "al.guideNext": "Toca «{word}» y luego la caja de la palabra que traduce. También puedes arrastrarla.",
   "al.guideWord": "Toca la caja donde va «{word}».",
-  "al.guideWords": "Toca la caja donde van las {n} palabras.",
-  "al.allPlacedGo": "Todo colocado. Revísalo y pulsa «Terminé este versículo»."
+  "al.guideWords": "Toca la caja donde van las {n} palabras."
 }
