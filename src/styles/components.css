@@ -7959,3 +7959,23 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 @media (min-width: 768px) {
   .al-bank__fix { margin-inline-start: 0; }
 }
+/* An alignment shown to be read (a decision's card, a review) is a compact picture: boxes the width of what they
+   hold, flowing like words, not the roomy targets of the tool. */
+.al-grid--dense { gap: 0.25rem; }
+.al-grid--dense .al-box { flex: 0 1 auto; min-width: 0; }
+.al-grid--dense::after { content: none; }
+.al-grid--dense .al-box--read .al-box__head { padding: 0.0625rem 0.25rem; }
+.al-grid--dense .al-box--read .al-ref { padding: 0.0625rem 0.125rem; gap: 0.25rem; }
+.al-grid--dense .al-box--read .al-ref__word { font-size: 0.9375rem; }
+.al-grid--dense .al-box--read .al-box__body { min-height: 0; padding: 0.1875rem; gap: 0.125rem; }
+.al-grid--dense .al-box--read .al-chip { min-height: 1.5rem; padding: 0 0.3125rem; font-size: 0.8125rem; }
+/* A thread on a phone runs edge to edge: the page, the thread, the card and its panel each kept a margin, and what
+   was left for the content was three quarters of the screen. */
+@media (max-width: 40rem) {
+  .app-main--chat { padding-inline: 0; }
+  .app-main--chat .chat-main { border-inline: 0; border-radius: 0; }
+  .chat-log { padding-inline: 0.5rem; }
+  .chat-decision { width: 100%; padding-inline: 0.625rem 0.5rem; }
+  .chat-decision__panel--wide { padding: 0; border: 0; background: none; }
+  .chat-header__title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+}
