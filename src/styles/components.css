@@ -7928,3 +7928,10 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 }
 /* The bar's one column may shrink to the screen: left to its content, a long label pushed the row past the edge. */
 .al-actionbar { grid-template-columns: minmax(0, 1fr); }
+/* In two columns the bank is the left one, whole; the guide and the boxes stack in the right one. Left to the
+   grid's own placing, the guide took the boxes' place and sent them under the bank. */
+@media (min-width: 768px) {
+  .al-layout > .al-bank { grid-column: 1; grid-row: 1 / span 2; }
+  .al-layout > :not(.al-bank) { grid-column: 2; }
+  .al-layout { grid-template-rows: auto 1fr; }
+}
