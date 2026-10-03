@@ -385,7 +385,7 @@ function Bank({ children, editable, foot }: { children: ReactNode; editable: boo
  * dragging (long press) works too. Whoever reviews sees the same boxes
  * read-only and answers.
  */
-export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, onClose, announce }: Props) {
+export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedByRoute = false, onClose, announce }: Props) {
   const [mode, setMode] = useState<AlineacionMode>(initialMode);
   const t = useT();
   const language = useUiLanguage();
@@ -505,7 +505,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const taskStep = task?.steps?.find((s) => s.id === ctx?.stepId);
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
-  const thresholds = { minAgree: taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
+  // An open round: one step anybody of the team enters, that closes by agreement and leaves nobody out for having
+  // done an earlier step. A project that turned its two steps into one by hand keeps the old step id, so the step
+  // itself says it, not only the address the tool was opened with.
+  const shared = sharedByRoute || Boolean(taskStep && taskStep.claimMode === "pool" && taskStep.closing === "consensus" && !taskStep.excludePriorStepIds?.length);
+  const thresholds = { minAgree: taskStep?.minAgree ?? taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
   const hashOf = (v: AlignmentVerse) => alignmentFingerprint(v.draft, groups[v.verse] ?? []);
   // When the team decides not to change the alignment, the open answer that came with the
   // proposal or objection stops blocking the verse.
@@ -616,6 +620,24 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       setClosingRound(false);
     }
   }
+
+  // An open round opens where this person is needed: on a verse waiting for their review if there is one (that is
+  // what lets somebody else's work move on), otherwise on the first verse nobody has aligned yet. Once, on arrival.
+  const placed = useRef(false);
+  useEffect(() => {
+    if (!shared || !data || placed.current) return;
+    placed.current = true;
+    const toReview = data.verses.findIndex(pendingForMe);
+    const toAlign = data.verses.findIndex((v) => !isDone(v) && (ownerOf(v) === me || !ownerOf(v)));
+    if (toReview >= 0) {
+      setMode("revisar");
+      setPosition(toReview);
+    } else if (toAlign >= 0) {
+      setMode("alinear");
+      setPosition(toAlign);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared, data]);
 
   useEffect(() => {
     setSelectedWords([]);
@@ -1472,7 +1494,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                   (the words left to place are listed above the boxes). */}
               {!readyToReview ? (
                 <p className="af-stale" role="status">
-                  {t("al.notMarked")}
+                  {/* On the aligning side of an open round the verse is not waiting for somebody else: it is there to take. */}
+                  {mode !== "alinear" ? t("al.notMarked") : ownerOf(verse) ? t("al.takenHint").replace("{who}", ownerOf(verse)) : t("al.takeHint")}
                 </p>
               ) : !complete ? (
                 <p className="af-stale" role="status">
@@ -1510,8 +1533,14 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
           <div className="al-actionbar" role="region" aria-label={t("al.actionsAria")}>
             {mode === "alinear" && !mineToAlign(verse) ? (
               <div className="al-actionbar__row">
-                {ownerOf(verse) ? (
-                  <span className="al-actionbar__flag">{t("al.takenBy").replace("{who}", ownerOf(verse))}</span>
+                {ownerOf(verse) && !readyToReview ? (
+                  <>
+                    <span className="al-actionbar__flag">{t("al.takenBy").replace("{who}", ownerOf(verse))}</span>
+                    {/* Nobody is left waiting for a verse somebody took and did not finish. */}
+                    <Button type="button" variant="ghost" onClick={() => void takeVerse()} disabled={saving}>
+                      {t("al.takeOver")}
+                    </Button>
+                  </>
                 ) : readyToReview ? (
                   <span className="al-actionbar__flag">{t("al.stDone")}</span>
                 ) : (

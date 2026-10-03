@@ -2393,5 +2393,8 @@
   "af.orderText": "Orden del texto",
   "af.alikeOne": "De acuerdo aquí y en la otra aparición igual",
   "af.alikeMany": "De acuerdo aquí y en las otras {n} apariciones iguales",
-  "af.savedAlike": "Guardado: de acuerdo en {n} apariciones."
+  "af.savedAlike": "Guardado: de acuerdo en {n} apariciones.",
+  "al.takeOver": "Tomarlo yo",
+  "al.takeHint": "Nadie ha alineado este versículo. Tómalo para alinearlo; los demás lo revisarán.",
+  "al.takenHint": "@{who} tomó este versículo y aún no lo termina. Puedes seguir con otro, o tomarlo si quedó sin atender."
 }

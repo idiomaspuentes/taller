@@ -271,28 +271,23 @@ if (fcr) {
     assert.equal(team("tpl").steps![0]!.scope, "chapter-once");
   });
 
-  test("FCR: la Afinación son tres tareas por texto; desafíos y palabras clave en ronda abierta, la alineación con quien la hace y dos que revisan", () => {
+  test("FCR: la Afinación son tres tareas por texto, las tres en ronda abierta: nadie carga con ser el primero en todo", () => {
     for (const res of ["tpl", "tps"]) {
       const challenges = team(`desafios-${res}`), words = team(`palabras-${res}`), align = team(`alinear-${res}`);
-      assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar"], ["revisar"], ["alinear", "revisar-alineacion"]]);
+      assert.deepEqual([challenges, words, align].map((t) => t.steps!.map((s) => s.id)), [["revisar"], ["revisar"], ["alineacion"]]);
       assert.equal(challenges.bundle?.enabled ?? false, false, "los desafíos se reparten por porción, como la traducción");
       assert.equal(words.bundle?.grain, "chapter", "las palabras clave se revisan por capítulo, para ver la consistencia");
       assert.equal(align.bundle?.enabled ?? false, false, "la alineación se reparte por porción");
-      // Alignment is somebody's work that others review: one person takes it, two others confirm.
-      const [doIt, confirm] = align.steps!;
-      assert.equal(doIt!.claimMode, "exclusive", "una persona alinea");
-      assert.equal(confirm!.claimMode, "pool");
-      assert.equal(confirm!.minAssignees, 2, "revisan otras dos personas");
-      assert.equal(confirm!.closing, "consensus");
-      assert.deepEqual(confirm!.excludePriorStepIds, [doIt!.id], "quien alineó no revisa su alineación");
-      // Challenges and key terms are answers to what is already there: nobody has to be the first on all of them.
-      for (const task of [challenges, words]) {
+      for (const task of [challenges, words, align]) {
         const [round] = task.steps!;
         assert.equal(round!.claimMode, "pool", `${task.id}: cualquiera del equipo entra, nadie la toma para sí`);
         assert.equal(round!.closing, "consensus");
         assert.equal(round!.minAgree, 3, `${task.id}: tres personas de acuerdo en cada ítem`);
         assert.equal(round!.excludePriorStepIds, undefined, "no hay un primer paso del que quedar fuera");
       }
+      // The alignment tool takes the step as shared work: each verse is aligned by whoever takes it and reviewed by the rest.
+      const tool = DEFAULT_SOLVERS_CATALOG.solvers.find((x) => x.id === align.steps![0]!.solverAppId)!;
+      assert.equal(tool.stepParams?.[align.steps![0]!.id]?.mode, "ambos", "el paso abre la herramienta para alinear y revisar");
     }
   });
 

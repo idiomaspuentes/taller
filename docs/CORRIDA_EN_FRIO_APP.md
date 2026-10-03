@@ -352,3 +352,33 @@ libro?».
 - **Un proyecto ya creado no recibe ese cambio solo.** «Traer lo nuevo» agrega pasos y tareas, pero no quita ni
   cambia los que el proyecto ya tiene. Hageo y Judas siguen con los dos pasos hasta que alguien edite su proceso.
 
+### Alinear (8 subtareas: 4 porciones × TPL y TPS)
+
+**El cambio llegó antes de empezar.** Tal como estaba, una persona tomaba la porción y alineaba todos sus
+versículos (11 en la primera de Hageo) antes de que nadie pudiera revisar. Desde la versión 16 del proceso,
+Alinear es también **una ronda abierta de un solo paso** («Alinear y revisar»):
+
+- Cada persona **toma un versículo**, lo alinea y lo marca terminado; los demás lo revisan en la pestaña
+  «Revisar» de la misma herramienta. Quien lo alineó cuenta como una de las tres personas de acuerdo.
+- La herramienta abre **donde hace falta esa persona**: en un versículo que espera su revisión, si lo hay; si no,
+  en el primero que nadie ha tomado.
+- Un versículo tomado y sin terminar no detiene a nadie: quien lo tomó puede soltarlo, y cualquier otra persona
+  puede tomarlo («Tomarlo yo»).
+
+Se editó el proceso de Hageo y el de Judas en su pantalla «Proceso» (se quitó el paso «Alinear» y el de revisión
+pasó a ser «Alinear y revisar», sin dejar fuera a nadie).
+
+| Subtarea | Qué pasó |
+|---|---|
+| TPL 1:12–15 | Elisha se sumó y tomó el versículo 12. Valeska se sumó después: la herramienta la llevó al 13, el primero libre, y el 12 le aparece como «Lo está alineando @elisha», con «Tomarlo yo». |
+
+**⚠ Lo que se trabó**
+
+- **El editor del proceso no deja poner «cuántas personas de acuerdo»** (`minAgree`). En Alinear no hace falta
+  (quien alineó más dos que revisan dan tres), pero en una ronda de otro tipo sí.
+- **Al cambiar el nombre de un paso en español, su nombre en portugués queda como estaba** («Revisar o
+  alinhamento» para un paso que ahora alinea y revisa), y el editor no lo avisa: hay que cambiar el idioma de la
+  aplicación y corregirlo aparte.
+- Al sumarse a un paso desde «Mis tareas», la aplicación llevó a «Avisos» en vez de abrir la herramienta; hubo que
+  volver a «Mis tareas» y tocar «Alinear».
+

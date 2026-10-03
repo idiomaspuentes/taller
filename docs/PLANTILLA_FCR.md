@@ -148,18 +148,17 @@ el artículo no depende de un pasaje.
 
 **Propósito:** volver a anclar el TPL y el TPS al idioma original.
 
-**Tareas:** tres por texto, en este orden. Desafíos y Palabras clave son una ronda abierta de un solo paso;
-Alinear tiene un paso de hacer y otro de revisar. Las del TPL y las del TPS avanzan a la vez y pueden tener
-equipos distintos.
+**Tareas:** tres por texto, en este orden, cada una **una ronda abierta de un solo paso**: nadie carga con ser
+el primero en todo. Las del TPL y las del TPS avanzan a la vez y pueden tener equipos distintos.
 
 | Tarea | Subtareas | Espera a | Paso 1 | Paso 2 |
 |-------|-----------|----------|------------------------------|--------------------|
 | **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y la revisión grupal, del capítulo | Revisar desafíos, en **ronda abierta**: cualquiera contesta cualquier figura de la porción; tres personas de acuerdo en cada una | (no hay: es un solo paso) |
 | **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave, en **ronda abierta**: cualquiera contesta cualquier término; tres personas de acuerdo en cada uno | (no hay: es un solo paso) |
-| **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear los versículos de la porción; lo marca quien lo hace | Revisar la alineación |
+| **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear y revisar, en **ronda abierta**: cualquiera toma cualquier versículo, lo alinea y lo marca terminado; los demás lo revisan | (no hay: es un solo paso) |
 
-**Quién entra y cuándo queda acordado:** en Desafíos y Palabras clave, entre dos y seis personas del equipo,
-sin que nadie quede fuera; en Alinear, revisan al menos otras dos que no alinearon. Un ítem queda **acordado
+**Quién entra y cuándo queda acordado:** entre dos y seis personas del equipo, sin que nadie quede fuera. En
+Alinear, quien alineó un versículo cuenta como una de las tres, y lo revisan otras dos. Un ítem queda **acordado
 cuando 3 personas habilitadas están de acuerdo y nadie tiene una objeción abierta**: con una objeción hace falta
 consenso, y lo disputado va a la lista de la reunión del equipo, donde el coordinador o una persona habilitada
 registra la decisión. Cada persona más que responde suma confianza al ítem. Quien llega después empieza con las
@@ -181,11 +180,20 @@ del equipo**.
   de forma sencilla (la pasiva en activa, la metáfora explicada o como símil).
 - Una nota que no enlaza ningún artículo no señala nada que comprobar y no entra en la ronda.
 
-**Desafíos y palabras clave son rondas abiertas.** No hay «una persona revisa y otras confirman»: nadie carga con
+**Las tres tareas son rondas abiertas.** No hay «una persona revisa y otras confirman»: nadie carga con
 ser la primera en todas las notas o en todos los términos. Quien llega primero a un ítem marca qué lo traduce;
 quien llega después lo ve marcado y confirma o dice qué no comparte; cada ítem queda acordado con tres personas de
-acuerdo. La herramienta abre en el primero que a la persona le falta. La alineación sí conserva sus dos pasos,
-porque es el trabajo de una persona que otras revisan.
+acuerdo. La herramienta abre en el primero que a la persona le falta.
+
+**Cómo se alinea:**
+- Cada persona **toma un versículo** («Tomar este versículo»), une cada palabra del original con lo que la traduce
+  y lo marca terminado. Nadie alinea la porción entera: uno puede alinear cuatro versículos y otro, que llega
+  después, los tres siguientes.
+- Un versículo terminado pasa a los demás, que lo revisan en la pestaña «Revisar» de la misma herramienta. Quien lo
+  alineó no lo revisa: su marca ya cuenta como su acuerdo.
+- Si alguien tomó un versículo y no lo terminó, puede soltarlo («Soltar») o cualquier otra persona puede tomarlo
+  («Tomarlo yo»). Ningún versículo espera a una persona.
+- Se decidió así en la corrida en frío de Hageo (octubre de 2026), junto con los desafíos y las palabras clave.
 
 **Cómo se revisan las palabras clave:**
 - Es **una ronda abierta**, no «una persona revisa y otras confirman». Nadie tiene que ser la primera en todos los

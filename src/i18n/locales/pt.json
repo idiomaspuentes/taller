@@ -2393,5 +2393,8 @@
   "af.orderText": "Ordem do texto",
   "af.alikeOne": "De acordo aqui e na outra ocorrência igual",
   "af.alikeMany": "De acordo aqui e nas outras {n} ocorrências iguais",
-  "af.savedAlike": "Salvo: de acordo em {n} ocorrências."
+  "af.savedAlike": "Salvo: de acordo em {n} ocorrências.",
+  "al.takeOver": "Eu assumo",
+  "al.takeHint": "Ninguém alinhou este versículo. Pegue-o para alinhar; os outros vão revisá-lo.",
+  "al.takenHint": "@{who} pegou este versículo e ainda não terminou. Você pode seguir com outro, ou assumi-lo se ficou sem atenção."
 }
