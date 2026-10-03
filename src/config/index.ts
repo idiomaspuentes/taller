@@ -3,7 +3,7 @@ import { SCOPE_PATTERN } from "../domain/scope";
 import type { TallerConfig, Workspace } from "./types";
 
 export { tallerConfig };
-export type { TallerConfig, UiLanguage, Workspace } from "./types";
+export type { LexiconRepo, TallerConfig, UiLanguage, Workspace } from "./types";
 
 /** Problems in a config, in plain words; empty when it is usable. Checked by tests and at startup. */
 export function configProblems(config: TallerConfig): string[] {

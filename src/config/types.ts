@@ -42,7 +42,21 @@ export type Workspace = {
   uiLanguage: UiLanguage;
   /** How the team is named on the welcome screen, in each interface language. */
   name: Localized;
+  /**
+   * Where the meaning of a word of the original is read from, in the team's language: lexicon repositories with
+   * one file per Strong's number, tried in order. Left out, the app looks in `contentOrg` for `<lang>_ugl`
+   * (Greek) and `<lang>_uhl` (Hebrew and Aramaic).
+   */
+  lexicons?: {
+    greek?: LexiconRepo[];
+    hebrew?: LexiconRepo[];
+    /** The credit the lexicon asks for, shown under an entry, in each interface language. */
+    credit?: Localized;
+  };
 };
+
+/** A lexicon repository on the same Door43 server: `<owner>/<repo>`, entries in `path` (`content` by default). */
+export type LexiconRepo = { owner: string; repo: string; path?: string };
 
 /**
  * A process an organization works with (for Idiomas Puentes, the FCR): its templates of phases, tasks and steps, the

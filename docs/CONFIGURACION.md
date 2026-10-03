@@ -84,3 +84,22 @@ npm run verify:config
 ```
 
 Valida la configuración (espacios sin repetir, textos completos en cada idioma) y la lógica de idioma y espacio. `npm run verify:scope` comprueba que dos espacios de una misma organización no se ven entre sí.
+
+## Léxicos
+
+Al tocar una palabra del original en la alineación, Taller muestra lo que significa. Lo lee de un repositorio de léxico en Door43, con un archivo por número de Strong (`content/<número>.json`). Cada espacio dice de dónde en `taller.config.ts`:
+
+```ts
+lexicons: {
+  greek: [{ owner: "es-419_gl", repo: "es-419_ugl" }],
+  hebrew: [{ owner: "es-419_gl", repo: "es-419_uhl" }],
+  credit: { es: "…", pt: "…" },
+},
+```
+
+- Los repositorios de cada lengua se prueban en orden; vale el primero que tenga la entrada.
+- Sin `lexicons`, se buscan `<lang>_ugl` y `<lang>_uhl` en `contentOrg`.
+- `credit` es la atribución que pide el léxico; se muestra debajo de cada entrada.
+- También sirve un léxico sencillo de Door43 (solo `brief` y `long`): se muestra sin sentidos por versículo.
+
+Los léxicos de Idiomas Puentes se generan con `npm run lexicons:build` a partir de los diccionarios de las Sociedades Bíblicas Unidas; lo que a esos les falta se completa desde `scripts/lexicon-additions/`. El guion solo escribe archivos locales: subirlos a Door43 es un paso aparte.

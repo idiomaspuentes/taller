@@ -2225,5 +2225,18 @@
   "al.guideWords": "Toca la caja donde van las {n} palabras.",
   "al.bankTexts": "Texto que se muestra",
   "al.bankDraft": "Borrador",
-  "al.english": "Texto en inglés ({label})"
+  "al.english": "Texto en inglés ({label})",
+  "lx.aria": "Significado de la palabra",
+  "lx.wordAria": "Ver qué significa «{word}»",
+  "lx.lemma": "Lema",
+  "lx.loading": "Buscando en el léxico…",
+  "lx.none": "El léxico no tiene entrada para esta palabra.",
+  "lx.here": "En este versículo",
+  "lx.senses": "{n} sentidos",
+  "lx.others": "Otros sentidos de la palabra ({n})",
+  "lx.inEnglish": "(en inglés)",
+  "lx.comments": "Para traducir:",
+  "lx.origin": "Origen:",
+  "lx.pending": "La traducción de esta entrada está pendiente de revisión.",
+  "lx.separate": "Sacar esta palabra de la caja"
 }

@@ -7813,3 +7813,26 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 .af.al { display: flex; flex-direction: column; }
 .af.al > * { flex: 0 0 auto; min-width: 0; }
 .af.al > .al-actionbar { margin-top: auto; margin-bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); }
+/* What a word of the original means: a sheet from the bottom edge on a phone, a dialog on a desk. */
+.word-sheet { width: min(30rem, calc(100vw - 2rem)); max-height: min(80dvh, 40rem); overflow-y: auto; }
+.word-sheet[open] { display: grid; gap: 0.625rem; align-content: start; }
+.ws-head { display: grid; gap: 0.125rem; padding-inline-end: 2rem; }
+.ws-word { margin: 0; font-family: "Times New Roman", serif; font-size: 1.625rem; font-weight: 700; line-height: 1.25; }
+.ws-head .ws-meta { margin: 0; }
+.word-sheet p { margin-block: 0; }
+.ws-meta { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
+.ws-part { display: grid; gap: 0.375rem; }
+.ws-senses { display: grid; gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
+.ws-sense { display: grid; gap: 0.1875rem; padding-inline-start: 0.625rem; border-inline-start: 3px solid var(--accent-200); }
+.ws-glosses { margin: 0; font-weight: 700; font-size: 1rem; }
+.ws-def { margin: 0; font-size: 0.9375rem; line-height: 1.45; }
+.ws-tag { font-size: 0.75rem; color: var(--text-muted); }
+.ws-note { margin: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--text-muted); }
+.ws-more summary { min-height: 2.5rem; display: flex; align-items: center; font-weight: 600; font-size: 0.875rem; color: var(--accent-700); cursor: pointer; }
+.ws-more .ws-senses { margin-top: 0.25rem; }
+.ws-credit { margin: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.6875rem; color: var(--text-faint); }
+.al-ref { cursor: pointer; }
+.al-ref:hover .al-ref__word, .al-ref:focus-visible .al-ref__word { text-decoration: underline; text-decoration-color: var(--accent-400); text-underline-offset: 0.2em; }
+@media (max-width: 40rem) {
+  .word-sheet { width: 100vw; max-width: 100vw; max-height: 75dvh; margin: auto 0 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: 0; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+}

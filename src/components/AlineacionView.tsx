@@ -61,6 +61,10 @@ import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { explainError } from "../dcs/userError";
+import { tallerConfig, workspaceOfOrg } from "../config";
+import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
+import { strongParts } from "../domain/lexicon";
+import { WordSheet } from "./WordSheet";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -195,10 +199,9 @@ function Box({
   gloss,
   compact,
   selected,
-  selectedRef,
   editable,
   onTap,
-  onSelectRef,
+  onWord,
   onRemoveWord,
 }: {
   box: AlignmentBoxModel;
@@ -208,10 +211,10 @@ function Box({
   /** An empty box that is not being filled: one slim line instead of a tall drop area. */
   compact: boolean;
   selected: boolean;
-  selectedRef: number | null;
   editable: boolean;
   onTap: (boxId: string) => void;
-  onSelectRef: (boxId: string, refIndex: number) => void;
+  /** A word of the original was tapped: show what it means. */
+  onWord: (boxId: string, refIndex: number) => void;
   onRemoveWord: (boxId: string, transIndex: number) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: boxDropId(box.id), data: { boxId: box.id }, disabled: !editable });
@@ -239,9 +242,8 @@ function Box({
                 key={refIndex}
                 type="button"
                 className="al-ref"
-                data-selected={selectedRef === refIndex && merged ? "true" : undefined}
-                disabled={!editable || !merged}
-                onClick={() => onSelectRef(box.id, refIndex)}
+                aria-label={tNow("lx.wordAria").replace("{word}", tok.surface)}
+                onClick={() => onWord(box.id, refIndex)}
                 data-no-box-select
               >
                 <span className="al-ref__word">{tok.surface}</span>
@@ -400,7 +402,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [bankText, setBankText] = useState<"draft" | "orig" | "ref">("draft");
   const bankWords = useRef<HTMLDivElement | null>(null);
   const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
-  const [selectedRef, setSelectedRef] = useState<{ boxId: string; refIndex: number } | null>(null);
+  /** The word of the original whose meaning is shown over the tool. */
+  const [sheet, setSheet] = useState<{ boxId: string; refIndex: number } | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [proposals, setProposals] = useState<{ proposals: ProposalFile[]; results: ResultFile[] }>({ proposals: [], results: [] });
@@ -605,7 +608,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   useEffect(() => {
     setSelectedWords([]);
     setSelectedBoxes([]);
-    setSelectedRef(null);
     setNote("");
     setObjecting(false);
     setObjectWords([]);
@@ -615,7 +617,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   function clearSelection() {
     setSelectedWords([]);
     setSelectedBoxes([]);
-    setSelectedRef(null);
   }
 
   function change(next: AlignmentGroup[] | null) {
@@ -670,7 +671,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
       put(boxId, selectedWords);
       return;
     }
-    setSelectedRef(null);
     setSelectedBoxes((prev) => (prev.includes(boxId) ? prev.filter((id) => id !== boxId) : [...prev, boxId]));
   }
 
@@ -688,11 +688,15 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
     if (!verse || selectedBoxes.length !== 1) return;
     const box = boxes.find((b) => b.id === selectedBoxes[0]);
     if (!box || box.groupIndex === null) return;
-    if (selectedRef && selectedRef.boxId === box.id) {
-      change(detachTargetRefFromGroup(verse.original, verse.draft, current, box.groupIndex, selectedRef.refIndex));
-    } else {
-      change(splitAlignmentGroupPure(verse.original, verse.draft, current, box.groupIndex));
-    }
+    change(splitAlignmentGroupPure(verse.original, verse.draft, current, box.groupIndex));
+  }
+
+  /** Take one word of the original out of the box it shares with others; asked from the word's sheet. */
+  function separateWord(boxId: string, refIndex: number) {
+    const box = boxes.find((b) => b.id === boxId);
+    if (!verse || !box || box.groupIndex === null) return;
+    change(detachTargetRefFromGroup(verse.original, verse.draft, current, box.groupIndex, refIndex));
+    setSheet(null);
   }
 
   function emptyBoxes() {
@@ -1192,14 +1196,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       gloss={verse.gloss}
                       compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id)}
                       selected={selectedBoxes.includes(box.id)}
-                      selectedRef={selectedRef?.boxId === box.id ? selectedRef.refIndex : null}
                       editable={editable}
                       onTap={tapBox}
-                      onSelectRef={(boxId, refIndex) => {
-                        setSelectedWords([]);
-                        setSelectedBoxes([boxId]);
-                        setSelectedRef({ boxId, refIndex });
-                      }}
+                      onWord={(boxId, refIndex) => setSheet({ boxId, refIndex })}
                       onRemoveWord={removeWord}
                     />
                   ))}
@@ -1217,8 +1216,25 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
           </DndContext>
   ) : null;
 
+  const workspace = ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined;
+  // The entries of the verse in view are asked for as it opens, so a tap on a word answers at once.
+  useEffect(() => {
+    if (!session || !verse) return;
+    for (const token of verse.original) for (const part of strongParts(token.strong)) void loadLexiconEntry(session, lexiconRepos(workspace, part.kind), part.number);
+  }, [session, verse, workspace]);
+  const sheetBox = sheet ? boxes.find((b) => b.id === sheet.boxId) : undefined;
+  const sheetToken = sheet && verse ? verse.original[sheet.refIndex] : undefined;
+
   return (
     <div className="af al">
+      <WordSheet
+        word={sheetToken ? { surface: sheetToken.surface, lemma: sheetToken.lemma, strong: sheetToken.strong } : null}
+        at={{ book: data?.book ?? "", chapter: data?.chapter ?? 0, verse: verse?.verse ?? 0 }}
+        session={session ?? null}
+        workspace={workspace}
+        onClose={() => setSheet(null)}
+        onSeparate={sheet && editable && sheetBox && sheetBox.targetTokens.length > 1 && sheetBox.groupIndex !== null ? () => separateWord(sheet.boxId, sheet.refIndex) : undefined}
+      />
       <ToolHeader
         title={title}
         onBack={() => void leave()}

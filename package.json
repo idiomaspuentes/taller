@@ -29,6 +29,7 @@
     "verify:ui-copy": "tsx scripts/verify-ui-copy.mts",
     "verify:afinacion-selection": "tsx --tsconfig tsconfig.scripts.json scripts/verify-afinacion-selection.mts",
     "verify:afinacion-store": "tsx --tsconfig tsconfig.scripts.json scripts/verify-afinacion-store.mts",
+    "verify:lexicon": "tsx --tsconfig tsconfig.scripts.json scripts/verify-lexicon.mts",
     "verify:alignment-boxes": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-boxes.mts",
     "lexicons:build": "node scripts/build-lexicons.mjs",
     "mock:door43": "node scripts/mock-door43/server.mjs",

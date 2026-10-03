@@ -38,6 +38,14 @@ export const tallerConfig: TallerConfig = {
       pmOrg: "es-419_gl",
       uiLanguage: "es",
       name: { es: "Español (América Latina)", pt: "Espanhol (América Latina)" },
+      lexicons: {
+        greek: [{ owner: "es-419_gl", repo: "es-419_ugl" }],
+        hebrew: [{ owner: "es-419_gl", repo: "es-419_uhl" }],
+        credit: {
+          es: "Léxico adaptado de los diccionarios de las Sociedades Bíblicas Unidas (CC BY-SA 4.0).",
+          pt: "Léxico adaptado dos dicionários das Sociedades Bíblicas Unidas (CC BY-SA 4.0).",
+        },
+      },
     },
     {
       id: "pt",
@@ -46,6 +54,15 @@ export const tallerConfig: TallerConfig = {
       pmOrg: "pt-br_gl",
       uiLanguage: "pt",
       name: { es: "Portugués (Brasil)", pt: "Português (Brasil)" },
+      lexicons: {
+        // There is no Greek lexicon in Portuguese yet: the Spanish one, until there is.
+        greek: [{ owner: "es-419_gl", repo: "es-419_ugl" }],
+        hebrew: [{ owner: "es-419_gl", repo: "pt-br_uhl" }],
+        credit: {
+          es: "Léxico adaptado de los diccionarios de las Sociedades Bíblicas Unidas (CC BY-SA 4.0).",
+          pt: "Léxico adaptado dos dicionários das Sociedades Bíblicas Unidas (CC BY-SA 4.0).",
+        },
+      },
     },
   ],
 
