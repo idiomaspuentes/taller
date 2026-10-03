@@ -1,3 +1,4 @@
+import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -185,7 +186,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   useEffect(() => {
     if (!session?.token || !data || data.step !== "palabras" || !data.termUses.length) return;
     let cancelled = false;
-    void loadTermTitles(session, data.sourcePackage, data.termUses)
+    void loadTermTitles(session, data.sourcePackage, data.termUses, ctx)
       .then((titles) => !cancelled && setTermTitles(titles))
       .catch(() => undefined);
     return () => {
@@ -555,9 +556,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   return (
     <div className="af af--round">
       <ToolHeader
-        title={t(TITLE[stepProp])}
+        title={toolHeading(ctx, language, t(TITLE[stepProp])).title}
         onBack={onClose}
-        meta={[data ? `${data.book} ${ctx?.ref || data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : "", summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
+        meta={[toolHeading(ctx, language, t(TITLE[stepProp])).where, summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
         actions={
           data ? (
             <a className="th-icon" href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200`} target="_blank" rel="noreferrer" aria-label={t("gl.open")} title={t("gl.open")}>

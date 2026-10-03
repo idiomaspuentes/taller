@@ -1,3 +1,4 @@
+import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -163,9 +164,9 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   return (
     <div className="af en">
       <ToolHeader
-        title={title}
+        title={toolHeading(ctx, language, title).title}
         onBack={onClose}
-        meta={data ? `${data.book} ${ctx?.ref || data.chapter}` : ""}
+        meta={toolHeading(ctx, language, title).where}
       />
 
       {error ? (
@@ -287,7 +288,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
         <section className="af-card" aria-label={t("en.committee")}>
           <h2 className="af-phrase">{t("en.committee")}</h2>
           <p className="en-tally">
-            {t("en.tally").replace("{n}", String(tally.supporters.length)).replace("{of}", String(tally.delivered.length))}
+            {tally.delivered.length ? t("en.tally").replace("{n}", String(tally.supporters.length)).replace("{of}", String(tally.delivered.length)) : t("en.noReportsYet")}
           </p>
           {(mode === "decision" ? tally.delivered : others).map((report) => (
             <div key={report.by} className="en-report">

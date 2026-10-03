@@ -1,3 +1,4 @@
+import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -195,9 +196,9 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
   return (
     <div className="af pu">
       <ToolHeader
-        title={title}
+        title={toolHeading(ctx, language, title).title}
         onBack={onClose}
-        meta={unitName}
+        meta={toolHeading(ctx, language, title).where}
       />
 
       {error ? (

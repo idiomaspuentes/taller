@@ -8017,3 +8017,22 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 :root[data-typing="true"] .tool-foot { display: none; }
 .rv-item__text--article { max-height: 60dvh; overflow-y: auto; }
 .rv-item__text--raw { white-space: pre-wrap; }
+/* The pastoral review: the passage is read in its own box, so that the report under it is one swipe away on a phone
+   instead of seven screens down; on a wide screen the passage and the report sit side by side. */
+.en-texts[open] { max-height: 52dvh; overflow-y: auto; overscroll-behavior: contain; }
+.en-texts summary { position: sticky; top: -0.75rem; margin: -0.75rem -1rem 0; padding: 0 1rem; background: var(--surface); z-index: 1; }
+.en-verse .af-lbl { font-size: 0.75rem; }
+@media (min-width: 1024px) {
+  .af.en, .af.ck { max-width: 76rem; grid-template-columns: minmax(0, 1fr) minmax(22rem, 30rem); column-gap: 1rem; align-items: start; }
+  .af.en > *, .af.ck > * { grid-column: 1 / -1; }
+  .af.en > .en-texts { grid-column: 1; grid-row: span 3; max-height: calc(100dvh - 6rem); position: sticky; top: 0.75rem; }
+  .af.en > .af-card { grid-column: 2; }
+  .af.en > .en-texts:not([open]) { grid-column: 1 / -1; position: static; }
+  /* The checklist: the text being checked stays at the left, the item and its questions at the right. */
+  .af.ck > .af-dock { grid-column: 1; grid-row: span 4; top: 0.75rem; }
+  .af.ck > .af-card, .af.ck > .af-nav, .af.ck > .af-dock ~ .btn, .af.ck > .af-dock ~ button { grid-column: 2; }
+}
+/* Reading tools on a wide screen: a line of text stays a readable length instead of running the whole column. */
+@media (min-width: 900px) {
+  .fam__body > * { width: 100%; max-width: 46rem; margin-inline: auto; }
+}

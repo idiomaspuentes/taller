@@ -110,14 +110,32 @@ export async function readRaw(session: GtSession, owner: string, repo: string, f
   }
 }
 
-/** Reads the article of every distinct term, a dozen at a time, after the screen is already up; a term without a readable article keeps its slug. */
-export async function loadTermTitles(session: GtSession, pkg: SourcePackage, uses: TermItem[]): Promise<Record<string, string>> {
+/**
+ * The name of every distinct term, a dozen at a time, after the screen is already up: the title of its article in
+ * the team's own words (their language) and, where the team has not translated it, in the source package. A term
+ * without a readable article keeps its slug. Reading only the source named the terms in English ("elder") to a
+ * team that works with "anciano".
+ */
+export async function loadTermTitles(
+  session: GtSession,
+  pkg: Pick<SourcePackage, "owner" | "tw"> | null,
+  uses: Pick<TermItem, "termSlug" | "termKind">[],
+  ctx?: SolverLaunchContext | null,
+): Promise<Record<string, string>> {
   const terms = [...new Map(uses.map((u) => [u.termSlug, u.termKind])).entries()];
   const titles: Record<string, string> = {};
+  let own: { owner: string; repo: string } | null = null;
+  if (ctx) {
+    const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
+    const target = resolveHelpsTarget({ ...ctx, resource: "palabras" }, pmConfig);
+    if (!("error" in target)) own = { owner: target.owner, repo: target.repo };
+  }
   for (let i = 0; i < terms.length; i += 12) {
     await Promise.all(
       terms.slice(i, i + 12).map(async ([slug, kind]) => {
-        const md = await readRaw(session, pkg.owner, pkg.tw, termArticlePath(kind, slug));
+        const path = termArticlePath(kind, slug);
+        const mine = own ? await readRaw(session, own.owner, own.repo, path) : null;
+        const md = mine?.trim() ? mine : pkg ? await readRaw(session, pkg.owner, pkg.tw, path) : null;
         const title = md ? parseArticleTitle(md) : null;
         if (title) titles[slug] = title;
       }),

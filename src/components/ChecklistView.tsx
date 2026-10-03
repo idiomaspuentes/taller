@@ -1,3 +1,4 @@
+import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { HelpMessages } from "./HelpMessages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -10,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { appendCheckAnswers, loadCheckAnswers } from "../dcs/checkStore";
+import { loadTermTitles } from "../dcs/afinacionLoad";
+import { termLabel, type TermKind } from "../domain/afinacionWords";
 import { loadChecklist, type ChecklistData, type ChecklistItem, type ChecklistKind, type ChecklistText } from "../dcs/checklistLoad";
 import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
@@ -133,6 +136,24 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }, [data, textsKey]);
   const summary = useMemo(() => summarizeChecklist({ items: checkItems, questions, answers, currentHashes: hashes }), [checkItems, questions, answers, hashes]);
   const item = data?.items[Math.min(position, Math.max((data?.items.length ?? 1) - 1, 0))];
+  // A key term is shown by the name the team gives it (the title of its article), not by its code in English.
+  const [termTitles, setTermTitles] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const sess = loadSession();
+    if (!sess?.token || !ctx || data?.kind !== "palabras" || !data.items.length) return;
+    let cancelled = false;
+    const uses = data.items.flatMap((row) => {
+      const [termKind, ...slug] = (row.supportRef ?? "").split("/");
+      return termKind && slug.length ? [{ termKind: termKind as TermKind, termSlug: slug.join("/") }] : [];
+    });
+    void loadTermTitles(sess, null, uses, ctx)
+      .then((titles) => !cancelled && setTermTitles(titles))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.kind, data?.items]);
   // A message about a key term names the term (it holds for every use of it); about a note or a question, that row.
   const [termKind, ...termSlug] = (item?.supportRef ?? "").split("/");
   const messageKey = kind === "palabras" && termKind && termSlug.length ? termMessageKey(termKind, termSlug.join("/")) : (item?.id ?? "");
@@ -298,9 +319,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   return (
     <div className="af ck">
       <ToolHeader
-        title={stepName}
+        title={toolHeading(ctx, language, stepName).title}
         onBack={onClose}
-        meta={data ? `${data.book} ${ctx?.ref || data.chapter}` : ctx ? `${ctx.book} ${ctx.chapter}` : ""}
+        meta={toolHeading(ctx, language, stepName).where}
       >
         {data ? (
           <div className="af-progress" aria-label={t("ck.progressAria")}>
@@ -439,9 +460,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               <span className="af-chip">{t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm")}</span>
               {tally ? <span className="af-state" data-state={tally.state === "ok" ? "agreed" : tally.state === "pending" ? "pending" : "disputed"}>{t(`ck.state.${tally.state}` as MessageKey)}</span> : null}
             </div>
-            {item.title ? <h2 className="af-phrase">{item.title}</h2> : null}
+            {item.title ? <h2 className="af-phrase">{kind === "palabras" ? termLabel(item.title, termTitles) : item.title}</h2> : null}
             {item.body ? <HelpMarkdownView className="af-note af-note--md" content={item.body} /> : null}
-            {item.supportRef ? <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p> : null}
+            {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
+            {item.supportRef && kind !== "palabras" ? <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p> : null}
             {session && ctx?.pmOrg && ctx.projectId && data ? (
               // What the teams before this one said about this very help (those who refined the text, say).
               <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} />

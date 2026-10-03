@@ -1,3 +1,4 @@
+import { toolHeading } from "./toolHeading";
 import { draftTaskId } from "../dcs/afinacionLoad";
 import { saveCorrection } from "../dcs/afinacionStore";
 import { ChapterReader } from "./ChapterReader";
@@ -1306,10 +1307,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
         onSeparate={sheet && editable && sheetBox && sheetBox.targetTokens.length > 1 && sheetBox.groupIndex !== null ? () => separateWord(sheet.boxId, sheet.refIndex) : undefined}
       />
       <ToolHeader
-        title={title}
+        title={toolHeading(ctx, language, title).title}
         onBack={() => void leave()}
         meta={[
-          data ? `${data.book} ${ctx?.ref || data.chapter} · ${data.resource === "tps" ? "TPS" : "TPL"}` : ctx ? `${ctx.book} ${ctx.chapter}` : "",
+          toolHeading(ctx, language, title).where,
           data ? (mode === "alinear" ? t("al.metaDone").replace("{a}", String(doneCount)) : t("al.metaAgreed").replace("{a}", String(summary?.agreed ?? 0))).replace("{b}", String(data.verses.length)) : "",
           data && mode === "revisar" && toAnswer ? t("al.toAnswerShort").replace("{n}", String(toAnswer)) : "",
         ]
@@ -1467,14 +1468,15 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
           ) : (
             <section className="af-card" aria-label={t("al.yourAnswerAria")}>
               {decisionNotes}
-              {!complete ? (
+              {/* One reason at a time: a verse nobody marked as finished is not answered yet, whatever else it lacks
+                  (the words left to place are listed above the boxes). */}
+              {!readyToReview ? (
+                <p className="af-stale" role="status">
+                  {t("al.notMarked")}
+                </p>
+              ) : !complete ? (
                 <p className="af-stale" role="status">
                   {pendingWords === 1 ? t("al.notCompleteOne") : n("al.notCompleteMany", pendingWords)}
-                </p>
-              ) : null}
-              {!readyToReview ? (
-                <p className="af-hint" role="status">
-                  {t("al.notMarked")}
                 </p>
               ) : null}
               {authoredByMe(verse) ? (
@@ -1482,7 +1484,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                   {t("al.authoredByMe")}
                 </p>
               ) : null}
-              <p className="af-question">{t("al.question")}</p>
+              {readyToReview ? <p className="af-question">{t("al.question")}</p> : null}
               {mine ? (
                 <p className="af-mine">
                   {t("al.myAnswer").replace("{stance}", stanceLabel(mine.status))}
@@ -1601,6 +1603,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                     {t("al.cancel")}
                   </Button>
                 </div>
+              </div>
+            ) : !readyToReview ? (
+              // Nothing to answer here yet: the bar offers the way on instead of three buttons that do nothing.
+              <div className="al-actionbar__row">
+                <Button type="button" variant="outline" disabled={position >= data.verses.length - 1} onClick={() => void goTo(position + 1)}>
+                  {t("al.continue")}
+                </Button>
               </div>
             ) : (
               <div className="al-actionbar__row">
