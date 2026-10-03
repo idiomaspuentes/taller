@@ -1136,12 +1136,22 @@ function MessageText({ text }: { text: string }) {
 
 function Inline({ text }: { text: string }) {
   const parts: React.ReactNode[] = [];
-  const re = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+  // Bold, a link written out, or the number of another thread ("#82"): a decision opened from this task, the task a
+  // decision belongs to. The number is the way there, so it is one, inside the app.
+  const re = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|#(\d+)\b/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
+    // "#12" inside a word or an address ("a#12", "page#12") is not a thread.
+    if (m[4] && m.index > 0 && /[\w/&]/.test(text[m.index - 1]!)) continue;
     if (m.index > last) parts.push(text.slice(last, m.index));
     if (m[1]) parts.push(<strong key={m.index}>{m[1]}</strong>);
+    else if (m[4])
+      parts.push(
+        <a key={m.index} href={`#/mis-tareas/${m[4]}`} className="chat-link">
+          #{m[4]}
+        </a>,
+      );
     else
       parts.push(
         <a key={m.index} href={m[3]} target="_blank" rel="noreferrer" className="chat-link">
