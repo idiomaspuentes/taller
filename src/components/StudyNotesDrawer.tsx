@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { NotebookPen, X } from "lucide-react";
 import { loadSession } from "../dcs/auth";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
@@ -8,6 +9,7 @@ import { portionRange } from "../domain/usfmEdit";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { StudyNotesPanel } from "./StudyNotesPanel";
+import { useNotesSlot } from "./notesSlot";
 
 /** What the notes need to know of the tool they are opened from: which passage, which resource, which task. */
 export function studyNotesProps(ctx: SolverLaunchContext, language: string) {
@@ -41,13 +43,18 @@ export function StudyNotesDrawer({ ctxEncoded }: { ctxEncoded: string }) {
   const [count, setCount] = useState(0);
   const ctx = useMemo(() => decodeSolverLaunchContext(ctxEncoded), [ctxEncoded]);
   const session = useMemo(() => loadSession(), []);
+  // In the header of the tool when it has one; in its corner of the screen otherwise.
+  const slot = useNotesSlot();
   if (!ctx?.projectId || !ctx.pmOrg || !ctx.book || !session?.token || ctx.lab) return null;
+  const button = (
+    <button type="button" className="snd-button" aria-label={t("sn.tab")} title={t("sn.tab")} aria-expanded={open} onClick={() => setOpen(!open)}>
+      <NotebookPen size={slot ? 20 : 16} aria-hidden /> <span className="snd-label">{t("sn.tab")}</span>
+      {count ? <span className="snd-count">{count}</span> : null}
+    </button>
+  );
   return (
     <>
-      <button type="button" className="snd-button" aria-label={t("sn.tab")} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <NotebookPen size={16} aria-hidden /> <span className="snd-label">{t("sn.tab")}</span>
-        {count ? <span className="snd-count">{count}</span> : null}
-      </button>
+      {slot ? createPortal(button, slot) : button}
       {/* Kept mounted, so that the count is known before it is opened. */}
       <aside className="snd-panel" hidden={!open} aria-label={t("sn.tab")}>
         <header className="snd-panel__head">

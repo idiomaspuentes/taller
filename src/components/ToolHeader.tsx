@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useT } from "../i18n/messages";
+import { setNotesSlot } from "./notesSlot";
 
 type Props = {
   /** What is in hand: the passage, or the name of the step. One line; it is cut short when it does not fit. */
@@ -30,7 +31,11 @@ export function ToolHeader({ title, meta, onBack, actions, children }: Props) {
           <h1>{title}</h1>
           {meta ? <p>{meta}</p> : null}
         </div>
-        {actions ? <div className="th-actions">{actions}</div> : null}
+        <div className="th-actions">
+          {/* Where the notes button is drawn: the notes are mounted beside the tool, the header says where they show. */}
+          <span className="th-notes" ref={setNotesSlot} />
+          {actions}
+        </div>
       </div>
       {children ? <div className="th-below">{children}</div> : null}
     </header>
