@@ -165,3 +165,104 @@ Lo que hace cada persona:
 - La comparación tacha el inglés y resalta el español: como la base es la fuente, todo sale como cambio.
 - El editor llega con la nota en inglés ya escrita en el campo: una nota sin traducir cuenta como hecha.
 
+Las otras tres porciones de notas:
+
+| Porción | Notas | Tradujo | Revisó | Resultado |
+|---|---|---|---|---|
+| 1:12–15 | 9 | abelper8 | valeska | Aprobado y entregado |
+| 2:1–9 | 32 | valeska | Elisha | Aprobado; **la entrega falló** (ver abajo) y se entregó tras el arreglo |
+| 2:10–23 | 65 | abelper8 | abelperez | Aprobado y entregado |
+
+**⚠ Segundo bloqueo, corregido durante la corrida.** Al entregar la tercera porción, Door43 rechazó la fusión
+(«No se pudo guardar la subtarea en el borrador grupal … merge → 405»). Todas las porciones trabajan sobre el mismo
+archivo de notas, cada una en sus filas; dos porciones vecinas cambian líneas pegadas y Git lo toma por conflicto
+aunque nadie tocó la misma fila. Se corrigió: cuando la fusión se rechaza, la entrega pone en el archivo del grupo
+las filas que cambió ese borrador, una por una, como ya se hace con los versículos.
+
+Comprobado en Door43: las 150 notas de los cuatro pasajes están en español en `hag/notas-ayuda`.
+
+**⚠ Más cosas que se trabaron**
+
+- **Las notas de introducción no son de nadie.** La introducción al libro y las de los dos capítulos (`front:intro`,
+  `1:intro`, `2:intro`) no caen en ninguna porción: siguen en inglés y ninguna subtarea las pide.
+- Con 65 notas el editor se vuelve lento: cada cambio tarda cerca de un segundo en reflejarse.
+
+### Preguntas (4 porciones, 22 preguntas)
+
+| Porción | Preguntas | Tradujo | Revisó | Resultado |
+|---|---|---|---|---|
+| 1:1–11 | 6 | Elisha | abelper8 | Aprobado y entregado |
+| 1:12–15 | 3 | abelperez | valeska | Aprobado y entregado |
+| 2:1–9 | 4 | Elisha | abelper8 | Aprobado y entregado |
+| 2:10–23 | 9 | abelperez | valeska | Aprobado y entregado |
+
+Mismo recorrido que las notas: estudiar, escribir pregunta y respuesta en dos campos, «Guardar», «Listo para
+revisión», «Terminé Borrador» en la tarjeta, revisión, acuerdo y entrega. Con los dos arreglos de las notas ya
+hechos no hubo tropiezos; el aviso «Este libro todavía no tenía estas ayudas: se empezó con las de la fuente» salió
+al abrir la primera.
+
+### Palabras (1 subtarea, 2 artículos)
+
+**Quién:** valeska tradujo, abelper8 revisó.
+
+**⚠ Tercer arreglo durante la corrida.** La subtarea pide los dos artículos que faltan en español
+(`age-timeperiod` y `bear-carryburden`). El editor mostraba los **27 artículos de la primera porción**, 26 de ellos
+ya traducidos, y **no mostraba** el segundo pendiente porque pertenece a otro pasaje. Se corrigió: el editor lista
+los artículos que la subtarea nombra.
+
+Después del arreglo: dos artículos vacíos, traducidos y guardados (16 s), revisados artículo por artículo y
+entregados.
+
+**⚠ Lo que se trabó**
+
+- La subtarea se llama «Traducir Palabras · Hageo 1:1–11» aunque es una sola para todo el libro.
+- Un artículo que no existe en español se muestra por su código (`age-timeperiod`), sin título.
+
+### Academia (1 subtarea, 8 artículos)
+
+**Quién:** valeska tradujo, abelper8 revisó.
+
+Ocho artículos: siete existen en el repositorio en español **con el texto todavía en inglés** y uno
+(`grammar-collectivenouns`) no existe. Cada uno tiene entre 4.000 y 7.500 caracteres. Se tradujeron los ocho en el
+editor (pegando el texto en «Ver el código»; todos volvieron a la vista con formato), se guardó en tres tandas y se
+entregó.
+
+**⚠ Lo que se trabó**
+
+- El editor solo trae el cuerpo del artículo (`01.md`). El **título** y la **pregunta** (`title.md`,
+  `sub-title.md`) no se pueden traducir aquí: los siete artículos siguen titulándose en inglés («Biblical Volume»)
+  y el nuevo se queda sin título.
+- El primer guardado de un artículo nuevo tardó 29 segundos sin indicar avance.
+- Ocho artículos largos en una sola subtarea es mucho trabajo para una persona y una revisión.
+
+### Revisión grupal (2 capítulos)
+
+| Capítulo | Leyeron | Resultado |
+|---|---|---|
+| 1 (30 ítems: 15 versículos × TPL y TPS) | abelperez y valeska | 1 duda, 1 corrección, cerrada y entregada |
+| 2 (46 ítems) | abelper8 y Elisha | Cerrada y entregada |
+
+Lo que pasó en el capítulo 1:
+
+1. abelperez se sumó y abrió la lectura: cada versículo con ULT, UST, TPL y TPS, y por texto «De acuerdo»,
+   «Corregir» y «Tengo una duda».
+2. Dejó una **duda** en el TPL de 1:9 («¿Por causa de qué?» suena forzado) y pulsó «De acuerdo con el pasaje» en
+   los dos pasajes. Pie: «0 de 30 acordados · 1 duda abierta».
+3. valeska abrió la misma lectura, vio la duda bajo el versículo, pulsó **«Corregir»**, cambió a «¿Por qué?» y
+   escribió el motivo. La duda se cerró sola y el acuerdo de abelperez sobre ese versículo se reinició.
+4. valeska dio su acuerdo a los dos pasajes («29 de 30»). abelperez volvió, acordó 1:9 y apareció «Todo llegó y
+   todo está acordado · **Cerrar la revisión grupal**».
+5. En «Mis tareas» la tarjeta quedó en «1 de 1 pasos» con **«Entregar»**.
+
+Al entregar las dos, se abrieron en «Puedes sumarte» las ocho subtareas de «Desafíos» de Afinación.
+
+**⚠ Lo que se trabó**
+
+- Tras «Cerrar la revisión grupal» todavía hay que volver a la tarjeta y pulsar «Entregar».
+- Quien dejó la duda no recibe señal de que la resolvieron con una corrección; lo ve al volver a entrar.
+
+### Lo que pasó con la cola
+
+Mientras Hageo tuvo subtareas libres de Traducción, las de Judas estuvieron en «Del siguiente libro». En cuanto se
+tomaron todas las de Hageo, las de Judas pasaron solas a «Libres para tu equipo». Nadie se quedó sin trabajo.
+
