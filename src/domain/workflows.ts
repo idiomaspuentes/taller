@@ -207,6 +207,10 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
         }
         continue;
       }
+      // The project may already have this step under another id: a step it edited by hand into what the process
+      // now says (same tool, same way of closing, same way of taking it). Adding it again would ask for the same
+      // work twice, so it counts as there.
+      if (steps?.some((mine) => Boolean(step.solverAppId) && mine.solverAppId === step.solverAppId && mine.closing === step.closing && (mine.claimMode ?? "") === (step.claimMode ?? "") && !(freshSteps ?? []).some((other) => other.id === mine.id))) continue;
       steps ??= [];
       const before = (freshSteps ?? []).slice(0, stepIndex).reverse().map((s) => steps!.findIndex((mine) => mine.id === s.id)).find((i) => i >= 0);
       steps.splice(before === undefined ? (stepIndex === 0 ? 0 : steps.length) : before + 1, 0, step);

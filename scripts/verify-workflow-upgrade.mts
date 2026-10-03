@@ -70,4 +70,18 @@ test("actualizar agrega lo nuevo en su lugar y no cambia lo que el proyecto ya t
   assert.equal(upgradeBoardToWorkflow(board, fcr).tasks.length, 0, "actualizar dos veces no repite nada");
 });
 
+test("un paso que el proyecto ya tiene con otro identificador no se agrega otra vez", () => {
+  // The project turned its two steps into one open round by hand, in its editor: the step kept its old id.
+  const created = applyWorkflowToBoard(empty, fcr);
+  const round = fcr.tasks.find((t) => t.id === "palabras-tpl")!.steps![0]!;
+  const mine: AssignmentsDoc = {
+    ...created,
+    workflowVersion: fcr.version - 1,
+    teams: created.teams.map((task) => (task.id === "palabras-tpl" ? { ...task, steps: [{ ...round, id: "confirmar", name: "Revisar palabras clave" }] } : task)),
+  };
+  const result = upgradeBoardToWorkflow(mine, fcr);
+  assert.deepEqual(result.steps, [], "no hay nada nuevo que traer");
+  assert.deepEqual(result.board.teams.find((t) => t.id === "palabras-tpl")!.steps!.map((s) => s.id), ["confirmar"], "el paso sigue siendo uno, el del proyecto");
+});
+
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);
