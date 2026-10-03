@@ -7891,8 +7891,14 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 }
 /* Aligning is done across the screen: the verse on one side, its boxes on the other. On a desk the tool takes the
    width there is, instead of the reading column the other tools keep. */
+@media (min-width: 768px) {
+  .af.al { max-width: min(84rem, 100%); }
+  /* The boxes share out each row, so the grid ends where the screen does; the last row keeps its own widths. */
+  .al-grid .al-box { flex: 1 1 auto; }
+  .al-grid::after { content: ""; flex: 999 1 0; }
+}
 @media (min-width: 1024px) {
-  .af.al { max-width: min(84rem, 100%); padding-inline: 1.5rem; }
+  .af.al { padding-inline: 1.5rem; }
   .al-layout { grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); gap: 1rem; }
   .al-bank__words .al-word { font-size: 1.0625rem; }
   .al-grid { gap: 0.5rem; }
