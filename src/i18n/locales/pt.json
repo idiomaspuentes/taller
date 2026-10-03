@@ -2221,5 +2221,10 @@
   "af.reviewDoneShort": "Revisão terminada: outras duas pessoas a confirmam.",
   "af.reviewProgress": "Você respondeu {n} de {of}",
   "af.elsewhere": "Assim foi traduzido em outros lugares",
-  "af.differsElsewhere": "«{words}» não coincide com como foi traduzido em outros lugares."
+  "af.differsElsewhere": "«{words}» não coincide com como foi traduzido em outros lugares.",
+  "al.toPlaceOne": "Falta colocar 1 palavra",
+  "al.toPlaceMany": "Faltam colocar {n} palavras",
+  "al.allPlacedShort": "Todas as palavras estão colocadas",
+  "al.showPlaced": "Ver todas",
+  "al.hidePlaced": "Só as que faltam"
 }

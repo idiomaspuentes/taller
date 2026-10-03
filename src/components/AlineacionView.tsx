@@ -1,4 +1,5 @@
 import { draftTaskId } from "../dcs/afinacionLoad";
+import { Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
@@ -344,6 +345,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
   const [dirty, setDirty] = useState<Record<number, boolean>>({});
   const [history, setHistory] = useState<Record<number, { past: AlignmentGroup[][]; future: AlignmentGroup[][] }>>({});
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
+  /** The words already placed are hidden in the bank (they are in their boxes) unless asked for. */
+  const [showPlaced, setShowPlaced] = useState(false);
   const [selectedBoxes, setSelectedBoxes] = useState<string[]>([]);
   const [selectedRef, setSelectedRef] = useState<{ boxId: string; refIndex: number } | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -999,9 +1002,16 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
             <div className="al-layout">
               <Bank editable={editable}>
-                <p className="af-lbl">{t("al.yourDraft")}</p>
+                <div className="al-bank__bar">
+                  <p className="af-lbl">{pendingWords ? (pendingWords === 1 ? t("al.toPlaceOne") : t("al.toPlaceMany").replace("{n}", String(pendingWords))) : t("al.allPlacedShort")}</p>
+                  {verse.draft.length > pendingWords ? (
+                    <button type="button" className="af-link" aria-pressed={showPlaced} onClick={() => setShowPlaced(!showPlaced)}>
+                      {t(showPlaced ? "al.hidePlaced" : "al.showPlaced")}
+                    </button>
+                  ) : null}
+                </div>
                 <div className="al-bank__words">
-                  {verse.draft.map((token, i) => (
+                  {verse.draft.map((token, i) => (showPlaced || aligned[i] !== true || selectedWords.includes(i)) ? (
                     <BankWord
                       key={`${i}-${token.surface}`}
                       token={token}
@@ -1012,7 +1022,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
                       disabled={!editable}
                       onTap={tapWord}
                     />
-                  ))}
+                  ) : null)}
                 </div>
               </Bank>
 
@@ -1285,21 +1295,20 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared = false, 
               </div>
             ) : mode === "alinear" ? (
               <>
-                <div className="al-actionbar__row">
-                  {shared && !readyToReview ? (
+                {shared && !readyToReview ? (
+                  <div className="al-actionbar__row">
                     <Button type="button" variant="ghost" disabled={saving} onClick={() => void takeVerse(true)}>
                       {t("al.release")}
                     </Button>
-                  ) : null}
-                  <Button type="button" variant="outline" disabled={!canUndo} onClick={undo}>
-                    {t("al.undo")}
+                  </div>
+                ) : null}
+                <div className="al-actionbar__row al-actionbar__row--one">
+                  <Button type="button" variant="ghost" size="icon" aria-label={t("al.undo")} title={t("al.undo")} disabled={!canUndo} onClick={undo}>
+                    <Undo2 size={18} aria-hidden />
                   </Button>
-                  <Button type="button" variant="outline" disabled={!canRedo} onClick={redo}>
-                    {t("al.redo")}
+                  <Button type="button" variant="ghost" size="icon" aria-label={t("al.redo")} title={t("al.redo")} disabled={!canRedo} onClick={redo}>
+                    <Redo2 size={18} aria-hidden />
                   </Button>
-                  {dirty[verse.verse] ? <span className="al-actionbar__flag">{t("al.unsaved")}</span> : null}
-                </div>
-                <div className="al-actionbar__row">
                   {complete && !readyToReview ? (
                     <Button type="button" onClick={() => void markDone()} disabled={saving}>
                       {saving ? t("al.saving") : t("al.markDone")}

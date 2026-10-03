@@ -7740,3 +7740,29 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 .af-elsewhere ul { display: grid; gap: 0.125rem; margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
 .af-elsewhere li span { color: var(--text-muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 .af-elsewhere li[data-preferred="true"] b { color: var(--success-700); }
+/* Aligning on a phone first: the words still to place, the boxes two to a row, the actions in one row. */
+.al-bank__bar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.375rem; }
+.al-bank__bar .af-lbl { margin: 0; }
+.al-actionbar__row--one { flex-wrap: nowrap; }
+.al-actionbar__row--one > button[data-size="icon"] { flex: 0 0 auto; }
+@media (max-width: 40rem) {
+  .al .al-pager { display: none; }
+  .al-bank { max-height: 26dvh; padding: 0.5rem; }
+  .al-word { min-height: 2.25rem; padding: 0.125rem 0.5rem; font-size: 0.9375rem; }
+  .al-grid { gap: 0.5rem; }
+  .al-box { flex: 1 1 calc(50% - 0.25rem); min-width: 0; }
+  .al-box[data-merged="true"] { flex-basis: 100%; min-width: 0; }
+  .al-box[data-compact="true"] { min-width: 0; }
+  .al-ref__word { font-size: 1rem; }
+  .al-ref__gloss { max-width: 100%; }
+  .al-box__body { min-height: 2.5rem; }
+  .al-chip { min-height: 2rem; }
+  .al-tools .al-actions > button { flex: 1 1 auto; min-height: 36px; padding: 0 0.625rem; font-size: 0.8125rem; }
+  .al-actionbar { padding: 0.5rem 0.625rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); gap: 0.375rem; }
+  .al-actionbar__row > button { min-height: 2.5rem; }
+}
+/* In the alignment too, the notes sit in the header instead of over the action bar. */
+@media (max-width: 40rem) {
+  body:has(.af.al) .snd-button { top: 0.4375rem; bottom: auto; right: 0.75rem; height: 40px; min-height: 40px; border-color: transparent; box-shadow: none; background: none; }
+  body:has(.af.al) .snd-panel { top: 3.5rem; bottom: auto; max-height: calc(100dvh - 4.5rem - var(--keyboard, 0px)); }
+}
