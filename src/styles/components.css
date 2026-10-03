@@ -8036,3 +8036,6 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 @media (min-width: 900px) {
   .fam__body > * { width: 100%; max-width: 46rem; margin-inline: auto; }
 }
+/* A quote inside a quote, in the helps editor: set in a step. */
+blockquote[data-depth="2"] { margin-left: 1.25rem; }
+blockquote[data-depth="3"] { margin-left: 2.5rem; }

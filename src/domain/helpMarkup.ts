@@ -19,9 +19,16 @@ export type Inline =
 export type Block =
   | { t: "p"; c: Inline[] }
   | { t: "h"; level: number; c: Inline[] }
-  | { t: "ul"; marker: string; items: Inline[][] }
-  | { t: "ol"; items: Inline[][] }
-  | { t: "quote"; c: Inline[] };
+  /**
+   * A list keeps how it was written (the spaces after its mark, the number it starts at): the articles of the
+   * Academy and of the words write `*  item`, and number a list across blank lines (`1.` … `2.` … `3.`). Without
+   * this the text did not come back the same, and every such article was shown as its source.
+   */
+  | { t: "ul"; marker: string; gap?: string; tight?: boolean; items: Inline[][] }
+  | { t: "ol"; start?: number; gap?: string; tight?: boolean; items: Inline[][] }
+  /** `tight`: written right under what comes before it, with no blank line between (the articles often do). */
+  /** `depth`: a quote inside a quote (`>>`), as the articles write an alternative under an example. `bare`: `>text`, with no space. */
+  | { t: "quote"; tight?: boolean; depth?: number; bare?: boolean; c: Inline[] };
 
 const INLINE = /\[\[(rc:\/\/[^\]\s]+)\]\]|\[([^\]\n]*)\]\(([^)\s]+)\)|\*\*([^*\n](?:[^\n]*?[^*\n])?)\*\*|\*([^*\s\n](?:[^*\n]*?[^*\s\n])?)\*/;
 
@@ -66,9 +73,9 @@ export function parseMarkdown(md: string): Block[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
-    const bullet = /^([*-])\s+(.*)$/.exec(line);
-    const numbered = /^\d+\.\s+(.*)$/.exec(line);
-    const quote = /^>\s?(.*)$/.exec(line);
+    const bullet = /^([*-])([ \t]+)(.*)$/.exec(line);
+    const numbered = /^(\d+)\.([ \t]+)(.*)$/.exec(line);
+    const quote = /^(>+)( ?)(.*)$/.exec(line);
     if (!line.trim()) flush();
     else if (heading) {
       flush();
@@ -76,17 +83,28 @@ export function parseMarkdown(md: string): Block[] {
     } else if (bullet || numbered) {
       flush();
       const last = blocks[blocks.length - 1];
-      const item = parseInline((bullet ? bullet[2] : numbered![1]) ?? "");
+      const item = parseInline((bullet ? bullet[3] : numbered![3]) ?? "");
+      const gap = (bullet ? bullet[2] : numbered![2])!;
+      const spaced = gap === " " ? {} : { gap };
       // A list goes on while its lines follow one another; a blank line ends it.
       const joins = i > 0 && lines[i - 1]!.trim() !== "";
-      if (bullet && joins && last?.t === "ul" && last.marker === bullet[1]) last.items.push(item);
-      else if (numbered && joins && last?.t === "ol") last.items.push(item);
-      else blocks.push(bullet ? { t: "ul", marker: bullet[1]!, items: [item] } : { t: "ol", items: [item] });
+      const number = numbered ? Number(numbered[1]) : 0;
+      if (bullet && joins && last?.t === "ul" && last.marker === bullet[1] && (last.gap ?? " ") === gap) last.items.push(item);
+      else if (numbered && joins && last?.t === "ol" && (last.gap ?? " ") === gap && number === (last.start ?? 1) + last.items.length) last.items.push(item);
+      else {
+        const tight = joins && blocks.length ? { tight: true } : {};
+        blocks.push(bullet ? { t: "ul", marker: bullet[1]!, ...spaced, ...tight, items: [item] } : { t: "ol", ...(number === 1 ? {} : { start: number }), ...spaced, ...tight, items: [item] });
+      }
     } else if (quote) {
       flush();
       const last = blocks[blocks.length - 1];
-      if (last?.t === "quote" && i > 0 && lines[i - 1]!.trim() !== "") last.c.push({ t: "br" }, ...parseInline(quote[1]!));
-      else blocks.push({ t: "quote", c: parseInline(quote[1]!) });
+      const depth = quote[1]!.length;
+      const text = quote[3]!;
+      const bare = Boolean(text) && !quote[2];
+      // An empty line of a quote (`>`) belongs to the quote it is in, however that one is written.
+      const same = last?.t === "quote" && (last.depth ?? 1) === depth && (!text || Boolean(last.bare) === bare);
+      if (same && last?.t === "quote" && i > 0 && lines[i - 1]!.trim() !== "") last.c.push({ t: "br" }, ...parseInline(text));
+      else blocks.push({ t: "quote", ...(i > 0 && lines[i - 1]!.trim() !== "" && blocks.length ? { tight: true } : {}), ...(depth > 1 ? { depth } : {}), ...(bare ? { bare } : {}), c: parseInline(text) });
     } else para.push(line);
   }
   flush();
@@ -103,14 +121,27 @@ export function serializeInline(nodes: Inline[]): string {
 
 export function serializeMarkdown(blocks: Block[]): string {
   return blocks
+    .map((block, index) => {
+      const lead = index === 0 ? "" : (block.t === "ul" || block.t === "ol" || block.t === "quote") && block.tight ? "\n" : "\n\n";
+      return lead + blockText(block);
+    })
+    .join("");
+}
+
+function blockText(block: Block): string {
+  return [block]
     .map((block) => {
       if (block.t === "h") return `${"#".repeat(block.level)} ${serializeInline(block.c)}`;
-      if (block.t === "ul") return block.items.map((item) => `${block.marker} ${serializeInline(item)}`).join("\n");
-      if (block.t === "ol") return block.items.map((item, index) => `${index + 1}. ${serializeInline(item)}`).join("\n");
-      if (block.t === "quote") return serializeInline(block.c).split("\n").map((line) => `> ${line}`).join("\n");
+      if (block.t === "ul") return block.items.map((item) => `${block.marker}${block.gap ?? " "}${serializeInline(item)}`).join("\n");
+      if (block.t === "ol") return block.items.map((item, index) => `${index + (block.start ?? 1)}.${block.gap ?? " "}${serializeInline(item)}`).join("\n");
+      // An empty line of a quote is `>` alone: a space after it would be a change.
+      if (block.t === "quote") {
+        const mark = ">".repeat(block.depth ?? 1);
+        return serializeInline(block.c).split("\n").map((line) => (line ? `${mark}${block.bare ? "" : " "}${line}` : mark)).join("\n");
+      }
       return serializeInline(block.c);
     })
-    .join("\n\n");
+    .join("");
 }
 
 /** Does this text come back the same after being read into the tree? If not, it must not be edited through it. */

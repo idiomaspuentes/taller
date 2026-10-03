@@ -524,7 +524,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 ) : (
                   <>
                     <Label htmlFor={`help-${item.id}`}>{item.label}</Label>
-                    <p className="scripture-editor__source">{item.meta}</p>
+                    {/* An article is named by its title: the path of its file says nothing to who translates it. */}
+                    {item.kind === "tsv" ? <p className="scripture-editor__source">{item.meta}</p> : null}
                   </>
                 )}
               </div>

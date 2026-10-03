@@ -44,9 +44,11 @@ function blocksHtml(blocks: Block[], names: { academia: string; palabra: string 
   return blocks
     .map((block) => {
       if (block.t === "h") return `<h${Math.min(6, block.level)}>${inlineHtml(block.c, names)}</h${Math.min(6, block.level)}>`;
-      if (block.t === "ul") return `<ul data-marker="${block.marker}">${block.items.map((item) => `<li>${inlineHtml(item, names)}</li>`).join("")}</ul>`;
-      if (block.t === "ol") return `<ol>${block.items.map((item) => `<li>${inlineHtml(item, names)}</li>`).join("")}</ol>`;
-      if (block.t === "quote") return `<blockquote>${inlineHtml(block.c, names)}</blockquote>`;
+      // How the list was written (its spaces, its first number) rides on the element, to write it back the same.
+      const gap = `${(block.t === "ul" || block.t === "ol") && block.gap ? ` data-gap="${block.gap.length}"` : ""}${(block.t === "ul" || block.t === "ol" || block.t === "quote") && block.tight ? ' data-tight="1"' : ""}`;
+      if (block.t === "ul") return `<ul data-marker="${block.marker}"${gap}>${block.items.map((item) => `<li>${inlineHtml(item, names)}</li>`).join("")}</ul>`;
+      if (block.t === "ol") return `<ol${block.start ? ` start="${block.start}"` : ""}${gap}>${block.items.map((item) => `<li>${inlineHtml(item, names)}</li>`).join("")}</ol>`;
+      if (block.t === "quote") return `<blockquote${gap}${block.depth ? ` data-depth="${block.depth}"` : ""}${block.bare ? ' data-bare="1"' : ""}>${inlineHtml(block.c, names)}</blockquote>`;
       return `<p>${inlineHtml(block.c, names)}</p>`;
     })
     .join("");
@@ -96,11 +98,14 @@ function blocksOf(root: HTMLElement): Block[] {
     } else if (el && (tag === "UL" || tag === "OL")) {
       flush();
       const items = [...el.children].filter((li) => li.tagName === "LI").map((li) => inlineOf(li)).filter((item) => item.length);
-      if (items.length) blocks.push(tag === "UL" ? { t: "ul", marker: el.dataset.marker || "*", items } : { t: "ol", items });
+      const gap = Number(el.dataset.gap) > 1 ? { gap: " ".repeat(Number(el.dataset.gap)) } : {};
+      const start = Number(el.getAttribute("start")) > 1 ? { start: Number(el.getAttribute("start")) } : {};
+      const tight = el.dataset.tight && blocks.length ? { tight: true } : {};
+      if (items.length) blocks.push(tag === "UL" ? { t: "ul", marker: el.dataset.marker || "*", ...gap, ...tight, items } : { t: "ol", ...start, ...gap, ...tight, items });
     } else if (el && tag === "BLOCKQUOTE") {
       flush();
       const c = inlineOf(el);
-      if (c.length) blocks.push({ t: "quote", c });
+      if (c.length) blocks.push({ t: "quote", ...(el.dataset.tight && blocks.length ? { tight: true } : {}), ...(Number(el.dataset.depth) > 1 ? { depth: Number(el.dataset.depth) } : {}), ...(el.dataset.bare ? { bare: true } : {}), c });
     } else if (el && (tag === "P" || tag === "DIV")) {
       flush();
       const c = inlineOf(el);

@@ -64,4 +64,16 @@ test("los enlaces a otros recursos y a versículos se escriben como los escriben
   assert.deepEqual(describeRc("rc://*/tw/dict/bible/kt/grace"), { kind: "palabra", slug: "grace" });
 });
 
+test("los artículos reales vuelven iguales: marcas con dos espacios, listas numeradas entre líneas en blanco, citas con línea vacía", () => {
+  const article = ["### Razones", "", "*  Uno con dos espacios.", "*  Otro.", "", "1. Primera estrategia.", "", "2. Segunda, tras una línea en blanco.", "", "3. Tercera.", "", "> Una cita", ">", "> que sigue."].join("\n");
+  assert.ok(roundTrips(article));
+  const blocks = parseMarkdown(article);
+  assert.deepEqual(blocks.filter((b) => b.t === "ol").map((b) => (b.t === "ol" ? (b.start ?? 1) : 0)), [1, 2, 3]);
+  assert.equal(serializeMarkdown(blocks), article);
+  const under = ["Un párrafo y, pegada a él, su lista:", "1. Uno.", "2. Dos.", "", "Otro párrafo.", "> y su cita debajo"].join("\n");
+  assert.ok(roundTrips(under), "una lista o una cita pegada al párrafo de arriba");
+  assert.ok(roundTrips(["> Un ejemplo. (Rut 2:16 TPL).", ">> Su alternativa, citada dentro.", "", ">Sin espacio", ">", ">sigue."].join("\n")), "una cita dentro de otra, y una cita sin espacio");
+  assert.ok(roundTrips("1. uno\n2. dos\n3. tres") && roundTrips("5. cinco\n6. seis"));
+});
+
 console.log(`\nverify-help-markup: ${passed} checks passed.`);
