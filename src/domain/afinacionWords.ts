@@ -180,3 +180,69 @@ export function compareTermRenderings(params: {
   const differing = wanted ? renderings.filter((r) => renderingKey(r.text) !== wanted).flatMap((r) => r.uses) : [];
   return { renderings, unmarked, consistent: renderings.length <= 1, differing };
 }
+
+export type TermOrder = "term" | "text";
+
+/**
+ * The uses of the key terms in the order they are gone through.
+ *
+ * `text`: as they come in the passage. `term`: every use of one term one after the other (the terms in the order
+ * they first appear, each one's uses in the order of the text), which is what checking a term for consistency
+ * needs: decide it once, and see at once where it was said otherwise.
+ */
+export function orderTermUses<T extends TermItem>(uses: T[], order: TermOrder): T[] {
+  const inText = [...uses].sort((a, b) => a.chapter - b.chapter || a.verse - b.verse || (a.phraseTokens[0] ?? 9999) - (b.phraseTokens[0] ?? 9999) || a.id.localeCompare(b.id));
+  if (order === "text") return inText;
+  const first = new Map<string, number>();
+  inText.forEach((use, index) => {
+    if (!first.has(use.termSlug)) first.set(use.termSlug, index);
+  });
+  return inText
+    .map((use, index) => ({ use, index }))
+    .sort((a, b) => first.get(a.use.termSlug)! - first.get(b.use.termSlug)! || a.index - b.index)
+    .map((row) => row.use);
+}
+
+/** The first of these items the person has not answered on the text as it is now; -1 when none is left. */
+export function firstUnanswered(params: { items: { id: string }[]; decisions: ReviewDecision[]; me: string; hashOf: (id: string) => string; from?: number }): number {
+  const me = params.me.trim().toLowerCase();
+  const mine = new Set(
+    params.decisions
+      .filter((d) => d.reviewer.trim().toLowerCase() === me && (d.textHash === undefined || d.textHash === params.hashOf(d.itemId)))
+      .map((d) => d.itemId),
+  );
+  for (let i = params.from ?? 0; i < params.items.length; i++) if (!mine.has(params.items[i]!.id)) return i;
+  return -1;
+}
+
+/**
+ * The other uses of a term, among those in hand, that somebody already marked with the same words and this person
+ * has not answered: they can be agreed with in one go, so that the person stops only where the term reads
+ * otherwise. Each comes with the words that were marked there, to answer about those and no others.
+ */
+export function sameRenderingUses(params: {
+  use: TermItem;
+  /** The uses in hand (the chapter or the stretch of it that arrived): never beyond them. */
+  uses: TermItem[];
+  rendering: string;
+  decisions: ReviewDecision[];
+  me: string;
+  verseText: (chapter: number, verse: number) => string;
+}): { use: TermItem; selectedText: NonNullable<ReviewDecision["selectedText"]> }[] {
+  const wanted = renderingKey(params.rendering);
+  if (!wanted) return [];
+  const me = params.me.trim().toLowerCase();
+  const out: { use: TermItem; selectedText: NonNullable<ReviewDecision["selectedText"]> }[] = [];
+  for (const use of params.uses) {
+    if (use.id === params.use.id || use.termSlug !== params.use.termSlug) continue;
+    const hash = textFingerprint(params.verseText(use.chapter, use.verse));
+    const fresh = params.decisions.filter((d) => d.itemId === use.id && (d.textHash === undefined || d.textHash === hash));
+    if (fresh.some((d) => d.reviewer.trim().toLowerCase() === me)) continue;
+    // Somebody objected or proposed a change there: that one is looked at, not agreed with in passing.
+    if (fresh.some((d) => d.status !== "approved")) continue;
+    const mark = fresh.filter((d) => d.selectedText?.text.trim()).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+    if (!mark || renderingKey(mark.selectedText!.text) !== wanted) continue;
+    out.push({ use, selectedText: mark.selectedText! });
+  }
+  return out;
+}

@@ -327,3 +327,28 @@ momento y reintenta.
   lo traduce» y «De acuerdo» invitan a confirmar sin mirar.
 - Cerrar la revisión y entregar siguen siendo dos acciones más después del último acuerdo.
 
+### Palabras clave (4 subtareas: 2 capítulos × TPL y TPS)
+
+Misma herramienta que Desafíos, con cada **aparición** de un término clave: 79 en el capítulo 1 y 110 en el 2, por
+texto. Paso 1, qué palabras lo traducen; paso 2, «¿Este término mantiene el mismo sentido que en el resto del
+libro?».
+
+| Subtarea | Términos | Revisó | Confirmaron | Estado |
+|---|---|---|---|---|
+| TPL capítulo 1 | 79 | Elisha | abelperez, abelper8 | Cerrada y entregada |
+| TPL capítulo 2 | 110 | abelper8 | valeska (108 de 110) | Falta el segundo confirmador |
+| TPS capítulo 1 | 79 | valeska | abelperez | Falta el segundo confirmador |
+| TPS capítulo 2 | 110 | abelperez | abelper8, valeska (empezó) | En confirmación |
+
+**⚠ Lo que se trabó, y el cambio que salió de aquí**
+
+- Con el proceso como estaba, **una persona debía contestar los 110 términos** antes de que nadie pudiera
+  confirmar, y los demás esperaban.
+- En el capítulo 2 del TPS, con versículos largos, cada respuesta tardó el doble que en el capítulo 1.
+- La corrida se detuvo aquí para cambiarlo. Desde la versión 14 del proceso, Palabras clave es **una ronda
+  abierta** (cualquiera es el primero en cualquier término), la lista se ordena **por término o por el texto**, la
+  herramienta abre en el primero que a la persona le falta, y las apariciones iguales se acuerdan de un toque. El
+  detalle está en [PLANTILLA_FCR.md](PLANTILLA_FCR.md), «Cómo se revisan las palabras clave».
+- **Un proyecto ya creado no recibe ese cambio solo.** «Traer lo nuevo» agrega pasos y tareas, pero no quita ni
+  cambia los que el proyecto ya tiene. Hageo y Judas siguen con los dos pasos hasta que alguien edite su proceso.
+

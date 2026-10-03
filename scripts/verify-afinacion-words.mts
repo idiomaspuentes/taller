@@ -2,6 +2,9 @@
 import assert from "node:assert/strict";
 import {
   compareTermRenderings,
+  firstUnanswered,
+  orderTermUses,
+  sameRenderingUses,
   groupByTerm,
   parseArticleTitle,
   parsePreferredTerms,
@@ -122,6 +125,34 @@ test("los usos que no dicen lo mismo que la preferida se marcan", () => {
   const cmp = compareTermRenderings({ uses, decisions: [mark(uses[0]!.id, "Dios"), mark(uses[1]!.id, "Señor")], verseText: () => "v", preferred: "dios" });
   assert.deepEqual(cmp.differing.map((u) => u.id), [uses[1]!.id]);
   assert.deepEqual(compareTermRenderings({ uses, decisions: [], verseText: () => "v" }).differing, []);
+});
+
+test("la lista va por término o en el orden del texto: los mismos usos, en otro orden", () => {
+  const uses = parseTermRows(rows, 1);
+  assert.deepEqual(orderTermUses(uses, "text").map((u) => u.id), ["w:a1", "w:a2", "w:a3"]);
+  assert.deepEqual(orderTermUses(uses, "term").map((u) => u.id), ["w:a1", "w:a3", "w:a2"], "los usos de «god» juntos, y los términos en el orden en que aparecen");
+});
+
+test("la herramienta abre en el primer término que a la persona le falta, no en el primero de la lista", () => {
+  const items = orderTermUses(parseTermRows(rows, 1), "term");
+  const hashOf = (id: string) => textFingerprint(verseText(1, id === "w:a1" ? 1 : id === "w:a3" ? 5 : 2));
+  const decisions = [mark("a1", "Dios", 1, 1, "bea"), mark("a1", "Dios", 1, 1, "ana")];
+  assert.equal(firstUnanswered({ items, decisions, me: "ana", hashOf }), 1);
+  assert.equal(firstUnanswered({ items, decisions, me: "bea", hashOf }), 1);
+  assert.equal(firstUnanswered({ items, decisions, me: "carla", hashOf }), 0, "cualquiera puede ser la primera en cualquiera");
+  assert.equal(firstUnanswered({ items, decisions: [...decisions, mark("a3", "Dios", 1, 5, "ana"), mark("a2", "x", 1, 2, "ana")], me: "ana", hashOf }), -1);
+});
+
+test("las apariciones que otra persona marcó igual se acuerdan de un toque; las distintas, las objetadas y las de otro tramo, no", () => {
+  const inHand = parseTermRows(rows, 1);
+  const a1 = inHand.find((u) => u.id === "w:a1")!;
+  const base = { use: a1, uses: inHand, rendering: "Dios", me: "ana", verseText };
+  assert.deepEqual(sameRenderingUses({ ...base, decisions: [mark("a3", "dios", 1, 5, "bea")] }).map((r) => r.use.id), ["w:a3"]);
+  assert.deepEqual(sameRenderingUses({ ...base, decisions: [mark("a3", "la divinidad", 1, 5, "bea")] }), [], "donde se dijo de otra manera hay que detenerse");
+  assert.deepEqual(sameRenderingUses({ ...base, decisions: [mark("a3", "Dios", 1, 5, "bea"), mark("a3", "Dios", 1, 5, "ana")] }), [], "lo que ya contesté no se repite");
+  assert.deepEqual(sameRenderingUses({ ...base, decisions: [mark("a3", "Dios", 1, 5, "bea"), { ...mark("a3", "Dios", 1, 5, "carla"), status: "rejected" }] }), [], "una objeción abierta se mira, no se acuerda de paso");
+  assert.deepEqual(sameRenderingUses({ ...base, decisions: [mark("b1", "Dios", 2, 4, "bea")] }), [], "lo que no está en mano (otro capítulo, otro tramo) no se toca");
+  assert.deepEqual(sameRenderingUses({ ...base, rendering: "", decisions: [mark("a3", "Dios", 1, 5, "bea")] }), [], "sin palabras marcadas no hay con qué estar de acuerdo");
 });
 
 console.log(`\nverify-afinacion-words: ${passed} checks passed.`);

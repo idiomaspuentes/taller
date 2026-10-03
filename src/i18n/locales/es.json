@@ -2387,5 +2387,11 @@
   "he.footUnsaved": "Hay cambios sin guardar.",
   "he.footSaved": "Todo guardado. Cuando termines, pásalo a revisión.",
   "en.noReportsYet": "Todavía no hay reportes",
-  "he.startedFromSource": "Este libro todavía no tenía estas ayudas: se empezó con las de la fuente. Tradúcelas aquí mismo."
+  "he.startedFromSource": "Este libro todavía no tenía estas ayudas: se empezó con las de la fuente. Tradúcelas aquí mismo.",
+  "af.orderAria": "Orden de la lista",
+  "af.orderTerm": "Por término",
+  "af.orderText": "Orden del texto",
+  "af.alikeOne": "De acuerdo aquí y en la otra aparición igual",
+  "af.alikeMany": "De acuerdo aquí y en las otras {n} apariciones iguales",
+  "af.savedAlike": "Guardado: de acuerdo en {n} apariciones."
 }

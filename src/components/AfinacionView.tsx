@@ -3,7 +3,7 @@ import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
-import { appendMyDecision, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
+import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
 import { commentOnIssue } from "../dcs/issues";
 import { formatChatEvent } from "../domain/chatEvent";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
@@ -12,7 +12,7 @@ import { HelpMarkdownView } from "./HelpMarkdownView";
 import { BookA, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { HelpMessages } from "./HelpMessages";
 import { termMessageKey } from "../domain/studyNotes";
-import { compareTermRenderings, termLabel, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
+import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
@@ -108,6 +108,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [task, setTask] = useState<ProjectTask | null>(null);
   const [category, setCategory] = useState("all");
   const [position, setPosition] = useState(0);
+  // Key terms are gone through term by term unless the person asks for the order of the text.
+  const [order, setOrder] = useState<TermOrder>("term");
+  const [openedAt, setOpenedAt] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
   const [note, setNote] = useState("");
   const [pending, setPending] = useState<ReviewStance | null>(null);
@@ -218,10 +221,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }
 
   const groups = useMemo(() => (data ? groupByCategory(data.items) : []), [data]);
-  const visible = useMemo(
-    () => groups.filter((g) => category === "all" || g.category === category).flatMap((g) => g.items),
-    [groups, category],
-  );
+  const visible = useMemo(() => {
+    const shown = groups.filter((g) => category === "all" || g.category === category).flatMap((g) => g.items);
+    return stepProp === "palabras" ? (orderTermUses(shown as TermItem[], order) as NoteItem[]) : shown;
+  }, [groups, category, order, stepProp]);
   const item: NoteItem | undefined = visible[Math.min(position, Math.max(visible.length - 1, 0))];
 
   const taskStep = task?.steps?.find((s) => s.id === (ctx?.stepId || stepProp));
@@ -273,6 +276,18 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       cancelled = true;
     };
   }, [session, ctx?.pmOrg, ctx?.issueNumber, taskStep?.id]);
+
+  // The tool opens on the first item this person has not answered, not on the first of the list: in a round that
+  // several people answer in turns, each one comes back to where they left it.
+  useEffect(() => {
+    if (!data || busy || !visible.length) return;
+    const key = `${data.book}|${data.chapter}|${stepProp}|${category}|${order}`;
+    if (openedAt === key) return;
+    setOpenedAt(key);
+    const at = firstUnanswered({ items: visible, decisions, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? "") });
+    if (at > 0) setPosition(at);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, busy, visible, decisions.length]);
 
   const answeredByMe = useMemo(() => {
     if (!data) return 0;
@@ -440,7 +455,62 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       setDecisions((prev) => [...prev, decision]);
       setPending(null);
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
-      if (position < visible.length - 1) setPosition((p) => p + 1);
+      // On to the next one this person has not answered; after the last, the next in the list.
+      const next = firstUnanswered({ items: visible, decisions: [...decisions, decision], me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1 });
+      if (next >= 0) setPosition(next);
+      else if (position < visible.length - 1) setPosition((p) => p + 1);
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // The other uses of this term, in what is in hand, that read like the words chosen here and wait for this person.
+  const alike = useMemo(
+    () =>
+      data && item && termSlug && !reviewing
+        ? sameRenderingUses({
+            use: item as TermItem,
+            uses: visible as TermItem[],
+            rendering: selectionFromWords(verseText, selected, { chapter: item.chapter, verse: item.verse })?.text ?? "",
+            decisions,
+            me,
+            verseText: (c, v) => (c === data.chapter ? data.draftVerses[v] ?? "" : data.bookDraft[`${c}:${v}`] ?? ""),
+          })
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, item?.id, termSlug, reviewing, visible, selected, decisions, me],
+  );
+
+  /** Agree with this use and with every other use of the term that reads the same, in one go. */
+  async function answerAlike() {
+    if (!session || !data || !item || !ctx || !alike.length) return;
+    setSaving(true);
+    setError("");
+    try {
+      const stamp = new Date().toISOString();
+      const make = (use: TermItem, selectedText: ReviewDecision["selectedText"], text: string): ReviewDecision => ({
+        itemId: use.id,
+        ref: { start: { chapter: use.chapter, verse: use.verse } },
+        selectedText,
+        sessionId: String(ctx.issueNumber || ctx.taskId),
+        stageId: "afinacion",
+        status: "approved",
+        reviewer: session.username,
+        timestamp: stamp,
+        textHash: textFingerprint(text),
+      });
+      const batch = [
+        make(item as TermItem, selectionFromWords(verseText, selected, { chapter: item.chapter, verse: item.verse }), verseText),
+        ...alike.map((row) => make(row.use, row.selectedText, data.draftVerses[row.use.verse] ?? "")),
+      ];
+      await appendMyDecisions(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, batch);
+      const all = [...decisions, ...batch];
+      setDecisions(all);
+      announce(t("af.savedAlike").replace("{n}", String(batch.length)));
+      const next = firstUnanswered({ items: visible, decisions: all, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1 });
+      if (next >= 0) setPosition(next);
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -772,6 +842,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             ) : (
               <span />
             )}
+            {stepProp === "palabras" ? (
+              // The same list in two orders: every use of a term together, or as they come in the text.
+              <span className="af-order" role="group" aria-label={t("af.orderAria")}>
+                {(["term", "text"] as TermOrder[]).map((one) => (
+                  <button key={one} type="button" aria-pressed={order === one} onClick={() => setOrder(one)}>
+                    {t(one === "term" ? "af.orderTerm" : "af.orderText")}
+                  </button>
+                ))}
+              </span>
+            ) : null}
             <span className="af-step">
               <button type="button" className="th-icon" aria-label={t("af.prev")} title={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
                 <ChevronLeft size={18} aria-hidden />
@@ -955,6 +1035,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <Button type="button" variant="outline" disabled={saving} onClick={() => setChoosing(true)}>
                     {t("af.otherAnswer")}
                   </Button>
+                  {alike.length && !needsWords ? (
+                    // The uses that read the same are agreed with here; the person stops where the term reads otherwise.
+                    <Button type="button" variant="outline" className="af-alike" disabled={saving} onClick={() => void answerAlike()}>
+                      <Check size={16} aria-hidden /> {t(alike.length === 1 ? "af.alikeOne" : "af.alikeMany").replace("{n}", String(alike.length))}
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
               {choosing && !pending ? (

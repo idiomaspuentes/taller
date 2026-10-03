@@ -154,7 +154,7 @@ y las del TPS avanzan a la vez y pueden tener equipos distintos.
 | Tarea | Subtareas | Espera a | Paso 1 (una persona la toma) | Paso 2 (confirman) |
 |-------|-----------|----------|------------------------------|--------------------|
 | **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y la revisión grupal, del capítulo | Revisar desafíos: responde cada figura de la porción; se completa sola al responder todas | Confirmar desafíos |
-| **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave: cada término del capítulo, comparado con el resto del libro | Confirmar palabras clave |
+| **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave, en **ronda abierta**: cualquiera contesta cualquier término; tres personas de acuerdo en cada uno | (no hay: es un solo paso) |
 | **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear los versículos de la porción; lo marca quien lo hace | Revisar la alineación |
 
 **Quién confirma:** al menos otras dos personas del equipo que no hicieron el paso 1 (pueden sumarse
@@ -181,6 +181,19 @@ del equipo**.
 - Una nota que no enlaza ningún artículo no señala nada que comprobar y no entra en la ronda.
 
 **Cómo se revisan las palabras clave:**
+- Es **una ronda abierta**, no «una persona revisa y otras confirman». Nadie tiene que ser la primera en todos los
+  términos: quien llega primero a un término marca qué lo traduce; quien llega después lo ve marcado y confirma o
+  dice qué no comparte. Uno puede contestar veinte, otro llegar más tarde y ser el primero en otros tres. Cada
+  término queda acordado con tres personas de acuerdo. Se decidió así en la corrida en frío de Hageo (octubre de
+  2026): con 110 términos en un capítulo, tres personas esperaban a que una terminara.
+- La herramienta abre en **el primer término que a la persona le falta**.
+- La lista se ve en dos órdenes, a elección: **por término** (todas las apariciones de un término seguidas, en el
+  orden del texto; es el orden inicial, porque lo que se comprueba es la consistencia) o **en el orden del texto**.
+- Cuando otras apariciones del mismo término ya están marcadas con las mismas palabras, se acuerdan **de un toque**
+  («De acuerdo aquí y en las otras N apariciones iguales»). La persona se detiene solo donde el término se dijo de
+  otra manera. Nunca alcanza a lo que no está en mano: otro capítulo u otro tramo ya entregado.
+- Si llega **solo un tramo** del capítulo (Salmo 119), la ronda es de ese tramo. Lo acordado en los tramos
+  anteriores se ve como referencia y no se vuelve a confirmar.
 - Se revisa **por capítulo** (o por tramo, si el capítulo se partió), no por porción.
 - La **lista de palabras del inglés (TWL)** es el mapa: dice qué palabras clave hay en el capítulo y
   en qué versículo está cada una, con el enlace a su **artículo de Palabras** (qué significa y a qué

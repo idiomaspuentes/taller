@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 13,
+      "version": 14,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -601,27 +601,9 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Cada término del capítulo: qué palabras lo traducen, comparadas con cómo se tradujo en el resto del libro.",
+              "description": "Una ronda abierta: cualquiera del equipo contesta cualquier término, en el orden que quiera. Quien llega primero a un término marca qué lo traduce; quien llega después confirma o dice qué no comparte. Cada término queda acordado con tres personas de acuerdo.",
               "descriptions": {
-                "pt": "Cada termo do capítulo: quais palavras o traduzem, comparadas com como foi traduzido no resto do livro."
-              },
-              "solverAppId": "afinar-palabras",
-              "closing": "automatic",
-              "claimMode": "exclusive"
-            },
-            {
-              "id": "confirmar",
-              "name": "Confirmar palabras clave",
-              "names": {
-                "pt": "Confirmar palavras-chave"
-              },
-              "actionLabel": "Confirmar",
-              "actionLabels": {
-                "pt": "Confirmar"
-              },
-              "description": "Al menos otras dos personas confirman cada término revisado, o dicen qué no comparten.",
-              "descriptions": {
-                "pt": "Pelo menos outras duas pessoas confirmam cada termo revisado, ou dizem o que não compartilham."
+                "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer termo, na ordem que quiser. Quem chega primeiro a um termo marca o que o traduz; quem chega depois confirma ou diz o que não compartilha. Cada termo fica acordado com três pessoas de acordo."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
@@ -629,10 +611,7 @@
               "minAssignees": 2,
               "maxAssignees": 6,
               "minAgree": 3,
-              "minIndependent": 2,
-              "excludePriorStepIds": [
-                "revisar"
-              ]
+              "minIndependent": 2
             }
           ]
         },
@@ -808,27 +787,9 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Cada término del capítulo: qué palabras lo traducen, comparadas con cómo se tradujo en el resto del libro.",
+              "description": "Una ronda abierta: cualquiera del equipo contesta cualquier término, en el orden que quiera. Quien llega primero a un término marca qué lo traduce; quien llega después confirma o dice qué no comparte. Cada término queda acordado con tres personas de acuerdo.",
               "descriptions": {
-                "pt": "Cada termo do capítulo: quais palavras o traduzem, comparadas com como foi traduzido no resto do livro."
-              },
-              "solverAppId": "afinar-palabras",
-              "closing": "automatic",
-              "claimMode": "exclusive"
-            },
-            {
-              "id": "confirmar",
-              "name": "Confirmar palabras clave",
-              "names": {
-                "pt": "Confirmar palavras-chave"
-              },
-              "actionLabel": "Confirmar",
-              "actionLabels": {
-                "pt": "Confirmar"
-              },
-              "description": "Al menos otras dos personas confirman cada término revisado, o dicen qué no comparten.",
-              "descriptions": {
-                "pt": "Pelo menos outras duas pessoas confirmam cada termo revisado, ou dizem o que não compartilham."
+                "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer termo, na ordem que quiser. Quem chega primeiro a um termo marca o que o traduz; quem chega depois confirma ou diz o que não compartilha. Cada termo fica acordado com três pessoas de acordo."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
@@ -836,10 +797,7 @@
               "minAssignees": 2,
               "maxAssignees": 6,
               "minAgree": 3,
-              "minIndependent": 2,
-              "excludePriorStepIds": [
-                "revisar"
-              ]
+              "minIndependent": 2
             }
           ]
         },

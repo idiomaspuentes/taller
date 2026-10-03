@@ -8049,3 +8049,9 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
   .af-ref__texts button, .gr-text__actions button, .rv-toggle { min-height: 36px; }
   .af-link { min-height: 36px; display: inline-flex; align-items: center; }
 }
+/* Key terms: the list by term or in the order of the text, and agreeing with the uses that read alike. */
+.af-order { display: inline-flex; flex: 0 0 auto; padding: 2px; border-radius: 999px; background: var(--surface-muted); }
+.af-order button { min-height: 32px; padding: 0 0.625rem; border: 0; border-radius: 999px; background: none; color: var(--text-muted); font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.af-order button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.af-focus__top:has(.af-order) { flex-wrap: wrap; row-gap: 0.375rem; }
+.af-decide .af-alike { flex: 1 1 100%; }
