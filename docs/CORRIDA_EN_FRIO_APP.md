@@ -266,3 +266,64 @@ Al entregar las dos, se abrieron en «Puedes sumarte» las ocho subtareas de «D
 Mientras Hageo tuvo subtareas libres de Traducción, las de Judas estuvieron en «Del siguiente libro». En cuanto se
 tomaron todas las de Hageo, las de Judas pasaron solas a «Libres para tu equipo». Nadie se quedó sin trabajo.
 
+---
+
+## Reporte · Equipo de Afinación
+
+La Afinación de Hageo se abrió sola en «Puedes sumarte» cuando se entregaron las dos lecturas grupales. Tiene tres
+tareas por texto, en cadena: **Desafíos → Palabras clave → Alinear**, cada una con dos pasos (una persona revisa o
+alinea; otras confirman).
+
+### Desafíos (8 subtareas: 4 porciones × TPL y TPS)
+
+Un «desafío» es cada nota de traducción del pasaje, vista contra el texto del equipo. Por cada una se contesta:
+
+1. **¿Qué traduce lo resaltado?** Arriba, la referencia (Original, ULT o UST) con la frase de la nota resaltada;
+   abajo, el TPL o el TPS con cada palabra tocable. Se tocan las palabras que la traducen y «Esto lo traduce», o
+   «No está en la traducción».
+2. **¿Cumple la regla?** «¿… reproduce la forma de [la figura] tal como está en el original?» → «De acuerdo» u
+   «Otra respuesta». Al contestar pasa sola a la siguiente.
+
+| Subtarea | Desafíos | Revisó | Confirmaron | Cerró y entregó |
+|---|---|---|---|---|
+| TPL 1:1–11 | 44 | Elisha | abelper8, valeska | valeska |
+| TPL 1:12–15 | 9 | abelper8 | Elisha, abelperez | abelperez |
+| TPL 2:1–9 | 32 | Elisha | abelper8, valeska | valeska |
+| TPL 2:10–23 | 65 | abelper8 | Elisha, abelperez | abelperez |
+| TPS 1:1–11 | 44 | valeska | abelperez, Elisha | Elisha |
+| TPS 1:12–15 | 9 | abelperez | valeska, abelper8 | abelper8 |
+| TPS 2:1–9 | 32 | valeska | abelperez, abelper8 | abelper8 |
+| TPS 2:10–23 | 65 | abelperez | valeska, Elisha | Elisha |
+
+Cómo fluye:
+
+- **Revisar.** «Sumarme a Revisar desafíos» y, con un segundo toque, la herramienta. Al contestar el último,
+  el paso se cierra solo: «Terminaste la revisión. Ahora la confirman otras dos personas».
+- **Confirmar.** A los demás les aparece «Sumarme a Confirmar desafíos». Quien confirma ve **ya marcadas** las
+  palabras que eligió quien revisó y una línea «Equipo: 1 de 3 de acuerdo». Confirma con los mismos dos botones.
+- Con el tercer acuerdo el encabezado pasa a «44 de 44 acordadas» y aparece «Todo quedó de acuerdo · **Cerrar la
+  revisión**». Después, en la tarjeta, **«Entregar»**.
+
+El volumen: 300 desafíos por texto, 600 en total, contestados tres veces cada uno (una revisión y dos
+confirmaciones): **1.800 respuestas de dos toques**. Con el guion, entre 1,6 y 2,4 segundos por respuesta.
+
+**⚠ Cuarto arreglo durante la corrida: dos personas a la vez.** Cuando dos personas contestaban desafíos del mismo
+texto al mismo tiempo, a una le salía «**Door43 no permite hacer esto con tu cuenta. Pide a quien coordina que
+revise tus permisos**» al segundo desafío. No era un permiso: Door43 responde 403 a uno de dos guardados simultáneos
+en la misma rama. Le pasó a valeska, que es propietaria de la organización. Se corrigió: el guardado espera un
+momento y reintenta.
+
+**⚠ Lo que se trabó**
+
+- Al volver a entrar, la herramienta abre en el desafío 1, no en el primero sin contestar («Respondiste 34 de 44»
+  lo dice, pero hay que avanzar a mano).
+- El encabezado dice «0 de 44 acordadas» durante toda la revisión y la primera confirmación: no distingue
+  «contestado por mí» de «acordado por el equipo».
+- Al terminar de revisar se leen juntos «0 de 44 acordadas» y «Revisión cerrada: todo quedó de acuerdo».
+- Dos categorías salen sin traducir en el filtro: «Quotesinquotes» (luego «Citas dentro de Citas») y «Litany».
+- La pregunta del paso 2 nombra la figura como si fuera una forma («¿reproduce la forma de Conocimiento asumido e
+  información implícita…?»), que no se entiende para varias categorías.
+- Tres personas repiten los mismos dos toques sobre cada nota. Para quien confirma, 65 desafíos seguidos de «Esto
+  lo traduce» y «De acuerdo» invitan a confirmar sin mirar.
+- Cerrar la revisión y entregar siguen siendo dos acciones más después del último acuerdo.
+
