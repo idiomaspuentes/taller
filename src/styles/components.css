@@ -8055,3 +8055,8 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 .af-order button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 .af-focus__top:has(.af-order) { flex-wrap: wrap; row-gap: 0.375rem; }
 .af-decide .af-alike { flex: 1 1 100%; }
+/* On a phone the picker takes its own row; the order and the counter share the next one. */
+@media (max-width: 639px) {
+  .af-focus__top:has(.af-order) > .af-pick { flex: 1 1 100%; }
+  .af-focus__top:has(.af-order) > .af-step { margin-left: auto; }
+}
