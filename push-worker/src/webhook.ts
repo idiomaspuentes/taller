@@ -1,11 +1,20 @@
 /** What Door43 tells the Worker (a Gitea webhook) turned into who to notify and what to say. */
-import { BOOK_NAMES } from "./books";
+import { askedNotice, commentNotice, readableLine, say, subtaskName, type AskedKind, type NoticeIssue, type NoticeLang, type NoticeWords } from "../../src/domain/noticeText";
 
-/** `grouped` is what the app shows when several notices share a tag; `{n}` is their count. */
-export type Notice = { login: string; title: string; body: string; url: string; tag: string; grouped?: string };
+export { readableLine };
+
+/**
+ * A notice for one person. What it says depends on the language of each of their devices (`words`); `title`, `body`
+ * and `grouped` are those words in Spanish, for the log and for a device that never said its language.
+ * `grouped` is what the app shows when several notices share a tag; `{n}` is their count.
+ */
+export type Notice = { login: string; url: string; tag: string; words: (lang: NoticeLang) => NoticeWords; title: string; body: string; grouped?: string };
+
+function notice(login: string, url: string, tag: string, words: (lang: NoticeLang) => NoticeWords): Notice {
+  return { login, url, tag, words, ...words("es") };
+}
 
 const MENTION = /(?:^|[^\w@/])@([A-Za-z0-9][A-Za-z0-9._-]*)/g;
-const CHAT_MARKER = /<!--\s*tas:[^>]*-->/g;
 
 function hex(bytes: ArrayBuffer): string {
   return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -29,28 +38,8 @@ export function mentionsIn(text: string): string[] {
   return [...out];
 }
 
-/** The part of a comment people read: the app's comments end with a machine marker. */
-export function readableLine(body: string, max = 140): string {
-  const first =
-    body
-      .replace(CHAT_MARKER, "")
-      .split("\n")
-      .map((l) => l.trim())
-      .find((l) => l && !l.startsWith(">")) ?? "";
-  return first.length > max ? `${first.slice(0, max - 1).trimEnd()}…` : first;
-}
-
 type Person = { login?: string };
-type Issue = {
-  number?: number;
-  title?: string;
-  body?: string;
-  html_url?: string;
-  assignees?: Person[];
-  assignee?: Person | null;
-  milestone?: { title?: string } | null;
-  labels?: { name?: string }[];
-};
+type Issue = NoticeIssue & { html_url?: string; assignees?: Person[]; assignee?: Person | null };
 export type GiteaPayload = {
   action?: string;
   issue?: Issue;
@@ -72,28 +61,9 @@ export function hostOf(payload: GiteaPayload): string | null {
 
 const lower = (login: string | undefined) => (login ?? "").toLowerCase();
 
-const shorten = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
-
-/**
- * The name of a subtarea in a notice, for somebody who reads it on a lock screen with several books under way:
- * "3 Juan 1:5–8 · Alinear TPL". The title alone ("3JN 1:5–8 · TPL") gives the book as a code and does not say
- * what is to be done; the subtarea carries both: its book in its milestone and labels, its task in its body.
- */
+/** A subtarea as a notice names it, in Spanish (see `subtaskName`). */
 export function subtarea(issue: Issue): string {
-  const title = (issue.title ?? "").trim();
-  const code = [issue.milestone?.title, issue.labels?.find((l) => l.name?.startsWith("pm/libro:"))?.name?.slice("pm/libro:".length), /^([A-Z0-9]{3})\s/i.exec(title)?.[1]]
-    .map((c) => (c ?? "").toUpperCase())
-    .find((c) => BOOK_NAMES[c]);
-  const task = /^- Tarea: \*\*(.+?)\*\*/m.exec(issue.body ?? "")?.[1]?.trim() ?? "";
-  const phase = /^- Fase: \*\*(.+?)\*\*/m.exec(issue.body ?? "")?.[1]?.trim() ?? "";
-  // The title without the book's code; and without the resource at its end when the task's name already says it.
-  let rest = code ? title.replace(new RegExp(`^${code}\\s+`, "i"), "") : title;
-  const tail = / · ([^·]+)$/.exec(rest)?.[1];
-  if (tail && task && task.toLowerCase().includes(tail.toLowerCase())) rest = rest.slice(0, -(tail.length + 3));
-  // A subtarea named after its task ("Leer la carta completa en voz alta") is not told twice.
-  // "3 Juan 1:5–8" reads as one reference; a subtarea that is not a passage is set apart from its book.
-  const parts = [[code ? BOOK_NAMES[code] : "", rest].filter(Boolean).join(/^\d/.test(rest) ? " " : " · "), task && !rest.toLowerCase().includes(task.toLowerCase()) ? task : "", phase];
-  return shorten(parts.filter(Boolean).join(" · ") || `#${issue.number ?? "?"}`, 90);
+  return subtaskName(issue, "es");
 }
 
 /**
@@ -110,37 +80,51 @@ export function noticesFor(event: string | null, payload: GiteaPayload, appUrl: 
   // Pull requests are not subtareas: the notice opens the request on Door43.
   const url = isPr ? (issue.html_url ?? "") : `${appUrl.replace(/\/$/, "")}/#/mis-tareas/${number}`;
   if (!url) return [];
-  const what = isPr ? "la solicitud de cambios" : "";
-  const name = (i: Issue) => (isPr ? `${what} #${i.number}${i.title ? ` ${i.title}` : ""}` : subtarea(i));
+  const name = (lang: NoticeLang) => (isPr ? `${say(lang, "nt.prName", { n: number })}${issue.title ? ` ${issue.title}` : ""}` : subtaskName(issue, lang));
   const notices: Notice[] = [];
 
   if ((event === "issue_comment" || event === "pull_request_comment") && payload.action === "created" && payload.comment?.body) {
     const body = payload.comment.body;
+    const author = payload.comment.user?.login ?? "";
     const mentioned = new Set(mentionsIn(body));
     const assignees = new Set((issue.assignees ?? (issue.assignee ? [issue.assignee] : [])).map((a) => lower(a.login)).filter(Boolean));
-    const line = readableLine(body);
     for (const login of new Set([...mentioned, ...assignees])) {
       if (!login || login === sender) continue;
-      notices.push({
-        login,
-        title: mentioned.has(login) ? `Te mencionaron en ${name(issue)}` : `Comentario nuevo en ${name(issue)}`,
-        body: `${payload.comment.user?.login ?? "Alguien"}: ${line}`.trim(),
-        url,
-        tag: `subtarea-${number}`,
-        grouped: `{n} avisos nuevos en ${name(issue)}`,
-      });
+      notices.push(notice(login, url, `subtarea-${number}`, (lang) => commentNotice({ issue, body, author, mentioned: mentioned.has(login), name: name(lang) }, lang)));
     }
   } else if (event === "issues" && payload.action === "assigned") {
     const login = lower(payload.assignee?.login);
     if (login && login !== sender) {
-      // Many assignments at once (a bulk plan) become one notice: "Te asignaron 100 subtareas".
-      notices.push({ login, title: "Te asignaron una subtarea", body: subtarea(issue), url, tag: "asignaciones", grouped: "Te asignaron {n} subtareas" });
+      // Many assignments at once (a bulk plan) become one notice: «Te asignaron 100 subtareas».
+      notices.push(notice(login, url, "asignaciones", (lang) => ({ title: say(lang, "nt.assignedTitle"), body: subtaskName(issue, lang), grouped: say(lang, "nt.assignedGrouped") })));
     }
   } else if (event === "pull_request" && (payload.action === "assigned" || payload.action === "review_requested")) {
     const login = lower(payload.action === "assigned" ? payload.assignee?.login : (payload as { requested_reviewer?: Person }).requested_reviewer?.login);
     if (login && login !== sender) {
-      notices.push({ login, title: payload.action === "assigned" ? "Te asignaron una solicitud de cambios" : "Te pidieron revisar una solicitud de cambios", body: name(issue), url, tag: `pr-${number}` });
+      const key = payload.action === "assigned" ? "nt.prAssignedTitle" : "nt.prReviewTitle";
+      notices.push(notice(login, url, `pr-${number}`, (lang) => ({ title: say(lang, key), body: name(lang) })));
     }
   }
   return notices;
+}
+
+const KINDS: AskedKind[] = ["free", "your-turn", "step-turn", "step-free", "decision"];
+export const isAskedKind = (value: unknown): value is AskedKind => KINDS.includes(value as AskedKind);
+
+/**
+ * What the app asks to be told, because Door43 does not announce it by itself: a subtarea became free for a team,
+ * it is somebody's turn, a decision waits. The app says which subtareas and who; what the notice says is worded
+ * here, from the subtarea as Door43 has it, never from text the caller sends.
+ */
+export function askedNotices(params: { kind: AskedKind; issue: Issue; count: number; to: string[]; step?: string; from: string; appUrl: string }): Notice[] {
+  const { kind, issue, count } = params;
+  const app = params.appUrl.replace(/\/$/, "");
+  const one = count <= 1 && issue.number;
+  // One subtarea opens its own thread; a free one, or several, open the list where it is taken.
+  const url = one && kind !== "free" ? `${app}/#/mis-tareas/${issue.number}` : `${app}/#/avisos`;
+  const tag = kind === "free" ? "libres" : kind === "your-turn" ? "turno" : `subtarea-${issue.number}`;
+  const from = lower(params.from);
+  return [...new Set(params.to.map(lower))]
+    .filter((login) => login && login !== from)
+    .map((login) => notice(login, url, tag, (lang) => askedNotice(kind, { name: subtaskName(issue, lang), step: params.step, count }, lang)));
 }

@@ -5,9 +5,9 @@
 import assert from "node:assert/strict";
 import { createHandler } from "../push-worker/src/index";
 import { MAX_DEVICES } from "../push-worker/src/store";
-import { mentionsIn, noticesFor, readableLine, subtarea } from "../push-worker/src/webhook";
-import { BOOK_NAMES } from "../push-worker/src/books";
-import { BOOKS } from "../src/domain/books";
+import { payloadOf } from "../push-worker/src/send";
+import { askedNotices, mentionsIn, noticesFor, readableLine, subtarea } from "../push-worker/src/webhook";
+import { formatChatEvent } from "../src/domain/chatEvent";
 import type { Env } from "../push-worker/src/env";
 
 let passed = 0;
@@ -69,6 +69,14 @@ const env: Env = {
   APP_URL: "https://app.example.org",
 };
 
+const ISSUE_67 = {
+  number: 67,
+  title: "3JN 1:5–8 · TPL",
+  body: ["## 1:5–8 · TPL", "", "- Tarea: **Alinear TPL**", "- Fase: **Afinación**", "- Proyecto: **3JN**"].join("\n"),
+  milestone: { title: "3JN" },
+  labels: [{ name: "pm" }, { name: "pm/libro:3JN" }],
+};
+
 // ---- a fake Door43 and a fake push service ----
 const TOKENS: Record<string, string> = { "tok-ana": "ana", "tok-bea": "Bea" };
 type Sent = { endpoint: string; headers: Record<string, string>; bytes: number };
@@ -78,6 +86,11 @@ const fakeFetch = async (input: string, init?: RequestInit): Promise<Response> =
   if (input.startsWith("https://qa.door43.org/api/v1/user")) {
     const token = /^token (.+)$/.exec(String((init?.headers as Record<string, string>)?.Authorization ?? ""))?.[1] ?? "";
     return TOKENS[token] ? new Response(JSON.stringify({ login: TOKENS[token] }), { status: 200 }) : new Response("{}", { status: 401 });
+  }
+  // A subtarea, as Door43 gives it to whoever may read it.
+  if (input === "https://qa.door43.org/api/v1/repos/BSOJ/gateway-tasks/issues/67") {
+    const token = /^token (.+)$/.exec(String((init?.headers as Record<string, string>)?.Authorization ?? ""))?.[1] ?? "";
+    return TOKENS[token] ? new Response(JSON.stringify(ISSUE_67), { status: 200 }) : new Response("{}", { status: 404 });
   }
   if (input.startsWith("https://push.example/")) {
     pushes.push({ endpoint: input, headers: init?.headers as Record<string, string>, bytes: (init?.body as Uint8Array).byteLength });
@@ -222,12 +235,90 @@ await test("el libro sale del hito, de la etiqueta o del título, y la fase se d
 await test("una subtarea que se llama como su tarea no se dice dos veces, y sin datos queda su título o su número", async () => {
   assert.equal(subtarea({ number: 4, title: "Leer la carta completa en voz alta", body: "- Tarea: **Leer la carta completa en voz alta**", milestone: { title: "2JN" } }), "2 Juan · Leer la carta completa en voz alta");
   assert.equal(subtarea({ number: 5, title: "Algo sin libro" }), "Algo sin libro");
-  assert.equal(subtarea({ number: 6 }), "#6");
+  assert.equal(subtarea({ number: 6 }), "Subtarea #6");
   assert.ok(subtarea({ number: 7, title: "x".repeat(200) }).length <= 90);
 });
 
-await test("los nombres de los libros del Worker son los de la app", async () => {
-  assert.deepEqual(BOOK_NAMES, Object.fromEntries(BOOKS.filter((b) => /^[A-Z0-9]{3}$/.test(b.code)).map((b) => [b.code, b.name])));
+const words = (n: { words: (lang: "es" | "pt") => { title: string; body: string; grouped?: string } }, lang: "es" | "pt") => n.words(lang);
+
+await test("cada dispositivo recibe el aviso en su idioma: el libro, la tarea, la fase y la frase", async () => {
+  const [n] = noticesFor("issues", { action: "assigned", issue: ISSUE_67, assignee: { login: "bea" }, sender: { login: "ana" }, repository: repo }, "https://app.example.org");
+  assert.deepEqual(words(n!, "es"), { title: "Te asignaron una subtarea", body: "3 Juan 1:5–8 · Alinear TPL · Afinación", grouped: "Te asignaron {n} subtareas" });
+  assert.deepEqual(words(n!, "pt"), { title: "Atribuíram uma subtarefa a você", body: "3 João 1:5–8 · Alinhar TPL · Afinação", grouped: "Atribuíram {n} subtarefas a você" });
+  // The language is the device's: said when it subscribes, kept with it, and used when it is told.
+  const sub = await deviceSubscription("https://push.example/bea-pt");
+  const res = await handle(
+    new Request("https://tas-push.example/subscribe", {
+      method: "POST",
+      headers: { authorization: "token tok-bea", "x-door43-host": "https://qa.door43.org", "content-type": "application/json", origin: "https://app.example.org" },
+      body: JSON.stringify({ subscription: sub, lang: "pt" }),
+    }),
+    env,
+  );
+  assert.equal(res.status, 204);
+  const stored = JSON.parse(kv.data.get("u:https://qa.door43.org:bea")!) as { devices: { sub: { endpoint: string }; lang?: string }[] };
+  assert.equal(stored.devices.find((d) => d.sub.endpoint === sub.endpoint)?.lang, "pt");
+  const data = (lang?: string) => payloadOf(n!, lang).data as Record<string, string>;
+  assert.deepEqual([data("pt").title, data("pt").summaryTitle, data("pt").summaryBody], ["Atribuíram uma subtarefa a você", "{n} novos avisos", "Toque para ver as suas tarefas."]);
+  assert.equal(data(undefined).title, "Te asignaron una subtarea", "un dispositivo que no dijo su idioma lo recibe en español");
+});
+
+await test("lo que escribió la app se cuenta como una novedad de la subtarea, no como algo que dijo una persona", async () => {
+  const delivered = formatChatEvent({ type: "step-done", emitter: "tas", issue: 7, summary: "Se completó «Borrador»" });
+  const [toAssignee] = noticesFor("issue_comment", comment(delivered, "ana", ["bea"]), "https://app.example.org");
+  assert.equal(words(toAssignee!, "es").title, "Novedad en Nehemías 1:1 · Decidir: objeción de @bea");
+  assert.equal(words(toAssignee!, "es").body, "Se completó «Borrador»", "sin «ana:» delante y sin la marca de la app");
+  assert.equal(words(toAssignee!, "pt").title.startsWith("Novidade em Neemias 1:1"), true);
+  // What a person wrote is still theirs.
+  const [said] = noticesFor("issue_comment", comment("¿puedes mirar el versículo 3?", "ana", ["bea"]), "https://app.example.org");
+  assert.deepEqual([words(said!, "es").title.startsWith("Comentario nuevo en"), words(said!, "es").body], [true, "ana: ¿puedes mirar el versículo 3?"]);
+});
+
+await test("una tarjeta que pide una decisión avisa que hace falta decidir, con la subtarea y de qué se trata", async () => {
+  const card = formatChatEvent({ type: "verse-conflict", emitter: "tas", issue: 7, summary: "Conflicto en el versículo 3", decision: { id: "d1", options: [{ id: "a", label: "A" }], state: "pendiente" } });
+  const [n] = noticesFor("issue_comment", comment(card, "ana", ["bea"]), "https://app.example.org");
+  assert.equal(words(n!, "es").title, "Hace falta tu decisión");
+  assert.equal(words(n!, "pt").title, "Falta a sua decisão");
+  assert.ok(words(n!, "es").body.startsWith("Nehemías 1:1"));
+  const closed = formatChatEvent({ type: "verse-conflict", emitter: "tas", issue: 7, summary: "Conflicto en el versículo 3", decision: { id: "d1", options: [], state: "resuelta" } });
+  assert.equal(words(noticesFor("issue_comment", comment(closed, "ana", ["bea"]), "https://a")[0]!, "es").title.startsWith("Novedad en"), true, "una decisión ya tomada es solo una novedad");
+});
+
+await test("lo que Door43 no anuncia lo pide la app: una subtarea libre para el equipo, tu turno, un paso libre", async () => {
+  const ask = (kind: Parameters<typeof askedNotices>[0]["kind"], extra: Partial<Parameters<typeof askedNotices>[0]> = {}) =>
+    askedNotices({ kind, issue: ISSUE_67, count: 1, to: ["Bea", "ana", "bea"], from: "ana", appUrl: "https://app.example.org/", ...extra });
+  const free = ask("free");
+  assert.deepEqual(free.map((n) => [n.login, n.url, n.tag]), [["bea", "https://app.example.org/#/avisos", "libres"]], "nunca a quien lo causó, y una vez a cada quien");
+  assert.deepEqual(words(free[0]!, "es"), { title: "Subtarea libre para tu equipo", body: "3 Juan 1:5–8 · Alinear TPL · Afinación", grouped: "{n} subtareas libres para tu equipo" });
+  assert.equal(words(ask("free", { count: 12 })[0]!, "es").title, "12 subtareas libres para tu equipo");
+  const turn = ask("your-turn")[0]!;
+  assert.deepEqual([turn.url, words(turn, "es").title, words(turn, "pt").title], ["https://app.example.org/#/mis-tareas/67", "Ya puedes empezar", "Você já pode começar"]);
+  assert.equal(words(ask("step-turn", { step: "Revisión en pares" })[0]!, "es").title, "Es tu turno: Revisión en pares");
+  assert.equal(words(ask("step-free", { step: "Revisión en pares" })[0]!, "pt").title, "Passo livre para a sua equipe: Revisão em pares");
+});
+
+await test("pedir un aviso exige una sesión de Door43 que pueda leer la subtarea, y no deja escribir el texto", async () => {
+  const notify = (token: string, body: unknown) =>
+    handle(
+      new Request("https://tas-push.example/notify", {
+        method: "POST",
+        headers: { authorization: `token ${token}`, "x-door43-host": "https://qa.door43.org", "content-type": "application/json", origin: "https://app.example.org" },
+        body: JSON.stringify(body),
+      }),
+      env,
+    );
+  const ok = { kind: "free", org: "BSOJ", repo: "gateway-tasks", issue: 67, to: ["bea", "ana"] };
+  pushes = [];
+  const res = await notify("tok-ana", ok);
+  assert.equal(res.status, 200);
+  const answer = (await res.json()) as { notices: number; sent: number };
+  assert.equal(answer.notices, 1, "a bea, no a ana que lo pidió");
+  assert.ok(answer.sent >= 1 && pushes.every((p) => p.endpoint.includes("bea")));
+  assert.equal((await notify("tok-malo", ok)).status, 401);
+  assert.equal((await notify("tok-ana", { ...ok, issue: 999 })).status, 404, "una subtarea que no existe o no puede leer");
+  assert.equal((await notify("tok-ana", { ...ok, kind: "lo-que-sea" })).status, 400);
+  assert.equal((await notify("tok-ana", { ...ok, org: "../otro" })).status, 400);
+  assert.deepEqual(await (await notify("tok-ana", { ...ok, to: [] })).json(), { notices: 0, sent: 0 });
 });
 
 console.log(`\nverify-push-worker: ${passed} checks passed.`);

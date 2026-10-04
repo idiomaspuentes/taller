@@ -72,6 +72,11 @@ function listUrl(url) {
   }
 }
 
+/** «12 avisos nuevos», in the language the notice came in (the push Worker sends the sentence with each notice). */
+function summaryTitle(notice, count) {
+  return (notice.summaryTitle || "{n} avisos nuevos").replace("{n}", String(count));
+}
+
 function showNotice(notice, count, silent, url) {
   return self.registration.showNotification(notice.title || "Taller", {
     body: notice.body || "",
@@ -93,7 +98,7 @@ async function handlePush(notice) {
   // A summary is already up: everything new joins it.
   if (summary) {
     const count = ((summary.data && summary.data.count) || 1) + 1;
-    return showNotice({ title: `${count} avisos nuevos en Taller`, body: notice.title || "", tag: SUMMARY }, count, true, listUrl(notice.url || "./"));
+    return showNotice({ title: summaryTitle(notice, count), body: notice.title || "", tag: SUMMARY }, count, true, listUrl(notice.url || "./"));
   }
 
   // The same subtarea (or the same kind of notice) is already up: replace it, quietly.
@@ -108,7 +113,7 @@ async function handlePush(notice) {
   if (shown.length >= MAX_VISIBLE) {
     const total = shown.reduce((sum, n) => sum + ((n.data && n.data.count) || 1), 0) + 1;
     shown.forEach((n) => n.close());
-    return showNotice({ title: `${total} avisos nuevos en Taller`, body: "Toca para ver tus tareas.", tag: SUMMARY }, total, true, listUrl(notice.url || "./"));
+    return showNotice({ title: summaryTitle(notice, total), body: notice.summaryBody || "Toca para ver tus tareas.", tag: SUMMARY }, total, true, listUrl(notice.url || "./"));
   }
 
   return showNotice(notice, 1, false, notice.url);

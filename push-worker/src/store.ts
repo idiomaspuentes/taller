@@ -26,7 +26,8 @@ export function validSubscription(value: unknown): value is StoredSubscription {
   );
 }
 
-type Device = { sub: StoredSubscription; at: number };
+/** `lang`: the language the app was in on that device when it subscribed (or last opened): notices are worded in it. */
+type Device = { sub: StoredSubscription; at: number; lang?: string };
 
 async function readDevices(kv: KVNamespace, key: string): Promise<Device[]> {
   try {
@@ -42,11 +43,11 @@ async function writeDevices(kv: KVNamespace, key: string, devices: Device[]): Pr
   else await kv.put(key, JSON.stringify({ devices }));
 }
 
-export async function saveSubscription(kv: KVNamespace, host: string, login: string, sub: StoredSubscription, now = Date.now()): Promise<void> {
+export async function saveSubscription(kv: KVNamespace, host: string, login: string, sub: StoredSubscription, now = Date.now(), lang?: string): Promise<void> {
   const key = personKey(host, login);
   const others = (await readDevices(kv, key)).filter((d) => d.sub.endpoint !== sub.endpoint);
   // Keep the newest devices only.
-  const devices = [...others, { sub, at: now }].sort((a, b) => a.at - b.at).slice(-MAX_DEVICES);
+  const devices = [...others, { sub, at: now, ...(lang ? { lang } : {}) }].sort((a, b) => a.at - b.at).slice(-MAX_DEVICES);
   await writeDevices(kv, key, devices);
 }
 
@@ -55,6 +56,11 @@ export async function removeSubscription(kv: KVNamespace, host: string, login: s
   const devices = await readDevices(kv, key);
   const kept = devices.filter((d) => d.sub.endpoint !== endpoint);
   if (kept.length !== devices.length) await writeDevices(kv, key, kept);
+}
+
+/** A person's devices, each with the language its notices are worded in. */
+export async function listDevices(kv: KVNamespace, host: string, login: string): Promise<{ sub: StoredSubscription; lang?: string }[]> {
+  return (await readDevices(kv, personKey(host, login))).map((d) => ({ sub: d.sub, lang: d.lang }));
 }
 
 export async function listSubscriptions(kv: KVNamespace, host: string, login: string): Promise<StoredSubscription[]> {
