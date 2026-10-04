@@ -1439,6 +1439,32 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
 
           {editable ? (
             dnd
+          ) : mode === "alinear" && !current.length && !readyToReview ? (
+            // A verse nobody has aligned, before it is taken: there is no alignment to show yet, so it is simply read
+            // (the draft, the original, the English), with nothing folded and nothing that looks like a warning.
+            <section className="al-main al-unstarted" aria-label={`${data.book} ${data.chapter}:${verse.verse}`}>
+              <div>
+                <p className="af-lbl">
+                  {t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")} · {data.book} {data.chapter}:{verse.verse}
+                </p>
+                <p className="al-unstarted__draft">{verse.text}</p>
+              </div>
+              <div>
+                <p className="af-lbl">{data.originalLabel}</p>
+                <p className="af-orig" lang={data.originalRtl ? "hbo" : "grc"} dir={data.originalRtl ? "rtl" : "ltr"}>
+                  {verse.original.map((token) => token.surface).join(" ")}
+                </p>
+              </div>
+              {verse.reference ? (
+                <div>
+                  <p className="af-lbl">{data.referenceLabel}</p>
+                  <p className="al-unstarted__ref">{verse.reference}</p>
+                </div>
+              ) : null}
+              <p className="al-unstarted__hint" role="status">
+                {ownerOf(verse) ? t("al.takenHint").replace("{who}", ownerOf(verse)) : t("al.takeHint")}
+              </p>
+            </section>
           ) : (
             <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
               <p className="af-lbl">
@@ -1493,10 +1519,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
               {/* One reason at a time: a verse nobody marked as finished is not answered yet, whatever else it lacks
                   (the words left to place are listed above the boxes). */}
               {!readyToReview ? (
-                <p className="af-stale" role="status">
-                  {/* On the aligning side of an open round the verse is not waiting for somebody else: it is there to take. */}
-                  {mode !== "alinear" ? t("al.notMarked") : ownerOf(verse) ? t("al.takenHint").replace("{who}", ownerOf(verse)) : t("al.takeHint")}
-                </p>
+                // On the aligning side an unstarted verse says what to do in its own card, above; here it is only a
+                // verse somebody left half aligned.
+                mode === "alinear" && !current.length ? null : (
+                  <p className="af-stale" role="status">
+                    {mode !== "alinear" ? t("al.notMarked") : ownerOf(verse) ? t("al.takenHint").replace("{who}", ownerOf(verse)) : t("al.takeHint")}
+                  </p>
+                )
               ) : !complete ? (
                 <p className="af-stale" role="status">
                   {pendingWords === 1 ? t("al.notCompleteOne") : n("al.notCompleteMany", pendingWords)}

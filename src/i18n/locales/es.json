@@ -2395,7 +2395,7 @@
   "af.alikeMany": "De acuerdo aquí y en las otras {n} apariciones iguales",
   "af.savedAlike": "Guardado: de acuerdo en {n} apariciones.",
   "al.takeOver": "Tomarlo yo",
-  "al.takeHint": "Nadie ha alineado este versículo. Tómalo para alinearlo; los demás lo revisarán.",
+  "al.takeHint": "Nadie ha alineado este versículo todavía. Si lo tomas, unes cada palabra del original con lo que la traduce; los demás lo revisan después.",
   "al.takenHint": "@{who} tomó este versículo y aún no lo termina. Puedes seguir con otro, o tomarlo si quedó sin atender.",
   "wp.loadTitle": "Carga por persona",
   "wp.loadOk": "Ningún paso deja a una persona sola con más de {max} ítems en una subtarea, ni a más de {wait} personas esperando a una.",

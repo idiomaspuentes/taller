@@ -7294,6 +7294,14 @@ input.pf-name { font-size: 1.625rem; }
 @media (max-width: 719px) {
   body:has(.bottom-nav) .pf-footer { bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px)); }
 }
+.al .af-card:empty { display: none; }
+.al-unstarted { display: grid; gap: 0.875rem; padding: 0.875rem 1rem; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); }
+.al-unstarted p { margin: 0; }
+.al-unstarted .af-lbl { margin-bottom: 0.25rem; }
+.al-unstarted .af-orig { font-size: 1.25rem; line-height: 1.9; }
+.al-unstarted__draft { font-size: 1.0625rem; line-height: 1.6; color: var(--text); }
+.al-unstarted__ref { font-size: 0.9375rem; line-height: 1.5; color: var(--text-muted); }
+.al-unstarted__hint { padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9375rem; color: var(--text-muted); }
 .wp-load { display: grid; gap: 0.375rem; padding: 0.75rem 0.875rem; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); font-size: 0.875rem; color: var(--text-muted); }
 .wp-load p, .wp-load ul { margin: 0; }
 .wp-load ul { padding-left: 1.125rem; display: grid; gap: 0.25rem; }

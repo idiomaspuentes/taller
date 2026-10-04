@@ -2395,7 +2395,7 @@
   "af.alikeMany": "De acordo aqui e nas outras {n} ocorrências iguais",
   "af.savedAlike": "Salvo: de acordo em {n} ocorrências.",
   "al.takeOver": "Eu assumo",
-  "al.takeHint": "Ninguém alinhou este versículo. Pegue-o para alinhar; os outros vão revisá-lo.",
+  "al.takeHint": "Ninguém alinhou este versículo ainda. Se você o pegar, une cada palavra do original com o que a traduz; os outros revisam depois.",
   "al.takenHint": "@{who} pegou este versículo e ainda não terminou. Você pode seguir com outro, ou assumi-lo se ficou sem atenção.",
   "wp.loadTitle": "Carga por pessoa",
   "wp.loadOk": "Nenhum passo deixa uma pessoa sozinha com mais de {max} itens em uma subtarefa, nem mais de {wait} pessoas esperando por uma.",
