@@ -150,13 +150,17 @@ Progreso: `<!-- gateway-task-progress … -->` schema v2 (`doneStepIds` +
 `steps.assignees/approvals`). **Resolver** abre la herramienta de la tarea o
 del paso. **Cerrar** cuando todos los pasos están hechos (o sin checklist).
 
-**PRs:** un PR por subtarea (`tas/{proyecto}/{tarea}/{issue}`). Borrador
-offline-first (localStorage) y, en línea, commits a esa rama. El PR se abre
-al salir del borrador o al Tomar pares/grupal; se fusiona al **Cerrar**.
-Familiarizar es solo lectura. Pares/grupal leen el diff y comentan el PR.
-**Aprobar** en un paso exclusive/pool con PR enlazado envía un review DCS
-(`POST …/pulls/{index}/reviews`, y submit si queda pendiente). Sin marcador
-de PR, Aprobar solo escribe el progreso; si el review falla, TAS no aprueba.
+**Ramas y revisiones:** solo la tarea que traduce un recurso tiene borrador del grupo
+(`borrador/<libro>/<tarea>`), ramas de trabajo (`trabajo/<libro>/<tarea>/<persona>/<subtarea>`) y una revisión por
+subtarea. El borrador es offline-first (localStorage) y, en línea, se guarda en la rama de trabajo. La revisión se
+abre al terminar el borrador o al tomar un paso de revisión; al **Entregar**, el trabajo pasa al borrador del
+grupo, queda la etiqueta `archivo/<libro>/<subtarea>` y la rama de trabajo se borra. Las demás tareas trabajan
+sobre el borrador del grupo. Al cerrar una fase queda `fase/<libro>/<fase>`; antes de validar, la unidad pasa a
+`validacion/<libro>/<unidad>`; publicar la fusiona en `master` y crea la versión. Tabla y recorrido completos en
+[`MODELO.md`](./MODELO.md) § «Ramas y etiquetas».
+**Aprobar** un paso con revisión enlazada envía una aprobación a Door43
+(`POST …/pulls/{index}/reviews`, y submit si queda pendiente). Sin revisión enlazada, Aprobar solo escribe el
+progreso; si la aprobación falla, el paso no se aprueba.
 La caché local de familiarización
 (`tas-familiarize:{usuario}:{lang}`) recuerda artículos y ayudas ya vistos
 entre porciones; no salta el paso salvo que no quede nada nuevo (vacío
@@ -187,8 +191,8 @@ a mano.
 **Editor de ayudas** (`#/solver/helps`): un recurso por lanzamiento
 (`ctx.resource`). Notas/preguntas editan las filas TSV de la porción
 (`tn_BOOK.tsv` / `tq_BOOK.tsv`); palabras/academia editan el markdown del
-artículo. Offline-first (`tas-helps-draft:…`) y guardado en la rama de la
-subtarea; «Listo para revisión» abre el PR como el editor de Escritura.
+artículo. Offline-first (`tas-helps-draft:…`) y guardado en la rama de trabajo de la
+subtarea; «Listo para revisión» abre la revisión como el editor de Escritura.
 
 ## Archivos clave
 
@@ -204,7 +208,9 @@ subtarea; «Listo para revisión» abre el PR como el editor de Escritura.
 | Laboratorio | `src/components/SolverLabView.tsx`, `#/lab` |
 | Scripture editor | `src/components/ScriptureEditorView.tsx`, `src/domain/usfmEdit.ts`, `src/domain/scriptureTarget.ts` |
 | Helps editor | `src/components/HelpsEditorView.tsx`, `src/domain/helpsDraft.ts`, `src/domain/helpsTarget.ts` |
-| Portion PR | `src/domain/portionPr.ts`, `src/dcs/portionPr.ts`, `src/dcs/pulls.ts` |
+| Ramas y etiquetas | `src/domain/branchNames.ts`, `src/domain/portionPr.ts`, `src/dcs/portionPr.ts`, `src/dcs/pulls.ts` |
+| Marcas de fase y «Qué cambió» | `src/domain/phaseMarks.ts`, `src/dcs/phaseMarks.ts`, `src/domain/changesSince.ts`, `src/dcs/changesSince.ts`, `src/components/ChangesView.tsx` |
+| Validación y publicación de una unidad | `src/domain/unitStage.ts`, `src/dcs/unitStage.ts`, `src/dcs/unitPublish.ts`, `src/dcs/corrections.ts`, `src/dcs/release.ts` |
 | Familiarize / review | `src/components/FamiliarizeView.tsx`, `src/components/PortionReviewView.tsx` |
 | Work orders | `src/domain/workOrder.ts` |
 | Mis tareas / claim | `src/domain/myTasks.ts`, `src/dcs/issues.ts` |

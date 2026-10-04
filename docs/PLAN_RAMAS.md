@@ -6,7 +6,8 @@ se borra al entregar, archivo de las subtareas sobre el borrador del grupo). Hec
 verlo aún en QA (hace falta cerrar una fase entera de un libro): el **paso 3** (marcas de fase). Hecho y visto en QA
 con Judas: el **paso 4** («Qué cambió» por fase y por subtarea; sin la marca dentro de las herramientas). Hecho, con una
 prueba de punta a punta contra el Door43 simulado y sin recorrerlo aún en QA: el **paso 5** (rama de validación por
-unidad, correcciones como subtareas, publicar = fusionar y crear la versión). Falta el paso 7. Decidido:
+unidad, correcciones como subtareas, publicar = fusionar y crear la versión). Hecho el **paso 7** (`MODELO.md` y `PLATAFORMA.md` al día).
+El plan está completo; queda recorrer en QA lo que aún no se vio (pasos 3 y 5) y publicar la app. Decidido:
 los nombres de la tabla, configurables por organización y por espacio de trabajo; `archivo/` y `fase/` como
 etiquetas; las respuestas de revisión se quedan donde están.
 
@@ -274,9 +275,9 @@ de metadata, se hace entonces.
 
 ## 7. Documentos
 
-`docs/MODELO.md` (§ «Un PR por subtarea» y rutas: aún dice `tas/{projectId}/{taskId}/{issueNumber}`) y
-`docs/PLATAFORMA.md` describen el esquema anterior. Se reescriben con la tabla del punto 0 y el recorrido de una
-porción por las fases (borrador → trabajo → archivo → tronco → marca de fase → publicación → master).
+Hecho. `docs/MODELO.md` tiene la sección «Ramas y etiquetas en los repositorios de contenido» (la tabla de nombres y
+el recorrido de una porción, de la traducción a la versión) y `docs/PLATAFORMA.md` remite a ella. Lo demás de esos
+dos documentos sigue siendo de una etapa anterior de la app y no se revisó aquí.
 
 ## Orden y dependencias
 

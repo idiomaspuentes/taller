@@ -114,21 +114,63 @@ aprobaciones viven en el marcador de progreso.
 - Lectura v1 (`solo doneStepIds`) → seating vacío; escritura siempre v2.
 - Pasos `claimMode !== none` se completan con **Tomar** + **Aprobar** (no casilla).
 
-### Un PR por subtarea — `gateway-portion-pr-1`
+### Una revisión por subtarea — `gateway-portion-pr-1`
 
-Un issue (porción×tarea) ↔ **un** PR en el repo de contenido. Tres porciones
-del mismo usuario = tres PRs abiertos, no uno compartido.
+Una subtarea de una tarea **de traducción** (porción × tarea) ↔ **una** revisión (PR) en el repositorio del
+recurso. Tres porciones de la misma persona son tres revisiones abiertas, no una compartida.
 
-- Rama: `tas/{projectId}/{taskId}/{issueNumber}`.
-- El borrador guarda en esa rama (y en el navegador si no hay red).
-- El PR se abre al marcar el borrador (si después hay pares/grupal), al
-  **Tomar** reseña, o con «Listo para revisión».
-- Sigue abierto durante pares y grupal. Se **fusiona al Cerrar** (Entrega).
-- Marcador en el issue PM: `<!-- gateway-portion-pr {…} -->`.
-- La reseña comenta el PR. **Aprobar** en un paso exclusive/pool con
-  marcador `gateway-portion-pr` también envía un review DCS (`APPROVED`).
-  Si no hay PR aún, Aprobar solo actualiza el progreso. Si el review falla,
-  el paso no se marca aprobado.
+- Solo la tarea que **traduce** un recurso (la primera del proceso con ese recurso) tiene borrador propio, ramas de
+  trabajo y revisiones. Las demás tareas del mismo recurso (lectura grupal, afinación, armonización, validación)
+  trabajan sobre ese borrador y entregan cerrando la subtarea (`taskHasOwnDraft`, `src/domain/branchNames.ts`).
+- El trabajo de la persona se guarda en su rama de trabajo (y en el navegador si no hay red).
+- La revisión se abre al terminar el borrador (si después hay revisión en pares) o al **tomar** un paso de revisión.
+- Sigue abierta durante la revisión. Al **Entregar**, el trabajo pasa al borrador del grupo y la revisión se cierra.
+- Marcador en la subtarea: `<!-- gateway-portion-pr {…} -->`.
+- **Aprobar** un paso con revisión enlazada envía también una aprobación a Door43 (`APPROVED`). Si no hay revisión
+  aún, Aprobar solo actualiza el progreso. Si la aprobación falla, el paso no se marca aprobado.
+
+## Ramas y etiquetas en los repositorios de contenido
+
+Cada clase vive bajo su propia palabra, para que ninguna estorbe a otra (Git no deja crear `jud/tpl` si existe una
+rama `jud`) y para que quien abra el repositorio entienda qué es cada una. Las palabras se configuran en
+`taller.config.ts` (`branchNames`, por organización y por espacio de trabajo; ver
+[`CONFIGURACION.md`](./CONFIGURACION.md)).
+
+| Qué | Nombre | Ejemplo | Quién la crea y cuándo |
+|---|---|---|---|
+| Borrador del grupo de una tarea de traducción | rama `borrador/<libro>/<tarea>` | `borrador/jud/tpl` | la app, al empezar la primera subtarea de la tarea |
+| Trabajo de una persona en una subtarea | rama `trabajo/<libro>/<tarea>/<persona>/<subtarea>` | `trabajo/jud/tpl/valeska/159` | la app, al empezar la subtarea; se borra al entregarla |
+| Lo que se entregó, tal como quedó | **etiqueta** `archivo/<libro>/<subtarea>` | `archivo/jud/159` | la app, al entregar o cerrar la subtarea |
+| El texto al cerrar una fase | **etiqueta** `fase/<libro>/<fase>` | `fase/jud/traduccion` | la app, al cerrarse la última subtarea de la fase para ese libro |
+| Una unidad tal como la valida el comité | rama `validacion/<libro>/<unidad>` | `validacion/jud/1` | la app, al cerrarse el último trabajo antes de validar esa unidad; se borra al publicarla |
+| Lo publicado | rama `master` y sus versiones (releases) | | Door43; solo recibe unidades avaladas |
+
+Los libros empezados antes (`jud/tpl`, `t/jud/tpl`, `w/jud/tpl/…`, ramas `archivo/…`) se siguen leyendo donde
+están; esos nombres no se crean más.
+
+### El recorrido de una porción
+
+1. **Traducción.** La persona empieza la subtarea: la app crea `borrador/jud/tpl` (si no existe) y su rama
+   `trabajo/jud/tpl/valeska/159`. Escribe ahí. Al terminar el borrador se abre la revisión hacia el borrador del
+   grupo; quien revisa en pares lee esa revisión.
+2. **Entrega.** Los versículos que cambiaron se copian al borrador del grupo (para un texto no hay fusión de Git:
+   así dos personas en porciones vecinas no se pisan). Antes de cerrar la revisión se fija `archivo/jud/159` en el
+   commit del trabajo; si no se puede fijar, la entrega falla y la subtarea sigue abierta. Cerrada la revisión, la
+   rama de trabajo se borra: la etiqueta guarda lo que tenía.
+3. **Lectura grupal, Afinación, Armonización.** Trabajan sobre `borrador/jud/tpl` (y los borradores de las ayudas),
+   sin ramas propias. Al cerrar cada subtarea se fija su `archivo/jud/<n>` en el borrador tal como está.
+4. **Marca de fase.** Al cerrarse la última subtarea de una fase para el libro, cada borrador de esa fase recibe
+   `fase/jud/<fase>`.
+5. **Validación.** Al cerrarse el último trabajo antes de validar la unidad, la app crea `validacion/jud/1` desde
+   `master` con solo esa unidad encima y deja abierta una solicitud hacia `master`. El comité ve lo que cambia
+   frente a lo publicado. Lo que no avala vuelve como subtarea de corrección a quien mantiene ese recurso; al
+   cerrarse, la rama de validación se renueva.
+6. **Publicación.** Con el aval, la solicitud se fusiona en `master`, la rama de validación se borra y se crea la
+   **versión** (release) de esa unidad en cada repositorio. Publicar es crear la versión; a `master` no llega nada
+   sin aval.
+
+«Qué cambió» (pestaña Versiones y conversación de una subtarea cerrada) se lee de las etiquetas: entre dos marcas
+de fase, o entre el `archivo/` de una subtarea y el borrador de hoy.
 
 ## Herramientas de resolución (solvers)
 
@@ -137,8 +179,8 @@ del mismo usuario = tres PRs abiertos, no uno compartido.
 - Launch: `gateway-solver-launch-1` (+ `stepId` / `stepName` opcionales).
 - Completar: marcar / aprobar pasos + **Cerrar** en Mis tareas.
 - Ayudas (`helps-review` → `#/solver/helps`): un recurso por launch
-  (TN/TQ TSV o TW/TA markdown). Borrador local + rama de la subtarea;
-  «Listo para revisión» abre el PR.
+  (TN/TQ TSV o TW/TA markdown). Borrador local + rama de trabajo de la subtarea;
+  «Listo para revisión» abre la revisión.
 - Familiarizar guarda en el navegador (`tas-familiarize:{usuario}:{lang}`) los
   artículos y ayudas ya vistos (id / ruta / recurso). Porciones posteriores
   marcan «Ya visto»; si no queda nada nuevo se muestra «Nada nuevo en esta
@@ -163,10 +205,10 @@ Los **ids de tarea** de la plantilla se conservan al aplicar para que
 | `#/proyectos/:projectId/entregar` | Publicar |
 | `#/organizacion` | Equipos de org |
 | `#/mis-tareas` | Cola + checklist + Tomar/Aprobar pasos + Resolver |
-| `#/solver/scripture` | Borrador USFM (rama por subtarea) |
-| `#/solver/helps` | Borrador TN/TQ/TW/TA (un recurso, rama por subtarea) |
+| `#/solver/scripture` | Borrador USFM (rama de trabajo por subtarea) |
+| `#/solver/helps` | Borrador TN/TQ/TW/TA (un recurso, rama de trabajo por subtarea) |
 | `#/solver/familiarize` | Lectura de fuente |
-| `#/solver/review` | Diff / comentarios del PR |
+| `#/solver/review` | Lo que cambió en la porción y los comentarios de la revisión |
 
 ## Ajustes de proyecto
 
