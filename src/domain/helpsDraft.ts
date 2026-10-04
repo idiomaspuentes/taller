@@ -19,6 +19,8 @@ export type HelpsDraftItem = {
   secondaryLabel?: string;
   filepath: string;
   kind: "tsv" | "markdown";
+  /** A file of an article of the Academy that is not its body: its title, or the question it answers. */
+  part?: "title" | "sub-title";
   /** A note: where it is and what it quotes of the original, to show the phrase in the source texts. */
   chapter?: number;
   verse?: number;
@@ -262,6 +264,13 @@ export function articleRefsToDraftItems(
   for (const ref of refs) {
     const filepath = helpsMarkdownPath(resource, ref);
     if (!filepath) continue;
+    // An article of the Academy is a folder: its title and its sub-title are files of their own, and an article
+    // translated without them still shows its name in the source language.
+    if (resource === "academia" && /\/01\.md$/i.test(filepath)) {
+      for (const part of ["title", "sub-title"] as const) {
+        out.push({ id: `${ref.id || filepath}#${part}`, label: ref.title?.trim() || ref.id, meta: filepath.replace(/01\.md$/i, `${part}.md`), text: "", filepath: filepath.replace(/01\.md$/i, `${part}.md`), kind: "markdown", part });
+      }
+    }
     out.push({
       id: ref.id || filepath,
       label: ref.title?.trim() || ref.id,

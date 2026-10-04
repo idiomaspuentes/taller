@@ -14,6 +14,15 @@ type Props = {
   book?: string;
   /** Rows of the plain box, when the text is shown as its source. */
   rows?: number;
+  /**
+   * One piece of a longer text (a paragraph of an article): the box is as tall as what it holds, and the tools are
+   * only the ones a paragraph needs (bold, italics, a link), shown under it while it is being written.
+   */
+  compact?: boolean;
+  /** What an empty box starts as: a heading, a quote, an item of a list. What is typed in it then is one. */
+  emptyAs?: Block;
+  /** Shown beside the tools of a compact box: what is to be said about the piece, and done with it. */
+  aside?: React.ReactNode;
 };
 
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -124,7 +133,12 @@ type LinkKind = "academia" | "palabra" | "versiculo" | "web";
  * A text that uses something this editor does not handle is shown as its source, so that nothing is rewritten by
  * opening it; the source is always one button away.
  */
-export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6 }: Props) {
+/** The empty box of a piece that is not a plain paragraph: its element, with the line a browser needs to write in it. */
+function shapeHtml(shape: Block | undefined, names: { academia: string; palabra: string }): string {
+  return shape && shape.t !== "p" ? blocksHtml([shape], names) : "";
+}
+
+export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside }: Props) {
   const t = useT();
   const names = useMemo(() => ({ academia: t("mde.academy"), palabra: t("mde.word") }), [t]);
   const safe = useMemo(() => roundTrips(value), [value]);
@@ -139,8 +153,9 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
   useEffect(() => {
     if (source || !box.current) return;
     if (said.current === value) return;
-    box.current.innerHTML = blocksHtml(parseMarkdown(value), names);
+    box.current.innerHTML = value.trim() ? blocksHtml(parseMarkdown(value), names) : shapeHtml(emptyAs, names);
     said.current = value;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, source, names]);
 
   function emit() {
@@ -215,16 +230,21 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
   );
 
   return (
-    <div className="mde">
+    <div className={compact ? "mde mde--compact" : "mde"}>
       <div className="mde-bar" role="toolbar" aria-label={t("mde.toolbar")}>
+        {compact && aside ? <div className="mde-aside">{aside}</div> : null}
         {source ? null : (
-          <>
+          <span className="mde-tools">
             {tool(t("mde.bold"), <Bold size={16} aria-hidden />, () => run("bold"))}
             {tool(t("mde.italic"), <Italic size={16} aria-hidden />, () => run("italic"))}
-            {tool(t("mde.heading"), <Heading2 size={16} aria-hidden />, () => block("h2"))}
-            {tool(t("mde.list"), <List size={16} aria-hidden />, () => run("insertUnorderedList"))}
-            {tool(t("mde.numbered"), <ListOrdered size={16} aria-hidden />, () => run("insertOrderedList"))}
-            {tool(t("mde.quote"), <Quote size={16} aria-hidden />, () => block("blockquote"))}
+            {compact ? null : (
+              <>
+                {tool(t("mde.heading"), <Heading2 size={16} aria-hidden />, () => block("h2"))}
+                {tool(t("mde.list"), <List size={16} aria-hidden />, () => run("insertUnorderedList"))}
+                {tool(t("mde.numbered"), <ListOrdered size={16} aria-hidden />, () => run("insertOrderedList"))}
+                {tool(t("mde.quote"), <Quote size={16} aria-hidden />, () => block("blockquote"))}
+              </>
+            )}
             <span className="mde-sep" aria-hidden />
             <button
               type="button"
@@ -238,17 +258,20 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
             >
               <Link2 size={16} aria-hidden /> {t("mde.link")}
             </button>
-          </>
+          </span>
         )}
-        <button type="button" className="mde-tool mde-tool--text mde-tool--end" aria-pressed={source}
-          onClick={() => {
-            // The box is made anew when coming back to it: it must be filled again.
-            said.current = null;
-            setSource(!source);
-          }}
-        >
-          {source ? <BookOpen size={16} aria-hidden /> : <Code2 size={16} aria-hidden />} {t(source ? "mde.visual" : "mde.source")}
-        </button>
+        {/* A piece is not read as its source: the whole text has that, one switch away. */}
+        {compact && !source ? null : (
+          <button type="button" className="mde-tool mde-tool--text mde-tool--end" aria-pressed={source}
+            onClick={() => {
+              // The box is made anew when coming back to it: it must be filled again.
+              said.current = null;
+              setSource(!source);
+            }}
+          >
+            {source ? <BookOpen size={16} aria-hidden /> : <Code2 size={16} aria-hidden />} {t(source ? "mde.visual" : "mde.source")}
+          </button>
+        )}
       </div>
 
       {linking && !source ? (
@@ -323,10 +346,13 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
           aria-multiline="true"
           data-placeholder={placeholder}
           data-empty={value.trim() ? undefined : "true"}
+          data-shaped={!value.trim() && emptyAs && emptyAs.t !== "p" ? (emptyAs.t === "ul" || emptyAs.t === "ol" ? "item" : emptyAs.t) : undefined}
           onInput={emit}
           onBlur={() => {
             keepSelection();
             emit();
+            // Emptied by hand, the box may have lost its shape: it gets it back for the next thing written in it.
+            if (box.current && !value.trim() && !serializeMarkdown(blocksOf(box.current)) && emptyAs) box.current.innerHTML = shapeHtml(emptyAs, names);
           }}
           onKeyUp={keepSelection}
           onMouseUp={keepSelection}

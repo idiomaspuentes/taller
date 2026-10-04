@@ -125,9 +125,11 @@ export type SourceHelp = { text: string; secondary?: string };
  * Each help as the source package has it (the English note, question or article being translated), by the id of
  * the item in hand. A table file is read once for all its rows; an article, each from its own file.
  */
-export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunchContext | null, target: HelpsTarget | null, items: HelpsDraftItem[]): { helps: Record<string, SourceHelp>; lang: string } {
+export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunchContext | null, target: HelpsTarget | null, items: HelpsDraftItem[]): { helps: Record<string, SourceHelp>; lang: string; loaded: boolean } {
   const [helps, setHelps] = useState<Record<string, SourceHelp>>({});
   const [lang, setLang] = useState("");
+  /** The paths the source was last read for: until they are the ones in hand, it is still being read. */
+  const [readFor, setReadFor] = useState<string | null>(null);
   const paths = items.map((item) => item.filepath).join("|");
   useEffect(() => {
     if (!session?.token || !ctx || !target || !items.length) return;
@@ -154,12 +156,15 @@ export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunch
           }),
         );
       }
-      if (alive) setHelps(out);
-    })();
+      if (alive) {
+        setHelps(out);
+        setReadFor(paths);
+      }
+    })().catch(() => alive && setReadFor(paths));
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.token, session?.host, ctx?.projectId, target?.resource, target?.kind, paths]);
-  return { helps, lang };
+  return { helps, lang, loaded: readFor === paths };
 }

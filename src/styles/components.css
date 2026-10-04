@@ -7656,6 +7656,42 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .mde-box a { color: var(--primary); text-decoration: underline; }
 .mde-chip { display: inline-block; padding: 0 0.5rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.875rem; font-weight: 600; white-space: nowrap; user-select: all; }
 .mde-link { display: grid; gap: 0.5rem; padding: 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.mde-tools { display: contents; }
+/* One piece of a longer text: as tall as what it holds, its few tools under it while it is being written. */
+.mde--compact .mde-box { min-height: 2.75rem; }
+.mde--compact .mde-bar { order: 2; flex-wrap: wrap; min-height: 0; padding: 0; border: 0; background: none; overflow: visible; }
+.mde--compact .mde-link { order: 3; }
+.mde--compact .mde-tools { display: none; align-items: center; gap: 0.125rem; margin-left: auto; }
+.mde--compact:focus-within .mde-tools { display: inline-flex; }
+.mde--compact .mde-tool { min-width: 36px; min-height: 36px; }
+.mde-aside { display: flex; align-items: center; gap: 0.5rem; min-height: 32px; font-size: 0.8125rem; }
+/* An empty box that is a heading, a quote or an item of a list already holds its element: what it asks for is laid over it. */
+.mde-box { position: relative; }
+.mde-box[data-empty="true"][data-shaped]::before { content: attr(data-placeholder); position: absolute; top: 0.625rem; left: 0.75rem; color: var(--text-faint); font-size: 1rem; font-weight: 400; pointer-events: none; }
+.mde-box[data-shaped="item"]::before { left: 2rem; }
+.mde-box[data-shaped="quote"]::before { left: 1.6875rem; }
+.mde-box[data-shaped="h"]::before { top: 0.875rem; }
+
+/* An article piece by piece: what the source says for a piece, and right under it what is written for it. */
+.ab-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.ab-bar__seg { grid-auto-flow: column; grid-auto-columns: auto; flex: 0 0 auto; }
+.ab-bar__seg .pe-seg__opt { min-height: 36px; padding: 0.25rem 0.75rem; }
+.ab-bar__source { min-height: 40px; padding: 0 0.25rem; border: 0; background: none; color: var(--primary); font-size: 0.875rem; text-decoration: underline; cursor: pointer; }
+.ab { display: grid; gap: 0.75rem; min-width: 0; }
+.ab-row { display: grid; gap: 0.375rem; min-width: 0; padding-left: 0.625rem; border-left: 3px solid var(--border); }
+.ab-row[data-pending] { border-left-color: var(--accent-400); }
+.ab-row:focus-within { border-left-color: var(--accent-500); }
+.ab-source { min-width: 0; font-size: 0.9375rem; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
+.ab-source > * { margin: 0; }
+.ab-source h1, .ab-source h2, .ab-source h3, .ab-source h4, .ab-source h5, .ab-source h6 { margin: 0; font-size: 0.9375rem; font-weight: 700; color: var(--text-muted); }
+.ab-source blockquote { margin: 0; }
+.ab-tag { font-weight: 600; color: var(--accent-700); }
+.ab-act { min-height: 32px; padding: 0 0.125rem; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
+.ab-item .scripture-editor__verse-head { display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.25rem 0.75rem; }
+/* On a wide screen the source and the translation sit side by side, like the pages of a book. */
+@media (min-width: 60rem) {
+  .ab[data-source="shown"] .ab-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+}
 .mde-kinds { display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; }
 .mde-kind { flex: 0 0 auto; min-height: 36px; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-size: 0.8125rem; cursor: pointer; white-space: nowrap; }
 .mde-kind[aria-selected="true"] { border-color: var(--accent-500); background: var(--accent-50); color: var(--accent-800); font-weight: 600; }

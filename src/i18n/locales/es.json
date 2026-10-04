@@ -2505,5 +2505,21 @@
   "pu.released": "Versión publicada: «{version}».",
   "pu.releaseFailed": "El texto ya pasó a lo publicado, pero no se pudo crear la versión: {why} Vuelve a pulsar Publicar.",
   "pu.publishAgain": "Publicar",
-  "he.oneArticle": "Aquí está solo tu artículo. Los demás no cambian."
+  "ab.pending": "Sin traducir",
+  "ab.copy": "Copiar el original",
+  "ab.clear": "Vaciar",
+  "ab.placeholder": "Escribe la traducción",
+  "he.viewAria": "Cómo ver el artículo",
+  "he.viewRows": "Por párrafos",
+  "he.viewWhole": "Todo junto",
+  "he.hideSource": "Ocultar el original",
+  "he.showSource": "Mostrar el original",
+  "he.partTitle": "Título",
+  "he.partSubtitle": "Subtítulo",
+  "he.partBody": "Artículo",
+  "he.progress": "{n} de {total} traducidos",
+  "he.footPendingOne": "Queda 1 párrafo sin traducir.",
+  "he.footPendingMany": "Quedan {n} párrafos sin traducir.",
+  "he.sourceLoading": "Leyendo el artículo original…",
+  "he.oneArticleWhole": "Aquí está solo tu artículo. Los demás no cambian."
 }

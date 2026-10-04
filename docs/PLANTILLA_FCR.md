@@ -231,6 +231,17 @@ El ítem es el **artículo**, y solo se traducen los que todavía no están publ
 artículo sirve a muchas porciones y libros: se traduce una sola vez. **No llevan familiarización**:
 el artículo no depende de un pasaje.
 
+**Una subtarea por artículo.** Cada artículo pendiente del libro es su propia subtarea, con el nombre
+del artículo; nunca varios en una, ni el mismo dos veces.
+
+**Se traduce por cuadros.** El editor parte el artículo en sus piezas (cada título, párrafo, cita y
+viñeta de la fuente) y pone el original de cada una justo encima de su traducción (al lado, en una
+pantalla ancha). Un cuadro sin traducir aparece vacío; «Copiar el original» lo llena con el texto
+fuente para quien prefiera escribir encima y conservar los enlaces. El título y el subtítulo de un
+artículo de Academia son cuadros más. Lo que no se toca queda en el archivo como estaba, y un artículo
+que todavía no tiene nada traducido parte de la fuente tal como está hoy. «Todo junto» vuelve al
+artículo en una sola caja, con su código.
+
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
 | 1 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |

@@ -9,8 +9,10 @@ import { HelpMarkdownView } from "./HelpMarkdownView";
 import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { ArticleBlocks } from "./ArticleBlocks";
+import { rowsPossible, startingText } from "../domain/articleBlocks";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
@@ -63,6 +65,22 @@ type Props = {
 };
 
 type FileMeta = { text: string; sha?: string };
+
+/** How a person likes to see an article is kept on their device; without storage it lasts as long as the screen. */
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writePref(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* blocked storage */
+  }
+}
 
 async function readFileOnRef(
   session: GtSession,
@@ -117,6 +135,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [error, setError] = useState("");
   const [dirty, setDirty] = useState(false);
   const [pane, setPane] = useState<"edit" | "chapter">("edit");
+  /** An article is worked piece by piece, each under its source; «todo junto» is the whole text in one box. */
+  const [view, setView] = useState<"rows" | "whole">(() => (readPref("taller-article-view") === "whole" ? "whole" : "rows"));
+  const [showSource, setShowSource] = useState(() => readPref("taller-article-source") !== "hidden");
+  /** Per article file: how many pieces there are to translate and how many are. */
+  const [progress, setProgress] = useState<Record<string, { done: number; total: number }>>({});
+  /** The files whose starting text was already settled in this opening (see `startingText`). */
+  const started = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -125,6 +150,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       return;
     }
     setCtx(decoded);
+    started.current = new Set();
+    setProgress({});
     const slot = launchDraftSlot(decoded);
     const cache = loadHelpsDraftCache(slot.pmOrg, slot.issueNumber);
     const lab = isLabLaunch(decoded);
@@ -410,8 +437,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       } else {
         for (const item of items) {
           const remote = files[item.filepath]?.text ?? "";
-          if (item.text === remote && files[item.filepath]?.sha) continue;
-          const message = `TAS: ${item.label} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
+          // Nothing changed; or nothing was written in a file that does not exist yet, which is not to be made empty.
+          if (item.text === remote && (files[item.filepath]?.sha || !item.text.trim())) continue;
+          const message = `TAS: ${item.label}${item.part ? ` (${item.part})` : ""} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
           const saved = await saveTextOnPortionBranch({
             session,
             owner: target.owner,
@@ -487,7 +515,33 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const isNotes = target?.resource === "notas";
   const wantsSources = target?.kind === "tsv";
   const range = ctx ? portionRange(ctx.ref, ctx.chapter) : null;
-  const { helps: sourceHelps, lang: sourceLang } = useSourceHelps(session, ctx, target, items);
+  const { helps: sourceHelps, lang: sourceLang, loaded: sourceRead } = useSourceHelps(session, ctx, target, items);
+  // Without a session nothing is read: the article is then edited whole, as before.
+  const sourceReady = sourceRead || !session;
+
+  // An article with nothing translated yet starts from the source as it is today (see `startingText`). It is not a
+  // change of whoever opened it: nothing is saved until something is written.
+  useEffect(() => {
+    if (!sourceRead || target?.kind !== "markdown") return;
+    // Settled once for each file, with the text it has when its source arrives.
+    const fresh: Record<string, string> = {};
+    for (const item of items) {
+      if (item.kind !== "markdown" || started.current.has(item.id)) continue;
+      started.current.add(item.id);
+      const from = sourceHelps[item.id]?.text;
+      const text = from ? startingText(from, item.text) : null;
+      if (text !== null) fresh[item.id] = text;
+    }
+    if (Object.keys(fresh).length) setItems((prev) => prev.map((item) => (item.id in fresh ? { ...item, text: fresh[item.id]! } : item)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceRead, sourceHelps, target?.kind]);
+
+  const articles = items.filter((item) => item.kind === "markdown");
+  const byRows = (item: HelpsDraftItem) => view === "rows" && Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text);
+  const canUseRows = articles.some((item) => Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text));
+  const pending = articles.reduce((sum, item) => sum + (byRows(item) && progress[item.id] ? progress[item.id]!.total - progress[item.id]!.done : 0), 0);
+  const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
+  const setProgressOf = useCallback((id: string, done: number, total: number) => setProgress((prev) => (prev[id]?.done === done && prev[id]?.total === total ? prev : { ...prev, [id]: { done, total } })), []);
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 
   return (
@@ -533,12 +587,66 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             <p className="text-sm text-muted-foreground">
               {t("he.offlineHint")}
             </p>
-          ) : (
+          ) : canUseRows && view === "rows" ? null : (
+            // Piece by piece the screen says what to do by itself: the room goes to the article.
             <p className="text-sm text-muted-foreground">
-              {items.length && items.every((item) => item.kind === "markdown") ? t("he.oneArticle") : t("he.oneResource")}
+              {articles.length && articles.length === items.length ? t("he.oneArticleWhole") : t("he.oneResource")}
             </p>
           )}
-          {items.map((item) => (
+          {canUseRows ? (
+            <div className="ab-bar">
+              <div className="pe-seg ab-bar__seg" role="radiogroup" aria-label={t("he.viewAria")}>
+                {(["rows", "whole"] as const).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={view === id}
+                    className="pe-seg__opt"
+                    onClick={() => {
+                      setView(id);
+                      writePref("taller-article-view", id);
+                    }}
+                  >
+                    {t(id === "rows" ? "he.viewRows" : "he.viewWhole")}
+                  </button>
+                ))}
+              </div>
+              {view === "rows" ? (
+                <button
+                  type="button"
+                  className="ab-bar__source"
+                  aria-pressed={!showSource}
+                  onClick={() => {
+                    setShowSource(!showSource);
+                    writePref("taller-article-source", showSource ? "hidden" : "shown");
+                  }}
+                >
+                  {t(showSource ? "he.hideSource" : "he.showSource")}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {articles.length && !sourceReady ? <p className="text-sm text-muted-foreground" aria-busy="true">{t("he.sourceLoading")}</p> : null}
+          {items.map((item) =>
+            item.kind === "markdown" && !sourceReady ? null : item.kind === "markdown" && byRows(item) ? (
+              // An article, piece by piece: each one right under what the source says for it.
+              <div key={item.id} className="scripture-editor__verse ab-item">
+                <div className="scripture-editor__verse-head">
+                  <Label htmlFor={`help-${item.id}-0`}>{partLabel(item)}</Label>
+                  {progress[item.id] && progress[item.id]!.total > 1 ? <p className="se-written">{t("he.progress").replace("{n}", String(progress[item.id]!.done)).replace("{total}", String(progress[item.id]!.total))}</p> : null}
+                </div>
+                <ArticleBlocks
+                  id={`help-${item.id}`}
+                  source={sourceHelps[item.id]!.text}
+                  value={item.text}
+                  onChange={(text) => updateItem(item.id, { text })}
+                  book={ctx?.book}
+                  showSource={showSource}
+                  onProgress={(done, total) => setProgressOf(item.id, done, total)}
+                />
+              </div>
+            ) : (
             <div key={item.id} className="scripture-editor__verse">
               <div className="scripture-editor__verse-head">
                 {isNotes && item.chapter && item.verse ? (
@@ -546,7 +654,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   <Label htmlFor={`help-${item.id}`}>{`${item.chapter}:${item.verse}`}</Label>
                 ) : (
                   <>
-                    <Label htmlFor={`help-${item.id}`}>{item.label}</Label>
+                    <Label htmlFor={`help-${item.id}`}>{item.kind === "markdown" ? partLabel(item) : item.label}</Label>
                     {/* An article is named by its title: the path of its file says nothing to who translates it. */}
                     {item.kind === "tsv" ? <p className="scripture-editor__source">{item.meta}</p> : null}
                   </>
@@ -595,7 +703,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 </label>
               ) : null}
             </div>
-          ))}
+            ),
+          )}
           {!items.length && !error ? (
             <p className="text-sm text-muted-foreground">
               {t("he.noItems")}
@@ -607,7 +716,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       {/* Saving and handing in sit at the foot, as in the other tools: in the header they left no room for the passage. */}
       {busy ? null : (
         <div className="tool-foot">
-          <p>{!session ? t("he.footOffline") : prUrl ? t("he.footInReview") : dirty ? t("he.footUnsaved") : t("he.footSaved")}</p>
+          <p>{!session ? t("he.footOffline") : dirty ? t("he.footUnsaved") : pending ? t(pending === 1 ? "he.footPendingOne" : "he.footPendingMany").replace("{n}", String(pending)) : prUrl ? t("he.footInReview") : t("he.footSaved")}</p>
           <div className="tool-foot__actions">
             {ctx && isLabLaunch(ctx) ? null : prUrl ? null : (
               <Button type="button" variant="outline" disabled={openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
