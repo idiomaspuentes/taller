@@ -385,6 +385,20 @@ export function buildInventory(params: BuildInventoryParams): PrepInventory {
     }
   }
 
+  // The introductions fall on nobody's verses, so they were nobody's work: everybody read them to get familiar
+  // and no subtarea translated them. The notes of the first passage of a chapter carry the introduction to that
+  // chapter, and those of the first passage of the book carry the introduction to the book as well.
+  const firstOf = (list: Portion[]): Portion | undefined => [...list].sort((x, y) => (x.verses[0] ?? 0) - (y.verses[0] ?? 0))[0];
+  const giveTo = (portion: Portion | undefined, items: ResourceItem[]): void => {
+    if (!portion || !items.length) return;
+    const slot = inventory.portionSlots[portion.portionId].Notas;
+    slot.items.unshift(...items);
+    slot.status = STATUS_IDENTIFICADO;
+  };
+  for (const [chapter, items] of introByChapter) giveTo(firstOf(byChapter.get(chapter) ?? []), items);
+  const firstChapter = [...byChapter.keys()].sort((x, y) => x - y)[0];
+  if (firstChapter !== undefined) giveTo(firstOf(byChapter.get(firstChapter) ?? []), inventory.bookIntro);
+
   const chapterWork: ChapterWork[] = [];
   for (const chapter of [...byChapter.keys()].sort((a, b) => a - b)) {
     chapterWork.push({

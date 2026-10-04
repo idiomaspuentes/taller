@@ -106,13 +106,15 @@ export function selectTsvRowsForPortion(
   inventory: InventoryDoc | null,
 ): Record<string, string>[] {
   const ids = tsvIdsForLaunch(ctx, inventory);
-  if (!ids) return rows.filter((row) => tsvRowInPortion(row, ctx));
+  // Without a plan to say whose the introduction is, every passage of the chapter shows it. With one, it belongs
+  // to the passage the plan gave it to (the first of the chapter), even when this passage has no notes of its own.
+  if (!ids && !inventory) return rows.filter((row) => tsvRowInPortion(row, ctx));
   const range = portionRange(ctx.ref, 0);
   const onItsVerses = (row: Record<string, string>) => {
     const parsed = parseVerseRef(row.Reference || row.reference || "");
     return Boolean(parsed && range && parsed.chapter === range.chapter && parsed.verses.some((v) => v >= range.from && v <= range.to));
   };
-  return rows.filter((row) => ids.has(tsvRowId(row)) || onItsVerses(row));
+  return rows.filter((row) => ids?.has(tsvRowId(row)) || onItsVerses(row));
 }
 
 export function applyHelpsTsvEdits(

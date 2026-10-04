@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { addExtraWork, cutAt, extraWorkOrders, joinWithNext, normalizeExtraWork, normalizePortionStarts, portionStartsOfBook, portionsMatchStarts, removeExtraWork, startsOf, withPortionStarts, withoutPortionStarts } from "../src/domain/extraWork";
+import { selectTsvRowsForPortion } from "../src/domain/helpsDraft";
 import { addTask, boardWithPlan, planOfBoard } from "../src/domain/plan";
 import { shippedWorkflows } from "../src/domain/processes";
 import { normalizeInventory } from "../src/domain/store";
@@ -108,6 +109,26 @@ test("lo que se guarda de las subtareas a mano se lee limpio", () => {
   assert.deepEqual(normalizeExtraWork([{ id: "a", taskId: "t", title: " Uno " }, { id: "a", taskId: "t", title: "Repetida" }, { id: "b", taskId: "", title: "Sin tarea" }, null]), [{ id: "a", taskId: "t", title: "Uno" }]);
   assert.equal(normalizeExtraWork([]), undefined);
   assert.deepEqual(addExtraWork(undefined, { taskId: "t", title: "  " }), {}, "sin título no se añade");
+});
+
+test("las notas de introducción son trabajo de alguien: las del libro y las del capítulo van con la primera porción", () => {
+  const base = inventory();
+  const chapterOne = base.portions.filter((portion) => portion.chapter === 1).sort((a, b) => a.verses[0]! - b.verses[0]!);
+  const ids = (portion: (typeof chapterOne)[number]) => portion.notasItems.map((item) => item.id);
+  assert.deepEqual(ids(chapterOne[0]!).slice(0, 2), ["m2jl", "abc1"], "la introducción al libro y la del capítulo 1, antes de las notas de sus versículos");
+  assert.equal(chapterOne[0]!.notas, chapterOne[0]!.notasItems.length, "y cuentan en el tamaño de la subtarea");
+  for (const other of base.portions.filter((portion) => portion !== chapterOne[0])) {
+    assert.ok(!ids(other).includes("m2jl") && !ids(other).includes("abc1"), `${other.ref}: una sola porción las lleva`);
+  }
+  // Whoever opens the notes of that passage gets them; whoever opens the next passage does not.
+  const rows = [
+    { Reference: "front:intro", ID: "m2jl" },
+    { Reference: "1:intro", ID: "abc1" },
+    { Reference: `1:${chapterOne[0]!.verses[0]}`, ID: "v1" },
+  ];
+  const launch = (portion: (typeof chapterOne)[number]) => ({ resource: "notas", portionIds: [portion.id], itemIds: [`porcion:${portion.ref}`], ref: portion.ref, chapter: 1 }) as never;
+  assert.deepEqual(selectTsvRowsForPortion(rows, launch(chapterOne[0]!), base).map((row) => row.ID), ["m2jl", "abc1", "v1"]);
+  if (chapterOne[1]) assert.deepEqual(selectTsvRowsForPortion(rows, launch(chapterOne[1]), base).map((row) => row.ID), []);
 });
 
 console.log(`\nverify-extra-work: ${passed} checks passed.`);
