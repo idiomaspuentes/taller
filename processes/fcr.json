@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 30,
+      "version": 31,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -166,14 +166,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -366,14 +359,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -647,14 +633,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -847,14 +826,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1135,14 +1107,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1342,14 +1307,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1579,14 +1537,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1786,14 +1737,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1998,14 +1942,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -2205,14 +2142,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -2424,14 +2354,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -2624,14 +2547,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",

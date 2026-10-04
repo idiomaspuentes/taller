@@ -63,11 +63,11 @@ test("los nombres propios se reconocen por la mayúscula que no abre la oración
 
 test("cada ítem muestra solo lo que su propia fuente pide; lo de siempre se pregunta una vez para todo el paso", () => {
   const checks = shippedWorkflow("fcr-base")!.tasks.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "pares")!.checks!;
-  assert.deepEqual(stepWideChecks(checks).map((c) => c.id), ["completo", "genero", "ortografia"], "no se repiten en cada versículo");
+  assert.deepEqual(stepWideChecks(checks).map((c) => c.id), ["completo", "genero", "pasado", "ortografia"], "las que no tienen palabras: una vez para el paso, no en cada versículo");
   const verse = (text: string | undefined) => itemChecks(checks, text).map((c) => c.id);
   assert.deepEqual(verse("Is it time for you to dwell in your houses?"), ["you", "referente", "ser-estar", "sentidos"]);
   assert.deepEqual(verse("Grace and peace."), [], "un versículo que no pide nada no muestra nada");
-  assert.equal(verse(undefined).length, checks.length - 3, "sin la fuente de ese ítem, todas las que tienen palabras");
+  assert.equal(verse(undefined).length, checks.length - 4, "sin la fuente de ese ítem, todas las que tienen palabras");
 });
 
 test("en un artículo, la comprobación dice en qué párrafos del inglés aparece", () => {

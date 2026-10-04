@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 25,
+      "version": 26,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -166,14 +166,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -366,14 +359,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -647,14 +633,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -847,14 +826,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1135,14 +1107,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1342,14 +1307,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1579,14 +1537,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1786,14 +1737,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -1998,14 +1942,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -2205,14 +2142,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -2424,14 +2354,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",
@@ -2624,14 +2547,7 @@
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  },
-                  "when": [
-                    "was",
-                    "were",
-                    "did",
-                    "had",
-                    "*ed"
-                  ]
+                  }
                 },
                 {
                   "id": "ser-estar",

@@ -150,8 +150,10 @@ piden, y solo aparece donde la fuente las tiene.
   comprobaciones que **ese** versículo, esa nota o esa pregunta piden, frente a su inglés. Un versículo sin «you»
   no pregunta por «you»; uno que no pide nada no muestra nada. En un artículo (Palabras, Academia) cada
   comprobación dice en qué **párrafos** del inglés aparece.
-- **Lo que vale para todo se pregunta una vez**, arriba, para el paso entero: «¿Está todo?», «¿Hombre o mujer, uno
-  o varios?» y la ortografía.
+- **No todas las comprobaciones son de palabras.** Las que no tienen lista valen para todo y se preguntan una
+  vez, arriba, para el paso entero: «¿Está todo?», «¿Hombre o mujer, uno o varios?», el pasado («hizo» o «hacía»)
+  y la ortografía. El pasado no lleva lista porque lo que importa es la forma del verbo, no una palabra, y una
+  lista de palabras no la reconoce.
 - **Al traducir (borrador)**, la lista es una sola para el pasaje, con lo que el pasaje pide.
 - En la tarjeta de «Mis tareas», lejos del texto, se ve la lista entera; y también cuando la fuente no se pudo leer.
 
