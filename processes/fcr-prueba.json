@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 18,
+      "version": 19,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -106,9 +106,9 @@
               },
               "solverAppId": "tpl-translate",
               "closing": "self",
-              "description": "Traduce con el ULT a la vista. Mantén el orden, los modismos y las figuras del original, aunque no suene natural.",
+              "description": "Traduce la porción con el ULT a la vista. Lo importante es que diga lo mismo que la fuente.",
               "descriptions": {
-                "pt": "Traduza com o ULT à vista. Mantenha a ordem, as expressões idiomáticas e as figuras do original, mesmo que não soe natural."
+                "pt": "Traduza a porção com o ULT à vista. O importante é que diga o mesmo que a fonte."
               }
             },
             {
@@ -129,9 +129,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara solo con el ULT. Los modismos, las figuras y el orden deben seguir ahí. No lo cambies para que suene mejor.",
+              "description": "Compara con el ULT. Debe decir lo mismo, sin añadir ni quitar nada.",
               "descriptions": {
-                "pt": "Compare apenas com o ULT. As expressões idiomáticas, as figuras e a ordem devem continuar ali. Não mude para soar melhor."
+                "pt": "Compare com o ULT. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               }
             }
           ],
@@ -233,9 +233,9 @@
               },
               "solverAppId": "tps-translate",
               "closing": "self",
-              "description": "Traduce con el UST a la vista. Di el sentido con palabras sencillas y oraciones cortas, sin figuras ni voz pasiva. Usa palabras distintas de las del TPL.",
+              "description": "Traduce la porción con el UST a la vista. Lo importante es que diga lo mismo que la fuente.",
               "descriptions": {
-                "pt": "Traduza com o UST à vista. Diga o sentido com palavras simples e frases curtas, sem figuras nem voz passiva. Use palavras diferentes das do TPL."
+                "pt": "Traduza a porção com o UST à vista. O importante é que diga o mesmo que a fonte."
               }
             },
             {
@@ -256,9 +256,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara solo con el UST. No debe tener figuras, modismos, voz pasiva ni oraciones largas. El sentido debe quedar claro.",
+              "description": "Compara con el UST. Debe decir lo mismo, sin añadir ni quitar nada.",
               "descriptions": {
-                "pt": "Compare apenas com o UST. Não deve ter figuras, expressões idiomáticas, voz passiva nem frases longas. O sentido deve ficar claro."
+                "pt": "Compare com o UST. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               }
             }
           ],
@@ -360,9 +360,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista. Usa palabras sencillas, que cualquiera entienda.",
+              "description": "Traduce cada nota con la nota en inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
               "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista. Use palavras simples, que qualquer pessoa entenda."
+                "pt": "Traduza cada nota com a nota em inglês à vista. O importante é que diga o mesmo que a fonte."
               }
             },
             {
@@ -383,9 +383,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara cada nota con la nota en inglés. Debe decir lo mismo, con palabras que cualquiera entienda.",
+              "description": "Compara con la nota en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
               "descriptions": {
-                "pt": "Compare cada nota com a nota em inglês. Deve dizer o mesmo, com palavras que qualquer pessoa entenda."
+                "pt": "Compare com a nota em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               }
             }
           ],
@@ -436,9 +436,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Lee el capítulo en el ULT. Traduce cada pregunta y su respuesta. Usa palabras sencillas, que cualquiera entienda.",
+              "description": "Traduce cada pregunta y su respuesta con el inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
               "descriptions": {
-                "pt": "Leia o capítulo no ULT. Traduza cada pergunta e a sua resposta. Use palavras simples, que qualquer pessoa entenda."
+                "pt": "Traduza cada pergunta e a sua resposta com o inglês à vista. O importante é que diga o mesmo que a fonte."
               }
             },
             {
@@ -459,9 +459,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el inglés. La pregunta debe pedir lo mismo y la respuesta debe estar en el versículo. Las dos deben entenderse con facilidad.",
+              "description": "Compara con el inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
               "descriptions": {
-                "pt": "Compare com o inglês. A pergunta deve pedir o mesmo e a resposta deve estar no versículo. As duas devem ser fáceis de entender."
+                "pt": "Compare com o inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               }
             }
           ],
@@ -494,9 +494,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Define la palabra según su uso en la Biblia, no según un diccionario. Usa palabras sencillas, que cualquiera entienda. Si usamos varias palabras para esa idea, ponlas todas. No traduzcas las referencias bíblicas.",
+              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente. No traduzcas las referencias bíblicas.",
               "descriptions": {
-                "pt": "Defina a palavra segundo o seu uso na Bíblia, não segundo um dicionário. Use palavras simples, que qualquer pessoa entenda. Se usamos várias palavras para essa ideia, ponha todas. Não traduza as referências bíblicas."
+                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte. Não traduza as referências bíblicas."
               }
             },
             {
@@ -517,9 +517,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "La definición debe dar el sentido que la palabra tiene en la Biblia, con palabras que cualquiera entienda. Debe haber una sugerencia de traducción para cada uso.",
+              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
               "descriptions": {
-                "pt": "A definição deve dar o sentido que a palavra tem na Bíblia, com palavras que qualquer pessoa entenda. Deve haver uma sugestão de tradução para cada uso."
+                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               }
             }
           ],
@@ -552,9 +552,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Usa palabras sencillas, que cualquiera entienda. Cambia los ejemplos del inglés por ejemplos de nuestro idioma. Los versículos de ejemplo se traducen del ULT.",
+              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
               "descriptions": {
-                "pt": "Use palavras simples, que qualquer pessoa entenda. Troque os exemplos do inglês por exemplos da nossa língua. Os versículos de exemplo são traduzidos do ULT."
+                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte."
               }
             },
             {
@@ -575,9 +575,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Cualquier persona debe poder entender el artículo, sin saber del tema. Los ejemplos deben ser de nuestro idioma, no copias del inglés.",
+              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
               "descriptions": {
-                "pt": "Qualquer pessoa deve poder entender o artigo, sem conhecer o tema. Os exemplos devem ser da nossa língua, não cópias do inglês."
+                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               }
             }
           ],
