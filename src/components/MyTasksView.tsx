@@ -30,7 +30,7 @@ import {
   setIssueTaskProgress,
   unclaimIssue,
 } from "../dcs/issues";
-import { ensurePortionPr, submitPortionPrApproval } from "../dcs/portionPr";
+import { archiveSharedDraft, ensurePortionPr, retireReleasedWork, submitPortionPrApproval } from "../dcs/portionPr";
 import { notifyNextBook } from "../dcs/startBook";
 import { closeSubtask } from "../dcs/closeSubtask";
 import {
@@ -603,6 +603,7 @@ export function MyTasksView({
         resource,
         lang,
         sharedDraft: !taskHasOwnDraft(board.teams, issueTaskId(issue)),
+        archiveShared: () => archiveSharedDraft({ session, pmOrg, lang, contentOrg, board, issue }),
         ensurePr: async () =>
           (await ensurePortionPr({ session, pmOrg, lang, contentOrg, board, issue })).issue,
       });
@@ -649,7 +650,11 @@ export function MyTasksView({
     }
     setActing(issue.number);
     try {
+      const had = issue.assignee?.login || issue.assignees?.[0]?.login || "";
+      const board = projects.find((p) => p.issues.some((i) => i.number === issue.number))?.board;
       await unclaimIssue(session, pmOrg, issue.number);
+      // Tidying up: the work branch of whoever had it. It never holds the release back.
+      if (had && board) await retireReleasedWork({ session, pmOrg, lang, contentOrg, board, issue, username: had }).catch(() => false);
       announce(t("mt.released").replace("{n}", String(issue.number)));
       await reload();
     } catch (err) {

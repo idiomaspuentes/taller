@@ -12,8 +12,8 @@ import {
   planBranchEnsure,
   type ArchiveRefAction,
 } from "../domain/portionPr";
-import { isSessionExpiredError } from "./sessionExpiry";
 import { forgetBranches } from "./branchList";
+import { isWorkWord } from "../domain/branchNames";
 
 export type DcsGitRef = {
   ref: string;
@@ -250,10 +250,58 @@ export async function updateGitRef(
   });
 }
 
+function tagPath(owner: string, repo: string, name?: string): string {
+  const base = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tags`;
+  return name ? `${base}/${branchPath(name)}` : base;
+}
+
+/** The commit a tag points at, or null when there is no such tag. */
+export async function getTagSha(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  name: string,
+  token: string,
+): Promise<string | null> {
+  try {
+    const tag = await request<{ commit?: { sha?: string } }>(config, { path: tagPath(owner, repo, name), token });
+    return tag?.commit?.sha?.trim() || null;
+  } catch (err) {
+    if (err instanceof DcsApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+async function createTagAt(config: DcsClientConfig, owner: string, repo: string, name: string, sha: string, token: string): Promise<void> {
+  await request<unknown>(config, { method: "POST", path: tagPath(owner, repo), token, body: { tag_name: name, target: sha } });
+}
+
+async function deleteTag(config: DcsClientConfig, owner: string, repo: string, name: string, token: string): Promise<void> {
+  try {
+    await request<void>(config, { method: "DELETE", path: tagPath(owner, repo, name), token });
+  } catch (err) {
+    if (!(err instanceof DcsApiError && err.status === 404)) throw err;
+  }
+}
+
 /**
- * Point `archivo/{book}/{issue}` at `sha`. Same SHA: nothing. Other SHA:
- * PATCH, and if DCS refuses, delete and recreate that archive ref only.
- * Refuses any name outside `archivo/`, so a trunk or `w/` ref is never touched.
+ * The commit an archive points at: the tag, or the branch of the same name that books delivered before the archive
+ * became a tag still have.
+ */
+export async function getArchiveSha(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  name: string,
+  token: string,
+): Promise<string | null> {
+  return (await getTagSha(config, owner, repo, name, token)) ?? (await getBranchSha(config, owner, repo, name, token));
+}
+
+/**
+ * Point the tag `archivo/{book}/{issue}` at `sha`. Same SHA: nothing. Other SHA (the subtarea is delivered again):
+ * a tag cannot be moved, so it is removed and made again. Refuses any name outside the archive, so a draft or a work
+ * branch is never touched. An archive is a snapshot nobody edits: as a tag it stays out of the list of branches.
  */
 export async function ensureArchiveRef(
   config: DcsClientConfig,
@@ -269,47 +317,49 @@ export async function ensureArchiveRef(
   if (!sha.trim()) {
     throw new DcsApiError(`Falta el SHA de la rama de trabajo para «${name}».`, 400);
   }
-  const action = planArchiveRef(await getBranchSha(config, owner, repo, name, token), sha);
-
-  if (action === "create") {
-    const parent = await findBlockingParentRef(config, owner, repo, name, token);
-    if (parent) {
-      throw new DcsApiError(
-        diagnoseGitRefCreateFailure({ branch: name, sourceSha: sha, parent, status: 500 }),
-        500,
-      );
-    }
+  const action = planArchiveRef(await getTagSha(config, owner, repo, name, token), sha);
+  if (action === "update") await deleteTag(config, owner, repo, name, token);
+  if (action !== "noop") {
     try {
-      await createBranchAt(config, owner, repo, name, sha, token);
+      await createTagAt(config, owner, repo, name, sha, token);
     } catch (err) {
+      // Somebody else delivering the same subtarea got there first: fine if it is the same commit.
       if (!(err instanceof DcsApiError) || err.status !== 409) throw err;
-      const raced = await getBranchSha(config, owner, repo, name, token);
-      if (planArchiveRef(raced, sha) !== "noop") {
-        await updateGitRef(config, owner, repo, name, sha, token);
-      }
-    }
-  } else if (action === "update") {
-    try {
-      await updateGitRef(config, owner, repo, name, sha, token);
-    } catch (err) {
-      if (isSessionExpiredError(err)) throw err;
-      if (err instanceof DcsApiError && err.status === 403) throw err;
-      await deleteGitRef(config, owner, repo, name, token);
-      await createBranchAt(config, owner, repo, name, sha, token);
     }
   }
-
-  const landed = await getBranchSha(config, owner, repo, name, token);
+  const landed = await getTagSha(config, owner, repo, name, token);
   if (planArchiveRef(landed, sha) !== "noop") {
-    throw new DcsApiError(
-      `La ref «${name}» apunta a ${landed ?? "nada"} y no a ${sha}.`,
-      500,
-    );
+    throw new DcsApiError(`La etiqueta «${name}» apunta a ${landed ?? "nada"} y no a ${sha}.`, 500);
   }
-  if (!(await branchApiSees(config, owner, repo, name, token))) {
-    await repairGhostBranch(config, owner, repo, name, sha, token);
+  // A book delivered before kept this archive as a branch: the tag stands for it now, and two refs of one name
+  // would make «archivo/…» ambiguous for whoever reads it.
+  if (await getBranchSha(config, owner, repo, name, token)) {
+    await deleteGitRef(config, owner, repo, name, token);
+    forgetBranches(config, owner, repo);
   }
   return { action };
+}
+
+/**
+ * Remove a work branch once its work is delivered. Only a work branch, and only when the archive tag points at the
+ * very commit the branch is on: removing a branch cannot be undone, so nothing goes that is not kept elsewhere.
+ */
+export async function deleteArchivedWorkBranch(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  branch: string,
+  archive: string,
+  token: string,
+): Promise<boolean> {
+  if (!isWorkWord(branch.split("/")[0]) || !isArchiveRefName(archive)) return false;
+  const tip = await getBranchSha(config, owner, repo, branch, token);
+  if (!tip) return false;
+  const kept = await getTagSha(config, owner, repo, archive, token);
+  if (!kept || kept.toLowerCase() !== tip.toLowerCase()) return false;
+  const { deleted } = await deleteGitRef(config, owner, repo, branch, token);
+  forgetBranches(config, owner, repo);
+  return deleted;
 }
 
 /** Delete a branch ref. 404 = already gone. Never force-pushes. */

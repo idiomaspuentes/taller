@@ -35,10 +35,13 @@ export async function closeSubtask(params: {
   ensurePr?: () => Promise<DcsIssue>;
   /** The task did all its work on the shared draft (it is not the translation task of its resource, see `taskHasOwnDraft`): there is nothing to land. */
   sharedDraft?: boolean;
+  /** For a task on the shared draft: tag the draft as it stands, so the subtarea leaves a mark of what it left. */
+  archiveShared?: () => Promise<unknown>;
 }): Promise<CloseSubtaskResult> {
   const { session, pmOrg, issue } = params;
   const resource = params.resource.toLowerCase();
   if (params.sharedDraft) {
+    await params.archiveShared?.().catch(() => undefined);
     await closeIssue(session, pmOrg, issue.number);
     return { target: issue, merge: { status: "none", conflicts: [] }, posted: null, publishError: "" };
   }

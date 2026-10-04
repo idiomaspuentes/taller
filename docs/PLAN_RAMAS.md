@@ -1,8 +1,10 @@
 # Plan: ramas, trazabilidad por fase y publicación por PR
 
-Estado: **acordado el 4 de octubre de 2026; pendiente del visto bueno para empezar por el paso 1.** Nada de esto está
-implementado. Decidido: los nombres de la tabla, configurables por organización y por espacio de trabajo;
-`archivo/` y `fase/` como etiquetas; las respuestas de revisión se quedan donde están.
+Estado: **en marcha (4 de octubre de 2026).** Hechos y probados en QA con Judas: el **paso 1** (nombres legibles y
+configurables; solo la tarea de traducción tiene borrador) y el **paso 2** (archivo como etiqueta, la rama de trabajo
+se borra al entregar, archivo de las subtareas sobre el borrador del grupo). Faltan los pasos 3, 4, 5 y 7. Decidido:
+los nombres de la tabla, configurables por organización y por espacio de trabajo; `archivo/` y `fase/` como
+etiquetas; las respuestas de revisión se quedan donde están.
 
 Sale de revisar cómo la app usa las ramas de Door43 durante la fase 1 y qué rama usan las fases siguientes. El
 modelo de fondo se queda (una rama de grupo por tarea, una rama de trabajo por persona y subtarea, entrega
@@ -116,6 +118,13 @@ subtarea de Afinación fija `archivo/` al tronco; una re-entrega vuelve a apunta
 al mismo commit. Si fijar el archivo falla, no se borra nada (ya es así para cerrar). Si la organización tuviera
 etiquetas protegidas con ese patrón, la creación fallaría y la entrega no se completaría: se comprueba en QA y se
 documenta.
+
+**Como quedó.** La entrega de la subtarea 159 de Judas en QA dejó la etiqueta `archivo/jud/159` en el commit del
+trabajo, el PR cerrado, los versículos en `borrador/jud/tpl` y ninguna rama `trabajo/…`. Volver a entregar una
+subtarea ya cerrada lee el trabajo de su etiqueta. El archivo de una subtarea sobre el borrador del grupo y la
+limpieza al devolver una subtarea **no detienen** el cierre ni la devolución si fallan: solo dejan esa subtarea sin
+marca. Al devolver una subtarea sin revisión abierta, lo que tenía la rama queda en la etiqueta y quien la tome
+(aunque sea la misma persona) empieza del borrador del grupo.
 
 **Resuelve:** punto 3 (higiene).
 

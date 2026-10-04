@@ -11,7 +11,9 @@ import type { AssignmentsDoc, ScopeKey } from "../domain/types";
 import { PM_REPO_NAME, SCOPE_KEYS } from "../domain/types";
 import {
   archiveRefName,
+  isArchiveRefName,
   bookBranchName,
+  groupDraftBranchNames,
   bookCodeFromWorkHead,
   bookTrunkFromWorkHead,
   translatorLoginFromHead,
@@ -37,7 +39,7 @@ import {
 } from "../domain/verseConflicts";
 import { parseRefRange } from "../domain/usfmEdit";
 import { resolveTaskPhaseSlug } from "../domain/phaseSlug";
-import { taskHasOwnDraft } from "../domain/branchNames";
+import { draftTaskId, taskHasOwnDraft } from "../domain/branchNames";
 import { issueTaskId } from "../domain/myTasks";
 import {
   buildSolverLaunchContext,
@@ -55,7 +57,9 @@ import {
   closePull,
   createPull,
   createPullReview,
+  deleteArchivedWorkBranch,
   ensureArchiveRef,
+  getArchiveSha,
   ensureBranchFrom,
   ensureBranchFromDefault,
   getBranchSha,
@@ -386,8 +390,9 @@ export async function loadPortionPrConflicts(
  * Land the subtarea on the book trunk at Cerrar.
  * USFM: three-way verse merge limited to the issue portion, patched into the
  * trunk (only changed slots) with the Contents API (SHA retry, one parent).
- * The work tip is pinned on `archivo/{libro}/{issue}` before the PR closes;
- * if that ref cannot be written, Cerrar fails so the issue stays open.
+ * The work tip is pinned on the tag `archivo/{libro}/{issue}` before the PR closes;
+ * if that tag cannot be written, Cerrar fails so the issue stays open. Once the
+ * PR is closed the work branch goes: the tag keeps what it had.
  * Re-running on a PR that a previous Cerrar already closed re-validates the
  * trunk (writes only what is missing). Non-USFM (TSV helps): `mergePull`.
  */
@@ -407,10 +412,18 @@ export async function mergePortionPrIfOpen(
   const usfmPath =
     listedUsfm || bookUsfmName((bookCodeFromWorkHead(marker.head) || "").toUpperCase());
   const repoRef = { session, owner: marker.owner, repo: marker.repo, filepath: usfmPath };
+  const book = bookCodeFromWorkHead(marker.head) || usfmPath.replace(/^\d+-/, "").replace(/\.usfm$/i, "");
+  const archiveRef = archiveRefName(book, issue.number);
+  /** Cleaning up after a delivery never undoes it: a branch that stays is only untidy. */
+  const dropWorkBranch = () =>
+    deleteArchivedWorkBranch(config, marker.owner, marker.repo, marker.head, archiveRef, session.token).catch(() => false);
   let workSha = "";
   const readHead = async () => {
     if (!usfmPath || !/\.usfm$/i.test(usfmPath)) return null;
-    const tip = await getBranchSha(config, marker.owner, marker.repo, marker.head, session.token);
+    // A delivery that closed the review already removed the work branch: its archive has the same commit.
+    const tip =
+      (await getBranchSha(config, marker.owner, marker.repo, marker.head, session.token)) ||
+      (await getArchiveSha(config, marker.owner, marker.repo, archiveRef, session.token));
     if (!tip) return null;
     const file = await readOrNull({ ...repoRef, branch: tip });
     if (file) workSha = tip;
@@ -437,6 +450,17 @@ export async function mergePortionPrIfOpen(
   }
 
   if (!headFile) {
+    // A help file is merged by Git, so its commits stay in the group draft; the tag still says which ones they were.
+    const helpTip = await getBranchSha(config, marker.owner, marker.repo, marker.head, session.token).catch(() => null);
+    const archiveAndDrop = async () => {
+      if (!helpTip || !isArchiveRefName(archiveRef)) return;
+      try {
+        await ensureArchiveRef(config, marker.owner, marker.repo, archiveRef, helpTip, session.token);
+      } catch {
+        return;
+      }
+      await dropWorkBranch();
+    };
     try {
       await mergePull(
         config,
@@ -474,6 +498,7 @@ export async function mergePortionPrIfOpen(
       await createIssueComment(config, marker.owner, marker.repo, marker.number, `Filas de #${issue.number} puestas en «${marker.base}» una por una (las líneas vecinas de otro pasaje impedían la fusión Git). El PR se cierra sin fusión Git.`, session.token);
       await closePull(config, marker.owner, marker.repo, marker.number, session.token);
     }
+    await archiveAndDrop();
     return { status: "merged", conflicts: [], pullUrl };
   }
 
@@ -515,8 +540,6 @@ export async function mergePortionPrIfOpen(
     postedConflicts = key;
   };
 
-  const book = bookCodeFromWorkHead(marker.head) || usfmPath.replace(/^\d+-/, "").replace(/\.usfm$/i, "");
-  const archiveRef = archiveRefName(book, issue.number);
   const verses = scope.to > scope.from
     ? `${scope.chapter}:${scope.from}–${scope.to}`
     : `${scope.chapter}:${scope.from}`;
@@ -577,15 +600,88 @@ export async function mergePortionPrIfOpen(
       marker.repo,
       marker.number,
       wrote
-        ? `Versículos ${verses} de #${issue.number} fusionados en «${bookRef}» (solo los versículos que cambiaron). El PR se cierra sin fusión Git; los commits de «${marker.head}» (${workSha}) quedan en la ref «${archiveRef}».`
-        : `Versículos ${verses} de #${issue.number} ya estaban en «${bookRef}»: sin cambios en el tronco. El PR se cierra sin fusión Git; los commits de «${marker.head}» (${workSha}) quedan en la ref «${archiveRef}».`,
+        ? `Versículos ${verses} de #${issue.number} fusionados en «${bookRef}» (solo los versículos que cambiaron). El PR se cierra sin fusión Git; los commits de «${marker.head}» (${workSha}) quedan en la etiqueta «${archiveRef}».`
+        : `Versículos ${verses} de #${issue.number} ya estaban en «${bookRef}»: sin cambios en el tronco. El PR se cierra sin fusión Git; los commits de «${marker.head}» (${workSha}) quedan en la etiqueta «${archiveRef}».`,
       session.token,
     );
   }
   if (!pullClosed) {
     await closePull(config, marker.owner, marker.repo, marker.number, session.token);
   }
+  await dropWorkBranch();
   return { status: "verses", conflicts: result.conflicts, pullUrl };
+}
+
+/** Owner, repository and book of each resource a subtarea works on. */
+async function contentPlaces(params: EnsurePortionPrParams): Promise<{ book: string; places: { owner: string; repo: string; resource: string }[] }> {
+  const { session, pmOrg, lang, contentOrg, board, issue } = params;
+  const ctx = buildSolverLaunchContext({ username: session.username, lang, pmOrg, contentOrg, board, issue });
+  const owner = (contentOrg || ctx?.contentOrg || "").trim();
+  const book = ctx?.book || ctx?.projectId || "";
+  const task = board.teams.find((row) => row.id === issueTaskId(issue));
+  if (!owner || !book || !task) return { book, places: [] };
+  const pmConfig = await loadPmConfig(session, pmOrg);
+  const places: { owner: string; repo: string; resource: string }[] = [];
+  for (const resource of new Set(task.rules.map((rule) => rule.resource.toLowerCase()))) {
+    if (!(SCOPE_KEYS as string[]).includes(resource)) continue;
+    const repo = resolveResourceRepo(resource as ScopeKey, lang, pmConfig);
+    if (repo && !places.some((place) => place.repo === repo)) places.push({ owner, repo, resource });
+  }
+  return { book, places };
+}
+
+/**
+ * A subtarea that works on the group's draft (a group reading, refining, harmonizing) has no work branch to keep:
+ * its archive is the draft as it stood when the subtarea closed, in each repository it works on. Returns the
+ * repositories that got the tag. Nothing here may stop the subtarea from closing: a missing tag only leaves that
+ * subtarea out of «what changed».
+ */
+export async function archiveSharedDraft(params: EnsurePortionPrParams): Promise<string[]> {
+  const { session, board, issue } = params;
+  if (taskHasOwnDraft(board.teams, issueTaskId(issue))) return [];
+  const { book, places } = await contentPlaces(params);
+  const config = dcsConfig(session.host);
+  const archive = archiveRefName(book, issue.number);
+  const tagged: string[] = [];
+  for (const place of places) {
+    try {
+      const source = draftTaskId(board.teams, place.resource);
+      if (!source) continue;
+      let tip: string | null = null;
+      for (const branch of groupDraftBranchNames(book, source)) {
+        tip = await getBranchSha(config, place.owner, place.repo, branch, session.token);
+        if (tip) break;
+      }
+      if (!tip) continue;
+      await ensureArchiveRef(config, place.owner, place.repo, archive, tip, session.token);
+      tagged.push(`${place.owner}/${place.repo}`);
+    } catch {
+      /* the subtarea closes all the same */
+    }
+  }
+  return tagged;
+}
+
+/**
+ * A subtarea given back before any review was opened leaves the work branch of whoever had it. Whoever takes it
+ * next starts from the group's draft on a branch of their own, so this one is only clutter: what it had is kept
+ * under the archive tag and the branch goes. Returns whether a branch was removed.
+ */
+export async function retireReleasedWork(params: EnsurePortionPrParams & { username: string }): Promise<boolean> {
+  const { session, board, issue } = params;
+  if (!taskHasOwnDraft(board.teams, issueTaskId(issue)) || parsePortionPrMarker(issue.body)) return false;
+  const { book, places } = await contentPlaces(params);
+  const config = dcsConfig(session.host);
+  const archive = archiveRefName(book, issue.number);
+  const branch = portionPrBranchName({ book, username: params.username, taskId: issueTaskId(issue), issueNumber: issue.number });
+  let removed = false;
+  for (const place of places) {
+    const tip = await getBranchSha(config, place.owner, place.repo, branch, session.token);
+    if (!tip) continue;
+    await ensureArchiveRef(config, place.owner, place.repo, archive, tip, session.token);
+    if (await deleteArchivedWorkBranch(config, place.owner, place.repo, branch, archive, session.token)) removed = true;
+  }
+  return removed;
 }
 
 export async function getPmIssue(

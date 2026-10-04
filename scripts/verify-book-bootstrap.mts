@@ -9,7 +9,7 @@ import {
   saveUsfmOnPortionBranch,
 } from "../src/dcs/portionPr.ts";
 import { BootstrapError, explainRepoFileError } from "../src/dcs/repoFile.ts";
-import { ensureArchiveRef, ensureBranchFrom } from "../src/dcs/pulls.ts";
+import { deleteArchivedWorkBranch, ensureArchiveRef, ensureBranchFrom, getArchiveSha } from "../src/dcs/pulls.ts";
 import { dcsConfig } from "../src/dcs/config.ts";
 import { getContents } from "@ip-lms/dcs-client";
 import {
@@ -78,7 +78,9 @@ function installFakeDcs(opts: {
   ghost409?: boolean;
   /** Names in `branches` that only exist as git refs (branch + contents APIs 404). */
   ghosts?: string[];
+  tags?: Record<string, string>;
 }) {
+  const tags: Record<string, string> = { ...opts.tags };
   const branches = { ...opts.branches };
   const ghosts = new Set(opts.ghosts ?? []);
   const commits = new Set(Object.values(branches));
@@ -204,6 +206,25 @@ function installFakeDcs(opts: {
       }
     }
 
+    const tagMatch = rest.match(/^\/tags(?:\/(.+))?$/);
+    if (tagMatch) {
+      const name = (tagMatch[1] || "").split("/").map((part) => decodeURIComponent(part)).join("/");
+      if (method === "POST" && !name) {
+        const body = JSON.parse(String(init?.body || "{}")) as { tag_name?: string; target?: string };
+        call.ref = body.tag_name;
+        if (!body.tag_name || !body.target) return json({ message: "missing" }, 422);
+        if (tags[body.tag_name]) return json({ message: "tag already exists" }, 409);
+        tags[body.tag_name] = body.target;
+        return json({ name: body.tag_name, commit: { sha: body.target } }, 201);
+      }
+      if (method === "GET" && name) return tags[name] ? json({ name, commit: { sha: tags[name] } }) : notFound();
+      if (method === "DELETE" && name) {
+        if (!tags[name]) return notFound();
+        delete tags[name];
+        return new Response(null, { status: 204 });
+      }
+    }
+
     const refMatch = rest.match(/^\/git\/refs(?:\/heads\/(.+))?$/);
     if (refMatch) {
       if (method === "POST") {
@@ -304,6 +325,7 @@ function installFakeDcs(opts: {
   globalThis.fetch = fetchMock as typeof fetch;
   return {
     calls,
+    tags,
     branches,
     ghosts,
     files,
@@ -1080,27 +1102,64 @@ const postedBranches = (calls: Call[]) =>
   assert(!postsGitRefs(fake.calls), "fallback create never calls POST git/refs");
 }
 
-{
-  const archive = archiveRefName("NEH", 41);
-  const fake = installFakeDcs({ branches: { master: "abc123master", "trabajo/neh/t/ana/41": "worksha" }, files: {} });
-  const res = await ensureArchiveRef(dcsConfig(session.host), "es-419_gl", "es-419_glt", archive, "worksha", session.token);
-  assert(res.action === "create", "archive ref created on Cerrar");
-  assert(postedBranches(fake.calls).includes(archive), "archive ref created with POST /branches");
-  assert(!postsGitRefs(fake.calls), "archive create never calls POST git/refs");
-  assert(fake.branches[archive] === "worksha" && !fake.ghosts.has(archive), "archive is a real branch at the work SHA");
-}
+// ── The archive of a delivery is a tag, and the work branch goes once the tag has its commit ──
+
+const postedTags = (calls: Call[]) => calls.filter((c) => c.method === "POST" && c.path.endsWith("/tags")).map((c) => c.ref);
+const cfg = dcsConfig(session.host);
+const at = ["es-419_gl", "es-419_glt"] as const;
 
 {
   const archive = archiveRefName("NEH", 41);
-  const fake = installFakeDcs({
-    branches: { master: "abc123master", "trabajo/neh/t/ana/41": "worksha", [archive]: "worksha" },
-    ghosts: [archive],
-    files: {},
-  });
-  await ensureArchiveRef(dcsConfig(session.host), "es-419_gl", "es-419_glt", archive, "worksha", session.token);
-  assert(!fake.ghosts.has(archive), "ghost archive ref rebuilt as a real branch");
-  assert(fake.branches[archive] === "worksha", "ghost archive keeps its SHA");
-  assert(!postsGitRefs(fake.calls), "archive repair never calls POST git/refs");
+  const work = "trabajo/neh/t/ana/41";
+  const fake = installFakeDcs({ branches: { master: "abc123master", [work]: "worksha" }, files: {} });
+  const res = await ensureArchiveRef(cfg, ...at, archive, "worksha", session.token);
+  assert(res.action === "create", "archive created on Cerrar");
+  assert(postedTags(fake.calls).includes(archive) && fake.tags[archive] === "worksha", "the archive is a tag at the work commit");
+  assert(!fake.branches[archive] && !postedBranches(fake.calls).includes(archive), "and never a branch: it stays out of the list of branches");
+  assert(!postsGitRefs(fake.calls), "archive create never calls POST git/refs");
+  assert((await getArchiveSha(cfg, ...at, archive, session.token)) === "worksha", "whoever reads the archive finds the tag");
+
+  const again = await ensureArchiveRef(cfg, ...at, archive, "worksha", session.token);
+  assert(again.action === "noop" && postedTags(fake.calls).length === 1, "same commit: nothing is written again");
+
+  assert(await deleteArchivedWorkBranch(cfg, ...at, work, archive, session.token), "delivered: the work branch goes");
+  assert(!fake.branches[work] && fake.tags[archive] === "worksha", "after a delivery the tag stays and the work branch does not");
+}
+
+{
+  // Delivered again after more work: the tag is removed and made at the new commit.
+  const archive = archiveRefName("NEH", 41);
+  const fake = installFakeDcs({ branches: { master: "abc123master", "trabajo/neh/t/ana/41": "newsha" }, tags: { [archive]: "oldsha" }, files: {} });
+  const res = await ensureArchiveRef(cfg, ...at, archive, "newsha", session.token);
+  assert(res.action === "update" && fake.tags[archive] === "newsha", "a second delivery points the tag at the new commit");
+  const del = fake.calls.findIndex((c) => c.method === "DELETE" && c.path.endsWith(`/tags/${archive}`));
+  const post = fake.calls.findIndex((c) => c.method === "POST" && c.path.endsWith("/tags"));
+  assert(del >= 0 && post > del, "a tag cannot be moved: removed, then made");
+}
+
+{
+  // The branch is never removed unless the tag holds the very commit it is on.
+  const archive = archiveRefName("NEH", 41);
+  const work = "trabajo/neh/t/ana/41";
+  const fake = installFakeDcs({ branches: { master: "abc123master", [work]: "worksha", "borrador/neh/t": "trunksha" }, tags: { [archive]: "othersha" }, files: {} });
+  assert(!(await deleteArchivedWorkBranch(cfg, ...at, work, archive, session.token)) && fake.branches[work], "tag on another commit: the branch stays");
+  delete fake.tags[archive];
+  assert(!(await deleteArchivedWorkBranch(cfg, ...at, work, archive, session.token)) && fake.branches[work], "no tag: the branch stays");
+  fake.tags[archive] = "trunksha";
+  assert(!(await deleteArchivedWorkBranch(cfg, ...at, "borrador/neh/t", archive, session.token)) && fake.branches["borrador/neh/t"], "a group draft is never removed, whatever the tag says");
+  assert(!(await deleteArchivedWorkBranch(cfg, ...at, "master", archive, session.token)), "nor the published branch");
+  let refused = false;
+  await ensureArchiveRef(cfg, ...at, work, "worksha", session.token).catch(() => (refused = true));
+  assert(refused && !fake.tags[work], "only an archive name can be tagged");
+}
+
+{
+  // A book delivered before the archive was a tag has it as a branch: it is still read, and the tag takes its place.
+  const archive = archiveRefName("NEH", 41);
+  const fake = installFakeDcs({ branches: { master: "abc123master", [archive]: "oldsha" }, files: {} });
+  assert((await getArchiveSha(cfg, ...at, archive, session.token)) === "oldsha", "an older archive branch is still read");
+  await ensureArchiveRef(cfg, ...at, archive, "newsha", session.token);
+  assert(fake.tags[archive] === "newsha" && !fake.branches[archive], "delivered again: the tag stands for it, with no branch of the same name");
 }
 
 console.log("verify-book-bootstrap: ok");

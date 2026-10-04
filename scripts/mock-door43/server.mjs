@@ -202,6 +202,9 @@ function branchByRef(repo, ref) {
   if (!ref) return undefined;
   if (repo.branches.has(ref)) return repo.branches.get(ref);
   for (const files of repo.branches.values()) if (headSha(files) === ref) return files;
+  // A tag keeps the files of its commit, so the commit can still be read once its branch is gone.
+  if (repo.tags?.has(ref)) return repo.tags.get(ref);
+  for (const files of repo.tags?.values() ?? []) if (headSha(files) === ref) return files;
   return undefined;
 }
 
@@ -360,14 +363,14 @@ async function handle(req, res) {
   if (p === "/__mock/dump") {
     const plain = (map) => [...map].map(([branch, files]) => [branch, [...files]]);
     return json(res, {
-      repos: [...repos].map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, branches: plain(repo.branches), commits: repo.commits ?? [] }]),
+      repos: [...repos].map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, branches: plain(repo.branches), tags: plain(repo.tags ?? new Map()), commits: repo.commits ?? [] }]),
       pulls: [...pulls].map(([key, list]) => [key, list.map((pull) => ({ ...pull, snapshot: [...pull.snapshot] }))]),
       issues, comments: [...comments], labels, milestones, issueCounter, counter,
     });
   }
   if (p === "/__mock/load" && req.method === "POST") {
     const state = await readBody(req);
-    repos = new Map(state.repos.map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, commits: repo.commits ?? [], branches: new Map(repo.branches.map(([branch, files]) => [branch, new Map(files)])) }]));
+    repos = new Map(state.repos.map(([key, repo]) => [key, { defaultBranch: repo.defaultBranch, commits: repo.commits ?? [], branches: new Map(repo.branches.map(([branch, files]) => [branch, new Map(files)])), tags: new Map((repo.tags ?? []).map(([tag, files]) => [tag, new Map(files)])) }]));
     pulls = new Map(state.pulls.map(([key, list]) => [key, list.map((pull) => ({ ...pull, snapshot: new Map(pull.snapshot) }))]));
     issues = state.issues;
     comments = new Map(state.comments);
@@ -469,6 +472,33 @@ async function handle(req, res) {
       repo.branches.set(body.new_branch_name, cloneFiles(from));
       log.push({ at: new Date().toISOString(), user: user?.login, write: `branch ${repoKey}@${body.new_branch_name}` });
       return json(res, { name: body.new_branch_name }, 201);
+    }
+    // ---- tags: a name for a commit that nobody edits (the archive of a delivery) ----
+    const tagMatch = /^tags(?:\/(.+))?$/.exec(rest);
+    if (tagMatch) {
+      const repo = repos.get(repoKey);
+      repo.tags ??= new Map();
+      const tag = (tagMatch[1] || "").split("/").map(decodeURIComponent).join("/");
+      const tagOf = (tagName) => ({ name: tagName, commit: { sha: headSha(repo.tags.get(tagName)) } });
+      if (req.method === "GET") {
+        if (!tag) return json(res, [...repo.tags.keys()].map(tagOf));
+        return repo.tags.has(tag) ? json(res, tagOf(tag)) : json(res, { message: "tag not found" }, 404);
+      }
+      if (!user) return json(res, { message: "token is required" }, 401);
+      if (req.method === "POST" && !tag) {
+        const body = await readBody(req);
+        const from = branchByRef(repo, body.target);
+        if (!body.tag_name || !from) return json(res, { message: "target not found" }, 404);
+        if (repo.tags.has(body.tag_name)) return json(res, { message: "tag already exists" }, 409);
+        repo.tags.set(body.tag_name, cloneFiles(from));
+        log.push({ at: new Date().toISOString(), user: user.login, write: `tag ${repoKey}@${body.tag_name}` });
+        return json(res, tagOf(body.tag_name), 201);
+      }
+      if (req.method === "DELETE" && tag) {
+        if (!repo.tags.delete(tag)) return json(res, { message: "tag not found" }, 404);
+        res.writeHead(204);
+        return res.end();
+      }
     }
     // ---- git refs: where a branch points, moving it, deleting it ----
     const refMatch = /^git\/refs\/heads\/(.+)$/.exec(rest);

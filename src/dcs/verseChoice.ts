@@ -9,7 +9,7 @@ import { createIssueComment } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { clearIssueConflict } from "./issues";
-import { getBranchSha, readGitBlob } from "./pulls";
+import { getArchiveSha, readGitBlob } from "./pulls";
 import { BootstrapError, readRepoFile, writeRepoFile } from "./repoFile";
 import {
   buildVerseChoicePosts,
@@ -52,7 +52,7 @@ export async function prepareVerseChoice(session: GtSession, data: VerseConflict
   }
   let sourceReason = sourceBlockReason(data);
   if (!sourceReason && data.range.kept === "tronco") {
-    const tip = await getBranchSha(
+    const tip = await getArchiveSha(
       dcsConfig(session.host),
       data.pr.owner,
       data.pr.repo,
@@ -66,7 +66,7 @@ export async function prepareVerseChoice(session: GtSession, data: VerseConflict
 
 async function readArchive(session: GtSession, data: VerseConflictData, issue: number) {
   const ref = archiveRefName(data.book.toLowerCase(), issue);
-  const tip = await getBranchSha(dcsConfig(session.host), data.pr.owner, data.pr.repo, ref, session.token);
+  const tip = await getArchiveSha(dcsConfig(session.host), data.pr.owner, data.pr.repo, ref, session.token);
   if (!tip) return null;
   const file = await readRepoFile({ ...trunkRef(session, data), branch: tip });
   return { text: file.text, label: `${ref} @ ${tip}` };
