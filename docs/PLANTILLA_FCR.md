@@ -125,15 +125,27 @@ pide traducir las ayudas con el texto ya terminado; aquí ese contraste se hace 
 del inglés a nuestro idioma, **fiel a su fuente**: el TPL al ULT, el TPS al UST, cada ayuda a su original en
 inglés. El borrador pide eso y la revisión en pares comprueba eso: que diga lo mismo, sin añadir ni quitar.
 
-**Y que esté bien escrito en nuestro idioma.** La revisión en pares mira también la **ortografía y la gramática**
-del idioma al que se traduce (español, portugués). Una nota o una pregunta habla de una frase de un versículo:
-para traducirla bien hay que leer ese versículo y saber de qué se trata, porque de eso depende qué palabras y qué
-conjugaciones son las correctas.
+**Lista de comprobación de cada paso.** El inglés deja abierto lo que nuestro idioma tiene que decir, y una
+traducción fiel también tiene que estar bien escrita. «Borrador» y «Revisión en pares» traen, en las seis tareas,
+la misma lista, que la persona marca para sí antes de entregar:
 
-**Donde el inglés es ambiguo, se mira el contexto.** El inglés a veces no dice lo que nuestro idioma tiene que
-decir. El caso más común: «you» puede ser una persona o varias. La regla, en el borrador y en la revisión en pares
-de todas las tareas: **cada vez que aparezca «you», mirar el contexto para saber si es «usted» o «ustedes»**
-(«você» o «vocês»). Otras reglas de este tipo se agregan aquí y en la descripción de los pasos.
+| Comprobación | Por qué |
+|---|---|
+| «You»: ¿«usted» o «ustedes»? | El inglés no distingue una persona de varias |
+| ¿Hombre o mujer, uno o varios? | El inglés no lo dice en adjetivos ni participios |
+| «It», «they», «this»: ¿de quién o de qué se habla? | Nuestro idioma pide género y número, y suele callar el sujeto |
+| El pasado: ¿«hizo» o «hacía»? | El inglés usa una sola forma |
+| «To be»: ¿«ser» o «estar»? | Una palabra en inglés, dos en nuestro idioma |
+| Palabras con varios sentidos («know», «for», «right») | «Saber» o «conocer», «por» o «para» |
+| Falsos amigos («actually», «eventually») | Parecen decir otra cosa |
+| Nombres propios | Como se escriben en nuestro idioma |
+| Ortografía y gramática | Tildes, signos de apertura, concordancia |
+
+Notas y Preguntas empiezan además por **«¿Leíste el versículo del que habla?»**: para traducir bien lo que se dice
+de una frase hay que saber de qué trata el versículo. Palabras recuerda que las referencias bíblicas no se traducen.
+
+La lista **recuerda, no cierra el paso**: las marcas son de cada persona, quedan en su dispositivo y nadie más las
+ve. Se abre en la tarjeta y dentro de la herramienta, en «Qué se pide en …». En el paquete son las `checks` del paso.
 
 **Las reglas de cada recurso todavía no se exigen aquí.** Que el TPL conserve la forma del original, que el TPS
 diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualquiera entienda: eso es trabajo de

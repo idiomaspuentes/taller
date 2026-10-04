@@ -1,3 +1,4 @@
+import { StepAsk } from "./StepAsk";
 import { toolHeading } from "./toolHeading";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
@@ -1920,6 +1921,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           )}
         </div>
       </header>
+      {lab ? null : (
+        <div className="step-ask-bar">
+          <StepAsk session={session} ctx={ctx} />
+        </div>
+      )}
 
       {error ? (
         <Alert variant="destructive" className="scripture-editor__alert">

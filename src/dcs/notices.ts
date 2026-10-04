@@ -23,6 +23,11 @@ export function rememberBoard(session: Pick<GtSession, "host">, org: string, boa
   if (board?.projectId && board.teams.length) boards.set(boardKey(session.host, org, board.projectId), board);
 }
 
+/** The plan of a project as it was last read, when it was. */
+export function rememberedBoard(session: Pick<GtSession, "host">, org: string, projectId: string): AssignmentsDoc | undefined {
+  return boards.get(boardKey(session.host, org, projectId));
+}
+
 function boardOf(session: Pick<GtSession, "host">, org: string, issue: DcsIssue): AssignmentsDoc | undefined {
   const projectId = projectFromMilestone(issue.milestone?.title);
   return projectId ? boards.get(boardKey(session.host, org, projectId)) : undefined;

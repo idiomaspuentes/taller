@@ -244,6 +244,7 @@ for (const pack of tallerConfig.processes) {
           need(`${task.name} / ${step.name}`, step.names);
           if (step.actionLabel) need(`${task.name} / ${step.name} (botón)`, step.actionLabels);
           for (const question of step.checklist ?? []) need(`${task.name} / ${step.name} / ${question.id}`, question.texts);
+          for (const check of step.checks ?? []) need(`${task.name} / ${step.name} / ${check.id}`, check.texts);
         }
       }
     }

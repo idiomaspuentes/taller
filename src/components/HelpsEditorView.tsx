@@ -1,3 +1,4 @@
+import { StepAsk } from "./StepAsk";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { ensureHelpsFileFromSource } from "../dcs/bookBootstrap";
 import { readRaw } from "../dcs/afinacionLoad";
@@ -495,6 +496,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         onBack={onClose}
         meta={[ctx?.stepName ? localizeName(ctx.stepName, language) : "", ctx?.taskName ? localizeName(ctx.taskName, language) : ""].filter(Boolean).join(" · ") || undefined}
       />
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx} />
+      </div>
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">

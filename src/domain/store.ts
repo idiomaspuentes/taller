@@ -524,6 +524,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       actionLabels: normalizeLocalized(item.actionLabels),
       closing,
       checklist: normalizeChecklist(item.checklist),
+      checks: normalizeChecklist(item.checks)?.map(({ id, text, texts }) => ({ id, text, ...(texts ? { texts } : {}) })),
       scope,
       ...(item.decisionRule === "unanimous" || item.decisionRule === "majority" ? { decisionRule: item.decisionRule } : {}),
       description: String(item.description ?? "").trim() || undefined,

@@ -165,6 +165,14 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
       if (closing === "approval" && stepClaimMode(typed) === "none") problems.push(`${at}: lo aprueba otra persona, así que alguien tiene que poder tomarlo (exclusive o pool).`);
       if (step.decisionRule !== undefined && !["majority", "unanimous"].includes(text(step.decisionRule))) problems.push(`${at}: la regla de decisión es "majority" o "unanimous".`);
       if (step.scope !== undefined && !STEP_SCOPES.includes(text(step.scope))) problems.push(`${at}: «${text(step.scope)}» no es un alcance de paso (${STEP_SCOPES.join(", ")}).`);
+      const checkIds = new Set<string>();
+      for (const check of list(step.checks)) {
+        const checkId = text(check.id);
+        if (!checkId || !text(check.text)) problems.push(`${at}: una comprobación no tiene id o texto.`);
+        if (checkIds.has(checkId)) problems.push(`${at}: la comprobación «${checkId}» está repetida.`);
+        checkIds.add(checkId);
+        checkLocalized(check.texts, `${at}, comprobación «${checkId}»`, languages, problems);
+      }
       const questionIds = new Set<string>();
       for (const question of list(step.checklist)) {
         const questionId = text(question.id);

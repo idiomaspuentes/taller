@@ -296,6 +296,9 @@ export type StepClosing = "self" | "approval" | "consensus" | "checklist" | "aut
 /** What a step covers: one subtarea (default), the whole handoff unit, or a chapter once per person. */
 export type StepScope = "subtask" | "unit" | "chapter-once";
 
+/** One thing a person checks in their own work on a step (see `TaskStep.checks`). */
+export type StepCheck = { id: string; text: string; texts?: Localized };
+
 /** One yes/no question of a `checklist` step, asked for every item (or once per verse). */
 export type ChecklistQuestion = {
   id: string;
@@ -317,6 +320,11 @@ export type TaskStep = {
   closing?: StepClosing;
   /** Questions of a `checklist` step. */
   checklist?: ChecklistQuestion[];
+  /**
+   * Things to look at before handing the step in, whatever way it closes: a short list the person ticks for
+   * themselves («¿usted o ustedes?»). They remind; they do not close the step, and nobody else sees the ticks.
+   */
+  checks?: StepCheck[];
   /** What the step covers. Omitted: one subtarea. */
   scope?: StepScope;
   /** A committee's decision: how it is taken when its members do not all agree. Omitted: by majority. */

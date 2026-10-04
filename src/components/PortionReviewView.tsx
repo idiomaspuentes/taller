@@ -1,3 +1,4 @@
+import { StepAsk } from "./StepAsk";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -295,6 +296,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </>
         }
       />
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} />
+      </div>
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">
