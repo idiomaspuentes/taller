@@ -162,6 +162,10 @@ assert(
   assert(askForChanges(reviewing, steps, pair, "carol") === reviewing, "asking without a seat changes nothing");
   const again = { ...back, doneStepIds: [...back.doneStepIds, "draft"] };
   assert(!changesPending(steps, again, pair) && canApproveStep("bob", again, pair, "alice"), "handed in again, the same reviewer approves");
+  // A review somebody sat on before anybody took the work (an exclusive step nobody claimed): nothing was sent back.
+  const early = [{ id: "do", name: "Do", claimMode: "exclusive" }, { id: "check", name: "Check", claimMode: "pool", minAssignees: 2, excludePriorStepIds: ["do"] }] as TaskStep[];
+  assert(!changesPending(early, done([], { check: { assignees: ["bob"], approvals: [] } }), early[1]!), "sitting early on a review is not a request for changes");
+  assert(changesPending(early, done([], { do: { assignees: ["alice"], approvals: [] }, check: { assignees: ["bob"], approvals: [] } }), early[1]!), "with an author, an undone step under a seated review is work sent back");
   // From the group review the draft goes back too, and the pair review already done stays done.
   const inGroup = done(["draft", "pair"], { pair: { assignees: ["bob"], approvals: ["bob", "alice"] }, group: { assignees: ["carol", "dave"], approvals: ["dave"] } });
   const fromGroup = askForChanges(inGroup, steps, group, "carol");

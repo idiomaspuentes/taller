@@ -327,7 +327,11 @@ export function askForChanges(progress: TaskProgressMarker, steps: TaskStep[], s
 export function changesPending(steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep): boolean {
   if (isStepDone(progress, step.id) || !getStepRuntime(progress, step.id).assignees.length) return false;
   const reviewed = reviewedStepId(steps, step);
-  return Boolean(reviewed && !isStepDone(progress, reviewed));
+  if (!reviewed || isStepDone(progress, reviewed)) return false;
+  // Work nobody ever took was not sent back: somebody only sat on the review early (or the process changed under
+  // the subtarea). Saying «changes were requested» there named nobody and sent people looking for a request.
+  const work = steps.find((row) => row.id === reviewed);
+  return !work || stepClaimMode(work) === "none" || getStepRuntime(progress, reviewed).assignees.length > 0;
 }
 
 /** Whether this step should appear as a claimable card for the user. */
