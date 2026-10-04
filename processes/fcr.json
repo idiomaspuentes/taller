@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 24,
+      "version": 25,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -129,9 +129,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el ULT. Debe decir lo mismo, sin añadir ni quitar nada.",
+              "description": "Compara con el ULT. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
               "descriptions": {
-                "pt": "Compare com o ULT. Deve dizer o mesmo, sem acrescentar nem tirar nada."
+                "pt": "Compare com o ULT. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
               }
             }
           ],
@@ -256,9 +256,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el UST. Debe decir lo mismo, sin añadir ni quitar nada.",
+              "description": "Compara con el UST. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
               "descriptions": {
-                "pt": "Compare com o UST. Deve dizer o mesmo, sem acrescentar nem tirar nada."
+                "pt": "Compare com o UST. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
               }
             }
           ],
@@ -360,9 +360,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
+              "description": "Traduce cada nota con la nota en inglés a la vista. Lo importante es que diga lo mismo que la fuente. Lee el versículo del que habla la nota: hay que saber de qué se trata para elegir bien las palabras y las conjugaciones.",
               "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês à vista. O importante é que diga o mesmo que a fonte."
+                "pt": "Traduza cada nota com a nota em inglês à vista. O importante é que diga o mesmo que a fonte. Leia o versículo de que a nota fala: é preciso saber do que se trata para escolher bem as palavras e as conjugações."
               }
             },
             {
@@ -383,9 +383,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con la nota en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
+              "description": "Compara con la nota en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
               "descriptions": {
-                "pt": "Compare com a nota em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
+                "pt": "Compare com a nota em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
               }
             }
           ],
@@ -436,9 +436,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada pregunta y su respuesta con el inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
+              "description": "Traduce cada pregunta y su respuesta con el inglés a la vista. Lo importante es que diga lo mismo que la fuente. Lee el versículo del que habla la pregunta: hay que saber de qué se trata para elegir bien las palabras y las conjugaciones.",
               "descriptions": {
-                "pt": "Traduza cada pergunta e a sua resposta com o inglês à vista. O importante é que diga o mesmo que a fonte."
+                "pt": "Traduza cada pergunta e a sua resposta com o inglês à vista. O importante é que diga o mesmo que a fonte. Leia o versículo de que a pergunta fala: é preciso saber do que se trata para escolher bem as palavras e as conjugações."
               }
             },
             {
@@ -459,9 +459,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
+              "description": "Compara con el inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
               "descriptions": {
-                "pt": "Compare com o inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
+                "pt": "Compare com o inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
               }
             }
           ],
@@ -517,9 +517,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
+              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
               "descriptions": {
-                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
+                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
               }
             }
           ],
@@ -575,9 +575,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
+              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
               "descriptions": {
-                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
+                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
               }
             }
           ],

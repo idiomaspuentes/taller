@@ -125,6 +125,11 @@ pide traducir las ayudas con el texto ya terminado; aquí ese contraste se hace 
 del inglés a nuestro idioma, **fiel a su fuente**: el TPL al ULT, el TPS al UST, cada ayuda a su original en
 inglés. El borrador pide eso y la revisión en pares comprueba eso: que diga lo mismo, sin añadir ni quitar.
 
+**Y que esté bien escrito en nuestro idioma.** La revisión en pares mira también la **ortografía y la gramática**
+del idioma al que se traduce (español, portugués). Una nota o una pregunta habla de una frase de un versículo:
+para traducirla bien hay que leer ese versículo y saber de qué se trata, porque de eso depende qué palabras y qué
+conjugaciones son las correctas.
+
 **Las reglas de cada recurso todavía no se exigen aquí.** Que el TPL conserve la forma del original, que el TPS
 diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualquiera entienda: eso es trabajo de
 **Afinación** (los textos) y de **Armonización** (las ayudas). Dejarlo para esas fases es lo que hace rápida a
