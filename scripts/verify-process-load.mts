@@ -101,14 +101,12 @@ test("el proceso de antes se marca: una persona sola con todos los términos del
 });
 
 test("demasiada gente esperando a una sola persona también se marca", () => {
-  const round = board.teams.find((t) => t.id === "alinear-tpl")!.steps![0]!;
-  const before = withSteps("alinear-tpl", [
-    { ...round, id: "alinear", closing: "self", claimMode: "exclusive", minAssignees: undefined, maxAssignees: undefined },
-    { ...round, id: "revisar-alineacion", minAssignees: 3, excludePriorStepIds: ["alinear"] },
-  ]);
-  const align = row(loadOf(before), "alinear-tpl", "alinear");
-  assert.deepEqual([align.largest, align.waiting, align.flags], [14, 3, ["waiting"]], "14 versículos no son demasiados, pero tres personas esperan");
-  assert.deepEqual(row(loadOf(before, { soloItems: 10, waiting: 3 }), "alinear-tpl", "alinear").flags, ["solo"], "los límites son de la organización");
+  const [align, review] = board.teams.find((t) => t.id === "alinear-tpl")!.steps!;
+  const shipped = row(loadOf(board), "alinear-tpl", align!.id);
+  assert.deepEqual([shipped.solo, shipped.largest, shipped.waiting, shipped.flags], [true, 14, 2, []], "una persona alinea un pasaje de 14 versículos y dos la esperan: está bien repartido");
+  const crowded = withSteps("alinear-tpl", [align!, { ...review!, minAssignees: 3 }]);
+  assert.deepEqual(row(loadOf(crowded), "alinear-tpl", align!.id).flags, ["waiting"], "tres personas esperando a una ya es demasiado");
+  assert.deepEqual(row(loadOf(board, { soloItems: 10, waiting: 3 }), "alinear-tpl", align!.id).flags, ["solo"], "los límites son de la organización");
 });
 
 test("una herramienta guardada por la organización toma lo que recorre de la de fábrica", () => {

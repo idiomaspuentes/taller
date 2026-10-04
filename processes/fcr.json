@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 16,
+      "version": 17,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -616,26 +616,46 @@
           ],
           "steps": [
             {
-              "id": "alineacion",
-              "name": "Alinear y revisar",
+              "id": "alinear",
+              "name": "Alinear",
               "names": {
-                "pt": "Alinhar e revisar"
+                "pt": "Alinhar"
               },
               "actionLabel": "Alinear",
               "actionLabels": {
                 "pt": "Alinhar"
               },
-              "description": "Una ronda abierta: cualquiera del equipo toma cualquier versículo de la porción, lo alinea y lo marca terminado; los demás lo revisan. Nadie alinea la porción entera. Cada versículo queda acordado con tres personas de acuerdo: quien lo alineó y dos que lo revisan.",
+              "description": "Une cada palabra del original con lo que la traduce en el texto de la porción.",
               "descriptions": {
-                "pt": "Uma rodada aberta: qualquer pessoa da equipe pega qualquer versículo da porção, alinha e marca como terminado; as outras revisam. Ninguém alinha a porção inteira. Cada versículo fica acordado com três pessoas de acordo: quem alinhou e duas que revisam."
+                "pt": "Une cada palavra do original com o que a traduz no texto da porção."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "self",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "revisar-alineacion",
+              "name": "Revisar la alineación",
+              "names": {
+                "pt": "Revisar o alinhamento"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Otras dos personas revisan cada versículo alineado.",
+              "descriptions": {
+                "pt": "Outras duas pessoas revisam cada versículo alinhado."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
               "maxAssignees": 6,
-              "minAgree": 3,
-              "minIndependent": 2
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "alinear"
+              ]
             }
           ]
         },
@@ -761,26 +781,46 @@
           ],
           "steps": [
             {
-              "id": "alineacion",
-              "name": "Alinear y revisar",
+              "id": "alinear",
+              "name": "Alinear",
               "names": {
-                "pt": "Alinhar e revisar"
+                "pt": "Alinhar"
               },
               "actionLabel": "Alinear",
               "actionLabels": {
                 "pt": "Alinhar"
               },
-              "description": "Una ronda abierta: cualquiera del equipo toma cualquier versículo de la porción, lo alinea y lo marca terminado; los demás lo revisan. Nadie alinea la porción entera. Cada versículo queda acordado con tres personas de acuerdo: quien lo alineó y dos que lo revisan.",
+              "description": "Une cada palabra del original con lo que la traduce en el texto de la porción.",
               "descriptions": {
-                "pt": "Uma rodada aberta: qualquer pessoa da equipe pega qualquer versículo da porção, alinha e marca como terminado; as outras revisam. Ninguém alinha a porção inteira. Cada versículo fica acordado com três pessoas de acordo: quem alinhou e duas que revisam."
+                "pt": "Une cada palavra do original com o que a traduz no texto da porção."
+              },
+              "solverAppId": "afinar-alineacion",
+              "closing": "self",
+              "claimMode": "exclusive"
+            },
+            {
+              "id": "revisar-alineacion",
+              "name": "Revisar la alineación",
+              "names": {
+                "pt": "Revisar o alinhamento"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "Otras dos personas revisan cada versículo alineado.",
+              "descriptions": {
+                "pt": "Outras duas pessoas revisam cada versículo alinhado."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
               "maxAssignees": 6,
-              "minAgree": 3,
-              "minIndependent": 2
+              "minIndependent": 2,
+              "excludePriorStepIds": [
+                "alinear"
+              ]
             }
           ]
         },

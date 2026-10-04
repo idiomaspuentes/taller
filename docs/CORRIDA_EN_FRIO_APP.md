@@ -354,23 +354,20 @@ libro?».
 
 ### Alinear (8 subtareas: 4 porciones × TPL y TPS)
 
-**El cambio llegó antes de empezar.** Tal como estaba, una persona tomaba la porción y alineaba todos sus
-versículos (11 en la primera de Hageo) antes de que nadie pudiera revisar. Desde la versión 16 del proceso,
-Alinear es también **una ronda abierta de un solo paso** («Alinear y revisar»):
+**Se probó como ronda abierta y se deshizo.** Después de Desafíos y Palabras clave, Alinear también pasó a ser un
+solo paso en el que cada persona tomaba un versículo (versión 16 del proceso). Al verlo en pantalla se decidió
+volver atrás (versión 17): la alineación ya llega repartida en porciones pequeñas, una subtarea por porción y no
+por capítulo, así que una persona alinea pocos versículos (14 en la porción más larga) y tomar cada uno aparte
+solo añadía pasos. Quedó como estaba: **una persona alinea la porción y otras dos la revisan**.
 
-- Cada persona **toma un versículo**, lo alinea y lo marca terminado; los demás lo revisan en la pestaña
-  «Revisar» de la misma herramienta. Quien lo alineó cuenta como una de las tres personas de acuerdo.
-- La herramienta abre **donde hace falta esa persona**: en un versículo que espera su revisión, si lo hay; si no,
-  en el primero que nadie ha tomado.
-- Un versículo tomado y sin terminar no detiene a nadie: quien lo tomó puede soltarlo, y cualquier otra persona
-  puede tomarlo («Tomarlo yo»).
+El resumen de carga lo confirma: con un libro como Hageo, «Alinear» no pasa de 14 versículos para una persona, con
+dos esperando; el límite es 40.
 
-Se editó el proceso de Hageo y el de Judas en su pantalla «Proceso» (se quitó el paso «Alinear» y el de revisión
-pasó a ser «Alinear y revisar», sin dejar fuera a nadie).
+De la prueba quedó en la herramienta lo que sirve en cualquier caso: un versículo sin alinear se lee como un
+versículo (borrador, original e inglés, sin avisos en amarillo), y un paso compartido, si un proyecto lo quiere,
+se reconoce por el paso mismo.
 
-| Subtarea | Qué pasó |
-|---|---|
-| TPL 1:12–15 | Elisha se sumó y tomó el versículo 12. Valeska se sumó después: la herramienta la llevó al 13, el primero libre, y el 12 le aparece como «Lo está alineando @elisha», con «Tomarlo yo». |
+Se devolvió el proceso de Hageo y de Judas a los dos pasos en su pantalla «Proceso».
 
 **⚠ Lo que se trabó**
 
