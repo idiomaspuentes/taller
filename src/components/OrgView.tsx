@@ -16,6 +16,7 @@ import type { Person } from "../domain/types";
 import { orgTeamLabel,
   DEFAULT_PM_CONFIG,
   displayOrgTeamName,
+  isAppTeam,
   isPmOrgTeamName,
   mirroredOrgTeamName,
 } from "../domain/roles";
@@ -147,9 +148,9 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
       ]);
       setPmConfig(loadedConfig);
       setTeamPrefix(loadedConfig.teamPrefix);
-      // The teams of the app, and the ones the person belongs to (a coordinator sets levels in their own team).
-      const mine = new Set((session.teams ?? []).filter((t) => t.organization?.name === pmOrg).map((t) => t.name));
-      const tas = orgTeams.filter((t) => isPmOrgTeamName(t.name, loadedConfig.teamPrefix) || mine.has(t.name));
+      // The teams the app works with. The organization's other teams («Owners») are not listed just because the
+      // person belongs to them.
+      const tas = orgTeams.filter((t) => isAppTeam(t.name, loadedConfig));
       // Workers only keep TAS (system) teams; extra DCS org teams stay manager-only.
       setTeams(canManage ? orgTeams : tas);
       setMembers(orgMembers);
@@ -204,8 +205,8 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
   );
 
   const tasTeams = useMemo(
-    () => teams.filter((t) => isPmOrgTeamName(t.name, teamPrefix) || (session.teams ?? []).some((own) => own.organization?.name === pmOrg && own.name === t.name)),
-    [teams, teamPrefix, session.teams, pmOrg],
+    () => teams.filter((t) => isAppTeam(t.name, pmConfig ?? { teamPrefix })),
+    [teams, teamPrefix, pmConfig],
   );
 
   const visibleTeams = useMemo(

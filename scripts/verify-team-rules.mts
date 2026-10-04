@@ -5,6 +5,7 @@
  *   npm run verify:team-rules
  */
 import assert from "node:assert/strict";
+import { isAppTeam } from "../src/domain/roles";
 import { setActiveScope } from "../src/domain/scope";
 import { activeRules, addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, ruleText, teamRulesPath } from "../src/domain/teamRules";
 
@@ -67,6 +68,16 @@ test("las reglas de cada equipo están en su archivo, dentro del espacio de trab
   setActiveScope("espacio-b");
   assert.equal(teamRulesPath("pm-traductores-tpl"), "espacio-b/reglas/pm-traductores-tpl.json", "otro espacio de la misma organización no las ve");
   setActiveScope("");
+});
+
+test("los equipos de la app son los que creó o los que su configuración nombra, no cualquiera donde esté la persona", () => {
+  const config = { teamPrefix: "pm-", managerTeam: "managers", teamLevels: { "revisores-externos": { ana: "habilitada" } }, coordinators: { "comite": ["bea"] } };
+  assert.equal(isAppTeam("pm-traductores-tpl", config), true, "lo creó la app");
+  assert.equal(isAppTeam("Revisores-Externos", config), true, "tiene niveles");
+  assert.equal(isAppTeam("comite", config), true, "tiene quien lo coordine");
+  assert.equal(isAppTeam("managers", config), true, "el equipo de quienes administran");
+  assert.equal(isAppTeam("Owners", config), false);
+  assert.equal(isAppTeam("translators", config), false);
 });
 
 console.log(`\nverify-team-rules: ${passed} checks passed.`);

@@ -181,6 +181,22 @@ export function isPmOrgTeamName(
 }
 
 /**
+ * Whether a team of the organization is one the app works with: the app created it (its name carries the prefix),
+ * or the team settings name it (it has levels, a coordinator, or it is the team of whoever runs the projects).
+ * The organization has other teams of its own («Owners», «translators»); belonging to one of them does not make it
+ * a team of the app.
+ */
+export function isAppTeam(
+  name: string,
+  config: { teamPrefix?: string; managerTeam?: string; teamLevels?: Record<string, unknown>; coordinators?: Record<string, unknown> } = {},
+): boolean {
+  if (isPmOrgTeamName(name, config.teamPrefix ?? DEFAULT_PM_CONFIG.teamPrefix)) return true;
+  const key = name.trim().toLowerCase();
+  const named = (book: Record<string, unknown> | undefined) => Object.keys(book ?? {}).some((team) => team.trim().toLowerCase() === key);
+  return key === (config.managerTeam ?? "").trim().toLowerCase() || named(config.teamLevels) || named(config.coordinators);
+}
+
+/**
  * The name a team is shown with. Door43 only keeps letters, digits and hyphens in a team's name, so the name the
  * person typed («Revisión de notas») is kept in its description; it is used when it still matches the team's name.
  */
