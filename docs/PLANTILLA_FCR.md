@@ -234,13 +234,15 @@ el artículo no depende de un pasaje.
 **Una subtarea por artículo.** Cada artículo pendiente del libro es su propia subtarea, con el nombre
 del artículo; nunca varios en una, ni el mismo dos veces.
 
-**Se traduce por cuadros.** El editor parte el artículo en sus piezas (cada título, párrafo, cita y
-viñeta de la fuente) y pone el original de cada una justo encima de su traducción (al lado, en una
-pantalla ancha). Un cuadro sin traducir aparece vacío; «Copiar el original» lo llena con el texto
-fuente para quien prefiera escribir encima y conservar los enlaces. El título y el subtítulo de un
-artículo de Academia son cuadros más. Lo que no se toca queda en el archivo como estaba, y un artículo
-que todavía no tiene nada traducido parte de la fuente tal como está hoy. «Todo junto» vuelve al
-artículo en una sola caja, con su código.
+**Se traduce párrafo a párrafo, sin perder de vista el artículo.** El editor muestra el artículo
+como se lee: lo traducido en su color y lo que falta en gris, tal como está en la fuente. Al tocar un
+párrafo (un título, una cita, una viñeta) se abre solo ese: el original queda justo encima de la caja
+donde se escribe su traducción. Solo hay uno abierto a la vez; al entrar, el primero que falta ya
+está abierto. La caja de un párrafo sin traducir empieza vacía, y «Copiar el original» la llena con
+el texto fuente para quien prefiera escribir encima y conservar los enlaces. El título y el subtítulo
+de un artículo de Academia son los dos primeros párrafos. Lo que no se toca queda en el archivo como
+estaba, y un artículo que todavía no tiene nada traducido parte de la fuente tal como está hoy.
+«Editar el artículo entero», al final, lo muestra en una sola caja con su código.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|

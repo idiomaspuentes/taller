@@ -13,6 +13,7 @@ import { ArticleBlocks } from "./ArticleBlocks";
 import { rowsPossible, startingText } from "../domain/articleBlocks";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
@@ -74,6 +75,19 @@ function readPref(key: string): string | null {
     return null;
   }
 }
+/** Put the caret where writing goes on: at the end of what a box holds, or in its empty first line. */
+function caretInto(box: HTMLElement): void {
+  let target: Node = box;
+  while (target.lastChild instanceof HTMLElement && target.lastChild.tagName !== "BR" && target.lastChild.contentEditable !== "false") target = target.lastChild;
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  // An empty piece holds only the line a browser writes on: the caret goes before it, not after.
+  range.collapse(!(target.textContent ?? "").trim());
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
 function writePref(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
@@ -137,9 +151,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [pane, setPane] = useState<"edit" | "chapter">("edit");
   /** An article is worked piece by piece, each under its source; «todo junto» is the whole text in one box. */
   const [view, setView] = useState<"rows" | "whole">(() => (readPref("taller-article-view") === "whole" ? "whole" : "rows"));
-  const [showSource, setShowSource] = useState(() => readPref("taller-article-source") !== "hidden");
+  /** The piece of the article being written: the only one open, with its source over it. */
+  const [active, setActive] = useState<{ id: string; index: number } | null>(null);
+  /** Whether the first piece still to be translated was already opened for whoever came in. */
+  const autoOpened = useRef(false);
+  const editPane = useRef<HTMLDivElement | null>(null);
   /** Per article file: how many pieces there are to translate and how many are. */
-  const [progress, setProgress] = useState<Record<string, { done: number; total: number }>>({});
+  const [progress, setProgress] = useState<Record<string, { done: number; total: number; firstPending: number }>>({});
   /** The files whose starting text was already settled in this opening (see `startingText`). */
   const started = useRef<Set<string>>(new Set());
 
@@ -151,6 +169,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     }
     setCtx(decoded);
     started.current = new Set();
+    autoOpened.current = false;
+    setActive(null);
     setProgress({});
     const slot = launchDraftSlot(decoded);
     const cache = loadHelpsDraftCache(slot.pmOrg, slot.issueNumber);
@@ -541,7 +561,37 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const canUseRows = articles.some((item) => Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text));
   const pending = articles.reduce((sum, item) => sum + (byRows(item) && progress[item.id] ? progress[item.id]!.total - progress[item.id]!.done : 0), 0);
   const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
-  const setProgressOf = useCallback((id: string, done: number, total: number) => setProgress((prev) => (prev[id]?.done === done && prev[id]?.total === total ? prev : { ...prev, [id]: { done, total } })), []);
+  const setProgressOf = useCallback(
+    (id: string, done: number, total: number, firstPending: number) =>
+      setProgress((prev) => (prev[id]?.done === done && prev[id]?.total === total && prev[id]?.firstPending === firstPending ? prev : { ...prev, [id]: { done, total, firstPending } })),
+    [],
+  );
+
+  // Whoever comes in finds the first piece still to be translated already open: where to start, and how it is done.
+  // It is not focused: on a phone that would raise the keyboard over an article nobody has looked at yet.
+  useEffect(() => {
+    if (autoOpened.current || view !== "rows") return;
+    const inRows = articles.filter(byRows);
+    if (!inRows.length || inRows.some((item) => !progress[item.id])) return;
+    autoOpened.current = true;
+    const first = inRows.find((item) => progress[item.id]!.firstPending >= 0);
+    if (first) setActive({ id: first.id, index: progress[first.id]!.firstPending });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress, view]);
+
+  /** A piece was touched: it opens, the one that was open closes, and the box is ready to be written in. */
+  function openPiece(itemId: string, index: number, element: HTMLElement) {
+    const top = element.getBoundingClientRect().top;
+    flushSync(() => setActive({ id: itemId, index }));
+    // The piece that closed gave back its room: the one touched stays where the finger is.
+    const row = document.getElementById(`help-${itemId}-row-${index}`);
+    if (row && editPane.current) editPane.current.scrollTop += row.getBoundingClientRect().top - top;
+    const box = document.getElementById(`help-${itemId}-${index}`);
+    if (box) {
+      box.focus({ preventScroll: true });
+      caretInto(box);
+    }
+  }
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 
   return (
@@ -582,70 +632,46 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         <p className="scripture-editor__loading">{t("he.loading")}</p>
       ) : (
         // Kept mounted under the other tab, so that what is being written is not lost by going to read.
-        <div className="fam__body" role="tabpanel" hidden={wantsSources && pane !== "edit"}>
+        <div className="fam__body" role="tabpanel" hidden={wantsSources && pane !== "edit"} ref={editPane}>
           {!session ? (
             <p className="text-sm text-muted-foreground">
               {t("he.offlineHint")}
             </p>
-          ) : canUseRows && view === "rows" ? null : (
-            // Piece by piece the screen says what to do by itself: the room goes to the article.
+          ) : canUseRows && view === "rows" ? (
+            <p className="ab-hint">{t("he.rowsHint")}</p>
+          ) : (
             <p className="text-sm text-muted-foreground">
-              {articles.length && articles.length === items.length ? t("he.oneArticleWhole") : t("he.oneResource")}
-            </p>
-          )}
-          {canUseRows ? (
-            <div className="ab-bar">
-              <div className="pe-seg ab-bar__seg" role="radiogroup" aria-label={t("he.viewAria")}>
-                {(["rows", "whole"] as const).map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="radio"
-                    aria-checked={view === id}
-                    className="pe-seg__opt"
-                    onClick={() => {
-                      setView(id);
-                      writePref("taller-article-view", id);
-                    }}
-                  >
-                    {t(id === "rows" ? "he.viewRows" : "he.viewWhole")}
-                  </button>
-                ))}
-              </div>
-              {view === "rows" ? (
+              {articles.length && articles.length === items.length ? t("he.oneArticleWhole") : t("he.oneResource")}{" "}
+              {canUseRows ? (
                 <button
                   type="button"
-                  className="ab-bar__source"
-                  aria-pressed={!showSource}
+                  className="ab-switch"
                   onClick={() => {
-                    setShowSource(!showSource);
-                    writePref("taller-article-source", showSource ? "hidden" : "shown");
+                    setView("rows");
+                    writePref("taller-article-view", "rows");
                   }}
                 >
-                  {t(showSource ? "he.hideSource" : "he.showSource")}
+                  {t("he.editRows")}
                 </button>
               ) : null}
-            </div>
-          ) : null}
+            </p>
+          )}
           {articles.length && !sourceReady ? <p className="text-sm text-muted-foreground" aria-busy="true">{t("he.sourceLoading")}</p> : null}
           {items.map((item) =>
             item.kind === "markdown" && !sourceReady ? null : item.kind === "markdown" && byRows(item) ? (
-              // An article, piece by piece: each one right under what the source says for it.
-              <div key={item.id} className="scripture-editor__verse ab-item">
-                <div className="scripture-editor__verse-head">
-                  <Label htmlFor={`help-${item.id}-0`}>{partLabel(item)}</Label>
-                  {progress[item.id] && progress[item.id]!.total > 1 ? <p className="se-written">{t("he.progress").replace("{n}", String(progress[item.id]!.done)).replace("{total}", String(progress[item.id]!.total))}</p> : null}
-                </div>
-                <ArticleBlocks
-                  id={`help-${item.id}`}
-                  source={sourceHelps[item.id]!.text}
-                  value={item.text}
-                  onChange={(text) => updateItem(item.id, { text })}
-                  book={ctx?.book}
-                  showSource={showSource}
-                  onProgress={(done, total) => setProgressOf(item.id, done, total)}
-                />
-              </div>
+              // An article reads as one text: its title, the line under it and its body follow one another.
+              <ArticleBlocks
+                key={item.id}
+                id={`help-${item.id}`}
+                part={item.part}
+                source={sourceHelps[item.id]!.text}
+                value={item.text}
+                onChange={(text) => updateItem(item.id, { text })}
+                book={ctx?.book}
+                open={active?.id === item.id ? active.index : null}
+                onOpen={(index, element) => openPiece(item.id, index, element)}
+                onProgress={(done, total, firstPending) => setProgressOf(item.id, done, total, firstPending)}
+              />
             ) : (
             <div key={item.id} className="scripture-editor__verse">
               <div className="scripture-editor__verse-head">
@@ -705,6 +731,19 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             </div>
             ),
           )}
+          {canUseRows && view === "rows" ? (
+            // For a text that has to be seen whole (to paste one in, to look at its code): the same article in one box.
+            <button
+              type="button"
+              className="ab-switch ab-switch--end"
+              onClick={() => {
+                setView("whole");
+                writePref("taller-article-view", "whole");
+              }}
+            >
+              {t("he.editWhole")}
+            </button>
+          ) : null}
           {!items.length && !error ? (
             <p className="text-sm text-muted-foreground">
               {t("he.noItems")}
