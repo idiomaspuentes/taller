@@ -103,8 +103,10 @@ cuántas personas esperan a que termine.
   la subtarea: los versículos de un texto, las notas o las preguntas de sus pasajes, sus artículos.
 - **Qué no cuenta:** un paso que se hace una vez por capítulo o por unidad, una lista de comprobación y un paso
   que completa su herramienta sola.
-- **Lo entregado no se advierte:** en un proyecto que ya existe solo cuenta lo que queda por hacer. Una subtarea
-  cerrada, o un paso que su subtarea ya marcó como hecho, no es carga de nadie.
+- **Con el proyecto en marcha solo pesa lo asignado sin entregar.** Antes de crear el proyecto la carga de un paso
+  es su subtarea más grande: lo que le podría tocar a una persona. Una vez creado, cuenta lo que cada persona
+  tiene de verdad: para un paso de una sola persona, todo lo que tiene asignado y no ha entregado, sumando sus
+  subtareas. Lo entregado no es carga de nadie, y lo que nadie ha tomado todavía tampoco.
 - **La prueba:** `npm run verify:process-load` corre las reglas sobre el proceso de fábrica con un libro del
   tamaño de Hageo y guarda la lista de lo que hoy se marca. Un cambio al proceso que agregue una línea a esa lista
   es una decisión que alguien toma, no algo que se cuela.

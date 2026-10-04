@@ -5,7 +5,7 @@ import { bookLabel } from "../domain/books";
 import { portionKey, verseRangeLabel } from "../domain/chapters";
 import { addExtraWork, isExtraItemId, removeExtraWork } from "../domain/extraWork";
 import { orderedPhases, planOfBoard, tasksOfPhase } from "../domain/plan";
-import { processLoad, toolsWithWalks, type StepLoad } from "../domain/processLoad";
+import { processLoad, toolsWithWalks, type StepHold, type StepLoad } from "../domain/processLoad";
 import { loadLimits } from "../domain/processes";
 import { displayOrgTeamName } from "../domain/roles";
 import { DEFAULT_SOLVERS_CATALOG, type SolverApp, type WalkUnit } from "../domain/solvers";
@@ -31,8 +31,8 @@ type Props = {
   busy?: boolean;
   /** What each subtarea is in Door43 once the project exists, by the key of its work order. */
   stateOf?: (order: WorkOrder) => { label: string; tone: "open" | "taken" | "done" } | undefined;
-  /** Whether a step of a subtarea is already done, once the project exists: finished work is not counted as load. */
-  stepDone?: (order: WorkOrder, stepId: string) => boolean;
+  /** Where a step of a subtarea stands once the project exists: the load is then what each person has not handed in. */
+  held?: (order: WorkOrder, stepId: string) => StepHold;
   /** What can be done with one subtarea (who has it, hand it to somebody). With it, a subtarea opens when pressed. */
   orderPanel?: (order: WorkOrder, close: () => void) => ReactNode;
   /** The name people gave a team, from the name Door43 keeps. */
@@ -46,7 +46,7 @@ const NOTICE_KEY: Record<StartNotice, MessageKey> = { "no-notes": "sb.noNotes", 
  * The subtareas a project lays out, phase by phase and task by task: what «Crear proyecto» will write, seen before it
  * does. Here is also where the book is cut differently, and where a subtarea the book does not give is added by hand.
  */
-export function WorkPreview({ board, inventory, tools, stepDone, onSettings, onPortionStarts, busy, stateOf, orderPanel, teamName }: Props) {
+export function WorkPreview({ board, inventory, tools, held, onSettings, onPortionStarts, busy, stateOf, orderPanel, teamName }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const orders = useMemo(() => publishableWorkOrders(board, inventory), [board, inventory]);
@@ -64,7 +64,7 @@ export function WorkPreview({ board, inventory, tools, stepDone, onSettings, onP
   const long = useMemo(() => longChapters(inventory.portions, board.settings?.handoffUnits, max), [inventory.portions, board.settings?.handoffUnits, max]);
   const splitCount = board.settings?.handoffUnits?.length ?? 0;
   const limits = loadLimits();
-  const load = useMemo(() => processLoad(board, inventory, orders, toolsWithWalks(tools ?? [], DEFAULT_SOLVERS_CATALOG.solvers), limits, stepDone), [board, inventory, orders, tools, limits.soloItems, limits.waiting, stepDone]);
+  const load = useMemo(() => processLoad(board, inventory, orders, toolsWithWalks(tools ?? [], DEFAULT_SOLVERS_CATALOG.solvers), limits, held), [board, inventory, orders, tools, limits.soloItems, limits.waiting, held]);
   const flagged = load.filter((row) => row.flags.length);
   const byTask = useMemo(() => {
     const map = new Map<string, WorkOrder[]>();
@@ -120,7 +120,7 @@ export function WorkPreview({ board, inventory, tools, stepDone, onSettings, onP
         </p>
       ))}
 
-      {load.length && (flagged.length || !stepDone) ? (
+      {load.length && (flagged.length || !held) ? (
         <section className="wp-load" data-flagged={flagged.length ? "true" : undefined} role="status" aria-label={t("wp.loadTitle")}>
           <p className="wp-load__title">{flagged.length ? t(flagged.length === 1 ? "wp.loadFlagsOne" : "wp.loadFlagsMany").replace("{n}", String(flagged.length)) : t("wp.loadTitle")}</p>
           {flagged.length ? (
@@ -129,7 +129,8 @@ export function WorkPreview({ board, inventory, tools, stepDone, onSettings, onP
                 {flagged.flatMap((row) =>
                   row.flags.map((flag) => (
                     <li key={`${row.taskId}-${row.stepId}-${flag}`}>
-                      {t(flag === "solo" ? "wp.loadSolo" : "wp.loadWaiting")
+                      {t(flag === "waiting" ? "wp.loadWaiting" : row.holder ? "wp.loadHeld" : "wp.loadSolo")
+                        .replace("{who}", row.holder ?? "")
                         .replace("{task}", taskName(row))
                         .replace("{step}", stepName(row))
                         .replace("{size}", sizeOf(row))
@@ -140,7 +141,7 @@ export function WorkPreview({ board, inventory, tools, stepDone, onSettings, onP
                   )),
                 )}
               </ul>
-              <p>{t("wp.loadHint")}</p>
+              <p>{t(held ? "wp.loadHintHeld" : "wp.loadHint")}</p>
             </>
           ) : (
             <p>{t("wp.loadOk").replace("{max}", String(limits.soloItems)).replace("{wait}", String(limits.waiting))}</p>
@@ -315,7 +316,8 @@ export function WorkPreview({ board, inventory, tools, stepDone, onSettings, onP
                           .filter((row) => row.taskId === task.id)
                           .map((row) => (
                             <li key={row.stepId} data-flagged={row.flags.length ? "true" : undefined}>
-                              {t(row.solo ? "wp.loadStepSolo" : "wp.loadStepPool")
+                              {t(row.holder ? "wp.loadStepHeld" : row.solo ? "wp.loadStepSolo" : "wp.loadStepPool")
+                                .replace("{who}", row.holder ?? "")
                                 .replace("{step}", stepName(row))
                                 .replace("{min}", String(row.people.min))
                                 .replace("{max}", String(row.people.max))

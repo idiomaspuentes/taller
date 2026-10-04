@@ -121,18 +121,26 @@ test("una herramienta guardada por la organización toma lo que recorre de la de
   assert.equal(orderSize(order, board.teams.find((t) => t.id === "tpl")!, inventory).unit, "verses");
 });
 
-test("lo que ya se entregó no se advierte: solo cuenta lo que queda por hacer", () => {
+test("con el proyecto en marcha solo pesa lo asignado sin entregar, sumado por persona", () => {
   const orders = publishableWorkOrders(board, inventory);
-  const load = (finished: (label: string, stepId: string) => boolean) => processLoad(board, inventory, orders, tools, DEFAULT_LOAD_LIMITS, (order, stepId) => finished(order.label, stepId));
-  // The notes of the two long passages were handed in: what is left is small.
-  const delivered = load((label) => label.includes("Notas") && (label.includes("2:10") || label.includes("1:1–11")));
-  assert.deepEqual(flagged(delivered), []);
-  assert.deepEqual([row(delivered, "notas-ayuda", "borrador").largest, row(delivered, "notas-ayuda", "borrador").subtasks], [32, 2], "queda el pasaje de 32 notas");
-  // The draft of the long passage is done and its review is not: only the review is still somebody's load.
-  const half = load((label, stepId) => label.includes("Notas") && stepId === "borrador");
+  type Hold = { done?: boolean; who?: string };
+  const load = (hold: (label: string, stepId: string) => Hold) => processLoad(board, inventory, orders, tools, DEFAULT_LOAD_LIMITS, (order, stepId) => ({ done: false, ...hold(order.label, stepId) }));
+  const notes = (label: string) => label.includes("Notas");
+  // Nobody took anything: 65 notes in a passage are not yet anybody's load.
+  assert.deepEqual(flagged(load(() => ({}))), []);
+  assert.equal(row(load(() => ({})), "notas-ayuda", "borrador"), undefined);
+  // Ana took the long passage and has not handed it in.
+  const one = load((label, stepId) => (notes(label) && label.includes("2:10") && stepId === "borrador" ? { who: "Ana" } : {}));
+  assert.deepEqual(flagged(one), ["notas-ayuda/borrador: solo (65 en 2:10–23 · Notas)"]);
+  assert.equal(row(one, "notas-ayuda", "borrador").holder, "ana");
+  // Two short passages in the same hands add up: 9 and 32 are fine apart, 41 together is not.
+  const two = load((label, stepId) => (notes(label) && (label.includes("1:12") || label.includes("2:1–9")) && stepId === "borrador" ? { who: "bea" } : {}));
+  assert.deepEqual([row(two, "notas-ayuda", "borrador").largest, row(two, "notas-ayuda", "borrador").holder, row(two, "notas-ayuda", "borrador").flags], [41, "bea", ["solo"]]);
+  // Handed in: it is nobody's load any more.
+  assert.deepEqual(flagged(load((label) => (notes(label) ? { who: "ana", done: true } : {}))), []);
+  // The draft is done and the review is in somebody's hands: only the review counts.
+  const half = load((label, stepId) => (notes(label) && label.includes("2:10") ? { who: stepId === "borrador" ? "ana" : "bea", done: stepId === "borrador" } : {}));
   assert.deepEqual(flagged(half), ["notas-ayuda/pares: solo (65 en 2:10–23 · Notas)"]);
-  assert.equal(row(half, "notas-ayuda", "borrador"), undefined, "un paso sin nada pendiente no aparece");
-  assert.deepEqual(flagged(load(() => true)), [], "con todo entregado no hay nada que advertir");
 });
 
 // What the shipped process still asks of one person with a book of this size. It is a list on purpose: a change to

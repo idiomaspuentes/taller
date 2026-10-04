@@ -36,6 +36,8 @@ export type StepLoad = {
   /** The size of its largest subtarea, and which one it is. */
   largest: number;
   largestLabel: string;
+  /** Once the project exists: who holds that much, assigned and not handed in. */
+  holder?: string;
   unit: WalkUnit;
   /** The tool's own word for what it walks, when it has one. */
   walk?: ToolWalk;
@@ -87,9 +89,14 @@ export function toolsWithWalks(saved: SolverApp[], shipped: SolverApp[]): Solver
   return [...saved.map((tool) => (tool.walks ? tool : { ...tool, walks: shipped.find((row) => row.id === tool.id)?.walks })), ...shipped.filter((tool) => !mine.has(tool.id))];
 }
 
+/** Where a step of a subtarea stands once the project exists: done, or in somebody's hands. */
+export type StepHold = { done: boolean; who?: string };
+
 /**
- * `finished` says which steps of which subtareas are already done, once the project exists: work that was handed in
- * is nobody's load any more, so it is neither measured nor warned about.
+ * Before the project exists, the load of a step is its largest subtarea: what one person could be handed. Once it
+ * exists (`held`), what counts is what each person actually has: for a step one person takes, everything assigned
+ * to them and not handed in, across their subtareas. Work handed in is nobody's load, and a subtarea nobody took is
+ * not yet anybody's.
  */
 export function processLoad(
   board: AssignmentsDoc,
@@ -97,7 +104,7 @@ export function processLoad(
   orders: WorkOrder[],
   tools: SolverApp[],
   limits: LoadLimits = DEFAULT_LOAD_LIMITS,
-  finished?: (order: WorkOrder, stepId: string) => boolean,
+  held?: (order: WorkOrder, stepId: string) => StepHold,
 ): StepLoad[] {
   const rows: StepLoad[] = [];
   for (const task of board.teams) {
@@ -107,19 +114,30 @@ export function processLoad(
     steps.forEach((step, index) => {
       const tool = tools.find((row) => row.id === step.solverAppId);
       if (!walked(step, tool)) return;
-      let largest = 0, largestLabel = "", unit: WalkUnit = "items", approx = false;
-      const pending = finished ? mine.filter((order) => !finished(order, step.id)) : mine;
+      let largest = 0, largestLabel = "", holder: string | undefined, unit: WalkUnit = "items", approx = false;
+      const solo = stepClaimMode(step) !== "pool";
+      const pending = held ? mine.filter((order) => !held(order, step.id).done) : mine;
+      const byPerson = new Map<string, number>();
       for (const order of pending) {
         const sized = orderSize(order, task, inventory, tool?.walks);
         unit = sized.unit;
         approx = sized.approx;
-        if (sized.size > largest) {
+        if (held && solo) {
+          const who = held(order, step.id).who?.trim().toLowerCase();
+          if (!who) continue;
+          const total = (byPerson.get(who) ?? 0) + sized.size;
+          byPerson.set(who, total);
+          if (total > largest) {
+            largest = total;
+            largestLabel = order.label;
+            holder = who;
+          }
+        } else if (sized.size > largest) {
           largest = sized.size;
           largestLabel = order.label;
         }
       }
       if (!largest) return;
-      const solo = stepClaimMode(step) !== "pool";
       const waiting = solo ? steps.slice(index + 1).reduce((most, later) => Math.max(most, stepMinAssignees(later)), 0) : 0;
       const flags: LoadFlag[] = [];
       if (solo && largest > limits.soloItems) flags.push("solo");
@@ -132,6 +150,7 @@ export function processLoad(
         subtasks: pending.length,
         largest,
         largestLabel,
+        ...(holder ? { holder } : {}),
         unit,
         ...(tool?.walks ? { walk: tool.walks } : {}),
         approx,

@@ -2411,5 +2411,8 @@
   "wp.unitVerses": "versículos",
   "wp.unitNotes": "notas",
   "wp.unitQuestions": "preguntas",
-  "wp.unitItems": "ítems"
+  "wp.unitItems": "ítems",
+  "wp.loadHeld": "{task} › {step}: @{who} tiene {size} sin entregar. El límite es {max}.",
+  "wp.loadHintHeld": "Para repartirlo: pasa alguna de sus subtareas a otra persona.",
+  "wp.loadStepHeld": "{step}: @{who} tiene {size} sin entregar"
 }
