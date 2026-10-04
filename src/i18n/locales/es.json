@@ -2504,5 +2504,6 @@
   "en.correctionsNote": "Subtareas de corrección creadas: {list}",
   "pu.released": "Versión publicada: «{version}».",
   "pu.releaseFailed": "El texto ya pasó a lo publicado, pero no se pudo crear la versión: {why} Vuelve a pulsar Publicar.",
-  "pu.publishAgain": "Publicar"
+  "pu.publishAgain": "Publicar",
+  "he.oneArticle": "Aquí está solo tu artículo. Los demás no cambian."
 }

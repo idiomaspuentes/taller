@@ -95,6 +95,25 @@ test("cada una va con el primer pasaje que enlaza su artículo, para verlo en us
   assert.equal(where("grace").chapter, 1);
 });
 
+test("con una persona asignada sigue siendo una subtarea por artículo, del recurso de su tarea", () => {
+  const person = { id: "valeska", name: "valeska" };
+  const task = translating("academia");
+  const taken = {
+    ...board,
+    people: [person],
+    assignments: ["figs-metaphor", "figs-pastforfuture"].map((id) => ({ teamId: task.id, personId: person.id, itemType: "articulo", itemId: id, state: "asignado" })),
+  } as unknown as AssignmentsDoc;
+  const mine = publishableWorkOrders(taken, inventory).filter((order) => order.teamId === task.id);
+  assert.equal(mine.length, 3, "las dos que tiene y la que sigue libre");
+  for (const order of mine) {
+    assert.equal(order.itemIds.length, 1, `«${order.label}» lleva un solo artículo`);
+    assert.equal(order.resource, "academia", "un artículo de Academia no pasa a ser de Palabras por tener dueño");
+  }
+  const hers = mine.filter((order) => order.assignee?.person === "valeska");
+  assert.deepEqual(hers.map((order) => order.label).sort(), ["Metaphor · Academia", "Predictive Past · Academia"]);
+  assert.deepEqual(hers.find((order) => order.itemIds[0] === "articulo:figs-pastforfuture")!.portionIds, ["JUD-01-02"]);
+});
+
 test("los textos y las ayudas por versículo siguen siendo una subtarea por pasaje", () => {
   for (const resource of ["tpl", "notas"]) {
     assert.equal(of(resource).length, 3, `${resource}: una por pasaje`);

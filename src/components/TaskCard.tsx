@@ -69,7 +69,8 @@ export function TaskCard(props: Props) {
   const stepButton = (step: TaskStep | undefined) => (step?.actionLabel ? localized(step.actionLabel, step.actionLabels, language) : "");
 
   const what = card.taskName ? localizeName(card.taskName, language) : localizeName(card.issue.title ?? "", language);
-  const where = [card.book ? bookLabel(card.book, language) : "", card.place].filter(Boolean).join(" ");
+  // «Judas 1:5–8» reads as one reference; what is not a passage (an article, work added by hand) is set apart.
+  const where = [card.book ? bookLabel(card.book, language) : "", card.place].filter(Boolean).join(/^\d/.test(card.place ?? "") ? " " : " · ");
   const title = where ? `${what} · ${where}` : what;
 
   const action = card.action;

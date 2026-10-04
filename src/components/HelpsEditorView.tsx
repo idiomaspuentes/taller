@@ -324,7 +324,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   const title = useMemo(() => {
     if (!ctx) return "Ayudas";
-    return `${bookLabel(ctx.book, language)} ${ctx.ref}`;
+    // An article is named apart from its book; a passage follows it.
+    return [bookLabel(ctx.book, language), ctx.ref].filter(Boolean).join(/^\d/.test(ctx.ref ?? "") ? " " : " · ");
   }, [ctx, language]);
 
   function persistLocal(nextItems: HelpsDraftItem[], nextBranch: string) {
@@ -534,7 +535,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {t("he.oneResource")}
+              {items.length && items.every((item) => item.kind === "markdown") ? t("he.oneArticle") : t("he.oneResource")}
             </p>
           )}
           {items.map((item) => (

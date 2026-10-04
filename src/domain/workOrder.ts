@@ -166,6 +166,8 @@ export function workOrdersFromAssignments(
     itemIds: string[];
     itemTypes: ItemType[];
     sort: number;
+      /** The title of the article, for a subtarea that is one article. */
+    named?: string;
   };
 
   const buckets = new Map<string, LotBucket>();
@@ -179,6 +181,8 @@ export function workOrdersFromAssignments(
 
     let resource: ScopeKey | "bundle" = "bundle";
     let portionId = "";
+    let articleId = "";
+    let named = "";
     if (row.bundleId) {
       resource = taskResource(team);
       const bundle = bundlesInScope(
@@ -208,13 +212,19 @@ export function workOrdersFromAssignments(
         const article = inventory.articles.find(
           (a) => a.id === row.itemId || row.itemId.endsWith(a.id),
         );
-        resource = (article?.kind?.includes("ta") ? "academia" : "palabras") as ScopeKey;
+        // The task says which articles it works on; an older board whose task names several is read by the kind.
+        const own = taskResource(team);
+        resource = own === "academia" || own === "palabras" ? own : /academy/i.test(article?.kind ?? "") ? "academia" : "palabras";
+        // An article is a subtarea of its own, with the first passage that links to it (see `planUnassignedLots`).
+        articleId = article?.id ?? row.itemId;
+        named = article?.title?.trim() || articleId;
+        portionId = firstPortionCiting(articleId, resource, inventory.portions) ?? "";
       }
     }
 
     const sort = portionSortKey(portionId, inventory.portions);
     // Group by person + team + resource + chapter so contiguous ranges stay together per chapter.
-    const groupKey = `${team.id}|${person.id}|${resource}|${sort.chapter}|${row.bundleId ?? ""}`;
+    const groupKey = `${team.id}|${person.id}|${resource}|${sort.chapter}|${row.bundleId ?? ""}|${articleId}`;
     const existing = buckets.get(groupKey);
     const itemId = itemKey(row.itemType, row.itemId);
     if (existing) {
@@ -235,6 +245,7 @@ export function workOrdersFromAssignments(
         itemIds: [itemId],
         itemTypes: [row.itemType],
         sort: sort.chapter * 10_000 + sort.verse,
+        ...(named ? { named } : {}),
       });
     }
   }
@@ -247,7 +258,7 @@ export function workOrdersFromAssignments(
     });
     const orderBook = bookForPortionIds(bucket.portionIds, inventory.portions, fallbackBook);
     const range = rangeLabelForPortions(orderBook, bucket.portionIds, inventory.portions);
-    const label = `${range} · ${resourceLabel(bucket.resource)}`;
+    const label = `${bucket.named || range} · ${resourceLabel(bucket.resource)}`;
     const key = workOrderKey({
       book: orderBook,
       teamId: bucket.team.id,

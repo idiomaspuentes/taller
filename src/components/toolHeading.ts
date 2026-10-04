@@ -17,7 +17,8 @@ export function toolHeading(
   const step = ctx.stepName ? localizeName(ctx.stepName, language) : stepName;
   const task = ctx.taskName ? localizeName(ctx.taskName, language) : "";
   return {
-    title: `${bookLabel(ctx.book.toUpperCase(), language)} ${ctx.ref || ctx.chapter || ""}`.trim(),
+    // A passage follows its book («Judas 1:5–8»); an article or work added by hand is named apart from it.
+    title: [bookLabel(ctx.book.toUpperCase(), language), String(ctx.ref || ctx.chapter || "")].filter(Boolean).join(/^\d/.test(String(ctx.ref || ctx.chapter || "")) ? " " : " · "),
     where: [step, task && task !== step ? task : ""].filter(Boolean).join(" · "),
   };
 }
