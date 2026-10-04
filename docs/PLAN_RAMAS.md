@@ -1,6 +1,8 @@
 # Plan: ramas, trazabilidad por fase y publicación por PR
 
-Estado: **propuesta, pendiente de aprobación** (4 de octubre de 2026). Nada de esto está implementado.
+Estado: **acordado el 4 de octubre de 2026; pendiente del visto bueno para empezar por el paso 1.** Nada de esto está
+implementado. Decidido: los nombres de la tabla, configurables por organización y por espacio de trabajo;
+`archivo/` y `fase/` como etiquetas; las respuestas de revisión se quedan donde están.
 
 Sale de revisar cómo la app usa las ramas de Door43 durante la fase 1 y qué rama usan las fases siguientes. El
 modelo de fondo se queda (una rama de grupo por tarea, una rama de trabajo por persona y subtarea, entrega
@@ -16,37 +18,71 @@ no pasa nunca).
 
 | Rama | Nombre | Ejemplo | Vive en | Quién la crea |
 |---|---|---|---|---|
-| Borrador del grupo (tronco de una tarea de traducción) | `borrador/<libro>/<tarea>` | `borrador/jud/tpl` | el repo del recurso | la app, al empezar la primera subtarea de la tarea |
-| Trabajo de una persona en una subtarea | `trabajo/<libro>/<tarea>/<persona>/<subtarea>` | `trabajo/jud/tpl/valeska/160` | el repo del recurso | la app, al empezar la subtarea |
-| Archivo de lo entregado | `archivo/<libro>/<subtarea>` | `archivo/jud/160` | el repo del recurso | la app, al entregar (ya existe así) |
-| Marca de fase | `fase/<libro>/<fase>` | `fase/jud/traduccion` | el repo del recurso | la app, al cerrar la última subtarea de la fase |
-| Publicación de una unidad | `publicacion/<libro>/<unidad>` | `publicacion/jud/1` | el repo del recurso | la app, al empezar Validación de la unidad |
-| Publicado | `master` | | el repo del recurso | Door43 |
+| Borrador del grupo (tronco de una tarea de traducción) | rama `borrador/<libro>/<tarea>` | `borrador/jud/tpl` | el repo del recurso | la app, al empezar la primera subtarea de la tarea |
+| Trabajo de una persona en una subtarea | rama `trabajo/<libro>/<tarea>/<persona>/<subtarea>` | `trabajo/jud/tpl/valeska/160` | el repo del recurso | la app, al empezar la subtarea |
+| Archivo de lo entregado | **etiqueta** `archivo/<libro>/<subtarea>` | `archivo/jud/160` | el repo del recurso | la app, al entregar o cerrar la subtarea |
+| Marca de fase | **etiqueta** `fase/<libro>/<fase>` | `fase/jud/traduccion` | el repo del recurso | la app, al cerrar la última subtarea de la fase |
+| Publicación de una unidad | rama `publicacion/<libro>/<unidad>` | `publicacion/jud/1` | el repo del recurso | la app, al empezar Validación de la unidad |
+| Publicado | rama `master` | | el repo del recurso | Door43 |
 
 - Los nombres viejos se **siguen leyendo** (la lista de candidatos queda para repositorios antiguos) pero **no se
   crean más**. Hoy no hay ningún libro con ramas en QA (Judas aún no tiene ninguna) ni producción accesible, así
   que no hace falta migrar nada.
-- `archivo/` y `fase/` podrían ser etiquetas (tags) en vez de ramas, para no engordar la lista de ramas. Se decide
-  en el paso 2; por defecto, ramas, que es lo que la app ya sabe manejar.
+- `archivo/` y `fase/` son **etiquetas** (tags), no ramas: son instantáneas que no se editan, y así no engordan la
+  lista de ramas de Door43. Volver a apuntar una (una subtarea que se entrega otra vez) es borrarla y crearla; la
+  API de Door43 permite las dos cosas (`POST`/`DELETE /repos/{owner}/{repo}/tags`). Todo lo que hoy las lee por
+  nombre de ref funciona igual. Las ramas `archivo/…` de libros anteriores se siguen reconociendo.
 
-**Decisión que hace falta:** confirmar los cinco nombres. Alternativa para el tronco: dejar `jud/tpl` (legible,
-pero vuelve el riesgo de choque con una rama `jud` y hay que conservar el repuesto).
+### Los nombres son configurables
+
+Los cinco prefijos van en `taller.config.ts`, con estos valores por defecto y la posibilidad de cambiarlos por
+espacio de trabajo:
+
+```ts
+branchNames: { draft: "borrador", work: "trabajo", archive: "archivo", phase: "fase", publish: "publicacion" }
+```
+
+- Un espacio de trabajo puede dar los suyos (`workspaces[].branchNames`); el que no diga nada usa los de la
+  organización. El espacio en portugués podría usar `rascunho`, `trabalho`, `arquivo`, `fase`, `publicacao`.
+- Reglas: minúsculas, letras, números y guion; sin barras; los cinco distintos entre sí. `verify:config` lo
+  comprueba, y una configuración inválida impide arrancar como hoy un paquete de proceso inválido.
+- **Cambiarlos cuando un libro ya tiene ramas no está soportado**: la app crea con los nombres configurados y lee
+  con esos más los esquemas antiguos de fábrica; un prefijo cambiado a mitad de libro deja ramas que nadie busca.
+  Se dice en `docs/CONFIGURACION.md`.
+- La comprobación que hoy se niega a tocar cualquier ref fuera de `archivo/` (`isArchiveRefName`) pasa a usar el
+  prefijo configurado, y lo mismo para `trabajo/` al borrar ramas de trabajo.
+
+### Para qué sirve `archivo/`
+
+Al entregar una porción de texto, el tronco no recibe una fusión de Git: se copian solo los versículos que
+cambiaron y el PR se cierra sin fusionar, así que la historia del tronco nunca apunta a los commits de quien
+tradujo. `archivo/<libro>/<subtarea>` es el único puntero con nombre a **exactamente lo que esa persona
+entregó**: el archivo completo tal como lo dejó, sus commits, quién y cuándo. Hoy lo usan la resolución de
+conflictos de versículo (`verseChoice.ts` lee cada versión de su archivo), la conversación de la subtarea y el
+comentario de entrega; y es la red de seguridad si la copia por versículos saliera mal. Se fija **antes** de
+cerrar el PR: si no se puede fijar, la entrega falla y la subtarea sigue abierta. Con este plan pasa además a ser
+la base de «qué cambió desde que se entregó» y se extiende a las subtareas que trabajan sobre el tronco.
 
 ## 1. Un solo esquema, y la tarea declara si tiene borrador
 
-**Qué.** Generar solo los nombres de la tabla; resolver los viejos solo para leer. Y cambiar la regla de «qué
+**Qué.** Leer los prefijos de la configuración (`branchNames`, con los valores por defecto de arriba) y generar
+solo los nombres de la tabla; resolver los viejos solo para leer. Y cambiar la regla de «qué
 tarea tiene borrador propio»: hoy es «todos sus pasos se cierran en su herramienta», una heurística que creó
 `hag/alinear-tpl`. La regla pasa a ser: **una tarea tiene borrador propio si es la tarea de traducción de su
 recurso** (`draftTaskId(teams, resource) === task.id`); cualquier otra tarea del mismo recurso (revisión grupal,
 desafíos, palabras clave, alinear, armonizar) trabaja sobre ese tronco y nunca abre PR ni tronco propio.
 
-**Dónde.** `src/domain/portionPr.ts` (nombres: `bookBranchName`, `taskTrunkBranchName`, `portionPrBranchName`,
-`taskWorksOnSharedDraft`), `src/dcs/bookBootstrap.ts` (`resolveBookBranchName`: candidatos), `src/dcs/portionPr.ts`
-(`ensurePortionPr`), `src/dcs/afinacionLoad.ts` (`groupDraftBranches`), `src/dcs/teamHelps.ts`,
-`src/components/QaAdminDialog.tsx`, `src/components/ScriptureEditorView.tsx`.
+**Dónde.** `src/config/types.ts` y `taller.config.ts` (`branchNames`, por organización y por espacio),
+`src/domain/branchNames.ts` (nuevo: los nombres a partir de la configuración, y la lista de lectura con los esquemas
+antiguos), `src/domain/portionPr.ts` (hoy `bookBranchName`, `taskTrunkBranchName`, `portionPrBranchName`,
+`archiveRefName`, `isArchiveRefName`, `taskWorksOnSharedDraft`: pasan a leer de `branchNames`),
+`src/dcs/bookBootstrap.ts` (`resolveBookBranchName`: candidatos), `src/dcs/portionPr.ts` (`ensurePortionPr`),
+`src/dcs/afinacionLoad.ts` (`groupDraftBranches`), `src/dcs/teamHelps.ts`, `src/dcs/refRepair.ts`,
+`src/components/QaAdminDialog.tsx`, `src/components/ScriptureEditorView.tsx`, `docs/CONFIGURACION.md`.
 
-**Pruebas.** `verify-portion-pr` (nombres nuevos, viejos solo de lectura), prueba nueva `verify-branch-names`
-(cada tarea del FCR: cuál tiene borrador y cuál no; ninguna crea tronco para Afinación), `verify-decoupling`.
+**Pruebas.** `verify-config` (prefijos válidos, distintos, por espacio), `verify-portion-pr` (nombres nuevos, viejos
+solo de lectura), prueba nueva `verify-branch-names` (cada tarea del FCR: cuál tiene borrador y cuál no; ninguna
+crea tronco para Afinación; con otros prefijos configurados salen otros nombres), `verify-decoupling`.
 
 **Riesgo.** Bajo: no hay ramas que migrar. Hay que revisar `QaAdminDialog` y el reparador de refs
 (`refRepair.ts`), que conocen los nombres viejos.
@@ -56,31 +92,38 @@ desafíos, palabras clave, alinear, armonizar) trabaja sobre ese tronco y nunca 
 ## 2. Limpieza al entregar, y archivo de toda entrega
 
 **Qué.**
-- Al entregar una subtarea con rama de trabajo: después de fijar `archivo/<libro>/<subtarea>` y cerrar el PR,
-  **borrar la rama de trabajo**. Hoy quedan las dos apuntando al mismo commit (visto en Hageo: `w/hag/tpl/valeska/86`
-  y `archivo/hag/86`).
+- `archivo/` pasa a ser una **etiqueta**: se crea con `POST /repos/{owner}/{repo}/tags` apuntando al commit; para
+  volver a apuntarla se borra y se crea. Las ramas `archivo/…` de libros anteriores se siguen leyendo.
+- Al entregar una subtarea con rama de trabajo: después de fijar la etiqueta y cerrar el PR, **borrar la rama de
+  trabajo**. Hoy quedan las dos apuntando al mismo commit (visto en Hageo: `w/hag/tpl/valeska/86` y
+  `archivo/hag/86`).
 - **Archivar también las subtareas que no tienen rama de trabajo** (revisión grupal, Afinación, Armonización): al
   cerrarlas, fijar `archivo/<libro>/<subtarea>` al commit del tronco en ese momento. Así toda subtarea deja «cómo
   estaba el texto cuando esta subtarea terminó», que es lo que necesita la vista del paso 4.
 - Si una rama de trabajo quedó sin PR (subtarea devuelta, persona que la soltó): borrarla al reasignar; la nueva
   persona empieza del tronco.
 
-**Dónde.** `src/dcs/portionPr.ts` (`mergePortionPrIfOpen`, `closeOwnedPortionPrIfSafe`), `src/dcs/pulls.ts`
-(`deleteGitRef` ya existe, hoy solo borra refs viejas), `src/dcs/closeSubtask.ts` (rama compartida: fijar archivo),
-`src/dcs/issues.ts` (`unclaimIssue`).
+**Dónde.** `src/dcs/pulls.ts` (`ensureArchiveRef`: etiquetas; `deleteGitRef` ya existe, hoy solo borra refs viejas),
+`src/dcs/portionPr.ts` (`mergePortionPrIfOpen`, `closeOwnedPortionPrIfSafe`), `src/dcs/closeSubtask.ts` (rama
+compartida: fijar archivo), `src/dcs/issues.ts` (`unclaimIssue`), `src/dcs/verseChoice.ts` y
+`src/dcs/scriptureThread.ts` (leen el archivo: por nombre de ref, sirve igual), `src/dcs/branchList.ts`
+(`knownBranches` debe incluir etiquetas donde se busque un archivo).
 
-**Pruebas.** `verify-portion-pr`: tras entregar queda `archivo/` y no queda `trabajo/`; cerrar una subtarea de
-Afinación fija `archivo/` al tronco.
+**Pruebas.** `verify-portion-pr`: tras entregar queda la etiqueta `archivo/` y no queda `trabajo/`; cerrar una
+subtarea de Afinación fija `archivo/` al tronco; una re-entrega vuelve a apuntar la etiqueta.
 
-**Riesgo.** Borrar una rama es definitivo; se borra **solo después** de comprobar que `archivo/` apunta al mismo
-commit. Si fijar el archivo falla, no se borra nada (ya es así para cerrar).
+**Riesgo.** Borrar una rama es definitivo; se borra **solo después** de comprobar que la etiqueta `archivo/` apunta
+al mismo commit. Si fijar el archivo falla, no se borra nada (ya es así para cerrar). Si la organización tuviera
+etiquetas protegidas con ese patrón, la creación fallaría y la entrega no se completaría: se comprueba en QA y se
+documenta.
 
 **Resuelve:** punto 3 (higiene).
 
 ## 3. Marcas de fase
 
-**Qué.** Cuando se cierra la **última subtarea de una fase para un libro**, fijar `fase/<libro>/<fase>` al commit
-del tronco de cada recurso de esa fase (`fase/jud/traduccion` en `es-419_glt`, `es-419_gst`, `es-419_tn`, …).
+**Qué.** Cuando se cierra la **última subtarea de una fase para un libro**, fijar la **etiqueta** `fase/<libro>/<fase>`
+al commit del tronco de cada recurso de esa fase (`fase/jud/traduccion` en `es-419_glt`, `es-419_gst`, `es-419_tn`,
+…). Si la fase se reabre y se vuelve a cerrar, se vuelve a apuntar (borrar y crear).
 
 **Límite, dicho de antemano.** Las fases se encadenan **por capítulo**: Afinación del capítulo 1 escribe en el
 tronco mientras Traducción del capítulo 2 sigue entregando en el mismo tronco. Por eso la marca de fase es del
@@ -149,20 +192,13 @@ después de preparar actualiza la rama de publicación; una unidad ya publicada 
 
 **Resuelve:** punto 2.
 
-## 6. Dónde viven las respuestas de revisión (decisión tuya)
+## 6. Dónde viven las respuestas de revisión (decidido: se quedan)
 
 Las respuestas de Afinación (`checkings/decisions/<LIBRO>.<persona>.decisions.json`, `checkings/preferred-terms.json`,
 propuestas y resultados de alineación) se guardan en el tronco del **repositorio de contenido**. Con la publicación
-por unidad (paso 5) nunca llegan a `master`, así que no es un fallo; es metadata del proceso dentro de un repositorio
-que se publica.
-
-Opciones:
-- **Dejarlas donde están.** Nada que hacer.
-- **Moverlas al repositorio del plan** (`taller`, `es-419/<LIBRO>/revision/…`). Un repositorio de contenido queda
-  solo con contenido; el plan concentra todo lo del proceso (ya tiene las reglas de los equipos). Cuesta una
-  migración de tres almacenes (`afinacionStore`, `alignmentDecisionStore`, `checkStore`) y de sus lectores.
-
-No lo haría ahora; lo anoto para que decidas.
+por unidad (paso 5) nunca llegan a `master`. **Se quedan ahí.** Moverlas al repositorio del plan sería una migración
+de tres almacenes sin ganancia visible para el equipo; si algún día se quieren los repositorios de contenido limpios
+de metadata, se hace entonces.
 
 ## 7. Documentos
 
@@ -180,9 +216,11 @@ porción por las fases (borrador → trabajo → archivo → tronco → marca de
 
 Tamaño aproximado, en sesiones de trabajo: 1 → una; 2 → una; 3 → media; 4 → una y media; 5 → dos; 7 → media.
 
-## Qué necesito de ti antes de empezar
+## Decisiones tomadas (4 de octubre de 2026)
 
-1. Confirmar los nombres del punto 0 (o decir cuáles cambias).
-2. `archivo/` y `fase/`: ¿ramas o etiquetas?
-3. Punto 6: ¿se quedan las respuestas en el repositorio de contenido?
-4. Si empiezo por el 1 o prefieres otro orden.
+1. Los nombres del punto 0, **configurables** por organización y por espacio de trabajo.
+2. `archivo/` y `fase/` son **etiquetas**.
+3. Las respuestas de revisión **se quedan** en el repositorio de contenido.
+4. El orden es el del plan: se empieza por el paso 1.
+
+Pendiente: el visto bueno para empezar.
