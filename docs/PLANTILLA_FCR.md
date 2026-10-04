@@ -143,6 +143,13 @@ la misma lista, que la persona marca para sí antes de entregar:
 | Números, medidas y fechas | Iguales que en la fuente |
 | Ortografía y gramática | Tildes, signos de apertura, concordancia |
 
+**La lista se ajusta al pasaje.** Cada comprobación puede decir qué palabras de la fuente la piden, y solo aparece
+si el pasaje las tiene: la de «you» no sale donde nadie dice «you», ni la de los números donde no hay ninguno. La
+herramienta lee el inglés del pasaje (el ULT, el UST, o las notas o preguntas en inglés) y muestra las que tocan.
+Siempre salen «¿Está todo?», «¿Hombre o mujer, uno o varios?», los nombres y la ortografía. En la tarjeta de «Mis
+tareas», lejos del pasaje, se ve la lista entera; y también cuando la fuente no se pudo leer o el trabajo es un
+artículo. Las palabras de cada comprobación se editan con ella, en «Proceso».
+
 Notas y Preguntas empiezan además por **«¿Leíste el versículo del que habla?»**: para traducir bien lo que se dice
 de una frase hay que saber de qué trata el versículo. Palabras recuerda que las referencias bíblicas no se traducen.
 

@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
+import { loadStepSource } from "../dcs/stepSource";
 import { teamKey } from "../domain/levels";
+import { applicableChecks } from "../domain/stepChecks";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
@@ -67,14 +69,17 @@ function Checks({ lines, scope }: { lines: Line[]; scope: string }) {
   );
 }
 
-/** `scope` tells one subtarea's ticks from another's: its number and its step. */
-export function StepAskBody({ step, scope }: { step: TaskStep; scope: string }) {
+/**
+ * `scope` tells one subtarea's ticks from another's: its number and its step. `source` is the source of the passage
+ * in hand, when the list is shown beside it: only the checks it calls for show (see `domain/stepChecks`).
+ */
+export function StepAskBody({ step, scope, source }: { step: TaskStep; scope: string; source?: string | null }) {
   const language = useUiLanguage();
   const description = step.descriptions?.[language] ?? step.description;
   return (
     <>
       {description ? <p>{description}</p> : null}
-      <Checks lines={(step.checks ?? []).map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text }))} scope={scope} />
+      <Checks lines={applicableChecks(step.checks ?? [], source).map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text }))} scope={scope} />
     </>
   );
 }
@@ -152,7 +157,18 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
   const t = useT();
   const language = useUiLanguage();
   const [found, setFound] = useState<{ task: ProjectTask; step: TaskStep } | null>(null);
-  const { pmOrg, projectId, taskId, stepId, lang, contentOrg } = ctx ?? {};
+  /** The source of the passage: undefined while it is read (every check shows), null when there is none to read. */
+  const [source, setSource] = useState<string | null | undefined>(undefined);
+  const { pmOrg, projectId, taskId, stepId, lang, contentOrg, resource, book, ref, chapter } = ctx ?? {};
+  useEffect(() => {
+    setSource(undefined);
+    if (!session || !ctx) return;
+    let cancelled = false;
+    void loadStepSource(session, ctx).then((text) => !cancelled && setSource(text));
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, resource, book, ref, chapter]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setFound(null);
     if (!session || !pmOrg || !projectId || !taskId || !stepId) return;
@@ -179,7 +195,7 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
   return (
     <details className="step-ask">
       <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
-      <StepAskBody step={step} scope={scope} />
+      <StepAskBody step={step} scope={scope} source={source} />
       <TeamRuleChecks team={task.orgTeamName} scope={scope} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} />
     </details>
   );

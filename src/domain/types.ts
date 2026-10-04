@@ -297,7 +297,17 @@ export type StepClosing = "self" | "approval" | "consensus" | "checklist" | "aut
 export type StepScope = "subtask" | "unit" | "chapter-once";
 
 /** One thing a person checks in their own work on a step (see `TaskStep.checks`). */
-export type StepCheck = { id: string; text: string; texts?: Localized };
+export type StepCheck = {
+  id: string;
+  text: string;
+  texts?: Localized;
+  /**
+   * Words of the source that call for this check: it shows only on a passage whose source has one of them. Whole
+   * words, whatever the case; `walk*` and `*ed` match the start and the end of a word; `#` is any digit. Without
+   * it the check always shows.
+   */
+  when?: string[];
+};
 
 /** One yes/no question of a `checklist` step, asked for every item (or once per verse). */
 export type ChecklistQuestion = {

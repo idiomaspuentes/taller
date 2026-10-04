@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 23,
+      "version": 24,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -123,7 +123,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -137,35 +144,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -179,7 +238,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -225,7 +320,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -239,35 +341,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -281,7 +435,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -408,7 +598,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -422,35 +619,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -464,7 +713,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -510,7 +795,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -524,35 +816,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -566,7 +910,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -700,7 +1080,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -714,35 +1101,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -756,7 +1195,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -809,7 +1284,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -823,35 +1305,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -865,7 +1399,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -948,7 +1518,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -962,35 +1539,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -1004,7 +1633,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -1057,7 +1722,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -1071,35 +1743,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -1113,7 +1837,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -1171,7 +1931,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -1185,35 +1952,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -1227,7 +2046,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "referencias",
@@ -1280,7 +2135,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -1294,35 +2156,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -1336,7 +2250,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "referencias",
@@ -1401,7 +2351,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -1415,35 +2372,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -1457,7 +2466,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",
@@ -1503,7 +2548,14 @@
                   "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  }
+                  },
+                  "when": [
+                    "you",
+                    "your",
+                    "yours",
+                    "yourself",
+                    "yourselves"
+                  ]
                 },
                 {
                   "id": "genero",
@@ -1517,35 +2569,87 @@
                   "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
                     "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  }
+                  },
+                  "when": [
+                    "it",
+                    "its",
+                    "they",
+                    "them",
+                    "their",
+                    "theirs",
+                    "his",
+                    "her",
+                    "hers",
+                    "this",
+                    "these",
+                    "that",
+                    "those"
+                  ]
                 },
                 {
                   "id": "pasado",
                   "text": "El pasado: ¿«hizo» o «hacía»?",
                   "texts": {
                     "pt": "O passado: «fez» ou «fazia»?"
-                  }
+                  },
+                  "when": [
+                    "was",
+                    "were",
+                    "did",
+                    "had",
+                    "*ed"
+                  ]
                 },
                 {
                   "id": "ser-estar",
                   "text": "«To be»: ¿«ser» o «estar»?",
                   "texts": {
                     "pt": "«To be»: «ser» ou «estar»?"
-                  }
+                  },
+                  "when": [
+                    "be",
+                    "is",
+                    "are",
+                    "am",
+                    "was",
+                    "were",
+                    "been",
+                    "being"
+                  ]
                 },
                 {
                   "id": "sentidos",
                   "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
                   "texts": {
                     "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  }
+                  },
+                  "when": [
+                    "know",
+                    "knows",
+                    "knew",
+                    "known",
+                    "for",
+                    "right"
+                  ]
                 },
                 {
                   "id": "falsos-amigos",
                   "text": "Falsos amigos («actually», «eventually»): ¿dicen lo que parecen?",
                   "texts": {
                     "pt": "Falsos cognatos («actually», «eventually», «pretend»): dizem o que parecem?"
-                  }
+                  },
+                  "when": [
+                    "actually",
+                    "actual",
+                    "eventually",
+                    "pretend",
+                    "sensible",
+                    "realize",
+                    "assist",
+                    "attend",
+                    "library",
+                    "large"
+                  ]
                 },
                 {
                   "id": "nombres",
@@ -1559,7 +2663,43 @@
                   "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
                     "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  }
+                  },
+                  "when": [
+                    "#",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "first",
+                    "second",
+                    "third",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "day",
+                    "days",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
+                  ]
                 },
                 {
                   "id": "ortografia",

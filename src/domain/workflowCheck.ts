@@ -172,6 +172,7 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
         if (checkIds.has(checkId)) problems.push(`${at}: la comprobación «${checkId}» está repetida.`);
         checkIds.add(checkId);
         checkLocalized(check.texts, `${at}, comprobación «${checkId}»`, languages, problems);
+        if (check.when !== undefined && !(Array.isArray(check.when) && check.when.every((word) => typeof word === "string" && word.trim()))) problems.push(`${at}, comprobación «${checkId}»: «when» es una lista de palabras de la fuente.`);
       }
       const questionIds = new Set<string>();
       for (const question of list(step.checklist)) {

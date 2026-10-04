@@ -2466,5 +2466,7 @@
   "org.usedOne": "Em uso · {n} tarefa",
   "org.usedMany": "Em uso · {n} tarefas",
   "org.unused": "Sem uso",
-  "org.usedDefault": "tarefas com que um projeto novo começa"
+  "org.usedDefault": "tarefas com que um projeto novo começa",
+  "st.checkWhen": "Só se a fonte disser… (palavras separadas por vírgulas; vazio = sempre)",
+  "st.checkWhenN": "Palavras da fonte para a verificação {n}"
 }

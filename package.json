@@ -71,6 +71,7 @@
     "verify:process-load": "tsx --tsconfig tsconfig.scripts.json scripts/verify-process-load.mts",
     "verify:ask-notices": "tsx --tsconfig tsconfig.scripts.json scripts/verify-ask-notices.mts",
     "verify:team-rules": "tsx --tsconfig tsconfig.scripts.json scripts/verify-team-rules.mts",
+    "verify:step-checks": "tsx --tsconfig tsconfig.scripts.json scripts/verify-step-checks.mts",
     "verify:workflow-upgrade": "tsx --tsconfig tsconfig.scripts.json scripts/verify-workflow-upgrade.mts",
     "verify:glossary": "tsx --tsconfig tsconfig.scripts.json scripts/verify-glossary.mts",
     "verify:start-book": "tsx --tsconfig tsconfig.scripts.json scripts/verify-start-book.mts",

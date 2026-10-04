@@ -49,6 +49,7 @@ import {
   type StepClosing,
   type StepScope,
   type ChecklistQuestion,
+  type StepCheck,
 } from "./types";
 import { normalizeSourcePackage } from "./sourcePackage";
 import { scopeFromRules, uid } from "./assignment";
@@ -440,6 +441,16 @@ export function normalizeLocalized(raw: unknown): Localized | undefined {
 const STEP_CLOSINGS: StepClosing[] = ["self", "approval", "consensus", "checklist", "automatic"];
 const STEP_SCOPES: StepScope[] = ["subtask", "unit", "chapter-once"];
 
+/** The checks of a step: a question's id and texts, and the words of the source that call for it. */
+function normalizeChecks(raw: unknown): StepCheck[] | undefined {
+  const rows = Array.isArray(raw) ? raw : [];
+  return normalizeChecklist(raw)?.map(({ id, text, texts }) => {
+    const when = (rows.find((row) => row && typeof row === "object" && String((row as { id?: unknown }).id ?? "").trim() === id) as { when?: unknown } | undefined)?.when;
+    const words = Array.isArray(when) ? [...new Set(when.map((word) => String(word).trim().toLowerCase()).filter(Boolean))] : [];
+    return { id, text, ...(texts ? { texts } : {}), ...(words.length ? { when: words } : {}) };
+  });
+}
+
 function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const out: ChecklistQuestion[] = [];
@@ -524,7 +535,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       actionLabels: normalizeLocalized(item.actionLabels),
       closing,
       checklist: normalizeChecklist(item.checklist),
-      checks: normalizeChecklist(item.checks)?.map(({ id, text, texts }) => ({ id, text, ...(texts ? { texts } : {}) })),
+      checks: normalizeChecks(item.checks),
       scope,
       ...(item.decisionRule === "unanimous" || item.decisionRule === "majority" ? { decisionRule: item.decisionRule } : {}),
       description: String(item.description ?? "").trim() || undefined,

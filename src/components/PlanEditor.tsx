@@ -1,3 +1,4 @@
+import { formatWhen, parseWhen } from "../domain/stepChecks";
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Clock, Copy, Plus, Trash2, User, Users, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -748,6 +749,16 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
                 disabled={!canEdit}
                 aria-label={t("st.checkN").replace("{n}", String(index + 1))}
                 onChange={(e) => setChecks(checks.map((c) => (c.id === check.id ? (c.texts?.[language] !== undefined ? { ...c, texts: { ...c.texts, [language]: e.target.value } } : { ...c, text: e.target.value }) : c)))}
+              />
+              {/* Left empty the check always shows; with words, only on a passage whose source has one of them. */}
+              <input
+                className="af-input pe-check-when"
+                defaultValue={formatWhen(check.when)}
+                key={`${check.id}-${formatWhen(check.when)}`}
+                disabled={!canEdit}
+                placeholder={t("st.checkWhen")}
+                aria-label={t("st.checkWhenN").replace("{n}", String(index + 1))}
+                onBlur={(e) => setChecks(checks.map((c) => (c.id === check.id ? { ...c, when: parseWhen(e.target.value) } : c)))}
               />
               {canEdit ? (
                 <span className="pe-question__tools">

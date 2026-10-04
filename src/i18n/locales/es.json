@@ -2466,5 +2466,7 @@
   "org.usedOne": "En uso · {n} tarea",
   "org.usedMany": "En uso · {n} tareas",
   "org.unused": "Sin usar",
-  "org.usedDefault": "tareas con que empieza un proyecto nuevo"
+  "org.usedDefault": "tareas con que empieza un proyecto nuevo",
+  "st.checkWhen": "Solo si la fuente dice… (palabras separadas por comas; vacío = siempre)",
+  "st.checkWhenN": "Palabras de la fuente para la comprobación {n}"
 }
