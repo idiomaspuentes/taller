@@ -7508,6 +7508,8 @@ input.pf-name { font-size: 1.625rem; }
 .ch-fold[open] > :not(summary) { margin: 0 0.875rem 0.75rem; }
 .ch-panel--thread .ch-fold[open] > :not(summary) { margin: 0 0 0.5rem; max-height: 50dvh; overflow-y: auto; }
 .ch-groups { display: grid; gap: 1rem; }
+.en-changes > :not(summary) { margin-top: 0.5rem; }
+.en-request { display: inline-flex; align-items: center; min-height: 32px; font-size: 0.8125rem; color: var(--text-muted); }
 .ch-group { display: grid; gap: 0.5rem; }
 .ch-group__title { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-size: 0.9375rem; font-weight: 700; }
 .ch-group__count { font-size: 0.75rem; font-weight: 400; color: var(--text-muted); }

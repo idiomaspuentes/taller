@@ -14,7 +14,7 @@ export const DEFAULT_BRANCH_NAMES: BranchNames = {
   work: "trabajo",
   archive: "archivo",
   phase: "fase",
-  publish: "publicacion",
+  validation: "validacion",
 };
 
 const KINDS = Object.keys(DEFAULT_BRANCH_NAMES) as (keyof BranchNames)[];

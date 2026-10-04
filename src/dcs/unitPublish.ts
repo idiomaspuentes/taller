@@ -32,6 +32,7 @@ import {
   tableFingerprints,
   textFingerprints,
   unitSlug,
+  validationBranchName,
   type UnitFileKind,
   type UnitFingerprints,
   type UnitProblem,
@@ -39,9 +40,9 @@ import {
 import { listVerseSpans, portionRange, type RefRange } from "../domain/usfmEdit";
 
 /**
- * Door43 side of publishing one unit: read what the team has and what is published, keep what a committee endorsed,
- * and put the unit on the published branch through a pull request (so a protected branch only needs someone with
- * permission to confirm it).
+ * Door43 side of taking one unit to the published branch: read what the team has and what is published, put the unit
+ * on its validation branch with a request left open, keep what a committee endorsed, and merge that request once it
+ * did (so a protected branch only needs someone with permission to confirm it). The release comes after.
  */
 
 /** The resources a unit is made of, and how each is kept. A process names which of them its task publishes. */
@@ -271,38 +272,48 @@ export function unitChanges(unit: UnitToPublish, r: UnitResource): UnitFileChang
   return r.published && next === r.published.text ? [] : [{ path: r.filepath, content: next }];
 }
 
+export type StageOutcome = {
+  resource: string;
+  /** `staged`: it is on the validation branch, with its request open. `unchanged`: the published branch already
+   * says the same. `nothing`: the team has no version of this resource. `direct`: the repository is empty, so
+   * there is no branch to start from and the unit will be written straight when it is published. */
+  status: "staged" | "unchanged" | "nothing" | "direct";
+  pullUrl?: string;
+};
+
+const stageMessage = (unit: UnitToPublish, note: string) => `Taller: ${unit.book} ${unitSlug(unit.range)} a validación · ${note}`;
+
 /**
- * Publish the unit: for each resource, a branch from the published one with the unit in it, a pull request, and its
- * merge. When the merge is refused (a protected branch), the pull request stays open for whoever may confirm it.
+ * Put the unit where the committee validates it: for each resource, the validation branch of the unit (started from
+ * the published one, with the unit in it) and a request towards the published branch, left open. Done again after a
+ * correction, it only writes what differs, and the open request shows it. Nothing reaches the published branch.
  */
-export async function publishUnit(params: { session: GtSession; unit: UnitToPublish; note: string }): Promise<PublishOutcome[]> {
+export async function stageUnit(params: { session: GtSession; unit: UnitToPublish; note: string }): Promise<StageOutcome[]> {
   const { session, unit } = params;
   const config = dcsConfig(session.host);
-  const outcomes: PublishOutcome[] = [];
+  const head = validationBranchName(unit.book, unit.range);
+  const outcomes: StageOutcome[] = [];
   for (const r of unit.resources) {
     const changes = unitChanges(unit, r);
     if (changes === null) {
       outcomes.push({ resource: r.resource, status: "nothing" });
       continue;
     }
-    if (!changes.length) {
+    let pull = await getPullByBranches(config, r.owner, r.repo, r.defaultBranch, head, session.token).catch(() => null);
+    if (pull && pull.state !== "open") pull = null;
+    if (!changes.length && !pull) {
       outcomes.push({ resource: r.resource, status: "unchanged" });
       continue;
     }
-    const message = `Taller: publicar ${unit.book} ${unitSlug(unit.range)} · ${params.note}`;
-    // An empty repository has no branch to start from: the first file goes straight to the published branch.
     if (!(await getBranchSha(config, r.owner, r.repo, r.defaultBranch, session.token))) {
-      for (const change of changes) await createOrUpdateContents(config, r.owner, r.repo, change.path, { content: change.content, message, branch: r.defaultBranch, token: session.token });
-      outcomes.push({ resource: r.resource, status: "published" });
+      outcomes.push({ resource: r.resource, status: "direct" });
       continue;
     }
-    const head = `publicar/${unit.book.toLowerCase()}-${unitSlug(unit.range)}`;
-    let pull = await getPullByBranches(config, r.owner, r.repo, r.defaultBranch, head, session.token);
-    if (!pull || pull.state !== "open") {
-      // A branch left from an earlier publication is behind the published one: start again from where it is now.
+    const message = stageMessage(unit, params.note);
+    if (!pull) {
+      // A branch left from an earlier round is behind the published one: start again from where that is now.
       await deleteGitRef(config, r.owner, r.repo, head, session.token).catch(() => undefined);
       await ensureBranchFrom(config, r.owner, r.repo, head, session.token, r.defaultBranch);
-      pull = null;
     }
     for (const change of changes) {
       const onHead = await readRepoFile(session, { owner: r.owner, repo: r.repo, branch: head }, change.path);
@@ -310,7 +321,42 @@ export async function publishUnit(params: { session: GtSession; unit: UnitToPubl
         await createOrUpdateContents(config, r.owner, r.repo, change.path, { content: change.content, message, sha: onHead?.sha, branch: head, token: session.token });
       }
     }
-    pull ??= await createPull(config, r.owner, r.repo, { title: message, body: `Unidad avalada, publicada desde Taller.\n\n${params.note}`, head, base: r.defaultBranch, token: session.token });
+    pull ??= await createPull(config, r.owner, r.repo, { title: message, body: `Unidad lista para validar, preparada desde Taller.\n\n${params.note}`, head, base: r.defaultBranch, token: session.token });
+    outcomes.push({ resource: r.resource, status: "staged", pullUrl: pull.html_url });
+  }
+  return outcomes;
+}
+
+/**
+ * Publish the unit, once endorsed: the validation branch of each resource is merged into the published one. The
+ * unit is staged again first, so what is merged is what the team has now. When the merge is refused (a protected
+ * branch), the request stays open for whoever may confirm it.
+ */
+export async function publishUnit(params: { session: GtSession; unit: UnitToPublish; note: string }): Promise<PublishOutcome[]> {
+  const { session, unit } = params;
+  const config = dcsConfig(session.host);
+  const head = validationBranchName(unit.book, unit.range);
+  const staged = await stageUnit(params);
+  const outcomes: PublishOutcome[] = [];
+  for (const r of unit.resources) {
+    const stage = staged.find((row) => row.resource === r.resource);
+    if (!stage || stage.status === "nothing") {
+      outcomes.push({ resource: r.resource, status: "nothing" });
+      continue;
+    }
+    if (stage.status === "unchanged") {
+      outcomes.push({ resource: r.resource, status: "unchanged" });
+      continue;
+    }
+    const message = `Taller: publicar ${unit.book} ${unitSlug(unit.range)} · ${params.note}`;
+    if (stage.status === "direct") {
+      // An empty repository has no branch to start from: the first file goes straight to the published branch.
+      for (const change of unitChanges(unit, r) ?? []) await createOrUpdateContents(config, r.owner, r.repo, change.path, { content: change.content, message, branch: r.defaultBranch, token: session.token });
+      outcomes.push({ resource: r.resource, status: "published" });
+      continue;
+    }
+    const pull = await getPullByBranches(config, r.owner, r.repo, r.defaultBranch, head, session.token);
+    if (!pull) throw new Error(`No se encontró la solicitud de «${head}» en ${r.owner}/${r.repo}.`);
     try {
       await mergePull(config, r.owner, r.repo, pull.number, session.token, message);
       await deleteGitRef(config, r.owner, r.repo, head, session.token).catch(() => undefined);

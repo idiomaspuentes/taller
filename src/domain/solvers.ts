@@ -49,6 +49,11 @@ export type SolverApp = {
    * (see `processLoad`). Without it a step is as big as its subtarea.
    */
   walks?: ToolWalk;
+  /**
+   * The tool works on a unit as it is staged for validation: when a subtarea of a task that opens it can start, the
+   * app puts these resources of its unit on the validation branch. `aligned`: the texts that must be aligned first.
+   */
+  stagesUnit?: { resources: string[]; aligned?: string[] };
 };
 
 export type WalkUnit = "verses" | "notes" | "questions" | "items";
@@ -161,6 +166,9 @@ export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
             ...(rawWalk.labels && typeof rawWalk.labels === "object" ? { labels: rawWalk.labels } : {}),
           }
         : undefined;
+    const rawStage = rowApp.stagesUnit && typeof rowApp.stagesUnit === "object" ? rowApp.stagesUnit : undefined;
+    const words = (raw: unknown) => (Array.isArray(raw) ? raw.map(String).map((x) => x.trim()).filter(Boolean) : []);
+    const stagesUnit = rawStage && words(rawStage.resources).length ? { resources: words(rawStage.resources), ...(words(rawStage.aligned).length ? { aligned: words(rawStage.aligned) } : {}) } : undefined;
     const supersedes = Array.isArray(rowApp.supersedes) ? rowApp.supersedes.map(String).map((x) => x.trim()).filter(Boolean) : [];
     solvers.push({
       id,
@@ -175,6 +183,7 @@ export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
       ...(supersedes.length ? { supersedes } : {}),
       ...(Object.keys(stepParams).length ? { stepParams } : {}),
       ...(walks ? { walks } : {}),
+      ...(stagesUnit ? { stagesUnit } : {}),
     });
   }
   return { schema: SOLVERS_SCHEMA, solvers };

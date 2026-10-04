@@ -10,6 +10,7 @@ import { canManageOrg, resolveResourceRepo } from "../domain/roles";
 import {
   publishVersion,
   releaseBody,
+  releaseIdentity,
   releaseGate,
   releaseResources,
   resolveReleaseIdentity,
@@ -57,9 +58,14 @@ async function releaseTarget(params: {
   ];
   if (!repos.length) throw new Error("Las fases elegidas no tienen recursos que publicar.");
 
+  return { profile, repos, writer: releaseWriter(session, owner) };
+}
+
+/** How releases of the repositories of one organization are listed and created. */
+function releaseWriter(session: GtSession, owner: string): ReleaseWriter {
   const config = dcsConfig(session.host);
   const token = session.token;
-  const writer: ReleaseWriter = {
+  return {
     async listTags(repo) {
       const tags: string[] = [];
       for (let page = 1; page <= RELEASE_MAX_PAGES; page++) {
@@ -85,7 +91,43 @@ async function releaseTarget(params: {
       });
     },
   };
-  return { profile, repos, writer };
+}
+
+/**
+ * The release of one endorsed unit: a version in each repository the unit has content in, cut from the published
+ * branch as it stands once the unit was merged into it. The published branch only ever receives endorsed units, so
+ * whatever the version carries was endorsed. Publishing the same unit again the same day finds the version made.
+ */
+export async function releaseUnit(params: {
+  session: GtSession;
+  owner: string;
+  repos: string[];
+  /** «Versión validada»: the name the project gives its versions. */
+  versionName: string;
+  /** `JUD 1`, or `JUD 2:1–15`. */
+  unitName: string;
+  /** Something reached the published branch in this publication (and not in an earlier try of it). */
+  fresh: boolean;
+  now?: Date;
+}): Promise<ReleaseOutcome & { identity: ReleaseIdentity }> {
+  const { session, owner } = params;
+  const repos = [...new Set(params.repos)];
+  const writer = releaseWriter(session, owner);
+  const profile: ReleaseProfile = { id: "unit", name: `${params.versionName.trim() || "Versión"} ${params.unitName}`.trim(), requiredPhaseIds: [] };
+  const now = params.now ?? new Date();
+  // The day's version of this unit. A try that made it in some repositories only is finished under the same name;
+  // a unit published again the same day with something new gets the next number («· 2»).
+  const base = releaseIdentity(profile, now);
+  const tags = await Promise.all(repos.map((repo) => writer.listTags(repo)));
+  const everywhere = repos.length > 0 && tags.every((list) => list.includes(base.tag));
+  const identity = everywhere && params.fresh ? await resolveReleaseIdentity(writer, { repos, profile, now }) : base;
+  const outcome = await publishVersion(writer, {
+    repos,
+    tag: identity.tag,
+    name: identity.name,
+    body: [`Unidad ${params.unitName} avalada por el comité y publicada desde Taller.`, "", `Publicada por: @${session.username.replace(/^@/, "")}`].join("\n"),
+  });
+  return { ...outcome, identity };
 }
 
 /**

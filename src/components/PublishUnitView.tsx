@@ -1,3 +1,4 @@
+import { releaseUnit } from "../dcs/release";
 import { markPhaseIfClosed } from "../dcs/phaseMarks";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
@@ -16,9 +17,10 @@ import { ownerTaskOf } from "../domain/resourceOwner";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import { scopeLabel } from "../domain/resourceNames";
-import type { UnitCheckId, UnitProblem } from "../domain/unitPublish";
+import type { UnitProblem } from "../domain/unitPublish";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
+import { PROBLEM_KEY } from "../unitProblemText";
 import { explainError } from "../dcs/userError";
 
 type Props = {
@@ -35,24 +37,6 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-const PROBLEM_KEY: Record<UnitCheckId, MessageKey> = {
-  "draft-missing": "pu.p.draftMissing",
-  "usfm-invalid": "pu.p.usfmInvalid",
-  "verses-missing": "pu.p.versesMissing",
-  "verses-empty": "pu.p.versesEmpty",
-  "conflict-marks": "pu.p.conflictMarks",
-  "not-aligned": "pu.p.notAligned",
-  "tsv-header": "pu.p.tsvHeader",
-  "rows-none": "pu.p.rowsNone",
-  "row-id": "pu.p.rowId",
-  "row-id-repeated": "pu.p.rowIdRepeated",
-  "row-empty": "pu.p.rowEmpty",
-  "row-quote": "pu.p.rowQuote",
-  "row-support": "pu.p.rowSupport",
-  "changed-since-endorsement": "pu.p.changed",
-  "not-endorsed": "pu.p.notEndorsed",
-  "article-empty": "pu.p.articleEmpty",
-};
 const OUTCOME_KEY: Record<PublishOutcome["status"], MessageKey> = { published: "pu.o.published", unchanged: "pu.o.unchanged", waiting: "pu.o.waiting", nothing: "pu.o.nothing" };
 
 /**
@@ -74,6 +58,8 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
   const [error, setError] = useState("");
   const [stepDone, setStepDone] = useState(false);
   const [told, setTold] = useState(false);
+  /** The name of the version this publication made. */
+  const [released, setReleased] = useState("");
   /** Where the unit departs from agreed glossary entries: shown, never a reason to stop. */
   const [notices, setNotices] = useState<GlossaryNotice[]>([]);
   const alignedKey = aligned.join(",");
@@ -182,9 +168,27 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
         announce(t("pu.waiting"));
         return;
       }
+      // Publishing is the version: the unit is on the published branch now, and each repository it is in gets one.
+      const inUnit = unit.resources.filter((r) => result.some((row) => row.resource === r.resource && row.status !== "nothing"));
+      let version = "";
+      try {
+        const released = await releaseUnit({
+          session,
+          owner: inUnit[0]?.owner || ctx.contentOrg,
+          repos: inUnit.map((r) => r.repo),
+          versionName: unit.board?.settings?.releaseProfiles?.[0]?.name ?? "",
+          unitName,
+          fresh: result.some((row) => row.status === "published"),
+        });
+        version = released.identity.name;
+        setReleased(version);
+      } catch (err) {
+        setError(t("pu.releaseFailed").replace("{why}", explainError(err)));
+        return;
+      }
       if (ctx.pmOrg && ctx.issueNumber) {
         const what = result.filter((row) => row.status !== "nothing").map((row) => `${label(row.resource)}: ${t(OUTCOME_KEY[row.status])}`).join(" · ");
-        await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, t("pu.publishedNote").replace("{unit}", unitName).replace("{what}", what));
+        await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, t("pu.publishedNote").replace("{unit}", unitName).replace("{version}", version).replace("{what}", what));
         await finishStep(ctx, unit);
       }
       // The glossary's «how it was translated before» covers every published book: renew this book's part. It is
@@ -317,8 +321,13 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
                     {t("pu.again")}
                   </Button>
                 </>
+              ) : released ? (
+                <p className="round__done">{t("pu.released").replace("{version}", released)}</p>
               ) : (
-                <p className="round__done">{t("pu.published")}</p>
+                // The unit is on the published branch but its version is not made yet: the same button finishes it.
+                <Button type="button" size="lg" disabled={working} onClick={() => void publish()}>
+                  {working ? t("pu.working") : t("pu.publishAgain")}
+                </Button>
               )}
             </>
           ) : null}

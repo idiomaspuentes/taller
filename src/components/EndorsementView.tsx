@@ -8,7 +8,12 @@ import { loadPersonDocs, savePersonDoc } from "../dcs/checkStore";
 import { loadUnitTexts, type ChecklistData, type ChecklistText } from "../dcs/checklistLoad";
 import { commentOnIssue } from "../dcs/issues";
 import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
-import { loadUnitToPublish, recordEndorsement } from "../dcs/unitPublish";
+import { loadUnitToPublish, recordEndorsement, stageUnit, unitChanges, unitProblems, type UnitToPublish } from "../dcs/unitPublish";
+import { stagingTasks } from "../domain/unitStage";
+import { createCorrections } from "../dcs/corrections";
+import type { ResourceChanges } from "../dcs/changesSince";
+import { changesBetween } from "../domain/changesSince";
+import { ChangeGroups } from "./ChangesView";
 import { ownerTaskOf } from "../domain/resourceOwner";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../domain/endorsement";
 import { canConfirmForTeam, coordinatorsOf } from "../domain/levels";
@@ -54,6 +59,9 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [stepDone, setStepDone] = useState(false);
+  /** The unit as it would be published: what the committee validates, next to what is published today. */
+  const [unit, setUnit] = useState<UnitToPublish | null>(null);
+  const [requests, setRequests] = useState<string[]>([]);
 
   const me = (session?.username ?? "").toLowerCase();
   const keyOf = (c: SolverLaunchContext) => `${(c.book || c.projectId).toUpperCase()}.${c.issueNumber || c.taskId}.aval`;
@@ -68,6 +76,19 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     try {
       const loaded = await loadUnitTexts({ session, ctx: decoded, texts: TEXTS });
       setData(loaded);
+      // What the unit changes is read apart: a repository that fails to answer does not hide the passage.
+      setUnit(null);
+      void loadUnitToPublish({ session, ctx: decoded, resources: ENDORSED })
+        .then(async (found) => {
+          setUnit(found);
+          // Whoever may write renews the validation branch on the way, so what Door43 shows is what is read here.
+          // Somebody who may only read validates all the same: this screen compares for itself.
+          const rule = stagingTasks(found.board ?? { teams: [] }).find((row) => row.task.id === decoded.taskId);
+          if (unitProblems(found, { aligned: rule?.aligned ?? [], endorsement: null, needsEndorsement: false }).length) return;
+          const staged = await stageUnit({ session, unit: found, note: decoded.issueUrl || `#${decoded.issueNumber}` }).catch(() => []);
+          setRequests([...new Set(staged.flatMap((row) => (row.pullUrl ? [row.pullUrl] : [])))]);
+        })
+        .catch(() => undefined);
       const docs = await loadPersonDocs<EndorsementReport>(session, loaded.target, keyOf(decoded));
       const list = docs.map((row) => ({ ...row.doc, by: row.doc.by || row.login }));
       setReports(list);
@@ -136,7 +157,10 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     }
   }
 
-  /** Not endorsed yet: each concern goes to whoever maintains what it is about, in the conversation of this unit. */
+  /**
+   * Not endorsed yet: each concern becomes a subtarea of correction for the task that maintains what it is about,
+   * and all of them are listed in the conversation of this unit for whoever coordinates those teams.
+   */
   async function sendBack() {
     if (!session || !ctx?.pmOrg || !ctx.issueNumber || !data) return;
     setSaving(true);
@@ -148,15 +172,43 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
         const who = coordinatorsOf(data.levelBook, owner?.orgTeamName).map((login) => `@${login}`).join(" ") || (owner?.name ?? c.about);
         byOwner.set(who, [...(byOwner.get(who) ?? []), `- ${c.kind === "objection" ? t("en.objection") : t("en.observation")}${c.where ? ` (${c.where})` : ""}: ${c.text} — @${c.by}`]);
       }
-      const body = [t("en.pendingNote"), ...[...byOwner].map(([who, lines]) => `\n${who}\n${lines.join("\n")}`)].join("\n");
+      const created =
+        data.board && data.task
+          ? await createCorrections({
+              session,
+              pmOrg: ctx.pmOrg,
+              board: data.board,
+              from: data.task,
+              asks: [...tally.objections, ...tally.observations].map((c) => ({ about: c.about, where: c.where, text: c.text, by: c.by })),
+              portionId: ctx.portionIds?.[0],
+            })
+          : [];
+      const body = [
+        t("en.pendingNote"),
+        ...[...byOwner].map(([who, lines]) => `\n${who}\n${lines.join("\n")}`),
+        ...(created.length ? [`\n${t("en.correctionsNote").replace("{list}", created.map((issue) => `#${issue.number}`).join(", "))}`] : []),
+      ].join("\n");
       await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, body);
-      announce(t("en.sentBack"));
+      announce(created.length ? t("en.sentBack").replace("{n}", String(created.length)) : t("en.sentBackNone"));
     } catch (err) {
       setError(explainError(err));
     } finally {
       setSaving(false);
     }
   }
+
+  /** For each text and each help of the unit: the pieces that differ from what is published. */
+  const changes = useMemo<ResourceChanges[]>(
+    () =>
+      (unit?.resources ?? [])
+        .filter((r) => r.kind !== "articles" && r.draft)
+        .map((r) => ({
+          resource: r.resource,
+          status: "open" as const,
+          items: changesBetween({ filename: r.filepath, before: r.published?.text ?? "", now: unitChanges(unit!, r)?.[0]?.content ?? r.published?.text ?? "", range: unit!.range }),
+        })),
+    [unit],
+  );
 
   const title = data?.step ? localized(data.step.name, data.step.names, language) : t("en.title");
   const aboutLabel = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
@@ -190,6 +242,32 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
               ) : null))}
             </div>
           ))}
+        </details>
+      ) : null}
+
+      {data ? (
+        <details className="en-texts en-changes" open={mode === "reporte"}>
+          <summary>{t("en.whatChanges")}</summary>
+          <p className="af-hint">{t("en.whatChangesHint")}</p>
+          {unit ? (
+            <>
+              <ChangeGroups groups={changes} board={data.board} />
+              {unit.resources
+                .filter((r) => r.kind === "articles" && (unitChanges(unit, r)?.length ?? 0) > 0)
+                .map((r) => (
+                  <p key={r.resource} className="af-hint">
+                    {t("en.articles").replace("{name}", aboutLabel(r.resource)).replace("{n}", String(unitChanges(unit, r)?.length ?? 0))}
+                  </p>
+                ))}
+              {requests.map((url) => (
+                <a key={url} className="en-request" href={url} target="_blank" rel="noreferrer">
+                  {t("en.openRequest")}
+                </a>
+              ))}
+            </>
+          ) : (
+            <p className="af-hint" aria-busy="true">{t("en.changesLoading")}</p>
+          )}
         </details>
       ) : null}
 

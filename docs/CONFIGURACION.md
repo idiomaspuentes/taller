@@ -73,10 +73,10 @@ clase empieza con su propia palabra, para que quien abra el repositorio en Door4
 | `work` | `trabajo` | El trabajo de una persona en una subtarea. | `trabajo/jud/tpl/valeska/160` |
 | `archive` | `archivo` | Lo que esa persona entregó, tal como lo dejó. | `archivo/jud/160` |
 | `phase` | `fase` | El texto tal como quedó al cerrar una fase. | `fase/jud/traduccion` |
-| `publish` | `publicacion` | Una unidad camino de publicarse. | `publicacion/jud/1` |
+| `validation` | `validacion` | Una unidad tal como la valida el comité, antes de llegar a lo publicado. | `validacion/jud/1` |
 
 ```ts
-branchNames: { draft: "borrador", work: "trabajo", archive: "archivo", phase: "fase", publish: "publicacion" },
+branchNames: { draft: "borrador", work: "trabajo", archive: "archivo", phase: "fase", validation: "validacion" },
 ```
 
 - Un espacio de trabajo puede dar las suyas (`branchNames` dentro del espacio); lo que no diga lo toma de la

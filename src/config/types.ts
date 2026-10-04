@@ -60,11 +60,11 @@ export type Workspace = {
 /**
  * The first word of each kind of branch or tag the app keeps in a content repository: `borrador/jud/tpl` (the group
  * draft of a translation task), `trabajo/jud/tpl/ana/160` (one person's work on a subtarea), `archivo/jud/160` (what
- * was delivered), `fase/jud/traduccion` (the text as a phase left it), `publicacion/jud/1` (a unit on its way to be
- * published). Lowercase letters, digits and dashes, no slashes, all different. Changing one while a book already
+ * was delivered), `fase/jud/traduccion` (the text as a phase left it), `validacion/jud/1` (a unit as the committee
+ * validates it, before it reaches the published branch). Lowercase letters, digits and dashes, no slashes, all different. Changing one while a book already
  * has branches is not supported: the app would no longer find them.
  */
-export type BranchNames = { draft: string; work: string; archive: string; phase: string; publish: string };
+export type BranchNames = { draft: string; work: string; archive: string; phase: string; validation: string };
 
 /** A lexicon repository on the same Door43 server: `<owner>/<repo>`, entries in `path` (`content` by default). */
 export type LexiconRepo = { owner: string; repo: string; path?: string };
@@ -117,7 +117,7 @@ export type TallerConfig = {
    * should finish alone in a subtarea, and the most people who should wait for one person. Default: 40 and 2.
    */
   workLoad?: { soloItems?: number; waiting?: number };
-  /** The words the branches start with. Default: `borrador`, `trabajo`, `archivo`, `fase`, `publicacion`. */
+  /** The words the branches start with. Default: `borrador`, `trabajo`, `archivo`, `fase`, `validacion`. */
   branchNames?: Partial<BranchNames>;
   welcome: Record<UiLanguage, WelcomeCopy>;
 };

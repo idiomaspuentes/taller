@@ -34,6 +34,7 @@ import { archiveSharedDraft, ensurePortionPr, retireReleasedWork, submitPortionP
 import { notifyNextBook } from "../dcs/startBook";
 import { closeSubtask } from "../dcs/closeSubtask";
 import { markPhaseIfClosed } from "../dcs/phaseMarks";
+import { stageUnitsAfterClose } from "../dcs/unitStage";
 import {
   parsePortionPrMarker,
   stepCompletesDraftForReview,
@@ -605,7 +606,12 @@ export function MyTasksView({
         lang,
         sharedDraft: !taskHasOwnDraft(board.teams, issueTaskId(issue)),
         archiveShared: () => archiveSharedDraft({ session, pmOrg, lang, contentOrg, board, issue }),
-        afterClose: () => markPhaseIfClosed({ session, pmOrg, lang, contentOrg, board, issue }),
+        // What a close leaves behind, each on its own: the mark of a phase that ended, and the units that can go
+        // to their validation branch now. Neither undoes the close.
+        afterClose: async () => {
+          await markPhaseIfClosed({ session, pmOrg, lang, contentOrg, board, issue }).catch(() => null);
+          await stageUnitsAfterClose({ session, pmOrg, lang, contentOrg, board, issue }).catch(() => []);
+        },
         ensurePr: async () =>
           (await ensurePortionPr({ session, pmOrg, lang, contentOrg, board, issue })).issue,
       });

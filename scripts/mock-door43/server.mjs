@@ -473,6 +473,22 @@ async function handle(req, res) {
       log.push({ at: new Date().toISOString(), user: user?.login, write: `branch ${repoKey}@${body.new_branch_name}` });
       return json(res, { name: body.new_branch_name }, 201);
     }
+    // ---- releases: a published version, cut from a branch as it stands ----
+    if (rest === "releases") {
+      const repo = repos.get(repoKey);
+      repo.releases ??= [];
+      if (req.method === "GET") return json(res, repo.releases);
+      if (!user) return json(res, { message: "token is required" }, 401);
+      if (req.method === "POST") {
+        const body = await readBody(req);
+        if (!body.tag_name) return json(res, { message: "tag_name is required" }, 422);
+        if (repo.releases.some((row) => row.tag_name === body.tag_name)) return json(res, { message: "release already exists" }, 409);
+        const release = { id: repo.releases.length + 1, tag_name: body.tag_name, name: body.name || body.tag_name, body: body.body || "", target_commitish: body.target_commitish || repo.defaultBranch, draft: false, prerelease: false };
+        repo.releases.push(release);
+        log.push({ at: new Date().toISOString(), user: user.login, write: `release ${repoKey}@${release.tag_name}` });
+        return json(res, release, 201);
+      }
+    }
     // ---- tags: a name for a commit that nobody edits (the archive of a delivery) ----
     const tagMatch = /^tags(?:\/(.+))?$/.exec(rest);
     if (tagMatch) {

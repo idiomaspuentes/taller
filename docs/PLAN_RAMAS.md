@@ -4,8 +4,9 @@ Estado: **en marcha (4 de octubre de 2026).** Hechos y probados en QA con Judas:
 configurables; solo la tarea de traducción tiene borrador) y el **paso 2** (archivo como etiqueta, la rama de trabajo
 se borra al entregar, archivo de las subtareas sobre el borrador del grupo). Hecho con pruebas automáticas, sin
 verlo aún en QA (hace falta cerrar una fase entera de un libro): el **paso 3** (marcas de fase). Hecho y visto en QA
-con Judas: el **paso 4** («Qué cambió» por fase y por subtarea; sin la marca dentro de las herramientas). Faltan los
-pasos 5 (replanteado: ver abajo, pendiente de visto bueno) y 7. Decidido:
+con Judas: el **paso 4** («Qué cambió» por fase y por subtarea; sin la marca dentro de las herramientas). Hecho, con una
+prueba de punta a punta contra el Door43 simulado y sin recorrerlo aún en QA: el **paso 5** (rama de validación por
+unidad, correcciones como subtareas, publicar = fusionar y crear la versión). Falta el paso 7. Decidido:
 los nombres de la tabla, configurables por organización y por espacio de trabajo; `archivo/` y `fase/` como
 etiquetas; las respuestas de revisión se quedan donde están.
 
@@ -215,13 +216,36 @@ versión» (`src/dcs/release.ts`), en Versiones. Validación lee del borrador de
   Si `master` está protegida, la solicitud queda abierta para quien pueda confirmarla.
 - En `branchNames`, la palabra `publish` (`publicacion`) pasa a ser `validation` (`validacion`): es lo que la rama es.
 
-**Por decidir.**
-- **Cómo se devuelve una anotación.** Con qué pantalla anota el comité y en qué se convierte para el equipo
-  (una subtarea nueva de corrección, o reabrir la que ya cerró).
-- **Qué pasa si las comprobaciones fallan** al cerrar Armonización: la unidad no pasa a validación y se avisa a
-  quien coordina, o no se deja cerrar la subtarea.
-- **Qué lleva un release cuando se validan varias unidades por separado**: `master` solo tiene lo avalado, así que
-  cualquier release es seguro; falta decidir si se hace uno por unidad avalada o uno al terminar el libro.
+**Decidido (4 de octubre de 2026).**
+- **Una anotación del comité es una subtarea de corrección** para la tarea que mantiene ese recurso (la última que
+  lo trabajó antes de validar), sobre el pasaje de la unidad. Queda en el plan como subtarea añadida a mano.
+- **Si la unidad no pasa las comprobaciones** al cerrar Armonización, la subtarea se cierra igual, la unidad no pasa
+  a validación y en la conversación de la subtarea de validación queda escrito qué falta, para quien coordina cada
+  recurso.
+- **Un release por unidad avalada.** `master` solo tiene lo avalado, así que cada release es seguro.
+
+**Como quedó.**
+- La herramienta del comité declara en el paquete `stagesUnit` (qué recursos lleva la unidad y cuáles deben estar
+  alineados); el motor no sabe qué tarea valida. `src/domain/unitStage.ts` dice qué unidades toca llevar al cerrar
+  una subtarea: las de una tarea de validación del mismo libro y capítulo que ya nada detiene. Eso cubre la llegada
+  (cierra el último trabajo antes de validar) y la renovación (cierra una corrección).
+- `src/dcs/unitPublish.ts`: `stageUnit` (rama de validación + solicitud abierta, sin tocar `master`) y `publishUnit`
+  (vuelve a llevarla y fusiona). `src/dcs/release.ts`: `releaseUnit` (una versión por repositorio de la unidad;
+  reintentar no crea otra; algo nuevo el mismo día es «· 2»).
+- Validar muestra «Qué cambia respecto a lo publicado», comparando lo publicado con la unidad del borrador del grupo
+  (lo mismo que la app copia a la rama de validación), así que quien solo puede leer valida igual. Quien puede
+  escribir renueva la rama al abrir la pantalla. El enlace a la solicitud de Door43 queda pequeño, al final.
+- «Dejar pendiente y pedir las correcciones» crea las subtareas (`src/dcs/corrections.ts`) y las lista en la
+  conversación de la unidad.
+- El paso Publicar fusiona y crea la versión; si la versión falla, el mismo botón la termina.
+- «Publicar versión» de la pestaña Versiones (un release del libro entero, por perfil) sigue como estaba.
+
+**Sin resolver.**
+- Una corrección del TPL o el TPS se abre con las herramientas de la tarea de Afinación que la recibe, con todos
+  sus pasos. Puede ser mucho para corregir una palabra: se revisa con la plantilla de la fase 2.
+- Una corrección de Afinación abierta no detiene al comité (Validar solo espera a Armonización); la unidad se
+  renueva cuando se cierra.
+- El aval no se anota todavía como revisión aprobada en la solicitud de Door43.
 
 **Dónde.** `src/config/types.ts`, `taller.config.ts` y `src/domain/branchNames.ts` (`validation`),
 `src/dcs/unitPublish.ts` (`publishUnit` se parte en «llevar la unidad a validación» y «fusionar en `master`»),

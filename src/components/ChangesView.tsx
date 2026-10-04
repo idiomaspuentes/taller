@@ -13,7 +13,7 @@ import { useT } from "../i18n/messages";
 type Where = { session: GtSession; pmOrg: string; lang: string; contentOrg: string; board: AssignmentsDoc };
 
 /** What changed, resource by resource: each piece with its words struck out and put in. */
-function ChangeGroups({ groups, board }: { groups: ResourceChanges[]; board: AssignmentsDoc }) {
+export function ChangeGroups({ groups, board }: { groups: ResourceChanges[]; board: Pick<AssignmentsDoc, "settings"> | null }) {
   const t = useT();
   const language = useUiLanguage();
   if (!groups.length) return <p className="pe-hint">{t("ch.nothingToCompare")}</p>;
@@ -22,7 +22,7 @@ function ChangeGroups({ groups, board }: { groups: ResourceChanges[]; board: Ass
       {groups.map((group) => (
         <section key={group.resource} className="ch-group">
           <h4 className="ch-group__title">
-            {scopeLabel(group.resource, board.settings?.resourceNames, language)}
+            {scopeLabel(group.resource, board?.settings?.resourceNames, language)}
             {group.status === "closed" || group.status === "open" ? <span className="ch-group__count">{t(group.items.length === 1 ? "ch.countOne" : "ch.countMany").replace("{n}", String(group.items.length))}</span> : null}
           </h4>
           {group.status === "waiting" ? <p className="pe-hint">{t("ch.waiting")}</p> : null}

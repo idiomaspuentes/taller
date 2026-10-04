@@ -415,14 +415,22 @@ de los demás **después de entregar su propio reporte**.
 - Si hay consenso, se concede el aval.
 - Si no hay consenso, se decide **por mayoría** de los pastores que participaron.
 
-**Si el aval queda pendiente:** cada observación va a su dueño (TPL o TPS → Afinación; recursos de
-apoyo → Armonización). Cuando el dueño responde, la unidad vuelve **al mismo comité**.
+**Lo que el comité lee:** la unidad tal como quedaría publicada. Al cerrarse la última subtarea de
+Armonización de la unidad, la app la lleva sola a su **rama de validación** en cada recurso
+(`validacion/jud/1`): lo publicado más esa unidad, y nada de lo que sigue a medias. El pastor ve, por
+recurso, lo que cambia frente a lo publicado. A la rama publicada (`master`) no llega nada sin aval.
+
+**Si el aval queda pendiente:** cada observación u objeción se convierte en una **subtarea de
+corrección** para su dueño (TPL o TPS → Afinación; recursos de apoyo → Armonización). Cuando el dueño
+la cierra, la unidad se renueva en su rama de validación y vuelve **al mismo comité**.
 
 ---
 
 ## 7. Fase 5 · Publicación
 
-**Propósito:** publicar exactamente lo avalado. No se edita contenido.
+**Propósito:** publicar exactamente lo avalado. No se edita contenido. **Publicar es crear la
+versión** (el release): la unidad avalada pasa de su rama de validación a la rama publicada de cada
+recurso y, acto seguido, se crea la versión de esa unidad en cada repositorio.
 
 **Cuándo:** cada unidad se publica **en cuanto recibe el aval**; no espera a las demás. Quien usa los
 recursos ya puede trabajar con el capítulo 1 mientras el 2 sigue en el flujo.
@@ -433,7 +441,7 @@ haga falta, y otra hace la publicación. La persona solo interviene si una compr
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
 | 1 | Comprobaciones | Comprobar | Automático; lo vigila el equipo de informática | — | Mini-apps de comprobación (formato, metadatos, correspondencia con el aval) | Todas las comprobaciones pasan |
-| 2 | Publicar | Publicar | Automático, o una persona de informática confirma | 1 | Mini-app de publicación | Queda publicada la unidad avalada |
+| 2 | Publicar | Publicar | Quien coordina o una persona habilitada confirma | 1 | Mini-app de publicación | La unidad avalada está en lo publicado y tiene su versión |
 
 Si una comprobación encuentra un problema de **contenido**, la publicación se detiene y se envía al
 dueño (Afinación o Armonización).

@@ -1,3 +1,4 @@
+import { branchNames } from "./branchNames";
 import { textFingerprint } from "./reviewRound";
 import { isValidBookUsfm, listVerseSpans, type RefRange } from "./usfmEdit";
 
@@ -311,6 +312,15 @@ export function checkAgainstEndorsement(now: UnitFingerprints, endorsed: UnitFin
 }
 
 /** Name of the unit inside file names and branch names: `2.1-15`. */
+/**
+ * Where a unit waits for the committee: `validacion/jud/1` for a whole chapter, `validacion/jud/2-1-15` for a
+ * stretch of one. It starts from the published branch and carries that unit and nothing else.
+ */
+export function validationBranchName(book: string, range: RefRange): string {
+  const whole = range.from <= 1 && range.to >= 200;
+  return `${branchNames().validation}/${book.trim().toLowerCase()}/${whole ? range.chapter : `${range.chapter}-${range.from}-${range.to}`}`;
+}
+
 export function unitSlug(range: RefRange): string {
   return `${range.chapter}.${range.from}-${range.to}`;
 }
