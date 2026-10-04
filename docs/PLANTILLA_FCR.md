@@ -131,21 +131,24 @@ la misma lista, que la persona marca para sí antes de entregar:
 
 | Comprobación | Por qué |
 |---|---|
-| «You»: ¿«usted» o «ustedes»? | El inglés no distingue una persona de varias |
+| ¿Está todo? | Que no falte ni sobre ninguna frase de la fuente: es el error que más cuesta ver después |
+| «You»: ¿una persona o varias? | El inglés no distingue «usted» de «ustedes» |
 | ¿Hombre o mujer, uno o varios? | El inglés no lo dice en adjetivos ni participios |
-| «It», «they», «this»: ¿de quién o de qué se habla? | Nuestro idioma pide género y número, y suele callar el sujeto |
+| «It», «they», «his», «her»: ¿de quién o de qué se habla? | Nuestro idioma pide género y número, calla el sujeto, y «su» sirve para todos |
 | El pasado: ¿«hizo» o «hacía»? | El inglés usa una sola forma |
 | «To be»: ¿«ser» o «estar»? | Una palabra en inglés, dos en nuestro idioma |
 | Palabras con varios sentidos («know», «for», «right») | «Saber» o «conocer», «por» o «para» |
 | Falsos amigos («actually», «eventually») | Parecen decir otra cosa |
-| Nombres propios | Como se escriben en nuestro idioma |
+| Nombres de personas y lugares | Como se escriben en nuestro idioma |
+| Números, medidas y fechas | Iguales que en la fuente |
 | Ortografía y gramática | Tildes, signos de apertura, concordancia |
 
 Notas y Preguntas empiezan además por **«¿Leíste el versículo del que habla?»**: para traducir bien lo que se dice
 de una frase hay que saber de qué trata el versículo. Palabras recuerda que las referencias bíblicas no se traducen.
 
 La lista **recuerda, no cierra el paso**: las marcas son de cada persona, quedan en su dispositivo y nadie más las
-ve. Se abre en la tarjeta y dentro de la herramienta, en «Qué se pide en …». En el paquete son las `checks` del paso.
+ve. Se abre en la tarjeta y dentro de la herramienta, en «Qué se pide en …». En el paquete son las `checks` del paso. Quien
+administra el proyecto las cambia en «Proceso», en cada paso («Lista de comprobación»): agregar, quitar, reordenar.
 
 **Las reglas de cada recurso todavía no se exigen aquí.** Que el TPL conserve la forma del original, que el TPS
 diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualquiera entienda: eso es trabajo de

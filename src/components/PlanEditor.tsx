@@ -33,7 +33,7 @@ import { localizeScope } from "../domain/scopeNames";
 import type { SolverApp } from "../domain/solvers";
 import { teamAccess, type TeamOption } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
-import { SCOPE_KEYS, filtersForResource, type ArticleFilter, type ChecklistQuestion, type Localized, type Phase, type ResourceNames, type ScopeKey, type StepClosing, type TaskStep } from "../domain/types";
+import { SCOPE_KEYS, filtersForResource, type ArticleFilter, type ChecklistQuestion, type Localized, type Phase, type ResourceNames, type ScopeKey, type StepCheck, type StepClosing, type TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { MinLevelField } from "./MinLevelField";
@@ -641,6 +641,8 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
     const asksQuestions = closing === "checklist" || (closing === "approval" && Boolean(s.solverAppId));
     const questions: ChecklistQuestion[] = s.checklist ?? [];
     const setQuestions = (next: ChecklistQuestion[]) => patch({ checklist: next.length ? next : undefined });
+    const checks: StepCheck[] = s.checks ?? [];
+    const setChecks = (next: StepCheck[]) => patch({ checks: next.length ? next : undefined });
     const nameOf = (item: TaskStep) => stepName(item, steps.indexOf(item));
     return (
       <>
@@ -732,6 +734,39 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
             ) : null}
           </div>
         ) : null}
+
+        {/* What each person looks at in their own work before handing the step in: any step may have them. */}
+        <div className="pe-field">
+          <span className="pe-label">{t("st.checks")}</span>
+          <small className="pe-hint">{t("st.checksHint")}</small>
+          {checks.map((check, index) => (
+            <div key={check.id} className="pe-question">
+              <textarea
+                className="af-textarea"
+                rows={2}
+                value={check.texts?.[language] ?? check.text}
+                disabled={!canEdit}
+                aria-label={t("st.checkN").replace("{n}", String(index + 1))}
+                onChange={(e) => setChecks(checks.map((c) => (c.id === check.id ? (c.texts?.[language] !== undefined ? { ...c, texts: { ...c.texts, [language]: e.target.value } } : { ...c, text: e.target.value }) : c)))}
+              />
+              {canEdit ? (
+                <span className="pe-question__tools">
+                  <button type="button" className="pe-icon" disabled={index === 0} aria-label={t("st.checkUp").replace("{n}", String(index + 1))} onClick={() => setChecks(checks.map((c, i) => (i === index - 1 ? checks[index]! : i === index ? checks[index - 1]! : c)))}>
+                    <ArrowUp size={14} aria-hidden />
+                  </button>
+                  <button type="button" className="pe-icon" aria-label={t("st.checkRemove").replace("{n}", String(index + 1))} onClick={() => setChecks(checks.filter((c) => c.id !== check.id))}>
+                    <Trash2 size={14} aria-hidden />
+                  </button>
+                </span>
+              ) : null}
+            </div>
+          ))}
+          {canEdit ? (
+            <button type="button" className="pe-add" onClick={() => setChecks([...checks, { id: `c-${uid().slice(0, 6)}`, text: "" }])}>
+              <Plus size={14} aria-hidden /> {t("st.checkAdd")}
+            </button>
+          ) : null}
+        </div>
 
         <button type="button" className="pe-more" aria-expanded={more} onClick={() => setMore(!more)}>
           {more ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />} {t("pe.more")}

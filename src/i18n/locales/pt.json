@@ -2440,5 +2440,11 @@
   "nt.freeTask": "Tarefa livre para a sua equipe",
   "nt.decisionPending": "Decisão pendente: conflito de versículos",
   "nt.newMessage": "Nova mensagem",
-  "tb.howStep": "O que se pede em «{step}»"
+  "tb.howStep": "O que se pede em «{step}»",
+  "st.checks": "Lista de verificação",
+  "st.checksHint": "O que cada pessoa olha no próprio trabalho antes de entregar o passo. Ela marca para si; não fecha o passo.",
+  "st.checkN": "Verificação {n}",
+  "st.checkUp": "Subir a verificação {n}",
+  "st.checkRemove": "Remover a verificação {n}",
+  "st.checkAdd": "Adicionar uma verificação"
 }

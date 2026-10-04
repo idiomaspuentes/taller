@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 22,
+      "version": 23,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -112,24 +112,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -162,16 +169,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -200,24 +214,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -250,16 +271,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -369,24 +397,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -419,16 +454,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -457,24 +499,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -507,16 +556,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -633,24 +689,31 @@
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -683,16 +746,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -728,24 +798,31 @@
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -778,16 +855,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -853,24 +937,31 @@
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -903,16 +994,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -948,24 +1046,31 @@
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -998,16 +1103,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -1048,24 +1160,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -1098,23 +1217,30 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "referencias",
-                  "text": "Las referencias bíblicas quedaron sin traducir.",
+                  "text": "Las referencias bíblicas: ¿quedaron sin traducir?",
                   "texts": {
-                    "pt": "As referências bíblicas ficaram sem traduzir."
+                    "pt": "As referências bíblicas: ficaram sem traduzir?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -1143,24 +1269,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -1193,23 +1326,30 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "referencias",
-                  "text": "Las referencias bíblicas quedaron sin traducir.",
+                  "text": "Las referencias bíblicas: ¿quedaron sin traducir?",
                   "texts": {
-                    "pt": "As referências bíblicas ficaram sem traduzir."
+                    "pt": "As referências bíblicas: ficaram sem traduzir?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -1250,24 +1390,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -1300,16 +1447,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]
@@ -1338,24 +1492,31 @@
               },
               "checks": [
                 {
-                  "id": "you",
-                  "text": "«You»: ¿es «usted» o «ustedes»?",
+                  "id": "completo",
+                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
                   "texts": {
-                    "pt": "«You»: é «você» ou «vocês»?"
+                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                  }
+                },
+                {
+                  "id": "you",
+                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "texts": {
+                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   }
                 },
                 {
                   "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice en adjetivos ni participios.",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
                   "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz isso em adjetivos nem particípios."
+                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
                   }
                 },
                 {
                   "id": "referente",
-                  "text": "«It», «they», «this»: ¿queda claro de quién o de qué se habla?",
+                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
                   "texts": {
-                    "pt": "«It», «they», «this»: fica claro de quem ou do que se fala?"
+                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
                   }
                 },
                 {
@@ -1388,16 +1549,23 @@
                 },
                 {
                   "id": "nombres",
-                  "text": "Nombres propios: ¿como se escriben en nuestro idioma?",
+                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "Nomes próprios: como se escrevem na nossa língua?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
+                  }
+                },
+                {
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
+                  "texts": {
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   }
                 },
                 {
                   "id": "ortografia",
-                  "text": "Ortografía y gramática: tildes, signos de apertura (¿ ¡), concordancia.",
+                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação, concordância."
+                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
                   }
                 }
               ]

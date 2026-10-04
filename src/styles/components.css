@@ -7162,6 +7162,7 @@ span > .pe-hint { display: block; }
 .pe-link { justify-self: start; padding: 0; border: 0; background: none; color: var(--primary); font-size: 0.875rem; text-decoration: underline; cursor: pointer; }
 .pe-question { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 0.5rem; align-items: start; }
 .pe-question .pe-check { grid-column: 1; }
+.pe-question__tools { display: flex; gap: 0.125rem; }
 .pe-icon { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-muted); cursor: pointer; }
 .pe-icon:hover { background: var(--surface-muted); color: var(--destructive); }
 .pe-actions { display: flex; flex-wrap: wrap; gap: 0.25rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
