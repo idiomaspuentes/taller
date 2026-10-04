@@ -150,6 +150,19 @@ La lista **recuerda, no cierra el paso**: las marcas son de cada persona, quedan
 ve. Se abre en la tarjeta y dentro de la herramienta, en «Qué se pide en …». En el paquete son las `checks` del paso. Quien
 administra el proyecto las cambia en «Proceso», en cada paso («Lista de comprobación»): agregar, quitar, reordenar.
 
+**Reglas del equipo.** El equipo descubre cosas que comprobar a medida que avanza, y las agrega él mismo:
+
+- **Quién y dónde:** cualquiera, dentro de la herramienta, al final de la lista («Agregar una regla para el
+  equipo…»), ahí donde la encontró.
+- **De quién es:** del equipo, no del proyecto. Aparece en todos los pasos que hace ese equipo y sigue ahí en el
+  libro siguiente.
+- **Desde cuándo vale:** de inmediato, para todo el equipo, con el nombre de quien la agregó.
+- **Quien coordina** la encuentra en «Avisos», en «Reglas nuevas de tu equipo», y la **deja**, la **corrige** o la
+  **quita**. La que agrega un coordinador no espera a nadie.
+- Se muestra en el idioma en que se escribió; no se traduce sola.
+
+Se guardan en el repositorio del plan, un archivo por equipo (`reglas/<equipo>.json`).
+
 **Las reglas de cada recurso todavía no se exigen aquí.** Que el TPL conserve la forma del original, que el TPS
 diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualquiera entienda: eso es trabajo de
 **Afinación** (los textos) y de **Armonización** (las ayudas). Dejarlo para esas fases es lo que hace rápida a

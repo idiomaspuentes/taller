@@ -1,3 +1,5 @@
+import { displayOrgTeamName } from "../domain/roles";
+import { pendingTeamRules, reviewTeamRule, type PendingTeamRule } from "../dcs/teamRules";
 import { subtaskName } from "../domain/noticeText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
@@ -177,6 +179,30 @@ export function MyTasksView({
   const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
   const [solversCatalog, setSolversCatalog] =
     useState<SolversCatalog>(DEFAULT_SOLVERS_CATALOG);
+
+  // What waits for a coordinator besides subtareas: the rules people added to the teams they coordinate.
+  const [newRules, setNewRules] = useState<PendingTeamRule[]>([]);
+  const [fixing, setFixing] = useState<{ id: string; text: string } | null>(null);
+  const [ruleBusy, setRuleBusy] = useState(false);
+  const loadRules = useCallback(() => {
+    if (!pmOrg || mode !== "avisos") return;
+    void pendingTeamRules(session, pmOrg)
+      .then(setNewRules)
+      .catch(() => undefined);
+  }, [session, pmOrg, mode]);
+  useEffect(loadRules, [loadRules]);
+  const answerRule = async (team: string, id: string, answer: { keep: true; text?: string } | { keep: false }) => {
+    setRuleBusy(true);
+    try {
+      await reviewTeamRule(session, pmOrg, team, id, answer);
+      setNewRules((rows) => rows.filter((row) => !(row.team === team && row.rule.id === id)));
+      setFixing(null);
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setRuleBusy(false);
+    }
+  };
 
   const reload = useCallback(async () => {
     if (!pmOrg) {
@@ -937,6 +963,41 @@ export function MyTasksView({
         </section>
       ) : null}
 
+      {pmOrg && mode === "avisos" && newRules.length ? (
+        <section className="hub-attention" aria-labelledby="hub-rules-title">
+          <div className="hub-attention__head">
+            <h2 id="hub-rules-title" className="hub-attention__title">
+              {t("mt.teamRules")}
+            </h2>
+            <span className="hub-queue-head__count text-xs text-muted-foreground tabular-nums">{newRules.length}</span>
+          </div>
+          <div className="grid gap-3 p-3">
+            {newRules.map(({ team, rule }) => (
+              <div key={`${team}-${rule.id}`} className="grid gap-1.5">
+                {fixing?.id === rule.id ? (
+                  <input className="af-input" value={fixing.text} maxLength={240} autoFocus aria-label={t("mt.ruleFix")} onChange={(e) => setFixing({ id: rule.id, text: e.target.value })} />
+                ) : (
+                  <span>«{rule.text}»</span>
+                )}
+                <span className="hub-place">{[rule.by ? `@${rule.by}` : "", displayOrgTeamName(team)].filter(Boolean).join(" · ")}</span>
+                <span className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" disabled={ruleBusy} onClick={() => void answerRule(team, rule.id, { keep: true, ...(fixing?.id === rule.id ? { text: fixing.text } : {}) })}>
+                    {fixing?.id === rule.id ? t("mt.ruleSave") : t("mt.ruleKeep")}
+                  </Button>
+                  {fixing?.id === rule.id ? null : (
+                    <Button type="button" size="sm" variant="outline" disabled={ruleBusy} onClick={() => setFixing({ id: rule.id, text: rule.text })}>
+                      {t("mt.ruleFix")}
+                    </Button>
+                  )}
+                  <Button type="button" size="sm" variant="ghost" disabled={ruleBusy} onClick={() => void answerRule(team, rule.id, { keep: false })}>
+                    {t("mt.ruleRemove")}
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {pmOrg && mode === "avisos" && freeNew.length ? (
         <section className="hub-attention" aria-labelledby="hub-free-title">
           <div className="hub-attention__head">
@@ -979,7 +1040,7 @@ export function MyTasksView({
         </section>
       ) : null}
 
-      {pmOrg && loaded && !busy && mode === "avisos" && !attentionRows.length && !freeNew.length && !mentions.length ? (
+      {pmOrg && loaded && !busy && mode === "avisos" && !attentionRows.length && !freeNew.length && !mentions.length && !newRules.length ? (
         <div className="hub-empty-panel">
           <span className="hub-empty-panel__kicker">{t("nav.alerts")}</span>
           <h2 className="hub-empty-panel__title">{t("empty.alertsTitle")}</h2>

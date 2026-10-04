@@ -2446,5 +2446,15 @@
   "st.checkN": "Verificação {n}",
   "st.checkUp": "Subir a verificação {n}",
   "st.checkRemove": "Remover a verificação {n}",
-  "st.checkAdd": "Adicionar uma verificação"
+  "st.checkAdd": "Adicionar uma verificação",
+  "sa.teamRules": "Regras da equipe",
+  "sa.addRule": "Adicionar uma regra para a equipe…",
+  "sa.add": "Adicionar",
+  "sa.saving": "Salvando…",
+  "sa.ruleError": "Não foi possível salvar a regra. Tente outra vez.",
+  "mt.teamRules": "Regras novas da sua equipe",
+  "mt.ruleKeep": "Manter",
+  "mt.ruleFix": "Corrigir",
+  "mt.ruleSave": "Salvar",
+  "mt.ruleRemove": "Remover"
 }

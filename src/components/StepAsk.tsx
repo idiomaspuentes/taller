@@ -1,3 +1,5 @@
+import { addTeamRule, loadTeamRules } from "../dcs/teamRules";
+import { activeRules, type TeamRulesDoc } from "../domain/teamRules";
 import { useEffect, useState } from "react";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
@@ -69,27 +71,77 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
   const t = useT();
   const language = useUiLanguage();
   const [step, setStep] = useState<TaskStep | undefined>(undefined);
+  /** The team that does this step: its rules show here, and a new one is added to them. */
+  const [team, setTeam] = useState("");
+  const [rules, setRules] = useState<TeamRulesDoc | null>(null);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
   const { pmOrg, projectId, taskId, stepId, lang, contentOrg } = ctx ?? {};
   useEffect(() => {
     setStep(undefined);
+    setTeam("");
+    setRules(null);
     if (!session || !pmOrg || !projectId || !taskId || !stepId) return;
     let cancelled = false;
-    const find = (board: { teams: { id: string; steps?: TaskStep[] }[] } | null | undefined) => board?.teams.find((task) => task.id === taskId)?.steps?.find((row) => row.id === stepId);
-    const known = find(rememberedBoard(session, pmOrg, projectId));
-    if (known) setStep(known);
-    else
+    type Board = { teams: { id: string; orgTeamName?: string; steps?: TaskStep[] }[] } | null | undefined;
+    const place = (board: Board): boolean => {
+      const task = board?.teams.find((row) => row.id === taskId);
+      const found = task?.steps?.find((row) => row.id === stepId);
+      if (!found || cancelled) return false;
+      setStep(found);
+      setTeam(task?.orgTeamName ?? "");
+      if (task?.orgTeamName) void loadTeamRules(session, pmOrg, task.orgTeamName).then((doc) => !cancelled && setRules(doc));
+      return true;
+    };
+    if (!place(rememberedBoard(session, pmOrg, projectId)))
       void loadAssignmentsFromDcs(session, pmOrg, lang ?? "", projectId, contentOrg ?? "")
-        .then((board) => !cancelled && setStep(find(board)))
+        .then(place)
         .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [session?.token, pmOrg, projectId, taskId, stepId, lang, contentOrg]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!step || !ctx || !stepAsks(step, language)) return null;
+  const mine = rules ? activeRules(rules) : [];
+  if (!step || !ctx || (!stepAsks(step, language) && !team)) return null;
+  const scope = `${ctx.issueNumber ?? ctx.taskId}:${step.id}`;
+  const add = async () => {
+    if (!session || !pmOrg || !team || !draft.trim()) return;
+    setSaving(true);
+    setFailed(false);
+    try {
+      setRules(await addTeamRule(session, pmOrg, team, draft));
+      setDraft("");
+    } catch {
+      setFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <details className="step-ask">
       <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
-      <StepAskBody step={step} scope={`${ctx.issueNumber ?? ctx.taskId}:${step.id}`} />
+      <StepAskBody step={step} scope={scope} />
+      {team ? (
+        <section className="step-ask__team" aria-label={t("sa.teamRules")}>
+          <p className="step-ask__title">{t("sa.teamRules")}</p>
+          {mine.length ? <StepAskBody step={{ ...step, description: undefined, descriptions: undefined, checks: mine.map((rule) => ({ id: `team-${rule.id}`, text: rule.by ? `${rule.text} · @${rule.by}` : rule.text })) }} scope={scope} /> : null}
+          {/* Whoever finds something worth checking writes it where they found it: it counts for the team at once. */}
+          <form
+            className="step-ask__add"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void add();
+            }}
+          >
+            <input className="af-input" value={draft} maxLength={240} placeholder={t("sa.addRule")} aria-label={t("sa.addRule")} disabled={saving} onChange={(e) => setDraft(e.target.value)} />
+            <button type="submit" className="btn" data-size="sm" data-variant="outline" disabled={saving || !draft.trim()}>
+              {saving ? t("sa.saving") : t("sa.add")}
+            </button>
+          </form>
+          {failed ? <p className="af-stale">{t("sa.ruleError")}</p> : null}
+        </section>
+      ) : null}
     </details>
   );
 }

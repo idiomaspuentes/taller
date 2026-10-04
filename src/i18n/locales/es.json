@@ -2446,5 +2446,15 @@
   "st.checkN": "Comprobación {n}",
   "st.checkUp": "Subir la comprobación {n}",
   "st.checkRemove": "Quitar la comprobación {n}",
-  "st.checkAdd": "Agregar una comprobación"
+  "st.checkAdd": "Agregar una comprobación",
+  "sa.teamRules": "Reglas del equipo",
+  "sa.addRule": "Agregar una regla para el equipo…",
+  "sa.add": "Agregar",
+  "sa.saving": "Guardando…",
+  "sa.ruleError": "No se pudo guardar la regla. Inténtalo otra vez.",
+  "mt.teamRules": "Reglas nuevas de tu equipo",
+  "mt.ruleKeep": "Dejar",
+  "mt.ruleFix": "Corregir",
+  "mt.ruleSave": "Guardar",
+  "mt.ruleRemove": "Quitar"
 }
