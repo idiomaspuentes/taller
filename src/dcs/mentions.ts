@@ -1,3 +1,4 @@
+import type { NoticeIssue } from "../domain/noticeText";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { activeScope, issueInScope } from "../domain/scope";
@@ -12,6 +13,8 @@ export type MentionRow = {
   issue: number;
   title: string;
   at: string;
+  /** The subtarea it is about, as Door43 has it: what names it in the list. */
+  about?: NoticeIssue;
   /** What was said to this person, and by whom, when it could be read. */
   text?: string;
   by?: string;
@@ -69,21 +72,30 @@ function headers(session: GtSession): Record<string, string> {
   return { authorization: `token ${session.token}`, accept: "application/json" };
 }
 
-/** Which issues belong to the active workspace, remembered so each is looked up once. */
-const inSpace = new Map<string, boolean>();
+type Placed = { show: boolean; about?: NoticeIssue };
 
-async function belongsToSpace(session: GtSession, org: string, repo: string, issue: number, doFetch: typeof fetch): Promise<boolean> {
+/** Which issues belong to the active workspace, and what each is, remembered so each is looked up once. */
+const inSpace = new Map<string, Placed>();
+
+async function belongsToSpace(session: GtSession, org: string, repo: string, issue: number, doFetch: typeof fetch): Promise<Placed> {
   const key = `${session.host}|${org}|${repo}|${issue}|${activeScope()}`;
   const known = inSpace.get(key);
   if (known !== undefined) return known;
   try {
     const res = await doFetch(`${dcsConfig(session.host).host}/api/v1/repos/${org}/${repo}/issues/${issue}`, { headers: headers(session) });
-    if (!res.ok) return true; // not able to tell: do not hide a mention
-    const ok = issueInScope((await res.json()) as { labels?: { name: string }[] });
-    inSpace.set(key, ok);
-    return ok;
+    // A subtarea that was deleted leaves its notification behind in Door43: there is nothing to open, so it is
+    // not listed. Any other failure cannot tell: a mention is not hidden for it.
+    if (res.status === 404) {
+      inSpace.set(key, { show: false });
+      return { show: false };
+    }
+    if (!res.ok) return { show: true };
+    const found = (await res.json()) as NoticeIssue & { labels?: { name: string }[] };
+    const placed = { show: issueInScope(found), about: { number: issue, title: found.title, body: found.body, milestone: found.milestone, labels: found.labels } };
+    inSpace.set(key, placed);
+    return placed;
   } catch {
-    return true;
+    return { show: true };
   }
 }
 
@@ -96,8 +108,8 @@ export async function listMentions(session: GtSession, org: string, repo: string
   const res = await doFetch(`${base}/notifications?status-types=unread&subject-type=issue&limit=50`, { headers: headers(session) });
   if (!res.ok) return [];
   const rows = mentionRows((await res.json()) as Thread[], org, repo);
-  const keep = await Promise.all(rows.map((row) => belongsToSpace(session, org, repo, row.issue, doFetch)));
-  const mine = rows.filter((_, i) => keep[i]);
+  const placed = await Promise.all(rows.map((row) => belongsToSpace(session, org, repo, row.issue, doFetch)));
+  const mine = rows.map((row, i) => (placed[i]!.about ? { ...row, about: placed[i]!.about } : row)).filter((_, i) => placed[i]!.show);
   // What each one says, so the list can be read without opening every conversation. A row whose comments cannot
   // be read still shows, by its title.
   return Promise.all(

@@ -1,3 +1,5 @@
+import { noticeLang } from "./domain/noticeText";
+import { getUiLanguage } from "./i18n/language";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./dcs/auth";
@@ -192,6 +194,7 @@ export function useConversationActivity(
           titles: result.titles,
           me: sessionRef.current?.username ?? "",
           ownCommentIds: result.ownCommentIds,
+          lang: noticeLang(getUiLanguage()),
         }),
         notified: loadNotified(notifiedKey),
         visibility: document.visibilityState,

@@ -1,3 +1,5 @@
+import { noticeLang, subtaskName } from "../domain/noticeText";
+import { getUiLanguage } from "../i18n/language";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { listMyConflictIssues, listMyIssues } from "./issues";
@@ -123,6 +125,7 @@ export async function pollActivity(params: {
 
   doc = seedIfEmpty(doc, now.toISOString());
   const titles: Record<string, string> = {};
-  for (const issue of mine) titles[String(issue.number)] = issue.title ?? "";
+  // A notification names a subtarea as every notice does: the book in words, the passage, the task and the phase.
+  for (const issue of mine) titles[String(issue.number)] = subtaskName(issue, noticeLang(getUiLanguage()));
   return { doc, issues: [...mineSet], decisions, titles, ownCommentIds };
 }

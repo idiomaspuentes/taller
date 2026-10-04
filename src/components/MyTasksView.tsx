@@ -1,3 +1,4 @@
+import { subtaskName } from "../domain/noticeText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { waitBlocks, waitReason } from "../domain/waits";
@@ -133,11 +134,6 @@ function placeOf(issue: DcsIssue, bucket: MyTasksProjectBucket, language: "es" |
     phase: phase ? localizeName(phase.name, language) : "",
     task: task ? localizeName(task.name, language) : "",
   };
-}
-
-/** The passage in a thread's title: "3JN 1:1–4 · TPS" → "1:1–4". Empty when the title is not a passage. */
-function passageOf(title: string): string {
-  return /^[A-Z0-9]{3}\s+(\d[\d:–\-,\s]*)/i.exec(title)?.[1]?.trim() ?? "";
 }
 
 function shortTitle(issue: DcsIssue): string {
@@ -313,11 +309,10 @@ export function MyTasksView({
     }
     return groups;
   }, [freeNew, language]);
-  const mentionPlace = (number: number): string => {
-    const found = placeByNumber.get(number);
-    if (!found) return "";
-    const place = placeOf(found.issue, found.bucket, language);
-    return [place.book, place.phase, place.task].filter(Boolean).join(" · ");
+  /** A mention names its subtarea as every notice does; from the list in hand, else from what Door43 said of it. */
+  const mentionName = (row: MentionRow): string => {
+    const found = placeByNumber.get(row.issue)?.issue ?? row.about;
+    return found ? subtaskName(found, language) : localizeName(row.title, language);
   };
   const heldNumbers = useMemo(() => {
     const held: number[] = [];
@@ -859,9 +854,7 @@ export function MyTasksView({
           </div>
           <div>
             {attentionRows.map((row) => {
-              const { issue, bucket, activity } = row;
-              const place = bucket ? placeOf(issue, bucket, language) : null;
-              const resource = place ? [place.book, place.phase, place.task].filter(Boolean).join(" · ") : "";
+              const { issue, activity } = row;
               const line = previewLine(activity.latest, (text) => localizeThread(text, language));
               return (
                 <button
@@ -879,10 +872,8 @@ export function MyTasksView({
                       {activity.isNew ? (
                         <span className="hub-attention__tag hub-attention__tag--new">{t("mt.tagNew")}</span>
                       ) : null}
-                      <span>{localizeName(issue.title, language)}</span>
-                      {resource ? (
-                        <span className="hub-attention__resource">· {resource}</span>
-                      ) : null}
+                      {/* The same name the notice on the lock screen gave it. */}
+                      <span>{subtaskName(issue, language)}</span>
                     </span>
                     {line ? (
                       <span className="hub-queue-item__activity">
@@ -926,11 +917,9 @@ export function MyTasksView({
             {mentions.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0 grid gap-0.5">
-                  {row.text ? <span>{localizeThread(row.text, language)}</span> : <span className="font-semibold">{row.title}</span>}
-                  <span className="hub-place">
-                    {/* The place says the book and the task in words; of the thread's own title only the passage is left to add. */}
-                    {[row.by ? `@${row.by}` : "", mentionPlace(row.issue) || (row.text ? row.title : ""), mentionPlace(row.issue) && row.text ? passageOf(row.title) : ""].filter(Boolean).join(" · ")}
-                  </span>
+                  {row.text ? <span>{localizeThread(row.text, language)}</span> : <span className="font-semibold">{mentionName(row)}</span>}
+                  {/* Who said it and where; when nothing could be read of what was said, the name is the row. */}
+                  <span className="hub-place">{[row.by ? `@${row.by}` : "", row.text ? mentionName(row) : ""].filter(Boolean).join(" · ")}</span>
                 </span>
                 <Button
                   type="button"

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { getUiLanguage } from "./i18n/language";
 import {
   emptyNotified,
   notificationHref,
@@ -52,7 +53,7 @@ export function showAttentionNotification(candidate: NotifyCandidate): void {
   try {
     const notification = new Notification(candidate.title, {
       body: candidate.body,
-      lang: "es",
+      lang: getUiLanguage(),
       // Same item from two tabs replaces instead of stacking.
       tag: `tas-${candidate.id}`,
     });

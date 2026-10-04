@@ -8,6 +8,8 @@ import type { CommentSource } from "./notificationMap";
 import type { ReadCursorDoc } from "./readCursor";
 import { isNewTask } from "./readCursor";
 import { previewLine } from "./attention";
+import { say, type NoticeLang } from "./noticeText";
+import { localizeThread } from "./threadNames";
 
 export type NotifyKind = "comment" | "decision" | "task";
 
@@ -61,9 +63,9 @@ export function parseNotified(raw: string | null | undefined): NotifiedDoc {
   }
 }
 
-function portionTitle(issue: number, titles: Record<string, string>): string {
+function portionTitle(issue: number, titles: Record<string, string>, lang: NoticeLang): string {
   const title = titles[String(issue)]?.trim();
-  return title || `Subtarea #${issue}`;
+  return title || say(lang, "nt.subtask", { n: issue });
 }
 
 /**
@@ -80,8 +82,11 @@ export function attentionCandidates(params: {
   freeIssues?: Iterable<number>;
   /** Comment ids written by the signed-in user (from the poll). */
   ownCommentIds?: Iterable<number>;
+  /** The language the person reads the app in. */
+  lang?: NoticeLang;
 }): NotifyCandidate[] {
   const { doc, titles } = params;
+  const lang = params.lang ?? "es";
   const me = params.me.trim().toLowerCase();
   const own = new Set(params.ownCommentIds ?? []);
   const free = new Set(params.freeIssues ?? []);
@@ -99,8 +104,8 @@ export function attentionCandidates(params: {
         issue,
         kind: "comment",
         own: own.has(latest.id) || (Boolean(me) && latest.author.trim().toLowerCase() === me),
-        title: portionTitle(issue, titles),
-        body: previewLine(latest),
+        title: portionTitle(issue, titles, lang),
+        body: previewLine(latest, (text) => localizeThread(text, lang)) || say(lang, "nt.newMessage"),
       });
     }
     if (isNewTask(doc, issue)) {
@@ -109,8 +114,8 @@ export function attentionCandidates(params: {
         issue,
         kind: "task",
         own: false,
-        title: portionTitle(issue, titles),
-        body: free.has(issue) ? "Tarea libre para tu equipo" : "Tarea nueva asignada",
+        title: portionTitle(issue, titles, lang),
+        body: say(lang, free.has(issue) ? "nt.freeTask" : "nt.newTask"),
         ...(free.has(issue) ? { href: "#/avisos" } : {}),
       });
     }
@@ -128,8 +133,8 @@ export function attentionCandidates(params: {
         issue,
         kind: "decision",
         own: own.has(id),
-        title: portionTitle(issue, titles),
-        body: "Decisión pendiente: conflicto de versículos",
+        title: portionTitle(issue, titles, lang),
+        body: say(lang, "nt.decisionPending"),
       });
     }
   }
