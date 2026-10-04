@@ -6845,6 +6845,7 @@ button.al-box--read { cursor: pointer; }
 .step-ask__title { font-weight: 700; color: var(--text); margin: 0; }
 .step-ask__add { display: flex; gap: 0.5rem; align-items: center; }
 .step-ask__add input { flex: 1; min-width: 0; }
+.step-ask__manage { font-size: 0.8125rem; color: var(--primary); text-decoration: underline; justify-self: start; }
 .step-ask__by { color: var(--text-muted); font-weight: 400; text-decoration: none; }
 .team-rules { display: grid; gap: 0.5rem; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9375rem; }
 .team-rules ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.375rem; }

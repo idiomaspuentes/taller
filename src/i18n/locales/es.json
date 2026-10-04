@@ -2461,5 +2461,6 @@
   "nt.ruleBody": "Alguien la agregó mientras trabajaba en {name}.",
   "nt.ruleGrouped": "{n} reglas nuevas en tu equipo",
   "sa.ruleNew": "nueva",
-  "sa.noRules": "Este equipo todavía no tiene reglas propias."
+  "sa.noRules": "Este equipo todavía no tiene reglas propias.",
+  "sa.manageRules": "Corregir o quitar reglas del equipo"
 }

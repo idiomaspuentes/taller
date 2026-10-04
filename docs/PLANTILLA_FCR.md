@@ -160,8 +160,10 @@ administra el proyecto las cambia en «Proceso», en cada paso («Lista de compr
 - **Quien coordina** recibe un aviso (también con la app cerrada), la cuenta en el número de «Avisos» y la
   encuentra ahí, en «Reglas nuevas de tu equipo»: la **deja**, la **corrige** o la **quita**. La que agrega un
   coordinador no espera a nadie.
-- **Después** se sigue pudiendo corregir o quitar cualquier regla, y agregar otras, en «Organización», dentro del
-  equipo.
+- **Dónde se administran:** en «Organización» (menú de la persona), dentro del equipo, en «Reglas del equipo».
+  Ahí **quien coordina el equipo** y **quien administra** corrigen o quitan cualquier regla y agregan otras, en
+  cualquier momento. Desde la herramienta, a esas personas les sale un enlace directo («Corregir o quitar reglas
+  del equipo»). Un coordinador solo edita las de los equipos que coordina.
 - **Idiomas:** se muestra como se escribió. Si quien coordina la corrige con la app en otro idioma, queda dicha en
   los dos y cada persona la lee en el suyo.
 

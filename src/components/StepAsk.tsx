@@ -9,7 +9,7 @@ import { localizeName } from "../domain/templateNames";
 import type { ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
-import { addRuleToTeam, answerTeamRule, useTeamRules } from "../useTeamRules";
+import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from "../useTeamRules";
 
 /**
  * What a step asks, where the person does it: the process's description of the step, its checks (a short list of
@@ -91,11 +91,12 @@ export function TeamRuleChecks({ team, scope, canAdd, issue }: { team: string | 
   const t = useT();
   const language = useUiLanguage();
   const doc = useTeamRules(team);
+  const manages = useManagesTeamRules(team);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const rules = doc ? activeRules(doc) : [];
-  if (!team || (!rules.length && !canAdd)) return null;
+  if (!team || (!rules.length && !canAdd && !manages)) return null;
   const add = async () => {
     if (!draft.trim()) return;
     setSaving(true);
@@ -129,6 +130,12 @@ export function TeamRuleChecks({ team, scope, canAdd, issue }: { team: string | 
         </form>
       ) : null}
       {failed ? <p className="af-stale">{t("sa.ruleError")}</p> : null}
+      {/* Whoever coordinates the team or runs the project corrects and removes them on the team's own screen. */}
+      {manages ? (
+        <a className="step-ask__manage" href="#/organizacion">
+          {t("sa.manageRules")}
+        </a>
+      ) : null}
     </section>
   );
 }

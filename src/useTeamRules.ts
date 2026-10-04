@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { GtSession } from "./dcs/auth";
+import { listPmOrgTeams } from "./dcs/persist";
 import { addTeamRule, coordinatedTeams, loadTeamRules, reviewTeamRule, type PendingTeamRule } from "./dcs/teamRules";
+import { displayOrgTeamName, orgTeamLabel } from "./domain/roles";
 import { teamKey } from "./domain/levels";
 import { pendingRules, type RuleAnswer, type TeamRulesDoc } from "./domain/teamRules";
 import { PM_REPO_NAME } from "./domain/types";
@@ -18,6 +20,8 @@ const docs = new Map<string, TeamRulesDoc>();
 const loading = new Set<string>();
 let coordinated: string[] | null = null;
 let askedCoordinated = false;
+/** The name each team was given by whoever created it («Traductores TPS»), by the name Door43 keeps for it. */
+let labels = new Map<string, string>();
 const listeners = new Set<() => void>();
 const changed = () => listeners.forEach((fn) => fn());
 
@@ -67,6 +71,28 @@ function ensureCoordinated(): void {
       changed();
     })
     .catch(() => undefined);
+  void listPmOrgTeams(at.session, at.org)
+    .then((teams) => {
+      if (context !== at) return;
+      labels = new Map(teams.map((team) => [teamKey(team.name), orgTeamLabel(team)]));
+      changed();
+    })
+    .catch(() => undefined);
+}
+
+/** How to name a team to a person: as it was typed when it was created, not as Door43 stores it. */
+export function useTeamLabel(): (team: string) => string {
+  useChanges();
+  useEffect(() => ensureCoordinated());
+  return (team) => labels.get(teamKey(team)) ?? displayOrgTeamName(team);
+}
+
+/** Whether the signed-in person may correct, remove and add rules of a team: they coordinate it or run the project. */
+export function useManagesTeamRules(team: string | undefined): boolean {
+  useChanges();
+  useEffect(() => ensureCoordinated());
+  if (!team || !context) return false;
+  return Boolean(context.session.canManage) || (coordinated ?? []).includes(teamKey(team));
 }
 
 function useChanges(): void {

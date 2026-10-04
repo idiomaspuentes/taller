@@ -1,7 +1,6 @@
-import { displayOrgTeamName } from "../domain/roles";
 import type { RuleAnswer } from "../domain/teamRules";
 import { ruleText } from "../domain/teamRules";
-import { answerTeamRule, refreshTeamRules, usePendingTeamRules } from "../useTeamRules";
+import { answerTeamRule, refreshTeamRules, usePendingTeamRules, useTeamLabel } from "../useTeamRules";
 import { subtaskName } from "../domain/noticeText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
@@ -184,6 +183,7 @@ export function MyTasksView({
 
   // What waits for a coordinator besides subtareas: the rules people added to the teams they coordinate.
   const newRules = usePendingTeamRules();
+  const teamLabel = useTeamLabel();
   const [fixing, setFixing] = useState<{ id: string; text: string } | null>(null);
   const [ruleBusy, setRuleBusy] = useState(false);
   const answerRule = async (team: string, id: string, answer: RuleAnswer) => {
@@ -974,7 +974,7 @@ export function MyTasksView({
                 ) : (
                   <span>«{ruleText(rule, language)}»</span>
                 )}
-                <span className="hub-place">{[rule.by ? `@${rule.by}` : "", displayOrgTeamName(team)].filter(Boolean).join(" · ")}</span>
+                <span className="hub-place">{[rule.by ? `@${rule.by}` : "", teamLabel(team)].filter(Boolean).join(" · ")}</span>
                 <span className="flex flex-wrap gap-2">
                   <Button type="button" size="sm" disabled={ruleBusy} onClick={() => void answerRule(team, rule.id, { keep: true, ...(fixing?.id === rule.id ? { text: fixing.text } : {}) })}>
                     {fixing?.id === rule.id ? t("mt.ruleSave") : t("mt.ruleKeep")}
