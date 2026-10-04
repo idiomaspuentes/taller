@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 20,
+      "version": 21,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -106,9 +106,9 @@
               },
               "solverAppId": "tpl-translate",
               "closing": "self",
-              "description": "Traduce la porción con el ULT en inglés a la vista. Conserva la forma del original hasta donde nuestro idioma lo permita: el orden y la gramática, los modismos y las figuras. No busques que suene natural: donde quede poco claro, lo explica una nota.",
+              "description": "Traduce con el ULT a la vista. Mantén el orden, los modismos y las figuras del original, aunque no suene natural.",
               "descriptions": {
-                "pt": "Traduza a porção com o ULT em inglês à vista. Conserve a forma do original até onde a nossa língua permitir: a ordem e a gramática, as expressões idiomáticas e as figuras. Não busque que soe natural: onde ficar pouco claro, uma nota explica."
+                "pt": "Traduza com o ULT à vista. Mantenha a ordem, as expressões idiomáticas e as figuras do original, mesmo que não soe natural."
               }
             },
             {
@@ -129,9 +129,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara el borrador solo con el ULT en inglés, no con otra Biblia. Comprueba que cada modismo, cada figura y la forma gramatical del ULT sigan ahí, y que se entienda. No lo corrijas para que suene más natural.",
+              "description": "Compara solo con el ULT. Los modismos, las figuras y el orden deben seguir ahí. No lo cambies para que suene mejor.",
               "descriptions": {
-                "pt": "Compare o rascunho apenas com o ULT em inglês, não com outra Bíblia. Verifique se cada expressão idiomática, cada figura e a forma gramatical do ULT continuam ali, e se dá para entender. Não o corrija para soar mais natural."
+                "pt": "Compare apenas com o ULT. As expressões idiomáticas, as figuras e a ordem devem continuar ali. Não mude para soar melhor."
               }
             }
           ],
@@ -233,9 +233,9 @@
               },
               "solverAppId": "tps-translate",
               "closing": "self",
-              "description": "Traduce la porción con el UST en inglés a la vista. Di el sentido de forma llana: sin modismos ni figuras, sin voz pasiva ni sustantivos abstractos, con oraciones cortas, los hechos en el orden en que ocurrieron y diciendo quién habla o actúa. Usa palabras distintas de las del TPL.",
+              "description": "Traduce con el UST a la vista. Di el sentido con palabras sencillas y oraciones cortas, sin figuras ni voz pasiva. Usa palabras distintas de las del TPL.",
               "descriptions": {
-                "pt": "Traduza a porção com o UST em inglês à vista. Diga o sentido de forma simples: sem expressões idiomáticas nem figuras, sem voz passiva nem substantivos abstratos, com frases curtas, os fatos na ordem em que aconteceram e dizendo quem fala ou age. Use palavras diferentes das do TPL."
+                "pt": "Traduza com o UST à vista. Diga o sentido com palavras simples e frases curtas, sem figuras nem voz passiva. Use palavras diferentes das do TPL."
               }
             },
             {
@@ -256,9 +256,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara el borrador solo con el UST en inglés. Busca lo que el TPS no debe tener: oraciones largas, voz pasiva, sustantivos abstractos, figuras, modismos y hechos fuera de orden. Comprueba que el sentido quede claro; no hace falta que suene natural.",
+              "description": "Compara solo con el UST. No debe tener figuras, modismos, voz pasiva ni oraciones largas. El sentido debe quedar claro.",
               "descriptions": {
-                "pt": "Compare o rascunho apenas com o UST em inglês. Procure o que o TPS não deve ter: frases longas, voz passiva, substantivos abstratos, figuras, expressões idiomáticas e fatos fora de ordem. Verifique se o sentido fica claro; não precisa soar natural."
+                "pt": "Compare apenas com o UST. Não deve ter figuras, expressões idiomáticas, voz passiva nem frases longas. O sentido deve ficar claro."
               }
             }
           ],
@@ -360,9 +360,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista. La frase citada se traduce de la del ULT, y la traducción alternativa debe poder ponerse en su lugar dentro del versículo. No hace falta igualarla al TPL todavía: eso se hace en Armonización, cuando el TPL ya pasó por Afinación.",
+              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista. La traducción alternativa debe poder reemplazar la frase citada en el versículo.",
               "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista. A frase citada é traduzida da do ULT, e a tradução alternativa deve poder ser posta no seu lugar dentro do versículo. Ainda não é preciso igualá-la ao TPL: isso é feito na Harmonização, quando o TPL já passou pela Afinação."
+                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista. A tradução alternativa deve poder substituir a frase citada no versículo."
               }
             },
             {
@@ -383,9 +383,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara cada nota con la nota en inglés y el ULT: que diga lo mismo, que la frase citada corresponda a la del ULT y que la traducción alternativa encaje en el versículo en lugar de esa frase. No la compares con el TPL: eso es de Armonización.",
+              "description": "Compara cada nota con la nota en inglés. Debe decir lo mismo. La traducción alternativa debe caber en el versículo.",
               "descriptions": {
-                "pt": "Compare cada nota com a nota em inglês e o ULT: que diga o mesmo, que a frase citada corresponda à do ULT e que a tradução alternativa se encaixe no versículo no lugar dessa frase. Não a compare com o TPL: isso é da Harmonização."
+                "pt": "Compare cada nota com a nota em inglês. Deve dizer o mesmo. A tradução alternativa deve caber no versículo."
               }
             }
           ],
@@ -436,9 +436,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Lee el capítulo en el ULT y traduce la pregunta y su respuesta. No hace falta igualar la respuesta a las palabras del TPL todavía: eso se hace en Armonización, cuando el TPL ya pasó por Afinación.",
+              "description": "Lee el capítulo en el ULT. Traduce cada pregunta y su respuesta.",
               "descriptions": {
-                "pt": "Leia o capítulo no ULT e traduza a pergunta e a sua resposta. Ainda não é preciso igualar a resposta às palavras do TPL: isso é feito na Harmonização, quando o TPL já passou pela Afinação."
+                "pt": "Leia o capítulo no ULT. Traduza cada pergunta e a sua resposta."
               }
             },
             {
@@ -459,9 +459,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara cada pregunta y su respuesta con las del inglés y con el ULT: que pidan lo mismo y que la respuesta esté en el versículo. No las compares con el TPL: eso es de Armonización.",
+              "description": "Compara con el inglés. La pregunta debe pedir lo mismo y la respuesta debe estar en el versículo.",
               "descriptions": {
-                "pt": "Compare cada pergunta e a sua resposta com as do inglês e com o ULT: que peçam o mesmo e que a resposta esteja no versículo. Não as compare com o TPL: isso é da Harmonização."
+                "pt": "Compare com o inglês. A pergunta deve pedir o mesmo e a resposta deve estar no versículo."
               }
             }
           ],
@@ -494,9 +494,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce la definición según el uso de la palabra en la Biblia, no según un diccionario de hoy. Si nuestro idioma usa más de una palabra para esa idea, ponlas todas arriba y define cada una. Ajusta las sugerencias de traducción a como se usa la palabra en nuestro idioma. Las referencias bíblicas no se traducen.",
+              "description": "Define la palabra según su uso en la Biblia, no según un diccionario. Si usamos varias palabras para esa idea, ponlas todas. No traduzcas las referencias bíblicas.",
               "descriptions": {
-                "pt": "Traduza a definição segundo o uso da palavra na Bíblia, não segundo um dicionário de hoje. Se a nossa língua usa mais de uma palavra para essa ideia, ponha todas no alto e defina cada uma. Ajuste as sugestões de tradução ao modo como a palavra é usada na nossa língua. As referências bíblicas não se traduzem."
+                "pt": "Defina a palavra segundo o seu uso na Bíblia, não segundo um dicionário. Se usamos várias palavras para essa ideia, ponha todas. Não traduza as referências bíblicas."
               }
             },
             {
@@ -517,9 +517,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Comprueba que la definición diga el sentido que la palabra tiene en la Biblia, que estén todas las palabras de nuestro idioma para esa idea y que haya una sugerencia de traducción para cada uso principal.",
+              "description": "La definición debe dar el sentido que la palabra tiene en la Biblia. Debe haber una sugerencia de traducción para cada uso.",
               "descriptions": {
-                "pt": "Verifique se a definição diz o sentido que a palavra tem na Bíblia, se estão todas as palavras da nossa língua para essa ideia e se há uma sugestão de tradução para cada uso principal."
+                "pt": "A definição deve dar o sentido que a palavra tem na Bíblia. Deve haver uma sugestão de tradução para cada uso."
               }
             }
           ],
@@ -552,9 +552,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce el artículo con lenguaje sencillo, sin palabras técnicas cuando haya una forma más simple. Cambia los ejemplos del inglés por ejemplos que muestren cómo funciona nuestro idioma. Los versículos de ejemplo se traducen del ULT; se igualan al TPL en Armonización.",
+              "description": "Usa palabras sencillas. Cambia los ejemplos del inglés por ejemplos de nuestro idioma. Los versículos de ejemplo se traducen del ULT.",
               "descriptions": {
-                "pt": "Traduza o artigo com linguagem simples, sem palavras técnicas quando houver uma forma mais simples. Troque os exemplos do inglês por exemplos que mostrem como a nossa língua funciona. Os versículos de exemplo são traduzidos do ULT; são igualados ao TPL na Harmonização."
+                "pt": "Use palavras simples. Troque os exemplos do inglês por exemplos da nossa língua. Os versículos de exemplo são traduzidos do ULT."
               }
             },
             {
@@ -575,9 +575,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Comprueba que el artículo se entienda sin conocimientos previos, que los ejemplos sean de nuestro idioma y no calcos del inglés, y que los versículos de ejemplo digan lo que dice el ULT.",
+              "description": "El artículo debe entenderse sin saber del tema. Los ejemplos deben ser de nuestro idioma, no copias del inglés.",
               "descriptions": {
-                "pt": "Verifique se o artigo é compreensível sem conhecimentos prévios, se os exemplos são da nossa língua e não decalques do inglês, e se os versículos de exemplo dizem o que diz o ULT."
+                "pt": "O artigo deve ser entendido sem conhecer o tema. Os exemplos devem ser da nossa língua, não cópias do inglês."
               }
             }
           ],
