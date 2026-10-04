@@ -1,3 +1,4 @@
+import { waitBlocks, waitReason } from "./waits";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned, issueIsInProgress } from "../dcs/issues";
@@ -224,6 +225,13 @@ export function buildBoard(input: BoardInput): Board {
     if (seen.has(offer.issue.number)) continue;
     seen.add(offer.issue.number);
     const bucket = projects.find((p) => p.projectId === offer.projectId);
+    // A step cannot be joined on a subtarea that still waits for other work: it is listed as waiting, with what it
+    // waits for. (A task with no team reaches here without having been looked at above.)
+    const blocks = bucket?.openIssues ? waitBlocks(offer.issue, bucket.board, bucket.openIssues, bucket.sourceIssues) : [];
+    if (bucket && blocks.length) {
+      board.waiting.push(card(offer.issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: waitReason(blocks, bucket.board) }));
+      continue;
+    }
     board.reviews.push(card(offer.issue, bucket, "reviews", offer.action === "claim" ? { kind: "claimStep", step: offer.step } : { kind: "approveStep", step: offer.step }));
   }
 

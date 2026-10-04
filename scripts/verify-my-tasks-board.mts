@@ -331,4 +331,20 @@ await test("un libro a la vez por equipo: lo libre del libro siguiente espera ap
   assert.equal(where(undated, ruth[0]!.number)!.group, "free");
 });
 
+test("una tarea sin equipo que todavía espera a otra no se ofrece: aparece como en espera, con lo que espera", () => {
+  // The task of the second phase has people in the plan but no team yet, and its first step is one people join.
+  const noTeam = { ...plan, teams: plan.teams.map((task) => (task.id === "afinar" ? { ...task, orgTeamName: undefined } : task)) } as AssignmentsDoc;
+  const draft = issue({ task: "tpl", title: "NEH 3:1–4 · TPL", assignee: "bea" });
+  const waits = issue({ task: "afinar", title: "NEH 3 · Afinar TPL" });
+  // Whoever runs the projects sees the steps of every task, with a team or not: it is to them it was offered.
+  const manager = { username: "carla", canManage: true, teams: [] } as never;
+  const build = (issues: DcsIssue[]) => buildBoard({ session: manager, pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: noTeam, issues, openIssues: issues }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  const held = build([draft, waits]);
+  assert.equal(held.reviews.some((c) => c.issue.number === waits.number), false, "no se puede sumar a un paso de algo que aún espera");
+  assert.deepEqual(held.waiting.filter((c) => c.issue.number === waits.number).map((c) => c.holdText), ["Espera a «Traducir TPL» de @bea"]);
+  // Once what it waited for is closed, the step is offered.
+  const free = build([waits]);
+  assert.equal(free.reviews.some((c) => c.issue.number === waits.number), true);
+});
+
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

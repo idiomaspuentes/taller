@@ -1,3 +1,4 @@
+import { useTeamLabel } from "../useTeamRules";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,8 @@ const STAGE_KEY: Record<StartStage, MessageKey> = { process: "sb.stageProcess", 
 export function DraftProjectView({ session, pmOrg, draft, processName, onDraft, onDiscard, onLeave, onCreated, onOpenProject, onGoToTasks, announce }: Props) {
   const t = useT();
   const language = useUiLanguage();
+  // A team is named as it was typed when it was created, not as Door43 stores it.
+  const teamLabel = useTeamLabel();
   const book = draft.projectId;
   const name = bookLabel(book, language);
   const [step, setStep] = useState<Step>("plan");
@@ -299,6 +302,7 @@ export function DraftProjectView({ session, pmOrg, draft, processName, onDraft, 
           board={draft}
           inventory={inventory}
           tools={tools}
+          teamName={teamLabel}
           busy={busy}
           onSettings={(settings) => onDraft({ ...draft, settings })}
           onPortionStarts={(settings) => {
