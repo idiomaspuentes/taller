@@ -187,52 +187,53 @@ Armonización, que era opcional. `npm run verify:changes-since`.
 
 **Resuelve:** punto 1 (la otra mitad).
 
-## 5. Pasar a `master` al armonizar, validar desde `master`, y publicar es el release
+## 5. Rama de validación por unidad; `master` solo recibe lo avalado; publicar es el release
 
-**Replanteado el 4 de octubre de 2026** (antes: «Publicación por un PR que Validación revisa»). El plan anterior
-trataba «llegar a `master`» como publicar. No lo es: **publicar es hacer el release** de `master`. `master` es el
-texto terminado por el equipo, todavía sin avalar ni publicar.
+**Replanteado el 4 de octubre de 2026**, dos veces. El plan original trataba «llegar a `master`» como publicar. No
+lo es: **publicar es hacer el release** de `master`. Y como un release lleva todo lo que hay en `master`, **a
+`master` solo puede llegar lo que el comité ya avaló**. Por eso lo que Armonización termina no va a `master` sino a
+una rama de validación de esa unidad.
 
 **Hoy.** La herramienta del paso «Publicar» del FCR (`fcr-publicar`, `publishUnit`) copia la unidad del borrador del
 grupo a `master` y lo llama «Unidad publicada»: ese es el error. El release de verdad lo hace aparte «Publicar
 versión» (`src/dcs/release.ts`), en Versiones. Validación lee del borrador del grupo.
 
 **Qué.**
-- **Armonización termina una unidad → la unidad pasa sola a `master`** en cada recurso (TPL, TPS, notas, preguntas,
-  y los artículos de Palabras y Academia que toca). Es lo que hoy hace `publishUnit`, movido al cierre de la última
-  subtarea de Armonización de esa unidad. Solo pasa esa unidad: lo que está a medias en el borrador no viaja. Las
-  comprobaciones que hoy corren antes de «Publicar» (versículos completos, alineación, tablas válidas) corren aquí;
-  la del aval no, porque todavía no existe. Si `master` está protegida, la solicitud queda abierta para quien pueda
-  confirmarla, como hoy.
-- **Validación lee de `master`** de cada repositorio y muestra los recursos juntos para el capítulo (o los capítulos
-  que se validan juntos), como tC Study pero de un libro y sin release. Nadie necesita permiso de escritura para
-  validar, y no hace falta ninguna rama de publicación.
+- **Armonización termina una unidad → la unidad pasa sola a su rama de validación** en cada recurso:
+  `validacion/<libro>/<unidad>` (`validacion/jud/1`), creada desde `master` con solo esa unidad encima, y con una
+  solicitud abierta hacia `master` sin fusionar. Ocurre al cerrar la última subtarea de Armonización de la unidad,
+  con la cuenta de quien la cierra (que sí puede escribir). Las comprobaciones que hoy corren antes de «Publicar»
+  (versículos completos, alineación, tablas válidas) corren aquí.
+- **Validación lee de la rama de validación** de cada repositorio y muestra los recursos juntos para el capítulo o
+  la porción, como tC Study pero de un libro y sin release, con lo que cambia frente a `master` a la vista (la
+  comparación del paso 4). Nadie necesita permiso de escritura para validar.
 - **Lo que el comité anota se devuelve al equipo que corresponde:** Afinación para el TPL y el TPS, Armonización para
-  las ayudas. Se corrige en el borrador del grupo y, al cerrar de nuevo, `master` se actualiza.
-- **El paso «Publicar» del FCR hace el release** de `master` (lo que hoy hace «Publicar versión»), cuando el aval
-  está dado.
-- La palabra `publish` de `branchNames` (`publicacion/…`) queda para la rama corta con la que la unidad entra a
-  `master`; ya no vive abierta durante la validación.
+  las ayudas. La corrección queda en la rama de validación, para que el comité la vuelva a ver. El equipo corrige
+  con sus herramientas de siempre, que escriben en el borrador del grupo; al cerrar la corrección la app vuelve a
+  copiar la unidad a la rama de validación. Así el borrador y la rama de validación nunca dicen cosas distintas.
+- **El paso «Publicar» del FCR**, con todo avalado: fusiona la rama de validación en `master` y **hace el release**.
+  Si `master` está protegida, la solicitud queda abierta para quien pueda confirmarla.
+- En `branchNames`, la palabra `publish` (`publicacion`) pasa a ser `validation` (`validacion`): es lo que la rama es.
 
 **Por decidir.**
-- **Qué abarca un release.** Un release es de todo el repositorio. Si el capítulo 2 ya pasó a `master` pero el
-  comité solo avaló el 1, un release en ese momento lleva también el 2. O se publica cuando todo lo que hay en
-  `master` de ese libro está avalado, o se acepta que un release lleve capítulos sin aval.
 - **Cómo se devuelve una anotación.** Con qué pantalla anota el comité y en qué se convierte para el equipo
   (una subtarea nueva de corrección, o reabrir la que ya cerró).
-- **Qué pasa si las comprobaciones fallan** al cerrar Armonización: la unidad no pasa a `master` y se avisa a quien
-  coordina, o no se deja cerrar la subtarea.
+- **Qué pasa si las comprobaciones fallan** al cerrar Armonización: la unidad no pasa a validación y se avisa a
+  quien coordina, o no se deja cerrar la subtarea.
+- **Qué lleva un release cuando se validan varias unidades por separado**: `master` solo tiene lo avalado, así que
+  cualquier release es seguro; falta decidir si se hace uno por unidad avalada o uno al terminar el libro.
 
-**Dónde.** `src/dcs/unitPublish.ts` (`publishUnit` pasa a ser «pasar la unidad a `master`», llamado al cerrar),
-`src/dcs/closeSubtask.ts` y `src/domain/phaseMarks.ts` (saber que la unidad terminó Armonización),
-`src/components/EndorsementView.tsx` (leer de `master`, recursos juntos, anotar), `src/components/PublishUnitView.tsx`
-y `src/dcs/release.ts` (el paso Publicar hace el release), `processes/fcr.json` (la tarea `publicar`, sus pasos y
-los nombres de los botones; qué fase dispara el paso a `master`, como dato del paquete y no del código),
-`src/i18n/locales/*.json` («publicar» deja de decirse de pasar a `master`).
+**Dónde.** `src/config/types.ts`, `taller.config.ts` y `src/domain/branchNames.ts` (`validation`),
+`src/dcs/unitPublish.ts` (`publishUnit` se parte en «llevar la unidad a validación» y «fusionar en `master`»),
+`src/dcs/closeSubtask.ts` y `src/domain/phaseMarks.ts` (saber que la unidad terminó Armonización, o una corrección),
+`src/components/EndorsementView.tsx` (leer de la rama de validación, recursos juntos, anotar),
+`src/components/PublishUnitView.tsx` y `src/dcs/release.ts` (el paso Publicar fusiona y hace el release),
+`processes/fcr.json` (la tarea `publicar`, sus pasos y botones; qué fase lleva a validación, como dato del paquete
+y no del código), `src/i18n/locales/*.json` («publicar» deja de decirse de lo que no es el release).
 
-**Pruebas.** `verify-unit-publish`: cerrar la última subtarea de Armonización de una unidad la pasa a `master`;
-cerrar una que no es la última, no; una unidad que no pasa las comprobaciones no llega. Validar lee de `master`.
-El paso Publicar crea el release y no escribe archivos.
+**Pruebas.** `verify-unit-publish`: cerrar la última subtarea de Armonización de una unidad crea su rama de
+validación con esa unidad y nada más; cerrar una que no es la última, no; una corrección cerrada actualiza la rama;
+`master` no cambia hasta Publicar; Publicar fusiona y crea el release.
 
 **Riesgo.** Medio-alto. Cambia el proceso (la plantilla), tres pantallas y la salida a `master`. Se prueba en QA
 con Judas antes de publicar la app.
