@@ -14,6 +14,7 @@ import {
 } from "../domain/portionPr";
 import { forgetBranches } from "./branchList";
 import { isWorkWord } from "../domain/branchNames";
+import { isPhaseTagName } from "../domain/phaseMarks";
 
 export type DcsGitRef = {
   ref: string;
@@ -298,6 +299,40 @@ export async function getArchiveSha(
   return (await getTagSha(config, owner, repo, name, token)) ?? (await getBranchSha(config, owner, repo, name, token));
 }
 
+/** Make `name` a tag on `sha`. A tag cannot be moved: one on another commit is removed and made again. */
+async function pointTagAt(config: DcsClientConfig, owner: string, repo: string, name: string, sha: string, token: string): Promise<ArchiveRefAction> {
+  const action = planArchiveRef(await getTagSha(config, owner, repo, name, token), sha);
+  if (action === "update") await deleteTag(config, owner, repo, name, token);
+  if (action !== "noop") {
+    try {
+      await createTagAt(config, owner, repo, name, sha, token);
+    } catch (err) {
+      // Somebody else got there first: fine if it is the same commit.
+      if (!(err instanceof DcsApiError) || err.status !== 409) throw err;
+    }
+  }
+  const landed = await getTagSha(config, owner, repo, name, token);
+  if (planArchiveRef(landed, sha) !== "noop") {
+    throw new DcsApiError(`La etiqueta «${name}» apunta a ${landed ?? "nada"} y no a ${sha}.`, 500);
+  }
+  return action;
+}
+
+/** Point the tag `fase/{book}/{phase}` at `sha`: how the group draft stood when the phase ended. Only such a name. */
+export async function ensurePhaseTag(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  name: string,
+  sha: string,
+  token: string,
+): Promise<{ action: ArchiveRefAction }> {
+  if (!isPhaseTagName(name) || !sha.trim()) {
+    throw new DcsApiError(`«${name}» no es una marca de fase (fase/libro/fase).`, 400);
+  }
+  return { action: await pointTagAt(config, owner, repo, name, sha, token) };
+}
+
 /**
  * Point the tag `archivo/{book}/{issue}` at `sha`. Same SHA: nothing. Other SHA (the subtarea is delivered again):
  * a tag cannot be moved, so it is removed and made again. Refuses any name outside the archive, so a draft or a work
@@ -317,20 +352,7 @@ export async function ensureArchiveRef(
   if (!sha.trim()) {
     throw new DcsApiError(`Falta el SHA de la rama de trabajo para «${name}».`, 400);
   }
-  const action = planArchiveRef(await getTagSha(config, owner, repo, name, token), sha);
-  if (action === "update") await deleteTag(config, owner, repo, name, token);
-  if (action !== "noop") {
-    try {
-      await createTagAt(config, owner, repo, name, sha, token);
-    } catch (err) {
-      // Somebody else delivering the same subtarea got there first: fine if it is the same commit.
-      if (!(err instanceof DcsApiError) || err.status !== 409) throw err;
-    }
-  }
-  const landed = await getTagSha(config, owner, repo, name, token);
-  if (planArchiveRef(landed, sha) !== "noop") {
-    throw new DcsApiError(`La etiqueta «${name}» apunta a ${landed ?? "nada"} y no a ${sha}.`, 500);
-  }
+  const action = await pointTagAt(config, owner, repo, name, sha, token);
   // A book delivered before kept this archive as a branch: the tag stands for it now, and two refs of one name
   // would make «archivo/…» ambiguous for whoever reads it.
   if (await getBranchSha(config, owner, repo, name, token)) {

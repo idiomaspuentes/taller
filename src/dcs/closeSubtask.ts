@@ -37,12 +37,15 @@ export async function closeSubtask(params: {
   sharedDraft?: boolean;
   /** For a task on the shared draft: tag the draft as it stands, so the subtarea leaves a mark of what it left. */
   archiveShared?: () => Promise<unknown>;
+  /** Once the subtarea is closed: mark the phase if this was its last one. Never undoes the close. */
+  afterClose?: () => Promise<unknown>;
 }): Promise<CloseSubtaskResult> {
   const { session, pmOrg, issue } = params;
   const resource = params.resource.toLowerCase();
   if (params.sharedDraft) {
     await params.archiveShared?.().catch(() => undefined);
     await closeIssue(session, pmOrg, issue.number);
+    await params.afterClose?.().catch(() => undefined);
     return { target: issue, merge: { status: "none", conflicts: [] }, posted: null, publishError: "" };
   }
   let target = issue;
@@ -53,6 +56,7 @@ export async function closeSubtask(params: {
   const blocked = closeIssueBlockReason(resource, merge.status);
   if (blocked) throw new Error(blocked);
   await closeIssue(session, pmOrg, issue.number);
+  await params.afterClose?.().catch(() => undefined);
 
   const marker = parsePortionPrMarker(target.body);
   let posted: VerseConflictPublishResult | null = null;

@@ -33,6 +33,7 @@ import {
 import { archiveSharedDraft, ensurePortionPr, retireReleasedWork, submitPortionPrApproval } from "../dcs/portionPr";
 import { notifyNextBook } from "../dcs/startBook";
 import { closeSubtask } from "../dcs/closeSubtask";
+import { markPhaseIfClosed } from "../dcs/phaseMarks";
 import {
   parsePortionPrMarker,
   stepCompletesDraftForReview,
@@ -604,6 +605,7 @@ export function MyTasksView({
         lang,
         sharedDraft: !taskHasOwnDraft(board.teams, issueTaskId(issue)),
         archiveShared: () => archiveSharedDraft({ session, pmOrg, lang, contentOrg, board, issue }),
+        afterClose: () => markPhaseIfClosed({ session, pmOrg, lang, contentOrg, board, issue }),
         ensurePr: async () =>
           (await ensurePortionPr({ session, pmOrg, lang, contentOrg, board, issue })).issue,
       });

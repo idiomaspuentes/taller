@@ -1,3 +1,4 @@
+import { markPhaseIfClosed } from "../dcs/phaseMarks";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -87,7 +88,11 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
       if (!steps.length || !steps.every((step) => step.closing === "automatic")) return;
       const issue = await getPmIssue(session, decoded.pmOrg, decoded.issueNumber);
       const progress = parseTaskProgressMarker(issue.body);
-      if (issue.state === "open" && steps.every((step) => isStepDone(progress, step.id))) await closeIssue(session, decoded.pmOrg, decoded.issueNumber);
+      if (issue.state === "open" && steps.every((step) => isStepDone(progress, step.id))) {
+        await closeIssue(session, decoded.pmOrg, decoded.issueNumber);
+        // The last subtarea of the phase leaves its mark on the drafts; it never holds the step back.
+        if (loaded.board) await markPhaseIfClosed({ session, pmOrg: decoded.pmOrg, lang: decoded.lang, contentOrg: decoded.contentOrg, board: loaded.board, issue }).catch(() => null);
+      }
     },
     [session],
   );

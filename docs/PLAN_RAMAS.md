@@ -2,7 +2,9 @@
 
 Estado: **en marcha (4 de octubre de 2026).** Hechos y probados en QA con Judas: el **paso 1** (nombres legibles y
 configurables; solo la tarea de traducción tiene borrador) y el **paso 2** (archivo como etiqueta, la rama de trabajo
-se borra al entregar, archivo de las subtareas sobre el borrador del grupo). Faltan los pasos 3, 4, 5 y 7. Decidido:
+se borra al entregar, archivo de las subtareas sobre el borrador del grupo). Hecho con pruebas automáticas, sin
+verlo aún en QA (hace falta cerrar una fase entera de un libro): el **paso 3** (marcas de fase). Faltan los pasos 4,
+5 y 7. Decidido:
 los nombres de la tabla, configurables por organización y por espacio de trabajo; `archivo/` y `fase/` como
 etiquetas; las respuestas de revisión se quedan donde están.
 
@@ -147,6 +149,11 @@ abierta de esta fase y libro?».
 que no es la última, no.
 
 **Riesgo.** Bajo. Si una subtarea se reabre después, la marca queda vieja: se vuelve a fijar al cerrar de nuevo.
+
+**Como quedó.** `src/domain/phaseMarks.ts` decide si la subtarea que se cierra era la última de su fase para su
+libro (las subtareas de otro libro del mismo proyecto no cuentan) y `src/dcs/phaseMarks.ts` fija la etiqueta en el
+borrador de cada recurso de la fase; un recurso sin borrador en ese libro se salta. Se llama después de cerrar, desde
+«Entregar» y desde el paso automático de Publicar, y si falla no deshace el cierre. `npm run verify:phase-marks`.
 
 **Resuelve:** punto 1 (mitad).
 

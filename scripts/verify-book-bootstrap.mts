@@ -9,7 +9,7 @@ import {
   saveUsfmOnPortionBranch,
 } from "../src/dcs/portionPr.ts";
 import { BootstrapError, explainRepoFileError } from "../src/dcs/repoFile.ts";
-import { deleteArchivedWorkBranch, ensureArchiveRef, ensureBranchFrom, getArchiveSha } from "../src/dcs/pulls.ts";
+import { deleteArchivedWorkBranch, ensureArchiveRef, ensureBranchFrom, ensurePhaseTag, getArchiveSha } from "../src/dcs/pulls.ts";
 import { dcsConfig } from "../src/dcs/config.ts";
 import { getContents } from "@ip-lms/dcs-client";
 import {
@@ -1160,6 +1160,18 @@ const at = ["es-419_gl", "es-419_glt"] as const;
   assert((await getArchiveSha(cfg, ...at, archive, session.token)) === "oldsha", "an older archive branch is still read");
   await ensureArchiveRef(cfg, ...at, archive, "newsha", session.token);
   assert(fake.tags[archive] === "newsha" && !fake.branches[archive], "delivered again: the tag stands for it, with no branch of the same name");
+}
+
+{
+  // The mark of a phase: a tag on the group draft, moved when the phase closes again.
+  const fake = installFakeDcs({ branches: { master: "abc123master", "borrador/neh/t": "trunksha" }, files: {} });
+  const res = await ensurePhaseTag(cfg, ...at, "fase/neh/traduccion", "trunksha", session.token);
+  assert(res.action === "create" && fake.tags["fase/neh/traduccion"] === "trunksha", "phase closed: its tag is on the draft's commit");
+  assert((await ensurePhaseTag(cfg, ...at, "fase/neh/traduccion", "latersha", session.token)).action === "update" && fake.tags["fase/neh/traduccion"] === "latersha", "closed again: the tag moves");
+  assert(fake.branches["borrador/neh/t"] === "trunksha", "the draft itself is not touched");
+  let refused = false;
+  await ensurePhaseTag(cfg, ...at, "borrador/neh/t", "trunksha", session.token).catch(() => (refused = true));
+  assert(refused && !fake.tags["borrador/neh/t"], "only a phase name can be tagged as a phase");
 }
 
 console.log("verify-book-bootstrap: ok");
