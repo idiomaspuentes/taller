@@ -89,7 +89,7 @@ fuente en inglés. Los recursos de apoyo se escriben sin mirar el TPL ni el TPS 
 | 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de texto bíblico | Lo marca quien lo hace |
 | 3 | Revisión en pares | Revisar | Otra persona del equipo, no quien hizo el borrador | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
 **Al entregar:** el texto de la porción pasa al borrador del grupo, y queda a la vista en la revisión grupal
-del capítulo (3.7).
+de ese texto en el capítulo (3.7): el cuarto paso de cada equipo.
 
 ### 3.3 Traducir Notas · 3.4 Traducir Preguntas
 
@@ -110,26 +110,32 @@ familiarización del TPL y del TPS.
 
 Las ayudas **no llevan revisión grupal**.
 
-### 3.7 Revisión grupal (TPL + TPS, por capítulo)
+### 3.7 Revisión grupal TPL · Revisión grupal TPS (por capítulo)
 
-Una subtarea por capítulo (o por tramo, si el capítulo se partió). No es un paso de cada porción: el equipo
-lee junto **todo lo traducido del capítulo**, sobre el borrador del grupo, con el TPL y el TPS lado a lado.
+El TPL y el TPS pueden ser el trabajo de **dos equipos distintos**, y cada uno hace los cuatro pasos de su texto:
+familiarizarse, borrador, revisión en pares y **revisión grupal**. Por eso hay una revisión grupal por texto, cada
+una con su equipo; no se leen los dos textos juntos. (Hasta la versión 17 del proceso era una sola tarea con el TPL
+y el TPS lado a lado.)
+
+Los tres primeros pasos son de cada porción. El cuarto es **del capítulo**: una subtarea por capítulo (o por
+tramo, si el capítulo se partió), en la que el equipo lee junto **todo lo traducido de su texto en el capítulo**,
+sobre el borrador del grupo.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Lectura grupal | Revisar | El equipo de traducción (también quienes tradujeron) | 2 a 8 | Lectura grupal | Todo llegó y cada versículo está acordado |
+| 1 | Lectura grupal | Revisar | El equipo de ese texto (también quienes tradujeron) | 2 a 8 | Lectura grupal | Todo llegó y cada versículo está acordado |
 
-**Espera a:** Traducir TPL y Traducir TPS del mismo capítulo, **de forma parcial**: se puede empezar en cuanto
-se entrega la primera porción, y las demás aparecen a medida que llegan («Todavía en traducción» mientras
-tanto).
+**Espera a:** la traducción de su texto en el mismo capítulo, **de forma parcial**: se puede empezar en cuanto se
+entrega la primera porción, y las demás aparecen a medida que llegan («Todavía en traducción» mientras tanto).
+La del TPL no espera al TPS ni al revés.
 
 **Cómo se acuerda un versículo:** dos personas habilitadas de acuerdo, al menos una que no lo tradujo, y
 ninguna duda abierta. Cualquiera puede corregir el versículo en el borrador del grupo; al corregirlo, quienes
 ya habían dado su acuerdo son avisados y vuelven a mirarlo. Un versículo ya acordado se reabre con una duda
 o una corrección.
 
-**Se cierra** cuando llegaron todas las porciones de los dos textos y todo está acordado. La Afinación del
-capítulo espera a este cierre.
+**Se cierra** cuando llegaron todas las porciones de su texto y todo está acordado. La Afinación de ese texto en
+el capítulo espera a este cierre: los desafíos del TPL a la revisión grupal del TPL, los del TPS a la del TPS.
 
 ### 3.5 Traducir Palabras · 3.6 Traducir Academia
 
@@ -154,7 +160,7 @@ equipos distintos.
 
 | Tarea | Subtareas | Espera a | Paso 1 | Paso 2 |
 |-------|-----------|----------|------------------------------|--------------------|
-| **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y la revisión grupal, del capítulo | Revisar desafíos, en **ronda abierta**: cualquiera contesta cualquier figura de la porción; tres personas de acuerdo en cada una | (no hay: es un solo paso) |
+| **Desafíos TPL / TPS** | Una por porción | La traducción de ese texto y su revisión grupal, del capítulo | Revisar desafíos, en **ronda abierta**: cualquiera contesta cualquier figura de la porción; tres personas de acuerdo en cada una | (no hay: es un solo paso) |
 | **Palabras clave TPL / TPS** | Una por capítulo | Los desafíos de todo el capítulo | Revisar palabras clave, en **ronda abierta**: cualquiera contesta cualquier término; tres personas de acuerdo en cada uno | (no hay: es un solo paso) |
 | **Alinear TPL / TPS** | Una por porción | Las palabras clave del capítulo | Alinear los versículos de la porción; lo marca quien lo hace | Revisar la alineación |
 

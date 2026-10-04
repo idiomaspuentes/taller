@@ -260,12 +260,17 @@ if (fcr) {
   const issue = (taskId: string, chapter: number): DcsIssue =>
     ({ id: ++n, number: n, title: `TIT ${chapter}:1–3 · ${taskId}`, state: "open", body: "", labels: [{ name: `pm/tarea:${taskId}` }, { name: `pm/cap:${chapter}` }], assignee: null, assignees: [] }) as unknown as DcsIssue;
 
-  test("FCR: Traducción se familiariza, hace el borrador y lo revisa en pares; la revisión grupal es del entregable entero", () => {
+  test("FCR: Traducción se familiariza, hace el borrador y lo revisa en pares; cada texto tiene su revisión grupal, de su capítulo entero", () => {
     assert.deepEqual(team("tpl").steps!.map((s) => s.id), ["familiarizar", "borrador", "pares"]);
-    const reading = team("revision-grupal");
-    assert.deepEqual(reading.rules.map((r) => r.resource), ["tpl", "tps"], "se leen los dos textos juntos");
-    assert.deepEqual(reading.steps!.map((s) => [s.id, s.closing, s.claimMode]), [["lectura", "consensus", "pool"]]);
-    assert.deepEqual(reading.waitsFor, [{ taskId: "tpl", scope: "chapter", partial: true }, { taskId: "tps", scope: "chapter", partial: true }], "empieza con el primer pasaje que llega");
+    // The TPL and the TPS may be the work of two teams: each reads its own text together, without the other.
+    for (const res of ["tpl", "tps"] as const) {
+      const reading = team(`revision-grupal-${res}`);
+      assert.deepEqual(reading.rules.map((r) => r.resource), [res], "se lee un solo texto");
+      assert.deepEqual(reading.steps!.map((s) => [s.id, s.closing, s.claimMode]), [["lectura", "consensus", "pool"]]);
+      assert.deepEqual(reading.waitsFor, [{ taskId: res, scope: "chapter", partial: true }], "empieza con el primer pasaje de su texto, sin esperar al otro");
+      assert.equal(reading.bundle?.grain, "chapter", "una por capítulo");
+    }
+    assert.equal(board.teams.some((t) => t.id === "revision-grupal"), false, "ya no hay una revisión de los dos textos juntos");
     assert.deepEqual(team("notas-ayuda").steps!.map((s) => s.id), ["familiarizar", "borrador", "pares"]);
     assert.deepEqual(team("palabras-ayuda").steps!.map((s) => s.id), ["borrador", "pares"]);
     assert.equal(team("tpl").steps![0]!.scope, "chapter-once");
@@ -318,13 +323,14 @@ if (fcr) {
     const wordsTpl1 = issue("palabras-tpl", 1), alignTpl1 = issue("alinear-tpl", 1);
     const arm = issue("armonizar-notas", 1), armQ = issue("armonizar-preguntas", 1);
     const val = issue("validar", 1);
-    const grupal1 = issue("revision-grupal", 1), grupal2 = issue("revision-grupal", 2);
-    const all = [tpl1, tps1, tpl2, tps2, notas, academia, grupal1, grupal2, afTpl1, afTps1, afTpl2, wordsTpl1, alignTpl1, arm, armQ, val];
+    const grupal1 = issue("revision-grupal-tpl", 1), grupal2 = issue("revision-grupal-tpl", 2), grupalTps1 = issue("revision-grupal-tps", 1);
+    const all = [tpl1, tps1, tpl2, tps2, notas, academia, grupal1, grupal2, grupalTps1, afTpl1, afTps1, afTpl2, wordsTpl1, alignTpl1, arm, armQ, val];
     const waiting = (i: DcsIssue, open = all) => waitBlocks(i, board, open).length > 0;
 
     assert.ok(waiting(afTpl1) && waiting(afTps1), "la Afinación espera a su Traducción");
     assert.ok(waiting(grupal1), "sin nada entregado, la revisión grupal espera");
-    assert.equal(waiting(grupal1, all.filter((i) => i !== tpl1)), false, "con el TPL del capítulo entregado ya se puede empezar a leer, aunque falte el TPS");
+    assert.equal(waiting(grupal1, all.filter((i) => i !== tpl1)), false, "con el TPL del capítulo entregado su equipo ya puede empezar a leer");
+    assert.equal(waiting(grupalTps1, all.filter((i) => i !== tpl1)), true, "la revisión grupal del TPS no depende del TPL: espera a su propio texto");
     assert.equal(waiting(grupal2, all.filter((i) => i !== tpl1)), true, "el capítulo 2 espera a lo suyo");
     assert.equal(waiting(afTpl1, all.filter((i) => i !== tpl1)), true, "Afinar TPL espera también a la revisión grupal");
     assert.deepEqual(newlyEnabled(tpl1, board, all).map((i) => i.number), [grupal1.number]);

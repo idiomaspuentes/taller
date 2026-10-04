@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 17,
+      "version": 18,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -131,6 +131,57 @@
           "solverAppId": "tpl-translate"
         },
         {
+          "id": "revision-grupal-tpl",
+          "name": "Revisión grupal TPL",
+          "names": {
+            "pt": "Revisão em grupo TPL"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "tpl",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "lectura",
+              "name": "Lectura grupal",
+              "names": {
+                "pt": "Leitura em grupo"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "El equipo del TPL lee junto lo traducido del capítulo, pasaje por pasaje a medida que llega, y se pone de acuerdo.",
+              "descriptions": {
+                "pt": "A equipe do TPL lê junto o que foi traduzido do capítulo, passagem por passagem conforme chega, e entra em acordo."
+              },
+              "solverAppId": "fcr-group-reading",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 8,
+              "minIndependent": 1
+            }
+          ],
+          "minLevel": "practicante",
+          "waitsFor": [
+            {
+              "taskId": "tpl",
+              "scope": "chapter",
+              "partial": true
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
+        },
+        {
           "id": "tps",
           "name": "Traducir TPS",
           "names": {
@@ -197,6 +248,57 @@
           ],
           "minLevel": "practicante",
           "solverAppId": "tps-translate"
+        },
+        {
+          "id": "revision-grupal-tps",
+          "name": "Revisión grupal TPS",
+          "names": {
+            "pt": "Revisão em grupo TPS"
+          },
+          "phaseId": "fcr-traduccion",
+          "rules": [
+            {
+              "resource": "tps",
+              "articleFilter": "pending"
+            }
+          ],
+          "steps": [
+            {
+              "id": "lectura",
+              "name": "Lectura grupal",
+              "names": {
+                "pt": "Leitura em grupo"
+              },
+              "actionLabel": "Revisar",
+              "actionLabels": {
+                "pt": "Revisar"
+              },
+              "description": "El equipo del TPS lee junto lo traducido del capítulo, pasaje por pasaje a medida que llega, y se pone de acuerdo.",
+              "descriptions": {
+                "pt": "A equipe do TPS lê junto o que foi traduzido do capítulo, passagem por passagem conforme chega, e entra em acordo."
+              },
+              "solverAppId": "fcr-group-reading",
+              "closing": "consensus",
+              "claimMode": "pool",
+              "minAssignees": 2,
+              "maxAssignees": 8,
+              "minIndependent": 1
+            }
+          ],
+          "minLevel": "practicante",
+          "waitsFor": [
+            {
+              "taskId": "tps",
+              "scope": "chapter",
+              "partial": true
+            }
+          ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual"
         },
         {
           "id": "notas-ayuda",
@@ -435,66 +537,6 @@
           "solverAppId": "helps-review"
         },
         {
-          "id": "revision-grupal",
-          "name": "Revisión grupal",
-          "names": {
-            "pt": "Revisão em grupo"
-          },
-          "phaseId": "fcr-traduccion",
-          "rules": [
-            {
-              "resource": "tpl",
-              "articleFilter": "pending"
-            },
-            {
-              "resource": "tps",
-              "articleFilter": "pending"
-            }
-          ],
-          "steps": [
-            {
-              "id": "lectura",
-              "name": "Lectura grupal",
-              "names": {
-                "pt": "Leitura em grupo"
-              },
-              "actionLabel": "Revisar",
-              "actionLabels": {
-                "pt": "Revisar"
-              },
-              "description": "El equipo lee junto todo lo traducido del capítulo, pasaje por pasaje a medida que llega, y se pone de acuerdo.",
-              "descriptions": {
-                "pt": "A equipe lê junto tudo o que foi traduzido do capítulo, passagem por passagem conforme chega, e entra em acordo."
-              },
-              "solverAppId": "fcr-group-reading",
-              "closing": "consensus",
-              "claimMode": "pool",
-              "minAssignees": 2,
-              "maxAssignees": 8,
-              "minIndependent": 1
-            }
-          ],
-          "minLevel": "practicante",
-          "waitsFor": [
-            {
-              "taskId": "tpl",
-              "scope": "chapter",
-              "partial": true
-            },
-            {
-              "taskId": "tps",
-              "scope": "chapter",
-              "partial": true
-            }
-          ],
-          "bundle": {
-            "enabled": true,
-            "grain": "chapter"
-          },
-          "distributeUnit": "chapter",
-          "distributePolicy": "manual"
-        },
-        {
           "id": "desafios-tpl",
           "name": "Desafíos TPL",
           "names": {
@@ -514,7 +556,7 @@
               "scope": "chapter"
             },
             {
-              "taskId": "revision-grupal",
+              "taskId": "revision-grupal-tpl",
               "scope": "chapter"
             }
           ],
@@ -679,7 +721,7 @@
               "scope": "chapter"
             },
             {
-              "taskId": "revision-grupal",
+              "taskId": "revision-grupal-tps",
               "scope": "chapter"
             }
           ],
