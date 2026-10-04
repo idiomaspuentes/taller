@@ -1,4 +1,7 @@
-import { StepAsk } from "./StepAsk";
+import { Checks, StepAsk } from "./StepAsk";
+import { readRaw } from "../dcs/afinacionLoad";
+import { resolveSourcePackage } from "../domain/sourcePackage";
+import { itemChecks, paragraphsFor } from "../domain/stepChecks";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -15,7 +18,7 @@ import { loadReviewComments, type ReviewComment as Comment } from "../dcs/review
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
-import { englishScriptureKindRef, loadEnglishScriptureKindUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
+import { englishScriptureKindRef, loadEnglishHelpsForRange, loadEnglishScriptureKindUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
 import { articleItems, diffWords, refComment, reviewItems, type ReviewItem } from "../domain/reviewItems";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
@@ -77,6 +80,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [pull, setPull] = useState<DcsPull | null>(null);
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
+  /** The English of each note, question or article in review, by the item's key: what its checks are matched against. */
+  const [english, setEnglish] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [showSources, setShowSources] = useState(true);
@@ -114,6 +119,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           loaded.flatMap((pane, index) => (pane ? [{ short: pane.meta?.short || englishScriptureKindRef((["ult", "ust"] as const)[index]!, ctx.book).short, verses: extractDraftVerses(pane.usfm, range).verses }] : [])),
         ),
       );
+      // The English of what is reviewed, item by item: each shows only the checks its own source calls for.
+      if (ctx.resource === "notas" || ctx.resource === "preguntas") {
+        void loadEnglishHelpsForRange(sess, ctx, range)
+          .then((rows) => setEnglish(Object.fromEntries(rows.filter((row) => row.kind === (ctx.resource === "notas" ? "nota" : "pregunta")).map((row) => [row.id, `${row.title} ${row.body}`]))))
+          .catch(() => undefined);
+      }
       void loadNotesForRange(sess, ctx, range, pmConfig)
         .then((loaded) => setNotes(loaded.notes))
         .catch(() => setNotes([]));
@@ -137,6 +148,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         // A draft of articles: each one is a piece, whole.
         const read = await Promise.all(articles.map(async (name) => ({ filename: name, now: (await readAt(name, linked.head)) ?? "", before: (await readAt(name, linked.base)) ?? "" })));
         setItems(articleItems(read));
+        // The English article of each one, from the source package of the project, to find what its paragraphs call for.
+        const pkg = resolveSourcePackage(board?.settings);
+        void Promise.all(read.map((file) => readRaw(sess, pkg.owner, ctx.resource === "academia" ? pkg.ta : pkg.tw, file.filename).then((text) => [file.filename, text] as const).catch(() => [file.filename, null] as const))).then((pairs) =>
+          setEnglish(Object.fromEntries(pairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])))),
+        );
         return;
       }
       const filename = names.find((name) => /\.(usfm|sfm|tsv)$/i.test(name)) ?? bookUsfmName(ctx.book);
@@ -297,7 +313,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         }
       />
       <div className="step-ask-bar">
-        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} />
+        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} byItem />
       </div>
 
       {error ? (
@@ -339,6 +355,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               <ol className="rv-list">
                 {items.map((item) => {
                   const verseNotes = notesOf(item.verse);
+                  // What this item's own source calls for. A verse is matched against the English text it translates;
+                  // a note, a question or an article against its English. Without it, every check that has words.
+                  const text = ctx?.resource === "tpl" || ctx?.resource === "tps";
+                  const kind = ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i;
+                  const itemSource = text ? (sources.find((source) => kind.test(source.short)) ?? sources[ctx?.resource === "tps" ? 1 : 0])?.verses[item.verse] : english[item.key];
+                  const own = itemChecks(step?.checks ?? [], itemSource);
                   const about = comments.filter((row) => row.ref === item.ref);
                   return (
                     <li key={item.key} className="rv-item" data-state={item.state}>
@@ -388,6 +410,19 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                             ))}
                           </ul>
                         </details>
+                      ) : null}
+                      {own.length && item.state !== "removed" && item.state !== "empty" ? (
+                        <div className="rv-checks">
+                          <Checks
+                            scope={`${ctx?.issueNumber ?? ""}:${step?.id ?? ""}:${item.key}`}
+                            lines={own.map((check) => {
+                              const said = check.texts?.[language] ?? check.text;
+                              // In an article the check says in which paragraphs of the English it comes up.
+                              const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
+                              return { id: check.id, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
+                            })}
+                          />
+                        </div>
                       ) : null}
                       {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
                       {commenting === item.key ? (

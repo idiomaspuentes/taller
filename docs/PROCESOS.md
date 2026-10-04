@@ -61,7 +61,7 @@ Cada plantilla tiene `id`, `name`, `version`, `phases` y `tasks`.
 | `id`, `name`, `names` | Identificador estable y nombre, por idioma |
 | `actionLabel`, `actionLabels` | Lo que dice el botón grande («Revisar», «Grabar»). Sin él, la app dice «Empezar» o «Seguir» |
 | `solverAppId` | La herramienta que abre |
-| `checks` | Lo que la persona comprueba en su propio trabajo antes de entregar el paso: una lista corta que marca para sí (`id`, `text`, `texts` por idioma). Con `when` (palabras de la fuente: enteras, sin importar mayúsculas; `walk*` y `*ed` para el principio o el final de una palabra; `#` para cualquier número) solo aparece en un pasaje cuya fuente tenga alguna. Recuerda; no cierra el paso |
+| `checks` | Lo que la persona comprueba en su propio trabajo antes de entregar el paso: una lista corta que marca para sí (`id`, `text`, `texts` por idioma). Con `when` (palabras de la fuente: enteras, sin importar mayúsculas; `walk*` y `*ed` para el principio o el final de una palabra; `#` para cualquier número; `Aa` para un nombre propio) solo aparece en un pasaje cuya fuente tenga alguna. Recuerda; no cierra el paso |
 | `claimMode` | Quién lo toma: `none` (quien tiene la tarea), `exclusive` (una persona), `pool` (varias) |
 | `minAssignees`, `maxAssignees`, `minIndependent` | Cuántas personas, y cuántas no deben haber escrito el texto (`pool`) |
 | `excludeIssueAssignee`, `excludePriorStepIds`, `includeAuthorInApproval` | Quién no puede tomarlo, y si el autor también confirma |

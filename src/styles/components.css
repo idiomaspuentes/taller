@@ -6847,6 +6847,8 @@ button.al-box--read { cursor: pointer; }
 .step-ask__add input { flex: 1; min-width: 0; }
 .hub-used { font-size: 0.75rem; font-weight: 600; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--success-100, #dff5e6); color: var(--success-700, #17663a); margin-right: 0.5rem; }
 .hub-used[data-unused="true"] { background: var(--surface-muted, #eef1f6); color: var(--text-muted); font-weight: 500; }
+.rv-checks { margin-top: 0.5rem; padding: 0.25rem 0.75rem; border-left: 3px solid var(--border); font-size: 0.875rem; }
+.rv-checks .step-ask__checks { margin-top: 0; }
 .step-ask__manage { font-size: 0.8125rem; color: var(--primary); text-decoration: underline; justify-self: start; }
 .step-ask__by { color: var(--text-muted); font-weight: 400; text-decoration: none; }
 .team-rules { display: grid; gap: 0.5rem; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9375rem; }

@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 24,
+      "version": 25,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -231,7 +231,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -428,7 +431,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -706,7 +712,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -903,7 +912,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -1188,7 +1200,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -1392,7 +1407,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -1626,7 +1644,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -1830,7 +1851,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -2039,7 +2063,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -2243,7 +2270,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -2459,7 +2489,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",
@@ -2656,7 +2689,10 @@
                   "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
                   "texts": {
                     "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  }
+                  },
+                  "when": [
+                    "Aa"
+                  ]
                 },
                 {
                   "id": "numeros",

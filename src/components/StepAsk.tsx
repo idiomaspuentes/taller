@@ -4,7 +4,7 @@ import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { loadStepSource } from "../dcs/stepSource";
 import { teamKey } from "../domain/levels";
-import { applicableChecks } from "../domain/stepChecks";
+import { applicableChecks, stepWideChecks } from "../domain/stepChecks";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
@@ -49,7 +49,7 @@ function useTicks(scope: string): [string[], (id: string) => void] {
   return [ticks, toggle];
 }
 
-function Checks({ lines, scope }: { lines: Line[]; scope: string }) {
+export function Checks({ lines, scope }: { lines: Line[]; scope: string }) {
   const [ticks, toggle] = useTicks(scope);
   if (!lines.length) return null;
   return (
@@ -73,13 +73,15 @@ function Checks({ lines, scope }: { lines: Line[]; scope: string }) {
  * `scope` tells one subtarea's ticks from another's: its number and its step. `source` is the source of the passage
  * in hand, when the list is shown beside it: only the checks it calls for show (see `domain/stepChecks`).
  */
-export function StepAskBody({ step, scope, source }: { step: TaskStep; scope: string; source?: string | null }) {
+export function StepAskBody({ step, scope, source, byItem }: { step: TaskStep; scope: string; source?: string | null; byItem?: boolean }) {
   const language = useUiLanguage();
   const description = step.descriptions?.[language] ?? step.description;
+  // Where each item shows the checks it calls for, the step asks once only for what is of every item.
+  const checks = byItem ? stepWideChecks(step.checks ?? []) : applicableChecks(step.checks ?? [], source);
   return (
     <>
       {description ? <p>{description}</p> : null}
-      <Checks lines={applicableChecks(step.checks ?? [], source).map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text }))} scope={scope} />
+      <Checks lines={checks.map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text }))} scope={scope} />
     </>
   );
 }
@@ -153,7 +155,7 @@ export function isOfTeam(session: Pick<GtSession, "username" | "teams" | "canMan
 }
 
 /** Inside a tool: the step comes from the launch (which subtarea, which step) and the plan of its project. */
-export function StepAsk({ session, ctx }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined }) {
+export function StepAsk({ session, ctx, byItem }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined; byItem?: boolean }) {
   const t = useT();
   const language = useUiLanguage();
   const [found, setFound] = useState<{ task: ProjectTask; step: TaskStep } | null>(null);
@@ -195,7 +197,7 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
   return (
     <details className="step-ask">
       <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
-      <StepAskBody step={step} scope={scope} source={source} />
+      <StepAskBody step={step} scope={scope} source={source} byItem={byItem} />
       <TeamRuleChecks team={task.orgTeamName} scope={scope} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} />
     </details>
   );

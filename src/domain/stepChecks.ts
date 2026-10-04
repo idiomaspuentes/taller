@@ -9,13 +9,16 @@ import type { StepCheck } from "./types";
  * list is shown away from the passage), every check applies: better one line too many than one missing.
  */
 
-/** A digit anywhere in the source: `#`. */
+/** A digit anywhere in the source: `#`. A proper name (a capitalised word that does not start a sentence): `Aa`. */
 const DIGIT = "#";
+const NAME = "aa";
 
 function wordPattern(word: string): RegExp | null {
   const clean = word.trim().toLowerCase();
   if (!clean) return null;
   if (clean === DIGIT) return /\d/;
+  // In the middle of a sentence, or opening it before a comma («Jude, a servant…»).
+  if (clean === NAME) return /[a-zà-ÿ,;:]\s+[A-Z][a-zà-ÿ]{2,}|(?:^|[.!?]\s+)[A-Z][a-zà-ÿ]{2,},/;
   const starts = clean.startsWith("*");
   const ends = clean.endsWith("*");
   const core = clean.replace(/^\*|\*$/g, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -26,14 +29,47 @@ function wordPattern(word: string): RegExp | null {
   return new RegExp(`${starts ? `(?<!${letter})${letter}{2,}` : `(?<!${letter})`}${core}${ends ? `${letter}+` : `(?!${letter})`}`, "i");
 }
 
+/** The words of a source that are read: the links of a note or an article (their addresses, their numbers) are not. */
+function readable(source: string): string {
+  return source
+    .replace(/\[\[[^\]]*\]\]/g, " ")
+    .replace(/\]\([^)]*\)/g, "] ")
+    .replace(/(?:rc|https?):\/\/\S+/g, " ");
+}
+
 export function checkApplies(check: Pick<StepCheck, "when">, source: string | null | undefined): boolean {
   const words = check.when ?? [];
   if (!words.length || source === null || source === undefined) return true;
-  return words.some((word) => wordPattern(word)?.test(source));
+  const text = readable(source);
+  return words.some((word) => wordPattern(word)?.test(text));
 }
 
 export function applicableChecks<T extends Pick<StepCheck, "when">>(checks: T[], source: string | null | undefined): T[] {
   return checks.filter((check) => checkApplies(check, source));
+}
+
+/**
+ * The checks one item calls for (a verse, a note, a question, an article), for a list shown beside each item. Only
+ * checks that say when they apply are of an item: those that always apply are asked once for the whole step, not
+ * once per verse. `source` undefined (the source of that item could not be read): all of them, to be safe.
+ */
+export function itemChecks<T extends Pick<StepCheck, "when">>(checks: T[], source: string | null | undefined): T[] {
+  return checks.filter((check) => check.when?.length && checkApplies(check, source));
+}
+
+/** The checks asked once for the whole step, when each item shows its own. */
+export function stepWideChecks<T extends Pick<StepCheck, "when">>(checks: T[]): T[] {
+  return checks.filter((check) => !check.when?.length);
+}
+
+/** In a long text (an article), the paragraphs that call for a check, counted from 1. */
+export function paragraphsFor(check: Pick<StepCheck, "when">, source: string): number[] {
+  if (!check.when?.length) return [];
+  return source
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .flatMap((paragraph, index) => (checkApplies(check, paragraph) ? [index + 1] : []));
 }
 
 /** «you, your, yours» as a person types it, to the list a check keeps (and back). */

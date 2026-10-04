@@ -143,12 +143,21 @@ la misma lista, que la persona marca para sí antes de entregar:
 | Números, medidas y fechas | Iguales que en la fuente |
 | Ortografía y gramática | Tildes, signos de apertura, concordancia |
 
-**La lista se ajusta al pasaje.** Cada comprobación puede decir qué palabras de la fuente la piden, y solo aparece
-si el pasaje las tiene: la de «you» no sale donde nadie dice «you», ni la de los números donde no hay ninguno. La
-herramienta lee el inglés del pasaje (el ULT, el UST, o las notas o preguntas en inglés) y muestra las que tocan.
-Siempre salen «¿Está todo?», «¿Hombre o mujer, uno o varios?», los nombres y la ortografía. En la tarjeta de «Mis
-tareas», lejos del pasaje, se ve la lista entera; y también cuando la fuente no se pudo leer o el trabajo es un
-artículo. Las palabras de cada comprobación se editan con ella, en «Proceso».
+**La lista se ajusta a lo que se tiene delante.** Cada comprobación puede decir qué palabras de la fuente la
+piden, y solo aparece donde la fuente las tiene.
+
+- **Al revisar (revisión en pares), es por ítem:** debajo de cada versículo, cada nota y cada pregunta salen las
+  comprobaciones que **ese** versículo, esa nota o esa pregunta piden, frente a su inglés. Un versículo sin «you»
+  no pregunta por «you»; uno que no pide nada no muestra nada. En un artículo (Palabras, Academia) cada
+  comprobación dice en qué **párrafos** del inglés aparece.
+- **Lo que vale para todo se pregunta una vez**, arriba, para el paso entero: «¿Está todo?», «¿Hombre o mujer, uno
+  o varios?» y la ortografía.
+- **Al traducir (borrador)**, la lista es una sola para el pasaje, con lo que el pasaje pide.
+- En la tarjeta de «Mis tareas», lejos del texto, se ve la lista entera; y también cuando la fuente no se pudo leer.
+
+Las palabras de cada comprobación se editan con ella, en «Proceso». Además de palabras enteras admite `walk*` y
+`*ed` (principio o final de palabra), `#` (cualquier número) y `Aa` (un nombre propio). Las direcciones de los
+enlaces de una nota no cuentan como texto.
 
 Notas y Preguntas empiezan además por **«¿Leíste el versículo del que habla?»**: para traducir bien lo que se dice
 de una frase hay que saber de qué trata el versículo. Palabras recuerda que las referencias bíblicas no se traducen.

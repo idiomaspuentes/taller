@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { applicableChecks, checkApplies, formatWhen, parseWhen } from "../src/domain/stepChecks";
+import { applicableChecks, checkApplies, formatWhen, itemChecks, paragraphsFor, parseWhen, stepWideChecks } from "../src/domain/stepChecks";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -51,6 +51,37 @@ test("FCR, borrador del TPL: en un pasaje sin «you» ni números no se pregunta
   const haggai = "In the 2nd year of Darius the king, the word of Yahweh came: Is it time for you to dwell in your houses?";
   assert.ok(["you", "referente", "numeros", "ser-estar"].every((id) => ids(haggai).includes(id)));
   assert.equal(ids(null).length, checks.length, "sin fuente, la lista entera");
+});
+
+test("los nombres propios se reconocen por la mayúscula que no abre la oración", () => {
+  const names = { when: ["Aa"] };
+  assert.equal(checkApplies(names, "Then he went up to Jerusalem."), true);
+  assert.equal(checkApplies(names, "Jude, a servant of the Lord"), true, "abre la oración, pero va seguido de coma");
+  assert.equal(checkApplies(names, "Then he went up to the city. And they saw it."), false, "«And» abre una oración: no es un nombre");
+  assert.equal(checkApplies(names, "And I saw it."), false, "«I» no es un nombre");
+});
+
+test("cada ítem muestra solo lo que su propia fuente pide; lo de siempre se pregunta una vez para todo el paso", () => {
+  const checks = shippedWorkflow("fcr-base")!.tasks.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "pares")!.checks!;
+  assert.deepEqual(stepWideChecks(checks).map((c) => c.id), ["completo", "genero", "ortografia"], "no se repiten en cada versículo");
+  const verse = (text: string | undefined) => itemChecks(checks, text).map((c) => c.id);
+  assert.deepEqual(verse("Is it time for you to dwell in your houses?"), ["you", "referente", "ser-estar", "sentidos"]);
+  assert.deepEqual(verse("Grace and peace."), [], "un versículo que no pide nada no muestra nada");
+  assert.equal(verse(undefined).length, checks.length - 3, "sin la fuente de ese ítem, todas las que tienen palabras");
+});
+
+test("en un artículo, la comprobación dice en qué párrafos del inglés aparece", () => {
+  const article = ["# Elder", "An elder was a leader.", "You should translate it as you would say it.", "See also: leader.", "The elders asked you."].join(String.fromCharCode(10, 10));
+  assert.deepEqual(paragraphsFor({ when: ["you"] }, article), [3, 5]);
+  assert.deepEqual(paragraphsFor({ when: ["#"] }, article), []);
+  assert.deepEqual(paragraphsFor({}, article), [], "la que no tiene palabras no es de ningún párrafo");
+});
+
+test("las direcciones de los enlaces de una nota no cuentan como texto: sus números no piden nada", () => {
+  const note = "This is a metaphor. (See: [[rc://en/ta/man/translate/figs-metaphor]]) See [chapter 2](../02/intro.md).";
+  assert.equal(checkApplies({ when: ["#"] }, note), true, "«chapter 2» sí es texto");
+  assert.equal(checkApplies({ when: ["#"] }, "A metaphor. (See: [[rc://en/ta/man/translate/figs-123person]])"), false);
+  assert.equal(checkApplies({ when: ["man"] }, note), false, "«man» está en la dirección, no en la nota");
 });
 
 console.log(`\nverify-step-checks: ${passed} checks passed.`);
