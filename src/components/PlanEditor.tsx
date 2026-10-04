@@ -1,4 +1,4 @@
-import { formatWhen, parseWhen } from "../domain/stepChecks";
+import { ChecksEditor } from "./ChecksEditor";
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Clock, Copy, Plus, Trash2, User, Users, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -740,43 +740,7 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
         <div className="pe-field">
           <span className="pe-label">{t("st.checks")}</span>
           <small className="pe-hint">{t("st.checksHint")}</small>
-          {checks.map((check, index) => (
-            <div key={check.id} className="pe-question">
-              <textarea
-                className="af-textarea"
-                rows={2}
-                value={check.texts?.[language] ?? check.text}
-                disabled={!canEdit}
-                aria-label={t("st.checkN").replace("{n}", String(index + 1))}
-                onChange={(e) => setChecks(checks.map((c) => (c.id === check.id ? (c.texts?.[language] !== undefined ? { ...c, texts: { ...c.texts, [language]: e.target.value } } : { ...c, text: e.target.value }) : c)))}
-              />
-              {/* Left empty the check always shows; with words, only on a passage whose source has one of them. */}
-              <input
-                className="af-input pe-check-when"
-                defaultValue={formatWhen(check.when)}
-                key={`${check.id}-${formatWhen(check.when)}`}
-                disabled={!canEdit}
-                placeholder={t("st.checkWhen")}
-                aria-label={t("st.checkWhenN").replace("{n}", String(index + 1))}
-                onBlur={(e) => setChecks(checks.map((c) => (c.id === check.id ? { ...c, when: parseWhen(e.target.value) } : c)))}
-              />
-              {canEdit ? (
-                <span className="pe-question__tools">
-                  <button type="button" className="pe-icon" disabled={index === 0} aria-label={t("st.checkUp").replace("{n}", String(index + 1))} onClick={() => setChecks(checks.map((c, i) => (i === index - 1 ? checks[index]! : i === index ? checks[index - 1]! : c)))}>
-                    <ArrowUp size={14} aria-hidden />
-                  </button>
-                  <button type="button" className="pe-icon" aria-label={t("st.checkRemove").replace("{n}", String(index + 1))} onClick={() => setChecks(checks.filter((c) => c.id !== check.id))}>
-                    <Trash2 size={14} aria-hidden />
-                  </button>
-                </span>
-              ) : null}
-            </div>
-          ))}
-          {canEdit ? (
-            <button type="button" className="pe-add" onClick={() => setChecks([...checks, { id: `c-${uid().slice(0, 6)}`, text: "" }])}>
-              <Plus size={14} aria-hidden /> {t("st.checkAdd")}
-            </button>
-          ) : null}
+          <ChecksEditor checks={checks} onChange={setChecks} canEdit={canEdit} language={language} />
         </div>
 
         <button type="button" className="pe-more" aria-expanded={more} onClick={() => setMore(!more)}>

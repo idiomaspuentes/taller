@@ -2442,7 +2442,7 @@
   "nt.newMessage": "Mensaje nuevo",
   "tb.howStep": "Qué se pide en «{step}»",
   "st.checks": "Lista de comprobación",
-  "st.checksHint": "Lo que cada persona mira en su propio trabajo antes de entregar el paso. La marca para sí; no cierra el paso.",
+  "st.checksHint": "Lo que cada persona mira en su propio trabajo antes de entregar el paso. La marca para sí; no cierra el paso. Toca una para cambiarla.",
   "st.checkN": "Comprobación {n}",
   "st.checkUp": "Subir la comprobación {n}",
   "st.checkRemove": "Quitar la comprobación {n}",
@@ -2470,5 +2470,16 @@
   "st.checkWhen": "Solo si la fuente dice… (palabras separadas por comas; vacío = siempre)",
   "st.checkWhenN": "Palabras de la fuente para la comprobación {n}",
   "rv.paragraphOne": "párrafo {n}",
-  "rv.paragraphMany": "párrafos {n}"
+  "rv.paragraphMany": "párrafos {n}",
+  "st.checkEmpty": "(sin texto)",
+  "st.checkAlways": "Siempre",
+  "st.checkIf": "Solo si la fuente dice: {words}",
+  "st.checkText": "Qué se comprueba",
+  "st.checkWhenLabel": "Aparece solo si la fuente dice",
+  "st.checkWhenHint": "Palabras separadas por comas. Vacío: aparece siempre.",
+  "st.checkDown": "Bajar la comprobación {n}",
+  "st.checkRemoveShort": "Quitar",
+  "st.checkDone": "Listo",
+  "st.checksNone": "Este paso no tiene comprobaciones.",
+  "st.checkWhenExample": "Por ejemplo: you, your, yours"
 }

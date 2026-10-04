@@ -2442,7 +2442,7 @@
   "nt.newMessage": "Nova mensagem",
   "tb.howStep": "O que se pede em «{step}»",
   "st.checks": "Lista de verificação",
-  "st.checksHint": "O que cada pessoa olha no próprio trabalho antes de entregar o passo. Ela marca para si; não fecha o passo.",
+  "st.checksHint": "O que cada pessoa olha no próprio trabalho antes de entregar o passo. Ela marca para si; não fecha o passo. Toque em uma para alterá-la.",
   "st.checkN": "Verificação {n}",
   "st.checkUp": "Subir a verificação {n}",
   "st.checkRemove": "Remover a verificação {n}",
@@ -2470,5 +2470,16 @@
   "st.checkWhen": "Só se a fonte disser… (palavras separadas por vírgulas; vazio = sempre)",
   "st.checkWhenN": "Palavras da fonte para a verificação {n}",
   "rv.paragraphOne": "parágrafo {n}",
-  "rv.paragraphMany": "parágrafos {n}"
+  "rv.paragraphMany": "parágrafos {n}",
+  "st.checkEmpty": "(sem texto)",
+  "st.checkAlways": "Sempre",
+  "st.checkIf": "Só se a fonte disser: {words}",
+  "st.checkText": "O que se verifica",
+  "st.checkWhenLabel": "Aparece só se a fonte disser",
+  "st.checkWhenHint": "Palavras separadas por vírgulas. Vazio: aparece sempre.",
+  "st.checkDown": "Descer a verificação {n}",
+  "st.checkRemoveShort": "Remover",
+  "st.checkDone": "Pronto",
+  "st.checksNone": "Este passo não tem verificações.",
+  "st.checkWhenExample": "Por exemplo: you, your, yours"
 }
