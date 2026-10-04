@@ -87,7 +87,18 @@ export function toolsWithWalks(saved: SolverApp[], shipped: SolverApp[]): Solver
   return [...saved.map((tool) => (tool.walks ? tool : { ...tool, walks: shipped.find((row) => row.id === tool.id)?.walks })), ...shipped.filter((tool) => !mine.has(tool.id))];
 }
 
-export function processLoad(board: AssignmentsDoc, inventory: InventoryDoc, orders: WorkOrder[], tools: SolverApp[], limits: LoadLimits = DEFAULT_LOAD_LIMITS): StepLoad[] {
+/**
+ * `finished` says which steps of which subtareas are already done, once the project exists: work that was handed in
+ * is nobody's load any more, so it is neither measured nor warned about.
+ */
+export function processLoad(
+  board: AssignmentsDoc,
+  inventory: InventoryDoc,
+  orders: WorkOrder[],
+  tools: SolverApp[],
+  limits: LoadLimits = DEFAULT_LOAD_LIMITS,
+  finished?: (order: WorkOrder, stepId: string) => boolean,
+): StepLoad[] {
   const rows: StepLoad[] = [];
   for (const task of board.teams) {
     const mine = orders.filter((order) => order.teamId === task.id);
@@ -97,7 +108,8 @@ export function processLoad(board: AssignmentsDoc, inventory: InventoryDoc, orde
       const tool = tools.find((row) => row.id === step.solverAppId);
       if (!walked(step, tool)) return;
       let largest = 0, largestLabel = "", unit: WalkUnit = "items", approx = false;
-      for (const order of mine) {
+      const pending = finished ? mine.filter((order) => !finished(order, step.id)) : mine;
+      for (const order of pending) {
         const sized = orderSize(order, task, inventory, tool?.walks);
         unit = sized.unit;
         approx = sized.approx;
@@ -117,7 +129,7 @@ export function processLoad(board: AssignmentsDoc, inventory: InventoryDoc, orde
         stepId: step.id,
         people: solo ? { min: 1, max: 1 } : { min: stepMinAssignees(step), max: stepMaxAssignees(step) },
         solo,
-        subtasks: mine.length,
+        subtasks: pending.length,
         largest,
         largestLabel,
         unit,

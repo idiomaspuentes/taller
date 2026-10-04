@@ -31,6 +31,8 @@ type Props = {
   busy?: boolean;
   /** What each subtarea is in Door43 once the project exists, by the key of its work order. */
   stateOf?: (order: WorkOrder) => { label: string; tone: "open" | "taken" | "done" } | undefined;
+  /** Whether a step of a subtarea is already done, once the project exists: finished work is not counted as load. */
+  stepDone?: (order: WorkOrder, stepId: string) => boolean;
   /** What can be done with one subtarea (who has it, hand it to somebody). With it, a subtarea opens when pressed. */
   orderPanel?: (order: WorkOrder, close: () => void) => ReactNode;
   /** The name people gave a team, from the name Door43 keeps. */
@@ -44,7 +46,7 @@ const NOTICE_KEY: Record<StartNotice, MessageKey> = { "no-notes": "sb.noNotes", 
  * The subtareas a project lays out, phase by phase and task by task: what «Crear proyecto» will write, seen before it
  * does. Here is also where the book is cut differently, and where a subtarea the book does not give is added by hand.
  */
-export function WorkPreview({ board, inventory, tools, onSettings, onPortionStarts, busy, stateOf, orderPanel, teamName }: Props) {
+export function WorkPreview({ board, inventory, tools, stepDone, onSettings, onPortionStarts, busy, stateOf, orderPanel, teamName }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const orders = useMemo(() => publishableWorkOrders(board, inventory), [board, inventory]);
@@ -62,7 +64,7 @@ export function WorkPreview({ board, inventory, tools, onSettings, onPortionStar
   const long = useMemo(() => longChapters(inventory.portions, board.settings?.handoffUnits, max), [inventory.portions, board.settings?.handoffUnits, max]);
   const splitCount = board.settings?.handoffUnits?.length ?? 0;
   const limits = loadLimits();
-  const load = useMemo(() => processLoad(board, inventory, orders, toolsWithWalks(tools ?? [], DEFAULT_SOLVERS_CATALOG.solvers), limits), [board, inventory, orders, tools, limits.soloItems, limits.waiting]);
+  const load = useMemo(() => processLoad(board, inventory, orders, toolsWithWalks(tools ?? [], DEFAULT_SOLVERS_CATALOG.solvers), limits, stepDone), [board, inventory, orders, tools, limits.soloItems, limits.waiting, stepDone]);
   const flagged = load.filter((row) => row.flags.length);
   const byTask = useMemo(() => {
     const map = new Map<string, WorkOrder[]>();
@@ -118,7 +120,7 @@ export function WorkPreview({ board, inventory, tools, onSettings, onPortionStar
         </p>
       ))}
 
-      {load.length ? (
+      {load.length && (flagged.length || !stepDone) ? (
         <section className="wp-load" data-flagged={flagged.length ? "true" : undefined} role="status" aria-label={t("wp.loadTitle")}>
           <p className="wp-load__title">{flagged.length ? t(flagged.length === 1 ? "wp.loadFlagsOne" : "wp.loadFlagsMany").replace("{n}", String(flagged.length)) : t("wp.loadTitle")}</p>
           {flagged.length ? (

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { parseTaskProgressMarker } from "../domain/taskProgress";
 import type { DcsTeam } from "@ip-lms/dcs-client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,15 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
       onInventory(next);
       announce(t("pw.bookRead"));
     });
+
+  /** Work already handed in is nobody's load: a closed subtarea, or a step its subtarea marks as done. */
+  const stepDone = useCallback(
+    (order: WorkOrder, stepId: string) => {
+      const issue = work.issueOf(order);
+      return Boolean(issue) && (issue!.state === "closed" || parseTaskProgressMarker(issue!.body).doneStepIds.includes(stepId));
+    },
+    [work],
+  );
 
   /** Who may be handed a subtarea: the people of its task's team. */
   function panel(order: WorkOrder, close: () => void) {
@@ -206,6 +216,7 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
               return team ? orgTeamLabel(team) : displayOrgTeamName(name);
             }}
             orderPanel={dirty ? undefined : panel}
+            stepDone={stepDone}
             stateOf={(order) => {
               const issue = work.issueOf(order);
               if (!issue) return work.loaded ? { label: t("pw.toCreate"), tone: "open" } : undefined;

@@ -121,6 +121,20 @@ test("una herramienta guardada por la organización toma lo que recorre de la de
   assert.equal(orderSize(order, board.teams.find((t) => t.id === "tpl")!, inventory).unit, "verses");
 });
 
+test("lo que ya se entregó no se advierte: solo cuenta lo que queda por hacer", () => {
+  const orders = publishableWorkOrders(board, inventory);
+  const load = (finished: (label: string, stepId: string) => boolean) => processLoad(board, inventory, orders, tools, DEFAULT_LOAD_LIMITS, (order, stepId) => finished(order.label, stepId));
+  // The notes of the two long passages were handed in: what is left is small.
+  const delivered = load((label) => label.includes("Notas") && (label.includes("2:10") || label.includes("1:1–11")));
+  assert.deepEqual(flagged(delivered), []);
+  assert.deepEqual([row(delivered, "notas-ayuda", "borrador").largest, row(delivered, "notas-ayuda", "borrador").subtasks], [32, 2], "queda el pasaje de 32 notas");
+  // The draft of the long passage is done and its review is not: only the review is still somebody's load.
+  const half = load((label, stepId) => label.includes("Notas") && stepId === "borrador");
+  assert.deepEqual(flagged(half), ["notas-ayuda/pares: solo (65 en 2:10–23 · Notas)"]);
+  assert.equal(row(half, "notas-ayuda", "borrador"), undefined, "un paso sin nada pendiente no aparece");
+  assert.deepEqual(flagged(load(() => true)), [], "con todo entregado no hay nada que advertir");
+});
+
 // What the shipped process still asks of one person with a book of this size. It is a list on purpose: a change to
 // the process that adds a line here is a decision somebody takes, not something that slips in.
 test("FCR con un libro como Hageo: lo único que carga a una sola persona son las notas de los pasajes largos", () => {
