@@ -152,16 +152,21 @@ administra el proyecto las cambia en «Proceso», en cada paso («Lista de compr
 
 **Reglas del equipo.** El equipo descubre cosas que comprobar a medida que avanza, y las agrega él mismo:
 
-- **Quién y dónde:** cualquiera, dentro de la herramienta, al final de la lista («Agregar una regla para el
-  equipo…»), ahí donde la encontró.
-- **De quién es:** del equipo, no del proyecto. Aparece en todos los pasos que hace ese equipo y sigue ahí en el
-  libro siguiente.
+- **Quién y dónde:** cualquiera del equipo, dentro de la herramienta, al final de la lista («Agregar una regla para
+  el equipo…»), ahí donde la encontró. Quien no es del equipo las ve, pero no agrega.
+- **De quién es:** del equipo, no del proyecto. Aparece en todos los pasos que hace ese equipo, en la tarjeta y en
+  la herramienta, y sigue ahí en el libro siguiente.
 - **Desde cuándo vale:** de inmediato, para todo el equipo, con el nombre de quien la agregó.
-- **Quien coordina** la encuentra en «Avisos», en «Reglas nuevas de tu equipo», y la **deja**, la **corrige** o la
-  **quita**. La que agrega un coordinador no espera a nadie.
-- Se muestra en el idioma en que se escribió; no se traduce sola.
+- **Quien coordina** recibe un aviso (también con la app cerrada), la cuenta en el número de «Avisos» y la
+  encuentra ahí, en «Reglas nuevas de tu equipo»: la **deja**, la **corrige** o la **quita**. La que agrega un
+  coordinador no espera a nadie.
+- **Después** se sigue pudiendo corregir o quitar cualquier regla, y agregar otras, en «Organización», dentro del
+  equipo.
+- **Idiomas:** se muestra como se escribió. Si quien coordina la corrige con la app en otro idioma, queda dicha en
+  los dos y cada persona la lee en el suyo.
 
-Se guardan en el repositorio del plan, un archivo por equipo (`reglas/<equipo>.json`).
+Se guardan en el repositorio del plan, un archivo por equipo (`reglas/<equipo>.json`). Una regla quitada no se
+borra del archivo: queda anotado quién la quitó.
 
 **Las reglas de cada recurso todavía no se exigen aquí.** Que el TPL conserve la forma del original, que el TPS
 diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualquiera entienda: eso es trabajo de

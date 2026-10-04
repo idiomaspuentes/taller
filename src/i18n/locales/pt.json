@@ -2456,5 +2456,10 @@
   "mt.ruleKeep": "Manter",
   "mt.ruleFix": "Corrigir",
   "mt.ruleSave": "Salvar",
-  "mt.ruleRemove": "Remover"
+  "mt.ruleRemove": "Remover",
+  "nt.ruleTitle": "Regra nova na sua equipe",
+  "nt.ruleBody": "Alguém a adicionou enquanto trabalhava em {name}.",
+  "nt.ruleGrouped": "{n} regras novas na sua equipe",
+  "sa.ruleNew": "nova",
+  "sa.noRules": "Esta equipe ainda não tem regras próprias."
 }

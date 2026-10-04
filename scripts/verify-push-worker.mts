@@ -295,6 +295,8 @@ await test("lo que Door43 no anuncia lo pide la app: una subtarea libre para el 
   assert.deepEqual([turn.url, words(turn, "es").title, words(turn, "pt").title], ["https://app.example.org/#/mis-tareas/67", "Ya puedes empezar", "Você já pode começar"]);
   assert.equal(words(ask("step-turn", { step: "Revisión en pares" })[0]!, "es").title, "Es tu turno: Revisión en pares");
   assert.equal(words(ask("step-free", { step: "Revisión en pares" })[0]!, "pt").title, "Passo livre para a sua equipe: Revisão em pares");
+  const rule = ask("team-rule")[0]!;
+  assert.deepEqual([rule.url, rule.tag, words(rule, "es").title, words(rule, "es").body], ["https://app.example.org/#/avisos", "reglas", "Regla nueva en tu equipo", "Alguien la agregó mientras trabajaba en 3 Juan 1:5–8 · Alinear TPL · Afinación."], "a quien coordina: lo lleva a su lista, sin decir la regla");
 });
 
 await test("pedir un aviso exige una sesión de Door43 que pueda leer la subtarea, y no deja escribir el texto", async () => {

@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict";
 import { setActiveScope } from "../src/domain/scope";
-import { activeRules, addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, teamRulesPath } from "../src/domain/teamRules";
+import { activeRules, addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, ruleText, teamRulesPath } from "../src/domain/teamRules";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -41,6 +41,17 @@ test("quien coordina la deja, la corrige o la quita; quitada ya no vale pero que
   assert.deepEqual(pendingRules(doc), [], "nada más espera a quien coordina");
   assert.deepEqual(doc.rules.find((r) => r.id === "r3")?.removedBy, "ana");
   assert.equal(doc.rules.find((r) => r.id === "r2")?.by, "bea", "corregirla no cambia de quién fue la idea");
+});
+
+test("una regla se lee en el idioma de cada quien cuando alguien la dijo en él; corregirla en su idioma la cambia", () => {
+  let doc = addRule(emptyTeamRules("pm-traductores-tpl"), { id: "r1", text: "«Elder» es «anciano».", by: "bea", at, coordinator: false, lang: "es" });
+  doc = reviewRule(doc, "r1", "ana", { keep: true, text: "«Elder» é «ancião».", lang: "pt" });
+  const rule = activeRules(doc)[0]!;
+  assert.deepEqual([ruleText(rule, "es"), ruleText(rule, "pt")], ["«Elder» es «anciano».", "«Elder» é «ancião»."], "decirla en portugués no borra la original");
+  doc = reviewRule(doc, "r1", "ana", { keep: true, text: "«Elder» siempre es «anciano».", lang: "es" });
+  assert.deepEqual([ruleText(activeRules(doc)[0]!, "es"), ruleText(activeRules(doc)[0]!, "pt")], ["«Elder» siempre es «anciano».", "«Elder» é «ancião»."]);
+  // A rule kept long ago can still be corrected or removed.
+  assert.deepEqual(activeRules(reviewRule(doc, "r1", "ana", { keep: false })), []);
 });
 
 test("al leer el archivo no se pierde nada y lo que está mal escrito se deja fuera", () => {

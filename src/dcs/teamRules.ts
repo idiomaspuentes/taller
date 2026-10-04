@@ -1,7 +1,7 @@
 import { createOrUpdateContents, getContents, getRawContent } from "@ip-lms/dcs-client";
 import { uid } from "../domain/assignment";
-import { isCoordinatorOf, teamKey } from "../domain/levels";
-import { addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, teamRulesPath, type TeamRule, type TeamRulesDoc } from "../domain/teamRules";
+import { coordinatorsOf, isCoordinatorOf, teamKey } from "../domain/levels";
+import { addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, teamRulesPath, type RuleAnswer, type TeamRule, type TeamRulesDoc } from "../domain/teamRules";
 import { PM_REPO_NAME } from "../domain/types";
 import { isWriteRace, raceDelay } from "./afinacionStore";
 import type { GtSession } from "./auth";
@@ -50,13 +50,24 @@ async function change(session: GtSession, org: string, team: string, apply: (doc
   }
 }
 
-export async function addTeamRule(session: GtSession, org: string, team: string, text: string): Promise<TeamRulesDoc> {
+/** `toTell`: the team's coordinators, when the rule is one of theirs to look at (nobody when a coordinator added it). */
+export async function addTeamRule(session: GtSession, org: string, team: string, text: string, lang?: string): Promise<{ doc: TeamRulesDoc; toTell: string[] }> {
   const book = await loadPmConfig(session, org).catch(() => undefined);
   const coordinator = isCoordinatorOf(book, team, session.username);
-  return change(session, org, team, (doc) => addRule(doc, { id: uid().slice(0, 8), text, by: session.username, at: new Date().toISOString(), coordinator }), `Regla del equipo ${teamKey(team)}`);
+  const doc = await change(session, org, team, (before) => addRule(before, { id: uid().slice(0, 8), text, by: session.username, at: new Date().toISOString(), coordinator, lang }), `Regla del equipo ${teamKey(team)}`);
+  return { doc, toTell: coordinator ? [] : coordinatorsOf(book, team) };
 }
 
-export async function reviewTeamRule(session: GtSession, org: string, team: string, id: string, answer: { keep: true; text?: string } | { keep: false }): Promise<TeamRulesDoc> {
+/** The teams this person coordinates. */
+export async function coordinatedTeams(session: GtSession, org: string): Promise<string[]> {
+  const book = await loadPmConfig(session, org).catch(() => undefined);
+  const me = session.username.trim().toLowerCase();
+  return Object.entries(book?.coordinators ?? {})
+    .filter(([, who]) => who.includes(me))
+    .map(([team]) => team);
+}
+
+export async function reviewTeamRule(session: GtSession, org: string, team: string, id: string, answer: RuleAnswer): Promise<TeamRulesDoc> {
   return change(session, org, team, (doc) => reviewRule(doc, id, session.username, answer), `Regla del equipo ${teamKey(team)} revisada`);
 }
 

@@ -108,7 +108,7 @@ export function noticesFor(event: string | null, payload: GiteaPayload, appUrl: 
   return notices;
 }
 
-const KINDS: AskedKind[] = ["free", "your-turn", "step-turn", "step-free", "decision"];
+const KINDS: AskedKind[] = ["free", "your-turn", "step-turn", "step-free", "decision", "team-rule"];
 export const isAskedKind = (value: unknown): value is AskedKind => KINDS.includes(value as AskedKind);
 
 /**
@@ -121,8 +121,9 @@ export function askedNotices(params: { kind: AskedKind; issue: Issue; count: num
   const app = params.appUrl.replace(/\/$/, "");
   const one = count <= 1 && issue.number;
   // One subtarea opens its own thread; a free one, or several, open the list where it is taken.
-  const url = one && kind !== "free" ? `${app}/#/mis-tareas/${issue.number}` : `${app}/#/avisos`;
-  const tag = kind === "free" ? "libres" : kind === "your-turn" ? "turno" : `subtarea-${issue.number}`;
+  const list = kind === "free" || kind === "team-rule";
+  const url = one && !list ? `${app}/#/mis-tareas/${issue.number}` : `${app}/#/avisos`;
+  const tag = kind === "free" ? "libres" : kind === "team-rule" ? "reglas" : kind === "your-turn" ? "turno" : `subtarea-${issue.number}`;
   const from = lower(params.from);
   return [...new Set(params.to.map(lower))]
     .filter((login) => login && login !== from)

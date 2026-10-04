@@ -6845,6 +6845,12 @@ button.al-box--read { cursor: pointer; }
 .step-ask__title { font-weight: 700; color: var(--text); margin: 0; }
 .step-ask__add { display: flex; gap: 0.5rem; align-items: center; }
 .step-ask__add input { flex: 1; min-width: 0; }
+.step-ask__by { color: var(--text-muted); font-weight: 400; text-decoration: none; }
+.team-rules { display: grid; gap: 0.5rem; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9375rem; }
+.team-rules ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.375rem; }
+.team-rules li { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; justify-content: space-between; }
+.team-rules li > span:first-child, .team-rules li > input { flex: 1 1 14rem; min-width: 0; }
+.team-rules__tools { display: flex; gap: 0.25rem; }
 .step-ask__checks { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.125rem; }
 .step-ask__checks label { display: flex; gap: 0.625rem; align-items: flex-start; padding: 0.375rem 0; line-height: 1.4; color: var(--text); cursor: pointer; }
 .step-ask__checks input { flex: none; width: 1.125rem; height: 1.125rem; margin-top: 0.125rem; }

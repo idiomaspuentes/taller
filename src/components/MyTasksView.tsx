@@ -1,5 +1,7 @@
 import { displayOrgTeamName } from "../domain/roles";
-import { pendingTeamRules, reviewTeamRule, type PendingTeamRule } from "../dcs/teamRules";
+import type { RuleAnswer } from "../domain/teamRules";
+import { ruleText } from "../domain/teamRules";
+import { answerTeamRule, refreshTeamRules, usePendingTeamRules } from "../useTeamRules";
 import { subtaskName } from "../domain/noticeText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
@@ -181,21 +183,13 @@ export function MyTasksView({
     useState<SolversCatalog>(DEFAULT_SOLVERS_CATALOG);
 
   // What waits for a coordinator besides subtareas: the rules people added to the teams they coordinate.
-  const [newRules, setNewRules] = useState<PendingTeamRule[]>([]);
+  const newRules = usePendingTeamRules();
   const [fixing, setFixing] = useState<{ id: string; text: string } | null>(null);
   const [ruleBusy, setRuleBusy] = useState(false);
-  const loadRules = useCallback(() => {
-    if (!pmOrg || mode !== "avisos") return;
-    void pendingTeamRules(session, pmOrg)
-      .then(setNewRules)
-      .catch(() => undefined);
-  }, [session, pmOrg, mode]);
-  useEffect(loadRules, [loadRules]);
-  const answerRule = async (team: string, id: string, answer: { keep: true; text?: string } | { keep: false }) => {
+  const answerRule = async (team: string, id: string, answer: RuleAnswer) => {
     setRuleBusy(true);
     try {
-      await reviewTeamRule(session, pmOrg, team, id, answer);
-      setNewRules((rows) => rows.filter((row) => !(row.team === team && row.rule.id === id)));
+      await answerTeamRule(team, id, answer);
       setFixing(null);
     } catch (err) {
       setError(explainError(err));
@@ -205,6 +199,7 @@ export function MyTasksView({
   };
 
   const reload = useCallback(async () => {
+    refreshTeamRules();
     if (!pmOrg) {
       setProjects([]);
       setSolversCatalog(DEFAULT_SOLVERS_CATALOG);
@@ -977,7 +972,7 @@ export function MyTasksView({
                 {fixing?.id === rule.id ? (
                   <input className="af-input" value={fixing.text} maxLength={240} autoFocus aria-label={t("mt.ruleFix")} onChange={(e) => setFixing({ id: rule.id, text: e.target.value })} />
                 ) : (
-                  <span>«{rule.text}»</span>
+                  <span>«{ruleText(rule, language)}»</span>
                 )}
                 <span className="hub-place">{[rule.by ? `@${rule.by}` : "", displayOrgTeamName(team)].filter(Boolean).join(" · ")}</span>
                 <span className="flex flex-wrap gap-2">
@@ -985,7 +980,7 @@ export function MyTasksView({
                     {fixing?.id === rule.id ? t("mt.ruleSave") : t("mt.ruleKeep")}
                   </Button>
                   {fixing?.id === rule.id ? null : (
-                    <Button type="button" size="sm" variant="outline" disabled={ruleBusy} onClick={() => setFixing({ id: rule.id, text: rule.text })}>
+                    <Button type="button" size="sm" variant="outline" disabled={ruleBusy} onClick={() => setFixing({ id: rule.id, text: ruleText(rule, language) })}>
                       {t("mt.ruleFix")}
                     </Button>
                   )}

@@ -129,7 +129,7 @@ export function commentNotice(params: { issue: NoticeIssue; body: string; author
 }
 
 /** The kinds of notice the app asks the Worker to send, because Door43 does not announce them by itself. */
-export type AskedKind = "free" | "your-turn" | "step-turn" | "step-free" | "decision";
+export type AskedKind = "free" | "your-turn" | "step-turn" | "step-free" | "decision" | "team-rule";
 
 /** `step`: the name of the step, for the kinds about one. `count`: several subtareas told at once. */
 export function askedNotice(kind: AskedKind, params: { name: string; step?: string; count?: number }, lang: NoticeLang): NoticeWords {
@@ -147,5 +147,8 @@ export function askedNotice(kind: AskedKind, params: { name: string; step?: stri
       return { title: say(lang, "nt.stepFreeTitle", { step }), body: params.name };
     case "decision":
       return { title: say(lang, "nt.decisionTitle"), body: params.name };
+    case "team-rule":
+      // The rule itself is not said here (whoever asks never chooses the words): where it came up is.
+      return { title: say(lang, "nt.ruleTitle"), body: say(lang, "nt.ruleBody", { name: params.name }), grouped: say(lang, "nt.ruleGrouped") };
   }
 }

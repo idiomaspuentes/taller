@@ -1,4 +1,4 @@
-import { StepAskBody, stepAsks } from "./StepAsk";
+import { StepAskBody, TeamRuleChecks, stepAsks } from "./StepAsk";
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -165,6 +165,7 @@ export function TaskCard(props: Props) {
         <details className="step-ask">
           <summary>{t("tb.howStep").replace("{step}", stepName(card.nextStep))}</summary>
           <StepAskBody step={card.nextStep} scope={`${card.issue.number}:${card.nextStep.id}`} />
+          <TeamRuleChecks team={card.task?.orgTeamName} scope={`${card.issue.number}:${card.nextStep.id}`} />
         </details>
       ) : null}
 

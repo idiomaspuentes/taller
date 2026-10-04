@@ -1,3 +1,4 @@
+import { TeamRulesPanel } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsTeam } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -686,6 +687,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                           )}
                         </div>
                       ) : null}
+                      <TeamRulesPanel team={team.name} canEdit={canManage || isCoordinatorOf(pmConfig ?? undefined, team.name, session.username)} />
                     </div>
                   ) : null}
                 </div>

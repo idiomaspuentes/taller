@@ -1,3 +1,4 @@
+import { setTeamRulesContext, usePendingTeamRules } from "./useTeamRules";
 import { keepPushLanguage } from "./push";
 import { PM_REPO_NAME } from "./domain/types";
 import { BrandMark } from "./components/BrandMark";
@@ -217,8 +218,11 @@ export function App() {
   useEffect(() => (session ? keepPushLanguage(session) : undefined), [session?.token, session?.host]); // eslint-disable-line react-hooks/exhaustive-deps
   const onboarding = useOnboarding(session);
   // Mentions of issues the plan already tracks are counted there; only the others add to the badge.
+  // The rules of the teams are read once and shared by the card, the tool, the team's screen and this count.
+  useEffect(() => setTeamRulesContext(session, pmOrg), [session?.token, session?.host, pmOrg]); // eslint-disable-line react-hooks/exhaustive-deps
+  const newRules = usePendingTeamRules();
   const attentionTotal =
-    activity.unreadCount + mentions.rows.filter((m) => !activity.issues.includes(m.issue)).length;
+    activity.unreadCount + mentions.rows.filter((m) => !activity.issues.includes(m.issue)).length + newRules.length;
 
   // Unread count on the installed app icon and in the tab title (best effort).
   useEffect(() => {
