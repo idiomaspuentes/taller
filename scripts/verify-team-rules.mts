@@ -6,6 +6,7 @@
  */
 import assert from "node:assert/strict";
 import { isAppTeam, teamUsage } from "../src/domain/roles";
+import { itemChecks, stepWideChecks } from "../src/domain/stepChecks";
 import { setActiveScope } from "../src/domain/scope";
 import { activeRules, addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, ruleText, teamRulesPath } from "../src/domain/teamRules";
 
@@ -53,6 +54,20 @@ test("una regla se lee en el idioma de cada quien cuando alguien la dijo en él;
   assert.deepEqual([ruleText(activeRules(doc)[0]!, "es"), ruleText(activeRules(doc)[0]!, "pt")], ["«Elder» siempre es «anciano».", "«Elder» é «ancião»."]);
   // A rule kept long ago can still be corrected or removed.
   assert.deepEqual(activeRules(reviewRule(doc, "r1", "ana", { keep: false })), []);
+});
+
+test("una regla puede decir qué palabras de la fuente la piden, y quien coordina se las pone, cambia o quita", () => {
+  let doc = addRule(emptyTeamRules("pm-traductores-tpl"), { id: "r1", text: "«Elder» es «anciano».", by: "bea", at, coordinator: false, when: [" Elder ", "elders", "ELDER"] });
+  assert.deepEqual(activeRules(doc)[0]!.when, ["elder", "elders"], "limpias y sin repetir");
+  assert.deepEqual(itemChecks(activeRules(doc), "The elders of the city came.").map((r) => r.id), ["r1"]);
+  assert.deepEqual(itemChecks(activeRules(doc), "Grace and peace."), [], "donde la fuente no la pide, no aparece");
+  doc = reviewRule(doc, "r1", "ana", { keep: true });
+  assert.deepEqual(activeRules(doc)[0]!.when, ["elder", "elders"], "dejarla no toca sus palabras");
+  doc = reviewRule(doc, "r1", "ana", { keep: true, when: ["presbyter"] });
+  assert.deepEqual(activeRules(doc)[0]!.when, ["presbyter"]);
+  doc = reviewRule(doc, "r1", "ana", { keep: true, when: [] });
+  assert.equal(activeRules(doc)[0]!.when, undefined, "sin palabras, aparece siempre");
+  assert.deepEqual(stepWideChecks(activeRules(doc)).map((r) => r.id), ["r1"]);
 });
 
 test("al leer el archivo no se pierde nada y lo que está mal escrito se deja fuera", () => {

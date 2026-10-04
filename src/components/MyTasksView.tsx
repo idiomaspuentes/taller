@@ -974,7 +974,7 @@ export function MyTasksView({
                 ) : (
                   <span>«{ruleText(rule, language)}»</span>
                 )}
-                <span className="hub-place">{[rule.by ? `@${rule.by}` : "", teamLabel(team)].filter(Boolean).join(" · ")}</span>
+                <span className="hub-place">{[rule.by ? `@${rule.by}` : "", teamLabel(team), rule.when?.length ? t("st.checkIf").replace("{words}", rule.when.join(", ")) : ""].filter(Boolean).join(" · ")}</span>
                 <span className="flex flex-wrap gap-2">
                   <Button type="button" size="sm" disabled={ruleBusy} onClick={() => void answerRule(team, rule.id, { keep: true, ...(fixing?.id === rule.id ? { text: fixing.text } : {}) })}>
                     {fixing?.id === rule.id ? t("mt.ruleSave") : t("mt.ruleKeep")}

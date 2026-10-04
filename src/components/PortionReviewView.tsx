@@ -2,6 +2,8 @@ import { Checks, StepAsk } from "./StepAsk";
 import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { itemChecks, paragraphsFor } from "../domain/stepChecks";
+import { activeRules, ruleText } from "../domain/teamRules";
+import { useTeamRules } from "../useTeamRules";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -82,6 +84,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [sources, setSources] = useState<Source[]>([]);
   /** The English of each note, question or article in review, by the item's key: what its checks are matched against. */
   const [english, setEnglish] = useState<Record<string, string>>({});
+  /** The team that does this task: its own rules that are about a word show on the items that have it. */
+  const [teamName, setTeamName] = useState("");
+  const teamRules = useTeamRules(teamName || undefined);
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [showSources, setShowSources] = useState(true);
@@ -107,6 +112,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setIssue(nextIssue);
       const taskSteps = board?.teams.find((task) => task.id === ctx.taskId)?.steps ?? [];
       setSteps(taskSteps);
+      setTeamName(board?.teams.find((task) => task.id === ctx.taskId)?.orgTeamName ?? "");
       const progressNow = parseTaskProgressMarker(nextIssue.body);
       setStepId((current) => current || (taskSteps.find((row) => stepNeedsOpenPortionPr(row) && !isStepDone(progressNow, row.id))?.id ?? ""));
       const linked = parsePortionPrMarker(nextIssue.body);
@@ -360,7 +366,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   const text = ctx?.resource === "tpl" || ctx?.resource === "tps";
                   const kind = ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i;
                   const itemSource = text ? (sources.find((source) => kind.test(source.short)) ?? sources[ctx?.resource === "tps" ? 1 : 0])?.verses[item.verse] : english[item.key];
-                  const own = itemChecks(step?.checks ?? [], itemSource);
+                  const own: { id: string; text: string; texts?: Partial<Record<string, string>>; when?: string[]; by?: string }[] = [
+                    ...itemChecks(step?.checks ?? [], itemSource),
+                    ...itemChecks(teamRules ? activeRules(teamRules) : [], itemSource).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), when: rule.when, by: rule.by })),
+                  ];
                   const about = comments.filter((row) => row.ref === item.ref);
                   return (
                     <li key={item.key} className="rv-item" data-state={item.state}>
@@ -419,7 +428,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                               const said = check.texts?.[language] ?? check.text;
                               // In an article the check says in which paragraphs of the English it comes up.
                               const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
-                              return { id: check.id, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
+                              return { id: check.id, by: check.by, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
                             })}
                           />
                         </div>

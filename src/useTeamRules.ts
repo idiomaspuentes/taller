@@ -132,10 +132,10 @@ export function usePendingTeamRules(): PendingTeamRule[] {
  * Add a rule to a team. `issue` is the subtarea where the person found it: the coordinators are told there is a
  * new rule, with the app closed too, pointing at that subtarea.
  */
-export async function addRuleToTeam(team: string, text: string, issue?: number): Promise<void> {
+export async function addRuleToTeam(team: string, text: string, issue?: number, when?: string[]): Promise<void> {
   if (!context) return;
   const { session, org } = context;
-  const { doc, toTell } = await addTeamRule(session, org, teamKey(team), text, getUiLanguage());
+  const { doc, toTell } = await addTeamRule(session, org, teamKey(team), text, getUiLanguage(), when);
   docs.set(teamKey(team), doc);
   changed();
   if (issue && toTell.length) askNotices(session, { org, repo: PM_REPO_NAME }, [{ kind: "team-rule", issue, to: toTell }]);

@@ -2481,5 +2481,8 @@
   "st.checkRemoveShort": "Quitar",
   "st.checkDone": "Listo",
   "st.checksNone": "Este paso no tiene comprobaciones.",
-  "st.checkWhenExample": "Por ejemplo: you, your, yours"
+  "st.checkWhenExample": "Por ejemplo: you, your, yours",
+  "sa.addWhen": "Solo si la fuente dice… (opcional)",
+  "sa.ruleEmpty": "Escribe la regla.",
+  "sa.addRuleShort": "Agregar una regla"
 }

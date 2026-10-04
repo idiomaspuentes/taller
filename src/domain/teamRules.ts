@@ -16,6 +16,8 @@ export type TeamRule = {
   /** The language it was written in; `texts` says it in the others, when somebody wrote it there. */
   lang?: string;
   texts?: Record<string, string>;
+  /** Words of the source that call for it (see `domain/stepChecks`); without them it always shows. */
+  when?: string[];
   /** The coordinator saw it and kept it. Until then it waits in their list (and counts all the same). */
   reviewedBy?: string;
   /** Removed: kept in the file so that it is known it was there. */
@@ -53,12 +55,15 @@ export function normalizeTeamRules(raw: unknown, team: string): TeamRulesDoc {
       at: String(r.at ?? ""),
       ...(r.lang ? { lang: String(r.lang) } : {}),
       ...(r.texts && typeof r.texts === "object" && Object.keys(r.texts).length ? { texts: Object.fromEntries(Object.entries(r.texts).filter(([, v]) => typeof v === "string" && v.trim())) as Record<string, string> } : {}),
+      ...(words(r.when).length ? { when: words(r.when) } : {}),
       ...(r.reviewedBy ? { reviewedBy: String(r.reviewedBy) } : {}),
       ...(r.removedBy ? { removedBy: String(r.removedBy) } : {}),
     });
   }
   return { schema: "taller-team-rules-1", team: slug(team), rules };
 }
+
+const words = (raw: unknown): string[] => (Array.isArray(raw) ? [...new Set(raw.map((word) => String(word).trim().toLowerCase()).filter(Boolean))] : []);
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -75,10 +80,11 @@ export function pendingRules(doc: TeamRulesDoc): TeamRule[] {
 /**
  * Add a rule. One a coordinator adds needs nobody's review. The same sentence is not added twice.
  */
-export function addRule(doc: TeamRulesDoc, params: { id: string; text: string; by: string; at: string; coordinator: boolean; lang?: string }): TeamRulesDoc {
+export function addRule(doc: TeamRulesDoc, params: { id: string; text: string; by: string; at: string; coordinator: boolean; lang?: string; when?: string[] }): TeamRulesDoc {
   const text = clean(params.text);
   if (!text || activeRules(doc).some((rule) => same(rule.text, text))) return doc;
-  return { ...doc, rules: [...doc.rules, { id: params.id, text, by: params.by, at: params.at, ...(params.lang ? { lang: params.lang } : {}), ...(params.coordinator ? { reviewedBy: params.by } : {}) }] };
+  const when = words(params.when);
+  return { ...doc, rules: [...doc.rules, { id: params.id, text, by: params.by, at: params.at, ...(params.lang ? { lang: params.lang } : {}), ...(when.length ? { when } : {}), ...(params.coordinator ? { reviewedBy: params.by } : {}) }] };
 }
 
 const clean = (text: string) => text.trim().replace(/\s+/g, " ").slice(0, 240);
@@ -88,7 +94,8 @@ export function ruleText(rule: TeamRule, language: string): string {
   return rule.texts?.[language] ?? rule.text;
 }
 
-export type RuleAnswer = { keep: true; text?: string; lang?: string } | { keep: false };
+/** `when`: the words that call for the rule from now on; an empty list makes it show always; absent leaves them as they are. */
+export type RuleAnswer = { keep: true; text?: string; lang?: string; when?: string[] } | { keep: false };
 
 /**
  * The coordinator's answer to a rule, at any time (new or long kept): keep it, as it is or reworded, or remove it.
@@ -102,9 +109,11 @@ export function reviewRule(doc: TeamRulesDoc, id: string, by: string, answer: Ru
       if (rule.id !== id) return rule;
       if (!answer.keep) return { ...rule, removedBy: by };
       const text = answer.text === undefined ? "" : clean(answer.text);
-      if (!text) return { ...rule, reviewedBy: by };
+      const { when: _was, ...rest } = rule;
+      const base: TeamRule = answer.when === undefined ? rule : words(answer.when).length ? { ...rest, when: words(answer.when) } : rest;
+      if (!text) return { ...base, reviewedBy: by };
       const other = answer.lang && rule.lang && answer.lang !== rule.lang;
-      return other ? { ...rule, texts: { ...rule.texts, [answer.lang!]: text }, reviewedBy: by } : { ...rule, text, reviewedBy: by };
+      return other ? { ...base, texts: { ...rule.texts, [answer.lang!]: text }, reviewedBy: by } : { ...base, text, reviewedBy: by };
     }),
   };
 }

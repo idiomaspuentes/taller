@@ -182,6 +182,9 @@ administra el proyecto las cambia en «Proceso», en cada paso («Lista de compr
   Ahí **quien coordina el equipo** y **quien administra** corrigen o quitan cualquier regla y agregan otras, en
   cualquier momento. Desde la herramienta, a esas personas les sale un enlace directo («Corregir o quitar reglas
   del equipo»). Un coordinador solo edita las de los equipos que coordina.
+- **Con palabras, igual que las del paso:** una regla puede decir qué palabras de la fuente la piden («elder,
+  elders»). Entonces aparece solo donde la fuente las trae: al revisar, bajo el versículo, la nota o la pregunta
+  que las tenga. Sin palabras, aparece siempre.
 - **Idiomas:** se muestra como se escribió. Si quien coordina la corrige con la app en otro idioma, queda dicha en
   los dos y cada persona la lee en el suyo.
 

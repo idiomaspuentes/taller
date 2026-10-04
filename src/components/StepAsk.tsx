@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { loadStepSource } from "../dcs/stepSource";
 import { teamKey } from "../domain/levels";
-import { applicableChecks, stepWideChecks } from "../domain/stepChecks";
+import { applicableChecks, formatWhen, parseWhen, stepWideChecks } from "../domain/stepChecks";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
@@ -91,26 +92,31 @@ export function stepAsks(step: TaskStep | undefined, language: string): boolean 
 }
 
 /**
- * The rules of the team that does the step, under the step's own list. `canAdd`: this person is of the team, so
- * they may add one; `issue` is the subtarea in hand, for the notice to whoever coordinates.
+ * The rules of the team that does the step, under the step's own list. Like the step's checks, a rule may say which
+ * words of the source call for it: `source` is the source of the passage in hand, and with `byItem` (each item
+ * shows its own) only the rules that always apply are listed here. `canAdd`: this person is of the team, so they may
+ * add one; `issue` is the subtarea in hand, for the notice to whoever coordinates.
  */
-export function TeamRuleChecks({ team, scope, canAdd, issue }: { team: string | undefined; scope: string; canAdd?: boolean; issue?: number }) {
+export function TeamRuleChecks({ team, scope, canAdd, issue, source, byItem }: { team: string | undefined; scope: string; canAdd?: boolean; issue?: number; source?: string | null; byItem?: boolean }) {
   const t = useT();
   const language = useUiLanguage();
   const doc = useTeamRules(team);
   const manages = useManagesTeamRules(team);
   const [draft, setDraft] = useState("");
+  const [when, setWhen] = useState("");
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  const rules = doc ? activeRules(doc) : [];
+  const all = doc ? activeRules(doc) : [];
+  const rules = byItem ? stepWideChecks(all) : applicableChecks(all, source);
   if (!team || (!rules.length && !canAdd && !manages)) return null;
   const add = async () => {
     if (!draft.trim()) return;
     setSaving(true);
     setFailed(false);
     try {
-      await addRuleToTeam(team, draft, issue);
+      await addRuleToTeam(team, draft, issue, parseWhen(when));
       setDraft("");
+      setWhen("");
     } catch {
       setFailed(true);
     } finally {
@@ -131,6 +137,8 @@ export function TeamRuleChecks({ team, scope, canAdd, issue }: { team: string | 
           }}
         >
           <input className="af-input" value={draft} maxLength={240} placeholder={t("sa.addRule")} aria-label={t("sa.addRule")} disabled={saving} onChange={(e) => setDraft(e.target.value)} />
+          {/* The words come up only once there is a rule to attach them to. */}
+          {draft.trim() ? <input className="af-input" value={when} placeholder={t("sa.addWhen")} aria-label={t("sa.addWhen")} disabled={saving} autoCapitalize="none" spellCheck={false} onChange={(e) => setWhen(e.target.value)} /> : null}
           <button type="submit" className="btn" data-size="sm" data-variant="outline" disabled={saving || !draft.trim()}>
             {saving ? t("sa.saving") : t("sa.add")}
           </button>
@@ -198,21 +206,22 @@ export function StepAsk({ session, ctx, byItem }: { session: GtSession | null | 
     <details className="step-ask">
       <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
       <StepAskBody step={step} scope={scope} source={source} byItem={byItem} />
-      <TeamRuleChecks team={task.orgTeamName} scope={scope} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} />
+      <TeamRuleChecks team={task.orgTeamName} scope={scope} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} source={source} byItem={byItem} />
     </details>
   );
 }
 
 /**
  * Every rule of a team, for whoever coordinates it: correct one, remove one or add one at any time, not only while
- * it is new.
+ * it is new. The same shape as the checks of a step: a line each, saying what it asks and when it shows; touching a
+ * line opens it, alone, to edit.
  */
 export function TeamRulesPanel({ team, canEdit }: { team: string; canEdit: boolean }) {
   const t = useT();
   const language = useUiLanguage();
   const doc = useTeamRules(team);
-  const [fixing, setFixing] = useState<{ id: string; text: string } | null>(null);
-  const [draft, setDraft] = useState("");
+  /** The rule being edited (`new` for one not yet added), with what was typed. */
+  const [open, setOpen] = useState<{ id: string; text: string; when: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const rules = doc ? activeRules(doc) : [];
@@ -221,6 +230,7 @@ export function TeamRulesPanel({ team, canEdit }: { team: string; canEdit: boole
     setFailed(false);
     try {
       await work();
+      setOpen(null);
     } catch {
       setFailed(true);
     } finally {
@@ -228,75 +238,84 @@ export function TeamRulesPanel({ team, canEdit }: { team: string; canEdit: boole
     }
   };
   if (!rules.length && !canEdit) return null;
+  const fields = (
+    <>
+      <label className="ce-field">
+        <span>{t("st.checkText")}</span>
+        <textarea className="af-textarea" rows={3} value={open?.text ?? ""} maxLength={240} disabled={!canEdit || busy} autoFocus={open?.id === "new"} onChange={(e) => open && setOpen({ ...open, text: e.target.value })} />
+      </label>
+      <label className="ce-field">
+        <span>{t("st.checkWhenLabel")}</span>
+        <input className="af-input" value={open?.when ?? ""} disabled={!canEdit || busy} placeholder={t("st.checkWhenExample")} autoCapitalize="none" spellCheck={false} onChange={(e) => open && setOpen({ ...open, when: e.target.value })} />
+        <small>{t("st.checkWhenHint")}</small>
+      </label>
+    </>
+  );
   return (
     <section className="team-rules" aria-label={t("sa.teamRules")}>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("sa.teamRules")}</h3>
-      {rules.length ? (
-        <ul>
-          {rules.map((rule) => (
-            <li key={rule.id}>
-              {fixing?.id === rule.id ? (
-                <input className="af-input" value={fixing.text} maxLength={240} autoFocus aria-label={t("mt.ruleFix")} onChange={(e) => setFixing({ id: rule.id, text: e.target.value })} />
-              ) : (
-                <span>
-                  {ruleText(rule, language)}
-                  <small className="step-ask__by">
-                    {rule.by ? ` · @${rule.by}` : ""}
-                    {rule.reviewedBy ? "" : ` · ${t("sa.ruleNew")}`}
-                  </small>
-                </span>
-              )}
-              {canEdit ? (
-                <span className="team-rules__tools">
-                  {fixing?.id === rule.id ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      data-size="sm"
-                      disabled={busy || !fixing.text.trim()}
-                      onClick={() =>
-                        void run(async () => {
-                          await answerTeamRule(team, rule.id, { keep: true, text: fixing.text });
-                          setFixing(null);
-                        })
-                      }
-                    >
-                      {t("mt.ruleSave")}
-                    </button>
-                  ) : (
-                    <button type="button" className="btn" data-size="sm" data-variant="ghost" disabled={busy} onClick={() => setFixing({ id: rule.id, text: ruleText(rule, language) })}>
-                      {t("mt.ruleFix")}
-                    </button>
-                  )}
-                  <button type="button" className="btn" data-size="sm" data-variant="ghost" disabled={busy} onClick={() => void run(() => answerTeamRule(team, rule.id, { keep: false }))}>
-                    {t("mt.ruleRemove")}
+      <div className="ce">
+        {rules.length ? (
+          <ol className="ce-list">
+            {rules.map((rule) => {
+              const isOpen = open?.id === rule.id;
+              return (
+                <li key={rule.id} className="ce-item" data-open={isOpen ? "true" : undefined}>
+                  <button type="button" className="ce-row" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : { id: rule.id, text: ruleText(rule, language), when: formatWhen(rule.when) })}>
+                    {isOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+                    <span className="ce-row__text">
+                      {ruleText(rule, language)}
+                      <small className="step-ask__by">
+                        {rule.by ? ` · @${rule.by}` : ""}
+                        {rule.reviewedBy ? "" : ` · ${t("sa.ruleNew")}`}
+                      </small>
+                    </span>
+                    <span className="ce-row__when" data-always={rule.when?.length ? undefined : "true"}>
+                      {rule.when?.length ? t("st.checkIf").replace("{words}", formatWhen(rule.when)) : t("st.checkAlways")}
+                    </span>
                   </button>
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="pe-hint">{t("sa.noRules")}</p>
-      )}
-      {canEdit ? (
-        <form
-          className="step-ask__add"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (draft.trim())
-              void run(async () => {
-                await addRuleToTeam(team, draft);
-                setDraft("");
-              });
-          }}
-        >
-          <input className="af-input" value={draft} maxLength={240} placeholder={t("sa.addRule")} aria-label={t("sa.addRule")} disabled={busy} onChange={(e) => setDraft(e.target.value)} />
-          <button type="submit" className="btn" data-size="sm" data-variant="outline" disabled={busy || !draft.trim()}>
-            {t("sa.add")}
+                  {isOpen ? (
+                    <div className="ce-edit">
+                      {fields}
+                      {canEdit ? (
+                        <div className="ce-actions">
+                          <button type="button" className="ce-remove" disabled={busy} onClick={() => void run(() => answerTeamRule(team, rule.id, { keep: false }))}>
+                            <Trash2 size={16} aria-hidden /> {t("st.checkRemoveShort")}
+                          </button>
+                          <button type="button" className="btn ce-done" data-size="sm" disabled={busy || !open.text.trim()} onClick={() => void run(() => answerTeamRule(team, rule.id, { keep: true, text: open.text, when: parseWhen(open.when) ?? [] }))}>
+                            {busy ? t("sa.saving") : t("mt.ruleSave")}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="pe-hint">{t("sa.noRules")}</p>
+        )}
+        {canEdit && open?.id === "new" ? (
+          <div className="ce-list">
+            <div className="ce-edit ce-edit--new">
+              {fields}
+              <div className="ce-actions">
+                <button type="button" className="btn" data-size="sm" data-variant="ghost" disabled={busy} onClick={() => setOpen(null)}>
+                  {t("pj.cancel")}
+                </button>
+                <button type="button" className="btn ce-done" data-size="sm" disabled={busy || !open.text.trim()} onClick={() => void run(() => addRuleToTeam(team, open.text, undefined, parseWhen(open.when)))}>
+                  {busy ? t("sa.saving") : t("sa.add")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : canEdit ? (
+          <button type="button" className="pe-add" onClick={() => setOpen({ id: "new", text: "", when: "" })}>
+            <Plus size={14} aria-hidden /> {t("sa.addRuleShort")}
           </button>
-        </form>
-      ) : null}
+        ) : null}
+      </div>
       {failed ? <p className="af-stale">{t("sa.ruleError")}</p> : null}
     </section>
   );
