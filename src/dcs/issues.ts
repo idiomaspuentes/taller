@@ -160,18 +160,32 @@ function isGatewayTasksRepo(issue: DcsIssue): boolean {
   return !issue.repository;
 }
 
-async function searchPmIssues(
-  session: GtSession,
-  org: string,
-  opts: {
-    state?: "open" | "closed" | "all";
-    milestones?: string[];
-    team?: string;
-    assigned?: boolean;
-    maxPages?: number;
-    namespaceId?: string;
-  },
-): Promise<DcsIssue[]> {
+type PmSearch = {
+  state?: "open" | "closed" | "all";
+  milestones?: string[];
+  team?: string;
+  assigned?: boolean;
+  maxPages?: number;
+  namespaceId?: string;
+};
+
+/**
+ * Searches being answered right now. A screen asks several things at once and two of them are often the same search
+ * (what I closed this week, what I closed with a conflict): they share one request instead of making Door43 answer
+ * twice. Nothing is kept once the answer arrives.
+ */
+const searching = new Map<string, Promise<DcsIssue[]>>();
+
+function searchPmIssues(session: GtSession, org: string, opts: PmSearch): Promise<DcsIssue[]> {
+  const key = JSON.stringify([session.host, session.username, org, scopeFolder(), opts]);
+  const running = searching.get(key);
+  if (running) return running.then((issues) => [...issues]);
+  const request = searchPmIssuesNow(session, org, opts).finally(() => searching.delete(key));
+  searching.set(key, request);
+  return request.then((issues) => [...issues]);
+}
+
+async function searchPmIssuesNow(session: GtSession, org: string, opts: PmSearch): Promise<DcsIssue[]> {
   const config = dcsConfig(session.host);
   const namespaceId = opts.namespaceId ?? DEFAULT_PM_NAMESPACE;
   const issues: DcsIssue[] = [];
@@ -212,7 +226,28 @@ export function issuesOfMilestones<T extends { milestone?: { title?: string } | 
   return issues.filter((issue) => wanted.has(projectFromMilestone(issue.milestone?.title).toUpperCase()));
 }
 
-export async function loadPmConfig(session: GtSession, org: string): Promise<PmConfig> {
+/**
+ * The team settings read a moment ago. One screen asks for them from many places (each project it lists, the levels,
+ * the repositories), so without this the same small file was fetched five times in a row. A few seconds is enough
+ * to cover one load of a screen; saving them here forgets what was read.
+ */
+const PM_CONFIG_FRESH_MS = 10_000;
+const pmConfigRead = new Map<string, { at: number; value: Promise<PmConfig> }>();
+
+export function forgetPmConfig(): void {
+  pmConfigRead.clear();
+}
+
+export function loadPmConfig(session: GtSession, org: string): Promise<PmConfig> {
+  const key = `${session.host}|${session.username}|${org}|${configPath()}`;
+  const read = pmConfigRead.get(key);
+  if (read && Date.now() - read.at < PM_CONFIG_FRESH_MS) return read.value.then((value) => structuredClone(value));
+  const value = loadPmConfigNow(session, org);
+  pmConfigRead.set(key, { at: Date.now(), value });
+  return value.then((config) => structuredClone(config));
+}
+
+async function loadPmConfigNow(session: GtSession, org: string): Promise<PmConfig> {
   const config = dcsConfig(session.host);
   try {
     const raw = await getRawContent(config, org, PM_REPO_NAME, configPath(), {
@@ -289,6 +324,7 @@ export async function savePmConfig(
   pmConfig: PmConfig,
 ): Promise<void> {
   await ensurePmRepo(session, org);
+  forgetPmConfig();
   const config = dcsConfig(session.host);
   let sha: string | undefined;
   try {
@@ -305,6 +341,7 @@ export async function savePmConfig(
     sha,
     token: session.token,
   });
+  forgetPmConfig();
 }
 
 /**

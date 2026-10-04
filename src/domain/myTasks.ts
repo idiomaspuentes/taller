@@ -184,8 +184,8 @@ export async function loadMyTasksProjects(params: {
     if (id) projectIds.add(id);
   }
 
-  const buckets: MyTasksProjectBucket[] = [];
-  for (const projectId of [...projectIds].sort((a, b) => a.localeCompare(b, "es"))) {
+  // Every project at once: one after another, the wait grew with each book the team had open.
+  const loadBucket = async (projectId: string): Promise<MyTasksProjectBucket | null> => {
     const fromDcs = await loadAssignmentsFromDcs(session, pmOrg, lang, projectId, contentOrg);
     const local = loadLocalAssignments(lang, projectId, contentOrg, pmOrg);
     const doc =
@@ -202,7 +202,7 @@ export async function loadMyTasksProjects(params: {
       (issue) => issueProjectId(issue).toUpperCase() === projectId.toUpperCase(),
     );
 
-    if (!browseProject && !mineInProject.length) continue;
+    if (!browseProject && !mineInProject.length) return null;
 
     const issues = browseProject
       ? await listProjectOpenIssues(session, pmOrg, projectId)
@@ -222,7 +222,7 @@ export async function loadMyTasksProjects(params: {
       ? await listProjectIssues(session, resolveSourcePackage(doc.settings).owner, projectId).then((found) => found.issues).catch(() => undefined)
       : undefined;
 
-    buckets.push({
+    return {
       projectId: doc.projectId || projectId,
       title: doc.title || titleById.get(projectId.toUpperCase()) || projectId,
       browseProject,
@@ -230,10 +230,11 @@ export async function loadMyTasksProjects(params: {
       issues,
       openIssues,
       sourceIssues,
-    });
-  }
+    };
+  };
 
-  return buckets;
+  const ordered = [...projectIds].sort((a, b) => a.localeCompare(b, "es"));
+  return (await Promise.all(ordered.map(loadBucket))).filter((bucket): bucket is MyTasksProjectBucket => bucket !== null);
 }
 
 export type StepClaimOffer = {
