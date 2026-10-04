@@ -69,12 +69,12 @@ await test("pasados cuatro avisos distintos se juntan en un resumen, y lo nuevo 
   assert.equal(w.visible().length, 4, "hasta cuatro se ven por separado");
   await w.push(sub(5));
   assert.equal(w.visible().length, 1);
-  assert.equal(w.visible()[0]!.title, "5 avisos nuevos en Taller");
+  assert.equal(w.visible()[0]!.title, "5 avisos nuevos");
   assert.equal(w.visible()[0]!.silent, true);
   await w.push(sub(6));
   await w.push(assigned(9));
   assert.equal(w.visible().length, 1);
-  assert.equal(w.visible()[0]!.title, "7 avisos nuevos en Taller");
+  assert.equal(w.visible()[0]!.title, "7 avisos nuevos");
   assert.equal(w.visible()[0]!.data.url, "https://taller.example/#/mis-tareas");
 });
 

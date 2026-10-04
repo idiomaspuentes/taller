@@ -58,7 +58,7 @@ await test("activar pide permiso solo si hace falta, se suscribe y registra el d
   assert.equal(post.method, "POST");
   assert.equal(post.headers.authorization, "token tok-bea");
   assert.equal(post.headers["x-door43-host"], "https://qa.door43.org", "sin la barra final");
-  assert.deepEqual(JSON.parse(post.body!), { subscription: { endpoint: "https://push.example/dev", keys: { auth: "a", p256dh: "p" } } });
+  assert.deepEqual(JSON.parse(post.body!), { lang: "es", subscription: { endpoint: "https://push.example/dev", keys: { auth: "a", p256dh: "p" } } }, "con el idioma en que la persona usa la app, para que los avisos le lleguen en él");
   assert.equal(await pushState(t.deps), "on");
   const again = setup({ permission: "granted" });
   await enablePush(again.deps, session);

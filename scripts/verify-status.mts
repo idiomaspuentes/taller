@@ -196,7 +196,8 @@ const withPortions = JSON.parse(emitJson(results, { book: "TIT", subjects, prep:
 check("--from-prep emits portions", Array.isArray(withPortions.portions) && withPortions.portions.length > 0);
 const firstPortion = withPortions.portions?.[0];
 check("first portion ref is TIT 1:1-2", firstPortion?.ref === "TIT 1:1-2", firstPortion?.ref);
-check("first portion counts (2 notas, 2 preguntas)", firstPortion?.notas === 2 && firstPortion?.preguntas === 2, firstPortion);
+// The notes that introduce the book and the chapter go with the first passage, so somebody translates them.
+check("first portion counts (2 intro notes + 2 notas, 2 preguntas)", firstPortion?.notas === 4 && firstPortion?.preguntas === 2, firstPortion);
 check(
   "first portion cites figs-metaphor in academia[]",
   (firstPortion?.academia ?? []).some((row: { id?: string }) => row.id === "figs-metaphor"),
