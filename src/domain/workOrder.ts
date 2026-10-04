@@ -283,6 +283,8 @@ function buildWorkOrder(params: {
   itemTypes: ItemType[];
   portions: InventoryDoc["portions"];
   assignee?: WorkOrder["assignee"];
+  /** What the subtarea is called instead of its passage: the title of the article it is about. */
+  named?: string;
 }): WorkOrder {
   const orderBook = bookForPortionIds(params.portionIds, params.portions, params.book);
   const range = rangeLabelForPortions(orderBook, params.portionIds, params.portions);
@@ -303,8 +305,15 @@ function buildWorkOrder(params: {
     itemIds: params.itemIds,
     itemTypes: params.itemTypes,
     assignee: params.assignee,
-    label: `${range} · ${resourceLabel(params.resource)}`,
+    label: `${params.named?.trim() || range} · ${resourceLabel(params.resource)}`,
   };
+}
+
+/** The first passage of the book that links to an article: where whoever translates it can see it at work. */
+function firstPortionCiting(articleId: string, resource: ScopeKey | "bundle", portions: InventoryDoc["portions"]): string | undefined {
+  if (resource !== "academia" && resource !== "palabras") return undefined;
+  const portion = portions.find((row) => (row[resource] ?? []).some((cited) => cited.id === articleId));
+  return portion ? portionKey(portion) : undefined;
 }
 
 /**
@@ -386,6 +395,29 @@ export function planUnassignedLots(
       groups.set(resource, list);
     }
     for (const [resource, items] of groups) {
+      // An article is a piece of work of its own: it is of the language, not of a passage, and several in one
+      // subtarea would hand one person all of them and show them on one screen. One subtarea for each.
+      if ((resource === "academia" || resource === "palabras") && items.every((item) => item.type === "articulo")) {
+        for (const item of items) {
+          const article = inventory.articles?.find((row) => row.id === item.id);
+          const cited = firstPortionCiting(item.id, resource, inventory.portions);
+          const ids = cited ? [cited] : bundle.portionIds.slice(0, 1);
+          orders.push(
+            buildWorkOrder({
+              team,
+              book,
+              resource,
+              chapter: inventory.portions.find((row) => portionKey(row) === ids[0])?.chapter ?? bundle.chapter,
+              portionIds: ids,
+              itemIds: [itemKey(item.type, item.id)],
+              itemTypes: [item.type],
+              portions: inventory.portions,
+              named: article?.title?.trim() || item.id,
+            }),
+          );
+        }
+        continue;
+      }
       const itemIds = items.map((item) => itemKey(item.type, item.id));
       const itemTypes = items.map((item) => item.type);
       const portionIds = [
@@ -452,16 +484,20 @@ export function publishableWorkOrders(
         itemTypes.push(lot.itemTypes[index] ?? "tarea");
       });
       if (!itemIds.length) continue;
-      const next = buildWorkOrder({
-        team,
-        book: lot.book,
-        resource: lot.resource,
-        chapter: lot.chapter,
-        portionIds: lot.portionIds,
-        itemIds,
-        itemTypes,
-        portions: inventory.portions,
-      });
+      // A lot nobody took a piece of goes as it was planned, with its own name (an article's title).
+      const next =
+        itemIds.length === lot.itemIds.length
+          ? lot
+          : buildWorkOrder({
+              team,
+              book: lot.book,
+              resource: lot.resource,
+              chapter: lot.chapter,
+              portionIds: lot.portionIds,
+              itemIds,
+              itemTypes,
+              portions: inventory.portions,
+            });
       open.push(next);
       for (const id of itemIds) covered.add(coveredKey(team.id, id));
     }

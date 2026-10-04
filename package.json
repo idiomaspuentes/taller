@@ -73,6 +73,7 @@
     "verify:phase-marks": "tsx --tsconfig tsconfig.scripts.json scripts/verify-phase-marks.mts",
     "verify:changes-since": "tsx --tsconfig tsconfig.scripts.json scripts/verify-changes-since.mts",
     "verify:unit-stage": "tsx --tsconfig tsconfig.scripts.json scripts/verify-unit-stage.mts",
+    "verify:article-work": "tsx --tsconfig tsconfig.scripts.json scripts/verify-article-work.mts",
     "verify:ask-notices": "tsx --tsconfig tsconfig.scripts.json scripts/verify-ask-notices.mts",
     "verify:team-rules": "tsx --tsconfig tsconfig.scripts.json scripts/verify-team-rules.mts",
     "verify:step-checks": "tsx --tsconfig tsconfig.scripts.json scripts/verify-step-checks.mts",
