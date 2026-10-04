@@ -1379,7 +1379,9 @@ export function App() {
             lang={lang}
             languages={catalogLangs}
             projects={projects}
-            currentProjectId={book}
+            // The book in hand is a project only once it has a plan: a session left pointing at a book that was removed
+            // must not list it as one.
+            currentProjectId={board.teams.length ? book : ""}
             canManage={effectiveCanManage}
             onOpenProject={(code) => {
               onBookChange(code);

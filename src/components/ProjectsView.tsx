@@ -1,3 +1,4 @@
+import { rememberTemplateUsed, usualTemplate } from "../lastTemplate";
 import { useEffect, useMemo, useState } from "react";
 import type { NextBookHint } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
@@ -107,8 +108,8 @@ export function ProjectsView({
   const [slug, setSlug] = useState("");
   const [selectedBooks, setSelectedBooks] = useState<string[]>(["GEN", "EXO"]);
   const [workflowId, setWorkflowId] = useState("");
-  // The first template is the usual one; the person can still start blank.
-  const chosenWorkflow = workflowId || templates[0]?.id || "";
+  // The usual template is the one this person started their last book with; before any, the first of the list.
+  const chosenWorkflow = workflowId || usualTemplate(templates);
   const BLANK = "__blank__";
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -135,6 +136,7 @@ export function ProjectsView({
 
   function submitCreate() {
     const workflow = chosenWorkflow === BLANK ? undefined : chosenWorkflow || undefined;
+    rememberTemplateUsed(workflow);
     if (kind === "book") {
       const id = normalizeProjectId(bookCode);
       onCreateProject({

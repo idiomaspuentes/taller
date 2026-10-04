@@ -1,3 +1,4 @@
+import { rememberTemplateUsed, usualTemplate } from "../lastTemplate";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
   const language = useUiLanguage();
   const free = BOOKS.filter((b) => !taken.includes(b.code));
   const [book, setBook] = useState(free[0]?.code ?? "");
-  const [workflowId, setWorkflowId] = useState(templates[0]?.id ?? "");
+  const [workflowId, setWorkflowId] = useState(() => usualTemplate(templates));
   const [stage, setStage] = useState<{ at: StartStage; detail?: string } | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState<StartedProject | null>(null);
@@ -53,6 +54,7 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
     setError("");
     setAdjusting(true);
     try {
+      rememberTemplateUsed(workflowId);
       await onAdjust({ book, workflowId });
     } catch (err) {
       setError(explainError(err));
@@ -68,6 +70,7 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
     setStage({ at: "process" });
     try {
       // Only the count of subtareas is worth showing; what the reader reports while it works is for developers.
+      rememberTemplateUsed(workflowId);
       setDone(await onStart({ book, workflowId }, (at, detail) => setStage({ at, detail: at === "tasks" ? detail : undefined })));
     } catch (err) {
       setError(explainError(err));
