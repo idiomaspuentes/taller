@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 22,
+      "version": 23,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -360,9 +360,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista.",
+              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista. Usa palabras sencillas, que cualquiera entienda.",
               "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista."
+                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista. Use palavras simples, que qualquer pessoa entenda."
               }
             },
             {
@@ -383,9 +383,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara cada nota con la nota en inglés. Debe decir lo mismo.",
+              "description": "Compara cada nota con la nota en inglés. Debe decir lo mismo, con palabras que cualquiera entienda.",
               "descriptions": {
-                "pt": "Compare cada nota com a nota em inglês. Deve dizer o mesmo."
+                "pt": "Compare cada nota com a nota em inglês. Deve dizer o mesmo, com palavras que qualquer pessoa entenda."
               }
             }
           ],
@@ -436,9 +436,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Lee el capítulo en el ULT. Traduce cada pregunta y su respuesta.",
+              "description": "Lee el capítulo en el ULT. Traduce cada pregunta y su respuesta. Usa palabras sencillas, que cualquiera entienda.",
               "descriptions": {
-                "pt": "Leia o capítulo no ULT. Traduza cada pergunta e a sua resposta."
+                "pt": "Leia o capítulo no ULT. Traduza cada pergunta e a sua resposta. Use palavras simples, que qualquer pessoa entenda."
               }
             },
             {
@@ -459,9 +459,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el inglés. La pregunta debe pedir lo mismo y la respuesta debe estar en el versículo.",
+              "description": "Compara con el inglés. La pregunta debe pedir lo mismo y la respuesta debe estar en el versículo. Las dos deben entenderse con facilidad.",
               "descriptions": {
-                "pt": "Compare com o inglês. A pergunta deve pedir o mesmo e a resposta deve estar no versículo."
+                "pt": "Compare com o inglês. A pergunta deve pedir o mesmo e a resposta deve estar no versículo. As duas devem ser fáceis de entender."
               }
             }
           ],
@@ -494,9 +494,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Define la palabra según su uso en la Biblia, no según un diccionario. Si usamos varias palabras para esa idea, ponlas todas. No traduzcas las referencias bíblicas.",
+              "description": "Define la palabra según su uso en la Biblia, no según un diccionario. Usa palabras sencillas, que cualquiera entienda. Si usamos varias palabras para esa idea, ponlas todas. No traduzcas las referencias bíblicas.",
               "descriptions": {
-                "pt": "Defina a palavra segundo o seu uso na Bíblia, não segundo um dicionário. Se usamos várias palavras para essa ideia, ponha todas. Não traduza as referências bíblicas."
+                "pt": "Defina a palavra segundo o seu uso na Bíblia, não segundo um dicionário. Use palavras simples, que qualquer pessoa entenda. Se usamos várias palavras para essa ideia, ponha todas. Não traduza as referências bíblicas."
               }
             },
             {
@@ -517,9 +517,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "La definición debe dar el sentido que la palabra tiene en la Biblia. Debe haber una sugerencia de traducción para cada uso.",
+              "description": "La definición debe dar el sentido que la palabra tiene en la Biblia, con palabras que cualquiera entienda. Debe haber una sugerencia de traducción para cada uso.",
               "descriptions": {
-                "pt": "A definição deve dar o sentido que a palavra tem na Bíblia. Deve haver uma sugestão de tradução para cada uso."
+                "pt": "A definição deve dar o sentido que a palavra tem na Bíblia, com palavras que qualquer pessoa entenda. Deve haver uma sugestão de tradução para cada uso."
               }
             }
           ],
@@ -552,9 +552,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Usa palabras sencillas. Cambia los ejemplos del inglés por ejemplos de nuestro idioma. Los versículos de ejemplo se traducen del ULT.",
+              "description": "Usa palabras sencillas, que cualquiera entienda. Cambia los ejemplos del inglés por ejemplos de nuestro idioma. Los versículos de ejemplo se traducen del ULT.",
               "descriptions": {
-                "pt": "Use palavras simples. Troque os exemplos do inglês por exemplos da nossa língua. Os versículos de exemplo são traduzidos do ULT."
+                "pt": "Use palavras simples, que qualquer pessoa entenda. Troque os exemplos do inglês por exemplos da nossa língua. Os versículos de exemplo são traduzidos do ULT."
               }
             },
             {
@@ -575,9 +575,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "El artículo debe entenderse sin saber del tema. Los ejemplos deben ser de nuestro idioma, no copias del inglés.",
+              "description": "Cualquier persona debe poder entender el artículo, sin saber del tema. Los ejemplos deben ser de nuestro idioma, no copias del inglés.",
               "descriptions": {
-                "pt": "O artigo deve ser entendido sem conhecer o tema. Os exemplos devem ser da nossa língua, não cópias do inglês."
+                "pt": "Qualquer pessoa deve poder entender o artigo, sem conhecer o tema. Os exemplos devem ser da nossa língua, não cópias do inglês."
               }
             }
           ],

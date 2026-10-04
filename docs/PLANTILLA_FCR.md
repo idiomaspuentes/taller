@@ -121,6 +121,9 @@ TPL ahora, ni aunque ya estuviera traducido, porque **el TPL cambia en Afinació
 ayudas se revisan frente al TPL ya afinado y se ajustan: para eso existe esa fase. (El manual de lenguas puente
 pide traducir las ayudas con el texto ya terminado; aquí ese contraste se hace después, en su propia fase.)
 
+**Las ayudas se escriben con palabras sencillas.** Notas, preguntas, palabras y Academia deben poder entenderse
+por cualquier persona: así lo pide el borrador de cada una y así lo comprueba su revisión en pares.
+
 **Qué se pide en cada paso.** «Borrador» y «Revisión en pares» dicen, en cada tarea, qué se espera de ese recurso,
 según el [manual de lenguas puente](https://gl-manual.readthedocs.io/en/latest/): el TPL conserva la forma del
 original y no busca sonar natural; el TPS dice el sentido de forma llana, sin figuras ni voz pasiva; una nota
