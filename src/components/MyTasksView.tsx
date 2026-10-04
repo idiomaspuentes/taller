@@ -37,8 +37,8 @@ import {
   parsePortionPrMarker,
   stepCompletesDraftForReview,
   stepNeedsOpenPortionPr,
-  taskWorksOnSharedDraft,
 } from "../domain/portionPr";
+import { taskHasOwnDraft } from "../domain/branchNames";
 import {
   canClaimIssue,
   canUnassignIssue,
@@ -417,6 +417,8 @@ export function MyTasksView({
     issue: DcsIssue,
     board: MyTasksProjectBucket["board"],
   ) {
+    // Only the translation task of a resource has a personal draft to review; the others work on the group's.
+    if (!taskHasOwnDraft(board?.teams, issueTaskId(issue))) return;
     try {
       const result = await ensurePortionPr({
         session,
@@ -600,7 +602,7 @@ export function MyTasksView({
         issue,
         resource,
         lang,
-        sharedDraft: taskWorksOnSharedDraft(board.teams.find((task) => task.id === issueTaskId(issue))?.steps),
+        sharedDraft: !taskHasOwnDraft(board.teams, issueTaskId(issue)),
         ensurePr: async () =>
           (await ensurePortionPr({ session, pmOrg, lang, contentOrg, board, issue })).issue,
       });

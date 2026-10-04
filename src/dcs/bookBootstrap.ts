@@ -3,6 +3,7 @@ import { DcsApiError } from "@ip-lms/dcs-client";
 import { loadEnglishScriptureKindUsfm } from "../domain/referenceResources";
 import {
   bookBranchName,
+  groupDraftBranchNames,
   bookOnlyBranchName,
   canonicalWorkBranchName,
   compatBookBranchNames,
@@ -12,8 +13,8 @@ import {
   legacyBookBranchName,
   legacyPhaseBookBranchName,
   ownedWorkBranchNames,
-  taskTrunkBranchName,
 } from "../domain/portionPr";
+import { isWorkWord } from "../domain/branchNames";
 import {
   buildBookUsfmSkeleton,
   isValidBookUsfm,
@@ -27,7 +28,6 @@ import {
   branchExists,
   deleteGitRef,
   ensureBranchFrom,
-  findBlockingParentRef,
   getBranchSha,
   getDefaultBranch,
 } from "./pulls";
@@ -141,13 +141,10 @@ async function loadSourceSkeleton(
 }
 
 /**
- * Prefer `{book}/{taskId}`. Reuse existing `t/{book}/{taskId}`,
- * `afinacion/{book}`, `armonizacion/{book}`, `book/{book}`, or
- * `{oldPhaseSlug}/{book}` so we do not orphan them.
- *
- * Policy when parent `neh` (or any prefix) already exists:
- * never POST `neh/{taskId}`. Reuse `neh` only if that ref already
- * holds a valid book USFM. Otherwise create/reuse `t/{book}/{taskId}`.
+ * The group draft is `borrador/{book}/{taskId}`. A book started before that name keeps the branch it has
+ * (`{book}/{taskId}`, `t/{book}/{taskId}`, `afinacion/{book}`, `armonizacion/{book}`, `book/{book}`,
+ * `{oldPhaseSlug}/{book}`, or `{book}` when it holds a valid book USFM), so its work is not orphaned; none of
+ * those is ever created again.
  */
 export async function resolveBookBranchName(params: {
   session: GtSession;
@@ -160,14 +157,13 @@ export async function resolveBookBranchName(params: {
   preferPerTaskTrunk?: boolean;
 }): Promise<{ bookBranch: string; reusedLegacy: boolean }> {
   const preferred = bookBranchName(params.book, params.taskId);
-  const safe = taskTrunkBranchName(params.book, params.taskId);
   const bookOnly = bookOnlyBranchName(params.book);
   const oldPhase = legacyPhaseBookBranchName(params.book, params.phaseSlug);
+  const perTask = groupDraftBranchNames(params.book, params.taskId);
   const candidates = params.preferPerTaskTrunk
-    ? [preferred, safe]
+    ? perTask
     : [
-        preferred,
-        safe,
+        ...perTask,
         ...compatBookBranchNames(params.book),
         legacyBookBranchName(params.book),
         oldPhase,
@@ -193,36 +189,12 @@ export async function resolveBookBranchName(params: {
     }
   }
 
-  const preferredParent = await findBlockingParentRef(
-    config,
-    params.owner,
-    params.repo,
-    preferred,
-    params.session.token,
-  );
-  if (!preferredParent) {
-    return { bookBranch: preferred, reusedLegacy: false };
-  }
-
-  const safeParent = await findBlockingParentRef(
-    config,
-    params.owner,
-    params.repo,
-    safe,
-    params.session.token,
-  );
-  if (!safeParent) {
-    return { bookBranch: safe, reusedLegacy: false };
-  }
-  if (!params.preferPerTaskTrunk && preferredParent === bookOnly) {
-    return { bookBranch: bookOnly, reusedLegacy: true };
-  }
-  return { bookBranch: safe, reusedLegacy: false };
+  return { bookBranch: preferred, reusedLegacy: false };
 }
 
 function refuseWorkRefAsTrunk(bookBranch: string, book: string, taskId?: string): void {
   const trunk = bookBranchName(book, taskId);
-  if (isGitRefDescendant(bookBranch, trunk) || bookBranch.startsWith("w/")) {
+  if (isGitRefDescendant(bookBranch, trunk) || isWorkWord(bookBranch.split("/")[0])) {
     throw new BootstrapError(
       `«${bookBranch}» es un borrador personal, no el borrador grupal del libro «${trunk}». Primero se crea el borrador grupal y luego se parte de él.`,
       "book-branch",
@@ -336,8 +308,7 @@ async function writeOnBookBranch(params: {
  *
  * 1. Ensure the content repo (create like `gateway-tasks` if missing).
  * 2. Resolve default-branch SHA.
- * 3. Create `{book}/{taskId}` from default, or `t/{book}/{taskId}`
- *    when a parent ref blocks that name (or reuse a legacy book ref).
+ * 3. Create `borrador/{book}/{taskId}` from default (or reuse the branch an older book already has).
  * 4. If USFM exists on default: copy onto the book branch.
  * 5. If missing: write a ULT-shaped skeleton on the book branch.
  * Empty repos: first commit on default, then branch — Gitea cannot create refs without a SHA.

@@ -1,5 +1,6 @@
 import type { ViewMode } from "../viewMode";
 import { portionPrBranchName, removePortionPrFromBody } from "./portionPr";
+import { branchNames, isWorkWord } from "./branchNames";
 import { parseRefRange, type RefRange } from "./usfmEdit";
 
 /** DCS hosts where the QA admin menu must never appear. */
@@ -68,9 +69,10 @@ export function ghostRefDeleteBlock(
   return null;
 }
 
-/** Work refs live under `w/` (see `portionPrBranchName`). */
+/** Work refs live under their own word, `trabajo/` (see `portionPrBranchName`), or the `w/` of older books. */
 export function isWorkRefName(name: string): boolean {
-  return /^w\/[^/]+(\/[^/]+)+$/.test(name.trim());
+  const parts = name.trim().split("/");
+  return parts.length >= 3 && isWorkWord(parts[0]) && parts.every(Boolean);
 }
 
 const FULL_SHA_RE = /^[0-9a-f]{40}$/i;
@@ -112,7 +114,7 @@ export function recreateWorkRefBlock(
 ): string | null {
   const name = probe.name.trim();
   if (!name) return "Falta el nombre de la ref.";
-  if (!isWorkRefName(name)) return `«${name}» no es una ref de trabajo (w/…).`;
+  if (!isWorkRefName(name)) return `«${name}» no es una ref de trabajo (${branchNames().work}/…).`;
   if (name === ctx.defaultBranch || name === "master" || name === "main") {
     return `«${name}» es la rama por defecto.`;
   }

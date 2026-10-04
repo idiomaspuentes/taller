@@ -1,3 +1,4 @@
+import { branchNames, isWorkWord } from "../domain/branchNames";
 import {
   createOrgRepo,
   createOrUpdateContents,
@@ -89,9 +90,10 @@ function stepLabel(step: BootstrapStep): string {
 /** Worker-facing name for a ref; the ref itself never reaches the UI. */
 function refPlace(ref: string): string {
   const name = ref.trim();
-  if (/^archivo\//.test(name)) return "el archivo del trabajo";
+  const first = name.split("/")[0];
+  if (first === branchNames().archive) return "el archivo del trabajo";
   if (name === "master" || name === "main") return "el borrador principal";
-  if (/^(w|tas)\//.test(name) || /\/\d+$/.test(name)) return "tu borrador";
+  if (isWorkWord(first) || first === "tas" || /\/\d+$/.test(name)) return "tu borrador";
   return "el borrador grupal";
 }
 

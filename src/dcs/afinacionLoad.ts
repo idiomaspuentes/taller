@@ -12,7 +12,10 @@ import { loadPreferredTerms } from "./afinacionStore";
 import { collectVerseTextsFromContent } from "@usfm-tools/usj-core";
 import { bookUsfmName } from "../prep/discover";
 import { helpsTsvFilename, resolveHelpsTarget } from "../domain/helpsTarget";
-import { bookOnlyBranchName, bookBranchName, taskTrunkBranchName } from "../domain/portionPr";
+import { bookOnlyBranchName, groupDraftBranchNames } from "../domain/portionPr";
+import { draftTaskId } from "../domain/branchNames";
+
+export { draftTaskId };
 import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -180,14 +183,6 @@ export async function loadArticleBody(session: GtSession, ctx: SolverLaunchConte
   return mine?.trim() ? mine : readRaw(session, pkg.owner, pkg.ta, `${path}/01.md`);
 }
 
-/**
- * The task that writes the text a refining task works on: the first task of the plan with that resource (its
- * translation). Its group draft is what every later task reads and corrects, however many tasks stand between.
- */
-export function draftTaskId(teams: { id: string; rules: { resource: string }[] }[], resource: string): string | undefined {
-  return teams.find((task) => task.rules.some((rule) => rule.resource === resource))?.id;
-}
-
 /** The verses a subtarea covers, from its place (`1:1–4`); a whole chapter (`1`) covers them all. */
 export function verseRangeOf(ctx: Pick<SolverLaunchContext, "ref" | "chapter">): { from: number; to: number } | null {
   const range = parseRefRange(ctx.ref || "");
@@ -196,7 +191,7 @@ export function verseRangeOf(ctx: Pick<SolverLaunchContext, "ref" | "chapter">):
 
 /** Branches where the group draft of the task being reviewed can live, most specific first. */
 export function groupDraftBranches(book: string, sourceTaskId: string): string[] {
-  return [bookBranchName(book, sourceTaskId), taskTrunkBranchName(book, sourceTaskId), bookOnlyBranchName(book)];
+  return [...groupDraftBranchNames(book, sourceTaskId), bookOnlyBranchName(book)];
 }
 
 /**

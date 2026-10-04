@@ -4,7 +4,7 @@
  *
  * Run:
  *   DCS_HOST=https://qa.door43.org DCS_TOKEN=… DCS_OWNER=es-419_gl DCS_REPO=es-419_glt \
- *   DCS_BRANCH=w/neh/<task>/<user>/<issue> DCS_SOURCE=t/neh/<task> DCS_FILE=16-NEH.usfm \
+ *   DCS_BRANCH=trabajo/neh/<task>/<user>/<issue> DCS_SOURCE=borrador/neh/<task> DCS_FILE=16-NEH.usfm \
  *   npx tsx scripts/qa-fix-work-ref.mts
  */
 const host = (process.env.DCS_HOST || "").replace(/\/$/, "");
@@ -17,7 +17,7 @@ const file = (process.env.DCS_FILE || "").trim();
 
 if (!host || /git\.door43\.org/i.test(host)) throw new Error("DCS_HOST must be a non-production host.");
 if (!token || !owner || !repo || !branch || !source || !file) throw new Error("Missing env.");
-if (!branch.startsWith("w/")) throw new Error("Only work refs (w/…) are allowed.");
+if (!/^(trabajo|w)\//.test(branch)) throw new Error("Only work refs (trabajo/… or the older w/…) are allowed.");
 
 const api = `${host}/api/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 const headers = { Authorization: `token ${token}`, "Content-Type": "application/json" };

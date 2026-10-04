@@ -15,6 +15,7 @@ import { getContents } from "@ip-lms/dcs-client";
 import {
   archiveRefName,
   bookBranchName,
+  legacyTaskBranchName,
   isGitRefDescendant,
   legacyPhaseBookBranchName,
   nestedPortionPrBranchName,
@@ -332,13 +333,13 @@ const session = makeSession();
     phaseSlug: "fase-1",
     fallbackRange: { chapter: 1, from: 10, to: 11 },
   });
-  assert(result.bookBranch === "neh/tpl-draft", `book branch is libro/tarea, got ${result.bookBranch}`);
+  assert(result.bookBranch === "borrador/neh/tpl-draft", `book branch is libro/tarea, got ${result.bookBranch}`);
   assert(result.createdBranch, "created missing book branch");
   assert(result.createdFile, "created missing USFM");
   assert(result.usfm.includes("\\id NEH"), "skeleton has id");
   assert(result.usfm.includes("\\v 10"), "skeleton has verse 10");
-  assert(fake.branches["neh/tpl-draft"], "neh/tpl-draft ref exists");
-  assert(fake.files["neh/tpl-draft:16-NEH.usfm"], "file exists on book branch");
+  assert(fake.branches["borrador/neh/tpl-draft"], "borrador/neh/tpl-draft ref exists");
+  assert(fake.files["borrador/neh/tpl-draft:16-NEH.usfm"], "file exists on book branch");
   assert(!fake.branches["fase-1/neh"], "do not create phase-based name for a new book");
 
   const createRef = fake.calls.findIndex((c) => c.method === "POST" && c.path.endsWith("/branches"));
@@ -365,7 +366,7 @@ const session = makeSession();
   });
   assert(result.bookBranch === "book/neh", "reuse legacy book/neh");
   assert(!result.createdFile, "do not invent a second book file");
-  assert(!fake.branches["neh/tpl-draft"], "do not orphan-create the new name when legacy exists");
+  assert(!fake.branches["borrador/neh/tpl-draft"], "do not orphan-create the new name when legacy exists");
   assert(!fake.branches["fase-1/neh"], "do not orphan-create the old phase name either");
   assert(result.usfm.includes("\\v 1"), "reused existing USFM");
 }
@@ -386,7 +387,7 @@ const session = makeSession();
     phaseSlug: "revision",
   });
   assert(result.bookBranch === "afinacion/neh", "reuse existing afinacion/neh");
-  assert(!fake.branches["neh/tpl-draft"], "do not orphan-create libro/tarea when afinacion exists");
+  assert(!fake.branches["borrador/neh/tpl-draft"], "do not orphan-create libro/tarea when afinacion exists");
   assert(!fake.branches["revision/neh"], "do not orphan-create revision/neh when afinacion exists");
 }
 
@@ -405,8 +406,8 @@ const session = makeSession();
     taskId: "tpl-draft",
     phaseSlug: "Revisión",
   });
-  assert(result.bookBranch === "neh/tpl-draft", `custom Revisión must not name the branch, got ${result.bookBranch}`);
-  assert(fake.branches["neh/tpl-draft"], "neh/tpl-draft ref exists");
+  assert(result.bookBranch === "borrador/neh/tpl-draft", `custom Revisión must not name the branch, got ${result.bookBranch}`);
+  assert(fake.branches["borrador/neh/tpl-draft"], "borrador/neh/tpl-draft ref exists");
   assert(!fake.branches["revision/neh"], "custom phase name must not appear in new refs");
 }
 
@@ -426,7 +427,7 @@ const session = makeSession();
     phaseSlug: "fase-1",
   });
   assert(result.bookBranch === "fase-1/neh", "reuse existing {oldPhaseSlug}/{book}");
-  assert(!fake.branches["neh/tpl-draft"], "do not orphan-create libro/tarea when old phase ref exists");
+  assert(!fake.branches["borrador/neh/tpl-draft"], "do not orphan-create libro/tarea when old phase ref exists");
 }
 
 {
@@ -455,16 +456,16 @@ const session = makeSession();
   assert(msg.includes("permiso"), "403 talks about permission");
 }
 
-assert(bookBranchName("NEH", "tpl-draft") === "neh/tpl-draft", "NEH uses libro/tarea");
-assert(bookBranchName("NEH") === "neh/tarea", "missing task is not a phase slug");
+assert(bookBranchName("NEH", "tpl-draft") === "borrador/neh/tpl-draft", "NEH uses libro/tarea");
+assert(bookBranchName("NEH") === "borrador/neh/tarea", "missing task is not a phase slug");
 assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase name kept for reuse");
 
 {
   const fake = installFakeDcs({
     branches: {
       master: "abc123master",
-      "neh/tpl-draft": "halfcreated",
-      "neh/tpl-draft/ana/41": "halfcreated",
+      "borrador/neh/tpl-draft": "halfcreated",
+      "borrador/neh/tpl-draft/ana/41": "halfcreated",
     },
     files: {},
   });
@@ -477,19 +478,19 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     resource: "tpl",
     taskId: "tpl-draft",
     fallbackRange: { chapter: 1, from: 10, to: 11 },
-    workBranch: "neh/tpl-draft/ana/41",
+    workBranch: "borrador/neh/tpl-draft/ana/41",
     username: "ana",
     issueNumber: 41,
     createdFileThisSession: true,
   });
   assert(result.wipedTrunk, "missing/broken trunk file is recreated");
   assert(result.deletedWorkBranch, "work branch was deleted");
-  assert(result.workBranch === "w/neh/tpl-draft/ana/41", "work remapped off the trunk");
-  assert(fake.branches["neh/tpl-draft"], "trunk recreated");
-  assert(fake.branches["w/neh/tpl-draft/ana/41"], "work branch recreated from trunk");
-  assert(!fake.branches["neh/tpl-draft/ana/41"], "do not recreate nested work under trunk");
-  assert(fake.files["neh/tpl-draft:16-NEH.usfm"], "skeleton written on trunk");
-  const deleteTrunk = fake.calls.findIndex((c) => c.method === "DELETE" && c.path.includes("/git/refs/heads/neh/tpl-draft") && !c.path.includes("/ana/"));
+  assert(result.workBranch === "trabajo/neh/tpl-draft/ana/41", "work remapped off the trunk");
+  assert(fake.branches["borrador/neh/tpl-draft"], "trunk recreated");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"], "work branch recreated from trunk");
+  assert(!fake.branches["borrador/neh/tpl-draft/ana/41"], "do not recreate nested work under trunk");
+  assert(fake.files["borrador/neh/tpl-draft:16-NEH.usfm"], "skeleton written on trunk");
+  const deleteTrunk = fake.calls.findIndex((c) => c.method === "DELETE" && c.path.includes("/git/refs/heads/borrador/neh/tpl-draft") && !c.path.includes("/ana/"));
   const createTrunk = fake.calls.findIndex((c) => c.method === "POST" && c.path.endsWith("/branches"));
   const createFile = fake.calls.findIndex((c) => (c.method === "POST" || c.method === "PUT") && c.path.includes("/contents/16-NEH.usfm"));
   assert(deleteTrunk >= 0, "deleted broken trunk ref");
@@ -503,10 +504,10 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   const fake = installFakeDcs({
     branches: {
       master: "abc123master",
-      "neh/tpl-draft": "trunksha",
-      "w/neh/tpl-draft/ana/41": "oldwork",
+      "borrador/neh/tpl-draft": "trunksha",
+      "trabajo/neh/tpl-draft/ana/41": "oldwork",
     },
-    files: { "neh/tpl-draft:16-NEH.usfm": filled },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": filled },
   });
   const result = await recreateBookWorkspace({
     session,
@@ -516,16 +517,16 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     book: "NEH",
     resource: "tpl",
     taskId: "tpl-draft",
-    workBranch: "w/neh/tpl-draft/ana/41",
+    workBranch: "trabajo/neh/tpl-draft/ana/41",
     username: "ana",
     issueNumber: 41,
     createdFileThisSession: true,
   });
   assert(result.reusedTrunk, "filled trunk is reused");
   assert(!result.wipedTrunk, "do not wipe other people's verses");
-  assert(fake.files["neh/tpl-draft:16-NEH.usfm"] === filled, "trunk USFM unchanged");
-  assert(fake.branches["neh/tpl-draft"] === "trunksha", "trunk ref not deleted");
-  assert(fake.branches["w/neh/tpl-draft/ana/41"] === "trunksha", "fresh work branch from trunk SHA");
+  assert(fake.files["borrador/neh/tpl-draft:16-NEH.usfm"] === filled, "trunk USFM unchanged");
+  assert(fake.branches["borrador/neh/tpl-draft"] === "trunksha", "trunk ref not deleted");
+  assert(fake.branches["trabajo/neh/tpl-draft/ana/41"] === "trunksha", "fresh work branch from trunk SHA");
 }
 
 {
@@ -543,7 +544,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     taskId: uuid,
     issueNumber: 5,
   });
-  assert(trunk === `neh/${uuid}`, "UUID trunk is libro/tarea");
+  assert(trunk === `borrador/neh/${uuid}`, "UUID trunk is borrador/libro/tarea");
   assert(!isGitRefDescendant(work, trunk), "canonical work is not a git child of trunk");
   const fake = installFakeDcs({
     branches: { master: "abc123master" },
@@ -580,11 +581,11 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
 
 {
   const err = new BootstrapError(
-    "Ya existe el borrador «w»; no se puede crear «w/neh/task/ana/5».",
+    "Ya existe el borrador «trabajo»; no se puede crear «trabajo/neh/task/ana/5».",
     "task-branch",
     500,
     undefined,
-    "w/neh/task/ana/5",
+    "trabajo/neh/task/ana/5",
   );
   const msg = explainRepoFileError(err, {
     owner: "es-419_gl",
@@ -595,14 +596,14 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   });
   assert(msg.includes("es-419_gl/es-419_glt"), "alert names the real repo, not a dash");
   assert(!msg.includes("es-419_gl/—"), "placeholder repo is gone");
-  assert(msg.includes("w/neh/task/ana/5"), "alert uses the failing ref from the error");
+  assert(msg.includes("trabajo/neh/task/ana/5"), "alert uses the failing ref from the error");
   assert(msg.includes("Ya existe el borrador") || msg.includes("HTTP 500"), "500 is diagnosed");
 }
 
 {
   const fake = installFakeDcs({
-    branches: { master: "abc123master", "neh/tpl-draft": "trunksha" },
-    files: { "neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
   });
   let threw = false;
   try {
@@ -612,9 +613,9 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
       dcsConfig(session.host),
       "es-419_gl",
       "es-419_glt",
-      "neh/tpl-draft/ana/41",
+      "borrador/neh/tpl-draft/ana/41",
       session.token,
-      "neh/tpl-draft",
+      "borrador/neh/tpl-draft",
     );
   } catch (err) {
     threw = true;
@@ -623,7 +624,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   }
   assert(threw, "creating a git child of the trunk must fail");
   assert(
-    !fake.calls.some((c) => c.method === "POST" && c.ref === "neh/tpl-draft/ana/41"),
+    !fake.calls.some((c) => c.method === "POST" && c.ref === "borrador/neh/tpl-draft/ana/41"),
     "detect parent conflict before POST /branches",
   );
 }
@@ -663,15 +664,15 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     username: "abelper8",
     issueNumber: 5,
   });
-  assert(boot.bookBranch === safe, `parent neh → t/neh/task trunk, got ${boot.bookBranch}`);
-  assert(task.bookBranch === safe, "work forks from t/ trunk");
-  assert(task.workBranch === work, "work stays w/neh/task/user/issue");
+  // A leftover `neh` used to stand in the way of `neh/{taskId}`; a draft under its own word is never in that spot.
+  assert(boot.bookBranch === preferred, `a leftover neh does not move the draft, got ${boot.bookBranch}`);
+  assert(task.bookBranch === preferred, "work forks from the draft");
+  assert(task.workBranch === work, "work stays trabajo/neh/task/user/issue");
   assert(fake.branches.neh === "oldbook", "do not delete leftover neh");
-  assert(fake.branches[safe], "created t/neh/task");
+  assert(fake.branches[preferred], "created borrador/neh/task");
   const posted = fake.calls.filter((c) => c.method === "POST" && c.path.endsWith("/branches")).map((c) => c.ref);
-  assert(!posted.includes(preferred), "never POST neh/{taskId} when parent neh exists");
-  assert(posted.includes(safe), "POST t/neh/{taskId} instead");
-  assert(posted.includes(work), "POST w/ work ref");
+  assert(!posted.includes(safe) && !posted.includes(legacyTaskBranchName("NEH", uuid)), "the older names are never created again");
+  assert(posted.includes(work), "POST work ref");
 }
 
 {
@@ -692,7 +693,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
   assert(!result.createdFile, "do not invent a second book file");
   assert(
     !fake.calls.some((c) => c.method === "POST" && c.ref === bookBranchName("NEH", "6f1e771e-2f2d-4987-b516-6455a751405a")),
-    "do not POST neh/{taskId} when reusing neh",
+    "do not start a new draft when reusing neh",
   );
   assert(!fake.branches[taskTrunkBranchName("NEH", "6f1e771e-2f2d-4987-b516-6455a751405a")], "no extra t/ trunk when neh is valid");
 }
@@ -724,13 +725,13 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     issueNumber: 5,
     createdFileThisSession: true,
   });
-  assert(result.bookBranch === safe, `Recreate uses t/ trunk when neh exists, got ${result.bookBranch}`);
-  assert(result.workBranch === `w/neh/${uuid}/abelper8/5`, "Recreate work stays w/…");
+  assert(result.bookBranch === preferred, `Recreate uses the draft of the task when neh exists, got ${result.bookBranch}`);
+  assert(result.workBranch === `trabajo/neh/${uuid}/abelper8/5`, "Recreate work stays trabajo/…");
   assert(fake.branches.neh === "oldbook", "Recreate does not delete production neh");
-  assert(fake.branches[safe], "Recreate created t/neh/{taskId}");
-  assert(fake.files[`${safe}:16-NEH.usfm`], "skeleton written on t/ trunk");
+  assert(fake.branches[preferred], "Recreate created borrador/neh/{taskId}");
+  assert(fake.files[`${preferred}:16-NEH.usfm`], "skeleton written on the draft");
   const posted = fake.calls.filter((c) => c.method === "POST" && c.path.endsWith("/branches")).map((c) => c.ref);
-  assert(!posted.includes(preferred), "Recreate never POSTs blocked neh/{taskId}");
+  assert(!posted.includes(safe), "Recreate never creates the older t/ name");
   assert(
     !fake.calls.some((c) => c.method === "DELETE" && /\/heads\/neh$/.test(c.path)),
     "Recreate does not DELETE the neh book leftover",
@@ -760,7 +761,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
 
 {
   const uuid = "6f1e771e-2f2d-4987-b516-6455a751405a";
-  const safe = taskTrunkBranchName("NEH", uuid);
+  const safe = bookBranchName("NEH", uuid);
   const work = portionPrBranchName({
     book: "NEH",
     username: "abelper8",
@@ -785,15 +786,15 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     issueNumber: 5,
     createdFileThisSession: true,
   });
-  assert(result.bookBranch === safe, `Recreate new trunk t/neh/{taskId} when neh exists, got ${result.bookBranch}`);
-  assert(result.workBranch === work, "Recreate work stays w/…");
+  assert(result.bookBranch === safe, `Recreate starts the draft of the task when neh exists, got ${result.bookBranch}`);
+  assert(result.workBranch === work, "Recreate work stays trabajo/…");
   assert(fake.branches.neh === "oldbook", "filled neh leftover stays");
-  assert(fake.branches[safe], "Recreate created t/neh/{taskId} instead of reusing neh");
-  assert(fake.branches[work], "Recreate created w/ work ref on es-419_gl/es-419_glt");
+  assert(fake.branches[safe], "Recreate created borrador/neh/{taskId} instead of reusing neh");
+  assert(fake.branches[work], "Recreate created the work ref on es-419_gl/es-419_glt");
   const posted = fake.calls.filter((c) => c.method === "POST" && c.path.endsWith("/branches"));
   assert(posted.every((c) => c.path.includes("/repos/es-419_gl/es-419_glt/")), "create hits es-419_gl/es-419_glt");
-  assert(posted.some((c) => c.ref === safe), "POST t/neh/{taskId}");
-  assert(posted.some((c) => c.ref === work), "POST w/ work branch");
+  assert(posted.some((c) => c.ref === safe), "POST borrador/neh/{taskId}");
+  assert(posted.some((c) => c.ref === work), "POST work branch");
 }
 
 {
@@ -816,16 +817,16 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     number: 99,
     htmlUrl: "https://qa.door43.org/es-419_gl/es-419_glt/pulls/99",
     head: nested,
-    base: "neh/tpl-draft",
+    base: "borrador/neh/tpl-draft",
     issueNumber: 0,
   };
   const fake = installFakeDcs({
     branches: {
       master: "abc123master",
-      "neh/tpl-draft": "trunksha",
+      "borrador/neh/tpl-draft": "trunksha",
       [nested]: "oldwork",
     },
-    files: { "neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
     issues: {
       "es-419_gl/taller/41": {
         number: 41,
@@ -838,7 +839,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
         state: "open",
         html_url: marker.htmlUrl,
         head: { ref: nested },
-        base: { ref: "neh/tpl-draft" },
+        base: { ref: "borrador/neh/tpl-draft" },
       },
     },
   });
@@ -862,7 +863,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
         owner: "es-419_gl",
         repo: "es-419_glt",
         workBranch: work,
-        bookBranch: "neh/tpl-draft",
+        bookBranch: "borrador/neh/tpl-draft",
         username: "ana",
         book: "NEH",
         taskId: "tpl-draft",
@@ -952,7 +953,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
       dcsConfig(session.host),
       "es-419_gl",
       "es-419_glt",
-      "w/neh/tpl-draft/ana/41",
+      "trabajo/neh/tpl-draft/ana/41",
       session.token,
       "master",
     );
@@ -963,7 +964,7 @@ assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase n
     assert(text.includes("es-419_gl/es-419_glt"), "ghost 409 names the repo");
   }
   assert(threw, "do not claim success when POST /branches 409 has no visible ref");
-  assert(!fake.branches["w/neh/tpl-draft/ana/41"], "ghost 409 did not create a branch");
+  assert(!fake.branches["trabajo/neh/tpl-draft/ana/41"], "ghost 409 did not create a branch");
 }
 
 const postsGitRefs = (calls: Call[]) => calls.some((c) => c.method === "POST" && c.path.endsWith("/git/refs"));
@@ -973,8 +974,8 @@ const postedBranches = (calls: Call[]) =>
 {
   const work = portionPrBranchName({ book: "NEH", username: "ana", taskId: "tpl-draft", issueNumber: 41 });
   const fake = installFakeDcs({
-    branches: { master: "abc123master", "neh/tpl-draft": "trunksha" },
-    files: { "neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
   });
   const saved = await saveUsfmOnPortionBranch({
     session,
@@ -1002,10 +1003,10 @@ const postedBranches = (calls: Call[]) =>
   const work = portionPrBranchName({ book: "NEH", username: "ana", taskId: "tpl-draft", issueNumber: 41 });
   const ghostSha = "ghostworksha";
   const fake = installFakeDcs({
-    branches: { master: "abc123master", "neh/tpl-draft": "trunksha", [work]: ghostSha },
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", [work]: ghostSha },
     ghosts: [work],
     files: {
-      "neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n",
+      "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n",
       [`${work}:16-NEH.usfm`]: "\\id NEH\n\\c 1\n\\v 1 Texto ya guardado\n",
     },
   });
@@ -1038,9 +1039,9 @@ const postedBranches = (calls: Call[]) =>
 {
   const work = portionPrBranchName({ book: "NEH", username: "ana", taskId: "tpl-draft", issueNumber: 41 });
   const fake = installFakeDcs({
-    branches: { master: "abc123master", "neh/tpl-draft": "trunksha", [work]: "ghostworksha" },
+    branches: { master: "abc123master", "borrador/neh/tpl-draft": "trunksha", [work]: "ghostworksha" },
     ghosts: [work],
-    files: { "neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
+    files: { "borrador/neh/tpl-draft:16-NEH.usfm": "\\id NEH\n\\c 1\n\\v 1\n" },
   });
   const saved = await saveUsfmOnPortionBranch({
     session,
@@ -1062,7 +1063,7 @@ const postedBranches = (calls: Call[]) =>
 }
 
 {
-  const work = "w/neh/sin-grupal/ana/9";
+  const work = "trabajo/neh/sin-grupal/ana/9";
   const fake = installFakeDcs({ branches: { master: "abc123master" }, files: {} });
   const result = await ensureBranchFrom(
     dcsConfig(session.host),
@@ -1070,7 +1071,7 @@ const postedBranches = (calls: Call[]) =>
     "es-419_glt",
     work,
     session.token,
-    "neh/sin-grupal",
+    "borrador/neh/sin-grupal",
     { fallbackSource: async () => "master" },
   );
   assert(result.created && result.base === "master", "missing borrador grupal falls back to principal");
@@ -1081,7 +1082,7 @@ const postedBranches = (calls: Call[]) =>
 
 {
   const archive = archiveRefName("NEH", 41);
-  const fake = installFakeDcs({ branches: { master: "abc123master", "w/neh/t/ana/41": "worksha" }, files: {} });
+  const fake = installFakeDcs({ branches: { master: "abc123master", "trabajo/neh/t/ana/41": "worksha" }, files: {} });
   const res = await ensureArchiveRef(dcsConfig(session.host), "es-419_gl", "es-419_glt", archive, "worksha", session.token);
   assert(res.action === "create", "archive ref created on Cerrar");
   assert(postedBranches(fake.calls).includes(archive), "archive ref created with POST /branches");
@@ -1092,7 +1093,7 @@ const postedBranches = (calls: Call[]) =>
 {
   const archive = archiveRefName("NEH", 41);
   const fake = installFakeDcs({
-    branches: { master: "abc123master", "w/neh/t/ana/41": "worksha", [archive]: "worksha" },
+    branches: { master: "abc123master", "trabajo/neh/t/ana/41": "worksha", [archive]: "worksha" },
     ghosts: [archive],
     files: {},
   });

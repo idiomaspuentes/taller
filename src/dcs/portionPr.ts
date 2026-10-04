@@ -37,6 +37,8 @@ import {
 } from "../domain/verseConflicts";
 import { parseRefRange } from "../domain/usfmEdit";
 import { resolveTaskPhaseSlug } from "../domain/phaseSlug";
+import { taskHasOwnDraft } from "../domain/branchNames";
+import { issueTaskId } from "../domain/myTasks";
 import {
   buildSolverLaunchContext,
   refFromIssueTitle,
@@ -133,6 +135,10 @@ export async function ensurePortionPr(
 ): Promise<{ marker: PortionPrMarker; issue: DcsIssue; created: boolean }> {
   const { session, pmOrg, lang, contentOrg, board } = params;
   let issue = params.issue;
+  // Any other task works on the draft of the translation task: a review of its own would start a draft nobody reads.
+  if (!taskHasOwnDraft(board?.teams, issueTaskId(issue))) {
+    throw new Error("Esta tarea trabaja sobre el borrador del grupo: no tiene una revisión propia que abrir.");
+  }
   const existing = parsePortionPrMarker(issue.body);
 
   const ctx = buildSolverLaunchContext({

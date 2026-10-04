@@ -5,7 +5,7 @@ import { dcsConfig } from "./config";
 import { readRepoFile } from "./afinacionStore";
 import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { withQuote } from "../domain/quoteFromSelection";
-import { bookBranchName, bookOnlyBranchName, taskTrunkBranchName } from "../domain/portionPr";
+import { bookBranchName, bookOnlyBranchName, groupDraftBranchNames } from "../domain/portionPr";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
 import type { PmConfig } from "../domain/roles";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -29,7 +29,7 @@ export async function readTeamHelps(params: {
   const book = (ctx.book || ctx.projectId || "").toUpperCase();
   const tasks = (board?.teams ?? []).filter((task) => task.rules.some((rule) => rule.resource === kind)).reverse();
   const branches: (string | undefined)[] = [
-    ...new Set(tasks.flatMap((task) => [bookBranchName(book, task.id), taskTrunkBranchName(book, task.id)])),
+    ...new Set(tasks.flatMap((task) => groupDraftBranchNames(book, task.id))),
     bookOnlyBranchName(book),
     undefined,
   ];

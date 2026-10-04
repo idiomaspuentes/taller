@@ -138,8 +138,8 @@ assert(plan.issues[0]!.title === "NEH 1:1–3 · TPL · prueba 260926-0007 · @a
 assert(plan.issues[1]!.title === "NEH 1:1–3 · TPL · prueba 260926-0007 · @abelperez", `title 2: ${plan.issues[1]!.title}`);
 assert(refFromIssueTitle(plan.issues[0]!.title) === "1:1–3", "Cerrar still reads the portion from the title");
 assert(plan.issues[0]!.assignee === "abelper8" && plan.issues[1]!.assignee === "abelperez", "assignees");
-assert(plan.issues[0]!.workRef === `w/neh/${taskId}/abelper8/147`, `work ref 1: ${plan.issues[0]!.workRef}`);
-assert(plan.issues[1]!.workRef === `w/neh/${taskId}/abelperez/148`, `work ref 2: ${plan.issues[1]!.workRef}`);
+assert(plan.issues[0]!.workRef === `trabajo/neh/${taskId}/abelper8/147`, `work ref 1: ${plan.issues[0]!.workRef}`);
+assert(plan.issues[1]!.workRef === `trabajo/neh/${taskId}/abelperez/148`, `work ref 2: ${plan.issues[1]!.workRef}`);
 assert(plan.issues.every((row) => isWorkRefName(row.workRef)), "work refs live under w/");
 assert(plan.issues[0]!.verseText.includes("versión de abelper8"), "verse text names login 1");
 assert(plan.issues[1]!.verseText.includes("versión de abelperez"), "verse text names login 2");
@@ -174,7 +174,7 @@ assert(planTestScenario({ ...base, trunk: { ...ghostTrunk, name: "neh" } }).bloc
 
 assert(planTestScenario({ ...base, trunk: { ...realTrunk, fileApi: false } }).block !== null, "trunk without file refused");
 assert(planTestScenario({ ...base, trunk: { ...realTrunk, name: "master" } }).block !== null, "never on master");
-assert(planTestScenario({ ...base, trunk: { ...realTrunk, name: `w/neh/${taskId}/x/1` } }).block !== null, "never a w/ trunk");
+assert(planTestScenario({ ...base, trunk: { ...realTrunk, name: `trabajo/neh/${taskId}/x/1` } }).block !== null, "never a w/ trunk");
 assert(planTestScenario({ ...base, other: "" }).block !== null, "second user required");
 assert(planTestScenario({ ...base, other: "AbelPer8" }).block !== null, "second user differs from me");
 assert(planTestScenario({ ...base, other: "a b" }).block !== null, "login shape");

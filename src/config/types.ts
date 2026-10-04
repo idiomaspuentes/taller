@@ -38,6 +38,8 @@ export type Workspace = {
    * that is alone in its organization; at most one space per organization may leave it out.
    */
   scope?: string;
+  /** This space's own words for its branches (see `TallerConfig.branchNames`); what it leaves out is the organization's. */
+  branchNames?: Partial<BranchNames>;
   /** The interface language this team starts in. */
   uiLanguage: UiLanguage;
   /** How the team is named on the welcome screen, in each interface language. */
@@ -54,6 +56,15 @@ export type Workspace = {
     credit?: Localized;
   };
 };
+
+/**
+ * The first word of each kind of branch or tag the app keeps in a content repository: `borrador/jud/tpl` (the group
+ * draft of a translation task), `trabajo/jud/tpl/ana/160` (one person's work on a subtarea), `archivo/jud/160` (what
+ * was delivered), `fase/jud/traduccion` (the text as a phase left it), `publicacion/jud/1` (a unit on its way to be
+ * published). Lowercase letters, digits and dashes, no slashes, all different. Changing one while a book already
+ * has branches is not supported: the app would no longer find them.
+ */
+export type BranchNames = { draft: string; work: string; archive: string; phase: string; publish: string };
 
 /** A lexicon repository on the same Door43 server: `<owner>/<repo>`, entries in `path` (`content` by default). */
 export type LexiconRepo = { owner: string; repo: string; path?: string };
@@ -106,5 +117,7 @@ export type TallerConfig = {
    * should finish alone in a subtarea, and the most people who should wait for one person. Default: 40 and 2.
    */
   workLoad?: { soloItems?: number; waiting?: number };
+  /** The words the branches start with. Default: `borrador`, `trabajo`, `archivo`, `fase`, `publicacion`. */
+  branchNames?: Partial<BranchNames>;
   welcome: Record<UiLanguage, WelcomeCopy>;
 };

@@ -13,6 +13,7 @@ Todo lo que cambia de una organización a otra vive en **un solo archivo**: [`ta
 | `defaultServer` | El servidor de Door43 con el que arranca la app publicada (`production` o `qa`). La persona normal nunca ve la opción de servidor: quien prueba abre la app con `?server=qa` (o `?server=production` para volver), y solo en ese dispositivo aparece «Avanzado: servidor» al iniciar sesión. |
 | `pmRepo` | El nombre del repositorio de Door43 donde Taller guarda el plan, las subtareas y los ajustes del equipo (hoy `taller`). Se crea al primer inicio de sesión si no existe. Quien ya usa `gateway-tasks` lo conserva escribiéndolo aquí. |
 | `workspaces` | Los **espacios de trabajo**: uno por equipo de lengua. Ver abajo. |
+| `branchNames` | La primera palabra de cada clase de rama que la app crea en los repositorios de contenido. Ver «Los nombres de las ramas». |
 | `welcome` | El texto de la primera pantalla, en cada idioma: título, subtítulo, tres líneas de lo que se encontrará, la pregunta del equipo, el botón y el texto de confianza. |
 
 ## Espacios de trabajo (equipos que no se mezclan)
@@ -61,6 +62,36 @@ Las fases, tareas, pasos y herramientas con las que trabaja el equipo no están 
 `processes/`, listado en `processes` de `taller.config.ts`. Otra organización escribe su propio paquete y lo lista
 ahí. Ver [`PROCESOS.md`](PROCESOS.md).
 
+## Los nombres de las ramas
+
+En cada repositorio de contenido (el del TPL, el de las notas…) la app guarda el trabajo en ramas y etiquetas. Cada
+clase empieza con su propia palabra, para que quien abra el repositorio en Door43 entienda qué es cada una:
+
+| Clave | Por defecto | Qué es | Ejemplo |
+|---|---|---|---|
+| `draft` | `borrador` | El borrador del grupo de una tarea de traducción. | `borrador/jud/tpl` |
+| `work` | `trabajo` | El trabajo de una persona en una subtarea. | `trabajo/jud/tpl/valeska/160` |
+| `archive` | `archivo` | Lo que esa persona entregó, tal como lo dejó. | `archivo/jud/160` |
+| `phase` | `fase` | El texto tal como quedó al cerrar una fase. | `fase/jud/traduccion` |
+| `publish` | `publicacion` | Una unidad camino de publicarse. | `publicacion/jud/1` |
+
+```ts
+branchNames: { draft: "borrador", work: "trabajo", archive: "archivo", phase: "fase", publish: "publicacion" },
+```
+
+- Un espacio de trabajo puede dar las suyas (`branchNames` dentro del espacio); lo que no diga lo toma de la
+  organización. El espacio en portugués podría usar `{ draft: "rascunho", work: "trabalho", archive: "arquivo" }`.
+- Solo minúsculas, números y guion; sin barras; las cinco distintas entre sí. `npm run verify:config` lo comprueba y
+  la app no arranca con unas palabras que no sirven.
+- **No las cambies cuando un libro ya tiene ramas.** La app crea con las palabras configuradas y busca con esas
+  mismas: las ramas creadas con la palabra anterior dejarían de encontrarse. Cámbialas antes de empezar el primer
+  libro de un espacio, o entre un libro terminado y el siguiente.
+- Solo la tarea que **traduce** un recurso tiene borrador propio (la primera tarea del proceso con ese recurso).
+  Las demás tareas del mismo recurso (una lectura grupal, la afinación, la armonización, la validación) trabajan
+  sobre ese borrador y no crean ramas.
+- Los libros empezados antes de que existieran estas palabras (`jud/tpl`, `t/jud/tpl`, `w/jud/tpl/…`) se siguen
+  leyendo donde están; esos nombres no se crean más.
+
 ## Cambiar la bienvenida
 
 Edita `welcome.es` y `welcome.pt` en `taller.config.ts`. Los tres puntos (`points`) llevan un ícono cada uno. Si añades un idioma nuevo hay que:
@@ -83,7 +114,7 @@ El Worker de avisos (`push-worker/`) escucha un webhook por organización. Hay q
 npm run verify:config
 ```
 
-Valida la configuración (espacios sin repetir, textos completos en cada idioma) y la lógica de idioma y espacio. `npm run verify:scope` comprueba que dos espacios de una misma organización no se ven entre sí.
+Valida la configuración (espacios sin repetir, textos completos en cada idioma, palabras de las ramas) y la lógica de idioma y espacio. `npm run verify:branch-names` comprueba los nombres de las ramas y qué tarea tiene borrador. `npm run verify:scope` comprueba que dos espacios de una misma organización no se ven entre sí.
 
 ## Léxicos
 

@@ -9,7 +9,7 @@ import { mergeAlignmentIntoUsfm } from "@usfm-tools/editor-core";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import { alignmentOfDraft } from "../src/dcs/alignmentStore";
 import { alignmentHash } from "../src/domain/alignmentHash";
-import { stepNeedsOpenPortionPr, taskWorksOnSharedDraft } from "../src/domain/portionPr";
+import { stepNeedsOpenPortionPr } from "../src/domain/portionPr";
 import type { AssignmentsDoc, InventoryDoc, Portion, ProjectTask, TaskStep } from "../src/domain/types";
 import { encodeWorkOrderMarker, indexWorkIssues, parseWorkOrderMarker, planKeeps, planUnassignedLots, publishableWorkOrders, taskResource, type WorkOrder } from "../src/domain/workOrder";
 
@@ -117,14 +117,6 @@ await test("un paso que se cierra en su herramienta no abre revisión personal",
   assert.equal(stepNeedsOpenPortionPr(step({ claimMode: "exclusive" })), true, "revisión en pares: sí");
   assert.equal(stepNeedsOpenPortionPr(step({ claimMode: "pool", closing: "consensus", solverAppId: "afinar-notas" })), false, "consenso en su pantalla: no");
   assert.equal(stepNeedsOpenPortionPr(step({ claimMode: "pool", closing: "checklist", solverAppId: "fcr-checklist" })), false, "lista de comprobación: no");
-});
-
-await test("una tarea hecha entera en herramientas compartidas se entrega sin borrador propio", () => {
-  const shared = [step({ closing: "consensus", solverAppId: "a" }), step({ closing: "consensus", solverAppId: "b" })];
-  assert.equal(taskWorksOnSharedDraft(shared), true);
-  assert.equal(taskWorksOnSharedDraft([...shared, step({})]), false, "con un paso libre ya no");
-  assert.equal(taskWorksOnSharedDraft([]), false);
-  assert.equal(taskWorksOnSharedDraft(undefined), false);
 });
 
 await test("una respuesta 200 sin cuerpo (fusionar una revisión) es un éxito", async () => {

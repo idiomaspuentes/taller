@@ -8,6 +8,7 @@ import { useUiLanguage } from "./i18n/language";
 import { tNow, useT } from "./i18n/messages";
 import { contextWith, initialWorkspace, saveWorkspaceId } from "./workspace";
 import { setActiveScope } from "./domain/scope";
+import { setWorkspaceBranchNames } from "./domain/branchNames";
 import { forcedHost } from "./serverChoice";
 import { Welcome } from "./components/Welcome";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -165,6 +166,7 @@ export function App() {
   const saved = savedRaw && workspace ? contextWith(savedRaw, workspace) : savedRaw;
   // Set before anything reads or writes: the space decides every label, milestone and path.
   setActiveScope(workspace?.scope);
+  setWorkspaceBranchNames(workspace?.branchNames);
   const { route, navigate } = useHashRoute();
   const [host, setHost] = useState(forcedHost() ?? saved?.host ?? DEFAULT_HOST);
   const [lang, setLang] = useState(workspace?.lang ?? (saved?.lang || "es-419"));
@@ -952,6 +954,7 @@ export function App() {
       return;
     }
     setActiveScope(next.scope);
+    setWorkspaceBranchNames(next.branchNames);
     setWorkspace(next);
     setLang(next.lang);
     setContentOrg(next.contentOrg);

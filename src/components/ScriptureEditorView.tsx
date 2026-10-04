@@ -40,7 +40,7 @@ import {
   bookOnlyBranchName,
   ownedWorkBranchNames,
   portionPrBranchFromCtx,
-  taskTrunkBranchName,
+  groupDraftBranchNames,
 } from "../domain/portionPr";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { loadDraftCache, saveDraftCache } from "../domain/draftCache";
@@ -347,8 +347,7 @@ function draftReadBranches(
     portionPrBranchFromCtx({ ...decoded, username }),
     cacheBranch,
     ...owned,
-    bookBranchName(decoded.book, decoded.taskId),
-    taskTrunkBranchName(decoded.book, decoded.taskId),
+    ...groupDraftBranchNames(decoded.book, decoded.taskId),
     bookOnlyBranchName(decoded.book),
     undefined,
   ];
@@ -1295,7 +1294,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   }, [ctxEncoded, announce]);
 
   // ULT/UST are GETs of existing Door43 files. Draft USFM often does not
-  // exist yet: ensureBookUsfm/ensureTaskBranchFromBook create t/… and w/…
+  // exist yet: ensureBookUsfm/ensureTaskBranchFromBook create the group draft and the work branch
   // with sequential writes. The editor paints empty (or cached) verses at
   // once and GETs any existing 16-*.usfm in parallel; bootstrap stays in
   // the background so Guardar can still create the real branch/file.

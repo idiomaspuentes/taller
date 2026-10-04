@@ -1,9 +1,10 @@
 import { tallerConfig } from "../../taller.config";
+import { branchNameProblems, mergeBranchNames } from "../domain/branchNames";
 import { SCOPE_PATTERN } from "../domain/scope";
 import type { TallerConfig, Workspace } from "./types";
 
 export { tallerConfig };
-export type { LexiconRepo, TallerConfig, UiLanguage, Workspace } from "./types";
+export type { BranchNames, LexiconRepo, TallerConfig, UiLanguage, Workspace } from "./types";
 
 /** Problems in a config, in plain words; empty when it is usable. Checked by tests and at startup. */
 export function configProblems(config: TallerConfig): string[] {
@@ -21,6 +22,10 @@ export function configProblems(config: TallerConfig): string[] {
     if (w.scope !== undefined && !SCOPE_PATTERN.test(w.scope)) problems.push(`El scope "${w.scope}" del espacio "${w.id}" solo puede tener minúsculas, números y guiones.`);
     if (!config.uiLanguages.includes(w.uiLanguage)) problems.push(`El espacio "${w.id}" usa un idioma de interfaz que no está en uiLanguages.`);
     for (const lang of config.uiLanguages) if (!w.name[lang]?.trim()) problems.push(`El espacio "${w.id}" no tiene nombre en "${lang}".`);
+  }
+  problems.push(...branchNameProblems(mergeBranchNames(config.branchNames)));
+  for (const w of config.workspaces) {
+    if (w.branchNames) problems.push(...branchNameProblems(mergeBranchNames(config.branchNames, w.branchNames)).map((problem) => `Espacio "${w.id}": ${problem}`));
   }
   // Spaces may share an organization, but only if their scopes tell them apart: otherwise they would share tasks.
   const shared = new Map<string, Workspace[]>();

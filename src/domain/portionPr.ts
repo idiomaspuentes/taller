@@ -2,6 +2,7 @@ import { bookName } from "./books";
 import { slugifyPhase } from "./phaseSlug";
 import type { TaskStep } from "./types";
 import { closesInItsTool, stepClaimMode } from "./stepClaim";
+import { branchNames, isWorkWord, LEGACY_WORK_WORD } from "./branchNames";
 
 export const PORTION_PR_SCHEMA = "gateway-portion-pr-1" as const;
 
@@ -35,15 +36,23 @@ function bookCode(book: string): string {
 }
 
 /**
- * Preferred per-task trunk (`neh/tpl-draft`). Git rejects this when a
- * parent segment is already a branch (`neh`). Callers must resolve
- * against existing refs and fall back to `taskTrunkBranchName`.
- * Phase is a board grouping only — it does not appear in new refs.
- * Language and resource live on the repo (`es-419_gl/es-419_glt`), not here.
+ * The group draft of a translation task: `borrador/neh/tpl-draft`. Its first word is its own, so no other branch
+ * can stand in its way. Phase is a board grouping only — it does not appear in the name. Language and resource
+ * live on the repo (`es-419_gl/es-419_glt`), not here.
  */
 export function bookBranchName(book: string, taskId?: string): string {
+  return `${branchNames().draft}/${legacyTaskBranchName(book, taskId)}`;
+}
+
+/** The group draft as it was named before (`neh/tpl-draft`). Reused when it exists, never created. */
+export function legacyTaskBranchName(book: string, taskId?: string): string {
   const raw = (taskId ?? "").trim();
   return `${bookCode(book)}/${raw ? slug(raw) : "tarea"}`;
+}
+
+/** Where the group draft of a task can be, the name of today first and then the ones of older books. */
+export function groupDraftBranchNames(book: string, taskId?: string): string[] {
+  return [bookBranchName(book, taskId), legacyTaskBranchName(book, taskId), taskTrunkBranchName(book, taskId)];
 }
 
 /** Book-only leftover (`neh`). Reuse when it already holds a valid book USFM. */
@@ -52,12 +61,11 @@ export function bookOnlyBranchName(book: string): string {
 }
 
 /**
- * Per-task trunk that is never a Git child of `neh` or `book/neh`.
- * Used when `neh/{taskId}` is blocked by an existing parent ref.
- * Example: `t/neh/6f1e771e-2f2d-4987-b516-6455a751405a`.
+ * The name older books fell back to when a branch `neh` stood in the way of `neh/{taskId}`
+ * (`t/neh/6f1e771e-2f2d-4987-b516-6455a751405a`). Reused when it exists, never created.
  */
 export function taskTrunkBranchName(book: string, taskId?: string): string {
-  return `t/${bookBranchName(book, taskId)}`;
+  return `t/${legacyTaskBranchName(book, taskId)}`;
 }
 
 /** Pre-phase scheme. Reuse when this ref already exists so we do not orphan it. */
@@ -99,12 +107,16 @@ function workUserIssueSuffix(params: PortionBranchNameParams): string {
 }
 
 /**
- * Unique work branch per person/subtarea. Lives under `w/`, so it is not
- * a Git child of `neh`, `neh/{task}`, or `t/neh/{task}`.
- * Example: `w/neh/tpl-draft/ana/41`.
+ * Unique work branch per person/subtarea. Lives under its own word, so it is never a Git child of a group draft.
+ * Example: `trabajo/neh/tpl-draft/ana/41`.
  */
 export function portionPrBranchName(params: PortionBranchNameParams): string {
-  return `w/${bookBranchName(params.book, params.taskId)}/${workUserIssueSuffix(params)}`;
+  return `${branchNames().work}/${legacyTaskBranchName(params.book, params.taskId)}/${workUserIssueSuffix(params)}`;
+}
+
+/** The work branches of before the names could be read (`w/neh/tpl-draft/ana/41`). Recognised, never created. */
+export function legacyWorkBranchName(params: PortionBranchNameParams): string {
+  return `${LEGACY_WORK_WORD}/${legacyTaskBranchName(params.book, params.taskId)}/${workUserIssueSuffix(params)}`;
 }
 
 /**
@@ -112,7 +124,7 @@ export function portionPrBranchName(params: PortionBranchNameParams): string {
  * of leftover refs; never create this as a new work or book branch.
  */
 export function nestedPortionPrBranchName(params: PortionBranchNameParams): string {
-  return `${bookBranchName(params.book, params.taskId)}/${workUserIssueSuffix(params)}`;
+  return `${legacyTaskBranchName(params.book, params.taskId)}/${workUserIssueSuffix(params)}`;
 }
 
 /** Pre-phase task branches (`tas/neh/ana/tpl-draft/41`). Accept if a PR already uses them. */
@@ -154,7 +166,7 @@ export function canonicalWorkBranchName(
 ): string {
   const preferred = portionPrBranchName(params);
   const name = normalizeGitRefName(requested || "");
-  if (!name || name === normalizeGitRefName(trunk) || isGitRefDescendant(name, trunk)) {
+  if (!name || name === normalizeGitRefName(trunk) || isGitRefDescendant(name, trunk) || name === nestedPortionPrBranchName(params)) {
     return preferred;
   }
   return name;
@@ -163,6 +175,7 @@ export function canonicalWorkBranchName(
 export function ownedWorkBranchNames(params: PortionBranchNameParams): string[] {
   return [...new Set([
     portionPrBranchName(params),
+    legacyWorkBranchName(params),
     nestedPortionPrBranchName(params),
     legacyPortionPrBranchName(params),
   ])];
@@ -192,7 +205,7 @@ export function isOwnedWorkBranch(branch: string, params: PortionBranchNameParam
 
 /**
  * Stored PR head is the current work ref, or a remapped leftover
- * (`w/…` ↔ nested ↔ `tas/…`) of the same user/task/issue.
+ * (`trabajo/…` ↔ `w/…` ↔ nested ↔ `tas/…`) of the same user/task/issue.
  */
 export function portionPrHeadMatchesWork(
   head: string | undefined,
@@ -207,27 +220,28 @@ export function portionPrHeadMatchesWork(
   return isOwnedWorkBranch(stored, params) && isOwnedWorkBranch(current, params);
 }
 
-/** Book code from a work ref (`w/neh/...`, `neh/...`, or `tas/neh/...`). */
+/** Book code from a work ref (`trabajo/neh/...`, `w/neh/...`, `neh/...`, or `tas/neh/...`). */
 export function bookCodeFromWorkHead(head: string): string {
   const parts = normalizeGitRefName(head).split("/").filter(Boolean);
-  if (parts[0] === "w" && parts[1]) return parts[1];
+  if (isWorkWord(parts[0]) && parts[1]) return parts[1];
   if (parts[0] === "tas" && parts[1]) return parts[1];
   return parts[0] || "";
 }
 
-/** Preferred trunk `libro/tarea` encoded in a work ref (`w/neh/task/…`). */
+/** The group draft a work ref was started from: `borrador/neh/task` for `trabajo/neh/task/…`, `neh/task` for an old `w/neh/task/…`. */
 export function bookTrunkFromWorkHead(head: string): string {
   const parts = normalizeGitRefName(head).split("/").filter(Boolean);
-  if (parts[0] === "w" && parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+  if (parts[0] === branchNames().work && parts.length >= 3) return `${branchNames().draft}/${parts[1]}/${parts[2]}`;
+  if (parts[0] === LEGACY_WORK_WORD && parts.length >= 3) return `${parts[1]}/${parts[2]}`;
   if (parts[0] === "t" && parts.length >= 3) return `${parts[1]}/${parts[2]}`;
   if (parts[0] !== "tas" && parts.length >= 2) return `${parts[0]}/${parts[1]}`;
   return "";
 }
 
-/** User slug encoded in a work ref (`w/neh/task/ana/41`, `neh/task/ana/41`, `tas/neh/ana/task/41`). */
+/** User slug encoded in a work ref (`trabajo/neh/task/ana/41`, `w/neh/task/ana/41`, `neh/task/ana/41`, `tas/neh/ana/task/41`). */
 export function workUserFromHead(head: string): string {
   const parts = normalizeGitRefName(head).split("/").filter(Boolean);
-  if (parts[0] === "w" && parts.length >= 5) return parts[3]!;
+  if (isWorkWord(parts[0]) && parts.length >= 5) return parts[3]!;
   if (parts[0] === "tas" && parts.length >= 5) return parts[2]!;
   if (parts.length >= 4) return parts[2]!;
   return "";
@@ -241,17 +255,17 @@ export function translatorLoginFromHead(head: string, candidates: (string | unde
 }
 
 /**
- * Keeps the work-branch tip reachable after `w/…` is deleted. Lives under
- * `archivo/`, never under a trunk (`neh/…`) or `w/`.
- * Example: `archivo/neh/41`.
+ * Keeps the work-branch tip reachable after the work branch is deleted. Lives under its own word, never under a
+ * group draft or a work branch. Example: `archivo/neh/41`.
  */
 export function archiveRefName(book: string, issueNumber: number): string {
   const n = Math.floor(Number(issueNumber));
-  return `archivo/${bookCode(book)}/${Number.isFinite(n) && n > 0 ? n : 0}`;
+  return `${branchNames().archive}/${bookCode(book)}/${Number.isFinite(n) && n > 0 ? n : 0}`;
 }
 
 export function isArchiveRefName(name: string): boolean {
-  return /^archivo\/[a-z0-9-]+\/[1-9]\d*$/.test(normalizeGitRefName(name));
+  const parts = normalizeGitRefName(name).split("/");
+  return parts.length === 3 && parts[0] === branchNames().archive && /^[a-z0-9-]+$/.test(parts[1]!) && /^[1-9]\d*$/.test(parts[2]!);
 }
 
 export type ArchiveRefAction = "noop" | "create" | "update";
@@ -413,14 +427,6 @@ export function stepNeedsOpenPortionPr(step: TaskStep): boolean {
   if (closesInItsTool(step)) return false;
   const mode = stepClaimMode(step);
   return mode === "exclusive" || mode === "pool";
-}
-
-/**
- * A task whose every step is done in a shared tool leaves nothing in a personal draft: delivering it only closes
- * the subtarea.
- */
-export function taskWorksOnSharedDraft(steps: TaskStep[] | undefined): boolean {
-  return Boolean(steps?.length) && steps!.every(closesInItsTool);
 }
 
 /** Review comment posted when TAS Aprobar hits a linked PR. */

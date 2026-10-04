@@ -33,7 +33,7 @@ export async function closeSubtask(params: {
   /** Project language; with it, pass marks of the touched subtareas are cleared on a verse conflict. */
   lang?: string;
   ensurePr?: () => Promise<DcsIssue>;
-  /** The task did all its work on the shared draft (see `taskWorksOnSharedDraft`): there is nothing to land. */
+  /** The task did all its work on the shared draft (it is not the translation task of its resource, see `taskHasOwnDraft`): there is nothing to land. */
   sharedDraft?: boolean;
 }): Promise<CloseSubtaskResult> {
   const { session, pmOrg, issue } = params;

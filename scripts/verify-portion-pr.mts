@@ -12,6 +12,10 @@ import {
   workUserFromHead,
   bookBranchLabel,
   bookBranchName,
+  bookCodeFromWorkHead,
+  groupDraftBranchNames,
+  legacyTaskBranchName,
+  legacyWorkBranchName,
   bookOnlyBranchName,
   bookTrunkFromWorkHead,
   canonicalWorkBranchName,
@@ -57,15 +61,25 @@ assert(
   ensurePhaseSlug({ id: "p1", name: "Revisión", slug: "borrador" }) === "borrador",
   "persisted slug wins over rename",
 );
-assert(bookBranchName("NEH", "tpl-draft") === "neh/tpl-draft", "libro/tarea trunk");
-assert(bookBranchName("NEH", "traducir-tpl") === "neh/traducir-tpl", "board taskId slug");
-assert(bookBranchName("NEH") === "neh/tarea", "missing task fallback is not a phase");
+assert(bookBranchName("NEH", "tpl-draft") === "borrador/neh/tpl-draft", "borrador/libro/tarea trunk");
+assert(bookBranchName("NEH", "traducir-tpl") === "borrador/neh/traducir-tpl", "board taskId slug");
+assert(bookBranchName("NEH") === "borrador/neh/tarea", "missing task fallback is not a phase");
+assert(legacyTaskBranchName("NEH", "tpl-draft") === "neh/tpl-draft", "the older libro/tarea trunk is still known");
+assert(
+  groupDraftBranchNames("NEH", "tpl-draft").join("|") === "borrador/neh/tpl-draft|neh/tpl-draft|t/neh/tpl-draft",
+  "a group draft is looked for under today's name first, then the older ones",
+);
 assert(legacyBookBranchName("NEH") === "book/neh", "legacy book base");
 assert(legacyPhaseBookBranchName("NEH", "fase-1") === "fase-1/neh", "old phase/book kept for reuse");
 assert(
   portionPrBranchName({ book: "NEH", username: "ana", taskId: "traducir-tpl", issueNumber: 41 }) ===
+    "trabajo/neh/traducir-tpl/ana/41",
+  "work branch trabajo/libro/tarea/user/issue",
+);
+assert(
+  legacyWorkBranchName({ book: "NEH", username: "ana", taskId: "traducir-tpl", issueNumber: 41 }) ===
     "w/neh/traducir-tpl/ana/41",
-  "work branch w/libro/tarea/user/issue",
+  "the older w/ work name is still known",
 );
 assert(
   !isGitRefDescendant(
@@ -83,6 +97,9 @@ assert(bookBranchLabel("NEH", "Revisión") === "Revisión · Nehemías", "pretty
 assert(!bookBranchName("NEH", "tpl-draft").includes("es-419"), "no language in branch");
 assert(!bookBranchName("NEH", "tpl-draft").includes("glt"), "no resource/repo in branch");
 assert(!bookBranchName("NEH", "tpl-draft").includes("fase"), "no phase in new trunk");
+for (const parent of ["neh", "neh/tpl-draft", "book/neh", "t/neh/tpl-draft"]) {
+  assert(!isGitRefDescendant(bookBranchName("NEH", "tpl-draft"), parent), `no older branch («${parent}») can stand in the way of a draft`);
+}
 assert(!bookBranchName("NEH", "tpl-draft").includes("revision"), "custom phase not in trunk");
 
 const revision = makePhase({ id: "phase-rev", name: "Revisión", order: 0 });
@@ -104,7 +121,7 @@ const c = portionPrBranchName({ book: "NEH", username: "ana", taskId: "tpl-draft
 assert(a !== b && b !== c && a !== c, "three portions → three branches");
 assert(a.endsWith("/41") && b.endsWith("/42"), "issue number suffixes");
 assert(a.includes("/ana/"), "username in branch");
-assert(a === "w/neh/tpl-draft/ana/41", "w/book/task/user/issue");
+assert(a === "trabajo/neh/tpl-draft/ana/41", "trabajo/book/task/user/issue");
 assert(!isGitRefDescendant(a, bookBranchName("NEH", "tpl-draft")), "tpl-draft work is not under trunk");
 assert(
   !a.includes("fase-1") && !a.includes("revision") && !a.includes("armonizacion"),
@@ -112,7 +129,7 @@ assert(
 );
 assert(
   portionPrBranchName({ book: "NEH", username: "ana", taskId: "helps-notes", issueNumber: 9 }) ===
-    "w/neh/helps-notes/ana/9",
+    "trabajo/neh/helps-notes/ana/9",
   "helps branch is libro/tarea, not the phase slug",
 );
 assert(resolveTaskPhaseSlug(board, "helps-notes") === "armonizacion", "phase still groups the board");
@@ -177,7 +194,7 @@ assert(
 assert(!portionPrHeadMatchesWork("master", a, ownedAna), "Ver PR hidden for default-branch head");
 
 const uuidTask = "6f1e771e-2f2d-4987-b516-6455a751405a";
-assert(bookBranchName("NEH", uuidTask) === `neh/${uuidTask}`, "board UUID taskId stays in the trunk");
+assert(bookBranchName("NEH", uuidTask) === `borrador/neh/${uuidTask}`, "board UUID taskId stays in the trunk");
 assert(bookOnlyBranchName("NEH") === "neh", "book-only leftover is neh");
 assert(taskTrunkBranchName("NEH", uuidTask) === `t/neh/${uuidTask}`, "safe trunk keeps libro+tarea");
 assert(!isGitRefDescendant(taskTrunkBranchName("NEH", uuidTask), "neh"), "t/ trunk is not a child of neh");
@@ -189,18 +206,24 @@ const uuidWork = portionPrBranchName({
   taskId: uuidTask,
   issueNumber: 5,
 });
-assert(uuidWork === `w/neh/${uuidTask}/abelper8/5`, "UUID work uses w/ prefix");
+assert(uuidWork === `trabajo/neh/${uuidTask}/abelper8/5`, "UUID work uses the work word");
 assert(!isGitRefDescendant(uuidWork, bookBranchName("NEH", uuidTask)), "UUID work is not a child of preferred trunk");
 assert(!isGitRefDescendant(uuidWork, taskTrunkBranchName("NEH", uuidTask)), "UUID work is not a child of t/ trunk");
 assert(
   canonicalWorkBranchName(
     { book: "NEH", username: "abelper8", taskId: uuidTask, issueNumber: 5 },
-    bookBranchName("NEH", uuidTask),
+    legacyTaskBranchName("NEH", uuidTask),
     `neh/${uuidTask}/abelper8/5`,
   ) === uuidWork,
-  "nested leftover remaps to w/ work name",
+  "nested leftover remaps to the work name",
 );
-assert(bookTrunkFromWorkHead(uuidWork) === `neh/${uuidTask}`, "trunk recovered from w/ work ref");
+assert(bookTrunkFromWorkHead(uuidWork) === `borrador/neh/${uuidTask}`, "draft recovered from a work ref");
+assert(bookTrunkFromWorkHead(`w/neh/${uuidTask}/abelper8/5`) === `neh/${uuidTask}`, "an older w/ work ref still points at its older trunk");
+assert(bookCodeFromWorkHead(uuidWork) === "neh" && bookCodeFromWorkHead(`w/neh/${uuidTask}/abelper8/5`) === "neh", "book read from both work names");
+assert(
+  portionPrHeadMatchesWork(`w/neh/${uuidTask}/abelper8/5`, uuidWork, { book: "NEH", username: "abelper8", taskId: uuidTask, issueNumber: 5 }),
+  "a review opened from an older w/ branch is still this subtarea's",
+);
 
 const steps: TaskStep[] = [
   { id: "fam", name: "Familiarizar" },
@@ -260,7 +283,7 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(archive === "archivo/neh/41", `archivo: nombre (${archive})`);
   assert(/^[\x20-\x7e]+$/.test(archive), "archivo: ASCII");
   assert(isArchiveRefName(archive), "archivo: reconocido como ref de archivo");
-  for (const parent of ["neh", "neh/tpl-draft", "w", "w/neh", "w/neh/tpl-draft", "t/neh/tpl-draft"]) {
+  for (const parent of ["neh", "neh/tpl-draft", "w", "w/neh", "w/neh/tpl-draft", "t/neh/tpl-draft", "trabajo", "trabajo/neh", "borrador", "borrador/neh", "borrador/neh/tpl-draft"]) {
     assert(!isGitRefDescendant(archive, parent), `archivo: no cuelga de «${parent}»`);
   }
   assert(!archive.startsWith("neh/") && !archive.startsWith("w/"), "archivo: no es hija de neh/ ni de w/");
@@ -273,6 +296,7 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(planArchiveRef("ABC", "abc") === "noop", "archivo: mismo SHA → nada");
   assert(planArchiveRef("def", "abc") === "update", "archivo: otro SHA → actualizar");
 
+  assert(workUserFromHead("trabajo/neh/tpl-draft/ana/41") === "ana", "login: desde trabajo/");
   assert(workUserFromHead("w/neh/tpl-draft/ana/41") === "ana", "login: desde w/");
   assert(workUserFromHead("neh/tpl-draft/ana/41") === "ana", "login: desde ref anidada");
   assert(workUserFromHead("tas/neh/ana/tpl-draft/41") === "ana", "login: desde tas/");

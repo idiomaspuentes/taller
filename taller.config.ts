@@ -66,6 +66,10 @@ export const tallerConfig: TallerConfig = {
     },
   ],
 
+  // The first word of each kind of branch the app keeps in a content repository (`borrador/jud/tpl`). A workspace may
+  // give its own with `branchNames` inside it. Do not change them once a book has branches: see docs/CONFIGURACION.md.
+  branchNames: { draft: "borrador", work: "trabajo", archive: "archivo", phase: "fase", publish: "publicacion" },
+
   // The processes the team works with: templates (phases, tasks, steps), the tools the steps open and their words.
   // Each one is a JSON file; add or replace files here to work with another process. The engine has none of its own.
   processes: DEV ? [fcr, fcrPrueba] : [fcr],

@@ -13,10 +13,9 @@ import {
   type RefRepairTarget,
 } from "../dcs/refRepair";
 import {
-  bookBranchName,
   bookOnlyBranchName,
   portionPrBranchName,
-  taskTrunkBranchName,
+  groupDraftBranchNames,
 } from "../domain/portionPr";
 import {
   ghostRefDeleteBlock,
@@ -111,8 +110,7 @@ export function QaAdminDialog({
   }, [book, taskId, workUser, workIssue]);
   const candidates = useMemo(() => {
     const list = [
-      taskTrunkBranchName(book, taskId),
-      bookBranchName(book, taskId),
+      ...groupDraftBranchNames(book, taskId),
       bookOnlyBranchName(book),
       ...(workRef ? [workRef] : []),
     ];
