@@ -1,4 +1,6 @@
 import type { GtSession } from "./dcs/auth";
+import type { Ask } from "./domain/askNotices";
+import { getUiLanguage, onUiLanguageChange } from "./i18n/language";
 import { tNow } from "./i18n/messages";
 
 /**
@@ -53,7 +55,7 @@ export async function enablePush(deps: PushDeps, session: Pick<GtSession, "token
   const key = (await (await deps.fetch(`${deps.url}/vapid`)).json()) as { publicKey?: string };
   if (!key.publicKey) throw new Error(tNow("push.noKey"));
   const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key.publicKey) });
-  const res = await deps.fetch(`${deps.url}/subscribe`, { method: "POST", headers: headers(session), body: JSON.stringify({ subscription: sub.toJSON() }) });
+  const res = await deps.fetch(`${deps.url}/subscribe`, { method: "POST", headers: headers(session), body: JSON.stringify({ subscription: sub.toJSON(), lang: getUiLanguage() }) });
   if (!res.ok) {
     await sub.unsubscribe().catch(() => false);
     throw new Error(tNow(res.status === 401 ? "push.noAuth" : "push.failed"));
@@ -69,6 +71,40 @@ export async function disablePush(deps: PushDeps, session: Pick<GtSession, "toke
     await sub.unsubscribe().catch(() => false);
   }
   return "off";
+}
+
+/**
+ * Tell the Worker the language this device reads in, when it is already subscribed: notices are worded for each
+ * device. Called when the app opens and when the person changes the language.
+ */
+export async function syncPushLanguage(deps: PushDeps, session: Pick<GtSession, "token" | "host">): Promise<void> {
+  if (!deps.url || deps.permission() !== "granted") return;
+  const reg = await deps.registration().catch(() => null);
+  const sub = await reg?.pushManager.getSubscription().catch(() => null);
+  if (!sub) return;
+  await deps.fetch(`${deps.url}/subscribe`, { method: "POST", headers: headers(session), body: JSON.stringify({ subscription: sub.toJSON(), lang: getUiLanguage() }) }).catch(() => undefined);
+}
+
+/** Keep the Worker told of this device's language for as long as the session lasts; returns how to stop. */
+export function keepPushLanguage(session: Pick<GtSession, "token" | "host">): () => void {
+  const deps = browserPushDeps();
+  void syncPushLanguage(deps, session);
+  return onUiLanguageChange(() => void syncPushLanguage(deps, session));
+}
+
+/** The most notices one action asks for: closing a subtarea frees a few, not a book. */
+const MAX_ASKS = 12;
+
+/**
+ * Ask the Worker to tell people what Door43 does not announce (see `domain/askNotices`). On the side: nothing waits
+ * for it and nothing fails because of it. Off when the Worker is not configured.
+ */
+export function askNotices(session: Pick<GtSession, "token" | "host">, where: { org: string; repo: string }, asks: Ask[]): void {
+  const url = String(import.meta.env.VITE_PUSH_URL ?? "").replace(/\/$/, "");
+  if (!url || typeof fetch === "undefined") return;
+  for (const ask of asks.slice(0, MAX_ASKS)) {
+    void fetch(`${url}/notify`, { method: "POST", headers: headers(session), body: JSON.stringify({ ...where, ...ask }) }).catch(() => undefined);
+  }
 }
 
 /** The browser's real pieces, for the app. */

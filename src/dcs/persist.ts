@@ -1,3 +1,4 @@
+import { rememberBoard } from "./notices";
 import {
   createOrUpdateContents,
   createOrgRepo,
@@ -312,12 +313,14 @@ export async function loadAssignmentsFromDcs(
       assignmentsPath(lang, book),
       { token: session.token },
     );
-    return normalizeAssignmentsDoc(JSON.parse(raw), {
+    const board = normalizeAssignmentsDoc(JSON.parse(raw), {
       book,
       lang,
       contentOrg,
       pmOrg: org,
     });
+    rememberBoard(session, org, board);
+    return board;
   } catch {
     return null;
   }

@@ -1,3 +1,4 @@
+import { noticesAfterClose, noticesAfterDecision, noticesAfterProgress, noticesAfterPublish, noticesAfterRelease } from "./notices";
 import { activeScope, issueInScope, projectFromMilestone, scopeFolder, scopeLabelName, scopedMilestone } from "../domain/scope";
 import {
   addIssueAssignees,
@@ -724,6 +725,8 @@ export async function publishWorkOrders(params: {
   let updated = 0;
   let closed = 0;
   const results: DcsIssue[] = [];
+  /** The subtareas this run created (the rest already existed). */
+  const fresh: DcsIssue[] = [];
   const keeps = planKeeps(orders);
 
   // Labels and the milestone are shared by many subtareas: they are made first, one at a time, so that two
@@ -781,6 +784,7 @@ export async function publishWorkOrders(params: {
         });
         created += 1;
         results.push(issue);
+        fresh.push(issue);
         known.add(order, issue);
       }
       finished += 1;
@@ -815,6 +819,8 @@ export async function publishWorkOrders(params: {
     updated,
   });
 
+  // Each person hears once how many subtareas are free for a team of theirs, not once per subtarea.
+  if (fresh.length) noticesAfterPublish(session, params.org, params.board, fresh, results.filter((issue) => issue.state !== "closed"));
   return { created, updated, closed, issues: results };
 }
 
@@ -1202,7 +1208,7 @@ export async function createDecisionIssue(
     }
   }
   const milestoneId = await ensureMilestone(session, org, normalizeProjectId(params.projectId), new Map());
-  return createIssue(config, org, PM_REPO_NAME, {
+  const opened = await createIssue(config, org, PM_REPO_NAME, {
     token: session.token,
     title: params.title,
     body: `${params.text}
@@ -1211,6 +1217,9 @@ ${encodeWorkOrderMarker(order)}`,
     milestone: milestoneId,
     labels: labelIds,
   });
+  // A decision of the team: each of its people is asked for theirs, with the app closed too.
+  noticesAfterDecision(session, org, opened);
+  return opened;
 }
 
 /** Clear assignees (Liberar). Caller must enforce capability. */
@@ -1219,10 +1228,13 @@ export async function unclaimIssue(
   org: string,
   issueNumber: number,
 ): Promise<DcsIssue> {
-  return editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issueNumber, {
+  const released = await editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issueNumber, {
     token: session.token,
     assignees: [],
   });
+  // Given back: it is free for the team again.
+  if (released.state !== "closed") noticesAfterRelease(session, org, released);
+  return released;
 }
 
 export async function markIssueInProgress(
@@ -1350,10 +1362,13 @@ export async function closeIssue(
   org: string,
   issueNumber: number,
 ): Promise<DcsIssue> {
-  return editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issueNumber, {
+  const closed = await editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issueNumber, {
     token: session.token,
     state: "closed",
   });
+  // What this subtarea held back can start now: whoever has it, or its team, is told.
+  noticesAfterClose(session, org, closed);
+  return closed;
 }
 
 export async function commentOnIssue(
@@ -1380,8 +1395,11 @@ export async function setIssueTaskProgress(
   markerOrIds: TaskProgressMarker | string[],
 ): Promise<DcsIssue> {
   const body = upsertTaskProgressInBody(issue.body, markerOrIds);
-  return editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issue.number, {
+  const edited = await editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issue.number, {
     token: session.token,
     body,
   });
+  // A step that was completed is the next person's turn: Door43 does not say so.
+  noticesAfterProgress(session, org, issue, { ...issue, ...edited, body });
+  return edited;
 }

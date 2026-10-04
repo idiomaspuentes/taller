@@ -1,3 +1,4 @@
+import { keepPushLanguage } from "./push";
 import { PM_REPO_NAME } from "./domain/types";
 import { BrandMark } from "./components/BrandMark";
 import { appTitle } from "./brand";
@@ -212,6 +213,8 @@ export function App() {
 
   const activity = useConversationActivity(session, pmOrg);
   const mentions = useMentions(session, pmOrg);
+  // Notices with the app closed are worded for each device: it tells the Worker its language, now and when it changes.
+  useEffect(() => (session ? keepPushLanguage(session) : undefined), [session?.token, session?.host]); // eslint-disable-line react-hooks/exhaustive-deps
   const onboarding = useOnboarding(session);
   // Mentions of issues the plan already tracks are counted there; only the others add to the badge.
   const attentionTotal =

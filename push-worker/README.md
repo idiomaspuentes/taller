@@ -14,14 +14,36 @@ Door43 ──(webhook firmado)──▶ Worker ──(Web Push cifrado)──▶
 
 ## Qué avisa (y qué no)
 
-Avisa cuando:
-- un comentario te **menciona** con `@tuusuario` (las decisiones del equipo, los consensos y los recordatorios de voto usan menciones);
+Lo que **Door43 anuncia** (por el webhook):
+- un comentario te **menciona** con `@tuusuario`;
 - alguien comenta una subtarea que **tienes asignada**;
-- te **asignan** una subtarea.
+- te **asignan** una subtarea (otra persona; si la tomas tú, no);
+- una tarjeta pide **una decisión** en una subtarea tuya o te menciona: «Hace falta tu decisión».
+
+Un comentario que escribió la app (una entrega, un paso, un cierre) se cuenta como «Novedad en …», sin el nombre de
+nadie delante. Lo que escribió una persona sigue siendo «ana: …».
+
+Lo que **Door43 no anuncia** y la app pide (`POST /notify`), en el momento en que alguien lo causa:
+- una subtarea quedó **libre para tu equipo**: porque se cerró lo que esperaba, porque alguien la devolvió, o porque
+  se crearon las de un libro (una sola vez por persona: «12 subtareas libres para tu equipo»);
+- **ya puedes empezar**: se cerró lo que esperaba una subtarea que tienes;
+- **es tu turno** en un paso, o hay **un paso libre** para tu equipo, cuando se completa el paso anterior;
+- se abrió **una decisión** para tu equipo.
+
+A quién se le dice sale del plan (`memberIds` de cada tarea): es la gente que el proyecto tiene anotada en la tarea,
+no la lista del equipo en Door43. Quien causa el aviso nunca lo recibe.
+
+`/notify` pide el token de Door43 de quien lo llama y que esa persona pueda leer la subtarea. Quien llama dice de qué
+subtarea se trata y a quién se avisa; **nunca el texto**: lo redacta el Worker a partir de la subtarea.
+
+**El nombre y el idioma.** Todos los avisos nombran la subtarea igual: «3 Juan 1:5–8 · Alinear TPL · Afinación» (el
+libro en palabras, el pasaje, la tarea y la fase). Cada dispositivo dice su idioma al suscribirse (y cada vez que la
+persona lo cambia) y recibe los avisos en él. Las frases son las de la interfaz (`nt.*` en `src/i18n/locales/`) y
+el código que las arma es el mismo de la app (`src/domain/noticeText.ts`): el Worker lo importa tal cual.
 
 No avisa todavía de:
-- subtareas nuevas **libres para tu equipo** (Door43 no dice a qué equipo pertenece cada persona; haría falta que el Worker lea el plan del proyecto);
-- el recordatorio de plazo **cuando nadie abre la app** (hoy lo hace la app misma; con el Worker se podría hacer con un cron y una cuenta de servicio de Door43).
+- el recordatorio de plazo **cuando nadie abre la app** (hoy lo hace la app misma; con el Worker se podría hacer con
+  un cron y una cuenta de servicio de Door43).
 
 ## Poner en marcha (una vez)
 
