@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 16,
+      "version": 17,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -360,9 +360,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista. La traducción alternativa debe poder reemplazar la frase citada en el versículo.",
+              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista.",
               "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista. A tradução alternativa deve poder substituir a frase citada no versículo."
+                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista."
               }
             },
             {
@@ -383,9 +383,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara cada nota con la nota en inglés. Debe decir lo mismo. La traducción alternativa debe caber en el versículo.",
+              "description": "Compara cada nota con la nota en inglés. Debe decir lo mismo.",
               "descriptions": {
-                "pt": "Compare cada nota com a nota em inglês. Deve dizer o mesmo. A tradução alternativa deve caber no versículo."
+                "pt": "Compare cada nota com a nota em inglês. Deve dizer o mesmo."
               }
             }
           ],

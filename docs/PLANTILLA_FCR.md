@@ -123,8 +123,8 @@ pide traducir las ayudas con el texto ya terminado; aquí ese contraste se hace 
 
 **Qué se pide en cada paso.** «Borrador» y «Revisión en pares» dicen, en cada tarea, qué se espera de ese recurso,
 según el [manual de lenguas puente](https://gl-manual.readthedocs.io/en/latest/): el TPL conserva la forma del
-original y no busca sonar natural; el TPS dice el sentido de forma llana, sin figuras ni voz pasiva; la traducción
-alternativa de una nota debe caber en el lugar de la frase que cita; una palabra se define por su uso en la Biblia;
+original y no busca sonar natural; el TPS dice el sentido de forma llana, sin figuras ni voz pasiva; una nota
+dice lo mismo que la nota en inglés; una palabra se define por su uso en la Biblia;
 un artículo de Academia cambia los ejemplos del inglés por los de nuestro idioma. La persona lo lee en su tarjeta,
 en «Qué se pide en …».
 
