@@ -23,6 +23,8 @@ type Props = {
   emptyAs?: Block;
   /** Shown beside the tools of a compact box: what is to be said about the piece, and done with it. */
   aside?: React.ReactNode;
+  /** Shown at the end of that line, always: where the way on from this piece goes. */
+  trailing?: React.ReactNode;
 };
 
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -138,7 +140,7 @@ function shapeHtml(shape: Block | undefined, names: { academia: string; palabra:
   return shape && shape.t !== "p" ? blocksHtml([shape], names) : "";
 }
 
-export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside }: Props) {
+export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing }: Props) {
   const t = useT();
   const names = useMemo(() => ({ academia: t("mde.academy"), palabra: t("mde.word") }), [t]);
   const safe = useMemo(() => roundTrips(value), [value]);
@@ -230,7 +232,7 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
   );
 
   return (
-    <div className={compact ? "mde mde--compact" : "mde"}>
+    <div className={compact ? `mde mde--compact${value.trim() ? "" : " mde--empty"}` : "mde"}>
       <div className="mde-bar" role="toolbar" aria-label={t("mde.toolbar")}>
         {compact && aside ? <div className="mde-aside">{aside}</div> : null}
         {source ? null : (
@@ -272,6 +274,7 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
             {source ? <BookOpen size={16} aria-hidden /> : <Code2 size={16} aria-hidden />} {t(source ? "mde.visual" : "mde.source")}
           </button>
         )}
+        {compact && trailing ? <div className="mde-trailing">{trailing}</div> : null}
       </div>
 
       {linking && !source ? (

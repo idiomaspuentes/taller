@@ -10,6 +10,7 @@ import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
+import { holdAt, placesOf, reveal, slideFrom } from "./pieceMotion";
 import { rowsPossible, startingText } from "../domain/articleBlocks";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -157,7 +158,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const autoOpened = useRef(false);
   const editPane = useRef<HTMLDivElement | null>(null);
   /** Per article file: how many pieces there are to translate and how many are. */
-  const [progress, setProgress] = useState<Record<string, { done: number; total: number; firstPending: number }>>({});
+  const [progress, setProgress] = useState<Record<string, { done: number; total: number; firstPending: number; count: number }>>({});
   /** The files whose starting text was already settled in this opening (see `startingText`). */
   const started = useRef<Set<string>>(new Set());
 
@@ -562,8 +563,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const pending = articles.reduce((sum, item) => sum + (byRows(item) && progress[item.id] ? progress[item.id]!.total - progress[item.id]!.done : 0), 0);
   const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
   const setProgressOf = useCallback(
-    (id: string, done: number, total: number, firstPending: number) =>
-      setProgress((prev) => (prev[id]?.done === done && prev[id]?.total === total && prev[id]?.firstPending === firstPending ? prev : { ...prev, [id]: { done, total, firstPending } })),
+    (id: string, done: number, total: number, firstPending: number, count: number) =>
+      setProgress((prev) => (prev[id]?.done === done && prev[id]?.total === total && prev[id]?.firstPending === firstPending && prev[id]?.count === count ? prev : { ...prev, [id]: { done, total, firstPending, count } })),
     [],
   );
 
@@ -581,16 +582,42 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   /** A piece was touched: it opens, the one that was open closes, and the box is ready to be written in. */
   function openPiece(itemId: string, index: number, element: HTMLElement) {
+    const pane = editPane.current;
     const top = element.getBoundingClientRect().top;
+    const before = pane ? placesOf(pane) : null;
     flushSync(() => setActive({ id: itemId, index }));
-    // The piece that closed gave back its room: the one touched stays where the finger is.
     const row = document.getElementById(`help-${itemId}-row-${index}`);
-    if (row && editPane.current) editPane.current.scrollTop += row.getBoundingClientRect().top - top;
     const box = document.getElementById(`help-${itemId}-${index}`);
+    // The piece that closed gave back its room: the one touched stays where the finger is.
+    if (row && pane) holdAt(pane, row, top);
     if (box) {
       box.focus({ preventScroll: true });
       caretInto(box);
+      if (pane) {
+        reveal(pane, box);
+        // On a phone the keyboard comes up after this: once it has, the box is brought over it.
+        const viewport = window.visualViewport;
+        const again = () => document.activeElement === box && reveal(pane, box);
+        viewport?.addEventListener("resize", again, { once: true });
+        window.setTimeout(() => viewport?.removeEventListener("resize", again), 1500);
+      }
     }
+    // What could not be kept still (at the top of the article there is nowhere to scroll to) slides instead of jumping.
+    if (pane && before) slideFrom(pane, before);
+  }
+
+  /** The piece after one, in its own text or in the next text of the article (its title, then its sub-title, then its body). */
+  function pieceAfter(itemId: string, index: number): { id: string; index: number } | null {
+    if (index + 1 < (progress[itemId]?.count ?? 0)) return { id: itemId, index: index + 1 };
+    const inRows = articles.filter(byRows);
+    const next = inRows.slice(inRows.findIndex((item) => item.id === itemId) + 1).find((item) => (progress[item.id]?.count ?? 0) > 0);
+    return next ? { id: next.id, index: 0 } : null;
+  }
+
+  function openNext(itemId: string, index: number) {
+    const next = pieceAfter(itemId, index);
+    const element = next ? document.getElementById(`help-${next.id}-row-${next.index}`) : null;
+    if (next && element) openPiece(next.id, next.index, element);
   }
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 
@@ -670,7 +697,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 book={ctx?.book}
                 open={active?.id === item.id ? active.index : null}
                 onOpen={(index, element) => openPiece(item.id, index, element)}
-                onProgress={(done, total, firstPending) => setProgressOf(item.id, done, total, firstPending)}
+                onProgress={(done, total, firstPending, count) => setProgressOf(item.id, done, total, firstPending, count)}
+                hasNext={active?.id === item.id ? Boolean(pieceAfter(item.id, active.index)) : false}
+                onNext={(index) => openNext(item.id, index)}
               />
             ) : (
             <div key={item.id} className="scripture-editor__verse">
@@ -735,6 +764,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             // For a text that has to be seen whole (to paste one in, to look at its code): the same article in one box.
             <button
               type="button"
+              id="help-whole"
+              data-slide
               className="ab-switch ab-switch--end"
               onClick={() => {
                 setView("whole");

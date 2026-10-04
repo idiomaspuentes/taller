@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { articleProgress, articleRows, rowPending, rowsMarkdown, vocabularyOf, type ArticleRow } from "../domain/articleBlocks";
 import { normalizeMarkdown } from "../domain/helpMarkup";
 import { useUiLanguage } from "../i18n/language";
@@ -19,8 +20,12 @@ type Props = {
   open: number | null;
   /** A piece was touched to be written: `element` is where it is on the screen now. */
   onOpen: (index: number, element: HTMLElement) => void;
-  /** How many pieces there are to translate, how many are, and the first that is not (-1: none). */
-  onProgress?: (done: number, total: number, firstPending: number) => void;
+  /** How many pieces there are to translate, how many are, the first that is not (-1: none), and how many pieces in all. */
+  onProgress?: (done: number, total: number, firstPending: number, count: number) => void;
+  /** Whether a piece comes after the open one, in this text or in the one that follows it. */
+  hasNext?: boolean;
+  /** Go on to the piece after `index`: whoever translates down the article does not have to find and touch it. */
+  onNext?: (index: number) => void;
   /** A file of an Academy article that is not its body: it reads as a title, or as the line under it. */
   part?: "title" | "sub-title";
 };
@@ -31,6 +36,7 @@ const Piece = memo(function Piece({ id, index, content, pending, onOpen }: { id:
     <div
       id={id}
       className="ab-text"
+      data-slide
       role="button"
       tabIndex={0}
       data-pending={pending ? "true" : undefined}
@@ -57,7 +63,7 @@ const Piece = memo(function Piece({ id, index, content, pending, onOpen }: { id:
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen, onProgress, part }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen, onProgress, hasNext, onNext, part }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -85,7 +91,7 @@ export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen,
 
   useEffect(() => {
     const { done, total } = articleProgress(rows, vocabulary);
-    tell.current?.(done, total, rows.findIndex((row) => row.words && rowPending(row, vocabulary)));
+    tell.current?.(done, total, rows.findIndex((row) => row.words && rowPending(row, vocabulary)), rows.length);
   }, [rows, vocabulary]);
 
   const touch = useCallback((index: number) => setTouched((prev) => (prev.has(index) ? prev : new Set(prev).add(index))), []);
@@ -117,7 +123,7 @@ export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen,
 
   const openPiece = useCallback((index: number, element: HTMLElement) => opened.current(index, element), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder") }), [language]);
+  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next") }), [language]);
 
   return (
     <div className="ab" data-part={part}>
@@ -128,7 +134,7 @@ export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen,
         // Still the source, and not written in yet: the box is empty for the translation.
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
         return (
-          <div key={index} id={rowId} className="ab-open">
+          <div key={index} id={rowId} className="ab-open" data-slide>
             <HelpMarkdownView className="ab-peek" content={row.source} />
             <MarkdownEditor
               id={`${id}-${index}`}
@@ -144,6 +150,14 @@ export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen,
                     {words.copy}
                   </button>
                 )
+              }
+              trailing={
+                hasNext && onNext ? (
+                  // The press must not take the cursor out of the text: on a phone the keyboard would go down and come up again.
+                  <button type="button" className="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
+                    {words.next} <ChevronDown size={16} aria-hidden />
+                  </button>
+                ) : undefined
               }
             />
           </div>
