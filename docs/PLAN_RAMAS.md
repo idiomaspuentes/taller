@@ -1,0 +1,188 @@
+# Plan: ramas, trazabilidad por fase y publicación por PR
+
+Estado: **propuesta, pendiente de aprobación** (4 de octubre de 2026). Nada de esto está implementado.
+
+Sale de revisar cómo la app usa las ramas de Door43 durante la fase 1 y qué rama usan las fases siguientes. El
+modelo de fondo se queda (una rama de grupo por tarea, una rama de trabajo por persona y subtarea, entrega
+versículo por versículo). Lo que cambia: nombres legibles y un solo esquema, limpieza al entregar, marcas por
+fase, una vista de «qué cambió», y una publicación que Validación pueda revisar en un PR de verdad.
+
+## 0. Nombres de las ramas
+
+Hoy conviven cinco esquemas (`jud/tpl`, `t/jud/tpl`, `jud`, `w/jud/tpl/ana/160`, el anidado viejo) y las
+herramientas buscan en una lista de candidatos. Propuesta: cuatro espacios con nombre, ninguno de una letra, y
+ninguno que pueda chocar con otro (Git no deja crear `jud/tpl` si existe una rama `jud`; con un prefijo propio eso
+no pasa nunca).
+
+| Rama | Nombre | Ejemplo | Vive en | Quién la crea |
+|---|---|---|---|---|
+| Borrador del grupo (tronco de una tarea de traducción) | `borrador/<libro>/<tarea>` | `borrador/jud/tpl` | el repo del recurso | la app, al empezar la primera subtarea de la tarea |
+| Trabajo de una persona en una subtarea | `trabajo/<libro>/<tarea>/<persona>/<subtarea>` | `trabajo/jud/tpl/valeska/160` | el repo del recurso | la app, al empezar la subtarea |
+| Archivo de lo entregado | `archivo/<libro>/<subtarea>` | `archivo/jud/160` | el repo del recurso | la app, al entregar (ya existe así) |
+| Marca de fase | `fase/<libro>/<fase>` | `fase/jud/traduccion` | el repo del recurso | la app, al cerrar la última subtarea de la fase |
+| Publicación de una unidad | `publicacion/<libro>/<unidad>` | `publicacion/jud/1` | el repo del recurso | la app, al empezar Validación de la unidad |
+| Publicado | `master` | | el repo del recurso | Door43 |
+
+- Los nombres viejos se **siguen leyendo** (la lista de candidatos queda para repositorios antiguos) pero **no se
+  crean más**. Hoy no hay ningún libro con ramas en QA (Judas aún no tiene ninguna) ni producción accesible, así
+  que no hace falta migrar nada.
+- `archivo/` y `fase/` podrían ser etiquetas (tags) en vez de ramas, para no engordar la lista de ramas. Se decide
+  en el paso 2; por defecto, ramas, que es lo que la app ya sabe manejar.
+
+**Decisión que hace falta:** confirmar los cinco nombres. Alternativa para el tronco: dejar `jud/tpl` (legible,
+pero vuelve el riesgo de choque con una rama `jud` y hay que conservar el repuesto).
+
+## 1. Un solo esquema, y la tarea declara si tiene borrador
+
+**Qué.** Generar solo los nombres de la tabla; resolver los viejos solo para leer. Y cambiar la regla de «qué
+tarea tiene borrador propio»: hoy es «todos sus pasos se cierran en su herramienta», una heurística que creó
+`hag/alinear-tpl`. La regla pasa a ser: **una tarea tiene borrador propio si es la tarea de traducción de su
+recurso** (`draftTaskId(teams, resource) === task.id`); cualquier otra tarea del mismo recurso (revisión grupal,
+desafíos, palabras clave, alinear, armonizar) trabaja sobre ese tronco y nunca abre PR ni tronco propio.
+
+**Dónde.** `src/domain/portionPr.ts` (nombres: `bookBranchName`, `taskTrunkBranchName`, `portionPrBranchName`,
+`taskWorksOnSharedDraft`), `src/dcs/bookBootstrap.ts` (`resolveBookBranchName`: candidatos), `src/dcs/portionPr.ts`
+(`ensurePortionPr`), `src/dcs/afinacionLoad.ts` (`groupDraftBranches`), `src/dcs/teamHelps.ts`,
+`src/components/QaAdminDialog.tsx`, `src/components/ScriptureEditorView.tsx`.
+
+**Pruebas.** `verify-portion-pr` (nombres nuevos, viejos solo de lectura), prueba nueva `verify-branch-names`
+(cada tarea del FCR: cuál tiene borrador y cuál no; ninguna crea tronco para Afinación), `verify-decoupling`.
+
+**Riesgo.** Bajo: no hay ramas que migrar. Hay que revisar `QaAdminDialog` y el reparador de refs
+(`refRepair.ts`), que conocen los nombres viejos.
+
+**Resuelve:** nombres legibles; punto 4 (un esquema); punto 6 (`hag/alinear-tpl`).
+
+## 2. Limpieza al entregar, y archivo de toda entrega
+
+**Qué.**
+- Al entregar una subtarea con rama de trabajo: después de fijar `archivo/<libro>/<subtarea>` y cerrar el PR,
+  **borrar la rama de trabajo**. Hoy quedan las dos apuntando al mismo commit (visto en Hageo: `w/hag/tpl/valeska/86`
+  y `archivo/hag/86`).
+- **Archivar también las subtareas que no tienen rama de trabajo** (revisión grupal, Afinación, Armonización): al
+  cerrarlas, fijar `archivo/<libro>/<subtarea>` al commit del tronco en ese momento. Así toda subtarea deja «cómo
+  estaba el texto cuando esta subtarea terminó», que es lo que necesita la vista del paso 4.
+- Si una rama de trabajo quedó sin PR (subtarea devuelta, persona que la soltó): borrarla al reasignar; la nueva
+  persona empieza del tronco.
+
+**Dónde.** `src/dcs/portionPr.ts` (`mergePortionPrIfOpen`, `closeOwnedPortionPrIfSafe`), `src/dcs/pulls.ts`
+(`deleteGitRef` ya existe, hoy solo borra refs viejas), `src/dcs/closeSubtask.ts` (rama compartida: fijar archivo),
+`src/dcs/issues.ts` (`unclaimIssue`).
+
+**Pruebas.** `verify-portion-pr`: tras entregar queda `archivo/` y no queda `trabajo/`; cerrar una subtarea de
+Afinación fija `archivo/` al tronco.
+
+**Riesgo.** Borrar una rama es definitivo; se borra **solo después** de comprobar que `archivo/` apunta al mismo
+commit. Si fijar el archivo falla, no se borra nada (ya es así para cerrar).
+
+**Resuelve:** punto 3 (higiene).
+
+## 3. Marcas de fase
+
+**Qué.** Cuando se cierra la **última subtarea de una fase para un libro**, fijar `fase/<libro>/<fase>` al commit
+del tronco de cada recurso de esa fase (`fase/jud/traduccion` en `es-419_glt`, `es-419_gst`, `es-419_tn`, …).
+
+**Límite, dicho de antemano.** Las fases se encadenan **por capítulo**: Afinación del capítulo 1 escribe en el
+tronco mientras Traducción del capítulo 2 sigue entregando en el mismo tronco. Por eso la marca de fase es del
+**libro entero** (cuando toda la fase cerró) y sirve para dos cosas: la base del PR de publicación y volver atrás.
+El «qué cambió» fino (por porción) no sale de la marca sino de los archivos del paso 2.
+
+**Dónde.** Un gancho donde ya se detecta el cierre (`src/dcs/notices.ts` escucha `closeIssue`; conviene un módulo
+hermano `src/dcs/phaseMarks.ts`), `src/domain/waits.ts` o un `phaseProgress.ts` para «¿quedó alguna subtarea
+abierta de esta fase y libro?».
+
+**Pruebas.** Prueba nueva: con las subtareas de un libro, cerrar la última de Traducción pide la marca; cerrar una
+que no es la última, no.
+
+**Riesgo.** Bajo. Si una subtarea se reabre después, la marca queda vieja: se vuelve a fijar al cerrar de nuevo.
+
+**Resuelve:** punto 1 (mitad).
+
+## 4. Vista «Qué cambió»
+
+**Qué.** Que se pueda ver lo que cada fase cambió, sin PR:
+- **Por subtarea cerrada**, en su conversación y en la pestaña **Versiones** del proyecto: la diferencia entre su
+  `archivo/` y el tronco de hoy, limitada a su porción (versículos, notas o artículos). Para una subtarea de
+  Traducción eso es «lo que Afinación y Armonización le cambiaron después».
+- **Por fase**, en Versiones: entre `fase/<libro>/<fase anterior>` y `fase/<libro>/<fase>` (o el tronco de hoy, si
+  la fase está abierta), por capítulo.
+- **En las herramientas de Afinación y Armonización** (opcional, segundo tiempo): junto a cada versículo o nota, una
+  marca «cambió desde que se entregó», con el antes y el después a un toque.
+
+Reutiliza `diffWords` y los lectores de porción que ya tiene `PortionReviewView`.
+
+**Dónde.** `src/components/ProjectPlanView.tsx` (pestaña Versiones), `src/domain/reviewItems.ts`, un
+`src/dcs/changesSince.ts` que lea dos refs y recorte a la porción.
+
+**Pruebas.** Prueba de dominio sobre textos de ejemplo: qué versículos cambiaron entre dos estados, recortado a
+una porción; lo mismo con filas TSV.
+
+**Resuelve:** punto 1 (la otra mitad).
+
+## 5. Publicación por un PR que Validación revisa
+
+**Hoy.** `publishUnit` crea por cada unidad una rama desde `master` con los archivos de la unidad, abre un PR y lo
+fusiona en el acto. El PR existe pero nadie lo ve antes de fusionarse. Validación aprueba en la app (el aval), no
+sobre el PR.
+
+**Qué.**
+- Al **empezar Validación** de una unidad: crear `publicacion/<libro>/<unidad>` desde `master` con los archivos de
+  la unidad tomados del tronco (lo que hoy hace `publishUnit` al final), y abrir el PR hacia `master` **sin
+  fusionarlo**. El PR enlaza la subtarea de Validación y muestra la diferencia completa frente a lo publicado.
+- La herramienta de **Validar** trabaja con ese PR a la vista: cada aprobación del aval se refleja como revisión
+  aprobada en el PR (ya hay `portionPrApprovalReviewBody`); una objeción, como comentario.
+- Si el tronco cambia después de abierto el PR (Armonización corrigió algo tras una objeción): la app vuelve a
+  copiar la unidad sobre `publicacion/…` y el PR se actualiza solo.
+- **Publicar** fusiona el PR. Si la rama está protegida, queda abierto para quien pueda, como hoy.
+- Se mantiene la publicación **por unidad** (capítulo o tramo): un PR único de `borrador/jud/tpl` a `master` no
+  sirve, porque publicaría capítulos a medio afinar.
+
+**Dónde.** `src/dcs/unitPublish.ts` (`publishUnit` se parte en «preparar» y «fusionar»), `src/dcs/release.ts`,
+`src/components/EndorsementView.tsx` (Validar), `src/components/PublishUnitView.tsx`, el paquete `processes/fcr.json`
+(la herramienta `fcr-aval` recibe el PR por `stepParams`, sin que la app conozca el proceso).
+
+**Pruebas.** `verify-unit-publish`: preparar abre el PR sin fusionar; publicar fusiona; un cambio del tronco
+después de preparar actualiza la rama de publicación; una unidad ya publicada no vuelve a abrir PR.
+
+**Riesgo.** Medio. Es el cambio con más partes móviles y toca la salida a `master`. Se prueba en QA con Judas
+(un capítulo, una unidad) antes de publicar la app.
+
+**Resuelve:** punto 2.
+
+## 6. Dónde viven las respuestas de revisión (decisión tuya)
+
+Las respuestas de Afinación (`checkings/decisions/<LIBRO>.<persona>.decisions.json`, `checkings/preferred-terms.json`,
+propuestas y resultados de alineación) se guardan en el tronco del **repositorio de contenido**. Con la publicación
+por unidad (paso 5) nunca llegan a `master`, así que no es un fallo; es metadata del proceso dentro de un repositorio
+que se publica.
+
+Opciones:
+- **Dejarlas donde están.** Nada que hacer.
+- **Moverlas al repositorio del plan** (`taller`, `es-419/<LIBRO>/revision/…`). Un repositorio de contenido queda
+  solo con contenido; el plan concentra todo lo del proceso (ya tiene las reglas de los equipos). Cuesta una
+  migración de tres almacenes (`afinacionStore`, `alignmentDecisionStore`, `checkStore`) y de sus lectores.
+
+No lo haría ahora; lo anoto para que decidas.
+
+## 7. Documentos
+
+`docs/MODELO.md` (§ «Un PR por subtarea» y rutas: aún dice `tas/{projectId}/{taskId}/{issueNumber}`) y
+`docs/PLATAFORMA.md` describen el esquema anterior. Se reescriben con la tabla del punto 0 y el recorrido de una
+porción por las fases (borrador → trabajo → archivo → tronco → marca de fase → publicación → master).
+
+## Orden y dependencias
+
+```
+1 nombres y regla de borrador  ──►  2 limpieza y archivo de toda entrega  ──►  4 vista «qué cambió»
+                                ──►  3 marcas de fase                       ──►  5 publicación por PR
+7 documentos: al final de cada paso que cambie lo que describen
+```
+
+Tamaño aproximado, en sesiones de trabajo: 1 → una; 2 → una; 3 → media; 4 → una y media; 5 → dos; 7 → media.
+
+## Qué necesito de ti antes de empezar
+
+1. Confirmar los nombres del punto 0 (o decir cuáles cambias).
+2. `archivo/` y `fase/`: ¿ramas o etiquetas?
+3. Punto 6: ¿se quedan las respuestas en el repositorio de contenido?
+4. Si empiezo por el 1 o prefieres otro orden.
