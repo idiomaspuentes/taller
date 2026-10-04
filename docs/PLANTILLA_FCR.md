@@ -114,14 +114,17 @@ Las ayudas **no llevan revisión grupal**.
 porción de ese capítulo**, y la introducción al libro con las de la primera porción del libro. Antes no caían en
 ninguna subtarea: todos las leían al familiarizarse y nadie las traducía.
 
-**Las ayudas no esperan al texto.** Notas, preguntas, palabras y Academia se traducen a la vez que el TPL y el TPS.
-Lo que dependa del texto (la frase citada de una nota, la respuesta de una pregunta, los versículos de ejemplo) se
-iguala después, en Armonización: para eso existe esa fase.
+**Las ayudas no esperan al texto, y en esta fase no se comparan con el TPL.** Notas, preguntas, palabras y
+Academia se traducen a la vez que el TPL y el TPS, y se trabajan **frente al ULT en inglés**: la frase citada de una
+nota, la respuesta de una pregunta y los versículos de ejemplo se traducen del ULT. No tendría sentido igualarlas al
+TPL ahora, ni aunque ya estuviera traducido, porque **el TPL cambia en Afinación**. Es en Armonización donde las
+ayudas se revisan frente al TPL ya afinado y se ajustan: para eso existe esa fase. (El manual de lenguas puente
+pide traducir las ayudas con el texto ya terminado; aquí ese contraste se hace después, en su propia fase.)
 
 **Qué se pide en cada paso.** «Borrador» y «Revisión en pares» dicen, en cada tarea, qué se espera de ese recurso,
 según el [manual de lenguas puente](https://gl-manual.readthedocs.io/en/latest/): el TPL conserva la forma del
-original y no busca sonar natural; el TPS dice el sentido de forma llana, sin figuras ni voz pasiva; la frase citada
-de una nota y la respuesta de una pregunta son las palabras del TPL; una palabra se define por su uso en la Biblia;
+original y no busca sonar natural; el TPS dice el sentido de forma llana, sin figuras ni voz pasiva; la traducción
+alternativa de una nota debe caber en el lugar de la frase que cita; una palabra se define por su uso en la Biblia;
 un artículo de Academia cambia los ejemplos del inglés por los de nuestro idioma. La persona lo lee en su tarjeta,
 en «Qué se pide en …».
 

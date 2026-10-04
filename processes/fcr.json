@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 19,
+      "version": 20,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -360,9 +360,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés a la vista, y con el TPL y el TPS si ya están. La frase citada es la del TPL: cópiala de ahí; si todavía no está traducido, tradúcela y Armonización la igualará. La traducción alternativa debe poder ponerse en el lugar de esa frase dentro del versículo. Adapta la nota si nuestro idioma dice el texto de otra manera.",
+              "description": "Traduce cada nota con la nota en inglés y el ULT a la vista. La frase citada se traduce de la del ULT, y la traducción alternativa debe poder ponerse en su lugar dentro del versículo. No hace falta igualarla al TPL todavía: eso se hace en Armonización, cuando el TPL ya pasó por Afinación.",
               "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês à vista, e com o TPL e o TPS se já estiverem prontos. A frase citada é a do TPL: copie-a de lá; se ainda não estiver traduzido, traduza-a e a Harmonização a igualará. A tradução alternativa deve poder ser posta no lugar dessa frase dentro do versículo. Adapte a nota se a nossa língua diz o texto de outra maneira."
+                "pt": "Traduza cada nota com a nota em inglês e o ULT à vista. A frase citada é traduzida da do ULT, e a tradução alternativa deve poder ser posta no seu lugar dentro do versículo. Ainda não é preciso igualá-la ao TPL: isso é feito na Harmonização, quando o TPL já passou pela Afinação."
               }
             },
             {
@@ -383,9 +383,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Comprueba que cada nota diga lo mismo que la nota en inglés, que la frase citada coincida con el TPL cuando ya exista, y que la traducción alternativa encaje en el versículo en lugar de esa frase.",
+              "description": "Compara cada nota con la nota en inglés y el ULT: que diga lo mismo, que la frase citada corresponda a la del ULT y que la traducción alternativa encaje en el versículo en lugar de esa frase. No la compares con el TPL: eso es de Armonización.",
               "descriptions": {
-                "pt": "Verifique se cada nota diz o mesmo que a nota em inglês, se a frase citada coincide com o TPL quando já existir, e se a tradução alternativa se encaixa no versículo no lugar dessa frase."
+                "pt": "Compare cada nota com a nota em inglês e o ULT: que diga o mesmo, que a frase citada corresponda à do ULT e que a tradução alternativa se encaixe no versículo no lugar dessa frase. Não a compare com o TPL: isso é da Harmonização."
               }
             }
           ],
@@ -436,9 +436,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Lee el capítulo y traduce la pregunta. La respuesta se toma de las palabras del TPL en ese versículo, no se traduce del inglés; si el TPL todavía no está, tradúcela y Armonización la igualará.",
+              "description": "Lee el capítulo en el ULT y traduce la pregunta y su respuesta. No hace falta igualar la respuesta a las palabras del TPL todavía: eso se hace en Armonización, cuando el TPL ya pasó por Afinación.",
               "descriptions": {
-                "pt": "Leia o capítulo e traduza a pergunta. A resposta é tirada das palavras do TPL nesse versículo, não se traduz do inglês; se o TPL ainda não estiver pronto, traduza-a e a Harmonização a igualará."
+                "pt": "Leia o capítulo no ULT e traduza a pergunta e a sua resposta. Ainda não é preciso igualar a resposta às palavras do TPL: isso é feito na Harmonização, quando o TPL já passou pela Afinação."
               }
             },
             {
@@ -459,9 +459,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Comprueba que cada pregunta pida lo mismo que en inglés y que su respuesta esté en el versículo, con las palabras del TPL cuando ya exista.",
+              "description": "Compara cada pregunta y su respuesta con las del inglés y con el ULT: que pidan lo mismo y que la respuesta esté en el versículo. No las compares con el TPL: eso es de Armonización.",
               "descriptions": {
-                "pt": "Verifique se cada pergunta pede o mesmo que em inglês e se a sua resposta está no versículo, com as palavras do TPL quando já existir."
+                "pt": "Compare cada pergunta e a sua resposta com as do inglês e com o ULT: que peçam o mesmo e que a resposta esteja no versículo. Não as compare com o TPL: isso é da Harmonização."
               }
             }
           ],
@@ -552,9 +552,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce el artículo con lenguaje sencillo, sin palabras técnicas cuando haya una forma más simple. Cambia los ejemplos del inglés por ejemplos que muestren cómo funciona nuestro idioma. Los versículos de ejemplo son los del TPL; si todavía no están traducidos, se reemplazan después.",
+              "description": "Traduce el artículo con lenguaje sencillo, sin palabras técnicas cuando haya una forma más simple. Cambia los ejemplos del inglés por ejemplos que muestren cómo funciona nuestro idioma. Los versículos de ejemplo se traducen del ULT; se igualan al TPL en Armonización.",
               "descriptions": {
-                "pt": "Traduza o artigo com linguagem simples, sem palavras técnicas quando houver uma forma mais simples. Troque os exemplos do inglês por exemplos que mostrem como a nossa língua funciona. Os versículos de exemplo são os do TPL; se ainda não estiverem traduzidos, são substituídos depois."
+                "pt": "Traduza o artigo com linguagem simples, sem palavras técnicas quando houver uma forma mais simples. Troque os exemplos do inglês por exemplos que mostrem como a nossa língua funciona. Os versículos de exemplo são traduzidos do ULT; são igualados ao TPL na Harmonização."
               }
             },
             {
@@ -575,9 +575,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Comprueba que el artículo se entienda sin conocimientos previos, que los ejemplos sean de nuestro idioma y no calcos del inglés, y que los versículos citados sean los del TPL.",
+              "description": "Comprueba que el artículo se entienda sin conocimientos previos, que los ejemplos sean de nuestro idioma y no calcos del inglés, y que los versículos de ejemplo digan lo que dice el ULT.",
               "descriptions": {
-                "pt": "Verifique se o artigo é compreensível sem conhecimentos prévios, se os exemplos são da nossa língua e não decalques do inglês, e se os versículos citados são os do TPL."
+                "pt": "Verifique se o artigo é compreensível sem conhecimentos prévios, se os exemplos são da nossa língua e não decalques do inglês, e se os versículos de exemplo dizem o que diz o ULT."
               }
             }
           ],
