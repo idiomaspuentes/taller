@@ -1,3 +1,5 @@
+import { issueTaskId } from "../domain/myTasks";
+import { SubtaskChangesPanel } from "./ChangesView";
 import { bookLabel } from "../domain/books";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, MoreHorizontal, SendHorizontal, TextQuote } from "lucide-react";
@@ -726,6 +728,11 @@ function ConversationThread({
           ) : null}
           {demo?.toolbar ?? null}
         </header>
+
+        {/* A delivered subtarea: what the later phases changed in its passage, one touch away. */}
+        {!demo && session && board && issue?.state === "closed" && issueTaskId(issue) ? (
+          <SubtaskChangesPanel session={session} pmOrg={pmOrg} lang={lang} contentOrg={contentOrg} board={board} issue={issue} />
+        ) : null}
 
         {load.status === "loading" ? (
           <div className="chat-log" aria-busy="true" aria-label={t("cv.loadingAria")}>

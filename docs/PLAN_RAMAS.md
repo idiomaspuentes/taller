@@ -3,8 +3,9 @@
 Estado: **en marcha (4 de octubre de 2026).** Hechos y probados en QA con Judas: el **paso 1** (nombres legibles y
 configurables; solo la tarea de traducción tiene borrador) y el **paso 2** (archivo como etiqueta, la rama de trabajo
 se borra al entregar, archivo de las subtareas sobre el borrador del grupo). Hecho con pruebas automáticas, sin
-verlo aún en QA (hace falta cerrar una fase entera de un libro): el **paso 3** (marcas de fase). Faltan los pasos 4,
-5 y 7. Decidido:
+verlo aún en QA (hace falta cerrar una fase entera de un libro): el **paso 3** (marcas de fase). Hecho y visto en QA
+con Judas: el **paso 4** («Qué cambió» por fase y por subtarea; sin la marca dentro de las herramientas). Faltan los
+pasos 5 y 7. Decidido:
 los nombres de la tabla, configurables por organización y por espacio de trabajo; `archivo/` y `fase/` como
 etiquetas; las respuestas de revisión se quedan donde están.
 
@@ -175,6 +176,14 @@ Reutiliza `diffWords` y los lectores de porción que ya tiene `PortionReviewView
 
 **Pruebas.** Prueba de dominio sobre textos de ejemplo: qué versículos cambiaron entre dos estados, recortado a
 una porción; lo mismo con filas TSV.
+
+**Como quedó.** `src/domain/changesSince.ts` (qué piezas cambiaron entre dos estados; un versículo se compara por
+sus palabras, así que alinearlo no cuenta como cambio) y `src/dcs/changesSince.ts` (lee los dos estados).
+`src/components/ChangesView.tsx` lo muestra plegado y solo lee al abrirlo: en **Versiones**, una fila por fase; en la
+**conversación de una subtarea cerrada**, «Qué cambió desde que se entregó». Una fase abierta cuya fase anterior
+tampoco cerró no se puede separar y lo dice. Quedan fuera: los artículos de Palabras y Academia (un archivo cada
+uno, no se comparan por piezas) y la marca «cambió desde que se entregó» dentro de las herramientas de Afinación y
+Armonización, que era opcional. `npm run verify:changes-since`.
 
 **Resuelve:** punto 1 (la otra mitad).
 

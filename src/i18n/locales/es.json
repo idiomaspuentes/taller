@@ -2484,5 +2484,15 @@
   "st.checkWhenExample": "Por ejemplo: you, your, yours",
   "sa.addWhen": "Solo si la fuente dice… (opcional)",
   "sa.ruleEmpty": "Escribe la regla.",
-  "sa.addRuleShort": "Agregar una regla"
+  "sa.addRuleShort": "Agregar una regla",
+  "ch.phasesTitle": "Qué cambió en cada fase",
+  "ch.phasesHint": "Abre una fase para ver lo que cambió en el libro desde que cerró la fase anterior. Si la fase sigue abierta, se compara con el borrador de hoy.",
+  "ch.sinceDelivered": "Qué cambió desde que se entregó",
+  "ch.loading": "Comparando…",
+  "ch.same": "Sin cambios.",
+  "ch.countOne": "{n} cambio",
+  "ch.countMany": "{n} cambios",
+  "ch.waiting": "La fase anterior sigue abierta: todavía no se puede separar lo que cambió esta.",
+  "ch.noDraft": "Todavía no hay borrador del grupo para este libro.",
+  "ch.nothingToCompare": "No hay nada que comparar todavía."
 }

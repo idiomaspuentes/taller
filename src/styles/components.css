@@ -7498,6 +7498,19 @@ input.pf-name { font-size: 1.625rem; }
 .rv-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 1rem; }
 .rv-bar__count { flex: 1 1 10rem; margin: 0; font-size: 0.875rem; color: var(--text-muted); }
 .rv-toggle { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 32px; font-size: 0.875rem; cursor: pointer; }
+/* «Qué cambió»: a phase or a delivery, folded until somebody asks. */
+.ch-panel { display: grid; gap: 0.5rem; }
+.ch-panel--thread { padding: 0.5rem 0.875rem; border-bottom: 1px solid var(--border); }
+.ch-fold { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.ch-panel--thread .ch-fold { border: 0; background: none; }
+.ch-fold__summary { min-height: 44px; display: flex; align-items: center; padding: 0 0.875rem; font-weight: 600; cursor: pointer; }
+.ch-panel--thread .ch-fold__summary { min-height: 36px; padding: 0; font-size: 0.875rem; color: var(--primary); }
+.ch-fold[open] > :not(summary) { margin: 0 0.875rem 0.75rem; }
+.ch-panel--thread .ch-fold[open] > :not(summary) { margin: 0 0 0.5rem; max-height: 50dvh; overflow-y: auto; }
+.ch-groups { display: grid; gap: 1rem; }
+.ch-group { display: grid; gap: 0.5rem; }
+.ch-group__title { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-size: 0.9375rem; font-weight: 700; }
+.ch-group__count { font-size: 0.75rem; font-weight: 400; color: var(--text-muted); }
 .rv-list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
 .rv-item { display: grid; gap: 0.5rem; padding: 0.75rem 0.875rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
 .rv-item[data-state="changed"], .rv-item[data-state="new"] { border-left: 3px solid var(--accent-400); }

@@ -14,6 +14,7 @@ import { PrincipalPassControl } from "./PrincipalPassControl";
 import { ReleaseVersionControl } from "./ReleaseVersionControl";
 import { ReviewTaskControl } from "./ReviewTaskControl";
 import { explainError } from "../dcs/userError";
+import { PhaseChangesPanel } from "./ChangesView";
 
 type Props = {
   /** "tareas": per-task actions (Avance). "version": publish a version (Publicar). */
@@ -23,6 +24,9 @@ type Props = {
   onChange: (next: AssignmentsDoc) => void;
   session: GtSession | null;
   pmOrg: string;
+  /** The project's language and content organization, to read the drafts of «Qué cambió». */
+  lang?: string;
+  contentOrg?: string;
   announce: (msg: string) => void;
   onGoTareas: () => void;
 };
@@ -32,7 +36,7 @@ type Props = {
  * text to the borrador principal, create a review, publish a version.
  * The controls are the same ones that used to sit inside Fases y tareas.
  */
-export function AdvanceView({ section, board, inventory, onChange, session, pmOrg, announce, onGoTareas }: Props) {
+export function AdvanceView({ section, board, inventory, onChange, session, pmOrg, lang, contentOrg, announce, onGoTareas }: Props) {
   const [passIssues, setPassIssues] = useState<{ issues: DcsIssue[]; namespaceId: string } | null>(null);
   const [passError, setPassError] = useState("");
   const [passReload, setPassReload] = useState(0);
@@ -185,6 +189,8 @@ export function AdvanceView({ section, board, inventory, onChange, session, pmOr
           />
         </section>
       ) : null}
+
+      {section === "version" && session && lang ? <PhaseChangesPanel session={session} pmOrg={pmOrg} lang={lang} contentOrg={contentOrg || board.contentOrg || ""} board={board} /> : null}
     </div>
   );
 }

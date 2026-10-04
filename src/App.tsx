@@ -1618,6 +1618,8 @@ export function App() {
         {route.name === "proyecto" && effectiveCanManage && route.step === "publicar" ? (
           <AdvanceView
             section="version"
+            lang={lang}
+            contentOrg={contentOrg}
             board={board}
             inventory={inventory}
             onChange={updateBoard}
