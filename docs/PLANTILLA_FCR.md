@@ -130,6 +130,11 @@ del idioma al que se traduce (español, portugués). Una nota o una pregunta hab
 para traducirla bien hay que leer ese versículo y saber de qué se trata, porque de eso depende qué palabras y qué
 conjugaciones son las correctas.
 
+**Donde el inglés es ambiguo, se mira el contexto.** El inglés a veces no dice lo que nuestro idioma tiene que
+decir. El caso más común: «you» puede ser una persona o varias. La regla, en el borrador y en la revisión en pares
+de todas las tareas: **cada vez que aparezca «you», mirar el contexto para saber si es «usted» o «ustedes»**
+(«você» o «vocês»). Otras reglas de este tipo se agregan aquí y en la descripción de los pasos.
+
 **Las reglas de cada recurso todavía no se exigen aquí.** Que el TPL conserve la forma del original, que el TPS
 diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualquiera entienda: eso es trabajo de
 **Afinación** (los textos) y de **Armonización** (las ayudas). Dejarlo para esas fases es lo que hace rápida a

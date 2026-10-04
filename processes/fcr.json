@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 25,
+      "version": 26,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -106,9 +106,9 @@
               },
               "solverAppId": "tpl-translate",
               "closing": "self",
-              "description": "Traduce la porción con el ULT a la vista. Lo importante es que diga lo mismo que la fuente.",
+              "description": "Traduce la porción con el ULT a la vista. Lo importante es que diga lo mismo que la fuente. Cada vez que el inglés diga «you», mira el contexto: puede ser «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Traduza a porção com o ULT à vista. O importante é que diga o mesmo que a fonte."
+                "pt": "Traduza a porção com o ULT à vista. O importante é que diga o mesmo que a fonte. Sempre que o inglês disser «you», olhe o contexto: pode ser «você» ou «vocês»."
               }
             },
             {
@@ -129,9 +129,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el ULT. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
+              "description": "Compara con el ULT. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática. Donde el inglés dice «you», comprueba si es «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Compare com o ULT. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
+                "pt": "Compare com o ULT. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática. Onde o inglês diz «you», verifique se é «você» ou «vocês»."
               }
             }
           ],
@@ -233,9 +233,9 @@
               },
               "solverAppId": "tps-translate",
               "closing": "self",
-              "description": "Traduce la porción con el UST a la vista. Lo importante es que diga lo mismo que la fuente.",
+              "description": "Traduce la porción con el UST a la vista. Lo importante es que diga lo mismo que la fuente. Cada vez que el inglés diga «you», mira el contexto: puede ser «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Traduza a porção com o UST à vista. O importante é que diga o mesmo que a fonte."
+                "pt": "Traduza a porção com o UST à vista. O importante é que diga o mesmo que a fonte. Sempre que o inglês disser «you», olhe o contexto: pode ser «você» ou «vocês»."
               }
             },
             {
@@ -256,9 +256,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el UST. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
+              "description": "Compara con el UST. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática. Donde el inglés dice «you», comprueba si es «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Compare com o UST. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
+                "pt": "Compare com o UST. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática. Onde o inglês diz «you», verifique se é «você» ou «vocês»."
               }
             }
           ],
@@ -360,9 +360,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés a la vista. Lo importante es que diga lo mismo que la fuente. Lee el versículo del que habla la nota: hay que saber de qué se trata para elegir bien las palabras y las conjugaciones.",
+              "description": "Traduce cada nota con la nota en inglés a la vista. Lo importante es que diga lo mismo que la fuente. Lee el versículo del que habla la nota: hay que saber de qué se trata para elegir bien las palabras y las conjugaciones. Cada vez que el inglés diga «you», mira el contexto: puede ser «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês à vista. O importante é que diga o mesmo que a fonte. Leia o versículo de que a nota fala: é preciso saber do que se trata para escolher bem as palavras e as conjugações."
+                "pt": "Traduza cada nota com a nota em inglês à vista. O importante é que diga o mesmo que a fonte. Leia o versículo de que a nota fala: é preciso saber do que se trata para escolher bem as palavras e as conjugações. Sempre que o inglês disser «you», olhe o contexto: pode ser «você» ou «vocês»."
               }
             },
             {
@@ -383,9 +383,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con la nota en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
+              "description": "Compara con la nota en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática. Donde el inglés dice «you», comprueba si es «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Compare com a nota em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
+                "pt": "Compare com a nota em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática. Onde o inglês diz «you», verifique se é «você» ou «vocês»."
               }
             }
           ],
@@ -436,9 +436,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada pregunta y su respuesta con el inglés a la vista. Lo importante es que diga lo mismo que la fuente. Lee el versículo del que habla la pregunta: hay que saber de qué se trata para elegir bien las palabras y las conjugaciones.",
+              "description": "Traduce cada pregunta y su respuesta con el inglés a la vista. Lo importante es que diga lo mismo que la fuente. Lee el versículo del que habla la pregunta: hay que saber de qué se trata para elegir bien las palabras y las conjugaciones. Cada vez que el inglés diga «you», mira el contexto: puede ser «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Traduza cada pergunta e a sua resposta com o inglês à vista. O importante é que diga o mesmo que a fonte. Leia o versículo de que a pergunta fala: é preciso saber do que se trata para escolher bem as palavras e as conjugações."
+                "pt": "Traduza cada pergunta e a sua resposta com o inglês à vista. O importante é que diga o mesmo que a fonte. Leia o versículo de que a pergunta fala: é preciso saber do que se trata para escolher bem as palavras e as conjugações. Sempre que o inglês disser «you», olhe o contexto: pode ser «você» ou «vocês»."
               }
             },
             {
@@ -459,9 +459,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
+              "description": "Compara con el inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática. Donde el inglés dice «you», comprueba si es «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Compare com o inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
+                "pt": "Compare com o inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática. Onde o inglês diz «you», verifique se é «você» ou «vocês»."
               }
             }
           ],
@@ -494,9 +494,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente. No traduzcas las referencias bíblicas.",
+              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente. No traduzcas las referencias bíblicas. Cada vez que el inglés diga «you», mira el contexto: puede ser «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte. Não traduza as referências bíblicas."
+                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte. Não traduza as referências bíblicas. Sempre que o inglês disser «you», olhe o contexto: pode ser «você» ou «vocês»."
               }
             },
             {
@@ -517,9 +517,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
+              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática. Donde el inglés dice «you», comprueba si es «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
+                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática. Onde o inglês diz «you», verifique se é «você» ou «vocês»."
               }
             }
           ],
@@ -552,9 +552,9 @@
               },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
+              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente. Cada vez que el inglés diga «you», mira el contexto: puede ser «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte."
+                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte. Sempre que o inglês disser «you», olhe o contexto: pode ser «você» ou «vocês»."
               }
             },
             {
@@ -575,9 +575,9 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática.",
+              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada. Revisa la ortografía y la gramática. Donde el inglés dice «you», comprueba si es «usted» o «ustedes».",
               "descriptions": {
-                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática."
+                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada. Revise a ortografia e a gramática. Onde o inglês diz «you», verifique se é «você» ou «vocês»."
               }
             }
           ],
