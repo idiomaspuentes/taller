@@ -110,6 +110,21 @@ familiarización del TPL y del TPS.
 
 Las ayudas **no llevan revisión grupal**.
 
+**Las notas de introducción tienen dueño.** La introducción a cada capítulo va con las notas de la **primera
+porción de ese capítulo**, y la introducción al libro con las de la primera porción del libro. Antes no caían en
+ninguna subtarea: todos las leían al familiarizarse y nadie las traducía.
+
+**Las ayudas no esperan al texto.** Notas, preguntas, palabras y Academia se traducen a la vez que el TPL y el TPS.
+Lo que dependa del texto (la frase citada de una nota, la respuesta de una pregunta, los versículos de ejemplo) se
+iguala después, en Armonización: para eso existe esa fase.
+
+**Qué se pide en cada paso.** «Borrador» y «Revisión en pares» dicen, en cada tarea, qué se espera de ese recurso,
+según el [manual de lenguas puente](https://gl-manual.readthedocs.io/en/latest/): el TPL conserva la forma del
+original y no busca sonar natural; el TPS dice el sentido de forma llana, sin figuras ni voz pasiva; la frase citada
+de una nota y la respuesta de una pregunta son las palabras del TPL; una palabra se define por su uso en la Biblia;
+un artículo de Academia cambia los ejemplos del inglés por los de nuestro idioma. La persona lo lee en su tarjeta,
+en «Qué se pide en …».
+
 ### 3.7 Revisión grupal TPL · Revisión grupal TPS (por capítulo)
 
 El TPL y el TPS pueden ser el trabajo de **dos equipos distintos**, y cada uno hace los cuatro pasos de su texto:

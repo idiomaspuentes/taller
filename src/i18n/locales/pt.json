@@ -2439,5 +2439,6 @@
   "nt.newTask": "Nova tarefa atribuída",
   "nt.freeTask": "Tarefa livre para a sua equipe",
   "nt.decisionPending": "Decisão pendente: conflito de versículos",
-  "nt.newMessage": "Nova mensagem"
+  "nt.newMessage": "Nova mensagem",
+  "tb.howStep": "O que se pede em «{step}»"
 }

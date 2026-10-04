@@ -159,6 +159,13 @@ export function TaskCard(props: Props) {
       ) : null}
 
       {status ? <p className="task-card__status">{status}</p> : null}
+      {/* What the next step asks, in the process's own words: there for whoever wants it, folded so the card stays short. */}
+      {card.nextStep && card.group !== "done" && card.group !== "waiting" && (card.nextStep.descriptions?.[language] ?? card.nextStep.description) ? (
+        <details className="task-card__how">
+          <summary>{t("tb.howStep").replace("{step}", stepName(card.nextStep))}</summary>
+          <p>{card.nextStep.descriptions?.[language] ?? card.nextStep.description}</p>
+        </details>
+      ) : null}
 
       {activity ? (
         <p className="task-card__activity">

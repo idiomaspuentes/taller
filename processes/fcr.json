@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 18,
+      "version": 19,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -105,7 +105,11 @@
                 "pt": "Traduzir"
               },
               "solverAppId": "tpl-translate",
-              "closing": "self"
+              "closing": "self",
+              "description": "Traduce la porción con el ULT en inglés a la vista. Conserva la forma del original hasta donde nuestro idioma lo permita: el orden y la gramática, los modismos y las figuras. No busques que suene natural: donde quede poco claro, lo explica una nota.",
+              "descriptions": {
+                "pt": "Traduza a porção com o ULT em inglês à vista. Conserve a forma do original até onde a nossa língua permitir: a ordem e a gramática, as expressões idiomáticas e as figuras. Não busque que soe natural: onde ficar pouco claro, uma nota explica."
+              }
             },
             {
               "id": "pares",
@@ -124,7 +128,11 @@
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
-              ]
+              ],
+              "description": "Compara el borrador solo con el ULT en inglés, no con otra Biblia. Comprueba que cada modismo, cada figura y la forma gramatical del ULT sigan ahí, y que se entienda. No lo corrijas para que suene más natural.",
+              "descriptions": {
+                "pt": "Compare o rascunho apenas com o ULT em inglês, não com outra Bíblia. Verifique se cada expressão idiomática, cada figura e a forma gramatical do ULT continuam ali, e se dá para entender. Não o corrija para soar mais natural."
+              }
             }
           ],
           "minLevel": "practicante",
@@ -224,7 +232,11 @@
                 "pt": "Traduzir"
               },
               "solverAppId": "tps-translate",
-              "closing": "self"
+              "closing": "self",
+              "description": "Traduce la porción con el UST en inglés a la vista. Di el sentido de forma llana: sin modismos ni figuras, sin voz pasiva ni sustantivos abstractos, con oraciones cortas, los hechos en el orden en que ocurrieron y diciendo quién habla o actúa. Usa palabras distintas de las del TPL.",
+              "descriptions": {
+                "pt": "Traduza a porção com o UST em inglês à vista. Diga o sentido de forma simples: sem expressões idiomáticas nem figuras, sem voz passiva nem substantivos abstratos, com frases curtas, os fatos na ordem em que aconteceram e dizendo quem fala ou age. Use palavras diferentes das do TPL."
+              }
             },
             {
               "id": "pares",
@@ -243,7 +255,11 @@
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
-              ]
+              ],
+              "description": "Compara el borrador solo con el UST en inglés. Busca lo que el TPS no debe tener: oraciones largas, voz pasiva, sustantivos abstractos, figuras, modismos y hechos fuera de orden. Comprueba que el sentido quede claro; no hace falta que suene natural.",
+              "descriptions": {
+                "pt": "Compare o rascunho apenas com o UST em inglês. Procure o que o TPS não deve ter: frases longas, voz passiva, substantivos abstratos, figuras, expressões idiomáticas e fatos fora de ordem. Verifique se o sentido fica claro; não precisa soar natural."
+              }
             }
           ],
           "minLevel": "practicante",
@@ -343,7 +359,11 @@
                 "pt": "Traduzir"
               },
               "solverAppId": "helps-review",
-              "closing": "self"
+              "closing": "self",
+              "description": "Traduce cada nota con la nota en inglés a la vista, y con el TPL y el TPS si ya están. La frase citada es la del TPL: cópiala de ahí; si todavía no está traducido, tradúcela y Armonización la igualará. La traducción alternativa debe poder ponerse en el lugar de esa frase dentro del versículo. Adapta la nota si nuestro idioma dice el texto de otra manera.",
+              "descriptions": {
+                "pt": "Traduza cada nota com a nota em inglês à vista, e com o TPL e o TPS se já estiverem prontos. A frase citada é a do TPL: copie-a de lá; se ainda não estiver traduzido, traduza-a e a Harmonização a igualará. A tradução alternativa deve poder ser posta no lugar dessa frase dentro do versículo. Adapte a nota se a nossa língua diz o texto de outra maneira."
+              }
             },
             {
               "id": "pares",
@@ -362,7 +382,11 @@
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
-              ]
+              ],
+              "description": "Comprueba que cada nota diga lo mismo que la nota en inglés, que la frase citada coincida con el TPL cuando ya exista, y que la traducción alternativa encaje en el versículo en lugar de esa frase.",
+              "descriptions": {
+                "pt": "Verifique se cada nota diz o mesmo que a nota em inglês, se a frase citada coincide com o TPL quando já existir, e se a tradução alternativa se encaixa no versículo no lugar dessa frase."
+              }
             }
           ],
           "minLevel": "practicante",
@@ -411,7 +435,11 @@
                 "pt": "Traduzir"
               },
               "solverAppId": "helps-review",
-              "closing": "self"
+              "closing": "self",
+              "description": "Lee el capítulo y traduce la pregunta. La respuesta se toma de las palabras del TPL en ese versículo, no se traduce del inglés; si el TPL todavía no está, tradúcela y Armonización la igualará.",
+              "descriptions": {
+                "pt": "Leia o capítulo e traduza a pergunta. A resposta é tirada das palavras do TPL nesse versículo, não se traduz do inglês; se o TPL ainda não estiver pronto, traduza-a e a Harmonização a igualará."
+              }
             },
             {
               "id": "pares",
@@ -430,7 +458,11 @@
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
-              ]
+              ],
+              "description": "Comprueba que cada pregunta pida lo mismo que en inglés y que su respuesta esté en el versículo, con las palabras del TPL cuando ya exista.",
+              "descriptions": {
+                "pt": "Verifique se cada pergunta pede o mesmo que em inglês e se a sua resposta está no versículo, com as palavras do TPL quando já existir."
+              }
             }
           ],
           "minLevel": "practicante",
@@ -461,7 +493,11 @@
                 "pt": "Traduzir"
               },
               "solverAppId": "helps-review",
-              "closing": "self"
+              "closing": "self",
+              "description": "Traduce la definición según el uso de la palabra en la Biblia, no según un diccionario de hoy. Si nuestro idioma usa más de una palabra para esa idea, ponlas todas arriba y define cada una. Ajusta las sugerencias de traducción a como se usa la palabra en nuestro idioma. Las referencias bíblicas no se traducen.",
+              "descriptions": {
+                "pt": "Traduza a definição segundo o uso da palavra na Bíblia, não segundo um dicionário de hoje. Se a nossa língua usa mais de uma palavra para essa ideia, ponha todas no alto e defina cada uma. Ajuste as sugestões de tradução ao modo como a palavra é usada na nossa língua. As referências bíblicas não se traduzem."
+              }
             },
             {
               "id": "pares",
@@ -480,7 +516,11 @@
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
-              ]
+              ],
+              "description": "Comprueba que la definición diga el sentido que la palabra tiene en la Biblia, que estén todas las palabras de nuestro idioma para esa idea y que haya una sugerencia de traducción para cada uso principal.",
+              "descriptions": {
+                "pt": "Verifique se a definição diz o sentido que a palavra tem na Bíblia, se estão todas as palavras da nossa língua para essa ideia e se há uma sugestão de tradução para cada uso principal."
+              }
             }
           ],
           "minLevel": "practicante",
@@ -511,7 +551,11 @@
                 "pt": "Traduzir"
               },
               "solverAppId": "helps-review",
-              "closing": "self"
+              "closing": "self",
+              "description": "Traduce el artículo con lenguaje sencillo, sin palabras técnicas cuando haya una forma más simple. Cambia los ejemplos del inglés por ejemplos que muestren cómo funciona nuestro idioma. Los versículos de ejemplo son los del TPL; si todavía no están traducidos, se reemplazan después.",
+              "descriptions": {
+                "pt": "Traduza o artigo com linguagem simples, sem palavras técnicas quando houver uma forma mais simples. Troque os exemplos do inglês por exemplos que mostrem como a nossa língua funciona. Os versículos de exemplo são os do TPL; se ainda não estiverem traduzidos, são substituídos depois."
+              }
             },
             {
               "id": "pares",
@@ -530,7 +574,11 @@
               "excludeIssueAssignee": true,
               "excludePriorStepIds": [
                 "borrador"
-              ]
+              ],
+              "description": "Comprueba que el artículo se entienda sin conocimientos previos, que los ejemplos sean de nuestro idioma y no calcos del inglés, y que los versículos citados sean los del TPL.",
+              "descriptions": {
+                "pt": "Verifique se o artigo é compreensível sem conhecimentos prévios, se os exemplos são da nossa língua e não decalques do inglês, e se os versículos citados são os do TPL."
+              }
             }
           ],
           "minLevel": "practicante",
