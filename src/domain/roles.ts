@@ -196,6 +196,28 @@ export function isAppTeam(
   return key === (config.managerTeam ?? "").trim().toLowerCase() || named(config.teamLevels) || named(config.coordinators);
 }
 
+/** Where a team is used: how many tasks have it, and in which projects (`""` = the tasks a new project starts with). */
+export type TeamUse = { tasks: number; projects: string[] };
+
+/**
+ * Which teams have work: every task that names a team, in the tasks a new project starts with and in each project.
+ * A team nobody gave a task to is safe to rename or remove; one that is used is not.
+ */
+export function teamUsage(sources: { projectId: string; tasks: { orgTeamName?: string }[] }[]): Map<string, TeamUse> {
+  const use = new Map<string, TeamUse>();
+  for (const source of sources) {
+    for (const task of source.tasks) {
+      const key = (task.orgTeamName ?? "").trim().toLowerCase();
+      if (!key) continue;
+      const row = use.get(key) ?? { tasks: 0, projects: [] };
+      row.tasks += 1;
+      if (!row.projects.includes(source.projectId)) row.projects.push(source.projectId);
+      use.set(key, row);
+    }
+  }
+  return use;
+}
+
 /**
  * The name a team is shown with. Door43 only keeps letters, digits and hyphens in a team's name, so the name the
  * person typed («Revisión de notas») is kept in its description; it is used when it still matches the team's name.

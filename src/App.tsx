@@ -1503,6 +1503,8 @@ export function App() {
           <OrgView
             session={session}
             pmOrg={pmOrg}
+            lang={lang}
+            contentOrg={contentOrg}
             canManage={effectiveCanManage}
             announce={announce}
             onOpenTeam={(name) => navigate({ name: "equipo", orgTeam: name })}

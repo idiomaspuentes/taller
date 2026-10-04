@@ -5,7 +5,7 @@
  *   npm run verify:team-rules
  */
 import assert from "node:assert/strict";
-import { isAppTeam } from "../src/domain/roles";
+import { isAppTeam, teamUsage } from "../src/domain/roles";
 import { setActiveScope } from "../src/domain/scope";
 import { activeRules, addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, ruleText, teamRulesPath } from "../src/domain/teamRules";
 
@@ -78,6 +78,16 @@ test("los equipos de la app son los que creó o los que su configuración nombra
   assert.equal(isAppTeam("managers", config), true, "el equipo de quienes administran");
   assert.equal(isAppTeam("Owners", config), false);
   assert.equal(isAppTeam("translators", config), false);
+});
+
+test("un equipo está en uso cuando alguna tarea lo tiene, en un proyecto o en las tareas con que empieza uno nuevo", () => {
+  const use = teamUsage([
+    { projectId: "", tasks: [{ orgTeamName: "pm-traductores-tpl" }, { orgTeamName: "pm-traductores-tps" }, {}] },
+    { projectId: "Hageo", tasks: [{ orgTeamName: "PM-Traductores-TPL" }, { orgTeamName: "pm-traductores-tpl" }] },
+  ]);
+  assert.deepEqual(use.get("pm-traductores-tpl"), { tasks: 3, projects: ["", "Hageo"] });
+  assert.deepEqual(use.get("pm-traductores-tps"), { tasks: 1, projects: [""] });
+  assert.equal(use.get("pm-traductores-de-ayudas"), undefined, "sin tareas: se puede renombrar o quitar sin romper nada");
 });
 
 console.log(`\nverify-team-rules: ${passed} checks passed.`);

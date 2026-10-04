@@ -2462,5 +2462,9 @@
   "nt.ruleGrouped": "{n} reglas nuevas en tu equipo",
   "sa.ruleNew": "nueva",
   "sa.noRules": "Este equipo todavía no tiene reglas propias.",
-  "sa.manageRules": "Corregir o quitar reglas del equipo"
+  "sa.manageRules": "Corregir o quitar reglas del equipo",
+  "org.usedOne": "En uso · {n} tarea",
+  "org.usedMany": "En uso · {n} tareas",
+  "org.unused": "Sin usar",
+  "org.usedDefault": "tareas con que empieza un proyecto nuevo"
 }

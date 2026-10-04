@@ -1,3 +1,4 @@
+import { listPmProjects, loadAssignmentsFromDcs, loadTeamsFromDcs } from "../dcs/persist";
 import { TeamRulesPanel } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsTeam } from "@ip-lms/dcs-client";
@@ -18,6 +19,8 @@ import { orgTeamLabel,
   displayOrgTeamName,
   isAppTeam,
   isPmOrgTeamName,
+  teamUsage,
+  type TeamUse,
   mirroredOrgTeamName,
 } from "../domain/roles";
 import { loadPmConfig, savePmConfig } from "../dcs/issues";
@@ -35,17 +38,36 @@ import { explainError } from "../dcs/userError";
 type Props = {
   session: GtSession;
   pmOrg: string;
+  /** The language of the workspace's projects and their organization: with them, each team says whether it is used. */
+  lang?: string;
+  contentOrg?: string;
   canManage: boolean;
   announce: (msg: string) => void;
   onOpenTeam: (orgTeamName: string) => void;
 };
 
-export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Props) {
+export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce, onOpenTeam }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [teams, setTeams] = useState<DcsTeam[]>([]);
   const [members, setMembers] = useState<Person[]>([]);
   const [pmConfig, setPmConfig] = useState<PmConfig | null>(null);
+  /** Which teams have tasks, once it is known: read apart, after the list is on screen. */
+  const [usage, setUsage] = useState<Map<string, TeamUse> | null>(null);
+  useEffect(() => {
+    if (!pmOrg || !lang) return;
+    let cancelled = false;
+    setUsage(null);
+    void (async () => {
+      const [defaults, projects] = await Promise.all([loadTeamsFromDcs(session, pmOrg, lang).catch(() => null), listPmProjects(session, pmOrg, lang).catch(() => [])]);
+      const boards = await Promise.all(projects.map((project) => loadAssignmentsFromDcs(session, pmOrg, lang, project.projectId, contentOrg ?? "").catch(() => null)));
+      if (cancelled) return;
+      setUsage(teamUsage([{ projectId: "", tasks: defaults?.teams ?? [] }, ...boards.flatMap((board) => (board ? [{ projectId: board.title || board.projectId, tasks: board.teams }] : []))]));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session, pmOrg, lang, contentOrg]);
   const [levelSaving, setLevelSaving] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [teamMembers, setTeamMembers] = useState<Person[]>([]);
@@ -482,6 +504,7 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
             {visibleTeams.map((team) => {
               const label = orgTeamLabel(team, teamPrefix);
               const isTas = isPmOrgTeamName(team.name, teamPrefix);
+              const used = usage?.get(team.name.trim().toLowerCase());
               const expanded = selectedTeamId === team.id;
               const count = memberCounts[team.id];
               const countLabel =
@@ -507,6 +530,18 @@ export function OrgView({ session, pmOrg, canManage, announce, onOpenTeam }: Pro
                     <span className="hub-row-body">
                       <span className="hub-row-title">{label}</span>
                       <span className="hub-row-meta">
+                        {/* Whether any task has this team: what tells a team in use from one that can be renamed or removed. */}
+                        {usage ? (
+                          used ? (
+                            <span className="hub-used" title={[...used.projects.filter(Boolean), ...(used.projects.includes("") ? [t("org.usedDefault")] : [])].join(" · ")}>
+                              {t(used.tasks === 1 ? "org.usedOne" : "org.usedMany").replace("{n}", String(used.tasks))}
+                            </span>
+                          ) : (
+                            <span className="hub-used" data-unused="true">
+                              {t("org.unused")}
+                            </span>
+                          )
+                        ) : null}
                         {countLabel ? (
                           <span className="text-xs text-muted-foreground">{countLabel}</span>
                         ) : showAllOrgTeams && !isTas ? (
