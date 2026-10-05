@@ -272,6 +272,11 @@ el artículo no depende de un pasaje.
 **Una subtarea por artículo.** Cada artículo pendiente del libro es su propia subtarea, con el nombre
 del artículo; nunca varios en una, ni el mismo dos veces.
 
+**El nombre es el de la fuente.** La subtarea se llama como el artículo se titula en el idioma fuente
+(«Blessings», «age, era, time»), esté o no en nuestro repositorio: lo que se trabaja es la fuente, y un
+artículo nuevo en la fuente todavía no existe en el nuestro. Solo si la fuente no se puede leer se usa
+nuestro título, y a falta de los dos, el identificador del artículo.
+
 **Se traduce párrafo a párrafo, sin perder de vista el artículo.** El editor muestra el artículo
 como se lee: lo traducido en su color y lo que falta en gris, tal como está en la fuente. Al tocar un
 párrafo (un título, una cita, una viñeta) se abre solo ese: el original queda justo encima de la caja

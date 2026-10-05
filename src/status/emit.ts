@@ -6,7 +6,7 @@
 
 import { STATUS_TRANSLATED } from "./detect";
 import { KIND_ACADEMIA } from "./collect";
-import { STATUS_MISSING, STATUS_ENGLISH, STATUS_INCOMPLETE, type ArticleStatus } from "./check";
+import { STATUS_MISSING, STATUS_ENGLISH, STATUS_INCOMPLETE, titleIn, type ArticleStatus } from "./check";
 
 const SCHEMA_ID = "article-status-1";
 const SUBJECT_FALLBACK = "subject";
@@ -37,23 +37,12 @@ function subjectLabel(kind: string, subjects: Record<string, string> | null): st
   return value || SUBJECT_FALLBACK;
 }
 
+/**
+ * What an article is called: as the source calls it, always. The work is to translate the source, and our copy may
+ * be missing, half done or still in English. Ours is only what is left when the source could not be read.
+ */
 function articleTitle(item: ArticleStatus): string {
-  for (const [path, text] of item.fetched.files) {
-    const name = path.replace(/\\/g, "/").split("/").pop()!.toLowerCase();
-    if (name === "title.md") {
-      for (const line of text.split(/\r?\n/)) {
-        if (line.trim()) return line.trim();
-      }
-      return "";
-    }
-  }
-  for (const [, text] of item.fetched.files) {
-    for (const line of text.split(/\r?\n/)) {
-      const stripped = line.trim();
-      if (stripped.startsWith("#")) return stripped.replace(/^#+/, "").trim();
-    }
-  }
-  return "";
+  return item.sourceTitle || titleIn(item.fetched.files) || "";
 }
 
 function itemIds(items: unknown): string[] {

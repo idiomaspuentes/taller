@@ -4,6 +4,8 @@
  * expected classifications. No network: reads the local scan_translated
  * fixture trees directly.
  *
+ * One thing differs from the Python on purpose: an article is called as the source calls it, not as our copy does.
+ *
  *   npm run verify:status
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -207,12 +209,23 @@ check("preguntas_sin_asignar is 0", withPortions.preguntas_sin_asignar === 0, wi
 
 const metaphorRow = withPortions.articles.find((row: { id?: string }) => row.id === "figs-metaphor");
 check("figs-metaphor kind is Subject DCS", metaphorRow?.kind === "Translation Academy", metaphorRow?.kind);
-check("figs-metaphor title is Metáfora", metaphorRow?.title === "Metáfora", metaphorRow?.title);
+check("figs-metaphor is called as the source calls it («Metaphor»), though ours is translated", metaphorRow?.title === "Metaphor", metaphorRow?.title);
 check("succinct article has no evidence/dcs", !("evidence" in (metaphorRow ?? {})) && !("dcs" in (metaphorRow ?? {})));
 
 const godRow = withPortions.articles.find((row: { id?: string }) => row.id === "god");
 check("god kind is Subject DCS", godRow?.kind === "Translation Words", godRow?.kind);
-check("god title is Dios", godRow?.title === "Dios", godRow?.title);
+check("god is called as the source calls it («God»)", godRow?.title === "God", godRow?.title);
+
+// An article that is new in the source is not in our repository: it is named as the source names it, not by its id.
+const fresh = await checkArticles([normalizeAcademia("translate/translate-blessing"), normalizePalabras("bible/other/age-timeperiod")], client, englishClient);
+check("articles only the source has are missing", fresh.every((r) => r.status === STATUS_MISSING), fresh.map((r) => r.status));
+const freshRows = statusToDict(fresh, { book: "TIT", subjects }).articles as { id: string; title?: string }[];
+check("translate-blessing is called «Blessings», from the source's title.md", freshRows.find((row) => row.id === "translate-blessing")?.title === "Blessings", freshRows);
+check("age-timeperiod is called «age, era, time», from the source's heading", freshRows.find((row) => row.id === "age-timeperiod")?.title === "age, era, time", freshRows);
+// Only when the source could not be read is ours what is left; and with neither, there is no title to give.
+const alone = statusToDict(await checkArticles([normalizeAcademia("translate/figs-metaphor"), normalizeAcademia("translate/translate-blessing")], client), { book: "TIT", subjects }).articles as { title?: string }[];
+check("without the source, an article we have is called as ours is («Metáfora»)", alone[0]?.title === "Metáfora", alone);
+check("without the source, an article we do not have has no title", alone[1]?.title === undefined, alone);
 
 if (failed) {
   console.error("\nSTATUS PORT: FAIL");

@@ -23,7 +23,29 @@ export type ArticleStatus = {
   status: string;
   fetched: FetchedArticle;
   evidence: Record<string, unknown>;
+  /** The article's title in the source language. It is the source that is translated, so that is its name here. */
+  sourceTitle?: string;
 };
+
+/** The title an article gives itself: the first line of its `title.md`, or else its first heading. */
+export function titleIn(files: [string, string][]): string {
+  for (const [path, text] of files) {
+    const name = path.replace(/\\/g, "/").split("/").pop()!.toLowerCase();
+    if (name === "title.md") {
+      for (const line of text.split(/\r?\n/)) {
+        if (line.trim()) return line.trim();
+      }
+      return "";
+    }
+  }
+  for (const [, text] of files) {
+    for (const line of text.split(/\r?\n/)) {
+      const stripped = line.trim();
+      if (stripped.startsWith("#")) return stripped.replace(/^#+/, "").trim();
+    }
+  }
+  return "";
+}
 
 function englishFor(path: string, enFiles: [string, string][]): string | null {
   const want = path.replace(/\\/g, "/");
@@ -57,6 +79,10 @@ async function parentIfMissing(ref: ArticleRef, client: ArticleClient): Promise<
 }
 
 export function checkFetched(fetched: FetchedArticle, english: FetchedArticle | null = null, parent: string | null = null): ArticleStatus {
+  // What is worked on is the source, so the source names it. (Ours may not even be there: an article that is new
+  // in the source is not in our repository yet.)
+  const sourceTitle = english && english.found ? titleIn(english.files) : "";
+  const named = sourceTitle ? { sourceTitle } : {};
   if (!fetched.found || !fetched.files.length) {
     const evidence: Record<string, unknown> = {
       empty: true,
@@ -66,12 +92,12 @@ export function checkFetched(fetched: FetchedArticle, english: FetchedArticle | 
       files: [],
     };
     if (parent) evidence.parent = parent;
-    return { ref: fetched.ref, status: STATUS_MISSING, fetched, evidence };
+    return { ref: fetched.ref, status: STATUS_MISSING, fetched, evidence, ...named };
   }
   const enFiles = english && english.found ? english.files : [];
   const fileEvidence = fetched.files.map(([path, text]) => analyzeFile(text, path, englishFor(path, enFiles)));
   const decision = decideArticle(fileEvidence);
-  return { ref: fetched.ref, status: decision.status, fetched, evidence: decisionEvidence(decision) };
+  return { ref: fetched.ref, status: decision.status, fetched, evidence: decisionEvidence(decision), ...named };
 }
 
 export async function checkArticles(
