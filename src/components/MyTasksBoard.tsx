@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { GROUP_ORDER, OPEN_GROUPS, type Board, type BoardCard, type BoardGroup } from "../domain/myTasksBoard";
 import { bookLabel } from "../domain/books";
@@ -46,43 +44,6 @@ type Props = {
   acting: number | null;
   handlers: CardHandlers;
 };
-
-/** A question before something that cannot be undone from here (delivering, giving the task back). */
-export function ConfirmDialog({
-  open,
-  title,
-  text,
-  yes,
-  onYes,
-  onNo,
-}: {
-  open: boolean;
-  title: string;
-  text: string;
-  yes: string;
-  onYes: () => void;
-  onNo: () => void;
-}) {
-  const t = useT();
-  return (
-    <Dialog open={open} onOpenChange={(next) => !next && onNo()}>
-      <DialogContent className="sm:max-w-sm dialog--confirm">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{text}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button type="button" variant="secondary" size="lg" onClick={onNo}>
-            {t("tb.cancel")}
-          </Button>
-          <Button type="button" size="lg" onClick={onYes}>
-            {yes}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 /**
  * «Mis tareas»: the cards grouped by what there is to do. What needs the person is open; the rest is folded with

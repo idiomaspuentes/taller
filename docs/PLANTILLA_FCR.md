@@ -292,8 +292,10 @@ estaba, y un artículo que todavía no tiene nada traducido parte de la fuente t
 «Editar el artículo entero», al final, lo muestra en una sola caja con su código.
 
 **Se entrega en una acción.** «Terminé el borrador» guarda, abre la revisión y completa el paso. Si
-quedan párrafos sin traducir lo dice y pide confirmarlo; un artículo sin nada traducido no se puede
-pasar a revisión.
+quedan párrafos sin traducir lo pregunta en un cuadro aparte, que dice cuántos son: «Seguir traduciendo»
+(lo que resalta) lleva al primero que falta, y «Pasar a revisión así» lo entrega incompleto. La pregunta
+no se hace en la misma barra: ahí bastaba pulsar dos veces, sin haberla leído. Un artículo sin nada
+traducido no se puede pasar a revisión.
 
 **Se revisa igual: párrafo a párrafo.** Quien revisa lee el artículo como artículo (con su título y
 su subtítulo, aunque solo se haya tocado el cuerpo) y abre cada párrafo contra su original, con lo

@@ -2518,8 +2518,6 @@
   "he.editWhole": "Editar el artículo entero",
   "he.editRows": "Traducir por párrafos",
   "ab.next": "Siguiente",
-  "he.confirmPendingOne": "Queda 1 párrafo sin traducir. Pulsa otra vez para pasarlo a revisión así.",
-  "he.confirmPendingMany": "Quedan {n} párrafos sin traducir. Pulsa otra vez para pasarlo a revisión así.",
   "he.finishAnyway": "Pasar a revisión así",
   "ab.untranslated": "Sigue sin traducir.",
   "rv.piecesHint": "Toca un párrafo para compararlo con el original y comentarlo. Lo que está en gris falta por traducir.",
@@ -2553,5 +2551,9 @@
   "pw.renamedOne": "{n} subtarea tiene en Door43 un nombre distinto al del plan.",
   "pw.renamedMany": "{n} subtareas tienen en Door43 un nombre distinto al del plan.",
   "pw.updateNames": "Actualizar los nombres",
-  "ab.done": "Listo"
+  "ab.done": "Listo",
+  "he.pendingTitleOne": "Queda {n} párrafo sin traducir",
+  "he.pendingTitleMany": "Quedan {n} párrafos sin traducir",
+  "he.pendingText": "Si lo pasas a revisión así, quien revisa lo recibirá incompleto.",
+  "he.keepTranslating": "Seguir traduciendo"
 }

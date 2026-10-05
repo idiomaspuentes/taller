@@ -10,6 +10,7 @@ import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { usePieces, type ActivePiece } from "./usePieces";
 import { introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
@@ -410,7 +411,6 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       return next;
     });
     setDirty(true);
-    setConfirming(false);
   }
 
   /** Returns whether what is written reached Door43. */
@@ -577,13 +577,15 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
    * one action, as in the editor of the text. Before, these were three (save, «Listo para revisión», and «Terminé»
    * back in the list), and whoever stopped after the second left a subtarea in review that still said «Borrador».
    */
-  async function finish(left: number) {
+  async function finish(left: number, meant = false) {
     if (!session || !ctx?.stepId || !ctx.issueNumber) return;
-    // An article with pieces still in the source language is handed in only by somebody who means to.
-    if (left && !confirming) {
+    // An article with pieces still in the source language is handed in only by somebody who means to. They are
+    // asked apart from the button: asked in the bar itself, pressing it twice was the answer, read or not.
+    if (left && !meant) {
       setConfirming(true);
       return;
     }
+    setConfirming(false);
     setFinishing(true);
     setError("");
     try {
@@ -640,6 +642,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** The texts worked by pieces, as they follow one another: the title of an article, the line under it, its body. */
   const inRows = items.filter(byRows);
   const inPieces = inRows.map((item) => item.id);
+  /** The first piece still to be translated is opened and brought onto the screen: where to go on from. */
+  function toFirstPending() {
+    const first = inRows.find((item) => (progress[item.id]?.firstPending ?? -1) >= 0);
+    if (first) pieces.show(first.id, progress[first.id]!.firstPending);
+  }
 
   // What a reviewer said is shown where it is about: with its paragraph in an article, with its verse in the notes
   // and the questions. The rest (about the whole draft, or about something that is no longer here) goes over the draft.
@@ -915,9 +922,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           <p>
             {!session
               ? t("he.footOffline")
-              : confirming && pending
-                ? t(pending === 1 ? "he.confirmPendingOne" : "he.confirmPendingMany").replace("{n}", String(pending))
-                : dirty
+              : dirty
                   ? t("he.footUnsaved")
                   : pending
                     ? t(pending === 1 ? "he.footPendingOne" : "he.footPendingMany").replace("{n}", String(pending))
@@ -935,7 +940,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   </Button>
                 ) : null}
                 <Button type="button" disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
-                  {finishing ? t("se.finishing") : confirming && pending ? t("he.finishAnyway") : t("se.finish")}
+                  {finishing ? t("se.finishing") : t("se.finish")}
                 </Button>
               </>
             ) : (
@@ -953,6 +958,20 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={confirming && pending > 0}
+        safe
+        title={t(pending === 1 ? "he.pendingTitleOne" : "he.pendingTitleMany").replace("{n}", String(pending))}
+        text={t("he.pendingText")}
+        yes={t("he.finishAnyway")}
+        no={t("he.keepTranslating")}
+        onYes={() => void finish(pending, true)}
+        onNo={() => {
+          setConfirming(false);
+          toFirstPending();
+        }}
+        onDismiss={() => setConfirming(false)}
+      />
     </div>
   );
 }
