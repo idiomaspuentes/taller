@@ -1152,7 +1152,7 @@
   "fa.loginUst": "Inicia sesión para leer el UST inglés.",
   "fa.notes": "Notas",
   "fa.notesTitle": "Notas de traducción",
-  "fa.enFallback": "Se muestra en_tn porque no hay notas GL en este rango.",
+  "fa.enFallback": "Estas notas todavía no están traducidas: se muestran en inglés.",
   "fa.loginNotes": "Inicia sesión para leer las notas TN de esta porción.",
   "fa.noNotes": "No hay notas TN para este rango.",
   "rt.noRef": "Sin versículos: esta revisión cubre porciones completas. Para crear solo un versículo o un rango, escríbelo en Editar.",

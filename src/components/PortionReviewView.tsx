@@ -39,7 +39,7 @@ import { bookUsfmName } from "../prep/discover";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { NoteQuote, useHelpSources } from "./HelpSources";
+import { NoteQuote, noteHeading, useHelpSources } from "./HelpSources";
 import { noteFromTsv } from "../domain/helpMarkup";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces } from "./usePieces";
@@ -237,8 +237,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     void load();
   }, [load]);
 
-  // A note is about a phrase of the verse: it is found in the source texts through the alignment, as where it is translated.
-  const helpSources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, ctx?.resource === "notas");
+  // A note is about a phrase of the verse: it is found in the source texts through the alignment, as where it is
+  // translated. Wanted wherever notes are shown: in their own review, and beside the verses of a text or a question.
+  const helpSources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(ctx && ctx.resource !== "academia" && ctx.resource !== "palabras"));
 
   const me = session?.username ?? "";
   const progress = useMemo(() => parseTaskProgressMarker(issue?.body), [issue]);
@@ -479,7 +480,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             <ul className="fam-notes">
               {verseNotes.map((note) => (
                 <li key={note.id}>
-                  <p className="fam-notes__quote">{note.title}</p>
+                  {noteHeading(helpSources, (ctx?.book || "").toUpperCase(), item.chapter, note) ? <p className="fam-notes__quote">{noteHeading(helpSources, (ctx?.book || "").toUpperCase(), item.chapter, note)}</p> : null}
                   {note.body && note.body !== note.title ? (
                     <div className="fam-notes__body">
                       <HelpMarkdownView content={note.body} />

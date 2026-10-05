@@ -1152,7 +1152,7 @@
   "fa.loginUst": "Entre para ler o UST em inglês.",
   "fa.notes": "Notas",
   "fa.notesTitle": "Notas de tradução",
-  "fa.enFallback": "Mostra-se en_tn porque não há notas GL neste intervalo.",
+  "fa.enFallback": "Estas notas ainda não estão traduzidas: são mostradas em inglês.",
   "fa.loginNotes": "Entre para ler as notas TN desta porção.",
   "fa.noNotes": "Não há notas TN para este intervalo.",
   "rt.noRef": "Sem versículos: esta revisão cobre porções inteiras. Para criar só um versículo ou um intervalo, escreva-o em Editar.",

@@ -28,6 +28,7 @@ import { portionRange, type RefRange } from "../domain/usfmEdit";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
+import { noteHeading, useHelpSources } from "./HelpSources";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { UsfmReferencePane } from "./UsfmReferencePane";
@@ -206,6 +207,11 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
   }, [range, ult.usfm, ust.usfm]);
   const hasAround = Boolean(range && chapterRange && (chapterRange.to > range.to || range.from > chapterRange.from));
 
+  // A note is headed by the phrase it is about, as the literal source text has it (see `noteHeading`).
+  const session = useMemo(() => (loggedIn ? loadSession() : undefined), [loggedIn]);
+  const book = (ctx?.book || "").toUpperCase();
+  const helpSources = useHelpSources(session, book, range?.chapter ?? 0, notes.notes.length > 0);
+
   const byVerse = useMemo(() => {
     const groups = new Map<string, ReferenceHelpRow[]>();
     for (const note of notes.notes) {
@@ -255,7 +261,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
             <ul className="fam-notes">
               {rows.map((note) => (
                 <li key={note.id}>
-                  <p className="fam-notes__quote">{note.title}</p>
+                  {noteHeading(helpSources, book, range.chapter, note) ? <p className="fam-notes__quote">{noteHeading(helpSources, book, range.chapter, note)}</p> : null}
                   {note.body && note.body !== note.title ? (
                     <div className="fam-notes__body">
                       <HelpMarkdownView content={note.body} />

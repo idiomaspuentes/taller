@@ -39,6 +39,20 @@ export function useHelpSources(session: GtSession | undefined, book: string, cha
   return sources;
 }
 
+/**
+ * How a note is headed where it is only read (before translating a passage, beside a verse in review): by the phrase
+ * it is about as the literal source text has it. A note quotes the original language, and a line of Greek or Hebrew
+ * says nothing to who reads it. `null`: the phrase is not known (yet, or at all), and the note goes without a heading
+ * rather than under that line; a note that quotes nothing keeps the heading it has.
+ */
+export function noteHeading(sources: HelpSource[], book: string, chapter: number, note: { title: string; verse?: number; quote?: string; occurrence?: number }): string | null {
+  if (!note.quote) return note.title || null;
+  const source = sources[0];
+  const text = source && note.verse ? (source.verses[note.verse] ?? "") : "";
+  const phrase = source && text ? alignedGatewayQuoteForHelpQuote({ verseText: text, quote: note.quote, occurrence: note.occurrence ?? 1, alignments: source.alignments, book, chapter, verse: note.verse! }).gatewayText : null;
+  return phrase ? `«${phrase}»` : note.title && note.title !== note.quote ? note.title : null;
+}
+
 function Marked({ text, marked }: { text: string; marked: number[] }) {
   return (
     <>
