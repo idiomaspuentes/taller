@@ -5,7 +5,7 @@ import { itemChecks, paragraphsFor } from "../domain/stepChecks";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { useTeamRules } from "../useTeamRules";
 import { ToolHeader } from "./ToolHeader";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -36,6 +36,9 @@ import { bookUsfmName } from "../prep/discover";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
+import { ArticleBlocks } from "./ArticleBlocks";
+import { usePieces } from "./usePieces";
+import { articleFilesOf, pieceRef, rowsPossible, type ArticleFile } from "../domain/articleBlocks";
 
 type Props = {
   ctxEncoded: string;
@@ -89,6 +92,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const teamRules = useTeamRules(teamName || undefined);
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
+  /** An article in review, as the files it reads from (its title, the line under it, its body), each as its author left it. */
+  const [articleFiles, setArticleFiles] = useState<(ArticleFile & { text: string })[]>([]);
+  /** Whether the source of those files was read: until then it is not known which can be shown piece by piece. */
+  const [sourcesRead, setSourcesRead] = useState(false);
+  const pieces = usePieces((id) => `rv-${id}`);
+  const firstOpened = useRef(false);
   const [showSources, setShowSources] = useState(true);
   const [showChanges, setShowChanges] = useState(true);
   const [commenting, setCommenting] = useState("");
@@ -135,6 +144,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         .then((loaded) => setNotes(loaded.notes))
         .catch(() => setNotes([]));
 
+      setArticleFiles([]);
+      setSourcesRead(false);
+      pieces.reset();
+      firstOpened.current = false;
       if (!linked) {
         setPull(null);
         setItems([]);
@@ -154,11 +167,18 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         // A draft of articles: each one is a piece, whole.
         const read = await Promise.all(articles.map(async (name) => ({ filename: name, now: (await readAt(name, linked.head)) ?? "", before: (await readAt(name, linked.base)) ?? "" })));
         setItems(articleItems(read));
-        // The English article of each one, from the source package of the project, to find what its paragraphs call for.
+        // The article as it reads: the files that were worked on, and with them the title and the line under it of
+        // an Academy article even when nobody touched them (a title left in the source language is to be seen too).
+        const files = articleFilesOf(articles, ctx.resource === "academia");
+        const texts = await Promise.all(files.map(async (file) => read.find((row) => row.filename === file.filename)?.now ?? (await readAt(file.filename, linked.head)) ?? (await readAt(file.filename, linked.base)) ?? ""));
+        setArticleFiles(files.map((file, index) => ({ ...file, text: texts[index]! })));
+        // The source of each file, from the source package of the project: what each piece is read against, and
+        // what says which checks a piece calls for.
         const pkg = resolveSourcePackage(board?.settings);
-        void Promise.all(read.map((file) => readRaw(sess, pkg.owner, ctx.resource === "academia" ? pkg.ta : pkg.tw, file.filename).then((text) => [file.filename, text] as const).catch(() => [file.filename, null] as const))).then((pairs) =>
-          setEnglish(Object.fromEntries(pairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])))),
-        );
+        void Promise.all(files.map((file) => readRaw(sess, pkg.owner, ctx.resource === "academia" ? pkg.ta : pkg.tw, file.filename).then((text) => [file.filename, text] as const).catch(() => [file.filename, null] as const))).then((pairs) => {
+          setEnglish(Object.fromEntries(pairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1]))));
+          setSourcesRead(true);
+        });
         return;
       }
       const filename = names.find((name) => /\.(usfm|sfm|tsv)$/i.test(name)) ?? bookUsfmName(ctx.book);
@@ -272,9 +292,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     });
 
   const stepName = step ? localized(step.name, step.names, language) : mode === "group" ? t("pr.group") : t("pr.pairs");
-  const passageName = ctx ? `${bookLabel(ctx.book, language)} ${ctx.ref}` : stepName;
+  const passageName = ctx ? [bookLabel(ctx.book, language), ctx.ref].filter(Boolean).join(/^\d/.test(ctx.ref ?? "") ? " " : " · ") : stepName;
+  // What is reviewed is an article, not a passage of the book: the screen calls it that.
+  const article = ctx?.resource === "academia" || ctx?.resource === "palabras";
   const changed = items.filter((item) => item.state !== "same" && item.state !== "empty").length;
-  const general = comments.filter((row) => !row.ref || !items.some((item) => item.ref === row.ref));
   const notesOf = (verse: number) => notes.filter((note) => note.verse === verse);
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
 
@@ -295,7 +316,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         : !unlocked
           ? t(sentBack ? (mine ? "rv.changesForYou" : seated ? "rv.youAskedChanges" : "rv.changesPending") : mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
-          ? t(mine ? "rv.agreeOwn" : "rv.readThenApprove")
+          ? t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove")
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
@@ -306,60 +327,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   ? t("rv.keptOut")
                   : t("rv.onlyRead");
 
-  return (
-    <div className="scripture-editor fam">
-      <ToolHeader
-        title={passageName}
-        onBack={onClose}
-        meta={
-          <>
-            {[stepName, ctx?.taskName ? localizeName(ctx.taskName, language) : "", draftOwner ? (mine ? t("pr.yourDraft") : t("pr.draftOf").replace("{who}", draftOwner)) : ""].filter(Boolean).join(" · ")}
-            {pull?.merged ? t("pr.merged") : ""}
-          </>
-        }
-      />
-      <div className="step-ask-bar">
-        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} byItem />
-      </div>
-
-      {error ? (
-        <Alert variant="destructive" className="mx-4 mt-3">
-          <AlertDescription>{localizeThread(error, language)}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {busy ? (
-        <p className="scripture-editor__loading">{t("pr.loading")}</p>
-      ) : issue && range ? (
-        <>
-        <div className="fam__body">
-          {!marker ? (
-            <div className="rv-empty">
-              <p>{t("rv.noDraftYet")}</p>
-              <Button type="button" variant="outline" disabled={acting} onClick={() => void openReview()}>
-                {acting ? t("se.opening") : t("rv.lookForDraft")}
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="rv-bar">
-                <p className="rv-bar__count">{items.length ? (changed ? t(changed === 1 ? "rv.changedOne" : "rv.changedMany").replace("{n}", String(changed)).replace("{of}", String(items.length)) : t("rv.nothingChanged")) : ""}</p>
-                {sources.length ? (
-                  <label className="rv-toggle">
-                    <input type="checkbox" checked={showSources} onChange={(e) => setShowSources(e.target.checked)} /> {t("rv.showSources")}
-                  </label>
-                ) : null}
-                {items.some((item) => item.state === "changed") ? (
-                  <label className="rv-toggle">
-                    <input type="checkbox" checked={showChanges} onChange={(e) => setShowChanges(e.target.checked)} /> {t("rv.showChanges")}
-                  </label>
-                ) : null}
-              </div>
-
-              {!items.length ? <p className="pe-hint">{t("rv.noText")}</p> : null}
-
-              <ol className="rv-list">
-                {items.map((item) => {
+  /** One piece of what is reviewed that is not an article shown by its own pieces: a verse, a row of a help, a whole file. */
+  const itemRow = (item: ReviewItem) => {
                   const verseNotes = notesOf(item.verse);
                   // What this item's own source calls for. A verse is matched against the English text it translates;
                   // a note, a question or an article against its English. Without it, every check that has words.
@@ -443,11 +412,150 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                       )}
                     </li>
                   );
-                })}
+  };
+
+  // An article: the files that can be read piece by piece, each piece against its source.
+  const byPieces = (file: ArticleFile & { text: string }) => Boolean(english[file.filename]) && rowsPossible(english[file.filename]!, file.text);
+  const inPieces = articleFiles.filter(byPieces).map((file) => file.filename);
+  const pieceRefs = new Set(articleFiles.filter(byPieces).flatMap((file) => Array.from({ length: pieces.counts[file.filename]?.count ?? 0 }, (_, index) => pieceRef(file.filename, index))));
+  const piecesDone = inPieces.reduce((sum, id) => sum + (pieces.counts[id]?.done ?? 0), 0);
+  const piecesTotal = inPieces.reduce((sum, id) => sum + (pieces.counts[id]?.total ?? 0), 0);
+  // What is said about a piece is shown with the piece; the rest is about the whole draft.
+  const general = comments.filter((row) => !row.ref || !(items.some((item) => item.ref === row.ref) || pieceRefs.has(row.ref)));
+
+  // Whoever comes to review finds the first piece open: where to start, and how the rest is opened.
+  useEffect(() => {
+    if (firstOpened.current || !inPieces.length || inPieces.some((id) => !pieces.counts[id])) return;
+    firstOpened.current = true;
+    const first = inPieces.find((id) => pieces.counts[id]!.count > 0);
+    if (first) pieces.setActive({ id: first, index: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pieces.counts, inPieces.join("|")]);
+
+  /** What goes with the piece being read: what its source calls for, the comments about it, and a box to add one. */
+  const underPiece = (file: ArticleFile, index: number, source: string, pending: boolean) => {
+    const ref = pieceRef(file.filename, index);
+    const about = comments.filter((row) => row.ref === ref);
+    const own: { id: string; text: string; texts?: Partial<Record<string, string>>; by?: string }[] = pending
+      ? []
+      : [...itemChecks(step?.checks ?? [], source), ...itemChecks(teamRules ? activeRules(teamRules) : [], source).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), by: rule.by }))];
+    return (
+      <>
+        {own.length ? (
+          <div className="rv-checks">
+            <Checks scope={`${ctx?.issueNumber ?? ""}:${step?.id ?? ""}:${ref}`} lines={own.map((check) => ({ id: check.id, by: check.by, text: check.texts?.[language] ?? check.text }))} />
+          </div>
+        ) : null}
+        {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
+        {commenting === ref ? (
+          <Composer placeholder={t("rv.commentPiece")} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text) }]} />
+        ) : (
+          <button type="button" className="rv-item__add" onClick={() => setCommenting(ref)}>
+            <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
+          </button>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <div className="scripture-editor fam">
+      <ToolHeader
+        title={passageName}
+        onBack={onClose}
+        meta={
+          <>
+            {[stepName, ctx?.taskName ? localizeName(ctx.taskName, language) : "", draftOwner ? (mine ? t("pr.yourDraft") : t("pr.draftOf").replace("{who}", draftOwner)) : ""].filter(Boolean).join(" · ")}
+            {pull?.merged ? t("pr.merged") : ""}
+          </>
+        }
+      />
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} byItem />
+      </div>
+
+      {error ? (
+        <Alert variant="destructive" className="mx-4 mt-3">
+          <AlertDescription>{localizeThread(error, language)}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {busy ? (
+        <p className="scripture-editor__loading">{t("pr.loading")}</p>
+      ) : issue && range ? (
+        <>
+        <div className="fam__body" ref={pieces.pane}>
+          {!marker ? (
+            <div className="rv-empty">
+              <p>{t(article ? "rv.noDraftYetArticle" : "rv.noDraftYet")}</p>
+              <Button type="button" variant="outline" disabled={acting} onClick={() => void openReview()}>
+                {acting ? t("se.opening") : t("rv.lookForDraft")}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {articleFiles.length ? (
+                // An article is read as an article: each piece opens against its source, with what is said about it.
+                !sourcesRead ? (
+                  <p className="pe-hint" aria-busy="true">{t("rv.sourceLoading")}</p>
+                ) : (
+                  <>
+                    <p className="ab-hint">
+                      {inPieces.length ? t("rv.piecesHint") : ""}
+                      {piecesTotal ? ` ${t("rv.piecesDone").replace("{n}", String(piecesDone)).replace("{total}", String(piecesTotal))}.` : ""}
+                    </p>
+                    {articleFiles.map((file) =>
+                      byPieces(file) ? (
+                        <ArticleBlocks
+                          key={file.filename}
+                          id={`rv-${file.filename}`}
+                          readOnly
+                          part={file.part}
+                          source={english[file.filename]!}
+                          value={file.text}
+                          open={pieces.active?.id === file.filename ? pieces.active.index : null}
+                          onOpen={(index, element) => pieces.open(file.filename, index, element)}
+                          onProgress={(done, total, firstPending, count) => pieces.report(file.filename, done, total, firstPending, count)}
+                          hasNext={pieces.active?.id === file.filename ? Boolean(pieces.after(inPieces, file.filename, pieces.active.index)) : false}
+                          onNext={(index) => pieces.next(inPieces, file.filename, index)}
+                          marksOf={(index) => comments.filter((row) => row.ref === pieceRef(file.filename, index)).length}
+                          below={(index, row, pending) => underPiece(file, index, row.source, pending)}
+                        />
+                      ) : items.some((item) => item.key === file.filename) ? (
+                        // A file this screen cannot read by pieces (no source, or a format it would not write back the same): whole.
+                        <ol key={file.filename} className="rv-list">
+                          {items.filter((item) => item.key === file.filename).map(itemRow)}
+                        </ol>
+                      ) : null,
+                    )}
+                  </>
+                )
+              ) : (
+              <>
+              <div className="rv-bar">
+                <p className="rv-bar__count">{items.length ? (changed ? t(changed === 1 ? "rv.changedOne" : "rv.changedMany").replace("{n}", String(changed)).replace("{of}", String(items.length)) : t("rv.nothingChanged")) : ""}</p>
+                {sources.length ? (
+                  <label className="rv-toggle">
+                    <input type="checkbox" checked={showSources} onChange={(e) => setShowSources(e.target.checked)} /> {t("rv.showSources")}
+                  </label>
+                ) : null}
+                {items.some((item) => item.state === "changed") ? (
+                  <label className="rv-toggle">
+                    <input type="checkbox" checked={showChanges} onChange={(e) => setShowChanges(e.target.checked)} /> {t("rv.showChanges")}
+                  </label>
+                ) : null}
+              </div>
+
+              {!items.length ? <p className="pe-hint">{t("rv.noText")}</p> : null}
+
+              <ol className="rv-list">
+                {items.map(itemRow)}
               </ol>
+              </>
+              )}
 
               <section className="rv-general">
-                <h2 className="fam-panel__title">{t("rv.generalTitle")}</h2>
+                <h2 className="fam-panel__title">{t(article ? "rv.generalTitleArticle" : "rv.generalTitle")}</h2>
                 {general.length ? <ul className="rv-comments">{general.map(commentRow)}</ul> : <p className="pe-hint">{t("rv.noGeneral")}</p>}
                 <Composer
                   placeholder={t("rv.generalPlaceholder")}

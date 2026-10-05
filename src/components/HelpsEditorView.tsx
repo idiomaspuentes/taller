@@ -10,15 +10,15 @@ import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
-import { holdAt, placesOf, reveal, slideFrom } from "./pieceMotion";
+import { usePieces } from "./usePieces";
 import { rowsPossible, startingText } from "../domain/articleBlocks";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
 import { loadPmConfig } from "../dcs/issues";
+import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import {
   ensurePortionPr,
   getPmIssue,
@@ -76,19 +76,6 @@ function readPref(key: string): string | null {
     return null;
   }
 }
-/** Put the caret where writing goes on: at the end of what a box holds, or in its empty first line. */
-function caretInto(box: HTMLElement): void {
-  let target: Node = box;
-  while (target.lastChild instanceof HTMLElement && target.lastChild.tagName !== "BR" && target.lastChild.contentEditable !== "false") target = target.lastChild;
-  const range = document.createRange();
-  range.selectNodeContents(target);
-  // An empty piece holds only the line a browser writes on: the caret goes before it, not after.
-  range.collapse(!(target.textContent ?? "").trim());
-  const selection = window.getSelection();
-  selection?.removeAllRanges();
-  selection?.addRange(range);
-}
-
 function writePref(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
@@ -149,16 +136,19 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [openingPr, setOpeningPr] = useState(false);
   const [error, setError] = useState("");
   const [dirty, setDirty] = useState(false);
+  /** Whether the step this editor was opened for is already completed: finishing it is then not offered again. */
+  const [stepDone, setStepDone] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  /** Asked once more before handing in an article with pieces still to be translated. */
+  const [confirming, setConfirming] = useState(false);
   const [pane, setPane] = useState<"edit" | "chapter">("edit");
   /** An article is worked piece by piece, each under its source; «todo junto» is the whole text in one box. */
   const [view, setView] = useState<"rows" | "whole">(() => (readPref("taller-article-view") === "whole" ? "whole" : "rows"));
-  /** The piece of the article being written: the only one open, with its source over it. */
-  const [active, setActive] = useState<{ id: string; index: number } | null>(null);
+  /** The pieces of the article: the one being written is the only one open, with its source over it. */
+  const pieces = usePieces((id) => `help-${id}`);
+  const { active, counts: progress } = pieces;
   /** Whether the first piece still to be translated was already opened for whoever came in. */
   const autoOpened = useRef(false);
-  const editPane = useRef<HTMLDivElement | null>(null);
-  /** Per article file: how many pieces there are to translate and how many are. */
-  const [progress, setProgress] = useState<Record<string, { done: number; total: number; firstPending: number; count: number }>>({});
   /** The files whose starting text was already settled in this opening (see `startingText`). */
   const started = useRef<Set<string>>(new Set());
 
@@ -171,8 +161,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setCtx(decoded);
     started.current = new Set();
     autoOpened.current = false;
-    setActive(null);
-    setProgress({});
+    pieces.reset();
     const slot = launchDraftSlot(decoded);
     const cache = loadHelpsDraftCache(slot.pmOrg, slot.issueNumber);
     const lab = isLabLaunch(decoded);
@@ -400,24 +389,26 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       return next;
     });
     setDirty(true);
+    setConfirming(false);
   }
 
-  async function save() {
-    if (!ctx || !target) return;
+  /** Returns whether what is written reached Door43. */
+  async function save(): Promise<boolean> {
+    if (!ctx || !target) return false;
     persistLocal(items, branch);
     if (!session) {
       announce(tNow("se.savedLocalAnnounce"));
-      return;
+      return false;
     }
     if (isLabLaunch(ctx)) {
       const decision = labWriteDecision(ctx);
       if (decision.mode === "local") {
         announce(loc(decision.reason));
-        return;
+        return false;
       }
       if (decision.mode === "blocked") {
         setError(decision.reason);
-        return;
+        return false;
       }
     }
     const head = branch || portionPrBranchFromCtx(ctx);
@@ -486,19 +477,22 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setDirty(false);
       persistLocal(items, head);
       announce(tNow("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${head}`));
+      return true;
     } catch (err) {
       setError(explainError(err));
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
-  async function openPr() {
-    if (!session || !ctx) return;
+  /** Returns whether the review is open. */
+  async function openPr(): Promise<boolean> {
+    if (!session || !ctx) return false;
     setOpeningPr(true);
     setError("");
     try {
-      if (dirty) await save();
+      if (dirty && !(await save())) return false;
       const issue = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
       const board = await loadAssignmentsFromDcs(
         session,
@@ -525,10 +519,54 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           ? tNow("se.reviewOpened")
           : tNow("se.reviewWasOpen"),
       );
+      return true;
+    } catch (err) {
+      setError(explainError(err));
+      return false;
+    } finally {
+      setOpeningPr(false);
+    }
+  }
+
+  // Whether the step this editor was opened for is already completed.
+  useEffect(() => {
+    setStepDone(false);
+    if (!session || !ctx?.stepId || !ctx.issueNumber || isLabLaunch(ctx)) return;
+    let alive = true;
+    stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId })
+      .then((done) => alive && setStepDone(done))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, ctx?.issueNumber, ctx?.stepId]);
+
+  /**
+   * «Terminé el borrador»: what is written is saved, the review is opened in Door43 and the step is completed, in
+   * one action, as in the editor of the text. Before, these were three (save, «Listo para revisión», and «Terminé»
+   * back in the list), and whoever stopped after the second left a subtarea in review that still said «Borrador».
+   */
+  async function finish(left: number) {
+    if (!session || !ctx?.stepId || !ctx.issueNumber) return;
+    // An article with pieces still in the source language is handed in only by somebody who means to.
+    if (left && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    setFinishing(true);
+    setError("");
+    try {
+      if (dirty && !(await save())) return;
+      if (!(await openPr())) return;
+      await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
+      announce(tNow("se.finished"));
+      onClose();
     } catch (err) {
       setError(explainError(err));
     } finally {
-      setOpeningPr(false);
+      setFinishing(false);
+      setConfirming(false);
     }
   }
 
@@ -561,13 +599,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const byRows = (item: HelpsDraftItem) => view === "rows" && Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text);
   const canUseRows = articles.some((item) => Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text));
   const pending = articles.reduce((sum, item) => sum + (byRows(item) && progress[item.id] ? progress[item.id]!.total - progress[item.id]!.done : 0), 0);
+  // An article nobody has translated a piece of is not a draft yet: there is nothing to hand in.
+  const nothingDone = articles.length > 0 && articles.every(byRows) && articles.every((item) => progress[item.id]) && articles.every((item) => progress[item.id]!.done === 0);
   const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
-  const setProgressOf = useCallback(
-    (id: string, done: number, total: number, firstPending: number, count: number) =>
-      setProgress((prev) => (prev[id]?.done === done && prev[id]?.total === total && prev[id]?.firstPending === firstPending && prev[id]?.count === count ? prev : { ...prev, [id]: { done, total, firstPending, count } })),
-    [],
-  );
-
   // Whoever comes in finds the first piece still to be translated already open: where to start, and how it is done.
   // It is not focused: on a phone that would raise the keyboard over an article nobody has looked at yet.
   useEffect(() => {
@@ -576,49 +610,12 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     if (!inRows.length || inRows.some((item) => !progress[item.id])) return;
     autoOpened.current = true;
     const first = inRows.find((item) => progress[item.id]!.firstPending >= 0);
-    if (first) setActive({ id: first.id, index: progress[first.id]!.firstPending });
+    if (first) pieces.setActive({ id: first.id, index: progress[first.id]!.firstPending });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress, view]);
 
-  /** A piece was touched: it opens, the one that was open closes, and the box is ready to be written in. */
-  function openPiece(itemId: string, index: number, element: HTMLElement) {
-    const pane = editPane.current;
-    const top = element.getBoundingClientRect().top;
-    const before = pane ? placesOf(pane) : null;
-    flushSync(() => setActive({ id: itemId, index }));
-    const row = document.getElementById(`help-${itemId}-row-${index}`);
-    const box = document.getElementById(`help-${itemId}-${index}`);
-    // The piece that closed gave back its room: the one touched stays where the finger is.
-    if (row && pane) holdAt(pane, row, top);
-    if (box) {
-      box.focus({ preventScroll: true });
-      caretInto(box);
-      if (pane) {
-        reveal(pane, box);
-        // On a phone the keyboard comes up after this: once it has, the box is brought over it.
-        const viewport = window.visualViewport;
-        const again = () => document.activeElement === box && reveal(pane, box);
-        viewport?.addEventListener("resize", again, { once: true });
-        window.setTimeout(() => viewport?.removeEventListener("resize", again), 1500);
-      }
-    }
-    // What could not be kept still (at the top of the article there is nowhere to scroll to) slides instead of jumping.
-    if (pane && before) slideFrom(pane, before);
-  }
-
-  /** The piece after one, in its own text or in the next text of the article (its title, then its sub-title, then its body). */
-  function pieceAfter(itemId: string, index: number): { id: string; index: number } | null {
-    if (index + 1 < (progress[itemId]?.count ?? 0)) return { id: itemId, index: index + 1 };
-    const inRows = articles.filter(byRows);
-    const next = inRows.slice(inRows.findIndex((item) => item.id === itemId) + 1).find((item) => (progress[item.id]?.count ?? 0) > 0);
-    return next ? { id: next.id, index: 0 } : null;
-  }
-
-  function openNext(itemId: string, index: number) {
-    const next = pieceAfter(itemId, index);
-    const element = next ? document.getElementById(`help-${next.id}-row-${next.index}`) : null;
-    if (next && element) openPiece(next.id, next.index, element);
-  }
+  /** The texts of the article worked by pieces, as they follow one another: its title, the line under it, its body. */
+  const inPieces = articles.filter(byRows).map((item) => item.id);
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 
   return (
@@ -659,7 +656,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         <p className="scripture-editor__loading">{t("he.loading")}</p>
       ) : (
         // Kept mounted under the other tab, so that what is being written is not lost by going to read.
-        <div className="fam__body" role="tabpanel" hidden={wantsSources && pane !== "edit"} ref={editPane}>
+        <div className="fam__body" role="tabpanel" hidden={wantsSources && pane !== "edit"} ref={pieces.pane}>
           {!session ? (
             <p className="text-sm text-muted-foreground">
               {t("he.offlineHint")}
@@ -696,10 +693,10 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 onChange={(text) => updateItem(item.id, { text })}
                 book={ctx?.book}
                 open={active?.id === item.id ? active.index : null}
-                onOpen={(index, element) => openPiece(item.id, index, element)}
-                onProgress={(done, total, firstPending, count) => setProgressOf(item.id, done, total, firstPending, count)}
-                hasNext={active?.id === item.id ? Boolean(pieceAfter(item.id, active.index)) : false}
-                onNext={(index) => openNext(item.id, index)}
+                onOpen={(index, element) => pieces.open(item.id, index, element)}
+                onProgress={(done, total, firstPending, count) => pieces.report(item.id, done, total, firstPending, count)}
+                hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
+                onNext={(index) => pieces.next(inPieces, item.id, index)}
               />
             ) : (
             <div key={item.id} className="scripture-editor__verse">
@@ -786,16 +783,44 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       {/* Saving and handing in sit at the foot, as in the other tools: in the header they left no room for the passage. */}
       {busy ? null : (
         <div className="tool-foot">
-          <p>{!session ? t("he.footOffline") : dirty ? t("he.footUnsaved") : pending ? t(pending === 1 ? "he.footPendingOne" : "he.footPendingMany").replace("{n}", String(pending)) : prUrl ? t("he.footInReview") : t("he.footSaved")}</p>
+          <p>
+            {!session
+              ? t("he.footOffline")
+              : confirming && pending
+                ? t(pending === 1 ? "he.confirmPendingOne" : "he.confirmPendingMany").replace("{n}", String(pending))
+                : dirty
+                  ? t("he.footUnsaved")
+                  : pending
+                    ? t(pending === 1 ? "he.footPendingOne" : "he.footPendingMany").replace("{n}", String(pending))
+                    : prUrl
+                      ? t("he.footInReview")
+                      : t("he.footSaved")}
+          </p>
           <div className="tool-foot__actions">
-            {ctx && isLabLaunch(ctx) ? null : prUrl ? null : (
-              <Button type="button" variant="outline" disabled={openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
-                {openingPr ? t("se.opening") : t("se.readyForReview")}
-              </Button>
+            {ctx && !isLabLaunch(ctx) && ctx.stepId && !stepDone ? (
+              // The step this editor was opened for is still to be finished: one action does it.
+              <>
+                {dirty ? (
+                  <Button type="button" variant="outline" disabled={saving || finishing || !items.length} onClick={() => void save()}>
+                    {saving ? t("se.saving") : t("he.save")}
+                  </Button>
+                ) : null}
+                <Button type="button" disabled={finishing || saving || openingPr || !session || !ctx.issueNumber || !items.length || nothingDone} onClick={() => void finish(pending)}>
+                  {finishing ? t("se.finishing") : confirming && pending ? t("he.finishAnyway") : t("se.finish")}
+                </Button>
+              </>
+            ) : (
+              <>
+                {ctx && isLabLaunch(ctx) ? null : prUrl ? null : (
+                  <Button type="button" variant="outline" disabled={openingPr || !session || !ctx?.issueNumber} onClick={() => void openPr()}>
+                    {openingPr ? t("se.opening") : t("se.readyForReview")}
+                  </Button>
+                )}
+                <Button type="button" disabled={saving || !items.length || (!dirty && Boolean(session))} onClick={() => void save()}>
+                  {saving ? t("se.saving") : t("he.save")}
+                </Button>
+              </>
             )}
-            <Button type="button" disabled={saving || !items.length || (!dirty && Boolean(session))} onClick={() => void save()}>
-              {saving ? t("se.saving") : t("he.save")}
-            </Button>
           </div>
         </div>
       )}

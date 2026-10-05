@@ -2517,5 +2517,16 @@
   "he.rowsHint": "Toca un párrafo para traducirlo. Lo que está en gris falta por traducir.",
   "he.editWhole": "Editar el artículo entero",
   "he.editRows": "Traducir por párrafos",
-  "ab.next": "Siguiente"
+  "ab.next": "Siguiente",
+  "he.confirmPendingOne": "Queda 1 párrafo sin traducir. Pulsa otra vez para pasarlo a revisión así.",
+  "he.confirmPendingMany": "Quedan {n} párrafos sin traducir. Pulsa otra vez para pasarlo a revisión así.",
+  "he.finishAnyway": "Pasar a revisión así",
+  "ab.untranslated": "Sigue sin traducir.",
+  "rv.piecesHint": "Toca un párrafo para compararlo con el original y comentarlo. Lo que está en gris falta por traducir.",
+  "rv.piecesDone": "{n} de {total} párrafos traducidos",
+  "rv.sourceLoading": "Leyendo el artículo original…",
+  "rv.commentPiece": "Comentario sobre este párrafo",
+  "rv.readThenApproveArticle": "Lee el artículo. Si algo debe cambiar, coméntalo; si está bien, aprueba.",
+  "rv.generalTitleArticle": "Comentarios sobre todo el artículo",
+  "rv.noDraftYetArticle": "Este artículo todavía no tiene un borrador para revisar. Aparece cuando quien lo traduce termina su borrador."
 }

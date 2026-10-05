@@ -7699,12 +7699,30 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .ab-peek.scripture-editor__help-md { min-width: 0; font-size: 0.9375rem; line-height: 1.5; color: var(--text-muted); }
 .ab-peek :is(h1, h2, h3, h4, h5, h6) { font-size: 0.9375rem; font-weight: 700; }
 .ab-act { min-height: 40px; padding: 0 0.25rem; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
+/* A piece somebody commented on says so while it is closed. */
+.ab-mark { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-800); font-size: 0.75rem; font-weight: 600; font-style: normal; line-height: 1.5; }
+/* A piece that is read, not written (its review): what was written for it, as text, under what the source says. */
+.ab-read { min-width: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+.ab-read .scripture-editor__help-md { font-size: inherit; line-height: inherit; }
+.ab-read :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6) { margin-top: 0; margin-bottom: 0; }
+.ab-read :is(h1, h2, h3, h4, h5, h6) { font-size: 1.0625rem; font-weight: 700; line-height: 1.35; }
+.ab-read :is(ul, ol) { margin-left: 1.25em; }
+.ab-read blockquote { padding: 0 0 0 0.75rem; border-left: 3px solid var(--border-strong); font-style: normal; }
+.ab .ab-read__none { margin: 0; font-size: 0.9375rem; font-weight: 400; font-style: italic; line-height: 1.5; color: var(--text-faint); }
+.ab[data-part="title"] .ab-read { font-size: 1.25rem; font-weight: 800; line-height: 1.25; }
+/* What goes with the open piece: the comments about it, what its source calls for, the way on. */
+.ab-under { display: grid; gap: 0.5rem; min-width: 0; }
+.ab-under .rv-checks { margin-top: 0; }
+.ab-under .rv-comments { margin: 0; }
+.ab-under__next { display: flex; justify-content: flex-end; }
 /* The way on: whoever translates down the article goes from one piece to the next without looking for it. */
 .ab-next { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 40px; padding: 0 0.625rem 0 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .ab-next:hover { background: var(--surface-muted); }
 /* On a wide screen the piece in hand has its source beside it, like the two pages of an open book. */
 @media (min-width: 60rem) {
   .ab-open { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .ab-open .ab-under { grid-column: 1 / -1; }
+  .ab-read { padding-top: 0; border-top: 0; }
 }
 .ab-switch { padding: 0; border: 0; background: none; color: var(--primary); font: inherit; text-decoration: underline; cursor: pointer; }
 .ab-switch--end { justify-self: start; width: fit-content; min-height: 40px; margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted); text-align: left; }

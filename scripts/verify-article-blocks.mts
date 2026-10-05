@@ -5,8 +5,9 @@
  *   npm run verify:article-blocks
  */
 import assert from "node:assert/strict";
-import { articleProgress, articleRows, rowPending, rowsMarkdown, startingText, untranslated, vocabularyOf } from "../src/domain/articleBlocks";
+import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, rowsMarkdown, startingText, untranslated, vocabularyOf } from "../src/domain/articleBlocks";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
+import { parseRefComment, refComment } from "../src/domain/reviewItems";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -183,6 +184,24 @@ test("el título de un artículo es un cuadro de una sola pieza", () => {
   assert.equal(rows.length, 1);
   assert.equal(rowPending(rows[0]!, vocabularyOf("Predictive Past")), true);
   assert.equal(rowPending({ ...rows[0]!, draft: "Pasado predictivo" }, vocabularyOf("Predictive Past")), false);
+});
+
+test("un artículo de la Academia se lee con su título y la línea de debajo, aunque solo se haya tocado el cuerpo", () => {
+  const whole = [{ filename: "translate/figs-metaphor/title.md", part: "title" }, { filename: "translate/figs-metaphor/sub-title.md", part: "sub-title" }, { filename: "translate/figs-metaphor/01.md" }];
+  assert.deepEqual(articleFilesOf(["translate/figs-metaphor/01.md"], true), whole);
+  assert.deepEqual(articleFilesOf(["translate/figs-metaphor/01.md", "translate/figs-metaphor/title.md", "translate/figs-metaphor/sub-title.md"], true), whole, "tocados los tres archivos sigue siendo un artículo, leído una vez y en su orden");
+  assert.deepEqual(articleFilesOf(["bible/kt/grace.md", "manifest.yaml"], false), [{ filename: "bible/kt/grace.md" }], "un artículo de palabras es un solo archivo, y lo que no es un artículo no se lee");
+});
+
+test("un párrafo se nombra por su artículo y su lugar en la fuente, y el comentario sobre él se vuelve a encontrar", () => {
+  assert.equal(pieceRef("translate/figs-metaphor/01.md", 0), "figs-metaphor ¶1");
+  assert.equal(pieceRef("translate/figs-metaphor/01.md", 4), "figs-metaphor ¶5");
+  assert.equal(pieceRef("translate/figs-metaphor/title.md", 0), "figs-metaphor (título)");
+  assert.equal(pieceRef("translate/figs-metaphor/sub-title.md", 0), "figs-metaphor (subtítulo)");
+  assert.equal(pieceRef("bible/kt/grace.md", 2), "grace ¶3");
+  for (const ref of [pieceRef("translate/figs-metaphor/01.md", 4), pieceRef("translate/figs-metaphor/title.md", 0), pieceRef("bible/kt/grace.md", 2)]) {
+    assert.deepEqual(parseRefComment(refComment("jud", ref, "Falta un acento.")), { ref, text: "Falta un acento." }, ref);
+  }
 });
 
 console.log(`\nverify-article-blocks: ${passed} checks passed.`);

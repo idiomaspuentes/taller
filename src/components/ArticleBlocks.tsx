@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MessageSquare } from "lucide-react";
 import { articleProgress, articleRows, rowPending, rowsMarkdown, vocabularyOf, type ArticleRow } from "../domain/articleBlocks";
 import { normalizeMarkdown } from "../domain/helpMarkup";
 import { useUiLanguage } from "../i18n/language";
@@ -14,7 +14,10 @@ type Props = {
   source: string;
   /** The article as the team has it: one markdown text, which the pieces are a way of showing. */
   value: string;
-  onChange: (markdown: string) => void;
+  /** Absent where the article is only read (its review). */
+  onChange?: (markdown: string) => void;
+  /** The article is read, not written: the open piece shows the source and what was written for it, as text. */
+  readOnly?: boolean;
   book?: string;
   /** The piece being written, when it is one of this text's. The screen has one piece open at a time. */
   open: number | null;
@@ -28,10 +31,14 @@ type Props = {
   onNext?: (index: number) => void;
   /** A file of an Academy article that is not its body: it reads as a title, or as the line under it. */
   part?: "title" | "sub-title";
+  /** Under the open piece: what goes with it (the comments about it, what to check in it). */
+  below?: (index: number, row: ArticleRow, pending: boolean) => React.ReactNode;
+  /** How many comments wait on a piece: a piece that is not open says so with a mark. */
+  marksOf?: (index: number) => number;
 };
 
 /** A piece as it reads: what is written for it, or the source, in grey, while nothing is. */
-const Piece = memo(function Piece({ id, index, content, pending, onOpen }: { id: string; index: number; content: string; pending: boolean; onOpen: (index: number, element: HTMLElement) => void }) {
+const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }: { id: string; index: number; content: string; pending: boolean; marks: number; onOpen: (index: number, element: HTMLElement) => void }) {
   return (
     <div
       id={id}
@@ -48,6 +55,11 @@ const Piece = memo(function Piece({ id, index, content, pending, onOpen }: { id:
       }}
     >
       <HelpMarkdownView content={content} />
+      {marks ? (
+        <span className="ab-mark">
+          <MessageSquare size={12} aria-hidden /> {marks}
+        </span>
+      ) : null}
     </div>
   );
 });
@@ -63,7 +75,7 @@ const Piece = memo(function Piece({ id, index, content, pending, onOpen }: { id:
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen, onProgress, hasNext, onNext, part }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, hasNext, onNext, part, below, marksOf }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -104,7 +116,7 @@ export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen,
       made.current = { ...made.current, text };
       setRows(next);
       touch(index);
-      say.current(text);
+      say.current?.(text);
     },
     [touch],
   );
@@ -123,14 +135,37 @@ export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen,
 
   const openPiece = useCallback((index: number, element: HTMLElement) => opened.current(index, element), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next") }), [language]);
+  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), untranslated: t("ab.untranslated") }), [language]);
 
   return (
     <div className="ab" data-part={part}>
       {rows.map((row, index) => {
         const pending = rowPending(row, vocabulary);
         const rowId = `${id}-row-${index}`;
-        if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} onOpen={openPiece} />;
+        if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} marks={marksOf?.(index) ?? 0} onOpen={openPiece} />;
+        const next =
+          hasNext && onNext ? (
+            // The press must not take the cursor out of the text: on a phone the keyboard would go down and come up again.
+            <button type="button" className="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
+              {words.next} <ChevronDown size={16} aria-hidden />
+            </button>
+          ) : undefined;
+        const under = below?.(index, row, pending || !row.draft.trim());
+        if (readOnly) {
+          // Read, not written: the source and what was written for it, and under them what goes with the piece.
+          return (
+            <div key={index} id={rowId} className="ab-open ab-open--read" data-slide>
+              <HelpMarkdownView className="ab-peek" content={row.source} />
+              <div className="ab-read">{pending || !row.draft.trim() ? <p className="ab-read__none">{words.untranslated}</p> : <HelpMarkdownView content={row.draft} />}</div>
+              {under || next ? (
+                <div className="ab-under">
+                  {under}
+                  {next ? <div className="ab-under__next">{next}</div> : null}
+                </div>
+              ) : null}
+            </div>
+          );
+        }
         // Still the source, and not written in yet: the box is empty for the translation.
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
         return (
@@ -151,15 +186,9 @@ export function ArticleBlocks({ id, source, value, onChange, book, open, onOpen,
                   </button>
                 )
               }
-              trailing={
-                hasNext && onNext ? (
-                  // The press must not take the cursor out of the text: on a phone the keyboard would go down and come up again.
-                  <button type="button" className="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
-                    {words.next} <ChevronDown size={16} aria-hidden />
-                  </button>
-                ) : undefined
-              }
+              trailing={next}
             />
+            {under ? <div className="ab-under">{under}</div> : null}
           </div>
         );
       })}

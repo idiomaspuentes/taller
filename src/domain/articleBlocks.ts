@@ -171,6 +171,38 @@ export function articleRows(sourceMd: string, draftMd: string): ArticleRow[] | n
   });
 }
 
+// ---------------------------------------------------------------- the files of an article, and naming a piece
+
+export type ArticleFile = { filename: string; part?: "title" | "sub-title" };
+
+/**
+ * The files an article is read from, in the order it reads, given the files that were worked on. An article of the
+ * Academy is a folder: its title and the line under it are files of their own, and they are read with its body
+ * even when only the body was touched (a title left in the source language is part of what is reviewed). An article
+ * of the words is one file.
+ */
+export function articleFilesOf(changed: string[], academy: boolean): ArticleFile[] {
+  const md = changed.filter((name) => /\.md$/i.test(name));
+  if (!academy) return md.map((filename) => ({ filename }));
+  const folders = [...new Set(md.map((name) => name.replace(/\/[^/]+$/, "")))];
+  return folders.flatMap((folder) => [{ filename: `${folder}/title.md`, part: "title" as const }, { filename: `${folder}/sub-title.md`, part: "sub-title" as const }, { filename: `${folder}/01.md` }]);
+}
+
+/**
+ * How a piece of an article is named where a comment is about it: «figs-metaphor ¶5», «figs-metaphor (título)». The
+ * name is by the article's file and the place of the piece in the source, so that it stays the same while the
+ * translation changes: the screen where the article is reviewed and the one where it is written both find the piece
+ * from it.
+ */
+export function pieceRef(filepath: string, index: number): string {
+  const parts = filepath.replace(/\.md$/i, "").split("/").filter(Boolean);
+  const last = parts[parts.length - 1] ?? "";
+  const part = /^title$/i.test(last) ? "título" : /^sub-?title$/i.test(last) ? "subtítulo" : "";
+  const slug = part || /^\d+$/.test(last) ? (parts[parts.length - 2] ?? last) : last;
+  if (part) return `${slug} (${part})${index ? ` ¶${index + 1}` : ""}`;
+  return `${slug} ¶${index + 1}`;
+}
+
 /** Whether `articleRows` would give rows: asked on every keystroke, so it does not make them. */
 export function rowsPossible(sourceMd: string, draftMd: string): boolean {
   return /\S/.test(sourceMd) && (!draftMd.trim() || roundTrips(draftMd)) && piecesOf(sourceMd).length > 0;

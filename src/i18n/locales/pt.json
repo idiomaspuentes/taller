@@ -2517,5 +2517,16 @@
   "he.rowsHint": "Toque um parágrafo para traduzi-lo. O que está em cinza falta traduzir.",
   "he.editWhole": "Editar o artigo inteiro",
   "he.editRows": "Traduzir por parágrafos",
-  "ab.next": "Próximo"
+  "ab.next": "Próximo",
+  "he.confirmPendingOne": "Falta 1 parágrafo por traduzir. Toque de novo para passar à revisão assim.",
+  "he.confirmPendingMany": "Faltam {n} parágrafos por traduzir. Toque de novo para passar à revisão assim.",
+  "he.finishAnyway": "Passar à revisão assim",
+  "ab.untranslated": "Continua sem traduzir.",
+  "rv.piecesHint": "Toque um parágrafo para compará-lo com o original e comentá-lo. O que está em cinza falta traduzir.",
+  "rv.piecesDone": "{n} de {total} parágrafos traduzidos",
+  "rv.sourceLoading": "Lendo o artigo original…",
+  "rv.commentPiece": "Comentário sobre este parágrafo",
+  "rv.readThenApproveArticle": "Leia o artigo. Se algo deve mudar, comente; se está bem, aprove.",
+  "rv.generalTitleArticle": "Comentários sobre todo o artigo",
+  "rv.noDraftYetArticle": "Este artigo ainda não tem um rascunho para revisar. Aparece quando quem traduz termina o rascunho."
 }

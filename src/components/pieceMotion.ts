@@ -37,22 +37,40 @@ export function reveal(pane: HTMLElement, box: HTMLElement, under = 56): void {
   else if (rect.top < view.top) pane.scrollTop += rect.top - view.top - 8;
 }
 
+/**
+ * Bring a piece that is only read onto the screen: all of it when it fits, and its top when it does not (what is
+ * read starts there).
+ */
+export function revealWhole(pane: HTMLElement, el: HTMLElement): void {
+  const view = pane.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  if (rect.top < view.top || rect.height > view.height - 16) pane.scrollTop += rect.top - view.top - 8;
+  else if (rect.bottom > view.bottom) pane.scrollTop += rect.bottom - view.bottom + 8;
+}
+
 const SLIDE_MS = 180;
 
-/** Slide every piece from where it was (`before`) to where it is now. Whoever asked for less motion gets none. */
-export function slideFrom(pane: HTMLElement, before: Map<string, number>): void {
+/**
+ * Slide every piece from where it was (`before`) to where it is now. Whoever asked for less motion gets none.
+ * `opened` is the piece that has just opened: what comes after it moves with it, as one block. Sliding each of those
+ * from its own old place would draw them over the piece that grew to push them down.
+ */
+export function slideFrom(pane: HTMLElement, before: Map<string, number>, opened?: HTMLElement | null): void {
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
   const view = pane.getBoundingClientRect();
+  const openedWas = opened ? before.get(opened.id) : undefined;
+  const withOpened = opened && openedWas !== undefined ? openedWas - opened.getBoundingClientRect().top : null;
   const moved: [HTMLElement, number][] = [];
   pane.querySelectorAll<HTMLElement>("[data-slide]").forEach((el) => {
     const was = before.get(el.id);
     if (was === undefined) return;
     const now = el.getBoundingClientRect();
-    const delta = was - now.top;
+    const follows = opened && withOpened !== null && (el === opened || Boolean(opened.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING));
+    const delta = follows ? withOpened! : was - now.top;
     if (Math.abs(delta) < 1) return;
     // Only what is on the screen, or was, has to be seen moving.
     const seenNow = now.bottom > view.top && now.top < view.bottom;
-    const seenBefore = was + now.height > view.top && was < view.bottom;
+    const seenBefore = now.top + delta + now.height > view.top && now.top + delta < view.bottom;
     if (seenNow || seenBefore) moved.push([el, delta]);
   });
   if (!moved.length) return;
