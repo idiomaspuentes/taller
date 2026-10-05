@@ -97,7 +97,7 @@ de ese texto en el capítulo (3.7): el cuarto paso de cada equipo.
 |---|------|-------|-------|---------|-------------|--------------------|
 | 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura: introducción al libro, introducción al capítulo y el capítulo completo | Lo marca quien lo hace |
 | 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
-| 3 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Editor de ayudas | Otra persona lo aprueba, y el autor confirma |
+| 3 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
 
 **Qué se lee al familiarizarse y por qué:**
 - La **introducción al libro** y la **introducción al capítulo** donde está la nota: dan el contexto
@@ -109,6 +109,28 @@ porciones de ese capítulo, y la introducción al libro se lee una sola vez. Lo 
 familiarización del TPL y del TPS.
 
 Las ayudas **no llevan revisión grupal**.
+
+**Cada nota y cada pregunta, en su caja, nombrada por su versículo.** Encima de la caja está el texto
+fuente de esa ayuda; en una nota, además, la frase de la que trata tal como aparece en los textos
+fuente, con el versículo completo a un toque. «Terminé el borrador» guarda lo escrito, abre la
+revisión y completa el paso, en una sola acción.
+
+**La introducción se traduce como un artículo.** La primera porción de un libro lleva entre sus notas
+la introducción al libro, y la primera de cada capítulo, la del capítulo. Son páginas de texto: el
+editor las muestra como se leen y abre un párrafo a la vez junto a su original, igual que un artículo
+(3.5). En el archivo solo cambian los párrafos que se escribieron.
+
+**La revisión se lee contra la fuente.** Quien revisa ve cada nota o pregunta como lo que dice: el
+original en gris y, debajo (al lado, en una pantalla ancha), lo que se escribió. Las columnas que solo
+ubican la nota (el artículo al que apunta, la cita en el idioma original) no se muestran: en su lugar
+va la frase en los textos fuente. Lo que sigue en el idioma de la fuente dice «Sigue sin traducir», y
+arriba se cuenta cuántas van traducidas. La introducción se revisa párrafo a párrafo. Cuando un
+borrador corrige algo que ya estaba traducido, se marca qué cambió, palabra por palabra.
+
+**Los comentarios vuelven a quien tradujo, en su sitio.** Un comentario se deja sobre un versículo, o
+sobre un párrafo de la introducción. Si la revisión pide cambios, quien tradujo abre su borrador y
+los encuentra ahí mismo: encima del párrafo comentado, que ya está abierto, o junto a la primera nota
+del versículo; los que son sobre todo el borrador, arriba.
 
 **Las notas de introducción tienen dueño.** La introducción a cada capítulo va con las notas de la **primera
 porción de ese capítulo**, y la introducción al libro con las de la primera porción del libro. Antes no caían en
@@ -245,10 +267,20 @@ de un artículo de Academia son los dos primeros párrafos. Lo que no se toca qu
 estaba, y un artículo que todavía no tiene nada traducido parte de la fuente tal como está hoy.
 «Editar el artículo entero», al final, lo muestra en una sola caja con su código.
 
+**Se entrega en una acción.** «Terminé el borrador» guarda, abre la revisión y completa el paso. Si
+quedan párrafos sin traducir lo dice y pide confirmarlo; un artículo sin nada traducido no se puede
+pasar a revisión.
+
+**Se revisa igual: párrafo a párrafo.** Quien revisa lee el artículo como artículo (con su título y
+su subtítulo, aunque solo se haya tocado el cuerpo) y abre cada párrafo contra su original, con lo
+que hay que comprobar en él, sus comentarios y una caja para añadir uno. Un párrafo comentado lleva
+una marca mientras está cerrado. Quien tradujo encuentra esos comentarios en su editor, encima del
+párrafo, y al entrar tiene abierto el primero comentado.
+
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
 | 1 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
-| 2 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Editor de ayudas | Otra persona lo aprueba, y el autor confirma |
+| 2 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
 
 ---
 

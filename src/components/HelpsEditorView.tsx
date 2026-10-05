@@ -807,8 +807,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             ) : (
             <div key={item.id} className="scripture-editor__verse">
               <div className="scripture-editor__verse-head">
-                {isNotes && item.chapter && item.verse ? (
-                  // A note is named by where it is; what it is about is said in the source texts, below.
+                {item.kind === "tsv" && item.chapter && item.verse ? (
+                  // A note or a question is named by where it is: what it is about is said below, in the source. Its
+                  // own text as a title said it twice, and the id of its row says nothing to who translates it.
                   <Label htmlFor={`help-${item.id}`}>{`${item.chapter}:${item.verse}`}</Label>
                 ) : (
                   <>
