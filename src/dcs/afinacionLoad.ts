@@ -152,6 +152,10 @@ const firstLine = (text: string | null) => (text ?? "").split(/\r?\n/).map((line
 /**
  * The title and the question of every Academy article the notes point to, after the screen is up. The team's own
  * Academy is read first (its language); an article it has not translated is read from the source package.
+ *
+ * The other way round from the name of a subtarea that translates an article, which is the source's always
+ * (`status/emit.ts`): here the article is read to check a note, not translated, and a title left in English was
+ * reported as a fault of this screen.
  */
 export async function loadArticleInfo(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, paths: string[]): Promise<Record<string, ArticleInfo>> {
   const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;

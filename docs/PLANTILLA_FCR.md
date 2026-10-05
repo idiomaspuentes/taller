@@ -334,7 +334,9 @@ del equipo**.
   la Academia** (`SupportReference`: metáfora, voz pasiva, modismo…) y dice a qué palabras del original se
   refiere (`Quote`). Esas palabras se resaltan en el original y, por la alineación, en el inglés.
 - Cada figura se muestra con el **título del artículo** (el que el equipo le dio en su Academia, si ya lo
-  tradujo) y la pregunta que el artículo responde; el artículo completo y la nota están a un toque.
+  tradujo) y la pregunta que el artículo responde; el artículo completo y la nota están a un toque. Aquí el
+  artículo se consulta, no se traduce: por eso se lee en nuestro idioma cuando ya lo está, al revés que el
+  nombre de una subtarea de traducción, que es siempre el de la fuente (sección 3.5).
 - Un selector arriba de la tarjeta filtra por figura (todas las metáforas seguidas, por ejemplo).
 - Cada figura se revisa en dos pasos: **qué palabras del texto traducen lo resaltado** en la referencia
   (el original por defecto, o el ULT/UST), y **si esas palabras cumplen la regla** del texto.
