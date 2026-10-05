@@ -11,7 +11,7 @@ import { setActiveScope } from "./domain/scope";
 import { setWorkspaceBranchNames } from "./domain/branchNames";
 import { forcedHost } from "./serverChoice";
 import { Welcome } from "./components/Welcome";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DcsOrg } from "@ip-lms/dcs-client";
 import { defaultContentOrg, normalizeProjectId, projectDisplayName } from "./domain/books";
 import { normalizeLangCode, type LanguageOption } from "./domain/languages";
@@ -104,7 +104,7 @@ import { clearNotices } from "./clearNotices";
 import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin, isProductionHost } from "./domain/qaAdmin";
 import { UserMenu } from "./components/UserMenu";
-import { resolveResourceRepo } from "./domain/roles";
+import { resolveResourceRepo, sameTeams } from "./domain/roles";
 import { StepNav, stepEnabled, type StepId } from "./components/StepNav";
 import { ProjectPlanView } from "./components/ProjectPlanView";
 import { ProjectWorkView } from "./components/ProjectWorkView";
@@ -335,35 +335,46 @@ export function App() {
     window.scrollTo(0, 0);
   }, [route]);
 
-  // Enrich roles when session / org change
+  // Which teams a person is in, and whether they run the projects, changes while the app is open: a coordinator adds
+  // somebody to a team, and that team's subtareas have to reach them without closing the app. Read when the session
+  // or the organization changes, when the person asks for news («Actualizar») and when they come back to the app.
+  const sessionNow = useRef(session);
+  sessionNow.current = session;
+  const pmOrgNow = useRef(pmOrg);
+  pmOrgNow.current = pmOrg;
+  const refreshRoles = useCallback(async () => {
+    const current = sessionNow.current;
+    const org = pmOrgNow.current;
+    if (!current?.token || !org) return;
+    try {
+      const config = await loadPmConfig(current, org);
+      const enriched = await enrichSessionRoles(current, org, config.managerTeam);
+      if (pmOrgNow.current !== org) return;
+      setSession((prev) => {
+        if (!prev || prev.token !== enriched.token) return prev;
+        // The same session object when nothing changed: every screen that reads with it would load again for nothing.
+        if (prev.isOwner === enriched.isOwner && prev.canManage === enriched.canManage && sameTeams(prev.teams, enriched.teams)) return prev;
+        return { ...prev, teams: enriched.teams, isOwner: enriched.isOwner, canManage: enriched.canManage };
+      });
+    } catch {
+      /* keep prior session */
+    }
+  }, []);
+
   useEffect(() => {
-    if (!session?.token || !pmOrg) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const config = await loadPmConfig(session, pmOrg);
-        const enriched = await enrichSessionRoles(session, pmOrg, config.managerTeam);
-        if (!cancelled) {
-          setSession((prev) =>
-            prev && prev.token === enriched.token
-              ? {
-                  ...prev,
-                  teams: enriched.teams,
-                  isOwner: enriched.isOwner,
-                  canManage: enriched.canManage,
-                }
-              : prev,
-          );
-        }
-      } catch {
-        /* keep prior session */
-      }
-    })();
-    return () => {
-      cancelled = true;
+    void refreshRoles();
+  }, [session?.token, pmOrg, refreshRoles]);
+
+  useEffect(() => {
+    let last = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible" || Date.now() - last < 60_000) return;
+      last = Date.now();
+      void refreshRoles();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on token/org
-  }, [session?.token, pmOrg]);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshRoles]);
 
   // Landing redirect
   useEffect(() => {
@@ -1319,7 +1330,10 @@ export function App() {
             cursor={activity.cursor}
             onMineIssues={onMineIssues}
             onAudience={activity.setAudience}
-            onRefreshActivity={activity.refresh}
+            onRefreshActivity={() => {
+              activity.refresh();
+              void refreshRoles();
+            }}
             decisionIssues={activity.decisionIssues}
             onMarkSeen={activity.markSeen}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}

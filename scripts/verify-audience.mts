@@ -9,7 +9,7 @@ import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { AssignmentsDoc, ProjectTask } from "../src/domain/types";
 import { audienceOf } from "../src/domain/audience";
 import { countsForMinimum, levelOf, meetsLevel, normalizeLevels } from "../src/domain/levels";
-import { normalizePmConfig } from "../src/domain/roles";
+import { normalizePmConfig, sameTeams } from "../src/domain/roles";
 import { normalizeTeams } from "../src/domain/store";
 
 let passed = 0;
@@ -163,6 +163,19 @@ test("una decisión del equipo llega a la gente de la tarea aunque no esté en e
   const work = issue("afinar", undefined, "p-9-9");
   const held = audienceOf({ issue: work, project: { board: withPeople, openIssues: [work] }, session: { username: "ana", teams: [team("pm-afinacion")] } as never, pmOrg: PM, myLevel: "aprendiz" });
   assert.equal(held.notify, false);
+});
+
+test("los equipos de una persona se leen de nuevo con la app abierta: solo cuenta como cambio lo que cambió", () => {
+  const team = (name: string, permission: "write" | "owner" = "write", org = PM) => ({ id: 1, name, permission, organization: { id: 1, name: org } });
+  const before = [team("Owners", "owner"), team("translators")];
+  // Read again with nothing new: the same teams in another order are the same teams.
+  assert.equal(sameTeams(before, [team("translators"), team("Owners", "owner")]), true);
+  assert.equal(sameTeams(undefined, []), true);
+  // A coordinator added her to a team: that is what has to reach her list.
+  assert.equal(sameTeams(before, [...before, team("pm-traductores-tpl")]), false);
+  assert.equal(sameTeams(before, [team("Owners", "owner")]), false, "y que la quiten de uno también");
+  assert.equal(sameTeams(before, [team("Owners", "write"), team("translators")]), false, "o que cambie lo que puede hacer");
+  assert.equal(sameTeams([team("translators")], [team("translators", "write", "otra-org")]), false, "el mismo nombre en otra organización es otro equipo");
 });
 
 console.log(`\nverify-audience: ${passed} checks passed.`);

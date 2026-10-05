@@ -3,7 +3,7 @@ import { placedPreview } from "../commentPlaceText";
 import { ruleText } from "../domain/teamRules";
 import { answerTeamRule, refreshTeamRules, usePendingTeamRules, useTeamLabel } from "../useTeamRules";
 import { subtaskName } from "../domain/noticeText";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
@@ -204,7 +204,11 @@ export function MyTasksView({
     }
   };
 
+  // Two readings can be on their way at once (the person's teams changed while the list was being read): the one
+  // asked for last is the one shown, whichever answers first.
+  const reading = useRef(0);
   const reload = useCallback(async () => {
+    const mine = ++reading.current;
     refreshTeamRules();
     if (!pmOrg) {
       setProjects([]);
@@ -221,15 +225,18 @@ export function MyTasksView({
         listMyConflictIssues(session, pmOrg).catch(() => [] as DcsIssue[]),
         mode === "lista" ? listMyClosedIssues(session, pmOrg).catch(() => [] as DcsIssue[]) : Promise.resolve([] as DcsIssue[]),
       ]);
+      if (mine !== reading.current) return;
       setProjects(nextProjects);
       setConflictIssues(conflicted);
       setClosedIssues(closed);
       setSolversCatalog(catalog);
     } catch (err) {
-      setError(explainError(err));
+      if (mine === reading.current) setError(explainError(err));
     } finally {
-      setBusy(false);
-      setLoaded(true);
+      if (mine === reading.current) {
+        setBusy(false);
+        setLoaded(true);
+      }
     }
   }, [session, pmOrg, lang, contentOrg, mode]);
 

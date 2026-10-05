@@ -151,6 +151,16 @@ export function isOrgOwner(teams: DcsTeam[], org: string): boolean {
   );
 }
 
+/**
+ * Whether two readings of a person's teams say the same: the same teams, of the same organizations, with the same
+ * permission. The teams are read again while the app is open, and nothing should be redrawn when nothing changed.
+ */
+export function sameTeams(a: DcsTeam[] | undefined, b: DcsTeam[] | undefined): boolean {
+  const said = (teams: DcsTeam[] | undefined) =>
+    (teams ?? []).map((team) => `${team.organization?.name ?? ""}/${team.name}/${team.permission}`).sort().join("\n");
+  return said(a) === said(b);
+}
+
 export function memberOfOrgTeam(teams: DcsTeam[], org: string, teamName: string): boolean {
   return teams.some(
     (team) => team.organization?.name === org && team.name === teamName,
