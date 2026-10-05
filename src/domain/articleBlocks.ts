@@ -44,9 +44,18 @@ function shapeOf(piece: Piece): Block {
 
 // ---------------------------------------------------------------- what is still to be translated
 
-/** The words that are read: not the addresses of links, not marks. */
+/**
+ * A link to a passage of the Bible, with what it shows («[Matthew 28:20](rc://en/tn/help/mat/28/20)»). The team's
+ * process leaves these as they are while an article is translated, so they are not words to translate: a list of
+ * references left as the source has it used to count as paragraphs nobody had translated, and a finished article
+ * was said to be unfinished every time.
+ */
+const PASSAGE_LINK_RE = /\[[^\]]*\]\(rc:\/\/[^/)\s]+\/tn\/help\/[a-z0-9]{3}\/\d+\/\d+\)/gi;
+
+/** The words that are read and translated: not the addresses of links, not marks, not references to a passage. */
 function wordsOf(md: string): string[] {
   const text = md
+    .replace(PASSAGE_LINK_RE, " ")
     .replace(/\[\[[^\]]*\]\]/g, " ")
     .replace(/\]\([^)]*\)/g, "] ")
     .replace(/(?:rc|https?):\/\/\S+/g, " ")

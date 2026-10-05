@@ -297,6 +297,13 @@ quedan párrafos sin traducir lo pregunta en un cuadro aparte, que dice cuántos
 no se hace en la misma barra: ahí bastaba pulsar dos veces, sin haberla leído. Un artículo sin nada
 traducido no se puede pasar a revisión.
 
+**Qué cuenta como párrafo sin traducir.** El que sigue en el idioma de la fuente. No cuenta una línea que
+es solo una referencia bíblica (el enlace a un pasaje, «[Matthew 28:20](rc://…/tn/help/mat/28/20)»): este
+paso pide dejarlas como están, y contarlas hacía que un artículo de Palabras terminado se diera siempre por
+incompleto. Un párrafo con palabras propias y una referencia dentro cuenta por sus palabras (los ejemplos de
+las historias bíblicas, por ejemplo). La línea de los números de Strong cuenta hasta que se traduce su
+rótulo («Números de Strong»), como está en los artículos ya publicados del equipo.
+
 **Se revisa igual: párrafo a párrafo.** Quien revisa lee el artículo como artículo (con su título y
 su subtítulo, aunque solo se haya tocado el cuerpo) y abre cada párrafo contra su original, con lo
 que hay que comprobar en él, sus comentarios y una caja para añadir uno. Un párrafo comentado lleva

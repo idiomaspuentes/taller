@@ -111,6 +111,38 @@ test("el avance cuenta las piezas con palabras, y las que ya están traducidas",
   assert.equal(rowPending(half[3]!, vocabulary), true);
 });
 
+test("una referencia bíblica dejada como está no cuenta como párrafo sin traducir; el rótulo de los números de Strong, sí", () => {
+  // Shaped like an article of the words: what it means, where the Bible uses it, and its numbers.
+  const word = [
+    "# age, era, time",
+    "## Definition:",
+    "Used in this sense the term “age” refers to a long period of time. See [Matthew 28:20](rc://en/tn/help/mat/28/20).",
+    "## Bible References:",
+    "* [Matthew 28:20](rc://en/tn/help/mat/28/20)\n* [1 John 1:7](rc://en/tn/help/1jn/01/07)",
+    "## Word Data:",
+    "* Strong’s: H2165, H6256, G21190",
+  ].join("\n\n");
+  const words = vocabularyOf(word);
+  const translated = (strong: string) =>
+    ["# edad, era, tiempo", "## Definición:", "Usado en este sentido, el término «edad» se refiere a un largo período de tiempo. Mira [Matthew 28:20](rc://en/tn/help/mat/28/20).", "## Referencias bíblicas:", "* [Matthew 28:20](rc://en/tn/help/mat/28/20)\n* [1 John 1:7](rc://en/tn/help/1jn/01/07)", "## Datos de la palabra:", strong].join("\n\n");
+
+  // The two references are pieces of the article, and there is nothing in them to translate.
+  const fresh = articleRows(word, "")!;
+  assert.deepEqual(fresh.filter((row) => !row.words).map((row) => row.source), ["* [Matthew 28:20](rc://en/tn/help/mat/28/20)", "* [1 John 1:7](rc://en/tn/help/1jn/01/07)"]);
+  assert.deepEqual(articleProgress(fresh, words), { done: 0, total: 6 });
+  assert.equal(untranslated("* [Matthew 28:20](rc://en/tn/help/mat/28/20)", words), false, "dejada como en la fuente, no es algo pendiente");
+  assert.equal(untranslated("* [Mateo 28:20](rc://*/tn/help/mat/28/20)", words), false, "y traducida tampoco estorba");
+
+  // Everything translated but the line of the numbers: that one the team does translate («Números de Strong»).
+  assert.deepEqual(articleProgress(articleRows(word, translated("* Strong’s: H2165, H6256, G21190"))!, words), { done: 5, total: 6 });
+  assert.deepEqual(articleProgress(articleRows(word, translated("* Números de Strong: H2165, H6256, G21190"))!, words), { done: 6, total: 6 });
+
+  // A paragraph is not let off for having a reference in it: its own words still say what language it is in.
+  assert.equal(untranslated("Used in this sense the term “age” refers to a long period of time. See [Matthew 28:20](rc://en/tn/help/mat/28/20).", words), true);
+  // A link to something else is read as before: its words are words of the article.
+  assert.equal(untranslated("(See also: [eternity](../kt/eternity.md))", vocabularyOf("(See also: [eternity](../kt/eternity.md))")), true);
+});
+
 test("traducir un cuadro cambia solo su pieza del archivo; vaciarlo la quita", () => {
   const rows = rowsOf(SOURCE);
   const one = rows.map((row, index) => (index === 1 ? { ...row, draft: "Un saludo es lo que la gente dice al encontrarse." } : row));
