@@ -2009,7 +2009,7 @@
   "rv.changesSent": "Você pediu mudanças. O rascunho voltou para quem o escreveu.",
   "rv.stepDone": "Esta revisão já está completa.",
   "rv.youApproved": "Você já aprovou. Falta mais alguém aprovar.",
-  "rv.agreeOwn": "Leia os comentários. Quando estiver de acordo com o resultado, diga.",
+  "rv.agreeOwn": "Leia os comentários. Se houver algo a corrigir, corrija seu rascunho; quando estiver de acordo com o resultado, diga.",
   "rv.readThenApprove": "Leia a passagem. Se algo deve mudar, comente; se está bem, aprove.",
   "rv.takeFirst": "Ninguém pegou esta revisão ainda.",
   "rv.waitingReviewers": "É o seu rascunho: outras pessoas revisam. Aqui você vê o que comentam.",
@@ -2042,7 +2042,7 @@
   "rv.take": "Pegar esta revisão",
   "rv.finishDraftFirst": "Seu rascunho ainda não está terminado: a revisão começa quando você terminar.",
   "rv.draftNotFinished": "O rascunho ainda não está terminado. Você pode ler e comentar; a revisão começa quando terminar.",
-  "rv.changesForYou": "Pediram mudanças. Corrija seu rascunho em Minhas tarefas (lá você verá estes comentários) e termine de novo.",
+  "rv.changesForYou": "Pediram mudanças. Abra seu rascunho (lá você verá estes comentários), corrija e termine de novo.",
   "rv.youAskedChanges": "Você pediu mudanças. Quando o rascunho for terminado de novo, volte aqui para revisar.",
   "rv.changesPending": "Pediram mudanças no rascunho. A revisão continua quando for terminado de novo.",
   "rv.keptOut": "Você pode ler e comentar. Esta revisão é feita por pessoas que não escreveram nem revisaram antes este rascunho.",
@@ -2532,5 +2532,12 @@
   "rv.helpsDone": "{n} de {total} traduzidas",
   "cp.paragraph": "Parágrafo {n}",
   "cv.savedWork": "Trabalho salvo",
-  "cv.openPlace": "Abrir ali"
+  "cv.openPlace": "Abrir ali",
+  "rv.correct": "Corrigir meu rascunho",
+  "rv.openDraft": "Abrir meu rascunho",
+  "rv.cannotCorrect": "Este rascunho não pode mais ser retomado: a revisão terminou.",
+  "rv.correctingOwn": "Você está corrigindo seu rascunho. Quando terminar de novo, a revisão continua.",
+  "rv.authorCorrecting": "@{who} está corrigindo o rascunho. Quando terminar de novo, volte aqui para revisar.",
+  "tb.correctingOwn": "Você está corrigindo seu rascunho. Termine de novo para a revisão continuar.",
+  "tb.authorCorrecting": "@{who} está corrigindo o rascunho. A revisão continua quando terminar de novo."
 }

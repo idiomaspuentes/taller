@@ -11,7 +11,8 @@ import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { loadPmConfig, setIssueTaskProgress } from "../dcs/issues";
+import { loadPmConfig, loadSolversCatalog, setIssueTaskProgress } from "../dcs/issues";
+import { DEFAULT_SOLVERS_CATALOG, findSolverApp, resolveSolverForIssue } from "../domain/solvers";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
@@ -26,8 +27,8 @@ import { selectTsvRowsForPortion, tsvRowId } from "../domain/helpsDraft";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { parseTsvTable } from "../prep/tsv";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
-import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
-import { approveStep, askForChanges, canApproveStep, canAskForChanges, canClaimStep, changesPending, claimStep, isEligibleForStep, isStepUnlocked } from "../domain/stepClaim";
+import { decodeSolverLaunchContext, openSolverApp, type SolverLaunchContext } from "../domain/solverLaunch";
+import { approveStep, askForChanges, canApproveStep, canAskForChanges, canClaimStep, canTakeBack, changesPending, claimStep, isEligibleForStep, isStepUnlocked, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
 import { getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
@@ -260,6 +261,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const keptOut = Boolean(step && me && !seated && !isEligibleForStep(me, undefined, progress, step, author));
   const canTake = Boolean(step && me && canClaimStep(me, steps, progress, step, undefined, author));
   const canApprove = Boolean(unlocked && step && me && canApproveStep(me, progress, step, author));
+  // The author may take the draft back to correct it while its review is open, and goes to it from here once it is back.
+  const isAuthor = Boolean(author && me) && author!.toLowerCase() === me.toLowerCase();
+  const canCorrect = Boolean(step && me && canTakeBack(me, steps, progress, step, author));
+  const byAuthor = Boolean(step && takenBackByAuthor(steps, progress, step, author));
+  // Who asked for the changes, where the subtarea says it; before it did, whoever sat on the review was taken to have.
+  const askedByMe = runtime?.returnedBy ? runtime.returnedBy.toLowerCase() === me.toLowerCase() : seated;
 
   const draftOwner = marker ? translatorLoginFromHead(marker.head, [author, me]) : (author ?? "");
   const mine = Boolean(draftOwner) && draftOwner.toLowerCase() === me.toLowerCase();
@@ -318,6 +325,46 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       announce(tNow(isStepDone(next, step.id) ? "rv.approvedDone" : "rv.approvedWait"));
     });
 
+  /** The place in view (the paragraph that is open), to open the draft on it. */
+  const placeInView = (): string | undefined => {
+    const active = pieces.active;
+    if (!active) return ctx?.focus;
+    const intro = intros.find((row) => row.key === active.id);
+    return intro ? introPieceRef(intro.chapter, active.index) : pieceRef(active.id, active.index);
+  };
+
+  /** Open the tool where the draft is written, on the place in view. */
+  const openDraft = async (fresh: DcsIssue) => {
+    if (!session || !ctx || !step) return;
+    const draftStep = steps.find((row) => row.id === reviewedStepId(steps, step));
+    const [board, catalog] = await Promise.all([
+      loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg).catch(() => null),
+      loadSolversCatalog(session, ctx.pmOrg).catch(() => DEFAULT_SOLVERS_CATALOG),
+    ]);
+    const task = board?.teams.find((row) => row.id === ctx.taskId);
+    const app = findSolverApp(catalog, draftStep?.solverAppId) || findSolverApp(catalog, task?.solverAppId) || (board ? resolveSolverForIssue(catalog, board, fresh) : undefined);
+    // Without a tool to open it in from here, the draft is in the person's list, under its own button.
+    if (!app || !draftStep) return onClose();
+    openSolverApp(app, { ...ctx, stepId: draftStep.id, stepName: draftStep.name, focus: placeInView() });
+  };
+
+  /** «Corregir mi borrador»: the author takes the draft back (see `takeBack`) and is taken to where it is written. */
+  const correct = () =>
+    act(async () => {
+      if (!session || !ctx || !step) return;
+      // Read again first: an approval saved meanwhile may have finished the review.
+      const fresh = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
+      const current = parseTaskProgressMarker(fresh.body);
+      const owner = fresh.assignee?.login || fresh.assignees?.[0]?.login || undefined;
+      if (!canTakeBack(me, steps, current, step, owner)) {
+        setIssue(fresh);
+        throw new Error(tNow("rv.cannotCorrect"));
+      }
+      const saved = await setIssueTaskProgress(session, ctx.pmOrg, fresh, takeBack(current, steps, step, me, owner));
+      setIssue(saved);
+      await openDraft(saved);
+    });
+
   /** A comment, about one piece (`ref`) or about the whole draft; asking for changes names the author. */
   const comment = (ref: string, text: string, askChanges = false) =>
     act(async () => {
@@ -373,7 +420,14 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       : approved
         ? t("rv.youApproved")
         : !unlocked
-          ? t(sentBack ? (mine ? "rv.changesForYou" : seated ? "rv.youAskedChanges" : "rv.changesPending") : mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
+          ? sentBack
+            ? byAuthor
+              ? // The author took the draft back: nobody asked for changes, and saying so sent people looking for a request.
+                isAuthor
+                ? t("rv.correctingOwn")
+                : t("rv.authorCorrecting").replace("{who}", author ?? "")
+              : t(mine ? "rv.changesForYou" : askedByMe ? "rv.youAskedChanges" : "rv.changesPending")
+            : t(mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
           ? t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove")
           : canTake
@@ -734,19 +788,31 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           {status && marker ? (
             <div className="tool-foot">
               <p>{status}</p>
-              {stepDone || approved ? (
-                <Button type="button" onClick={onClose}>
-                  {t("fa.back")}
-                </Button>
-              ) : canApprove ? (
-                <Button type="button" disabled={acting} onClick={() => void approve()}>
-                  <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t(mine ? "rv.agree" : "rv.approve")}
-                </Button>
-              ) : canTake ? (
-                <Button type="button" disabled={acting} onClick={() => void take()}>
-                  {acting ? t("wf.saving") : t("rv.take")}
-                </Button>
-              ) : null}
+              <div className="tool-foot__actions">
+                {canCorrect ? (
+                  // What a reviewer says is usually answered by correcting: the author does not wait to be sent back.
+                  <Button type="button" variant="outline" disabled={acting} onClick={() => void correct()}>
+                    {t("rv.correct")}
+                  </Button>
+                ) : sentBack && isAuthor && issue ? (
+                  <Button type="button" disabled={acting} onClick={() => void act(() => openDraft(issue))}>
+                    {t("rv.openDraft")}
+                  </Button>
+                ) : null}
+                {stepDone || approved ? (
+                  <Button type="button" onClick={onClose}>
+                    {t("fa.back")}
+                  </Button>
+                ) : canApprove ? (
+                  <Button type="button" disabled={acting} onClick={() => void approve()}>
+                    <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t(mine ? "rv.agree" : "rv.approve")}
+                  </Button>
+                ) : canTake ? (
+                  <Button type="button" disabled={acting} onClick={() => void take()}>
+                    {acting ? t("wf.saving") : t("rv.take")}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </>

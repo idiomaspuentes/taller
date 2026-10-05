@@ -6,7 +6,7 @@ import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
 import { placedPreview } from "../commentPlaceText";
 import type { BoardCard } from "../domain/myTasksBoard";
-import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending } from "../domain/stepClaim";
+import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending, takenBackByAuthor } from "../domain/stepClaim";
 import { parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeHold, localizeName } from "../domain/templateNames";
@@ -27,6 +27,8 @@ type Props = {
   onPrimary: () => void;
   onOpenThread?: () => void;
   onDeliver?: () => void;
+  /** «Corregir mi borrador»: the author takes the draft back while its review is open. */
+  onCorrect?: () => void;
   onRelease?: () => void;
   onOpenNewTab?: () => void;
   onClaimStep: (step: TaskStep) => void;
@@ -98,7 +100,12 @@ export function TaskCard(props: Props) {
   const hasTool = action.kind === "begin" || action.kind === "continue";
   const mine = assigneeOf(card).toLowerCase() === props.login.toLowerCase();
   // A reviewer sent the work back: its author is told why it is theirs again, and the reviewers what they wait for.
-  if (card.group !== "done" && steps.some((step) => changesPending(steps, progress, step))) status = mine ? t("tb.changesForYou") : t("tb.changesWait").replace("{who}", assigneeOf(card));
+  const waiting = card.group !== "done" ? steps.find((step) => changesPending(steps, progress, step)) : undefined;
+  if (waiting) {
+    // The author took the draft back to correct it: nobody asked for changes, and saying so sent people looking for who had.
+    const own = takenBackByAuthor(steps, progress, waiting, assigneeOf(card));
+    status = mine ? t(own ? "tb.correctingOwn" : "tb.changesForYou") : t(own ? "tb.authorCorrecting" : "tb.changesWait").replace("{who}", assigneeOf(card));
+  }
   // The step in hand is a free one: the person says when it is done (the tool cannot know, above all an outside one).
   const stepInHand = action.kind === "continue" ? action.step : undefined;
   const canFinishStep = Boolean(stepInHand && mine && card.started && stepClaimMode(stepInHand) === "none" && !closesInItsTool(stepInHand));
@@ -107,6 +114,7 @@ export function TaskCard(props: Props) {
   if (steps.length && card.group !== "done") menuItems.push({ id: "steps", label: stepsOpen ? t("tb.hideSteps") : t("tb.showSteps"), run: () => setStepsOpen((v) => !v) });
   if (props.onOpenThread) menuItems.push({ id: "thread", label: t("tb.comment"), run: props.onOpenThread });
   if (hasTool && props.onOpenNewTab && !props.externalTool) menuItems.push({ id: "tab", label: t("tb.newTab"), run: props.onOpenNewTab });
+  if (props.onCorrect) menuItems.push({ id: "correct", label: t("rv.correct"), run: props.onCorrect });
   if (props.onDeliver && action.kind !== "deliver") menuItems.push({ id: "deliver", label: t("tb.deliver"), run: props.onDeliver });
   if (props.onRelease) menuItems.push({ id: "release", label: t("tb.release"), run: props.onRelease, danger: true });
 

@@ -4,6 +4,11 @@ export const TASK_PROGRESS_SCHEMA = "gateway-task-progress-2" as const;
 export type StepRuntime = {
   assignees: string[];
   approvals: string[];
+  /**
+   * A review whose work went back to its author: who sent it there (a reviewer who asked for changes, or the author,
+   * who took it back to correct it). Read only while the work is back; it is not cleared when handed in again.
+   */
+  returnedBy?: string;
 };
 
 export type TaskProgressMarker = {
@@ -33,10 +38,12 @@ function normalizeStepRuntimes(raw: unknown): Record<string, StepRuntime> | unde
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     const id = String(key).trim();
     if (!id || !value || typeof value !== "object") continue;
-    const row = value as { assignees?: unknown; approvals?: unknown };
+    const row = value as { assignees?: unknown; approvals?: unknown; returnedBy?: unknown };
+    const returnedBy = typeof row.returnedBy === "string" ? row.returnedBy.trim() : "";
     out[id] = {
       assignees: normalizeLoginList(row.assignees),
       approvals: normalizeLoginList(row.approvals),
+      ...(returnedBy ? { returnedBy } : {}),
     };
   }
   return Object.keys(out).length ? out : undefined;
@@ -117,6 +124,7 @@ export function withStepRuntime(
       [stepId]: {
         assignees: normalizeLoginList(runtime.assignees),
         approvals: normalizeLoginList(runtime.approvals),
+        ...(runtime.returnedBy?.trim() ? { returnedBy: runtime.returnedBy.trim() } : {}),
       },
     },
   };

@@ -132,6 +132,13 @@ sobre un párrafo de la introducción. Si la revisión pide cambios, quien tradu
 los encuentra ahí mismo: encima del párrafo comentado, que ya está abierto, o junto a la primera nota
 del versículo; los que son sobre todo el borrador, arriba.
 
+**Quien tradujo puede retomar su borrador.** Lo que dice quien revisa casi siempre se responde
+corrigiendo, y antes solo se podía corregir si el revisor pulsaba «Pedir cambios». Mientras la
+revisión no esté terminada, quien tradujo tiene «Corregir mi borrador» en la revisión: su paso de
+borrador se abre otra vez, las aprobaciones dadas dejan de contar (lo aprobado va a cambiar) y quienes
+revisan conservan su lugar. Lo lleva al editor, en el párrafo que tenía abierto; al terminar el
+borrador otra vez, la revisión sigue. Vale igual para el TPL y el TPS y para los artículos.
+
 **Las notas de introducción tienen dueño.** La introducción a cada capítulo va con las notas de la **primera
 porción de ese capítulo**, y la introducción al libro con las de la primera porción del libro. Antes no caían en
 ninguna subtarea: todos las leían al familiarizarse y nadie las traducía.

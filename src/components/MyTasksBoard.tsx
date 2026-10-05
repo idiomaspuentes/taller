@@ -28,6 +28,8 @@ export type CardHandlers = {
   onPrimary: (card: BoardCard) => void;
   onOpenThread: (card: BoardCard) => (() => void) | undefined;
   onDeliver: (card: BoardCard) => void;
+  /** The author takes the draft back to correct it, while its review is open; undefined when that is not theirs to do. */
+  onCorrect: (card: BoardCard) => (() => void) | undefined;
   onRelease: (card: BoardCard) => void;
   onOpenNewTab: (card: BoardCard) => void;
   onClaimStep: (card: BoardCard, step: NonNullable<BoardCard["nextStep"]>) => void;
@@ -145,6 +147,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
                     onPrimary={() => handlers.onPrimary(card)}
                     onOpenThread={handlers.onOpenThread(card)}
                     onDeliver={card.canDeliver ? () => handlers.onDeliver(card) : undefined}
+                    onCorrect={handlers.onCorrect(card)}
                     onRelease={card.canRelease ? () => handlers.onRelease(card) : undefined}
                     onOpenNewTab={() => handlers.onOpenNewTab(card)}
                     onClaimStep={(step) => handlers.onClaimStep(card, step)}

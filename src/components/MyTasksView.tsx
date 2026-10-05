@@ -56,7 +56,10 @@ import {
   approveStep,
   canApproveStep,
   canClaimStep,
+  canTakeBack,
   claimStep,
+  reviewedStepId,
+  takeBack,
 } from "../domain/stepClaim";
 import {
   buildSolverLaunchContext,
@@ -540,6 +543,27 @@ export function MyTasksView({
     }
   }
 
+  /**
+   * «Corregir mi borrador»: the author takes the draft back while its review is open (see `takeBack`) and is taken to
+   * where it is written. From the list too: a draft nobody reviews yet has no button of the author's to reach it by.
+   */
+  async function correctDraft(issue: DcsIssue, board: AssignmentsDoc, review: TaskStep) {
+    const steps = board.teams.find((task) => task.id === issueTaskId(issue))?.steps ?? [];
+    const author = issue.assignee?.login || issue.assignees?.[0]?.login || undefined;
+    const draft = steps.find((step) => step.id === reviewedStepId(steps, review));
+    setActing(issue.number);
+    setError("");
+    try {
+      const updated = await setIssueTaskProgress(session, pmOrg, issue, takeBack(parseTaskProgressMarker(issue.body), steps, review, session.username, author));
+      if (draft) await resolve(updated, board, { step: draft });
+      else await reload();
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setActing(null);
+    }
+  }
+
   async function claimStepOnIssue(
     issue: DcsIssue,
     board: AssignmentsDoc,
@@ -777,6 +801,13 @@ export function MyTasksView({
       onClaimStep: (card, step) => card.bucket && void claimStepOnIssue(card.issue, card.bucket.board, step),
       onApproveStep: (card, step) => card.bucket && void approveStepOnIssue(card.issue, card.bucket.board, step),
       onToggleStep: (card, step) => card.bucket && void toggleFreeStep(card.issue, card.bucket.board, step),
+      onCorrect: (card) => {
+        const board = card.bucket?.board;
+        const steps = card.task?.steps ?? [];
+        const author = card.issue.assignee?.login || card.issue.assignees?.[0]?.login || undefined;
+        const review = board && card.group !== "done" ? steps.find((step) => canTakeBack(session.username, steps, parseTaskProgressMarker(card.issue.body), step, author)) : undefined;
+        return board && review ? () => void correctDraft(card.issue, board, review) : undefined;
+      },
     };
     const count = boardCount(taskBoard);
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);

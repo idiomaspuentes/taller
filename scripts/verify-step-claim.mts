@@ -9,7 +9,10 @@ import {
   approveStep,
   askForChanges,
   canAskForChanges,
+  canTakeBack,
   changesPending,
+  takeBack,
+  takenBackByAuthor,
   reviewedStepId,
   isStepComplete,
   isStepUnlocked,
@@ -162,6 +165,19 @@ assert(
   assert(askForChanges(reviewing, steps, pair, "carol") === reviewing, "asking without a seat changes nothing");
   const again = { ...back, doneStepIds: [...back.doneStepIds, "draft"] };
   assert(!changesPending(steps, again, pair) && canApproveStep("bob", again, pair, "alice"), "handed in again, the same reviewer approves");
+  // The author takes the draft back to correct it: what a reviewer's request does, by the author's own hand.
+  assert(canTakeBack("alice", steps, reviewing, pair, "alice"), "the author may take the draft back while its review is open");
+  assert(!canTakeBack("bob", steps, reviewing, pair, "alice"), "nobody but the author takes it back");
+  assert(!canTakeBack("alice", steps, done(["draft", "pair"], { pair: { assignees: ["bob"], approvals: ["bob", "alice"] } }), pair, "alice"), "not once the review is finished");
+  assert(!canTakeBack("alice", steps, done([], { pair: { assignees: ["bob"], approvals: [] } }), pair, "alice"), "a draft not handed in is already the author's");
+  const taken = takeBack(reviewing, steps, pair, "alice", "alice");
+  assert(!taken.doneStepIds.includes("draft") && taken.steps?.pair?.assignees.includes("bob") && taken.steps.pair.approvals.length === 0, "draft open again, seat kept, approvals dropped");
+  assert(changesPending(steps, taken, pair) && takenBackByAuthor(steps, taken, pair, "alice"), "the review waits, and it is the author who took it");
+  assert(!takenBackByAuthor(steps, back, pair, "alice"), "sent back by a reviewer is not taken back by the author");
+  assert(takeBack(reviewing, steps, pair, "bob", "alice") === reviewing, "taking back without being the author changes nothing");
+  assert(parseTaskProgressMarker(encodeTaskProgressMarker(taken)).steps?.pair?.returnedBy === "alice", "who sent the work back is kept with the subtarea");
+  const takenAgain = { ...taken, doneStepIds: [...taken.doneStepIds, "draft"] };
+  assert(!takenBackByAuthor(steps, takenAgain, pair, "alice") && canApproveStep("bob", takenAgain, pair, "alice"), "handed in again, the review goes on");
   // A review somebody sat on before anybody took the work (an exclusive step nobody claimed): nothing was sent back.
   const early = [{ id: "do", name: "Do", claimMode: "exclusive" }, { id: "check", name: "Check", claimMode: "pool", minAssignees: 2, excludePriorStepIds: ["do"] }] as TaskStep[];
   assert(!changesPending(early, done([], { check: { assignees: ["bob"], approvals: [] } }), early[1]!), "sitting early on a review is not a request for changes");

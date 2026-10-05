@@ -320,7 +320,37 @@ export function askForChanges(progress: TaskProgressMarker, steps: TaskStep[], s
   if (!canAskForChanges(login, steps, progress, step)) return progress;
   const reviewed = reviewedStepId(steps, step)!;
   const reopened = { ...progress, doneStepIds: progress.doneStepIds.filter((id) => id !== reviewed) };
-  return withStepRuntime(reopened, step.id, { ...getStepRuntime(progress, step.id), approvals: [] });
+  return withStepRuntime(reopened, step.id, { ...getStepRuntime(progress, step.id), approvals: [], returnedBy: login.trim() });
+}
+
+/**
+ * The author may take the work back while its review is open. What a reviewer says about a paragraph is usually
+ * answered by correcting the paragraph, and the only way to it was a button the reviewer has: the author read the
+ * comment and could do nothing about it but answer. Nobody but the author, and not once the review is finished.
+ */
+export function canTakeBack(login: string, steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep, author: string | undefined): boolean {
+  const user = login.trim().toLowerCase();
+  if (!user || (author ?? "").trim().toLowerCase() !== user) return false;
+  if (stepClaimMode(step) === "none" || closesInItsTool(step) || isStepDone(progress, step.id)) return false;
+  const reviewed = reviewedStepId(steps, step);
+  return Boolean(reviewed && isStepDone(progress, reviewed));
+}
+
+/**
+ * The author takes the work back to correct it: as when a reviewer asks for changes, their step is open again, the
+ * approvals given no longer count (what was approved is going to change) and the reviewers keep their seats.
+ */
+export function takeBack(progress: TaskProgressMarker, steps: TaskStep[], step: TaskStep, login: string, author: string | undefined): TaskProgressMarker {
+  if (!canTakeBack(login, steps, progress, step, author)) return progress;
+  const reviewed = reviewedStepId(steps, step)!;
+  const reopened = { ...progress, doneStepIds: progress.doneStepIds.filter((id) => id !== reviewed) };
+  return withStepRuntime(reopened, step.id, { ...getStepRuntime(progress, step.id), approvals: [], returnedBy: login.trim() });
+}
+
+/** The work is back with its author because the author took it, not because a reviewer asked: nobody «asked for changes». */
+export function takenBackByAuthor(steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep, author: string | undefined): boolean {
+  const by = getStepRuntime(progress, step.id).returnedBy?.toLowerCase();
+  return Boolean(by && by === (author ?? "").trim().toLowerCase() && changesPending(steps, progress, step));
 }
 
 /** A review whose work was sent back and not handed in again yet: somebody sits on it, and it is locked. */
