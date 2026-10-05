@@ -9,6 +9,7 @@ import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, row
 import { bookNamesIn } from "../src/domain/books";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
 import { isPassageList, localPassages } from "../src/domain/passageLinks";
+import { frameSentences, storiesIn, storyExample, storyFrames, storyPath, storyRefOf, takenSentences, toggleSentence } from "../src/domain/storyFrames";
 import { parseRefComment, refComment } from "../src/domain/reviewItems";
 
 let passed = 0;
@@ -193,6 +194,66 @@ test("en el artículo, las referencias quedan escritas por la app y lo demás si
 
   // Without the app's hand (the review, a language with no names), the rows are what the file has.
   assert.equal(articleRows(word, byHand)![2]!.draft, "* [1 de Juan 1:7](rc://*/tn/help/1jn/01/07)");
+});
+
+test("un ejemplo de las historias bíblicas se traduce tocando frases del cuadro que el equipo ya tradujo, sin escribir", () => {
+  // Shaped like the end of an article of the words, and like the file of a story.
+  const word = ["# God", "## Examples from the Bible stories:", "* __[1:1](rc://en/tn/help/obs/01/01)__ __God__ created the universe and everything in it in six days.\n* __[5:3](rc://en/tn/help/obs/05/03)__ “I am __God__ Almighty.”"].join("\n\n");
+  const story = [
+    "# 1. La Creación",
+    "![OBS Image](https://cdn.door43.org/obs/jpg/360px/obs-en-01-01.jpg)",
+    "Así es como Dios hizo todas las cosas en el principio. Él creó el universo y todas las cosas que hay ahí en seis días.",
+    "![OBS Image](https://cdn.door43.org/obs/jpg/360px/obs-en-01-02.jpg)",
+    "Entonces Dios dijo: “¡Qué haya luz!” Y hubo luz.",
+    "_Una historia bíblica de: Génesis 1-2_",
+  ].join("\n\n");
+
+  const rows = articleRows(word, startingText(word, "") ?? word, (piece) => localPassages(piece, bookNamesIn("es-419")!))!;
+  const example = rows[2]!;
+  assert.equal(example.made, undefined, "es de quien traduce: la app no lo escribe");
+  assert.equal(example.words, true, "y cuenta como párrafo por traducir");
+
+  // Which frame it quotes, and where the team's story is kept.
+  assert.deepEqual(storyRefOf(example.source), { story: 1, frame: 1 });
+  assert.deepEqual(storyRefOf(rows[3]!.source), { story: 5, frame: 3 });
+  assert.equal(storyRefOf("* [1 John 1:7](rc://en/tn/help/1jn/01/07)"), null);
+  assert.deepEqual(storiesIn(word), [1, 5]);
+  assert.equal(storyPath(5), "content/05.md");
+
+  // The frames of the story: the text under each picture; the title and the line of where it is from are not frames.
+  const frames = storyFrames(story);
+  assert.deepEqual(frames, ["Así es como Dios hizo todas las cosas en el principio. Él creó el universo y todas las cosas que hay ahí en seis días.", "Entonces Dios dijo: “¡Qué haya luz!” Y hubo luz."]);
+  assert.deepEqual(storyFrames("sin cuadros"), []);
+
+  // The frame is shown a sentence to a row: what is said inside quotes ends with them.
+  const sentences = frameSentences(frames[0]!);
+  assert.deepEqual(sentences, ["Así es como Dios hizo todas las cosas en el principio.", "Él creó el universo y todas las cosas que hay ahí en seis días."]);
+  assert.deepEqual(frameSentences(frames[1]!), ["Entonces Dios dijo: “¡Qué haya luz!”", "Y hubo luz."]);
+
+  // Touching a sentence takes it: the example keeps its number, as a link for any language, and the sentence follows.
+  const one = toggleSentence(example.source, "", sentences, 1);
+  assert.equal(one, "* **[1:1](rc://*/tn/help/obs/01/01)** Él creó el universo y todas las cosas que hay ahí en seis días.");
+  assert.deepEqual(takenSentences(one, sentences), [false, true]);
+  // Another one, touched afterwards, goes where the frame has it, not where it was touched.
+  const both = toggleSentence(example.source, one, sentences, 0);
+  assert.equal(both, storyExample(example.source, frames[0]!));
+  // Touched again, it is given back; the last one given back leaves the row empty, as nobody had been there.
+  assert.equal(toggleSentence(example.source, both, sentences, 0), one);
+  assert.equal(toggleSentence(example.source, one, sentences, 1), "");
+
+  // Once a person has written in the row, that is theirs: a sentence taken goes after it, and giving it back only takes it out.
+  const byHand = "* **1:1** **Dios** creó el universo.";
+  const added = toggleSentence(example.source, byHand, sentences, 0);
+  assert.equal(added, "* **1:1** **Dios** creó el universo. Así es como Dios hizo todas las cosas en el principio.");
+  assert.equal(toggleSentence(example.source, added, sentences, 0), byHand);
+  const retouched = one.replace("Él creó", "**Dios** creó");
+  assert.deepEqual(takenSentences(retouched, sentences), [false, false], "una frase retocada ya no es la del cuadro");
+  assert.ok(toggleSentence(example.source, retouched, sentences, 0).startsWith(retouched), "y lo retocado no se pierde");
+
+  // Put in its row, the article still reads as the same list, and the row is no longer in the source language.
+  const filled = rows.map((row, index) => (index === 2 ? { ...row, draft: one } : row));
+  assert.equal(rowPending(filled[2]!, vocabularyOf(word)), false);
+  assert.equal(articleRows(word, rowsMarkdown(filled))![2]!.draft, one);
 });
 
 test("traducir un cuadro cambia solo su pieza del archivo; vaciarlo la quita", () => {

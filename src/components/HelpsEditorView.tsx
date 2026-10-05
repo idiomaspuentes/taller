@@ -5,6 +5,8 @@ import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { bookLabel, bookNamesIn } from "../domain/books";
 import { localPassages } from "../domain/passageLinks";
+import { frameSentences, storiesIn, storyRefOf, takenSentences, toggleSentence } from "../domain/storyFrames";
+import { loadStoryFrames, teamStoriesRepo } from "../dcs/storyFrames";
 import { ChapterSources, NoteQuote, useHelpSources, useSourceHelps } from "./HelpSources";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { ToolHeader } from "./ToolHeader";
@@ -13,7 +15,8 @@ import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { usePieces, type ActivePiece } from "./usePieces";
-import { introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
+import { Check } from "lucide-react";
+import { articleRows, introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
@@ -646,6 +649,36 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const nameOf = bookNamesIn(ctx?.lang);
     return nameOf ? (piece: string) => localPassages(piece, nameOf) : undefined;
   }, [ctx?.lang]);
+  // The examples an article takes from the Bible stories: each is shown with its frame as the team has translated
+  // it, to take from. Read once the source is, a story at a time; a team with no stories is shown nothing.
+  const [stories, setStories] = useState<Record<number, string[]>>({});
+  const quoted = target?.kind === "markdown" && sourceRead ? [...new Set(items.flatMap((item) => storiesIn(sourceHelps[item.id]?.text ?? "")))].join(",") : "";
+  useEffect(() => {
+    if (!session || !ctx || !quoted) return;
+    let alive = true;
+    const where = teamStoriesRepo(ctx);
+    for (const story of quoted.split(",").map(Number)) {
+      void loadStoryFrames(session, where.owner, where.repo, story).then((frames) => alive && frames.length && setStories((prev) => (prev[story] ? prev : { ...prev, [story]: frames })));
+    }
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoted, session?.token, ctx?.lang, ctx?.contentOrg]);
+  /** The frame of the team's stories that goes with a piece of the source, when it is an example that quotes one. */
+  const frameOf = (sourcePiece: string) => {
+    const ref = storyRefOf(sourcePiece);
+    const frame = ref ? stories[ref.story]?.[ref.frame - 1] : undefined;
+    return ref && frame ? { ref, sentences: frameSentences(frame) } : null;
+  };
+  // Such a piece is made by touching sentences: it opens without the keyboard. The pieces of each source are worked
+  // out here because a piece is opened by its place, from outside the article («Siguiente» of the one before it).
+  const sourcePieces = useMemo(
+    () => Object.fromEntries(items.filter((item) => item.kind === "markdown").map((item) => [item.id, (articleRows(sourceHelps[item.id]?.text ?? "", "") ?? []).map((row) => row.source)])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sourceRead, items.length],
+  );
+  const opensQuiet = (id: string, index: number) => Boolean(frameOf(sourcePieces[id]?.[index] ?? ""));
   const inRows = items.filter(byRows);
   const inPieces = inRows.map((item) => item.id);
   /** The first piece still to be translated is opened and brought onto the screen: where to go on from. */
@@ -809,11 +842,33 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 onChange={(text) => updateItem(item.id, { text })}
                 book={ctx?.book}
                 open={active?.id === item.id ? active.index : null}
-                onOpen={(index, element) => pieces.open(item.id, index, element)}
+                onOpen={(index, element) => pieces.open(item.id, index, element, opensQuiet(item.id, index))}
                 onProgress={(done, total, firstPending, count, made) => pieces.report(item.id, done, total, firstPending, count, made)}
                 make={makePiece}
+                beside={(row, box) => {
+                  const ours = frameOf(row.source);
+                  if (!ours) return null;
+                  const taken = takenSentences(box.text, ours.sentences);
+                  return (
+                    <div className="ab-story">
+                      <p className="ab-story__name">{t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)}</p>
+                      <p className="ab-story__hint">{t("ab.storyHint")}</p>
+                      <div className="ab-story__list">
+                        {ours.sentences.map((sentence, at) => (
+                          // The press does not take the cursor from wherever it is: nothing moves under the finger.
+                          <button key={at} type="button" role="checkbox" aria-checked={taken[at]} className="ab-story__s" onMouseDown={(event) => event.preventDefault()} onClick={() => box.write(toggleSentence(row.source, box.text, ours.sentences, at))}>
+                            <span className="ab-story__tick" aria-hidden>
+                              {taken[at] ? <Check size={14} /> : null}
+                            </span>
+                            <span>{sentence}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }}
                 hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
-                onNext={(index) => pieces.next(inPieces, item.id, index)}
+                onNext={(index) => pieces.next(inPieces, item.id, index, opensQuiet)}
                 onDone={pieces.close}
                 marksOf={(index) => commentsOn(item, index).length}
                 above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}

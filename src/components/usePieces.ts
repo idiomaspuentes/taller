@@ -70,8 +70,12 @@ export function usePieces(domId: (id: string) => string) {
     if (row && pane.current) revealWhole(pane.current, row);
   }, [active]);
 
-  /** A piece was touched: it opens, the one that was open closes, and where it is written in, the box is ready. */
-  function open(id: string, index: number, element: HTMLElement) {
+  /**
+   * A piece was touched: it opens, the one that was open closes, and where it is written in, the box is ready.
+   * `quiet`: the box is not given the cursor. A piece that is translated by touching what is beside it needs no
+   * keyboard, and on a phone the keyboard would cover it.
+   */
+  function open(id: string, index: number, element: HTMLElement, quiet = false) {
     const scroller = pane.current;
     const top = element.getBoundingClientRect().top;
     const before = scroller ? placesOf(scroller) : null;
@@ -80,7 +84,11 @@ export function usePieces(domId: (id: string) => string) {
     const box = document.getElementById(`${domId(id)}-${index}`);
     // The piece that closed gave back its room: the one touched stays where the finger is.
     if (row && scroller) holdAt(scroller, row, top);
-    if (box) {
+    if (box && quiet) {
+      // The cursor leaves whatever box had it, so the keyboard goes down, and the piece is shown whole.
+      if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
+      if (row && scroller) revealWhole(scroller, row);
+    } else if (box) {
       box.focus({ preventScroll: true });
       caretInto(box);
       if (scroller) {
@@ -115,10 +123,10 @@ export function usePieces(domId: (id: string) => string) {
     return null;
   }
 
-  function next(order: string[], id: string, index: number) {
+  function next(order: string[], id: string, index: number, quiet?: (id: string, index: number) => boolean) {
     const to = after(order, id, index);
     const element = to ? document.getElementById(`${domId(to.id)}-row-${to.index}`) : null;
-    if (to && element) open(to.id, to.index, element);
+    if (to && element) open(to.id, to.index, element, quiet?.(to.id, to.index));
   }
 
   /**

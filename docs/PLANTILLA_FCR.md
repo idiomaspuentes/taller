@@ -307,9 +307,20 @@ escritas, con una nota que lo dice; no se abren, y «Siguiente» las pasa de lar
 que se abre el artículo, a partir de la fuente de hoy, y se guardan con él. Para un idioma del que la app no
 tiene los nombres de los libros no escribe nada, y esas líneas se traducen a mano como las demás.
 
-Queda por hacer lo mismo con los **ejemplos de las historias bíblicas** (se tomarán de las historias ya
-traducidas del equipo) y volver a escribir unas y otros al publicar; mientras tanto los ejemplos se traducen
-a mano y cuentan como párrafos.
+**Los ejemplos de las historias bíblicas se traducen tocando frases, sin escribir.** Cada ejemplo
+(«**[1:1](rc://en/tn/help/obs/01/01)** **God** created the universe…») es una frase de un cuadro, recortada y
+retocada a mano: no hay forma de escribirla sola a partir de lo que el equipo ya tiene. Al abrir el ejemplo se
+ve su fuente en inglés y, debajo, **el cuadro completo tal como el equipo lo tradujo** en sus historias
+(`{idioma}_obs`, junto a sus otros recursos), una frase por renglón. Quien traduce toca las frases que dicen lo
+mismo que el ejemplo: quedan escritas en la caja, detrás del número del cuadro y en el orden en que el cuadro
+las tiene; tocar una otra vez la quita. Pensado para el teléfono: el ejemplo se abre sin levantar el teclado y
+cada frase es un renglón del alto de un dedo. Después se puede retocar a mano en la caja (poner el nombre
+donde el cuadro dice «Él», por ejemplo); lo que una persona escribió no se pisa: una frase tocada se añade al
+final. Si el equipo no tiene esa historia, se ve solo la fuente y se traduce como cualquier párrafo. Estos
+ejemplos cuentan como párrafos por traducir.
+
+Todo esto ocurre en el paso de traducir, al abrir la tarea. Queda por hacer: volver a escribir las referencias
+al publicar.
 
 **Qué cuenta como párrafo sin traducir.** El que sigue en el idioma de la fuente. No cuenta lo que escribe la
 app (las referencias bíblicas). Un párrafo con palabras propias y una referencia dentro cuenta por sus palabras.

@@ -2556,5 +2556,7 @@
   "he.pendingTitleMany": "Quedan {n} párrafos sin traducir",
   "he.pendingText": "Si lo pasas a revisión así, quien revisa lo recibirá incompleto.",
   "he.keepTranslating": "Seguir traduciendo",
-  "ab.made": "La app escribe estas referencias. No hay que traducirlas."
+  "ab.made": "La app escribe estas referencias. No hay que traducirlas.",
+  "ab.storyName": "Cuadro {ref} en las historias del equipo",
+  "ab.storyHint": "Toca las frases que dicen lo mismo que el ejemplo."
 }

@@ -41,6 +41,12 @@ type Props = {
   marksOf?: (index: number) => number;
   /** Over the piece being written: what was said about it, read before it is corrected. */
   above?: (index: number) => React.ReactNode;
+  /**
+   * Beside the source of the piece being written: what the team already has for it somewhere else (the frame of a
+   * story an example quotes). `text` is what the box holds and `write` puts another text in it; the box is not
+   * given the cursor, so that on a phone the keyboard stays down while the piece is made by touching.
+   */
+  beside?: (row: ArticleRow, box: { text: string; write: (markdown: string) => void }) => React.ReactNode;
 };
 
 /** A piece as it reads: what is written for it, or the source, in grey, while nothing is. */
@@ -81,7 +87,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -199,10 +205,19 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         // Still the source, and not written in yet: the box is empty for the translation.
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
         const over = above?.(index);
+        const ours = beside?.(row, { text: shown, write: (markdown) => put(index, markdown) });
         return (
           <div key={index} id={rowId} className="ab-open" data-slide>
             {over ? <div className="ab-over">{over}</div> : null}
-            <HelpMarkdownView className="ab-peek" content={row.source} />
+            {ours ? (
+              // The source and what the team has for it read together, on the same side of the box.
+              <div className="ab-source">
+                <HelpMarkdownView className="ab-peek" content={row.source} />
+                {ours}
+              </div>
+            ) : (
+              <HelpMarkdownView className="ab-peek" content={row.source} />
+            )}
             <MarkdownEditor
               id={`${id}-${index}`}
               compact
