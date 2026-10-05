@@ -2558,10 +2558,14 @@
   "he.keepTranslating": "Continuar traduzindo",
   "ab.made": "O app escreve estas referências. Não é preciso traduzi-las.",
   "ab.storyName": "Quadro {ref} nas histórias da equipe",
-  "ab.storyHint": "Toque a primeira e a última palavra da parte que diz o mesmo que o exemplo.",
-  "ab.storyClear": "Tirar a marca",
+  "ab.storyHint": "Toque a primeira palavra da parte que diz o mesmo que o exemplo.",
+  "ab.storyClear": "Tirar tudo",
   "ab.storyUse": "Trocar a tradução pelo que foi marcado",
-  "ab.storyMore": "Outra parte",
-  "ab.storyMoreHint": "Se o exemplo pula algo (…), marque cada parte separadamente.",
-  "ab.storyMoreOn": "Toque onde começa a outra parte."
+  "ab.storyHintLast": "Agora toque a última palavra dessa parte. Se for uma só palavra, toque nela de novo.",
+  "ab.storyHintMore": "Toque outra palavra para marcar outra parte. Toque uma parte marcada para tirá-la.",
+  "ab.storyFirst": "Início",
+  "ab.storyLast": "Fim",
+  "ab.storyEarlier": "uma palavra antes",
+  "ab.storyLater": "uma palavra depois",
+  "ab.storyDots": "Pôr … entre as partes"
 }

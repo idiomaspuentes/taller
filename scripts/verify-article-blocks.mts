@@ -9,7 +9,7 @@ import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, row
 import { bookNamesIn } from "../src/domain/books";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
 import { isPassageList, localPassages } from "../src/domain/passageLinks";
-import { frameWords, gapOf, marksText, pickedRanges, pickedText, storiesIn, storyExample, storyFrames, storyPath, storyRefOf, touchMarks, touchWord } from "../src/domain/storyFrames";
+import { dotsOf, frameWords, marksText, nudgeMarks, pickedText, readMarks, storiesIn, storyExample, storyFrames, storyPath, storyRefOf, touchMarks, type Marks } from "../src/domain/storyFrames";
 import { parseRefComment, refComment } from "../src/domain/reviewItems";
 
 let passed = 0;
@@ -196,7 +196,7 @@ test("en el artículo, las referencias quedan escritas por la app y lo demás si
   assert.equal(articleRows(word, byHand)![2]!.draft, "* [1 de Juan 1:7](rc://*/tn/help/1jn/01/07)");
 });
 
-test("un ejemplo de las historias bíblicas se traduce marcando, a la palabra, una parte del cuadro que el equipo ya tradujo", () => {
+test("un ejemplo de las historias bíblicas se traduce marcando, a la palabra, partes del cuadro que el equipo ya tradujo", () => {
   // Shaped like the end of an article of the words, and like the file of a story.
   const word = ["# God", "## Examples from the Bible stories:", "* __[1:1](rc://en/tn/help/obs/01/01)__ __God__ created the universe and everything in it in six days.\n* __[5:3](rc://en/tn/help/obs/05/03)__ “I am __God__ Almighty.”"].join("\n\n");
   const story = [
@@ -225,69 +225,67 @@ test("un ejemplo de las historias bíblicas se traduce marcando, a la palabra, u
   assert.deepEqual(frames, ["Así es como Dios hizo todas las cosas en el principio. Él creó el universo y todas las cosas que hay ahí en seis días.", "Entonces Dios dijo: “¡Qué haya luz!” Y hubo luz."]);
   assert.deepEqual(storyFrames("sin cuadros"), []);
 
-  // The frame is shown a word at a time. The example is a piece of it cut by hand, often inside a sentence, so the
-  // part that says the same is marked to the word: its first word is touched, and then its last.
+  // The frame is shown a word at a time. The example is a piece of it cut by hand, often inside a sentence, so what
+  // says the same is marked to the word. Two touches make a part: its first word, and its last.
   const words = frameWords(frames[0]!);
   assert.equal(words.length, 25);
-  assert.deepEqual([words[10], words[11], words[24]], ["principio.", "Él", "días."]);
-  let range = touchWord(null, 12);
-  assert.deepEqual(range, [12, 12], "el primer toque marca una palabra");
-  assert.equal(pickedText(words, range!), "creó");
-  range = touchWord(range, 24);
-  assert.deepEqual(range, [12, 24], "el segundo estira la parte hasta la otra");
-  assert.equal(pickedText(words, range!), "creó el universo y todas las cosas que hay ahí en seis días.");
-
-  // Each touch after that moves the nearer end of the part to the word touched.
-  assert.deepEqual(touchWord([12, 24], 11), [11, 24], "fuera, por delante: la parte crece hacia ahí");
-  assert.deepEqual(touchWord([12, 20], 24), [12, 24], "fuera, por detrás");
-  assert.deepEqual(touchWord([11, 24], 13), [13, 24], "dentro, cerca del principio: el principio entra");
-  assert.deepEqual(touchWord([11, 24], 22), [11, 22], "dentro, cerca del final: el final entra");
-  assert.deepEqual(touchWord([11, 24], 11), [12, 24], "la palabra de un extremo: se suelta");
-  assert.deepEqual(touchWord([11, 24], 24), [11, 23]);
-  assert.equal(touchWord([12, 12], 12), null, "la única palabra marcada, tocada otra vez: nada marcado");
-
-  // What is marked is written in the row behind the number of the frame, a link for any language.
-  const one = storyExample(example.source, pickedText(words, [12, 24]));
-  assert.equal(one, "* **[1:1](rc://*/tn/help/obs/01/01)** creó el universo y todas las cosas que hay ahí en seis días.");
+  assert.deepEqual([words[3], words[10], words[11], words[12], words[24]], ["Dios", "principio.", "Él", "creó", "días."]);
+  let marks = touchMarks(null, 12);
+  assert.deepEqual(marks, { parts: [[12, 12]], open: 0, current: 0, dots: false }, "el primer toque abre una parte en esa palabra");
+  marks = touchMarks(marks, 24);
+  assert.deepEqual(marks, { parts: [[12, 24]], open: null, current: 0, dots: false }, "el segundo la cierra en la otra");
+  assert.equal(marksText(words, marks!), "creó el universo y todas las cosas que hay ahí en seis días.");
+  // In either order: the last word first and the first after is the same part.
+  assert.deepEqual(touchMarks(touchMarks(null, 24), 12)!.parts, [[12, 24]]);
   // A part cut inside a sentence does not keep the comma the frame went on with.
   assert.equal(pickedText(frameWords("Después de que Dios creó la tierra, estaba oscura y vacía, porque no había nada."), [0, 6]), "Después de que Dios creó la tierra");
 
-  // The row says which part it holds, so the marks are shown again when the example is opened another day.
-  assert.deepEqual(pickedRanges(one, words), [[12, 24]]);
-  assert.deepEqual(pickedRanges(storyExample(example.source, frames[0]!), words), [[0, 24]], "el cuadro entero también es una parte");
-  assert.equal(pickedRanges("", words), null);
-  // Retouched by hand, or written by a person from the start, it is no longer a part of the frame: it is theirs.
-  assert.equal(pickedRanges(one.replace("creó el universo", "**Dios** creó el universo"), words), null);
-  assert.equal(pickedRanges("* **1:1** **Dios** creó el universo y todo lo que contiene en seis días.", words), null);
+  // Nothing is switched on for another part: the next two touches make it. The same word twice is a part of one word.
+  marks = touchMarks(touchMarks(null, 3), 3);
+  assert.deepEqual(marks, { parts: [[3, 3]], open: null, current: 0, dots: false });
+  marks = touchMarks(touchMarks(marks, 12), 24);
+  assert.deepEqual(marks, { parts: [[3, 3], [12, 24]], open: null, current: 1, dots: false });
+  // The source of this example leaves nothing out, so the parts are read on: no word is typed to say who created.
+  assert.deepEqual(dotsOf(example.source), { sign: "…", on: false });
+  assert.equal(marksText(words, marks!), "Dios creó el universo y todas las cosas que hay ahí en seis días.");
+  // One that leaves something out is marked the same way, and what is left out is shown as its source shows it.
+  assert.deepEqual(dotsOf("* __[1:1](rc://en/tn/help/obs/01/01)__ __God__ ... the universe ... in six days."), { sign: "...", on: true });
+  const cut: Marks = { parts: [[3, 3], [13, 14], [22, 24]], open: null, current: 2, dots: true };
+  assert.equal(marksText(words, cut), "Dios … el universo … en seis días.");
+  assert.equal(marksText(words, cut, "..."), "Dios ... el universo ... en seis días.");
 
-  // An example that leaves something out («God … the universe … in six days») is marked a part at a time.
-  // «Otra parte» makes the next touch start a part of its own; the touch after it stretches that part, not the first.
-  let marks = touchMarks(null, 3);
-  marks = touchMarks(marks, 14, true);
-  assert.deepEqual(marks, { parts: [[3, 3], [14, 14]], active: 1 });
-  marks = touchMarks(marks, 13);
-  assert.deepEqual(marks!.parts, [[3, 3], [13, 14]], "fuera de las dos, se mueve la que se marcó última");
-  marks = touchMarks(marks, 22, true);
-  marks = touchMarks(marks, 24);
-  assert.deepEqual(marks, { parts: [[3, 3], [13, 14], [22, 24]], active: 2 });
-  // What was left out is shown between the parts, as the source of the example shows it.
-  assert.equal(marksText(words, marks!.parts), "Dios … el universo … en seis días.");
-  assert.equal(gapOf("* __[1:1](rc://en/tn/help/obs/01/01)__ __God__ ... the universe ... in six days."), "...");
-  assert.equal(gapOf(example.source), "…");
-  assert.equal(marksText(words, marks!.parts, "..."), "Dios ... el universo ... en seis días.");
-  // Written in the row and read back, with either sign: the same three parts.
-  const several = storyExample(example.source, marksText(words, marks!.parts));
-  assert.equal(several, "* **[1:1](rc://*/tn/help/obs/01/01)** Dios … el universo … en seis días.");
-  assert.deepEqual(pickedRanges(several, words), [[3, 3], [13, 14], [22, 24]]);
-  assert.deepEqual(pickedRanges(several.replaceAll("…", "..."), words), [[3, 3], [13, 14], [22, 24]]);
-  // A touch inside a part moves that part, whichever was last; and it becomes the one that moves next.
-  assert.deepEqual(touchMarks(marks, 13), { parts: [[3, 3], [14, 14], [22, 24]], active: 1 });
-  // Two parts that come to meet leave nothing out between them: they are one.
-  assert.deepEqual(touchMarks({ parts: [[3, 3], [13, 14]], active: 0 }, 12), { parts: [[3, 14]], active: 0 });
-  // The only word of a part, touched: that part is gone, and the others stay.
-  assert.deepEqual(touchMarks(marks, 3)!.parts, [[13, 14], [22, 24]]);
-  // «Otra parte» on a word already marked is not another part: it moves the one it is in.
-  assert.deepEqual(touchMarks({ parts: [[12, 24]], active: 0 }, 20, true)!.parts, [[12, 20]]);
+  // A touch on a part already made takes it away; the others stay. The last one taken leaves nothing marked.
+  assert.deepEqual(touchMarks(cut, 13)!.parts, [[3, 3], [22, 24]]);
+  assert.equal(touchMarks({ parts: [[3, 3]], open: null, current: 0, dots: false }, 3), null);
+  // A part closed against another one, or opened right beside it, is one with it: nothing is left out between them.
+  assert.deepEqual(touchMarks(touchMarks({ parts: [[3, 3], [13, 14]], open: null, current: 1, dots: false }, 8), 13)!.parts, [[3, 3], [8, 14]]);
+  assert.deepEqual(touchMarks({ parts: [[12, 14]], open: null, current: 0, dots: false }, 11), { parts: [[11, 14]], open: 0, current: 0, dots: false });
+
+  // A finger does not always land on a short word: the ends of the last part also move a word at a time.
+  const part: Marks = { parts: [[3, 3], [12, 24]], open: null, current: 1, dots: false };
+  assert.deepEqual(nudgeMarks(part, "first", -1, words.length).parts, [[3, 3], [11, 24]]);
+  assert.deepEqual(nudgeMarks(part, "first", 1, words.length).parts, [[3, 3], [13, 24]]);
+  assert.deepEqual(nudgeMarks(part, "last", -1, words.length).parts, [[3, 3], [12, 23]]);
+  assert.deepEqual(nudgeMarks(part, "last", 1, words.length).parts, [[3, 3], [12, 24]], "no hay más palabras después de la última");
+  assert.deepEqual(nudgeMarks({ ...part, parts: [[3, 3], [5, 5]] }, "last", -1, words.length).parts, [[3, 3], [5, 5]], "una parte no se da la vuelta");
+  assert.deepEqual(nudgeMarks({ ...part, parts: [[3, 3], [5, 9]] }, "first", -1, words.length), { parts: [[3, 9]], open: null, current: 0, dots: false }, "al llegar a la de al lado, son una");
+
+  // What is marked is written in the row behind the number of the frame, a link for any language.
+  const one = storyExample(example.source, marksText(words, { parts: [[12, 24]], dots: false }));
+  assert.equal(one, "* **[1:1](rc://*/tn/help/obs/01/01)** creó el universo y todas las cosas que hay ahí en seis días.");
+  // The row says what it holds, so the marks are shown again when the example is opened another day.
+  assert.deepEqual(readMarks(one, words), { parts: [[12, 24]], dots: false });
+  assert.deepEqual(readMarks(storyExample(example.source, frames[0]!), words), { parts: [[0, 24]], dots: false }, "el cuadro entero también es una parte");
+  assert.deepEqual(readMarks(storyExample(example.source, "Dios creó el universo y todas las cosas que hay ahí en seis días."), words), { parts: [[3, 3], [12, 24]], dots: false }, "dos partes leídas de corrido");
+  assert.deepEqual(readMarks(storyExample(example.source, marksText(words, cut)), words), { parts: [[3, 3], [13, 14], [22, 24]], dots: true });
+  assert.deepEqual(readMarks(storyExample(example.source, marksText(words, cut, "...")), words), { parts: [[3, 3], [13, 14], [22, 24]], dots: true }, "con tres puntos también");
+  // A word the frame says twice («el») is taken for the place that makes the longest part.
+  assert.deepEqual(readMarks(storyExample(example.source, "el universo"), words), { parts: [[13, 14]], dots: false });
+  assert.equal(readMarks("", words), null);
+  // Retouched by hand, or written by a person from the start, it is not parts of the frame any more: it is theirs.
+  assert.equal(readMarks(one.replace("creó el universo", "**Dios** creó el universo"), words), null);
+  assert.equal(readMarks("* **1:1** **Dios** creó el universo y todo lo que contiene en seis días.", words), null);
+  assert.equal(readMarks(storyExample(example.source, "Dios … creó el universo y todas hay ahí"), words), null, "puntos en un sitio y en otro no: lo puso una persona");
 
   // Put in its row, the article still reads as the same list, and the row is no longer in the source language.
   const filled = rows.map((row, index) => (index === 2 ? { ...row, draft: one } : row));
