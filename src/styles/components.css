@@ -8204,6 +8204,27 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 @media (max-width: 40rem) {
   .app-main--chat .chat-header { border-radius: 0; }
 }
+/* The conversation is a page, not a card, at any width: it fills what is under the app's header, edge to edge. As a
+   card it had its top corners rounded against that header, a gutter on each side and no bottom of its own, so it read
+   as a box left lying on the page. Its two bars span the page; what they hold, and the messages between them, keep to
+   the column the app's header keeps to. */
+.app-main.app-main--chat { max-width: none; padding-inline: 0; }
+.app-main--chat > .chat-layout { max-width: none; margin: 0; gap: 0; }
+.app-main--chat .chat-main { min-height: 0; border: 0; border-radius: 0; background: transparent; }
+.app-main--chat .chat-header,
+.app-main--chat .chat-composer { border-radius: 0; }
+.app-main--chat .chat-header__row,
+.app-main--chat .chat-header > .chat-header__sub,
+.app-main--chat .chat-header > .chat-header__sub + *,
+.app-main--chat .chat-composer > * { width: 100%; max-width: 64rem; margin-inline: auto; }
+.app-main--chat .chat-log,
+.app-main--chat .chat-state { width: 100%; max-width: 64rem; margin-inline: auto; background: transparent; }
+/* On a wide screen the other conversations are a column of the page, down its left edge, not a second card. */
+@media (min-width: 1280px) {
+  .app-main--chat .chat-layout--split { grid-template-columns: 18rem minmax(0, 1fr); max-width: none; }
+  .app-main--chat .chat-layout--split .chat-aside { position: static; align-self: stretch; border: 0; border-right: 1px solid var(--border); border-radius: 0; overflow: visible; }
+  .chat-aside__list { position: sticky; top: 0; display: flex; flex-direction: column; max-height: calc(100svh - 4rem); overflow-y: auto; }
+}
 /* Notices: every row says where it belongs, and the free ones are grouped under their book and phase. */
 .hub-place { font-size: 0.75rem; line-height: 1.35; color: var(--text-muted); }
 .hub-groups { display: grid; }

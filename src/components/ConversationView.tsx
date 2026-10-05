@@ -667,6 +667,8 @@ function ConversationThread({
     <div className={showAside ? "chat-layout chat-layout--split" : "chat-layout"}>
       {showAside ? (
         <nav className="chat-aside" aria-label={t("cv.myConversations")}>
+          {/* The column runs down the page; its list stays in view while a long conversation scrolls. */}
+          <div className="chat-aside__list">
           {siblings.map((row) => (
             <button
               key={row.number}
@@ -681,6 +683,7 @@ function ConversationThread({
               <span className="chat-aside__label">{threadTitle(row.title, language)}</span>
             </button>
           ))}
+          </div>
         </nav>
       ) : null}
 
