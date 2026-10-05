@@ -10,6 +10,8 @@ import {
   workOrderIssueTitle,
   type WorkOrder,
 } from "../src/domain/workOrder.ts";
+import { parsePortionPrMarker, upsertPortionPrInBody, PORTION_PR_SCHEMA } from "../src/domain/portionPr.ts";
+import { parseTaskProgressMarker, upsertTaskProgressInBody, TASK_PROGRESS_SCHEMA } from "../src/domain/taskProgress.ts";
 import type { AssignmentsDoc, InventoryDoc } from "../src/domain/types.ts";
 import type { GtSession } from "../src/dcs/auth.ts";
 
@@ -325,6 +327,35 @@ console.log("ok  publicar mantiene cerradas las terminadas y cierra huérfanas")
   const closes = fake2.calls.filter((c) => c.method === "PATCH" && c.body?.state === "closed").map((c) => c.path);
   assert(closes.length === 1 && closes[0].endsWith("/issues/3"), `solo se cierra #3, got ${closes.join(", ")}`);
   console.log("ok  revisión sobre la misma porción: la subtarea TPL sigue abierta, la huérfana se cierra");
+}
+
+{
+  // A subtarea somebody is working on keeps, in its own text, how far its steps are and which review is its own.
+  // The plan knows neither: writing the subtarea again from the plan (its name changed, a subtarea was missing)
+  // must leave both where they are.
+  const draft = order("NEH|tpl-draft|tpl|3:1-4|porcion:3:1-4", "3:1-4");
+  const progress = { schema: TASK_PROGRESS_SCHEMA, doneStepIds: ["familiarizarse", "borrador"], steps: { pares: { assignees: ["beto"] } } };
+  const review = { schema: PORTION_PR_SCHEMA, owner: ORG, repo: "es-419_glt", number: 7, htmlUrl: "https://qa.door43.org/es-419_gl/es-419_glt/pulls/7", head: "trabajo/neh/tpl-draft/ana/9", base: "borrador/neh/tpl-draft", issueNumber: 9 };
+  const inHand = upsertPortionPrInBody(upsertTaskProgressInBody(workOrderIssueBody(draft), progress as never), review as never);
+  const fake3 = installFakeDcs([{ number: 9, title: workOrderIssueTitle(draft), body: inHand, state: "open", assignees: ["ana"] }]);
+
+  const renamed = { ...draft, label: "3:1-4 · Texto literal" };
+  await publishWorkOrders({ session, org: ORG, board, inventory, orders: [renamed], keepAssignees: true });
+  const after = fake3.issues.get(9)!;
+  assert(after.title === workOrderIssueTitle(renamed), `la subtarea toma el nombre nuevo, got ${after.title}`);
+  assert(after.body.includes("## 3:1-4 · Texto literal"), "y su texto, el del plan de ahora");
+  const kept = parseTaskProgressMarker(after.body);
+  assert(kept.doneStepIds.join() === "familiarizarse,borrador", `los pasos hechos siguen hechos, got ${kept.doneStepIds.join() || "ninguno"}`);
+  assert(kept.steps?.pares?.assignees.join() === "beto", "quien tomó la revisión sigue en ella");
+  assert(parsePortionPrMarker(after.body)?.number === 7, "y la subtarea sigue unida a su revisión");
+  assert(after.assignees.join() === "ana", "quien la tiene la conserva");
+
+  // Written a second time, nothing piles up: one of each, as before.
+  await publishWorkOrders({ session, org: ORG, board, inventory, orders: [renamed], keepAssignees: true });
+  const twice = fake3.issues.get(9)!.body;
+  const notes = (name: string) => twice.split(`<!-- ${name} `).length - 1;
+  assert(notes("gateway-task-progress") === 1 && notes("gateway-portion-pr") === 1 && notes("gateway-work-order") === 1, "una sola marca de cada cosa tras escribirla dos veces");
+  console.log("ok  una subtarea en curso conserva sus pasos y su revisión cuando el plan la vuelve a escribir");
 }
 
 console.log("verify-publish-sync: ok");

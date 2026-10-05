@@ -644,6 +644,21 @@ export function workOrderIssueBody(order: WorkOrder): string {
   return lines.join("\n");
 }
 
+/** What the app keeps in a subtarea's text besides the plan's own marker: hidden notes, each with its name. */
+const KEPT_NOTE_RE = /<!--\s*(?:gateway|tas)[-:][\w:-]+\s[\s\S]*?-->/g;
+const PLAN_NOTE_RE = /^<!--\s*gateway-work-order\b/;
+
+/**
+ * The text of a subtarea that already exists, written again from the plan. The plan says what the subtarea is; the
+ * subtarea's own text also says how far its steps are and which review is its own, and the plan knows neither.
+ * Writing only what the plan says sent work in hand back to its first step and cut it from its review.
+ */
+export function refreshedIssueBody(order: WorkOrder, previous: string | undefined): string {
+  const fresh = workOrderIssueBody(order);
+  const kept = (previous ?? "").match(KEPT_NOTE_RE)?.filter((note) => !PLAN_NOTE_RE.test(note)) ?? [];
+  return kept.length ? `${fresh.trimEnd()}\n\n${kept.join("\n\n")}\n` : fresh;
+}
+
 export function workOrderIssueTitle(order: WorkOrder): string {
   return `${order.book} ${order.label}`;
 }

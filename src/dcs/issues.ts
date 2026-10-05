@@ -55,6 +55,7 @@ import {
   indexWorkIssues,
   parseWorkOrderMarker,
   planKeeps,
+  refreshedIssueBody,
   workOrderIssueBody,
   workOrderIssueTitle,
   publishableWorkOrders,
@@ -756,11 +757,12 @@ export async function publishWorkOrders(params: {
 
       if (found) {
         // A closed subtarea means the work finished; the plan carries no "reopen" signal,
-        // so publishing again only refreshes its text and never touches its state.
+        // so publishing again only refreshes its text and never touches its state. Nor what its text keeps of the
+        // work in hand: its steps and its review.
         const edited = await editIssue(config, org, PM_REPO_NAME, found.number, {
           token: session.token,
           title,
-          body,
+          body: refreshedIssueBody(order, found.body),
           milestone: milestoneId,
           ...(params.keepAssignees && !order.assignee ? {} : { assignees: order.assignee ? [order.assignee.personId] : [] }),
         });
