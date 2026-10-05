@@ -1,6 +1,7 @@
 import { StepAsk } from "./StepAsk";
 import { toolHeading } from "./toolHeading";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
+import { openComments } from "../domain/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
@@ -1251,9 +1252,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               head = visible.marker.head;
               setPrUrl(visible.marker.htmlUrl);
               // What the reviewers said is shown next to the draft: the author corrects with it in view.
-              void loadReviewComments(sess, visible.marker)
-                .then((rows) => {
+              // Only what is still open: a comment given as resolved, and the author's own answers, ask nothing more.
+              const owner = decoded.username || sess.username;
+              void loadReviewComments(sess, visible.marker, owner)
+                .then((all) => {
                   if (!stillThisLoad()) return;
+                  const rows = openComments(all, owner);
                   setReviewComments(rows);
                   if (rows.length) setResourceTab("revision");
                 })

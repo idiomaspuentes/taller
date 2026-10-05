@@ -49,6 +49,8 @@ const SENTENCES: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^Versículos (.+) guardados en el borrador grupal$/, (m) => `Versículos ${m[1]} salvos no rascunho do grupo`],
   [/^Versículos (.+) ya estaban en el borrador grupal$/, (m) => `Versículos ${m[1]} já estavam no rascunho do grupo`],
   [/^Aprobado: (.+)$/, (m) => `Aprovado: ${m[1]}`],
+  [/^Comentario resuelto: (.+)$/s, (m) => `Comentário resolvido: ${m[1]}`],
+  [/^Comentario reabierto: (.+)$/s, (m) => `Comentário reaberto: ${m[1]}`],
   [/^(\d+) veces$/, (m) => `${m[1]} vezes`],
   [/^Hay decisiones de versículo sin resolver en (.+)\. Resuélvelas primero\.$/, (m) => `Há decisões de versículo sem resolver em ${m[1]}. Resolva-as primeiro.`],
   [/^No se pudo leer el rango de versículos de (#\d+) \((.+)\)\. Corrige el título de la subtarea\.$/, (m) => `Não foi possível ler o intervalo de versículos de ${m[1]} (${m[2]}). Corrija o título da subtarefa.`],

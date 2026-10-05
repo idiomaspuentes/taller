@@ -179,3 +179,6 @@ registerChatEventType({
   title: (e) => e.summary,
 });
 registerChatEventType({ type: "closed", render: "system", title: (e) => e.summary });
+// A comment of a review given as resolved, or opened again (see `reviewComments.ts`).
+registerChatEventType({ type: "comment-resolved", render: "system", title: (e) => e.summary });
+registerChatEventType({ type: "comment-reopened", render: "system", title: (e) => e.summary });

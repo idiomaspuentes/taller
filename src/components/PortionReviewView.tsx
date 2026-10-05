@@ -17,7 +17,8 @@ import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
 import { readRepoFile } from "../dcs/repoFile";
-import { loadReviewComments, type ReviewComment as Comment } from "../dcs/reviewComments";
+import { loadReviewComments, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
+import { canResolveComment, openComments } from "../domain/reviewComments";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
@@ -120,7 +121,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [acting, setActing] = useState(false);
   const [error, setError] = useState("");
 
-  const loadComments = useCallback(async (sess: GtSession, linked: PortionPrMarker) => setComments(await loadReviewComments(sess, linked)), []);
+  /** `owner`: who wrote the draft, whose word does not close what was said about it. */
+  const loadComments = useCallback(async (sess: GtSession, linked: PortionPrMarker, owner?: string) => setComments(await loadReviewComments(sess, linked, owner)), []);
 
   const load = useCallback(async () => {
     if (!ctx) return void setError(tNow("se.badContext"));
@@ -174,7 +176,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       }
       const [nextPull, files] = await Promise.all([loadLinkedPull(sess, linked), loadLinkedPullFiles(sess, linked).catch(() => [])]);
       setPull(nextPull);
-      void loadComments(sess, linked).catch(() => setComments([]));
+      void loadComments(sess, linked, nextIssue.assignee?.login || nextIssue.assignees?.[0]?.login || undefined).catch(() => setComments([]));
       const names = files.map((file) => file.filename);
       const readAt = (filepath: string, branch: string) =>
         readRepoFile({ session: sess, owner: linked.owner, repo: linked.repo, filepath, branch })
@@ -319,6 +321,15 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         throw new Error(tNow("mt.cannotApproveStep"));
       }
       const linked = parsePortionPrMarker(fresh.body);
+      // What was said is read again too: a comment written meanwhile holds the review as much as one already here.
+      if (linked) {
+        const owner = fresh.assignee?.login || fresh.assignees?.[0]?.login || undefined;
+        const said = await loadReviewComments(session, linked, owner);
+        if (openComments(said, owner).length) {
+          setComments(said);
+          throw new Error(tNow("rv.cannotApproveOpen"));
+        }
+      }
       if (linked && stepNeedsOpenPortionPr(step)) await submitPortionPrApproval(session, linked, { stepName: step.name, issueNumber: fresh.number });
       const next = approveStep(current, step, me, author);
       setIssue(await setIssueTaskProgress(session, ctx.pmOrg, fresh, next));
@@ -379,7 +390,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       }
       setCommenting("");
       announce(tNow(askChanges ? "rv.changesSent" : "pr.commentSent"));
-      await loadComments(session, marker).catch(() => undefined);
+      await loadComments(session, marker, author).catch(() => undefined);
+    });
+
+  /** Give a comment as resolved, or open it again (see `reviewComments.ts`). */
+  const resolve = (row: Comment, reopen: boolean) =>
+    act(async () => {
+      if (!session || !ctx || !marker) return;
+      await setReviewCommentResolved(session, marker, row, ctx.issueNumber, !reopen);
+      announce(tNow(reopen ? "rv.reopenedSaid" : "rv.resolvedSaid"));
+      await loadComments(session, marker, author).catch(() => undefined);
     });
 
   const stepName = step ? localized(step.name, step.names, language) : mode === "group" ? t("pr.group") : t("pr.pairs");
@@ -406,11 +426,32 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
 
   const commentRow = (row: Comment) => (
-    <li key={row.id} className="rv-comment">
+    <li key={row.id} className="rv-comment" data-resolved={row.resolved ? "true" : undefined}>
       <p className="rv-comment__text">{row.text}</p>
-      <p className="rv-comment__meta">{[row.by ? `@${row.by}` : "", when(row.at)].filter(Boolean).join(" · ")}</p>
+      <p className="rv-comment__meta">
+        <span>{[row.by ? `@${row.by}` : "", when(row.at)].filter(Boolean).join(" · ")}</span>
+        {row.resolved ? (
+          <span className="rv-comment__done">
+            <Check size={12} aria-hidden /> {t("rv.resolved")}
+          </span>
+        ) : null}
+        {canResolveComment(row, me, { draftAuthor: author, canManage: session?.canManage }) ? (
+          // Whoever made the comment says when it is answered: the review is not approved while one is open.
+          <button type="button" className="rv-comment__act" disabled={acting} onClick={() => void resolve(row, Boolean(row.resolved))}>
+            {t(row.resolved ? "rv.reopen" : "rv.resolve")}
+          </button>
+        ) : null}
+      </p>
     </li>
   );
+
+  // What was said and is still open holds the review: nobody approves over it.
+  const open = openComments(comments, author);
+  const openSaid = !open.length
+    ? ""
+    : open.every((row) => row.by.toLowerCase() === me.toLowerCase())
+      ? t(open.length === 1 ? "rv.openMineOne" : "rv.openMineMany").replace("{n}", String(open.length))
+      : t(open.length === 1 ? "rv.openOthersOne" : "rv.openOthersMany").replace("{n}", String(open.length));
 
   /** What the person can do now, said in one line next to the button that does it. */
   const status = !step
@@ -429,7 +470,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               : t(mine ? "rv.changesForYou" : askedByMe ? "rv.youAskedChanges" : "rv.changesPending")
             : t(mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
-          ? t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove")
+          ? openSaid || t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove")
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
@@ -699,7 +740,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                           onProgress={(done, total, firstPending, count) => pieces.report(file.filename, done, total, firstPending, count)}
                           hasNext={pieces.active?.id === file.filename ? Boolean(pieces.after(longIds, file.filename, pieces.active.index)) : false}
                           onNext={(index) => pieces.next(longIds, file.filename, index)}
-                          marksOf={(index) => comments.filter((row) => row.ref === pieceRef(file.filename, index)).length}
+                          marksOf={(index) => comments.filter((row) => row.ref === pieceRef(file.filename, index) && !row.resolved).length}
                           below={(index, row, pending) => underPiece(pieceRef(file.filename, index), row.source, pending)}
                         />
                       ) : items.some((item) => item.key === file.filename) ? (
@@ -752,7 +793,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                         onProgress={(done, total, firstPending, count) => pieces.report(intro.key, done, total, firstPending, count)}
                         hasNext={pieces.active?.id === intro.key ? Boolean(pieces.after(longIds, intro.key, pieces.active.index)) : false}
                         onNext={(index) => pieces.next(longIds, intro.key, index)}
-                        marksOf={(index) => comments.filter((row) => row.ref === introPieceRef(intro.chapter, index)).length}
+                        marksOf={(index) => comments.filter((row) => row.ref === introPieceRef(intro.chapter, index) && !row.resolved).length}
                         below={(index, row, pending) => underPiece(introPieceRef(intro.chapter, index), row.source, pending)}
                       />
                     </>
@@ -804,7 +845,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                     {t("fa.back")}
                   </Button>
                 ) : canApprove ? (
-                  <Button type="button" disabled={acting} onClick={() => void approve()}>
+                  <Button type="button" disabled={acting || open.length > 0} onClick={() => void approve()}>
                     <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t(mine ? "rv.agree" : "rv.approve")}
                   </Button>
                 ) : canTake ? (

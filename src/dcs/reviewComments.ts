@@ -1,17 +1,21 @@
-import { listIssueComments } from "@ip-lms/dcs-client";
+import { createIssueComment, listIssueComments } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import type { PortionPrMarker } from "../domain/portionPr";
-import { parseRefComment } from "../domain/reviewItems";
+import { resolutionComment, reviewCommentsFrom, type ReviewComment } from "../domain/reviewComments";
 
-/** What somebody said about a draft in its review: about one piece of it (`ref`), or about all of it. */
-export type ReviewComment = { id: number; by: string; ref: string; text: string; at: string };
+export type { ReviewComment } from "../domain/reviewComments";
 
-/** Comments the app leaves for itself on the review (markers): not part of the conversation. */
-const isMachineComment = (body: string) => /<!--\s*(tas|gateway)[:-]/.test(body);
-
-/** The conversation of a draft's review, oldest first. Read by the review tool and by the editor of the draft. */
-export async function loadReviewComments(session: GtSession, marker: PortionPrMarker): Promise<ReviewComment[]> {
+/**
+ * The conversation of a draft's review, oldest first, each comment with whether it was given as resolved. Read by
+ * the review tool and by the editor of the draft. `draftAuthor`: see `reviewCommentsFrom`.
+ */
+export async function loadReviewComments(session: GtSession, marker: PortionPrMarker, draftAuthor?: string): Promise<ReviewComment[]> {
   const rows = await listIssueComments(dcsConfig(session.host), marker.owner, marker.repo, marker.number, session.token);
-  return rows.filter((row) => row.body && !isMachineComment(row.body)).map((row) => ({ id: row.id, by: row.user?.login ?? "", at: row.created_at ?? "", ...parseRefComment(row.body ?? "") }));
+  return reviewCommentsFrom(rows, draftAuthor);
+}
+
+/** Give a comment as resolved, or open it again: written on the review as a comment of its own, never an edit. */
+export async function setReviewCommentResolved(session: GtSession, marker: PortionPrMarker, comment: ReviewComment, issueNumber: number, resolved: boolean): Promise<void> {
+  await createIssueComment(dcsConfig(session.host), marker.owner, marker.repo, marker.number, resolutionComment(comment, issueNumber, !resolved), session.token);
 }

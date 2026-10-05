@@ -413,6 +413,20 @@ function ConversationThread({
   }, [namesPieces, load.status, issue, board, demo, session]);
   const placeTexts = useMemo(() => ({ ...Object.fromEntries(cites.map((cite) => [cite.id.replace("-", "–"), cite.text])), ...pieceTexts }), [cites, pieceTexts]);
 
+  // Comments of the review given as resolved (see `reviewComments.ts`): the last word about each says how it stands,
+  // and the author of the draft has none.
+  const resolvedComments = useMemo(() => {
+    const owners = new Set((header?.assignees ?? []).map((login) => login.toLowerCase()));
+    const standing = new Map<number, boolean>();
+    for (const item of timeline) {
+      const type = item.event?.type;
+      const target = Number(item.event?.data?.comment);
+      if (!target || (type !== "comment-resolved" && type !== "comment-reopened") || owners.has(item.author.toLowerCase())) continue;
+      standing.set(target, type === "comment-resolved");
+    }
+    return new Set([...standing].filter(([, resolved]) => resolved).map(([id]) => id));
+  }, [timeline, header]);
+
   const participants = useMemo(
     () => (issue ? mentionCandidates(issue, timeline, username) : []),
     [issue, timeline, username],
@@ -843,6 +857,7 @@ function ConversationThread({
                 renderDecision={renderDecision}
                 placeTexts={placeTexts}
                 onOpenPlace={openPlace}
+                resolved={item.source === "pr" && resolvedComments.has(item.id)}
               />
             ))}
             {failed.map((source) => (
@@ -1041,6 +1056,7 @@ function TimelineRow({
   renderDecision,
   placeTexts,
   onOpenPlace,
+  resolved,
 }: {
   item: ThreadItem;
   prev?: ThreadItem;
@@ -1054,6 +1070,8 @@ function TimelineRow({
   /** What each place of the draft says, by the name a comment is filed under. */
   placeTexts: Record<string, string>;
   onOpenPlace?: (ref: string) => void;
+  /** A comment of the review that was given as resolved. */
+  resolved?: boolean;
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -1152,6 +1170,7 @@ function TimelineRow({
               <span className="chat-bubble__meta">
                 {item.pending === "enviando" ? t("cv.sending") : null}
                 {item.pending === "error" ? <span className="chat-msg__error">{t("cv.notSent")}</span> : null}
+                {resolved ? <span className="chat-msg__done">✓ {t("rv.resolved")}</span> : null}
                 {item.createdAt && !item.pending ? (
                   <time dateTime={item.createdAt} title={fullStamp(item.createdAt)}>
                     {timeOfDay(item.createdAt)}

@@ -13,6 +13,7 @@ import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces, type ActivePiece } from "./usePieces";
 import { introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
+import { openComments } from "../domain/reviewComments";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
@@ -271,8 +272,10 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       setBranch(head);
       // What the reviewers said is shown in the draft: the author corrects with it in view.
       if (review) {
-        void loadReviewComments(sess, review)
-          .then((rows) => thisLoad === loading.current && setReviewComments(rows))
+        // Only what is still open: a comment given as resolved, and the author's own answers, ask nothing more.
+        const owner = decoded.username || sess.username;
+        void loadReviewComments(sess, review, owner)
+          .then((rows) => thisLoad === loading.current && setReviewComments(openComments(rows, owner)))
           .catch(() => undefined)
           .finally(() => thisLoad === loading.current && setReviewRead(true));
       } else setReviewRead(true);

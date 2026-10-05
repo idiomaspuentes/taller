@@ -132,6 +132,15 @@ sobre un párrafo de la introducción. Si la revisión pide cambios, quien tradu
 los encuentra ahí mismo: encima del párrafo comentado, que ya está abierto, o junto a la primera nota
 del versículo; los que son sobre todo el borrador, arriba.
 
+**Un comentario queda abierto hasta que quien lo dejó lo da por resuelto.** La revisión en pares
+termina con dos aprobaciones, la de quien revisa y la de quien tradujo, y ninguna se puede dar mientras
+quede un comentario abierto: ni se aprueba dejando sin atender lo que uno mismo observó, ni quien
+tradujo da por bueno un texto con observaciones pendientes. Cada comentario tiene «Marcar como
+resuelto» para quien lo escribió (y para quien coordina, por si esa persona ya no está); nunca para
+quien tradujo, a quien le toca corregir o responder. Lo que escribe quien tradujo es una respuesta y no
+sostiene nada. Marcarlo queda dicho en la conversación de la tarea, y se puede reabrir. Y una tarea con
+pasos solo se entrega cuando todos están hechos: no hay forma de entregar con la revisión abierta.
+
 **Quien tradujo puede retomar su borrador.** Lo que dice quien revisa casi siempre se responde
 corrigiendo, y antes solo se podía corregir si el revisor pulsaba «Pedir cambios». Mientras la
 revisión no esté terminada, quien tradujo tiene «Corregir mi borrador» en la revisión: su paso de

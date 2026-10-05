@@ -8,6 +8,8 @@ import { articleItems, diffWords, introItems, parseRefComment, refComment, revie
 import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
 import { commentPlace, placedMessage, plainLine } from "../src/domain/commentPlace";
 import { commentNotice, placedLine } from "../src/domain/noticeText";
+import { canResolveComment, openComments, resolutionComment, reviewCommentsFrom } from "../src/domain/reviewComments";
+import { localizeThread } from "../src/domain/threadNames";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -152,6 +154,32 @@ test("donde se muestra un comentario fuera de su herramienta, el lugar se dice c
   // The notice on a phone's lock screen: who said it and about what, without the address or its marks.
   const notice = commentNotice({ issue: { number: 263, title: "JUD Predictive Past · Academia" }, body, author: "abelper8", mentioned: false }, "es");
   assert.equal(notice.body, "abelper8: Párrafo 2 — figura retorica o literaria?");
+});
+
+test("un comentario queda abierto hasta que quien lo dejó lo da por resuelto, y mientras tanto sostiene la revisión", () => {
+  const said = (id: number, login: string, body: string) => ({ id, body, created_at: `2026-10-05T00:0${id}:00Z`, user: { login } });
+  const first = said(1, "bob", refComment("jud", "figs-pastforfuture ¶2", "figura retorica o literaria?"));
+  const answer = said(2, "alice", refComment("jud", "figs-pastforfuture ¶2", "Lo cambié a «literaria»."));
+  const general = said(3, "bob", "@alice Pido cambios: revisa también el título.");
+  const rows = [first, answer, general];
+  const open = (list: typeof rows) => openComments(reviewCommentsFrom(list, "alice"), "alice").map((row) => row.id);
+  assert.deepEqual(open(rows), [1, 3], "lo que dijo quien revisa está abierto; lo que responde la autora no sostiene nada");
+
+  const [comment] = reviewCommentsFrom(rows, "alice");
+  assert.equal(canResolveComment(comment!, "bob", { draftAuthor: "alice" }), true, "lo resuelve quien lo dejó");
+  assert.equal(canResolveComment(comment!, "alice", { draftAuthor: "alice" }), false, "nunca la autora del borrador");
+  assert.equal(canResolveComment(comment!, "carol", { draftAuthor: "alice" }), false, "ni otra persona cualquiera");
+  assert.equal(canResolveComment(comment!, "carol", { draftAuthor: "alice", canManage: true }), true, "sí quien coordina, por si quien lo dejó ya no está");
+
+  const resolved = [...rows, said(4, "bob", resolutionComment(comment!, 263))];
+  assert.deepEqual(open(resolved), [3]);
+  assert.deepEqual(reviewCommentsFrom(resolved, "alice")[0]!.resolved, { by: "bob", at: "2026-10-05T00:04:00Z" });
+  assert.equal(reviewCommentsFrom(resolved, "alice").length, 3, "dar por resuelto no es un comentario más de la lista");
+  // Opened again by the same hand: the last word says how it stands.
+  assert.deepEqual(open([...resolved, said(5, "bob", resolutionComment(comment!, 263, true))]), [1, 3]);
+  // The author of the draft does not close what was said about it, whatever they write on the review.
+  assert.deepEqual(open([...rows, said(4, "alice", resolutionComment(comment!, 263))]), [1, 3]);
+  assert.equal(localizeThread("Comentario resuelto: figura retorica o literaria?", "pt"), "Comentário resolvido: figura retorica o literaria?");
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

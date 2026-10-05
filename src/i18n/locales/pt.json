@@ -2539,5 +2539,15 @@
   "rv.correctingOwn": "Você está corrigindo seu rascunho. Quando terminar de novo, a revisão continua.",
   "rv.authorCorrecting": "@{who} está corrigindo o rascunho. Quando terminar de novo, volte aqui para revisar.",
   "tb.correctingOwn": "Você está corrigindo seu rascunho. Termine de novo para a revisão continuar.",
-  "tb.authorCorrecting": "@{who} está corrigindo o rascunho. A revisão continua quando terminar de novo."
+  "tb.authorCorrecting": "@{who} está corrigindo o rascunho. A revisão continua quando terminar de novo.",
+  "rv.resolve": "Marcar como resolvido",
+  "rv.reopen": "Reabrir",
+  "rv.resolved": "Resolvido",
+  "rv.resolvedSaid": "Comentário marcado como resolvido.",
+  "rv.reopenedSaid": "Comentário aberto de novo.",
+  "rv.openMineOne": "Você tem {n} comentário sem resolver. Quando estiver atendido, marque como resolvido: então dá para aprovar.",
+  "rv.openMineMany": "Você tem {n} comentários sem resolver. Quando estiverem atendidos, marque como resolvidos: então dá para aprovar.",
+  "rv.openOthersOne": "Falta {n} comentário sem resolver. Quem o deixou marca como resolvido; até lá não dá para aprovar.",
+  "rv.openOthersMany": "Faltam {n} comentários sem resolver. Quem os deixou marca como resolvidos; até lá não dá para aprovar.",
+  "rv.cannotApproveOpen": "Ainda há comentários sem resolver: não dá para aprovar por enquanto."
 }
