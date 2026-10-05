@@ -109,7 +109,7 @@ Lo que hace cada persona, en orden:
    con ULT, UST y las notas al lado. «Comentar» en un versículo, «Pedir cambios» o «Aprobar».
 4. **Cambios pedidos.** Al autor la tarjeta le dice «Te pidieron cambios» y, dentro del editor, «Hay 2 comentarios
    de la revisión. Verlos». Corrige y pulsa «Terminé» otra vez.
-5. **Acuerdo del autor.** Aprobado por el revisor, el autor abre la misma revisión y pulsa «Lo dejo así» (o «Corregir mi borrador», si va a cambiar el texto).
+5. **Acuerdo del autor.** Aprobado por el revisor, el autor abre la misma revisión y pulsa «Para mí está bien» (o «Corregir mi borrador», si va a cambiar el texto). La revisión termina con las dos aprobaciones, y solo entonces se puede entregar.
 6. **Entregar.** La tarjeta queda en «3 de 3 pasos» con el botón «Entregar» y una confirmación: «Tu trabajo pasa al
    borrador del grupo y la tarea queda terminada» (13 a 19 segundos).
 

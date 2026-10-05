@@ -127,6 +127,7 @@ await test("con pasos: «Seguir» abre el siguiente paso pendiente, y el avance 
   assert.equal(card.stepsDone, 1);
   assert.equal(card.stepsTotal, 2);
   assert.equal(card.nextStep?.name, "Repaso");
+  assert.equal(card.canDeliver, false, "con un paso pendiente no se entrega, tampoco desde el menú: la revisión no se salta");
 });
 
 await test("con todos los pasos hechos, la tarea se entrega (no hay que buscar «Cerrar»)", () => {

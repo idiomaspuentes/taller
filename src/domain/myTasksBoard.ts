@@ -149,7 +149,9 @@ export function buildBoard(input: BoardInput): Board {
       stepsTotal: steps.length,
       nextStep: steps.find((s) => !progress.doneStepIds.includes(s.id)),
       activity: rowActivity(cursor, issue.number, { decision: group === "decide" }),
-      canDeliver: mineAssigned && (issueIsInProgress(issue) || steps.length > 0) && group !== "done",
+      // A subtarea with steps is delivered once they are all done. The menu offered it at any moment, so its author
+      // could hand the work in with its review open: the reviewer's part of the agreement counted for nothing.
+      canDeliver: mineAssigned && group !== "done" && (steps.length ? allStepsDone(steps.map((s) => s.id), progress) : issueIsInProgress(issue)),
       canRelease: mineAssigned && group !== "done" && Boolean(bucket?.browseProject || session.canManage),
       onceApplied: onceApplied.has(issue.number),
       ...extra,
