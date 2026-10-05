@@ -1595,7 +1595,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     setError("");
     try {
       if (dirty && !(await save(true))) return;
-      const opened = await openPr();
+      const opened = await openReview();
       if (!opened) return;
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       announce(t("se.finished"));
@@ -1607,12 +1607,21 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     }
   }
 
+  /** «Listo para revisión»: what is not saved yet is saved first. */
   async function openPr(): Promise<boolean> {
+    if (dirty) await save(true);
+    return openReview();
+  }
+
+  /**
+   * Opens the review of what is saved in Door43. It does not save: whoever calls it has. Saving here too made
+   * «Terminé el borrador» save twice, the second time with what this screen knew of the file before the first.
+   */
+  async function openReview(): Promise<boolean> {
     if (!session || !ctx) return false;
     setOpeningPr(true);
     setError("");
     try {
-      if (dirty) await save(true);
       const issue = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
       const board = await loadAssignmentsFromDcs(
         session,

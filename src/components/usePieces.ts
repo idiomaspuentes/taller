@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { holdAt, placesOf, reveal, revealWhole, slideFrom } from "./pieceMotion";
 
@@ -31,6 +31,10 @@ export function usePieces(domId: (id: string) => string) {
   const [counts, setCounts] = useState<Record<string, PieceCount>>({});
   /** The part of the screen that scrolls. */
   const pane = useRef<HTMLDivElement | null>(null);
+  const idOf = useRef(domId);
+  idOf.current = domId;
+  /** A piece was opened for whoever came in, and is still to be brought onto the screen. */
+  const toShow = useRef(false);
 
   /** A text says how many pieces it has, how many are translated and the first that is not. */
   const report = useCallback(
@@ -46,6 +50,23 @@ export function usePieces(domId: (id: string) => string) {
     setActive(null);
     setCounts({});
   }, []);
+
+  /**
+   * Open a piece nobody touched (where whoever comes in starts from) and bring it onto the screen: it may be far
+   * down a long article. It is not focused: on a phone that would raise the keyboard over a text nobody has looked
+   * at yet.
+   */
+  const show = useCallback((id: string, index: number) => {
+    toShow.current = true;
+    setActive({ id, index });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!toShow.current || !active) return;
+    toShow.current = false;
+    const row = document.getElementById(`${idOf.current(active.id)}-row-${active.index}`);
+    if (row && pane.current) revealWhole(pane.current, row);
+  }, [active]);
 
   /** A piece was touched: it opens, the one that was open closes, and where it is written in, the box is ready. */
   function open(id: string, index: number, element: HTMLElement) {
@@ -86,5 +107,5 @@ export function usePieces(domId: (id: string) => string) {
     if (to && element) open(to.id, to.index, element);
   }
 
-  return { active, setActive, counts, pane, report, reset, open, after, next };
+  return { active, setActive, counts, pane, report, reset, open, show, after, next };
 }

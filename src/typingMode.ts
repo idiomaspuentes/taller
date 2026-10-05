@@ -14,6 +14,15 @@ function onSmallTouchScreen(): boolean {
 export function installTypingMode(): void {
   const root = document.documentElement;
   let leaving: number | undefined;
+  /**
+   * When a finger came down, while it is still on the screen. Pressing a button takes the focus out of the field,
+   * and bringing the bars back then would move the button from under the finger before it lifts: the press would
+   * land on something else, or on nothing. A press that never ends (its end was lost) stops counting.
+   */
+  let pressedAt = 0;
+  const pressing = () => pressedAt > 0 && performance.now() - pressedAt < 3000;
+  document.addEventListener("pointerdown", () => (pressedAt = performance.now()), true);
+  for (const lifted of ["pointerup", "pointercancel"]) document.addEventListener(lifted, () => (pressedAt = 0), true);
 
   document.addEventListener("focusin", (event) => {
     const field = event.target instanceof Element ? event.target.closest<HTMLElement>(FIELD) : null;
@@ -26,14 +35,17 @@ export function installTypingMode(): void {
     }, 350);
   });
 
-  document.addEventListener("focusout", () => {
+  const leave = () => {
     // Going from one field to the next is not leaving: wait to see where the focus lands.
     window.clearTimeout(leaving);
     leaving = window.setTimeout(() => {
+      // Nothing moves while a press is on its way: looked at again once it has landed.
+      if (pressing()) return leave();
       const active = document.activeElement;
       if (!(active instanceof Element) || !active.closest(FIELD)) delete root.dataset.typing;
     }, 150);
-  });
+  };
+  document.addEventListener("focusout", leave);
 
   // Where the browser does not shrink the page for the keyboard (iOS), the styles are told how much it covers.
   const viewport = window.visualViewport;

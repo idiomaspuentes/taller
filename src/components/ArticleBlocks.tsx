@@ -35,6 +35,8 @@ type Props = {
   below?: (index: number, row: ArticleRow, pending: boolean) => React.ReactNode;
   /** How many comments wait on a piece: a piece that is not open says so with a mark. */
   marksOf?: (index: number) => number;
+  /** Over the piece being written: what was said about it, read before it is corrected. */
+  above?: (index: number) => React.ReactNode;
 };
 
 /** A piece as it reads: what is written for it, or the source, in grey, while nothing is. */
@@ -75,7 +77,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, hasNext, onNext, part, below, marksOf }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, hasNext, onNext, part, below, marksOf, above }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -168,8 +170,10 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         }
         // Still the source, and not written in yet: the box is empty for the translation.
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
+        const over = above?.(index);
         return (
           <div key={index} id={rowId} className="ab-open" data-slide>
+            {over ? <div className="ab-over">{over}</div> : null}
             <HelpMarkdownView className="ab-peek" content={row.source} />
             <MarkdownEditor
               id={`${id}-${index}`}

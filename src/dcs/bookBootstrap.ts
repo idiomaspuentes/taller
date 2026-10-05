@@ -473,20 +473,28 @@ export async function ensureHelpsFileFromSource(params: {
   if (onBook) return { ...onBook, bookBranch, created: false };
   const text = await params.source();
   if (!text?.trim()) return null;
-  const saved = await writeOnBookBranch({
-    session,
-    owner,
-    repo,
-    filepath,
-    bookBranch,
-    defaultBranch,
-    content: text,
-    message: `TAS: crear ${filepath} en ${bookBranch} desde la fuente`,
-    step: "file-create",
-    book,
-    taskId,
-  });
-  return { text, sha: saved.sha, bookBranch, created: true };
+  try {
+    const saved = await writeOnBookBranch({
+      session,
+      owner,
+      repo,
+      filepath,
+      bookBranch,
+      defaultBranch,
+      content: text,
+      message: `TAS: crear ${filepath} en ${bookBranch} desde la fuente`,
+      step: "file-create",
+      book,
+      taskId,
+    });
+    return { text, sha: saved.sha, bookBranch, created: true };
+  } catch (err) {
+    // Two people who open a new book at the same moment both try to put the file there. Door43 refuses the second
+    // (seen as a 403, which read as «sin permiso»): the file the first one put is the one to work on.
+    const theirs = await tryRead(session, owner, repo, filepath, bookBranch).catch(() => null);
+    if (theirs) return { ...theirs, bookBranch, created: false };
+    throw err;
+  }
 }
 
 export async function ensureTaskBranchFromBook(params: {

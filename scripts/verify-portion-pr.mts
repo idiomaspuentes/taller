@@ -377,4 +377,19 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(all.length === 3, "sin artículos nombrados, los del pasaje");
 }
 
+{
+  // A note is on a verse, or is the introduction of the book or of a chapter: each is named as what it is.
+  const { tsvRowsToDraftItems } = await import("../src/domain/helpsDraft.ts");
+  const long = "# Introduction to Jude\\n\\n## Part 1: General introduction";
+  const [book, chapter, verse] = tsvRowsToDraftItems("notas", "tn_JUD.tsv", [
+    { Reference: "front:intro", ID: "xh5n", Quote: "", Note: long },
+    { Reference: "1:intro", ID: "ab1c", Quote: "", Note: "# Jude 1 General Notes" },
+    { Reference: "1:2", ID: "q2w3", Quote: "ἔλεος", Occurrence: "1", Note: "Mercy is..." },
+  ]);
+  assert(book!.intro === "book" && book!.chapter === undefined, "front:intro es la introducción del libro");
+  assert(chapter!.intro === "chapter" && chapter!.chapter === 1 && chapter!.verse === undefined, "1:intro es la del capítulo 1");
+  assert(verse!.intro === undefined && verse!.chapter === 1 && verse!.verse === 2, "una nota de un versículo no es una introducción");
+  assert(book!.label === "xh5n" && book!.text === long, "una introducción no lleva de nombre su propio texto");
+}
+
 console.log("verify-portion-pr: ok");

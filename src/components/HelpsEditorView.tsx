@@ -10,8 +10,9 @@ import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
-import { usePieces } from "./usePieces";
-import { rowsPossible, startingText } from "../domain/articleBlocks";
+import { usePieces, type ActivePiece } from "./usePieces";
+import { pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
+import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
@@ -38,7 +39,7 @@ import {
 } from "../domain/helpsDraft";
 import { loadHelpsDraftCache, saveHelpsDraftCache } from "../domain/helpsDraftCache";
 import { resolveHelpsTarget, type HelpsTarget } from "../domain/helpsTarget";
-import { portionPrBranchFromCtx } from "../domain/portionPr";
+import { portionPrBranchFromCtx, type PortionPrMarker } from "../domain/portionPr";
 import {
   decodeSolverLaunchContext,
   type SolverLaunchContext,
@@ -141,6 +142,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [finishing, setFinishing] = useState(false);
   /** Asked once more before handing in an article with pieces still to be translated. */
   const [confirming, setConfirming] = useState(false);
+  /** What the reviewers said about this draft: shown where the author corrects it. */
+  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
+  /** Whether that was read (there is nothing to read while the draft is not in review): the piece found open depends on it. */
+  const [reviewRead, setReviewRead] = useState(false);
+  const loading = useRef(0);
   const [pane, setPane] = useState<"edit" | "chapter">("edit");
   /** An article is worked piece by piece, each under its source; «todo junto» is the whole text in one box. */
   const [view, setView] = useState<"rows" | "whole">(() => (readPref("taller-article-view") === "whole" ? "whole" : "rows"));
@@ -162,6 +168,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     started.current = new Set();
     autoOpened.current = false;
     pieces.reset();
+    const thisLoad = ++loading.current;
+    setReviewComments([]);
+    setReviewRead(false);
     const slot = launchDraftSlot(decoded);
     const cache = loadHelpsDraftCache(slot.pmOrg, slot.issueNumber);
     const lab = isLabLaunch(decoded);
@@ -235,6 +244,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setError("");
     try {
       let head = cache?.branch || fallbackBranch;
+      let review: PortionPrMarker | null = null;
       if (!lab && decoded.issueNumber > 0 && decoded.pmOrg) {
         try {
           const issue = await getPmIssue(sess, decoded.pmOrg, decoded.issueNumber);
@@ -250,6 +260,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           if (visible.marker) {
             head = visible.marker.head;
             setPrUrl(visible.marker.htmlUrl);
+            review = visible.marker;
           } else {
             setPrUrl("");
           }
@@ -258,6 +269,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         }
       }
       setBranch(head);
+      // What the reviewers said is shown in the draft: the author corrects with it in view.
+      if (review) {
+        void loadReviewComments(sess, review)
+          .then((rows) => thisLoad === loading.current && setReviewComments(rows))
+          .catch(() => undefined)
+          .finally(() => thisLoad === loading.current && setReviewRead(true));
+      } else setReviewRead(true);
 
       if (resolved.kind === "tsv" && resolved.filepath) {
         try {
@@ -486,13 +504,22 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     }
   }
 
-  /** Returns whether the review is open. */
+  /** «Listo para revisión»: what is not saved yet is saved first. Returns whether the review is open. */
   async function openPr(): Promise<boolean> {
+    if (dirty && !(await save())) return false;
+    return openReview();
+  }
+
+  /**
+   * Opens the review of what is saved in Door43; returns whether it is open. It does not save: whoever calls it has.
+   * Saving here too made «Terminé el borrador» save twice, and the second time, with what this screen knew of the
+   * file before the first, was refused as a conflict.
+   */
+  async function openReview(): Promise<boolean> {
     if (!session || !ctx) return false;
     setOpeningPr(true);
     setError("");
     try {
-      if (dirty && !(await save())) return false;
       const issue = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
       const board = await loadAssignmentsFromDcs(
         session,
@@ -558,7 +585,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setError("");
     try {
       if (dirty && !(await save())) return;
-      if (!(await openPr())) return;
+      if (!(await openReview())) return;
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       announce(tNow("se.finished"));
       onClose();
@@ -602,20 +629,58 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   // An article nobody has translated a piece of is not a draft yet: there is nothing to hand in.
   const nothingDone = articles.length > 0 && articles.every(byRows) && articles.every((item) => progress[item.id]) && articles.every((item) => progress[item.id]!.done === 0);
   const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
-  // Whoever comes in finds the first piece still to be translated already open: where to start, and how it is done.
-  // It is not focused: on a phone that would raise the keyboard over an article nobody has looked at yet.
+  /** The texts of the article worked by pieces, as they follow one another: its title, the line under it, its body. */
+  const inRows = articles.filter(byRows);
+  const inPieces = inRows.map((item) => item.id);
+
+  // What a reviewer said is shown where it is about: with its paragraph in an article, with its verse in the notes
+  // and the questions. The rest (about the whole draft, or about something that is no longer here) goes over the draft.
+  const commentsOn = (item: HelpsDraftItem, index: number) => reviewComments.filter((row) => row.ref === pieceRef(item.filepath, index));
+  const verseOf = (item: HelpsDraftItem) => (item.kind === "tsv" && item.chapter && item.verse ? `${item.chapter}:${item.verse}` : "");
+  // Several notes may be of one verse, and a comment names only the verse: it is shown once, with the first of them.
+  const firstOfVerse = new Map<string, string>();
+  for (const item of items) if (verseOf(item) && !firstOfVerse.has(verseOf(item))) firstOfVerse.set(verseOf(item), item.id);
+  const commentsOfVerse = (item: HelpsDraftItem) => (firstOfVerse.get(verseOf(item)) === item.id ? reviewComments.filter((row) => row.ref === verseOf(item)) : []);
+  // Until the pieces of the article are known, no comment can be said to be about none of them.
+  const placesKnown = (!articles.length || sourceReady) && inRows.every((item) => progress[item.id]);
+  const places = new Set([...firstOfVerse.keys(), ...inRows.flatMap((item) => Array.from({ length: progress[item.id]?.count ?? 0 }, (_, index) => pieceRef(item.filepath, index)))]);
+  const generalComments = placesKnown ? reviewComments.filter((row) => !places.has(row.ref)) : [];
+  const placedComments = placesKnown ? reviewComments.length - generalComments.length : 0;
+  /** The first paragraph somebody commented on, as the article reads. */
+  const firstCommented = (): ActivePiece | null => {
+    for (const item of inRows) {
+      for (let index = 0; index < (progress[item.id]?.count ?? 0); index++) if (commentsOn(item, index).length) return { id: item.id, index };
+    }
+    return null;
+  };
+  const toFirstComment = () => {
+    const piece = firstCommented();
+    if (piece) return pieces.show(piece.id, piece.index);
+    const first = items.find((item) => commentsOfVerse(item).length);
+    if (first) document.getElementById(`help-${first.id}`)?.scrollIntoView({ block: "center" });
+  };
+  const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
+  const commentRow = (row: ReviewComment, withRef = false) => (
+    <li key={row.id} className="rv-comment">
+      <p className="rv-comment__text">{row.text}</p>
+      <p className="rv-comment__meta">{[withRef ? row.ref : "", row.by ? `@${row.by}` : "", when(row.at)].filter(Boolean).join(" · ")}</p>
+    </li>
+  );
+
+  // Whoever comes in finds a piece already open: where to start, and how it is done. Somebody who was told something
+  // about a paragraph comes to correct it, and finds that one; otherwise, the first still to be translated. It is
+  // not focused: on a phone that would raise the keyboard over an article nobody has looked at yet.
   useEffect(() => {
-    if (autoOpened.current || view !== "rows") return;
-    const inRows = articles.filter(byRows);
+    if (autoOpened.current || view !== "rows" || !(reviewRead || !session)) return;
     if (!inRows.length || inRows.some((item) => !progress[item.id])) return;
     autoOpened.current = true;
+    const commented = firstCommented();
     const first = inRows.find((item) => progress[item.id]!.firstPending >= 0);
-    if (first) pieces.setActive({ id: first.id, index: progress[first.id]!.firstPending });
+    if (commented) pieces.show(commented.id, commented.index);
+    else if (first) pieces.show(first.id, progress[first.id]!.firstPending);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress, view]);
+  }, [progress, view, reviewRead]);
 
-  /** The texts of the article worked by pieces, as they follow one another: its title, the line under it, its body. */
-  const inPieces = articles.filter(byRows).map((item) => item.id);
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 
   return (
@@ -680,6 +745,19 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               ) : null}
             </p>
           )}
+          {reviewComments.length && placesKnown ? (
+            <div className="he-review">
+              {placedComments ? (
+                // The comments are with what they are about, down the draft: said here, where the author comes in.
+                <button type="button" className="se-review-note" onClick={toFirstComment}>
+                  {t(reviewComments.length === 1 ? "se.reviewNoteOne" : "se.reviewNoteMany").replace("{n}", String(reviewComments.length))}
+                </button>
+              ) : null}
+              {/* With nothing over it to say what the list is, the list says so itself. */}
+              {generalComments.length && !placedComments ? <p className="pe-hint">{t("se.reviewLede")}</p> : null}
+              {generalComments.length ? <ul className="rv-comments">{[...generalComments].reverse().map((row) => commentRow(row, true))}</ul> : null}
+            </div>
+          ) : null}
           {articles.length && !sourceReady ? <p className="text-sm text-muted-foreground" aria-busy="true">{t("he.sourceLoading")}</p> : null}
           {items.map((item) =>
             item.kind === "markdown" && !sourceReady ? null : item.kind === "markdown" && byRows(item) ? (
@@ -697,6 +775,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 onProgress={(done, total, firstPending, count) => pieces.report(item.id, done, total, firstPending, count)}
                 hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
                 onNext={(index) => pieces.next(inPieces, item.id, index)}
+                marksOf={(index) => commentsOn(item, index).length}
+                above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}
               />
             ) : (
             <div key={item.id} className="scripture-editor__verse">
@@ -706,12 +786,15 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   <Label htmlFor={`help-${item.id}`}>{`${item.chapter}:${item.verse}`}</Label>
                 ) : (
                   <>
-                    <Label htmlFor={`help-${item.id}`}>{item.kind === "markdown" ? partLabel(item) : item.label}</Label>
+                    <Label htmlFor={`help-${item.id}`}>
+                      {item.kind === "markdown" ? partLabel(item) : item.intro === "book" ? t("fa.bookIntro") : item.intro === "chapter" ? t("fa.chapterIntro").replace("{n}", String(item.chapter ?? "")) : item.label}
+                    </Label>
                     {/* An article is named by its title: the path of its file says nothing to who translates it. */}
-                    {item.kind === "tsv" ? <p className="scripture-editor__source">{item.meta}</p> : null}
+                    {item.kind === "tsv" && !item.intro ? <p className="scripture-editor__source">{item.meta}</p> : null}
                   </>
                 )}
               </div>
+              {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
               {isNotes && item.chapter && item.verse ? <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> : null}
               {sourceHelps[item.id]?.text ? (
                 // What is being translated: the help as the source package has it.

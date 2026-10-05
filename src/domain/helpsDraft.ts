@@ -26,6 +26,8 @@ export type HelpsDraftItem = {
   verse?: number;
   quote?: string;
   occurrence?: number;
+  /** A note that is the introduction of the book, or of a chapter (`chapter` says which), instead of being on a verse. */
+  intro?: "book" | "chapter";
 };
 
 function matchPortion(inventory: InventoryDoc, portionId: string): Portion | undefined {
@@ -169,9 +171,14 @@ export function mergeTsvRows(trunk: string, work: string, ancestor: string): str
   return serializeTsv(trunkTable.headers, out);
 }
 
-function placeOf(row: Record<string, string>): { chapter?: number; verse?: number } {
-  const parsed = parseVerseRef(row.Reference || row.reference || "");
-  return parsed ? { chapter: parsed.chapter, verse: parsed.verses[0] } : {};
+function placeOf(row: Record<string, string>): Pick<HelpsDraftItem, "chapter" | "verse" | "intro"> {
+  const reference = row.Reference || row.reference || "";
+  const parsed = parseVerseRef(reference);
+  if (parsed) return { chapter: parsed.chapter, verse: parsed.verses[0] };
+  // `front:intro` is the introduction of the book and `3:intro` that of chapter 3.
+  const intro = reference.trim().toLowerCase().match(/^(front|\d+):intro$/);
+  if (!intro) return {};
+  return intro[1] === "front" ? { intro: "book" } : { intro: "chapter", chapter: Number(intro[1]) };
 }
 
 export function tsvRowsToDraftItems(
@@ -184,7 +191,7 @@ export function tsvRowsToDraftItems(
     if (resource === "notas") {
       return {
         id,
-        label: row.Quote || row.Note || id,
+        label: row.Quote || id,
         meta: [row.Reference, id].filter(Boolean).join(" · "),
         text: row.Note || "",
         filepath,

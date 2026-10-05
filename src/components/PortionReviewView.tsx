@@ -428,7 +428,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     if (firstOpened.current || !inPieces.length || inPieces.some((id) => !pieces.counts[id])) return;
     firstOpened.current = true;
     const first = inPieces.find((id) => pieces.counts[id]!.count > 0);
-    if (first) pieces.setActive({ id: first, index: 0 });
+    if (first) pieces.show(first, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pieces.counts, inPieces.join("|")]);
 
