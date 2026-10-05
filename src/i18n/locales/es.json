@@ -2552,5 +2552,6 @@
   "rv.cannotApproveOpen": "Quedan comentarios sin resolver: todavía no se puede aprobar.",
   "pw.renamedOne": "{n} subtarea tiene en Door43 un nombre distinto al del plan.",
   "pw.renamedMany": "{n} subtareas tienen en Door43 un nombre distinto al del plan.",
-  "pw.updateNames": "Actualizar los nombres"
+  "pw.updateNames": "Actualizar los nombres",
+  "ab.done": "Listo"
 }

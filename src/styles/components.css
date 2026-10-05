@@ -7785,6 +7785,9 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 /* The way on: whoever translates down the article goes from one piece to the next without looking for it. */
 .ab-next { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 40px; padding: 0 0.625rem 0 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .ab-next:hover { background: var(--surface-muted); }
+/* The end of the way: it reads as the thing to press, not as one more step down the article. */
+.ab-next--done { padding: 0 0.75rem 0 0.625rem; border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.ab-next--done:hover { background: var(--primary-hover); }
 /* On a wide screen the piece in hand has its source beside it, like the two pages of an open book. */
 @media (min-width: 60rem) {
   .ab-open { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }

@@ -282,7 +282,10 @@ como se lee: lo traducido en su color y lo que falta en gris, tal como está en 
 párrafo (un título, una cita, una viñeta) se abre solo ese: el original queda justo encima de la caja
 donde se escribe su traducción (al lado, en una pantalla ancha). Solo hay uno abierto a la vez; al
 entrar, el primero que falta ya está abierto, y «Siguiente» pasa al párrafo que sigue sin tener que
-buscarlo. La caja de un párrafo sin traducir empieza vacía, y «Copiar el original» la llena con
+buscarlo. En el último párrafo no hay siguiente: en su lugar está «Listo», que cierra el cuadro y deja a
+la vista la barra donde se guarda y se entrega («Terminé el borrador»). En el teléfono esa barra se
+aparta mientras se escribe, para dejar sitio al teclado; sin «Listo», quien terminaba el último párrafo
+no tenía en pantalla nada que le dijera cómo seguir. La caja de un párrafo sin traducir empieza vacía, y «Copiar el original» la llena con
 el texto fuente para quien prefiera escribir encima y conservar los enlaces. El título y el subtítulo
 de un artículo de Academia son los dos primeros párrafos. Lo que no se toca queda en el archivo como
 estaba, y un artículo que todavía no tiene nada traducido parte de la fuente tal como está hoy.

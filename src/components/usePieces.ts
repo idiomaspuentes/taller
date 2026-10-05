@@ -107,5 +107,22 @@ export function usePieces(domId: (id: string) => string) {
     if (to && element) open(to.id, to.index, element);
   }
 
-  return { active, setActive, counts, pane, report, reset, open, show, after, next };
+  /**
+   * The piece in hand is done and none comes after it: it closes. The box lets go of the cursor, so on a phone the
+   * keyboard goes down and what had given way to it comes back: the bar where the work is saved and handed in.
+   * Without this the last piece was a dead end: nothing on the screen said what came next.
+   */
+  function close() {
+    if (!active) return;
+    const scroller = pane.current;
+    const rowId = `${domId(active.id)}-row-${active.index}`;
+    const top = document.getElementById(rowId)?.getBoundingClientRect().top;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    flushSync(() => setActive(null));
+    const row = document.getElementById(rowId);
+    // The box gave back its room: what was just written stays where the eyes are.
+    if (row && scroller && top !== undefined) holdAt(scroller, row, top);
+  }
+
+  return { active, setActive, counts, pane, report, reset, open, show, after, next, close };
 }

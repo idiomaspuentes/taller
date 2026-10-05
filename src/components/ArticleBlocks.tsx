@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, MessageSquare } from "lucide-react";
+import { Check, ChevronDown, MessageSquare } from "lucide-react";
 import { articleProgress, articleRows, rowPending, rowsMarkdown, vocabularyOf, type ArticleRow } from "../domain/articleBlocks";
 import { normalizeMarkdown } from "../domain/helpMarkup";
 import { useUiLanguage } from "../i18n/language";
@@ -29,6 +29,8 @@ type Props = {
   hasNext?: boolean;
   /** Go on to the piece after `index`: whoever translates down the article does not have to find and touch it. */
   onNext?: (index: number) => void;
+  /** No piece comes after the one being written: where the way on was, there is a way out of it. */
+  onDone?: () => void;
   /** A file of an Academy article that is not its body: it reads as a title, or as the line under it. */
   part?: "title" | "sub-title";
   /** Under the open piece: what goes with it (the comments about it, what to check in it). */
@@ -77,7 +79,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, hasNext, onNext, part, below, marksOf, above }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, hasNext, onNext, onDone, part, below, marksOf, above }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -137,7 +139,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
 
   const openPiece = useCallback((index: number, element: HTMLElement) => opened.current(index, element), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), untranslated: t("ab.untranslated") }), [language]);
+  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated") }), [language]);
 
   return (
     <div className="ab" data-part={part}>
@@ -150,6 +152,12 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             // The press must not take the cursor out of the text: on a phone the keyboard would go down and come up again.
             <button type="button" className="ab-next" onMouseDown={(event) => event.preventDefault()} onClick={() => onNext(index)}>
               {words.next} <ChevronDown size={16} aria-hidden />
+            </button>
+          ) : onDone && !readOnly ? (
+            // The last piece: the press takes the cursor out on purpose, so the keyboard goes down and the bar with
+            // what to do next comes back.
+            <button type="button" className="ab-next ab-next--done" onClick={onDone}>
+              <Check size={16} aria-hidden /> {words.done}
             </button>
           ) : undefined;
         const under = below?.(index, row, pending || !row.draft.trim());

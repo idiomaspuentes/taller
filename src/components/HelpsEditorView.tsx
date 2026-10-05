@@ -800,6 +800,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 onProgress={(done, total, firstPending, count) => pieces.report(item.id, done, total, firstPending, count)}
                 hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
                 onNext={(index) => pieces.next(inPieces, item.id, index)}
+                onDone={pieces.close}
                 marksOf={(index) => commentsOn(item, index).length}
                 above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}
               />
@@ -819,6 +820,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   onProgress={(done, total, firstPending, count) => pieces.report(item.id, done, total, firstPending, count)}
                   hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
                   onNext={(index) => pieces.next(inPieces, item.id, index)}
+                  onDone={pieces.close}
                   marksOf={(index) => commentsOn(item, index).length}
                   above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}
                 />
