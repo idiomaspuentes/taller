@@ -307,17 +307,27 @@ escritas, con una nota que lo dice; no se abren, y «Siguiente» las pasa de lar
 que se abre el artículo, a partir de la fuente de hoy, y se guardan con él. Para un idioma del que la app no
 tiene los nombres de los libros no escribe nada, y esas líneas se traducen a mano como las demás.
 
-**Los ejemplos de las historias bíblicas se traducen tocando frases, sin escribir.** Cada ejemplo
-(«**[1:1](rc://en/tn/help/obs/01/01)** **God** created the universe…») es una frase de un cuadro, recortada y
-retocada a mano: no hay forma de escribirla sola a partir de lo que el equipo ya tiene. Al abrir el ejemplo se
-ve su fuente en inglés y, debajo, **el cuadro completo tal como el equipo lo tradujo** en sus historias
-(`{idioma}_obs`, junto a sus otros recursos), una frase por renglón. Quien traduce toca las frases que dicen lo
-mismo que el ejemplo: quedan escritas en la caja, detrás del número del cuadro y en el orden en que el cuadro
-las tiene; tocar una otra vez la quita. Pensado para el teléfono: el ejemplo se abre sin levantar el teclado y
-cada frase es un renglón del alto de un dedo. Después se puede retocar a mano en la caja (poner el nombre
-donde el cuadro dice «Él», por ejemplo); lo que una persona escribió no se pisa: una frase tocada se añade al
-final. Si el equipo no tiene esa historia, se ve solo la fuente y se traduce como cualquier párrafo. Estos
-ejemplos cuentan como párrafos por traducir.
+**Los ejemplos de las historias bíblicas se traducen marcando una parte del cuadro, sin escribir.** Cada
+ejemplo («**[1:1](rc://en/tn/help/obs/01/01)** **God** created the universe…») es un trozo de un cuadro,
+recortado y retocado a mano, muchas veces en mitad de una frase: no hay forma de escribirlo solo a partir de lo
+que el equipo ya tiene. Al abrir el ejemplo se ve su fuente en inglés y, debajo, **el cuadro completo tal como
+el equipo lo tradujo** en sus historias (`{idioma}_obs`, junto a sus otros recursos). Quien traduce marca en él
+la parte que dice lo mismo que el ejemplo **tocando su primera palabra y luego la última**: esa parte queda
+escrita en la caja, detrás del número del cuadro. Se ajusta tocando: el extremo más cercano de la marca va a la
+palabra que se toca (fuera de la marca la estira, dentro la encoge), tocar la palabra de un extremo la suelta, y
+«Quitar la marca» deja la caja vacía. Cuando el ejemplo se salta algo («God … the universe … in six days») se
+marca **cada parte por separado**: «Otra parte» hace que el siguiente toque empiece una parte nueva, y entre una
+y otra la app pone los puntos suspensivos, escritos como en la fuente («Dios … el universo … en seis días.»).
+Dos partes que llegan a tocarse se vuelven una. Pensado para el teléfono: el ejemplo se abre sin levantar el teclado y los
+renglones del cuadro van separados para acertar con el dedo. Después se puede retocar a mano en la caja (poner
+el nombre donde el cuadro dice «Él», por ejemplo). Lo que una persona escribió no se pisa: si la caja ya tiene
+texto propio, lo marcado espera y un botón («Cambiar la traducción por lo marcado») lo pone en su lugar. Si el
+equipo no tiene esa historia, se ve solo la fuente y se traduce como cualquier párrafo. Estos ejemplos cuentan
+como párrafos por traducir.
+
+En una lista de ejemplos o de referencias, cada renglón del archivo del equipo se pone junto al de la fuente
+que apunta al mismo pasaje (por su enlace, o por el número del cuadro con que empieza): si falta uno, los demás
+no se corren un lugar.
 
 Todo esto ocurre en el paso de traducir, al abrir la tarea. Queda por hacer: volver a escribir las referencias
 al publicar.

@@ -7779,12 +7779,21 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .ab-story { display: grid; gap: 0.125rem; min-width: 0; padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); }
 .ab-story__name { margin: 0; font-size: 0.75rem; font-weight: 600; line-height: 1.4; color: var(--text-muted); }
 .ab-story__hint { margin: 0 0 0.25rem; font-size: 0.8125rem; line-height: 1.4; color: var(--text-muted); }
-/* Its sentences, one to a row and a finger high: the ones touched are the translation. */
-.ab-story__list { display: grid; gap: 0.25rem; min-width: 0; }
-.ab-story__s { display: flex; align-items: flex-start; gap: 0.5rem; width: 100%; min-height: 44px; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; line-height: 1.5; text-align: left; overflow-wrap: anywhere; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.ab-story__s[aria-checked="true"] { border-color: var(--primary); background: var(--accent-100); }
-.ab-story__tick { display: grid; place-items: center; flex: none; width: 1.25rem; height: 1.25rem; margin-top: 0.125rem; border: 1.5px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--primary-foreground); }
-.ab-story__s[aria-checked="true"] .ab-story__tick { border-color: var(--primary); background: var(--primary); }
+/* Its words, each one to touch: lines a finger apart, so the word meant is the word hit. What is marked is the translation. */
+.ab-story__words { margin: 0; padding: 0.125rem 0.375rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font-size: 1rem; line-height: 2.125; overflow-wrap: anywhere; }
+.ab-story__w { display: inline; margin: 0; padding: 0 0.125rem; border: 0; border-radius: 0; background: none; color: var(--text); font: inherit; line-height: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* The mark is a band a little lower than the line, so two marked lines do not run into one block. */
+.ab-story__w[aria-pressed="true"] { background: linear-gradient(var(--accent-100), var(--accent-100)) center / 100% 78% no-repeat; }
+.ab-story__w[data-edge~="first"] { border-radius: 0.375rem 0 0 0.375rem; box-shadow: inset 2px 0 0 var(--primary); }
+.ab-story__w[data-edge~="last"] { border-radius: 0 0.375rem 0.375rem 0; box-shadow: inset -2px 0 0 var(--primary); }
+.ab-story__w[data-edge="first last"] { border-radius: 0.375rem; box-shadow: inset 2px 0 0 var(--primary), inset -2px 0 0 var(--primary); }
+.ab-story__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
+.ab-story__acts .ab-act { min-height: 40px; }
+/* «Otra parte»: for an example that leaves something out. Pressed, the next word touched starts a part of its own. */
+.ab-story__more { min-height: 40px; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.ab-story__more[aria-pressed="true"] { border-color: var(--primary); background: var(--accent-100); }
+.ab-story__acts + .ab-story__hint { margin: 0; }
+.ab-story__use { min-height: 40px; padding: 0 0.75rem; border: 1px solid var(--primary); border-radius: var(--radius-md); background: var(--primary); color: var(--primary-foreground); font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .ab-over .rv-comments { margin: 0; }
 /* A note that is an introduction, among the notes of a passage: named, then read and translated as an article. */
 .he-intro { display: grid; gap: 0.375rem; min-width: 0; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }

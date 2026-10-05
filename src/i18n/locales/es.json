@@ -2558,5 +2558,10 @@
   "he.keepTranslating": "Seguir traduciendo",
   "ab.made": "La app escribe estas referencias. No hay que traducirlas.",
   "ab.storyName": "Cuadro {ref} en las historias del equipo",
-  "ab.storyHint": "Toca las frases que dicen lo mismo que el ejemplo."
+  "ab.storyHint": "Toca la primera y la última palabra de la parte que dice lo mismo que el ejemplo.",
+  "ab.storyClear": "Quitar la marca",
+  "ab.storyUse": "Cambiar la traducción por lo marcado",
+  "ab.storyMore": "Otra parte",
+  "ab.storyMoreHint": "Si el ejemplo se salta algo (…), marca cada parte por separado.",
+  "ab.storyMoreOn": "Toca dónde empieza la otra parte."
 }

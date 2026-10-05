@@ -85,6 +85,19 @@ export function untranslated(md: string, vocabulary: Set<string>): boolean {
 
 // ---------------------------------------------------------------- pairing the file with the source
 
+/**
+ * The passage a piece points at, when it starts by saying so: the link of a reference («[1 John 1:7](rc://en/tn/
+ * help/1jn/01/07)»), or the number of the frame of a story an example opens with, linked or not («**1:15**»). Two
+ * pieces that point at the same passage are the same piece, whatever else they say.
+ */
+function passageOf(md: string): string | null {
+  const start = md.replace(/^\s*(?:[*+-]|\d+[.)])\s+/, "").replace(/^(?:\*\*|__)/, "");
+  const link = /^\[[^\]]*\]\(rc:\/\/[^/)\s]+\/tn\/help\/([a-z0-9]{3})\/(\d+)\/(\d+)\)/i.exec(start);
+  if (link) return `${link[1]!.toLowerCase()}/${Number(link[2])}/${Number(link[3])}`;
+  const frame = /^(\d+):(\d+)(?:\*\*|__)/.exec(start);
+  return frame ? `obs/${Number(frame[1])}/${Number(frame[2])}` : null;
+}
+
 type Kind = "h" | "p" | "q" | "li";
 const kindOf = (piece: Piece): Kind => (piece.t === "h" ? "h" : piece.t === "quote" ? "q" : piece.t === "p" ? "p" : "li");
 
@@ -100,11 +113,15 @@ function pair(source: Piece[], draft: Piece[]): number[] {
   const m = draft.length;
   const sourceText = source.map((piece) => markdownOf([piece]));
   const draftText = draft.map((piece) => markdownOf([piece]));
+  // A long list of examples or references, with one of them missing from the file, used to slide up one place:
+  // each translation under the source of the one before it. What they point at holds each in its own place.
+  const sourceAt = sourceText.map(passageOf);
+  const draftAt = draftText.map(passageOf);
   const score = (i: number, j: number): number => {
     const a = kindOf(source[i]!);
     const b = kindOf(draft[j]!);
     if ((a === "h") !== (b === "h")) return -1;
-    return (a === b ? 3 : 1) + (sourceText[i] === draftText[j] ? 5 : 0);
+    return (a === b ? 3 : 1) + (sourceText[i] === draftText[j] ? 5 : 0) + (sourceAt[i] !== null && sourceAt[i] === draftAt[j] ? 4 : 0);
   };
   const width = m + 1;
   const best = new Float64Array((n + 1) * width);

@@ -5,7 +5,7 @@ import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { bookLabel, bookNamesIn } from "../domain/books";
 import { localPassages } from "../domain/passageLinks";
-import { frameSentences, storiesIn, storyRefOf, takenSentences, toggleSentence } from "../domain/storyFrames";
+import { storiesIn, storyRefOf } from "../domain/storyFrames";
 import { loadStoryFrames, teamStoriesRepo } from "../dcs/storyFrames";
 import { ChapterSources, NoteQuote, useHelpSources, useSourceHelps } from "./HelpSources";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -14,8 +14,8 @@ import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { StoryFramePick } from "./StoryFramePick";
 import { usePieces, type ActivePiece } from "./usePieces";
-import { Check } from "lucide-react";
 import { articleRows, introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
@@ -669,9 +669,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const frameOf = (sourcePiece: string) => {
     const ref = storyRefOf(sourcePiece);
     const frame = ref ? stories[ref.story]?.[ref.frame - 1] : undefined;
-    return ref && frame ? { ref, sentences: frameSentences(frame) } : null;
+    return ref && frame ? { ref, frame } : null;
   };
-  // Such a piece is made by touching sentences: it opens without the keyboard. The pieces of each source are worked
+  // Such a piece is made by touching words of the frame: it opens without the keyboard. The pieces of each source are worked
   // out here because a piece is opened by its place, from outside the article («Siguiente» of the one before it).
   const sourcePieces = useMemo(
     () => Object.fromEntries(items.filter((item) => item.kind === "markdown").map((item) => [item.id, (articleRows(sourceHelps[item.id]?.text ?? "", "") ?? []).map((row) => row.source)])),
@@ -847,25 +847,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 make={makePiece}
                 beside={(row, box) => {
                   const ours = frameOf(row.source);
-                  if (!ours) return null;
-                  const taken = takenSentences(box.text, ours.sentences);
-                  return (
-                    <div className="ab-story">
-                      <p className="ab-story__name">{t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)}</p>
-                      <p className="ab-story__hint">{t("ab.storyHint")}</p>
-                      <div className="ab-story__list">
-                        {ours.sentences.map((sentence, at) => (
-                          // The press does not take the cursor from wherever it is: nothing moves under the finger.
-                          <button key={at} type="button" role="checkbox" aria-checked={taken[at]} className="ab-story__s" onMouseDown={(event) => event.preventDefault()} onClick={() => box.write(toggleSentence(row.source, box.text, ours.sentences, at))}>
-                            <span className="ab-story__tick" aria-hidden>
-                              {taken[at] ? <Check size={14} /> : null}
-                            </span>
-                            <span>{sentence}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
+                  return ours ? <StoryFramePick key={row.source} name={t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)} frame={ours.frame} sourcePiece={row.source} text={box.text} onWrite={box.write} /> : null;
                 }}
                 hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
                 onNext={(index) => pieces.next(inPieces, item.id, index, opensQuiet)}
