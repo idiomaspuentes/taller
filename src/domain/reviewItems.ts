@@ -2,6 +2,7 @@
  * What a reviewer reads: the passage of the subtarea, piece by piece (a verse of the text, a row of a help), as it
  * is in the draft and as it was before it. Pure: the review tool loads the two versions of the file and shows this.
  */
+import { noteFromTsv } from "./helpMarkup";
 import { listVerseSpans, type RefRange } from "./usfmEdit";
 
 export type ReviewItem = {
@@ -122,6 +123,39 @@ function rowItems(now: string, before: string, range: RefRange): ReviewItem[] {
   const kept = rows.map((row) => item(row, was.find((old) => old.id === row.id)?.text ?? "", row.text));
   const gone = was.filter((old) => !rows.some((row) => row.id === old.id)).map((old) => item(old, old.text, ""));
   return [...kept, ...gone].sort((a, b) => a.verse - b.verse);
+}
+
+/** An introduction among the rows of a file of notes: that of the book, or of a chapter (`chapter`). */
+export type IntroItem = { key: string; chapter?: number; now: string; before: string };
+
+/** The rows of a file of notes that are introductions (`front:intro`, `3:intro`), their line breaks made real ones. */
+function introRows(tsv: string): { id: string; chapter?: number; note: string }[] {
+  const lines = tsv.split(/\r?\n/).filter((line) => line.trim());
+  const head = (lines[0] ?? "").split("\t").map((cell) => cell.trim().toLowerCase());
+  const refAt = head.indexOf("reference");
+  const noteAt = head.indexOf("note");
+  const idAt = head.indexOf("id");
+  if (refAt < 0 || noteAt < 0) return [];
+  return lines.slice(1).flatMap((line) => {
+    const cells = line.split("\t");
+    const intro = (cells[refAt] ?? "").trim().toLowerCase().match(/^(front|\d+):intro$/);
+    if (!intro) return [];
+    return [{ id: (idAt >= 0 ? cells[idAt]?.trim() : "") || `${intro[1]}:intro`, chapter: intro[1] === "front" ? undefined : Number(intro[1]), note: noteFromTsv(cells[noteAt] ?? "").trim() }];
+  });
+}
+
+/**
+ * The introductions a draft of notes is reviewed with. A row of the passage is a sentence or two; an introduction is
+ * pages, and is not on a verse, so the rows of the passage never showed it: whoever translated it had it reviewed by
+ * nobody. They are those of the book and of the passage's chapter that the draft changed, and those the plan gave to
+ * this passage (`mine`) even if the draft left them alone, so that one nobody translated is seen too.
+ */
+export function introItems(now: string, before: string, chapter: number, mine: (id: string) => boolean = () => false): IntroItem[] {
+  const was = new Map(introRows(before).map((row) => [row.id, row.note]));
+  return introRows(now)
+    .filter((row) => row.chapter === undefined || row.chapter === chapter)
+    .filter((row) => mine(row.id) || (was.get(row.id) ?? "") !== row.note)
+    .map((row) => ({ key: row.id, chapter: row.chapter, now: row.note, before: was.get(row.id) ?? "" }));
 }
 
 /** The pieces of the passage to review, in a file of the text (`.usfm`) or of a help (`.tsv`). Other files: none. */

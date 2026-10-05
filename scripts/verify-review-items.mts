@@ -4,7 +4,8 @@
  *   npm run verify:review-items
  */
 import assert from "node:assert/strict";
-import { articleItems, diffWords, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
+import { articleItems, diffWords, introItems, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
+import { introPieceRef } from "../src/domain/articleBlocks";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -75,6 +76,27 @@ test("un borrador de artículos se revisa artículo por artículo, nombrado por 
   ]);
   assert.deepEqual(items.map((item) => [item.ref, item.state]), [["Descripción", "changed"], ["figs-metaphor (title)", "new"], ["amor, amar", "same"]]);
   assert.deepEqual(parseRefComment(refComment("3jn", "amor, amar", "Falta el segundo sentido.")), { ref: "amor, amar", text: "Falta el segundo sentido." });
+});
+
+test("la introducción que un borrador de notas tradujo se revisa con él, como el texto largo que es", () => {
+  const head = "Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote";
+  const file = (book: string, one: string, two: string) => [head, `front:intro\tbk01\t\t\t\t0\t${book}`, `1:intro\tch01\t\t\t\t0\t${one}`, `2:intro\tch02\t\t\t\t0\t${two}`, "1:1\ta001\t\t\tx\t1\tNota"].join("\n");
+  const before = file("# Introduction\\n\\nJude wrote this letter.", "# Jude 1 General Notes", "# Chapter 2");
+  const now = file("# Introducción\\n\\nJudas escribió esta carta.", "# Jude 1 General Notes", "# Capítulo 2");
+  // The book's was translated; chapter 1's was not, and nobody says it is of this passage; chapter 2's is of another chapter.
+  assert.deepEqual(introItems(now, before, 1), [{ key: "bk01", chapter: undefined, now: "# Introducción\n\nJudas escribió esta carta.", before: "# Introduction\n\nJude wrote this letter." }]);
+  // The plan gave chapter 1's to this passage: it is seen although the draft left it as it was.
+  assert.deepEqual(introItems(now, before, 1, (id) => id === "ch01").map((row) => [row.key, row.chapter, row.now === row.before]), [["bk01", undefined, false], ["ch01", 1, true]]);
+  assert.deepEqual(introItems(before, before, 1), [], "un borrador que no tocó ninguna no trae ninguna");
+  assert.deepEqual(introItems("Reference\tID\tQuestion\tResponse\n1:1\tq1\t¿Quién?\tJudas", "", 1), [], "las preguntas no tienen introducciones");
+});
+
+test("un comentario sobre un párrafo de una introducción dice de cuál, y se vuelve a encontrar", () => {
+  assert.equal(introPieceRef(undefined, 2), "intro ¶3");
+  assert.equal(introPieceRef(1, 0), "1:intro ¶1");
+  for (const ref of [introPieceRef(undefined, 2), introPieceRef(1, 0)]) {
+    assert.deepEqual(parseRefComment(refComment("jud", ref, "Falta una frase.")), { ref, text: "Falta una frase." }, ref);
+  }
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

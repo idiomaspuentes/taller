@@ -203,6 +203,14 @@ export function pieceRef(filepath: string, index: number): string {
   return `${slug} ¶${index + 1}`;
 }
 
+/**
+ * How a piece of an introduction (a note of the book or of a chapter, pages long) is named where a comment is about
+ * it: «intro ¶3» for the book's, «1:intro ¶3» for that of chapter 1. As with an article, by its place in the source.
+ */
+export function introPieceRef(chapter: number | undefined, index: number): string {
+  return `${chapter ? `${chapter}:` : ""}intro ¶${index + 1}`;
+}
+
 /** Whether `articleRows` would give rows: asked on every keystroke, so it does not make them. */
 export function rowsPossible(sourceMd: string, draftMd: string): boolean {
   return /\S/.test(sourceMd) && (!draftMd.trim() || roundTrips(draftMd)) && piecesOf(sourceMd).length > 0;

@@ -191,7 +191,7 @@ export function tsvRowsToDraftItems(
     if (resource === "notas") {
       return {
         id,
-        label: row.Quote || id,
+        label: row.Quote || row.Note || id,
         meta: [row.Reference, id].filter(Boolean).join(" · "),
         text: row.Note || "",
         filepath,

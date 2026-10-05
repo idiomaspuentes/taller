@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPmConfig, setIssueTaskProgress } from "../dcs/issues";
-import { loadAssignmentsFromDcs } from "../dcs/persist";
+import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
 import { readRepoFile } from "../dcs/repoFile";
@@ -21,7 +21,10 @@ import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
 import { englishScriptureKindRef, loadEnglishHelpsForRange, loadEnglishScriptureKindUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
-import { articleItems, diffWords, refComment, reviewItems, type ReviewItem } from "../domain/reviewItems";
+import { articleItems, diffWords, introItems, refComment, reviewItems, type IntroItem, type ReviewItem } from "../domain/reviewItems";
+import { selectTsvRowsForPortion, tsvRowId } from "../domain/helpsDraft";
+import { helpsTsvFilename } from "../domain/helpsTarget";
+import { parseTsvTable } from "../prep/tsv";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { approveStep, askForChanges, canApproveStep, canAskForChanges, canClaimStep, changesPending, claimStep, isEligibleForStep, isStepUnlocked } from "../domain/stepClaim";
@@ -38,7 +41,7 @@ import { tNow, useT } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces } from "./usePieces";
-import { articleFilesOf, pieceRef, rowsPossible, type ArticleFile } from "../domain/articleBlocks";
+import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, type ArticleFile } from "../domain/articleBlocks";
 
 type Props = {
   ctxEncoded: string;
@@ -49,12 +52,15 @@ type Props = {
 
 type Source = { short: string; verses: VerseTextMap };
 
-/** One box to write a comment in; `Enter` alone makes a new line, so a comment can have several. */
-function Composer({ placeholder, busy, actions }: { placeholder: string; busy: boolean; actions: { label: string; primary?: boolean; run: (text: string) => Promise<boolean> }[] }) {
+/**
+ * One box to write a comment in; `Enter` alone makes a new line, so a comment can have several. `focus`: the box was
+ * asked for with a touch («Comentar»), and is ready to be written in without another.
+ */
+function Composer({ placeholder, busy, actions, focus }: { placeholder: string; busy: boolean; focus?: boolean; actions: { label: string; primary?: boolean; run: (text: string) => Promise<boolean> }[] }) {
   const [text, setText] = useState("");
   return (
     <div className="rv-composer">
-      <textarea className="af-textarea" rows={2} value={text} placeholder={placeholder} aria-label={placeholder} onChange={(e) => setText(e.target.value)} />
+      <textarea className="af-textarea" rows={2} autoFocus={focus} value={text} placeholder={placeholder} aria-label={placeholder} onChange={(e) => setText(e.target.value)} />
       <div className="rv-composer__row">
         {actions.map((action) => (
           <Button key={action.label} type="button" size="sm" variant={action.primary ? "default" : "outline"} disabled={busy || !text.trim()} onClick={() => void action.run(text).then((sent) => sent && setText(""))}>
@@ -96,6 +102,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [articleFiles, setArticleFiles] = useState<(ArticleFile & { text: string })[]>([]);
   /** Whether the source of those files was read: until then it is not known which can be shown piece by piece. */
   const [sourcesRead, setSourcesRead] = useState(false);
+  /** The introductions (of the book, of the chapter) a draft of notes is reviewed with, each with its source. */
+  const [intros, setIntros] = useState<(IntroItem & { source: string })[]>([]);
   const pieces = usePieces((id) => `rv-${id}`);
   const firstOpened = useRef(false);
   const [showSources, setShowSources] = useState(true);
@@ -146,6 +154,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
       setArticleFiles([]);
       setSourcesRead(false);
+      setIntros([]);
       pieces.reset();
       firstOpened.current = false;
       if (!linked) {
@@ -186,6 +195,20 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const [now, before] = await Promise.all([read(linked.head), read(linked.base)]);
       // Once the draft is in the team's text its own copy may be gone: what is reviewed then is the team's text.
       setItems(reviewItems({ filename, now: now ?? before ?? "", before: before ?? "", range }));
+      if (ctx.resource === "notas" && /\.tsv$/i.test(filename)) {
+        // An introduction is a note of pages, and not on a verse: it is read as the long text it is, against its source.
+        const text = now ?? before ?? "";
+        void (async () => {
+          const inventory = await loadInventoryFromDcs(sess, ctx.pmOrg, ctx.lang, ctx.book).catch(() => null);
+          const planned = new Set(selectTsvRowsForPortion(parseTsvTable(text).rows, ctx, inventory).map(tsvRowId));
+          const found = introItems(text, before ?? "", range.chapter, (id) => planned.has(id));
+          if (!found.length) return;
+          const pkg = resolveSourcePackage(board?.settings);
+          const raw = await readRaw(sess, pkg.owner, pkg.tn, helpsTsvFilename("notas", ctx.book)).catch(() => null);
+          const source = new Map(introItems(raw ?? "", "", range.chapter, () => true).map((row) => [row.key, row.now]));
+          setIntros(found.map((row) => ({ ...row, source: source.get(row.key) ?? "" })));
+        })().catch(() => undefined);
+      }
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -404,7 +427,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                       ) : null}
                       {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
                       {commenting === item.key ? (
-                        <Composer placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(item.ref, text) }]} />
+                        <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(item.ref, text) }]} />
                       ) : (
                         <button type="button" className="rv-item__add" onClick={() => setCommenting(item.key)}>
                           <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
@@ -417,7 +440,13 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // An article: the files that can be read piece by piece, each piece against its source.
   const byPieces = (file: ArticleFile & { text: string }) => Boolean(english[file.filename]) && rowsPossible(english[file.filename]!, file.text);
   const inPieces = articleFiles.filter(byPieces).map((file) => file.filename);
-  const pieceRefs = new Set(articleFiles.filter(byPieces).flatMap((file) => Array.from({ length: pieces.counts[file.filename]?.count ?? 0 }, (_, index) => pieceRef(file.filename, index))));
+  const introByPieces = (intro: IntroItem & { source: string }) => Boolean(intro.source) && rowsPossible(intro.source, intro.now);
+  /** What is read piece by piece, as it follows on the screen: the introductions of a draft of notes, the files of an article. */
+  const longIds = [...intros.filter(introByPieces).map((intro) => intro.key), ...inPieces];
+  const pieceRefs = new Set([
+    ...articleFiles.filter(byPieces).flatMap((file) => Array.from({ length: pieces.counts[file.filename]?.count ?? 0 }, (_, index) => pieceRef(file.filename, index))),
+    ...intros.filter(introByPieces).flatMap((intro) => Array.from({ length: pieces.counts[intro.key]?.count ?? 0 }, (_, index) => introPieceRef(intro.chapter, index))),
+  ]);
   const piecesDone = inPieces.reduce((sum, id) => sum + (pieces.counts[id]?.done ?? 0), 0);
   const piecesTotal = inPieces.reduce((sum, id) => sum + (pieces.counts[id]?.total ?? 0), 0);
   // What is said about a piece is shown with the piece; the rest is about the whole draft.
@@ -425,16 +454,15 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   // Whoever comes to review finds the first piece open: where to start, and how the rest is opened.
   useEffect(() => {
-    if (firstOpened.current || !inPieces.length || inPieces.some((id) => !pieces.counts[id])) return;
+    if (firstOpened.current || !longIds.length || longIds.some((id) => !pieces.counts[id])) return;
     firstOpened.current = true;
-    const first = inPieces.find((id) => pieces.counts[id]!.count > 0);
+    const first = longIds.find((id) => pieces.counts[id]!.count > 0);
     if (first) pieces.show(first, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pieces.counts, inPieces.join("|")]);
+  }, [pieces.counts, longIds.join("|")]);
 
   /** What goes with the piece being read: what its source calls for, the comments about it, and a box to add one. */
-  const underPiece = (file: ArticleFile, index: number, source: string, pending: boolean) => {
-    const ref = pieceRef(file.filename, index);
+  const underPiece = (ref: string, source: string, pending: boolean) => {
     const about = comments.filter((row) => row.ref === ref);
     const own: { id: string; text: string; texts?: Partial<Record<string, string>>; by?: string }[] = pending
       ? []
@@ -448,7 +476,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         ) : null}
         {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
         {commenting === ref ? (
-          <Composer placeholder={t("rv.commentPiece")} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text) }]} />
+          <Composer focus placeholder={t("rv.commentPiece")} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text) }]} />
         ) : (
           <button type="button" className="rv-item__add" onClick={() => setCommenting(ref)}>
             <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
@@ -516,10 +544,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                           open={pieces.active?.id === file.filename ? pieces.active.index : null}
                           onOpen={(index, element) => pieces.open(file.filename, index, element)}
                           onProgress={(done, total, firstPending, count) => pieces.report(file.filename, done, total, firstPending, count)}
-                          hasNext={pieces.active?.id === file.filename ? Boolean(pieces.after(inPieces, file.filename, pieces.active.index)) : false}
-                          onNext={(index) => pieces.next(inPieces, file.filename, index)}
+                          hasNext={pieces.active?.id === file.filename ? Boolean(pieces.after(longIds, file.filename, pieces.active.index)) : false}
+                          onNext={(index) => pieces.next(longIds, file.filename, index)}
                           marksOf={(index) => comments.filter((row) => row.ref === pieceRef(file.filename, index)).length}
-                          below={(index, row, pending) => underPiece(file, index, row.source, pending)}
+                          below={(index, row, pending) => underPiece(pieceRef(file.filename, index), row.source, pending)}
                         />
                       ) : items.some((item) => item.key === file.filename) ? (
                         // A file this screen cannot read by pieces (no source, or a format it would not write back the same): whole.
@@ -546,7 +574,34 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 ) : null}
               </div>
 
-              {!items.length ? <p className="pe-hint">{t("rv.noText")}</p> : null}
+              {intros.map((intro) => (
+                <section key={intro.key} className="he-intro">
+                  <h2 className="he-intro__name">{intro.chapter ? t("fa.chapterIntro").replace("{n}", String(intro.chapter)) : t("fa.bookIntro")}</h2>
+                  {introByPieces(intro) ? (
+                    <>
+                      <p className="ab-hint">{t("rv.piecesHint")}</p>
+                      <ArticleBlocks
+                        id={`rv-${intro.key}`}
+                        readOnly
+                        source={intro.source}
+                        value={intro.now}
+                        open={pieces.active?.id === intro.key ? pieces.active.index : null}
+                        onOpen={(index, element) => pieces.open(intro.key, index, element)}
+                        onProgress={(done, total, firstPending, count) => pieces.report(intro.key, done, total, firstPending, count)}
+                        hasNext={pieces.active?.id === intro.key ? Boolean(pieces.after(longIds, intro.key, pieces.active.index)) : false}
+                        onNext={(index) => pieces.next(longIds, intro.key, index)}
+                        marksOf={(index) => comments.filter((row) => row.ref === introPieceRef(intro.chapter, index)).length}
+                        below={(index, row, pending) => underPiece(introPieceRef(intro.chapter, index), row.source, pending)}
+                      />
+                    </>
+                  ) : (
+                    // Without its source, or in a shape that cannot be read by pieces: as it is, whole.
+                    <HelpMarkdownView className="rv-item__text rv-item__text--article" content={intro.now} />
+                  )}
+                </section>
+              ))}
+
+              {!items.length && !intros.length ? <p className="pe-hint">{t("rv.noText")}</p> : null}
 
               <ol className="rv-list">
                 {items.map(itemRow)}

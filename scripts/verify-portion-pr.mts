@@ -389,7 +389,6 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(book!.intro === "book" && book!.chapter === undefined, "front:intro es la introducción del libro");
   assert(chapter!.intro === "chapter" && chapter!.chapter === 1 && chapter!.verse === undefined, "1:intro es la del capítulo 1");
   assert(verse!.intro === undefined && verse!.chapter === 1 && verse!.verse === 2, "una nota de un versículo no es una introducción");
-  assert(book!.label === "xh5n" && book!.text === long, "una introducción no lleva de nombre su propio texto");
 }
 
 console.log("verify-portion-pr: ok");

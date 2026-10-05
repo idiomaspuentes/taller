@@ -11,7 +11,7 @@ import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces, type ActivePiece } from "./usePieces";
-import { pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
+import { introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -623,27 +623,33 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   }, [sourceRead, sourceHelps, target?.kind]);
 
   const articles = items.filter((item) => item.kind === "markdown");
-  const byRows = (item: HelpsDraftItem) => view === "rows" && Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text);
+  // A long text is worked piece by piece: an article, and a note that is an introduction (pages of text kept in one
+  // cell of the table, its line breaks written out).
+  const longSource = (item: HelpsDraftItem) => (item.kind === "tsv" ? noteFromTsv(sourceHelps[item.id]?.text ?? "") : (sourceHelps[item.id]?.text ?? ""));
+  const longText = (item: HelpsDraftItem) => (item.kind === "tsv" ? noteFromTsv(item.text) : item.text);
+  const byRows = (item: HelpsDraftItem) => (item.kind === "markdown" ? view === "rows" : Boolean(item.intro)) && Boolean(longSource(item).trim()) && rowsPossible(longSource(item), longText(item));
+  const introName = (item: HelpsDraftItem) => (item.intro === "book" ? t("fa.bookIntro") : t("fa.chapterIntro").replace("{n}", String(item.chapter ?? "")));
   const canUseRows = articles.some((item) => Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text));
   const pending = articles.reduce((sum, item) => sum + (byRows(item) && progress[item.id] ? progress[item.id]!.total - progress[item.id]!.done : 0), 0);
   // An article nobody has translated a piece of is not a draft yet: there is nothing to hand in.
   const nothingDone = articles.length > 0 && articles.every(byRows) && articles.every((item) => progress[item.id]) && articles.every((item) => progress[item.id]!.done === 0);
   const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
-  /** The texts of the article worked by pieces, as they follow one another: its title, the line under it, its body. */
-  const inRows = articles.filter(byRows);
+  /** The texts worked by pieces, as they follow one another: the title of an article, the line under it, its body. */
+  const inRows = items.filter(byRows);
   const inPieces = inRows.map((item) => item.id);
 
   // What a reviewer said is shown where it is about: with its paragraph in an article, with its verse in the notes
   // and the questions. The rest (about the whole draft, or about something that is no longer here) goes over the draft.
-  const commentsOn = (item: HelpsDraftItem, index: number) => reviewComments.filter((row) => row.ref === pieceRef(item.filepath, index));
+  const refOfPiece = (item: HelpsDraftItem, index: number) => (item.intro ? introPieceRef(item.chapter, index) : pieceRef(item.filepath, index));
+  const commentsOn = (item: HelpsDraftItem, index: number) => reviewComments.filter((row) => row.ref === refOfPiece(item, index));
   const verseOf = (item: HelpsDraftItem) => (item.kind === "tsv" && item.chapter && item.verse ? `${item.chapter}:${item.verse}` : "");
   // Several notes may be of one verse, and a comment names only the verse: it is shown once, with the first of them.
   const firstOfVerse = new Map<string, string>();
   for (const item of items) if (verseOf(item) && !firstOfVerse.has(verseOf(item))) firstOfVerse.set(verseOf(item), item.id);
   const commentsOfVerse = (item: HelpsDraftItem) => (firstOfVerse.get(verseOf(item)) === item.id ? reviewComments.filter((row) => row.ref === verseOf(item)) : []);
   // Until the pieces of the article are known, no comment can be said to be about none of them.
-  const placesKnown = (!articles.length || sourceReady) && inRows.every((item) => progress[item.id]);
-  const places = new Set([...firstOfVerse.keys(), ...inRows.flatMap((item) => Array.from({ length: progress[item.id]?.count ?? 0 }, (_, index) => pieceRef(item.filepath, index)))]);
+  const placesKnown = sourceReady && inRows.every((item) => progress[item.id]);
+  const places = new Set([...firstOfVerse.keys(), ...inRows.flatMap((item) => Array.from({ length: progress[item.id]?.count ?? 0 }, (_, index) => refOfPiece(item, index)))]);
   const generalComments = placesKnown ? reviewComments.filter((row) => !places.has(row.ref)) : [];
   const placedComments = placesKnown ? reviewComments.length - generalComments.length : 0;
   /** The first paragraph somebody commented on, as the article reads. */
@@ -671,7 +677,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   // about a paragraph comes to correct it, and finds that one; otherwise, the first still to be translated. It is
   // not focused: on a phone that would raise the keyboard over an article nobody has looked at yet.
   useEffect(() => {
-    if (autoOpened.current || view !== "rows" || !(reviewRead || !session)) return;
+    if (autoOpened.current || !sourceReady || !(reviewRead || !session)) return;
     if (!inRows.length || inRows.some((item) => !progress[item.id])) return;
     autoOpened.current = true;
     const commented = firstCommented();
@@ -679,7 +685,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     if (commented) pieces.show(commented.id, commented.index);
     else if (first) pieces.show(first.id, progress[first.id]!.firstPending);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress, view, reviewRead]);
+  }, [progress, view, reviewRead, sourceReady]);
 
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 
@@ -778,6 +784,26 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 marksOf={(index) => commentsOn(item, index).length}
                 above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}
               />
+            ) : item.intro && !sourceReady ? null : item.intro && byRows(item) ? (
+              // An introduction is pages long: it reads as text and is translated a paragraph at a time, as an article.
+              <section key={item.id} className="he-intro">
+                <h2 className="he-intro__name">{introName(item)}</h2>
+                <p className="ab-hint">{t("he.rowsHint")}</p>
+                <ArticleBlocks
+                  id={`help-${item.id}`}
+                  source={longSource(item)}
+                  value={longText(item)}
+                  onChange={(text) => updateItem(item.id, { text: noteToTsv(text) })}
+                  book={ctx?.book}
+                  open={active?.id === item.id ? active.index : null}
+                  onOpen={(index, element) => pieces.open(item.id, index, element)}
+                  onProgress={(done, total, firstPending, count) => pieces.report(item.id, done, total, firstPending, count)}
+                  hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
+                  onNext={(index) => pieces.next(inPieces, item.id, index)}
+                  marksOf={(index) => commentsOn(item, index).length}
+                  above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}
+                />
+              </section>
             ) : (
             <div key={item.id} className="scripture-editor__verse">
               <div className="scripture-editor__verse-head">
@@ -786,9 +812,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   <Label htmlFor={`help-${item.id}`}>{`${item.chapter}:${item.verse}`}</Label>
                 ) : (
                   <>
-                    <Label htmlFor={`help-${item.id}`}>
-                      {item.kind === "markdown" ? partLabel(item) : item.intro === "book" ? t("fa.bookIntro") : item.intro === "chapter" ? t("fa.chapterIntro").replace("{n}", String(item.chapter ?? "")) : item.label}
-                    </Label>
+                    <Label htmlFor={`help-${item.id}`}>{item.kind === "markdown" ? partLabel(item) : item.intro ? introName(item) : item.label}</Label>
                     {/* An article is named by its title: the path of its file says nothing to who translates it. */}
                     {item.kind === "tsv" && !item.intro ? <p className="scripture-editor__source">{item.meta}</p> : null}
                   </>
