@@ -680,12 +680,28 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     if (autoOpened.current || !sourceReady || !(reviewRead || !session)) return;
     if (!inRows.length || inRows.some((item) => !progress[item.id])) return;
     autoOpened.current = true;
+    // Opened from a comment about a paragraph (the conversation): that paragraph, before any other.
+    const focused = ctx?.focus
+      ? inRows.map((item) => ({ id: item.id, index: Array.from({ length: progress[item.id]?.count ?? 0 }, (_, at) => refOfPiece(item, at)).indexOf(ctx.focus!) })).find((piece) => piece.index >= 0)
+      : undefined;
     const commented = firstCommented();
     const first = inRows.find((item) => progress[item.id]!.firstPending >= 0);
-    if (commented) pieces.show(commented.id, commented.index);
+    if (focused) pieces.show(focused.id, focused.index);
+    else if (commented) pieces.show(commented.id, commented.index);
     else if (first) pieces.show(first.id, progress[first.id]!.firstPending);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress, view, reviewRead, sourceReady]);
+
+  // Opened from a comment about a verse: the first note or question of that verse is brought into view.
+  const verseFocused = useRef(false);
+  useEffect(() => {
+    if (verseFocused.current || busy || !ctx?.focus) return;
+    const first = items.find((item) => verseOf(item) === ctx.focus);
+    if (!first) return;
+    verseFocused.current = true;
+    requestAnimationFrame(() => document.getElementById(`help-${first.id}`)?.scrollIntoView({ block: "center" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, busy, ctx?.focus]);
 
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
 

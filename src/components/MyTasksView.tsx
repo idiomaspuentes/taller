@@ -1,4 +1,5 @@
 import type { RuleAnswer } from "../domain/teamRules";
+import { placedPreview } from "../commentPlaceText";
 import { ruleText } from "../domain/teamRules";
 import { answerTeamRule, refreshTeamRules, usePendingTeamRules, useTeamLabel } from "../useTeamRules";
 import { subtaskName } from "../domain/noticeText";
@@ -891,7 +892,7 @@ export function MyTasksView({
           <div>
             {attentionRows.map((row) => {
               const { issue, activity } = row;
-              const line = previewLine(activity.latest, (text) => localizeThread(text, language));
+              const line = previewLine(activity.latest, (text) => placedPreview(localizeThread(text, language)));
               return (
                 <button
                   key={issue.number}

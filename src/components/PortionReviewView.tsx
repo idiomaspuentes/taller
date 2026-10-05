@@ -424,7 +424,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const stateSaid = help ? (item.state === "changed" ? corrected : item.state !== "same") && !pending : item.state !== "same";
 
     return (
-      <li key={item.key} className="rv-item" data-state={pending ? "same" : item.state}>
+      <li key={item.key} className="rv-item" data-ref={item.ref} data-state={pending ? "same" : item.state}>
         <div className="rv-item__head">
           <span className="rv-item__ref">{item.ref}</span>
           {stateSaid ? <span className="rv-item__state">{t(`rv.state.${item.state}`)}</span> : null}
@@ -535,10 +535,30 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   useEffect(() => {
     if (firstOpened.current || !longIds.length || longIds.some((id) => !pieces.counts[id])) return;
     firstOpened.current = true;
+    // Opened from a comment about a paragraph (the conversation): that paragraph is the one found open.
+    const named = (id: string, refOf: (index: number) => string) => {
+      const index = ctx?.focus ? Array.from({ length: pieces.counts[id]?.count ?? 0 }, (_, at) => refOf(at)).indexOf(ctx.focus) : -1;
+      return index >= 0 ? { id, index } : null;
+    };
+    const focused =
+      articleFiles.filter(byPieces).map((file) => named(file.filename, (index) => pieceRef(file.filename, index))).find(Boolean) ??
+      intros.filter(introByPieces).map((intro) => named(intro.key, (index) => introPieceRef(intro.chapter, index))).find(Boolean);
     const first = longIds.find((id) => pieces.counts[id]!.count > 0);
-    if (first) pieces.show(first, 0);
+    if (focused) pieces.show(focused.id, focused.index);
+    else if (first) pieces.show(first, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pieces.counts, longIds.join("|")]);
+
+  // Opened from a comment about a verse: its row is brought to the top.
+  const rowFocused = useRef(false);
+  useEffect(() => {
+    if (rowFocused.current || busy || !ctx?.focus || !items.length) return;
+    const row = pieces.pane.current?.querySelector(`.rv-item[data-ref="${CSS.escape(ctx.focus)}"]`);
+    if (!row) return;
+    rowFocused.current = true;
+    row.scrollIntoView({ block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, busy, ctx?.focus]);
 
   /** What goes with the piece being read: what its source calls for, the comments about it, and a box to add one. */
   const underPiece = (ref: string, source: string, pending: boolean) => {

@@ -8,7 +8,7 @@ import type { CommentSource } from "./notificationMap";
 import type { ReadCursorDoc } from "./readCursor";
 import { isNewTask } from "./readCursor";
 import { previewLine } from "./attention";
-import { say, type NoticeLang } from "./noticeText";
+import { placedLine, say, type NoticeLang } from "./noticeText";
 import { localizeThread } from "./threadNames";
 
 export type NotifyKind = "comment" | "decision" | "task";
@@ -105,7 +105,7 @@ export function attentionCandidates(params: {
         kind: "comment",
         own: own.has(latest.id) || (Boolean(me) && latest.author.trim().toLowerCase() === me),
         title: portionTitle(issue, titles, lang),
-        body: previewLine(latest, (text) => localizeThread(text, lang)) || say(lang, "nt.newMessage"),
+        body: previewLine(latest, (text) => placedLine(localizeThread(text, lang), lang)) || say(lang, "nt.newMessage"),
       });
     }
     if (isNewTask(doc, issue)) {

@@ -235,16 +235,5 @@ export function articleItems(files: { filename: string; now: string; before: str
     });
 }
 
-/** A comment about one piece starts with where it is, so it can be shown next to it again. */
-export function refComment(book: string, ref: string, text: string): string {
-  return `**${book.toUpperCase()} ${ref}** — ${text.trim()}`;
-}
-
-/** The reference a comment was written about (`1:2`), and what it says without it; `ref` empty when it has none. */
-export function parseRefComment(body: string): { ref: string; text: string } {
-  const m = body.match(/^\*\*[A-Z0-9]{3}\s+(\d+:\d+(?:[–-]\d+)?[a-z]?)\*\*\s*[—-]\s*/);
-  if (m) return { ref: m[1]!.replace("-", "–"), text: body.slice(m[0].length).trim() };
-  // About an article, which is named by its title instead of a verse.
-  const article = body.match(/^\*\*[A-Z0-9]{3}\s+([^*\n]+?)\*\*\s*[—-]\s*/);
-  return article ? { ref: article[1]!.trim(), text: body.slice(article[0].length).trim() } : { ref: "", text: body.trim() };
-}
+// How a comment says where it is about (`**JUD 1:2** — …`) is told in `commentPlace.ts`, which the notices read too.
+export { parseRefComment, refComment } from "./commentPlace";

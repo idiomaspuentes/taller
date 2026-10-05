@@ -4,6 +4,7 @@ import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
+import { placedPreview } from "../commentPlaceText";
 import type { BoardCard } from "../domain/myTasksBoard";
 import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending } from "../domain/stepClaim";
 import { parseTaskProgressMarker } from "../domain/taskProgress";
@@ -91,7 +92,7 @@ export function TaskCard(props: Props) {
   else if (action.kind === "none" && action.why === "assigneeDelivers") status = t("tb.assigneeDelivers").replace("{who}", assigneeOf(card));
   else if (card.group === "decide") status = t("tb.decideLine");
 
-  const activity = card.activity.latest ? previewLine(card.activity.latest, (text) => localizeThread(text, language)) : "";
+  const activity = card.activity.latest ? previewLine(card.activity.latest, (text) => placedPreview(localizeThread(text, language))) : "";
   const steps = card.task?.steps ?? [];
   const progress = parseTaskProgressMarker(card.issue.body ?? "");
   const hasTool = action.kind === "begin" || action.kind === "continue";

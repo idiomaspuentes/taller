@@ -5,7 +5,9 @@
  */
 import assert from "node:assert/strict";
 import { articleItems, diffWords, introItems, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
-import { introPieceRef } from "../src/domain/articleBlocks";
+import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
+import { commentPlace, placedMessage, plainLine } from "../src/domain/commentPlace";
+import { commentNotice, placedLine } from "../src/domain/noticeText";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -110,6 +112,46 @@ test("un comentario sobre un párrafo de una introducción dice de cuál, y se v
   for (const ref of [introPieceRef(undefined, 2), introPieceRef(1, 0)]) {
     assert.deepEqual(parseRefComment(refComment("jud", ref, "Falta una frase.")), { ref, text: "Falta una frase." }, ref);
   }
+});
+
+test("de un comentario se saca el lugar del que habla, para decirlo con palabras y no con su dirección", () => {
+  assert.deepEqual(commentPlace("1:3"), { kind: "verse", ref: "1:3" });
+  assert.deepEqual(commentPlace("1:3-4"), { kind: "verse", ref: "1:3–4" });
+  assert.deepEqual(commentPlace(pieceRef("translate/figs-pastforfuture/01.md", 1)), { kind: "paragraph", article: "figs-pastforfuture", index: 1 });
+  assert.deepEqual(commentPlace(pieceRef("translate/figs-pastforfuture/title.md", 0)), { kind: "title", article: "figs-pastforfuture" });
+  assert.deepEqual(commentPlace(pieceRef("translate/figs-pastforfuture/sub-title.md", 0)), { kind: "subtitle", article: "figs-pastforfuture" });
+  assert.deepEqual(commentPlace(introPieceRef(undefined, 2)), { kind: "intro", index: 2 });
+  assert.deepEqual(commentPlace(introPieceRef(1, 0)), { kind: "intro", chapter: 1, index: 0 });
+  assert.equal(commentPlace("amor, amar"), null, "un comentario antiguo, nombrado por un título, no dice un lugar");
+
+  const written = refComment("jud", pieceRef("translate/figs-pastforfuture/01.md", 1), "figura retorica o literaria?");
+  assert.deepEqual(placedMessage(written), { ref: "figs-pastforfuture ¶2", place: { kind: "paragraph", article: "figs-pastforfuture", index: 1 }, text: "figura retorica o literaria?" });
+  // The line under a task shows the message without its marks: the place is still told.
+  assert.deepEqual(placedMessage("JUD figs-pastforfuture ¶2 — figura retorica o literaria?")?.place, { kind: "paragraph", article: "figs-pastforfuture", index: 1 });
+  assert.equal(placedMessage("Buen trabajo"), null);
+  assert.equal(placedMessage("JUD es corto — y directo"), null, "la frase de alguien no es un lugar");
+  assert.equal(placedMessage("@valeska Pido cambios: revisa la introducción"), null);
+});
+
+test("un párrafo se cita en una línea de palabras, sin las marcas de su formato", () => {
+  assert.equal(plainLine("### Descripción"), "Descripción");
+  assert.equal(plainLine("> **Booz** dijo: «El Señor sea con ustedes». (Rut 2:4)"), "Booz dijo: «El Señor sea con ustedes». (Rut 2:4)");
+  assert.equal(plainLine("*   Ver [[rc://*/ta/man/translate/figs-idiom]] y [la nota](../01/03.md)."), "Ver figs-idiom y la nota.");
+  assert.equal(plainLine("1. Uno\n2. Dos"), "Uno Dos");
+});
+
+test("donde se muestra un comentario fuera de su herramienta, el lugar se dice con palabras", () => {
+  const body = refComment("jud", pieceRef("translate/figs-pastforfuture/01.md", 1), "figura retorica o literaria?");
+  assert.equal(placedLine(body, "es"), "Párrafo 2 — figura retorica o literaria?");
+  assert.equal(placedLine(body, "pt"), "Parágrafo 2 — figura retorica o literaria?");
+  assert.equal(placedLine(refComment("jud", pieceRef("translate/figs-pastforfuture/title.md", 0), "Falta."), "es"), "Título — Falta.");
+  assert.equal(placedLine(refComment("jud", introPieceRef(undefined, 8), "Falta."), "es"), "Introducción al libro · párrafo 9 — Falta.");
+  assert.equal(placedLine(refComment("jud", introPieceRef(1, 0), "Falta."), "es"), "Introducción al capítulo 1 · párrafo 1 — Falta.");
+  assert.equal(placedLine(refComment("jud", "1:3", "¿«amados»?"), "es"), "1:3 — ¿«amados»?");
+  assert.equal(placedLine("Buen trabajo", "es"), "Buen trabajo");
+  // The notice on a phone's lock screen: who said it and about what, without the address or its marks.
+  const notice = commentNotice({ issue: { number: 263, title: "JUD Predictive Past · Academia" }, body, author: "abelper8", mentioned: false }, "es");
+  assert.equal(notice.body, "abelper8: Párrafo 2 — figura retorica o literaria?");
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

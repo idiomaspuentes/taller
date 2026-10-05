@@ -15,6 +15,8 @@ export type ConversationHeader = {
   taskLabel: string;
   step?: TaskStep;
   assignees: string[];
+  /** Who is seated on the step in hand (its reviewers): its tool is theirs to open too. */
+  stepPeople: string[];
   solver?: SolverApp;
 };
 
@@ -44,6 +46,7 @@ export function conversationHeader(
     taskLabel: task ? teamPhaseLabel(task) : "",
     ...(step ? { step } : {}),
     assignees,
+    stepPeople: step ? (progress.steps?.[step.id]?.assignees ?? []) : [],
     ...(solver ? { solver } : {}),
   };
 }

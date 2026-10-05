@@ -36,6 +36,8 @@ export type SolverLaunchContext = {
   /** When opening a checklist-step resolver. */
   stepId?: string;
   stepName?: string;
+  /** A place of the work to open the tool on (the name a comment is filed under: a verse, «figs-metaphor ¶5»). */
+  focus?: string;
   /**
    * Sandbox launch from Laboratorio — no subtarea, issue, or work-order.
    * Editors must not bootstrap PRs or create book branches unless write is opted in.
@@ -129,6 +131,7 @@ export function decodeSolverLaunchContext(encoded: string): SolverLaunchContext 
       username: String(parsed.username ?? ""),
       stepId: String(parsed.stepId ?? "").trim() || undefined,
       stepName: String(parsed.stepName ?? "").trim() || undefined,
+      focus: String(parsed.focus ?? "").trim() || undefined,
       lab: parsed.lab ? true : undefined,
       labAllowWrite: parsed.labAllowWrite ? true : undefined,
       labUnsafeWrite: parsed.labUnsafeWrite ? true : undefined,

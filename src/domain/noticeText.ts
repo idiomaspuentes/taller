@@ -3,6 +3,7 @@ import es from "../i18n/locales/es.json";
 import pt from "../i18n/locales/pt.json";
 import { BOOKS, bookLabel } from "./books";
 import { parseChatEvent } from "./chatEvent";
+import { placedMessage, type CommentPlace } from "./commentPlace";
 import { localizeThread } from "./threadNames";
 
 /**
@@ -104,6 +105,25 @@ export function readableLine(body: string, max = 140): string {
   return shorten(first, max);
 }
 
+/**
+ * The place of a draft a comment is about, in words: «Párrafo 2», «Título», «Introducción al libro · párrafo 3», or
+ * the verse as it is written. The comment is stored under an address («JUD figs-metaphor ¶5»), which is for the tools.
+ */
+export function placeName(place: CommentPlace, lang: NoticeLang): string {
+  if (place.kind === "verse") return place.ref;
+  if (place.kind === "title") return say(lang, "he.partTitle");
+  if (place.kind === "subtitle") return say(lang, "he.partSubtitle");
+  const paragraph = say(lang, "cp.paragraph", { n: place.index + 1 });
+  if (place.kind === "paragraph") return paragraph;
+  return `${place.chapter ? say(lang, "fa.chapterIntro", { n: place.chapter }) : say(lang, "fa.bookIntro")} · ${paragraph.toLowerCase()}`;
+}
+
+/** A comment as one line (under a task, in a notice): the place it is about in words, where it has one. */
+export function placedLine(text: string, lang: NoticeLang): string {
+  const placed = placedMessage(text);
+  return placed ? `${placeName(placed.place, lang)} — ${placed.text}` : text;
+}
+
 export type NoticeWords = { title: string; body: string; grouped?: string };
 
 /**
@@ -123,7 +143,7 @@ export function commentNotice(params: { issue: NoticeIssue; body: string; author
   }
   return {
     title: say(lang, params.mentioned ? "nt.mentionTitle" : "nt.commentTitle", { name }),
-    body: `${params.author || say(lang, "nt.someone")}: ${readableLine(params.body)}`.trim(),
+    body: `${params.author || say(lang, "nt.someone")}: ${shorten(placedLine(readableLine(params.body, 400), lang), 140)}`.trim(),
     grouped,
   };
 }

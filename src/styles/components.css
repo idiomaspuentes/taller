@@ -4999,6 +4999,42 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
   border-left: 3px solid var(--border-strong);
   color: var(--text-muted);
 }
+/* The place of the draft a comment is about, over the comment: named in words, with what it says. */
+.chat-place {
+  display: grid;
+  gap: 0.1rem;
+  width: 100%;
+  margin: 0 0 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border: 0;
+  border-left: 3px solid var(--accent-400);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent-50) 75%, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.chat-place {
+  cursor: pointer;
+}
+button.chat-place:hover,
+button.chat-place:focus-visible {
+  background: var(--accent-100);
+}
+.chat-place__name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-800);
+}
+.chat-place__text {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .chat-msg__meta {
   display: inline-flex;
   align-items: center;

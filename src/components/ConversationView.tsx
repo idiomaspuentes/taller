@@ -72,6 +72,10 @@ import { getUiLanguage, useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeName } from "../domain/templateNames";
 import { explainError } from "../dcs/userError";
+import { loadPlaceTexts } from "../dcs/placeTexts";
+import { placedMessage } from "../domain/commentPlace";
+import { placeName } from "../commentPlaceText";
+import { localized } from "../domain/processes";
 
 export type ConversationDemo = {
   issue: DcsIssue;
@@ -124,6 +128,14 @@ const SOURCE_LABEL: Record<string, "cv.srcIssue" | "cv.srcPr" | "cv.srcCommit"> 
   pr: "cv.srcPr",
   commit: "cv.srcCommit",
 };
+
+/**
+ * A subtarea's title with its book in words, as the tools name it: «Judas 1:5–8 · TPL» reads as one reference; what
+ * is not a passage (an article) is set apart from the book, «Judas · Predictive Past · Academia».
+ */
+function threadTitle(title: string, language: Parameters<typeof bookLabel>[1]): string {
+  return title.replace(/^([A-Z0-9]{3})\s+(?=(\S))/, (_all, code: string, next: string) => `${bookLabel(code, language)}${/\d/.test(next) ? " " : " · "}`);
+}
 
 function isNotFound(err: unknown): boolean {
   return Boolean(err && typeof err === "object" && "status" in err && (err as { status?: number }).status === 404);
@@ -385,6 +397,22 @@ function ConversationThread({
     };
   }, [load.status, issue, demo, session]);
 
+  // A comment of the review is about a place of the draft: what that place says is shown with it. A verse is among
+  // what can be quoted; a paragraph of an article or of an introduction is read from the draft, once, if one is named.
+  const namesPieces = useMemo(() => timeline.some((item) => item.kind === "humano" && Boolean(placedMessage(item.text)) && placedMessage(item.text)!.place.kind !== "verse"), [timeline]);
+  const [pieceTexts, setPieceTexts] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!namesPieces || load.status !== "ready" || !issue || demo || !session) return;
+    let cancelled = false;
+    void loadPlaceTexts({ session, issue, board })
+      .then((texts) => !cancelled && setPieceTexts(texts))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [namesPieces, load.status, issue, board, demo, session]);
+  const placeTexts = useMemo(() => ({ ...Object.fromEntries(cites.map((cite) => [cite.id.replace("-", "–"), cite.text])), ...pieceTexts }), [cites, pieceTexts]);
+
   const participants = useMemo(
     () => (issue ? mentionCandidates(issue, timeline, username) : []),
     [issue, timeline, username],
@@ -414,7 +442,7 @@ function ConversationThread({
   );
 
   const mine = Boolean(
-    header?.assignees.some((a) => a.toLowerCase() === username.toLowerCase()),
+    [...(header?.assignees ?? []), ...(header?.stepPeople ?? [])].some((a) => a.toLowerCase() === username.toLowerCase()),
   );
   const launchCtx = useMemo(
     () =>
@@ -436,7 +464,7 @@ function ConversationThread({
   );
   const solver = demo
     ? demo.launch?.app
-    : mine && launchCtx
+    : mine && launchCtx && issue?.state !== "closed"
       ? (header?.solver ?? scriptureSolverFor(catalog, launchCtx.resource))
       : undefined;
   const solverBlock = solver && launchCtx ? solverLaunchBlockReason(solver, launchCtx) : null;
@@ -465,6 +493,12 @@ function ConversationThread({
         ? (range: { chapter: number; from: number; to: number }) => openLaunch(editorApp, launchForRange(launchCtx, range))
         : undefined,
     [editorApp, launchCtx, openLaunch],
+  );
+
+  /** Open the tool of the step in hand on the place a comment is about. */
+  const openPlace = useMemo(
+    () => (solver && launchCtx && !solverBlock && solver.kind !== "url" && solver.openMode !== "external" ? (ref: string) => openLaunch(solver, { ...launchCtx, focus: ref }) : undefined),
+    [solver, launchCtx, solverBlock, openLaunch],
   );
 
   const runDecision = useCallback(
@@ -615,11 +649,15 @@ function ConversationThread({
   const failed = sources.filter((s) => s.status === "error");
   // The book in words ("3 Juan 1:5–8 · TPL"), as the tools name the same passage: a subtarea's title carries its code.
   const rawTitle = header?.title || issue?.title || `Subtarea #${issueNumber}`;
-  const title = rawTitle.replace(/^([A-Z0-9]{3})(?=\s)/, (code) => bookLabel(code, language));
+  const title = threadTitle(rawTitle, language);
+  // What the button says is the step's own word («Revisar», «Traducir»), as on the task: «Abrir editor» named a
+  // review an editor.
+  const stepButton = header?.step?.actionLabel ? localized(header.step.actionLabel, header.step.actionLabels, language) : "";
   const doorUrl = issue?.html_url || door43IssueUrl(session, pmOrg, issueNumber);
   const subline = [
     header?.taskLabel ? localizeName(header.taskLabel, language) : "",
-    header?.step ? t("cv.step").replace("{name}", localizeName(header.step.name, language)) : "",
+    // A delivered subtarea has no step in hand: naming one sent whoever read it to do it again.
+    header?.step && issue?.state !== "closed" ? t("cv.step").replace("{name}", localizeName(header.step.name, language)) : "",
     header?.assignees.length ? header.assignees.map((a) => `@${a}`).join(", ") : "",
   ].filter(Boolean);
 
@@ -640,7 +678,7 @@ function ConversationThread({
               {hasUnread(cursor, row.number) && row.number !== issueNumber ? (
                 <span className="hub-queue-item__dot" role="img" aria-label={t("cv.unreadAria")} />
               ) : null}
-              <span className="chat-aside__label">{row.title}</span>
+              <span className="chat-aside__label">{threadTitle(row.title, language)}</span>
             </button>
           ))}
         </nav>
@@ -671,7 +709,7 @@ function ConversationThread({
                       rel="noopener noreferrer"
                       title={`${solver.name} · ${launchCtx.book} ${launchCtx.ref}`}
                     >
-                      {loc(solverActionLabel(solver))}
+                      {stepButton || loc(solverActionLabel(solver))}
                     </a>
                   )
                 ) : (
@@ -683,7 +721,7 @@ function ConversationThread({
                     title={`${solver.name} · ${launchCtx.book} ${launchCtx.ref}`}
                     onClick={() => openLaunch(solver, launchCtx)}
                   >
-                    {loc(solverActionLabel(solver))}
+                    {stepButton || loc(solverActionLabel(solver))}
                   </Button>
                 )
               ) : null}
@@ -800,6 +838,8 @@ function ConversationThread({
                 onRetry={() => retrySend(item)}
                 onDiscard={() => discard(item)}
                 renderDecision={renderDecision}
+                placeTexts={placeTexts}
+                onOpenPlace={openPlace}
               />
             ))}
             {failed.map((source) => (
@@ -996,6 +1036,8 @@ function TimelineRow({
   onRetry,
   onDiscard,
   renderDecision,
+  placeTexts,
+  onOpenPlace,
 }: {
   item: ThreadItem;
   prev?: ThreadItem;
@@ -1006,6 +1048,9 @@ function TimelineRow({
   onRetry: () => void;
   onDiscard: () => void;
   renderDecision: (item: ThreadItem, resolved: ResolvedChatEvent) => ReactNode;
+  /** What each place of the draft says, by the name a comment is filed under. */
+  placeTexts: Record<string, string>;
+  onOpenPlace?: (ref: string) => void;
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -1036,7 +1081,7 @@ function TimelineRow({
       );
     }
     const who = item.author && item.author.toLowerCase() === me.toLowerCase() ? t("cv.you") : item.author;
-    const title = localizeThread(resolved.title, language);
+    const title = item.event.type === "saved" ? t("cv.savedWork") : localizeThread(resolved.title, language);
     const label =
       item.count && item.count > 1 ? t("cv.nTimes").replace("{title}", title).replace("{n}", String(item.count)) : title;
     return (
@@ -1064,6 +1109,15 @@ function TimelineRow({
 
   const mine = item.author.toLowerCase() === me.toLowerCase() && Boolean(me);
   const sameAuthor = !breaks && prev?.kind === "humano" && prev.author === item.author;
+  // A comment made on a place of the draft: the place in words and what it says, then what was said about it.
+  const placed = placedMessage(item.text);
+  const said = placed ? placeTexts[placed.ref] : undefined;
+  const quoted = placed ? (
+    <>
+      <span className="chat-place__name">{placeName(placed.place)}</span>
+      {said ? <span className="chat-place__text">{said}</span> : null}
+    </>
+  ) : null;
   return (
     <>
       {dividers}
@@ -1083,7 +1137,14 @@ function TimelineRow({
             {!mine && !sameAuthor ? <span className="chat-msg__author">{item.author}</span> : null}
             <div className="chat-bubble__body">
               <div className="chat-bubble__text">
-                <MessageText text={item.text} />
+                {placed && onOpenPlace ? (
+                  <button type="button" className="chat-place" title={t("cv.openPlace")} onClick={() => onOpenPlace(placed.ref)}>
+                    {quoted}
+                  </button>
+                ) : placed ? (
+                  <div className="chat-place">{quoted}</div>
+                ) : null}
+                <MessageText text={placed ? placed.text : item.text} />
               </div>
               <span className="chat-bubble__meta">
                 {item.pending === "enviando" ? t("cv.sending") : null}

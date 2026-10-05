@@ -2529,5 +2529,8 @@
   "rv.readThenApproveArticle": "Leia o artigo. Se algo deve mudar, comente; se está bem, aprove.",
   "rv.generalTitleArticle": "Comentários sobre todo o artigo",
   "rv.noDraftYetArticle": "Este artigo ainda não tem um rascunho para revisar. Aparece quando quem traduz termina o rascunho.",
-  "rv.helpsDone": "{n} de {total} traduzidas"
+  "rv.helpsDone": "{n} de {total} traduzidas",
+  "cp.paragraph": "Parágrafo {n}",
+  "cv.savedWork": "Trabalho salvo",
+  "cv.openPlace": "Abrir ali"
 }
