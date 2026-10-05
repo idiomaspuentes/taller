@@ -11,7 +11,7 @@ import { readBook } from "../dcs/startBook";
 import { explainError } from "../dcs/userError";
 import { displayOrgTeamName, orgTeamLabel } from "../domain/roles";
 import type { AssignmentsDoc, InventoryDoc } from "../domain/types";
-import { publishableWorkOrders, type WorkOrder } from "../domain/workOrder";
+import { publishableWorkOrders, workOrderIssueTitle, type WorkOrder } from "../domain/workOrder";
 import { useT } from "../i18n/messages";
 import { WorkPreview } from "./WorkPreview";
 
@@ -69,6 +69,9 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
 
   const orders = useMemo(() => (inventory ? publishableWorkOrders(edited, inventory) : []), [edited, inventory]);
   const missing = work.loaded ? orders.filter((order) => !work.issueOf(order)).length : 0;
+  // Subtareas the plan now calls something else: the book was read again and the source names an article differently.
+  // People see the name the subtarea has in Door43, so the two are brought together here.
+  const renamed = work.loaded ? orders.filter((order) => (work.issueOf(order)?.title ?? workOrderIssueTitle(order)) !== workOrderIssueTitle(order)).length : 0;
   const relays = dirty && inventory ? workChanged(board, edited, inventory) : false;
 
   async function run(label: string, action: () => Promise<void>) {
@@ -210,7 +213,15 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
               </Button>
             </div>
           ) : null}
-          {busy && !dirty && !missing ? <p className="pe-hint" role="status">{busy}</p> : null}
+          {!dirty && !missing && renamed ? (
+            <div className="af-stale" role="status">
+              <p style={{ margin: 0 }}>{t(renamed === 1 ? "pw.renamedOne" : "pw.renamedMany").replace("{n}", String(renamed))}</p>
+              <Button type="button" size="sm" className="mt-2" disabled={Boolean(busy)} onClick={() => void save(true)}>
+                {busy || t("pw.updateNames")}
+              </Button>
+            </div>
+          ) : null}
+          {busy && !dirty && !missing && !renamed ? <p className="pe-hint" role="status">{busy}</p> : null}
 
           <WorkPreview
             board={edited}

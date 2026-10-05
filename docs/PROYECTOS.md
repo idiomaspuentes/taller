@@ -68,7 +68,13 @@ pantalla donde se lee cada libro.
   algunos capítulos o porciones, y marcar que revisa texto ya entregado.
 - **Subtareas** (`ProjectWorkView`): lo mismo que la vista previa, con el estado de cada una en Door43 (libre, de
   quién, hecha, por crear). Tocar una subtarea permite dársela a alguien del equipo de su tarea, o liberarla. Aquí
-  también se añade una a mano, se parte un capítulo y se vuelve a leer el libro.
+  también se añade una a mano, se parte un capítulo y se vuelve a leer el libro. Si después de leerlo el plan llama
+  de otra forma a una subtarea que ya existe (la fuente cambió el título de un artículo), la pantalla lo dice y
+  ofrece «Actualizar los nombres».
+
+Cuando el plan vuelve a escribir una subtarea que ya existe (al guardar un cambio del proceso, al crear las que
+faltan, al actualizar los nombres) cambia su nombre y su descripción, y nada más: quien la tiene, los pasos hechos,
+quién tomó cada paso y la revisión a la que está unida quedan como estaban (`refreshedIssueBody`).
 
 No queda ningún editor antiguo: las pantallas de «Fases y tareas» por pasos, «Asignar personas» y «Crear subtareas»
 se retiraron el 2 de octubre de 2026 (sus direcciones llevan a «Subtareas»).

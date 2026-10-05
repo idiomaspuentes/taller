@@ -2549,5 +2549,8 @@
   "rv.openMineMany": "Você tem {n} comentários sem resolver. Quando estiverem atendidos, marque como resolvidos: então dá para aprovar.",
   "rv.openOthersOne": "Falta {n} comentário sem resolver. Quem o deixou marca como resolvido; até lá não dá para aprovar.",
   "rv.openOthersMany": "Faltam {n} comentários sem resolver. Quem os deixou marca como resolvidos; até lá não dá para aprovar.",
-  "rv.cannotApproveOpen": "Ainda há comentários sem resolver: não dá para aprovar por enquanto."
+  "rv.cannotApproveOpen": "Ainda há comentários sem resolver: não dá para aprovar por enquanto.",
+  "pw.renamedOne": "{n} subtarefa tem no Door43 um nome diferente do plano.",
+  "pw.renamedMany": "{n} subtarefas têm no Door43 um nome diferente do plano.",
+  "pw.updateNames": "Atualizar os nomes"
 }
