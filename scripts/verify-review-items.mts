@@ -58,6 +58,19 @@ test("en una ayuda se revisan las filas del pasaje: las nuevas, las cambiadas y 
   const items = reviewItems({ filename: "tn_3JN.tsv", now, before, range });
   assert.deepEqual(items.map((item) => [item.key, item.ref, item.state]), [["a001", "1:1", "changed"], ["a002", "1:2", "removed"], ["a003", "1:3", "new"]]);
   assert.deepEqual(reviewItems({ filename: "manifest.yaml", now: "a", before: "b", range }), []);
+  // What the row says is told apart from the columns that place it: nobody reviews an address, a line of Greek and a number.
+  assert.deepEqual(items[0]!.help, { text: "Nota nueva", before: "Nota vieja", quote: "ὁ πρεσβύτερος", occurrence: 1 });
+  assert.deepEqual(items[1]!.help, { text: "", before: "Se quita", quote: "x", occurrence: 1 }, "de la que se quitó queda lo que decía");
+  assert.deepEqual(items[2]!.help, { text: "Recién escrita", before: "", quote: "y", occurrence: 1 });
+});
+
+test("de una pregunta se revisa la pregunta y su respuesta", () => {
+  const head = "Reference\tID\tTags\tQuote\tOccurrence\tQuestion\tResponse";
+  const before = [head, "1:1\tq001\t\t\t\tWho wrote this letter?\tThe elder wrote it."].join("\n");
+  const now = [head, "1:1\tq001\t\t\t\t¿Quién escribió esta carta?\tLa escribió el anciano."].join("\n");
+  const [item] = reviewItems({ filename: "tq_3JN.tsv", now, before, range });
+  assert.deepEqual(item!.help, { text: "¿Quién escribió esta carta?", before: "Who wrote this letter?", secondary: "La escribió el anciano.", beforeSecondary: "The elder wrote it." });
+  assert.equal(item!.state, "changed");
 });
 
 test("un comentario sobre un versículo dice cuál, y se vuelve a encontrar junto a él", () => {

@@ -39,9 +39,11 @@ import { bookUsfmName } from "../prep/discover";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
+import { NoteQuote, useHelpSources } from "./HelpSources";
+import { noteFromTsv } from "../domain/helpMarkup";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces } from "./usePieces";
-import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, type ArticleFile } from "../domain/articleBlocks";
+import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, untranslated, vocabularyOf, type ArticleFile } from "../domain/articleBlocks";
 
 type Props = {
   ctxEncoded: string;
@@ -102,6 +104,10 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [articleFiles, setArticleFiles] = useState<(ArticleFile & { text: string })[]>([]);
   /** Whether the source of those files was read: until then it is not known which can be shown piece by piece. */
   const [sourcesRead, setSourcesRead] = useState(false);
+  /** Each row of a help as the source package has it, by its id: what its translation is read against. */
+  const [sourceRows, setSourceRows] = useState<Record<string, { text: string; secondary?: string }>>({});
+  /** Whether those rows were read: until then a row cannot be told translated from corrected. */
+  const [sourceRowsRead, setSourceRowsRead] = useState(false);
   /** The introductions (of the book, of the chapter) a draft of notes is reviewed with, each with its source. */
   const [intros, setIntros] = useState<(IntroItem & { source: string })[]>([]);
   const pieces = usePieces((id) => `rv-${id}`);
@@ -155,6 +161,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       setArticleFiles([]);
       setSourcesRead(false);
       setIntros([]);
+      setSourceRows({});
+      setSourceRowsRead(false);
       pieces.reset();
       firstOpened.current = false;
       if (!linked) {
@@ -195,19 +203,28 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const [now, before] = await Promise.all([read(linked.head), read(linked.base)]);
       // Once the draft is in the team's text its own copy may be gone: what is reviewed then is the team's text.
       setItems(reviewItems({ filename, now: now ?? before ?? "", before: before ?? "", range }));
-      if (ctx.resource === "notas" && /\.tsv$/i.test(filename)) {
-        // An introduction is a note of pages, and not on a verse: it is read as the long text it is, against its source.
+      if ((ctx.resource === "notas" || ctx.resource === "preguntas") && /\.tsv$/i.test(filename)) {
         const text = now ?? before ?? "";
+        const questions = ctx.resource === "preguntas";
         void (async () => {
+          // Each row is read against the same row of the source package. The questions repository sits beside the
+          // notes one: `en_tn` → `en_tq`.
+          const pkg = resolveSourcePackage(board?.settings);
+          const raw = await readRaw(sess, pkg.owner, questions ? pkg.tn.replace(/_tn$/, "_tq") : pkg.tn, helpsTsvFilename(questions ? "preguntas" : "notas", ctx.book)).catch(() => null);
+          const said: Record<string, { text: string; secondary?: string }> = {};
+          for (const row of raw ? parseTsvTable(raw).rows : []) {
+            const id = tsvRowId(row);
+            if (id) said[id] = questions ? { text: noteFromTsv(row.Question || "").trim(), secondary: noteFromTsv(row.Response || "").trim() } : { text: noteFromTsv(row.Note || "").trim() };
+          }
+          setSourceRows(said);
+          setSourceRowsRead(true);
+          if (questions) return;
+          // An introduction is a note of pages, and not on a verse: it is read as the long text it is, against its source.
           const inventory = await loadInventoryFromDcs(sess, ctx.pmOrg, ctx.lang, ctx.book).catch(() => null);
           const planned = new Set(selectTsvRowsForPortion(parseTsvTable(text).rows, ctx, inventory).map(tsvRowId));
           const found = introItems(text, before ?? "", range.chapter, (id) => planned.has(id));
-          if (!found.length) return;
-          const pkg = resolveSourcePackage(board?.settings);
-          const raw = await readRaw(sess, pkg.owner, pkg.tn, helpsTsvFilename("notas", ctx.book)).catch(() => null);
-          const source = new Map(introItems(raw ?? "", "", range.chapter, () => true).map((row) => [row.key, row.now]));
-          setIntros(found.map((row) => ({ ...row, source: source.get(row.key) ?? "" })));
-        })().catch(() => undefined);
+          setIntros(found.map((row) => ({ ...row, source: said[row.key]?.text ?? "" })));
+        })().catch(() => setSourceRowsRead(true));
       }
     } catch (err) {
       setError(explainError(err));
@@ -219,6 +236,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   useEffect(() => {
     void load();
   }, [load]);
+
+  // A note is about a phrase of the verse: it is found in the source texts through the alignment, as where it is translated.
+  const helpSources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, ctx?.resource === "notas");
 
   const me = session?.username ?? "";
   const progress = useMemo(() => parseTaskProgressMarker(issue?.body), [issue]);
@@ -319,6 +339,21 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // What is reviewed is an article, not a passage of the book: the screen calls it that.
   const article = ctx?.resource === "academia" || ctx?.resource === "palabras";
   const changed = items.filter((item) => item.state !== "same" && item.state !== "empty").length;
+  /** The words of a help's row in the source package: what tells a row still in the source language from a translated one. */
+  const rowVocabulary = (key: string) => (sourceRows[key] ? vocabularyOf(`${sourceRows[key]!.text} ${sourceRows[key]!.secondary ?? ""}`) : null);
+  // Still as the source has it: there is nothing to review yet, and it is said so instead of shown as a translation.
+  const rowPending = (item: ReviewItem) => {
+    const vocabulary = item.help ? rowVocabulary(item.key) : null;
+    return Boolean(item.help && vocabulary && item.state !== "removed" && untranslated(`${item.help.text} ${item.help.secondary ?? ""}`, vocabulary));
+  };
+  // The draft changed a row that was already in the team's language: what changed is marked. A row translated from the
+  // source changed in every word, and marking them all says nothing.
+  const rowCorrected = (item: ReviewItem) => {
+    const vocabulary = item.help ? rowVocabulary(item.key) : null;
+    return Boolean(item.help && sourceRowsRead && item.state === "changed" && item.help.before.trim() && !(vocabulary && untranslated(`${item.help.before} ${item.help.beforeSecondary ?? ""}`, vocabulary)));
+  };
+  const helpRowsRead = items.filter((item) => item.help && item.state !== "removed" && sourceRows[item.key]);
+  const helpRowsDone = helpRowsRead.filter((item) => !rowPending(item)).length;
   const notesOf = (verse: number) => notes.filter((note) => note.verse === verse);
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
 
@@ -350,91 +385,134 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   ? t("rv.keptOut")
                   : t("rv.onlyRead");
 
+  const marked = (before: string, now: string) => diffWords(before, now).map((part, index) => (part.kind === "same" ? part.text : part.kind === "added" ? <ins key={index}>{part.text}</ins> : <del key={index}>{part.text}</del>));
+  const versesOf = (verse: number) =>
+    sources.length ? (
+      <dl className="rv-sources">
+        {sources.map((source) =>
+          source.verses[verse] ? (
+            <div key={source.short}>
+              <dt>{source.short}</dt>
+              <dd>{source.verses[verse]}</dd>
+            </div>
+          ) : null,
+        )}
+      </dl>
+    ) : null;
+
   /** One piece of what is reviewed that is not an article shown by its own pieces: a verse, a row of a help, a whole file. */
   const itemRow = (item: ReviewItem) => {
-                  const verseNotes = notesOf(item.verse);
-                  // What this item's own source calls for. A verse is matched against the English text it translates;
-                  // a note, a question or an article against its English. Without it, every check that has words.
-                  const text = ctx?.resource === "tpl" || ctx?.resource === "tps";
-                  const kind = ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i;
-                  const itemSource = text ? (sources.find((source) => kind.test(source.short)) ?? sources[ctx?.resource === "tps" ? 1 : 0])?.verses[item.verse] : english[item.key];
-                  const own: { id: string; text: string; texts?: Partial<Record<string, string>>; when?: string[]; by?: string }[] = [
-                    ...itemChecks(step?.checks ?? [], itemSource),
-                    ...itemChecks(teamRules ? activeRules(teamRules) : [], itemSource).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), when: rule.when, by: rule.by })),
-                  ];
-                  const about = comments.filter((row) => row.ref === item.ref);
-                  return (
-                    <li key={item.key} className="rv-item" data-state={item.state}>
-                      <div className="rv-item__head">
-                        <span className="rv-item__ref">{item.ref}</span>
-                        {item.state !== "same" ? <span className="rv-item__state">{t(`rv.state.${item.state}`)}</span> : null}
-                      </div>
-                      {showSources && sources.length ? (
-                        <dl className="rv-sources">
-                          {sources.map((source) =>
-                            source.verses[item.verse] ? (
-                              <div key={source.short}>
-                                <dt>{source.short}</dt>
-                                <dd>{source.verses[item.verse]}</dd>
-                              </div>
-                            ) : null,
-                          )}
-                        </dl>
-                      ) : null}
-                      {item.state === "empty" ? (
-                        <p className="rv-item__text rv-item__text--none">{t("rv.notWritten")}</p>
-                      ) : !item.chapter && !(item.state === "changed" && showChanges) && item.state !== "removed" ? (
-                        // An article is read with its headings and lists; its marks are shown only where words are compared.
-                        <HelpMarkdownView className="rv-item__text rv-item__text--article" content={item.now} />
-                      ) : (
-                        <p className={`rv-item__text${item.chapter ? "" : " rv-item__text--raw"}`}>
-                          {item.state === "changed" && showChanges
-                            ? diffWords(item.before, item.now).map((part, index) => (part.kind === "same" ? part.text : part.kind === "added" ? <ins key={index}>{part.text}</ins> : <del key={index}>{part.text}</del>))
-                            : item.state === "removed"
-                              ? <del>{item.before}</del>
-                              : item.now}
-                        </p>
-                      )}
-                      {verseNotes.length ? (
-                        <details className="rv-notes">
-                          <summary>{t(verseNotes.length === 1 ? "rv.notesOne" : "rv.notesMany").replace("{n}", String(verseNotes.length))}</summary>
-                          <ul className="fam-notes">
-                            {verseNotes.map((note) => (
-                              <li key={note.id}>
-                                <p className="fam-notes__quote">{note.title}</p>
-                                {note.body && note.body !== note.title ? (
-                                  <div className="fam-notes__body">
-                                    <HelpMarkdownView content={note.body} />
-                                  </div>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
-                      ) : null}
-                      {own.length && item.state !== "removed" && item.state !== "empty" ? (
-                        <div className="rv-checks">
-                          <Checks
-                            scope={`${ctx?.issueNumber ?? ""}:${step?.id ?? ""}:${item.key}`}
-                            lines={own.map((check) => {
-                              const said = check.texts?.[language] ?? check.text;
-                              // In an article the check says in which paragraphs of the English it comes up.
-                              const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
-                              return { id: check.id, by: check.by, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
-                            })}
-                          />
-                        </div>
-                      ) : null}
-                      {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
-                      {commenting === item.key ? (
-                        <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(item.ref, text) }]} />
-                      ) : (
-                        <button type="button" className="rv-item__add" onClick={() => setCommenting(item.key)}>
-                          <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
-                        </button>
-                      )}
-                    </li>
-                  );
+    const verseNotes = notesOf(item.verse);
+    // What this item's own source calls for. A verse is matched against the English text it translates;
+    // a note, a question or an article against its English. Without it, every check that has words.
+    const text = ctx?.resource === "tpl" || ctx?.resource === "tps";
+    const kind = ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i;
+    const itemSource = text ? (sources.find((source) => kind.test(source.short)) ?? sources[ctx?.resource === "tps" ? 1 : 0])?.verses[item.verse] : english[item.key];
+    const own: { id: string; text: string; texts?: Partial<Record<string, string>>; when?: string[]; by?: string }[] = [
+      ...itemChecks(step?.checks ?? [], itemSource),
+      ...itemChecks(teamRules ? activeRules(teamRules) : [], itemSource).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), when: rule.when, by: rule.by })),
+    ];
+    const about = comments.filter((row) => row.ref === item.ref);
+
+    // A row of a help is read as what it says, against what the source says: its other columns only place it.
+    const help = item.help;
+    const source = help ? sourceRows[item.key] : undefined;
+    const pending = rowPending(item);
+    const corrected = rowCorrected(item);
+    const firstOfVerse = items.find((other) => other.chapter === item.chapter && other.verse === item.verse)?.key === item.key;
+    const stateSaid = help ? (item.state === "changed" ? corrected : item.state !== "same") && !pending : item.state !== "same";
+
+    return (
+      <li key={item.key} className="rv-item" data-state={pending ? "same" : item.state}>
+        <div className="rv-item__head">
+          <span className="rv-item__ref">{item.ref}</span>
+          {stateSaid ? <span className="rv-item__state">{t(`rv.state.${item.state}`)}</span> : null}
+        </div>
+        {!showSources ? null : help?.quote !== undefined ? (
+          <NoteQuote sources={helpSources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter} verse={item.verse} quote={help.quote} occurrence={help.occurrence ?? 1} />
+        ) : help ? (
+          // Several questions may be of one verse: it is read once, with the first of them.
+          firstOfVerse ? versesOf(item.verse) : null
+        ) : (
+          versesOf(item.verse)
+        )}
+        {help ? (
+          <div className="rv-help" data-kind={help.secondary !== undefined ? "question" : undefined}>
+            {source ? (
+              <div className="rv-help__source">
+                <HelpMarkdownView content={source.text} />
+                {source.secondary ? <HelpMarkdownView content={source.secondary} /> : null}
+              </div>
+            ) : null}
+            <div className="rv-help__now">
+              {item.state === "removed" ? (
+                <p className="rv-item__text">
+                  <del>{[help.before, help.beforeSecondary].filter(Boolean).join("\n")}</del>
+                </p>
+              ) : pending ? (
+                <p className="rv-help__none">{t("ab.untranslated")}</p>
+              ) : corrected && showChanges ? (
+                <>
+                  <p className="rv-item__text">{marked(help.before, help.text)}</p>
+                  {help.secondary !== undefined ? <p className="rv-item__text">{marked(help.beforeSecondary ?? "", help.secondary)}</p> : null}
+                </>
+              ) : (
+                <>
+                  <HelpMarkdownView content={help.text} />
+                  {help.secondary ? <HelpMarkdownView content={help.secondary} /> : null}
+                </>
+              )}
+            </div>
+          </div>
+        ) : item.state === "empty" ? (
+          <p className="rv-item__text rv-item__text--none">{t("rv.notWritten")}</p>
+        ) : !item.chapter && !(item.state === "changed" && showChanges) && item.state !== "removed" ? (
+          // An article is read with its headings and lists; its marks are shown only where words are compared.
+          <HelpMarkdownView className="rv-item__text rv-item__text--article" content={item.now} />
+        ) : (
+          <p className={`rv-item__text${item.chapter ? "" : " rv-item__text--raw"}`}>{item.state === "changed" && showChanges ? marked(item.before, item.now) : item.state === "removed" ? <del>{item.before}</del> : item.now}</p>
+        )}
+        {/* Under a note the notes of its verse would be itself and its neighbours again. */}
+        {verseNotes.length && help?.quote === undefined ? (
+          <details className="rv-notes">
+            <summary>{t(verseNotes.length === 1 ? "rv.notesOne" : "rv.notesMany").replace("{n}", String(verseNotes.length))}</summary>
+            <ul className="fam-notes">
+              {verseNotes.map((note) => (
+                <li key={note.id}>
+                  <p className="fam-notes__quote">{note.title}</p>
+                  {note.body && note.body !== note.title ? (
+                    <div className="fam-notes__body">
+                      <HelpMarkdownView content={note.body} />
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+        {own.length && item.state !== "removed" && item.state !== "empty" && !pending ? (
+          <div className="rv-checks">
+            <Checks
+              scope={`${ctx?.issueNumber ?? ""}:${step?.id ?? ""}:${item.key}`}
+              lines={own.map((check) => {
+                const said = check.texts?.[language] ?? check.text;
+                // In an article the check says in which paragraphs of the English it comes up.
+                const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
+                return { id: check.id, by: check.by, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
+              })}
+            />
+          </div>
+        ) : null}
+        {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
+        {commenting === item.key ? (
+          <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(item.ref, text) }]} />
+        ) : (
+          <button type="button" className="rv-item__add" onClick={() => setCommenting(item.key)}>
+            <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
+          </button>
+        )}
+      </li>
+    );
   };
 
   // An article: the files that can be read piece by piece, each piece against its source.
@@ -561,13 +639,22 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               ) : (
               <>
               <div className="rv-bar">
-                <p className="rv-bar__count">{items.length ? (changed ? t(changed === 1 ? "rv.changedOne" : "rv.changedMany").replace("{n}", String(changed)).replace("{of}", String(items.length)) : t("rv.nothingChanged")) : ""}</p>
+                <p className="rv-bar__count">
+                  {!items.length
+                    ? ""
+                    : helpRowsRead.length
+                      ? // A help is translated row by row: how far the passage is says more than how many rows differ.
+                        t("rv.helpsDone").replace("{n}", String(helpRowsDone)).replace("{total}", String(helpRowsRead.length))
+                      : changed
+                        ? t(changed === 1 ? "rv.changedOne" : "rv.changedMany").replace("{n}", String(changed)).replace("{of}", String(items.length))
+                        : t("rv.nothingChanged")}
+                </p>
                 {sources.length ? (
                   <label className="rv-toggle">
                     <input type="checkbox" checked={showSources} onChange={(e) => setShowSources(e.target.checked)} /> {t("rv.showSources")}
                   </label>
                 ) : null}
-                {items.some((item) => item.state === "changed") ? (
+                {items.some((item) => item.state === "changed" && (!item.help || rowCorrected(item))) ? (
                   <label className="rv-toggle">
                     <input type="checkbox" checked={showChanges} onChange={(e) => setShowChanges(e.target.checked)} /> {t("rv.showChanges")}
                   </label>

@@ -7530,6 +7530,20 @@ input.pf-name { font-size: 1.625rem; }
 .rv-sources dd { margin: 0; }
 .rv-notes summary { min-height: 28px; font-size: 0.8125rem; color: var(--primary); cursor: pointer; }
 .rv-notes .fam-notes { margin-top: 0.375rem; }
+/* A row of a help in review: what the source says, in the grey that says «the original», and what was written for it. */
+.rv-help { display: grid; gap: 0.5rem; min-width: 0; }
+.rv-help__source { min-width: 0; font-size: 0.9375rem; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
+.rv-help__now { min-width: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+.rv-help .scripture-editor__help-md { font-size: inherit; line-height: inherit; color: inherit; }
+.rv-help :is(p, ul, ol, blockquote) { margin-top: 0; margin-bottom: 0; }
+.rv-help .scripture-editor__help-md + .scripture-editor__help-md { margin-top: 0.25rem; }
+.rv-help[data-kind="question"] .scripture-editor__help-md:first-child { font-weight: 600; }
+.rv-help__none { margin: 0; font-size: 0.9375rem; font-style: italic; color: var(--text-faint); }
+.rv-help .rv-item__text { margin: 0; }
+@media (min-width: 60rem) {
+  .rv-help { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .rv-help__now { padding-top: 0; border-top: 0; }
+}
 .rv-item__add { display: inline-flex; align-items: center; justify-self: start; gap: 0.375rem; min-height: 32px; padding: 0; border: 0; background: none; color: var(--primary); font-size: 0.8125rem; cursor: pointer; }
 .rv-item__add:hover { text-decoration: underline; }
 .rv-comments { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }

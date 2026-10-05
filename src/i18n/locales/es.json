@@ -2528,5 +2528,6 @@
   "rv.commentPiece": "Comentario sobre este párrafo",
   "rv.readThenApproveArticle": "Lee el artículo. Si algo debe cambiar, coméntalo; si está bien, aprueba.",
   "rv.generalTitleArticle": "Comentarios sobre todo el artículo",
-  "rv.noDraftYetArticle": "Este artículo todavía no tiene un borrador para revisar. Aparece cuando quien lo traduce termina su borrador."
+  "rv.noDraftYetArticle": "Este artículo todavía no tiene un borrador para revisar. Aparece cuando quien lo traduce termina su borrador.",
+  "rv.helpsDone": "{n} de {total} traducidas"
 }

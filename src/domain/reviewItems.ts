@@ -15,6 +15,25 @@ export type ReviewItem = {
   before: string;
   /** `new`: nothing was there before. `removed`: it is no longer in the draft. `empty`: not written yet. */
   state: "new" | "changed" | "same" | "removed" | "empty";
+  /** A row of a help: what it says, apart from the columns that only place it in the text. */
+  help?: HelpSaid;
+};
+
+/**
+ * What a row of a help says to whoever reads it: its note, or its question and the answer. The other columns of the
+ * row (the article it points to, the phrase of the original it is about, which time that phrase comes) place the row;
+ * read as text they are an address, a line of Greek and a number.
+ */
+export type HelpSaid = {
+  text: string;
+  /** The answer of a question. */
+  secondary?: string;
+  /** What the row said before the draft. */
+  before: string;
+  beforeSecondary?: string;
+  /** A note: what it quotes of the original, to find the phrase in the source texts. */
+  quote?: string;
+  occurrence?: number;
 };
 
 export type DiffPart = { text: string; kind: "same" | "added" | "removed" };
@@ -89,7 +108,7 @@ function verseItems(now: string, before: string, range: RefRange): ReviewItem[] 
   return items;
 }
 
-type Row = { id: string; chapter: number; verse: number; text: string };
+type Row = { id: string; chapter: number; verse: number; text: string; said: string; answer?: string; quote?: string; occurrence?: number };
 
 /** The rows of a help file (TSV with a `Reference` column) that are about the passage. */
 function helpRows(tsv: string, range: RefRange): Row[] {
@@ -98,6 +117,13 @@ function helpRows(tsv: string, range: RefRange): Row[] {
   const refAt = head.indexOf("reference");
   if (refAt < 0) return [];
   const idAt = head.indexOf("id");
+  // A file of notes says its note in `Note`; one of questions, its question in `Question` and the answer in `Response`.
+  const noteAt = head.indexOf("note");
+  const questionAt = head.indexOf("question");
+  const responseAt = head.indexOf("response");
+  const quoteAt = head.indexOf("quote");
+  const occurrenceAt = head.indexOf("occurrence");
+  const cell = (cells: string[], at: number) => (at >= 0 ? noteFromTsv(cells[at] ?? "").trim() : "");
   const rows: Row[] = [];
   lines.slice(1).forEach((line, index) => {
     const cells = line.split("\t");
@@ -111,7 +137,15 @@ function helpRows(tsv: string, range: RefRange): Row[] {
       .map((cell) => cell.replace(/\\n/g, "\n").trim())
       .filter(Boolean)
       .join("\n");
-    rows.push({ id: (idAt >= 0 ? cells[idAt]?.trim() : "") || `${chapter}:${verse}#${index}`, chapter, verse, text });
+    rows.push({
+      id: (idAt >= 0 ? cells[idAt]?.trim() : "") || `${chapter}:${verse}#${index}`,
+      chapter,
+      verse,
+      text,
+      said: noteAt >= 0 ? cell(cells, noteAt) : questionAt >= 0 ? cell(cells, questionAt) : text,
+      ...(noteAt < 0 && responseAt >= 0 ? { answer: cell(cells, responseAt) } : {}),
+      ...(noteAt >= 0 && quoteAt >= 0 ? { quote: (cells[quoteAt] ?? "").trim(), occurrence: Math.max(1, parseInt(cells[occurrenceAt] ?? "1", 10) || 1) } : {}),
+    });
   });
   return rows;
 }
@@ -119,9 +153,27 @@ function helpRows(tsv: string, range: RefRange): Row[] {
 function rowItems(now: string, before: string, range: RefRange): ReviewItem[] {
   const was = helpRows(before, range);
   const rows = helpRows(now, range);
-  const item = (row: Row, old: string, text: string): ReviewItem => ({ key: row.id, ref: `${row.chapter}:${row.verse}`, chapter: row.chapter, verse: row.verse, now: text, before: old, state: stateOf(old, text) });
-  const kept = rows.map((row) => item(row, was.find((old) => old.id === row.id)?.text ?? "", row.text));
-  const gone = was.filter((old) => !rows.some((row) => row.id === old.id)).map((old) => item(old, old.text, ""));
+  const item = (row: Row, old: Row | undefined, gone = false): ReviewItem => {
+    const text = gone ? "" : row.text;
+    const before = gone ? row.text : (old?.text ?? "");
+    return {
+      key: row.id,
+      ref: `${row.chapter}:${row.verse}`,
+      chapter: row.chapter,
+      verse: row.verse,
+      now: text,
+      before,
+      state: stateOf(before, text),
+      help: {
+        text: gone ? "" : row.said,
+        before: gone ? row.said : (old?.said ?? ""),
+        ...(row.answer !== undefined ? { secondary: gone ? "" : row.answer, beforeSecondary: gone ? row.answer : (old?.answer ?? "") } : {}),
+        ...(row.quote !== undefined ? { quote: row.quote, occurrence: row.occurrence } : {}),
+      },
+    };
+  };
+  const kept = rows.map((row) => item(row, was.find((old) => old.id === row.id)));
+  const gone = was.filter((old) => !rows.some((row) => row.id === old.id)).map((old) => item(old, undefined, true));
   return [...kept, ...gone].sort((a, b) => a.verse - b.verse);
 }
 
