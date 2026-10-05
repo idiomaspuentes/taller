@@ -2555,5 +2555,6 @@
   "he.pendingTitleOne": "Falta {n} parágrafo por traduzir",
   "he.pendingTitleMany": "Faltam {n} parágrafos por traduzir",
   "he.pendingText": "Se você passar para revisão assim, quem revisa vai recebê-lo incompleto.",
-  "he.keepTranslating": "Continuar traduzindo"
+  "he.keepTranslating": "Continuar traduzindo",
+  "ab.made": "O app escreve estas referências. Não é preciso traduzi-las."
 }

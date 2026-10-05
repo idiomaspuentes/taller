@@ -75,6 +75,17 @@ export function bookName(code: string): string {
   return BOOKS.find((b) => b.code === code)?.name ?? code;
 }
 
+/**
+ * What each book is called in the language a team translates into, for what the app writes into the team's own
+ * resources (a reference to a passage). Undefined for a language the app has no names in: nothing is written then.
+ */
+export function bookNamesIn(lang: string | undefined): ((code: string) => string | undefined) | undefined {
+  const base = (lang ?? "").trim().toLowerCase().split(/[-_]/)[0];
+  if (base === "es") return (code) => BOOKS.find((b) => b.code === code.toUpperCase())?.name;
+  if (base === "pt") return (code) => BOOK_NAMES_PT[code.toUpperCase()];
+  return undefined;
+}
+
 /** Book name for the screen, in the interface language. */
 export function bookLabel(code: string, language: "es" | "pt"): string {
   return (language === "pt" ? BOOK_NAMES_PT[code] : undefined) ?? bookName(code);

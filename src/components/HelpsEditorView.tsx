@@ -3,7 +3,8 @@ import { helpsTsvFilename } from "../domain/helpsTarget";
 import { ensureHelpsFileFromSource } from "../dcs/bookBootstrap";
 import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
-import { bookLabel } from "../domain/books";
+import { bookLabel, bookNamesIn } from "../domain/books";
+import { localPassages } from "../domain/passageLinks";
 import { ChapterSources, NoteQuote, useHelpSources, useSourceHelps } from "./HelpSources";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { ToolHeader } from "./ToolHeader";
@@ -640,6 +641,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const nothingDone = articles.length > 0 && articles.every(byRows) && articles.every((item) => progress[item.id]) && articles.every((item) => progress[item.id]!.done === 0);
   const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
   /** The texts worked by pieces, as they follow one another: the title of an article, the line under it, its body. */
+  // The references to passages of an article are written by the app, in the language the team translates into.
+  const makePiece = useMemo(() => {
+    const nameOf = bookNamesIn(ctx?.lang);
+    return nameOf ? (piece: string) => localPassages(piece, nameOf) : undefined;
+  }, [ctx?.lang]);
   const inRows = items.filter(byRows);
   const inPieces = inRows.map((item) => item.id);
   /** The first piece still to be translated is opened and brought onto the screen: where to go on from. */
@@ -804,7 +810,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 book={ctx?.book}
                 open={active?.id === item.id ? active.index : null}
                 onOpen={(index, element) => pieces.open(item.id, index, element)}
-                onProgress={(done, total, firstPending, count) => pieces.report(item.id, done, total, firstPending, count)}
+                onProgress={(done, total, firstPending, count, made) => pieces.report(item.id, done, total, firstPending, count, made)}
+                make={makePiece}
                 hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
                 onNext={(index) => pieces.next(inPieces, item.id, index)}
                 onDone={pieces.close}

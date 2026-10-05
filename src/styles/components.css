@@ -7741,6 +7741,10 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .ab-text { -webkit-tap-highlight-color: transparent; }
 .ab-text:hover, .ab-text:focus-visible, .ab-text:active { background: var(--surface-muted); outline: none; }
 .ab-text[data-pending] { color: var(--text-muted); }
+/* What the app writes itself (references to passages): text of the article, with nothing to open. */
+.ab-text[data-made] { cursor: default; }
+.ab-text[data-made]:hover, .ab-text[data-made]:active { background: none; }
+.ab-made { margin: 0 0 0.25rem; font-size: 0.8125rem; line-height: 1.4; color: var(--text-muted); }
 /* Touching a link inside a piece opens the piece: the link is for whoever reads the published article. */
 .ab-text a, .ab-text button { pointer-events: none; }
 .ab-text .scripture-editor__help-md { font-size: inherit; line-height: inherit; color: inherit; }

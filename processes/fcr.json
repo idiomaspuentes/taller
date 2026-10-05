@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 32,
+      "version": 33,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -2049,13 +2049,6 @@
                   ]
                 },
                 {
-                  "id": "referencias",
-                  "text": "Las referencias bíblicas: ¿quedaron sin traducir?",
-                  "texts": {
-                    "pt": "As referências bíblicas: ficaram sem traduzir?"
-                  }
-                },
-                {
                   "id": "ortografia",
                   "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
                   "texts": {
@@ -2247,13 +2240,6 @@
                     "year",
                     "years"
                   ]
-                },
-                {
-                  "id": "referencias",
-                  "text": "Las referencias bíblicas: ¿quedaron sin traducir?",
-                  "texts": {
-                    "pt": "As referências bíblicas: ficaram sem traduzir?"
-                  }
                 },
                 {
                   "id": "ortografia",

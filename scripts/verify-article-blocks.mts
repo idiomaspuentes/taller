@@ -6,7 +6,9 @@
  */
 import assert from "node:assert/strict";
 import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, rowsMarkdown, startingText, untranslated, vocabularyOf } from "../src/domain/articleBlocks";
+import { bookNamesIn } from "../src/domain/books";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
+import { isPassageList, localPassages } from "../src/domain/passageLinks";
 import { parseRefComment, refComment } from "../src/domain/reviewItems";
 
 let passed = 0;
@@ -141,6 +143,56 @@ test("una referencia bíblica dejada como está no cuenta como párrafo sin trad
   assert.equal(untranslated("Used in this sense the term “age” refers to a long period of time. See [Matthew 28:20](rc://en/tn/help/mat/28/20).", words), true);
   // A link to something else is read as before: its words are words of the article.
   assert.equal(untranslated("(See also: [eternity](../kt/eternity.md))", vocabularyOf("(See also: [eternity](../kt/eternity.md))")), true);
+});
+
+test("la app escribe las referencias bíblicas en el idioma del equipo: el libro sale de la dirección del enlace", () => {
+  const es = bookNamesIn("es-419")!;
+  const pt = bookNamesIn("pt-br")!;
+  assert.equal(localPassages("* [1 John 1:7-8](rc://en/tn/help/1jn/01/07)", es), "* [1 Juan 1:7-8](rc://*/tn/help/1jn/01/07)");
+  assert.equal(localPassages("* [1 John 1:7-8](rc://en/tn/help/1jn/01/07)", pt), "* [1 João 1:7-8](rc://*/tn/help/1jn/01/07)");
+  // However the source names the book, and whatever it shows of the place.
+  assert.equal(localPassages("* [Psalms 23](rc://en/tn/help/psa/023/001)", es), "* [Salmos 23](rc://*/tn/help/psa/023/001)");
+  assert.equal(localPassages("* [Jude](rc://en/tn/help/jud/01/03)", es), "* [Judas 1:3](rc://*/tn/help/jud/01/03)", "sin lugar a la vista, el de la dirección");
+  assert.equal(localPassages("* [Deuteronomy 29:14–16](rc://en/tn/help/deu/29/14)", es), "* [Deuteronomio 29:14–16](rc://*/tn/help/deu/29/14)");
+  // Written again from what the team already had, it says the same: it can be done any number of times.
+  assert.equal(localPassages("* [1 Juan 1:7-8](rc://*/tn/help/1jn/01/07)", es), "* [1 Juan 1:7-8](rc://*/tn/help/1jn/01/07)");
+
+  // Only a piece that is nothing but references. A paragraph with one in it is somebody's to translate.
+  assert.equal(isPassageList("* [1 John 1:7](rc://en/tn/help/1jn/01/07)"), true);
+  assert.equal(localPassages("See [Matthew 28:20](rc://en/tn/help/mat/28/20) for more.", es), null);
+  assert.equal(localPassages("* __[1:1](rc://en/tn/help/obs/01/01)__ __God__ created the universe.", es), null, "un ejemplo de las historias tiene texto propio");
+  assert.equal(localPassages("* [eternity](../kt/eternity.md)", es), null);
+  // A language the app has no names of the books in: nothing is written, and the piece stays with the translator.
+  assert.equal(bookNamesIn("fr"), undefined);
+});
+
+test("en el artículo, las referencias quedan escritas por la app y lo demás sigue siendo de quien traduce", () => {
+  const word = ["# God", "## Bible References:", "* [1 John 1:7](rc://en/tn/help/1jn/01/07)\n* [Ezra 3:1-2](rc://en/tn/help/ezr/03/01)", "## Word Data:", "* Strong’s: H0136, G23160"].join("\n\n");
+  const make = (piece: string) => localPassages(piece, bookNamesIn("es-419")!);
+  const words = vocabularyOf(word);
+
+  // Nothing translated yet: the article starts from the source, and the two references are already ours.
+  const fresh = articleRows(word, startingText(word, "") ?? word, make)!;
+  assert.deepEqual(fresh.filter((row) => row.made).map((row) => row.draft), ["* [1 Juan 1:7](rc://*/tn/help/1jn/01/07)", "* [Esdras 3:1-2](rc://*/tn/help/ezr/03/01)"]);
+  assert.deepEqual(articleProgress(fresh, words), { done: 0, total: 4 }, "y no cuentan: quedan los dos títulos, el nombre y la línea de Strong");
+  assert.ok(rowsMarkdown(fresh).includes("* [1 Juan 1:7](rc://*/tn/help/1jn/01/07)\n* [Esdras 3:1-2](rc://*/tn/help/ezr/03/01)"), "se guardan con el artículo, como lista");
+
+  // A file somebody translated by hand, references and all, in another order of words: they are written again.
+  const byHand = ["# Dios", "## Referencias bíblicas", "* [1 de Juan 1:7](rc://*/tn/help/1jn/01/07)\n* [Esdras 3:1-2](rc://*/tn/help/ezr/03/01)", "## Datos de la palabra", "* Números de Strong: H0136, G23160"].join("\n\n");
+  const again = articleRows(word, byHand, make)!;
+  assert.equal(again[2]!.draft, "* [1 Juan 1:7](rc://*/tn/help/1jn/01/07)");
+  assert.deepEqual(articleProgress(again, words), { done: 4, total: 4 });
+  assert.equal(again[0]!.made, undefined, "lo que se traduce no lo toca");
+  assert.equal(again[0]!.draft, "# Dios");
+
+  // Where a person wrote something of their own in that place, it is theirs: the app does not write over it.
+  const withNote = byHand.replace("* [Esdras 3:1-2](rc://*/tn/help/ezr/03/01)", "* [Esdras 3:1-2](rc://*/tn/help/ezr/03/01) (ver también el versículo 5)");
+  const kept = articleRows(word, withNote, make)!;
+  assert.equal(kept[3]!.made, undefined);
+  assert.ok(kept[3]!.draft.includes("ver también el versículo 5"));
+
+  // Without the app's hand (the review, a language with no names), the rows are what the file has.
+  assert.equal(articleRows(word, byHand)![2]!.draft, "* [1 de Juan 1:7](rc://*/tn/help/1jn/01/07)");
 });
 
 test("traducir un cuadro cambia solo su pieza del archivo; vaciarlo la quita", () => {

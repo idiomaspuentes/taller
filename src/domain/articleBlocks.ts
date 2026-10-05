@@ -146,6 +146,8 @@ export type ArticleRow = {
   tight: boolean;
   /** The file had nothing for this row: what is written in it follows the source. */
   fresh: boolean;
+  /** Written by the app from the source (a reference to a passage): nobody translates it, and it is written again each time. */
+  made?: boolean;
 };
 
 /**
@@ -153,8 +155,12 @@ export type ArticleRow = {
  * stays in the row before it, so the order of the file is never changed. `null` when the article cannot be worked
  * this way: there is no source, or the file uses something that would not come back the same (it is then edited
  * whole, as its source).
+ *
+ * `make` writes what the app writes itself: given a piece of the source it answers with the text of its row, or
+ * `null` for a piece that is somebody's to translate. What the file had there is replaced only when it was that
+ * same kind of thing, so nothing a person wrote is ever lost to it.
  */
-export function articleRows(sourceMd: string, draftMd: string): ArticleRow[] | null {
+export function articleRows(sourceMd: string, draftMd: string, make?: (sourcePiece: string) => string | null): ArticleRow[] | null {
   const source = piecesOf(sourceMd);
   if (!source.length) return null;
   if (draftMd.trim() && !roundTrips(draftMd)) return null;
@@ -169,13 +175,17 @@ export function articleRows(sourceMd: string, draftMd: string): ArticleRow[] | n
   });
   return source.map((piece, index) => {
     const mine = held[index]!;
+    const text = markdownOf([piece]);
+    const written = make ? make(text) : null;
+    const made = written !== null && mine.every((own) => make!(markdownOf([own])) !== null);
     return {
-      source: markdownOf([piece]),
+      source: text,
       shape: shapeOf(piece),
-      words: wordsOf(markdownOf([piece])).length > 0,
-      draft: mine.length ? markdownOf(mine) : "",
+      words: wordsOf(text).length > 0,
+      draft: made ? written : mine.length ? markdownOf(mine) : "",
       tight: isTight(mine[0] ?? piece),
-      fresh: !mine.length,
+      fresh: made ? false : !mine.length,
+      ...(made ? { made: true } : {}),
     };
   });
 }

@@ -200,7 +200,8 @@ Las palabras de cada comprobación se editan con ella, en «Proceso». Además d
 enlaces de una nota no cuentan como texto.
 
 Notas y Preguntas empiezan además por **«¿Leíste el versículo del que habla?»**: para traducir bien lo que se dice
-de una frase hay que saber de qué trata el versículo. Palabras recuerda que las referencias bíblicas no se traducen.
+de una frase hay que saber de qué trata el versículo. Palabras ya no recuerda nada sobre las referencias
+bíblicas: las escribe la app (sección 3.5).
 
 La lista **recuerda, no cierra el paso**: las marcas son de cada persona, quedan en su dispositivo y nadie más las
 ve. Se abre en la tarjeta y dentro de la herramienta, en «Qué se pide en …». En el paquete son las `checks` del paso. Quien
@@ -297,12 +298,23 @@ quedan párrafos sin traducir lo pregunta en un cuadro aparte, que dice cuántos
 no se hace en la misma barra: ahí bastaba pulsar dos veces, sin haberla leído. Un artículo sin nada
 traducido no se puede pasar a revisión.
 
-**Qué cuenta como párrafo sin traducir.** El que sigue en el idioma de la fuente. No cuenta una línea que
-es solo una referencia bíblica (el enlace a un pasaje, «[Matthew 28:20](rc://…/tn/help/mat/28/20)»): este
-paso pide dejarlas como están, y contarlas hacía que un artículo de Palabras terminado se diera siempre por
-incompleto. Un párrafo con palabras propias y una referencia dentro cuenta por sus palabras (los ejemplos de
-las historias bíblicas, por ejemplo). La línea de los números de Strong cuenta hasta que se traduce su
-rótulo («Números de Strong»), como está en los artículos ya publicados del equipo.
+**Las referencias bíblicas las escribe la app.** En un artículo de Palabras, la lista de pasajes donde la
+Biblia usa la palabra («[1 John 1:7](rc://en/tn/help/1jn/01/07)») no la traduce nadie: de esa sección solo se
+traduce el título. La app escribe cada referencia en el idioma del equipo («[1 Juan 1:7](rc://*/tn/help/1jn/01/07)»):
+el libro lo lee de la dirección del enlace y su nombre lo toma de la lista de los 66 libros que tiene en español
+y en portugués; el capítulo y los versículos quedan como en la fuente. En el editor esas líneas se leen ya
+escritas, con una nota que lo dice; no se abren, y «Siguiente» las pasa de largo. Se escriben de nuevo cada vez
+que se abre el artículo, a partir de la fuente de hoy, y se guardan con él. Para un idioma del que la app no
+tiene los nombres de los libros no escribe nada, y esas líneas se traducen a mano como las demás.
+
+Queda por hacer lo mismo con los **ejemplos de las historias bíblicas** (se tomarán de las historias ya
+traducidas del equipo) y volver a escribir unas y otros al publicar; mientras tanto los ejemplos se traducen
+a mano y cuentan como párrafos.
+
+**Qué cuenta como párrafo sin traducir.** El que sigue en el idioma de la fuente. No cuenta lo que escribe la
+app (las referencias bíblicas). Un párrafo con palabras propias y una referencia dentro cuenta por sus palabras.
+La línea de los números de Strong cuenta hasta que se traduce su rótulo («Números de Strong»), como está en
+los artículos ya publicados del equipo.
 
 **Se revisa igual: párrafo a párrafo.** Quien revisa lee el artículo como artículo (con su título y
 su subtítulo, aunque solo se haya tocado el cuerpo) y abre cada párrafo contra su original, con lo

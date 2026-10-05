@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { holdAt, placesOf, reveal, revealWhole, slideFrom } from "./pieceMotion";
 
-export type PieceCount = { done: number; total: number; firstPending: number; count: number };
+export type PieceCount = { done: number; total: number; firstPending: number; count: number; /** Pieces nobody opens: the app writes them. */ skip: number[] };
 export type ActivePiece = { id: string; index: number };
 
 /** Put the caret where writing goes on: at the end of what a box holds, or in its empty first line. */
@@ -38,10 +38,12 @@ export function usePieces(domId: (id: string) => string) {
 
   /** A text says how many pieces it has, how many are translated and the first that is not. */
   const report = useCallback(
-    (id: string, done: number, total: number, firstPending: number, count: number) =>
+    (id: string, done: number, total: number, firstPending: number, count: number, skip: number[] = []) =>
       setCounts((prev) => {
         const was = prev[id];
-        return was && was.done === done && was.total === total && was.firstPending === firstPending && was.count === count ? prev : { ...prev, [id]: { done, total, firstPending, count } };
+        return was && was.done === done && was.total === total && was.firstPending === firstPending && was.count === count && was.skip.join() === skip.join()
+          ? prev
+          : { ...prev, [id]: { done, total, firstPending, count, skip } };
       }),
     [],
   );
@@ -94,11 +96,23 @@ export function usePieces(domId: (id: string) => string) {
     if (scroller && before) slideFrom(scroller, before, row);
   }
 
-  /** The piece after one, in its own text or in the next of `order` (the texts as they follow one another on the screen). */
+  /**
+   * The piece after one, in its own text or in the next of `order` (the texts as they follow one another on the
+   * screen). What the app writes itself is passed over: there is nothing there for whoever goes down the article.
+   */
   function after(order: string[], id: string, index: number): ActivePiece | null {
-    if (index + 1 < (counts[id]?.count ?? 0)) return { id, index: index + 1 };
-    const next = order.slice(order.indexOf(id) + 1).find((other) => (counts[other]?.count ?? 0) > 0);
-    return next ? { id: next, index: 0 } : null;
+    const firstFrom = (text: string, from: number): ActivePiece | null => {
+      const of = counts[text];
+      for (let at = from; at < (of?.count ?? 0); at++) if (!of!.skip.includes(at)) return { id: text, index: at };
+      return null;
+    };
+    const here = firstFrom(id, index + 1);
+    if (here) return here;
+    for (const other of order.slice(order.indexOf(id) + 1)) {
+      const there = firstFrom(other, 0);
+      if (there) return there;
+    }
+    return null;
   }
 
   function next(order: string[], id: string, index: number) {

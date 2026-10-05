@@ -23,8 +23,10 @@ type Props = {
   open: number | null;
   /** A piece was touched to be written: `element` is where it is on the screen now. */
   onOpen: (index: number, element: HTMLElement) => void;
-  /** How many pieces there are to translate, how many are, the first that is not (-1: none), and how many pieces in all. */
-  onProgress?: (done: number, total: number, firstPending: number, count: number) => void;
+  /** How many pieces there are to translate, how many are, the first that is not (-1: none), how many pieces in all, and which of them the app writes. */
+  onProgress?: (done: number, total: number, firstPending: number, count: number, made: number[]) => void;
+  /** What the app writes itself: the text of the row of a piece of the source, or `null` for one that is translated (see `articleRows`). */
+  make?: (sourcePiece: string) => string | null;
   /** Whether a piece comes after the open one, in this text or in the one that follows it. */
   hasNext?: boolean;
   /** Go on to the piece after `index`: whoever translates down the article does not have to find and touch it. */
@@ -79,11 +81,11 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, hasNext, onNext, onDone, part, below, marksOf, above }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
-  const [rows, setRows] = useState<ArticleRow[]>(() => articleRows(source, value) ?? []);
+  const [rows, setRows] = useState<ArticleRow[]>(() => articleRows(source, value, make) ?? []);
   /** The pieces written in since they were made: what they hold is shown, whatever language it is in. */
   const [touched, setTouched] = useState<ReadonlySet<number>>(() => new Set());
   /** What the pieces were last made from, or last said: another text or another source comes from outside. */
@@ -101,13 +103,20 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
     const text = normalizeMarkdown(value);
     if (text === made.current.text && source === made.current.source) return;
     made.current = { text, source };
-    setRows(articleRows(source, value) ?? []);
+    setRows(articleRows(source, value, make) ?? []);
     setTouched(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `make` says the same for the same source
   }, [value, source]);
 
   useEffect(() => {
     const { done, total } = articleProgress(rows, vocabulary);
-    tell.current?.(done, total, rows.findIndex((row) => row.words && rowPending(row, vocabulary)), rows.length);
+    tell.current?.(
+      done,
+      total,
+      rows.findIndex((row) => row.words && rowPending(row, vocabulary)),
+      rows.length,
+      rows.flatMap((row, index) => (row.made ? [index] : [])),
+    );
   }, [rows, vocabulary]);
 
   const touch = useCallback((index: number) => setTouched((prev) => (prev.has(index) ? prev : new Set(prev).add(index))), []);
@@ -139,13 +148,24 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
 
   const openPiece = useCallback((index: number, element: HTMLElement) => opened.current(index, element), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated") }), [language]);
+  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated"), made: t("ab.made") }), [language]);
 
   return (
     <div className="ab" data-part={part}>
       {rows.map((row, index) => {
         const pending = rowPending(row, vocabulary);
         const rowId = `${id}-row-${index}`;
+        if (row.made && !readOnly) {
+          // Written by the app: it reads as the text of the article and is not opened. The first of a run says why.
+          const over = above?.(index);
+          return (
+            <div key={index} id={rowId} className="ab-text" data-slide data-made>
+              {rows[index - 1]?.made ? null : <p className="ab-made">{words.made}</p>}
+              {over ? <div className="ab-over">{over}</div> : null}
+              <HelpMarkdownView content={row.draft} />
+            </div>
+          );
+        }
         if (open !== index) return <Piece key={index} id={rowId} index={index} content={pending || !row.draft.trim() ? row.source : row.draft} pending={pending || !row.draft.trim()} marks={marksOf?.(index) ?? 0} onOpen={openPiece} />;
         const next =
           hasNext && onNext ? (
