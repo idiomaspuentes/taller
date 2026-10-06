@@ -262,7 +262,7 @@ cada fuente con la que se hizo:
   la lista de archivos del recurso (17 KB, compartida con los textos del dispositivo) y el nombre de
   su última versión (menos de 1 KB). Si Door43 tarda más de 4 segundos, el paso se cierra igual y
   no dice nada de sus fuentes, que es mejor que decir algo falso.
-- **Dónde se ve.** En la tarjeta de la subtarea, «···» → «Ver los pasos»: «Hecho por @Elisha · 6
+- **Dónde se ve.** En la tarjeta de la subtarea, al tocar la barra de avance se despliegan los pasos: «Hecho por @Elisha · 6
   oct» y debajo «UST v91». Y si una fuente **cambió después** de cerrarse el paso, la tarjeta lo
   dice sin que nadie lo pida: «Cambió en la fuente después de «Borrador»: UST. Conviene volver a
   mirarlo.» Se pregunta una vez por visita para todas las tarjetas (`src/useSourcesNow.ts`).

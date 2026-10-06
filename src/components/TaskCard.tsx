@@ -1,6 +1,6 @@
 import { StepAskBody, TeamRuleChecks, stepAsks } from "./StepAsk";
 import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
@@ -98,7 +98,6 @@ export function TaskCard(props: Props) {
 
   let status = "";
   if (card.group === "waiting") status = localizeHold(card.holdText ?? "", language);
-  else if (card.group === "free") status = t("tb.freeLine");
   else if (card.group === "done") status = t("tb.doneAt").replace("{when}", formatRelativeEs(card.issue.closed_at ?? card.issue.updated_at ?? "", now, language));
   else if (action.kind === "none" && action.why === "othersReview") status = t("tb.othersReview");
   else if (action.kind === "none" && action.why === "assigneeDelivers") status = t("tb.assigneeDelivers").replace("{who}", assigneeOf(card));
@@ -137,8 +136,16 @@ export function TaskCard(props: Props) {
   const stepInHand = action.kind === "continue" ? action.step : undefined;
   const canFinishStep = Boolean(stepInHand && mine && card.started && finishedHere(stepInHand));
 
+  // A subtarea that waits with nothing done has no progress to show: its line is why it waits. One nobody has
+  // taken has none either.
+  const showsRow = card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" && (card.group !== "waiting" || fraction > 0);
+  // The button says what is done next when its step has words of its own («Traducir», «Revisar»). One that only
+  // says «Empezar», or that opens a tool outside, leaves the step unnamed: then it is named beside it.
+  const nextUnnamed = hasTool && card.stepsDone < card.stepsTotal && (!stepButton(action.kind === "begin" || action.kind === "continue" ? action.step : undefined) || props.externalTool);
+
   const menuItems: { id: string; label: string; run: () => void; danger?: boolean }[] = [];
-  if (steps.length && card.group !== "done") menuItems.push({ id: "steps", label: stepsOpen ? t("tb.hideSteps") : t("tb.showSteps"), run: () => setStepsOpen((v) => !v) });
+  // The row of the bar unfolds the steps; a card without that row has them here.
+  if (steps.length && card.group !== "done" && !showsRow) menuItems.push({ id: "steps", label: stepsOpen ? t("tb.hideSteps") : t("tb.showSteps"), run: () => setStepsOpen((v) => !v) });
   if (props.onOpenThread) menuItems.push({ id: "thread", label: t("tb.comment"), run: props.onOpenThread });
   if (hasTool && props.onOpenNewTab && !props.externalTool) menuItems.push({ id: "tab", label: t("tb.newTab"), run: props.onOpenNewTab });
   if (props.onCorrect) menuItems.push({ id: "correct", label: t("rv.correct"), run: props.onCorrect });
@@ -150,7 +157,9 @@ export function TaskCard(props: Props) {
       <div className="task-card__top">
         <h3 className="task-card__title">
           {card.activity.unread ? <span className="task-card__dot" role="img" aria-label={t("mt.unread")} /> : null}
-          {card.activity.isNew ? <span className="task-card__new">{t("mt.tagNew")}</span> : null}
+          {/* «Nueva» is said of what is the person's to do. Of what nobody has taken, or waits, it stayed on every
+              card for ever: nobody opens those. */}
+          {card.activity.isNew && card.group !== "free" && card.group !== "waiting" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null}
           {title}
         </h3>
         {menuItems.length ? (
@@ -182,42 +191,18 @@ export function TaskCard(props: Props) {
 
       {props.projectLabel ? <span className="task-card__project">{props.projectLabel}</span> : null}
 
-      {card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" ? (
-        <div className="task-card__progress">
+      {/* How far it is, in one line; touching it unfolds its steps (who closed each, against what, how far the one
+          in hand is). What comes next is not said apart: the button says it, and the steps show it. */}
+      {showsRow ? (
+        <button type="button" className="task-card__progress" aria-expanded={stepsOpen} onClick={() => setStepsOpen((v) => !v)}>
           <ProgressBar value={fraction} segments={steps.map((s) => stepFraction(progress, s.id))} label={t("pg.label").replace("{n}", String(percentOf(fraction)))} />
           <span className="task-card__count">
-            {t("tb.steps").replace("{done}", String(card.stepsDone)).replace("{total}", String(card.stepsTotal))} · <strong>{percent(fraction)}</strong>
+            {t(card.stepsTotal === 1 ? "tb.step1" : "tb.steps").replace("{done}", String(card.stepsDone)).replace("{total}", String(card.stepsTotal))} · <strong>{percent(fraction)}</strong>
           </span>
-          {card.nextStep && card.stepsDone < card.stepsTotal ? (
-            <span className="task-card__next">{t("tb.next").replace("{step}", stepName(card.nextStep))}</span>
-          ) : null}
-        </div>
+          <ChevronDown className="task-card__chev" aria-hidden />
+          <span className="sr-only">{stepsOpen ? t("tb.hideSteps") : t("tb.showSteps")}</span>
+        </button>
       ) : null}
-
-      {status ? <p className="task-card__status">{status}</p> : null}
-      {moved.map(({ step, kinds }) => (
-        <p key={step.id} className="task-card__moved">
-          {t("tb.sourceMoved").replace("{step}", stepName(step)).replace("{sources}", sourceNames(kinds))}
-        </p>
-      ))}
-      {/* What the next step asks is read where the step is done: its tool says it, under its header. The card says
-          it only of a step with no tool of Taller to read it in (one that is marked done from here, or done in a
-          tool outside), so the card stays short. */}
-      {card.nextStep && card.group !== "done" && card.group !== "waiting" && (!card.nextStep.solverAppId || props.externalTool) && stepAsks(card.nextStep, language) ? (
-        <details className="step-ask">
-          <summary>{t("tb.howStep").replace("{step}", stepName(card.nextStep))}</summary>
-          <StepAskBody step={card.nextStep} />
-          <TeamRuleChecks team={card.task?.orgTeamName} />
-        </details>
-      ) : null}
-
-      {activity ? (
-        <p className="task-card__activity">
-          <span>{activity}</span>
-          {card.activity.latest ? <time dateTime={card.activity.latest.at}>{formatRelativeEs(card.activity.latest.at, now, language)}</time> : null}
-        </p>
-      ) : null}
-
       {stepsOpen ? (
         <ol className="task-card__steps">
           {steps.map((step) => {
@@ -279,6 +264,31 @@ export function TaskCard(props: Props) {
             );
           })}
         </ol>
+      ) : null}
+      {nextUnnamed && card.nextStep ? <p className="task-card__status">{t("tb.next").replace("{step}", stepName(card.nextStep))}</p> : null}
+
+      {status ? <p className="task-card__status">{status}</p> : null}
+      {moved.map(({ step, kinds }) => (
+        <p key={step.id} className="task-card__moved">
+          {t("tb.sourceMoved").replace("{step}", stepName(step)).replace("{sources}", sourceNames(kinds))}
+        </p>
+      ))}
+      {/* What the next step asks is read where the step is done: its tool says it, under its header. The card says
+          it only of a step with no tool of Taller to read it in (one that is marked done from here, or done in a
+          tool outside), so the card stays short. */}
+      {card.nextStep && card.group !== "done" && card.group !== "waiting" && (!card.nextStep.solverAppId || props.externalTool) && stepAsks(card.nextStep, language) ? (
+        <details className="step-ask">
+          <summary>{t("tb.howStep").replace("{step}", stepName(card.nextStep))}</summary>
+          <StepAskBody step={card.nextStep} />
+          <TeamRuleChecks team={card.task?.orgTeamName} />
+        </details>
+      ) : null}
+
+      {activity ? (
+        <p className="task-card__activity">
+          <span>{activity}</span>
+          {card.activity.latest ? <time dateTime={card.activity.latest.at}>{formatRelativeEs(card.activity.latest.at, now, language)}</time> : null}
+        </p>
       ) : null}
 
       {label ? (

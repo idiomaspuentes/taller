@@ -96,6 +96,36 @@ TERMINADAS ESTA SEMANA (0)                ▸
             Mis tareas · Avisos · Yo
 ```
 
+**Cómo quedó la tarjeta (octubre de 2026), medida con 240 tarjetas reales de QA.** Solo lleva lo que cambia de
+una tarjeta a otra y lo que se puede hacer:
+
+```
+┌──────────────────────────────────────┐
+│ ● Traducir TPS · Judas 1:1–2    ···  │
+│ ▬▬▬ ▬▬▬ ───  2 de 3 pasos · 67 %  ⌄  │  ← se toca: despliega los pasos
+│ valeska: 1:1 — En el TPS de…  hace 3 h│  ← solo si hay un mensaje
+│ [            Revisar            ]    │
+└──────────────────────────────────────┘
+```
+
+Lo que se quitó, y por qué:
+
+| Se quitó | Lo que decían los datos |
+|---|---|
+| «Siguiente: Revisión en pares» | En las 11 tarjetas en curso nombraba el mismo paso que el botón («Revisar», «Traducir»). Sigue saliendo si el botón solo dice «Empezar» o abre un sitio de fuera |
+| «Nadie la ha tomado todavía.» | La misma frase en las 43 tarjetas libres, bajo un grupo que se llama «Libres para el equipo» |
+| «nueva» en libres y en espera | En 91 o 92 de 92, según la sesión: nadie abre esas tarjetas, así que se quedaba para siempre. Sigue en lo que le toca a la persona |
+| La barra en una tarjeta que espera sin nada hecho | «0 de 1 pasos · 0 %» en 49 de 49. Queda su motivo: «Espera a «Traducir TPL»» |
+| «Qué se pide en …» | Se lee dentro de la herramienta del paso (ver `PLANTILLA_FCR.md`) |
+
+Lo que se despliega: **los pasos**, tocando la línea de la barra (antes: «···» → «Ver los pasos», dos toques y sin
+nada que lo anunciara). Se despliega hacia abajo, no se voltea: al voltear una tarjeta desaparecen su título y su
+botón, la lista salta si las dos caras no miden lo mismo, y quien lee con un lector de pantalla no tiene cómo saber
+que hay otra cara.
+
+Altura en un teléfono de 375 px: en curso, de 223 a 176 px (con mensaje, de 270 a 222); libre, de 157–169 a 126;
+en espera, de 159–171 a 99.
+
 Escritorio: la misma lista en una columna de 40 rem como máximo; los grupos plegados a la derecha como resumen («Libres 1 · En espera 1 · Terminadas 3») si cabe.
 
 Tarjeta en espera (sin botón): «Revisar la alineación · Nehemías 1 — Espera a «Traducir TPL» de @ana». Tarjeta libre: «Traducir TPL · Nehemías 3 — Libre para tu equipo desde hace 2 días — [ Empezar ]». Decisión: «Nehemías 1:2 · decidir la alineación — 2 personas ya votaron — [ Votar ]».

@@ -1301,7 +1301,6 @@
   "tb.working": "Um momento…",
   "tb.steps": "{done} de {total} etapas",
   "tb.next": "Próxima: {step}",
-  "tb.freeLine": "Ninguém pegou ainda.",
   "tb.doneAt": "Entregue {when}.",
   "tb.othersReview": "Agora outras pessoas revisam. Avisaremos quando for sua vez.",
   "tb.assigneeDelivers": "Falta @{who} entregar.",
@@ -2691,5 +2690,6 @@
   "cx.once": "Corrigido 1 vez",
   "cx.times": "Corrigido {n} vezes",
   "cx.noReason": "sem motivo anotado",
-  "cx.from": "Ao revisar «{label}»"
+  "cx.from": "Ao revisar «{label}»",
+  "tb.step1": "{done} de 1 etapa"
 }
