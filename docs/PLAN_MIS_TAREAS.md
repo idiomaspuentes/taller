@@ -61,7 +61,8 @@ Menú `···`: Comentar, Cerrar tarea, Liberar (`canUnassignIssue`).
    - **Empezar**: toma la tarea si está libre y abre la herramienta (la semántica de `begin`, que hoy solo tiene «Ahora»). Nunca más un «Empezar» que solo cambia una etiqueta.
    - **Seguir**: abre la herramienta del **siguiente paso pendiente** que yo pueda hacer. Si el siguiente paso es una revisión que hacen otras personas, no hay botón y la tarjeta lo dice: «Esperando la revisión de otras personas».
    - **Entregar** (antes «Cerrar»): solo cuando todos los pasos están hechos. Con confirmación: «Tu trabajo pasa al borrador del grupo. ¿Entregamos?».
-   - **Votar** en decisiones; **Tomar la revisión** / **Aprobar** en las ofertas de revisión.
+   - **Votar** en decisiones; **Aprobar** en las ofertas de revisión.
+   - **Un paso al que hay que sumarse** (una revisión que nadie ha tomado) lleva el botón del propio paso («Revisar»), y pulsarlo toma el lugar y abre su herramienta, igual que «Estudiar» toma una tarea libre y la abre. La tarjeta dice antes «Nadie ha tomado «Revisión en pares» todavía.». Eran dos toques con dos nombres: «Sumarme a «Revisión en pares»» y, en la tarjeta ya movida a «En curso», «Revisar». Solo un paso sin herramienta conserva «Sumarme a…».
    - El menú `···` guarda lo raro: Ver pasos, Comentar, Liberar (con confirmación).
 4. **Los pasos no se abren solos.** La tarjeta muestra el avance («2 de 4 pasos» con puntos) y el nombre del paso siguiente. La lista completa aparece al tocar «Ver pasos», con un solo botón por paso. Así la tarjeta cabe en una pantalla de teléfono.
 5. **La herramienta se abre en la misma pestaña** cuando es de la app (`kind: "app"`), con «← Mis tareas» arriba. Solo lo externo (Estudiar, en TranslationCore Study) abre otra pestaña, y el botón lo dice: «Estudiar ↗ (se abre aparte)».

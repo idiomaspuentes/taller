@@ -84,8 +84,9 @@ export function TaskCard(props: Props) {
   else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : stepButton(action.step) || (card.started ? t("tb.continue") : t("tb.begin"));
   else if (action.kind === "deliver") label = t("tb.deliver");
   else if (action.kind === "vote") label = t("tb.vote");
-  // The step's own name says what it is; the app only knows the mechanics (join it, approve it).
-  else if (action.kind === "claimStep") label = t("tb.join").replace("{step}", stepName(action.step));
+  // A step somebody joins to do it says what is done in it, as any other («Revisar»): pressing it takes the seat and
+  // opens its tool. One with no tool is only joined, and says so.
+  else if (action.kind === "claimStep") label = (action.step.solverAppId && stepButton(action.step)) || t("tb.join").replace("{step}", stepName(action.step));
   else if (action.kind === "approveStep") label = t("tb.approveStep").replace("{step}", stepName(action.step));
 
   let status = "";
@@ -95,6 +96,8 @@ export function TaskCard(props: Props) {
   else if (action.kind === "none" && action.why === "othersReview") status = t("tb.othersReview");
   else if (action.kind === "none" && action.why === "assigneeDelivers") status = t("tb.assigneeDelivers").replace("{who}", assigneeOf(card));
   else if (card.group === "decide") status = t("tb.decideLine");
+  // As a free subtarea says nobody has taken it, a step nobody has joined says so: the button will take it.
+  else if (action.kind === "claimStep" && !getStepRuntime(parseTaskProgressMarker(card.issue.body ?? ""), action.step.id).assignees.length) status = t("tb.stepUntaken").replace("{step}", stepName(action.step));
 
   const activity = card.activity.latest ? previewLine(card.activity.latest, (text) => placedPreview(localizeThread(text, language))) : "";
   const steps = card.task?.steps ?? [];

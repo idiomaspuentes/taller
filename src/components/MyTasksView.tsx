@@ -453,7 +453,8 @@ export function MyTasksView({
     }
   }
 
-  async function takeStepClaim(offer: StepClaimOffer) {
+  /** Takes a seat in a step. Returns the subtarea as it is with the seat taken, or `null` when it could not be. */
+  async function takeStepClaim(offer: StepClaimOffer, opts: { thenOpens?: boolean } = {}): Promise<DcsIssue | null> {
     const { issue, task, step } = offer;
     const steps = task.steps ?? [];
     const current = parseTaskProgressMarker(issue.body);
@@ -470,7 +471,7 @@ export function MyTasksView({
       )
     ) {
       setError(t("mt.cannotTakeStep"));
-      return;
+      return null;
     }
     const next = claimStep(current, step, session.username);
     setActing(issue.number);
@@ -485,9 +486,12 @@ export function MyTasksView({
         await tryEnsurePortionPr(updated, board);
       }
       announce(t("mt.tookStep").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)));
-      await reload();
+      // Its tool is opened next: the list is not read again only to be left.
+      if (!opts.thenOpens) await reload();
+      return updated;
     } catch (err) {
       setError(explainError(err));
+      return null;
     } finally {
       setActing(null);
     }
@@ -581,19 +585,25 @@ export function MyTasksView({
     const taskId = issueTaskId(issue);
     const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
     if (!task) return;
-    await takeStepClaim({
-      projectId: board.projectId,
-      projectTitle: board.title || board.projectId,
-      issue,
-      task,
-      step,
-      progress: parseTaskProgressMarker(issue.body),
-      seated: getStepRuntime(parseTaskProgressMarker(issue.body), step.id)
-        .assignees.length,
-      minSeats: 2,
-      maxSeats: 2,
-      action: "claim",
-    });
+    // Joining a step is to do it: its tool opens, as taking a subtarea opens the tool of its first step. It used to
+    // take two presses, «Sumarme a…» and then, on the card moved to another group, «Revisar».
+    const opens = Boolean(step.solverAppId && findSolverApp(solversCatalog, step.solverAppId));
+    const updated = await takeStepClaim(
+      {
+        projectId: board.projectId,
+        projectTitle: board.title || board.projectId,
+        issue,
+        task,
+        step,
+        progress: parseTaskProgressMarker(issue.body),
+        seated: getStepRuntime(parseTaskProgressMarker(issue.body), step.id).assignees.length,
+        minSeats: 2,
+        maxSeats: 2,
+        action: "claim",
+      },
+      { thenOpens: opens },
+    );
+    if (updated && opens) await resolve(updated, board, { step });
   }
 
   async function approveStepOnIssue(

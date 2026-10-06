@@ -2580,5 +2580,6 @@
   "he.pendingTitleNotesMany": "Faltam {n} notas por traduzir",
   "he.pendingTitleQuestionsOne": "Falta {n} pergunta por traduzir",
   "he.pendingTitleQuestionsMany": "Faltam {n} perguntas por traduzir",
-  "tb.showRest": "Ver mais {n}"
+  "tb.showRest": "Ver mais {n}",
+  "tb.stepUntaken": "Ninguém assumiu «{step}» ainda."
 }
