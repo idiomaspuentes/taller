@@ -1,5 +1,6 @@
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
+import { StepAsk } from "./StepAsk";
 import { HelpMessages } from "./HelpMessages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { categoryFromSupportRef, categoryLabel } from "../domain/afinacionNotes";
@@ -381,6 +382,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           </div>
         ) : null}
       </ToolHeader>
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx} />
+      </div>
 
       {error ? (
         <Alert variant="destructive">

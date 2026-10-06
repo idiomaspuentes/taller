@@ -2,6 +2,7 @@ import { releaseUnit } from "../dcs/release";
 import { markPhaseIfClosed } from "../dcs/phaseMarks";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
+import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -209,6 +210,9 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
         onBack={onClose}
         meta={toolHeading(ctx, language, title).where}
       />
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx} />
+      </div>
 
       {error ? (
         <Alert variant="destructive">

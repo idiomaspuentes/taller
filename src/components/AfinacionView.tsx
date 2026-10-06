@@ -1,5 +1,6 @@
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
+import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
@@ -650,6 +651,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           ) : null
         }
       />
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx} />
+      </div>
 
       {error ? (
         <Alert variant="destructive">

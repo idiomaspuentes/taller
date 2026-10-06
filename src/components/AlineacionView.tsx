@@ -4,6 +4,7 @@ import { saveCorrection } from "../dcs/afinacionStore";
 import { ChapterReader } from "./ChapterReader";
 import { BookOpen, Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
+import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
@@ -1367,6 +1368,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           </div>
         ) : null}
       </ToolHeader>
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx} />
+      </div>
 
       {data && verse && session && pane === "chapter" ? (
         <ChapterReader session={session} book={data.book} pkg={pkg} draft={data.draft} draftLabel={t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")} chapter={data.chapter} from={verse.verse} />

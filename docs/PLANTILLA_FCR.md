@@ -189,7 +189,9 @@ inglés. El borrador pide eso y la revisión en pares comprueba eso: que diga lo
 traducción fiel también tiene que estar bien escrita. «Borrador» y «Revisión en pares» traen unas pocas cosas que
 tener en cuenta. Son **líneas para leer, cada una dicha donde sirve**; no hay nada que marcar.
 
-*Lo que vale para todo el paso* se dice una vez, bajo «Qué se pide en …» (en la tarjeta y dentro de la herramienta):
+*Lo que vale para todo el paso* se dice una vez, bajo «Qué se pide en …», **dentro de la herramienta** del paso
+(todas lo muestran plegado bajo su encabezado). La tarjeta solo lo dice de un paso que no tiene herramienta de
+Taller donde leerlo (se marca hecho desde la tarjeta, o se hace en un sitio de fuera), para no cargarla:
 
 | Para los textos (TPL, TPS) | Para las ayudas (Notas, Preguntas, Palabras, Academia) |
 |---|---|
@@ -284,7 +286,7 @@ diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualq
 **Afinación** (los textos) y de **Armonización** (las ayudas). Dejarlo para esas fases es lo que hace rápida a
 esta. Las reglas son las del [manual de lenguas puente](https://gl-manual.readthedocs.io/en/latest/).
 
-La persona lee lo que pide su paso en su tarjeta, en «Qué se pide en …».
+La persona lee lo que pide su paso al abrirlo, bajo «Qué se pide en …».
 
 ### 3.7 Revisión grupal TPL · Revisión grupal TPS (por capítulo)
 

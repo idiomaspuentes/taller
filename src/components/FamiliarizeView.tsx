@@ -1,4 +1,5 @@
 import { ToolHeader } from "./ToolHeader";
+import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, NotebookPen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -298,6 +299,9 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
           </>
         }
       />
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx} />
+      </div>
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">

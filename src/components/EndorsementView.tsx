@@ -1,5 +1,6 @@
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
+import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -281,6 +282,9 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
         onBack={onClose}
         meta={toolHeading(ctx, language, title).where}
       />
+      <div className="step-ask-bar">
+        <StepAsk session={session} ctx={ctx} />
+      </div>
 
       {error ? (
         <Alert variant="destructive">

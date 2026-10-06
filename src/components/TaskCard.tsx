@@ -200,8 +200,10 @@ export function TaskCard(props: Props) {
           {t("tb.sourceMoved").replace("{step}", stepName(step)).replace("{sources}", sourceNames(kinds))}
         </p>
       ))}
-      {/* What the next step asks, in the process's own words: there for whoever wants it, folded so the card stays short. */}
-      {card.nextStep && card.group !== "done" && card.group !== "waiting" && stepAsks(card.nextStep, language) ? (
+      {/* What the next step asks is read where the step is done: its tool says it, under its header. The card says
+          it only of a step with no tool of Taller to read it in (one that is marked done from here, or done in a
+          tool outside), so the card stays short. */}
+      {card.nextStep && card.group !== "done" && card.group !== "waiting" && (!card.nextStep.solverAppId || props.externalTool) && stepAsks(card.nextStep, language) ? (
         <details className="step-ask">
           <summary>{t("tb.howStep").replace("{step}", stepName(card.nextStep))}</summary>
           <StepAskBody step={card.nextStep} />
