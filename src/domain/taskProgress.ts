@@ -215,13 +215,14 @@ export function withStepSources(marker: TaskProgressMarker, stepId: string, sour
 
 /**
  * How far an open step is, noted on it. The same marker comes back when there is nothing to say: the step is
- * closed, the count is not one, or it is what the subtarea already has (so nothing is written for nothing).
+ * closed, the count is not one, it is what the subtarea already has, or it is «nothing yet» of a step that never
+ * said anything (so nothing is written for nothing: opening a tool to look does not move its subtarea).
  */
 export function withStepWork(marker: TaskProgressMarker, stepId: string, work: StepWork): TaskProgressMarker {
   const next = normalizeWork(work);
   if (!stepId || !next || marker.doneStepIds.includes(stepId)) return marker;
   const runtime = marker.steps?.[stepId] ?? { assignees: [], approvals: [] };
-  if (runtime.work?.done === next.done && runtime.work?.total === next.total) return marker;
+  if (runtime.work ? runtime.work.done === next.done && runtime.work.total === next.total : next.done === 0) return marker;
   return { schema: TASK_PROGRESS_SCHEMA, doneStepIds: marker.doneStepIds, steps: { ...(marker.steps ?? {}), [stepId]: { ...runtime, work: next } } };
 }
 

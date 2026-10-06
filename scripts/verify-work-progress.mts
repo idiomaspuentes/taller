@@ -37,9 +37,12 @@ test("no se escribe por nada: la misma cuenta, un paso cerrado o una cuenta que 
   assert.equal(withStepWork(closed, "borrador", { done: 12, total: 12 }), closed);
   assert.equal(withStepWork(half, "borrador", { done: 3, total: 0 }), half);
   assert.equal(withStepWork(half, "", { done: 3, total: 9 }), half);
+  // «Nothing yet» of a step that never said anything is not news; going back to nothing after having said something is.
+  assert.equal(withStepWork(half, "pares", { done: 0, total: 9 }), half);
+  assert.deepEqual(withStepWork(half, "borrador", { done: 0, total: 12 }).steps?.borrador?.work, { done: 0, total: 12 });
   // More than there is, or less than nothing, is brought back to what can be.
   assert.deepEqual(withStepWork(half, "pares", { done: 40, total: 9 }).steps?.pares?.work, { done: 9, total: 9 });
-  assert.deepEqual(withStepWork(half, "pares", { done: -2, total: 9 }).steps?.pares?.work, { done: 0, total: 9 });
+  assert.equal(withStepWork(half, "pares", { done: -2, total: 9 }), half, "menos que nada es nada");
   assert.equal(parseTaskProgressMarker('<!-- gateway-task-progress {"doneStepIds":[],"steps":{"a":{"work":{"done":"x","total":4}}}} -->').steps?.a?.work, undefined);
 });
 

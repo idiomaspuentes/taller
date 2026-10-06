@@ -304,7 +304,10 @@ Todo sale de **dos fuentes que ya existían**; Taller no guarda nada aparte:
 **Cómo lo dice una herramienta** (`useStepWork`, `src/dcs/stepWork.ts`): cuando la cuenta lleva 20
 segundos quieta, y al salir. Lee la subtarea otra vez antes de escribir (para no pisar un asiento o
 una aprobación) y no escribe si ya dice lo mismo. No dice nada desde el laboratorio, ni con el paso
-cerrado, ni mientras se está cerrando. Medido en QA: una lectura y una escritura de la subtarea.
+cerrado, ni mientras se está cerrando. Tampoco si quien abre la herramienta **no tiene la subtarea
+ni un asiento en el paso**, ni un «cero» de un paso que nunca dijo nada: quien coordina abre una
+herramienta para mirar, y una subtarea que nadie toca hace una semana no debe parecer movida hoy
+por eso. Medido en QA: una lectura y una escritura de la subtarea.
 La revisión en pares no tiene qué contar: su paso va de 0 a hecho.
 
 **El ritmo** (`src/domain/pace.ts`): subtareas terminadas por semana, sobre las últimas 4 (un

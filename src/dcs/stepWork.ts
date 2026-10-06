@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
-import { parseTaskProgressMarker, withStepWork } from "../domain/taskProgress";
+import { getStepRuntime, parseTaskProgressMarker, withStepWork } from "../domain/taskProgress";
 import type { GtSession } from "./auth";
-import { setIssueTaskProgress } from "./issues";
+import { issueAssigneeLogins, setIssueTaskProgress } from "./issues";
 import { getPmIssue } from "./portionPr";
 
 /**
@@ -19,12 +19,16 @@ const told = new Map<string, string>();
 
 /**
  * Notes the count on the subtarea, read again first so a seat or an approval saved meanwhile is not lost. Nothing is
- * written when the subtarea already says it, or the step is closed. Returns whether it wrote.
+ * written when the subtarea already says it, or the step is closed. Nor when the work is not this person's (they do
+ * not have the subtarea, nor a seat on the step): whoever coordinates opens a tool to look, and a subtarea nobody
+ * has touched in a week must not look as if it moved today because of that. Returns whether it wrote.
  */
 export async function reportStepWork(params: { session: GtSession; pmOrg: string; issueNumber: number; stepId: string; done: number; total: number }): Promise<boolean> {
   const { session, pmOrg, issueNumber, stepId, done, total } = params;
   const issue = await getPmIssue(session, pmOrg, issueNumber);
   const progress = parseTaskProgressMarker(issue.body);
+  const me = session.username.trim().toLowerCase();
+  if (![...issueAssigneeLogins(issue), ...getStepRuntime(progress, stepId).assignees].some((login) => login.toLowerCase() === me)) return false;
   const next = withStepWork(progress, stepId, { done, total });
   if (next === progress) return false;
   await setIssueTaskProgress(session, pmOrg, issue, next);
