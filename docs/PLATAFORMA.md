@@ -234,6 +234,47 @@ leen también el original), ni los textos del propio equipo, que cambian a cada 
 su rama. La rama que se lee sigue siendo la de trabajo de cada recurso (`master`), no su última
 versión publicada: cambiar eso es otra decisión.
 
+## Con qué versión de las fuentes se hizo cada paso
+
+Las fuentes cambian: el 6 de octubre de 2026, 9 de los 67 libros del ULT en `master` ya no eran los
+de su última versión publicada (v91). Un borrador hecho contra el texto de ayer puede no decir lo
+que la fuente dice hoy, y nada lo avisaba: Taller lee la rama de trabajo de cada recurso y no
+guardaba contra qué se había trabajado.
+
+Ahora, **al cerrarse un paso** queda anotado en su subtarea quién lo cerró, cuándo, y la versión de
+cada fuente con la que se hizo:
+
+```html
+<!-- gateway-task-progress {"v":2,"doneStepIds":["borrador"],"steps":{"borrador":{"assignees":[],"approvals":[],
+  "done":{"by":"Elisha","at":"2026-10-06T19:38:12.746Z"},
+  "sources":[{"kind":"ust","repo":"unfoldingWord/en_ust","path":"66-JUD.usfm","sha":"2ee94a0d…","release":"v91","released":true}]}}} -->
+```
+
+- **Qué se anota.** De cada archivo fuente, la huella de su contenido (`sha`: la misma que usa
+  Door43) y la última versión publicada del recurso (`release`). `released` dice si el archivo era
+  todavía el de esa versión; si ya había cambiado después, se muestra «v91+».
+- **Qué fuentes.** Las de lo que el paso traduce (`src/domain/sourceVersions.ts`): el TPL contra el
+  ULT, el TPS contra el UST, las notas contra las notas, un artículo contra ese artículo. Una
+  herramienta que lee más lo declara en su proceso con `sources` (afinar se hace con el original,
+  las notas y la lista de palabras); ver [`PROCESOS.md`](./PROCESOS.md) § `tools`.
+- **Dónde se anota.** En un solo sitio: `setIssueTaskProgress` (`src/dcs/issues.ts`), por donde pasa
+  todo cambio del avance de una subtarea. Las herramientas no saben nada de esto. Preguntar cuesta
+  la lista de archivos del recurso (17 KB, compartida con los textos del dispositivo) y el nombre de
+  su última versión (menos de 1 KB). Si Door43 tarda más de 4 segundos, el paso se cierra igual y
+  no dice nada de sus fuentes, que es mejor que decir algo falso.
+- **Dónde se ve.** En la tarjeta de la subtarea, «···» → «Ver los pasos»: «Hecho por @Elisha · 6
+  oct» y debajo «UST v91». Y si una fuente **cambió después** de cerrarse el paso, la tarjeta lo
+  dice sin que nadie lo pida: «Cambió en la fuente después de «Borrador»: UST. Conviene volver a
+  mirarlo.» Se pregunta una vez por visita para todas las tarjetas (`src/useSourcesNow.ts`).
+- **Si el paso se devuelve** a su autor, deja de estar cerrado y olvida con qué se hizo: al
+  cerrarse otra vez se anota lo de ese día.
+- Los pasos cerrados antes de este cambio no tienen nada anotado y se muestran como siempre
+  («Hecho»).
+
+**No hace todavía:** decir *qué* cambió en la fuente (qué versículos), ni fijar un proyecto a una
+versión publicada. Con la huella anotada, lo primero es comparar dos contenidos que Door43 guarda
+(`git/blobs/<sha>`).
+
 ## Archivos clave
 
 | Área | Archivo |
@@ -254,6 +295,7 @@ versión publicada: cambiar eso es otra decisión.
 | Lectura de una unidad por el comité | `src/components/EndorsementView.tsx`, `src/components/UnitReading.tsx`, `src/domain/unitReading.ts`, `src/domain/endorsement.ts` |
 | Familiarize / review | `src/components/FamiliarizeView.tsx`, `src/components/PortionReviewView.tsx` |
 | Textos fuente en el dispositivo | `src/dcs/sourceTexts.ts`, `src/domain/usfmChapters.ts`, `src/domain/referenceResources.ts` |
+| Versión de las fuentes de cada paso | `src/domain/sourceVersions.ts`, `src/dcs/sourceVersions.ts`, `src/dcs/stepSources.ts`, `src/useSourcesNow.ts` |
 | Glosario | `src/domain/glossary.ts`, `src/dcs/glossaryStore.ts`, `src/useGlossary.ts`, `src/components/GlossaryView.tsx`, `docs/GLOSARIO_DOOR43.md` |
 | Work orders | `src/domain/workOrder.ts` |
 | Mis tareas / claim | `src/domain/myTasks.ts`, `src/dcs/issues.ts` |

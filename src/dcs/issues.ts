@@ -28,7 +28,8 @@ import {
 } from "@ip-lms/dcs-client";
 import type { Assignment, AssignmentsDoc, InventoryDoc, Team } from "../domain/types";
 import { PM_REPO_NAME } from "../domain/types";
-import { upsertTaskProgressInBody, type TaskProgressMarker } from "../domain/taskProgress";
+import { upsertTaskProgressInBody, type TaskProgressMarker, TASK_PROGRESS_SCHEMA, parseTaskProgressMarker, stampDoneSteps } from "../domain/taskProgress";
+import { withSourcesNoted } from "./stepSources";
 import {
   mirroredOrgTeamName,
   normalizePmConfig,
@@ -1396,7 +1397,11 @@ export async function setIssueTaskProgress(
   issue: DcsIssue,
   markerOrIds: TaskProgressMarker | string[],
 ): Promise<DcsIssue> {
-  const body = upsertTaskProgressInBody(issue.body, markerOrIds);
+  // Every change of a subtarea's progress passes here, so this is where a step that becomes done is said to have
+  // been closed, by whom, when, and against which version of its sources. The tools that close steps know none of it.
+  const wanted: TaskProgressMarker = Array.isArray(markerOrIds) ? { schema: TASK_PROGRESS_SCHEMA, doneStepIds: markerOrIds, steps: undefined } : markerOrIds;
+  const { marker, closed } = stampDoneSteps(parseTaskProgressMarker(issue.body), wanted, session.username, new Date().toISOString());
+  const body = upsertTaskProgressInBody(issue.body, closed.length ? await withSourcesNoted(session, org, issue, marker, closed) : marker);
   const edited = await editIssue(dcsConfig(session.host), org, PM_REPO_NAME, issue.number, {
     token: session.token,
     body,

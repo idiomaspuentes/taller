@@ -7,13 +7,15 @@ import { formatRelativeEs, previewLine } from "../domain/attention";
 import { placedPreview } from "../commentPlaceText";
 import type { BoardCard } from "../domain/myTasksBoard";
 import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending, takenBackByAuthor } from "../domain/stepClaim";
+import { changedKinds, versionsByKind, type SourceKind } from "../domain/sourceVersions";
 import { getStepRuntime, parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeHold, localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
-import { useT } from "../i18n/messages";
+import { useT, type MessageKey } from "../i18n/messages";
+import { useSourcesNow } from "../useSourcesNow";
 
 type Props = {
   card: BoardCard;
@@ -38,6 +40,9 @@ type Props = {
   /** A free step (no seats): mark it done, or take that back. */
   onToggleStep: (step: TaskStep) => void;
 };
+
+/** How each kind of source is called to a person. */
+const SOURCE_NAME: Record<SourceKind, MessageKey> = { ult: "src.ult", ust: "src.ust", tn: "src.tn", tq: "src.tq", twl: "src.twl", tw: "src.tw", ta: "src.ta", original: "src.original" };
 
 function assigneeOf(card: BoardCard): string {
   return card.issue.assignee?.login || card.issue.assignees?.[0]?.login || "";
@@ -102,6 +107,15 @@ export function TaskCard(props: Props) {
   const activity = card.activity.latest ? previewLine(card.activity.latest, (text) => placedPreview(localizeThread(text, language))) : "";
   const steps = card.task?.steps ?? [];
   const progress = parseTaskProgressMarker(card.issue.body ?? "");
+  // The sources each closed step was done against, beside what they are today: one that moved on since is said on
+  // the card, for whoever goes on with the subtarea to look at it again.
+  const sourcesNow = useSourcesNow(steps.flatMap((step) => progress.steps?.[step.id]?.sources ?? []));
+  const sourceNames = (kinds: SourceKind[]) => kinds.map((kind) => t(SOURCE_NAME[kind])).join(", ");
+  const moved = steps
+    .filter((step) => progress.doneStepIds.includes(step.id))
+    .map((step) => ({ step, kinds: changedKinds(progress.steps?.[step.id]?.sources ?? [], sourcesNow) }))
+    .filter((row) => row.kinds.length);
+  const day = (iso: string) => (Number.isNaN(Date.parse(iso)) ? "" : new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }));
   const hasTool = action.kind === "begin" || action.kind === "continue";
   const mine = assigneeOf(card).toLowerCase() === props.login.toLowerCase();
   // A reviewer sent the work back: its author is told why it is theirs again, and the reviewers what they wait for.
@@ -178,6 +192,11 @@ export function TaskCard(props: Props) {
       ) : null}
 
       {status ? <p className="task-card__status">{status}</p> : null}
+      {moved.map(({ step, kinds }) => (
+        <p key={step.id} className="task-card__moved">
+          {t("tb.sourceMoved").replace("{step}", stepName(step)).replace("{sources}", sourceNames(kinds))}
+        </p>
+      ))}
       {/* What the next step asks, in the process's own words: there for whoever wants it, folded so the card stays short. */}
       {card.nextStep && card.group !== "done" && card.group !== "waiting" && stepAsks(card.nextStep, language) ? (
         <details className="step-ask">
@@ -218,10 +237,22 @@ export function TaskCard(props: Props) {
                   : claim
                     ? t("tb.stepFree")
                     : t("tb.stepOthers");
+            const closed = done ? progress.steps?.[step.id]?.done : undefined;
+            const sources = done ? (progress.steps?.[step.id]?.sources ?? []) : [];
             return (
               <li key={step.id} data-done={done || undefined}>
                 <span className="task-card__step-name">{stepName(step)}</span>
-                <span className="task-card__step-note">{note}</span>
+                <span className="task-card__step-note">
+                  {closed?.by ? t("tb.stepDoneBy").replace("{who}", closed.by).replace("{when}", day(closed.at)) : note}
+                  {/* Against which version of its sources: what tells, later, whether there is anything to look at again. */}
+                  {sources.length ? (
+                    <small className="task-card__step-sources">
+                      {versionsByKind(sources)
+                        .map((row) => `${t(SOURCE_NAME[row.kind])} ${row.version}`)
+                        .join(" · ")}
+                    </small>
+                  ) : null}
+                </span>
                 {isPrimary ? null : claim ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onClaimStep(step)}>
                     {t("tb.joinShort")}

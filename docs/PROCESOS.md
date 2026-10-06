@@ -86,6 +86,7 @@ Lo que un paso puede abrir: una pantalla de Taller o un sitio de fuera.
 | `stepParams` | Parámetros extra según el paso: una misma pantalla sirve a dos pasos (`{ "revisar-alineacion": { "mode": "revisar" } }`) |
 | `supersedes` | Trozos de direcciones viejas: la copia guardada de una organización se pone al día sola |
 | `walks` | Qué recorre una persona, uno por uno, en la herramienta: `unit` (`verses`, `notes`, `questions` o `items`), `times` (cuántos hay por cada uno, si el libro no lo dice), `approx` y `label` / `labels` (cómo los llama). Con eso se calcula la carga de un paso; ver «Carga por persona» |
+| `sources` | Contra qué fuentes se trabaja en ella, cuando lee más que lo que traduce: `ult`, `ust`, `tn`, `tq`, `twl`, `tw`, `ta`, `original`. Al cerrarse un paso que la abre, se anota la versión de cada una (ver `docs/PLATAFORMA.md` § «Con qué versión de las fuentes se hizo cada paso»). Sin este campo, se anota la fuente del recurso de la tarea |
 | `stagesUnit` | La herramienta trabaja sobre la unidad **en validación**: `resources` (qué recursos de la unidad se llevan a la rama de validación) y `aligned` (qué textos deben estar alineados antes). Cuando una subtarea de una tarea que abre esta herramienta ya puede empezar, la app lleva sola su unidad a `validacion/<libro>/<unidad>`; ver `docs/PLAN_RAMAS.md` § 5 |
 
 ### Carga por persona: cómo se ve un proceso mal repartido

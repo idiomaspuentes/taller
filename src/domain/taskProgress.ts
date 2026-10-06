@@ -1,3 +1,5 @@
+import type { SourceStamp } from "./sourceVersions";
+
 export const TASK_PROGRESS_SCHEMA_V1 = "gateway-task-progress-1" as const;
 export const TASK_PROGRESS_SCHEMA = "gateway-task-progress-2" as const;
 
@@ -9,7 +11,17 @@ export type StepRuntime = {
    * who took it back to correct it). Read only while the work is back; it is not cleared when handed in again.
    */
   returnedBy?: string;
+  /**
+   * Closed: by whom and when. A step was only ever «done» or not: nothing said who had closed it or on what day,
+   * so neither a person's work nor the pace of a book could be read from the plan. Forgotten when the step goes
+   * back to its author.
+   */
+  done?: StepDone;
+  /** The sources the step was done against, as they were when it was closed (see `sourceVersions`). */
+  sources?: SourceStamp[];
 };
+
+export type StepDone = { by: string; at: string };
 
 export type TaskProgressMarker = {
   schema: typeof TASK_PROGRESS_SCHEMA | typeof TASK_PROGRESS_SCHEMA_V1;
@@ -38,15 +50,42 @@ function normalizeStepRuntimes(raw: unknown): Record<string, StepRuntime> | unde
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     const id = String(key).trim();
     if (!id || !value || typeof value !== "object") continue;
-    const row = value as { assignees?: unknown; approvals?: unknown; returnedBy?: unknown };
+    const row = value as { assignees?: unknown; approvals?: unknown; returnedBy?: unknown; done?: unknown; sources?: unknown };
     const returnedBy = typeof row.returnedBy === "string" ? row.returnedBy.trim() : "";
     out[id] = {
       assignees: normalizeLoginList(row.assignees),
       approvals: normalizeLoginList(row.approvals),
       ...(returnedBy ? { returnedBy } : {}),
+      ...kept({ done: row.done, sources: row.sources }),
     };
   }
   return Object.keys(out).length ? out : undefined;
+}
+
+function normalizeDone(raw: unknown): StepDone | undefined {
+  const row = raw as Partial<StepDone> | null;
+  if (!row || typeof row !== "object" || typeof row.at !== "string" || !row.at.trim()) return undefined;
+  return { by: typeof row.by === "string" ? row.by.trim() : "", at: row.at.trim() };
+}
+
+function normalizeSources(raw: unknown): SourceStamp[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: SourceStamp[] = [];
+  for (const item of raw as Partial<SourceStamp>[]) {
+    if (!item || typeof item !== "object") continue;
+    const [kind, repo, path, sha] = [item.kind, item.repo, item.path, item.sha].map((x) => (typeof x === "string" ? x.trim() : ""));
+    if (!kind || !repo || !path || !sha) continue;
+    const release = typeof item.release === "string" ? item.release.trim() : "";
+    out.push({ kind: kind as SourceStamp["kind"], repo: repo!, path: path!, sha: sha!, ...(release ? { release, released: item.released !== false } : {}) });
+  }
+  return out.length ? out : undefined;
+}
+
+/** What is kept of a step besides its seats, as it is read or about to be written: only what is well formed. */
+function kept(row: { done?: unknown; sources?: unknown }): Pick<StepRuntime, "done" | "sources"> {
+  const done = normalizeDone(row.done);
+  const sources = normalizeSources(row.sources);
+  return { ...(done ? { done } : {}), ...(sources ? { sources } : {}) };
 }
 
 export function emptyTaskProgress(): TaskProgressMarker {
@@ -125,9 +164,35 @@ export function withStepRuntime(
         assignees: normalizeLoginList(runtime.assignees),
         approvals: normalizeLoginList(runtime.approvals),
         ...(runtime.returnedBy?.trim() ? { returnedBy: runtime.returnedBy.trim() } : {}),
+        // Who sits on a step changes without touching when it was closed or against what: those are carried over.
+        ...kept({ done: runtime.done ?? marker.steps?.[stepId]?.done, sources: runtime.sources ?? marker.steps?.[stepId]?.sources }),
       },
     },
   };
+}
+
+/**
+ * A marker about to be saved over another, with what the saving itself says: a step that became done is closed by
+ * `by` at `at`; a step that is no longer done (its work went back to its author) forgets who closed it and against
+ * which sources. `closed`: the steps that became done, for whoever notes their sources next.
+ */
+export function stampDoneSteps(before: TaskProgressMarker, after: TaskProgressMarker, by: string, at: string): { marker: TaskProgressMarker; closed: string[] } {
+  const was = new Set(before.doneStepIds);
+  const is = new Set(after.doneStepIds);
+  const closed = after.doneStepIds.filter((id) => !was.has(id));
+  const reopened = before.doneStepIds.filter((id) => !is.has(id));
+  if (!closed.length && !reopened.length) return { marker: after, closed };
+  const steps: Record<string, StepRuntime> = { ...(after.steps ?? {}) };
+  for (const id of closed) steps[id] = { ...(steps[id] ?? { assignees: [], approvals: [] }), done: { by: by.trim(), at }, sources: undefined };
+  for (const id of reopened) if (steps[id]) steps[id] = { ...steps[id]!, done: undefined, sources: undefined };
+  return { marker: { schema: TASK_PROGRESS_SCHEMA, doneStepIds: after.doneStepIds, steps }, closed };
+}
+
+/** The sources a closed step was done against, noted on it. */
+export function withStepSources(marker: TaskProgressMarker, stepId: string, sources: SourceStamp[]): TaskProgressMarker {
+  const runtime = marker.steps?.[stepId];
+  if (!runtime || !sources.length) return marker;
+  return { ...marker, steps: { ...marker.steps, [stepId]: { ...runtime, sources } } };
 }
 
 export function isStepDone(marker: TaskProgressMarker, stepId: string): boolean {

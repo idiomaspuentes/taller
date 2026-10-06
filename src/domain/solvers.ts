@@ -54,6 +54,12 @@ export type SolverApp = {
    * app puts these resources of its unit on the validation branch. `aligned`: the texts that must be aligned first.
    */
   stagesUnit?: { resources: string[]; aligned?: string[] };
+  /**
+   * The sources the work done in this tool is done against, when it is more than the text its subtarea translates
+   * (see `sourceVersions`): refining a text is done on the original, with its notes. The version of each is noted
+   * when the step is closed.
+   */
+  sources?: string[];
 };
 
 export type WalkUnit = "verses" | "notes" | "questions" | "items";
@@ -197,6 +203,7 @@ export function normalizeSolversCatalog(raw: unknown): SolversCatalog {
       ...(Object.keys(stepParams).length ? { stepParams } : {}),
       ...(walks ? { walks } : {}),
       ...(stagesUnit ? { stagesUnit } : {}),
+      ...(words(rowApp.sources).length ? { sources: words(rowApp.sources) } : {}),
     });
   }
   return { schema: SOLVERS_SCHEMA, solvers };
@@ -304,6 +311,7 @@ export function upgradeShippedTools(catalog: SolversCatalog, shipped: SolversCat
       next = { ...next, stepParams: merged };
     }
     if (def.needsIssue && app.needsIssue === undefined) next = { ...next, needsIssue: true };
+    if (def.sources?.length && !app.sources) next = { ...next, sources: def.sources };
     if (next === app) return app;
     changed = true;
     return next;

@@ -2643,5 +2643,15 @@
   "en.jump": "Ir ao meu relatório",
   "ur.concernNoted": "Inquietação anotada.",
   "ck.coveredNotes": "O sublinhado tem nota: toque",
-  "ck.coveredTerms": "O sublinhado tem artigo: toque"
+  "ck.coveredTerms": "O sublinhado tem artigo: toque",
+  "tb.stepDoneBy": "Feito por @{who} · {when}",
+  "tb.sourceMoved": "Mudou na fonte depois de «{step}»: {sources}. Convém olhar de novo.",
+  "src.ult": "ULT",
+  "src.ust": "UST",
+  "src.tn": "Notas da fonte",
+  "src.tq": "Perguntas da fonte",
+  "src.twl": "Lista de palavras-chave",
+  "src.tw": "Palavras da fonte",
+  "src.ta": "Academia da fonte",
+  "src.original": "Texto original"
 }

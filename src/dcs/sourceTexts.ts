@@ -126,7 +126,7 @@ const stamps = new Map<string, Promise<Map<string, string> | null>>();
  * The files of a resource as they are now in Door43, each with the hash of its content: one small request tells of
  * every book of the resource whether it changed. Null when it cannot be asked (no network, a server without it).
  */
-function stampsOf(session: GtSession, file: SourceFile): Promise<Map<string, string> | null> {
+export function stampsOf(session: GtSession, file: Pick<SourceFile, "owner" | "repo">): Promise<Map<string, string> | null> {
   const key = `${session.host}|${file.owner}/${file.repo}`.toLowerCase();
   let asked = stamps.get(key);
   if (!asked) {

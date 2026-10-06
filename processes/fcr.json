@@ -2598,7 +2598,11 @@
         "labels": {
           "pt": "desafios"
         }
-      }
+      },
+      "sources": [
+        "original",
+        "tn"
+      ]
     },
     {
       "id": "afinar-palabras",
@@ -2619,7 +2623,11 @@
         "labels": {
           "pt": "termos"
         }
-      }
+      },
+      "sources": [
+        "original",
+        "twl"
+      ]
     },
     {
       "id": "afinar-alineacion",
@@ -2642,7 +2650,10 @@
         "alineacion": {
           "mode": "ambos"
         }
-      }
+      },
+      "sources": [
+        "original"
+      ]
     },
     {
       "id": "helps-review",

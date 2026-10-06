@@ -111,6 +111,9 @@ aprobaciones viven en el marcador de progreso.
 
 - `doneStepIds` — checklist hecho (compat v1; UI y “todos los pasos”).
 - `steps[stepId].assignees` / `approvals` — asientos y aprobaciones runtime.
+- `steps[stepId].done` (`by`, `at`) y `sources` — quién cerró el paso, cuándo y con qué versión de cada fuente;
+  los pone `setIssueTaskProgress` al guardarse un paso recién cerrado, y se quitan si el paso vuelve a abrirse
+  (ver `PLATAFORMA.md` § «Con qué versión de las fuentes se hizo cada paso»).
 - Lectura v1 (`solo doneStepIds`) → seating vacío; escritura siempre v2.
 - Pasos `claimMode !== none` se completan con **Tomar** + **Aprobar** (no casilla).
 
