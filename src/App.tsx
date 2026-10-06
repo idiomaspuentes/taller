@@ -111,6 +111,7 @@ import { ProjectWorkView } from "./components/ProjectWorkView";
 import { landingRoute, useHashRoute } from "./router";
 import { decodeSolverLaunchContext } from "./domain/solverLaunch";
 import { isLabLaunch } from "./domain/solverLab";
+import { rememberReturnTo } from "./domain/returnTo";
 import {
   effectiveCanManage as computeEffectiveCanManage,
   loadViewMode,
@@ -1022,6 +1023,8 @@ export function App() {
         window.close();
         return;
       }
+      // The list is shown at the card of the subtarea that was being worked on.
+      if (launched?.issueNumber) rememberReturnTo(launched.issueNumber);
       navigate({ name: "mis-tareas" });
     };
     return (

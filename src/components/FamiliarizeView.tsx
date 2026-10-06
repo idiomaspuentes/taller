@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { loadSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { goOnAfterStep } from "../dcs/nextStep";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { loadFamiliarizeSeen, markFamiliarizeSeen } from "../domain/familiarizeCache";
@@ -191,7 +192,8 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
       // The mark the rest of the app looks at: this passage was studied.
       markFamiliarizeSeen(ctx.username, ctx.lang, base);
       if (ctx.stepId && ctx.issueNumber) await completeStepFromTool({ session: sess, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
-      onClose();
+      // The passage is studied to translate it: whoever has the subtarea is taken on to its draft.
+      await goOnAfterStep(sess, ctx, onClose);
     } catch (err) {
       setError(explainError(err));
       setFinishing(false);

@@ -5,6 +5,7 @@ import { openComments } from "../domain/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { goOnAfterStep } from "../dcs/nextStep";
 import { bookLabel } from "../domain/books";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -1603,7 +1604,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (!opened) return;
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       announce(t("se.finished"));
-      onClose();
+      await goOnAfterStep(session, ctx, onClose);
     } catch (err) {
       setError(explainError(err));
     } finally {

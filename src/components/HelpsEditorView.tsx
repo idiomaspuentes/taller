@@ -27,6 +27,7 @@ import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
 import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { goOnAfterStep } from "../dcs/nextStep";
 import {
   ensurePortionPr,
   getPmIssue,
@@ -598,7 +599,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (!(await openReview())) return;
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       announce(tNow("se.finished"));
-      onClose();
+      await goOnAfterStep(session, ctx, onClose);
     } catch (err) {
       setError(explainError(err));
     } finally {

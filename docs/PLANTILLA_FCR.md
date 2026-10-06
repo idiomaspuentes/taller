@@ -108,6 +108,12 @@ La familiarización es **por capítulo**: quien ya la hizo para un capítulo no 
 porciones de ese capítulo, y la introducción al libro se lee una sola vez. Lo mismo vale para la
 familiarización del TPL y del TPS.
 
+**Del estudio se pasa al borrador.** «Terminé de estudiar» completa el paso y abre el borrador de esa
+misma subtarea: quien estudió el pasaje lo hizo para traducirlo. Antes se volvía al principio de «Mis
+tareas», y el botón «Traducir» quedaba en una tarjeta más de una pantalla abajo. Cuando lo que sigue
+es de otra persona (la revisión en pares, después del borrador), o cuando se sale de una herramienta
+con «Volver», la lista se abre en la tarjeta de esa subtarea, que resalta un momento.
+
 Las ayudas **no llevan revisión grupal**.
 
 **Cada nota y cada pregunta se lee en la lista y se traduce al tocarla.** Las ayudas de un libro que

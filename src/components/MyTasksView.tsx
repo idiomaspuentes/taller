@@ -10,6 +10,7 @@ import { audienceOf, type AudienceHold } from "../domain/audience";
 import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
 import { boardCount, buildBoard, type BoardCard } from "../domain/myTasksBoard";
+import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
 import { isUrlSolver as isOutsideTool } from "../domain/solvers";
@@ -758,6 +759,22 @@ export function MyTasksView({
     () => buildBoard({ session, pmOrg, projects, decisionIssues: conflictIssues, closedIssues, cursor, myLevel }),
     [session, pmOrg, projects, conflictIssues, closedIssues, cursor, myLevel],
   );
+
+  // Coming back from a tool, the list is shown at the card of the subtarea that was worked on, and the card stands
+  // out for a moment: the list used to come back at its top, with that card more than a screen down.
+  useEffect(() => {
+    if (mode !== "lista" || !loaded || busy) return;
+    // Asked for once the cards are on the screen: asking forgets it, and an effect may be run twice.
+    const frame = requestAnimationFrame(() => {
+      const number = takeReturnTo();
+      const card = number ? document.querySelector<HTMLElement>(`.task-card[data-issue="${number}"]`) : null;
+      if (!card) return;
+      card.scrollIntoView({ block: "center" });
+      card.dataset.back = "true";
+      window.setTimeout(() => delete card.dataset.back, 2400);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mode, loaded, busy]);
 
   if (mode === "lista") {
     const toolOf = (card: BoardCard) => {

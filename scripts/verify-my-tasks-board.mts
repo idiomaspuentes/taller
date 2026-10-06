@@ -2,11 +2,11 @@
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
-import { buildBoard, nextCard, placeOf, type Board, type BoardCard } from "../src/domain/myTasksBoard";
+import { buildBoard, nextCard, nextStepOfMine, placeOf, type Board, type BoardCard } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
-import type { AssignmentsDoc } from "../src/domain/types";
+import type { AssignmentsDoc, TaskStep } from "../src/domain/types";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -332,7 +332,7 @@ await test("un libro a la vez por equipo: lo libre del libro siguiente espera ap
   assert.equal(where(undated, ruth[0]!.number)!.group, "free");
 });
 
-test("una tarea sin equipo que todavía espera a otra no se ofrece: aparece como en espera, con lo que espera", () => {
+await test("una tarea sin equipo que todavía espera a otra no se ofrece: aparece como en espera, con lo que espera", () => {
   // The task of the second phase has people in the plan but no team yet, and its first step is one people join.
   const noTeam = { ...plan, teams: plan.teams.map((task) => (task.id === "afinar" ? { ...task, orgTeamName: undefined } : task)) } as AssignmentsDoc;
   const draft = issue({ task: "tpl", title: "NEH 3:1–4 · TPL", assignee: "bea" });
@@ -346,6 +346,25 @@ test("una tarea sin equipo que todavía espera a otra no se ofrece: aparece como
   // Once what it waited for is closed, the step is offered.
   const free = build([waits]);
   assert.equal(free.reviews.some((c) => c.issue.number === waits.number), true);
+});
+
+await test("al terminar un paso se sigue con el siguiente si es de la misma persona; la revisión de otros no se abre", () => {
+  // Studied, then drafted by whoever has the subtarea, then reviewed by somebody else and confirmed by the author.
+  const steps = [
+    { id: "estudio", name: "Estudio", solverAppId: "study" },
+    { id: "borrador", name: "Borrador", solverAppId: "helps-review" },
+    { id: "pares", name: "Revisión", solverAppId: "pair-review", closing: "approval", claimMode: "exclusive", includeAuthorInApproval: true, excludeIssueAssignee: true, excludePriorStepIds: ["borrador"] },
+  ] as unknown as TaskStep[];
+  const at = (done: string[], seats?: Record<string, string[]>) => issue({ task: "simple", title: "NEH 1:1–2 · Traducir Notas", assignee: "carla", started: true, progress: { done, seats } });
+
+  assert.equal(nextStepOfMine("carla", steps, at([]))?.id, "estudio");
+  assert.equal(nextStepOfMine("carla", steps, at(["estudio"]))?.id, "borrador", "tras estudiar, el borrador");
+  assert.equal(nextStepOfMine("bea", steps, at(["estudio"])), undefined, "la subtarea de otra persona no se sigue");
+  assert.equal(nextStepOfMine("carla", steps, at(["estudio", "borrador"])), undefined, "la revisión que nadie ha tomado es de otros");
+  // Somebody reviews it: the author's part there is to confirm after them. The card offers it; nobody is taken to it.
+  assert.equal(nextStepOfMine("carla", steps, at(["estudio", "borrador"], { pares: ["bea"] })), undefined);
+  assert.equal(nextStepOfMine("carla", steps, at(["estudio", "borrador", "pares"])), undefined, "con todo hecho solo queda entregar");
+  assert.equal(nextStepOfMine("carla", [], at([])), undefined);
 });
 
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

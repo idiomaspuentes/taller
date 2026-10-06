@@ -6752,6 +6752,14 @@ button.al-box--read { cursor: pointer; }
   background: var(--surface-muted);
   box-shadow: none;
 }
+/* The card of the subtarea a tool was just closed on: the list comes back at it, and it stands out for a moment. */
+.task-card[data-back] {
+  animation: task-card-back 2.4s ease-out;
+}
+@keyframes task-card-back {
+  0%, 55% { box-shadow: 0 0 0 3px var(--accent-300), var(--shadow-sm); }
+  100% { box-shadow: 0 0 0 3px transparent, var(--shadow-sm); }
+}
 .task-card__top {
   display: flex;
   align-items: flex-start;

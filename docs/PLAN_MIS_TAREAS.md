@@ -114,7 +114,7 @@ Nada de esto cambia los datos en Door43 ni los archivos del plan; es la misma l�
 - Prueba a mano en el mock con las tres personas, 375 px y 1200 px, en español y portugués.
 
 **Fase 3 — Lo que hace la app alrededor (medio día)**
-- Herramientas de la app en la misma pestaña (`openSolverApp`: `location.assign` cuando la URL es del mismo origen; `window.open` solo para `kind: "url"`). Comprobar que al cerrar la herramienta (`onSolverClose`) se vuelve a «Mis tareas» con la tarjeta a la vista (`rowDomId`).
+- Herramientas de la app en la misma pestaña (`openSolverApp`: `location.assign` cuando la URL es del mismo origen; `window.open` solo para `kind: "url"`). Al cerrar la herramienta (`onSolverClose`) se vuelve a «Mis tareas» en la tarjeta de esa subtarea, que resalta un momento (`returnTo.ts`); antes se volvía al principio de la lista. Al completar un paso desde su herramienta se abre el paso siguiente cuando es de la misma persona y no hay que sumarse a él (`goOnAfterStep`, `nextStepOfMine`): del estudio se pasa al borrador sin volver a la lista.
 - Recarga al volver a la app (`visibilitychange`), igual que las menciones.
 - «Terminadas esta semana» con la consulta nueva.
 

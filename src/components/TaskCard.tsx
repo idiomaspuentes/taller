@@ -119,7 +119,7 @@ export function TaskCard(props: Props) {
   if (props.onRelease) menuItems.push({ id: "release", label: t("tb.release"), run: props.onRelease, danger: true });
 
   return (
-    <article className="task-card" data-group={card.group} data-unread={card.activity.unread || undefined}>
+    <article className="task-card" data-issue={card.issue.number} data-group={card.group} data-unread={card.activity.unread || undefined}>
       <div className="task-card__top">
         <h3 className="task-card__title">
           {card.activity.unread ? <span className="task-card__dot" role="img" aria-label={t("mt.unread")} /> : null}

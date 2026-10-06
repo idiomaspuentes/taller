@@ -122,6 +122,17 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
   return { action: { kind: "none", why: "othersReview" }, next };
 }
 
+/**
+ * The step that follows in a subtarea of mine, when it is mine alone to do and can be done right away (the draft,
+ * after studying the passage). `undefined`: what follows is a step people join (a review, where the author's part
+ * comes after somebody else's and is offered on the card), or there is nothing left but to hand the work in.
+ */
+export function nextStepOfMine(login: string, steps: TaskStep[], issue: DcsIssue): TaskStep | undefined {
+  if (!steps.length || !isIssueAssignedTo(issue, login)) return undefined;
+  const { action } = stepAction(login, steps, issue, true);
+  return action.kind === "continue" && action.step && stepClaimMode(action.step) === "none" ? action.step : undefined;
+}
+
 export function buildBoard(input: BoardInput): Board {
   const { session, pmOrg, projects, cursor, myLevel } = input;
   const login = session.username;
