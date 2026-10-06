@@ -776,7 +776,8 @@ Lo que cambió:
   solo existe la de la otra palabra, sale diciéndolo: `«the Messiah» → «Cristo» (se decidió para «Christ»)`.
 - **Junto a las notas, las preguntas y los artículos también**, al traducirlos y al revisarlos. Esos textos no
   están alineados con el original: dicen palabras inglesas, y la decisión es suya cuando el texto dice la palabra
-  inglesa sobre la que se tomó (el plural y el posesivo cuentan; la dirección de un enlace no es texto). Lo
+  inglesa sobre la que se tomó (con sus terminaciones: «calls», «called», «calling»; la dirección de un enlace
+  no es texto). Lo
   decidido solo para el TPS no sale en las ayudas, porque una nota cita y explica el texto literal. Como mucho
   cinco líneas por nota o párrafo, y después «Y N más en el glosario».
 - **Se guarda desde el comentario de una revisión**, en el mismo formulario que las reglas (ver «Reglas del
@@ -797,8 +798,7 @@ Lo que cambió:
 - **Si el glosario todavía no existe**, se dice quién puede crearlo: quien administra, al guardar la primera
   entrada. Desde entonces cualquiera del equipo agrega (comprobado en QA con una cuenta de traductor).
 
-Lo que falta: en una ayuda la palabra se busca como está escrita, con su plural: «called» no encuentra la decisión
-de «call». El enlace al glosario abre otra pestaña para no perder el trabajo en curso; cómo se comporta eso en la
+Lo que falta: el enlace al glosario abre otra pestaña para no perder el trabajo en curso; cómo se comporta eso en la
 app instalada en un teléfono no se ha visto. Y en producción hay que comprobar que los equipos pueden escribir en
 el repositorio del glosario una vez creado.
 

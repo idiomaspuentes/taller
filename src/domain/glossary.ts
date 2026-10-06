@@ -168,10 +168,13 @@ export type VerseDecision = {
 
 const plainWord = (text: string): string => text.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
 
-/** «servant» and «serve», «James» and «James'»: the same word in another form. Short words only when they are the same. */
+/**
+ * «servant» and «servants», «call» and «called»: the same word with an ending. Not «servant» and «serve», which
+ * are two words for one of the original: a decision taken on one is said at the other as taken on the other.
+ */
 function sameWord(a: string, b: string): boolean {
-  const [x, y] = [fold(a), fold(b)];
-  return x === y || (x.length >= 4 && y.length >= 4 && x.slice(0, 4) === y.slice(0, 4));
+  const [x, y] = [fold(a), fold(b)].sort((one, other) => one.length - other.length) as [string, string];
+  return x === y || (x.length >= 3 && y.startsWith(x) && y.length - x.length <= 3);
 }
 
 /** The alignment groups of one verse of a parsed text, whose verses are named «JUD 1:1». */
@@ -235,10 +238,10 @@ export function entriesUnder(entries: GlossaryEntry[], strong: string, english: 
   return { existing, other: existing ? undefined : same.find((entry) => entry.rendering.trim()) };
 }
 
-/** Is an English term said in a text, as a word of its own, in the plural or the possessive too? `text` already folded. */
+/** Is an English term said in a text, as a word of its own, with its endings too (plural, possessive, «called», «calling»)? `text` already folded. */
 function termSaid(term: string, text: string): boolean {
   const wanted = fold(term);
-  return Boolean(wanted) && new RegExp(`(^|[^\\p{L}])${wanted.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(e?s|['’]s?)?([^\\p{L}]|$)`, "u").test(text);
+  return Boolean(wanted) && new RegExp(`(^|[^\\p{L}])${wanted.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(e?s|e?d|ing|['’]s?)?([^\\p{L}]|$)`, "u").test(text);
 }
 
 /**

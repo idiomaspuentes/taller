@@ -171,7 +171,8 @@ test("junto a un versículo sale la decisión de cada palabra, hallada por la pa
   // Where the other text put the same word of the original another way, the decision is still that word's:
   // it says which English it was taken on, so nobody reads it as decided for this one.
   assert.deepEqual(said(judeUst, "tps"), ["the Messiah → Cristo (Christ)", "James → Jacobo"]);
-  assert.deepEqual(said(judeUst, "tps", [{ ...servant, scope: "all" }]), ["serve → siervo"], "«serve» y «servant» son la misma palabra");
+  assert.deepEqual(said(judeUst, "tps", [{ ...servant, scope: "all" }]), ["serve → siervo (servant)"], "«serve» no es «servant» con otra terminación: se dice para cuál se decidió");
+  assert.deepEqual(said([{ sources: [src("G14010", "δοῦλος", "Gr,N")], targets: [tgt("servants")] }], "tpl", [servant]), ["servants → siervo"], "el plural sí es la misma palabra");
   // The same word of the original may have a decision for each English word: the verse's own is the one said.
   const messiah = entry({ id: "me01", lemma: "Χριστός", strong: "G55470", english: ["Messiah"], rendering: "Mesías" });
   assert.deepEqual(said(judeUst, "tps", [christ, messiah]), ["Messiah → Mesías"]);
@@ -228,6 +229,9 @@ test("junto a una nota o un párrafo sale la decisión de las palabras inglesas 
   assert.deepEqual(said("**a brother of James** Here, Jude says that he is the brother of James."), ["James → Jacobo"]);
   assert.deepEqual(said("Paul calls himself one of the **servants** of Christ. See [[rc://*/tw/dict/bible/names/james]]."), ["Christ → Cristo", "servant → siervo"], "el plural es la misma palabra; la dirección de un enlace no es texto");
   assert.deepEqual(said("James' letter"), ["James → Jacobo"]);
+  const call = entry({ id: "ca01", lemma: "call", strong: "", english: ["call"], rendering: "llamar" });
+  assert.deepEqual(said("He called them, calling each by name", [call]), ["call → llamar"], "con sus terminaciones");
+  assert.deepEqual(said("a recall, a caller", [call]), []);
   assert.deepEqual(said("The jameson family"), [], "dentro de otra palabra no cuenta");
   // What was decided for the simplified text alone is not a note's; an entry without a translation says nothing.
   assert.deepEqual(said("the Messiah", [entry({ id: "m", strong: "G55470", english: ["Messiah"], rendering: "Mesías", scope: "tps" })]), []);
