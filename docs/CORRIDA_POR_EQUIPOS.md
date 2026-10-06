@@ -233,3 +233,95 @@ Academia «Blessings» (#53, abelper8). Las 89 cerradas siguen en Door43 como ce
   (está cerrando las 89). Quien no lo sepa cree que se quedó pegado.
 - Quedaron sin dueño las ramas de trabajo y las revisiones abiertas de las seis subtareas empezadas (por ejemplo,
   la revisión 31 de `es-419_gst`). Cerrar una subtarea no cierra su revisión.
+
+## Fase 1 · Traducción (en curso)
+
+### El primer pasaje, de punta a punta: TPL · Judas 1:1–4 (6 de octubre)
+
+Hecho a mano, en un teléfono de 375 px. **Andrés** (Elisha, poco hábil) traduce; **Marta** (abelperez) revisa.
+
+| Paso | Quién | Qué hizo en la app | Cuánto tardó |
+|---|---|---|---|
+| Tomar | Andrés | «Libres para tu equipo» → «Traducir TPL · Judas 1:1–4» → **Estudiar**. Un toque: la tomó y abrió el estudio | — |
+| Estudio | Andrés | El libro (ya leído), el pasaje, 35 notas en inglés → «Leído» en cada parte → **Terminé de estudiar**. La app lo llevó sola al borrador | — |
+| Borrador | Andrés | Escribió los 4 versículos, con cuatro fallos puestos a propósito (ver abajo) → **Terminé** | 8 s |
+| Revisión | Marta | «Puedes sumarte» → **Revisar** (un toque: tomó el paso y abrió la herramienta). Un comentario en 1:1, 1:3 y 1:4 → un mensaje general → **Pedir cambios** | — |
+| Aviso | Andrés | En «Avisos», arriba: «abelperez: @Elisha Pido cambios…». Al tocarlo se abre el hilo, como un chat | al instante |
+| Conversación | Andrés | Contestó en el hilo: escribió «@» y la app le ofreció a @abelperez | — |
+| Corrección | Andrés | **Traducir** desde el hilo → el editor avisa «Hay 4 comentarios de la revisión. Verlos» → corrigió → **Terminé** | 9 s |
+| Aprobar | Marta | Marcó los 4 comentarios como resueltos → **Aprobar** → «Ya aprobaste. Falta que apruebe alguien más» | — |
+| Confirmar | Andrés | «Para mí está bien» → «Esta revisión ya está completa» | — |
+| Entregar | Andrés | **Entregar** → «¿Entregar esta tarea? Tu trabajo pasa al borrador del grupo…» → **Sí, entregar** | 15 s |
+
+Comprobado en Door43 QA: la subtarea 105 quedó cerrada y el borrador del grupo (`borrador/jud/tpl`) tiene los
+cuatro versículos corregidos. Cada paso quedó con quién lo cerró, a qué hora y con qué versión de la fuente
+(ULT v91), y el borrador con su cuenta (4 de 4).
+
+Los fallos de Andrés y si alguien los vio:
+
+| Fallo | Dónde | ¿Lo señaló la app? | ¿Lo vio Marta? |
+|---|---|---|---|
+| «Santiago», cuando el glosario dice «Jacobo. No «Santiago»» | 1:1 | La pista estaba sobre el campo; nada marcó que el borrador la contradecía | Sí |
+| Omitió «una vez por todas» | 1:3 | No | Sí |
+| Explicó en vez de conservar la forma («tenía muchas ganas») | 1:3 | No | Sí |
+| Añadió «en la iglesia» y puso «licencia» por *licentiousness* | 1:4 | No | Sí |
+
+### Lo que cambió durante la corrida
+
+Pedido por Abel al ver las pantallas:
+
+- **Solo el texto que se traduce.** El editor y la revisión mostraban el ULT y el UST juntos, y no se sabía cuál
+  había que traducir. Ahora se ve uno, con su nombre («Traduce esto · Literal (ULT)»); el otro se abre con un toque
+  («Ver también el UST»).
+- **«Fíjate en esto» en una línea.** Ocupaba más que el versículo y su fuente juntos. Ahora es una línea (cuántas
+  hay y la primera) que abre una ventana con la fuente, la traducción y la lista.
+- **Las ayudas de una palabra, en una ventana.** En la fuente del versículo que se escribe, las palabras que tienen
+  una nota o un término van subrayadas; al tocar una se abren sus ayudas sin salir del versículo.
+
+Encontrado en la corrida y corregido:
+
+- «Terminadas esta semana» decía «Entregada» de las seis subtareas que el cambio de porciones retiró. Ahora dice
+  «Se retiró del plan…: lo que tenías escrito no se entregó».
+- La tarjeta del autor decía «Revisar» sobre su propio borrador. Ahora dice «Ver la revisión».
+- Al entregar se leía «#105 cerrado · versículos guardados en el borrador grupal». Ahora: «Listo. Tu trabajo quedó
+  en el borrador del grupo».
+- «Te falta leer 1 partes.»
+
+### ⚠ Lo que se trabó y sigue así
+
+**Los avisos** (lo que más importa de esta corrida)
+
+1. **Un borrador que espera revisor no sale en «Avisos».** Solo aparece como tarjeta en «Mis tareas» → «Puedes
+   sumarte», para quien entre a mirar. «Avisos» está lleno de otra cosa: 23 o 24 entradas de «Libres para tu
+   equipo», y la campana las cuenta (decía 25 cuando solo 2 cosas necesitaban atención).
+2. **Nadie avisa dentro de la app de que el autor volvió a entregar**, ni de que quien revisa ya aprobó y falta la
+   confirmación del autor. La app sí pide ese aviso al servicio que avisa con la app cerrada, pero eso no se puede
+   ver desde aquí; con la app abierta, hay que entrar a «Mis tareas» y notar que el botón cambió.
+3. Cuando un cambio de porciones retira una subtarea, quien la tenía no recibe nada.
+
+**Comentar y pedir cambios**
+
+4. **En la caja de comentario de un versículo, «@» no ofrece a nadie.** En el hilo sí, pero solo a quienes ya
+   están en esa conversación: no se puede mencionar a quien coordina ni a otra persona del equipo.
+5. **«Pedir cambios» está escondido.** Es el segundo botón de la caja «Comentarios sobre todo el pasaje», y está
+   apagado hasta que se escribe ahí. El pie de la pantalla habla de aprobar, no de cómo devolver el borrador. Mide
+   36 px de alto.
+6. **Al volver a revisar no se ve qué cambió el autor.** Los cuatro versículos salen como «nuevo» (se comparan con
+   el borrador del grupo, que estaba vacío), así que hay que leerlo todo otra vez para comprobar cada comentario.
+7. En el editor, los comentarios de la revisión no están junto a su versículo: un aviso lleva a otra pestaña.
+8. Quien revisa lee «Falta que apruebe alguien más» sin que diga quién (el autor).
+
+**Otras**
+
+9. La pista del glosario dice «No «Santiago»» y el borrador dice «Santiago»: nada lo une.
+10. Al volver al editor para corregir, dice «Sin guardar» antes de tocar nada.
+11. En «Estudio», el botón «Leído» de las notas está 5.200 px abajo: 35 notas en inglés para 4 versículos.
+12. La tarjeta dice «3 de 3 pasos · 100 %» antes de entregar.
+
+### Dónde quedó
+
+- TPL 1:1–4: entregada. La lectura grupal del TPL ya aparece en «Puedes sumarte».
+- TPS 1:1–4 (subtarea 110): la tiene **Luis** (abelper8), con el estudio hecho. En su editor hay un versículo
+  escrito **sin guardar**.
+- Todo lo demás de Traducción sigue libre: 4 porciones de TPL, 4 de TPS, 5 de Notas, 5 de Preguntas, 1 artículo de
+  Palabras y 4 de Academia. Elisha tiene en revisión el artículo «call…» y abelper8 el de «Blessings».

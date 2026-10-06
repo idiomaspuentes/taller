@@ -86,8 +86,12 @@ export function TaskCard(props: Props) {
   const title = where ? `${what} · ${where}` : what;
 
   const action = card.action;
+  // Whoever wrote a draft does not «review» it when its review comes to them: they see what was said of it and
+  // say whether it is right. The button read «Revisar», as it does to whoever reviews.
+  const ownReview = (action.kind === "begin" || action.kind === "continue") && Boolean(action.step && stepClaimMode(action.step) !== "none" && action.step.includeAuthorInApproval) && assigneeOf(card).toLowerCase() === props.login.toLowerCase();
   let label = "";
-  if (action.kind === "begin") label = props.externalTool ? t("tb.study") : stepButton(action.step) || t("tb.begin");
+  if (ownReview) label = t("tb.seeReview");
+  else if (action.kind === "begin") label = props.externalTool ? t("tb.study") : stepButton(action.step) || t("tb.begin");
   else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : stepButton(action.step) || (card.started ? t("tb.continue") : t("tb.begin"));
   else if (action.kind === "deliver") label = t("tb.deliver");
   else if (action.kind === "vote") label = t("tb.vote");
@@ -98,7 +102,13 @@ export function TaskCard(props: Props) {
 
   let status = "";
   if (card.group === "waiting") status = localizeHold(card.holdText ?? "", language);
-  else if (card.group === "done") status = t("tb.doneAt").replace("{when}", formatRelativeEs(card.issue.closed_at ?? card.issue.updated_at ?? "", now, language));
+  else if (card.group === "done") {
+    // Closed with steps left undone: the plan withdrew it (its portion was cut otherwise). It was not delivered,
+    // and whoever had it must know that what they wrote stayed where it was.
+    const marked = parseTaskProgressMarker(card.issue.body ?? "");
+    const withdrawn = (card.task?.steps ?? []).some((step) => !marked.doneStepIds.includes(step.id));
+    status = t(withdrawn ? "tb.withdrawnAt" : "tb.doneAt").replace("{when}", formatRelativeEs(card.issue.closed_at ?? card.issue.updated_at ?? "", now, language));
+  }
   else if (action.kind === "none" && action.why === "othersReview") status = t("tb.othersReview");
   else if (action.kind === "none" && action.why === "assigneeDelivers") status = t("tb.assigneeDelivers").replace("{who}", assigneeOf(card));
   else if (card.group === "decide") status = t("tb.decideLine");

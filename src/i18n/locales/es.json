@@ -146,9 +146,9 @@
   "mt.stepApproved": "Aprobaste «{step}» en #{n}",
   "mt.closedNoConflict": "#{n} se cerró, pero no se pudo dejar el conflicto en la conversación: {err}",
   "mt.closedVersesConflict": "#{n} cerrado · versículos guardados en el borrador grupal · {c} conflicto(s): decídelo en la conversación{note}",
-  "mt.closedVerses": "#{n} cerrado · versículos guardados en el borrador grupal",
-  "mt.closedMerged": "#{n} cerrado · guardado en el borrador grupal",
-  "mt.closedPlain": "#{n} cerrado",
+  "mt.closedVerses": "Listo. Tu trabajo quedó en el borrador del grupo.",
+  "mt.closedMerged": "Listo. Tu trabajo quedó en el borrador del grupo.",
+  "mt.closedPlain": "Listo. La tarea quedó terminada.",
   "mt.unknownOther": " · no se supo quién más escribió {who}",
   "mt.cannotTake": "No puedes tomar esta subtarea.",
   "mt.tookIssue": "Tomaste #{n}",
@@ -2701,5 +2701,8 @@
   "sa.notYet": "Todavía sin escribir.",
   "se.wordHelps": "Ayudas de esta palabra",
   "se.wordHelpsOne": "{n} ayuda",
-  "se.wordHelpsMany": "{n} ayudas"
+  "se.wordHelpsMany": "{n} ayudas",
+  "tb.seeReview": "Ver la revisión",
+  "tb.withdrawnAt": "Se retiró del plan {when}: lo que tenías escrito no se entregó.",
+  "fa.leftToReadOne": "Te falta leer 1 parte."
 }
