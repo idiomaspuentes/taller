@@ -1973,8 +1973,6 @@
   "se.finished": "Rascunho terminado: ficou salvo e pronto para revisão.",
   "se.source": "Texto de origem",
   "se.sourceOfVerse": "Texto de origem · {ref}",
-  "se.sourceWhich": "Que texto de origem aparece",
-  "se.sourceBoth": "Os dois",
   "se.literal": "Literal (ULT)",
   "se.simple": "Simples (UST)",
   "se.onlyVerse": "Só o do versículo {ref}",
@@ -2692,5 +2690,9 @@
   "cx.noReason": "sem motivo anotado",
   "cx.from": "Ao revisar «{label}»",
   "tb.step1": "{done} de 1 etapa",
-  "pw.recutCloses": "Com estas porções, {n} subtarefas abertas são fechadas; {taken} já têm alguém, e o que tiverem escrito fica sem entregar."
+  "pw.recutCloses": "Com estas porções, {n} subtarefas abertas são fechadas; {taken} já têm alguém, e o que tiverem escrito fica sem entregar.",
+  "se.translateThis": "Traduza isto · {name}",
+  "se.supportName": "Só como apoio · {name}",
+  "se.supportShow": "Ver também o {name}",
+  "se.supportHide": "Ocultar o {name}"
 }

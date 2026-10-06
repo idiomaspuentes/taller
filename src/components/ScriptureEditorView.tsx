@@ -146,7 +146,6 @@ function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
 /** The helps beside the draft. The source texts are no longer a tab: they stay on screen above the helps. */
 type ResourceTab = "notas" | "preguntas" | "apuntes" | "revision";
 /** Which source text is shown above the helps. */
-type SourceView = "both" | "ult" | "ust";
 type MobilePanel = "editor" | "recursos";
 function bootBranchHint(err: unknown, fallback: string): string {
   if (err instanceof BootstrapError && err.ref) return err.ref;
@@ -849,7 +848,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [questionsFailed, setQuestionsFailed] = useState(false);
   const [studyNoteCount, setStudyNoteCount] = useState(0);
   const [resourceTab, setResourceTab] = useState<ResourceTab>("notas");
-  const [sourceView, setSourceView] = useState<SourceView>("both");
+  /**
+   * The text being translated is shown alone. The two English texts used to be shown together, one over the other,
+   * and whoever translated did not know which of them was theirs to translate. The other one is a support the
+   * person opens if they want it.
+   */
+  const [support, setSupport] = useState(false);
   /** Show the source of the whole passage instead of only the verse being written. */
   const [wholeSource, setWholeSource] = useState(false);
   /** Show only the helps of the verse being written; off = the whole passage. */
@@ -869,6 +873,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   // The English text this draft is translated from: its alignment with the original is what a decision of the
   // glossary is found by.
   const english = ctx?.resource === "tps" ? ust : ult;
+  /** Which English text is translated here, and which one is only a support. */
+  const own: "ult" | "ust" = ctx?.resource === "tps" ? "ust" : "ult";
+  const supportPane = own === "ult" ? ust : ult;
+  const tag = (which: "ult" | "ust") => which.toUpperCase();
+  const supportTag = tag(own === "ult" ? "ust" : "ult");
   const decisionsAt = useVerseDecisions(session, ctx, english.alignments);
   const [draftLoading, setDraftLoading] = useState(() => Boolean(loadSession()));
   const [ultLoading, setUltLoading] = useState(() => Boolean(loadSession()));
@@ -1989,27 +1998,22 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                   </button>
                 ) : null}
               </span>
-              <div className="pe-seg se-sources__seg" role="radiogroup" aria-label={t("se.sourceWhich")}>
-                {(["both", "ult", "ust"] as const).map((id) => (
-                  <button key={id} type="button" role="radio" aria-checked={sourceView === id} className="pe-seg__opt" onClick={() => setSourceView(id)}>
-                    {id === "both" ? t("se.sourceBoth") : id === "ult" ? "ULT" : "UST"}
-                  </button>
-                ))}
-              </div>
+              <button type="button" className="se-sources__whole" aria-pressed={support} onClick={() => setSupport(!support)}>
+                {t(support ? "se.supportHide" : "se.supportShow").replace("{name}", supportTag)}
+              </button>
             </div>
-            <div className="se-sources__texts" data-view={sourceView}>
-              {sourceView !== "ust" ? (
-                <div className="se-source">
-                  <p className="se-source__name">{t("se.literal")}</p>
-                  <ScriptureTab title={t("se.ultEnglish")} range={sourceRange} pane={ult} activeVerse={activeVerse} loggedIn={loggedIn} loading={ultLoading} highlight={ultHighlight} onWordClick={(info) => selectHelpFromWord(info, "ult")} />
+            <div className="se-sources__texts">
+              {(support ? ([own, own === "ult" ? "ust" : "ult"] as const) : ([own] as const)).map((which) => (
+                <div key={which} className="se-source" data-support={which !== own || undefined}>
+                  {/* Said in so many words which one is translated: the two look alike. */}
+                  <p className="se-source__name">{t(which === own ? "se.translateThis" : "se.supportName").replace("{name}", t(which === "ult" ? "se.literal" : "se.simple"))}</p>
+                  {which === "ult" ? (
+                    <ScriptureTab title={t("se.ultEnglish")} range={sourceRange} pane={ult} activeVerse={activeVerse} loggedIn={loggedIn} loading={ultLoading} highlight={ultHighlight} onWordClick={(info) => selectHelpFromWord(info, "ult")} />
+                  ) : (
+                    <ScriptureTab title={t("se.ustEnglish")} range={sourceRange} pane={ust} activeVerse={activeVerse} loggedIn={loggedIn} loading={ustLoading} highlight={ustHighlight} onWordClick={(info) => selectHelpFromWord(info, "ust")} />
+                  )}
                 </div>
-              ) : null}
-              {sourceView !== "ult" ? (
-                <div className="se-source">
-                  <p className="se-source__name">{t("se.simple")}</p>
-                  <ScriptureTab title={t("se.ustEnglish")} range={sourceRange} pane={ust} activeVerse={activeVerse} loggedIn={loggedIn} loading={ustLoading} highlight={ustHighlight} onWordClick={(info) => selectHelpFromWord(info, "ust")} />
-                </div>
-              ) : null}
+              ))}
             </div>
           </div>
           <Tabs
@@ -2173,18 +2177,24 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                       </label>
                     </div>
                     <div className="scripture-editor__verse-body">
-                      {activeVerse === d.from && (ult.verses[d.from] || ust.verses[d.from]) ? (
+                      {activeVerse === d.from && (english.verses[d.from] || supportPane.verses[d.from]) ? (
                         // On a phone the source texts are on another panel: the verse being written brings its own.
+                        // Only the text that is translated; the other one is a touch away, for whoever wants it.
                         <div className="se-peek">
-                          {ult.verses[d.from] ? (
+                          {english.verses[d.from] ? (
                             <p>
-                              <b>ULT</b> {ult.verses[d.from]}
+                              <b>{tag(own)}</b> {english.verses[d.from]}
                             </p>
                           ) : null}
-                          {ust.verses[d.from] ? (
-                            <p>
-                              <b>UST</b> {ust.verses[d.from]}
+                          {support && supportPane.verses[d.from] ? (
+                            <p className="se-peek__support">
+                              <b>{supportTag}</b> {supportPane.verses[d.from]}
                             </p>
+                          ) : null}
+                          {supportPane.verses[d.from] ? (
+                            <button type="button" className="se-peek__more" aria-pressed={support} onClick={() => setSupport(!support)}>
+                              {t(support ? "se.supportHide" : "se.supportShow").replace("{name}", supportTag)}
+                            </button>
                           ) : null}
                         </div>
                       ) : null}

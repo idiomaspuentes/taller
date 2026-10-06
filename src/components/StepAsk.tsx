@@ -35,11 +35,38 @@ import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from
 /** `by`: who gave the team that rule. `tag`: where the line comes from, when it is not the step or the team («glosario»). */
 export type HintLine = { id: string; text: string; by?: string; tag?: string };
 
+const hintList = (lines: HintLine[]) => (
+  <ul>
+    {lines.map((line) => (
+      <li key={line.id}>
+        {line.text}
+        {/* The space stays outside: who said it goes to the next line whole, without taking the rule's last word. */}
+        {line.by || line.tag ? " " : null}
+        {line.by ? <small className="step-ask__by">· @{line.by}</small> : line.tag ? <small className="step-ask__by">· {line.tag}</small> : null}
+      </li>
+    ))}
+  </ul>
+);
+
 export function Hints({ lines, lead }: { lines: HintLine[]; lead?: string }) {
   if (!lines.length) return null;
+  // Beside an item (a verse, a note) they are one line until they are asked for: the first of them, which is what
+  // the glossary decided when it decided something, and how many there are. Laid out whole they took more of a
+  // phone's screen than the verse and its source together.
+  if (lead)
+    return (
+      <details className="step-hints" data-item="true">
+        <summary>
+          <ChevronRight size={14} aria-hidden />
+          <span className="step-hints__lead">{lead}</span>
+          <span className="step-hints__n">{lines.length}</span>
+          <span className="step-hints__brief">{lines[0]!.text}</span>
+        </summary>
+        {hintList(lines)}
+      </details>
+    );
   return (
-    <div className="step-hints" data-item={lead ? "true" : undefined}>
-      {lead ? <p className="step-hints__lead">{lead}</p> : null}
+    <div className="step-hints">
       <ul>
         {lines.map((line) => (
           <li key={line.id}>

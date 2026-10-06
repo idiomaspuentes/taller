@@ -128,6 +128,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const pieces = usePieces((id) => `rv-${id}`);
   const firstOpened = useRef(false);
   const [showSources, setShowSources] = useState(true);
+  /** The other English text, shown as a support only when it is asked for (as in the editor). */
+  const [support, setSupport] = useState(false);
   const [showChanges, setShowChanges] = useState(true);
   const [commenting, setCommenting] = useState("");
   const [busy, setBusy] = useState(false);
@@ -583,19 +585,32 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   : t("rv.onlyRead");
 
   const marked = (before: string, now: string) => diffWords(before, now).map((part, index) => (part.kind === "same" ? part.text : part.kind === "added" ? <ins key={index}>{part.text}</ins> : <del key={index}>{part.text}</del>));
-  const versesOf = (verse: number) =>
-    sources.length ? (
-      <dl className="rv-sources">
-        {sources.map((source) =>
-          source.verses[verse] ? (
-            <div key={source.short}>
-              <dt>{source.short}</dt>
-              <dd>{source.verses[verse]}</dd>
-            </div>
-          ) : null,
-        )}
-      </dl>
-    ) : null;
+  // The draft is compared with the text it translates: that one is shown. The two used to be shown together for
+  // every verse, and whoever reviewed could not tell which of them the draft had to say the same as.
+  const ownSource = sources.find((source) => (ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i).test(source.short)) ?? sources[0];
+  const versesOf = (verse: number) => {
+    const others = sources.filter((source) => source !== ownSource && source.verses[verse]);
+    if (!ownSource?.verses[verse] && !others.length) return null;
+    return (
+      <div className="rv-sources-box">
+        <dl className="rv-sources">
+          {(support ? [ownSource, ...others] : [ownSource]).map((source) =>
+            source?.verses[verse] ? (
+              <div key={source.short} data-support={source !== ownSource || undefined}>
+                <dt>{source.short}</dt>
+                <dd>{source.verses[verse]}</dd>
+              </div>
+            ) : null,
+          )}
+        </dl>
+        {others.length ? (
+          <button type="button" className="se-peek__more" aria-pressed={support} onClick={() => setSupport(!support)}>
+            {t(support ? "se.supportHide" : "se.supportShow").replace("{name}", others.map((source) => source.short).join(", "))}
+          </button>
+        ) : null}
+      </div>
+    );
+  };
 
   /** One piece of what is reviewed that is not an article shown by its own pieces: a verse, a row of a help, a whole file. */
   const itemRow = (item: ReviewItem) => {
