@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, LogOut } from "lucide-react";
 import { getAuthenticatedUser, type DcsUser } from "@ip-lms/dcs-client";
 import { Button } from "@/components/ui/button";
+import { useHeatmaps } from "../dcs/activity";
 import { dcsConfig } from "../dcs/config";
 import type { GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
@@ -9,6 +10,7 @@ import { isCoordinatorOf, resolveLevel, type LevelBook } from "../domain/levels"
 import { displayName, initialsOf, levelName, memberSince, publicProfileUrl, safeLink, settingsUrl } from "../domain/profile";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
+import { ActivityCalendar } from "./ActivityCalendar";
 
 type Props = {
   session: GtSession;
@@ -85,6 +87,8 @@ export function ProfileView({ session, pmOrg, workspaceName, onSignOut }: Props)
   const since = memberSince(user?.created, language);
   const website = safeLink(user?.website);
   const teams = (session.teams ?? []).map((team) => team.name).filter(Boolean);
+  // What whoever coordinates sees of this person's work is shown to the person first.
+  const work = useHeatmaps(session, [session.username])[session.username.toLowerCase()];
 
   return (
     <div className="profile">
@@ -120,6 +124,13 @@ export function ProfileView({ session, pmOrg, workspaceName, onSignOut }: Props)
           </a>
         </div>
         <p className="profile__help">{t("profile.editHelp")}</p>
+      </section>
+
+      <section className="profile__card" aria-labelledby="profile-work">
+        <h2 id="profile-work" className="profile__title">
+          {t("ac.title")}
+        </h2>
+        {work ? <ActivityCalendar slots={work} /> : <p className="profile__note">{work === null ? t("ac.failed") : t("ac.loading")}</p>}
       </section>
 
       <section className="profile__card" aria-labelledby="profile-account">

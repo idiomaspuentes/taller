@@ -13,9 +13,11 @@ import { localized } from "../domain/processes";
 import { localizeHold, localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { TaskStep } from "../domain/types";
+import { percentOf, stepFraction, subtaskFraction } from "../domain/workProgress";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useSourcesNow } from "../useSourcesNow";
+import { ProgressBar } from "./ProgressBar";
 
 type Props = {
   card: BoardCard;
@@ -115,6 +117,9 @@ export function TaskCard(props: Props) {
     .filter((step) => progress.doneStepIds.includes(step.id))
     .map((step) => ({ step, kinds: changedKinds(progress.steps?.[step.id]?.sources ?? [], sourcesNow) }))
     .filter((row) => row.kinds.length);
+  // How far the subtarea is: its steps one after another, the one in hand filled as far as its tool says.
+  const fraction = subtaskFraction(steps.map((step) => step.id), progress, card.issue.state === "closed");
+  const percent = (value: number) => t("pg.percent").replace("{n}", String(percentOf(value)));
   const day = (iso: string) => (Number.isNaN(Date.parse(iso)) ? "" : new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }));
   const hasTool = action.kind === "begin" || action.kind === "continue";
   const mine = assigneeOf(card).toLowerCase() === props.login.toLowerCase();
@@ -179,12 +184,10 @@ export function TaskCard(props: Props) {
 
       {card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" ? (
         <div className="task-card__progress">
-          <span className="task-card__dots" aria-hidden>
-            {steps.map((s) => (
-              <i key={s.id} data-done={progress.doneStepIds.includes(s.id) || undefined} />
-            ))}
+          <ProgressBar value={fraction} segments={steps.map((s) => stepFraction(progress, s.id))} label={t("pg.label").replace("{n}", String(percentOf(fraction)))} />
+          <span className="task-card__count">
+            {t("tb.steps").replace("{done}", String(card.stepsDone)).replace("{total}", String(card.stepsTotal))} · <strong>{percent(fraction)}</strong>
           </span>
-          <span>{t("tb.steps").replace("{done}", String(card.stepsDone)).replace("{total}", String(card.stepsTotal))}</span>
           {card.nextStep && card.stepsDone < card.stepsTotal ? (
             <span className="task-card__next">{t("tb.next").replace("{step}", stepName(card.nextStep))}</span>
           ) : null}
@@ -239,11 +242,14 @@ export function TaskCard(props: Props) {
                     : t("tb.stepOthers");
             const closed = done ? progress.steps?.[step.id]?.done : undefined;
             const sources = done ? (progress.steps?.[step.id]?.sources ?? []) : [];
+            // An open step its tool has counted: «6 de 12», and its own bar under its name.
+            const work = done ? undefined : progress.steps?.[step.id]?.work;
             return (
               <li key={step.id} data-done={done || undefined}>
                 <span className="task-card__step-name">{stepName(step)}</span>
                 <span className="task-card__step-note">
                   {closed?.by ? t("tb.stepDoneBy").replace("{who}", closed.by).replace("{when}", day(closed.at)) : note}
+                  {work ? ` · ${t("pg.stepWork").replace("{done}", String(work.done)).replace("{total}", String(work.total))}` : ""}
                   {/* Against which version of its sources: what tells, later, whether there is anything to look at again. */}
                   {sources.length ? (
                     <small className="task-card__step-sources">
@@ -266,6 +272,7 @@ export function TaskCard(props: Props) {
                     {done ? t("tb.stepUndo") : t("tb.stepFinish")}
                   </Button>
                 ) : null}
+                {work ? <ProgressBar value={stepFraction(progress, step.id)} label={t("pg.label").replace("{n}", String(percentOf(stepFraction(progress, step.id))))} /> : null}
               </li>
             );
           })}

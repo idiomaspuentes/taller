@@ -27,6 +27,7 @@ import {
 import { canConfirmForTeam, confirmersOf, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useStepWork } from "../dcs/stepWork";
 import { FinalDecision, RoundPanel } from "./RoundPanel";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
@@ -296,6 +297,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       return decisions.some((d) => d.itemId === row.id && d.reviewer.trim().toLowerCase() === me && (d.textHash === undefined || d.textHash === hash));
     }).length;
   }, [data, decisions, me]);
+  // The first pass is one person's: it goes by what they answered. A round goes by what the team agreed.
+  useStepWork(session, ctx, reviewing ? answeredByMe : summary?.agreed ?? 0, data?.items.length ?? 0, { stepId: taskStep?.id, on: !stepDone && !closing });
   useEffect(() => {
     if (!reviewing || stepDone || !data?.items.length || answeredByMe < data.items.length || !session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
     void completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { loadSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useStepWork } from "../dcs/stepWork";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -211,6 +212,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
 
   // A note is headed by the phrase it is about, as the literal source text has it (see `noteHeading`).
   const session = useMemo(() => (loggedIn ? loadSession() : undefined), [loggedIn]);
+  useStepWork(session, ctx, readCount, sections.length, { on: !busy && !done && !finishing });
   const book = (ctx?.book || "").toUpperCase();
   const helpSources = useHelpSources(session, book, range?.chapter ?? 0, notes.notes.length > 0);
 

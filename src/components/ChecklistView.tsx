@@ -18,6 +18,7 @@ import { articleBody, termLabel, type TermKind } from "../domain/afinacionWords"
 import { loadChecklist, type ChecklistData, type ChecklistItem, type ChecklistKind, type ChecklistText } from "../dcs/checklistLoad";
 import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useStepWork } from "../dcs/stepWork";
 import { helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome } from "../domain/checklist";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { coordinatorsOf } from "../domain/levels";
@@ -147,6 +148,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, textsKey]);
   const summary = useMemo(() => summarizeChecklist({ items: checkItems, questions, answers, currentHashes: hashes }), [checkItems, questions, answers, hashes]);
+  useStepWork(session, ctx, summary.done, data?.items.length ?? 0, { on: !stepDone && !closing });
   const item = data?.items[Math.min(position, Math.max((data?.items.length ?? 1) - 1, 0))];
   // A key term is shown by the name the team gives it (the title of its article), not by its code in English.
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});

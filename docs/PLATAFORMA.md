@@ -275,6 +275,58 @@ cada fuente con la que se hizo:
 versión publicada. Con la huella anotada, lo primero es comparar dos contenidos que Door43 guarda
 (`git/blobs/<sha>`).
 
+## Avance, ritmo y trabajo de cada persona
+
+Un paso estaba hecho o no. Un borrador de cuarenta versículos se veía igual con uno escrito que con
+treinta y nueve, y quien coordina lo veía «sin movimiento» mientras su autor lo escribía cada día.
+Tampoco se podía decir a qué ritmo iba un libro ni cuánto había trabajado cada persona.
+
+Todo sale de **dos fuentes que ya existían**; Taller no guarda nada aparte:
+
+| Qué | De dónde |
+|---|---|
+| Cuánto lleva un paso | Lo dice su herramienta en la subtarea: `steps[paso].work = { done, total }` |
+| Cuánto lleva una subtarea, una tarea, una fase, un proyecto | Se calcula de las subtareas (`src/domain/workProgress.ts`) |
+| El ritmo de un proyecto | De cuándo se cerró cada subtarea (`closed_at`), que Door43 guarda desde el principio |
+| Cuándo trabajó cada persona | De Door43: `GET /users/{persona}/heatmap`, tramos de 15 minutos |
+| Qué cerró cada persona | De `steps[paso].done` y de las subtareas terminadas |
+
+**Las barras.** Una sola (`ProgressBar`) para todo, para que se lean igual:
+
+- **Paso**: lo que su herramienta cuenta (versículos con texto, notas traducidas, secciones leídas,
+  ítems comprobados o acordados, versículos alineados). Cerrado, vale entero.
+- **Subtarea**: sus pasos, cada uno vale lo mismo, y el que está abierto cuenta por lo que lleva.
+  En la tarjeta la barra va partida en pasos: «1 de 3 pasos · 42 %».
+- **Tarea, fase y proyecto**: la media de sus subtareas. En «Avance» del proyecto y en «Equipo hoy».
+- No cuentan las decisiones del equipo ni las subtareas que el plan retiró (cerradas con pasos sin
+  hacer). Un porcentaje nunca dice «100 %» de algo sin terminar ni «0 %» de algo empezado.
+
+**Cómo lo dice una herramienta** (`useStepWork`, `src/dcs/stepWork.ts`): cuando la cuenta lleva 20
+segundos quieta, y al salir. Lee la subtarea otra vez antes de escribir (para no pisar un asiento o
+una aprobación) y no escribe si ya dice lo mismo. No dice nada desde el laboratorio, ni con el paso
+cerrado, ni mientras se está cerrando. Medido en QA: una lectura y una escritura de la subtarea.
+La revisión en pares no tiene qué contar: su paso va de 0 a hecho.
+
+**El ritmo** (`src/domain/pace.ts`): subtareas terminadas por semana, sobre las últimas 4 (un
+proyecto más joven se mide por las semanas que tiene). Con lo que falta —una subtarea a medias
+cuenta por media— da una fecha: «A este ritmo, termina hacia el 18 de octubre». Sin nada terminado
+en esas semanas no promete fecha.
+
+**Cada persona** (`src/domain/activity.ts`): en «Equipo hoy» → «Personas», y cada quien ve lo suyo
+en «Yo» → «Tu trabajo». Días trabajados y tiempo aproximado de las últimas 4 semanas, un calendario
+de 12 semanas (una columna por semana, un cuadro por día, más oscuro cuanto más se trabajó) y los
+últimos 7 días en palabras («3 h 15 min · entre las 8:45 y las 15:45»), porque un cuadro no se
+puede tocar en un teléfono para preguntarle. Junto a eso, lo que el plan dice que cerró.
+
+Lo que hay que saber al leerlo:
+
+- Door43 cuenta **lo que se guarda**: una hora de estudio sin escribir nada no deja rastro. El
+  tiempo es un mínimo, no un cronómetro.
+- Cuenta lo que la persona hace **en todo Door43**, no solo en este equipo.
+- «Pasos cerrados» solo existe desde que se anota quién cierra cada paso (octubre de 2026); las
+  subtareas terminadas y el calendario sí alcanzan hacia atrás.
+- Todos los pasos de una subtarea valen lo mismo, aunque uno sea de cinco minutos y otro de horas.
+
 ## Archivos clave
 
 | Área | Archivo |
@@ -295,6 +347,7 @@ versión publicada. Con la huella anotada, lo primero es comparar dos contenidos
 | Lectura de una unidad por el comité | `src/components/EndorsementView.tsx`, `src/components/UnitReading.tsx`, `src/domain/unitReading.ts`, `src/domain/endorsement.ts` |
 | Familiarize / review | `src/components/FamiliarizeView.tsx`, `src/components/PortionReviewView.tsx` |
 | Textos fuente en el dispositivo | `src/dcs/sourceTexts.ts`, `src/domain/usfmChapters.ts`, `src/domain/referenceResources.ts` |
+| Avance, ritmo y trabajo de cada persona | `src/domain/workProgress.ts`, `src/domain/pace.ts`, `src/domain/activity.ts`, `src/dcs/stepWork.ts`, `src/dcs/activity.ts`, `src/components/ProgressBar.tsx`, `src/components/ActivityCalendar.tsx` |
 | Versión de las fuentes de cada paso | `src/domain/sourceVersions.ts`, `src/dcs/sourceVersions.ts`, `src/dcs/stepSources.ts`, `src/useSourcesNow.ts` |
 | Glosario | `src/domain/glossary.ts`, `src/dcs/glossaryStore.ts`, `src/useGlossary.ts`, `src/components/GlossaryView.tsx`, `docs/GLOSARIO_DOOR43.md` |
 | Work orders | `src/domain/workOrder.ts` |

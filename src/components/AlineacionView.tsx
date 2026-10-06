@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useStepWork } from "../dcs/stepWork";
 import { RoundPanel } from "./RoundPanel";
 import {
   DndContext,
@@ -1081,6 +1082,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   }
 
   const doneCount = data ? data.verses.filter((v) => isDone(v)).length : 0;
+  // By the step the tool was opened for, not by the view in hand: aligning counts verses done; its review, verses agreed.
+  useStepWork(session, ctx, initialMode === "alinear" ? doneCount : summary?.agreed ?? 0, data?.verses.length ?? 0, { stepId: taskStep?.id, on: !stepDone && !closingRound });
   const toAnswer = data ? data.verses.filter((v) => pendingForMe(v)).length : 0;
   const readyToReview = verse ? isDone(verse) : false;
   const complete = verse ? verseComplete(verse, current) : false;

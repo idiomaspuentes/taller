@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
+import { useHeatmaps } from "../dcs/activity";
 import { commentOnIssue, loadPmConfig, reassignIssue } from "../dcs/issues";
 import { remindDecisionVoters } from "../dcs/alignmentDecisionStore";
 import { loadTeamToday, type TodayProject } from "../dcs/teamToday";
+import { mergePeople, peopleWork, type HeatSlot } from "../domain/activity";
+import { paceNumber, paceOf, PACE_WEEKS } from "../domain/pace";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
+import { projectTally } from "../domain/workProgress";
 import { useDecisionReminders } from "../useDecisionReminders";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
@@ -13,6 +17,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { LevelBook } from "../domain/levels";
 import { Button } from "@/components/ui/button";
 import { explainError } from "../dcs/userError";
+import { ActivityCalendar, ActivityStrip, useWorkLine, WORK_WEEKS } from "./ActivityCalendar";
+import { WorkLine } from "./ProgressBar";
 
 type Props = {
   session: GtSession;
@@ -31,6 +37,25 @@ const GROUPS: { id: TodayGroup; title: MessageKey; empty: MessageKey }[] = [
   { id: "free", title: "td.gFree", empty: "td.eFree" },
   { id: "done", title: "td.gDone", empty: "td.eDone" },
 ];
+
+/** One person: what they did these weeks in a line, and their calendar when it is asked for. */
+function PersonRow({ login, slots, plan, open, onToggle }: { login: string; slots: HeatSlot[] | null | undefined; plan: string; open: boolean; onToggle: () => void }) {
+  const line = useWorkLine(slots);
+  return (
+    <li className="today-person">
+      <button type="button" className="today-person__head" aria-expanded={open} onClick={onToggle}>
+        <span className="today-person__name">
+          @{login}
+          <ChevronRight aria-hidden />
+        </span>
+        <span className="today-person__line">{line}</span>
+        <span className="today-person__line">{plan}</span>
+        <ActivityStrip slots={slots} />
+      </button>
+      {open && slots ? <ActivityCalendar slots={slots} summed={false} /> : null}
+    </li>
+  );
+}
 
 function shortTitle(row: TodayRow): string {
   return row.issue.title.replace(/^[A-Z0-9]{3}\s+/i, "").trim() || row.issue.title;
@@ -53,6 +78,8 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   const [assigning, setAssigning] = useState<number | null>(null);
   const [pick, setPick] = useState("");
   const [open, setOpen] = useState<Set<TodayGroup>>(new Set(["decisions", "stuck", "waiting", "running"]));
+  const [person, setPerson] = useState("");
+  const [peopleOpen, setPeopleOpen] = useState(false);
 
   const reload = useCallback(async () => {
     if (!pmOrg) return;
@@ -90,6 +117,18 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
     }
     return merged;
   }, [projects, levels]);
+
+  // How far each project is and at what pace, and what each person did these weeks: read from the same subtareas.
+  const standing = useMemo(() => {
+    const now = new Date();
+    return projects.map((project) => ({ id: project.projectId, title: project.title, tally: projectTally(project.issues, project.board), pace: paceOf(project.issues, project.board, now) }));
+  }, [projects]);
+  const people = useMemo(() => {
+    const since = new Date(Date.now() - WORK_WEEKS * 7 * 86_400_000);
+    return mergePeople(projects.map((project) => peopleWork(project.issues, project.board, since)));
+  }, [projects]);
+  // Asked of Door43 only when the list is opened: one small answer per person.
+  const heat = useHeatmaps(session, peopleOpen ? people.map((row) => row.login) : []);
 
   async function remind(row: TodayRow) {
     if (!row.assignee) return;
@@ -167,6 +206,61 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
             </div>
           ))}
         </div>
+      ) : null}
+
+      {loaded && standing.some((row) => row.tally.total) ? (
+        <section className="today-group" aria-labelledby="today-projects">
+          <div className="today-group__head">
+            <h2 id="today-projects" className="today-group__title">
+              {t("td.projects")}
+            </h2>
+          </div>
+          <ul className="today-list">
+            {standing
+              .filter((row) => row.tally.total)
+              .map((row) => (
+                <li key={row.id} className="today-project">
+                  <strong>{row.title}</strong>
+                  <WorkLine tally={row.tally} />
+                  <p className="today-row__reason">
+                    {row.pace.left <= 0
+                      ? t("pc.allDone")
+                      : row.pace.perWeek > 0
+                        ? t("pc.pace").replace("{weeks}", String(PACE_WEEKS)).replace("{n}", paceNumber(row.pace.perWeek, language))
+                        : t("pc.none").replace("{weeks}", String(PACE_WEEKS))}
+                    {row.pace.endsAt ? ` ${t("pc.ends").replace("{date}", new Date(row.pace.endsAt).toLocaleDateString(language, { day: "numeric", month: "long" }))}` : ""}
+                  </p>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {loaded && people.length ? (
+        <section className="today-group">
+          {/* Folded like the groups under it: what needs attention today stays within reach. */}
+          <button type="button" className="today-group__head" aria-expanded={peopleOpen} onClick={() => setPeopleOpen((prev) => !prev)}>
+            <span className="today-group__title">{t("td.people")}</span>
+            <span className="today-group__count">{people.length}</span>
+          </button>
+          {peopleOpen ? (
+            <>
+              <p className="today-group__empty">{t("td.peopleLede").replace("{weeks}", String(WORK_WEEKS))}</p>
+              <ul className="today-list">
+                {people.map((row) => (
+                  <PersonRow
+                    key={row.login}
+                    login={row.login}
+                    slots={heat[row.login.toLowerCase()]}
+                    plan={t("ac.plan").replace("{steps}", String(row.steps)).replace("{finished}", String(row.finished)).replace("{inHand}", String(row.inHand))}
+                    open={person === row.login}
+                    onToggle={() => setPerson((prev) => (prev === row.login ? "" : row.login))}
+                  />
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </section>
       ) : null}
 
       {loaded && projects.length

@@ -8,6 +8,7 @@ import { loadSession, type GtSession } from "../dcs/auth";
 import { loadGroupReading, type GroupReadingData, type GroupReadingText } from "../dcs/groupReading";
 import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useStepWork } from "../dcs/stepWork";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { readingItemId, readingPassages, readingProgress, type ReadingPassage } from "../domain/groupReading";
@@ -102,6 +103,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     return map;
   }, [data, decisions, teamLevels, confirmers, minAgree, minIndependent]);
   const progress = useMemo(() => (data ? readingProgress(passages, data.texts, data.chapter, tallies) : null), [data, passages, tallies]);
+  useStepWork(session, ctx, progress?.agreed ?? 0, progress?.items ?? 0, { stepId: step?.id, on: !stepDone && !saving });
 
   const myAnswer = (id: string) => tallies.get(id)?.answers.find((answer) => answer.reviewer.trim().toLowerCase() === me);
 

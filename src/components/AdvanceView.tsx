@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { listProjectIssues } from "../dcs/issues";
@@ -9,7 +9,12 @@ import {
   recordPrincipalPass,
 } from "../domain/principalPass";
 import type { AssignmentsDoc, InventoryDoc, Phase, Team } from "../domain/types";
+import { paceOf } from "../domain/pace";
 import { scopeLabel } from "../domain/resourceNames";
+import { projectTally } from "../domain/workProgress";
+import { useT } from "../i18n/messages";
+import { PaceChart } from "./ActivityCalendar";
+import { WorkLine } from "./ProgressBar";
 import { PrincipalPassControl } from "./PrincipalPassControl";
 import { ReleaseVersionControl } from "./ReleaseVersionControl";
 import { ReviewTaskControl } from "./ReviewTaskControl";
@@ -37,6 +42,7 @@ type Props = {
  * The controls are the same ones that used to sit inside Fases y tareas.
  */
 export function AdvanceView({ section, board, inventory, onChange, session, pmOrg, lang, contentOrg, announce, onGoTareas }: Props) {
+  const t = useT();
   const [passIssues, setPassIssues] = useState<{ issues: DcsIssue[]; namespaceId: string } | null>(null);
   const [passError, setPassError] = useState("");
   const [passReload, setPassReload] = useState(0);
@@ -73,6 +79,10 @@ export function AdvanceView({ section, board, inventory, onChange, session, pmOr
     (a, b) => a.order - b.order || a.name.localeCompare(b.name, "es"),
   );
   const reload = () => setPassReload((n) => n + 1);
+  // How far the project is, by its phases and tareas, and at what pace: read from the subtareas already in hand.
+  const tally = useMemo(() => (passIssues ? projectTally(passIssues.issues, board) : null), [passIssues, board]);
+  const pace = useMemo(() => (passIssues ? paceOf(passIssues.issues, board, new Date()) : null), [passIssues, board]);
+  const tallyOf = (taskId: string) => tally?.phases.flatMap((phase) => phase.tasks).find((row) => row.taskId === taskId);
 
   if (!hasTasks) {
     return (
@@ -99,6 +109,7 @@ export function AdvanceView({ section, board, inventory, onChange, session, pmOr
           <p className="advance-task__meta">
             {rules.map((rule) => scopeLabel(rule.resource, board.settings?.resourceNames)).join(" · ") || "Sin recursos"}
           </p>
+          {tallyOf(team.id) ? <WorkLine tally={tallyOf(team.id)!} /> : null}
         </div>
         {controls ? (
           <div className="advance-task__controls">
@@ -157,6 +168,16 @@ export function AdvanceView({ section, board, inventory, onChange, session, pmOr
         </div>
       </div>
 
+      {section === "tareas" && tally?.total && pace ? (
+        <section className="advance-total" aria-labelledby="advance-total">
+          <h2 id="advance-total" className="advance-section__title">
+            {t("pg.project")}
+          </h2>
+          <WorkLine tally={tally} />
+          <PaceChart pace={pace} />
+        </section>
+      ) : null}
+
       {section === "tareas" ? (
       <section className="advance-section" aria-labelledby="advance-tasks">
         <h2 id="advance-tasks" className="advance-section__title">
@@ -168,6 +189,7 @@ export function AdvanceView({ section, board, inventory, onChange, session, pmOr
           return (
             <div key={phase.id} className="advance-phase">
               <p className="advance-phase__name">{phase.name}</p>
+              {tally?.phases.find((row) => row.phaseId === phase.id) ? <WorkLine tally={tally.phases.find((row) => row.phaseId === phase.id)!} /> : null}
               <div className="advance-phase__tasks">{tasks.map(taskRow)}</div>
             </div>
           );

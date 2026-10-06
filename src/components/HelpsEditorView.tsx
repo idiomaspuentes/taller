@@ -27,6 +27,7 @@ import { loadSession, type GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
 import { loadPmConfig } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useStepWork } from "../dcs/stepWork";
 import { goOnAfterStep } from "../dcs/nextStep";
 import {
   ensurePortionPr,
@@ -646,6 +647,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const unit = target?.kind !== "tsv" ? "" : target.resource === "preguntas" ? "Questions" : "Notes";
   const { left: pending, total: toTranslate } = helpsLeft(texts, progress, unit ? "help" : "piece");
   const countKnown = sourceReady && texts.every((text) => progress[text.id]);
+  useStepWork(session, ctx, toTranslate - pending, toTranslate, { on: countKnown && !stepDone && !finishing });
   /** Whether the notes or the questions of the passage are worked by pieces: how is said once, over them all. */
   const helpsHint = Boolean(unit) && texts.some((text) => !text.item.intro);
   // A draft nobody has translated a piece of is not a draft yet: there is nothing to hand in.

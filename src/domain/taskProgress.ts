@@ -19,9 +19,16 @@ export type StepRuntime = {
   done?: StepDone;
   /** The sources the step was done against, as they were when it was closed (see `sourceVersions`). */
   sources?: SourceStamp[];
+  /**
+   * How far the step is, as its tool counts it: verses written, notes translated, items agreed. Said by the tool
+   * while the step is open, so the card of the subtarea and the project can show how far the work is without
+   * opening it (see `workProgress`).
+   */
+  work?: StepWork;
 };
 
 export type StepDone = { by: string; at: string };
+export type StepWork = { done: number; total: number };
 
 export type TaskProgressMarker = {
   schema: typeof TASK_PROGRESS_SCHEMA | typeof TASK_PROGRESS_SCHEMA_V1;
@@ -50,13 +57,13 @@ function normalizeStepRuntimes(raw: unknown): Record<string, StepRuntime> | unde
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     const id = String(key).trim();
     if (!id || !value || typeof value !== "object") continue;
-    const row = value as { assignees?: unknown; approvals?: unknown; returnedBy?: unknown; done?: unknown; sources?: unknown };
+    const row = value as { assignees?: unknown; approvals?: unknown; returnedBy?: unknown; done?: unknown; sources?: unknown; work?: unknown };
     const returnedBy = typeof row.returnedBy === "string" ? row.returnedBy.trim() : "";
     out[id] = {
       assignees: normalizeLoginList(row.assignees),
       approvals: normalizeLoginList(row.approvals),
       ...(returnedBy ? { returnedBy } : {}),
-      ...kept({ done: row.done, sources: row.sources }),
+      ...kept({ done: row.done, sources: row.sources, work: row.work }),
     };
   }
   return Object.keys(out).length ? out : undefined;
@@ -81,11 +88,21 @@ function normalizeSources(raw: unknown): SourceStamp[] | undefined {
   return out.length ? out : undefined;
 }
 
+function normalizeWork(raw: unknown): StepWork | undefined {
+  const row = raw as Partial<StepWork> | null;
+  if (!row || typeof row !== "object") return undefined;
+  const total = Math.floor(Number(row.total));
+  const done = Math.floor(Number(row.done));
+  if (!(total > 0) || !Number.isFinite(done)) return undefined;
+  return { done: Math.min(total, Math.max(0, done)), total };
+}
+
 /** What is kept of a step besides its seats, as it is read or about to be written: only what is well formed. */
-function kept(row: { done?: unknown; sources?: unknown }): Pick<StepRuntime, "done" | "sources"> {
+function kept(row: { done?: unknown; sources?: unknown; work?: unknown }): Pick<StepRuntime, "done" | "sources" | "work"> {
   const done = normalizeDone(row.done);
   const sources = normalizeSources(row.sources);
-  return { ...(done ? { done } : {}), ...(sources ? { sources } : {}) };
+  const work = normalizeWork(row.work);
+  return { ...(done ? { done } : {}), ...(sources ? { sources } : {}), ...(work ? { work } : {}) };
 }
 
 export function emptyTaskProgress(): TaskProgressMarker {
@@ -164,8 +181,9 @@ export function withStepRuntime(
         assignees: normalizeLoginList(runtime.assignees),
         approvals: normalizeLoginList(runtime.approvals),
         ...(runtime.returnedBy?.trim() ? { returnedBy: runtime.returnedBy.trim() } : {}),
-        // Who sits on a step changes without touching when it was closed or against what: those are carried over.
-        ...kept({ done: runtime.done ?? marker.steps?.[stepId]?.done, sources: runtime.sources ?? marker.steps?.[stepId]?.sources }),
+        // Who sits on a step changes without touching when it was closed, against what, or how far it is: those
+        // are carried over.
+        ...kept({ done: runtime.done ?? marker.steps?.[stepId]?.done, sources: runtime.sources ?? marker.steps?.[stepId]?.sources, work: runtime.work ?? marker.steps?.[stepId]?.work }),
       },
     },
   };
@@ -193,6 +211,18 @@ export function withStepSources(marker: TaskProgressMarker, stepId: string, sour
   const runtime = marker.steps?.[stepId];
   if (!runtime || !sources.length) return marker;
   return { ...marker, steps: { ...marker.steps, [stepId]: { ...runtime, sources } } };
+}
+
+/**
+ * How far an open step is, noted on it. The same marker comes back when there is nothing to say: the step is
+ * closed, the count is not one, or it is what the subtarea already has (so nothing is written for nothing).
+ */
+export function withStepWork(marker: TaskProgressMarker, stepId: string, work: StepWork): TaskProgressMarker {
+  const next = normalizeWork(work);
+  if (!stepId || !next || marker.doneStepIds.includes(stepId)) return marker;
+  const runtime = marker.steps?.[stepId] ?? { assignees: [], approvals: [] };
+  if (runtime.work?.done === next.done && runtime.work?.total === next.total) return marker;
+  return { schema: TASK_PROGRESS_SCHEMA, doneStepIds: marker.doneStepIds, steps: { ...(marker.steps ?? {}), [stepId]: { ...runtime, work: next } } };
 }
 
 export function isStepDone(marker: TaskProgressMarker, stepId: string): boolean {

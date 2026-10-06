@@ -5,6 +5,7 @@ import { openComments } from "../domain/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useStepWork } from "../dcs/stepWork";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { bookLabel } from "../domain/books";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1336,6 +1337,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     return `${bookLabel(ctx.book, language)} ${ctx.ref} · ${res}`;
   }, [ctx, language]);
   const written = drafts.filter((d) => d.text.trim()).length;
+  // How far the draft is, for the card of its subtarea and for whoever coordinates.
+  useStepWork(session, ctx, written, drafts.length, { on: !draftLoading && !stepDone && !finishing });
   // The source shown follows the verse being written (a bridge shows all its verses); with none in hand, the passage.
   const activeRow = drafts.find((d) => d.from === activeVerse);
   const sourceRange = range && activeVerse && !wholeSource ? { chapter: range.chapter, from: activeVerse, to: activeRow?.to ?? activeVerse } : range;
