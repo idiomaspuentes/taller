@@ -330,6 +330,33 @@ Lo que hay que saber al leerlo:
   subtareas terminadas y el calendario sí alcanzan hacia atrás.
 - Todos los pasos de una subtarea valen lo mismo, aunque uno sea de cinco minutos y otro de horas.
 
+## Registro de correcciones del texto
+
+Corregir un versículo del borrador del grupo (al afinar notas o palabras clave, al alinear, en la
+lectura grupal o al aceptarse una propuesta) ya pedía un motivo, pero quedaba como una frase en el
+mensaje del commit, y lo que el versículo decía antes solo estaba en la historia del archivo. Nada
+de eso se puede contar: cuántas correcciones tomó un libro, de qué clase, qué notas o palabras
+trajeron más. translationCore guarda un registro por cada edición; ahora Taller también.
+
+- **Dónde.** Un archivo por persona y libro en el repositorio del texto, junto a sus respuestas:
+  `checkings/corrections/<LIBRO>.<persona>.corrections.json`, en la rama del borrador del grupo. Dos
+  personas nunca escriben el mismo archivo.
+- **Qué guarda cada corrección** (`src/domain/correctionLog.ts`): capítulo y versículo, `before` y
+  `after`, `reasons` (las clases de motivo: `spelling`, `punctuation`, `wordChoice`, `meaning`,
+  `grammar`, `other`), `note` (lo que la persona escribió), `from` (la subtarea, la tarea y el paso
+  en que estaba, y la nota o palabra que tenía a la vista, con su nombre), `by` y `at`.
+- **Quién lo escribe.** `saveCorrection` (`src/dcs/afinacionStore.ts`), por donde pasa toda
+  corrección del borrador del grupo: las herramientas solo le dicen el motivo. Primero se corrige el
+  texto y después se anota; si el registro no se puede escribir, la corrección no se deshace.
+- **El motivo se toca, no se escribe.** Los mismos seis botones en todas las herramientas
+  (`CorrectionReasons`), de 44 px, con un campo opcional para lo que un toque no dice.
+- **Dónde se ve.** Bajo el versículo, al afinar: «Corregido 2 veces», plegado; al abrirlo, quién,
+  cuándo, por qué, qué cambió palabra por palabra y qué se estaba revisando.
+
+**No hace todavía:** un resumen para quien coordina (cuántas correcciones, por motivo, por persona,
+qué notas trajeron más). La cuenta ya existe y está probada (`summarizeCorrections`); falta la
+pantalla, que necesita saber en qué rama está el borrador del grupo de cada texto del proyecto.
+
 ## Archivos clave
 
 | Área | Archivo |
@@ -350,6 +377,7 @@ Lo que hay que saber al leerlo:
 | Lectura de una unidad por el comité | `src/components/EndorsementView.tsx`, `src/components/UnitReading.tsx`, `src/domain/unitReading.ts`, `src/domain/endorsement.ts` |
 | Familiarize / review | `src/components/FamiliarizeView.tsx`, `src/components/PortionReviewView.tsx` |
 | Textos fuente en el dispositivo | `src/dcs/sourceTexts.ts`, `src/domain/usfmChapters.ts`, `src/domain/referenceResources.ts` |
+| Registro de correcciones del texto | `src/domain/correctionLog.ts`, `src/dcs/correctionLog.ts`, `src/components/CorrectionReasons.tsx`, `src/components/CorrectionSheet.tsx` (no confundir con `corrections.ts`: lo que un comité pide corregir) |
 | Avance, ritmo y trabajo de cada persona | `src/domain/workProgress.ts`, `src/domain/pace.ts`, `src/domain/activity.ts`, `src/dcs/stepWork.ts`, `src/dcs/activity.ts`, `src/components/ProgressBar.tsx`, `src/components/ActivityCalendar.tsx` |
 | Versión de las fuentes de cada paso | `src/domain/sourceVersions.ts`, `src/dcs/sourceVersions.ts`, `src/dcs/stepSources.ts`, `src/useSourcesNow.ts` |
 | Glosario | `src/domain/glossary.ts`, `src/dcs/glossaryStore.ts`, `src/useGlossary.ts`, `src/components/GlossaryView.tsx`, `docs/GLOSARIO_DOOR43.md` |

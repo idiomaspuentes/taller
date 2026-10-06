@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
 import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
+import type { CorrectionReason } from "../domain/correctionLog";
+import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
 import { commentOnIssue } from "../dcs/issues";
 import { formatChatEvent } from "../domain/chatEvent";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
@@ -125,6 +127,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [fixing, setFixing] = useState(false);
   const [fixText, setFixText] = useState("");
   const [fixReason, setFixReason] = useState("");
+  const [fixReasons, setFixReasons] = useState<CorrectionReason[]>([]);
   const [preferredTerms, setPreferredTerms] = useState<PreferredTerms>({});
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
   const [articles, setArticles] = useState<Record<string, ArticleInfo>>({});
@@ -527,6 +530,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     if (!text) return;
     setSaving(true);
     setError("");
+    // The kinds chosen, then what the person wrote: one line for whoever reads the change later.
+    const why = reasonLine(fixReasons, fixReason, t);
+    const before = data.draftVerses[item.verse] ?? "";
     try {
       const result = await saveCorrection({
         session,
@@ -535,13 +541,18 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         chapter: item.chapter,
         verse: item.verse,
         text,
-        reason: fixReason,
+        reason: why,
         book: data.book,
+        before,
+        reasons: fixReasons,
+        note: fixReason.trim(),
+        // What was in hand: the note or the key term being checked, as the screen names it.
+        from: { issue: ctx.issueNumber, task: ctx.taskId, step: taskStep?.id ?? ctx.stepId, item: item.id, label: item.phrase || item.quote },
       });
-      const before = data.draftVerses[item.verse] ?? "";
       setData({ ...data, draftVerses: { ...data.draftVerses, [item.verse]: text } });
       setFixing(false);
       setFixReason("");
+      setFixReasons([]);
       announce(t("af.corrected").replace("{ref}", `${data.book} ${item.chapter}:${item.verse}`));
       if (result.clearedVerses.length) {
         announce(t("af.alignmentLost").replace("{v}", String(item.verse)));
@@ -555,7 +566,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         for (const login of reviewersToNotifyAfterEdit({ itemId: id, decisions, newHash: textFingerprint(text), editor: session.username })) who.add(login);
       }
       if (who.size && ctx.issueNumber && ctx.pmOrg && before !== text) {
-        const why = fixReason.trim();
         const logins = [...who];
         const summary = `${logins.map((w) => `@${w}`).join(" ")} Corregí ${data.book} ${item.chapter}:${item.verse}. Vuelvan a revisarlo.${why ? ` Motivo: ${why}` : ""}`;
         await commentOnIssue(
@@ -568,7 +578,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             issue: ctx.issueNumber,
             summary,
             mentions: logins,
-            data: { book: data.book, chapter: item.chapter, verse: item.verse, reason: why, by: session.username },
+            data: { book: data.book, chapter: item.chapter, verse: item.verse, reason: why, reasons: fixReasons, by: session.username },
           }),
         ).catch(() => undefined);
       }
@@ -942,7 +952,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {fixing ? (
                 <div className="af-fix" role="group" aria-label={t("af.fixAria")}>
                   <textarea id="af-fix-text" className="af-textarea" rows={4} value={fixText} aria-label={t("af.verseText")} onChange={(e) => setFixText(e.target.value)} />
-                  <input id="af-fix-reason" className="af-input" value={fixReason} placeholder={t("af.why")} aria-label={t("af.why")} onChange={(e) => setFixReason(e.target.value)} />
+                  {/* Why, by a touch; what a touch does not say can be written. */}
+                  <span className="af-lbl">{t("fx.reasons")}</span>
+                  <CorrectionReasons value={fixReasons} onChange={setFixReasons} />
+                  <input id="af-fix-reason" className="af-input" value={fixReason} placeholder={t("fx.whyHint")} aria-label={t("fx.why")} onChange={(e) => setFixReason(e.target.value)} />
                   <p className="af-hint">{t("af.fixHint")}</p>
                   <div className="af-row-buttons">
                     <Button type="button" size="sm" disabled={saving || !fixText.trim()} onClick={() => void saveFix()}>
@@ -958,6 +971,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <span className="af-draft__words">
                     <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
                   </span>
+                  <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
                   {comparison && comparison.renderings.length ? (
                   // Consistency: what was chosen as the rendering of this term in its other places.
                   <div className="af-elsewhere">

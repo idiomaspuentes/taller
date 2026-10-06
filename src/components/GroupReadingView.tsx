@@ -4,6 +4,8 @@ import { Check, Clock3, Pencil } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { appendMyDecisions, saveCorrection } from "../dcs/afinacionStore";
+import type { CorrectionReason } from "../domain/correctionLog";
+import { CorrectionReasons, reasonLine } from "./CorrectionReasons";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadGroupReading, type GroupReadingData, type GroupReadingText } from "../dcs/groupReading";
 import { commentOnIssue } from "../dcs/issues";
@@ -28,7 +30,7 @@ type Props = {
 };
 
 /** What is being written about one verse of one text: a correction of it, or a doubt about it. */
-type Open = { id: string; kind: "fix" | "doubt"; text: string; why: string };
+type Open = { id: string; kind: "fix" | "doubt"; text: string; why: string; reasons?: CorrectionReason[] };
 
 /**
  * The group review of a deliverable. The team reads together everything translated of the stretch, on the group's
@@ -155,8 +157,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     setSaving(true);
     setError("");
     try {
-      await saveCorrection({ session, target: text.draft, filepath: text.draft.filepath, chapter: data.chapter, verse, text: next, reason: open.why, book: data.book });
       const itemId = readingItemId(text.resource, data.chapter, verse);
+      const reasons = open.reasons ?? [];
+      await saveCorrection({ session, target: text.draft, filepath: text.draft.filepath, chapter: data.chapter, verse, text: next, reason: reasonLine(reasons, open.why, tNow), book: data.book, before: text.verses[verse] ?? "", reasons, note: open.why.trim(), from: { issue: ctx.issueNumber, task: ctx.taskId, step: step?.id ?? ctx.stepId, item: itemId } });
       // Whoever had agreed with the old wording is told: their answer no longer counts.
       const who = reviewersToNotifyAfterEdit({ itemId, decisions, newHash: textFingerprint(next), editor: session.username });
       const texts = data.texts.map((row) => (row.resource === text.resource ? { ...row, verses: { ...row.verses, [verse]: next } } : row));
@@ -232,6 +235,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
         {stepDone ? null : writing ? (
           <div className="rv-composer">
             {writing.kind === "fix" ? <textarea className="af-textarea" rows={3} value={writing.text} aria-label={t("gr.fixAria")} onChange={(e) => setOpen({ ...writing, text: e.target.value })} /> : null}
+            {writing.kind === "fix" ? <CorrectionReasons value={writing.reasons ?? []} onChange={(reasons) => setOpen({ ...writing, reasons })} /> : null}
             <textarea className="af-textarea" rows={2} value={writing.why} placeholder={t(writing.kind === "fix" ? "gr.whyFix" : "gr.whyDoubt")} aria-label={t(writing.kind === "fix" ? "gr.whyFix" : "gr.whyDoubt")} onChange={(e) => setOpen({ ...writing, why: e.target.value })} />
             <div className="rv-composer__row">
               {writing.kind === "fix" ? (

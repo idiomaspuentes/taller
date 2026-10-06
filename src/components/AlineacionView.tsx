@@ -67,7 +67,7 @@ import { tallerConfig, workspaceOfOrg } from "../config";
 import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
 import { glossesInclude, strongParts, type LexiconFile } from "../domain/lexicon";
 import { WordSheet } from "./WordSheet";
-import { CorrectionSheet } from "./CorrectionSheet";
+import { CorrectionSheet, type CorrectionWhy } from "./CorrectionSheet";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -843,12 +843,12 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   }
 
   /** Correct the text of the verse in view on the group's draft; what is aligned of the words that stay is kept. */
-  async function saveFix(text: string, why: string) {
+  async function saveFix(text: string, why: string, detail: CorrectionWhy) {
     if (!session || !data || !verse || !text.trim()) return;
     setSaving(true);
     setFixError("");
     try {
-      await saveCorrection({ session, target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, filepath: data.draft.filepath, chapter: data.chapter, verse: verse.verse, text: text.trim(), reason: why, book: data.book });
+      await saveCorrection({ session, target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, filepath: data.draft.filepath, chapter: data.chapter, verse: verse.verse, text: text.trim(), reason: why, book: data.book, before: verse.text, reasons: detail.reasons, note: detail.note, from: { issue: ctx?.issueNumber, task: ctx?.taskId, step: ctx?.stepId, item: itemId(data.chapter, verse.verse) } });
       setFixing(false);
       announce(t("af.corrected").replace("{ref}", `${data.book} ${data.chapter}:${verse.verse}`));
       await load();
@@ -1318,7 +1318,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           ]}
           busy={saving}
           error={fixError}
-          onFix={(text, why) => void saveFix(text, why)}
+          onFix={(text, why, detail) => void saveFix(text, why, detail)}
           onAsk={(text, why) => void askGroup(text, why)}
           onClose={() => setFixing(false)}
         />

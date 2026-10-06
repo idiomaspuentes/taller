@@ -11,6 +11,7 @@ import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { applyVerseEditsKeepingAlignment } from "../domain/alignmentKeep";
 import { parsePreferredTerms, serializePreferredTerms, withPreferredTerm, type PreferredTerms } from "../domain/afinacionWords";
+import type { CorrectionFrom, CorrectionReason } from "../domain/correctionLog";
 import { decisionsFilePath, type ReviewDecision } from "../domain/reviewRound";
 
 /**
@@ -159,6 +160,9 @@ export type CorrectionResult = { clearedVerses: number[]; reducedVerses: number[
  * on the group draft; the word alignment of the words that did not change
  * is kept, and whatever depended on the old text turns stale by itself
  * (answers carry the fingerprint of the text they reviewed).
+ *
+ * Every correction of a group draft passes here, so this is where it is recorded: what the verse said, what it
+ * says now, why, and what the person had in hand (see `domain/correctionLog`).
  */
 export async function saveCorrection(params: {
   session: GtSession;
@@ -167,8 +171,15 @@ export async function saveCorrection(params: {
   chapter: number;
   verse: number;
   text: string;
+  /** Why, as one line: it goes with the change in the history of the file. */
   reason: string;
   book: string;
+  /** The verse as it was, for the record. */
+  before?: string;
+  /** Why, by its kinds, and what the person wrote about it. */
+  reasons?: CorrectionReason[];
+  note?: string;
+  from?: CorrectionFrom;
 }): Promise<CorrectionResult> {
   const { session, target, filepath } = params;
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -187,6 +198,12 @@ export async function saveCorrection(params: {
         branch: target.branch,
         token: session.token,
       });
+      // The verse is corrected: a record that could not be written does not undo it.
+      await import("./correctionLog")
+        .then(({ appendMyCorrection }) =>
+          appendMyCorrection(session, target, params.book, { chapter: params.chapter, verse: params.verse, before: params.before ?? "", after: params.text, reasons: params.reasons ?? [], note: params.note ?? (params.reasons ? "" : why), from: params.from }),
+        )
+        .catch(() => undefined);
       return { clearedVerses: kept.clearedVerses, reducedVerses: kept.reducedVerses, usfm: kept.usfm };
     } catch (err) {
       if (!isWriteRace(err) || attempt === 3) throw err;

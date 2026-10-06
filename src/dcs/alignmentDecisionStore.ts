@@ -310,6 +310,7 @@ export async function closeAlignmentDecision(params: {
           verse: data.verse,
           text: newText,
           reason: `propuesta de @${data.by} aceptada por el equipo`,
+          before: saved0?.oldText ?? data.oldText,
         });
       }
       const saved = await saveVerseAlignment({

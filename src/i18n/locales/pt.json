@@ -2687,5 +2687,9 @@
   "ac.loading": "Lendo a atividade…",
   "ac.failed": "Não foi possível ler a atividade.",
   "ac.period": "Nas últimas {weeks} semanas",
-  "pg.ofSubtask": "{done} de {total} subtarefa"
+  "pg.ofSubtask": "{done} de {total} subtarefa",
+  "cx.once": "Corrigido 1 vez",
+  "cx.times": "Corrigido {n} vezes",
+  "cx.noReason": "sem motivo anotado",
+  "cx.from": "Ao revisar «{label}»"
 }
