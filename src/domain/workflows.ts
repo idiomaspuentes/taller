@@ -138,6 +138,8 @@ export type WorkflowUpgrade = {
   tasks: string[];
   /** `task › step` of every step added to a task the project already had. */
   steps: string[];
+  /** Steps that took the name the process gives them now, as «the old name → the new one». */
+  renamed: string[];
   /** Tasks or steps that only gained settings they did not have. */
   completed: number;
 };
@@ -169,7 +171,7 @@ function fillMissing<T extends object>(into: T, from: Partial<T>): { next: T; fi
  */
 export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: WorkflowTemplate): WorkflowUpgrade {
   const wf = normalizeWorkflowTemplate(template);
-  const out: WorkflowUpgrade = { board, phases: [], tasks: [], steps: [], completed: 0 };
+  const out: WorkflowUpgrade = { board, phases: [], tasks: [], steps: [], renamed: [], completed: 0 };
   if (!wf) return out;
 
   const wanted = normalizePhases(wf.phases, []);
@@ -200,11 +202,16 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
     for (const [stepIndex, step] of (freshSteps ?? []).entries()) {
       const have = steps?.findIndex((s) => s.id === step.id) ?? -1;
       if (have >= 0) {
-        const merged = fillMissing(steps![have]!, step);
-        if (merged.filled) {
+        const mine = steps![have]!;
+        // The one thing that is replaced: a name the process itself gave the step and has changed since. The project
+        // did not choose it, and kept showing a name the process no longer uses (a name it wrote itself stays).
+        const renamed = mine.name !== step.name && Boolean(step.formerNames?.includes(mine.name));
+        const merged = fillMissing(renamed ? { ...mine, name: step.name, names: step.names } : mine, step);
+        if (merged.filled || renamed) {
           steps![have] = merged.next;
           changed = true;
         }
+        if (renamed) out.renamed.push(`${mine.name} → ${step.name}`);
         continue;
       }
       // The project may already have this step under another id: a step it edited by hand into what the process

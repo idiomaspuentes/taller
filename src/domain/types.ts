@@ -323,6 +323,12 @@ export type TaskStep = {
   name: string;
   /** The name in other interface languages; `name` is the fallback. */
   names?: Localized;
+  /**
+   * Names the process gave this step before. A project that still has one of them did not choose it: brought up to
+   * a newer version of the process, the step takes the name the process gives it now (see `upgradeBoardToWorkflow`).
+   * A name a project wrote itself is in no such list, and stays.
+   */
+  formerNames?: string[];
   /** What the big button says («Revisar», «Votar»). Without it the engine words the mechanics. */
   actionLabel?: string;
   actionLabels?: Localized;

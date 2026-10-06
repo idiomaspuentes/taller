@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 33,
+      "version": 34,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -78,10 +78,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -545,10 +548,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -1012,10 +1018,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -1442,10 +1451,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -3535,7 +3547,7 @@
   "tools": [
     {
       "id": "fcr-familiarize",
-      "name": "Familiarizar",
+      "name": "Estudiar",
       "description": "Introducción al libro y al capítulo, el pasaje en inglés y sus notas. Solo lectura.",
       "launchUrl": "/#/solver/familiarize?ctx={context}",
       "kind": "app",
@@ -3784,6 +3796,7 @@
       "Traducir Palabras": "Traduzir Palavras",
       "Traducir Academia": "Traduzir Academia",
       "Armonizar ": "Harmonizar ",
+      "Familiarizarse": "Familiarizar-se",
       "Borrador": "Rascunho",
       "Revisión en pares": "Revisão em pares",
       "Revisión grupal": "Revisão em grupo",

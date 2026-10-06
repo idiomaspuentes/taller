@@ -85,7 +85,7 @@ fuente en inglés. Los recursos de apoyo se escriben sin mirar el TPL ni el TPS 
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura: nota de introducción al libro, nota de introducción al capítulo y el capítulo | Lo marca quien lo hace |
+| 1 | Estudio | Estudiar | Quien tiene la subtarea | 1 | Lectura: nota de introducción al libro, nota de introducción al capítulo y el capítulo | Lo marca quien lo hace |
 | 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de texto bíblico | Lo marca quien lo hace |
 | 3 | Revisión en pares | Revisar | Otra persona del equipo, no quien hizo el borrador | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
 **Al entregar:** el texto de la porción pasa al borrador del grupo, y queda a la vista en la revisión grupal
@@ -95,18 +95,20 @@ de ese texto en el capítulo (3.7): el cuarto paso de cada equipo.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Familiarizarse | Estudiar | Quien tiene la subtarea | 1 | Lectura: introducción al libro, introducción al capítulo y el capítulo completo | Lo marca quien lo hace |
+| 1 | Estudio | Estudiar | Quien tiene la subtarea | 1 | Lectura: introducción al libro, introducción al capítulo y el capítulo completo | Lo marca quien lo hace |
 | 2 | Borrador | Traducir | Quien tiene la subtarea (Practicante o más) | 1 | Editor de ayudas | Lo marca quien lo hace |
 | 3 | Revisión en pares | Revisar | Otra persona del equipo | 1 | Revisión del borrador | Otra persona lo aprueba, y el autor confirma |
 
-**Qué se lee al familiarizarse y por qué:**
+**Qué se lee en el estudio y por qué:**
 - La **introducción al libro** y la **introducción al capítulo** donde está la nota: dan el contexto
   de la porción del texto (TPL / ULT) a la que la nota se refiere.
 - El **capítulo completo**: para saber quién habla, a quién y de qué en el pasaje de la nota.
 
-La familiarización es **por capítulo**: quien ya la hizo para un capítulo no la repite en las demás
+El estudio es **por capítulo**: quien ya lo hizo para un capítulo no lo repite en las demás
 porciones de ese capítulo, y la introducción al libro se lee una sola vez. Lo mismo vale para la
-familiarización del TPL y del TPS.
+estudio del TPL y del TPS. El paso se llamaba «Familiarizarse» y su botón «Estudiar»: eran dos nombres
+para lo mismo, y desde la versión 34 de la plantilla el paso es «Estudio» (un plan anterior lo ve al
+actualizarse a esa versión).
 
 **Del estudio se pasa al borrador.** «Terminé de estudiar» completa el paso y abre el borrador de esa
 misma subtarea: quien estudió el pasaje lo hizo para traducirlo. Antes se volvía al principio de «Mis
@@ -170,7 +172,7 @@ borrador otra vez, la revisión sigue. Vale igual para el TPL y el TPS y para lo
 
 **Las notas de introducción tienen dueño.** La introducción a cada capítulo va con las notas de la **primera
 porción de ese capítulo**, y la introducción al libro con las de la primera porción del libro. Antes no caían en
-ninguna subtarea: todos las leían al familiarizarse y nadie las traducía.
+ninguna subtarea: todos las leían al estudiar y nadie las traducía.
 
 **Las ayudas no esperan al texto, y en esta fase no se comparan con el TPL.** Notas, preguntas, palabras y
 Academia se traducen a la vez que el TPL y el TPS, y se trabajan **frente al ULT en inglés**: la frase citada de una
@@ -260,7 +262,7 @@ La persona lee lo que pide su paso en su tarjeta, en «Qué se pide en …».
 ### 3.7 Revisión grupal TPL · Revisión grupal TPS (por capítulo)
 
 El TPL y el TPS pueden ser el trabajo de **dos equipos distintos**, y cada uno hace los cuatro pasos de su texto:
-familiarizarse, borrador, revisión en pares y **revisión grupal**. Por eso hay una revisión grupal por texto, cada
+estudio, borrador, revisión en pares y **revisión grupal**. Por eso hay una revisión grupal por texto, cada
 una con su equipo; no se leen los dos textos juntos. (Hasta la versión 17 del proceso era una sola tarea con el TPL
 y el TPS lado a lado.)
 
@@ -287,7 +289,7 @@ el capítulo espera a este cierre: los desafíos del TPL a la revisión grupal d
 ### 3.5 Traducir Palabras · 3.6 Traducir Academia
 
 El ítem es el **artículo**, y solo se traducen los que todavía no están publicados en español. Un
-artículo sirve a muchas porciones y libros: se traduce una sola vez. **No llevan familiarización**:
+artículo sirve a muchas porciones y libros: se traduce una sola vez. **No llevan estudio**:
 el artículo no depende de un pasaje.
 
 **Una subtarea por artículo.** Cada artículo pendiente del libro es su propia subtarea, con el nombre

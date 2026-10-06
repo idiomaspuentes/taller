@@ -1509,7 +1509,7 @@
   "pu.p.rowSupport": "notas com um link de artigo mal escrito:",
   "pu.p.changed": "mudou depois do aval:",
   "pu.p.notEndorsed": "Esta unidade ainda não tem o aval do comitê.",
-  "tv.processUpdate": "Há uma versão nova do processo «{name}» (versão {v}). Ao atualizar, as fases, tarefas e passos novos são adicionados; o que este projeto já tem não é alterado nem removido.",
+  "tv.processUpdate": "Há uma versão nova do processo «{name}» (versão {v}). Ao atualizar, as fases, tarefas e passos novos são adicionados, e um passo que o processo renomeou recebe o nome novo se este projeto não tinha dado outro. O restante que este projeto já tem não é alterado nem removido.",
   "tv.processUpdateDo": "Atualizar este projeto",
   "tv.processUpdated": "Projeto atualizado. Foi adicionado: {what}.",
   "tv.processUpdatedPlain": "Projeto atualizado para a versão nova do processo.",

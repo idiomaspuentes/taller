@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 27,
+      "version": 28,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -78,10 +78,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -545,10 +548,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -1012,10 +1018,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -1442,10 +1451,13 @@
           "steps": [
             {
               "id": "familiarizar",
-              "name": "Familiarizarse",
+              "name": "Estudio",
               "names": {
-                "pt": "Familiarizar-se"
+                "pt": "Estudo"
               },
+              "formerNames": [
+                "Familiarizarse"
+              ],
               "actionLabel": "Estudiar",
               "actionLabels": {
                 "pt": "Estudar"
@@ -3631,6 +3643,7 @@
       "Traducir Palabras": "Traduzir Palavras",
       "Traducir Academia": "Traduzir Academia",
       "Armonizar ": "Harmonizar ",
+      "Familiarizarse": "Familiarizar-se",
       "Borrador": "Rascunho",
       "Revisión en pares": "Revisão em pares",
       "Revisión grupal": "Revisão em grupo",

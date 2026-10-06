@@ -525,12 +525,14 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
         : undefined;
 
     const closing = STEP_CLOSINGS.includes(item.closing as StepClosing) ? (item.closing as StepClosing) : undefined;
+    const formerNames = Array.isArray(item.formerNames) ? [...new Set(item.formerNames.map((old) => String(old).trim()).filter((old) => old && old !== name))] : [];
     const scope = STEP_SCOPES.includes(item.scope as StepScope) && item.scope !== "subtask" ? (item.scope as StepScope) : undefined;
 
     steps.push({
       id,
       name,
       names: normalizeLocalized(item.names),
+      ...(formerNames.length ? { formerNames } : {}),
       actionLabel: String(item.actionLabel ?? "").trim() || undefined,
       actionLabels: normalizeLocalized(item.actionLabels),
       closing,

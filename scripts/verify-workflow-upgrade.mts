@@ -84,4 +84,25 @@ test("un paso que el proyecto ya tiene con otro identificador no se agrega otra 
   assert.deepEqual(result.board.teams.find((t) => t.id === "palabras-tpl")!.steps!.map((s) => s.id), ["confirmar"], "el paso sigue siendo uno, el del proyecto");
 });
 
+test("un paso con el nombre que el proceso le daba antes toma el de ahora; el que el proyecto escribió se queda", () => {
+  // «Familiarizarse» was the process's own name for the step whose button says «Estudiar»: it is «Estudio» now.
+  const study = fcr.tasks.find((t) => t.id === "tpl")!.steps![0]!;
+  assert.deepEqual([study.name, study.formerNames], ["Estudio", ["Familiarizarse"]]);
+  const created = applyWorkflowToBoard(empty, fcr);
+  const before = (name: string): AssignmentsDoc => ({
+    ...created,
+    workflowVersion: fcr.version - 1,
+    teams: created.teams.map((task) => ({ ...task, steps: task.steps?.map((s) => (s.id === study.id ? { ...s, name, names: { pt: "Familiarizar-se" } } : s)) })),
+  });
+  const result = upgradeBoardToWorkflow(before("Familiarizarse"), fcr);
+  const now = result.board.teams.find((t) => t.id === "tpl")!.steps![0]!;
+  assert.deepEqual([now.name, now.names?.pt], ["Estudio", "Estudo"]);
+  assert.deepEqual([...new Set(result.renamed)], ["Familiarizarse → Estudio"]);
+  // Whatever else the step had is as it was.
+  assert.equal(now.solverAppId, study.solverAppId);
+  const kept = upgradeBoardToWorkflow(before("Leer el capítulo"), fcr);
+  assert.equal(kept.board.teams.find((t) => t.id === "tpl")!.steps![0]!.name, "Leer el capítulo");
+  assert.deepEqual(kept.renamed, []);
+});
+
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);
