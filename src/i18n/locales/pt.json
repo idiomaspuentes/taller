@@ -2694,5 +2694,12 @@
   "se.translateThis": "Traduza isto · {name}",
   "se.supportName": "Só como apoio · {name}",
   "se.supportShow": "Ver também o {name}",
-  "se.supportHide": "Ocultar o {name}"
+  "se.supportHide": "Ocultar o {name}",
+  "sa.source": "Fonte",
+  "sa.sourceNamed": "Fonte · {name}",
+  "sa.translation": "Tradução",
+  "sa.notYet": "Ainda sem escrever.",
+  "se.wordHelps": "Ajudas desta palavra",
+  "se.wordHelpsOne": "{n} ajuda",
+  "se.wordHelpsMany": "{n} ajudas"
 }

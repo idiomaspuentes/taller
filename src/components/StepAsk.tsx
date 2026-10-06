@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import type { AlignmentMap } from "@usfm-tools/types";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
@@ -48,23 +49,56 @@ const hintList = (lines: HintLine[]) => (
   </ul>
 );
 
-export function Hints({ lines, lead }: { lines: HintLine[]; lead?: string }) {
+/** What the hints of an item are about, to read them against: its source and what has been written for it. */
+export type HintContext = { ref?: string; sourceName?: string; source?: string; translation?: string };
+
+/**
+ * Beside an item (a verse, a note) the hints are one line: how many there are and the first of them, which is what
+ * the glossary decided when it decided something. Laid out whole they took more of a phone's screen than the verse
+ * and its source together. A touch opens them over the work, with what they are read against: the source, the
+ * translation as it stands, and the list.
+ */
+function ItemHints({ lines, lead, context }: { lines: HintLine[]; lead: string; context?: HintContext }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="step-hints" data-item="true">
+      <button type="button" className="step-hints__open" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        <span className="step-hints__lead">{lead}</span>
+        <span className="step-hints__n">{lines.length}</span>
+        <span className="step-hints__brief">{lines[0]!.text}</span>
+        <ChevronRight size={14} aria-hidden />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="fix-sheet hint-sheet" aria-label={lead}>
+          <header className="fx-head">
+            <DialogTitle className="fx-title">{lead}</DialogTitle>
+            {context?.ref ? <p className="ws-meta">{context.ref}</p> : null}
+          </header>
+          <div className="fx-body">
+            {context?.source ? (
+              <section className="hint-sheet__text">
+                <span className="af-lbl">{context.sourceName ? t("sa.sourceNamed").replace("{name}", context.sourceName) : t("sa.source")}</span>
+                <p>{context.source}</p>
+              </section>
+            ) : null}
+            {context ? (
+              <section className="hint-sheet__text" data-own="true">
+                <span className="af-lbl">{t("sa.translation")}</span>
+                <p>{context.translation?.trim() ? context.translation : <em>{t("sa.notYet")}</em>}</p>
+              </section>
+            ) : null}
+            <div className="step-hints">{hintList(lines)}</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+export function Hints({ lines, lead, context }: { lines: HintLine[]; lead?: string; context?: HintContext }) {
   if (!lines.length) return null;
-  // Beside an item (a verse, a note) they are one line until they are asked for: the first of them, which is what
-  // the glossary decided when it decided something, and how many there are. Laid out whole they took more of a
-  // phone's screen than the verse and its source together.
-  if (lead)
-    return (
-      <details className="step-hints" data-item="true">
-        <summary>
-          <ChevronRight size={14} aria-hidden />
-          <span className="step-hints__lead">{lead}</span>
-          <span className="step-hints__n">{lines.length}</span>
-          <span className="step-hints__brief">{lines[0]!.text}</span>
-        </summary>
-        {hintList(lines)}
-      </details>
-    );
+  if (lead) return <ItemHints lines={lines} lead={lead} context={context} />;
   return (
     <div className="step-hints">
       <ul>

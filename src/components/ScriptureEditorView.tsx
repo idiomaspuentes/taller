@@ -520,6 +520,7 @@ function ScriptureTab({
   loggedIn,
   loading,
   highlight,
+  linked,
   onWordClick,
 }: {
   title: string;
@@ -529,6 +530,7 @@ function ScriptureTab({
   loggedIn: boolean;
   loading?: boolean;
   highlight?: QuoteHighlight | null;
+  linked?: Record<number, number[]>;
   onWordClick?: (info: WordClickInfo) => void;
 }) {
   const t = useT();
@@ -544,6 +546,7 @@ function ScriptureTab({
           activeVerse={activeVerse}
           fallbackVerses={pane.verses}
           highlight={highlight}
+          linked={linked}
           onWordClick={onWordClick}
         />
       ) : (
@@ -587,6 +590,20 @@ function HelpQuote({
       <span className="scripture-editor__help-quote-mark">”</span>
     </p>
   );
+}
+
+/** The words of a source that some help is about, by verse (as positions among the words of the verse). */
+function linkedWords(helps: ReferenceHelpRow[], pane: ScripturePane, range: RefRange | null): Record<number, number[]> {
+  if (!range || !paneHasText(pane)) return {};
+  const found = new Map<number, Set<number>>();
+  for (const item of helps) {
+    const hit = highlightForHelp(item, pane, range, false);
+    if (!hit) continue;
+    const set = found.get(hit.verse) ?? new Set<number>();
+    hit.tokenIndices.forEach((index) => set.add(index));
+    found.set(hit.verse, set);
+  }
+  return Object.fromEntries([...found].map(([verse, set]) => [verse, [...set]]));
 }
 
 function HelpItem({
@@ -865,6 +882,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [hoveredHelp, setHoveredHelp] = useState<ReferenceHelpRow | null>(null);
   const [activeHelp, setActiveHelp] = useState<ReferenceHelpRow | null>(null);
   const [wordFilter, setWordFilter] = useState<WordFilter | null>(null);
+  /** The helps about a word touched in the source of the verse being written, shown over the editor. */
+  const [wordHelps, setWordHelps] = useState<{ word: string; verse: number; items: ReferenceHelpRow[] } | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("editor");
   const [draftVia, setDraftVia] = useState<"ast" | "plain">("plain");
   const [activeVerse, setActiveVerse] = useState<number | undefined>();
@@ -1397,6 +1416,10 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   // Both source texts are on screen, so the phrase a help is about is marked in each.
   const ultHighlight = highlightForHelp(focusedHelp, ult, range, pinned);
   const ustHighlight = highlightForHelp(focusedHelp, ust, range, pinned);
+  // The words of each source that a note or a key term of the passage is about: underlined wherever the source is
+  // shown, so it is seen which of them give something when touched.
+  const ultLinked = useMemo(() => linkedWords([...notes, ...words], ult, range), [notes, words, ult, range]);
+  const ustLinked = useMemo(() => linkedWords([...notes, ...words], ust, range), [notes, words, ust, range]);
   const activeHelpKey = activeHelp ? helpKey(activeHelp) : null;
   const displayQuotes = useMemo(() => {
     const map = new Map<string, string>();
@@ -1441,6 +1464,16 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   function clearWordFilter() {
     setWordFilter(null);
+  }
+
+  /**
+   * A word touched in the source of the verse being written: its helps open over the editor. On a phone they were
+   * on another panel, so reading a note meant leaving the verse.
+   */
+  function openWordHelps(info: WordClickInfo, source: "ult" | "ust") {
+    const pane = source === "ust" ? ust : ult;
+    const items = sortHelpByScriptureOrder([...notes, ...words].filter((item) => helpMatchesWordFilter(item, pane, range, { ...info, source })), ult, ust, range);
+    if (items.length) setWordHelps({ word: info.word, verse: info.verse, items });
   }
 
   function persistLocal(nextDrafts: VerseDraft[], nextBranch: string) {
@@ -2008,9 +2041,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                   {/* Said in so many words which one is translated: the two look alike. */}
                   <p className="se-source__name">{t(which === own ? "se.translateThis" : "se.supportName").replace("{name}", t(which === "ult" ? "se.literal" : "se.simple"))}</p>
                   {which === "ult" ? (
-                    <ScriptureTab title={t("se.ultEnglish")} range={sourceRange} pane={ult} activeVerse={activeVerse} loggedIn={loggedIn} loading={ultLoading} highlight={ultHighlight} onWordClick={(info) => selectHelpFromWord(info, "ult")} />
+                    <ScriptureTab title={t("se.ultEnglish")} range={sourceRange} pane={ult} activeVerse={activeVerse} loggedIn={loggedIn} loading={ultLoading} highlight={ultHighlight} linked={ultLinked} onWordClick={(info) => selectHelpFromWord(info, "ult")} />
                   ) : (
-                    <ScriptureTab title={t("se.ustEnglish")} range={sourceRange} pane={ust} activeVerse={activeVerse} loggedIn={loggedIn} loading={ustLoading} highlight={ustHighlight} onWordClick={(info) => selectHelpFromWord(info, "ust")} />
+                    <ScriptureTab title={t("se.ustEnglish")} range={sourceRange} pane={ust} activeVerse={activeVerse} loggedIn={loggedIn} loading={ustLoading} highlight={ustHighlight} linked={ustLinked} onWordClick={(info) => selectHelpFromWord(info, "ust")} />
                   )}
                 </div>
               ))}
@@ -2181,10 +2214,19 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                         // On a phone the source texts are on another panel: the verse being written brings its own.
                         // Only the text that is translated; the other one is a touch away, for whoever wants it.
                         <div className="se-peek">
-                          {english.verses[d.from] ? (
-                            <p>
-                              <b>{tag(own)}</b> {english.verses[d.from]}
-                            </p>
+                          {english.verses[d.from] && range ? (
+                            // Its words that a note or a key term is about are underlined: touching one opens them.
+                            <div className="se-peek__own">
+                              <b>{tag(own)}</b>
+                              <UsfmReferencePane
+                                usfm={english.usfm}
+                                range={{ chapter: range.chapter, from: d.from, to: d.to }}
+                                label={t(own === "ult" ? "se.ultEnglish" : "se.ustEnglish")}
+                                fallbackVerses={english.verses}
+                                linked={own === "ult" ? ultLinked : ustLinked}
+                                onWordClick={(info) => openWordHelps(info, own)}
+                              />
+                            </div>
                           ) : null}
                           {support && supportPane.verses[d.from] ? (
                             <p className="se-peek__support">
@@ -2200,7 +2242,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                       ) : null}
                       {/* What this verse calls for by its own words («you»: one person or several), while it is the one being
                           written. First what the glossary decided about them: it answers before the reminders ask. */}
-                      {activeVerse === d.from ? <Hints lead={t("sa.mind")} lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]} /> : null}
+                      {activeVerse === d.from ? (
+                        <Hints
+                          lead={t("sa.mind")}
+                          lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
+                          context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
+                        />
+                      ) : null}
                       <textarea
                         id={`v-${key}`}
                         className="scripture-editor__input"
@@ -2307,6 +2355,18 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         </button>
       </div>
 
+      <Dialog open={Boolean(wordHelps)} onOpenChange={(next) => (next ? undefined : setWordHelps(null))}>
+        <DialogContent className="fix-sheet help-sheet" aria-label={t("se.wordHelps")}>
+          <header className="fx-head">
+            <DialogTitle className="fx-title">«{wordHelps?.word}»</DialogTitle>
+            <p className="ws-meta">
+              {range && wordHelps ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${wordHelps.verse} · ` : ""}
+              {t(wordHelps?.items.length === 1 ? "se.wordHelpsOne" : "se.wordHelpsMany").replace("{n}", String(wordHelps?.items.length ?? 0))}
+            </p>
+          </header>
+          <div className="fx-body">{wordHelps ? <HelpList items={wordHelps.items} displayQuotes={displayQuotes} /> : null}</div>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={recreateOpen}
         onOpenChange={(open) => {

@@ -3815,6 +3815,16 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
   border-radius: 0.15em;
 }
 
+/* A word some help of the passage is about: it can be touched. */
+.scripture-editor__usfm-ro .usfm-ro-link {
+  /* Thin: in a verse where every word has a note, the whole of it is underlined, and it must still read as text. */
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--accent-500);
+  cursor: pointer;
+}
+
 .scripture-editor__usfm-ro .usfm-ro-ul {
   text-decoration: underline;
   text-decoration-thickness: 2px;
@@ -6976,13 +6986,16 @@ button.al-box--read { cursor: pointer; }
 .step-hints li { position: relative; padding-left: 0.875rem; }
 .step-hints li::before { content: ""; position: absolute; left: 0.125rem; top: 0.5em; width: 0.3125rem; height: 0.3125rem; border-radius: 50%; background: var(--primary); }
 .step-hints[data-item] { margin: 0 0 0.375rem; padding: 0 0.5rem; border-left: 3px solid var(--accent-300); }
-/* Beside an item they are one line: what it is, how many, and the first of them. A touch lays them out. */
-.step-hints[data-item] > summary { display: flex; align-items: center; gap: 0.375rem; min-height: 2.25rem; cursor: pointer; list-style: none; }
-.step-hints[data-item] > summary::-webkit-details-marker { display: none; }
-.step-hints[data-item] > summary svg { flex: none; color: var(--text-faint); transition: transform 0.15s; }
-.step-hints[data-item][open] > summary svg { transform: rotate(90deg); }
-.step-hints[data-item][open] > summary .step-hints__brief { display: none; }
-.step-hints[data-item][open] { padding-bottom: 0.375rem; }
+/* Beside an item they are one line: what it is, how many, and the first of them. A touch opens them over the work. */
+.step-hints__open { display: flex; align-items: center; gap: 0.375rem; width: 100%; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; text-align: left; cursor: pointer; }
+.step-hints__open svg { flex: none; color: var(--text-faint); }
+/* What the hints are read against, in their sheet: the source, and the translation as it stands. */
+.hint-sheet__text { display: grid; gap: 0.125rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--surface-muted); }
+.hint-sheet__text[data-own] { background: none; border: 1px solid var(--border); }
+.hint-sheet__text p { font-size: 1rem; line-height: 1.5; }
+.hint-sheet .step-hints { font-size: 0.9375rem; }
+.hint-sheet .step-hints li + li { margin-top: 0.25rem; }
+.help-sheet .scripture-editor__help-list { margin: 0; padding: 0; }
 .step-hints__lead { flex: none; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
 .step-hints__n { flex: none; min-width: 1.25rem; padding: 0 0.375rem; border-radius: 999px; background: var(--accent-100); color: var(--accent-700); font-size: 0.6875rem; font-weight: 700; line-height: 1.125rem; text-align: center; }
 /* No width of its own: a line that does not wrap would otherwise widen the card it is in past the screen. */
@@ -7583,6 +7596,12 @@ input.pf-name { font-size: 1.625rem; }
 .se-sources__title { font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
 /* The other English text, opened as a support: set apart from the one that is translated. */
 .se-source[data-support] { background: var(--surface-muted); border-style: dashed; }
+/* The source of the verse being written, with its words: sized as the text beside it, and without the number the
+   verse already shows. */
+.se-peek .se-peek__own .usfm-verse--marker { display: none; }
+.se-peek .se-peek__own .usfm-ro-root { font-size: 0.875rem; line-height: 1.55; color: var(--text); }
+.se-peek .se-peek__own .usfm-para { margin: 0; }
+.se-peek__own > b { display: block; }
 .se-peek__support { color: var(--text-muted); }
 .se-peek__more { justify-self: start; min-height: 40px; padding: 0; border: 0; background: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--primary); cursor: pointer; }
 .se-sources__texts { display: grid; gap: 0.5rem; min-height: 0; overflow: auto; }

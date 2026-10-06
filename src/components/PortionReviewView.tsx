@@ -708,6 +708,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           <div className="rv-checks">
             <Hints
               lead={t("sa.mind")}
+              context={{ ref: item.ref, source: itemSource, sourceName: text ? ownSource?.short : undefined, translation: help ? help.text : item.now }}
               lines={[
                 ...decided,
                 ...own.map((check) => {

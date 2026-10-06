@@ -20,6 +20,8 @@ type Props = {
   fallbackVerses?: VerseTextMap;
   className?: string;
   highlight?: QuoteHighlight | null;
+  /** The words some help of the passage is about, by verse: underlined, so it is seen that touching them gives something. */
+  linked?: Record<number, number[]>;
   onWordClick?: (info: {
     verse: number;
     wordIndex: number;
@@ -75,6 +77,7 @@ export function UsfmReferencePane({
   fallbackVerses,
   className,
   highlight,
+  linked,
   onWordClick,
 }: Props) {
   const usj = useMemo(() => {
@@ -124,8 +127,10 @@ export function UsfmReferencePane({
             verse === highlight.verse &&
             highlight.tokenIndices.includes(tokenIdx);
           const verseHit = Boolean(activeVerse && Number.isFinite(verse) && verse === activeVerse);
-          if (!quoteHit && !verseHit) return;
+          const linkHit = Boolean(Number.isFinite(verse) && linked?.[verse]?.includes(tokenIdx));
+          if (!quoteHit && !verseHit && !linkHit) return;
           const className = [
+            linkHit ? "usfm-ro-link" : "",
             verseHit ? "usfm-ro-hl" : "",
             quoteHit ? "usfm-ro-ul" : "",
             quoteHit && highlight?.active ? "usfm-ro-hl" : "",
