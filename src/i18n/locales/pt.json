@@ -2591,5 +2591,12 @@
   "ab.wholeSentences": "Escolher frases inteiras",
   "ab.fromFrame": "Escolher do quadro",
   "sa.propose": "Adicionar uma regra da equipe",
-  "sa.mind": "Repare nisto"
+  "sa.mind": "Repare nisto",
+  "rv.asRule": "Guardar como regra da equipe",
+  "rv.isRule": "É uma regra da equipe",
+  "rv.ruleText": "A regra, como a equipe vai ler",
+  "rv.ruleWords": "Toque as palavras da fonte que a pedem: a equipe vai vê-la junto de cada versículo que as tenha. Sem palavras, vai vê-la sempre.",
+  "rv.ruleAlways": "A equipe vai vê-la em todos os seus passos.",
+  "rv.ruleSave": "Salvar regra",
+  "rv.ruleSaved": "Regra salva para a equipe."
 }

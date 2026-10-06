@@ -241,6 +241,14 @@ que había agregado se queda.
 - **Quién y dónde:** cualquiera del equipo, dentro de la herramienta, bajo «Qué se pide en …», en «Agregar una
   regla del equipo». Es una línea que se toca: antes era una caja de texto abierta en cada herramienta. Quien no
   es del equipo las ve, pero no agrega.
+- **Desde un comentario de la revisión:** lo que un revisor le dice a una persona sobre un versículo («Escribimos
+  «Jacobo», no «Santiago».») casi siempre vale para todos los versículos que dicen lo mismo, y de ahí salen las
+  reglas. Bajo el comentario hay una línea, **«Guardar como regla del equipo»**. Al tocarla la regla ya está
+  escrita (es el comentario, para retocar) y debajo están **las palabras de la fuente de ese versículo, para
+  tocar** («James»): nadie escribe una palabra de otro idioma. Con una palabra marcada, la regla sale junto a
+  cada versículo que la tenga; sin ninguna, o en un comentario sobre todo el pasaje, con lo de todo el paso. La
+  línea la ve quien escribió el comentario (si es del equipo) y quien coordina el equipo o administra. Un
+  comentario hace una sola regla: después dice «Es una regla del equipo», para todos los que lo leen.
 - **De quién es:** del equipo, no del proyecto. Aparece en todos los pasos que hace ese equipo, en la tarjeta y en
   la herramienta, y sigue ahí en el libro siguiente.
 - **Desde cuándo vale:** de inmediato, para todo el equipo, con el nombre de quien la agregó.
@@ -253,13 +261,15 @@ que había agregado se queda.
   del equipo»). Un coordinador solo edita las de los equipos que coordina.
 - **Con palabras, igual que los avisos del paso:** una regla puede decir qué palabras de la fuente la piden
   («elder, elders»). Entonces se dice solo junto al versículo, la nota o el párrafo que las tenga, al escribirlo
-  y al revisarlo. Sin palabras, se dice una vez, con lo de todo el paso. Las palabras las pone quien coordina, en
-  «Organización»: al agregar una regla desde la herramienta solo se escribe la regla.
+  y al revisarlo. Sin palabras, se dice una vez, con lo de todo el paso. Las palabras se tocan al guardar una
+  regla desde un comentario, o las pone quien coordina, en «Organización»: al agregar una regla suelta desde la
+  herramienta solo se escribe la regla.
 - **Idiomas:** se muestra como se escribió. Si quien coordina la corrige con la app en otro idioma, queda dicha en
   los dos y cada persona la lee en el suyo.
 
 Se guardan en el repositorio del plan, un archivo por equipo (`reglas/<equipo>.json`). Una regla quitada no se
-borra del archivo: queda anotado quién la quitó.
+borra del archivo: queda anotado quién la quitó. La que salió de un comentario guarda de cuál (`from`); si se
+quita, ese comentario puede volver a hacer una.
 
 **Las reglas de cada recurso todavía no se exigen aquí.** Que el TPL conserve la forma del original, que el TPS
 diga el sentido de forma llana, que las ayudas usen palabras sencillas que cualquiera entienda: eso es trabajo de

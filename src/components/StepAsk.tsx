@@ -37,7 +37,9 @@ export function Hints({ lines, lead }: { lines: HintLine[]; lead?: string }) {
         {lines.map((line) => (
           <li key={line.id}>
             {line.text}
-            {line.by ? <small className="step-ask__by"> · @{line.by}</small> : null}
+            {/* The space stays outside: who said it goes to the next line whole, without taking the rule's last word. */}
+            {line.by ? " " : null}
+            {line.by ? <small className="step-ask__by">· @{line.by}</small> : null}
           </li>
         ))}
       </ul>

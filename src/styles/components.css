@@ -6907,7 +6907,7 @@ button.al-box--read { cursor: pointer; }
 .hub-used[data-unused="true"] { background: var(--surface-muted, #eef1f6); color: var(--text-muted); font-weight: 500; }
 .rv-checks { margin-top: 0.5rem; padding: 0.25rem 0.75rem; border-left: 3px solid var(--border); font-size: 0.875rem; }
 .step-ask__manage { font-size: 0.8125rem; color: var(--primary); text-decoration: underline; justify-self: start; }
-.step-ask__by { color: var(--text-muted); font-weight: 400; text-decoration: none; }
+.step-ask__by { color: var(--text-muted); font-weight: 400; text-decoration: none; white-space: nowrap; }
 .team-rules { display: grid; gap: 0.5rem; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9375rem; }
 .team-rules ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.375rem; }
 .team-rules li { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; justify-content: space-between; }
@@ -7623,6 +7623,17 @@ input.pf-name { font-size: 1.625rem; }
 .rv-comment__act { min-height: 32px; margin-left: auto; padding: 0 0.25rem; border: 0; background: none; color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; }
 .rv-comment__act:hover:not(:disabled) { text-decoration: underline; }
 .rv-comment__act:disabled { opacity: 0.5; cursor: default; }
+/* A comment kept as a rule of the team: the way to do it, and the mark that it was done. */
+.rv-comment__keep { min-height: 40px; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
+.rv-comment__rule { display: inline-flex; align-items: center; gap: 0.1875rem; margin-top: 0.25rem; font-size: 0.75rem; font-weight: 700; color: var(--accent-800); }
+.rule-from { display: grid; gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-strong); }
+.rule-from__field { display: grid; gap: 0.25rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+.rule-from__field textarea { font-size: 1rem; font-weight: 400; color: var(--text); }
+.rule-from__hint { font-size: 0.8125rem; line-height: 1.4; color: var(--text-muted); }
+.rule-from__words { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.rule-from__word { min-height: 40px; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; cursor: pointer; }
+.rule-from__word[aria-pressed="true"] { border-color: var(--primary); background: var(--accent-100); font-weight: 600; }
+.rule-from__acts { display: flex; justify-content: flex-end; gap: 0.5rem; }
 .chat-msg__done { font-weight: 700; color: var(--success-700); }
 .rv-composer { display: grid; gap: 0.375rem; }
 .rv-composer__row { display: flex; flex-wrap: wrap; gap: 0.375rem; }

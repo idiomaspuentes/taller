@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { isAppTeam, teamUsage } from "../src/domain/roles";
 import { itemChecks, stepWideChecks } from "../src/domain/stepChecks";
 import { setActiveScope } from "../src/domain/scope";
-import { activeRules, addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, ruleText, teamRulesPath } from "../src/domain/teamRules";
+import { activeRules, addRule, emptyTeamRules, normalizeTeamRules, pendingRules, reviewRule, ruleMadeFrom, ruleText, teamRulesPath } from "../src/domain/teamRules";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -103,6 +103,25 @@ test("un equipo está en uso cuando alguna tarea lo tiene, en un proyecto o en l
   assert.deepEqual(use.get("pm-traductores-tpl"), { tasks: 3, projects: ["", "Hageo"] });
   assert.deepEqual(use.get("pm-traductores-tps"), { tasks: 1, projects: [""] });
   assert.equal(use.get("pm-traductores-de-ayudas"), undefined, "sin tareas: se puede renombrar o quitar sin romper nada");
+});
+
+test("un comentario de una revisión se guarda como regla, con las palabras de la fuente que la piden, y una sola vez", () => {
+  // What a reviewer said about one verse, kept for every verse that says the same.
+  const said = { id: "r1", text: "Escribimos «Jacobo», no «Santiago».", by: "bea", at, coordinator: false, when: ["james"], from: "4821" };
+  const doc = addRule(emptyTeamRules("pm-traductores-tpl"), said);
+  assert.equal(ruleMadeFrom(doc, "4821")?.text, "Escribimos «Jacobo», no «Santiago».");
+  assert.equal(ruleMadeFrom(doc, "9999"), undefined);
+  assert.equal(ruleMadeFrom(null, "4821"), undefined);
+  // It is said at the verse that has the word, and nowhere else.
+  assert.deepEqual(itemChecks(activeRules(doc), "Jude, a servant of Jesus Christ and a brother of James").map((r) => r.id), ["r1"]);
+  assert.deepEqual(itemChecks(activeRules(doc), "May mercy and peace and love be multiplied to you."), []);
+  // The same comment does not make a second rule, however it is worded the second time.
+  assert.equal(addRule(doc, { ...said, id: "r2", text: "Jacobo, siempre." }), doc);
+  // Read back from its file it still says where it came from; taken out, the comment may make another.
+  assert.equal(normalizeTeamRules(JSON.parse(JSON.stringify(doc)), "pm-traductores-tpl").rules[0]!.from, "4821");
+  const removed = reviewRule(doc, "r1", "ana", { keep: false });
+  assert.equal(ruleMadeFrom(removed, "4821"), undefined);
+  assert.equal(activeRules(addRule(removed, { ...said, id: "r3" })).length, 1);
 });
 
 console.log(`\nverify-team-rules: ${passed} checks passed.`);

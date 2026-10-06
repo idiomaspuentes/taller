@@ -18,6 +18,8 @@ export type TeamRule = {
   texts?: Record<string, string>;
   /** Words of the source that call for it (see `domain/stepChecks`); without them it always shows. */
   when?: string[];
+  /** The comment of a review it was made from: said there too, and not made a second time from it. */
+  from?: string;
   /** The coordinator saw it and kept it. Until then it waits in their list (and counts all the same). */
   reviewedBy?: string;
   /** Removed: kept in the file so that it is known it was there. */
@@ -56,6 +58,7 @@ export function normalizeTeamRules(raw: unknown, team: string): TeamRulesDoc {
       ...(r.lang ? { lang: String(r.lang) } : {}),
       ...(r.texts && typeof r.texts === "object" && Object.keys(r.texts).length ? { texts: Object.fromEntries(Object.entries(r.texts).filter(([, v]) => typeof v === "string" && v.trim())) as Record<string, string> } : {}),
       ...(words(r.when).length ? { when: words(r.when) } : {}),
+      ...(r.from ? { from: String(r.from) } : {}),
       ...(r.reviewedBy ? { reviewedBy: String(r.reviewedBy) } : {}),
       ...(r.removedBy ? { removedBy: String(r.removedBy) } : {}),
     });
@@ -78,13 +81,22 @@ export function pendingRules(doc: TeamRulesDoc): TeamRule[] {
 }
 
 /**
- * Add a rule. One a coordinator adds needs nobody's review. The same sentence is not added twice.
+ * Add a rule. One a coordinator adds needs nobody's review. The same sentence is not added twice, and neither is a
+ * second rule made from the same comment (`from`).
  */
-export function addRule(doc: TeamRulesDoc, params: { id: string; text: string; by: string; at: string; coordinator: boolean; lang?: string; when?: string[] }): TeamRulesDoc {
+export function addRule(doc: TeamRulesDoc, params: { id: string; text: string; by: string; at: string; coordinator: boolean; lang?: string; when?: string[]; from?: string }): TeamRulesDoc {
   const text = clean(params.text);
-  if (!text || activeRules(doc).some((rule) => same(rule.text, text))) return doc;
+  if (!text || activeRules(doc).some((rule) => same(rule.text, text) || Boolean(params.from && rule.from === params.from))) return doc;
   const when = words(params.when);
-  return { ...doc, rules: [...doc.rules, { id: params.id, text, by: params.by, at: params.at, ...(params.lang ? { lang: params.lang } : {}), ...(when.length ? { when } : {}), ...(params.coordinator ? { reviewedBy: params.by } : {}) }] };
+  return {
+    ...doc,
+    rules: [...doc.rules, { id: params.id, text, by: params.by, at: params.at, ...(params.lang ? { lang: params.lang } : {}), ...(when.length ? { when } : {}), ...(params.from ? { from: params.from } : {}), ...(params.coordinator ? { reviewedBy: params.by } : {}) }],
+  };
+}
+
+/** The rule in force that was made from a comment, if any. */
+export function ruleMadeFrom(doc: TeamRulesDoc | null | undefined, from: string): TeamRule | undefined {
+  return doc && from ? activeRules(doc).find((rule) => rule.from === from) : undefined;
 }
 
 const clean = (text: string) => text.trim().replace(/\s+/g, " ").slice(0, 240);

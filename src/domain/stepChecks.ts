@@ -35,6 +35,30 @@ function readable(source: string): string {
     .replace(/(?:rc|https?):\/\/\S+/g, " ");
 }
 
+/**
+ * The words of a source that a rule may be said to be about, as the source writes them, each once and in its order:
+ * offered to touch to whoever turns a comment into a rule, so that nobody types a word of another language. The
+ * shortest are left out («a», «of», «the»): a rule about one of them would come up at every verse. A name of three
+ * letters stays («God», «Lot»).
+ */
+export function sourceWords(source: string, limit = 40): string[] {
+  const text = readable(source).replace(/\*\*|__|[{}]/g, "");
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const found of text.matchAll(/\p{L}[\p{L}'’-]*\p{L}/gu)) {
+    const word = found[0];
+    const before = text.slice(0, found.index).trimEnd();
+    // Capitalised in the middle of a sentence: a name, however short.
+    const name = /^\p{Lu}/u.test(word) && Boolean(before) && !/[.!?:“"(]$/.test(before);
+    const key = word.toLowerCase();
+    if ((word.length < 4 && !(name && word.length === 3)) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(word);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 export function checkApplies(check: Pick<StepCheck, "when">, source: string | null | undefined): boolean {
   const words = check.when ?? [];
   if (!words.length || source === null || source === undefined) return true;

@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { checkApplies, formatWhen, itemChecks, paragraphsFor, parseWhen, stepWideChecks } from "../src/domain/stepChecks";
+import { checkApplies, formatWhen, itemChecks, paragraphsFor, parseWhen, sourceWords, stepWideChecks } from "../src/domain/stepChecks";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -96,6 +96,16 @@ test("las direcciones de los enlaces de una nota no cuentan como texto: sus núm
   assert.equal(checkApplies({ when: ["#"] }, note), true, "«chapter 2» sí es texto");
   assert.equal(checkApplies({ when: ["#"] }, "A metaphor. (See: [[rc://en/ta/man/translate/figs-123person]])"), false);
   assert.equal(checkApplies({ when: ["man"] }, note), false, "«man» está en la dirección, no en la nota");
+});
+
+test("las palabras de una fuente se ofrecen para tocar: cada una una vez, sin las más cortas, con los nombres", () => {
+  assert.deepEqual(sourceWords("Jude, a servant of Jesus Christ and a brother of James, to the ones loved in God the Father"), ["Jude", "servant", "Jesus", "Christ", "brother", "James", "ones", "loved", "God", "Father"]);
+  assert.deepEqual(sourceWords("The elders of the city came. The elders said to Lot, {Come} out."), ["elders", "city", "came", "said", "Lot", "Come"], "«The» abre la oración: no es un nombre; «Lot» sí");
+  assert.deepEqual(sourceWords("See [[rc://*/ta/man/translate/figs-metaphor]] and **Beloved ones** here."), ["Beloved", "ones", "here"], "ni direcciones de enlaces ni marcas");
+  assert.equal(sourceWords("uno dos tres cuatro cinco seis siete ocho nueve diez once doce", 5).length, 5);
+  assert.deepEqual(sourceWords(""), []);
+  // What is offered is what a rule is then found by.
+  for (const word of sourceWords("a brother of James")) assert.equal(checkApplies({ when: [word.toLowerCase()] }, "and a brother of James, to the ones"), true, word);
 });
 
 console.log(`\nverify-step-checks: ${passed} checks passed.`);

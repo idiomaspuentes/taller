@@ -2591,5 +2591,12 @@
   "ab.wholeSentences": "Elegir frases enteras",
   "ab.fromFrame": "Elegir del cuadro",
   "sa.propose": "Agregar una regla del equipo",
-  "sa.mind": "Fíjate en esto"
+  "sa.mind": "Fíjate en esto",
+  "rv.asRule": "Guardar como regla del equipo",
+  "rv.isRule": "Es una regla del equipo",
+  "rv.ruleText": "La regla, como la leerá el equipo",
+  "rv.ruleWords": "Toca las palabras de la fuente que la piden: el equipo la verá junto a cada versículo que las tenga. Sin palabras, la verá siempre.",
+  "rv.ruleAlways": "El equipo la verá en todos sus pasos.",
+  "rv.ruleSave": "Guardar regla",
+  "rv.ruleSaved": "Regla guardada para el equipo."
 }

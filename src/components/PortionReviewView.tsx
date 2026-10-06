@@ -1,9 +1,10 @@
-import { Hints, StepAsk } from "./StepAsk";
+import { isOfTeam, Hints, StepAsk } from "./StepAsk";
 import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { itemChecks, paragraphsFor } from "../domain/stepChecks";
-import { activeRules, ruleText } from "../domain/teamRules";
-import { useTeamRules } from "../useTeamRules";
+import { activeRules, ruleMadeFrom, ruleText } from "../domain/teamRules";
+import { addRuleToTeam, useManagesTeamRules, useTeamRules } from "../useTeamRules";
+import { CommentAsRule } from "./CommentAsRule";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -100,7 +101,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [english, setEnglish] = useState<Record<string, string>>({});
   /** The team that does this task: its own rules that are about a word show on the items that have it. */
   const [teamName, setTeamName] = useState("");
+  /** The people the plan lists for that task: with the team's own, who may add a rule to it. */
+  const [teamMembers, setTeamMembers] = useState<string[]>([]);
   const teamRules = useTeamRules(teamName || undefined);
+  const managesRules = useManagesTeamRules(teamName || undefined);
+  /** The comment being turned into a rule of the team, and how saving it goes. */
+  const [ruling, setRuling] = useState<{ id: string; busy: boolean; failed: boolean } | null>(null);
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   /** An article in review, as the files it reads from (its title, the line under it, its body), each as its author left it. */
@@ -140,6 +146,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const taskSteps = board?.teams.find((task) => task.id === ctx.taskId)?.steps ?? [];
       setSteps(taskSteps);
       setTeamName(board?.teams.find((task) => task.id === ctx.taskId)?.orgTeamName ?? "");
+      setTeamMembers(board?.teams.find((task) => task.id === ctx.taskId)?.memberIds ?? []);
       const progressNow = parseTaskProgressMarker(nextIssue.body);
       setStepId((current) => current || (taskSteps.find((row) => stepNeedsOpenPortionPr(row) && !isStepDone(progressNow, row.id))?.id ?? ""));
       const linked = parsePortionPrMarker(nextIssue.body);
@@ -437,7 +444,22 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const notesOf = (verse: number) => notes.filter((note) => note.verse === verse);
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
 
-  const commentRow = (row: Comment) => (
+  // What a reviewer tells one person about one verse is often true of every verse that says the same: whoever said
+  // it (or coordinates the team) keeps it as a rule of the team, from the comment itself. It was a box to write a
+  // rule in, away from what had made anybody think of one.
+  const ofTeam = isOfTeam(session, { orgTeamName: teamName, memberIds: teamMembers });
+  const saveRule = async (row: Comment, text: string, words: string[]) => {
+    setRuling({ id: String(row.id), busy: true, failed: false });
+    try {
+      await addRuleToTeam(teamName, text, ctx?.issueNumber, words.length ? words : undefined, String(row.id));
+      setRuling(null);
+      announce(t("rv.ruleSaved"));
+    } catch {
+      setRuling({ id: String(row.id), busy: false, failed: true });
+    }
+  };
+  /** `source`: the source of what the comment is about, whose words a rule made from it may be said to be about. */
+  const commentRow = (row: Comment, source?: string | null) => (
     <li key={row.id} className="rv-comment" data-resolved={row.resolved ? "true" : undefined}>
       <p className="rv-comment__text">{row.text}</p>
       <p className="rv-comment__meta">
@@ -454,6 +476,17 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </button>
         ) : null}
       </p>
+      {ruleMadeFrom(teamRules, String(row.id)) ? (
+        <p className="rv-comment__rule">
+          <Check size={12} aria-hidden /> {t("rv.isRule")}
+        </p>
+      ) : ruling?.id === String(row.id) ? (
+        <CommentAsRule text={row.text} source={source} busy={ruling.busy} failed={ruling.failed} onSave={(text, words) => void saveRule(row, text, words)} onCancel={() => setRuling(null)} />
+      ) : teamName && ofTeam && (managesRules || row.by.toLowerCase() === me.toLowerCase()) ? (
+        <button type="button" className="rv-comment__keep" onClick={() => setRuling({ id: String(row.id), busy: false, failed: false })}>
+          {t("rv.asRule")}
+        </button>
+      ) : null}
     </li>
   );
 
@@ -611,7 +644,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             />
           </div>
         ) : null}
-        {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
+        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource))}</ul> : null}
         {commenting === item.key ? (
           <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(item.ref, text) }]} />
         ) : (
@@ -680,7 +713,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             <Hints lead={t("sa.mind")} lines={own.map((check) => ({ id: check.id, by: check.by, text: check.texts?.[language] ?? check.text }))} />
           </div>
         ) : null}
-        {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
+        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, source))}</ul> : null}
         {commenting === ref ? (
           <Composer focus placeholder={t("rv.commentPiece")} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text) }]} />
         ) : (
@@ -828,7 +861,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
               <section className="rv-general">
                 <h2 className="fam-panel__title">{t(article ? "rv.generalTitleArticle" : "rv.generalTitle")}</h2>
-                {general.length ? <ul className="rv-comments">{general.map(commentRow)}</ul> : <p className="pe-hint">{t("rv.noGeneral")}</p>}
+                {general.length ? <ul className="rv-comments">{general.map((row) => commentRow(row))}</ul> : <p className="pe-hint">{t("rv.noGeneral")}</p>}
                 <Composer
                   placeholder={t("rv.generalPlaceholder")}
                   busy={acting}
