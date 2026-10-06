@@ -348,6 +348,20 @@ await test("una tarea sin equipo que todavía espera a otra no se ofrece: aparec
   assert.equal(free.reviews.some((c) => c.issue.number === waits.number), true);
 });
 
+await test("lo libre se ofrece desde el principio del libro: por pasaje, y en un pasaje por el orden de las tareas del plan", () => {
+  // Made in the order a plan makes them, which is not the order they are read in.
+  const later = issue({ task: "tpl", title: "NEH 2:1–8 · Traducir TPL" });
+  const notes = issue({ task: "simple", title: "NEH 1:1–8 · Traducir Notas" });
+  const second = issue({ task: "tpl", title: "NEH 1:9–11 · Traducir TPL" });
+  const first = issue({ task: "tpl", title: "NEH 1:1–8 · Traducir TPL" });
+  const tenth = issue({ task: "tpl", title: "NEH 10 · Traducir TPL" });
+  const article = issue({ task: "simple", title: "NEH · Traducir Notas · gracia" });
+  const free = boardFor([later, notes, second, first, tenth, article]).free.map((card) => card.issue.number);
+  // Chapter 2 before chapter 10; the article, which is of no passage, after the passages.
+  assert.deepEqual(free, [first, notes, second, later, tenth, article].map((row) => row.number));
+  assert.equal(nextCard(boardFor([later, notes, second, first, tenth, article]))?.issue.number, first.number, "lo primero que se ofrece es el principio del libro");
+});
+
 await test("al terminar un paso se sigue con el siguiente si es de la misma persona; la revisión de otros no se abre", () => {
   // Studied, then drafted by whoever has the subtarea, then reviewed by somebody else and confirmed by the author.
   const steps = [

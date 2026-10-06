@@ -6729,6 +6729,20 @@ button.al-box--read { cursor: pointer; }
   flex-direction: column;
   gap: 12px;
 }
+/* The rest of a long group, on request. */
+.task-board__rest {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.task-board__rest:hover { background: var(--surface-muted); }
 
 .task-card {
   display: flex;

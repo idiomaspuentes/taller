@@ -2579,5 +2579,6 @@
   "he.pendingTitleNotesOne": "Queda {n} nota sin traducir",
   "he.pendingTitleNotesMany": "Quedan {n} notas sin traducir",
   "he.pendingTitleQuestionsOne": "Queda {n} pregunta sin traducir",
-  "he.pendingTitleQuestionsMany": "Quedan {n} preguntas sin traducir"
+  "he.pendingTitleQuestionsMany": "Quedan {n} preguntas sin traducir",
+  "tb.showRest": "Ver {n} más"
 }

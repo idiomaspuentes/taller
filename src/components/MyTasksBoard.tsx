@@ -22,6 +22,12 @@ const GROUP_TITLE: Record<BoardGroup, MessageKey> = {
 /** From this many cards the search box shows up; below it there is nothing to search. */
 const SEARCH_FROM = 12;
 
+/**
+ * Of what is not the person's own work (what can be taken, what waits, what is done) this many cards are shown,
+ * and the rest on request: opened whole, the work a team could take was thirteen screens of cards on a phone.
+ */
+const FIRST_SHOWN = 6;
+
 export type CardHandlers = {
   onPrimary: (card: BoardCard) => void;
   onOpenThread: (card: BoardCard) => (() => void) | undefined;
@@ -74,6 +80,9 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
     return Object.fromEntries(GROUP_ORDER.map((g) => [g, board[g].filter(match)])) as Board;
   }, [board, needle, language]);
 
+  /** The groups shown whole because the person asked for the rest of their cards. */
+  const [whole, setWhole] = useState<Set<BoardGroup>>(() => new Set());
+
   const toggle = (g: BoardGroup) =>
     setOpen((prev) => {
       const next = new Set(prev);
@@ -89,6 +98,9 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
         const cards = filtered[group];
         if (!cards.length) return null;
         const isOpen = open.has(group) || Boolean(needle);
+        // Two or three cards more are not worth a button to see them.
+        const few = !OPEN_GROUPS.includes(group) && !needle && !whole.has(group) && cards.length > FIRST_SHOWN + 2;
+        const shown = few ? cards.slice(0, FIRST_SHOWN) : cards;
         return (
           <section key={group} className="task-board__group" data-group={group}>
             <button type="button" className="task-board__head" aria-expanded={isOpen} onClick={() => toggle(group)}>
@@ -98,7 +110,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
             </button>
             {isOpen ? (
               <div className="task-board__cards">
-                {cards.map((card) => (
+                {shown.map((card) => (
                   <TaskCard
                     key={card.issue.number}
                     card={card}
@@ -119,6 +131,11 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
                     onToggleStep={(step) => handlers.onToggleStep(card, step)}
                   />
                 ))}
+                {few ? (
+                  <button type="button" className="task-board__rest" onClick={() => setWhole((prev) => new Set(prev).add(group))}>
+                    {t("tb.showRest").replace("{n}", String(cards.length - FIRST_SHOWN))}
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </section>

@@ -56,6 +56,7 @@ Menú `···`: Comentar, Cerrar tarea, Liberar (`canUnassignIssue`).
 2. **Lista plana de tarjetas, agrupada por lo que toca hacer**, en este orden y con lo urgente abierto y lo demás plegado con su número:
    `Para decidir` → `En curso` → `Para empezar` → `Revisiones que puedes tomar` → `Libres para tu equipo` → `En espera` → `Terminadas (últimos 7 días)`.
    Dentro de cada grupo: primero lo que tiene mensajes sin leer, luego lo de movimiento más reciente (`attentionRank`).
+   Lo que no es de la persona todavía (`Libres para tu equipo`, `Del siguiente libro`, `En espera`) va **desde el principio del libro**: por pasaje y, dentro de un pasaje, en el orden de las tareas del plan; los artículos, que no son de un pasaje, al final (`byPlace`). Por movimiento, el trabajo que nadie había tocado salía en el orden en que se creó, al revés: el primer pasaje del libro era la última de 49 tarjetas. De esos grupos y de `Terminadas` se muestran las **seis primeras** tarjetas y un botón «Ver N más»: abierto entero, lo libre de un libro eran trece pantallas en el teléfono.
 3. **Una tarjeta = una tarea, un botón.** El botón dice lo que va a pasar:
    - **Empezar**: toma la tarea si está libre y abre la herramienta (la semántica de `begin`, que hoy solo tiene «Ahora»). Nunca más un «Empezar» que solo cambia una etiqueta.
    - **Seguir**: abre la herramienta del **siguiente paso pendiente** que yo pueda hacer. Si el siguiente paso es una revisión que hacen otras personas, no hay botón y la tarjeta lo dice: «Esperando la revisión de otras personas».

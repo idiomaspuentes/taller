@@ -4,6 +4,7 @@ import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned, issueIsInProgress } from "../dcs/issues";
 import { attentionRank, rowActivity, type RowActivity } from "./attention";
 import { audienceOf } from "./audience";
+import { BOOKS } from "./books";
 import { isDecisionIssue } from "./decisionAccess";
 import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
@@ -259,9 +260,38 @@ export function buildBoard(input: BoardInput): Board {
 
   for (const group of GROUP_ORDER) {
     if (group === "done") board.done.sort((a, b) => Date.parse(b.issue.closed_at ?? b.issue.updated_at ?? "") - Date.parse(a.issue.closed_at ?? a.issue.updated_at ?? ""));
+    else if (group === "free" || group === "later" || group === "waiting") board[group].sort(byPlace);
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
   }
   return board;
+}
+
+/** Chapter and verse a subtarea starts at, from its place (`1:3–4`, `2`); what is not of a passage comes after them all. */
+function startOf(place: string): [number, number] {
+  const at = /^(\d+)(?::(\d+))?/.exec(place.trim());
+  return at ? [Number(at[1]), Number(at[2] ?? 0)] : [Number.MAX_SAFE_INTEGER, 0];
+}
+
+/**
+ * Work nobody has taken (and work that waits) is listed from the beginning of the book: by passage, and the tasks of
+ * one passage in the order the plan lists them; the articles, which are of no passage, after the passages. Sorted by its latest
+ * activity, as the rest is, work nobody had touched came out in the order it was created in, backwards: the first
+ * passage of a book was the last of 49 cards, and nothing said where to start. Something said about one of them
+ * to this person still comes first.
+ */
+function byPlace(a: BoardCard, b: BoardCard): number {
+  if (a.activity.needsAttention !== b.activity.needsAttention) return a.activity.needsAttention ? -1 : 1;
+  const bookAt = (card: BoardCard) => {
+    const at = BOOKS.findIndex((row) => row.code === card.book.toUpperCase());
+    return at < 0 ? BOOKS.length : at;
+  };
+  const taskAt = (card: BoardCard) => {
+    const at = card.bucket && card.task ? card.bucket.board.teams.findIndex((task) => task.id === card.task!.id) : -1;
+    return at < 0 ? Number.MAX_SAFE_INTEGER : at;
+  };
+  const [chapterA, verseA] = startOf(a.place);
+  const [chapterB, verseB] = startOf(b.place);
+  return bookAt(a) - bookAt(b) || chapterA - chapterB || verseA - verseB || taskAt(a) - taskAt(b) || a.issue.number - b.issue.number;
 }
 
 /** When a project was started, to tell which of two books came first. Unknown = no order can be told. */
