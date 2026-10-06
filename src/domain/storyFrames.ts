@@ -187,3 +187,158 @@ export function readMarks(draft: string, words: string[]): Pick<Marks, "parts" |
   // Written again from what was read, it has to be what the row holds: otherwise somebody has had a hand in it.
   return parts.length && ["…", "..."].some((sign) => marksText(words, read, sign) === body) ? read : null;
 }
+
+// ---------------------------------------------------------------- what the app proposes
+
+/**
+ * Measured on the 944 examples of the source's articles (October 2026): an example is one or two whole sentences of
+ * its frame, lightly retouched (a name where the frame says «he»). A piece cut inside a sentence is about one in a
+ * hundred, and three examples in all leave something out with dots. Nine frames in ten are cut into as many
+ * sentences in the team's language as in the source's. So the app can find which sentences of the source frame an
+ * example says, take the same ones from the team's frame, and propose them: whoever translates reads the proposal
+ * beside the example and says it is right, instead of marking it word by word. Against 499 examples a team had
+ * written by hand the proposal was the same sentence in 94 of 100.
+ */
+
+const SENTENCE_RE = /[^.!?]+(?:[.!?]+["'”’»)\]]*|$)/g;
+
+/** A frame as its sentences, each as the frame writes it. */
+export function frameSentences(frame: string): string[] {
+  return (frame.replace(/\s+/g, " ").trim().match(SENTENCE_RE) ?? []).map((sentence) => sentence.trim()).filter(Boolean);
+}
+
+/** Sentences of a frame that follow one another: the places of the first and of the last. */
+export type SentenceRun = [first: number, last: number];
+
+const unaccented = (text: string) => text.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase();
+const EDGE_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
+
+/** The words of a text as they are compared: no marks, no accents, no capitals. */
+function comparable(text: string): string[] {
+  return unaccented(text.replace(/\*\*|__/g, "")).split(/\s+/).map((word) => word.replace(EDGE_RE, "")).filter(Boolean);
+}
+
+/** The share of the words of `a` that `b` has too, each counted once. */
+function shared(a: string[], b: string[]): number {
+  const have = new Map<string, number>();
+  for (const word of b) have.set(word, (have.get(word) ?? 0) + 1);
+  let n = 0;
+  for (const word of a) {
+    const left = have.get(word) ?? 0;
+    if (!left) continue;
+    n++;
+    have.set(word, left - 1);
+  }
+  return a.length ? n / a.length : 0;
+}
+
+/**
+ * Three words of four in common, counted both ways: the example has little the sentences do not say, and they have
+ * little it leaves out. Lower, and a sentence that only shares its commonest words is proposed.
+ */
+const NEAR = 0.75;
+
+/** What an example says: its text without the number of its frame and without marks. */
+export function exampleText(sourcePiece: string): string {
+  const lead = LEAD_RE.exec(sourcePiece);
+  return (lead ? sourcePiece.slice(lead[0].length) : sourcePiece).replace(/\*\*|__/g, "").replace(/\s+/g, " ").trim();
+}
+
+/** The run of sentences of a frame that says most nearly what a text says; `null` when none says it nearly enough. */
+export function nearestSentences(text: string, frame: string): SentenceRun | null {
+  const said = comparable(text);
+  const all = frameSentences(frame).map(comparable);
+  if (!said.length) return null;
+  let best: { run: SentenceRun; score: number; size: number } | null = null;
+  for (let first = 0; first < all.length; first++) {
+    let span: string[] = [];
+    for (let last = first; last < all.length; last++) {
+      span = span.concat(all[last]!);
+      const score = Math.min(shared(said, span), shared(span, said));
+      // Of two runs that say it as nearly, the shorter.
+      if (!best || score > best.score + 1e-9 || (Math.abs(score - best.score) <= 1e-9 && span.length < best.size)) best = { run: [first, last], score, size: span.length };
+    }
+  }
+  return best && best.score >= NEAR ? best.run : null;
+}
+
+/**
+ * The sentences of the team's frame to propose for an example: those in the place of the sentences of the source
+ * frame that the example says. `null` when the example is not near enough to any, or when the two frames are not
+ * cut into as many sentences (a place then says nothing): the person chooses.
+ */
+export function proposedSentences(sourcePiece: string, sourceFrame: string, teamFrame: string): SentenceRun | null {
+  if (!sourceFrame.trim() || !teamFrame.trim()) return null;
+  const run = nearestSentences(exampleText(sourcePiece), sourceFrame);
+  if (!run) return null;
+  const theirs = frameSentences(sourceFrame).length;
+  const ours = frameSentences(teamFrame).length;
+  if (theirs === ours) return run;
+  // An example that is its whole frame is the whole frame, however each language cuts it into sentences.
+  return run[0] === 0 && run[1] === theirs - 1 && ours > 0 ? [0, ours - 1] : null;
+}
+
+/** The terms an article is about, from its title («llamar, llamado»): what its examples show in bold. */
+export function termsOf(articleMd: string): string[] {
+  const title = /^#\s+(.+)$/m.exec(articleMd)?.[1] ?? "";
+  return title.split(",").map((term) => term.replace(/\*\*|__/g, "").trim()).filter(Boolean);
+}
+
+/**
+ * The article's own word in bold where a text says it, as the source's examples have it (99 of 100 do). A term of
+ * several words is looked for as it is; a term of one word, in any of its forms that begin as it does («ángel»,
+ * «ángeles»), which is how nine in ten of the words a team had put in bold by hand were found. A short term is
+ * only itself: «fe» is not the beginning of «feliz». What it misses (a verb that changes its stem) is put in bold
+ * by hand.
+ */
+export function boldTerms(text: string, terms: string[]): string {
+  const tokens = text.split(/(\s+)/);
+  const words = tokens.map((token, at) => ({ token, at })).filter(({ token }) => /\S/.test(token));
+  const bare = words.map(({ token }) => unaccented(token).replace(EDGE_RE, ""));
+  const bold = new Array<boolean>(words.length).fill(false);
+  for (const term of terms) {
+    const parts = comparable(term);
+    if (!parts.length) continue;
+    if (parts.length > 1) {
+      for (let at = 0; at + parts.length <= bare.length; at++) if (parts.every((part, n) => bare[at + n] === part)) parts.forEach((_, n) => (bold[at + n] = true));
+      continue;
+    }
+    const word = parts[0]!;
+    const stem = word.length < 4 ? null : word.slice(0, Math.max(4, Math.ceil(word.length * 0.5)));
+    bare.forEach((mine, at) => {
+      if (mine && (stem ? mine.startsWith(stem) : mine === word)) bold[at] = true;
+    });
+  }
+  if (!bold.some(Boolean)) return text;
+  const out = [...tokens];
+  words.forEach(({ token, at }, n) => {
+    if (!bold[n]) return;
+    const [, before = "", core = "", after = ""] = /^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u.exec(token) ?? [];
+    // Words in bold that follow one another are one stretch of bold, the space between them inside it.
+    out[at] = `${before}${bold[n - 1] ? "" : "**"}${core}${bold[n + 1] ? "" : "**"}${after}`;
+  });
+  return out.join("");
+}
+
+/** Sentences of the team's frame as the text of an example, in the order of the frame, the article's word in bold. */
+export function sentencesText(frame: string, picked: number[], terms: string[] = []): string {
+  const all = frameSentences(frame);
+  const text = [...new Set(picked)].sort((a, b) => a - b).map((at) => all[at]).filter(Boolean).join(" ");
+  return boldTerms(text, terms);
+}
+
+/**
+ * What a row holds, when it holds the number of the frame and whole sentences of it: which ones. `null` when the row
+ * is empty or holds anything else (a piece of a sentence, something a person wrote).
+ */
+export function readSentences(draft: string, frame: string): number[] | null {
+  let rest = exampleText(draft);
+  if (!rest) return null;
+  const picked: number[] = [];
+  frameSentences(frame).forEach((sentence, at) => {
+    if (!rest.startsWith(sentence)) return;
+    picked.push(at);
+    rest = rest.slice(sentence.length).trimStart();
+  });
+  return picked.length && !rest ? picked : null;
+}

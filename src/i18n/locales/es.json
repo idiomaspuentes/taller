@@ -2583,5 +2583,12 @@
   "tb.showRest": "Ver {n} más",
   "tb.stepUntaken": "Nadie ha tomado «{step}» todavía.",
   "ab.result": "Tu traducción",
-  "ab.byHand": "Escribir a mano"
+  "ab.byHand": "Escribir a mano",
+  "ab.proposal": "Así lo dice la historia del equipo",
+  "ab.proposalOk": "Está bien",
+  "ab.change": "Cambiar",
+  "ab.sentencesHint": "Toca la frase que dice lo mismo que el ejemplo. Puedes tocar más de una.",
+  "ab.partOnly": "Marcar solo una parte",
+  "ab.wholeSentences": "Elegir frases enteras",
+  "ab.fromFrame": "Elegir del cuadro"
 }

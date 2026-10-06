@@ -329,31 +329,40 @@ escritas, con una nota que lo dice; no se abren, y «Siguiente» las pasa de lar
 que se abre el artículo, a partir de la fuente de hoy, y se guardan con él. Para un idioma del que la app no
 tiene los nombres de los libros no escribe nada, y esas líneas se traducen a mano como las demás.
 
-**Los ejemplos de las historias bíblicas se traducen marcando partes del cuadro, sin escribir.** Cada ejemplo
-(«**[1:1](rc://en/tn/help/obs/01/01)** **God** created the universe…») es un trozo de un cuadro, recortado y
-retocado a mano, muchas veces en mitad de una frase: no hay forma de escribirlo solo a partir de lo que el equipo
-ya tiene. Al abrir el ejemplo se ve su fuente en inglés (que se queda a la vista mientras se recorre el cuadro) y,
-debajo, **el cuadro completo tal como el equipo lo tradujo** en sus historias (`{idioma}_obs`, junto a sus otros
-recursos). Quien traduce marca en él lo que dice el ejemplo:
+**En los ejemplos de las historias bíblicas la app propone y la persona confirma.** Cada ejemplo
+(«**[5:8](rc://en/tn/help/obs/05/08)** …laid him on an **altar**.») sale de un cuadro de una historia que el equipo
+ya tradujo (`{idioma}_obs`, junto a sus otros recursos). Al abrirlo se ve el ejemplo en inglés y, debajo, bajo
+«Así lo dice la historia del equipo», la propuesta: las frases del cuadro del equipo que están en el lugar de las
+que dice el ejemplo en el cuadro de la fuente, con la palabra del artículo en negrita. «Está bien» la escribe y
+pasa al siguiente. Nada se escribe solo: hasta que alguien pulsa, el ejemplo sigue sin traducir.
 
-- **Dos toques hacen una parte:** su primera palabra y su última, en el orden que sea. Para una sola palabra se
-  toca dos veces la misma. Lo marcado queda escrito debajo, bajo «Tu traducción», detrás del número del cuadro.
-- **Otra parte, otros dos toques.** No hay nada que activar. Las partes se leen seguidas («Dios» + «creó el
-  universo…» da «Dios creó el universo…», sin escribir quién lo creó).
-- **Puntos suspensivos solo si el ejemplo los trae** («God … the universe … in six days»): entonces se ponen entre
-  las partes, escritos como en la fuente. «Poner … entre las partes» lo cambia.
-- **Tocar una parte ya hecha la quita.** «Quitar todo» deja la caja vacía.
-- **Flechas para afinar:** el principio y el final de la última parte se mueven una palabra cada vez. Son para las
-  palabras cortas («y», «el») a las que el dedo no acierta.
+- **«Cambiar»** muestra el cuadro frase por frase, cada una del alto de un dedo: se toca la que dice lo mismo
+  que el ejemplo (o más de una) y queda escrita. Es también lo que se ve de entrada cuando la app no pudo
+  proponer.
+- **«Marcar solo una parte»**, dentro de «Cambiar», es el marcado palabra por palabra: dos toques hacen una
+  parte (su primera palabra y su última), las flechas mueven un extremo una palabra, y los puntos suspensivos se
+  ponen solo si el ejemplo los trae. Es para el ejemplo que es un trozo de una frase.
+- **«Escribir a mano»** abre la caja de texto, con el cuadro a la vista para leer de él.
+- Un ejemplo ya traducido se ve como texto, con «Cambiar» y «Siguiente».
 
-Pensado para el teléfono: el ejemplo se abre sin levantar el teclado, no hay que mantener pulsado ni arrastrar, y
-los botones miden lo que un dedo. **No hay caja de texto a la vista:** como aquí no hace falta escribir, lo marcado
-se lee como texto y debajo quedan solo «Escribir a mano» y «Siguiente». «Escribir a mano» abre la caja, con lo que
-haya, para quien prefiera escribir el ejemplo o retocarlo. Antes la caja estaba siempre, con «Copiar el original»
-y las herramientas de negrita y enlace: eran media docena de cosas más en una pantalla que ya tiene el cuadro y
-sus flechas. Lo que una persona escribió no se pisa: si ya hay texto propio, lo marcado espera y un botón
-(«Cambiar la traducción por lo marcado») lo pone en su lugar. Si el equipo no tiene esa historia, se ve solo la fuente y se traduce como cualquier párrafo.
-Estos ejemplos cuentan como párrafos por traducir.
+**Por qué así.** Se midieron los 944 ejemplos que tienen los artículos de la fuente (octubre de 2026). Un ejemplo
+es casi siempre una o dos frases enteras de su cuadro, con algún retoque (un nombre donde el cuadro dice «él»);
+un trozo cortado dentro de una frase es cerca de uno de cada cien, y solo tres dejan algo fuera con puntos
+suspensivos. Nueve de cada diez cuadros se parten en las mismas frases en español que en inglés, así que la
+frase se puede llevar por su lugar. La app propone en 586 de los 944 (62 %); comparada con 499 ejemplos que el
+equipo había escrito a mano, la propuesta era la misma frase en 94 de cada 100. No propone cuando el ejemplo se
+aleja de su cuadro (se escribió para una redacción anterior de la historia) o cuando los dos cuadros no se parten
+igual, salvo que el ejemplo sea el cuadro entero.
+
+**La negrita.** Casi todos los ejemplos llevan en negrita la palabra del artículo. La app la toma del título del
+artículo en el idioma del equipo («ángel, arcángel») y la pone donde el texto la dice, también en sus formas
+(«ángeles»); en los ejemplos que el equipo ya tenía coincide con su negrita en tres de cada cuatro. Un verbo que
+cambia de raíz («decir», «dijo») se le escapa, y se pone a mano. Por eso conviene traducir primero el título.
+
+Las tres primeras versiones de esta pantalla abrían con el marcado palabra por palabra, hecho para trozos y
+puntos suspensivos que casi no existen; era la pantalla con más cosas de la app. Lo que una persona escribió no se
+pisa sin que lo pida: para cambiarlo hay que pulsar «Cambiar». Si el equipo no tiene esa historia, se ve solo la
+fuente y se traduce como cualquier párrafo. Estos ejemplos cuentan como párrafos por traducir.
 
 En una lista de ejemplos o de referencias, cada renglón del archivo del equipo se pone junto al de la fuente
 que apunta al mismo pasaje (por su enlace, o por el número del cuadro con que empieza): si falta uno, los demás

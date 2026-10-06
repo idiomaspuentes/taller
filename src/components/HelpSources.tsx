@@ -139,9 +139,11 @@ export type SourceHelp = { text: string; secondary?: string };
  * Each help as the source package has it (the English note, question or article being translated), by the id of
  * the item in hand. A table file is read once for all its rows; an article, each from its own file.
  */
-export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunchContext | null, target: HelpsTarget | null, items: HelpsDraftItem[]): { helps: Record<string, SourceHelp>; lang: string; loaded: boolean } {
+export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunchContext | null, target: HelpsTarget | null, items: HelpsDraftItem[]): { helps: Record<string, SourceHelp>; lang: string; owner: string; loaded: boolean } {
   const [helps, setHelps] = useState<Record<string, SourceHelp>>({});
   const [lang, setLang] = useState("");
+  /** Whose package it is: what else of it a screen reads (its Bible stories) is beside these helps. */
+  const [owner, setOwner] = useState("");
   /** The paths the source was last read for: until they are the ones in hand, it is still being read. */
   const [readFor, setReadFor] = useState<string | null>(null);
   const paths = items.map((item) => item.filepath).join("|");
@@ -151,7 +153,10 @@ export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunch
     void (async () => {
       const board = await loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg).catch(() => null);
       const pkg = resolveSourcePackage(board?.settings);
-      if (alive) setLang(sourcePackageLang(pkg));
+      if (alive) {
+        setLang(sourcePackageLang(pkg));
+        setOwner(pkg.owner);
+      }
       const out: Record<string, SourceHelp> = {};
       if (target.kind === "tsv") {
         const questions = target.resource === "preguntas";
@@ -180,5 +185,5 @@ export function useSourceHelps(session: GtSession | undefined, ctx: SolverLaunch
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.token, session?.host, ctx?.projectId, target?.resource, target?.kind, paths]);
-  return { helps, lang, loaded: readFor === paths };
+  return { helps, lang, owner, loaded: readFor === paths };
 }

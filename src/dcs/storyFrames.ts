@@ -10,6 +10,11 @@ export function teamStoriesRepo(ctx: Pick<SolverLaunchContext, "lang" | "content
   return { owner: ctx.contentOrg.trim(), repo: `${base}_obs` };
 }
 
+/** Where the source package keeps the same stories: beside its notes (`en_tn` → `en_obs`). */
+export function sourceStoriesRepo(owner: string, lang: string): { owner: string; repo: string } {
+  return { owner: owner.trim(), repo: `${lang.trim().toLowerCase()}_obs` };
+}
+
 /** A story is read once: an article quotes several frames of the same one. */
 const read = new Map<string, Promise<string[]>>();
 

@@ -12,7 +12,7 @@ import { answerTextId, helpTexts, helpsLeft, type HelpText } from "../src/domain
 import type { HelpsDraftItem } from "../src/domain/helpsDraft";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
 import { isPassageList, localPassages } from "../src/domain/passageLinks";
-import { dotsOf, frameWords, marksText, nudgeMarks, pickedText, readMarks, storiesIn, storyExample, storyFrames, storyPath, storyRefOf, touchMarks, type Marks } from "../src/domain/storyFrames";
+import { boldTerms, dotsOf, frameSentences, frameWords, marksText, nearestSentences, nudgeMarks, pickedText, proposedSentences, readMarks, readSentences, sentencesText, storiesIn, storyExample, storyFrames, storyPath, storyRefOf, termsOf, touchMarks, type Marks } from "../src/domain/storyFrames";
 import { parseRefComment, refComment } from "../src/domain/reviewItems";
 
 let passed = 0;
@@ -398,6 +398,86 @@ test("un párrafo se nombra por su artículo y su lugar en la fuente, y el comen
   for (const ref of [pieceRef("translate/figs-metaphor/01.md", 4), pieceRef("translate/figs-metaphor/title.md", 0), pieceRef("bible/kt/grace.md", 2)]) {
     assert.deepEqual(parseRefComment(refComment("jud", ref, "Falta un acento.")), { ref, text: "Falta un acento." }, ref);
   }
+});
+
+// ---------------------------------------------------------------- what the app proposes for an example of a story
+
+/** Frame 5:8 as the source has it and as a team has it (Door43, October 2026), and the example an article takes from it. */
+const ALTAR_EN = "When they reached the place of sacrifice, Abraham tied up his son Isaac and laid him on an altar. He was about to kill his son when God said, “Stop! Do not hurt the boy! Now I know that you fear me because you did not keep your only son from me.”";
+const ALTAR_ES = "Cuando llegaron al lugar del sacrificio, Abraham ató a su hijo Isaac y lo puso en el altar. Estaba por matar a su hijo cuando Dios dijo: “¡Detente! ¡No lastimes al chico! Ahora sé que me temes porque no me negaste a tu único hijo”.";
+const ALTAR_PIECE = "*   **[5:8](rc://en/tn/help/obs/05/08)** When they reached the place of sacrifice, Abraham tied up his son Isaac and laid him on an **altar**.";
+const ALL = (run: [number, number]) => Array.from({ length: run[1] - run[0] + 1 }, (_, n) => run[0] + n);
+
+test("un cuadro se parte en sus frases, cada una como el cuadro la escribe, con sus comillas", () => {
+  const es = frameSentences(ALTAR_ES);
+  assert.deepEqual(es, [
+    "Cuando llegaron al lugar del sacrificio, Abraham ató a su hijo Isaac y lo puso en el altar.",
+    "Estaba por matar a su hijo cuando Dios dijo: “¡Detente!",
+    "¡No lastimes al chico!",
+    "Ahora sé que me temes porque no me negaste a tu único hijo”.",
+  ]);
+  assert.equal(frameSentences(ALTAR_EN).length, es.length, "las mismas frases en los dos idiomas");
+  assert.deepEqual(frameSentences("Una sola frase sin punto"), ["Una sola frase sin punto"]);
+  assert.deepEqual(frameSentences("  "), []);
+});
+
+test("la app propone las frases del cuadro del equipo que están donde las del ejemplo, con la palabra del artículo en negrita", () => {
+  const run = proposedSentences(ALTAR_PIECE, ALTAR_EN, ALTAR_ES)!;
+  assert.deepEqual(run, [0, 0]);
+  assert.equal(
+    storyExample(ALTAR_PIECE, sentencesText(ALTAR_ES, ALL(run), ["altar"])),
+    "*   **[5:8](rc://*/tn/help/obs/05/08)** Cuando llegaron al lugar del sacrificio, Abraham ató a su hijo Isaac y lo puso en el **altar**.",
+  );
+  // The second sentence of a frame, a name in the plural: «ángel» in the title, «ángeles» in the story.
+  const piece = "* **[25:8](rc://en/tn/help/obs/25/08)** Then **angels** came and took care of Jesus.";
+  const en = "Jesus did not give in to Satan’s temptations, so Satan left him. Then angels came and took care of Jesus.";
+  const es = "Jesús no cedió a las tentaciones de Satanás, por lo que este lo dejó. Entonces vinieron los ángeles y cuidaron de Jesús.";
+  assert.deepEqual(proposedSentences(piece, en, es), [1, 1]);
+  assert.equal(sentencesText(es, [1], termsOf("# ángel, arcángel\n\n## Definición")), "Entonces vinieron los **ángeles** y cuidaron de Jesús.");
+  // An example of two sentences is two sentences.
+  assert.deepEqual(nearestSentences("Jesus did not give in to Satan’s temptations, so Satan left him. Then angels came and took care of Jesus.", en), [0, 1]);
+});
+
+test("un ejemplo que se aleja de su cuadro no se propone, ni uno de un cuadro que el equipo no tiene", () => {
+  // The example was written for an older wording of the story: half its sentence is other words.
+  const piece = "* **[4:2](rc://en/tn/help/obs/04/02)** They were very **proud**, and they did not care about what God said.";
+  const en = "They were very proud, and they did not want to obey God’s commands about how they should live. They even began building a tall tower that would reach heaven.";
+  const es = "Eran muy orgullosos y no quisieron obedecer los mandamientos de Dios acerca de cómo debían vivir. Incluso comenzaron a construir una torre alta que alcanzaría el cielo.";
+  assert.equal(proposedSentences(piece, en, es), null);
+  assert.equal(proposedSentences(ALTAR_PIECE, ALTAR_EN, ""), null);
+  assert.equal(proposedSentences(ALTAR_PIECE, "", ALTAR_ES), null);
+});
+
+test("si los dos cuadros no se parten en las mismas frases, el lugar no dice nada: solo se propone el cuadro entero", () => {
+  const en = "The king went out. The people followed him.";
+  const es = "El rey salió y el pueblo lo siguió.";
+  assert.equal(proposedSentences("* **[9:1](rc://en/tn/help/obs/09/01)** The people followed him.", en, es), null);
+  assert.deepEqual(proposedSentences("* **[9:1](rc://en/tn/help/obs/09/01)** The king went out. The people followed him.", en, es), [0, 0]);
+});
+
+test("la palabra del artículo va en negrita donde el texto la dice, en sus formas, sin tocar lo que solo empieza igual", () => {
+  assert.deepEqual(termsOf("# promesa, prometer, prometió\n\n## Definición\n\ntexto"), ["promesa", "prometer", "prometió"]);
+  assert.deepEqual(termsOf("sin título"), []);
+  // A term of several words is looked for as it is, and is one stretch of bold.
+  assert.equal(boldTerms("Jesús habló del reino de Dios a todos.", ["reino de Dios", "reino de los cielos"]), "Jesús habló del **reino de Dios** a todos.");
+  // The marks around a word stay outside the bold.
+  assert.equal(boldTerms("“Dios, sálvanos”.", ["Dios"]), "“**Dios**, sálvanos”.");
+  // A short term is only itself.
+  assert.equal(boldTerms("La fe hace feliz.", ["fe"]), "La **fe** hace feliz.");
+  assert.equal(boldTerms("Bendeciré a los que te bendigan.", ["bendecir", "bendición"]), "**Bendeciré** a los que te **bendigan**.");
+  assert.equal(boldTerms("Jesús dijo la verdad.", ["decir"]), "Jesús dijo la verdad.", "un verbo que cambia de raíz se le escapa: se pone a mano");
+  assert.equal(boldTerms("Nada que marcar aquí.", ["altar"]), "Nada que marcar aquí.");
+  assert.equal(boldTerms("Sin términos.", []), "Sin términos.");
+});
+
+test("lo que una fila tiene se vuelve a leer como frases enteras del cuadro; lo demás es de quien lo escribió", () => {
+  const two = storyExample(ALTAR_PIECE, sentencesText(ALTAR_ES, [3, 0], ["altar"]));
+  assert.equal(two.endsWith("en el **altar**. Ahora sé que me temes porque no me negaste a tu único hijo”."), true, "en el orden del cuadro");
+  assert.deepEqual(readSentences(two, ALTAR_ES), [0, 3]);
+  assert.deepEqual(readSentences(storyExample(ALTAR_PIECE, sentencesText(ALTAR_ES, [1, 2])), ALTAR_ES), [1, 2]);
+  assert.equal(readSentences("* **[5:8](rc://*/tn/help/obs/05/08)** Abraham ató a su hijo Isaac", ALTAR_ES), null, "un trozo de una frase");
+  assert.equal(readSentences("* **[5:8](rc://*/tn/help/obs/05/08)** Cuando llegaron, Abraham ató a Isaac sobre un **altar**.", ALTAR_ES), null, "lo que alguien escribió");
+  assert.equal(readSentences("", ALTAR_ES), null);
 });
 
 // ---------------------------------------------------------------- the notes and the questions of a passage

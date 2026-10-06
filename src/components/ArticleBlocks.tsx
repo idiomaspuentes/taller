@@ -43,12 +43,27 @@ type Props = {
   above?: (index: number) => React.ReactNode;
   /**
    * Beside the source of the piece being written: what the team already has for it somewhere else (the frame of a
-   * story an example quotes). `text` is what the box holds and `write` puts another text in it; the box is not
-   * given the cursor, so that on a phone the keyboard stays down while the piece is made by touching.
+   * story an example quotes). Such a piece is made by touching what is beside it, so no box stands there asking to
+   * be typed in, and what is beside it shows what was made and the way on (`next`, `goOn`). `text` is what the
+   * piece holds and `write` puts another text in it. The box is one press away for whoever would rather write:
+   * `setHand` opens it under what is beside, and closes it.
    */
-  beside?: (row: ArticleRow, box: { text: string; write: (markdown: string) => void }) => React.ReactNode;
+  beside?: (row: ArticleRow, box: PieceBox) => React.ReactNode;
   /** The text is plain sentences (a question, its answer): its box offers no bold, italics or link. */
   plain?: boolean;
+};
+
+/** What a piece gives to what is shown beside its source (see `beside`). */
+export type PieceBox = {
+  text: string;
+  write: (markdown: string) => void;
+  /** The box to write in by hand is open. */
+  hand: boolean;
+  setHand: (on: boolean) => void;
+  /** The way on from this piece: «Siguiente», or «Listo» on the last. */
+  next: React.ReactNode;
+  /** Go on from this piece, as that button does. */
+  goOn: () => void;
 };
 
 /** A piece as it reads: what is written for it, or the source, in grey, while nothing is. */
@@ -159,7 +174,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
 
   const openPiece = useCallback((index: number, element: HTMLElement) => opened.current(index, element), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated"), made: t("ab.made"), result: t("ab.result"), byHand: t("ab.byHand") }), [language]);
+  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated"), made: t("ab.made") }), [language]);
 
   return (
     <div className="ab" data-part={part}>
@@ -210,11 +225,23 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         // Still the source, and not written in yet: the box is empty for the translation.
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
         const over = above?.(index);
-        const ours = beside?.(row, { text: shown, write: (markdown) => put(index, markdown) });
-        // Made by touching what is beside it, there is nothing to type: no box stands there asking for it, with its
-        // tools and its «Copiar el original». What was marked reads as text, and the box is one press away for
-        // whoever would rather write it, or retouch it.
-        const quiet = Boolean(ours) && !byHand.has(index);
+        const hand = byHand.has(index);
+        const ours = beside?.(row, {
+          text: shown,
+          write: (markdown) => put(index, markdown),
+          hand,
+          setHand: (on) => {
+            setByHand((prev) => {
+              const set = new Set(prev);
+              if (on) set.add(index);
+              else set.delete(index);
+              return set;
+            });
+            if (on) requestAnimationFrame(() => document.getElementById(`${id}-${index}`)?.focus());
+          },
+          next,
+          goOn: () => (hasNext && onNext ? onNext(index) : onDone?.()),
+        });
         return (
           <div key={index} id={rowId} className="ab-open" data-slide>
             {over ? <div className="ab-over">{over}</div> : null}
@@ -227,29 +254,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             ) : (
               <HelpMarkdownView className="ab-peek" content={row.source} />
             )}
-            {quiet ? (
-              <div className="ab-result">
-                {shown.trim() ? (
-                  <>
-                    <p className="ab-result__name">{words.result}</p>
-                    <HelpMarkdownView className="ab-result__text" content={shown} />
-                  </>
-                ) : null}
-                <div className="ab-result__bar">
-                  <button
-                    type="button"
-                    className="ab-act"
-                    onClick={() => {
-                      setByHand((prev) => new Set(prev).add(index));
-                      requestAnimationFrame(() => document.getElementById(`${id}-${index}`)?.focus());
-                    }}
-                  >
-                    {words.byHand}
-                  </button>
-                  {next ? <div className="mde-trailing">{next}</div> : null}
-                </div>
-              </div>
-            ) : (
+            {ours && !hand ? null : (
               <MarkdownEditor
                 id={`${id}-${index}`}
                 compact

@@ -5,8 +5,8 @@ import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { bookLabel, bookNamesIn } from "../domain/books";
 import { localPassages } from "../domain/passageLinks";
-import { storiesIn, storyRefOf } from "../domain/storyFrames";
-import { loadStoryFrames, teamStoriesRepo } from "../dcs/storyFrames";
+import { storiesIn, storyRefOf, termsOf } from "../domain/storyFrames";
+import { loadStoryFrames, sourceStoriesRepo, teamStoriesRepo } from "../dcs/storyFrames";
 import { ChapterSources, NoteQuote, useHelpSources, useSourceHelps } from "./HelpSources";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { ToolHeader } from "./ToolHeader";
@@ -14,7 +14,7 @@ import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { StoryFramePick } from "./StoryFramePick";
+import { StoryExample } from "./StoryExample";
 import { usePieces, type ActivePiece } from "./usePieces";
 import { articleRows, introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
 import { answerTextId, helpTexts, helpsLeft, type HelpText } from "../domain/helpTexts";
@@ -612,7 +612,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const isNotes = target?.resource === "notas";
   const wantsSources = target?.kind === "tsv";
   const range = ctx ? portionRange(ctx.ref, ctx.chapter) : null;
-  const { helps: sourceHelps, lang: sourceLang, loaded: sourceRead } = useSourceHelps(session, ctx, target, items);
+  const { helps: sourceHelps, lang: sourceLang, owner: sourceOwner, loaded: sourceRead } = useSourceHelps(session, ctx, target, items);
   // Without a session nothing is read: the article is then edited whole, as before.
   const sourceReady = sourceRead || !session;
 
@@ -656,27 +656,33 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const nameOf = bookNamesIn(ctx?.lang);
     return nameOf ? (piece: string) => localPassages(piece, nameOf) : undefined;
   }, [ctx?.lang]);
-  // The examples an article takes from the Bible stories: each is shown with its frame as the team has translated
-  // it, to take from. Read once the source is, a story at a time; a team with no stories is shown nothing.
-  const [stories, setStories] = useState<Record<number, string[]>>({});
+  // The examples an article takes from the Bible stories: each is translated from its frame as the team already
+  // has it. A story is read once the source is, as the team has it and as the source does, the two together: the
+  // source's says which sentences of the frame an example is, to propose the team's. A team with no stories is
+  // shown nothing.
+  const [stories, setStories] = useState<Record<number, { team: string[]; source: string[] }>>({});
   const quoted = target?.kind === "markdown" && sourceRead ? [...new Set(items.flatMap((item) => storiesIn(sourceHelps[item.id]?.text ?? "")))].join(",") : "";
   useEffect(() => {
     if (!session || !ctx || !quoted) return;
     let alive = true;
-    const where = teamStoriesRepo(ctx);
+    const ours = teamStoriesRepo(ctx);
+    const theirs = sourceOwner && sourceLang ? sourceStoriesRepo(sourceOwner, sourceLang) : null;
     for (const story of quoted.split(",").map(Number)) {
-      void loadStoryFrames(session, where.owner, where.repo, story).then((frames) => alive && frames.length && setStories((prev) => (prev[story] ? prev : { ...prev, [story]: frames })));
+      void Promise.all([loadStoryFrames(session, ours.owner, ours.repo, story), theirs ? loadStoryFrames(session, theirs.owner, theirs.repo, story) : Promise.resolve([] as string[])]).then(
+        ([team, source]) => alive && team.length && setStories((prev) => (prev[story] ? prev : { ...prev, [story]: { team, source } })),
+      );
     }
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quoted, session?.token, ctx?.lang, ctx?.contentOrg]);
+  }, [quoted, session?.token, ctx?.lang, ctx?.contentOrg, sourceOwner, sourceLang]);
   /** The frame of the team's stories that goes with a piece of the source, when it is an example that quotes one. */
   const frameOf = (sourcePiece: string) => {
     const ref = storyRefOf(sourcePiece);
-    const frame = ref ? stories[ref.story]?.[ref.frame - 1] : undefined;
-    return ref && frame ? { ref, frame } : null;
+    const story = ref ? stories[ref.story] : undefined;
+    const frame = story?.team[ref!.frame - 1];
+    return ref && frame ? { ref, frame, sourceFrame: story!.source[ref.frame - 1] ?? "" } : null;
   };
   // Such a piece is made by touching words of the frame: it opens without the keyboard. The pieces of each source are worked
   // out here because a piece is opened by its place, from outside the article («Siguiente» of the one before it).
@@ -899,7 +905,23 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   make: makePiece,
                   beside: (row, box) => {
                     const ours = frameOf(row.source);
-                    return ours ? <StoryFramePick key={row.source} name={t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)} frame={ours.frame} sourcePiece={row.source} text={box.text} onWrite={box.write} /> : null;
+                    return ours ? (
+                      <StoryExample
+                        key={row.source}
+                        name={t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)}
+                        frame={ours.frame}
+                        sourceFrame={ours.sourceFrame}
+                        sourcePiece={row.source}
+                        // What the article is about, as its title says it in the team's language.
+                        terms={termsOf(item.text)}
+                        text={box.text}
+                        onWrite={box.write}
+                        hand={box.hand}
+                        onHand={box.setHand}
+                        goOn={box.goOn}
+                        next={box.next}
+                      />
+                    ) : null;
                   },
                 },
                 item.id,
