@@ -64,6 +64,11 @@ function wordsOf(md: string): string[] {
 }
 
 /** Every word the source article uses. */
+/** The words of a text, as they are compared with those of its source. */
+export function wordsIn(md: string): string[] {
+  return wordsOf(md);
+}
+
 export function vocabularyOf(sourceMd: string): Set<string> {
   return new Set(wordsOf(sourceMd));
 }

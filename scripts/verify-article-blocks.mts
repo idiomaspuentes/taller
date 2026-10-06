@@ -192,6 +192,24 @@ test("los enlaces de una pieza de la fuente se conservan en su traducción, aunq
   assert.equal(withSourceLinks("See [1:5](../01/05.md).", "Ver 11:55.").text, "Ver 11:55.");
 });
 
+test("una línea que solo enlaza otros artículos se traduce con sus nombres, y cada nombre queda enlazado en su orden", () => {
+  const source = "(See also: [pray](../kt/pray.md), [cry](../other/cry.md), [call to summon](../kt/call-tosummon.md))";
+  // What is typed on a phone: the names, with commas between them.
+  assert.deepEqual(withSourceLinks(source, "(Ver también: orar, clamar, llamar)"), {
+    text: "(Ver también: [orar](../kt/pray.md), [clamar](../other/cry.md), [llamar](../kt/call-tosummon.md))",
+    missing: [],
+  });
+  assert.equal(withSourceLinks(source, "(Ver también: orar, clamar y llamar)").text, "(Ver también: [orar](../kt/pray.md), [clamar](../other/cry.md), [llamar](../kt/call-tosummon.md))", "los dos últimos unidos por «y»");
+  const done = "(Ver también: [orar](../kt/pray.md), [clamar](../other/cry.md), [llamar](../kt/call-tosummon.md))";
+  assert.deepEqual(withSourceLinks(source, done), { text: done, missing: [] }, "ya enlazada, no se toca");
+  // Fewer names than links: which is which cannot be told, and the links are offered instead.
+  const short = withSourceLinks(source, "(Ver también: orar)");
+  assert.equal(short.text, "(Ver también: orar)");
+  assert.equal(short.missing.length, 3);
+  // A sentence with links in it is not such a line: its links are found by their words, as before.
+  assert.equal(withSourceLinks("See [1:5](../01/05.md), and [1:7](../01/07.md).", "Ver 1:5, y 1:7.").text, "Ver [1:5](../01/05.md), y [1:7](../01/07.md).");
+});
+
 test("un enlace cuyas palabras no están en la traducción se ofrece para ponerlo de un toque", () => {
   const source = "Translators may choose a clearer title. (See: [[rc://*/ta/man/translate/translate-names]])";
   const draft = "Los traductores pueden elegir un título más claro. (Ver: Cómo traducir nombres)";

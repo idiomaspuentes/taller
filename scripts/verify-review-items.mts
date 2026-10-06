@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { articleItems, diffWords, introItems, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
+import { articleItems, diffWords, introItems, parseRefComment, pendingParts, refComment, reviewItems, wordsKnownFrom } from "../src/domain/reviewItems";
 import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
 import { commentPlace, helpRowRef, placedMessage, plainLine } from "../src/domain/commentPlace";
 import { commentNotice, placedLine } from "../src/domain/noticeText";
@@ -117,6 +117,23 @@ test("un comentario sobre un párrafo de una introducción dice de cuál, y se v
   }
 });
 
+test("de una pregunta se dice aparte si falta traducir la pregunta o su respuesta", () => {
+  const source = { text: "What did the condemned and ungodly men do?", secondary: "They changed the grace of God into sexual immorality and denied Jesus Christ." };
+  const none = new Set<string>();
+  // The question was translated and its answer left as it was: judged together they read as half translated.
+  const half = { text: "¿Qué hicieron los hombres condenados e impíos?", secondary: source.secondary };
+  assert.deepEqual(pendingParts(half, source, none), { text: false, secondary: true });
+  assert.deepEqual(pendingParts({ text: source.text, secondary: "Cambiaron la gracia de Dios en inmoralidad sexual y negaron a Jesucristo." }, source, none), { text: true, secondary: false });
+  assert.deepEqual(pendingParts({ text: half.text, secondary: "Cambiaron la gracia de Dios en inmoralidad sexual y negaron a Jesucristo." }, source, none), { text: false, secondary: false });
+  assert.deepEqual(pendingParts(source, source, none), { text: true, secondary: true });
+  // A note has one part, and a row whose source was not read is not said to be missing.
+  assert.deepEqual(pendingParts({ text: "Here Jude speaks of himself." }, { text: "Here Jude speaks of himself." }, none), { text: true, secondary: false });
+  assert.deepEqual(pendingParts(half, undefined, none), { text: false, secondary: false });
+  // What is known to be of the team's language comes from the part that was translated, not from the one left in English.
+  const known = wordsKnownFrom(half, source);
+  assert.ok(known.includes("hombres") && !known.includes("grace"), known.join(" "));
+});
+
 test("un comentario sobre una nota nombra esa nota, no solo su versículo: diez notas pueden ser de un versículo", () => {
   const ref = helpRowRef("1:3", "x7k2");
   assert.equal(ref, "1:3 §x7k2");
@@ -223,6 +240,9 @@ test("el mensaje que la revisión escribe sola al pedir cambios no es un comenta
   const all = [row(1, "Falta una frase.", "1:3"), row(2, said(es, 1)), row(3, said(es, 4)), row(4, said(pt, 1)), row(5, said(pt, 3)), row(6, `@alice ${es["rv.changesAsked"]} revisa la puntuación de todo el pasaje.`)];
   assert.deepEqual(openComments(all, "alice").map((c) => c.id), [1, 6], "lo que alguien escribió al pedir cambios sí se atiende");
   assert.equal(isBareRequest(row(7, said(es, 2), "1:3")), false, "puesto en un versículo, es un comentario de ese versículo");
+  // Sent back because parts are still untranslated: that is seen in the draft, and holds nothing as a comment.
+  const unfinished = (lang: Record<string, string>, n: number) => `@alice ${lang["rv.changesAsked"]} ${lang[n === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany"]!.replace("{n}", String(n))}`;
+  for (const text of [unfinished(es, 1), unfinished(es, 10), unfinished(pt, 1), unfinished(pt, 10)]) assert.equal(isBareRequest(row(8, text)), true, text);
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

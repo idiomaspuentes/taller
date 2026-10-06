@@ -67,9 +67,11 @@ export function reviewCommentsFrom(rows: RawComment[], draftAuthor?: string): Re
 
 /**
  * The message the review writes by itself when changes are asked for from the foot of the screen («Te dejé 2
- * comentarios en el borrador»), in either language. It tells the author to look, and asks nothing of its own.
+ * comentarios en el borrador», «Quedan 3 partes sin traducir»), in either language. It tells the author to look,
+ * and asks nothing of its own: whether a part is still to be translated is seen in the draft, not in a comment.
  */
-const BARE_REQUEST = /^(?:@\S+\s+)?(?:Pido cambios|Peço mudanças):\s+(?:Te dejé \d+ comentarios? en el borrador|Deixei \d+ comentários? no rascunho)\.$/;
+const BARE_REQUEST =
+  /^(?:@\S+\s+)?(?:Pido cambios|Peço mudanças):\s+(?:Te dejé \d+ comentarios? en el borrador|Deixei \d+ comentários? no rascunho|Quedan? \d+ partes? sin traducir|Faltam? \d+ partes? por traduzir)\.$/;
 
 /** Whether a comment only says «I asked for changes: look at my comments», with nothing to attend in itself. */
 export function isBareRequest(comment: Pick<ReviewComment, "ref" | "text">): boolean {

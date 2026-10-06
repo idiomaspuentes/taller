@@ -2724,5 +2724,13 @@
   "rv.seeOpenOne": "Ver o comentário",
   "rv.seeOpenMany": "Ver o próximo comentário",
   "tb.agreeToEnd": "{who} já aprovou o seu rascunho. Falta você dizer que concorda.",
-  "tb.readyToDeliver": "Todos os passos estão feitos. Entregue para que passe ao rascunho do grupo."
+  "tb.readyToDeliver": "Todos os passos estão feitos. Entregue para que passe ao rascunho do grupo.",
+  "rv.missingAskOne": "Falta {n} parte por traduzir. Peça a quem escreveu que a termine.",
+  "rv.missingAskMany": "Faltam {n} partes por traduzir. Peça a quem escreveu que as termine.",
+  "rv.missingAutoOne": "Falta {n} parte por traduzir.",
+  "rv.missingAutoMany": "Faltam {n} partes por traduzir.",
+  "rv.askFinish": "Pedir que termine",
+  "rv.approveAnyway": "Aprovar assim",
+  "rv.answerUntranslated": "A resposta continua sem traduzir.",
+  "rv.questionUntranslated": "A pergunta continua sem traduzir."
 }

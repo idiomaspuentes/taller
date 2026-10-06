@@ -66,11 +66,33 @@ export function sourceLinks(md: string): SourceLink[] {
 }
 
 /**
+ * A line that is only links, one after another («(See also: [pray](../kt/pray.md), [cry](../other/cry.md))»), and
+ * its translation naming as many things in the same order («(Ver también: orar, clamar)»): each name is linked to
+ * what the source links in its place. The names are other words in the translation, so they cannot be found by
+ * what they say, and nearly every article of the words ends with such a line. `null` when it is not that.
+ */
+function linkedList(sourceMd: string, draftMd: string): string | null {
+  const links = sourceLinks(sourceMd);
+  if (!links.length || links.some((link) => !link.text)) return null;
+  // Without its links the source is its lead and what stands between them: «(See also: , , )».
+  if (!/^\s*\(?[^:()[\]]{1,40}:[\s,;]*\)?\.?\s*$/.test(sourceMd.replace(LINK_RE, ""))) return null;
+  const said = /^(\s*\(?[^:()[\]]{1,40}:\s*)([^()[\]]*?)(\s*\)?\.?\s*)$/.exec(draftMd);
+  if (!said) return null;
+  let names = said[2]!.split(/\s*[,;]\s*/).map((name) => name.trim()).filter(Boolean);
+  // «orar, clamar y llamar»: the last two are joined by a word, not a comma.
+  if (names.length === links.length - 1) names = [...names.slice(0, -1), ...names[names.length - 1]!.split(/\s+(?:y|e|o|u|ou|and|or)\s+/)];
+  if (names.length !== links.length) return null;
+  return `${said[1]}${names.map((name, index) => `[${name}](${links[index]!.target})`).join(", ")}${said[3]}`;
+}
+
+/**
  * The translation of a piece with the links of its source: those it already has are left, those whose words it
  * shows are put back around those words, and the rest are returned as `missing`.
  */
 export function withSourceLinks(sourceMd: string, draftMd: string): { text: string; missing: SourceLink[] } {
   if (!draftMd.trim()) return { text: draftMd, missing: [] };
+  const listed = linkedList(sourceMd, draftMd);
+  if (listed) return { text: listed, missing: [] };
   let text = draftMd;
   const missing: SourceLink[] = [];
   const had = sourceLinks(draftMd).map((link) => link.target);

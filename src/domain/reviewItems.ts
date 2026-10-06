@@ -2,6 +2,7 @@
  * What a reviewer reads: the passage of the subtarea, piece by piece (a verse of the text, a row of a help), as it
  * is in the draft and as it was before it. Pure: the review tool loads the two versions of the file and shows this.
  */
+import { untranslated, vocabularyOf, writtenAlike, wordsIn } from "./articleBlocks";
 import { noteFromTsv } from "./helpMarkup";
 import { listVerseSpans, type RefRange } from "./usfmEdit";
 
@@ -236,4 +237,22 @@ export function articleItems(files: { filename: string; now: string; before: str
 }
 
 // How a comment says where it is about (`**JUD 1:2** — …`) is told in `commentPlace.ts`, which the notices read too.
+/**
+ * The parts of a row of a help still as the source has them: what it says (a note, a question) and, in a question,
+ * its answer. Each is judged against its own part of the source. Judged together, a question that was translated
+ * and an answer left in English read as half translated: the review said «8 de 8 traducidas» of a draft its own
+ * editor had counted as «7 de 8», and offered only to approve it. `known`: words the team's own sentences show to
+ * be of its language too (see `writtenAlike`).
+ */
+export function pendingParts(help: Pick<HelpSaid, "text" | "secondary">, source: { text: string; secondary?: string } | undefined, known: ReadonlySet<string>): { text: boolean; secondary: boolean } {
+  const still = (said: string | undefined, from: string | undefined) => Boolean(said?.trim() && from?.trim() && untranslated(said, vocabularyOf(from)) && !writtenAlike(said, known));
+  return { text: still(help.text, source?.text), secondary: still(help.secondary, source?.secondary) };
+}
+
+/** The words a translated row adds to what is known to be of the team's language: those of each part that is no longer as its source has it. */
+export function wordsKnownFrom(help: Pick<HelpSaid, "text" | "secondary">, source: { text: string; secondary?: string } | undefined): string[] {
+  const of = (said: string | undefined, from: string | undefined) => (said?.trim() && from?.trim() && !untranslated(said, vocabularyOf(from)) ? wordsIn(said) : []);
+  return [...of(help.text, source?.text), ...of(help.secondary, source?.secondary)];
+}
+
 export { helpRowRef, parseRefComment, refComment } from "./commentPlace";

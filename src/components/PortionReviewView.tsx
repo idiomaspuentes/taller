@@ -27,7 +27,7 @@ import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
 import { englishScriptureKindRef, loadEnglishHelpsForRange, loadEnglishScriptureChapterUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
-import { articleItems, diffWords, helpRowRef, introItems, refComment, reviewItems, type IntroItem, type ReviewItem } from "../domain/reviewItems";
+import { articleItems, diffWords, helpRowRef, introItems, pendingParts, refComment, reviewItems, wordsKnownFrom, type IntroItem, type ReviewItem } from "../domain/reviewItems";
 import { selectTsvRowsForPortion, tsvRowId } from "../domain/helpsDraft";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { parseTsvTable } from "../prep/tsv";
@@ -49,7 +49,7 @@ import { NoteQuote, noteHeading, useHelpSources } from "./HelpSources";
 import { noteFromTsv } from "../domain/helpMarkup";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces } from "./usePieces";
-import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, translatedWords, untranslated, vocabularyOf, writtenAlike, type ArticleFile } from "../domain/articleBlocks";
+import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, untranslated, vocabularyOf, type ArticleFile } from "../domain/articleBlocks";
 import { knownWords } from "../domain/helpTexts";
 
 type Props = {
@@ -437,15 +437,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     ...intros.filter((intro) => intro.source).map((intro) => ({ source: intro.source, value: intro.now })),
   ]);
   for (const item of items) {
-    const vocabulary = item.help && item.state !== "removed" ? rowVocabulary(item.key) : null;
-    if (item.help && vocabulary) for (const word of translatedWords([{ draft: `${item.help.text} ${item.help.secondary ?? ""}` }], vocabulary)) known.add(word);
+    if (item.help && item.state !== "removed") for (const word of wordsKnownFrom(item.help, sourceRows[item.key])) known.add(word);
   }
   // Still as the source has it: there is nothing to review yet, and it is said so instead of shown as a translation.
-  const rowPending = (item: ReviewItem) => {
-    const vocabulary = item.help ? rowVocabulary(item.key) : null;
-    const text = item.help ? `${item.help.text} ${item.help.secondary ?? ""}` : "";
-    return Boolean(item.help && vocabulary && item.state !== "removed" && untranslated(text, vocabulary) && !writtenAlike(text, known));
-  };
+  // A question and its answer are told apart (`pendingParts`): one may be translated and the other not.
+  const partsPending = (item: ReviewItem) => (item.help && item.state !== "removed" ? pendingParts(item.help, sourceRows[item.key], known) : { text: false, secondary: false });
+  const rowPending = (item: ReviewItem) => partsPending(item).text || partsPending(item).secondary;
   // The draft changed a row that was already in the team's language: what changed is marked. A row translated from the
   // source changed in every word, and marking them all says nothing.
   const rowCorrected = (item: ReviewItem) => {
@@ -574,6 +571,14 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   /** The first time round: nothing was sent back yet, so asking is the one thing to do. */
   const askFirst = canAsk && !runtime?.returnedBy;
   const askNow = () => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true);
+  // A draft handed in with parts still as the source has them is not to be reviewed yet, and the app knows which
+  // they are: it proposes to send it back, by a touch. Whoever reviewed had to find each part down the draft and
+  // write under it that it was missing, and the foot offered only to approve.
+  const missing =
+    items.filter((item) => item.help && item.state !== "removed" && sourceRows[item.key] && rowPending(item)).length +
+    Object.values(pieces.counts).reduce((sum, count) => sum + Math.max(0, count.total - count.done), 0);
+  const askFinish = canSendBack && !mine && !open.length && missing > 0;
+  const askFinishNow = () => void comment("", t(missing === 1 ? "rv.missingAutoOne" : "rv.missingAutoMany").replace("{n}", String(missing)), true);
 
   // Who is still to approve, by name: «falta que apruebe alguien más» left whoever reviewed wondering who, and the
   // author was told the review would end «cuando quien revisa también apruebe» after the reviewer had approved.
@@ -602,6 +607,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         : canApprove
           ? askFirst
             ? t(open.length === 1 ? "rv.askFirstOne" : "rv.askFirstMany").replace("{n}", String(open.length))
+            : askFinish
+              ? t(missing === 1 ? "rv.missingAskOne" : "rv.missingAskMany").replace("{n}", String(missing))
             : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map((login) => `@${login}`).join(", ")) : t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove"))
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
@@ -696,7 +703,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                 </p>
               ) : pending ? (
                 <>
-                  <p className="rv-help__none">{t("ab.untranslated")}</p>
+                  {/* Of a question, the part that was translated is still read; the other is said to be missing. */}
+                  {help.secondary !== undefined && !partsPending(item).text ? <HelpMarkdownView content={help.text} /> : null}
+                  <p className="rv-help__none">
+                    {t(help.secondary === undefined || (partsPending(item).text && partsPending(item).secondary) ? "ab.untranslated" : partsPending(item).secondary ? "rv.answerUntranslated" : "rv.questionUntranslated")}
+                  </p>
+                  {help.secondary && !partsPending(item).secondary ? <HelpMarkdownView content={help.secondary} /> : null}
                   {/* Said by a touch: there is nothing else to say about a note nobody translated. */}
                   {!mine && !saidByMe ? (
                     <button type="button" className="rv-help__say" disabled={acting} onClick={() => comment(place, t("rv.missingSaid"))}>
@@ -1055,6 +1067,16 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   <Button type="button" disabled={acting} onClick={askNow}>
                     {acting ? t("wf.saving") : t("rv.askChanges")}
                   </Button>
+                ) : canApprove && askFinish ? (
+                  <>
+                    {/* Something the app takes for untranslated may be right as it is (a name): approving stays possible. */}
+                    <Button type="button" variant="outline" disabled={acting} onClick={() => void approve()}>
+                      {t("rv.approveAnyway")}
+                    </Button>
+                    <Button type="button" disabled={acting} onClick={askFinishNow}>
+                      {acting ? t("wf.saving") : t("rv.askFinish")}
+                    </Button>
+                  </>
                 ) : canApprove ? (
                   <>
                     {/* The draft came back and something is still not right: it can be sent back again. */}

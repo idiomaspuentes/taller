@@ -402,8 +402,45 @@ De la lista de arriba quedan resueltos el punto 9 y, dentro de la app abierta, e
 - Bajo un comentario que solo dice «Falta traducir esto» se ofrece «Guardar como regla o en el glosario».
 - El pie de la revisión con comentarios abiertos ocupa 125 px de los 812: tres líneas y dos botones.
 
+### El cuarto y el quinto: Palabras «call…» y Preguntas · Judas 1:1–4 (6 de octubre)
+
+**Palabras.** **Andrés** (Elisha) había entregado el artículo con 10 de sus 12 párrafos sin traducir; **Clara**
+(valeska) lo devolvió, Andrés lo tradujo entero, Clara aprobó, Andrés confirmó y entregó.
+
+**Preguntas.** **Andrés** traduce 8 preguntas con sus respuestas; **Marta** (abelperez, cuidadosa) revisa. Dos
+fallos a propósito: una respuesta que no coincide con el texto («vinieron rápidamente» por «came stealthily») y la
+última respuesta sin traducir. Marta comentó la primera, pidió cambios, Andrés corrigió las dos, Marta aprobó,
+Andrés confirmó y entregó. Al terminar «Estudio», la app lo llevó sola al borrador.
+
+**⚠ Un defecto de verdad.** La revisión decía **«8 de 8 traducidas»** y solo ofrecía «Aprobar», con una respuesta
+todavía en inglés que el editor sí había contado («7 de 8», «Queda 1 pregunta sin traducir»). La pregunta y su
+respuesta se juzgaban juntas: traducida una y la otra no, el conjunto pasaba por traducido. *Arreglado:* cada parte
+se compara con la suya; la fila dice «La respuesta sigue sin traducir» y deja leer la pregunta.
+
+Lo demás que se arregló:
+
+- **Un borrador incompleto se devuelve de un toque.** Con partes sin traducir y ningún comentario, el pie de la
+  revisión dice «Queda 1 parte sin traducir. Pide a quien lo escribió que la termine» y ofrece «Pedir que lo
+  termine» (y «Aprobar así», por si lo que la app toma por inglés está bien: un nombre). Antes había que encontrar
+  cada parte, escribir debajo que faltaba, y el pie solo hablaba de aprobar.
+- **La línea «(See also: pray, cry, …)».** Casi todo artículo de Palabras termina con una línea que solo enlaza
+  otros artículos. Tecleada en un teléfono quedaba sin enlaces, o con los enlaces en inglés pegados al final.
+  *Ahora* se escriben solo los nombres («(Ver también: orar, clamar, llamar)») y cada uno queda enlazado, en su
+  orden, a lo que enlaza el original.
+
+**⚠ Lo que sigue sin resolver de estos dos**
+
+- En «Estudio» la introducción al libro sale en inglés («Todavía no está traducida») cuando Clara ya la entregó:
+  se lee el texto publicado, no el borrador del grupo. A Andrés, con su inglés, le habría servido la de Clara.
+- Al llegar desde un comentario, la pregunta abierta queda cortada por el pie: se ve el comentario y el principio
+  de la caja.
+- La tarjeta del autor no dijo «ya aprobó tu borrador» las dos veces que se miró a los pocos segundos de la
+  aprobación; minutos después sí. Hay que ver si la lista llega con retraso.
+- El título de Palabras «Bible References:» no tiene referencias debajo en este artículo, y se traduce a mano.
+
 ### Dónde quedó
 
-- TPL 1:1–4, TPS 1:1–4 y Notas 1:1–4: entregadas. Las dos lecturas grupales ya aparecen en «Puedes sumarte».
-- Todo lo demás de Traducción sigue libre: 4 porciones de TPL, 4 de TPS, 4 de Notas, 5 de Preguntas, 1 artículo de
-  Palabras y 4 de Academia. Elisha tiene en revisión el artículo «call…» y abelper8 el de «Blessings».
+- Entregadas: TPL 1:1–4, TPS 1:1–4, Notas 1:1–4, Preguntas 1:1–4 y el artículo de Palabras «call…». Las dos
+  lecturas grupales ya aparecen en «Puedes sumarte».
+- Libre: 4 porciones de TPL, 4 de TPS, 4 de Notas, 4 de Preguntas, 1 artículo de Palabras y 4 de Academia.
+  abelper8 tiene en revisión el artículo de Academia «Blessings».
