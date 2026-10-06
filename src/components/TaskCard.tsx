@@ -7,7 +7,7 @@ import { formatRelativeEs, previewLine } from "../domain/attention";
 import { placedPreview } from "../commentPlaceText";
 import type { BoardCard } from "../domain/myTasksBoard";
 import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending, takenBackByAuthor } from "../domain/stepClaim";
-import { parseTaskProgressMarker } from "../domain/taskProgress";
+import { getStepRuntime, parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeHold, localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
@@ -22,6 +22,8 @@ type Props = {
   busy: boolean;
   /** The tool of the card's action opens outside Taller (TranslationCore Study): the button says so. */
   externalTool: boolean;
+  /** The tool of a step completes it itself (an editor, with «Terminé el borrador»): it is not finished from here. */
+  finishesInTool: (step: TaskStep) => boolean;
   /** More than one project: the project's name goes on the card as a small label. */
   projectLabel?: string;
   onPrimary: () => void;
@@ -106,9 +108,12 @@ export function TaskCard(props: Props) {
     const own = takenBackByAuthor(steps, progress, waiting, assigneeOf(card));
     status = mine ? t(own ? "tb.correctingOwn" : "tb.changesForYou") : t(own ? "tb.authorCorrecting" : "tb.changesWait").replace("{who}", assigneeOf(card));
   }
-  // The step in hand is a free one: the person says when it is done (the tool cannot know, above all an outside one).
+  // A free step whose tool cannot know when it is done (an outside one, or none at all): the person says so here.
+  // One that is completed where its work is done is not: «Terminé «Borrador»» beside «Traducir», before a word
+  // was written, marked the draft done and sent it to review.
+  const finishedHere = (step: TaskStep) => stepClaimMode(step) === "none" && !closesInItsTool(step) && !props.finishesInTool(step);
   const stepInHand = action.kind === "continue" ? action.step : undefined;
-  const canFinishStep = Boolean(stepInHand && mine && card.started && stepClaimMode(stepInHand) === "none" && !closesInItsTool(stepInHand));
+  const canFinishStep = Boolean(stepInHand && mine && card.started && finishedHere(stepInHand));
 
   const menuItems: { id: string; label: string; run: () => void; danger?: boolean }[] = [];
   if (steps.length && card.group !== "done") menuItems.push({ id: "steps", label: stepsOpen ? t("tb.hideSteps") : t("tb.showSteps"), run: () => setStepsOpen((v) => !v) });
@@ -192,8 +197,12 @@ export function TaskCard(props: Props) {
             const done = progress.doneStepIds.includes(step.id);
             const assignee = assigneeOf(card);
             const claim = !done && canClaimStep(props.login, steps, progress, step, undefined, assignee);
-            const approve = !done && canApproveStep(props.login, progress, step, assignee);
-            const seated = isStepActor(props.login, progress, step, assignee);
+            // The author of a draft is part of its review, but has nothing to confirm until somebody takes it (the
+            // card says so: «Ahora la revisan otras personas»). The list said «Te toca» and offered to approve.
+            const othersFirst = stepClaimMode(step) !== "none" && !claim && !getStepRuntime(progress, step.id).assignees.length;
+            // Only of a step that has come: the author was offered to approve the review before writing the draft.
+            const approve = !done && !othersFirst && isStepUnlocked(steps, progress, step.id) && canApproveStep(props.login, progress, step, assignee);
+            const seated = !othersFirst && isStepActor(props.login, progress, step, assignee);
             const isNext = card.nextStep?.id === step.id;
             // The card's big button already does it: no second button for the same thing.
             const isPrimary = (action.kind === "claimStep" || action.kind === "approveStep") && action.step.id === step.id;
@@ -218,7 +227,7 @@ export function TaskCard(props: Props) {
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onApproveStep(step)}>
                     {t("mt.approve")}
                   </Button>
-                ) : mine && stepClaimMode(step) === "none" && !closesInItsTool(step) && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
+                ) : mine && finishedHere(step) && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onToggleStep(step)}>
                     {done ? t("tb.stepUndo") : t("tb.stepFinish")}
                   </Button>

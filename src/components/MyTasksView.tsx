@@ -13,7 +13,7 @@ import { boardCount, buildBoard, type BoardCard } from "../domain/myTasksBoard";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
-import { isUrlSolver as isOutsideTool } from "../domain/solvers";
+import { isUrlSolver as isOutsideTool, toolFinishesItsStep } from "../domain/solvers";
 import { hadWorkKey, useHadWork } from "../hadWork";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
@@ -787,6 +787,7 @@ export function MyTasksView({
         const app = toolOf(card);
         return Boolean(app && (app.openMode === "external" || isOutsideTool(app)));
       },
+      finishesInTool: (card, step) => toolFinishesItsStep(findSolverApp(solversCatalog, step.solverAppId ?? card.task?.solverAppId)),
       onPrimary: (card) => {
         const board = card.bucket?.board;
         const a = card.action;

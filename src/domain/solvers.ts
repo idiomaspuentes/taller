@@ -117,6 +117,19 @@ export function isUrlSolver(app: SolverApp): boolean {
   return app.kind === "url" || app.openMode === "external";
 }
 
+/**
+ * The screens of this app where a step is completed by the same action that saves its work and hands it in
+ * («Terminé el borrador», «Terminé de estudiar»): the editors and the study of a passage. A step opened in one of
+ * them is not offered to be finished from the list, where it was marked done, and sent to review, with nothing
+ * written. An outside site cannot complete a step, and neither can a screen that completes its steps another way
+ * (by agreement, by a checklist): what those need is said by the step itself (see `closesInItsTool`).
+ */
+const FINISHES_ITS_STEP = /^\/?#\/solver\/(?:scripture|helps|familiarize)(?:[?/]|$)/;
+
+export function toolFinishesItsStep(app: SolverApp | undefined): boolean {
+  return Boolean(app && !isUrlSolver(app) && FINISHES_ITS_STEP.test(app.launchUrl));
+}
+
 /** Queue action: «Estudiar» for an outside site (reading), «Abrir editor» for a tool of the app. */
 export function solverActionLabel(app: SolverApp): string {
   return isUrlSolver(app) ? "Estudiar" : "Abrir editor";

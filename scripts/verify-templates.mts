@@ -10,7 +10,7 @@ import type { DcsIssue } from "@ip-lms/dcs-client";
 import { tallerConfig } from "../taller.config";
 import type { ProcessPackage } from "../src/config/types";
 import { localized, processGlossary, shippedWorkflows } from "../src/domain/processes";
-import { DEFAULT_SOLVERS_CATALOG, normalizeSolversCatalog, upgradeShippedTools, withShippedTools } from "../src/domain/solvers";
+import { DEFAULT_SOLVERS_CATALOG, normalizeSolversCatalog, toolFinishesItsStep, upgradeShippedTools, withShippedTools } from "../src/domain/solvers";
 import { resolveSolverLaunchUrl, type SolverLaunchContext } from "../src/domain/solverLaunch";
 import { normalizeWorkflowTemplate } from "../src/domain/store";
 import { localizeName } from "../src/domain/templateNames";
@@ -366,5 +366,31 @@ if (fcr) {
     assert.equal(localizeName("Traducir TPL", "es"), "Traducir TPL");
   });
 }
+
+// ---------------------------------------------------------------- where a step is finished
+test("un paso que se marca a mano se termina desde la tarjeta solo si su herramienta no puede hacerlo", () => {
+  const screen = (launchUrl: string) => normalizeSolversCatalog({ solvers: [{ id: "x", name: "x", launchUrl }] }).solvers[0];
+  // The editors and the study complete their step with the action that saves the work and hands it in.
+  for (const url of ["/#/solver/helps?ctx={context}", "/#/solver/scripture?ctx={context}", "/#/solver/familiarize?ctx={context}"]) assert.equal(toolFinishesItsStep(screen(url)), true, url);
+  // An outside site cannot, nor the page that only shows the launch, nor a step with no tool: the person says so.
+  assert.equal(toolFinishesItsStep(normalizeSolversCatalog({ solvers: audio.tools }).solvers[0]), false);
+  assert.equal(toolFinishesItsStep(screen("/solver-stub.html#ctx={context}")), false);
+  assert.equal(toolFinishesItsStep(undefined), false);
+  // A screen that closes its steps another way (an approval, an agreement) is not counted: the step says how it closes.
+  assert.equal(toolFinishesItsStep(screen("/#/solver/review?mode=pair&ctx={context}")), false);
+
+  // In the shipped processes, every step that whoever has the subtarea marks done has a tool that completes it:
+  // none of them is left with a «Terminé» on its card that would hand in a draft nobody wrote.
+  const byHand: string[] = [];
+  for (const workflow of shippedWorkflows()) {
+    for (const task of workflow.tasks) {
+      for (const step of task.steps ?? []) {
+        if (step.closing !== "self" || step.claimMode === "exclusive" || step.claimMode === "pool" || !step.solverAppId) continue;
+        if (!toolFinishesItsStep(DEFAULT_SOLVERS_CATALOG.solvers.find((tool) => tool.id === step.solverAppId))) byHand.push(`${workflow.id} · ${task.id} · ${step.id}`);
+      }
+    }
+  }
+  assert.deepEqual(byHand, []);
+});
 
 console.log(`\nverify-templates: ${passed} checks passed.`);

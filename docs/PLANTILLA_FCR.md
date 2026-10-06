@@ -28,7 +28,7 @@ Cada **tarea** se describe con una tabla de **pasos**. Cada paso dice:
 
 | Regla | Cómo funciona |
 |-------|---------------|
-| **Lo marca quien lo hace** | La persona pulsa «Terminé». |
+| **Lo marca quien lo hace** | La persona pulsa «Terminé» donde hizo el trabajo: en el editor, el mismo botón guarda, abre la revisión y completa el paso. La tarjeta solo ofrece «Terminé» cuando la herramienta no puede saberlo (un sitio de fuera, o un paso sin herramienta): con un editor, ese botón marcaba hecho un borrador sin nada escrito. |
 | **Otra persona lo aprueba** | Quien revisa aprueba; si se indica, el autor también confirma. |
 | **Consenso por ítem** | Cada persona responde ítem por ítem (de acuerdo, propongo un cambio, objeción). Si todo queda de acuerdo, termina solo. Lo que queda sin acuerdo va a una **reunión**, y el **coordinador del equipo** (o una persona habilitada del equipo) registra la **decisión final**. |
 | **Comprobación automática** | Una herramienta hace las comprobaciones sin intervención; el paso se completa cuando todas pasan (Publicación). |

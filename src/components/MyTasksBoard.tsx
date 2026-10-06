@@ -35,6 +35,8 @@ export type CardHandlers = {
   /** A free step: mark it done, or take that back. */
   onToggleStep: (card: BoardCard, step: NonNullable<BoardCard["nextStep"]>) => void;
   isExternal: (card: BoardCard) => boolean;
+  /** The tool of a step completes it itself: the card does not offer to. */
+  finishesInTool: (card: BoardCard, step: NonNullable<BoardCard["nextStep"]>) => boolean;
 };
 
 type Props = {
@@ -104,6 +106,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
                     now={now}
                     busy={acting === card.issue.number}
                     externalTool={handlers.isExternal(card)}
+                    finishesInTool={(step) => handlers.finishesInTool(card, step)}
                     projectLabel={projects.size > 1 ? card.bucket?.title : undefined}
                     onPrimary={() => handlers.onPrimary(card)}
                     onOpenThread={handlers.onOpenThread(card)}
