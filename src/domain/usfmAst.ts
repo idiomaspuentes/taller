@@ -68,6 +68,21 @@ export function tryParseUsjWithAlignments(
   }
 }
 
+const parsedSources = new Map<string, { usj: UsjDocument; alignments: AlignmentMap } | null>();
+
+/**
+ * A chapter of a source text with its alignment, parsed once however many parts of a screen read it (its verses,
+ * the quotes of its notes, the glossary's decisions). What it gives is shared: it is to be read, never changed.
+ */
+export function parseSourceUsfm(usfm: string): { usj: UsjDocument; alignments: AlignmentMap } | null {
+  const kept = parsedSources.get(usfm);
+  if (kept !== undefined) return kept;
+  const parsed = tryParseUsjWithAlignments(usfm);
+  parsedSources.set(usfm, parsed);
+  if (parsedSources.size > 8) parsedSources.delete(parsedSources.keys().next().value as string);
+  return parsed;
+}
+
 export function verseTextsFromUsj(usj: UsjDocument, range: RefRange): VerseTextMap | null {
   try {
     const texts = collectVerseTextsFromContent(usj.content);

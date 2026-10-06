@@ -7,7 +7,7 @@ import { loadAssignmentsFromDcs } from "./persist";
 import { passagesOf, readingItemId, type PassageRange, type ReadingText } from "../domain/groupReading";
 import type { LevelBook } from "../domain/levels";
 import { issueTaskId } from "../domain/myTasks";
-import { loadEnglishScriptureKindUsfm } from "../domain/referenceResources";
+import { loadEnglishScriptureChapterUsfm } from "../domain/referenceResources";
 import { mergeDecisionFiles, type ReviewDecision } from "../domain/reviewRound";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
@@ -92,7 +92,7 @@ export async function loadGroupReading(session: GtSession, ctx: SolverLaunchCont
     }
   }
 
-  const loaded = await Promise.all((["ult", "ust"] as const).map((kind) => loadEnglishScriptureKindUsfm(session, kind, book).catch(() => null)));
+  const loaded = await Promise.all((["ult", "ust"] as const).map((kind) => loadEnglishScriptureChapterUsfm(session, kind, book, chapter).catch(() => null)));
   const sources = loaded.flatMap((pane) => {
     const usj = pane ? tryParseUsj(pane.usfm) : null;
     const verses = usj ? verseTextsFromUsj(usj, WHOLE_CHAPTER(chapter)) : null;

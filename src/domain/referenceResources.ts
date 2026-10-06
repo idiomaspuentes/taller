@@ -1,6 +1,7 @@
 import { getRawContent } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
+import { loadSourceChapter } from "../dcs/sourceTexts";
 import { bookUsfmName } from "../prep/discover";
 import { parseVerseRef, twPathFromRc } from "../prep/inventory";
 import { parseTsvTable } from "../prep/tsv";
@@ -106,6 +107,21 @@ export async function loadEnglishScriptureKindUsfm(
   book: string,
 ): Promise<{ usfm: string; meta: EnglishScriptureRef } | null> {
   return loadUsfmFromRef(session, englishScriptureKindRef(kind, book));
+}
+
+/**
+ * One chapter of the English ULT or UST, as a USFM that stands alone. A tool works on a passage of one chapter: it is
+ * read from the device when the book is kept there, instead of the whole book from Door43 (see `dcs/sourceTexts.ts`).
+ */
+export async function loadEnglishScriptureChapterUsfm(
+  session: GtSession,
+  kind: EnglishScriptureKind,
+  book: string,
+  chapter: number,
+): Promise<{ usfm: string; meta: EnglishScriptureRef } | null> {
+  const meta = englishScriptureKindRef(kind, book);
+  const usfm = await loadSourceChapter(session, meta, chapter).catch(() => null);
+  return usfm?.trim() ? { usfm, meta } : null;
 }
 
 export async function loadEnglishScriptureUsfm(

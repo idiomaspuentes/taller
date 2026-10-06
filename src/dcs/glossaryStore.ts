@@ -1,7 +1,7 @@
 import { createOrUpdateContents, DcsApiError, getContents, getRawContent, listCommits } from "@ip-lms/dcs-client";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
-import { groupDraftBranches, readRaw } from "./afinacionLoad";
+import { groupDraftBranches } from "./afinacionLoad";
 import { readRepoFile } from "./afinacionStore";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { dcsConfig } from "./config";
@@ -23,7 +23,8 @@ import {
 } from "../domain/glossary";
 import { defaultScriptureRepo } from "../domain/scriptureTarget";
 import { DEFAULT_SOURCE_PACKAGE, type SourcePackage } from "../domain/sourcePackage";
-import { tryParseUsjWithAlignments, verseFromSid, verseTextsFromUsj } from "../domain/usfmAst";
+import { parseSourceUsfm, tryParseUsjWithAlignments, verseFromSid, verseTextsFromUsj } from "../domain/usfmAst";
+import { loadSourceChapter } from "./sourceTexts";
 
 /**
  * The glossary lives beside the other resources of the language, in `<lang>_tg` of the content organization: it is
@@ -199,8 +200,8 @@ export async function loadPassageContext(params: { session: GtSession; owner: st
   const range = { chapter, from: params.from, to: params.to };
   // The English text the person is translating: whoever works on the simplified text reads «Messiah» where the
   // literal one says «Christ», and that is the word they come looking for.
-  const english = await readRaw(session, pkg.owner, params.english === "ust" ? pkg.ust : pkg.ult, bookUsfmName(book));
-  const parsed = english ? tryParseUsjWithAlignments(english) : null;
+  const english = await loadSourceChapter(session, { owner: pkg.owner, repo: params.english === "ust" ? pkg.ust : pkg.ult, filepath: bookUsfmName(book) }, chapter).catch(() => null);
+  const parsed = english ? parseSourceUsfm(english) : null;
   const texts = (parsed && verseTextsFromUsj(parsed.usj, range)) || {};
   const verses: PassageVerse[] = Object.keys(texts).map(Number).sort((a, b) => a - b).map((verse) => {
     const key = parsed ? Object.keys(parsed.alignments).find((sid) => verseFromSid(sid, chapter) === verse) : undefined;

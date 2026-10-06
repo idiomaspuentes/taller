@@ -13,7 +13,7 @@ import { loadFamiliarizeSeen, markFamiliarizeSeen } from "../domain/familiarizeC
 import { fuenteItem } from "../domain/familiarizeItems";
 import {
   englishScriptureKindRef,
-  loadEnglishScriptureKindUsfm,
+  loadEnglishScriptureChapterUsfm,
   loadIntroNotes,
   loadNotesForRange,
   type EnglishScriptureRef,
@@ -130,15 +130,15 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
     try {
       const pmConfig = decoded.pmOrg ? await loadPmConfig(sess, decoded.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
       const [ultLoaded, ustLoaded, notesLoaded, introsLoaded, already] = await Promise.all([
-        loadEnglishScriptureKindUsfm(sess, "ult", decoded.book),
-        loadEnglishScriptureKindUsfm(sess, "ust", decoded.book),
+        loadEnglishScriptureChapterUsfm(sess, "ult", decoded.book, refRange.chapter),
+        loadEnglishScriptureChapterUsfm(sess, "ust", decoded.book, refRange.chapter),
         loadNotesForRange(sess, decoded, refRange, pmConfig),
         loadIntroNotes(sess, decoded.book, refRange.chapter, { contentOrg: decoded.contentOrg, lang: decoded.lang, pmConfig }),
         decoded.stepId && decoded.issueNumber ? stepIsDone({ session: sess, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false) : Promise.resolve(false),
       ]);
       setIntros(introsLoaded);
       setDone(already);
-      const pane = (loaded: Awaited<ReturnType<typeof loadEnglishScriptureKindUsfm>>, kind: "ult" | "ust"): ScripturePane =>
+      const pane = (loaded: Awaited<ReturnType<typeof loadEnglishScriptureChapterUsfm>>, kind: "ult" | "ust"): ScripturePane =>
         loaded ? { usfm: loaded.usfm, verses: extractDraftVerses(loaded.usfm, refRange).verses, meta: loaded.meta } : { ...EMPTY_SCRIPTURE, meta: englishScriptureKindRef(kind, decoded.book) };
       setUlt(pane(ultLoaded, "ult"));
       setUst(pane(ustLoaded, "ust"));

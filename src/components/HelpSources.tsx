@@ -10,8 +10,8 @@ import type { AlignmentMap } from "@usfm-tools/types";
 import type { GtSession } from "../dcs/auth";
 import { wordSpans } from "../domain/afinacionSelection";
 import { alignedGatewayQuoteForHelpQuote } from "../domain/helpQuoteMatch";
-import { loadEnglishScriptureKindUsfm } from "../domain/referenceResources";
-import { tryParseUsjWithAlignments, verseTextsFromUsj, type VerseTextMap } from "../domain/usfmAst";
+import { loadEnglishScriptureChapterUsfm } from "../domain/referenceResources";
+import { parseSourceUsfm, verseTextsFromUsj, type VerseTextMap } from "../domain/usfmAst";
 import { useT } from "../i18n/messages";
 
 /** One of the source texts a help is translated beside: its chapter, and how its words are tied to the original. */
@@ -25,8 +25,8 @@ export function useHelpSources(session: GtSession | undefined, book: string, cha
     let alive = true;
     void Promise.all(
       (["ult", "ust"] as const).map(async (kind) => {
-        const loaded = await loadEnglishScriptureKindUsfm(session, kind, book).catch(() => null);
-        const parsed = loaded ? tryParseUsjWithAlignments(loaded.usfm) : null;
+        const loaded = await loadEnglishScriptureChapterUsfm(session, kind, book, chapter).catch(() => null);
+        const parsed = loaded ? parseSourceUsfm(loaded.usfm) : null;
         const verses = parsed ? verseTextsFromUsj(parsed.usj, { chapter, from: 1, to: 200 }) : null;
         return loaded && parsed && verses ? { short: loaded.meta.short, verses, alignments: parsed.alignments } : null;
       }),

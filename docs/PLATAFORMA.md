@@ -194,6 +194,46 @@ a mano.
 artículo. Offline-first (`tas-helps-draft:…`) y guardado en la rama de trabajo de la
 subtarea; «Listo para revisión» abre la revisión como el editor de Escritura.
 
+## Textos fuente en el dispositivo
+
+Los textos en inglés (ULT y UST) que una herramienta muestra junto a un pasaje se guardan en el
+dispositivo **por capítulo** (IndexedDB, base `taller-sources`). Antes, cada herramienta bajaba el
+libro entero de cada texto al abrirse y lo analizaba entero: el editor, otra vez la revisión, otra
+vez las notas. Y desde que el glosario se encuentra por la alineación, todas la necesitan.
+
+Medido en QA el 6 de octubre de 2026, desde un computador con buena conexión (en un teléfono, más):
+
+| | Judas | Mateo | Salmos |
+|---|---|---|---|
+| El libro, como lo mandaba la API de contenidos | 133 KB | 5,1 MB | 6,9 MB |
+| El libro, archivo tal cual | 93 KB | 3,6 MB | 4,8 MB |
+| Un capítulo (Mateo 5, Salmo 119) | 91 KB | 160 KB | 272 KB |
+| Analizar el libro | 22 ms | 1,6 s | 2,6 s |
+| Analizar el capítulo | 22 ms | 47 ms | 80 ms |
+
+Cómo funciona (`src/dcs/sourceTexts.ts`):
+
+- **La primera vez** que se abre un libro se baja entero una sola vez (el archivo tal cual, sin
+  base64), se corta por capítulos (`src/domain/usfmChapters.ts`) y se guarda. Cada capítulo lleva
+  el encabezado del libro, para leerse solo.
+- **Las siguientes**, y al día siguiente, la herramienta lee su capítulo del dispositivo: 2–3 ms,
+  sin red. Otro capítulo del mismo libro tampoco baja nada.
+- **Si el libro cambió en Door43** se pregunta una vez por visita, con el capítulo ya en pantalla:
+  una sola consulta por recurso (la lista de sus archivos con el hash de cada uno, 17 KB) sirve
+  para todos sus libros. El que cambió se vuelve a bajar y queda para la próxima vez que se abra.
+  Si Door43 no puede decirlo, se vuelve a bajar pasado un día.
+- **Sin red**, se usa lo guardado: un pasaje ya abierto se puede volver a leer sin conexión.
+- Se guarda el texto como lo dio Door43, no lo analizado: un capítulo se analiza en un momento y
+  así no hay un formato propio que mantener al día. El análisis se comparte en memoria entre las
+  partes de una pantalla (`parseSourceUsfm`).
+- Quedan los doce libros abiertos más recientemente; los demás se sueltan.
+
+Lo usan el editor de textos, «Estudio», la revisión, el editor de ayudas, la lectura grupal y el
+glosario. **No lo usan todavía:** las herramientas de Afinación (comparan con el libro entero y
+leen también el original), ni los textos del propio equipo, que cambian a cada rato y se leen de
+su rama. La rama que se lee sigue siendo la de trabajo de cada recurso (`master`), no su última
+versión publicada: cambiar eso es otra decisión.
+
 ## Archivos clave
 
 | Área | Archivo |
@@ -212,6 +252,8 @@ subtarea; «Listo para revisión» abre la revisión como el editor de Escritura
 | Marcas de fase y «Qué cambió» | `src/domain/phaseMarks.ts`, `src/dcs/phaseMarks.ts`, `src/domain/changesSince.ts`, `src/dcs/changesSince.ts`, `src/components/ChangesView.tsx` |
 | Validación y publicación de una unidad | `src/domain/unitStage.ts`, `src/dcs/unitStage.ts`, `src/dcs/unitPublish.ts`, `src/dcs/corrections.ts`, `src/dcs/release.ts` |
 | Familiarize / review | `src/components/FamiliarizeView.tsx`, `src/components/PortionReviewView.tsx` |
+| Textos fuente en el dispositivo | `src/dcs/sourceTexts.ts`, `src/domain/usfmChapters.ts`, `src/domain/referenceResources.ts` |
+| Glosario | `src/domain/glossary.ts`, `src/dcs/glossaryStore.ts`, `src/useGlossary.ts`, `src/components/GlossaryView.tsx`, `docs/GLOSARIO_DOOR43.md` |
 | Work orders | `src/domain/workOrder.ts` |
 | Mis tareas / claim | `src/domain/myTasks.ts`, `src/dcs/issues.ts` |
 | Issues | `src/dcs/issues.ts` |

@@ -51,11 +51,11 @@ import {
   skeletonUsfm,
   type RefRange,
 } from "../domain/usfmEdit";
-import { extractDraftVerses, tryParseUsjWithAlignments, type VerseTextMap } from "../domain/usfmAst";
+import { extractDraftVerses, parseSourceUsfm, type VerseTextMap } from "../domain/usfmAst";
 import {
   englishScriptureKindRef,
   loadEnglishQuestionsForRange,
-  loadEnglishScriptureKindUsfm,
+  loadEnglishScriptureChapterUsfm,
   loadEnglishWordsForRange,
   loadNotesForRange,
   looksLikeMarkdown,
@@ -409,7 +409,7 @@ function paneFromLoaded(
     usfm: loaded.usfm,
     verses: extractDraftVerses(loaded.usfm, range).verses,
     meta: loaded.meta,
-    alignments: tryParseUsjWithAlignments(loaded.usfm)?.alignments,
+    alignments: parseSourceUsfm(loaded.usfm)?.alignments,
     bookCode: book,
   };
 }
@@ -977,7 +977,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     setWordsFailed(false);
     setQuestionsFailed(false);
 
-    void loadEnglishScriptureKindUsfm(sess, "ult", decoded.book)
+    void loadEnglishScriptureChapterUsfm(sess, "ult", decoded.book, refRange.chapter)
       .then((loaded) => {
         if (!stillThisLoad()) return;
         setUlt(paneFromLoaded(loaded, "ult", decoded.book, refRange));
@@ -990,7 +990,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         if (stillThisLoad()) setUltLoading(false);
       });
 
-    void loadEnglishScriptureKindUsfm(sess, "ust", decoded.book)
+    void loadEnglishScriptureChapterUsfm(sess, "ust", decoded.book, refRange.chapter)
       .then((loaded) => {
         if (!stillThisLoad()) return;
         setUst(paneFromLoaded(loaded, "ust", decoded.book, refRange));

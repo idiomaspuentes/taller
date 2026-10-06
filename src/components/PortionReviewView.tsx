@@ -26,7 +26,7 @@ import { canResolveComment, openComments } from "../domain/reviewComments";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
-import { englishScriptureKindRef, loadEnglishHelpsForRange, loadEnglishScriptureKindUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
+import { englishScriptureKindRef, loadEnglishHelpsForRange, loadEnglishScriptureChapterUsfm, loadNotesForRange, type ReferenceHelpRow } from "../domain/referenceResources";
 import { articleItems, diffWords, introItems, refComment, reviewItems, type IntroItem, type ReviewItem } from "../domain/reviewItems";
 import { selectTsvRowsForPortion, tsvRowId } from "../domain/helpsDraft";
 import { helpsTsvFilename } from "../domain/helpsTarget";
@@ -160,7 +160,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
       // What helps to judge the draft comes apart from it: a source that fails to load does not hide the draft.
       const pmConfig = await loadPmConfig(sess, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG);
-      void Promise.all((["ult", "ust"] as const).map((kind) => loadEnglishScriptureKindUsfm(sess, kind, ctx.book).catch(() => null))).then((loaded) =>
+      void Promise.all((["ult", "ust"] as const).map((kind) => loadEnglishScriptureChapterUsfm(sess, kind, ctx.book, range.chapter).catch(() => null))).then((loaded) =>
         setSources(
           loaded.flatMap((pane, index) => (pane ? [{ short: pane.meta?.short || englishScriptureKindRef((["ult", "ust"] as const)[index]!, ctx.book).short, verses: extractDraftVerses(pane.usfm, range).verses }] : [])),
         ),
