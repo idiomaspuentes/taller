@@ -2567,5 +2567,17 @@
   "ab.storyLast": "Fim",
   "ab.storyEarlier": "uma palavra antes",
   "ab.storyLater": "uma palavra depois",
-  "ab.storyDots": "Pôr … entre as partes"
+  "ab.storyDots": "Pôr … entre as partes",
+  "he.notesHint": "Toque uma nota para traduzi-la. O que está em cinza falta traduzir.",
+  "he.questionsHint": "Toque uma pergunta ou a sua resposta para traduzi-la. O que está em cinza falta traduzir.",
+  "he.countNotes": "{done} de {total} notas",
+  "he.countQuestions": "{done} de {total} perguntas",
+  "he.footPendingNotesOne": "Falta 1 nota por traduzir.",
+  "he.footPendingNotesMany": "Faltam {n} notas por traduzir.",
+  "he.footPendingQuestionsOne": "Falta 1 pergunta por traduzir.",
+  "he.footPendingQuestionsMany": "Faltam {n} perguntas por traduzir.",
+  "he.pendingTitleNotesOne": "Falta {n} nota por traduzir",
+  "he.pendingTitleNotesMany": "Faltam {n} notas por traduzir",
+  "he.pendingTitleQuestionsOne": "Falta {n} pergunta por traduzir",
+  "he.pendingTitleQuestionsMany": "Faltam {n} perguntas por traduzir"
 }

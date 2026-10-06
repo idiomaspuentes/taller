@@ -110,10 +110,24 @@ familiarización del TPL y del TPS.
 
 Las ayudas **no llevan revisión grupal**.
 
-**Cada nota y cada pregunta, en su caja, nombrada por su versículo.** Encima de la caja está el texto
-fuente de esa ayuda; en una nota, además, la frase de la que trata tal como aparece en los textos
-fuente, con el versículo completo a un toque. «Terminé el borrador» guarda lo escrito, abre la
-revisión y completa el paso, en una sola acción.
+**Cada nota y cada pregunta se lee en la lista y se traduce al tocarla.** Las ayudas de un libro que
+el equipo no ha trabajado empiezan como una copia de las de la fuente. El editor las muestra como se
+leen, bajo su versículo (que se dice una sola vez): en gris lo que sigue en el idioma de la fuente, en
+su color lo traducido. Al tocar una se abre: el original arriba y, debajo, un cuadro vacío para la
+traducción («Copiar el original» lo llena con el texto fuente, para quien prefiera escribir encima);
+en una nota, además, la frase de la que trata tal como aparece en los textos fuente, con el versículo
+completo a un toque. Una pregunta y su respuesta son dos cuadros, uno tras otro. «Siguiente» pasa a la
+ayuda que sigue sin tener que buscarla, y en la última está «Listo», como en un artículo (3.5).
+
+Arriba se cuenta cuántas van traducidas («3 de 22 notas»): una pregunta cuenta cuando también lo está
+su respuesta, y la introducción, que tiene muchos párrafos, cuenta como una nota. «Terminé el
+borrador» guarda lo escrito, abre la revisión y completa el paso, en una sola acción; no se ofrece
+mientras no haya nada traducido y, si quedan ayudas sin traducir, lo pregunta antes diciendo cuántas
+son. Una ayuda que no tiene original en la fuente (una fila que el equipo añadió) se edita en un
+cuadro con lo que tenga.
+
+Antes cada ayuda llegaba en un cuadro ya lleno con el inglés: en el teléfono había que borrarlo letra
+por letra, nada decía cuántas faltaban y se podían entregar todas sin traducir.
 
 **La introducción se traduce como un artículo.** La primera porción de un libro lleva entre sus notas
 la introducción al libro, y la primera de cada capítulo, la del capítulo. Son páginas de texto: el

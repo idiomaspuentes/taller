@@ -25,6 +25,8 @@ type Props = {
   aside?: React.ReactNode;
   /** Shown at the end of that line, always: where the way on from this piece goes. */
   trailing?: React.ReactNode;
+  /** A plain sentence (a question, its answer): nothing in it is made bold or linked, and no tool offers to. */
+  plain?: boolean;
 };
 
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -140,7 +142,7 @@ function shapeHtml(shape: Block | undefined, names: { academia: string; palabra:
   return shape && shape.t !== "p" ? blocksHtml([shape], names) : "";
 }
 
-export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing }: Props) {
+export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 6, compact, emptyAs, aside, trailing, plain }: Props) {
   const t = useT();
   const names = useMemo(() => ({ academia: t("mde.academy"), palabra: t("mde.word") }), [t]);
   const safe = useMemo(() => roundTrips(value), [value]);
@@ -235,7 +237,7 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
     <div className={compact ? `mde mde--compact${value.trim() ? "" : " mde--empty"}` : "mde"}>
       <div className="mde-bar" role="toolbar" aria-label={t("mde.toolbar")}>
         {compact && aside ? <div className="mde-aside">{aside}</div> : null}
-        {source ? null : (
+        {source || plain ? null : (
           <span className="mde-tools">
             {tool(t("mde.bold"), <Bold size={16} aria-hidden />, () => run("bold"))}
             {tool(t("mde.italic"), <Italic size={16} aria-hidden />, () => run("italic"))}

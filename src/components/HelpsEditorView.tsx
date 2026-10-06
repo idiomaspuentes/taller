@@ -17,6 +17,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { StoryFramePick } from "./StoryFramePick";
 import { usePieces, type ActivePiece } from "./usePieces";
 import { articleRows, introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
+import { answerTextId, helpTexts, helpsLeft, type HelpText } from "../domain/helpTexts";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
@@ -632,16 +633,21 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   }, [sourceRead, sourceHelps, target?.kind]);
 
   const articles = items.filter((item) => item.kind === "markdown");
-  // A long text is worked piece by piece: an article, and a note that is an introduction (pages of text kept in one
-  // cell of the table, its line breaks written out).
-  const longSource = (item: HelpsDraftItem) => (item.kind === "tsv" ? noteFromTsv(sourceHelps[item.id]?.text ?? "") : (sourceHelps[item.id]?.text ?? ""));
-  const longText = (item: HelpsDraftItem) => (item.kind === "tsv" ? noteFromTsv(item.text) : item.text);
-  const byRows = (item: HelpsDraftItem) => (item.kind === "markdown" ? view === "rows" : Boolean(item.intro)) && Boolean(longSource(item).trim()) && rowsPossible(longSource(item), longText(item));
+  // What is worked piece by piece: an article, and each note and question of a passage, a question with its answer
+  // (see `helpTexts`). The rest is edited whole, in a box.
+  const texts = useMemo(() => helpTexts(items, sourceHelps, { articlesWhole: view === "whole" }), [items, sourceHelps, view]);
+  const textOf = new Map(texts.map((text) => [text.id, text]));
   const introName = (item: HelpsDraftItem) => (item.intro === "book" ? t("fa.bookIntro") : t("fa.chapterIntro").replace("{n}", String(item.chapter ?? "")));
   const canUseRows = articles.some((item) => Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text));
-  const pending = articles.reduce((sum, item) => sum + (byRows(item) && progress[item.id] ? progress[item.id]!.total - progress[item.id]!.done : 0), 0);
-  // An article nobody has translated a piece of is not a draft yet: there is nothing to hand in.
-  const nothingDone = articles.length > 0 && articles.every(byRows) && articles.every((item) => progress[item.id]) && articles.every((item) => progress[item.id]!.done === 0);
+  // Counted, and named, as whoever translates counts: the paragraphs of an article, the notes or the questions of a passage.
+  const unit = target?.kind !== "tsv" ? "" : target.resource === "preguntas" ? "Questions" : "Notes";
+  const { left: pending, total: toTranslate } = helpsLeft(texts, progress, unit ? "help" : "piece");
+  const countKnown = sourceReady && texts.every((text) => progress[text.id]);
+  /** Whether the notes or the questions of the passage are worked by pieces: how is said once, over them all. */
+  const helpsHint = Boolean(unit) && texts.some((text) => !text.item.intro);
+  // A draft nobody has translated a piece of is not a draft yet: there is nothing to hand in.
+  const allByPieces = items.length > 0 && items.every((item) => textOf.has(item.id) && (item.secondary === undefined || textOf.has(answerTextId(item.id))));
+  const nothingDone = allByPieces && toTranslate > 0 && texts.every((text) => progress[text.id]) && texts.every((text) => progress[text.id]!.done === 0);
   const partLabel = (item: HelpsDraftItem) => (item.part === "title" ? t("he.partTitle") : item.part === "sub-title" ? t("he.partSubtitle") : articles.some((other) => other.part) ? t("he.partBody") : item.label);
   /** The texts worked by pieces, as they follow one another: the title of an article, the line under it, its body. */
   // The references to passages of an article are written by the app, in the language the team translates into.
@@ -679,32 +685,39 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     [sourceRead, items.length],
   );
   const opensQuiet = (id: string, index: number) => Boolean(frameOf(sourcePieces[id]?.[index] ?? ""));
-  const inRows = items.filter(byRows);
-  const inPieces = inRows.map((item) => item.id);
+  const inPieces = texts.map((text) => text.id);
   /** The first piece still to be translated is opened and brought onto the screen: where to go on from. */
   function toFirstPending() {
-    const first = inRows.find((item) => (progress[item.id]?.firstPending ?? -1) >= 0);
+    const first = texts.find((text) => (progress[text.id]?.firstPending ?? -1) >= 0);
     if (first) pieces.show(first.id, progress[first.id]!.firstPending);
   }
 
-  // What a reviewer said is shown where it is about: with its paragraph in an article, with its verse in the notes
-  // and the questions. The rest (about the whole draft, or about something that is no longer here) goes over the draft.
-  const refOfPiece = (item: HelpsDraftItem, index: number) => (item.intro ? introPieceRef(item.chapter, index) : pieceRef(item.filepath, index));
-  const commentsOn = (item: HelpsDraftItem, index: number) => reviewComments.filter((row) => row.ref === refOfPiece(item, index));
+  // What a reviewer said is shown where it is about: with its paragraph in an article or an introduction, with its
+  // verse in the notes and the questions (their pieces have no name of their own). The rest (about the whole draft,
+  // or about something that is no longer here) goes over the draft.
+  const refOfPiece = (text: HelpText, index: number) => (text.item.kind === "markdown" ? pieceRef(text.item.filepath, index) : text.item.intro ? introPieceRef(text.item.chapter, index) : null);
+  const commentsOn = (text: HelpText, index: number) => {
+    const ref = refOfPiece(text, index);
+    return ref ? reviewComments.filter((row) => row.ref === ref) : [];
+  };
   const verseOf = (item: HelpsDraftItem) => (item.kind === "tsv" && item.chapter && item.verse ? `${item.chapter}:${item.verse}` : "");
   // Several notes may be of one verse, and a comment names only the verse: it is shown once, with the first of them.
   const firstOfVerse = new Map<string, string>();
   for (const item of items) if (verseOf(item) && !firstOfVerse.has(verseOf(item))) firstOfVerse.set(verseOf(item), item.id);
   const commentsOfVerse = (item: HelpsDraftItem) => (firstOfVerse.get(verseOf(item)) === item.id ? reviewComments.filter((row) => row.ref === verseOf(item)) : []);
   // Until the pieces of the article are known, no comment can be said to be about none of them.
-  const placesKnown = sourceReady && inRows.every((item) => progress[item.id]);
-  const places = new Set([...firstOfVerse.keys(), ...inRows.flatMap((item) => Array.from({ length: progress[item.id]?.count ?? 0 }, (_, index) => refOfPiece(item, index)))]);
+  const placesKnown = countKnown;
+  const places = new Set([
+    ...firstOfVerse.keys(),
+    ...texts.flatMap((text) => Array.from({ length: progress[text.id]?.count ?? 0 }, (_, index) => refOfPiece(text, index)).flatMap((ref) => (ref ? [ref] : []))),
+  ]);
   const generalComments = placesKnown ? reviewComments.filter((row) => !places.has(row.ref)) : [];
   const placedComments = placesKnown ? reviewComments.length - generalComments.length : 0;
-  /** The first paragraph somebody commented on, as the article reads. */
+  /** The first piece somebody commented on, as the draft reads: a paragraph, or the first help of a verse. */
   const firstCommented = (): ActivePiece | null => {
-    for (const item of inRows) {
-      for (let index = 0; index < (progress[item.id]?.count ?? 0); index++) if (commentsOn(item, index).length) return { id: item.id, index };
+    for (const text of texts) {
+      for (let index = 0; index < (progress[text.id]?.count ?? 0); index++) if (commentsOn(text, index).length) return { id: text.id, index };
+      if (text.field === "text" && commentsOfVerse(text.item).length) return { id: text.id, index: 0 };
     }
     return null;
   };
@@ -712,7 +725,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const piece = firstCommented();
     if (piece) return pieces.show(piece.id, piece.index);
     const first = items.find((item) => commentsOfVerse(item).length);
-    if (first) document.getElementById(`help-${first.id}`)?.scrollIntoView({ block: "center" });
+    if (first) document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" });
   };
   const when = (iso: string) => (iso ? new Date(iso).toLocaleDateString(language, { day: "numeric", month: "short" }) : "");
   const commentRow = (row: ReviewComment, withRef = false) => (
@@ -727,14 +740,16 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   // not focused: on a phone that would raise the keyboard over an article nobody has looked at yet.
   useEffect(() => {
     if (autoOpened.current || !sourceReady || !(reviewRead || !session)) return;
-    if (!inRows.length || inRows.some((item) => !progress[item.id])) return;
+    if (!texts.length || texts.some((text) => !progress[text.id])) return;
     autoOpened.current = true;
-    // Opened from a comment about a paragraph (the conversation): that paragraph, before any other.
+    // Opened from a comment about a paragraph, or about a verse (the conversation): that one, before any other.
+    const ofVerse = ctx?.focus ? texts.find((text) => text.field === "text" && verseOf(text.item) === ctx.focus) : undefined;
     const focused = ctx?.focus
-      ? inRows.map((item) => ({ id: item.id, index: Array.from({ length: progress[item.id]?.count ?? 0 }, (_, at) => refOfPiece(item, at)).indexOf(ctx.focus!) })).find((piece) => piece.index >= 0)
+      ? (texts.map((text) => ({ id: text.id, index: Array.from({ length: progress[text.id]?.count ?? 0 }, (_, at) => refOfPiece(text, at)).indexOf(ctx.focus!) })).find((piece) => piece.index >= 0) ??
+        (ofVerse ? { id: ofVerse.id, index: 0 } : undefined))
       : undefined;
     const commented = firstCommented();
-    const first = inRows.find((item) => progress[item.id]!.firstPending >= 0);
+    const first = texts.find((text) => progress[text.id]!.firstPending >= 0);
     if (focused) pieces.show(focused.id, focused.index);
     else if (commented) pieces.show(commented.id, commented.index);
     else if (first) pieces.show(first.id, progress[first.id]!.firstPending);
@@ -748,11 +763,41 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const first = items.find((item) => verseOf(item) === ctx.focus);
     if (!first) return;
     verseFocused.current = true;
-    requestAnimationFrame(() => document.getElementById(`help-${first.id}`)?.scrollIntoView({ block: "center" }));
+    requestAnimationFrame(() => document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, busy, ctx?.focus]);
 
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
+
+  /** A text worked by pieces, tied to the piece that is open on the screen, the way on from it and what is left. */
+  const piecesOf = (text: HelpText, extra: Partial<React.ComponentProps<typeof ArticleBlocks>> = {}, key?: string) => (
+    <ArticleBlocks
+      key={key}
+      id={`help-${text.id}`}
+      source={text.source}
+      value={text.value}
+      // A table file keeps the line breaks of a text written out; an article is markdown as it is.
+      onChange={(md) => updateItem(text.item.id, text.field === "secondary" ? { secondary: noteToTsv(md) } : { text: text.item.kind === "markdown" ? md : noteToTsv(md) })}
+      book={ctx?.book}
+      open={active?.id === text.id ? active.index : null}
+      onOpen={(index, element) => pieces.open(text.id, index, element, opensQuiet(text.id, index))}
+      onProgress={(done, total, firstPending, count, made) => pieces.report(text.id, done, total, firstPending, count, made)}
+      hasNext={active?.id === text.id ? Boolean(pieces.after(inPieces, text.id, active.index)) : false}
+      onNext={(index) => pieces.next(inPieces, text.id, index, opensQuiet)}
+      onDone={pieces.close}
+      marksOf={(index) => commentsOn(text, index).length}
+      above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}
+      {...extra}
+    />
+  );
+  /** The answer of a question that is not worked by pieces: a plain sentence, in a box. */
+  const answerBox = (item: HelpsDraftItem) =>
+    item.secondaryLabel ? (
+      <label className="grid gap-1">
+        <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
+        <textarea className="scripture-editor__input" rows={3} value={item.secondary ?? ""} onChange={(e) => updateItem(item.id, { secondary: e.target.value })} placeholder={loc(item.secondaryLabel)} />
+      </label>
+    ) : null;
 
   return (
     <div className="scripture-editor fam">
@@ -773,13 +818,19 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
 
       {wantsSources && range && !busy ? (
         // What is long and only read (the chapter in the source texts) has its own tab: the work area keeps to the helps.
-        <div className="fam-tabs" role="tablist">
-          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "edit"} onClick={() => setPane("edit")}>
-            {t("hs.tabEdit")}
-          </button>
-          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "chapter"} onClick={() => setPane("chapter")}>
-            {t("hs.tabChapter").replace("{n}", String(range.chapter))}
-          </button>
+        <div className="fam-tabs">
+          <div className="fam-tabs__set" role="tablist">
+            <button type="button" role="tab" className="fam-tab" aria-selected={pane === "edit"} onClick={() => setPane("edit")}>
+              {t("hs.tabEdit")}
+            </button>
+            <button type="button" role="tab" className="fam-tab" aria-selected={pane === "chapter"} onClick={() => setPane("chapter")}>
+              {t("hs.tabChapter").replace("{n}", String(range.chapter))}
+            </button>
+          </div>
+          {/* How far along the passage is, in sight wherever its list is scrolled to: the bar at the foot says other things while there is something to save. */}
+          {unit && countKnown && toTranslate > 0 ? (
+            <span className="fam-tabs__count">{t(`he.count${unit}`).replace("{done}", String(toTranslate - pending)).replace("{total}", String(toTranslate))}</span>
+          ) : null}
         </div>
       ) : null}
       {wantsSources && range && !busy ? (
@@ -799,6 +850,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             </p>
           ) : canUseRows && view === "rows" ? (
             <p className="ab-hint">{t("he.rowsHint")}</p>
+          ) : wantsSources && !sourceReady ? null : helpsHint ? (
+            <p className="ab-hint">{t(isNotes ? "he.notesHint" : "he.questionsHint")}</p>
           ) : (
             <p className="text-sm text-muted-foreground">
               {articles.length && articles.length === items.length ? t("he.oneArticleWhole") : t("he.oneResource")}{" "}
@@ -830,54 +883,63 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             </div>
           ) : null}
           {articles.length && !sourceReady ? <p className="text-sm text-muted-foreground" aria-busy="true">{t("he.sourceLoading")}</p> : null}
-          {items.map((item) =>
-            item.kind === "markdown" && !sourceReady ? null : item.kind === "markdown" && byRows(item) ? (
+          {wantsSources && items.length && !sourceReady ? <p className="text-sm text-muted-foreground" aria-busy="true">{t("he.loading")}</p> : null}
+          {items.map((item) => {
+            const main = textOf.get(item.id);
+            const answer = textOf.get(answerTextId(item.id));
+            // The source says how a help is shown (by pieces, or whole in a box): until it is read, none is.
+            if (!sourceReady) return null;
+            if (item.kind === "markdown" && main)
               // An article reads as one text: its title, the line under it and its body follow one another.
-              <ArticleBlocks
-                key={item.id}
-                id={`help-${item.id}`}
-                part={item.part}
-                source={sourceHelps[item.id]!.text}
-                value={item.text}
-                onChange={(text) => updateItem(item.id, { text })}
-                book={ctx?.book}
-                open={active?.id === item.id ? active.index : null}
-                onOpen={(index, element) => pieces.open(item.id, index, element, opensQuiet(item.id, index))}
-                onProgress={(done, total, firstPending, count, made) => pieces.report(item.id, done, total, firstPending, count, made)}
-                make={makePiece}
-                beside={(row, box) => {
-                  const ours = frameOf(row.source);
-                  return ours ? <StoryFramePick key={row.source} name={t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)} frame={ours.frame} sourcePiece={row.source} text={box.text} onWrite={box.write} /> : null;
-                }}
-                hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
-                onNext={(index) => pieces.next(inPieces, item.id, index, opensQuiet)}
-                onDone={pieces.close}
-                marksOf={(index) => commentsOn(item, index).length}
-                above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}
-              />
-            ) : item.intro && !sourceReady ? null : item.intro && byRows(item) ? (
-              // An introduction is pages long: it reads as text and is translated a paragraph at a time, as an article.
-              <section key={item.id} className="he-intro">
-                <h2 className="he-intro__name">{introName(item)}</h2>
-                <p className="ab-hint">{t("he.rowsHint")}</p>
-                <ArticleBlocks
-                  id={`help-${item.id}`}
-                  source={longSource(item)}
-                  value={longText(item)}
-                  onChange={(text) => updateItem(item.id, { text: noteToTsv(text) })}
-                  book={ctx?.book}
-                  open={active?.id === item.id ? active.index : null}
-                  onOpen={(index, element) => pieces.open(item.id, index, element)}
-                  onProgress={(done, total, firstPending, count) => pieces.report(item.id, done, total, firstPending, count)}
-                  hasNext={active?.id === item.id ? Boolean(pieces.after(inPieces, item.id, active.index)) : false}
-                  onNext={(index) => pieces.next(inPieces, item.id, index)}
-                  onDone={pieces.close}
-                  marksOf={(index) => commentsOn(item, index).length}
-                  above={(index) => (commentsOn(item, index).length ? <ul className="rv-comments">{commentsOn(item, index).map((row) => commentRow(row))}</ul> : null)}
-                />
-              </section>
-            ) : (
-            <div key={item.id} className="scripture-editor__verse">
+              return piecesOf(
+                main,
+                {
+                  part: item.part,
+                  make: makePiece,
+                  beside: (row, box) => {
+                    const ours = frameOf(row.source);
+                    return ours ? <StoryFramePick key={row.source} name={t("ab.storyName").replace("{ref}", `${ours.ref.story}:${ours.ref.frame}`)} frame={ours.frame} sourcePiece={row.source} text={box.text} onWrite={box.write} /> : null;
+                  },
+                },
+                item.id,
+              );
+            if (item.intro && main)
+              return (
+                // An introduction is pages long: it reads as text and is translated a paragraph at a time, as an article.
+                <section key={item.id} className="he-intro">
+                  <h2 className="he-intro__name">{introName(item)}</h2>
+                  {/* Said once: over the notes of the passage when there are any, here when the introduction is all there is. */}
+                  {helpsHint ? null : <p className="ab-hint">{t("he.rowsHint")}</p>}
+                  {piecesOf(main)}
+                </section>
+              );
+            if (main)
+              return (
+                // A note or a question reads as the source has it until it is translated; touched, it opens with its
+                // source over an empty box. Its verse is said once, over the first help of that verse.
+                <div key={item.id} id={`help-at-${item.id}`} className="he-note">
+                  {verseOf(item) ? firstOfVerse.get(verseOf(item)) === item.id ? <h2 className="he-note__ref">{verseOf(item)}</h2> : null : <p className="scripture-editor__source">{item.meta}</p>}
+                  {commentsOfVerse(item).length ? <ul className="rv-comments">{commentsOfVerse(item).map((row) => commentRow(row))}</ul> : null}
+                  {piecesOf(main, {
+                    plain: !isNotes,
+                    // What the note is about in each source text goes with the note being written: over every note
+                    // of a passage it was most of what the screen held.
+                    ...(isNotes && item.chapter && item.verse
+                      ? { above: () => <NoteQuote sources={sources} book={(ctx?.book || "").toUpperCase()} chapter={item.chapter!} verse={item.verse!} quote={item.quote ?? ""} occurrence={item.occurrence ?? 1} /> }
+                      : {}),
+                  })}
+                  {answer ? (
+                    <>
+                      <p className="he-note__label">{loc(item.secondaryLabel ?? "")}</p>
+                      {piecesOf(answer, { plain: true })}
+                    </>
+                  ) : (
+                    answerBox(item)
+                  )}
+                </div>
+              );
+            return (
+            <div key={item.id} id={`help-at-${item.id}`} className="scripture-editor__verse">
               <div className="scripture-editor__verse-head">
                 {item.kind === "tsv" && item.chapter && item.verse ? (
                   // A note or a question is named by where it is: what it is about is said below, in the source. Its
@@ -922,21 +984,10 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                   placeholder={t("he.textPlaceholder")}
                 />
               )}
-              {item.secondaryLabel ? (
-                <label className="grid gap-1">
-                  <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
-                  <textarea
-                    className="scripture-editor__input"
-                    rows={3}
-                    value={item.secondary ?? ""}
-                    onChange={(e) => updateItem(item.id, { secondary: e.target.value })}
-                    placeholder={loc(item.secondaryLabel)}
-                  />
-                </label>
-              ) : null}
+              {answerBox(item)}
             </div>
-            ),
-          )}
+            );
+          })}
           {canUseRows && view === "rows" ? (
             // For a text that has to be seen whole (to paste one in, to look at its code): the same article in one box.
             <button
@@ -969,7 +1020,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               : dirty
                   ? t("he.footUnsaved")
                   : pending
-                    ? t(pending === 1 ? "he.footPendingOne" : "he.footPendingMany").replace("{n}", String(pending))
+                    ? t(`he.footPending${unit}${pending === 1 ? "One" : "Many"}`).replace("{n}", String(pending))
                     : prUrl
                       ? t("he.footInReview")
                       : t("he.footSaved")}
@@ -1005,7 +1056,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       <ConfirmDialog
         open={confirming && pending > 0}
         safe
-        title={t(pending === 1 ? "he.pendingTitleOne" : "he.pendingTitleMany").replace("{n}", String(pending))}
+        title={t(`he.pendingTitle${unit}${pending === 1 ? "One" : "Many"}`).replace("{n}", String(pending))}
         text={t("he.pendingText")}
         yes={t("he.finishAnyway")}
         no={t("he.keepTranslating")}

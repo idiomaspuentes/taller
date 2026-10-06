@@ -47,6 +47,8 @@ type Props = {
    * given the cursor, so that on a phone the keyboard stays down while the piece is made by touching.
    */
   beside?: (row: ArticleRow, box: { text: string; write: (markdown: string) => void }) => React.ReactNode;
+  /** The text is plain sentences (a question, its answer): its box offers no bold, italics or link. */
+  plain?: boolean;
 };
 
 /** A piece as it reads: what is written for it, or the source, in grey, while nothing is. */
@@ -87,7 +89,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -221,6 +223,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             <MarkdownEditor
               id={`${id}-${index}`}
               compact
+              plain={plain}
               emptyAs={row.shape}
               value={shown}
               book={book}

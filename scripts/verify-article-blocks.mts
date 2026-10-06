@@ -1,12 +1,15 @@
 /**
  * An article translated piece by piece: the rows made from the source and the team's file, what counts as still to
- * be translated, and the file the rows are joined back into.
+ * be translated, and the file the rows are joined back into. The notes and the questions of a passage are worked the
+ * same way: which of their texts go by pieces, and how what is left of them is counted.
  *
  *   npm run verify:article-blocks
  */
 import assert from "node:assert/strict";
 import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, rowsMarkdown, startingText, untranslated, vocabularyOf } from "../src/domain/articleBlocks";
 import { bookNamesIn } from "../src/domain/books";
+import { answerTextId, helpTexts, helpsLeft, type HelpText } from "../src/domain/helpTexts";
+import type { HelpsDraftItem } from "../src/domain/helpsDraft";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
 import { isPassageList, localPassages } from "../src/domain/passageLinks";
 import { dotsOf, frameWords, marksText, nudgeMarks, pickedText, readMarks, storiesIn, storyExample, storyFrames, storyPath, storyRefOf, touchMarks, type Marks } from "../src/domain/storyFrames";
@@ -395,6 +398,75 @@ test("un párrafo se nombra por su artículo y su lugar en la fuente, y el comen
   for (const ref of [pieceRef("translate/figs-metaphor/01.md", 4), pieceRef("translate/figs-metaphor/title.md", 0), pieceRef("bible/kt/grace.md", 2)]) {
     assert.deepEqual(parseRefComment(refComment("jud", ref, "Falta un acento.")), { ref, text: "Falta un acento." }, ref);
   }
+});
+
+// ---------------------------------------------------------------- the notes and the questions of a passage
+
+const note = (id: string, text: string, more: Partial<HelpsDraftItem> = {}): HelpsDraftItem => ({ id, label: id, meta: id, text, filepath: "tn_JUD.tsv", kind: "tsv", chapter: 1, verse: 3, ...more });
+const question = (id: string, text: string, secondary: string): HelpsDraftItem => ({ ...note(id, text), filepath: "tq_JUD.tsv", secondary, secondaryLabel: "Respuesta" });
+const NOTE_EN = "**Beloved ones** refers here to those to whom Jude is writing. Alternate translation: [Beloved fellow believers]";
+const NOTE_ES = "**Amados** se refiere aquí a quienes Judas escribe. Traducción alternativa: [Amados hermanos creyentes]";
+/** What a screen would be told by each text: how many of its pieces there are to translate, and how many are. */
+const countsOf = (texts: HelpText[]) => Object.fromEntries(texts.map((text) => [text.id, articleProgress(articleRows(text.source, text.value)!, vocabularyOf(text.source))]));
+
+test("una nota es un texto por trozos, y una pregunta dos: la pregunta y su respuesta, en ese orden", () => {
+  const notes = helpTexts([note("a1", NOTE_EN), note("b2", NOTE_ES)], { a1: { text: NOTE_EN }, b2: { text: NOTE_EN } });
+  assert.deepEqual(notes.map((text) => [text.id, text.field]), [["a1", "text"], ["b2", "text"]]);
+  const asked = helpTexts([question("q1", "Who wrote?", "Jude wrote."), question("q2", "To whom?", "To the called.")], { q1: { text: "Who wrote?", secondary: "Jude wrote." }, q2: { text: "To whom?", secondary: "To the called." } });
+  assert.deepEqual(asked.map((text) => [text.id, text.field, text.source]), [
+    ["q1", "text", "Who wrote?"],
+    [answerTextId("q1"), "secondary", "Jude wrote."],
+    ["q2", "text", "To whom?"],
+    [answerTextId("q2"), "secondary", "To the called."],
+  ]);
+});
+
+test("la nota que el equipo tiene igual que la fuente falta por traducir y su cuadro abre vacío; traducida, está hecha", () => {
+  const [copied, done] = helpTexts([note("a1", NOTE_EN), note("b2", NOTE_ES)], { a1: { text: NOTE_EN }, b2: { text: NOTE_EN } });
+  const row = articleRows(copied!.source, copied!.value)![0]!;
+  assert.equal(rowPending(row, vocabularyOf(copied!.source)), true, "la copia de la fuente cuenta como pendiente");
+  assert.equal(row.draft.trim() !== "", true, "y la tabla la conserva hasta que se escriba otra cosa");
+  assert.equal(rowPending(articleRows(done!.source, done!.value)![0]!, vocabularyOf(done!.source)), false);
+});
+
+test("la tabla guarda los saltos de línea escritos: la nota se parte con saltos de verdad", () => {
+  const [text] = helpTexts([note("i1", "# Intro\\n\\nFirst paragraph.<br><br>Second one.", { intro: "book", verse: undefined })], { i1: { text: "# Intro\\n\\nFirst paragraph.\\n\\nSecond one." } });
+  assert.equal(text!.value, "# Intro\n\nFirst paragraph.\n\nSecond one.");
+  assert.equal(articleRows(text!.source, text!.value)!.length, 3);
+});
+
+test("lo que no tiene fuente se edita entero en un cuadro, y una respuesta va por trozos solo con su pregunta", () => {
+  assert.deepEqual(helpTexts([note("a1", NOTE_ES)], {}), []);
+  assert.deepEqual(helpTexts([note("a1", NOTE_ES)], { a1: { text: "  " } }), []);
+  // The question is new in the team's table (the source has none): its answer does not go by pieces alone.
+  assert.deepEqual(helpTexts([question("q1", "¿Quién escribió?", "Judas.")], { q1: { text: "", secondary: "Jude." } }), []);
+  // The source has the question but no answer: the question goes by pieces and the answer stays a box.
+  assert.deepEqual(helpTexts([question("q1", "Who wrote?", "Judas.")], { q1: { text: "Who wrote?" } }).map((text) => text.id), ["q1"]);
+});
+
+test("un artículo que se pidió ver entero no se parte; las notas no tienen esa vista", () => {
+  const article: HelpsDraftItem = { id: "grace", label: "grace", meta: "grace", text: "", filepath: "bible/kt/grace.md", kind: "markdown" };
+  assert.equal(helpTexts([article], { grace: { text: SOURCE } }).length, 1);
+  assert.equal(helpTexts([article], { grace: { text: SOURCE } }, { articlesWhole: true }).length, 0);
+  assert.equal(helpTexts([note("a1", NOTE_EN)], { a1: { text: NOTE_EN } }, { articlesWhole: true }).length, 1);
+});
+
+test("lo que falta se cuenta en notas y en preguntas: una pregunta a la que solo le falta la respuesta es una", () => {
+  const asked = helpTexts(
+    [question("q1", "¿Quién escribió?", "Jude wrote the letter."), question("q2", "¿A quiénes?", "A los llamados."), question("q3", "What did he want?", "Mercy and peace.")],
+    { q1: { text: "Who wrote?", secondary: "Jude wrote the letter." }, q2: { text: "To whom?", secondary: "To the called." }, q3: { text: "What did he want?", secondary: "Mercy and peace." } },
+  );
+  const counts = countsOf(asked);
+  assert.deepEqual(helpsLeft(asked, counts, "help"), { left: 2, total: 3 });
+  // The same texts counted by pieces, as the paragraphs of an article are.
+  assert.deepEqual(helpsLeft(asked, counts, "piece"), { left: 3, total: 6 });
+});
+
+test("una introducción de muchos párrafos es una nota más, y lo que aún no se contó no suma", () => {
+  const intro = note("i1", "# Intro\\n\\nPrimer párrafo traducido.\\n\\nSecond paragraph still here.", { intro: "book", verse: undefined });
+  const texts = helpTexts([intro, note("a1", NOTE_ES)], { i1: { text: "# Intro\\n\\nFirst paragraph here.\\n\\nSecond paragraph still here." }, a1: { text: NOTE_EN } });
+  assert.deepEqual(helpsLeft(texts, countsOf(texts), "help"), { left: 1, total: 2 });
+  assert.deepEqual(helpsLeft(texts, {}, "help"), { left: 0, total: 0 });
 });
 
 console.log(`\nverify-article-blocks: ${passed} checks passed.`);

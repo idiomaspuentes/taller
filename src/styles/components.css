@@ -7808,6 +7808,17 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 /* A note that is an introduction, among the notes of a passage: named, then read and translated as an article. */
 .he-intro { display: grid; gap: 0.375rem; min-width: 0; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
 .he-intro__name { margin: 0; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-muted); }
+/* The notes and the questions of a passage, one after another: each reads as text until it is touched, under the
+   verse it is of, which is said once. */
+.he-note { display: grid; gap: 0.125rem; min-width: 0; max-width: 46rem; }
+.he-note + .he-note { padding-top: 0.875rem; border-top: 1px solid var(--border); }
+.he-note__ref { margin: 0 0 0.125rem; font-size: 0.875rem; font-weight: 700; color: var(--text); }
+.he-note__label { margin: 0.25rem 0 0; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+/* What the note is about in the source texts, over the note being written. */
+.ab-over .hs-quote { font-size: 0.9375rem; }
+/* The tabs of a passage's helps, and at their end how many of them are translated. */
+.fam-tabs__set { display: flex; gap: 0.25rem; flex: 0 0 auto; }
+.fam-tabs__count { flex: 0 0 auto; align-self: center; margin-left: auto; padding-left: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 /* What the review said, where the draft of a help is corrected. */
 .he-review { display: grid; gap: 0.5rem; min-width: 0; max-width: 46rem; }
 .he-review .pe-hint { margin: 0; }
