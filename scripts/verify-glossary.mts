@@ -1,25 +1,32 @@
 /**
- * The glossary of translation decisions: its TSV, what a passage shows, an entry born from a tap on an aligned word
- * (small words left out), and how a word was translated before.
+ * The glossary of translation decisions: its TSV, what a passage shows, what is said beside a verse (found by the
+ * word of the original under each English word), an entry born from a tap on an aligned word (small words left
+ * out), and how a word was translated before.
  */
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import {
+  avoided,
   baseStrong,
   changeNeedsAgreement,
   contentSources,
+  decisionsForVerse,
   departuresFrom,
   entriesForPassage,
+  entriesUnder,
   entryFromSources,
   glossaryFileFor,
   groupOfWord,
+  groupsOfVerse,
   indexRenderings,
+  namedWordings,
   renderingsAcross,
   newGlossaryId,
   parseGlossary,
   renderingsOf,
   searchGlossary,
   serializeGlossary,
+  sourcesUnder,
   upsertGlossaryEntry,
   type GlossaryEntry,
 } from "../src/domain/glossary";
@@ -134,6 +141,82 @@ test("donde el texto se aparta de una decisión acordada", () => {
   assert.deepEqual(departuresFrom({ ...agreed, status: "proposed" }, verses), [], "una propuesta no obliga");
   // The decision is written as «redimir»; the text says «redimiese». It is the same word.
   assert.deepEqual(departuresFrom({ ...redeem, alternatives: [], variants: [] }, verses).map((r) => r.rendering), ["liberó"], "una forma conjugada no es apartarse");
+});
+
+// Jude 1:1 in the two English texts, each aligned with the same Greek.
+const judeUlt: AlignmentGroup[] = [
+  { sources: [src("G24550", "Ἰούδας", "Gr,N")], targets: [tgt("Jude,")] },
+  { sources: [src("G14010", "δοῦλος", "Gr,N")], targets: [tgt("a"), tgt("servant")] },
+  { sources: [src("G55470", "Χριστός", "Gr,N")], targets: [tgt("Christ")] },
+  { sources: [src("G23850", "Ἰάκωβος", "Gr,N")], targets: [tgt("of"), tgt("James,")] },
+];
+const judeUst: AlignmentGroup[] = [
+  { sources: [src("G24550", "Ἰούδας", "Gr,N")], targets: [tgt("Jude,")] },
+  { sources: [src("G14010", "δοῦλος", "Gr,N")], targets: [tgt("serve")] },
+  { sources: [src("G55470", "Χριστός", "Gr,N")], targets: [tgt("the"), tgt("Messiah,")] },
+  { sources: [src("G23850", "Ἰάκωβος", "Gr,N")], targets: [tgt("of"), tgt("James.")] },
+];
+const entry = (over: Partial<GlossaryEntry>): GlossaryEntry => ({ ...redeem, alternatives: [], avoid: [], variants: [], examples: [], twLink: "", sense: "", note: "", scope: "all", status: "proposed", ...over });
+const james = entry({ id: "ja01", lemma: "Ἰάκωβος", strong: "G23850", english: ["James"], rendering: "Jacobo", avoid: ["Santiago: es otro nombre en nuestras Biblias"] });
+const christ = entry({ id: "ch01", lemma: "Χριστός", strong: "G55470", english: ["Christ"], rendering: "Cristo", status: "agreed" });
+const servant = entry({ id: "se01", lemma: "δοῦλος", strong: "G14010", english: ["servant"], rendering: "siervo", scope: "tpl" });
+
+test("junto a un versículo sale la decisión de cada palabra, hallada por la palabra del original que está debajo", () => {
+  const said = (groups: AlignmentGroup[], text: "tpl" | "tps" | "helps", list = [james, christ, servant]) => decisionsForVerse(list, groups, text).map((d) => `${d.english} → ${d.entry.rendering}${d.decidedFor ? ` (${d.decidedFor})` : ""}`);
+  // The decision was taken on «James» of one text: it is found at «James» of the other, by the Greek under both.
+  // Of the two English words that stand on it («of James») the one the decision names is the one said.
+  assert.deepEqual(said(judeUlt, "tpl"), ["Christ → Cristo", "James → Jacobo", "servant → siervo"], "lo acordado va primero");
+  // Where the other text put the same word of the original another way, the decision is still that word's:
+  // it says which English it was taken on, so nobody reads it as decided for this one.
+  assert.deepEqual(said(judeUst, "tps"), ["the Messiah → Cristo (Christ)", "James → Jacobo"]);
+  assert.deepEqual(said(judeUst, "tps", [{ ...servant, scope: "all" }]), ["serve → siervo"], "«serve» y «servant» son la misma palabra");
+  // The same word of the original may have a decision for each English word: the verse's own is the one said.
+  const messiah = entry({ id: "me01", lemma: "Χριστός", strong: "G55470", english: ["Messiah"], rendering: "Mesías" });
+  assert.deepEqual(said(judeUst, "tps", [christ, messiah]), ["Messiah → Mesías"]);
+  assert.deepEqual(said(judeUlt, "tpl", [christ, messiah]), ["Christ → Cristo"]);
+  assert.deepEqual([entriesUnder([christ], "G55470", "Messiah").existing?.id, entriesUnder([christ], "G55470", "Messiah").other?.id], [undefined, "ch01"], "«Messiah» todavía no tiene decisión; se dice la de «Christ»");
+  assert.equal(entriesUnder([christ, messiah], "G55470", "Messiah").existing?.id, "me01");
+  assert.equal(entriesUnder([christ], "G55470", "Christ").existing?.id, "ch01");
+  assert.deepEqual(entriesUnder([christ], "G23850", "James"), { existing: undefined, other: undefined });
+  assert.deepEqual(said(judeUlt, "tpl", [entry({ id: "x", strong: "G23850", english: ["James"], rendering: "" })]), [], "una entrada sin traducción no dice nada");
+  assert.deepEqual(said(judeUlt, "helps", [servant]), [], "lo decidido solo para el TPL no sale en otro texto");
+  // An expression is there when every word of it is; a verse without the word has no decision.
+  // It reads in the order of the verse, whatever the order its words were filed in.
+  const expression = entry({ id: "ex01", lemma: "Χριστός + Ἰησοῦς", strong: "G55470;G24240", english: ["Jesus Christ"], rendering: "Jesucristo" });
+  assert.deepEqual(said(judeUlt, "tpl", [expression]), []);
+  assert.deepEqual(said([...judeUlt.slice(0, 2), { sources: [src("G24240", "Ἰησοῦς", "Gr,N")], targets: [tgt("of"), tgt("Jesus")] }, ...judeUlt.slice(2)], "tpl", [expression]), ["Jesus Christ → Jesucristo"]);
+  assert.deepEqual(said([], "tpl"), []);
+  // An entry that has no word of the original yet is found by its English term in the verse.
+  const english = entry({ id: "en02", lemma: "sound teaching", strong: "", english: ["sound teaching"], rendering: "sana enseñanza" });
+  assert.deepEqual(decisionsForVerse([english], [], "tpl", "speak what fits with sound teaching.").map((d) => d.english), ["sound teaching"]);
+  assert.deepEqual(decisionsForVerse([english], [], "tpl", "speak of unsound teachings"), []);
+  assert.deepEqual(avoided(james), ["Santiago"]);
+});
+
+test("las alineaciones de un versículo se encuentran por su referencia", () => {
+  const book = { "JUD 1:1": judeUlt, "JUD 1:2": [], "JUD 1:11": judeUst };
+  assert.equal(groupsOfVerse(book, 1, 1), judeUlt);
+  assert.equal(groupsOfVerse(book, 1, 11), judeUst);
+  assert.deepEqual(groupsOfVerse(book, 2, 1), []);
+  assert.deepEqual(groupsOfVerse(undefined, 1, 1), []);
+});
+
+test("de un comentario sale una entrada: las palabras tocadas llevan a la del original, y el comentario ya nombra la traducción", () => {
+  // «James» of the verse stands on Ἰάκωβος with «of»: the entry is filed by the Greek, and says «James».
+  const under = sourcesUnder(judeUst, ["james"]);
+  assert.deepEqual([under?.english, under?.strong, under?.sources.map((s) => s.lemma)], ["James", "G23850", ["Ἰάκωβος"]]);
+  // Several words make an expression, in the order of the verse whatever the order they were touched in.
+  assert.deepEqual([sourcesUnder(judeUst, ["messiah", "jude"])?.english, sourcesUnder(judeUst, ["messiah", "jude"])?.strong], ["Jude Messiah", "G24550;G55470"]);
+  assert.equal(sourcesUnder(judeUst, ["writing"]), null, "una palabra sin alinear no tiene de dónde colgar");
+  assert.equal(sourcesUnder(judeUst, []), null);
+  // The entry it makes is found again at the verse, in either English text.
+  const made = { ...entryFromSources({ id: "n1", sources: under!.sources, english: under!.english, example: "JUD 1:1" }), rendering: "Jacobo" };
+  assert.deepEqual(decisionsForVerse([made], judeUlt, "tpl").map((d) => `${d.english} → ${d.entry.rendering}`), ["James → Jacobo"]);
+  // What the comment says between quotation marks is offered to touch; without marks, its longer words.
+  assert.deepEqual(namedWordings("Escribimos «Jacobo», no «Santiago»."), ["Jacobo", "Santiago"]);
+  assert.deepEqual(namedWordings('Aquí es "siervo", y otra vez «siervo»'), ["siervo"]);
+  assert.deepEqual(namedWordings("Usa Jacobo, no Santiago"), ["Jacobo", "Santiago"]);
+  assert.deepEqual(namedWordings(""), []);
 });
 
 console.log(`\nverify-glossary: ${passed} checks passed.`);

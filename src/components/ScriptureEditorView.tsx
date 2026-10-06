@@ -1,4 +1,4 @@
-import { Hints, StepAsk, useItemHints } from "./StepAsk";
+import { Hints, StepAsk, useItemHints, useVerseDecisions } from "./StepAsk";
 import { toolHeading } from "./toolHeading";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
@@ -865,6 +865,10 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [activeVerse, setActiveVerse] = useState<number | undefined>();
   // What the verse in hand calls for by its own words, among what the step and the team ask.
   const hintsFor = useItemHints(session, ctx);
+  // The English text this draft is translated from: its alignment with the original is what a decision of the
+  // glossary is found by.
+  const english = ctx?.resource === "tps" ? ust : ult;
+  const decisionsAt = useVerseDecisions(session, ctx, english.alignments);
   const [draftLoading, setDraftLoading] = useState(() => Boolean(loadSession()));
   const [ultLoading, setUltLoading] = useState(() => Boolean(loadSession()));
   const [ustLoading, setUstLoading] = useState(() => Boolean(loadSession()));
@@ -1875,7 +1879,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                 {!lab && ctx && range ? (
                   // On a phone the header has no room for these two: they are here.
                   <p className="scripture-editor__details-row se-details-links">
-                    <a href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}`} target="_blank" rel="noreferrer">
+                    <a href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}${ctx.resource === "tps" ? "&texto=tps" : ""}`} target="_blank" rel="noreferrer">
                       {t("gl.open")}
                     </a>
                     {studyHref ? (
@@ -1898,7 +1902,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           ) : null}
           {!lab && ctx && range ? (
             // In another tab, so the draft in hand stays as it is.
-            <a className="scripture-editor__glossary" href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}`} target="_blank" rel="noreferrer">
+            <a className="scripture-editor__glossary" href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}${ctx.resource === "tps" ? "&texto=tps" : ""}`} target="_blank" rel="noreferrer">
               {t("gl.open")}
             </a>
           ) : null}
@@ -2181,8 +2185,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           ) : null}
                         </div>
                       ) : null}
-                      {/* What this verse calls for by its own words («you»: one person or several), while it is the one being written. */}
-                      {activeVerse === d.from ? <Hints lead={t("sa.mind")} lines={hintsFor((ctx?.resource === "tps" ? ust : ult).verses[d.from])} /> : null}
+                      {/* What this verse calls for by its own words («you»: one person or several), while it is the one being
+                          written. First what the glossary decided about them: it answers before the reminders ask. */}
+                      {activeVerse === d.from ? <Hints lead={t("sa.mind")} lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]} /> : null}
                       <textarea
                         id={`v-${key}`}
                         className="scripture-editor__input"

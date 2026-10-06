@@ -1509,13 +1509,13 @@ export function App() {
 
         {route.name === "glosario" && session ? (
           <GlossaryView
-            key={`${sessionEpoch}-${route.book ?? ""}-${route.chapter ?? 0}-${route.from ?? 0}`}
+            key={`${sessionEpoch}-${route.book ?? ""}-${route.chapter ?? 0}-${route.from ?? 0}-${route.text ?? ""}`}
             session={session}
             owner={contentOrg}
             lang={lang}
             pmOrg={pmOrg}
             canManage={effectiveCanManage}
-            passage={route.book && route.chapter ? { book: route.book, chapter: route.chapter, from: route.from ?? 1, to: route.to ?? 200 } : undefined}
+            passage={route.book && route.chapter ? { book: route.book, chapter: route.chapter, from: route.from ?? 1, to: route.to ?? 200, text: route.text } : undefined}
             announce={announce}
             onClose={() => window.history.back()}
           />

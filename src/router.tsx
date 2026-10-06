@@ -29,7 +29,7 @@ export type AppRoute =
   /** Org workflow templates (fases + tareas + checklists). */
   | { name: "plantillas"; workflowId?: string }
   /** The glossary of translation decisions; with a passage, it opens on the entries of that passage. */
-  | { name: "glosario"; book?: string; chapter?: number; from?: number; to?: number }
+  | { name: "glosario"; book?: string; chapter?: number; from?: number; to?: number; text?: "tps" }
   /** Scripture USFM editor opened from Resolver (`ctx` in hash query). */
   | { name: "solver-scripture"; ctx: string }
   | { name: "solver-helps"; ctx: string }
@@ -86,7 +86,7 @@ export function parseHash(hash: string): AppRoute {
     const chapter = Number(params.get("c"));
     const book = (params.get("libro") || "").toUpperCase();
     if (!book || !Number.isInteger(chapter) || chapter <= 0) return { name: "glosario" };
-    return { name: "glosario", book, chapter, from: Number(params.get("de")) || 1, to: Number(params.get("a")) || 200 };
+    return { name: "glosario", book, chapter, from: Number(params.get("de")) || 1, to: Number(params.get("a")) || 200, text: params.get("texto") === "tps" ? "tps" : undefined };
   }
   if (parts[0] === "hoy") return { name: "hoy" };
   if (parts[0] === "perfil") return { name: "perfil" };
@@ -194,7 +194,7 @@ export function routeToHash(route: AppRoute): string {
     case "solver-afinar":
       return `#/solver/afinar?step=${encodeURIComponent(route.step)}${route.mode ? `&mode=${encodeURIComponent(route.mode)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
     case "glosario":
-      return route.book && route.chapter ? `#/glosario?libro=${encodeURIComponent(route.book)}&c=${route.chapter}&de=${route.from ?? 1}&a=${route.to ?? 200}` : "#/glosario";
+      return route.book && route.chapter ? `#/glosario?libro=${encodeURIComponent(route.book)}&c=${route.chapter}&de=${route.from ?? 1}&a=${route.to ?? 200}${route.text ? `&texto=${route.text}` : ""}` : "#/glosario";
     case "solver-publicar":
       return `#/solver/publicar?mode=${encodeURIComponent(route.mode)}&aligned=${encodeURIComponent(route.aligned)}${route.endorsed ? `&endorsed=${encodeURIComponent(route.endorsed)}` : ""}${route.articles ? `&articles=${encodeURIComponent(route.articles)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-aval":

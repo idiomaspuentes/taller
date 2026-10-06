@@ -141,11 +141,132 @@ export function entriesForPassage(entries: GlossaryEntry[], words: Pick<Original
     const mine = strongsOf(entry);
     if (mine.length) return mine.every((s) => strongs.has(s));
     if (lemmas.has(fold(entry.lemma))) return true;
-    return Boolean(english) && [entry.lemma, ...entry.english].some((term) => new RegExp(`(^|[^\\p{L}])${fold(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\p{L}]|$)`, "u").test(english));
+    return Boolean(english) && [entry.lemma, ...entry.english].some((term) => termIn(term, english));
   });
 }
 
+/** Is a term in a text as a word of its own (not inside another)? `text` already without accents and in lower case. */
+function termIn(term: string, text: string): boolean {
+  const wanted = fold(term);
+  return Boolean(wanted) && new RegExp(`(^|[^\\p{L}])${wanted.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\p{L}]|$)`, "u").test(text);
+}
+
+// ---------------------------------------------------------------- beside a verse
+
+/** The text a person is working on, as a decision says where it holds. */
+export type GlossaryText = Exclude<GlossaryScope, "all">;
+
+/** A decision as it is said beside a verse of an English text that is aligned with the original. */
+export type VerseDecision = {
+  entry: GlossaryEntry;
+  /** What that verse says in English on the entry's word(s) of the original: «James», or «Messiah» where another text says «Christ». */
+  english: string;
+  /** The English term the decision was taken on, when this verse says another: said too, so nobody takes it for this word's. */
+  decidedFor?: string;
+};
+
+const plainWord = (text: string): string => text.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+
+/** «servant» and «serve», «James» and «James'»: the same word in another form. Short words only when they are the same. */
+function sameWord(a: string, b: string): boolean {
+  const [x, y] = [fold(a), fold(b)];
+  return x === y || (x.length >= 4 && y.length >= 4 && x.slice(0, 4) === y.slice(0, 4));
+}
+
+/** The alignment groups of one verse of a parsed text, whose verses are named «JUD 1:1». */
+export function groupsOfVerse(alignments: Record<string, AlignmentGroup[]> | undefined, chapter: number, verse: number): AlignmentGroup[] {
+  for (const [sid, groups] of Object.entries(alignments ?? {})) {
+    const match = /(\d+):(\d+)\s*$/.exec(sid.trim());
+    if (match && Number(match[1]) === chapter && Number(match[2]) === verse) return groups;
+  }
+  return [];
+}
+
+/**
+ * The decisions that hold for one verse of the text in hand. The glossary hangs from the original, and both English
+ * texts are aligned with it: the word of the original under each English word of the verse says which decision is
+ * that word's, whichever English text it is read in. So what was decided on «James» in one text is found at «James»
+ * in the other, and at a verse where the same word of the original was put another way.
+ *
+ * `groups`: the alignment of that verse of the English text being translated. `text`: which text that is; a decision
+ * taken for another text alone is left out. `englishText`: the verse as it reads, for the entries that have no word
+ * of the original yet.
+ */
+export function decisionsForVerse(entries: GlossaryEntry[], groups: AlignmentGroup[], text: GlossaryText, englishText = ""): VerseDecision[] {
+  const out: VerseDecision[] = [];
+  const english = fold(englishText);
+  for (const entry of entries) {
+    if (!entry.rendering.trim() || (entry.scope !== "all" && entry.scope !== text)) continue;
+    const mine = strongsOf(entry);
+    if (!mine.length) {
+      const term = [...entry.english, entry.lemma].find((candidate) => Boolean(english) && termIn(candidate, english));
+      if (term) out.push({ entry, english: term });
+      continue;
+    }
+    // In the order of the verse, so an expression reads as it does there whatever the order its words were filed in.
+    const over = groups.filter((group) => group.sources.some((s) => mine.includes(baseStrong(s.strong))));
+    if (!mine.every((strong) => over.some((group) => group.sources.some((s) => baseStrong(s.strong) === strong)))) continue;
+    const words = [...new Set(over.flatMap((group) => group.targets.map((target) => plainWord(target.word))).filter(Boolean))];
+    // A word of the original often stands under two of English («of James»): the one the decision names is the one said.
+    const named = words.filter((word) => entry.english.some((term) => term.split(/\s+/).some((part) => sameWord(part, word))));
+    out.push({
+      entry,
+      english: (named.length ? named : words).join(" ") || entry.english[0] || entry.lemma,
+      decidedFor: entry.english.length && !named.length ? entry.english[0] : undefined,
+    });
+  }
+  // The same word of the original may have a decision for each English word it was put as («Christ» in one text,
+  // «Messiah» in the other): where the verse says one of them, that decision is the one said.
+  const exact = new Set(out.filter((decision) => !decision.decidedFor).map((decision) => decision.entry.strong));
+  return out.filter((decision) => !decision.decidedFor || !exact.has(decision.entry.strong)).sort((a, b) => Number(b.entry.status === "agreed") - Number(a.entry.status === "agreed"));
+}
+
+/**
+ * The entry that already decides how some English words over a word of the original are translated, and the one
+ * that decides it for another English word of the same original (to say, not to stop a new one: «Christ» has its
+ * decision, «Messiah» may have another).
+ */
+export function entriesUnder(entries: GlossaryEntry[], strong: string, english: string): { existing?: GlossaryEntry; other?: GlossaryEntry } {
+  const same = entries.filter((entry) => entry.strong === strong && Boolean(strong));
+  const words = english.split(/\s+/).filter(Boolean);
+  const names = (entry: GlossaryEntry) => !entry.english.length || entry.english.some((term) => term.split(/\s+/).some((part) => words.some((word) => sameWord(part, word))));
+  const existing = same.find(names);
+  return { existing, other: existing ? undefined : same.find((entry) => entry.rendering.trim()) };
+}
+
+/** What an entry says to avoid, without the reasons: «liberar: pierde la idea del precio» → «liberar». */
+export function avoided(entry: GlossaryEntry): string[] {
+  return entry.avoid.map((item) => (item.split(":")[0] ?? "").trim()).filter(Boolean);
+}
+
 // ---------------------------------------------------------------- from a tap on an aligned word
+
+/**
+ * What touching words of a verse's English leads to: the word(s) of the original under them, small words left out,
+ * which is what an entry is filed by. `english`: those words as the verse says them, in its order. Null when one of
+ * them is not aligned: there is nothing of the original to hang the entry from.
+ */
+export function sourcesUnder(groups: AlignmentGroup[], words: string[]): { english: string; sources: OriginalWord[]; strong: string } | null {
+  const wanted = words.map((word) => fold(plainWord(word))).filter(Boolean);
+  const has = (group: AlignmentGroup, word: string) => group.targets.some((target) => fold(plainWord(target.word)) === word);
+  if (!wanted.length || wanted.some((word) => !groups.some((group) => has(group, word)))) return null;
+  const over = groups.filter((group) => wanted.some((word) => has(group, word)));
+  const sources = over.flatMap(contentSources).filter((source, index, all) => all.findIndex((other) => baseStrong(other.strong) === baseStrong(source.strong)) === index);
+  const strong = sources.map((source) => baseStrong(source.strong)).filter(Boolean).join(";");
+  if (!strong) return null;
+  const said = over.flatMap((group) => group.targets.map((target) => plainWord(target.word))).filter((word) => wanted.includes(fold(word)));
+  return { english: [...new Set(said)].join(" "), sources, strong };
+}
+
+/**
+ * The wordings a comment names, to offer as the answer to «how do we translate it?»: what it says between quotation
+ * marks («Jacobo», «Santiago»), or else its longer words. Whoever made the comment has written the word already.
+ */
+export function namedWordings(comment: string, limit = 6): string[] {
+  const quoted = [...comment.matchAll(/[«"“]([^«»"“”]{1,40})[»"”]/g)].map((match) => (match[1] ?? "").trim()).filter(Boolean);
+  const from = quoted.length ? quoted : comment.split(/[^\p{L}\p{M}'’-]+/u).filter((word) => word.length >= 4);
+  return from.filter((word, index) => from.findIndex((other) => fold(other) === fold(word)) === index).slice(0, limit);
+}
 
 /** Is this a word that carries meaning (noun, verb, adjective), going by the morphology the original texts bring? */
 export function isContentWord(word: Pick<OriginalWord, "morph">): boolean {

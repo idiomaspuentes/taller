@@ -189,15 +189,17 @@ export type PassageContext = {
 };
 
 /**
- * What a passage needs to show its glossary: the aligned English text (to tap a word and reach the original under
+ * What a passage needs to show its glossary: an aligned English text (to tap a word and reach the original under
  * it) and the team's aligned text of the book (to see how each word was translated before).
  */
-export async function loadPassageContext(params: { session: GtSession; owner: string; lang: string; book: string; chapter: number; from: number; to: number; pkg?: SourcePackage }): Promise<PassageContext> {
+export async function loadPassageContext(params: { session: GtSession; owner: string; lang: string; book: string; chapter: number; from: number; to: number; pkg?: SourcePackage; english?: "ult" | "ust" }): Promise<PassageContext> {
   const { session, chapter } = params;
   const book = params.book.toUpperCase();
   const pkg = params.pkg ?? DEFAULT_SOURCE_PACKAGE;
   const range = { chapter, from: params.from, to: params.to };
-  const english = await readRaw(session, pkg.owner, pkg.ult, bookUsfmName(book));
+  // The English text the person is translating: whoever works on the simplified text reads «Messiah» where the
+  // literal one says «Christ», and that is the word they come looking for.
+  const english = await readRaw(session, pkg.owner, params.english === "ust" ? pkg.ust : pkg.ult, bookUsfmName(book));
   const parsed = english ? tryParseUsjWithAlignments(english) : null;
   const texts = (parsed && verseTextsFromUsj(parsed.usj, range)) || {};
   const verses: PassageVerse[] = Object.keys(texts).map(Number).sort((a, b) => a - b).map((verse) => {

@@ -1,13 +1,17 @@
-import { isOfTeam, Hints, StepAsk } from "./StepAsk";
+import { isOfTeam, Hints, StepAsk, useVerseDecisions } from "./StepAsk";
 import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { itemChecks, paragraphsFor } from "../domain/stepChecks";
 import { activeRules, ruleMadeFrom, ruleText } from "../domain/teamRules";
 import { addRuleToTeam, useManagesTeamRules, useTeamRules } from "../useTeamRules";
+import { saveGlossaryEntry } from "../dcs/glossaryStore";
+import { entriesUnder, entryFromSources, groupsOfVerse, newGlossaryId, sourcesUnder } from "../domain/glossary";
+import { glossaryEntrySaved, useGlossaryEntries } from "../useGlossary";
 import { CommentAsRule } from "./CommentAsRule";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
+import type { AlignmentMap } from "@usfm-tools/types";
 import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -36,7 +40,7 @@ import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { TaskStep } from "../domain/types";
-import { extractDraftVerses, type VerseTextMap } from "../domain/usfmAst";
+import { extractDraftVerses, tryParseUsjWithAlignments, type VerseTextMap } from "../domain/usfmAst";
 import { portionRange, type RefRange } from "../domain/usfmEdit";
 import { bookUsfmName } from "../prep/discover";
 import { useUiLanguage } from "../i18n/language";
@@ -56,7 +60,8 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-type Source = { short: string; verses: VerseTextMap };
+/** `alignments`: of the text the draft is translated from, with the original: what a decision of the glossary is found by. */
+type Source = { short: string; verses: VerseTextMap; alignments?: AlignmentMap };
 
 /**
  * One box to write a comment in; `Enter` alone makes a new line, so a comment can have several. `focus`: the box was
@@ -104,9 +109,14 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   /** The people the plan lists for that task: with the team's own, who may add a rule to it. */
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
   const teamRules = useTeamRules(teamName || undefined);
+  const alignments = sources.find((source) => source.alignments)?.alignments;
+  const decisionsAt = useVerseDecisions(session, ctx, alignments);
+  const glossary = useGlossaryEntries(session, ctx?.contentOrg, ctx?.lang);
+  /** The comments made into a decision of the glossary in this visit. */
+  const [decided, setDecided] = useState<string[]>([]);
   const managesRules = useManagesTeamRules(teamName || undefined);
   /** The comment being turned into a rule of the team, and how saving it goes. */
-  const [ruling, setRuling] = useState<{ id: string; busy: boolean; failed: boolean } | null>(null);
+  const [ruling, setRuling] = useState<{ id: string; busy: boolean; failed: "" | "rule" | "glossary" } | null>(null);
   const [notes, setNotes] = useState<ReferenceHelpRow[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   /** An article in review, as the files it reads from (its title, the line under it, its body), each as its author left it. */
@@ -156,7 +166,17 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const pmConfig = await loadPmConfig(sess, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG);
       void Promise.all((["ult", "ust"] as const).map((kind) => loadEnglishScriptureKindUsfm(sess, kind, ctx.book).catch(() => null))).then((loaded) =>
         setSources(
-          loaded.flatMap((pane, index) => (pane ? [{ short: pane.meta?.short || englishScriptureKindRef((["ult", "ust"] as const)[index]!, ctx.book).short, verses: extractDraftVerses(pane.usfm, range).verses }] : [])),
+          loaded.flatMap((pane, index) =>
+            pane
+              ? [
+                  {
+                    short: pane.meta?.short || englishScriptureKindRef((["ult", "ust"] as const)[index]!, ctx.book).short,
+                    verses: extractDraftVerses(pane.usfm, range).verses,
+                    alignments: (ctx.resource === "tps" ? index === 1 : ctx.resource === "tpl" && index === 0) ? tryParseUsjWithAlignments(pane.usfm)?.alignments : undefined,
+                  },
+                ]
+              : [],
+          ),
         ),
       );
       // The English of what is reviewed, item by item: each shows only the checks its own source calls for.
@@ -449,17 +469,43 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // rule in, away from what had made anybody think of one.
   const ofTeam = isOfTeam(session, { orgTeamName: teamName, memberIds: teamMembers });
   const saveRule = async (row: Comment, text: string, words: string[]) => {
-    setRuling({ id: String(row.id), busy: true, failed: false });
+    setRuling({ id: String(row.id), busy: true, failed: "" });
     try {
       await addRuleToTeam(teamName, text, ctx?.issueNumber, words.length ? words : undefined, String(row.id));
       setRuling(null);
       announce(t("rv.ruleSaved"));
     } catch {
-      setRuling({ id: String(row.id), busy: false, failed: true });
+      setRuling({ id: String(row.id), busy: false, failed: "rule" });
     }
   };
-  /** `source`: the source of what the comment is about, whose words a rule made from it may be said to be about. */
-  const commentRow = (row: Comment, source?: string | null) => (
+  // How a word is translated is not a rule of one team: it is a decision of the glossary, for every team and text.
+  // The words touched in the verse lead to the word of the original under them, and the entry is filed by that.
+  type Place = { chapter: number; verse: number };
+  const underWords = (place: Place, words: string[]) => {
+    const under = sourcesUnder(groupsOfVerse(alignments, place.chapter, place.verse), words);
+    return under ? { ...under, ...entriesUnder(glossary, under.strong, under.english) } : null;
+  };
+  const saveDecision = async (row: Comment, place: Place, words: string[], rendering: string, why: string) => {
+    const under = underWords(place, words);
+    if (!under || !session || !ctx) return;
+    setRuling({ id: String(row.id), busy: true, failed: "" });
+    try {
+      const base = under.existing ?? entryFromSources({ id: newGlossaryId(glossary.map((entry) => entry.id)), sources: under.sources, english: under.english, example: `${ctx.book.toUpperCase()} ${place.chapter}:${place.verse}` });
+      const entry = { ...base, rendering, note: base.note || why };
+      await saveGlossaryEntry({ session, owner: ctx.contentOrg, lang: ctx.lang, entry, before: under.existing, reason: why });
+      glossaryEntrySaved(session, ctx.contentOrg, ctx.lang, entry);
+      setDecided((now) => [...now, String(row.id)]);
+      setRuling(null);
+      announce(t("rv.decisionSaved"));
+    } catch {
+      setRuling({ id: String(row.id), busy: false, failed: "glossary" });
+    }
+  };
+  /**
+   * `source`: the source of what the comment is about, whose words a rule made from it may be said to be about.
+   * `place`: the verse it is about, when it is a verse of a text: its words lead to the glossary.
+   */
+  const commentRow = (row: Comment, source?: string | null, place?: Place) => (
     <li key={row.id} className="rv-comment" data-resolved={row.resolved ? "true" : undefined}>
       <p className="rv-comment__text">{row.text}</p>
       <p className="rv-comment__meta">
@@ -476,14 +522,23 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </button>
         ) : null}
       </p>
-      {ruleMadeFrom(teamRules, String(row.id)) ? (
+      {ruleMadeFrom(teamRules, String(row.id)) || decided.includes(String(row.id)) ? (
         <p className="rv-comment__rule">
-          <Check size={12} aria-hidden /> {t("rv.isRule")}
+          <Check size={12} aria-hidden /> {t(decided.includes(String(row.id)) ? "rv.isDecision" : "rv.isRule")}
         </p>
       ) : ruling?.id === String(row.id) ? (
-        <CommentAsRule text={row.text} source={source} busy={ruling.busy} failed={ruling.failed} onSave={(text, words) => void saveRule(row, text, words)} onCancel={() => setRuling(null)} />
+        <CommentAsRule
+          text={row.text}
+          source={source}
+          busy={ruling.busy}
+          failed={ruling.failed ? t(ruling.failed === "glossary" ? "rv.decisionError" : "sa.ruleError") : undefined}
+          onSave={(text, words) => void saveRule(row, text, words)}
+          decide={place && alignments ? (words) => underWords(place, words) : undefined}
+          onDecide={place ? (words, rendering, why) => void saveDecision(row, place, words, rendering, why) : undefined}
+          onCancel={() => setRuling(null)}
+        />
       ) : teamName && ofTeam && (managesRules || row.by.toLowerCase() === me.toLowerCase()) ? (
-        <button type="button" className="rv-comment__keep" onClick={() => setRuling({ id: String(row.id), busy: false, failed: false })}>
+        <button type="button" className="rv-comment__keep" onClick={() => setRuling({ id: String(row.id), busy: false, failed: "" })}>
           {t("rv.asRule")}
         </button>
       ) : null}
@@ -549,6 +604,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const text = ctx?.resource === "tpl" || ctx?.resource === "tps";
     const kind = ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i;
     const itemSource = text ? (sources.find((source) => kind.test(source.short)) ?? sources[ctx?.resource === "tps" ? 1 : 0])?.verses[item.verse] : english[item.key];
+    // What the glossary decided about the words of this verse: found by the word of the original under each.
+    const decided = text ? decisionsAt(item.chapter, item.verse, itemSource) : [];
     const own: { id: string; text: string; texts?: Partial<Record<string, string>>; when?: string[]; by?: string }[] = [
       ...itemChecks(step?.checks ?? [], itemSource),
       ...itemChecks(teamRules ? activeRules(teamRules) : [], itemSource).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), when: rule.when, by: rule.by })),
@@ -631,20 +688,23 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             </ul>
           </details>
         ) : null}
-        {own.length && item.state !== "removed" && item.state !== "empty" && !pending ? (
+        {(own.length || decided.length) && item.state !== "removed" && item.state !== "empty" && !pending ? (
           <div className="rv-checks">
             <Hints
               lead={t("sa.mind")}
-              lines={own.map((check) => {
-                const said = check.texts?.[language] ?? check.text;
-                // In an article the check says in which paragraphs of the English it comes up.
-                const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
-                return { id: check.id, by: check.by, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
-              })}
+              lines={[
+                ...decided,
+                ...own.map((check) => {
+                  const said = check.texts?.[language] ?? check.text;
+                  // In an article the check says in which paragraphs of the English it comes up.
+                  const where = !item.chapter && itemSource ? paragraphsFor(check, itemSource) : [];
+                  return { id: check.id, by: check.by, text: where.length ? `${said} · ${t(where.length === 1 ? "rv.paragraphOne" : "rv.paragraphMany").replace("{n}", where.join(", "))}` : said };
+                }),
+              ]}
             />
           </div>
         ) : null}
-        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource))}</ul> : null}
+        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource, text ? { chapter: item.chapter, verse: item.verse } : undefined))}</ul> : null}
         {commenting === item.key ? (
           <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(item.ref, text) }]} />
         ) : (

@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import type { AlignmentMap } from "@usfm-tools/types";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
+import { avoided, decisionsForVerse, groupsOfVerse, type GlossaryText, type VerseDecision } from "../domain/glossary";
 import { teamKey } from "../domain/levels";
 import { formatWhen, itemChecks, parseWhen, stepWideChecks } from "../domain/stepChecks";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
+import { portionRange } from "../domain/usfmEdit";
 import type { ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
-import { useT } from "../i18n/messages";
+import { useT, type MessageKey } from "../i18n/messages";
+import { useGlossaryEntries } from "../useGlossary";
 import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from "../useTeamRules";
 
 /**
@@ -19,14 +23,17 @@ import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from
  *
  * They are lines to read, each said where it is of use. What is true of the whole work (that nothing is missing,
  * the spelling) is said once, under «Qué se pide en …». What a passage calls for by its own words («you»: one
- * person or several) is said at the verse that has them, beside its source, when the person is on that verse.
+ * person or several) is said at the verse that has them, beside its source, when the person is on that verse. So is
+ * what the glossary decided about a word of that verse: it used to wait on a screen of its own, for whoever went
+ * looking, and nobody translating saw it.
  *
  * They used to be boxes to tick. The ticks closed nothing and nobody else saw them, and there were a great many:
  * the review of the notes of a short book (Jude, 159 notes) had 580 boxes. Opened inside a tool the list took the
  * whole screen of a phone and hid the work it was about.
  */
 
-export type HintLine = { id: string; text: string; by?: string };
+/** `by`: who gave the team that rule. `tag`: where the line comes from, when it is not the step or the team («glosario»). */
+export type HintLine = { id: string; text: string; by?: string; tag?: string };
 
 export function Hints({ lines, lead }: { lines: HintLine[]; lead?: string }) {
   if (!lines.length) return null;
@@ -38,8 +45,8 @@ export function Hints({ lines, lead }: { lines: HintLine[]; lead?: string }) {
           <li key={line.id}>
             {line.text}
             {/* The space stays outside: who said it goes to the next line whole, without taking the rule's last word. */}
-            {line.by ? " " : null}
-            {line.by ? <small className="step-ask__by">· @{line.by}</small> : null}
+            {line.by || line.tag ? " " : null}
+            {line.by ? <small className="step-ask__by">· @{line.by}</small> : line.tag ? <small className="step-ask__by">· {line.tag}</small> : null}
           </li>
         ))}
       </ul>
@@ -184,6 +191,50 @@ export function useItemHints(session: GtSession | null | undefined, ctx: SolverL
   );
 }
 
+/** A decision of the glossary as a line beside a verse: «James» → «Jacobo». No «Santiago». */
+export function decisionLine(decision: VerseDecision, t: (key: MessageKey) => string): HintLine {
+  const { entry } = decision;
+  let text = t("gl.at").replace("{english}", decision.english).replace("{rendering}", entry.rendering);
+  const no = avoided(entry);
+  if (no.length) text = t("gl.atAvoid").replace("{line}", text).replace("{avoid}", no.map((word) => `«${word}»`).join(", "));
+  if (decision.decidedFor) text = t("gl.atFor").replace("{line}", text).replace("{term}", decision.decidedFor);
+  return { id: `gl-${entry.id}`, text, tag: t(entry.status === "agreed" ? "gl.tag" : "gl.tagProposed") };
+}
+
+/** Which text a tool works on, as a decision of the glossary says where it holds. */
+export function glossaryTextOf(resource: string | undefined): GlossaryText {
+  return resource === "tpl" || resource === "tps" ? resource : "helps";
+}
+
+/**
+ * What the glossary decided about the words of a verse, as lines to show beside it. `alignments`: the English text
+ * that verse is translated from, aligned with the original: the word of the original under each English word is
+ * what a decision is found by, so one taken on a word of the other English text is found here too.
+ */
+export function useVerseDecisions(
+  session: GtSession | null | undefined,
+  ctx: SolverLaunchContext | null | undefined,
+  alignments: AlignmentMap | undefined,
+): (chapter: number | undefined, verse: number, english?: string | null) => HintLine[] {
+  const t = useT();
+  const entries = useGlossaryEntries(session, ctx?.contentOrg, ctx?.lang);
+  const text = glossaryTextOf(ctx?.resource);
+  return useCallback(
+    (chapter, verse, english) => {
+      if (!entries.length || !chapter) return [];
+      return decisionsForVerse(entries, groupsOfVerse(alignments, chapter, verse), text, english ?? "").map((decision) => decisionLine(decision, t));
+    },
+    [entries, alignments, text, t],
+  );
+}
+
+/** Where the glossary opens from a tool: on the passage in hand, read in the English text being translated. */
+export function glossaryHref(ctx: SolverLaunchContext): string {
+  const range = ctx.chapter ? portionRange(ctx.ref, ctx.chapter) : null;
+  if (!ctx.book || !ctx.chapter) return "#/glosario";
+  return `#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${ctx.chapter}&de=${range?.from ?? 1}&a=${range?.to ?? 200}${ctx.resource === "tps" ? "&texto=tps" : ""}`;
+}
+
 /** Inside a tool: what the step it was opened for asks, folded over the work. */
 export function StepAsk({ session, ctx }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined }) {
   const t = useT();
@@ -197,6 +248,13 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
       <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
       <StepAskBody step={step} />
       <TeamRuleChecks team={task.orgTeamName} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} />
+      {ctx.lab ? null : (
+        // The glossary beside the rules: both are what the team decided, and on a phone its only way in was a small
+        // link among the file's details. In another tab, so the work in hand stays as it is.
+        <a className="step-ask__manage step-ask__glossary" href={glossaryHref(ctx)} target="_blank" rel="noreferrer">
+          {t(ctx.chapter ? "gl.openPassage" : "gl.openSearch")}
+        </a>
+      )}
     </details>
   );
 }

@@ -7,6 +7,13 @@ repositorio, las entradas, el toque sobre el inglés alineado, la vista del pasa
 antes» en el libro en curso. Faltan el índice de todos los libros, los cambios recientes y el informe de consistencia
 como comprobación antes de publicar.
 
+Desde el 6 de octubre de 2026 las decisiones **se leen junto al versículo** que se traduce o se revisa y **se
+guardan desde el comentario de una revisión**; el detalle y lo que se midió están en la sección 12 de
+[PLANTILLA_FCR.md](PLANTILLA_FCR.md) («Al trabajar»). Dos cosas de esta propuesta cambiaron con el uso: una misma
+palabra del original puede tener **una fila por cada palabra inglesa** con que se tradujo («Christ», «Messiah»), no
+solo por sentido; y crear el repositorio pide a alguien que administre la organización, así que la primera entrada
+la guarda esa persona.
+
 **Comprobado hoy en Door43:** el catálogo reconoce una lista cerrada de 25 temas («Aligned Bible»,
 «TSV Translation Notes», «TSV Translation Words Links», «Translation Words»…). Ninguno es un
 glosario. Los recursos recientes por referencia (notas, preguntas, enlaces de palabras) son

@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import type { GtSession } from "../dcs/auth";
 import { loadGlossary, loadGlossaryChanges, loadGlossaryHistory, loadPassageContext, loadRenderingIndexes, saveGlossaryEntry, settleGlossaryChange, type Glossary, type GlossaryChange, type GlossaryEvent, type PassageContext } from "../dcs/glossaryStore";
 import { loadPmConfig } from "../dcs/issues";
+import { BootstrapError } from "../dcs/repoFile";
+import { bookLabel } from "../domain/books";
 import {
   baseStrong,
   contentSources,
   departuresFrom,
   entriesForPassage,
+  entriesUnder,
   entryFromSources,
   groupOfWord,
   isContentWord,
@@ -25,6 +28,7 @@ import {
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { explainError } from "../dcs/userError";
+import { glossaryEntrySaved } from "../useGlossary";
 
 type Props = {
   session: GtSession;
@@ -34,8 +38,8 @@ type Props = {
   /** Where the levels of the organization are kept: who coordinates, or a qualified person, may confirm an entry as agreed. */
   pmOrg: string;
   canManage: boolean;
-  /** The passage the glossary was opened from; without it, the glossary is searched. */
-  passage?: { book: string; chapter: number; from: number; to: number };
+  /** The passage the glossary was opened from; without it, the glossary is searched. `text`: the text being translated there, when it is the simplified one. */
+  passage?: { book: string; chapter: number; from: number; to: number; text?: "tps" };
   onClose: () => void;
   announce: (msg: string) => void;
 };
@@ -79,7 +83,9 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const passageKey = passage ? `${passage.book}.${passage.chapter}.${passage.from}.${passage.to}` : "";
+  const passageKey = passage ? `${passage.book}.${passage.chapter}.${passage.from}.${passage.to}.${passage.text ?? ""}` : "";
+  /** The rest of an entry (its sense, other wordings, why): for whoever settles it, out of the way of whoever files it. */
+  const [more, setMore] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -87,7 +93,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
     try {
       const [loaded, ctx] = await Promise.all([
         loadGlossary(session, owner, lang),
-        passage ? loadPassageContext({ session, owner, lang, ...passage }).catch(() => null) : Promise.resolve(null),
+        passage ? loadPassageContext({ session, owner, lang, ...passage, english: passage.text === "tps" ? "ust" : "ult" }).catch(() => null) : Promise.resolve(null),
       ]);
       setGlossary(loaded);
       setContext(ctx);
@@ -149,11 +155,24 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
     if (!picked.length) return;
     const sources = picked.flatMap((p) => p.sources).filter((s, i, all) => all.findIndex((x) => baseStrong(x.strong) === baseStrong(s.strong)) === i);
     const strong = sources.map((s) => baseStrong(s.strong)).filter(Boolean).join(";");
-    const existing = entries.find((entry) => entry.strong === strong && strong);
-    if (existing) setDraft({ entry: existing, before: existing });
-    else setDraft({ entry: entryFromSources({ id: newGlossaryId(entries.map((e) => e.id)), sources, english: picked.map((p) => p.word).join(" "), example: picked[0]!.ref }) });
+    const english = picked.map((p) => p.word).join(" ");
+    // The same word of the original may have a decision for each English word it was put as: the one that is of
+    // the word tapped is opened; one taken on another English word is not written over.
+    const { existing } = entriesUnder(entries, strong, english);
+    if (existing) openDraft({ entry: existing, before: existing });
+    else openDraft({ entry: entryFromSources({ id: newGlossaryId(entries.map((e) => e.id)), sources, english, example: picked[0]!.ref }) });
     setPicked([]);
   }
+
+  /** An entry opens on its one question; the rest is in sight only when there is something in it already. */
+  function openDraft(next: { entry: GlossaryEntry; before?: GlossaryEntry }) {
+    const { entry } = next;
+    setMore(Boolean(entry.sense || entry.alternatives.length || entry.avoid.length || entry.note || entry.scope !== "all"));
+    setDraft(next);
+  }
+
+  /** In the person's words: an account that cannot create the glossary, or write in it, is told who can. */
+  const sayError = (err: unknown): string => (err instanceof BootstrapError && err.step === "repo" && (err.status === 401 || err.status === 403) ? t("gl.cannotCreate") : explainError(err));
 
   async function save(status?: GlossaryEntry["status"]) {
     if (!draft) return;
@@ -164,13 +183,14 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       const result = await saveGlossaryEntry({ session, owner, lang, entry, before: draft.before, reason: entry.note });
       if (result.status === "saved") {
         setGlossary((prev) => (prev ? { ...prev, exists: true, entries: prev.entries.some((e) => e.id === entry.id) ? prev.entries.map((e) => (e.id === entry.id ? entry : e)) : [...prev.entries, entry] } : prev));
+        glossaryEntrySaved(session, owner, lang, entry);
         announce(t("gl.saved"));
       } else {
         announce(t("gl.proposed"));
       }
       setDraft(null);
     } catch (err) {
-      setError(explainError(err));
+      setError(sayError(err));
     } finally {
       setSaving(false);
     }
@@ -211,7 +231,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
       <ToolHeader
         title={t("gl.title")}
         onBack={onClose}
-        meta={passage ? `${passage.book} ${passage.chapter}${passage.to >= 200 ? "" : passage.from === passage.to ? `:${passage.from}` : `:${passage.from}–${passage.to}`}` : t("gl.lede")}
+        meta={passage ? `${bookLabel(passage.book, language)} ${passage.chapter}${passage.to >= 200 ? "" : passage.from === passage.to ? `:${passage.from}` : `:${passage.from}–${passage.to}`}` : t("gl.lede")}
       />
 
       {error ? (
@@ -220,6 +240,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
         </Alert>
       ) : null}
       {busy ? <p className="hub-hint">{t("gl.loading")}</p> : null}
+      {glossary && !glossary.exists && !busy ? <p className="hub-hint">{t(canManage ? "gl.notYetOwner" : "gl.notYet")}</p> : null}
 
       {glossary && !draft ? (
         <>
@@ -348,7 +369,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
                     ) : null}
                     {away.length ? <p className="af-stale">{t("gl.departs")} {away.map((r) => `${r.rendering} · ${r.examples.join(", ")}`).join("; ")}</p> : null}
                     <div className="af-buttons">
-                      <Button type="button" size="sm" variant="outline" onClick={() => setDraft({ entry, before: entry })}>
+                      <Button type="button" size="sm" variant="outline" onClick={() => openDraft({ entry, before: entry })}>
                         {t(entry.status === "agreed" ? "gl.proposeChange" : "gl.edit")}
                       </Button>
                     </div>
@@ -372,18 +393,33 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
             </p>
           ) : null}
           {field("gl.fRendering", draft.entry.rendering, (rendering) => setDraft({ ...draft, entry: { ...draft.entry, rendering } }))}
-          {field("gl.fSense", draft.entry.sense, (sense) => setDraft({ ...draft, entry: { ...draft.entry, sense } }))}
-          {field("gl.fAlternatives", join(draft.entry.alternatives), (text) => setDraft({ ...draft, entry: { ...draft.entry, alternatives: split(text) } }), "gl.fAlternativesHint")}
-          {field("gl.fAvoid", join(draft.entry.avoid), (text) => setDraft({ ...draft, entry: { ...draft.entry, avoid: split(text) } }), "gl.fAvoidHint")}
-          <label className="gl-field">
-            <span className="af-lbl">{t("gl.fScope")}</span>
-            <select className="af-input" value={draft.entry.scope} onChange={(e) => setDraft({ ...draft, entry: { ...draft.entry, scope: e.target.value as GlossaryScope } })}>
-              {(Object.keys(SCOPE_KEY) as GlossaryScope[]).map((scope) => (
-                <option key={scope} value={scope}>{t(SCOPE_KEY[scope])}</option>
+          {/* How the team has put it so far, to touch: most decisions only confirm what is already written. */}
+          {before(draft.entry).length ? (
+            <div className="gl-used">
+              {before(draft.entry).slice(0, 4).map((r) => (
+                <button key={r.rendering} type="button" className="gl-word" aria-pressed={draft.entry.rendering === r.rendering} onClick={() => setDraft({ ...draft, entry: { ...draft.entry, rendering: r.rendering } })}>
+                  {r.rendering}
+                </button>
               ))}
-            </select>
-          </label>
-          {field("gl.fNote", draft.entry.note, (note) => setDraft({ ...draft, entry: { ...draft.entry, note } }), undefined, 3)}
+            </div>
+          ) : null}
+          {/* Six boxes stood between a person and one decision. One question files it; the sense, the other wordings
+              and the reason are for whoever settles it, a press away. */}
+          <details className="gl-more" open={more} onToggle={(e) => setMore(e.currentTarget.open)}>
+            <summary>{t("gl.more")}</summary>
+            {field("gl.fSense", draft.entry.sense, (sense) => setDraft({ ...draft, entry: { ...draft.entry, sense } }))}
+            {field("gl.fAlternatives", join(draft.entry.alternatives), (text) => setDraft({ ...draft, entry: { ...draft.entry, alternatives: split(text) } }), "gl.fAlternativesHint")}
+            {field("gl.fAvoid", join(draft.entry.avoid), (text) => setDraft({ ...draft, entry: { ...draft.entry, avoid: split(text) } }), "gl.fAvoidHint")}
+            <label className="gl-field">
+              <span className="af-lbl">{t("gl.fScope")}</span>
+              <select className="af-input" value={draft.entry.scope} onChange={(e) => setDraft({ ...draft, entry: { ...draft.entry, scope: e.target.value as GlossaryScope } })}>
+                {(Object.keys(SCOPE_KEY) as GlossaryScope[]).map((scope) => (
+                  <option key={scope} value={scope}>{t(SCOPE_KEY[scope])}</option>
+                ))}
+              </select>
+            </label>
+            {field("gl.fNote", draft.entry.note, (note) => setDraft({ ...draft, entry: { ...draft.entry, note } }), undefined, 3)}
+          </details>
           <div className="af-buttons">
             <Button type="button" size="lg" disabled={saving || !draft.entry.rendering.trim()} onClick={() => void save()}>
               {saving ? t("af.saving") : t(draft.before?.status === "agreed" ? "gl.sendProposal" : "gl.save")}

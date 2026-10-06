@@ -249,6 +249,14 @@ que había agregado se queda.
   cada versículo que la tenga; sin ninguna, o en un comentario sobre todo el pasaje, con lo de todo el paso. La
   línea la ve quien escribió el comentario (si es del equipo) y quien coordina el equipo o administra. Un
   comentario hace una sola regla: después dice «Es una regla del equipo», para todos los que lo leen.
+- **Cuando el comentario es cómo se traduce una palabra, va al glosario.** Eso no es una regla de un equipo: es
+  una decisión para todos los equipos y los dos textos. Nadie tiene que saber la diferencia: al tocar una palabra,
+  el formulario pregunta «¿Cómo traducimos «James»?» y ofrece para tocar lo que el comentario dice entre comillas
+  («Jacobo», «Santiago»). Si se responde, se guarda en el glosario (sección 12); si no, queda como regla del
+  equipo. La línea se llama por eso «Guardar como regla o en el glosario».
+- **Para toda la Biblia:** ni las reglas ni el glosario guardan libro ni proyecto. Una regla con la palabra
+  «James» sale en Judas, en Santiago y en Mateo; una regla sin palabras, en todos los pasos del equipo, de
+  cualquier libro.
 - **De quién es:** del equipo, no del proyecto. Aparece en todos los pasos que hace ese equipo, en la tarjeta y en
   la herramienta, y sigue ahí en el libro siguiente.
 - **Desde cuándo vale:** de inmediato, para todo el equipo, con el nombre de quien la agregó.
@@ -740,6 +748,45 @@ glosario registra **qué palabra en español usamos** y por qué.
 - Al **traducir:** el glosario avisa cuando el texto fuente tiene un término con decisión registrada.
 - En **palabras clave:** se ve la decisión anterior junto a los versículos donde aparece la palabra.
 - En cualquier momento, como **lista para consultar y buscar**.
+
+### Al trabajar: se lee junto al versículo y se guarda desde el comentario
+
+Hasta octubre de 2026 el glosario estaba hecho pero nadie lo usaba: no existía ni en QA ni en producción. Recorrido
+en un teléfono (375 px) como alguien del equipo, se vio por qué:
+
+- **No avisaba al traducir.** Las decisiones esperaban en su pantalla, para quien fuera a buscarlas.
+- **En el teléfono estaba escondido:** tras «…», un enlace de 17 px entre el nombre del archivo y «Abrir en
+  Door43»; el del menú principal no se ve a ese ancho, y las ayudas y la revisión no tenían ninguno.
+- **Agregar una palabra pedía seis campos** (cinco de escribir, con una sintaxis propia), 687 px de formulario.
+- **Quien traduce no podía guardar la primera entrada:** el repositorio del glosario no existía y solo quien
+  administra puede crearlo. El mensaje era «Sin permiso para crear es-419_gl/es-419_tg».
+- **Enseñaba siempre el TPL inglés:** quien traduce el TPS busca «Messiah» y encontraba «Christ».
+
+Lo que cambió:
+
+- **Se lee junto al versículo, bajo «Fíjate en esto»**, al escribirlo y al revisarlo, antes que los demás avisos:
+  `«James» → «Jacobo». No «Santiago». · glosario`. Una propuesta dice «glosario, propuesta».
+- **Se encuentra por la palabra del original.** El glosario cuelga del original, y los dos textos ingleses están
+  alineados con él: la palabra del original que hay debajo de cada palabra del inglés de ese versículo dice qué
+  decisión le toca. Por eso lo decidido sobre «James» en un texto sale en «James» del otro, **en cualquier libro**
+  (comprobado: la entrada creada en Judas 1:1 sale en Santiago 1:1, Mateo 4:21 y Hechos 12:2, y no en Mateo 1:2,
+  donde «Jacob» es otra palabra).
+- **Una misma palabra del original puede tener una decisión por cada palabra inglesa:** «Christ» → «Cristo» y
+  «Messiah» → «Mesías» son dos entradas de Χριστός. En cada versículo sale la de la palabra que ese texto dice. Si
+  solo existe la de la otra palabra, sale diciéndolo: `«the Messiah» → «Cristo» (se decidió para «Christ»)`.
+- **Se guarda desde el comentario de una revisión**, en el mismo formulario que las reglas (ver «Reglas del
+  equipo»): se toca la palabra de la fuente, se toca la traducción que el comentario ya nombra y queda como
+  propuesta, colgada de la palabra del original, con el comentario como razón.
+- **Agregar una entrada es una pregunta:** «¿Cómo se traduce?». El sentido, las otras traducciones, lo que se evita,
+  dónde vale y el porqué quedan a un toque («Más sobre esta decisión»), para quien la acuerda. 282 px.
+- **El glosario se abre desde «Qué se pide en …»**, junto a las reglas, en todas las herramientas («Glosario: las
+  palabras de este pasaje»), y muestra el texto inglés que se está traduciendo.
+- **Si el glosario todavía no existe**, se dice quién puede crearlo: quien administra, al guardar la primera
+  entrada. Desde entonces cualquiera del equipo agrega (comprobado en QA con una cuenta de traductor).
+
+Lo que falta: que las decisiones salgan también junto a las **notas, preguntas y artículos** (hoy solo junto a los
+versículos del TPL y del TPS), y marcar de forma duradera el comentario del que salió una entrada (hoy se ve
+durante la visita; si se intenta otra vez, el formulario dice que ya está en el glosario).
 
 **Reglas (confirmadas el 1 de octubre de 2026):**
 - **Crear:** cualquiera del FCR puede crear una entrada nueva.
