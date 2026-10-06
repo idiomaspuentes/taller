@@ -1,4 +1,5 @@
 import type { AlignmentGroup, OriginalWord } from "@usfm-tools/types";
+import { readable } from "./stepChecks";
 
 /**
  * The glossary of translation decisions: one row per word of the original and sense, kept as TSV in a repository of
@@ -234,6 +235,32 @@ export function entriesUnder(entries: GlossaryEntry[], strong: string, english: 
   return { existing, other: existing ? undefined : same.find((entry) => entry.rendering.trim()) };
 }
 
+/** Is an English term said in a text, as a word of its own, in the plural or the possessive too? `text` already folded. */
+function termSaid(term: string, text: string): boolean {
+  const wanted = fold(term);
+  return Boolean(wanted) && new RegExp(`(^|[^\\p{L}])${wanted.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(e?s|['’]s?)?([^\\p{L}]|$)`, "u").test(text);
+}
+
+/**
+ * The decisions that hold for a text that is not a verse: a note, a question, a paragraph of an article. Such a
+ * text is not aligned with the original. It says English words, and a decision is its own when it says the English
+ * word the decision was taken on: the entry is what ties that word to the original. A note quotes the literal text
+ * and explains it, so what was decided for the literal text holds in it; what was decided for the simplified text
+ * alone does not. The addresses of a note's links are not text.
+ */
+export function decisionsForText(entries: GlossaryEntry[], text: string): VerseDecision[] {
+  const said = fold(readable(text).replace(/\*\*|__/g, ""));
+  if (!said) return [];
+  const out: VerseDecision[] = [];
+  for (const entry of entries) {
+    if (!entry.rendering.trim() || entry.scope === "tps") continue;
+    // The word of the original is not looked for: it is Greek or Hebrew, and the text is English.
+    const term = (entry.english.length ? entry.english : entry.strong ? [] : [entry.lemma]).find((candidate) => termSaid(candidate, said));
+    if (term) out.push({ entry, english: term });
+  }
+  return out.sort((a, b) => Number(b.entry.status === "agreed") - Number(a.entry.status === "agreed"));
+}
+
 /** What an entry says to avoid, without the reasons: «liberar: pierde la idea del precio» → «liberar». */
 export function avoided(entry: GlossaryEntry): string[] {
   return entry.avoid.map((item) => (item.split(":")[0] ?? "").trim()).filter(Boolean);
@@ -259,12 +286,32 @@ export function sourcesUnder(groups: AlignmentGroup[], words: string[]): { engli
 }
 
 /**
+ * Where a decision made from some words of a text is filed. `verses`: the alignment of the verse those words may be
+ * of, in each English text it is read in; the first that has them all says the word of the original. `englishOnly`:
+ * for a note, a question or an article, whose words may be in no verse; then the entry is filed by the English word
+ * alone, to be tied to the original later. An entry that names that word already is the one there is.
+ */
+export function filedUnder(entries: GlossaryEntry[], words: string[], verses: AlignmentGroup[][], englishOnly: boolean): { english: string; sources: OriginalWord[]; strong: string; existing?: GlossaryEntry; other?: GlossaryEntry } | null {
+  for (const groups of verses) {
+    const under = sourcesUnder(groups, words);
+    if (under) return { ...under, ...entriesUnder(entries, under.strong, under.english) };
+  }
+  const english = words.map(plainWord).filter(Boolean).join(" ");
+  if (!englishOnly || !english) return null;
+  const existing = entries.find((entry) => (entry.english.length ? entry.english : [entry.lemma]).some((term) => fold(term) === fold(english)));
+  return { english, sources: [], strong: "", existing };
+}
+
+/**
  * The wordings a comment names, to offer as the answer to «how do we translate it?»: what it says between quotation
- * marks («Jacobo», «Santiago»), or else its longer words. Whoever made the comment has written the word already.
+ * marks («Jacobo», «Santiago»); or, without marks, the names it writes with a capital in mid sentence. Whoever made
+ * the comment has written the word already. A comment that names none («Falta traducir el título.») offers none:
+ * its other words would only be noise to choose from.
  */
 export function namedWordings(comment: string, limit = 6): string[] {
   const quoted = [...comment.matchAll(/[«"“]([^«»"“”]{1,40})[»"”]/g)].map((match) => (match[1] ?? "").trim()).filter(Boolean);
-  const from = quoted.length ? quoted : comment.split(/[^\p{L}\p{M}'’-]+/u).filter((word) => word.length >= 4);
+  const names = [...comment.matchAll(/(?<![.!?¡¿:]\s*)(?<=\S\s)(\p{Lu}[\p{L}\p{M}'’-]{2,})/gu)].map((match) => match[1] ?? "");
+  const from = quoted.length ? quoted : names;
   return from.filter((word, index) => from.findIndex((other) => fold(other) === fold(word)) === index).slice(0, limit);
 }
 

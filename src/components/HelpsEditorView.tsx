@@ -1,4 +1,4 @@
-import { Hints, StepAsk, useItemHints } from "./StepAsk";
+import { Hints, StepAsk, useItemHints, useTextDecisions } from "./StepAsk";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { ensureHelpsFileFromSource } from "../dcs/bookBootstrap";
 import { readRaw } from "../dcs/afinacionLoad";
@@ -779,6 +779,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
   // What the piece in hand calls for by its own words, among what the step and the team ask: said under its source.
   const hintsFor = useItemHints(session, ctx);
+  const decisionsIn = useTextDecisions(session, ctx);
 
   /** A text worked by pieces, tied to the piece that is open on the screen, the way on from it and what is left. */
   const piecesOf = (text: HelpText, extra: Partial<React.ComponentProps<typeof ArticleBlocks>> = {}, key?: string) => (
@@ -799,7 +800,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       marksOf={(index) => commentsOn(text, index).length}
       above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}
       known={known}
-      hints={(row) => <Hints lead={t("sa.mind")} lines={hintsFor(row.source)} />}
+      // First what the glossary decided about the words this piece says: it answers before the reminders ask.
+      hints={(row) => <Hints lead={t("sa.mind")} lines={[...decisionsIn(row.source), ...hintsFor(row.source)]} />}
       {...extra}
     />
   );

@@ -4,7 +4,7 @@ import type { AlignmentMap } from "@usfm-tools/types";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
-import { avoided, decisionsForVerse, groupsOfVerse, type GlossaryText, type VerseDecision } from "../domain/glossary";
+import { avoided, decisionsForText, decisionsForVerse, groupsOfVerse, type GlossaryText, type VerseDecision } from "../domain/glossary";
 import { teamKey } from "../domain/levels";
 import { formatWhen, itemChecks, parseWhen, stepWideChecks } from "../domain/stepChecks";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -228,10 +228,34 @@ export function useVerseDecisions(
   );
 }
 
-/** Where the glossary opens from a tool: on the passage in hand, read in the English text being translated. */
+/** How many decisions are said beside one note or paragraph: an article about key terms would bring a screenful. */
+const BESIDE_TEXT = 5;
+
+/**
+ * What the glossary decided about the English words a note, a question or a paragraph of an article says, as lines
+ * to show beside it. Such a text is not aligned with the original: the entry is what ties its word to it.
+ */
+export function useTextDecisions(session: GtSession | null | undefined, ctx: SolverLaunchContext | null | undefined): (text: string | null | undefined) => HintLine[] {
+  const t = useT();
+  const entries = useGlossaryEntries(session, ctx?.contentOrg, ctx?.lang);
+  return useCallback(
+    (text) => {
+      if (!entries.length || !text?.trim()) return [];
+      const found = decisionsForText(entries, text);
+      const lines = found.slice(0, BESIDE_TEXT).map((decision) => decisionLine(decision, t));
+      return found.length > BESIDE_TEXT ? [...lines, { id: "gl-more", text: t("gl.atMore").replace("{n}", String(found.length - BESIDE_TEXT)) }] : lines;
+    },
+    [entries, t],
+  );
+}
+
+/** Is what a tool works on a passage of the book? An article belongs to a book's project, but is of no verse. */
+const ofPassage = (ctx: SolverLaunchContext): boolean => Boolean(ctx.book && ctx.chapter) && ctx.resource !== "academia" && ctx.resource !== "palabras";
+
+/** Where the glossary opens from a tool: on the passage in hand, read in the English text being translated; to be searched, from an article. */
 export function glossaryHref(ctx: SolverLaunchContext): string {
   const range = ctx.chapter ? portionRange(ctx.ref, ctx.chapter) : null;
-  if (!ctx.book || !ctx.chapter) return "#/glosario";
+  if (!ofPassage(ctx)) return "#/glosario";
   return `#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${ctx.chapter}&de=${range?.from ?? 1}&a=${range?.to ?? 200}${ctx.resource === "tps" ? "&texto=tps" : ""}`;
 }
 
@@ -252,7 +276,7 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
         // The glossary beside the rules: both are what the team decided, and on a phone its only way in was a small
         // link among the file's details. In another tab, so the work in hand stays as it is.
         <a className="step-ask__manage step-ask__glossary" href={glossaryHref(ctx)} target="_blank" rel="noreferrer">
-          {t(ctx.chapter ? "gl.openPassage" : "gl.openSearch")}
+          {t(ofPassage(ctx) ? "gl.openPassage" : "gl.openSearch")}
         </a>
       )}
     </details>

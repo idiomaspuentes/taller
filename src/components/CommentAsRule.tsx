@@ -41,7 +41,9 @@ export function CommentAsRule({ text, source, busy, failed, onSave, decide, onDe
   const words = useMemo(() => (source ? sourceWords(source) : []), [source]);
   const options = useMemo(() => namedWordings(text), [text]);
   const toggle = (word: string) => setPicked((now) => (now.includes(word) ? now.filter((other) => other !== word) : [...now, word]));
-  const target = picked.length && decide && onDecide ? decide(picked) : null;
+  // As the source says them and in its order: an entry filed by its English word alone keeps it as it is written.
+  const said = words.filter((word) => picked.includes(word.toLowerCase()));
+  const target = said.length && decide && onDecide ? decide(said) : null;
   const taken = target?.existing?.rendering.trim() ? target.existing : null;
   const answer = target && !taken ? rendering.trim() : "";
   return (
@@ -93,7 +95,7 @@ export function CommentAsRule({ text, source, busy, failed, onSave, decide, onDe
           {t("pj.cancel")}
         </button>
         {answer ? (
-          <button type="button" className="btn" data-size="default" data-variant="default" disabled={busy} onClick={() => onDecide!(picked, answer, rule.trim())}>
+          <button type="button" className="btn" data-size="default" data-variant="default" disabled={busy} onClick={() => onDecide!(said, answer, rule.trim())}>
             {busy ? t("sa.saving") : t("rv.decisionSave")}
           </button>
         ) : (

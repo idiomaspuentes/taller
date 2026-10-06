@@ -28,7 +28,7 @@ function wordPattern(word: string): RegExp | null {
 }
 
 /** The words of a source that are read: the links of a note or an article (their addresses, their numbers) are not. */
-function readable(source: string): string {
+export function readable(source: string): string {
   return source
     .replace(/\[\[[^\]]*\]\]/g, " ")
     .replace(/\]\([^)]*\)/g, "] ")

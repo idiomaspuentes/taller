@@ -8,6 +8,10 @@
  *
  * Giving a comment as resolved, or opening it again, is itself a comment on the review: a typed event that names
  * the comment. Nothing is edited, so it is seen in the conversation by whoever was waiting for it. Pure.
+ *
+ * So is what a comment became: when how a word is translated was kept in the glossary from it, an event says so.
+ * The comment reads «Está en el glosario» to everyone from then on, and the author of the draft learns of the
+ * decision where they read what was said about their work.
  */
 import { formatChatEvent, parseChatEvent } from "./chatEvent";
 import { parseRefComment } from "./commentPlace";
@@ -22,10 +26,13 @@ export type ReviewComment = {
   at: string;
   /** Given as resolved: by whom, and when. */
   resolved?: { by: string; at: string };
+  /** The entry of the glossary that was made from it. */
+  glossary?: string;
 };
 
 export const COMMENT_RESOLVED = "comment-resolved";
 export const COMMENT_REOPENED = "comment-reopened";
+export const COMMENT_IN_GLOSSARY = "comment-glossary";
 
 /** Comments the app leaves for itself on the review (markers): not part of what people said. */
 const isMachineComment = (body: string) => /<!--\s*(tas|gateway)[:-]/.test(body);
@@ -37,20 +44,24 @@ const same = (a: string | undefined, b: string | undefined) => Boolean(a && b) &
  */
 export function reviewCommentsFrom(rows: RawComment[], draftAuthor?: string): ReviewComment[] {
   const standing = new Map<number, { by: string; at: string } | null>();
+  const kept = new Map<number, string>();
   // In the order they were written: the last word about a comment says how it stands.
   for (const row of [...rows].sort((a, b) => a.id - b.id)) {
     const event = parseChatEvent(row.body);
-    if (!event || (event.type !== COMMENT_RESOLVED && event.type !== COMMENT_REOPENED)) continue;
-    const target = Number(event.data?.comment);
+    const target = Number(event?.data?.comment);
+    if (!event || !target) continue;
+    // Whoever keeps a decision from a comment may be its writer or the author of the draft: it counts from anyone.
+    if (event.type === COMMENT_IN_GLOSSARY) kept.set(target, String(event.data?.entry ?? ""));
+    if (event.type !== COMMENT_RESOLVED && event.type !== COMMENT_REOPENED) continue;
     const by = row.user?.login ?? "";
-    if (!target || same(by, draftAuthor)) continue;
+    if (same(by, draftAuthor)) continue;
     standing.set(target, event.type === COMMENT_RESOLVED ? { by, at: row.created_at ?? "" } : null);
   }
   return rows
     .filter((row) => row.body && !isMachineComment(row.body) && classifyComment(row.body).kind === "humano")
     .map((row) => {
       const resolved = standing.get(row.id);
-      return { id: row.id, by: row.user?.login ?? "", at: row.created_at ?? "", ...parseRefComment(row.body ?? ""), ...(resolved ? { resolved } : {}) };
+      return { id: row.id, by: row.user?.login ?? "", at: row.created_at ?? "", ...parseRefComment(row.body ?? ""), ...(resolved ? { resolved } : {}), ...(kept.has(row.id) ? { glossary: kept.get(row.id)! } : {}) };
     });
 }
 
@@ -69,6 +80,14 @@ export function openComments(comments: ReviewComment[], draftAuthor?: string): R
 export function canResolveComment(comment: ReviewComment, login: string, opts: { draftAuthor?: string; canManage?: boolean }): boolean {
   if (!login.trim() || same(login, opts.draftAuthor) || same(comment.by, opts.draftAuthor)) return false;
   return same(comment.by, login) || Boolean(opts.canManage);
+}
+
+/**
+ * The comment that says what another one became in the glossary, to be written on the review. `decision`: as it is
+ * read beside a verse («Messiah» → «Mesías»); `entry`: the id of the entry.
+ */
+export function glossaryComment(comment: ReviewComment, issueNumber: number, decision: string, entry: string): string {
+  return formatChatEvent({ type: COMMENT_IN_GLOSSARY, emitter: "tas", issue: issueNumber, summary: `En el glosario: ${decision}`, data: { comment: comment.id, entry } });
 }
 
 /** The comment that gives another one as resolved (or opens it again), to be written on the review. */

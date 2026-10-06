@@ -2,7 +2,7 @@ import { createIssueComment, listIssueComments } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import type { PortionPrMarker } from "../domain/portionPr";
-import { resolutionComment, reviewCommentsFrom, type ReviewComment } from "../domain/reviewComments";
+import { glossaryComment, resolutionComment, reviewCommentsFrom, type ReviewComment } from "../domain/reviewComments";
 
 export type { ReviewComment } from "../domain/reviewComments";
 
@@ -18,4 +18,9 @@ export async function loadReviewComments(session: GtSession, marker: PortionPrMa
 /** Give a comment as resolved, or open it again: written on the review as a comment of its own, never an edit. */
 export async function setReviewCommentResolved(session: GtSession, marker: PortionPrMarker, comment: ReviewComment, issueNumber: number, resolved: boolean): Promise<void> {
   await createIssueComment(dcsConfig(session.host), marker.owner, marker.repo, marker.number, resolutionComment(comment, issueNumber, !resolved), session.token);
+}
+
+/** Say on the review that a comment became a decision of the glossary (see `reviewComments.ts`). */
+export async function markReviewCommentInGlossary(session: GtSession, marker: PortionPrMarker, comment: ReviewComment, issueNumber: number, decision: string, entry: string): Promise<void> {
+  await createIssueComment(dcsConfig(session.host), marker.owner, marker.repo, marker.number, glossaryComment(comment, issueNumber, decision, entry), session.token);
 }

@@ -2620,5 +2620,6 @@
   "gl.notYet": "Todavía no hay glosario para este idioma. Lo crea quien administra el espacio, al guardar la primera entrada.",
   "gl.notYetOwner": "Todavía no hay glosario para este idioma. Se crea solo cuando guardes la primera entrada; desde entonces cualquiera puede agregar.",
   "gl.openPassage": "Glosario: las palabras de este pasaje",
-  "gl.openSearch": "Glosario: buscar una palabra"
+  "gl.openSearch": "Glosario: buscar una palabra",
+  "gl.atMore": "Y {n} más en el glosario."
 }

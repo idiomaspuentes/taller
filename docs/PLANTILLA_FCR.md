@@ -774,19 +774,33 @@ Lo que cambió:
 - **Una misma palabra del original puede tener una decisión por cada palabra inglesa:** «Christ» → «Cristo» y
   «Messiah» → «Mesías» son dos entradas de Χριστός. En cada versículo sale la de la palabra que ese texto dice. Si
   solo existe la de la otra palabra, sale diciéndolo: `«the Messiah» → «Cristo» (se decidió para «Christ»)`.
+- **Junto a las notas, las preguntas y los artículos también**, al traducirlos y al revisarlos. Esos textos no
+  están alineados con el original: dicen palabras inglesas, y la decisión es suya cuando el texto dice la palabra
+  inglesa sobre la que se tomó (el plural y el posesivo cuentan; la dirección de un enlace no es texto). Lo
+  decidido solo para el TPS no sale en las ayudas, porque una nota cita y explica el texto literal. Como mucho
+  cinco líneas por nota o párrafo, y después «Y N más en el glosario».
 - **Se guarda desde el comentario de una revisión**, en el mismo formulario que las reglas (ver «Reglas del
   equipo»): se toca la palabra de la fuente, se toca la traducción que el comentario ya nombra y queda como
-  propuesta, colgada de la palabra del original, con el comentario como razón.
+  propuesta, colgada de la palabra del original, con el comentario como razón. Se ofrece para tocar lo que el
+  comentario dice entre comillas o, sin comillas, los nombres que escribe con mayúscula; si no nombra nada, se
+  escribe.
+- **Desde el comentario de una ayuda, igual.** Si la palabra está en el versículo de la nota (en cualquiera de
+  los dos textos ingleses), la entrada cuelga del original. Si no, o en un artículo, que no es de ningún
+  versículo, se guarda por la palabra inglesa sola (`tg_en.tsv`), para unirla al original después.
+- **El comentario lo dice desde entonces a todos:** «Está en el glosario». Se escribe en la revisión como un
+  evento, igual que «resuelto», así que el autor del borrador se entera donde lee lo que se dijo de su trabajo:
+  en su tarjeta sale «valeska: En el glosario: «call» → «llamar»».
 - **Agregar una entrada es una pregunta:** «¿Cómo se traduce?». El sentido, las otras traducciones, lo que se evita,
   dónde vale y el porqué quedan a un toque («Más sobre esta decisión»), para quien la acuerda. 282 px.
 - **El glosario se abre desde «Qué se pide en …»**, junto a las reglas, en todas las herramientas («Glosario: las
-  palabras de este pasaje»), y muestra el texto inglés que se está traduciendo.
+  palabras de este pasaje»), y muestra el texto inglés que se está traduciendo. Desde un artículo abre el buscador.
 - **Si el glosario todavía no existe**, se dice quién puede crearlo: quien administra, al guardar la primera
   entrada. Desde entonces cualquiera del equipo agrega (comprobado en QA con una cuenta de traductor).
 
-Lo que falta: que las decisiones salgan también junto a las **notas, preguntas y artículos** (hoy solo junto a los
-versículos del TPL y del TPS), y marcar de forma duradera el comentario del que salió una entrada (hoy se ve
-durante la visita; si se intenta otra vez, el formulario dice que ya está en el glosario).
+Lo que falta: en una ayuda la palabra se busca como está escrita, con su plural: «called» no encuentra la decisión
+de «call». El enlace al glosario abre otra pestaña para no perder el trabajo en curso; cómo se comporta eso en la
+app instalada en un teléfono no se ha visto. Y en producción hay que comprobar que los equipos pueden escribir en
+el repositorio del glosario una vez creado.
 
 **Reglas (confirmadas el 1 de octubre de 2026):**
 - **Crear:** cualquiera del FCR puede crear una entrada nueva.

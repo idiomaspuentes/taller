@@ -51,6 +51,7 @@ const SENTENCES: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^Aprobado: (.+)$/, (m) => `Aprovado: ${m[1]}`],
   [/^Comentario resuelto: (.+)$/s, (m) => `Comentário resolvido: ${m[1]}`],
   [/^Comentario reabierto: (.+)$/s, (m) => `Comentário reaberto: ${m[1]}`],
+  [/^En el glosario: (.+)$/s, (m) => `No glossário: ${m[1]}`],
   [/^(\d+) veces$/, (m) => `${m[1]} vezes`],
   [/^Hay decisiones de versículo sin resolver en (.+)\. Resuélvelas primero\.$/, (m) => `Há decisões de versículo sem resolver em ${m[1]}. Resolva-as primeiro.`],
   [/^No se pudo leer el rango de versículos de (#\d+) \((.+)\)\. Corrige el título de la subtarea\.$/, (m) => `Não foi possível ler o intervalo de versículos de ${m[1]} (${m[2]}). Corrija o título da subtarefa.`],

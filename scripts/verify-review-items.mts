@@ -8,7 +8,7 @@ import { articleItems, diffWords, introItems, parseRefComment, refComment, revie
 import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
 import { commentPlace, placedMessage, plainLine } from "../src/domain/commentPlace";
 import { commentNotice, placedLine } from "../src/domain/noticeText";
-import { canResolveComment, openComments, resolutionComment, reviewCommentsFrom } from "../src/domain/reviewComments";
+import { canResolveComment, glossaryComment, openComments, resolutionComment, reviewCommentsFrom } from "../src/domain/reviewComments";
 import { localizeThread } from "../src/domain/threadNames";
 
 let passed = 0;
@@ -180,6 +180,20 @@ test("un comentario queda abierto hasta que quien lo dejó lo da por resuelto, y
   // The author of the draft does not close what was said about it, whatever they write on the review.
   assert.deepEqual(open([...rows, said(4, "alice", resolutionComment(comment!, 263))]), [1, 3]);
   assert.equal(localizeThread("Comentario resuelto: figura retorica o literaria?", "pt"), "Comentário resolvido: figura retorica o literaria?");
+});
+
+test("un comentario del que salió una entrada del glosario lo dice a todos, lo guarde quien lo guarde", () => {
+  const said = (id: number, login: string, body: string) => ({ id, body, user: { login }, created_at: `2026-10-06T00:0${id}:00Z` });
+  const rows = [said(1, "bob", refComment("JUD", "1:1", "En el TPS decimos «Mesías», no «Cristo».")), said(2, "bob", refComment("JUD", "1:2", "Falta una coma."))];
+  const [first] = reviewCommentsFrom(rows, "alice");
+  const event = glossaryComment(first!, 13, "«Messiah» → «Mesías»", "me01");
+  const after = reviewCommentsFrom([...rows, said(3, "bob", event)], "alice");
+  assert.deepEqual(after.map((row) => row.glossary), ["me01", undefined]);
+  assert.equal(after.length, 2, "decirlo no es un comentario más de la lista");
+  assert.deepEqual(openComments(after, "alice").map((row) => row.id), [1, 2], "guardar la decisión no da el comentario por resuelto");
+  // The author of the draft may be who keeps it: it counts the same.
+  assert.equal(reviewCommentsFrom([...rows, said(3, "alice", event)], "alice")[0]!.glossary, "me01");
+  assert.equal(localizeThread("En el glosario: «Messiah» → «Mesías»", "pt"), "No glossário: «Messiah» → «Mesías»");
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

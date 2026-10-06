@@ -10,11 +10,13 @@ import {
   baseStrong,
   changeNeedsAgreement,
   contentSources,
+  decisionsForText,
   decisionsForVerse,
   departuresFrom,
   entriesForPassage,
   entriesUnder,
   entryFromSources,
+  filedUnder,
   glossaryFileFor,
   groupOfWord,
   groupsOfVerse,
@@ -215,8 +217,43 @@ test("de un comentario sale una entrada: las palabras tocadas llevan a la del or
   // What the comment says between quotation marks is offered to touch; without marks, its longer words.
   assert.deepEqual(namedWordings("Escribimos «Jacobo», no «Santiago»."), ["Jacobo", "Santiago"]);
   assert.deepEqual(namedWordings('Aquí es "siervo", y otra vez «siervo»'), ["siervo"]);
-  assert.deepEqual(namedWordings("Usa Jacobo, no Santiago"), ["Jacobo", "Santiago"]);
+  assert.deepEqual(namedWordings("Usa Jacobo, no Santiago"), ["Jacobo", "Santiago"], "sin comillas, los nombres");
+  assert.deepEqual(namedWordings("Falta traducir el título. Revisa también la definición."), [], "un comentario que no nombra ninguna no ofrece sus otras palabras");
   assert.deepEqual(namedWordings(""), []);
+});
+
+test("junto a una nota o un párrafo sale la decisión de las palabras inglesas que dice", () => {
+  const said = (text: string, list = [james, christ, servant]) => decisionsForText(list, text).map((d) => `${d.english} → ${d.entry.rendering}`);
+  // A note quotes the literal text in bold and explains it: what was decided on those words is said beside it.
+  assert.deepEqual(said("**a brother of James** Here, Jude says that he is the brother of James."), ["James → Jacobo"]);
+  assert.deepEqual(said("Paul calls himself one of the **servants** of Christ. See [[rc://*/tw/dict/bible/names/james]]."), ["Christ → Cristo", "servant → siervo"], "el plural es la misma palabra; la dirección de un enlace no es texto");
+  assert.deepEqual(said("James' letter"), ["James → Jacobo"]);
+  assert.deepEqual(said("The jameson family"), [], "dentro de otra palabra no cuenta");
+  // What was decided for the simplified text alone is not a note's; an entry without a translation says nothing.
+  assert.deepEqual(said("the Messiah", [entry({ id: "m", strong: "G55470", english: ["Messiah"], rendering: "Mesías", scope: "tps" })]), []);
+  assert.deepEqual(said("James", [{ ...james, rendering: "" }]), []);
+  assert.deepEqual(said(""), []);
+  // An entry filed by its English word alone is found by it, in a note and in a verse.
+  const english = entry({ id: "en03", lemma: "apostle", strong: "", english: [], rendering: "apóstol" });
+  assert.deepEqual(said("the apostles were sent", [english]), ["apostle → apóstol"]);
+});
+
+test("de un comentario sobre una nota o un artículo también sale una entrada: por el original si la palabra está en el versículo, y si no por el inglés", () => {
+  // A note of Jude 1:1 says «James»: the verse has it, in either English text, so the entry hangs from the Greek.
+  const inVerse = filedUnder([], ["James"], [judeUlt, judeUst], true);
+  assert.deepEqual([inVerse?.english, inVerse?.strong], ["James", "G23850"]);
+  // «Messiah» is only in the simplified text: found in the second.
+  assert.equal(filedUnder([], ["Messiah"], [judeUlt, judeUst], true)?.strong, "G55470");
+  // A word that is in no verse (an article has none): filed by the English word, to be tied to the original later.
+  const alone = filedUnder([], ["apostle"], [], true);
+  assert.deepEqual([alone?.english, alone?.strong, alone?.sources], ["apostle", "", []]);
+  assert.equal(entryFromSources({ id: "a1", sources: alone!.sources, english: alone!.english, example: "" }).lemma, "apostle");
+  assert.equal(glossaryFileFor(alone!.strong), "tg_en.tsv");
+  // A verse of a text is never filed by the English alone: a word of it that is not aligned has nothing to hang from.
+  assert.equal(filedUnder([], ["writing"], [judeUst], false), null);
+  // The entry that names the word already is the one there is, whichever way it was filed.
+  assert.equal(filedUnder([james], ["James"], [], true)?.existing?.id, "ja01");
+  assert.equal(filedUnder([james], ["James"], [judeUlt], false)?.existing?.id, "ja01");
 });
 
 console.log(`\nverify-glossary: ${passed} checks passed.`);

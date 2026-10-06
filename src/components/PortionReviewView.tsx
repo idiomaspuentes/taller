@@ -1,17 +1,16 @@
-import { isOfTeam, Hints, StepAsk, useVerseDecisions } from "./StepAsk";
+import { isOfTeam, Hints, StepAsk, useTextDecisions, useVerseDecisions } from "./StepAsk";
 import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { itemChecks, paragraphsFor } from "../domain/stepChecks";
 import { activeRules, ruleMadeFrom, ruleText } from "../domain/teamRules";
 import { addRuleToTeam, useManagesTeamRules, useTeamRules } from "../useTeamRules";
 import { saveGlossaryEntry } from "../dcs/glossaryStore";
-import { entriesUnder, entryFromSources, groupsOfVerse, newGlossaryId, sourcesUnder } from "../domain/glossary";
+import { entryFromSources, filedUnder, groupsOfVerse, newGlossaryId } from "../domain/glossary";
 import { glossaryEntrySaved, useGlossaryEntries } from "../useGlossary";
 import { CommentAsRule } from "./CommentAsRule";
 import { ToolHeader } from "./ToolHeader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
-import type { AlignmentMap } from "@usfm-tools/types";
 import { Check, MessageSquare } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
 import { readRepoFile } from "../dcs/repoFile";
-import { loadReviewComments, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
+import { loadReviewComments, markReviewCommentInGlossary, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
 import { canResolveComment, openComments } from "../domain/reviewComments";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -40,7 +39,7 @@ import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
 import type { TaskStep } from "../domain/types";
-import { extractDraftVerses, tryParseUsjWithAlignments, type VerseTextMap } from "../domain/usfmAst";
+import { extractDraftVerses, type VerseTextMap } from "../domain/usfmAst";
 import { portionRange, type RefRange } from "../domain/usfmEdit";
 import { bookUsfmName } from "../prep/discover";
 import { useUiLanguage } from "../i18n/language";
@@ -60,8 +59,7 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-/** `alignments`: of the text the draft is translated from, with the original: what a decision of the glossary is found by. */
-type Source = { short: string; verses: VerseTextMap; alignments?: AlignmentMap };
+type Source = { short: string; verses: VerseTextMap };
 
 /**
  * One box to write a comment in; `Enter` alone makes a new line, so a comment can have several. `focus`: the box was
@@ -109,8 +107,6 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   /** The people the plan lists for that task: with the team's own, who may add a rule to it. */
   const [teamMembers, setTeamMembers] = useState<string[]>([]);
   const teamRules = useTeamRules(teamName || undefined);
-  const alignments = sources.find((source) => source.alignments)?.alignments;
-  const decisionsAt = useVerseDecisions(session, ctx, alignments);
   const glossary = useGlossaryEntries(session, ctx?.contentOrg, ctx?.lang);
   /** The comments made into a decision of the glossary in this visit. */
   const [decided, setDecided] = useState<string[]>([]);
@@ -166,17 +162,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       const pmConfig = await loadPmConfig(sess, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG);
       void Promise.all((["ult", "ust"] as const).map((kind) => loadEnglishScriptureKindUsfm(sess, kind, ctx.book).catch(() => null))).then((loaded) =>
         setSources(
-          loaded.flatMap((pane, index) =>
-            pane
-              ? [
-                  {
-                    short: pane.meta?.short || englishScriptureKindRef((["ult", "ust"] as const)[index]!, ctx.book).short,
-                    verses: extractDraftVerses(pane.usfm, range).verses,
-                    alignments: (ctx.resource === "tps" ? index === 1 : ctx.resource === "tpl" && index === 0) ? tryParseUsjWithAlignments(pane.usfm)?.alignments : undefined,
-                  },
-                ]
-              : [],
-          ),
+          loaded.flatMap((pane, index) => (pane ? [{ short: pane.meta?.short || englishScriptureKindRef((["ult", "ust"] as const)[index]!, ctx.book).short, verses: extractDraftVerses(pane.usfm, range).verses }] : [])),
         ),
       );
       // The English of what is reviewed, item by item: each shows only the checks its own source calls for.
@@ -271,6 +257,11 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   // A note is about a phrase of the verse: it is found in the source texts through the alignment, as where it is
   // translated. Wanted wherever notes are shown: in their own review, and beside the verses of a text or a question.
   const helpSources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(ctx && ctx.resource !== "academia" && ctx.resource !== "palabras"));
+  // The English text a draft of the Bible is translated from, aligned with the original: what a decision of the
+  // glossary is found by, at a verse. A help says English words of its own: its decisions are found by those.
+  const alignments = (helpSources.find((source) => (ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i).test(source.short)) ?? helpSources[ctx?.resource === "tps" ? 1 : 0])?.alignments;
+  const decisionsAt = useVerseDecisions(session, ctx, alignments);
+  const decisionsIn = useTextDecisions(session, ctx);
 
   const me = session?.username ?? "";
   const progress = useMemo(() => parseTaskProgressMarker(issue?.body), [issue]);
@@ -480,30 +471,40 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   };
   // How a word is translated is not a rule of one team: it is a decision of the glossary, for every team and text.
   // The words touched in the verse lead to the word of the original under them, and the entry is filed by that.
-  type Place = { chapter: number; verse: number };
+  // `text`: a verse of the Bible text in hand, filed by its own alignment. Otherwise a note, a question or a
+  // paragraph: by the verse it is of when the word is there (in either English text), and if not by the English word.
+  type Place = { chapter?: number; verse?: number; text: boolean };
   const underWords = (place: Place, words: string[]) => {
-    const under = sourcesUnder(groupsOfVerse(alignments, place.chapter, place.verse), words);
-    return under ? { ...under, ...entriesUnder(glossary, under.strong, under.english) } : null;
+    const { chapter, verse } = place;
+    const verses = !chapter || !verse ? [] : place.text ? [groupsOfVerse(alignments, chapter, verse)] : helpSources.map((source) => groupsOfVerse(source.alignments, chapter, verse));
+    return filedUnder(glossary, words, verses, !place.text);
   };
   const saveDecision = async (row: Comment, place: Place, words: string[], rendering: string, why: string) => {
     const under = underWords(place, words);
     if (!under || !session || !ctx) return;
     setRuling({ id: String(row.id), busy: true, failed: "" });
     try {
-      const base = under.existing ?? entryFromSources({ id: newGlossaryId(glossary.map((entry) => entry.id)), sources: under.sources, english: under.english, example: `${ctx.book.toUpperCase()} ${place.chapter}:${place.verse}` });
+      const base = under.existing ?? entryFromSources({ id: newGlossaryId(glossary.map((entry) => entry.id)), sources: under.sources, english: under.english, example: place.chapter && place.verse ? `${ctx.book.toUpperCase()} ${place.chapter}:${place.verse}` : "" });
       const entry = { ...base, rendering, note: base.note || why };
       await saveGlossaryEntry({ session, owner: ctx.contentOrg, lang: ctx.lang, entry, before: under.existing, reason: why });
       glossaryEntrySaved(session, ctx.contentOrg, ctx.lang, entry);
       setDecided((now) => [...now, String(row.id)]);
       setRuling(null);
       announce(t("rv.decisionSaved"));
+      // Said on the review too, so the comment reads «Está en el glosario» to everyone and the author of the draft
+      // learns of the decision. The entry is kept already: if this fails, the mark lasts this visit only.
+      if (marker) {
+        await markReviewCommentInGlossary(session, marker, row, ctx.issueNumber, t("gl.at").replace("{english}", under.english).replace("{rendering}", rendering), entry.id)
+          .then(() => loadComments(session, marker, author))
+          .catch(() => undefined);
+      }
     } catch {
       setRuling({ id: String(row.id), busy: false, failed: "glossary" });
     }
   };
   /**
    * `source`: the source of what the comment is about, whose words a rule made from it may be said to be about.
-   * `place`: the verse it is about, when it is a verse of a text: its words lead to the glossary.
+   * `place`: what it is about, as its words lead to the glossary (see `underWords`); none for the whole draft.
    */
   const commentRow = (row: Comment, source?: string | null, place?: Place) => (
     <li key={row.id} className="rv-comment" data-resolved={row.resolved ? "true" : undefined}>
@@ -522,9 +523,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           </button>
         ) : null}
       </p>
-      {ruleMadeFrom(teamRules, String(row.id)) || decided.includes(String(row.id)) ? (
+      {ruleMadeFrom(teamRules, String(row.id)) || row.glossary !== undefined || decided.includes(String(row.id)) ? (
         <p className="rv-comment__rule">
-          <Check size={12} aria-hidden /> {t(decided.includes(String(row.id)) ? "rv.isDecision" : "rv.isRule")}
+          <Check size={12} aria-hidden /> {t(row.glossary !== undefined || decided.includes(String(row.id)) ? "rv.isDecision" : "rv.isRule")}
         </p>
       ) : ruling?.id === String(row.id) ? (
         <CommentAsRule
@@ -533,7 +534,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           busy={ruling.busy}
           failed={ruling.failed ? t(ruling.failed === "glossary" ? "rv.decisionError" : "sa.ruleError") : undefined}
           onSave={(text, words) => void saveRule(row, text, words)}
-          decide={place && alignments ? (words) => underWords(place, words) : undefined}
+          decide={place ? (words) => underWords(place, words) : undefined}
           onDecide={place ? (words, rendering, why) => void saveDecision(row, place, words, rendering, why) : undefined}
           onCancel={() => setRuling(null)}
         />
@@ -605,7 +606,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const kind = ctx?.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i;
     const itemSource = text ? (sources.find((source) => kind.test(source.short)) ?? sources[ctx?.resource === "tps" ? 1 : 0])?.verses[item.verse] : english[item.key];
     // What the glossary decided about the words of this verse: found by the word of the original under each.
-    const decided = text ? decisionsAt(item.chapter, item.verse, itemSource) : [];
+    const decided = text ? decisionsAt(item.chapter, item.verse, itemSource) : decisionsIn(itemSource);
     const own: { id: string; text: string; texts?: Partial<Record<string, string>>; when?: string[]; by?: string }[] = [
       ...itemChecks(step?.checks ?? [], itemSource),
       ...itemChecks(teamRules ? activeRules(teamRules) : [], itemSource).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), when: rule.when, by: rule.by })),
@@ -704,7 +705,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
             />
           </div>
         ) : null}
-        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource, text ? { chapter: item.chapter, verse: item.verse } : undefined))}</ul> : null}
+        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, itemSource, { chapter: item.chapter, verse: item.verse, text }))}</ul> : null}
         {commenting === item.key ? (
           <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(item.ref, text) }]} />
         ) : (
@@ -766,14 +767,15 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const own: { id: string; text: string; texts?: Partial<Record<string, string>>; by?: string }[] = pending
       ? []
       : [...itemChecks(step?.checks ?? [], source), ...itemChecks(teamRules ? activeRules(teamRules) : [], source).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), by: rule.by }))];
+    const decidedHere = pending ? [] : decisionsIn(source);
     return (
       <>
-        {own.length ? (
+        {own.length || decidedHere.length ? (
           <div className="rv-checks">
-            <Hints lead={t("sa.mind")} lines={own.map((check) => ({ id: check.id, by: check.by, text: check.texts?.[language] ?? check.text }))} />
+            <Hints lead={t("sa.mind")} lines={[...decidedHere, ...own.map((check) => ({ id: check.id, by: check.by, text: check.texts?.[language] ?? check.text }))]} />
           </div>
         ) : null}
-        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, source))}</ul> : null}
+        {about.length ? <ul className="rv-comments">{about.map((row) => commentRow(row, source, { text: false }))}</ul> : null}
         {commenting === ref ? (
           <Composer focus placeholder={t("rv.commentPiece")} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(ref, text) }]} />
         ) : (
