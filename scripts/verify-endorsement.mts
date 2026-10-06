@@ -1,7 +1,11 @@
-/** The committee's endorsement: independent reports, seen by the others only once handed in, and the rule to decide. */
+/**
+ * The committee's endorsement: independent reports, seen by the others only once handed in, and the rule to decide.
+ * And how the unit is read for it: verse by verse, with what goes with each verse and what was said about it.
+ */
 import assert from "node:assert/strict";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../src/domain/endorsement";
 import type { ChecklistQuestion } from "../src/domain/types";
+import { concernPlace, concernsAt, helpsOfVerse, unitVerses } from "../src/domain/unitReading";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -59,6 +63,33 @@ test("una observación no quita el apoyo", () => {
   const t = tally([report("eliseo"), report("natan", { concerns: [{ id: "o", kind: "observation", about: "notas", text: "Una nota podría ser más corta" }] })]);
   assert.equal(t.canEndorse, true);
   assert.equal(t.observations.length, 1);
+});
+
+test("la unidad se lee por sus versículos: un tramo de un capítulo, solo los suyos", () => {
+  const tpl = { 1: "Pablo, siervo de Dios", 2: "sobre la esperanza", 3: "pero reveló", 4: "a Tito", 5: "Por esta causa" };
+  const tps = { 1: "Yo, Pablo", 2: "ellos pueden", 6: "un versículo que solo tiene este texto" };
+  // The texts are read by chapter: a stretch of it has to be cut out, or a committee reads sixteen verses for four.
+  assert.deepEqual(unitVerses("1:1–4", 1, [tpl, tps]), [1, 2, 3, 4]);
+  assert.deepEqual(unitVerses("1", 1, [tpl, tps]), [1, 2, 3, 4, 5, 6], "un capítulo entero, todos, en orden");
+  assert.deepEqual(unitVerses(undefined, 1, [tpl, undefined]), [1, 2, 3, 4, 5]);
+  assert.deepEqual(unitVerses("1:3", 1, [tpl]), [3]);
+  assert.deepEqual(unitVerses("1:1–4", 1, []), []);
+});
+
+test("bajo cada versículo va lo suyo, y una inquietud se guarda donde se anotó", () => {
+  const notes = [{ id: "a", verse: 1 }, { id: "b", verse: 2 }, { id: "c", verse: 1 }];
+  assert.deepEqual(helpsOfVerse(notes, 1).map((n) => n.id), ["a", "c"]);
+  assert.deepEqual(helpsOfVerse(undefined, 1), []);
+  // The place is what the person would have typed: the verse, and what of it when it is a note, a question, a term.
+  assert.equal(concernPlace(1, 1), "1:1");
+  assert.equal(concernPlace(1, 1, "conforme a la fe"), "1:1 «conforme a la fe»");
+  assert.equal(concernPlace(1, 12, "  ¿Cuál era\n el propósito de Pablo?  "), "1:12 «¿Cuál era el propósito de Pablo?»");
+  assert.equal(concernPlace(1, 1, "x".repeat(80)).length, "1:1 «".length + 60 + "»".length, "lo largo se acorta");
+  // What was said is shown at its verse: one filed at 1:1 is not of 1:12, nor one about the whole unit of any.
+  const said = [objection("a", { where: "1:1" }), objection("b", { where: "1:1 «conforme a la fe»" }), objection("c", { where: "1:12" }), objection("d", { where: undefined }), objection("e", { where: "2:1" })];
+  assert.deepEqual(concernsAt(said, 1, 1).map((c) => c.id), ["a", "b"]);
+  assert.deepEqual(concernsAt(said, 1, 12).map((c) => c.id), ["c"]);
+  assert.deepEqual(concernsAt(said, 1, 2), []);
 });
 
 console.log(`\nverify-endorsement: ${passed} checks passed.`);

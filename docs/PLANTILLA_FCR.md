@@ -612,6 +612,34 @@ Armonización de la unidad, la app la lleva sola a su **rama de validación** en
 (`validacion/jud/1`): lo publicado más esa unidad, y nada de lo que sigue a medias. El pastor ve, por
 recurso, lo que cambia frente a lo publicado. A la rama publicada (`master`) no llega nada sin aval.
 
+**Cómo lo lee (octubre de 2026).** Al comité se le pide juzgar los seis recursos, y la pantalla le dejaba leer
+dos: el pasaje en el TPL y el TPS, dentro de una caja de 423 px con desplazamiento propio (en un teléfono) y con
+todo el capítulo aunque la unidad fuera un tramo. Las notas, las preguntas y las palabras solo salían como lista de
+cambios, lejos del versículo que explican; y para anotar una inquietud había que elegir el recurso de una lista de
+seis y escribir el versículo a mano.
+
+Ahora la unidad se lee **versículo por versículo, con lo suyo debajo**:
+
+- Cada versículo en sus dos textos y, debajo, «5 notas», «1 pregunta», «11 palabras» para abrir (botones de 40 px).
+- **Las notas** se leen enteras, cada una encabezada por la frase del TPL de la que habla («conforme a la fe»),
+  que sale sola de la alineación. **Las preguntas**, con su respuesta. **Las palabras**, con esa misma frase y el
+  nombre del artículo en el idioma del equipo; el artículo (que puede medir varias pantallas) se lee al tocarla,
+  en un recuadro propio.
+- **Una inquietud se anota donde se está:** bajo el versículo, o bajo la nota, la pregunta o la palabra. El lugar y
+  el recurso ya están puestos («Notas · 1:1 «conforme a la fe»»); queda elegir observación u objeción y escribirla.
+  Sobre el versículo mismo solo se toca cuál de los dos textos.
+- **Se guarda al momento**, como borrador del reporte: quien lee media hora y sale no pierde nada. Lo anotado se ve
+  bajo su versículo, y también en «Mi reporte», donde se puede retirar. Al decidir, quien coordina lee la unidad
+  con las inquietudes de todos en su sitio.
+- En un teléfono la lectura corre por la página, y una barra abajo dice cuántas inquietudes van y lleva a «Mi
+  reporte». En una pantalla ancha la lectura queda a la izquierda y el reporte a la derecha, lado a lado (antes el
+  reporte caía debajo).
+
+Es la idea de los dos paneles enlazados de tc-study (el texto, y las ayudas de lo que se lee) hecha en una
+columna: en un teléfono dos paneles dejan 336 px a cada uno. Visto con Tito 1:1–4 en modo laboratorio (4
+versículos, 19 notas, 5 preguntas, 30 palabras); **todavía no con una unidad real**, porque en QA no hay ninguna
+afinada. La anotación general, sobre toda la unidad, sigue en «Mi reporte».
+
 **Si el aval queda pendiente:** cada observación u objeción se convierte en una **subtarea de
 corrección** para su dueño (TPL o TPS → Afinación; recursos de apoyo → Armonización). Cuando el dueño
 la cierra, la unidad se renueva en su rama de validación y vuelve **al mismo comité**.

@@ -251,6 +251,7 @@ versión publicada: cambiar eso es otra decisión.
 | Ramas y etiquetas | `src/domain/branchNames.ts`, `src/domain/portionPr.ts`, `src/dcs/portionPr.ts`, `src/dcs/pulls.ts` |
 | Marcas de fase y «Qué cambió» | `src/domain/phaseMarks.ts`, `src/dcs/phaseMarks.ts`, `src/domain/changesSince.ts`, `src/dcs/changesSince.ts`, `src/components/ChangesView.tsx` |
 | Validación y publicación de una unidad | `src/domain/unitStage.ts`, `src/dcs/unitStage.ts`, `src/dcs/unitPublish.ts`, `src/dcs/corrections.ts`, `src/dcs/release.ts` |
+| Lectura de una unidad por el comité | `src/components/EndorsementView.tsx`, `src/components/UnitReading.tsx`, `src/domain/unitReading.ts`, `src/domain/endorsement.ts` |
 | Familiarize / review | `src/components/FamiliarizeView.tsx`, `src/components/PortionReviewView.tsx` |
 | Textos fuente en el dispositivo | `src/dcs/sourceTexts.ts`, `src/domain/usfmChapters.ts`, `src/domain/referenceResources.ts` |
 | Glosario | `src/domain/glossary.ts`, `src/dcs/glossaryStore.ts`, `src/useGlossary.ts`, `src/components/GlossaryView.tsx`, `docs/GLOSARIO_DOOR43.md` |

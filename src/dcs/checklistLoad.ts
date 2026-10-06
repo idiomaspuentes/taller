@@ -95,7 +95,66 @@ export async function loadUnitTexts(params: { session: GtSession; ctx: SolverLau
       if (text) texts[resource] = text;
     }),
   );
-  return { book, chapter: ctx.chapter, texts, target: { owner: home.owner, repo: home.repo }, levelBook: pmConfig, board, task, step };
+  return { book, chapter: ctx.chapter, texts, pmConfig, target: { owner: home.owner, repo: home.repo }, levelBook: pmConfig, board, task, step };
+}
+
+/**
+ * The notes, the questions or the key terms of a unit, as the team has them now: the group draft of that work, or
+ * what is published; the source's when the team has none yet (`fromSource`). A stretch of a split chapter covers
+ * some verses only; a whole chapter, them all. Null when there is nothing to read.
+ */
+export async function loadUnitItems(params: {
+  session: GtSession;
+  ctx: SolverLaunchContext;
+  kind: ChecklistKind;
+  pmConfig: PmConfig;
+  board: AssignmentsDoc | null;
+  /** Only the items that link to a support article (a step that checks those articles). */
+  onlyLinked?: boolean;
+}): Promise<{ items: ChecklistItem[]; fromSource: boolean } | null> {
+  const { session, ctx, kind, pmConfig, board } = params;
+  const book = (ctx.book || ctx.projectId || "").toUpperCase();
+  const chapter = ctx.chapter;
+  const pkg = resolveSourcePackage(board?.settings);
+  let raw: string | null = null;
+  let fromSource = false;
+  if (kind === "palabras") {
+    // The list of key terms comes with the source package.
+    raw = await readRaw(session, pkg.owner, pkg.twl, `twl_${book}.tsv`);
+  } else {
+    // The team's own notes or questions as they stand now: the group draft of that work, or what is published.
+    raw = (await readTeamHelps({ session, ctx, pmConfig, board, kind }))?.text ?? null;
+    if (!raw && kind === "notas") {
+      raw = await readRaw(session, pkg.owner, pkg.tn, helpsTsvFilename("notas", book));
+      fromSource = Boolean(raw);
+    }
+    if (!raw && kind === "preguntas") {
+      // The questions repository sits beside the notes one: `en_tn` → `en_tq`.
+      raw = await readRaw(session, pkg.owner, pkg.tn.replace(/_tn$/, "_tq"), helpsTsvFilename("preguntas", book));
+      fromSource = Boolean(raw);
+    }
+  }
+  if (!raw) return null;
+  const rows = parseTsvTable(raw).rows;
+
+  const range = portionRange(ctx.ref || "", chapter);
+  const whole = !/:/.test(ctx.ref || "");
+  const inRange = (verse: number) => whole || !range || (verse >= range.from && verse <= range.to);
+
+  let items: ChecklistItem[] = [];
+  if (kind === "notas") {
+    items = parseNoteRows(rows, chapter).map((note) => ({ id: note.id, chapter: note.chapter, verse: note.verse, title: "", body: note.note, quote: note.quote, occurrence: note.occurrence, supportRef: note.supportRef }));
+  } else if (kind === "palabras") {
+    items = parseTermRows(rows, chapter).map((term) => ({ id: term.id, chapter: term.chapter, verse: term.verse, title: term.termSlug, body: "", quote: term.quote, occurrence: term.occurrence, supportRef: `${term.termKind}/${term.termSlug}` }));
+  } else {
+    for (const row of rows) {
+      const match = /^(\d+):(\d+)/.exec((row.Reference ?? row.reference ?? "").trim());
+      const id = (row.ID ?? row.Id ?? row.id ?? "").trim();
+      if (!match || !id || Number(match[1]) !== chapter) continue;
+      items.push({ id, chapter, verse: Number(match[2]), title: (row.Question ?? row.question ?? "").trim(), body: (row.Response ?? row.response ?? "").trim() });
+    }
+  }
+  return { items: items.filter((item) => inRange(item.verse) && (!params.onlyLinked || Boolean(item.supportRef))).sort((a, b) => a.verse - b.verse), fromSource };
 }
 
 export async function loadChecklist(params: {
@@ -116,50 +175,13 @@ export async function loadChecklist(params: {
   ]);
   const task = board?.teams.find((t) => t.id === ctx.taskId) ?? null;
   const step = task?.steps?.find((s) => s.id === ctx.stepId) ?? null;
-  const pkg = resolveSourcePackage(board?.settings);
 
-  // The helps live in the content organization; the list of key terms comes with the source package.
+  // The helps live in the content organization.
   const helps = resolveHelpsTarget({ ...ctx, resource: kind === "palabras" ? "palabras" : kind }, pmConfig);
   if ("error" in helps) throw new Error(helps.error);
-  let raw: string | null = null;
-  let fromSource = false;
-  if (kind === "palabras") {
-    raw = await readRaw(session, pkg.owner, pkg.twl, `twl_${book}.tsv`);
-  } else {
-    // The team's own notes or questions as they stand now: the group draft of that work, or what is published.
-    raw = (await readTeamHelps({ session, ctx, pmConfig, board, kind }))?.text ?? null;
-    if (!raw && kind === "notas") {
-      raw = await readRaw(session, pkg.owner, pkg.tn, helpsTsvFilename("notas", book));
-      fromSource = Boolean(raw);
-    }
-    if (!raw && kind === "preguntas") {
-      // The questions repository sits beside the notes one: `en_tn` → `en_tq`.
-      raw = await readRaw(session, pkg.owner, pkg.tn.replace(/_tn$/, "_tq"), helpsTsvFilename("preguntas", book));
-      fromSource = Boolean(raw);
-    }
-  }
-  if (!raw) throw new Error(`No se pudo leer ${kind === "palabras" ? "la lista de palabras clave" : kind === "notas" ? "las notas" : "las preguntas"} de este libro.`);
-  const rows = parseTsvTable(raw).rows;
-
-  const range = portionRange(ctx.ref || "", chapter);
-  // A stretch of a split chapter covers some verses only; a whole chapter (a bare «2») covers them all.
-  const whole = !/:/.test(ctx.ref || "");
-  const inRange = (verse: number) => whole || !range || (verse >= range.from && verse <= range.to);
-
-  let items: ChecklistItem[] = [];
-  if (kind === "notas") {
-    items = parseNoteRows(rows, chapter).map((note) => ({ id: note.id, chapter: note.chapter, verse: note.verse, title: "", body: note.note, quote: note.quote, occurrence: note.occurrence, supportRef: note.supportRef }));
-  } else if (kind === "palabras") {
-    items = parseTermRows(rows, chapter).map((term) => ({ id: term.id, chapter: term.chapter, verse: term.verse, title: term.termSlug, body: "", quote: term.quote, occurrence: term.occurrence, supportRef: `${term.termKind}/${term.termSlug}` }));
-  } else {
-    for (const row of rows) {
-      const match = /^(\d+):(\d+)/.exec((row.Reference ?? row.reference ?? "").trim());
-      const id = (row.ID ?? row.Id ?? row.id ?? "").trim();
-      if (!match || !id || Number(match[1]) !== chapter) continue;
-      items.push({ id, chapter, verse: Number(match[2]), title: (row.Question ?? row.question ?? "").trim(), body: (row.Response ?? row.response ?? "").trim() });
-    }
-  }
-  items = items.filter((item) => inRange(item.verse) && (!params.onlyLinked || Boolean(item.supportRef))).sort((a, b) => a.verse - b.verse);
+  const read = await loadUnitItems({ session, ctx, kind, pmConfig, board, onlyLinked: params.onlyLinked });
+  if (!read) throw new Error(`No se pudo leer ${kind === "palabras" ? "la lista de palabras clave" : kind === "notas" ? "las notas" : "las preguntas"} de este libro.`);
+  const { items, fromSource } = read;
 
   const texts: ChecklistData["texts"] = {};
   await Promise.all(

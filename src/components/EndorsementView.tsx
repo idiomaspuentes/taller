@@ -1,11 +1,17 @@
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPersonDocs, savePersonDoc } from "../dcs/checkStore";
-import { loadUnitTexts, type ChecklistData, type ChecklistText } from "../dcs/checklistLoad";
+import { loadTermArticle, loadTermTitles } from "../dcs/afinacionLoad";
+import { loadUnitItems, loadUnitTexts, type ChecklistData, type ChecklistItem, type ChecklistText } from "../dcs/checklistLoad";
+import type { TermKind } from "../domain/afinacionWords";
+import { DEFAULT_PM_CONFIG } from "../domain/roles";
+import { resolveSourcePackage } from "../domain/sourcePackage";
+import { unitVerses } from "../domain/unitReading";
+import { UnitReading, type NewConcern, type PlacedConcern, type UnitHelps } from "./UnitReading";
 import { commentOnIssue } from "../dcs/issues";
 import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { loadUnitToPublish, recordEndorsement, stageUnit, unitChanges, unitProblems, type UnitToPublish } from "../dcs/unitPublish";
@@ -62,6 +68,13 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   /** The unit as it would be published: what the committee validates, next to what is published today. */
   const [unit, setUnit] = useState<UnitToPublish | null>(null);
   const [requests, setRequests] = useState<string[]>([]);
+  /** The notes, the questions and the key terms of the unit: what is read under each verse. */
+  const [helps, setHelps] = useState<UnitHelps>({});
+  const [termTitles, setTermTitles] = useState<Record<string, string>>({});
+  const [articles, setArticles] = useState<Record<string, string | null>>({});
+  /** The terms whose name or article was already asked for, so each is read once. */
+  const asked = useRef(new Set<string>());
+  const reportRef = useRef<HTMLElement>(null);
 
   const me = (session?.username ?? "").toLowerCase();
   const keyOf = (c: SolverLaunchContext) => `${(c.book || c.projectId).toUpperCase()}.${c.issueNumber || c.taskId}.aval`;
@@ -76,6 +89,13 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     try {
       const loaded = await loadUnitTexts({ session, ctx: decoded, texts: TEXTS });
       setData(loaded);
+      // The helps of the unit are read apart, each kind on its own: one that fails does not hide the passage.
+      setHelps({});
+      for (const kind of ["notas", "preguntas", "palabras"] as const) {
+        void loadUnitItems({ session, ctx: decoded, kind, pmConfig: loaded.pmConfig ?? DEFAULT_PM_CONFIG, board: loaded.board })
+          .then((read) => read && setHelps((prev) => ({ ...prev, [kind]: read })))
+          .catch(() => undefined);
+      }
       // What the unit changes is read apart: a repository that fails to answer does not hide the passage.
       setUnit(null);
       void loadUnitToPublish({ session, ctx: decoded, resources: ENDORSED })
@@ -210,6 +230,47 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     [unit],
   );
 
+  // A term is named and read in the team's own words: its name when the terms of a verse are opened, its article
+  // when that term is. Each once.
+  const termOf = (row: ChecklistItem) => ({ termSlug: row.title, termKind: ((row.supportRef ?? "").split("/")[0] || "kt") as TermKind });
+  const openTerms = (rows: ChecklistItem[]) => {
+    if (!session || !ctx || !data) return;
+    const fresh = rows.map(termOf).filter((term) => !asked.current.has(`t:${term.termSlug}`));
+    if (!fresh.length) return;
+    fresh.forEach((term) => asked.current.add(`t:${term.termSlug}`));
+    void loadTermTitles(session, resolveSourcePackage(data.board?.settings), fresh, ctx)
+      .then((titles) => setTermTitles((prev) => ({ ...prev, ...titles })))
+      .catch(() => undefined);
+  };
+  const openArticle = (row: ChecklistItem) => {
+    if (!session || !ctx || !data) return;
+    const term = termOf(row);
+    if (asked.current.has(`a:${term.termSlug}`)) return;
+    asked.current.add(`a:${term.termSlug}`);
+    void loadTermArticle(session, resolveSourcePackage(data.board?.settings), term, ctx, data.pmConfig ?? DEFAULT_PM_CONFIG)
+      .catch(() => null)
+      .then((article) => setArticles((prev) => ({ ...prev, [term.termSlug]: article?.trim() ? article : null })));
+  };
+
+  /**
+   * A concern noted where it was read. It is kept at once, as the report's draft: whoever reads a unit for half an
+   * hour and leaves has lost nothing.
+   */
+  const noteConcern = (concern: NewConcern) => {
+    if (!mine) return;
+    const next = { ...mine, concerns: [...mine.concerns, { id: `${Date.now()}`, ...concern }] };
+    setMine(next);
+    // A sandbox launch writes nothing on its own (see `SolverLaunchContext.lab`): there it waits for «Guardar».
+    if (ctx?.lab && !ctx.labAllowWrite) return announce(t("ur.concernNoted"));
+    void saveMine(next, t("ur.concernSaved"));
+  };
+  // What is shown where it was said: one's own always; the others' when they may be seen (see `visibleReports`).
+  const placed: PlacedConcern[] =
+    mode === "decision"
+      ? tally.delivered.flatMap((report) => report.concerns.map((c) => ({ ...c, by: report.by })))
+      : [...(mine?.concerns ?? []), ...others.flatMap((report) => report.concerns.map((c) => ({ ...c, by: report.by })))];
+  const standing = (mine?.concerns ?? []).filter((c) => !c.withdrawn).length;
+
   const title = data?.step ? localized(data.step.name, data.step.names, language) : t("en.title");
   const aboutLabel = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
 
@@ -230,18 +291,32 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       {stepDone && mode === "decision" ? <p className="round__done">{t("en.endorsed")}</p> : null}
 
       {data ? (
-        <details className="en-texts" open={mode === "reporte"}>
+        <details className="en-texts en-read" open={mode === "reporte"}>
           <summary>{t("en.readUnit")}</summary>
-          {Object.keys(data.texts.tpl?.verses ?? data.texts.tps?.verses ?? {}).map(Number).sort((a, b) => a - b).map((verse) => (
-            <div key={verse} className="en-verse">
-              <strong>{data.chapter}:{verse}</strong>
-              {TEXTS.map((resource) => (data.texts[resource]?.verses[verse] ? (
-                <p key={resource}>
-                  <span className="af-lbl">{aboutLabel(resource)}</span> {data.texts[resource]!.verses[verse]}
-                </p>
-              ) : null))}
+          <UnitReading
+            book={data.book}
+            chapter={data.chapter}
+            verses={unitVerses(ctx?.ref, data.chapter, [data.texts.tpl?.verses, data.texts.tps?.verses])}
+            texts={data.texts}
+            helps={helps}
+            label={aboutLabel}
+            termTitles={termTitles}
+            articles={articles}
+            onOpenTerms={openTerms}
+            onOpenArticle={openArticle}
+            concerns={placed}
+            onConcern={mode === "reporte" && mine ? noteConcern : undefined}
+            saving={saving}
+          />
+          {mode === "reporte" && mine ? (
+            // On a phone the report is under the whole reading: it stays one press away while reading.
+            <div className="en-jump">
+              <p>{standing ? t(standing === 1 ? "en.jumpOne" : "en.jumpMany").replace("{n}", String(standing)) : t("en.jumpNone")}</p>
+              <button type="button" className="btn" data-variant="outline" data-size="default" onClick={() => reportRef.current?.scrollIntoView({ block: "start" })}>
+                {t("en.jump")}
+              </button>
             </div>
-          ))}
+          ) : null}
         </details>
       ) : null}
 
@@ -272,7 +347,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       ) : null}
 
       {data && mode === "reporte" && mine ? (
-        <section className="af-card" aria-label={t("en.myReport")}>
+        <section ref={reportRef} className="af-card" aria-label={t("en.myReport")}>
           <h2 className="af-phrase">{t("en.myReport")}</h2>
           <p className="af-hint">{mine.delivered ? t("en.deliveredHint") : t("en.blindHint")}</p>
           {!questions.length ? <p className="af-stale">{t("ck.noQuestions")}</p> : null}

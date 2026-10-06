@@ -147,6 +147,17 @@ export async function loadTermTitles(
   return titles;
 }
 
+/**
+ * The article of one term, to read: the team's own (their language) or, where the team has not translated it, the
+ * source package's. Null when neither can be read.
+ */
+export async function loadTermArticle(session: GtSession, pkg: Pick<SourcePackage, "owner" | "tw">, term: Pick<TermItem, "termSlug" | "termKind">, ctx: SolverLaunchContext, pmConfig: PmConfig = DEFAULT_PM_CONFIG): Promise<string | null> {
+  const path = termArticlePath(term.termKind, term.termSlug);
+  const own = resolveHelpsTarget({ ...ctx, resource: "palabras" }, pmConfig);
+  const mine = "error" in own ? null : await readRaw(session, own.owner, own.repo, path);
+  return mine?.trim() ? mine : await readRaw(session, pkg.owner, pkg.tw, path);
+}
+
 const firstLine = (text: string | null) => (text ?? "").split(/\r?\n/).map((line) => line.replace(/^#+\s*/, "").trim()).find(Boolean) ?? "";
 
 /**
