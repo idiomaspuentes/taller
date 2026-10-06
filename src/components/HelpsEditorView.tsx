@@ -17,7 +17,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { StoryExample } from "./StoryExample";
 import { usePieces, type ActivePiece } from "./usePieces";
 import { articleRows, introPieceRef, pieceRef, rowsPossible, startingText } from "../domain/articleBlocks";
-import { answerTextId, helpTexts, helpsLeft, type HelpText } from "../domain/helpTexts";
+import { answerTextId, helpTexts, helpsLeft, knownWords, type HelpText } from "../domain/helpTexts";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
@@ -638,6 +638,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   // (see `helpTexts`). The rest is edited whole, in a box.
   const texts = useMemo(() => helpTexts(items, sourceHelps, { articlesWhole: view === "whole" }), [items, sourceHelps, view]);
   const textOf = new Map(texts.map((text) => [text.id, text]));
+  // What the team's own sentences on this screen show to be words of its language too («altar», a name).
+  const known = useMemo(() => knownWords(texts), [texts]);
   const introName = (item: HelpsDraftItem) => (item.intro === "book" ? t("fa.bookIntro") : t("fa.chapterIntro").replace("{n}", String(item.chapter ?? "")));
   const canUseRows = articles.some((item) => Boolean(sourceHelps[item.id]?.text) && rowsPossible(sourceHelps[item.id]!.text, item.text));
   // Counted, and named, as whoever translates counts: the paragraphs of an article, the notes or the questions of a passage.
@@ -794,6 +796,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       onDone={pieces.close}
       marksOf={(index) => commentsOn(text, index).length}
       above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}
+      known={known}
       {...extra}
     />
   );

@@ -6,9 +6,9 @@
  *   npm run verify:article-blocks
  */
 import assert from "node:assert/strict";
-import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, rowsMarkdown, startingText, untranslated, vocabularyOf } from "../src/domain/articleBlocks";
+import { articleFilesOf, articleProgress, articleRows, pieceRef, rowPending, rowsMarkdown, startingText, translatedWords, untranslated, vocabularyOf, writtenAlike } from "../src/domain/articleBlocks";
 import { bookNamesIn } from "../src/domain/books";
-import { answerTextId, helpTexts, helpsLeft, type HelpText } from "../src/domain/helpTexts";
+import { answerTextId, helpTexts, helpsLeft, knownWords, type HelpText } from "../src/domain/helpTexts";
 import type { HelpsDraftItem } from "../src/domain/helpsDraft";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
 import { isPassageList, localPassages } from "../src/domain/passageLinks";
@@ -547,6 +547,50 @@ test("una introducción de muchos párrafos es una nota más, y lo que aún no s
   const texts = helpTexts([intro, note("a1", NOTE_ES)], { i1: { text: "# Intro\\n\\nFirst paragraph here.\\n\\nSecond paragraph still here." }, a1: { text: NOTE_EN } });
   assert.deepEqual(helpsLeft(texts, countsOf(texts), "help"), { left: 1, total: 2 });
   assert.deepEqual(helpsLeft(texts, {}, "help"), { left: 0, total: 0 });
+});
+
+// ---------------------------------------------------------------- a word both languages write alike
+
+test("un título que se escribe igual en los dos idiomas cuenta como traducido cuando el equipo usa esa palabra en sus frases", () => {
+  const source = "# altar\n\n## Definition:\n\nAn altar was a raised structure on which the Israelites burned animals and grains as offerings to God.\n\n## Word Data:";
+  const vocabulary = vocabularyOf(source);
+  // Nothing translated yet: the title is as much to do as the rest.
+  const untouched = articleRows(source, source)!;
+  assert.deepEqual(articleProgress(untouched, vocabulary), { done: 0, total: 4 });
+  // The definition is translated and says «altar»: the title, which reads as the source, is the translation.
+  const draft = "# altar\n\n## Definition:\n\nUn altar era una estructura elevada sobre la cual los israelitas quemaban animales y granos como ofrendas a Dios.\n\n## Word Data:";
+  const rows = articleRows(source, draft)!;
+  const known = translatedWords(rows, vocabulary);
+  assert.equal(rowPending(rows[0]!, vocabulary), true, "por sus palabras solas se lee como la fuente");
+  assert.equal(rowPending(rows[0]!, vocabulary, known), false);
+  // What was left in the source language is still to do: none of the team's sentences says «definition» or «word data».
+  assert.equal(rowPending(rows[1]!, vocabulary, known), true);
+  assert.equal(rowPending(rows[3]!, vocabulary, known), true);
+  assert.deepEqual(articleProgress(rows, vocabulary), { done: 2, total: 4 });
+});
+
+test("solo un texto corto se da por escrito igual, y solo si todas sus palabras son del equipo", () => {
+  const known = new Set(["abraham", "abram", "era", "el", "padre", "de", "isaac"]);
+  assert.equal(writtenAlike("# Abraham, Abram", known), true);
+  assert.equal(writtenAlike("# Abraham, Abimelech", known), false, "una palabra que el equipo no usa");
+  assert.equal(writtenAlike("Abraham era el padre de Isaac", known), false, "una frase entera en el idioma de la fuente no es un nombre");
+  assert.equal(writtenAlike("[[rc://*/tw/dict/bible/names/abraham]]", known), false, "sin palabras no hay nada que juzgar");
+  assert.equal(writtenAlike("# Abraham", new Set()), false);
+});
+
+test("lo que muestra que una palabra es del equipo puede estar en el texto de al lado: una respuesta de una palabra", () => {
+  const texts = helpTexts(
+    [question("q1", "¿A quién siguieron en su error?", "Balaam."), question("q2", "¿Quién era Balaam?", "Un profeta que amó el pago de la maldad.")],
+    { q1: { text: "Whose error did they follow?", secondary: "Balaam." }, q2: { text: "Who was Balaam?", secondary: "A prophet who loved the wages of wickedness." } },
+  );
+  const known = knownWords(texts);
+  const answer = texts.find((text) => text.id === answerTextId("q1"))!;
+  const row = articleRows(answer.source, answer.value)![0]!;
+  assert.equal(rowPending(row, vocabularyOf(answer.source)), true);
+  assert.equal(rowPending(row, vocabularyOf(answer.source), known), false, "la pregunta de al lado dice «Balaam» en una frase del equipo");
+  // With nothing beside it that says the word, it stays to be looked at.
+  const alone = helpTexts([question("q1", "Whose error did they follow?", "Balaam.")], { q1: { text: "Whose error did they follow?", secondary: "Balaam." } });
+  assert.equal(knownWords(alone).has("balaam"), false);
 });
 
 console.log(`\nverify-article-blocks: ${passed} checks passed.`);

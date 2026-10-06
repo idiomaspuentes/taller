@@ -83,6 +83,35 @@ export function untranslated(md: string, vocabulary: Set<string>): boolean {
   return words.filter((word) => vocabulary.has(word)).length / words.length >= SOURCE_LANGUAGE;
 }
 
+/**
+ * A word or two that both languages write alike is its own translation («altar», «Abraham, Abram»), and by its
+ * words alone it reads as the source: the title of such an article stayed «sin traducir» whatever anybody did, the
+ * count never reached its end, and the warning before handing in came up for nothing every time.
+ *
+ * What tells it from a thing left in the source language is whether the team uses those words itself. Measured on
+ * 683 articles a team had translated (October 2026): 91 pieces read as the source; 13 were titles written alike in
+ * both languages, and in all 13 every word is one the team's own sentences of that article use («Un altar era…»).
+ * In the other 78 (a label left as «Strong's», the names in a line of links) a word appears nowhere in what the
+ * team wrote. So a short piece counts as translated when all its words are known that way.
+ */
+const ALIKE_WORDS = 4;
+
+/** The words the translated pieces of a text use: what a team has shown to be words of its own language. */
+export function translatedWords(rows: Pick<ArticleRow, "draft">[], vocabulary: Set<string>): Set<string> {
+  const known = new Set<string>();
+  for (const row of rows) {
+    if (!row.draft.trim() || untranslated(row.draft, vocabulary)) continue;
+    for (const word of wordsOf(row.draft)) known.add(word);
+  }
+  return known;
+}
+
+/** Whether a short text is made only of words the team uses in its own sentences (see above). */
+export function writtenAlike(md: string, known: ReadonlySet<string>): boolean {
+  const words = wordsOf(md);
+  return words.length > 0 && words.length <= ALIKE_WORDS && words.every((word) => known.has(word));
+}
+
 // ---------------------------------------------------------------- pairing the file with the source
 
 /**
@@ -271,15 +300,24 @@ export function rowsMarkdown(rows: Pick<ArticleRow, "draft" | "tight" | "fresh">
   return out;
 }
 
-/** A row is still to be translated when the article has nothing for it, or has it in the language of the source. */
-export function rowPending(row: Pick<ArticleRow, "draft" | "words">, vocabulary: Set<string>): boolean {
-  return row.draft.trim() ? untranslated(row.draft, vocabulary) : row.words;
+/**
+ * A row is still to be translated when the article has nothing for it, or has it in the language of the source.
+ * `known`: the words the team's own sentences use, which tell a word both languages write alike from one that was
+ * left as it was (see `writtenAlike`).
+ */
+export function rowPending(row: Pick<ArticleRow, "draft" | "words">, vocabulary: Set<string>, known?: ReadonlySet<string>): boolean {
+  if (!row.draft.trim()) return row.words;
+  return untranslated(row.draft, vocabulary) && !(known && writtenAlike(row.draft, known));
 }
 
-/** How many rows there are to translate, and how many are. */
-export function articleProgress(rows: Pick<ArticleRow, "draft" | "words">[], vocabulary: Set<string>): { done: number; total: number } {
+/** How many rows there are to translate, and how many are. `known` as in `rowPending`; by default, what these rows show. */
+export function articleProgress(
+  rows: Pick<ArticleRow, "draft" | "words">[],
+  vocabulary: Set<string>,
+  known: ReadonlySet<string> = translatedWords(rows, vocabulary),
+): { done: number; total: number } {
   const counted = rows.filter((row) => row.words);
-  return { done: counted.filter((row) => !rowPending(row, vocabulary)).length, total: counted.length };
+  return { done: counted.filter((row) => !rowPending(row, vocabulary, known)).length, total: counted.length };
 }
 
 /**

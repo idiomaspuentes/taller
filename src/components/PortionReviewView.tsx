@@ -45,7 +45,8 @@ import { NoteQuote, noteHeading, useHelpSources } from "./HelpSources";
 import { noteFromTsv } from "../domain/helpMarkup";
 import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces } from "./usePieces";
-import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, untranslated, vocabularyOf, type ArticleFile } from "../domain/articleBlocks";
+import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, translatedWords, untranslated, vocabularyOf, writtenAlike, type ArticleFile } from "../domain/articleBlocks";
+import { knownWords } from "../domain/helpTexts";
 
 type Props = {
   ctxEncoded: string;
@@ -409,10 +410,21 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const changed = items.filter((item) => item.state !== "same" && item.state !== "empty").length;
   /** The words of a help's row in the source package: what tells a row still in the source language from a translated one. */
   const rowVocabulary = (key: string) => (sourceRows[key] ? vocabularyOf(`${sourceRows[key]!.text} ${sourceRows[key]!.secondary ?? ""}`) : null);
+  // What the team's own sentences in this draft show to be words of its language too: a word both languages write
+  // alike (a name, «altar») is then not said to be untranslated, here as where the draft is written (`writtenAlike`).
+  const known = knownWords([
+    ...articleFiles.filter((file) => english[file.filename]).map((file) => ({ source: english[file.filename]!, value: file.text })),
+    ...intros.filter((intro) => intro.source).map((intro) => ({ source: intro.source, value: intro.now })),
+  ]);
+  for (const item of items) {
+    const vocabulary = item.help && item.state !== "removed" ? rowVocabulary(item.key) : null;
+    if (item.help && vocabulary) for (const word of translatedWords([{ draft: `${item.help.text} ${item.help.secondary ?? ""}` }], vocabulary)) known.add(word);
+  }
   // Still as the source has it: there is nothing to review yet, and it is said so instead of shown as a translation.
   const rowPending = (item: ReviewItem) => {
     const vocabulary = item.help ? rowVocabulary(item.key) : null;
-    return Boolean(item.help && vocabulary && item.state !== "removed" && untranslated(`${item.help.text} ${item.help.secondary ?? ""}`, vocabulary));
+    const text = item.help ? `${item.help.text} ${item.help.secondary ?? ""}` : "";
+    return Boolean(item.help && vocabulary && item.state !== "removed" && untranslated(text, vocabulary) && !writtenAlike(text, known));
   };
   // The draft changed a row that was already in the team's language: what changed is marked. A row translated from the
   // source changed in every word, and marking them all says nothing.
@@ -735,6 +747,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                           part={file.part}
                           source={english[file.filename]!}
                           value={file.text}
+                          known={known}
                           open={pieces.active?.id === file.filename ? pieces.active.index : null}
                           onOpen={(index, element) => pieces.open(file.filename, index, element)}
                           onProgress={(done, total, firstPending, count) => pieces.report(file.filename, done, total, firstPending, count)}
@@ -788,6 +801,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                         readOnly
                         source={intro.source}
                         value={intro.now}
+                        known={known}
                         open={pieces.active?.id === intro.key ? pieces.active.index : null}
                         onOpen={(index, element) => pieces.open(intro.key, index, element)}
                         onProgress={(done, total, firstPending, count) => pieces.report(intro.key, done, total, firstPending, count)}

@@ -376,6 +376,18 @@ app (las referencias bíblicas). Un párrafo con palabras propias y una referenc
 La línea de los números de Strong cuenta hasta que se traduce su rótulo («Números de Strong»), como está en
 los artículos ya publicados del equipo.
 
+**Lo que se escribe igual en los dos idiomas no cuenta como sin traducir.** El título «altar», o «Abraham,
+Abram», es su propia traducción, pero por sus palabras se lee como la fuente: quedaba «sin traducir» hiciera lo
+que hiciera quien traducía, la cuenta nunca llegaba al final y el aviso antes de entregar salía siempre. Un texto
+corto (hasta cuatro palabras) cuenta como traducido cuando todas sus palabras las usa el propio equipo en sus
+frases ya traducidas de esa pantalla («Un altar era una estructura…»). Lo que se dejó en el idioma de la fuente
+(un rótulo como «Word Data», los nombres de una línea de enlaces) sigue contando, porque esas palabras no están
+en nada de lo que el equipo escribió. Medido sobre los 906 artículos de Palabras del equipo (octubre de 2026):
+la regla deja de marcar 47 trozos, todos títulos (44 nombres propios, «altar», «Acacia», «Clan»), y ninguno que
+estuviera en inglés. Vale igual donde se escribe el borrador y donde se revisa, y también para una respuesta de
+una palabra cuando la pregunta de al lado la dice. Al empezar un artículo, con nada traducido todavía, el título
+sigue en gris como lo demás: pasa a traducido cuando ya hay una frase del equipo que lo usa.
+
 **Se revisa igual: párrafo a párrafo.** Quien revisa lee el artículo como artículo (con su título y
 su subtítulo, aunque solo se haya tocado el cuerpo) y abre cada párrafo contra su original, con lo
 que hay que comprobar en él, sus comentarios y una caja para añadir uno. Un párrafo comentado lleva

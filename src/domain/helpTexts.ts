@@ -7,7 +7,7 @@
  * source's, so translating one began with clearing a paragraph in another language, a letter at a time on a phone,
  * and nothing said which were still to do. Pure: `HelpsEditorView` shows the texts.
  */
-import { rowsPossible } from "./articleBlocks";
+import { articleRows, rowsPossible, translatedWords, vocabularyOf } from "./articleBlocks";
 import { noteFromTsv } from "./helpMarkup";
 import type { HelpsDraftItem } from "./helpsDraft";
 
@@ -50,6 +50,21 @@ export function helpTexts(items: HelpsDraftItem[], sources: SourceOf, opts: { ar
     if (asked && item.secondary !== undefined) add(answerTextId(item.id), item, "secondary", noteFromTsv(from?.secondary ?? ""), noteFromTsv(item.secondary));
   }
   return out;
+}
+
+/**
+ * The words the team's own translated sentences use, over all the texts of a screen: what tells a word both
+ * languages write alike from one left in the source language (see `writtenAlike`). Taken from them all because a
+ * text may be a single piece (the title of an Academy article is a file of its own, an answer is a word): what
+ * shows the word to be the team's is then in the text beside it.
+ */
+export function knownWords(texts: Pick<HelpText, "source" | "value">[]): Set<string> {
+  const known = new Set<string>();
+  for (const text of texts) {
+    const rows = articleRows(text.source, text.value);
+    if (rows) for (const word of translatedWords(rows, vocabularyOf(text.source))) known.add(word);
+  }
+  return known;
 }
 
 type Count = { done: number; total: number };

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, MessageSquare } from "lucide-react";
-import { articleProgress, articleRows, rowPending, rowsMarkdown, vocabularyOf, type ArticleRow } from "../domain/articleBlocks";
+import { articleProgress, articleRows, rowPending, rowsMarkdown, translatedWords, vocabularyOf, type ArticleRow } from "../domain/articleBlocks";
 import { normalizeMarkdown } from "../domain/helpMarkup";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
@@ -51,6 +51,11 @@ type Props = {
   beside?: (row: ArticleRow, box: PieceBox) => React.ReactNode;
   /** The text is plain sentences (a question, its answer): its box offers no bold, italics or link. */
   plain?: boolean;
+  /**
+   * Words the team's own sentences use in the other texts of the screen. With the ones this text shows, they tell a
+   * word both languages write alike («altar») from one left as the source has it.
+   */
+  known?: ReadonlySet<string>;
 };
 
 /** What a piece gives to what is shown beside its source (see `beside`). */
@@ -104,7 +109,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain, known }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -134,16 +139,23 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `make` says the same for the same source
   }, [value, source]);
 
+  // What this text and the ones beside it show to be words of the team's language.
+  const alike = useMemo(() => {
+    const own = translatedWords(rows, vocabulary);
+    if (known) for (const word of known) own.add(word);
+    return own;
+  }, [rows, vocabulary, known]);
+
   useEffect(() => {
-    const { done, total } = articleProgress(rows, vocabulary);
+    const { done, total } = articleProgress(rows, vocabulary, alike);
     tell.current?.(
       done,
       total,
-      rows.findIndex((row) => row.words && rowPending(row, vocabulary)),
+      rows.findIndex((row) => row.words && rowPending(row, vocabulary, alike)),
       rows.length,
       rows.flatMap((row, index) => (row.made ? [index] : [])),
     );
-  }, [rows, vocabulary]);
+  }, [rows, vocabulary, alike]);
 
   const touch = useCallback((index: number) => setTouched((prev) => (prev.has(index) ? prev : new Set(prev).add(index))), []);
 
@@ -179,7 +191,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
   return (
     <div className="ab" data-part={part}>
       {rows.map((row, index) => {
-        const pending = rowPending(row, vocabulary);
+        const pending = rowPending(row, vocabulary, alike);
         const rowId = `${id}-row-${index}`;
         if (row.made && !readOnly) {
           // Written by the app: it reads as the text of the article and is not opened. The first of a run says why.
