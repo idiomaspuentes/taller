@@ -7718,6 +7718,9 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 /* One piece of a longer text: as tall as what it holds, its few tools under it while it is being written. */
 .mde--compact .mde-box { min-height: 2.75rem; }
 .mde--compact .mde-bar { order: 2; flex-wrap: wrap; min-height: 0; padding: 0; border: 0; background: none; overflow: visible; }
+/* The way on («Siguiente», «Listo») is under the box, and a long paragraph pushed it off the screen as it was
+   written: it stays at the foot of what is seen for as long as its box is there. */
+.mde--compact .mde-bar { position: sticky; bottom: 0; z-index: 3; padding-top: 0.25rem; background: var(--surface); }
 .mde--compact .mde-link { order: 3; }
 .mde--compact .mde-tools { display: none; align-items: center; gap: 0.125rem; }
 .mde--compact:focus-within .mde-tools { display: inline-flex; }
@@ -7893,6 +7896,8 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 :root[data-typing="true"] .snd-panel { top: 0.5rem; bottom: calc(0.5rem + var(--keyboard, 0px)); max-height: none; }
 /* The format buttons stay at hand while the text scrolls under them. */
 :root[data-typing="true"] .mde-bar { position: sticky; top: 0; z-index: 3; }
+/* Under the box it holds to the foot, over the keyboard, not to the top. */
+:root[data-typing="true"] .mde--compact .mde-bar { top: auto; bottom: var(--keyboard, 0px); }
 /* Where the page does not shrink for the keyboard, room is left under the last field so it can be scrolled clear. */
 :root[data-typing="true"] .fam__body,
 :root[data-typing="true"] .af { padding-bottom: calc(1.5rem + var(--keyboard, 0px)); }

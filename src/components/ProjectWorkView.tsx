@@ -208,7 +208,7 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
           {!dirty && missing ? (
             <div className="af-stale" role="status">
               <p style={{ margin: 0 }}>{t(missing === 1 ? "pw.missingOne" : "pw.missingMany").replace("{n}", String(missing))}</p>
-              <Button type="button" size="sm" className="mt-2" disabled={Boolean(busy)} onClick={() => void save(true)}>
+              <Button type="button" className="mt-2" disabled={Boolean(busy)} onClick={() => void save(true)}>
                 {busy || t("pw.createMissing")}
               </Button>
             </div>
@@ -216,7 +216,7 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
           {!dirty && !missing && renamed ? (
             <div className="af-stale" role="status">
               <p style={{ margin: 0 }}>{t(renamed === 1 ? "pw.renamedOne" : "pw.renamedMany").replace("{n}", String(renamed))}</p>
-              <Button type="button" size="sm" className="mt-2" disabled={Boolean(busy)} onClick={() => void save(true)}>
+              <Button type="button" className="mt-2" disabled={Boolean(busy)} onClick={() => void save(true)}>
                 {busy || t("pw.updateNames")}
               </Button>
             </div>
