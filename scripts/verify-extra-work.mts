@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { addExtraWork, cutAt, extraWorkOrders, joinWithNext, normalizeExtraWork, normalizePortionStarts, portionStartsOfBook, portionsMatchStarts, removeExtraWork, startsOf, withPortionStarts, withoutPortionStarts } from "../src/domain/extraWork";
+import { addExtraWork, cutAt, extraWorkOrders, joinWithNext, normalizeExtraWork, normalizePortionStarts, portionStartsOfBook, portionsMatchStarts, removeExtraWork, startsOf, withoutGonePortions, withPortionStarts, withoutPortionStarts } from "../src/domain/extraWork";
 import { selectTsvRowsForPortion } from "../src/domain/helpsDraft";
 import { addTask, boardWithPlan, planOfBoard } from "../src/domain/plan";
 import { shippedWorkflows } from "../src/domain/processes";
@@ -70,6 +70,24 @@ test("los cortes se guardan por libro y capítulo, y se sabe si el libro se ley�
   assert.equal(portionsMatchStarts(settings, inventory({ [chapter]: starts })), true);
   assert.deepEqual(withoutPortionStarts(settings, "TIT", chapter), {});
   assert.deepEqual(normalizePortionStarts({ tit: { "1": [5, 1, 5, "x"], "0": [1] } }), { TIT: { "1": [1, 5] } });
+});
+
+test("al cortar de nuevo las porciones de un proyecto en marcha, lo que alguien tenía de una porción que ya no existe sale del plan", () => {
+  const base = inventory();
+  const chapter = base.portions.find((portion) => base.portions.filter((p) => p.chapter === portion.chapter).length > 1)!.chapter;
+  const own = base.portions.filter((portion) => portion.chapter === chapter);
+  const elsewhere = base.portions.find((portion) => portion.chapter !== chapter)!;
+  const task = board.teams.find((team) => !team.waitsFor?.length && team.rules.some((rule) => rule.resource === "tpl"))!;
+  const has = (ref: string, n: number) => ({ id: `a${n}`, person: "ana", personId: "ana", teamId: task.id, itemType: "porcion" as const, itemId: ref, note: "", state: "en curso" as const });
+  // Ana has the first portion of the chapter and one of another chapter; the first is joined with the second.
+  const planned: AssignmentsDoc = { ...board, people: [{ id: "ana", name: "Ana" }] as AssignmentsDoc["people"], assignments: [has(own[0]!.ref, 1), has(elsewhere.ref, 2)] };
+  const cut = inventory({ [chapter]: joinWithNext(startsOf(own), 0) });
+  const ofTask = (doc: AssignmentsDoc) => publishableWorkOrders(doc, cut).filter((order) => order.teamId === task.id);
+  const after = withoutGonePortions(planned, cut);
+  assert.deepEqual(after.assignments.map((row) => row.itemId), [elsewhere.ref], "la porción que sigue existiendo se conserva con quien la tiene");
+  assert.equal(ofTask(after).length, cut.portions.length, "una subtarea por porción, ni una más");
+  assert.equal(ofTask(after).filter((order) => order.assignee).length, 1);
+  assert.equal(withoutGonePortions(after, cut), after, "sin nada que quitar, el plan es el mismo");
 });
 
 test("una subtarea añadida a mano sigue a su tarea y se publica junto a las del libro", () => {

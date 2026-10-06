@@ -35,6 +35,8 @@ export async function saveProjectChanges(params: {
   inventory: InventoryDoc | null;
   /** Bring the subtareas in line even if the plan did not change them: something the plan has is missing in Door43. */
   relay?: boolean;
+  /** The book was read again with other cuts: this reading is saved with the plan, so the two never disagree. */
+  saveInventory?: boolean;
   onProgress?: (done: number, total: number) => void;
 }): Promise<SavedProject> {
   const { session, pmOrg, before, inventory } = params;
@@ -55,7 +57,7 @@ export async function saveProjectChanges(params: {
     warnings.push(...placed.warnings);
   }
 
-  await saveProjectToDcs({ session, org: pmOrg, lang: board.lang, book: board.projectId, assignments: board, inventory: null });
+  await saveProjectToDcs({ session, org: pmOrg, lang: board.lang, book: board.projectId, assignments: board, inventory: params.saveInventory ? inventory : null });
   if (!inventory || !(params.relay || workChanged(before, board, inventory))) return { board, created: 0, closed: 0, warnings, published: false };
 
   const result = await publishWorkOrders({ session, org: pmOrg, board, inventory, keepAssignees: true, onProgress: (p) => params.onProgress?.(p.done, p.total) });
@@ -96,6 +98,15 @@ export function useProjectWork(session: GtSession | null, pmOrg: string, project
     total: issues?.length ?? 0,
     workOf: (taskId: string) => byTask.get(taskId) ?? 0,
     issueOf: (order: Pick<WorkOrder, "key" | "teamId" | "itemIds">) => byKey.get(order.key) ?? byIdentity.get(workIdentity(order.teamId, order.itemIds) ?? ""),
+    /**
+     * The open subtareas none of these orders answers to: what bringing Door43 in line with the plan would close,
+     * and how many of them somebody already has. Said before it is done.
+     */
+    leftOut: (orders: Pick<WorkOrder, "key" | "teamId" | "itemIds">[]) => {
+      const kept = new Set(orders.flatMap((order) => byKey.get(order.key)?.number ?? byIdentity.get(workIdentity(order.teamId, order.itemIds) ?? "")?.number ?? []));
+      const out = (issues ?? []).filter((issue) => issue.state !== "closed" && parseWorkOrderMarker(issue.body) && !kept.has(issue.number));
+      return { open: out.length, taken: out.filter((issue) => issue.assignee || issue.assignees?.length).length };
+    },
     reload,
   };
 }

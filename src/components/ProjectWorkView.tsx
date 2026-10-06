@@ -10,7 +10,8 @@ import { saveProjectChanges, useProjectWork, workChanged } from "../dcs/projectP
 import { readBook } from "../dcs/startBook";
 import { explainError } from "../dcs/userError";
 import { displayOrgTeamName, orgTeamLabel } from "../domain/roles";
-import type { AssignmentsDoc, InventoryDoc } from "../domain/types";
+import { withoutGonePortions } from "../domain/extraWork";
+import type { AssignmentsDoc, InventoryDoc, ProjectSettings } from "../domain/types";
 import { publishableWorkOrders, workOrderIssueTitle, type WorkOrder } from "../domain/workOrder";
 import { useT } from "../i18n/messages";
 import { WorkPreview } from "./WorkPreview";
@@ -49,6 +50,8 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
   const [error, setError] = useState("");
   const [teams, setTeams] = useState<DcsTeam[]>([]);
   const [pick, setPick] = useState("");
+  /** The portions were cut anew and not saved yet: the reading the project had, to go back to on discarding. */
+  const [recut, setRecut] = useState<InventoryDoc | null>(null);
   const work = useProjectWork(session, pmOrg, board.projectId);
   const oneBook = (board.books?.length ?? 1) <= 1;
 
@@ -72,7 +75,10 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
   // Subtareas the plan now calls something else: the book was read again and the source names an article differently.
   // People see the name the subtarea has in Door43, so the two are brought together here.
   const renamed = work.loaded ? orders.filter((order) => (work.issueOf(order)?.title ?? workOrderIssueTitle(order)) !== workOrderIssueTitle(order)).length : 0;
-  const relays = dirty && inventory ? workChanged(board, edited, inventory) : false;
+  const relays = dirty && inventory ? Boolean(recut) || workChanged(board, edited, inventory) : false;
+  // Cutting the portions anew closes every subtarea of a portion that is no longer one: how many, and how many of
+  // them somebody has, is said before saving.
+  const leaving = recut && work.loaded ? work.leftOut(orders) : null;
 
   async function run(label: string, action: () => Promise<void>) {
     setBusy(label);
@@ -89,7 +95,8 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
   const save = (force: boolean) =>
     run(t("wf.saving"), async () => {
       // What the plan has and Door43 lacks is laid out even when nothing was changed here.
-      const saved = await saveProjectChanges({ session, pmOrg, before: board, after: edited, inventory, relay: force, onProgress: (done, total) => setBusy(`${t("pp.updatingWork")} · ${done} / ${total}`) });
+      const saved = await saveProjectChanges({ session, pmOrg, before: board, after: edited, inventory, relay: force || Boolean(recut), saveInventory: Boolean(recut), onProgress: (done, total) => setBusy(`${t("pp.updatingWork")} · ${done} / ${total}`) });
+      setRecut(null);
       reset(saved.board);
       onSaved(saved.board);
       await work.reload();
@@ -104,6 +111,27 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
       onInventory(next);
       announce(t("pw.bookRead"));
     });
+
+  /**
+   * Other cuts for the portions of a project under way. The book is read again with them and the plan is left to be
+   * saved: nothing changes in Door43 until then. It could only be done before creating the project; whoever found
+   * the portions too small afterwards had no way to join them.
+   */
+  const cut = (settings: ProjectSettings) =>
+    run(t("sb.stageReading"), async () => {
+      const book = (board.books?.[0] || board.book).toUpperCase();
+      const next = await readBook({ book, lang: board.lang, contentOrg: board.contentOrg, settings }, (message) => setBusy(message));
+      if (!recut && inventory) setRecut(inventory);
+      // What somebody had of a portion that is no longer one leaves the plan with it: its subtarea is closed.
+      setEdited(withoutGonePortions({ ...edited, settings }, next));
+      onInventory(next);
+    });
+
+  const discard = () => {
+    if (recut) onInventory(recut);
+    setRecut(null);
+    reset(board);
+  };
 
   /**
    * Where a step stands: done when its subtarea is closed or marks it so; otherwise in the hands of whoever took
@@ -228,6 +256,7 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
             inventory={inventory}
             busy={Boolean(busy)}
             onSettings={(settings) => setEdited({ ...edited, settings })}
+            onPortionStarts={oneBook ? (settings) => void cut(settings) : undefined}
             teamName={(name) => {
               const team = teams.find((row) => row.name === name);
               return team ? orgTeamLabel(team) : displayOrgTeamName(name);
@@ -252,9 +281,10 @@ export function ProjectWorkView({ session, pmOrg, board, inventory, onSaved, onI
               <b>{busy || t("pp.unsaved")}</b>
             </p>
             {!busy && relays ? <p>{t("pp.relays")}</p> : null}
+            {!busy && leaving?.open ? <p role="status">{t("pw.recutCloses").replace("{n}", String(leaving.open)).replace("{taken}", String(leaving.taken))}</p> : null}
           </div>
           <div className="pf-footer__actions">
-            <Button type="button" variant="ghost" disabled={Boolean(busy)} onClick={() => reset(board)}>
+            <Button type="button" variant="ghost" disabled={Boolean(busy)} onClick={discard}>
               {t("pp.discard")}
             </Button>
             <Button type="button" disabled={Boolean(busy)} onClick={() => void save(false)}>

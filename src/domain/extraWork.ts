@@ -125,6 +125,16 @@ export function portionsMatchStarts(settings: ProjectSettings | undefined, inven
   return Object.entries(wanted).every(([chapter, starts]) => sameStarts(startsOf(inventory.portions.filter((portion) => portion.chapter === Number(chapter))), starts));
 }
 
+/**
+ * The plan after its portions were cut anew: what somebody had of a portion that is no longer one leaves the plan.
+ * Kept, the plan went on asking «1:1–2» of whoever had it, beside the new «1:1–4» that covers the same verses.
+ */
+export function withoutGonePortions(board: AssignmentsDoc, inventory: Pick<InventoryDoc, "portions">): AssignmentsDoc {
+  const there = new Set(inventory.portions.flatMap((portion) => [portionKey(portion), portion.ref]));
+  const assignments = board.assignments.filter((row) => row.itemType !== "porcion" || there.has(row.itemId));
+  return assignments.length === board.assignments.length ? board : { ...board, assignments };
+}
+
 export function normalizePortionStarts(raw: unknown): ProjectSettings["portionStarts"] {
   if (!raw || typeof raw !== "object") return undefined;
   const out: NonNullable<ProjectSettings["portionStarts"]> = {};

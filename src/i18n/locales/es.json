@@ -2691,5 +2691,6 @@
   "cx.times": "Corregido {n} veces",
   "cx.noReason": "sin motivo anotado",
   "cx.from": "Al revisar «{label}»",
-  "tb.step1": "{done} de 1 paso"
+  "tb.step1": "{done} de 1 paso",
+  "pw.recutCloses": "Con estas porciones se cierran {n} subtareas abiertas; {taken} ya tienen a alguien, y lo que hayan escrito queda sin entregar."
 }
