@@ -22,6 +22,7 @@
     "verify:book-bootstrap": "tsx scripts/verify-book-bootstrap.mts",
     "verify:usfm-merge": "tsx scripts/verify-usfm-merge.mts",
     "verify:usfm-chapters": "tsx scripts/verify-usfm-chapters.mts",
+    "verify:help-quote": "tsx scripts/verify-help-quote.mts",
     "verify:conversation": "tsx scripts/verify-conversation.mts",
     "verify:qa-admin": "tsx scripts/verify-qa-admin.mts",
     "verify:principal-pass": "tsx scripts/verify-principal-pass.mts",

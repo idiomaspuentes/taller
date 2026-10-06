@@ -139,12 +139,20 @@ function matchPhraseSubsequenceFrom(
   return matchedIdx;
 }
 
+/**
+ * Every place the words are found in order, each once. A search from a position looks ahead for the first word, so
+ * every position before a match finds that same match: counted each time, the second occurrence of a quote was the
+ * first one again, and a help about the second «de Dios» of a verse was marked on the first.
+ */
 function enumerateSubsequenceMatches(flat: FlatSource[], partWords: string[], minFlatIdx: number): number[][] {
   const hits: number[][] = [];
+  const seen = new Set<string>();
   const lo = Math.max(0, minFlatIdx);
   for (let s = lo; s < flat.length; s++) {
     const m = matchPhraseSubsequenceFrom(flat, partWords, s);
-    if (m) hits.push(m);
+    if (!m || seen.has(m.join(","))) continue;
+    seen.add(m.join(","));
+    hits.push(m);
   }
   return hits;
 }
