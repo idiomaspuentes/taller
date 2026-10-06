@@ -1509,7 +1509,7 @@
   "pu.p.rowSupport": "notas con un enlace de artículo mal escrito:",
   "pu.p.changed": "cambió después del aval:",
   "pu.p.notEndorsed": "Esta unidad todavía no tiene el aval del comité.",
-  "tv.processUpdate": "Hay una versión nueva del proceso «{name}» (versión {v}). Al actualizar se agregan las fases, tareas y pasos nuevos, y un paso que el proceso renombró toma su nombre nuevo si este proyecto no le había puesto otro. Lo demás que este proyecto ya tiene no se cambia ni se quita.",
+  "tv.processUpdate": "Hay una versión nueva del proceso «{name}» (versión {v}). Al actualizar se agregan las fases, tareas y pasos nuevos. Lo que era del proceso lo sigue: el nombre de un paso que renombró y lo que pide tener en cuenta en cada paso. Lo que este proyecto cambió, agregó o quitó por su cuenta se queda como está.",
   "tv.processUpdateDo": "Actualizar este proyecto",
   "tv.processUpdated": "Proyecto actualizado. Se agregó: {what}.",
   "tv.processUpdatedPlain": "Proyecto actualizado a la versión nueva del proceso.",
@@ -2448,7 +2448,7 @@
   "st.checkRemove": "Quitar la comprobación {n}",
   "st.checkAdd": "Agregar una comprobación",
   "sa.teamRules": "Reglas del equipo",
-  "sa.addRule": "Agregar una regla para el equipo…",
+  "sa.addRule": "Qué debe tener en cuenta el equipo…",
   "sa.add": "Agregar",
   "sa.saving": "Guardando…",
   "sa.ruleError": "No se pudo guardar la regla. Inténtalo otra vez.",
@@ -2482,7 +2482,6 @@
   "st.checkDone": "Listo",
   "st.checksNone": "Este paso no tiene comprobaciones.",
   "st.checkWhenExample": "Por ejemplo: you, your, yours",
-  "sa.addWhen": "Solo si la fuente dice… (opcional)",
   "sa.ruleEmpty": "Escribe la regla.",
   "sa.addRuleShort": "Agregar una regla",
   "ch.phasesTitle": "Qué cambió en cada fase",
@@ -2590,5 +2589,7 @@
   "ab.sentencesHint": "Toca la frase que dice lo mismo que el ejemplo. Puedes tocar más de una.",
   "ab.partOnly": "Marcar solo una parte",
   "ab.wholeSentences": "Elegir frases enteras",
-  "ab.fromFrame": "Elegir del cuadro"
+  "ab.fromFrame": "Elegir del cuadro",
+  "sa.propose": "Agregar una regla del equipo",
+  "sa.mind": "Fíjate en esto"
 }

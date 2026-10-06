@@ -182,8 +182,8 @@ export function TaskCard(props: Props) {
       {card.nextStep && card.group !== "done" && card.group !== "waiting" && stepAsks(card.nextStep, language) ? (
         <details className="step-ask">
           <summary>{t("tb.howStep").replace("{step}", stepName(card.nextStep))}</summary>
-          <StepAskBody step={card.nextStep} scope={`${card.issue.number}:${card.nextStep.id}`} />
-          <TeamRuleChecks team={card.task?.orgTeamName} scope={`${card.issue.number}:${card.nextStep.id}`} />
+          <StepAskBody step={card.nextStep} />
+          <TeamRuleChecks team={card.task?.orgTeamName} />
         </details>
       ) : null}
 

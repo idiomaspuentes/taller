@@ -1,4 +1,4 @@
-import { StepAsk } from "./StepAsk";
+import { Hints, StepAsk, useItemHints } from "./StepAsk";
 import { helpsTsvFilename } from "../domain/helpsTarget";
 import { ensureHelpsFileFromSource } from "../dcs/bookBootstrap";
 import { readRaw } from "../dcs/afinacionLoad";
@@ -777,6 +777,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   }, [items, busy, ctx?.focus]);
 
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
+  // What the piece in hand calls for by its own words, among what the step and the team ask: said under its source.
+  const hintsFor = useItemHints(session, ctx);
 
   /** A text worked by pieces, tied to the piece that is open on the screen, the way on from it and what is left. */
   const piecesOf = (text: HelpText, extra: Partial<React.ComponentProps<typeof ArticleBlocks>> = {}, key?: string) => (
@@ -797,6 +799,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       marksOf={(index) => commentsOn(text, index).length}
       above={(index) => (commentsOn(text, index).length ? <ul className="rv-comments">{commentsOn(text, index).map((row) => commentRow(row))}</ul> : null)}
       known={known}
+      hints={(row) => <Hints lead={t("sa.mind")} lines={hintsFor(row.source)} />}
       {...extra}
     />
   );

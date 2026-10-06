@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR de teste (três pessoas)"
       },
-      "version": 28,
+      "version": 29,
       "description": "El FCR con la revisión grupal a cargo de una sola persona, para recorrerlo entre tres en un servidor de pruebas. No es para trabajo real.",
       "descriptions": {
         "pt": "O FCR com a revisão em grupo a cargo de uma só pessoa, para percorrê-lo entre três em um servidor de testes. Não é para trabalho real."
@@ -113,17 +113,51 @@
               "descriptions": {
                 "pt": "Traduza a porção com o ULT à vista. O importante é que diga o mesmo que a fonte."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
+                  }
+                },
+                {
+                  "id": "genero",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no siempre lo dice («they were afraid»).",
+                  "texts": {
+                    "pt": "Homem ou mulher, um ou vários? O inglês nem sempre diz («they were afraid»)."
+                  }
+                },
+                {
+                  "id": "una-o-dos",
+                  "text": "Lo que el inglés dice con una palabra y nuestro idioma con dos: «hizo» o «hacía», «ser» o «estar», «saber» o «conocer».",
+                  "texts": {
+                    "pt": "O que o inglês diz com uma palavra e a nossa língua com duas: «fez» ou «fazia», «ser» ou «estar», «saber» ou «conhecer»."
+                  }
+                },
+                {
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
+                  "texts": {
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
                 },
                 {
                   "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "text": "«You»: ¿una persona o varias? («tú», «usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   },
@@ -134,13 +168,6 @@
                     "yourself",
                     "yourselves"
                   ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
-                  }
                 },
                 {
                   "id": "referente",
@@ -157,50 +184,54 @@
                     "theirs",
                     "his",
                     "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
+                    "hers"
                   ]
                 },
                 {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: ¿cómo se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
-                  }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
                   },
                   "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
+                    "Aa"
                   ]
                 },
                 {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   },
                   "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
+                    "#",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
                   ]
                 },
                 {
@@ -221,66 +252,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             },
@@ -306,17 +277,51 @@
               "descriptions": {
                 "pt": "Compare com o ULT. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
+                  }
+                },
+                {
+                  "id": "genero",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no siempre lo dice («they were afraid»).",
+                  "texts": {
+                    "pt": "Homem ou mulher, um ou vários? O inglês nem sempre diz («they were afraid»)."
+                  }
+                },
+                {
+                  "id": "una-o-dos",
+                  "text": "Lo que el inglés dice con una palabra y nuestro idioma con dos: «hizo» o «hacía», «ser» o «estar», «saber» o «conocer».",
+                  "texts": {
+                    "pt": "O que o inglês diz com uma palavra e a nossa língua com duas: «fez» ou «fazia», «ser» ou «estar», «saber» ou «conhecer»."
+                  }
+                },
+                {
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
+                  "texts": {
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
                 },
                 {
                   "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "text": "«You»: ¿una persona o varias? («tú», «usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   },
@@ -327,13 +332,6 @@
                     "yourself",
                     "yourselves"
                   ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
-                  }
                 },
                 {
                   "id": "referente",
@@ -350,50 +348,54 @@
                     "theirs",
                     "his",
                     "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
+                    "hers"
                   ]
                 },
                 {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: ¿cómo se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
-                  }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
                   },
                   "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
+                    "Aa"
                   ]
                 },
                 {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   },
                   "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
+                    "#",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
                   ]
                 },
                 {
@@ -414,66 +416,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             }
@@ -583,17 +525,51 @@
               "descriptions": {
                 "pt": "Traduza a porção com o UST à vista. O importante é que diga o mesmo que a fonte."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
+                  }
+                },
+                {
+                  "id": "genero",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no siempre lo dice («they were afraid»).",
+                  "texts": {
+                    "pt": "Homem ou mulher, um ou vários? O inglês nem sempre diz («they were afraid»)."
+                  }
+                },
+                {
+                  "id": "una-o-dos",
+                  "text": "Lo que el inglés dice con una palabra y nuestro idioma con dos: «hizo» o «hacía», «ser» o «estar», «saber» o «conocer».",
+                  "texts": {
+                    "pt": "O que o inglês diz com uma palavra e a nossa língua com duas: «fez» ou «fazia», «ser» ou «estar», «saber» ou «conhecer»."
+                  }
+                },
+                {
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
+                  "texts": {
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
                 },
                 {
                   "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "text": "«You»: ¿una persona o varias? («tú», «usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   },
@@ -604,13 +580,6 @@
                     "yourself",
                     "yourselves"
                   ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
-                  }
                 },
                 {
                   "id": "referente",
@@ -627,50 +596,54 @@
                     "theirs",
                     "his",
                     "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
+                    "hers"
                   ]
                 },
                 {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: ¿cómo se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
-                  }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
                   },
                   "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
+                    "Aa"
                   ]
                 },
                 {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   },
                   "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
+                    "#",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
                   ]
                 },
                 {
@@ -691,66 +664,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             },
@@ -776,17 +689,51 @@
               "descriptions": {
                 "pt": "Compare com o UST. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
+                  }
+                },
+                {
+                  "id": "genero",
+                  "text": "¿Hombre o mujer, uno o varios? El inglés no siempre lo dice («they were afraid»).",
+                  "texts": {
+                    "pt": "Homem ou mulher, um ou vários? O inglês nem sempre diz («they were afraid»)."
+                  }
+                },
+                {
+                  "id": "una-o-dos",
+                  "text": "Lo que el inglés dice con una palabra y nuestro idioma con dos: «hizo» o «hacía», «ser» o «estar», «saber» o «conocer».",
+                  "texts": {
+                    "pt": "O que o inglês diz com uma palavra e a nossa língua com duas: «fez» ou «fazia», «ser» ou «estar», «saber» ou «conhecer»."
+                  }
+                },
+                {
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
+                  "texts": {
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
                 },
                 {
                   "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "text": "«You»: ¿una persona o varias? («tú», «usted» o «ustedes»)",
                   "texts": {
                     "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
                   },
@@ -797,13 +744,6 @@
                     "yourself",
                     "yourselves"
                   ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
-                  }
                 },
                 {
                   "id": "referente",
@@ -820,50 +760,54 @@
                     "theirs",
                     "his",
                     "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
+                    "hers"
                   ]
                 },
                 {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: ¿cómo se escriben en nuestro idioma?",
                   "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
-                  }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
                   },
                   "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
+                    "Aa"
                   ]
                 },
                 {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
+                  "id": "numeros",
+                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
                   "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
+                    "pt": "Números, medidas e datas: iguais aos da fonte?"
                   },
                   "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
+                    "#",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "hundred",
+                    "thousand",
+                    "cubit",
+                    "cubits",
+                    "shekel",
+                    "shekels",
+                    "talent",
+                    "talents",
+                    "month",
+                    "months",
+                    "year",
+                    "years"
                   ]
                 },
                 {
@@ -884,66 +828,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             }
@@ -1053,6 +937,20 @@
               "descriptions": {
                 "pt": "Traduza cada nota com a nota em inglês à vista. O importante é que diga o mesmo que a fonte."
               },
+              "formerChecks": [
+                "versiculo-nota",
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "versiculo-nota",
@@ -1063,92 +961,24 @@
                 },
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -1168,66 +998,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             },
@@ -1253,6 +1023,20 @@
               "descriptions": {
                 "pt": "Compare com a nota em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               },
+              "formerChecks": [
+                "versiculo-nota",
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "versiculo-nota",
@@ -1263,92 +1047,24 @@
                 },
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -1368,66 +1084,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             }
@@ -1486,6 +1142,20 @@
               "descriptions": {
                 "pt": "Traduza cada pergunta e a sua resposta com o inglês à vista. O importante é que diga o mesmo que a fonte."
               },
+              "formerChecks": [
+                "versiculo-pregunta",
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "versiculo-pregunta",
@@ -1496,92 +1166,24 @@
                 },
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -1601,66 +1203,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             },
@@ -1686,6 +1228,20 @@
               "descriptions": {
                 "pt": "Compare com o inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               },
+              "formerChecks": [
+                "versiculo-pregunta",
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "versiculo-pregunta",
@@ -1696,92 +1252,24 @@
                 },
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -1801,66 +1289,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             }
@@ -1898,95 +1326,40 @@
               "descriptions": {
                 "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -2006,66 +1379,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             },
@@ -2091,95 +1404,40 @@
               "descriptions": {
                 "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -2199,66 +1457,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             }
@@ -2296,95 +1494,40 @@
               "descriptions": {
                 "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -2404,66 +1547,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             },
@@ -2489,95 +1572,40 @@
               "descriptions": {
                 "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
               },
+              "formerChecks": [
+                "completo",
+                "you",
+                "genero",
+                "referente",
+                "pasado",
+                "ser-estar",
+                "sentidos",
+                "falsos-amigos",
+                "nombres",
+                "numeros",
+                "ortografia"
+              ],
               "checks": [
                 {
                   "id": "completo",
-                  "text": "¿Está todo? Que no falte ni sobre ninguna frase de la fuente.",
+                  "text": "¿Está todo? Que no falte ni sobre nada de lo que dice la fuente.",
                   "texts": {
-                    "pt": "Está tudo? Que não falte nem sobre nenhuma frase da fonte."
+                    "pt": "Está tudo? Que não falte nem sobre nada do que a fonte diz."
                   }
                 },
                 {
-                  "id": "you",
-                  "text": "«You»: ¿una persona o varias? («usted» o «ustedes»)",
+                  "id": "nombres",
+                  "text": "Nombres de personas y lugares: como se escriben en nuestro idioma.",
                   "texts": {
-                    "pt": "«You»: uma pessoa ou várias? («você» ou «vocês»)"
-                  },
-                  "when": [
-                    "you",
-                    "your",
-                    "yours",
-                    "yourself",
-                    "yourselves"
-                  ]
-                },
-                {
-                  "id": "genero",
-                  "text": "¿Hombre o mujer, uno o varios? El inglés no lo dice («they were afraid»).",
-                  "texts": {
-                    "pt": "Homem ou mulher, um ou vários? O inglês não diz («they were afraid»)."
+                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua."
                   }
                 },
                 {
-                  "id": "referente",
-                  "text": "«It», «they», «his», «her»: ¿se entiende de quién o de qué se habla?",
+                  "id": "ortografia",
+                  "text": "Ortografía: tildes, signos de apertura (¿ ¡) y concordancia.",
                   "texts": {
-                    "pt": "«It», «they», «his», «her»: dá para entender de quem ou do que se fala?"
-                  },
-                  "when": [
-                    "it",
-                    "its",
-                    "they",
-                    "them",
-                    "their",
-                    "theirs",
-                    "his",
-                    "her",
-                    "hers",
-                    "this",
-                    "these",
-                    "that",
-                    "those"
-                  ]
-                },
-                {
-                  "id": "pasado",
-                  "text": "El pasado: ¿«hizo» o «hacía»?",
-                  "texts": {
-                    "pt": "O passado: «fez» ou «fazia»?"
+                    "pt": "Ortografia: acentos, pontuação e concordância."
                   }
-                },
-                {
-                  "id": "ser-estar",
-                  "text": "«To be»: ¿«ser» o «estar»?",
-                  "texts": {
-                    "pt": "«To be»: «ser» ou «estar»?"
-                  },
-                  "when": [
-                    "be",
-                    "is",
-                    "are",
-                    "am",
-                    "was",
-                    "were",
-                    "been",
-                    "being"
-                  ]
-                },
-                {
-                  "id": "sentidos",
-                  "text": "Palabras con varios sentidos («know», «for», «right»): ¿es el de este contexto?",
-                  "texts": {
-                    "pt": "Palavras com vários sentidos («know», «for», «right»): é o deste contexto?"
-                  },
-                  "when": [
-                    "know",
-                    "knows",
-                    "knew",
-                    "known",
-                    "for",
-                    "right"
-                  ]
                 },
                 {
                   "id": "falsos-amigos",
@@ -2597,66 +1625,6 @@
                     "library",
                     "large"
                   ]
-                },
-                {
-                  "id": "nombres",
-                  "text": "Nombres de personas y lugares: ¿como se escriben en nuestro idioma?",
-                  "texts": {
-                    "pt": "Nomes de pessoas e lugares: como se escrevem na nossa língua?"
-                  },
-                  "when": [
-                    "Aa"
-                  ]
-                },
-                {
-                  "id": "numeros",
-                  "text": "Números, medidas y fechas: ¿iguales que en la fuente?",
-                  "texts": {
-                    "pt": "Números, medidas e datas: iguais aos da fonte?"
-                  },
-                  "when": [
-                    "#",
-                    "one",
-                    "two",
-                    "three",
-                    "four",
-                    "five",
-                    "six",
-                    "seven",
-                    "eight",
-                    "nine",
-                    "ten",
-                    "eleven",
-                    "twelve",
-                    "twenty",
-                    "thirty",
-                    "forty",
-                    "fifty",
-                    "hundred",
-                    "thousand",
-                    "first",
-                    "second",
-                    "third",
-                    "cubit",
-                    "cubits",
-                    "shekel",
-                    "shekels",
-                    "talent",
-                    "talents",
-                    "day",
-                    "days",
-                    "month",
-                    "months",
-                    "year",
-                    "years"
-                  ]
-                },
-                {
-                  "id": "ortografia",
-                  "text": "Ortografía y gramática: ¿tildes, signos de apertura (¿ ¡) y concordancia?",
-                  "texts": {
-                    "pt": "Ortografia e gramática: acentos, pontuação e concordância?"
-                  }
                 }
               ]
             }

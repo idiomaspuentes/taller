@@ -51,6 +51,8 @@ type Props = {
   beside?: (row: ArticleRow, box: PieceBox) => React.ReactNode;
   /** The text is plain sentences (a question, its answer): its box offers no bold, italics or link. */
   plain?: boolean;
+  /** Under the source of the piece being written: what that source calls for (a reminder about a word it has). */
+  hints?: (row: ArticleRow) => React.ReactNode;
   /**
    * Words the team's own sentences use in the other texts of the screen. With the ones this text shows, they tell a
    * word both languages write alike («altar») from one left as the source has it.
@@ -109,7 +111,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain, known }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain, known, hints }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -266,6 +268,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             ) : (
               <HelpMarkdownView className="ab-peek" content={row.source} />
             )}
+            {hints?.(row)}
             {ours && !hand ? null : (
               <MarkdownEditor
                 id={`${id}-${index}`}

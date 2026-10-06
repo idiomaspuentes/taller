@@ -105,4 +105,30 @@ test("un paso con el nombre que el proceso le daba antes toma el de ahora; el qu
   assert.deepEqual(kept.renamed, []);
 });
 
+test("la lista de un paso que el proceso reescribió sigue al proceso en lo que era suyo, y conserva lo que el proyecto hizo", () => {
+  const told = fcr.tasks.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "borrador")!;
+  assert.ok(told.formerChecks?.includes("ser-estar") && !told.checks!.some((c) => c.id === "ser-estar"), "el proceso dejó de preguntar por «ser» o «estar» aparte");
+  // A project of before: the list the process used to give, less one check it took out, plus one of its own.
+  const before = ["completo", "you", "genero", "referente", "pasado", "ser-estar", "sentidos", "falsos-amigos", "nombres", "ortografia"].map((id) => ({ id, text: `(antes) ${id}` }));
+  const ours = { id: "nuestra", text: "«Jacobo», no «Santiago»." };
+  const created = applyWorkflowToBoard(empty, fcr);
+  const mine: AssignmentsDoc = {
+    ...created,
+    workflowVersion: fcr.version - 1,
+    teams: created.teams.map((task) => (task.id === "tpl" ? { ...task, steps: task.steps!.map((s) => (s.id === "borrador" ? { ...s, checks: [...before, ours] } : s)) } : task)),
+  };
+  const step = upgradeBoardToWorkflow(mine, fcr).board.teams.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "borrador")!;
+  const ids = step.checks!.map((c) => c.id);
+  assert.deepEqual(ids, ["completo", "genero", "una-o-dos", "ortografia", "you", "referente", "nombres", "falsos-amigos", "nuestra"]);
+  assert.equal(ids.includes("numeros"), false, "la que el proyecto había quitado no vuelve");
+  assert.equal(step.checks!.find((c) => c.id === "completo")!.text, told.checks!.find((c) => c.id === "completo")!.text, "con las palabras de ahora");
+  assert.deepEqual(step.checks!.find((c) => c.id === "nuestra"), ours);
+  assert.equal("formerChecks" in step, false, "lo que el proceso recuerda de sí mismo no se guarda en el proyecto");
+  // Brought up again, nothing moves; and a list that is all the project's own is not touched.
+  const again = upgradeBoardToWorkflow({ ...mine, teams: mine.teams.map((task) => (task.id === "tpl" ? { ...task, steps: task.steps!.map((s) => (s.id === "borrador" ? step : s)) } : task)) }, fcr);
+  assert.deepEqual(again.board.teams.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "borrador")!.checks, step.checks);
+  const own: AssignmentsDoc = { ...mine, teams: mine.teams.map((task) => (task.id === "tpl" ? { ...task, steps: task.steps!.map((s) => (s.id === "borrador" ? { ...s, checks: [ours] } : s)) } : task)) };
+  assert.deepEqual(upgradeBoardToWorkflow(own, fcr).board.teams.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "borrador")!.checks, [ours]);
+});
+
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);

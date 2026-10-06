@@ -1,4 +1,4 @@
-import { StepAsk } from "./StepAsk";
+import { Hints, StepAsk, useItemHints } from "./StepAsk";
 import { toolHeading } from "./toolHeading";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
@@ -863,6 +863,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("editor");
   const [draftVia, setDraftVia] = useState<"ast" | "plain">("plain");
   const [activeVerse, setActiveVerse] = useState<number | undefined>();
+  // What the verse in hand calls for by its own words, among what the step and the team ask.
+  const hintsFor = useItemHints(session, ctx);
   const [draftLoading, setDraftLoading] = useState(() => Boolean(loadSession()));
   const [ultLoading, setUltLoading] = useState(() => Boolean(loadSession()));
   const [ustLoading, setUstLoading] = useState(() => Boolean(loadSession()));
@@ -2179,6 +2181,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           ) : null}
                         </div>
                       ) : null}
+                      {/* What this verse calls for by its own words («you»: one person or several), while it is the one being written. */}
+                      {activeVerse === d.from ? <Hints lead={t("sa.mind")} lines={hintsFor((ctx?.resource === "tps" ? ust : ult).verses[d.from])} /> : null}
                       <textarea
                         id={`v-${key}`}
                         className="scripture-editor__input"

@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
-import { loadStepSource } from "../dcs/stepSource";
 import { teamKey } from "../domain/levels";
-import { applicableChecks, formatWhen, parseWhen, stepWideChecks } from "../domain/stepChecks";
+import { formatWhen, itemChecks, parseWhen, stepWideChecks } from "../domain/stepChecks";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
@@ -15,108 +14,77 @@ import { useT } from "../i18n/messages";
 import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from "../useTeamRules";
 
 /**
- * What a step asks, where the person does it: the process's description of the step, its checks (a short list of
- * things to look at before handing the step in) and the rules the team gave itself. The ticks are the person's own,
- * kept on their device for that subtarea; they remind, they do not close the step.
+ * What a step asks of whoever does it: the process's description of the step, the things to keep in mind in it and
+ * the rules the team gave itself.
+ *
+ * They are lines to read, each said where it is of use. What is true of the whole work (that nothing is missing,
+ * the spelling) is said once, under «Qué se pide en …». What a passage calls for by its own words («you»: one
+ * person or several) is said at the verse that has them, beside its source, when the person is on that verse.
+ *
+ * They used to be boxes to tick. The ticks closed nothing and nobody else saw them, and there were a great many:
+ * the review of the notes of a short book (Jude, 159 notes) had 580 boxes. Opened inside a tool the list took the
+ * whole screen of a phone and hid the work it was about.
  */
 
-const key = (scope: string) => `taller-checks:${scope}`;
+export type HintLine = { id: string; text: string; by?: string };
 
-function loadTicks(scope: string): string[] {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(key(scope)) ?? "[]");
-    return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-type Line = { id: string; text: string; by?: string };
-
-function useTicks(scope: string): [string[], (id: string) => void] {
-  const [ticks, setTicks] = useState<string[]>(() => loadTicks(scope));
-  useEffect(() => setTicks(loadTicks(scope)), [scope]);
-  const toggle = (id: string) => {
-    // Read again before changing: the step's list and the team's are two lists over the same ticks.
-    const now = loadTicks(scope);
-    const next = now.includes(id) ? now.filter((x) => x !== id) : [...now, id];
-    setTicks(next);
-    try {
-      localStorage.setItem(key(scope), JSON.stringify(next));
-    } catch {
-      /* blocked storage: the ticks last as long as the screen */
-    }
-  };
-  return [ticks, toggle];
-}
-
-export function Checks({ lines, scope }: { lines: Line[]; scope: string }) {
-  const [ticks, toggle] = useTicks(scope);
+export function Hints({ lines, lead }: { lines: HintLine[]; lead?: string }) {
   if (!lines.length) return null;
   return (
-    <ul className="step-ask__checks">
-      {lines.map((line) => (
-        <li key={line.id}>
-          <label>
-            <input type="checkbox" checked={ticks.includes(line.id)} onChange={() => toggle(line.id)} />
-            <span>
-              {line.text}
-              {line.by ? <small className="step-ask__by"> · @{line.by}</small> : null}
-            </span>
-          </label>
-        </li>
-      ))}
-    </ul>
+    <div className="step-hints" data-item={lead ? "true" : undefined}>
+      {lead ? <p className="step-hints__lead">{lead}</p> : null}
+      <ul>
+        {lines.map((line) => (
+          <li key={line.id}>
+            {line.text}
+            {line.by ? <small className="step-ask__by"> · @{line.by}</small> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-/**
- * `scope` tells one subtarea's ticks from another's: its number and its step. `source` is the source of the passage
- * in hand, when the list is shown beside it: only the checks it calls for show (see `domain/stepChecks`).
- */
-export function StepAskBody({ step, scope, source, byItem }: { step: TaskStep; scope: string; source?: string | null; byItem?: boolean }) {
+/** The description of a step and what it asks to keep in mind through the whole of it. */
+export function StepAskBody({ step }: { step: TaskStep }) {
   const language = useUiLanguage();
   const description = step.descriptions?.[language] ?? step.description;
-  // Where each item shows the checks it calls for, the step asks once only for what is of every item.
-  const checks = byItem ? stepWideChecks(step.checks ?? []) : applicableChecks(step.checks ?? [], source);
   return (
     <>
       {description ? <p>{description}</p> : null}
-      <Checks lines={checks.map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text }))} scope={scope} />
+      <Hints lines={stepWideChecks(step.checks ?? []).map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text }))} />
     </>
   );
 }
 
 export function stepAsks(step: TaskStep | undefined, language: string): boolean {
-  return Boolean(step && ((step.descriptions?.[language] ?? step.description) || step.checks?.length));
+  return Boolean(step && ((step.descriptions?.[language] ?? step.description) || stepWideChecks(step.checks ?? []).length));
 }
 
 /**
- * The rules of the team that does the step, under the step's own list. Like the step's checks, a rule may say which
- * words of the source call for it: `source` is the source of the passage in hand, and with `byItem` (each item
- * shows its own) only the rules that always apply are listed here. `canAdd`: this person is of the team, so they may
- * add one; `issue` is the subtarea in hand, for the notice to whoever coordinates.
+ * The rules of the team that does the step, under the step's own: those that hold always. One that says which words
+ * of the source call for it is said at the item that has them, with the step's (see `useItemHints`). `canAdd`: this
+ * person is of the team, so they may add one; `issue` is the subtarea in hand, for the notice to whoever coordinates.
  */
-export function TeamRuleChecks({ team, scope, canAdd, issue, source, byItem }: { team: string | undefined; scope: string; canAdd?: boolean; issue?: number; source?: string | null; byItem?: boolean }) {
+export function TeamRuleChecks({ team, canAdd, issue }: { team: string | undefined; canAdd?: boolean; issue?: number }) {
   const t = useT();
   const language = useUiLanguage();
   const doc = useTeamRules(team);
   const manages = useManagesTeamRules(team);
+  const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
-  const [when, setWhen] = useState("");
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  const all = doc ? activeRules(doc) : [];
-  const rules = byItem ? stepWideChecks(all) : applicableChecks(all, source);
+  const rules = stepWideChecks(doc ? activeRules(doc) : []);
   if (!team || (!rules.length && !canAdd && !manages)) return null;
   const add = async () => {
     if (!draft.trim()) return;
     setSaving(true);
     setFailed(false);
     try {
-      await addRuleToTeam(team, draft, issue, parseWhen(when));
+      await addRuleToTeam(team, draft, issue);
       setDraft("");
-      setWhen("");
+      setAdding(false);
     } catch {
       setFailed(true);
     } finally {
@@ -125,10 +93,11 @@ export function TeamRuleChecks({ team, scope, canAdd, issue, source, byItem }: {
   };
   return (
     <section className="step-ask__team" aria-label={t("sa.teamRules")}>
-      <p className="step-ask__title">{t("sa.teamRules")}</p>
-      <Checks lines={rules.map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), by: rule.by }))} scope={scope} />
-      {canAdd ? (
-        // Whoever finds something worth checking writes it where they found it: it counts for the team at once.
+      {rules.length ? <p className="step-ask__title">{t("sa.teamRules")}</p> : null}
+      <Hints lines={rules.map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), by: rule.by }))} />
+      {canAdd && adding ? (
+        // Whoever finds something worth keeping in mind writes it where they found it: it counts for the team at
+        // once. Which words of the source call for it is for whoever coordinates to say, where rules are kept.
         <form
           className="step-ask__add"
           onSubmit={(e) => {
@@ -136,13 +105,17 @@ export function TeamRuleChecks({ team, scope, canAdd, issue, source, byItem }: {
             void add();
           }}
         >
-          <input className="af-input" value={draft} maxLength={240} placeholder={t("sa.addRule")} aria-label={t("sa.addRule")} disabled={saving} onChange={(e) => setDraft(e.target.value)} />
-          {/* The words come up only once there is a rule to attach them to. */}
-          {draft.trim() ? <input className="af-input" value={when} placeholder={t("sa.addWhen")} aria-label={t("sa.addWhen")} disabled={saving} autoCapitalize="none" spellCheck={false} onChange={(e) => setWhen(e.target.value)} /> : null}
+          {/* Left with nothing written, it goes back to being a line: whoever opened it by mistake needs no way out. */}
+          <input className="af-input" value={draft} maxLength={240} placeholder={t("sa.addRule")} aria-label={t("sa.addRule")} disabled={saving} autoFocus onChange={(e) => setDraft(e.target.value)} onBlur={() => !draft.trim() && setAdding(false)} />
           <button type="submit" className="btn" data-size="sm" data-variant="outline" disabled={saving || !draft.trim()}>
             {saving ? t("sa.saving") : t("sa.add")}
           </button>
         </form>
+      ) : canAdd ? (
+        // A box to write a rule in stood open in every tool: it is one line to press, for whoever has one to add.
+        <button type="button" className="step-ask__manage" onClick={() => setAdding(true)}>
+          {t("sa.propose")}
+        </button>
       ) : null}
       {failed ? <p className="af-stale">{t("sa.ruleError")}</p> : null}
       {/* Whoever coordinates the team or runs the project corrects and removes them on the team's own screen. */}
@@ -162,23 +135,10 @@ export function isOfTeam(session: Pick<GtSession, "username" | "teams" | "canMan
   return Boolean(session.canManage) || (task.memberIds ?? []).some((id) => id.toLowerCase() === me) || (session.teams ?? []).some((team) => teamKey(team.name) === teamKey(task.orgTeamName));
 }
 
-/** Inside a tool: the step comes from the launch (which subtarea, which step) and the plan of its project. */
-export function StepAsk({ session, ctx, byItem }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined; byItem?: boolean }) {
-  const t = useT();
-  const language = useUiLanguage();
+/** The step a tool was opened for and its task, from the launch (which subtarea, which step) and the plan of its project. */
+export function useLaunchStep(session: GtSession | null | undefined, ctx: SolverLaunchContext | null | undefined): { task: ProjectTask; step: TaskStep } | null {
   const [found, setFound] = useState<{ task: ProjectTask; step: TaskStep } | null>(null);
-  /** The source of the passage: undefined while it is read (every check shows), null when there is none to read. */
-  const [source, setSource] = useState<string | null | undefined>(undefined);
-  const { pmOrg, projectId, taskId, stepId, lang, contentOrg, resource, book, ref, chapter } = ctx ?? {};
-  useEffect(() => {
-    setSource(undefined);
-    if (!session || !ctx) return;
-    let cancelled = false;
-    void loadStepSource(session, ctx).then((text) => !cancelled && setSource(text));
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.token, resource, book, ref, chapter]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { pmOrg, projectId, taskId, stepId, lang, contentOrg } = ctx ?? {};
   useEffect(() => {
     setFound(null);
     if (!session || !pmOrg || !projectId || !taskId || !stepId) return;
@@ -198,15 +158,43 @@ export function StepAsk({ session, ctx, byItem }: { session: GtSession | null | 
       cancelled = true;
     };
   }, [session?.token, pmOrg, projectId, taskId, stepId, lang, contentOrg]); // eslint-disable-line react-hooks/exhaustive-deps
+  return found;
+}
+
+/**
+ * What one item (a verse, a note, a paragraph) calls for by its own words, among the checks of the step and the
+ * rules of the team: given its source, the lines to show beside it. None for an item whose source is not known:
+ * a reminder about a word is only worth saying where the word is.
+ */
+export function useItemHints(session: GtSession | null | undefined, ctx: SolverLaunchContext | null | undefined): (source: string | null | undefined) => HintLine[] {
+  const language = useUiLanguage();
+  const found = useLaunchStep(session, ctx);
+  const doc = useTeamRules(found?.task.orgTeamName);
+  return useCallback(
+    (source) => {
+      if (!found || !source?.trim()) return [];
+      return [
+        ...itemChecks(found.step.checks ?? [], source).map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text })),
+        ...itemChecks(doc ? activeRules(doc) : [], source).map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), by: rule.by })),
+      ];
+    },
+    [found, doc, language],
+  );
+}
+
+/** Inside a tool: what the step it was opened for asks, folded over the work. */
+export function StepAsk({ session, ctx }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined }) {
+  const t = useT();
+  const language = useUiLanguage();
+  const found = useLaunchStep(session, ctx);
   if (!found || !ctx) return null;
   const { task, step } = found;
   if (!stepAsks(step, language) && !task.orgTeamName) return null;
-  const scope = `${ctx.issueNumber ?? ctx.taskId}:${step.id}`;
   return (
     <details className="step-ask">
       <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
-      <StepAskBody step={step} scope={scope} source={source} byItem={byItem} />
-      <TeamRuleChecks team={task.orgTeamName} scope={scope} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} source={source} byItem={byItem} />
+      <StepAskBody step={step} />
+      <TeamRuleChecks team={task.orgTeamName} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} />
     </details>
   );
 }

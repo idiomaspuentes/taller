@@ -329,6 +329,12 @@ export type TaskStep = {
    * A name a project wrote itself is in no such list, and stays.
    */
   formerNames?: string[];
+  /**
+   * The ids of the checks the process gave this step before it rewrote the list. A project brought up to the newer
+   * version follows the process in what was the process's: the new wording, the new words, and none of the checks it
+   * dropped. A check the project removed is not brought back, and one it added stays (see `upgradeBoardToWorkflow`).
+   */
+  formerChecks?: string[];
   /** What the big button says («Revisar», «Votar»). Without it the engine words the mechanics. */
   actionLabel?: string;
   actionLabels?: Localized;

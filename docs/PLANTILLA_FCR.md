@@ -185,54 +185,62 @@ pide traducir las ayudas con el texto ya terminado; aquí ese contraste se hace 
 del inglés a nuestro idioma, **fiel a su fuente**: el TPL al ULT, el TPS al UST, cada ayuda a su original en
 inglés. El borrador pide eso y la revisión en pares comprueba eso: que diga lo mismo, sin añadir ni quitar.
 
-**Lista de comprobación de cada paso.** El inglés deja abierto lo que nuestro idioma tiene que decir, y una
-traducción fiel también tiene que estar bien escrita. «Borrador» y «Revisión en pares» traen, en las seis tareas,
-la misma lista, que la persona marca para sí antes de entregar:
+**Qué tener en cuenta en cada paso.** El inglés deja abierto lo que nuestro idioma tiene que decir, y una
+traducción fiel también tiene que estar bien escrita. «Borrador» y «Revisión en pares» traen unas pocas cosas que
+tener en cuenta. Son **líneas para leer, cada una dicha donde sirve**; no hay nada que marcar.
 
-| Comprobación | Por qué |
+*Lo que vale para todo el paso* se dice una vez, bajo «Qué se pide en …» (en la tarjeta y dentro de la herramienta):
+
+| Para los textos (TPL, TPS) | Para las ayudas (Notas, Preguntas, Palabras, Academia) |
 |---|---|
-| ¿Está todo? | Que no falte ni sobre ninguna frase de la fuente: es el error que más cuesta ver después |
-| «You»: ¿una persona o varias? | El inglés no distingue «usted» de «ustedes» |
-| ¿Hombre o mujer, uno o varios? | El inglés no lo dice en adjetivos ni participios |
-| «It», «they», «his», «her»: ¿de quién o de qué se habla? | Nuestro idioma pide género y número, calla el sujeto, y «su» sirve para todos |
-| El pasado: ¿«hizo» o «hacía»? | El inglés usa una sola forma |
-| «To be»: ¿«ser» o «estar»? | Una palabra en inglés, dos en nuestro idioma |
-| Palabras con varios sentidos («know», «for», «right») | «Saber» o «conocer», «por» o «para» |
-| Falsos amigos («actually», «eventually») | Parecen decir otra cosa |
-| Nombres de personas y lugares | Como se escriben en nuestro idioma |
-| Números, medidas y fechas | Iguales que en la fuente |
-| Ortografía y gramática | Tildes, signos de apertura, concordancia |
-
-**La lista se ajusta a lo que se tiene delante.** Cada comprobación puede decir qué palabras de la fuente la
-piden, y solo aparece donde la fuente las tiene.
-
-- **Al revisar (revisión en pares), es por ítem:** debajo de cada versículo, cada nota y cada pregunta salen las
-  comprobaciones que **ese** versículo, esa nota o esa pregunta piden, frente a su inglés. Un versículo sin «you»
-  no pregunta por «you»; uno que no pide nada no muestra nada. En un artículo (Palabras, Academia) cada
-  comprobación dice en qué **párrafos** del inglés aparece.
-- **No todas las comprobaciones son de palabras.** Las que no tienen lista valen para todo y se preguntan una
-  vez, arriba, para el paso entero: «¿Está todo?», «¿Hombre o mujer, uno o varios?», el pasado («hizo» o «hacía»)
-  y la ortografía. El pasado no lleva lista porque lo que importa es la forma del verbo, no una palabra, y una
-  lista de palabras no la reconoce.
-- **Al traducir (borrador)**, la lista es una sola para el pasaje, con lo que el pasaje pide.
-- En la tarjeta de «Mis tareas», lejos del texto, se ve la lista entera; y también cuando la fuente no se pudo leer.
-
-Las palabras de cada comprobación se editan con ella, en «Proceso». Además de palabras enteras admite `walk*` y
-`*ed` (principio o final de palabra), `#` (cualquier número) y `Aa` (un nombre propio). Las direcciones de los
-enlaces de una nota no cuentan como texto.
+| ¿Está todo? Que no falte ni sobre nada de lo que dice la fuente | Lo mismo |
+| ¿Hombre o mujer, uno o varios? El inglés no siempre lo dice | — |
+| Lo que el inglés dice con una palabra y nuestro idioma con dos: «hizo» o «hacía», «ser» o «estar», «saber» o «conocer» | — |
+| — | Nombres de personas y lugares: como se escriben en nuestro idioma |
+| Ortografía: tildes, signos de apertura y concordancia | Lo mismo |
 
 Notas y Preguntas empiezan además por **«¿Leíste el versículo del que habla?»**: para traducir bien lo que se dice
-de una frase hay que saber de qué trata el versículo. Palabras ya no recuerda nada sobre las referencias
-bíblicas: las escribe la app (sección 3.5).
+de una frase hay que saber de qué trata el versículo.
 
-La lista **recuerda, no cierra el paso**: las marcas son de cada persona, quedan en su dispositivo y nadie más las
-ve. Se abre en la tarjeta y dentro de la herramienta, en «Qué se pide en …». En el paquete son las `checks` del paso. Quien
-administra el proyecto las cambia en «Proceso», en cada paso («Lista de comprobación»): agregar, quitar, reordenar.
+*Lo que pide un versículo por sus propias palabras* se dice **junto a ese versículo**, bajo «Fíjate en esto»:
+al escribirlo (aparece con su fuente cuando se toca el versículo) y al revisarlo (debajo de él).
 
-**Reglas del equipo.** El equipo descubre cosas que comprobar a medida que avanza, y las agrega él mismo:
+| Aviso | Sale cuando la fuente del versículo dice… |
+|---|---|
+| «You»: ¿una persona o varias? («tú», «usted» o «ustedes») | you, your, yours… |
+| «It», «they», «his», «her»: ¿se entiende de quién o de qué se habla? | it, they, them, their, his, her… |
+| Nombres de personas y lugares: ¿cómo se escriben en nuestro idioma? | un nombre propio |
+| Números, medidas y fechas: ¿iguales que en la fuente? | un número, una medida, «month», «year» |
+| Falsos amigos («actually», «eventually»): ¿dicen lo que parecen? | una de esas palabras |
 
-- **Quién y dónde:** cualquiera del equipo, dentro de la herramienta, al final de la lista («Agregar una regla para
-  el equipo…»), ahí donde la encontró. Quien no es del equipo las ve, pero no agrega.
+En las ayudas, junto a una nota o un párrafo solo se avisa de los falsos amigos (y de las reglas del equipo que
+tengan palabras): una nota le habla a quien traduce («you could say…»), y lo que se pregunta del «you» de la
+Biblia no se le pregunta a ella.
+
+**Por qué así.** Antes eran once casillas, las mismas en las seis tareas, que cada persona marcaba para sí: no
+cerraban nada y nadie más las veía. Medido en Judas (octubre de 2026): el filtro por palabras casi no filtraba
+(un pasaje mostraba entre 6 y 9 de las 11, porque «is», «for», «that» o «one» están en casi todo versículo); en
+las notas, «you» salía en 72 de cada 100 y «ser o estar» en 81; y al revisar había una casilla por comprobación
+bajo cada versículo, nota y pregunta: 63 en los versículos del libro y **580 en sus 159 notas**. Abierta dentro
+de la herramienta, la lista ocupaba toda la pantalla del teléfono y tapaba el trabajo. Ahora lo de todo el paso
+son cuatro líneas, junto a un versículo salen una o dos, y junto a una nota casi nunca sale nada.
+
+Lo que cambió de contenido: «ser o estar», el pasado y «know / for / right» se dicen juntos en una línea, sin
+palabras que la disparen; de «it, they…» salieron «this, that, these, those»; de los números salieron «one»,
+«first», «second», «third» y «day»; y las ayudas dejaron de preguntar por «you», por el género y por los números.
+
+Las palabras de cada aviso se editan con él, en «Proceso», en cada paso («Lista de comprobación»): agregar,
+quitar, reordenar. Además de palabras enteras admite `walk*` y `*ed` (principio o final de palabra), `#`
+(cualquier número) y `Aa` (un nombre propio). Las direcciones de los enlaces de una nota no cuentan como texto.
+En el paquete son las `checks` del paso. Un proyecto que venía de antes toma la lista nueva al actualizarse a la
+versión 35 del proceso: lo que era del proceso lo sigue, un aviso que el proyecto había quitado no vuelve y uno
+que había agregado se queda.
+
+**Reglas del equipo.** El equipo descubre cosas que tener en cuenta a medida que avanza, y las agrega él mismo:
+
+- **Quién y dónde:** cualquiera del equipo, dentro de la herramienta, bajo «Qué se pide en …», en «Agregar una
+  regla del equipo». Es una línea que se toca: antes era una caja de texto abierta en cada herramienta. Quien no
+  es del equipo las ve, pero no agrega.
 - **De quién es:** del equipo, no del proyecto. Aparece en todos los pasos que hace ese equipo, en la tarjeta y en
   la herramienta, y sigue ahí en el libro siguiente.
 - **Desde cuándo vale:** de inmediato, para todo el equipo, con el nombre de quien la agregó.
@@ -243,9 +251,10 @@ administra el proyecto las cambia en «Proceso», en cada paso («Lista de compr
   Ahí **quien coordina el equipo** y **quien administra** corrigen o quitan cualquier regla y agregan otras, en
   cualquier momento. Desde la herramienta, a esas personas les sale un enlace directo («Corregir o quitar reglas
   del equipo»). Un coordinador solo edita las de los equipos que coordina.
-- **Con palabras, igual que las del paso:** una regla puede decir qué palabras de la fuente la piden («elder,
-  elders»). Entonces aparece solo donde la fuente las trae: al revisar, bajo el versículo, la nota o la pregunta
-  que las tenga. Sin palabras, aparece siempre.
+- **Con palabras, igual que los avisos del paso:** una regla puede decir qué palabras de la fuente la piden
+  («elder, elders»). Entonces se dice solo junto al versículo, la nota o el párrafo que las tenga, al escribirlo
+  y al revisarlo. Sin palabras, se dice una vez, con lo de todo el paso. Las palabras las pone quien coordina, en
+  «Organización»: al agregar una regla desde la herramienta solo se escribe la regla.
 - **Idiomas:** se muestra como se escribió. Si quien coordina la corrige con la app en otro idioma, queda dicha en
   los dos y cada persona la lee en el suyo.
 

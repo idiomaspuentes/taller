@@ -1,12 +1,10 @@
 import type { StepCheck } from "./types";
 
 /**
- * Which checks of a step apply to the passage in hand. A check may say when it applies (`when`): words to look for
- * in the source of the passage. «"You": ¿una persona o varias?» is noise on a passage where nobody says «you»; a
- * list that only shows what the passage calls for gets read.
- *
- * A check without `when` always applies. When the source of the passage is not known (it could not be read, or the
- * list is shown away from the passage), every check applies: better one line too many than one missing.
+ * Which checks of a step are of the item in hand. A check may say when it applies (`when`): words to look for in the
+ * source of the item. «"You": ¿una persona o varias?» is noise on a verse where nobody says «you»: it is said at
+ * the verse that says it (`itemChecks`). A check without `when` is of the whole step, and is said once for it
+ * (`stepWideChecks`).
  */
 
 /** A digit anywhere in the source: `#`. A proper name (a capitalised word that does not start a sentence): `Aa`. */
@@ -42,10 +40,6 @@ export function checkApplies(check: Pick<StepCheck, "when">, source: string | nu
   if (!words.length || source === null || source === undefined) return true;
   const text = readable(source);
   return words.some((word) => wordPattern(word)?.test(text));
-}
-
-export function applicableChecks<T extends Pick<StepCheck, "when">>(checks: T[], source: string | null | undefined): T[] {
-  return checks.filter((check) => checkApplies(check, source));
 }
 
 /**

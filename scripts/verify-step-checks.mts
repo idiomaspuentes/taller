@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { applicableChecks, checkApplies, formatWhen, itemChecks, paragraphsFor, parseWhen, stepWideChecks } from "../src/domain/stepChecks";
+import { checkApplies, formatWhen, itemChecks, paragraphsFor, parseWhen, stepWideChecks } from "../src/domain/stepChecks";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -43,14 +43,28 @@ test("lo que la persona escribe en el editor se guarda como lista, y vuelve igua
   assert.equal(formatWhen(["you", "your"]), "you, your");
 });
 
-test("FCR, borrador del TPL: en un pasaje sin «you» ni números no se pregunta por ellos, y lo que siempre importa sigue", () => {
+test("FCR, borrador del TPL: un versículo sin «you» ni números no los menciona, y lo de todo el paso se dice una vez", () => {
   const checks = shippedWorkflow("fcr-base")!.tasks.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "borrador")!.checks!;
-  const ids = (source: string | null) => applicableChecks(checks, source).map((c) => c.id);
-  const genesis = "In the beginning God created the heavens and the earth.";
-  assert.deepEqual(ids(genesis), ["completo", "genero", "pasado", "nombres", "ortografia"]);
-  const haggai = "In the 2nd year of Darius the king, the word of Yahweh came: Is it time for you to dwell in your houses?";
-  assert.ok(["you", "referente", "numeros", "ser-estar"].every((id) => ids(haggai).includes(id)));
-  assert.equal(ids(null).length, checks.length, "sin fuente, la lista entera");
+  const ids = (source: string) => itemChecks(checks, source).map((c) => c.id);
+  assert.deepEqual(ids("In the beginning God created the heavens and the earth."), ["nombres"]);
+  assert.deepEqual(ids("In the 2nd year of Darius the king, the word of Yahweh came: Is it time for you to dwell in your houses?"), ["you", "referente", "nombres", "numeros"]);
+  assert.deepEqual(stepWideChecks(checks).map((c) => c.id), ["completo", "genero", "una-o-dos", "ortografia"]);
+});
+
+test("FCR: lo que se dice junto a un versículo es poco, y a una nota casi nunca se le dice nada", () => {
+  const steps = (task: string) => shippedWorkflow("fcr-base")!.tasks.find((t) => t.id === task)!.steps!.filter((s) => s.checks?.length);
+  // The words that used to bring a check up on nearly every verse («that», «for», «is», «one», «day») bring none.
+  const verse = "For these are the ones who were written about long ago, that one day is as a thousand years.";
+  for (const step of steps("tpl")) assert.deepEqual(itemChecks(step.checks!, verse).map((c) => c.id), ["numeros"], step.id);
+  // A note speaks to whoever translates («you could say»): what is asked about the Bible's «you» is not asked of it.
+  const note = "Here, **Beloved ones** refers to those to whom Jude is writing. If it would be helpful in your language, you could state this explicitly. Alternate translation: [Beloved fellow believers]";
+  for (const task of ["notas-ayuda", "preguntas-ayuda", "palabras-ayuda", "academia-ayuda"]) {
+    for (const step of steps(task)) {
+      assert.deepEqual(itemChecks(step.checks!, note), [], `${task} · ${step.id}`);
+      assert.ok(stepWideChecks(step.checks!).length <= 4, `${task} · ${step.id}: lo que se dice una vez cabe en cuatro líneas`);
+    }
+  }
+  assert.deepEqual(itemChecks(steps("notas-ayuda")[0]!.checks!, "This does not actually mean that.").map((c) => c.id), ["falsos-amigos"], "una palabra que engaña sí se señala, donde está");
 });
 
 test("los nombres propios se reconocen por la mayúscula que no abre la oración", () => {
@@ -63,9 +77,9 @@ test("los nombres propios se reconocen por la mayúscula que no abre la oración
 
 test("cada ítem muestra solo lo que su propia fuente pide; lo de siempre se pregunta una vez para todo el paso", () => {
   const checks = shippedWorkflow("fcr-base")!.tasks.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "pares")!.checks!;
-  assert.deepEqual(stepWideChecks(checks).map((c) => c.id), ["completo", "genero", "pasado", "ortografia"], "las que no tienen palabras: una vez para el paso, no en cada versículo");
+  assert.deepEqual(stepWideChecks(checks).map((c) => c.id), ["completo", "genero", "una-o-dos", "ortografia"], "las que no tienen palabras: una vez para el paso, no en cada versículo");
   const verse = (text: string | undefined) => itemChecks(checks, text).map((c) => c.id);
-  assert.deepEqual(verse("Is it time for you to dwell in your houses?"), ["you", "referente", "ser-estar", "sentidos"]);
+  assert.deepEqual(verse("Is it time for you to dwell in your houses?"), ["you", "referente"]);
   assert.deepEqual(verse("Grace and peace."), [], "un versículo que no pide nada no muestra nada");
   assert.equal(verse(undefined).length, checks.length - 4, "sin la fuente de ese ítem, todas las que tienen palabras");
 });

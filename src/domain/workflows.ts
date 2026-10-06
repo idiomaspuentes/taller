@@ -2,6 +2,8 @@ import type {
   AssignmentsDoc,
   Phase,
   ProjectTask,
+  StepCheck,
+  TaskStep,
   TaskTemplate,
   WorkflowTemplate,
 } from "./types";
@@ -36,12 +38,33 @@ export function applyWorkflowToBoard(
   };
 }
 
+/** What a process says a step of its own used to be is for bringing projects up to date: a project does not keep it. */
+function planStep(step: TaskStep): TaskStep {
+  const { formerNames: _names, formerChecks: _checks, ...rest } = step;
+  return rest;
+}
+
+/**
+ * The checks of a step whose process has rewritten its list (`formerChecks`: the ids the list had). What was the
+ * process's follows the process: its new wording, the words that call for each, and none of the checks it dropped.
+ * What the project did stays: a check it removed is not brought back, and one it added is kept, after the process's.
+ */
+function followChecks(mine: StepCheck[] | undefined, told: TaskStep): StepCheck[] | undefined {
+  const former = new Set(told.formerChecks ?? []);
+  const had = new Set((mine ?? []).map((check) => check.id));
+  // A list with nothing of the process's in it is all the project's own.
+  if (!mine?.length || ![...had].some((id) => former.has(id))) return mine;
+  const next = (told.checks ?? []).filter((check) => !former.has(check.id) || had.has(check.id));
+  const own = mine.filter((check) => !former.has(check.id) && !next.some((other) => other.id === check.id));
+  return [...next, ...own];
+}
+
 function taskFromTemplate(
   t: TaskTemplate,
   phaseIds: Set<string>,
   phases: Phase[],
 ): ProjectTask {
-  const steps = normalizeTaskSteps(t.steps);
+  const steps = normalizeTaskSteps(t.steps).map(planStep);
   return {
     id: t.id || uid(),
     name: t.name,
@@ -186,6 +209,8 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
   const teams = [...board.teams];
   wf.tasks.forEach((source, index) => {
     const fresh = taskFromTemplate(source, phaseIds, phases);
+    /** The steps as the process tells them, with what each used to be. */
+    const told = new Map(normalizeTaskSteps(source.steps).map((step) => [step.id, step]));
     const at = teams.findIndex((task) => task.id === fresh.id);
     if (at < 0) {
       // After the task that precedes it in the process, when the project has that one.
@@ -203,11 +228,14 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
       const have = steps?.findIndex((s) => s.id === step.id) ?? -1;
       if (have >= 0) {
         const mine = steps![have]!;
-        // The one thing that is replaced: a name the process itself gave the step and has changed since. The project
-        // did not choose it, and kept showing a name the process no longer uses (a name it wrote itself stays).
-        const renamed = mine.name !== step.name && Boolean(step.formerNames?.includes(mine.name));
-        const merged = fillMissing(renamed ? { ...mine, name: step.name, names: step.names } : mine, step);
-        if (merged.filled || renamed) {
+        const now = told.get(step.id) ?? step;
+        // What is replaced is what the process itself gave and has changed since, and the project did not choose:
+        // the name of the step (one the project wrote itself stays), and the checks that were the process's.
+        const renamed = mine.name !== step.name && Boolean(now.formerNames?.includes(mine.name));
+        const checks = now.formerChecks?.length ? followChecks(mine.checks, now) : mine.checks;
+        const rechecked = JSON.stringify(checks ?? []) !== JSON.stringify(mine.checks ?? []);
+        const merged = fillMissing({ ...mine, ...(renamed ? { name: step.name, names: step.names } : {}), ...(rechecked ? { checks } : {}) }, step);
+        if (merged.filled || renamed || rechecked) {
           steps![have] = merged.next;
           changed = true;
         }

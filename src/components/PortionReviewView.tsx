@@ -1,4 +1,4 @@
-import { Checks, StepAsk } from "./StepAsk";
+import { Hints, StepAsk } from "./StepAsk";
 import { readRaw } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { itemChecks, paragraphsFor } from "../domain/stepChecks";
@@ -600,8 +600,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         ) : null}
         {own.length && item.state !== "removed" && item.state !== "empty" && !pending ? (
           <div className="rv-checks">
-            <Checks
-              scope={`${ctx?.issueNumber ?? ""}:${step?.id ?? ""}:${item.key}`}
+            <Hints
+              lead={t("sa.mind")}
               lines={own.map((check) => {
                 const said = check.texts?.[language] ?? check.text;
                 // In an article the check says in which paragraphs of the English it comes up.
@@ -677,7 +677,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       <>
         {own.length ? (
           <div className="rv-checks">
-            <Checks scope={`${ctx?.issueNumber ?? ""}:${step?.id ?? ""}:${ref}`} lines={own.map((check) => ({ id: check.id, by: check.by, text: check.texts?.[language] ?? check.text }))} />
+            <Hints lead={t("sa.mind")} lines={own.map((check) => ({ id: check.id, by: check.by, text: check.texts?.[language] ?? check.text }))} />
           </div>
         ) : null}
         {about.length ? <ul className="rv-comments">{about.map(commentRow)}</ul> : null}
@@ -705,7 +705,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         }
       />
       <div className="step-ask-bar">
-        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} byItem />
+        <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} />
       </div>
 
       {error ? (

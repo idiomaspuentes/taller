@@ -6906,7 +6906,6 @@ button.al-box--read { cursor: pointer; }
 .hub-used { font-size: 0.75rem; font-weight: 600; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--success-100, #dff5e6); color: var(--success-700, #17663a); margin-right: 0.5rem; }
 .hub-used[data-unused="true"] { background: var(--surface-muted, #eef1f6); color: var(--text-muted); font-weight: 500; }
 .rv-checks { margin-top: 0.5rem; padding: 0.25rem 0.75rem; border-left: 3px solid var(--border); font-size: 0.875rem; }
-.rv-checks .step-ask__checks { margin-top: 0; }
 .step-ask__manage { font-size: 0.8125rem; color: var(--primary); text-decoration: underline; justify-self: start; }
 .step-ask__by { color: var(--text-muted); font-weight: 400; text-decoration: none; }
 .team-rules { display: grid; gap: 0.5rem; padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9375rem; }
@@ -6914,10 +6913,18 @@ button.al-box--read { cursor: pointer; }
 .team-rules li { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; justify-content: space-between; }
 .team-rules li > span:first-child, .team-rules li > input { flex: 1 1 14rem; min-width: 0; }
 .team-rules__tools { display: flex; gap: 0.25rem; }
-.step-ask__checks { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.125rem; }
-.step-ask__checks label { display: flex; gap: 0.625rem; align-items: flex-start; padding: 0.375rem 0; line-height: 1.4; color: var(--text); cursor: pointer; }
-.step-ask__checks input { flex: none; width: 1.125rem; height: 1.125rem; margin-top: 0.125rem; }
-.step-ask__checks input:checked + span { color: var(--text-muted); text-decoration: line-through; }
+/* What a step asks to keep in mind: lines to read. Beside an item (a verse, a note) they say what that item calls
+   for, under a word that tells them from its text. */
+.step-hints { margin-top: 0.375rem; font-size: 0.875rem; line-height: 1.4; color: var(--text); }
+.step-hints ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.step-hints li { position: relative; padding-left: 0.875rem; }
+.step-hints li::before { content: ""; position: absolute; left: 0.125rem; top: 0.5em; width: 0.3125rem; height: 0.3125rem; border-radius: 50%; background: var(--primary); }
+.step-hints[data-item] { margin: 0 0 0.375rem; padding: 0.25rem 0.625rem; border-left: 3px solid var(--accent-300); }
+.step-hints__lead { margin: 0 0 0.125rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+.rv-checks .step-hints[data-item] { margin: 0; padding: 0; border-left: 0; }
+/* Inside a tool the fold never takes the screen from the work: what does not fit scrolls. */
+.step-ask-bar .step-ask[open] { max-height: 45dvh; overflow-y: auto; }
+button.step-ask__manage { min-height: 40px; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
 .task-card__status {
   margin: 0;
   color: var(--text-muted);
