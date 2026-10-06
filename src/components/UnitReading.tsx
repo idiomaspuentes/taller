@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MessageSquare } from "lucide-react";
 import type { AlignmentMap } from "@usfm-tools/types";
 import type { ChecklistItem, ChecklistKind } from "../dcs/checklistLoad";
-import { termLabel } from "../domain/afinacionWords";
+import { articleBody, termLabel } from "../domain/afinacionWords";
 import type { Concern } from "../domain/endorsement";
 import { alignedGatewayQuoteForHelpQuote } from "../domain/helpQuoteMatch";
 import { concernPlace, concernsAt, helpsOfVerse } from "../domain/unitReading";
@@ -141,7 +141,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
               {phrase ? <b>«{phrase}»</b> : null}
               <span>{termLabel(slug, termTitles)}</span>
             </summary>
-            {article === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : article === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article" content={article} />}
+            {article === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : article === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article" content={articleBody(article)} />}
             {/* With the article, not under every name of a list of eleven: a concern about a term comes of reading it. */}
             {concernLine(key, kind, concernPlace(chapter, row.verse, phrase || termLabel(slug, termTitles)), "ur.concernTerm")}
           </details>

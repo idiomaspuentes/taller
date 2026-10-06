@@ -573,6 +573,28 @@ sentido con la nota.
 1. ¿Se puede responder con el TPL y el TPS afinados?
 2. ¿La respuesta sugerida coincide con lo que dicen los textos?
 
+### 5.3b Lo que el versículo tiene cubierto (octubre de 2026)
+
+La lista de comprobación va **ayuda por ayuda**: una nota (o una palabra) a la vez, con su versículo arriba y sus
+palabras marcadas en el TPL y el TPS. Eso sirve para las preguntas de cada nota. Pero cada lista tiene además una
+pregunta **por versículo** («¿Cada dificultad del TPL tiene una nota?», «¿Cada palabra difícil tiene su
+artículo?»), y esa se responde mirando el versículo entero, no una nota.
+
+- **Sobre el versículo se subraya todo lo que tiene ayuda**: las palabras de la nota en vista quedan resaltadas, y
+  las de las demás notas (o palabras) de ese versículo, subrayadas. Lo que queda sin subrayar es lo que no tiene
+  ninguna. En Tito 1:1, con las Notas: «conforme a la fe… de los elegidos… al conocimiento… de la verdad…» están
+  cubiertas y «Pablo, siervo de Dios y apóstol de Jesucristo» no; con las Palabras es al revés, y se ve que
+  «verdad» no tiene artículo.
+- **Tocar una palabra subrayada lleva a su ayuda.** Si dos la comparten («de Jesucristo» es de «Jesús» y de
+  «Cristo»), cada toque pasa a la siguiente y vuelve.
+- **El artículo de la palabra se lee ahí mismo**, bajo su nombre, en un recuadro propio. La lista D pregunta si su
+  definición es correcta para ese versículo, y antes solo se veía el título.
+- Mientras se corrige la cita de una nota no se subraya nada: ahí cada palabra es para marcar.
+
+Es la otra mitad de la idea de tc-study (tocar el texto y ver lo que se dice de eso); la primera, de la ayuda al
+texto, ya estaba. Medido a 375 px con Tito 1:1 en modo laboratorio: el recuadro de los dos textos pasó de 412 a
+457 px (las palabras tocables miden 31 px de alto), y el artículo ocupa 309 px. No se ha visto con una unidad real.
+
 ### 5.4 Qué pasa cuando una respuesta es «no»
 
 | Salida | Qué hace la app |

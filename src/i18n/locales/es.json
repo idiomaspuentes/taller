@@ -2641,5 +2641,7 @@
   "en.jumpOne": "1 inquietud anotada.",
   "en.jumpMany": "{n} inquietudes anotadas.",
   "en.jump": "Ir a mi reporte",
-  "ur.concernNoted": "Inquietud anotada."
+  "ur.concernNoted": "Inquietud anotada.",
+  "ck.coveredNotes": "Lo subrayado tiene nota: tócalo",
+  "ck.coveredTerms": "Lo subrayado tiene artículo: tócalo"
 }

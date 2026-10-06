@@ -7077,6 +7077,13 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 
 /* ---- checklist step (ChecklistView) ---- */
 .ck-verse mark { background: var(--accent-100); color: inherit; border-radius: 3px; padding: 0 2px; }
+/* A word another help of the verse is about: underlined, and a touch goes to that help. */
+.ck-covered { padding: 0.1875rem 0.125rem; margin: -0.1875rem -0.125rem; border: 0; border-bottom: 2px dotted var(--primary); border-radius: 3px 3px 0 0; background: none; color: inherit; font: inherit; line-height: inherit; cursor: pointer; }
+.ck-covered[data-here] { background: var(--accent-100); border-bottom-style: solid; }
+.ck-verse:has(.ck-covered) { line-height: 1.7; }
+.ck-covered-hint { font-size: 0.75rem; text-align: right; }
+/* The article of the term being checked: in a box of its own, so the questions about it stay a short way under. */
+.ur-article.ck-article { max-height: 38dvh; border: 1px solid var(--border); }
 .ck-quote { display: block; margin-top: 0.25rem; font-size: 0.875rem; color: var(--text-muted); }
 .ck-quote[data-found="false"] { color: var(--warning-700); }
 .ck-list { padding: 0.625rem 0.875rem; border-radius: var(--radius-lg); background: var(--surface-muted); }

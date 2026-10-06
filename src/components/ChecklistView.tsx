@@ -3,6 +3,7 @@ import { ToolHeader } from "./ToolHeader";
 import { HelpMessages } from "./HelpMessages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { categoryFromSupportRef, categoryLabel } from "../domain/afinacionNotes";
+import { bookLabel } from "../domain/books";
 import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { termMessageKey } from "../domain/studyNotes";
@@ -11,12 +12,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { appendCheckAnswers, loadCheckAnswers } from "../dcs/checkStore";
-import { loadTermTitles } from "../dcs/afinacionLoad";
-import { termLabel, type TermKind } from "../domain/afinacionWords";
+import { loadTermArticle, loadTermTitles } from "../dcs/afinacionLoad";
+import { resolveSourcePackage } from "../domain/sourcePackage";
+import { articleBody, termLabel, type TermKind } from "../domain/afinacionWords";
 import { loadChecklist, type ChecklistData, type ChecklistItem, type ChecklistKind, type ChecklistText } from "../dcs/checklistLoad";
 import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
-import { questionsFor, summarizeChecklist, type CheckAnswer, type CheckItem, type CheckOutcome } from "../domain/checklist";
+import { helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome } from "../domain/checklist";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
@@ -46,8 +48,12 @@ type Props = {
 const OUTCOME_KEY: Record<CheckOutcome, MessageKey> = { fixed: "ck.fixed", created: "ck.created", consult: "ck.consult" };
 const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.chapter}:${item.verse}`;
 
-/** A verse with the words a quote points at marked. With `onToggle`, each word can be marked or unmarked. */
-function Verse({ text, marked, onToggle }: { text: string; marked: number[]; onToggle?: (index: number) => void }) {
+/**
+ * A verse with the words a quote points at marked. With `onToggle`, each word can be marked or unmarked. `covered`:
+ * the words another help of the verse is about (see `verseCoverage`); they are underlined, and a touch on one goes
+ * to that help (`onOpen`). The words of the help in view are touched too when another help shares them.
+ */
+function Verse({ text, marked, onToggle, covered, onOpen }: { text: string; marked: number[]; onToggle?: (index: number) => void; covered?: (index: number) => boolean; onOpen?: (index: number) => void }) {
   const tokens = tokenizeVersePlainText(text);
   const on = new Set(marked);
   return (
@@ -57,6 +63,12 @@ function Verse({ text, marked, onToggle }: { text: string; marked: number[]; onT
           <button key={index} type="button" className="ck-word" aria-pressed={on.has(index)} onClick={() => onToggle(index)}>
             {token}
           </button>
+        ) : covered?.(index) && onOpen ? (
+          <span key={index}>
+            <button type="button" className="ck-covered" data-here={on.has(index) || undefined} onClick={() => onOpen(index)}>
+              {token}
+            </button>{" "}
+          </span>
         ) : (
           <span key={index}>
             {on.has(index) ? <mark>{token}</mark> : token}{" "}
@@ -156,6 +168,21 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }, [data?.kind, data?.items]);
   // A message about a key term names the term (it holds for every use of it); about a note or a question, that row.
   const [termKind, ...termSlug] = (item?.supportRef ?? "").split("/");
+  // The article of the term in view. The checklist asks whether its definition is right for this verse, and showed
+  // only its title: whoever checked had to know the article, or go and find it. Read once per term, as it comes up.
+  const [articles, setArticles] = useState<Record<string, string | null>>({});
+  const slug = kind === "palabras" && termKind ? termSlug.join("/") : "";
+  useEffect(() => {
+    if (!slug || !session?.token || !ctx || !data || slug in articles) return;
+    let cancelled = false;
+    void loadTermArticle(session, resolveSourcePackage(data.board?.settings), { termSlug: slug, termKind: termKind as TermKind }, ctx, data.pmConfig ?? DEFAULT_PM_CONFIG)
+      .catch(() => null)
+      .then((article) => !cancelled && setArticles((prev) => ({ ...prev, [slug]: article?.trim() ? article : null })));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, Boolean(data)]);
   const messageKey = kind === "palabras" && termKind && termSlug.length ? termMessageKey(termKind, termSlug.join("/")) : (item?.id ?? "");
   const tally = item ? summary.items.find((row) => row.itemId === item.id) : undefined;
   const closesHere = Boolean(data?.step && closesInItsTool(data.step) && ctx?.issueNumber);
@@ -301,6 +328,26 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     const at = data?.items.findIndex((row) => row.id === itemId) ?? -1;
     if (at >= 0) setPosition(at);
   };
+
+  // What the verse in view has a help for, in each text on screen. The checklist goes note by note, and a note
+  // marks its own words; but «does every difficulty of this verse have a note?» is answered by looking at the
+  // verse. Every word some help of the verse is about is underlined, and a touch on it goes to that help.
+  const verseOf = item ? verseKeyOf(item) : "";
+  const coverage = useMemo(() => {
+    const out: Partial<Record<ChecklistText, Map<number, string[]>>> = {};
+    if (!data || !item) return out;
+    const helps = data.items.filter((row) => row.quote && row.chapter === item.chapter && row.verse === item.verse);
+    for (const resource of texts) {
+      const text = data.texts[resource];
+      const verse = text?.verses[item.verse] ?? "";
+      if (!verse || helps.length < 2) continue;
+      out[resource] = verseCoverage(helps.map((row) => ({ id: row.id, words: alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: row.quote!, occurrence: row.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: row.chapter, verse: row.verse }).tokenIndices })));
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, verseOf, textsKey]);
+  const others = (resource: ChecklistText, index: number) => helpAtWord(coverage[resource]?.get(index), item?.id);
+  const anyCovered = texts.some((resource) => [...(coverage[resource]?.values() ?? [])].some((ids) => ids.some((id) => id !== item?.id)));
   const nextPending = () => {
     if (!data) return;
     const order = [...data.items.slice(position + 1), ...data.items.slice(0, position + 1)];
@@ -406,8 +453,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           <section className="af-dock" aria-label={t("ck.textsAria")}>
             <div className="af-dock__bar">
               <strong>
-                {data.book} {item.chapter}:{item.verse}
+                {bookLabel(data.book, language)} {item.chapter}:{item.verse}
               </strong>
+              {/* Beside the verse's name, not as one more line under two texts that already take half a phone. */}
+              {anyCovered && !picking ? <span className="af-hint ck-covered-hint">{t(kind === "palabras" ? "ck.coveredTerms" : "ck.coveredNotes")}</span> : null}
             </div>
             {texts.map((resource) => {
               const text = data.texts[resource];
@@ -422,6 +471,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                       text={verse}
                       marked={canPick(resource) && picking ? picking : hit?.tokenIndices ?? []}
                       onToggle={canPick(resource) && picking ? (index) => setPicking(picking.includes(index) ? picking.filter((i) => i !== index) : [...picking, index]) : undefined}
+                      covered={(index) => Boolean(others(resource, index))}
+                      onOpen={(index) => {
+                        const next = others(resource, index);
+                        if (next) jump(next);
+                      }}
                     />
                   ) : (
                     <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>
@@ -462,6 +516,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             </div>
             {item.title ? <h2 className="af-phrase">{kind === "palabras" ? termLabel(item.title, termTitles) : item.title}</h2> : null}
             {item.body ? <HelpMarkdownView className="af-note af-note--md" content={item.body} /> : null}
+            {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
             {item.supportRef && kind !== "palabras" ? <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p> : null}
             {session && ctx?.pmOrg && ctx.projectId && data ? (

@@ -1,6 +1,6 @@
 /** A checklist step: every item answered yes, or its «no» settled (fixed, created, or answered by the owner). */
 import assert from "node:assert/strict";
-import { questionsFor, summarizeChecklist, verseItemId, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
+import { helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
 import { canApproveStep, closesInItsTool } from "../src/domain/stepClaim";
 import type { ChecklistQuestion, TaskStep } from "../src/domain/types";
 
@@ -90,6 +90,29 @@ test("un paso que se cierra con lista de comprobación y herramienta no se compl
   assert.equal(closesInItsTool(step), true);
   assert.equal(canApproveStep("marcos", { schema: "gateway-task-progress-2", doneStepIds: [], steps: {} } as never, step), false);
   assert.equal(closesInItsTool({ ...step, solverAppId: undefined }), false, "sin herramienta, lo marca quien lo hace");
+});
+
+test("sobre el versículo se marca lo que tiene ayuda, y tocar una palabra lleva a la suya", () => {
+  // Titus 1:1: three notes, two of them about words they share.
+  const covered = verseCoverage([
+    { id: "fe", words: [7, 8, 9, 10] },
+    { id: "elegidos", words: [11, 12, 13] },
+    { id: "fe-y-elegidos", words: [10, 11, 11] },
+    { id: "sin-frase", words: [] },
+  ]);
+  assert.deepEqual([...covered.keys()].sort((a, b) => a - b), [7, 8, 9, 10, 11, 12, 13]);
+  assert.deepEqual(covered.get(7), ["fe"]);
+  assert.deepEqual(covered.get(10), ["fe", "fe-y-elegidos"], "en el orden en que se recorren");
+  assert.deepEqual(covered.get(11), ["elegidos", "fe-y-elegidos"], "una palabra repetida en una frase cuenta una vez");
+  assert.equal(covered.get(2), undefined, "lo que no tiene ayuda queda sin marcar");
+  // A touch goes to the help of that word; on a word two helps share, from one to the other and back.
+  assert.equal(helpAtWord(covered.get(7), "elegidos"), "fe");
+  assert.equal(helpAtWord(covered.get(10), "fe"), "fe-y-elegidos");
+  assert.equal(helpAtWord(covered.get(10), "fe-y-elegidos"), "fe");
+  assert.equal(helpAtWord(covered.get(10)), "fe");
+  assert.equal(helpAtWord(covered.get(7), "fe"), undefined, "ya se está en la única que hay");
+  assert.equal(helpAtWord(covered.get(2), "fe"), undefined);
+  assert.equal(helpAtWord(undefined), undefined);
 });
 
 console.log(`\nverify-checklist: ${passed} checks passed.`);

@@ -2641,5 +2641,7 @@
   "en.jumpOne": "1 inquietação anotada.",
   "en.jumpMany": "{n} inquietações anotadas.",
   "en.jump": "Ir ao meu relatório",
-  "ur.concernNoted": "Inquietação anotada."
+  "ur.concernNoted": "Inquietação anotada.",
+  "ck.coveredNotes": "O sublinhado tem nota: toque",
+  "ck.coveredTerms": "O sublinhado tem artigo: toque"
 }

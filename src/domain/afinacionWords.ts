@@ -43,6 +43,11 @@ export function parseArticleTitle(markdown: string): string | null {
   return m ? m[1]!.trim() || null : null;
 }
 
+/** A words article without its first heading, for where its title is already said just above it. */
+export function articleBody(markdown: string): string {
+  return markdown.replace(/^\uFEFF/, "").replace(/^\s*#[ \t]+.*(\r?\n)+/, "");
+}
+
 /** The translation the team chose for each term, by slug. */
 export type PreferredTerm = { text: string; by: string; at: string };
 export type PreferredTerms = Record<string, PreferredTerm>;

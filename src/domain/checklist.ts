@@ -132,3 +132,30 @@ export function questionsFor(item: CheckItem, items: CheckItem[], questions: Che
     .filter((q) => q.per !== "verse" || first)
     .map((question) => ({ question, answerItemId: question.per === "verse" ? verseItemId(item.verseKey) : item.id }));
 }
+
+// ---------------------------------------------------------------- what a verse has a help for
+
+/**
+ * Which words of a verse the helps of that verse are about: for each word (by its place in the verse), the helps
+ * whose phrase it is part of, in the order they are gone over. A question asked once per verse («does every
+ * difficulty have a note?») is answered by looking at the verse, not at one note: what is covered is marked on it,
+ * and what is not stands out by being plain.
+ */
+export function verseCoverage(helps: { id: string; words: number[] }[]): Map<number, string[]> {
+  const covered = new Map<number, string[]>();
+  for (const help of helps) {
+    for (const word of new Set(help.words)) covered.set(word, [...(covered.get(word) ?? []), help.id]);
+  }
+  return covered;
+}
+
+/**
+ * The help a touch on a word leads to: the first that is about it, or the one after the help in view when that is
+ * about it too. So touching a word two helps share goes from one to the other and back.
+ */
+export function helpAtWord(covering: string[] | undefined, inView?: string): string | undefined {
+  if (!covering?.length) return undefined;
+  const at = inView ? covering.indexOf(inView) : -1;
+  const next = covering[(at + 1) % covering.length];
+  return next === inView ? undefined : next;
+}

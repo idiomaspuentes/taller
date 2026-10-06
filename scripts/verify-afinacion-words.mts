@@ -1,6 +1,6 @@
 /** The key terms of a chapter, and how each one was rendered across the book. */
 import assert from "node:assert/strict";
-import {
+import { articleBody,
   compareTermRenderings,
   firstUnanswered,
   orderTermUses,
@@ -153,6 +153,13 @@ test("las apariciones que otra persona marcó igual se acuerdan de un toque; las
   assert.deepEqual(sameRenderingUses({ ...base, decisions: [mark("a3", "Dios", 1, 5, "bea"), { ...mark("a3", "Dios", 1, 5, "carla"), status: "rejected" }] }), [], "una objeción abierta se mira, no se acuerda de paso");
   assert.deepEqual(sameRenderingUses({ ...base, decisions: [mark("b1", "Dios", 2, 4, "bea")] }), [], "lo que no está en mano (otro capítulo, otro tramo) no se toca");
   assert.deepEqual(sameRenderingUses({ ...base, rendering: "", decisions: [mark("a3", "Dios", 1, 5, "bea")] }), [], "sin palabras marcadas no hay con qué estar de acuerdo");
+});
+
+test("un artículo se muestra sin su primer título donde el título ya está dicho arriba", () => {
+  assert.equal(articleBody("# siervo, esclavo\n\n## Definición\n\nUn siervo…\n"), "## Definición\n\nUn siervo…\n");
+  assert.equal(articleBody("﻿# fe\r\n\r\n## Definición\r\n"), "## Definición\r\n");
+  assert.equal(articleBody("## Definición\n\n# no es el primero\n"), "## Definición\n\n# no es el primero\n", "solo el que abre el artículo");
+  assert.equal(articleBody(""), "");
 });
 
 console.log(`\nverify-afinacion-words: ${passed} checks passed.`);
