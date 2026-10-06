@@ -2704,5 +2704,12 @@
   "se.wordHelpsMany": "{n} ayudas",
   "tb.seeReview": "Ver la revisión",
   "tb.withdrawnAt": "Se retiró del plan {when}: lo que tenías escrito no se entregó.",
-  "fa.leftToReadOne": "Te falta leer 1 parte."
+  "fa.leftToReadOne": "Te falta leer 1 parte.",
+  "rv.askFirstOne": "Dejaste {n} comentario. Para que quien lo escribió lo corrija, pulsa «Pedir cambios».",
+  "rv.askFirstMany": "Dejaste {n} comentarios. Para que quien lo escribió los corrija, pulsa «Pedir cambios».",
+  "rv.askAgain": "Pedir cambios otra vez",
+  "rv.changesAutoOne": "Te dejé {n} comentario en el borrador.",
+  "rv.changesAutoMany": "Te dejé {n} comentarios en el borrador.",
+  "rv.youApprovedAuthor": "Ya aprobaste. Falta que @{who}, que lo escribió, diga que está de acuerdo.",
+  "rv.agreeOwnApproved": "{who} ya aprobó. Si para ti también está bien, dilo y la revisión termina. Para cambiar el texto, pulsa «Corregir mi borrador»."
 }

@@ -4,11 +4,12 @@
  *   npm run verify:review-items
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { articleItems, diffWords, introItems, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
 import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
 import { commentPlace, placedMessage, plainLine } from "../src/domain/commentPlace";
 import { commentNotice, placedLine } from "../src/domain/noticeText";
-import { canResolveComment, glossaryComment, openComments, resolutionComment, reviewCommentsFrom } from "../src/domain/reviewComments";
+import { canResolveComment, glossaryComment, openComments, resolutionComment, reviewCommentsFrom, isBareRequest, type ReviewComment } from "../src/domain/reviewComments";
 import { localizeThread } from "../src/domain/threadNames";
 
 let passed = 0;
@@ -194,6 +195,17 @@ test("un comentario del que salió una entrada del glosario lo dice a todos, lo 
   // The author of the draft may be who keeps it: it counts the same.
   assert.equal(reviewCommentsFrom([...rows, said(3, "alice", event)], "alice")[0]!.glossary, "me01");
   assert.equal(localizeThread("En el glosario: «Messiah» → «Mesías»", "pt"), "No glossário: «Messiah» → «Mesías»");
+});
+
+test("el mensaje que la revisión escribe sola al pedir cambios no es un comentario por resolver", () => {
+  // The sentences are the app's own, in both languages: if one is reworded, this says so.
+  const es = JSON.parse(readFileSync(new URL("../src/i18n/locales/es.json", import.meta.url), "utf8")) as Record<string, string>;
+  const pt = JSON.parse(readFileSync(new URL("../src/i18n/locales/pt.json", import.meta.url), "utf8")) as Record<string, string>;
+  const said = (lang: Record<string, string>, n: number) => `@alice ${lang["rv.changesAsked"]} ${lang[n === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany"]!.replace("{n}", String(n))}`;
+  const row = (id: number, text: string, ref = ""): ReviewComment => ({ id, by: "bob", ref, text, at: "2026-10-06T10:00:00Z" });
+  const all = [row(1, "Falta una frase.", "1:3"), row(2, said(es, 1)), row(3, said(es, 4)), row(4, said(pt, 1)), row(5, said(pt, 3)), row(6, `@alice ${es["rv.changesAsked"]} revisa la puntuación de todo el pasaje.`)];
+  assert.deepEqual(openComments(all, "alice").map((c) => c.id), [1, 6], "lo que alguien escribió al pedir cambios sí se atiende");
+  assert.equal(isBareRequest(row(7, said(es, 2), "1:3")), false, "puesto en un versículo, es un comentario de ese versículo");
 });
 
 console.log(`\nverify-review-items: ${passed} checks passed.`);

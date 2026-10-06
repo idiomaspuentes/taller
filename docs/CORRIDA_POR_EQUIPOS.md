@@ -18,6 +18,10 @@ Este documento es primero el plan y después, sección por sección, el reporte.
    teléfono de 375 px, leyendo solo lo que la pantalla dice. Donde no quede claro qué hacer, es un hallazgo.
 5. **La conversación.** Afinación y Armonización discuten mucho: se prueba que el chat se sienta como el que ya
    usan, que una mención llegue, y que cada persona reciba un aviso **cada vez** que se espera algo de ella.
+
+**Lo que manda** (Abel, 6 de octubre): que **todo el proceso funcione** de un paso al siguiente y que **lo entienda
+alguien que no es hábil con la tecnología**. Primero se recorre el proceso entero; lo que se encuentra se ordena por
+eso. Los avisos y lo demás van después.
 6. **Un equipo a la vez.** Al terminar una fase, las cuatro cuentas salen de sus equipos y entran a los de la
    siguiente, para que «Mis tareas» no cargue con trabajo que ya no es suyo.
 
@@ -289,39 +293,67 @@ Encontrado en la corrida y corregido:
 
 ### ⚠ Lo que se trabó y sigue así
 
-**Los avisos** (lo que más importa de esta corrida)
+Ordenado por lo que más estorba a que el proceso avance y a que lo entienda alguien poco hábil con la tecnología.
+Los avisos van al final: importan, pero después de que el camino mismo se entienda.
 
-1. **Un borrador que espera revisor no sale en «Avisos».** Solo aparece como tarjeta en «Mis tareas» → «Puedes
-   sumarte», para quien entre a mirar. «Avisos» está lleno de otra cosa: 23 o 24 entradas de «Libres para tu
-   equipo», y la campana las cuenta (decía 25 cuando solo 2 cosas necesitaban atención).
-2. **Nadie avisa dentro de la app de que el autor volvió a entregar**, ni de que quien revisa ya aprobó y falta la
-   confirmación del autor. La app sí pide ese aviso al servicio que avisa con la app cerrada, pero eso no se puede
-   ver desde aquí; con la app abierta, hay que entrar a «Mis tareas» y notar que el botón cambió.
-3. Cuando un cambio de porciones retira una subtarea, quien la tenía no recibe nada.
+**Dónde alguien poco hábil no sabría qué hacer**
 
-**Comentar y pedir cambios**
+1. **Devolver un borrador.** «Pedir cambios» es el segundo botón de la caja «Comentarios sobre todo el pasaje»,
+   está apagado hasta que se escribe ahí, y mide 36 px. El pie de la pantalla solo habla de aprobar. Quien dejó tres
+   comentarios no tiene nada que le diga cómo hacer que el autor los atienda.
+2. **Volver a revisar.** Después de que el autor corrige, los cuatro versículos salen como «nuevo» (se comparan con
+   el borrador del grupo, que estaba vacío). No se ve qué cambió: hay que leerlo todo otra vez para comprobar cada
+   comentario.
+3. **Corregir.** En el editor, los comentarios no están junto a su versículo: un aviso («Hay 4 comentarios de la
+   revisión. Verlos») lleva a otra pestaña, y el autor va y viene entre el comentario y el campo.
+4. **Saber quién falta.** Quien revisa lee «Falta que apruebe alguien más», sin decir que es el autor. El autor lee
+   «la revisión termina cuando quien revisa también aprueba» cuando quien revisa ya aprobó.
+5. **«Sin guardar» antes de tocar nada**, al volver al editor para corregir.
+6. **La pista y el borrador no se hablan.** El glosario dice «No «Santiago»» y el borrador dice «Santiago»: nada lo
+   señala.
+7. **«Avisos» no dice qué necesita atención.** La campana decía 25 y solo 2 cosas eran para la persona: las otras
+   23 son las subtareas libres del equipo, con «Tomar y empezar» y «Ahora no» en cada una.
+8. En «Estudio», el botón «Leído» de las notas está 5.200 px abajo: 35 notas en inglés para 4 versículos.
+9. La tarjeta dice «3 de 3 pasos · 100 %» cuando todavía falta entregar.
+10. En la caja de comentario de un versículo, «@» no ofrece a nadie. En el hilo sí, pero solo a quienes ya están en
+    esa conversación: no se puede mencionar a quien coordina.
 
-4. **En la caja de comentario de un versículo, «@» no ofrece a nadie.** En el hilo sí, pero solo a quienes ya
-   están en esa conversación: no se puede mencionar a quien coordina ni a otra persona del equipo.
-5. **«Pedir cambios» está escondido.** Es el segundo botón de la caja «Comentarios sobre todo el pasaje», y está
-   apagado hasta que se escribe ahí. El pie de la pantalla habla de aprobar, no de cómo devolver el borrador. Mide
-   36 px de alto.
-6. **Al volver a revisar no se ve qué cambió el autor.** Los cuatro versículos salen como «nuevo» (se comparan con
-   el borrador del grupo, que estaba vacío), así que hay que leerlo todo otra vez para comprobar cada comentario.
-7. En el editor, los comentarios de la revisión no están junto a su versículo: un aviso lleva a otra pestaña.
-8. Quien revisa lee «Falta que apruebe alguien más» sin que diga quién (el autor).
+**Los avisos**
 
-**Otras**
+11. Un borrador que espera revisor no sale en «Avisos»: solo como tarjeta en «Mis tareas» → «Puedes sumarte».
+12. Con la app abierta nadie avisa de que el autor volvió a entregar, ni de que falta su confirmación. La app sí
+    pide ese aviso al servicio que avisa con la app cerrada, pero eso no se puede ver desde aquí.
+13. Cuando un cambio de porciones retira una subtarea, quien la tenía no recibe nada.
 
-9. La pista del glosario dice «No «Santiago»» y el borrador dice «Santiago»: nada lo une.
-10. Al volver al editor para corregir, dice «Sin guardar» antes de tocar nada.
-11. En «Estudio», el botón «Leído» de las notas está 5.200 px abajo: 35 notas en inglés para 4 versículos.
-12. La tarjeta dice «3 de 3 pasos · 100 %» antes de entregar.
+### El segundo pasaje: TPS · Judas 1:1–4 (6 de octubre)
+
+**Luis** (abelper8) traduce; **Clara** (valeska, poco hábil) revisa. Luis omitió a propósito la última oración de
+1:3. Clara lo comentó, Luis **no estuvo de acuerdo** («eso está entre llaves, ¿no es opcional?»), lo conversaron
+en el hilo con menciones, Luis corrigió, los dos aprobaron y se entregó.
+
+**⚠ El proceso se rompió una vez, y era un defecto de verdad.** Al volver para corregir, el «Terminé» de Luis
+falló con «Conflicto al guardar «66-JUD.usfm»… (HTTP 422): sha does not match…» y un botón «Rehacer mi borrador».
+La causa: al abrir un borrador ya guardado, el editor a veces se quedaba con la huella del archivo del **borrador
+del grupo** en lugar de la del borrador de la persona (dependía de qué respuesta de Door43 llegaba última), y el
+siguiente guardado era rechazado. A Andrés no le pasó por suerte. *Arreglado:* el editor conserva la huella de la
+rama de la que leyó; si aun así Door43 rechaza el guardado y lo que hay en la rama es lo mismo que se cargó, vuelve
+a guardar una vez; y el mensaje de un conflicto real dice qué pasó y qué hacer antes del detalle técnico.
+
+Lo demás que se arregló al recorrerlo:
+
+- **Devolver un borrador.** El pie de la revisión, con comentarios propios sin atender, dice «Dejaste 1
+  comentario. Para que quien lo escribió lo corrija, pulsa «Pedir cambios»» y ofrece ese botón solo. No hace
+  falta escribir: el mensaje al autor se escribe solo, y ya no hay que marcarlo como resuelto.
+- **Quién falta.** Quien revisa lee «Ya aprobaste. Falta que @abelper8, que lo escribió, diga que está de
+  acuerdo». El autor lee «@valeska ya aprobó. Si para ti también está bien, dilo y la revisión termina».
+- **«Equipo hoy»** decía «90 terminadas esta semana» (89 eran las retiradas por el cambio de porciones) y «termina
+  hacia el 18 de octubre» de un proyecto al que le falta un año: la fecha iba sin el año.
+
+De la lista de arriba quedan resueltos los puntos 1 y 4, y en parte el 5 (el «Sin guardar» al abrir venía del mismo
+defecto de la huella).
 
 ### Dónde quedó
 
-- TPL 1:1–4: entregada. La lectura grupal del TPL ya aparece en «Puedes sumarte».
-- TPS 1:1–4 (subtarea 110): la tiene **Luis** (abelper8), con el estudio hecho. En su editor hay un versículo
-  escrito **sin guardar**.
+- TPL 1:1–4 y TPS 1:1–4: entregadas. Las dos lecturas grupales ya aparecen en «Puedes sumarte».
 - Todo lo demás de Traducción sigue libre: 4 porciones de TPL, 4 de TPS, 5 de Notas, 5 de Preguntas, 1 artículo de
   Palabras y 4 de Academia. Elisha tiene en revisión el artículo «call…» y abelper8 el de «Blessings».

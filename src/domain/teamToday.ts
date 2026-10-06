@@ -4,6 +4,7 @@ import { meetsTeamLevel, type LevelBook, type PersonLevel } from "./levels";
 import { DECISION_DAYS } from "./alignmentDecision";
 import { isDecisionIssue } from "./decisionAccess";
 import { issueTaskId } from "./myTasks";
+import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc, ProjectTask } from "./types";
 import { waitBlocks, waitReason } from "./waits";
 
@@ -99,7 +100,11 @@ export function classifyToday(params: {
     };
     if (issue.state === "closed") {
       const days = daysSince(issue.closed_at, now);
-      if (issue.closed_at && days <= limits.doneDays) {
+      // Closed with steps left undone: the plan withdrew it, nobody finished it. Counted as finished, a project whose
+      // portions were cut anew said «90 terminadas esta semana» with one subtarea delivered.
+      const marker = parseTaskProgressMarker(issue.body ?? undefined);
+      const withdrawn = (task?.steps ?? []).some((step) => !marker.doneStepIds.includes(step.id));
+      if (issue.closed_at && days <= limits.doneDays && !withdrawn) {
         out.done.push({ ...base, group: "done", days, reason: `Cerrada ${daysText(days)}` });
       }
       continue;

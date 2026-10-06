@@ -2704,5 +2704,12 @@
   "se.wordHelpsMany": "{n} ajudas",
   "tb.seeReview": "Ver a revisão",
   "tb.withdrawnAt": "Foi retirada do plano {when}: o que você tinha escrito não foi entregue.",
-  "fa.leftToReadOne": "Falta ler 1 parte."
+  "fa.leftToReadOne": "Falta ler 1 parte.",
+  "rv.askFirstOne": "Você deixou {n} comentário. Para que quem escreveu o corrija, toque em «Pedir mudanças».",
+  "rv.askFirstMany": "Você deixou {n} comentários. Para que quem escreveu os corrija, toque em «Pedir mudanças».",
+  "rv.askAgain": "Pedir mudanças de novo",
+  "rv.changesAutoOne": "Deixei {n} comentário no rascunho.",
+  "rv.changesAutoMany": "Deixei {n} comentários no rascunho.",
+  "rv.youApprovedAuthor": "Você já aprovou. Falta que @{who}, que o escreveu, diga que está de acordo.",
+  "rv.agreeOwnApproved": "{who} já aprovou. Se para você também está bem, diga e a revisão termina. Para mudar o texto, toque em «Corrigir meu rascunho»."
 }

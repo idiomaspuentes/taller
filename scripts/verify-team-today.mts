@@ -62,6 +62,17 @@ test("una subtarea que espera va a «esperando» con su motivo, aunque lleve dí
   assert.equal(g.running.length, 1);
 });
 
+test("una subtarea que el plan retiró no cuenta como terminada", () => {
+  const stepped: Pick<AssignmentsDoc, "teams" | "phases"> = { ...board, teams: [task("tpl", "Traducir TPL", { steps: [{ id: "borrador", name: "Borrador" }, { id: "pares", name: "Revisión en pares" }] as ProjectTask["steps"] })] };
+  const delivered = issue("tpl", { assignee: "ana", created: 9, closed: 1 });
+  (delivered as { body: string }).body += '\n<!-- gateway-task-progress {"doneStepIds":["borrador","pares"]} -->';
+  const withdrawn = issue("tpl", { assignee: "ana", created: 9, closed: 1, portion: "p2" });
+  (withdrawn as { body: string }).body += '\n<!-- gateway-task-progress {"doneStepIds":["borrador"]} -->';
+  const untouched = issue("tpl", { created: 9, closed: 1, portion: "p3" });
+  const g = classifyToday({ issues: [delivered, withdrawn, untouched], board: stepped, now });
+  assert.deepEqual(g.done.map((r) => r.issue.number), [delivered.number], "ni la que quedó a medias ni la que nadie tocó");
+});
+
 test("terminadas: solo las cerradas dentro de la última semana", () => {
   const recent = issue("tpl", { assignee: "ana", created: 20, closed: 2 });
   const old = issue("tpl", { assignee: "ana", created: 30, closed: 20, portion: "p2" });

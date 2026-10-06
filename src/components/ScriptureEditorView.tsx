@@ -28,6 +28,7 @@ import {
   tryReadExistingBookUsfm,
   type RecreateBookWorkspacePlan,
 } from "../dcs/bookBootstrap";
+import { isShaConflict } from "../dcs/afinacionStore";
 import { BootstrapError, explainRepoFileError } from "../dcs/repoFile";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { resolveScriptureTarget, type ScriptureTarget } from "../domain/scriptureTarget";
@@ -918,6 +919,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const loadGen = useRef(0);
   const recreateInspectGen = useRef(0);
   const usfmSource = useRef<"none" | "remote" | "boot">("none");
+  /** The branch the draft was read from: its file's hash is that branch's, and no other's. */
+  const readFrom = useRef<string | undefined>(undefined);
   const editedVerses = useRef<Set<string>>(new Set());
   const announcedCache = useRef(false);
   const [bootPending, setBootPending] = useState(false);
@@ -1072,10 +1075,15 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (!stillThisLoad()) return;
       if (source === "boot" && usfmSource.current === "remote") {
         if (head) setBranch(head);
-        if (fileSha) setSha(fileSha);
+        // What the bootstrap gives is the file of the GROUP's draft. Its hash is right for the person's branch only
+        // while that branch is still a copy of it. Once the person had saved, coming back to correct took this hash
+        // over the one just read from their branch whenever the bootstrap answered last, and the next save failed
+        // with «sha does not match»: a dead end for somebody who had only pressed «Terminé».
+        if (fileSha && readFrom.current !== head) setSha(fileSha);
         setCreatedNew(false);
         return;
       }
+      if (source === "remote") readFrom.current = head;
       usfmSource.current = source;
       setUsfm(text);
       setSha(fileSha);
@@ -1527,8 +1535,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     announce(t("se.splitAnnounce").replace("{a}", String(cur.from)).replace("{b}", String(cur.to)));
   }
 
-  /** `quiet`: a save the app does by itself while the person writes says nothing; the state beside the title does. */
-  async function save(quiet = false): Promise<boolean> {
+  /**
+   * `quiet`: a save the app does by itself while the person writes says nothing; the state beside the title does.
+   * `withSha`: the hash to save over, when the one in hand turned out not to be the file's.
+   */
+  async function save(quiet = false, withSha?: string): Promise<boolean> {
     if (!ctx || !range) return false;
     const editsAtStart = editCount.current;
     persistLocal(drafts, branch);
@@ -1580,7 +1591,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         content: nextUsfm,
         message,
         branch: head,
-        sha,
+        sha: withSha ?? sha,
         book: target.book,
         resource: target.resource,
         taskId: ctx.taskId,
@@ -1595,7 +1606,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         saved.commitSha,
       );
       setUsfm(nextUsfm);
-      setSha(saved.sha ?? sha);
+      setSha(saved.sha ?? withSha ?? sha);
       setBranch(saved.branch || head);
       setCreatedNew(false);
       // What was written while this save was on its way is still to be saved.
@@ -1605,6 +1616,16 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (!quiet) announce(t("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${saved.branch || head}`));
       return true;
     } catch (err) {
+      // Door43 says the file is not the one this save meant to replace. When what is on the person's branch is
+      // still the text that was loaded here, only the hash in hand was wrong: nothing of anybody's is lost by
+      // saving over it, so it is saved, once. Anything else is a real conflict and is said.
+      if (!withSha && isShaConflict(err)) {
+        const now = await tryReadExistingBookUsfm({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branches: [head] }).catch(() => null);
+        if (now?.sha && now.sha !== sha && now.text === usfm) {
+          setSha(now.sha);
+          return save(quiet, now.sha);
+        }
+      }
       setError(
         explainRepoFileError(err, {
           owner: target.owner,

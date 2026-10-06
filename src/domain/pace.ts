@@ -48,6 +48,15 @@ export function paceOf(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams">,
   return { weeks, perWeek, left, ...(endsAt ? { endsAt } : {}) };
 }
 
+/**
+ * The day a project would end, as it is said: «18 de octubre», and with its year when it is not this one. Without
+ * the year, a project a year from its end read as ending in twelve days.
+ */
+export function endDateText(endsAt: string, language: string, now: Date = new Date()): string {
+  const day = new Date(endsAt);
+  return day.toLocaleDateString(language, { day: "numeric", month: "long", ...(day.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) });
+}
+
 /** A pace as it is said: «5», «2,5», «0,3» — never «0» of something that moves. */
 export function paceNumber(perWeek: number, language: string): string {
   if (!(perWeek > 0)) return "0";

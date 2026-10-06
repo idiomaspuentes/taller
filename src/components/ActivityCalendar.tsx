@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { calendarWeeks, lastDays, recentDays, workDays, workSummary, type HeatSlot } from "../domain/activity";
-import { paceNumber, PACE_WEEKS, type Pace } from "../domain/pace";
+import { endDateText, paceNumber, PACE_WEEKS, type Pace } from "../domain/pace";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 
@@ -113,7 +113,7 @@ export function PaceChart({ pace }: { pace: Pace }) {
   const t = useT();
   const language = useUiLanguage();
   const top = Math.max(1, ...pace.weeks);
-  const ends = pace.endsAt ? new Date(pace.endsAt).toLocaleDateString(language, { day: "numeric", month: "long", year: new Date(pace.endsAt).getFullYear() === new Date().getFullYear() ? undefined : "numeric" }) : "";
+  const ends = pace.endsAt ? endDateText(pace.endsAt, language) : "";
   return (
     <div className="pace">
       {/* With nothing finished in any of them there is nothing to draw: the sentence under says it. */}

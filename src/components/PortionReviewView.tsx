@@ -556,13 +556,31 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       ? t(open.length === 1 ? "rv.openMineOne" : "rv.openMineMany").replace("{n}", String(open.length))
       : t(open.length === 1 ? "rv.openOthersOne" : "rv.openOthersMany").replace("{n}", String(open.length));
 
+  // Whoever reviews and has left comments must send the draft back for them to be attended. That was a second
+  // button of the box for a comment on the whole passage, off until something was written there, and the foot of the
+  // screen spoke only of approving: somebody who left three comments had nothing telling them what to do next.
+  // Now the foot offers it, and it needs no writing.
+  const openMine = open.length > 0 && open.every((row) => row.by.toLowerCase() === me.toLowerCase());
+  const canAsk = canSendBack && !mine && openMine;
+  /** The first time round: nothing was sent back yet, so asking is the one thing to do. */
+  const askFirst = canAsk && !runtime?.returnedBy;
+  const askNow = () => void comment("", t(open.length === 1 ? "rv.changesAutoOne" : "rv.changesAutoMany").replace("{n}", String(open.length)), true);
+
+  // Who is still to approve, by name: «falta que apruebe alguien más» left whoever reviewed wondering who, and the
+  // author was told the review would end «cuando quien revisa también apruebe» after the reviewer had approved.
+  const approvals = (runtime?.approvals ?? []).map((login) => login.toLowerCase());
+  const authorPending = Boolean(step?.includeAuthorInApproval && author && !approvals.includes(author.toLowerCase()));
+  const reviewersDone = (runtime?.assignees ?? []).filter((login) => approvals.includes(login.toLowerCase()));
+
   /** What the person can do now, said in one line next to the button that does it. */
   const status = !step
     ? ""
     : stepDone
       ? t("rv.stepDone")
       : approved
-        ? t("rv.youApproved")
+        ? authorPending && !isAuthor
+          ? t("rv.youApprovedAuthor").replace("{who}", author ?? "")
+          : t("rv.youApproved")
         : !unlocked
           ? sentBack
             ? byAuthor
@@ -573,7 +591,9 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
               : t(mine ? "rv.changesForYou" : askedByMe ? "rv.youAskedChanges" : "rv.changesPending")
             : t(mine ? "rv.finishDraftFirst" : "rv.draftNotFinished")
         : canApprove
-          ? openSaid || t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove")
+          ? askFirst
+            ? t(open.length === 1 ? "rv.askFirstOne" : "rv.askFirstMany").replace("{n}", String(open.length))
+            : openSaid || (mine && reviewersDone.length ? t("rv.agreeOwnApproved").replace("{who}", reviewersDone.map((login) => `@${login}`).join(", ")) : t(mine ? "rv.agreeOwn" : article ? "rv.readThenApproveArticle" : "rv.readThenApprove"))
           : canTake
             ? t(runtime?.assignees.length ? "rv.takeOneMore" : "rv.takeFirst")
             : mine
@@ -969,10 +989,22 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   <Button type="button" onClick={onClose}>
                     {t("fa.back")}
                   </Button>
-                ) : canApprove ? (
-                  <Button type="button" disabled={acting || open.length > 0} onClick={() => void approve()}>
-                    <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t(mine ? "rv.agree" : "rv.approve")}
+                ) : canApprove && askFirst ? (
+                  <Button type="button" disabled={acting} onClick={askNow}>
+                    {acting ? t("wf.saving") : t("rv.askChanges")}
                   </Button>
+                ) : canApprove ? (
+                  <>
+                    {/* The draft came back and something is still not right: it can be sent back again. */}
+                    {canAsk ? (
+                      <Button type="button" variant="outline" disabled={acting} onClick={askNow}>
+                        {t("rv.askAgain")}
+                      </Button>
+                    ) : null}
+                    <Button type="button" disabled={acting || open.length > 0} onClick={() => void approve()}>
+                      <Check size={16} aria-hidden /> {acting ? t("wf.saving") : t(mine ? "rv.agree" : "rv.approve")}
+                    </Button>
+                  </>
                 ) : canTake ? (
                   <Button type="button" disabled={acting} onClick={() => void take()}>
                     {acting ? t("wf.saving") : t("rv.take")}

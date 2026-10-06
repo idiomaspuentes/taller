@@ -6,7 +6,7 @@ import { commentOnIssue, loadPmConfig, reassignIssue } from "../dcs/issues";
 import { remindDecisionVoters } from "../dcs/alignmentDecisionStore";
 import { loadTeamToday, type TodayProject } from "../dcs/teamToday";
 import { mergePeople, peopleWork, type HeatSlot } from "../domain/activity";
-import { paceNumber, paceOf, PACE_WEEKS } from "../domain/pace";
+import { endDateText, paceNumber, paceOf, PACE_WEEKS } from "../domain/pace";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
 import { projectTally } from "../domain/workProgress";
 import { useDecisionReminders } from "../useDecisionReminders";
@@ -228,7 +228,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                       : row.pace.perWeek > 0
                         ? t("pc.pace").replace("{weeks}", String(PACE_WEEKS)).replace("{n}", paceNumber(row.pace.perWeek, language))
                         : t("pc.none").replace("{weeks}", String(PACE_WEEKS))}
-                    {row.pace.endsAt ? ` ${t("pc.ends").replace("{date}", new Date(row.pace.endsAt).toLocaleDateString(language, { day: "numeric", month: "long" }))}` : ""}
+                    {row.pace.endsAt ? ` ${t("pc.ends").replace("{date}", endDateText(row.pace.endsAt, language))}` : ""}
                   </p>
                 </li>
               ))}

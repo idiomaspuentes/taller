@@ -173,7 +173,7 @@ export function explainRepoFileError(
     return `No se encontró «${file}» en ${loc}${branch}${statusSuffix(404)}.`;
   }
   if (err.status === 409 || err.status === 422) {
-    return `Conflicto al guardar «${file}» en ${loc}${branch}${statusSuffix(err.status)}: ${dcsMessage(err)}. Vuelve a cargar y reintenta.`;
+    return `No se pudo guardar: «${file}» cambió en Door43 desde que lo abriste. Lo que escribiste sigue en este dispositivo: sal de la tarea, vuelve a entrar y se guardará. Detalle técnico: ${loc}${branch}${statusSuffix(err.status)}: ${dcsMessage(err)}`;
   }
   return `No se pudo guardar «${file}» en ${loc}${branch}${statusSuffix(err.status)}: ${dcsMessage(err)}`;
 }

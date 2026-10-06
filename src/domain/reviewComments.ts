@@ -66,11 +66,23 @@ export function reviewCommentsFrom(rows: RawComment[], draftAuthor?: string): Re
 }
 
 /**
+ * The message the review writes by itself when changes are asked for from the foot of the screen («Te dejé 2
+ * comentarios en el borrador»), in either language. It tells the author to look, and asks nothing of its own.
+ */
+const BARE_REQUEST = /^(?:@\S+\s+)?(?:Pido cambios|Peço mudanças):\s+(?:Te dejé \d+ comentarios? en el borrador|Deixei \d+ comentários? no rascunho)\.$/;
+
+/** Whether a comment only says «I asked for changes: look at my comments», with nothing to attend in itself. */
+export function isBareRequest(comment: Pick<ReviewComment, "ref" | "text">): boolean {
+  return !comment.ref && BARE_REQUEST.test(comment.text.trim());
+}
+
+/**
  * The comments that hold a review: what somebody other than the author said, and has not been given as resolved.
- * What the author writes there is an answer, and holds nothing.
+ * What the author writes there is an answer, and holds nothing. Nor does the message that only says changes were
+ * asked for: it had to be marked as resolved like the comments it pointed to, one more touch for nothing.
  */
 export function openComments(comments: ReviewComment[], draftAuthor?: string): ReviewComment[] {
-  return comments.filter((comment) => !comment.resolved && !same(comment.by, draftAuthor));
+  return comments.filter((comment) => !comment.resolved && !same(comment.by, draftAuthor) && !isBareRequest(comment));
 }
 
 /**
