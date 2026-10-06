@@ -335,7 +335,7 @@ debajo, **el cuadro completo tal como el equipo lo tradujo** en sus historias (`
 recursos). Quien traduce marca en él lo que dice el ejemplo:
 
 - **Dos toques hacen una parte:** su primera palabra y su última, en el orden que sea. Para una sola palabra se
-  toca dos veces la misma. Lo marcado queda escrito en la caja, detrás del número del cuadro.
+  toca dos veces la misma. Lo marcado queda escrito debajo, bajo «Tu traducción», detrás del número del cuadro.
 - **Otra parte, otros dos toques.** No hay nada que activar. Las partes se leen seguidas («Dios» + «creó el
   universo…» da «Dios creó el universo…», sin escribir quién lo creó).
 - **Puntos suspensivos solo si el ejemplo los trae** («God … the universe … in six days»): entonces se ponen entre
@@ -345,9 +345,12 @@ recursos). Quien traduce marca en él lo que dice el ejemplo:
   palabras cortas («y», «el») a las que el dedo no acierta.
 
 Pensado para el teléfono: el ejemplo se abre sin levantar el teclado, no hay que mantener pulsado ni arrastrar, y
-los botones miden lo que un dedo. Después se puede retocar a mano en la caja. Lo que una persona escribió no se
-pisa: si la caja ya tiene texto propio, lo marcado espera y un botón («Cambiar la traducción por lo marcado») lo
-pone en su lugar. Si el equipo no tiene esa historia, se ve solo la fuente y se traduce como cualquier párrafo.
+los botones miden lo que un dedo. **No hay caja de texto a la vista:** como aquí no hace falta escribir, lo marcado
+se lee como texto y debajo quedan solo «Escribir a mano» y «Siguiente». «Escribir a mano» abre la caja, con lo que
+haya, para quien prefiera escribir el ejemplo o retocarlo. Antes la caja estaba siempre, con «Copiar el original»
+y las herramientas de negrita y enlace: eran media docena de cosas más en una pantalla que ya tiene el cuadro y
+sus flechas. Lo que una persona escribió no se pisa: si ya hay texto propio, lo marcado espera y un botón
+(«Cambiar la traducción por lo marcado») lo pone en su lugar. Si el equipo no tiene esa historia, se ve solo la fuente y se traduce como cualquier párrafo.
 Estos ejemplos cuentan como párrafos por traducir.
 
 En una lista de ejemplos o de referencias, cada renglón del archivo del equipo se pone junto al de la fuente

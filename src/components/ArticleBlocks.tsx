@@ -96,6 +96,8 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
   const [rows, setRows] = useState<ArticleRow[]>(() => articleRows(source, value, make) ?? []);
   /** The pieces written in since they were made: what they hold is shown, whatever language it is in. */
   const [touched, setTouched] = useState<ReadonlySet<number>>(() => new Set());
+  /** The pieces made by touching what is beside them whose box somebody asked for, to write in it by hand. */
+  const [byHand, setByHand] = useState<ReadonlySet<number>>(() => new Set());
   /** What the pieces were last made from, or last said: another text or another source comes from outside. */
   const made = useRef({ text: normalizeMarkdown(value), source });
   const latest = useRef(rows);
@@ -113,6 +115,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
     made.current = { text, source };
     setRows(articleRows(source, value, make) ?? []);
     setTouched(new Set());
+    setByHand(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `make` says the same for the same source
   }, [value, source]);
 
@@ -156,7 +159,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
 
   const openPiece = useCallback((index: number, element: HTMLElement) => opened.current(index, element), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated"), made: t("ab.made") }), [language]);
+  const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated"), made: t("ab.made"), result: t("ab.result"), byHand: t("ab.byHand") }), [language]);
 
   return (
     <div className="ab" data-part={part}>
@@ -208,6 +211,10 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
         const shown = pending && Boolean(row.draft.trim()) && !touched.has(index) ? "" : row.draft;
         const over = above?.(index);
         const ours = beside?.(row, { text: shown, write: (markdown) => put(index, markdown) });
+        // Made by touching what is beside it, there is nothing to type: no box stands there asking for it, with its
+        // tools and its «Copiar el original». What was marked reads as text, and the box is one press away for
+        // whoever would rather write it, or retouch it.
+        const quiet = Boolean(ours) && !byHand.has(index);
         return (
           <div key={index} id={rowId} className="ab-open" data-slide>
             {over ? <div className="ab-over">{over}</div> : null}
@@ -220,24 +227,48 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
             ) : (
               <HelpMarkdownView className="ab-peek" content={row.source} />
             )}
-            <MarkdownEditor
-              id={`${id}-${index}`}
-              compact
-              plain={plain}
-              emptyAs={row.shape}
-              value={shown}
-              book={book}
-              placeholder={words.placeholder}
-              onChange={(markdown) => put(index, markdown)}
-              aside={
-                shown.trim() ? undefined : (
-                  <button type="button" className="ab-act" onClick={() => copy(index)}>
-                    {words.copy}
+            {quiet ? (
+              <div className="ab-result">
+                {shown.trim() ? (
+                  <>
+                    <p className="ab-result__name">{words.result}</p>
+                    <HelpMarkdownView className="ab-result__text" content={shown} />
+                  </>
+                ) : null}
+                <div className="ab-result__bar">
+                  <button
+                    type="button"
+                    className="ab-act"
+                    onClick={() => {
+                      setByHand((prev) => new Set(prev).add(index));
+                      requestAnimationFrame(() => document.getElementById(`${id}-${index}`)?.focus());
+                    }}
+                  >
+                    {words.byHand}
                   </button>
-                )
-              }
-              trailing={next}
-            />
+                  {next ? <div className="mde-trailing">{next}</div> : null}
+                </div>
+              </div>
+            ) : (
+              <MarkdownEditor
+                id={`${id}-${index}`}
+                compact
+                plain={plain}
+                emptyAs={row.shape}
+                value={shown}
+                book={book}
+                placeholder={words.placeholder}
+                onChange={(markdown) => put(index, markdown)}
+                aside={
+                  shown.trim() ? undefined : (
+                    <button type="button" className="ab-act" onClick={() => copy(index)}>
+                      {words.copy}
+                    </button>
+                  )
+                }
+                trailing={next}
+              />
+            )}
             {under ? <div className="ab-under">{under}</div> : null}
           </div>
         );

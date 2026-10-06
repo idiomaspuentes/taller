@@ -2581,5 +2581,7 @@
   "he.pendingTitleQuestionsOne": "Falta {n} pergunta por traduzir",
   "he.pendingTitleQuestionsMany": "Faltam {n} perguntas por traduzir",
   "tb.showRest": "Ver mais {n}",
-  "tb.stepUntaken": "Ninguém assumiu «{step}» ainda."
+  "tb.stepUntaken": "Ninguém assumiu «{step}» ainda.",
+  "ab.result": "Sua tradução",
+  "ab.byHand": "Escrever à mão"
 }

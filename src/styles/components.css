@@ -7799,6 +7799,16 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .ab[data-part="title"] .ab-read { font-size: 1.25rem; font-weight: 800; line-height: 1.25; }
 /* What a reviewer said about the piece in hand, over it: read before the piece is corrected. */
 .ab-over { display: grid; gap: 0.375rem; min-width: 0; }
+/* A piece made by touching what is beside it: what was marked reads as text, with the way on under it. */
+.ab-result { display: grid; gap: 0.25rem; min-width: 0; }
+.ab-result__name { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
+.ab-result__text.scripture-editor__help-md { min-width: 0; font-size: 1rem; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
+.ab-result__text :is(p, ul, ol, blockquote) { margin-top: 0; margin-bottom: 0; color: inherit; }
+.ab-result__text :is(ul, ol) { margin-left: 1.25em; }
+/* As in a piece that is closed: the number of the frame is a link for whoever reads the published article. */
+.ab-result__text a, .ab-result__text button { pointer-events: none; }
+/* As under a box: the way on stays at the foot of what is seen, under a long frame. */
+.ab-result__bar { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 0.5rem; min-height: 44px; padding-top: 0.25rem; background: var(--surface); }
 /* Beside the source of a piece, what the team already has for it: the frame of a story an example quotes. */
 .ab-source { display: grid; gap: 0.5rem; min-width: 0; }
 .ab-story { display: grid; gap: 0.125rem; min-width: 0; padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); }
