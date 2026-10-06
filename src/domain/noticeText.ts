@@ -110,7 +110,8 @@ export function readableLine(body: string, max = 140): string {
  * the verse as it is written. The comment is stored under an address («JUD figs-metaphor ¶5»), which is for the tools.
  */
 export function placeName(place: CommentPlace, lang: NoticeLang): string {
-  if (place.kind === "verse") return place.ref;
+  // A note or a question is told by its verse: the id of its row says nothing to whoever reads.
+  if (place.kind === "verse" || place.kind === "help") return place.ref;
   if (place.kind === "title") return say(lang, "he.partTitle");
   if (place.kind === "subtitle") return say(lang, "he.partSubtitle");
   const paragraph = say(lang, "cp.paragraph", { n: place.index + 1 });

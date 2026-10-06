@@ -236,4 +236,4 @@ export function articleItems(files: { filename: string; now: string; before: str
 }
 
 // How a comment says where it is about (`**JUD 1:2** — …`) is told in `commentPlace.ts`, which the notices read too.
-export { parseRefComment, refComment } from "./commentPlace";
+export { helpRowRef, parseRefComment, refComment } from "./commentPlace";

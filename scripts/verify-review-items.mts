@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { articleItems, diffWords, introItems, parseRefComment, refComment, reviewItems } from "../src/domain/reviewItems";
 import { introPieceRef, pieceRef } from "../src/domain/articleBlocks";
-import { commentPlace, placedMessage, plainLine } from "../src/domain/commentPlace";
+import { commentPlace, helpRowRef, placedMessage, plainLine } from "../src/domain/commentPlace";
 import { commentNotice, placedLine } from "../src/domain/noticeText";
 import { canResolveComment, glossaryComment, openComments, resolutionComment, reviewCommentsFrom, isBareRequest, type ReviewComment } from "../src/domain/reviewComments";
 import { localizeThread } from "../src/domain/threadNames";
@@ -115,6 +115,23 @@ test("un comentario sobre un párrafo de una introducción dice de cuál, y se v
   for (const ref of [introPieceRef(undefined, 2), introPieceRef(1, 0)]) {
     assert.deepEqual(parseRefComment(refComment("jud", ref, "Falta una frase.")), { ref, text: "Falta una frase." }, ref);
   }
+});
+
+test("un comentario sobre una nota nombra esa nota, no solo su versículo: diez notas pueden ser de un versículo", () => {
+  const ref = helpRowRef("1:3", "x7k2");
+  assert.equal(ref, "1:3 §x7k2");
+  const written = refComment("jud", ref, "Falta traducir esto.");
+  assert.deepEqual(parseRefComment(written), { ref, text: "Falta traducir esto." }, "se vuelve a encontrar bajo su nota");
+  assert.deepEqual(commentPlace(ref), { kind: "help", ref: "1:3", id: "x7k2" });
+  assert.notEqual(parseRefComment(written).ref, "1:3", "no es de todas las notas del versículo");
+  // In a notice and under a task it is told by its verse: the id of the row is for the tools.
+  assert.equal(placedLine(written, "es"), "1:3 — Falta traducir esto.");
+  assert.equal(placedMessage("JUD 1:3 §x7k2 — Falta traducir esto.")?.place.kind, "help", "sin sus marcas, sigue diciendo el lugar");
+  // A row without an id of its own (its place among the rows stands for it) is named by the verse, as before.
+  assert.equal(helpRowRef("1:3", "1:3#4"), "1:3");
+  assert.equal(helpRowRef("1:3", ""), "1:3");
+  // A comment from before, about the verse: still read as it was.
+  assert.deepEqual(parseRefComment(refComment("jud", "1:3", "¿«llamados» o «convocados»?")), { ref: "1:3", text: "¿«llamados» o «convocados»?" });
 });
 
 test("de un comentario se saca el lugar del que habla, para decirlo con palabras y no con su dirección", () => {

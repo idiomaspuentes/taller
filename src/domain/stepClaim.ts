@@ -364,6 +364,16 @@ export function changesPending(steps: TaskStep[], progress: TaskProgressMarker, 
   return !work || stepClaimMode(work) === "none" || getStepRuntime(progress, reviewed).assignees.length > 0;
 }
 
+/**
+ * A review whose work was sent back and has been handed in again: it is for whoever reviews to look at it once
+ * more. The card of a reviewer read the same before and after («Revisar»), and nothing said the draft had come back.
+ */
+export function handedInAgain(steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep): boolean {
+  if (isStepDone(progress, step.id) || !getStepRuntime(progress, step.id).returnedBy) return false;
+  const reviewed = reviewedStepId(steps, step);
+  return Boolean(reviewed && isStepDone(progress, reviewed));
+}
+
 /** Whether this step should appear as a claimable card for the user. */
 export function isStepClaimableForUser(
   login: string,

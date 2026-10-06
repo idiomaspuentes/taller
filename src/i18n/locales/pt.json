@@ -2711,5 +2711,18 @@
   "rv.changesAutoOne": "Deixei {n} comentário no rascunho.",
   "rv.changesAutoMany": "Deixei {n} comentários no rascunho.",
   "rv.youApprovedAuthor": "Você já aprovou. Falta que @{who}, que o escreveu, diga que está de acordo.",
-  "rv.agreeOwnApproved": "{who} já aprovou. Se para você também está bem, diga e a revisão termina. Para mudar o texto, toque em «Corrigir meu rascunho»."
+  "rv.agreeOwnApproved": "{who} já aprovou. Se para você também está bem, diga e a revisão termina. Para mudar o texto, toque em «Corrigir meu rascunho».",
+  "ab.linkMissingOne": "Falta um link do original. Toque nele para colocá-lo:",
+  "ab.linkMissingMany": "Faltam links do original. Toque em cada um para colocá-lo:",
+  "rv.seeMissingOne": "Ver a que falta",
+  "rv.seeMissingMany": "Ver as {n} que faltam",
+  "rv.nextMissing": "Ver a próxima que falta",
+  "rv.sayMissing": "Dizer que falta traduzi-la",
+  "rv.missingSaid": "Falta traduzir isto.",
+  "he.goPending": "Ir para a próxima sem traduzir",
+  "tb.correctedLook": "@{who} já corrigiu o rascunho. Veja de novo: se ficou bom, aprove.",
+  "rv.seeOpenOne": "Ver o comentário",
+  "rv.seeOpenMany": "Ver o próximo comentário",
+  "tb.agreeToEnd": "{who} já aprovou o seu rascunho. Falta você dizer que concorda.",
+  "tb.readyToDeliver": "Todos os passos estão feitos. Entregue para que passe ao rascunho do grupo."
 }

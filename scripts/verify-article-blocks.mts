@@ -11,7 +11,7 @@ import { bookNamesIn } from "../src/domain/books";
 import { answerTextId, helpTexts, helpsLeft, knownWords, type HelpText } from "../src/domain/helpTexts";
 import type { HelpsDraftItem } from "../src/domain/helpsDraft";
 import { normalizeMarkdown, parseMarkdown } from "../src/domain/helpMarkup";
-import { isPassageList, localPassages } from "../src/domain/passageLinks";
+import { addSourceLink, isPassageList, linkName, localPassages, sourceLinks, withSourceLinks } from "../src/domain/passageLinks";
 import { boldTerms, dotsOf, frameSentences, frameWords, marksText, nearestSentences, nudgeMarks, pickedText, proposedSentences, readMarks, readSentences, sentencesText, storiesIn, storyExample, storyFrames, storyPath, storyRefOf, termsOf, touchMarks, type Marks } from "../src/domain/storyFrames";
 import { parseRefComment, refComment } from "../src/domain/reviewItems";
 
@@ -168,6 +168,49 @@ test("la app escribe las referencias bíblicas en el idioma del equipo: el libro
   assert.equal(localPassages("* [eternity](../kt/eternity.md)", es), null);
   // A language the app has no names of the books in: nothing is written, and the piece stays with the translator.
   assert.equal(bookNamesIn("fr"), undefined);
+});
+
+test("los enlaces de una pieza de la fuente se conservan en su traducción, aunque quien traduce no los escriba", () => {
+  const source = "1. Introduction ([1:1–2](../01/01.md))";
+  assert.deepEqual(sourceLinks(source), [{ raw: "[1:1–2](../01/01.md)", target: "../01/01.md", text: "1:1–2" }]);
+  // What is typed on a phone: the reference as text, with the dash the keyboard gives.
+  assert.deepEqual(withSourceLinks(source, "1. Introducción (1:1–2)"), { text: "1. Introducción ([1:1–2](../01/01.md))", missing: [] });
+  assert.equal(withSourceLinks(source, "1. Introducción (1:1-2)").text, "1. Introducción ([1:1-2](../01/01.md))", "el guion del teclado vale por la raya");
+  const kept = "1. Introducción ([1:1–2](../01/01.md))";
+  assert.deepEqual(withSourceLinks(source, kept), { text: kept, missing: [] }, "lo que ya está enlazado no se toca");
+  assert.deepEqual(withSourceLinks(source, ""), { text: "", missing: [] }, "sin traducción no hay nada que enlazar");
+  // The same reference twice in the source, once in the translation: one is put back, the other is said to be missing.
+  const twice = withSourceLinks("See [1:5](../01/05.md) and [1:5](../01/05.md).", "Ver 1:5.");
+  assert.equal(twice.text, "Ver [1:5](../01/05.md).");
+  assert.equal(twice.missing.length, 1);
+  // A passage of another book: the source names the book in its language, the translation in its own.
+  const other = "Paul wrote in [Romans 6:1–2a](../../rom/06/01.md): “Should we continue in sin?”";
+  assert.deepEqual(withSourceLinks(other, "Pablo escribió en Romanos 6:1–2a: “¿Continuaremos en el pecado?”"), { text: "Pablo escribió en [Romanos 6:1–2a](../../rom/06/01.md): “¿Continuaremos en el pecado?”", missing: [] });
+  assert.equal(withSourceLinks("See [1 John 2:3](../../1jn/02/03.md).", "Ver 1 Juan 2:3.").text, "Ver [1 Juan 2:3](../../1jn/02/03.md).");
+  assert.equal(withSourceLinks(other, "Pablo escribió sobre esto a los romanos.").missing.length, 1, "sin el lugar, no se adivina");
+  // «1:5» inside «11:55» is another reference.
+  assert.equal(withSourceLinks("See [1:5](../01/05.md).", "Ver 11:55.").text, "Ver 11:55.");
+});
+
+test("un enlace cuyas palabras no están en la traducción se ofrece para ponerlo de un toque", () => {
+  const source = "Translators may choose a clearer title. (See: [[rc://*/ta/man/translate/translate-names]])";
+  const draft = "Los traductores pueden elegir un título más claro. (Ver: Cómo traducir nombres)";
+  const { text, missing } = withSourceLinks(source, draft);
+  assert.equal(text, draft, "no se inventa dónde va");
+  assert.deepEqual(missing.map(linkName), ["translate-names"]);
+  assert.equal(addSourceLink("Pueden elegir un título más claro.", missing[0]!), "Pueden elegir un título más claro [[rc://*/ta/man/translate/translate-names]].");
+  assert.equal(addSourceLink("Un título más claro (Ver:)", missing[0]!), "Un título más claro (Ver: [[rc://*/ta/man/translate/translate-names]])");
+  assert.equal(addSourceLink("", missing[0]!), "[[rc://*/ta/man/translate/translate-names]]");
+  // Two links in one piece: the second goes after the first, not inside it.
+  const two = "The word “you” is plural. (See: [[rc://*/ta/man/translate/figs-exclusive]]; and [[rc://*/ta/man/translate/figs-you]])";
+  const both = withSourceLinks(two, "La palabra «ustedes» es plural. (Ver:)").missing;
+  const first = addSourceLink("La palabra «ustedes» es plural. (Ver:)", both[0]!);
+  assert.equal(first, "La palabra «ustedes» es plural. (Ver: [[rc://*/ta/man/translate/figs-exclusive]])");
+  const second = addSourceLink(first, withSourceLinks(two, first).missing[0]!);
+  assert.equal(second, "La palabra «ustedes» es plural. (Ver: [[rc://*/ta/man/translate/figs-exclusive]] [[rc://*/ta/man/translate/figs-you]])");
+  assert.deepEqual(withSourceLinks(two, second).missing, []);
+  const done = addSourceLink(draft, missing[0]!);
+  assert.deepEqual(withSourceLinks(source, done).missing, [], "puesto, ya no falta");
 });
 
 test("en el artículo, las referencias quedan escritas por la app y lo demás sigue siendo de quien traduce", () => {

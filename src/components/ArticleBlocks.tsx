@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, MessageSquare } from "lucide-react";
+import { Check, ChevronDown, MessageSquare, Link2 } from "lucide-react";
 import { articleProgress, articleRows, rowPending, rowsMarkdown, translatedWords, vocabularyOf, type ArticleRow } from "../domain/articleBlocks";
+import { addSourceLink, linkName, withSourceLinks } from "../domain/passageLinks";
 import { normalizeMarkdown } from "../domain/helpMarkup";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
@@ -186,6 +187,20 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
     [put, touch, id],
   );
 
+  // Leaving a piece: what its source links and the translation shows with the same words («1:1–2») is linked
+  // again. Nobody types a link on a phone, and the reference was being saved as plain text without a word.
+  const left = useRef<number | null | undefined>(open);
+  useEffect(() => {
+    const prev = left.current;
+    left.current = open;
+    if (prev === undefined || prev === null || prev === open || readOnly) return;
+    const row = latest.current[prev];
+    if (!row || row.made || !row.draft.trim()) return;
+    const { text } = withSourceLinks(row.source, row.draft);
+    if (text !== row.draft) put(prev, text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const openPiece = useCallback((index: number, element: HTMLElement) => opened.current(index, element), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const words = useMemo(() => ({ copy: t("ab.copy"), placeholder: t("ab.placeholder"), next: t("ab.next"), done: t("ab.done"), untranslated: t("ab.untranslated"), made: t("ab.made") }), [language]);
@@ -289,6 +304,21 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
                 trailing={next}
               />
             )}
+            {(() => {
+              // A link of the source whose words are not in the translation (the name of an article): offered by a
+              // touch, for the person to put it where the original has it.
+              const lost = shown.trim() ? withSourceLinks(row.source, row.draft).missing : [];
+              return lost.length ? (
+                <p className="ab-links">
+                  <span>{t(lost.length === 1 ? "ab.linkMissingOne" : "ab.linkMissingMany")}</span>
+                  {lost.map((link, at) => (
+                    <button key={`${link.target}-${at}`} type="button" className="ab-link" onMouseDown={(event) => event.preventDefault()} onClick={() => put(index, addSourceLink(row.draft, link))}>
+                      <Link2 size={14} aria-hidden /> {linkName(link)}
+                    </button>
+                  ))}
+                </p>
+              ) : null;
+            })()}
             {under ? <div className="ab-under">{under}</div> : null}
           </div>
         );

@@ -11,6 +11,7 @@ import {
   canAskForChanges,
   canTakeBack,
   changesPending,
+  handedInAgain,
   takeBack,
   takenBackByAuthor,
   reviewedStepId,
@@ -165,6 +166,8 @@ assert(
   assert(askForChanges(reviewing, steps, pair, "carol") === reviewing, "asking without a seat changes nothing");
   const again = { ...back, doneStepIds: [...back.doneStepIds, "draft"] };
   assert(!changesPending(steps, again, pair) && canApproveStep("bob", again, pair, "alice"), "handed in again, the same reviewer approves");
+  assert(handedInAgain(steps, again, pair), "and the review knows the draft came back, to say so to whoever reviews");
+  assert(!handedInAgain(steps, back, pair) && !handedInAgain(steps, reviewing, pair), "not while it is being corrected, nor in a review nobody sent back");
   // The author takes the draft back to correct it: what a reviewer's request does, by the author's own hand.
   assert(canTakeBack("alice", steps, reviewing, pair, "alice"), "the author may take the draft back while its review is open");
   assert(!canTakeBack("bob", steps, reviewing, pair, "alice"), "nobody but the author takes it back");

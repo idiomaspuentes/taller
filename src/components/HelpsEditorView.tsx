@@ -20,6 +20,7 @@ import { articleRows, introPieceRef, pieceRef, rowsPossible, startingText } from
 import { answerTextId, helpTexts, helpsLeft, knownWords, type HelpText } from "../domain/helpTexts";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
+import { helpRowRef } from "../domain/commentPlace";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
@@ -712,14 +713,21 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     return ref ? reviewComments.filter((row) => row.ref === ref) : [];
   };
   const verseOf = (item: HelpsDraftItem) => (item.kind === "tsv" && item.chapter && item.verse ? `${item.chapter}:${item.verse}` : "");
-  // Several notes may be of one verse, and a comment names only the verse: it is shown once, with the first of them.
+  // Several notes may be of one verse: a comment names its note (`helpRowRef`) and is shown over it. One from before
+  // names only the verse, and is shown once, with the first of them.
   const firstOfVerse = new Map<string, string>();
   for (const item of items) if (verseOf(item) && !firstOfVerse.has(verseOf(item))) firstOfVerse.set(verseOf(item), item.id);
-  const commentsOfVerse = (item: HelpsDraftItem) => (firstOfVerse.get(verseOf(item)) === item.id ? reviewComments.filter((row) => row.ref === verseOf(item)) : []);
+  const rowRef = (item: HelpsDraftItem) => (verseOf(item) ? helpRowRef(verseOf(item), item.id) : "");
+  const commentsOfVerse = (item: HelpsDraftItem) => {
+    const verse = verseOf(item);
+    if (!verse) return [];
+    return reviewComments.filter((row) => (rowRef(item) !== verse && row.ref === rowRef(item)) || (row.ref === verse && firstOfVerse.get(verse) === item.id));
+  };
   // Until the pieces of the article are known, no comment can be said to be about none of them.
   const placesKnown = countKnown;
   const places = new Set([
     ...firstOfVerse.keys(),
+    ...items.map(rowRef).filter(Boolean),
     ...texts.flatMap((text) => Array.from({ length: progress[text.id]?.count ?? 0 }, (_, index) => refOfPiece(text, index)).flatMap((ref) => (ref ? [ref] : []))),
   ]);
   const generalComments = placesKnown ? reviewComments.filter((row) => !places.has(row.ref)) : [];
@@ -754,7 +762,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     if (!texts.length || texts.some((text) => !progress[text.id])) return;
     autoOpened.current = true;
     // Opened from a comment about a paragraph, or about a verse (the conversation): that one, before any other.
-    const ofVerse = ctx?.focus ? texts.find((text) => text.field === "text" && verseOf(text.item) === ctx.focus) : undefined;
+    const ofVerse = ctx?.focus
+      ? (texts.find((text) => text.field === "text" && rowRef(text.item) === ctx.focus) ?? texts.find((text) => text.field === "text" && verseOf(text.item) === ctx.focus))
+      : undefined;
     const focused = ctx?.focus
       ? (texts.map((text) => ({ id: text.id, index: Array.from({ length: progress[text.id]?.count ?? 0 }, (_, at) => refOfPiece(text, at)).indexOf(ctx.focus!) })).find((piece) => piece.index >= 0) ??
         (ofVerse ? { id: ofVerse.id, index: 0 } : undefined))
@@ -771,7 +781,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const verseFocused = useRef(false);
   useEffect(() => {
     if (verseFocused.current || busy || !ctx?.focus) return;
-    const first = items.find((item) => verseOf(item) === ctx.focus);
+    const first = items.find((item) => rowRef(item) === ctx.focus) ?? items.find((item) => verseOf(item) === ctx.focus);
     if (!first) return;
     verseFocused.current = true;
     requestAnimationFrame(() => document.getElementById(`help-at-${first.id}`)?.scrollIntoView({ block: "center" }));
@@ -846,7 +856,15 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           </div>
           {/* How far along the passage is, in sight wherever its list is scrolled to: the bar at the foot says other things while there is something to save. */}
           {unit && countKnown && toTranslate > 0 ? (
-            <span className="fam-tabs__count">{t(`he.count${unit}`).replace("{done}", String(toTranslate - pending)).replace("{total}", String(toTranslate))}</span>
+            pending ? (
+              // While some are left, the count leads to the next of them: the one a reviewer said was missing may be
+              // screens away from the one just corrected, and «Siguiente» opens the note that follows, translated or not.
+              <button type="button" className="fam-tabs__count fam-tabs__count--go" title={t("he.goPending")} onClick={toFirstPending}>
+                {t(`he.count${unit}`).replace("{done}", String(toTranslate - pending)).replace("{total}", String(toTranslate))} ↓
+              </button>
+            ) : (
+              <span className="fam-tabs__count">{t(`he.count${unit}`).replace("{done}", String(toTranslate - pending)).replace("{total}", String(toTranslate))}</span>
+            )
           ) : null}
         </div>
       ) : null}

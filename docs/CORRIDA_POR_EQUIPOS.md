@@ -352,8 +352,58 @@ Lo demás que se arregló al recorrerlo:
 De la lista de arriba quedan resueltos los puntos 1 y 4, y en parte el 5 (el «Sin guardar» al abrir venía del mismo
 defecto de la huella).
 
+### El tercer pasaje: Notas · Judas 1:1–4 (6 de octubre)
+
+**Clara** (valeska, poco hábil) traduce la introducción al libro (24 párrafos) y 35 notas; **Andrés** (Elisha, poco
+hábil) revisa. Clara dejó a propósito **dos notas sin traducir**. Todo a 375 px.
+
+El camino completo funcionó: borrador incompleto → la app avisa («Quedan 2 notas sin traducir», y «Seguir
+traduciendo» abre la primera) → Clara lo pasa así → Andrés lo ve en «Puedes sumarte» → lo comenta → pide cambios →
+Clara corrige → Andrés da por resueltos sus comentarios y aprueba → Clara dice que está de acuerdo → entrega. No
+se rompió nada, y el guardado al volver a corregir no falló (el arreglo de la huella vale también aquí).
+
+**⚠ Lo que no se entendía, y se arregló al recorrerlo**
+
+- **Los enlaces se perdían sin avisar.** La fuente dice «Introduction ([1:1–2](…))» y quien traduce escribe
+  «Introducción (1:1–2)»: nadie teclea un enlace en un teléfono. Se guardaba como texto y la nota publicada
+  quedaba sin su camino al pasaje. *Ahora* la app vuelve a enlazar lo que la traducción muestra con las mismas
+  palabras (también «Romanos 6:1–2» por «Romans 6:1–2», y el guion del teclado por la raya), y lo que no puede
+  adivinar (el enlace a un artículo de la Academia) lo ofrece bajo la caja: «Falta un enlace del original. Tócalo
+  para ponerlo».
+- **Un comentario sobre una nota salía bajo diez notas.** El comentario se guardaba por versículo, y 1:3 tiene diez
+  notas: «Falta traducir esta nota» se leía bajo las diez en la revisión, y sobre la **primera** (que sí estaba
+  traducida) en el editor de quien debía corregir. *Ahora* el comentario nombra su nota y sale solo con ella, en
+  la revisión, en el editor y en la conversación. Los comentarios anteriores, que nombran solo el versículo,
+  salen una vez, con la primera nota de ese versículo.
+- **Encontrar lo que falta.** Las dos notas sin traducir estaban a 16 y a 30 pantallas de la primera (20.778 px de
+  revisión). *Ahora* junto a «33 de 35 traducidas» hay un botón «Ver las 2 que faltan», y cada una lleva a la
+  siguiente. En la nota sin traducir, un botón «Decir que falta traducirla» deja el comentario sin escribir.
+  Recorrido entero de quien revisa: cinco toques y ninguna palabra tecleada.
+- **Volver a los propios comentarios.** En la segunda revisión el pie decía «Tienes 2 comentarios sin resolver»,
+  y los dos estaban otra vez a 16 y 30 pantallas. *Ahora* el pie lleva a cada uno: «Ver el siguiente comentario».
+- **Lo mismo para quien corrige.** «Siguiente» abre la nota que sigue, esté traducida o no. *Ahora* el contador
+  («35 de 36 notas ↓») lleva a la siguiente sin traducir.
+- **Las tarjetas no decían en qué estaba la subtarea.** Quien revisa leía «Revisar» antes y después de que el
+  autor corrigiera; el autor leía «Ver la revisión» mientras lo revisaban y cuando ya solo faltaba él; y con todo
+  hecho, «100 %» y «Entregar». *Ahora*: «@valeska ya corrigió su borrador. Míralo otra vez: si quedó bien,
+  aprueba», «@Elisha ya aprobó tu borrador. Falta que tú digas que estás de acuerdo» y «Todos los pasos están
+  hechos. Entrégalo para que pase al borrador del grupo».
+- **«Abre tu borrador» y un botón que decía «Traducir».** A quien le pidieron cambios, el botón le dice ahora
+  «Corregir mi borrador», las mismas palabras que en la revisión.
+
+De la lista de arriba quedan resueltos el punto 9 y, dentro de la app abierta, el 12.
+
+**⚠ Lo que sigue sin resolver de este pasaje**
+
+- El editor cuenta «34 de 36 notas» (la introducción cuenta como una) y la revisión «33 de 35 traducidas».
+- Mientras se traducían los 24 párrafos de la introducción el contador siguió en «0 de 36 notas», y «Terminé el
+  borrador» se enciende con los primeros párrafos.
+- La negrita de la fuente se pierde si quien traduce no la pone.
+- Bajo un comentario que solo dice «Falta traducir esto» se ofrece «Guardar como regla o en el glosario».
+- El pie de la revisión con comentarios abiertos ocupa 125 px de los 812: tres líneas y dos botones.
+
 ### Dónde quedó
 
-- TPL 1:1–4 y TPS 1:1–4: entregadas. Las dos lecturas grupales ya aparecen en «Puedes sumarte».
-- Todo lo demás de Traducción sigue libre: 4 porciones de TPL, 4 de TPS, 5 de Notas, 5 de Preguntas, 1 artículo de
+- TPL 1:1–4, TPS 1:1–4 y Notas 1:1–4: entregadas. Las dos lecturas grupales ya aparecen en «Puedes sumarte».
+- Todo lo demás de Traducción sigue libre: 4 porciones de TPL, 4 de TPS, 4 de Notas, 5 de Preguntas, 1 artículo de
   Palabras y 4 de Academia. Elisha tiene en revisión el artículo «call…» y abelper8 el de «Blessings».

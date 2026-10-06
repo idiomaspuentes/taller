@@ -2711,5 +2711,18 @@
   "rv.changesAutoOne": "Te dejé {n} comentario en el borrador.",
   "rv.changesAutoMany": "Te dejé {n} comentarios en el borrador.",
   "rv.youApprovedAuthor": "Ya aprobaste. Falta que @{who}, que lo escribió, diga que está de acuerdo.",
-  "rv.agreeOwnApproved": "{who} ya aprobó. Si para ti también está bien, dilo y la revisión termina. Para cambiar el texto, pulsa «Corregir mi borrador»."
+  "rv.agreeOwnApproved": "{who} ya aprobó. Si para ti también está bien, dilo y la revisión termina. Para cambiar el texto, pulsa «Corregir mi borrador».",
+  "ab.linkMissingOne": "Falta un enlace del original. Tócalo para ponerlo:",
+  "ab.linkMissingMany": "Faltan enlaces del original. Toca cada uno para ponerlo:",
+  "rv.seeMissingOne": "Ver la que falta",
+  "rv.seeMissingMany": "Ver las {n} que faltan",
+  "rv.nextMissing": "Ver la siguiente que falta",
+  "rv.sayMissing": "Decir que falta traducirla",
+  "rv.missingSaid": "Falta traducir esto.",
+  "he.goPending": "Ir a la siguiente sin traducir",
+  "tb.correctedLook": "@{who} ya corrigió su borrador. Míralo otra vez: si quedó bien, aprueba.",
+  "rv.seeOpenOne": "Ver el comentario",
+  "rv.seeOpenMany": "Ver el siguiente comentario",
+  "tb.agreeToEnd": "{who} ya aprobó tu borrador. Falta que tú digas que estás de acuerdo.",
+  "tb.readyToDeliver": "Todos los pasos están hechos. Entrégalo para que pase al borrador del grupo."
 }

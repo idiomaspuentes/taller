@@ -11,9 +11,19 @@ export function refComment(book: string, ref: string, text: string): string {
   return `**${book.toUpperCase()} ${ref}** — ${text.trim()}`;
 }
 
+/**
+ * The name a comment about one row of a help (a note, a question) is filed under: its verse and the id of the row,
+ * «1:3 §x7k2». Ten notes may be of one verse: named by the verse alone, «Falta traducir esta nota» was read under
+ * each of the ten by whoever reviewed, and over the first of them by whoever had to correct it. A row without an id
+ * of its own is named by its verse, as before.
+ */
+export function helpRowRef(ref: string, id: string): string {
+  return /^[A-Za-z0-9]+$/.test(id.trim()) ? `${ref} §${id.trim()}` : ref;
+}
+
 /** The reference a comment was written about (`1:2`), and what it says without it; `ref` empty when it has none. */
 export function parseRefComment(body: string): { ref: string; text: string } {
-  const m = body.match(/^\*\*[A-Z0-9]{3}\s+(\d+:\d+(?:[–-]\d+)?[a-z]?)\*\*\s*[—-]\s*/);
+  const m = body.match(/^\*\*[A-Z0-9]{3}\s+(\d+:\d+(?:[–-]\d+)?[a-z]?(?: §[A-Za-z0-9]+)?)\*\*\s*[—-]\s*/);
   if (m) return { ref: m[1]!.replace("-", "–"), text: body.slice(m[0].length).trim() };
   // About an article, which is named by its title instead of a verse.
   const article = body.match(/^\*\*[A-Z0-9]{3}\s+([^*\n]+?)\*\*\s*[—-]\s*/);
@@ -22,6 +32,7 @@ export function parseRefComment(body: string): { ref: string; text: string } {
 
 export type CommentPlace =
   | { kind: "verse"; ref: string }
+  | { kind: "help"; ref: string; id: string }
   | { kind: "paragraph"; article: string; index: number }
   | { kind: "title"; article: string }
   | { kind: "subtitle"; article: string }
@@ -31,6 +42,8 @@ export type CommentPlace =
 export function commentPlace(ref: string): CommentPlace | null {
   const text = ref.trim();
   if (/^\d+:\d+(?:[–-]\d+)?[a-z]?$/.test(text)) return { kind: "verse", ref: text.replace("-", "–") };
+  const help = text.match(/^(\d+:\d+(?:[–-]\d+)?[a-z]?) §([A-Za-z0-9]+)$/);
+  if (help) return { kind: "help", ref: help[1]!.replace("-", "–"), id: help[2]! };
   const intro = text.match(/^(?:(\d+):)?intro ¶(\d+)$/);
   if (intro) return { kind: "intro", ...(intro[1] ? { chapter: Number(intro[1]) } : {}), index: Number(intro[2]) - 1 };
   const part = text.match(/^(.+?) \((título|subtítulo)\)$/);

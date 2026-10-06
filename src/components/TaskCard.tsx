@@ -6,7 +6,7 @@ import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
 import { placedPreview } from "../commentPlaceText";
 import type { BoardCard } from "../domain/myTasksBoard";
-import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending, takenBackByAuthor } from "../domain/stepClaim";
+import { canApproveStep, canClaimStep, closesInItsTool, isStepActor, isStepUnlocked, stepClaimMode, changesPending, takenBackByAuthor, handedInAgain } from "../domain/stepClaim";
 import { changedKinds, versionsByKind, type SourceKind } from "../domain/sourceVersions";
 import { getStepRuntime, parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
@@ -138,6 +138,24 @@ export function TaskCard(props: Props) {
     // The author took the draft back to correct it: nobody asked for changes, and saying so sent people looking for who had.
     const own = takenBackByAuthor(steps, progress, waiting, assigneeOf(card));
     status = mine ? t(own ? "tb.correctingOwn" : "tb.changesForYou") : t(own ? "tb.authorCorrecting" : "tb.changesWait").replace("{who}", assigneeOf(card));
+    // The line says «abre tu borrador» and the button under it read «Traducir»: it says what the line asks for.
+    if (mine && hasTool && !ownReview && !props.externalTool) label = t("rv.correct");
+  }
+  // The draft came back corrected: whoever reviews it, and has not approved it since, is told to look again.
+  const again = !waiting && card.group !== "done" && !mine ? steps.find((step) => handedInAgain(steps, progress, step)) : undefined;
+  if (again && !status) {
+    const seat = getStepRuntime(progress, again.id);
+    const here = (logins: string[]) => logins.some((login) => login.toLowerCase() === props.login.toLowerCase());
+    if (here(seat.assignees) && !here(seat.approvals)) status = t("tb.correctedLook").replace("{who}", assigneeOf(card));
+  }
+  // Every step is done and the card reads «100 %»: what is left is to hand it in, and the card says what that does.
+  if (action.kind === "deliver" && !status) status = t("tb.readyToDeliver");
+  // Whoever reviewed has approved and the review waits for its author's word: the author's card says so. It showed
+  // only «Ver la revisión», the same as while the reviewers were still reading.
+  if (ownReview && !status && !waiting && (action.kind === "begin" || action.kind === "continue") && action.step) {
+    const approvals = getStepRuntime(progress, action.step.id).approvals;
+    const others = approvals.filter((login) => login.toLowerCase() !== props.login.toLowerCase());
+    if (others.length && others.length === approvals.length) status = t("tb.agreeToEnd").replace("{who}", others.map((login) => `@${login}`).join(", "));
   }
   // A free step whose tool cannot know when it is done (an outside one, or none at all): the person says so here.
   // One that is completed where its work is done is not: «Terminé «Borrador»» beside «Traducir», before a word

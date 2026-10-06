@@ -10,13 +10,16 @@ import { readRaw } from "./afinacionLoad";
 import { loadLinkedPullFiles } from "./portionPr";
 import { readRepoFile } from "./repoFile";
 import { articleFilesOf, articleRows, introPieceRef, pieceRef } from "../domain/articleBlocks";
-import { plainLine } from "../domain/commentPlace";
+import { helpRowRef, plainLine } from "../domain/commentPlace";
+import { noteFromTsv } from "../domain/helpMarkup";
+import { tsvRowId } from "../domain/helpsDraft";
 import { archiveRefName, bookCodeFromWorkHead, parsePortionPrMarker } from "../domain/portionPr";
 import { introItems } from "../domain/reviewItems";
 import { bookCodeFromIssueTitle, refFromIssueTitle } from "../domain/solverLaunch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import type { AssignmentsDoc } from "../domain/types";
 import { parseRefRange } from "../domain/usfmEdit";
+import { parseTsvTable } from "../prep/tsv";
 
 export async function loadPlaceTexts(params: { session: GtSession; issue: DcsIssue; board: AssignmentsDoc | null }): Promise<Record<string, string>> {
   const { session, issue, board } = params;
@@ -58,8 +61,19 @@ export async function loadPlaceTexts(params: { session: GtSession; issue: DcsIss
 
   const notes = names.find((name) => /(^|\/)tn_[^/]*\.tsv$/i.test(name));
   const chapter = parseRefRange(refFromIssueTitle(issue.title))?.chapter;
+  // A note or a question a comment names by its row (`helpRowRef`): what it says, as the draft has it.
+  const rowsOf = (tsv: string) => {
+    for (const row of parseTsvTable(tsv).rows) {
+      const place = (row.Reference ?? "").trim().match(/^\d+:\d+/)?.[0];
+      const said = plainLine(noteFromTsv(row.Note || row.Question || ""));
+      if (place && said && helpRowRef(place, tsvRowId(row)) !== place) out[helpRowRef(place, tsvRowId(row))] = said;
+    }
+  };
+  const questions = names.find((name) => /(^|\/)tq_[^/]*\.tsv$/i.test(name));
+  if (questions) rowsOf(await read(questions));
   if (notes && chapter) {
     const [draft, source] = await Promise.all([read(notes), readRaw(session, pkg.owner, pkg.tn, notes.split("/").pop()!).catch(() => null)]);
+    rowsOf(draft);
     const original = new Map(introItems(source ?? "", "", chapter, () => true).map((row) => [row.key, row.now]));
     for (const intro of introItems(draft, "", chapter, () => true)) {
       const from = original.get(intro.key);
