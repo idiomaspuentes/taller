@@ -747,20 +747,103 @@ cerró (4,4 s) y volvió a «Mis tareas» con el botón del aviso.
 - La pantalla de escritorio (1280 px) se comprobó por medidas (una columna de 763 px, sin desborde): el panel no
   dio una captura legible.
 
+### Los otros nueve «Desafíos» y lo que pasó al cerrar (7 de octubre)
+
+Priscila entregó «Desafíos TPL · 1:1–4» desde su tarjeta, y las otras nueve subtareas se respondieron por la
+misma herramienta con un guion: Priscila y Tomás a la vez, y Rubén detrás, que cerró cada ronda. Fueron 270
+desafíos y 810 respuestas (1,3–2,3 s cada una; 50–110 s por subtarea y persona).
+
+**⚠ Lo que frenaba el proceso**
+
+- **Cerrar la revisión no hacía seguir la tarea.** El botón dice «para que la tarea siga», y la subtarea quedaba
+  abierta hasta que alguien de quienes se habían sumado encontrara «Entregar» en su lista; quien la cerró, llamado
+  desde el chat, ni la tenía en la suya, y a nadie se le avisaba. *Ahora* una tarea que trabaja sobre el borrador
+  del grupo queda entregada al cerrar su último paso («Revisión cerrada… La tarea está entregada»).
+- **Después de responder los treinta desafíos de ocho subtareas, quedaban ocho tarjetas «En curso» con «0 %» y un
+  «Revisar» grande**, como si no se hubiera empezado: la barra contaba los puntos acordados, que no suben hasta que
+  responde la tercera persona. *Ahora* cuenta las respuestas que valen (un tercio cuando una de tres ha
+  respondido todo), y la tarjeta de quien ya respondió pasa a «En espera», la primera: «Ya respondiste todo.
+  Faltan las respuestas de tu equipo.», con «Ver mis respuestas».
+
+### Palabras clave (TPL y TPS, 124 usos cada una)
+
+Priscila marcó los 124 usos del TPL y luego los del TPS (212 s y 304 s); Tomás y Rubén confirmaron. En el TPL
+salió un caso real: **«Conocer» está como «sabiendo» en 1:5 y «entienden» en 1:10**, y «entienden» traduce
+además otro verbo en el mismo versículo. Tomás propuso «saben», Priscila se sumó con «Pienso lo mismo» llegando
+desde el lugar «1:10» del mensaje, y Rubén decidió y corrigió el versículo. Quedó 124 de 124 y la ronda se cerró
+y entregó sola (12 s).
+
+**⚠ Lo que se encontró y se arregló**
+
+- **«Así se tradujo en otros lugares» salía sobre las palabras que hay que tocar**, un paso antes de la pregunta
+  que responde («¿…como en el resto del libro?»), y no se veía al contestar. *Ahora* está bajo la pregunta.
+- Una traducción marcada con su coma («entienden;») se listaba con ella y la herramienta decía que lo elegido no
+  coincidía consigo mismo. *Ahora* los signos de los extremos no cuentan.
+- «Hay 3 traducciones distintas» avisaba en naranja de «salvación», «habiendo salvado» y «sálvenlos». *Ahora*
+  pregunta: «Aparece de 3 formas. Mira si dicen lo mismo.»
+- Mientras cargan los nombres de los términos salía «Know» y después «Conocer, conocimiento, desconocido,
+  distinguir» en dos líneas: todo lo de abajo bajaba una línea bajo el dedo. *Ahora* se guarda el sitio.
+- Bajo «De acuerdo con @abelper8» había un segundo «Pienso lo mismo». *Ahora* solo en la primera propuesta.
+- Al llegar desde un mensaje con lugar, la herramienta abre en el punto sin acuerdo de ese versículo (probado
+  aquí: abrió en 1:10).
+
+**⚠ Sin resolver**
+
+- El orden de los usos dentro de un versículo no es el mismo en TPL y en TPS.
+- El término «call» sale con su título en inglés (la fuente no lo tiene traducido).
+- Las formas de un verbo cuentan como traducciones distintas; «Usar como preferida» compara la palabra exacta.
+- Tras decidir y corregir, el uso corregido queda sin palabras marcadas hasta que alguien las toca.
+- Dos veces Door43 de pruebas falló una escritura con tres pestañas trabajando a la vez («Door43 no permite hacer
+  esto con tu cuenta», «No hay conexión con Door43»); al repetir funcionó. El primer mensaje culpa a los permisos.
+- La herramienta de todo el libro tarda 11 s en abrir.
+
+### Alinear: el primero, a mano (Alinear TPL · Judas 1:1–4)
+
+**Elena** (practicante, poco hábil con la tecnología) tomó «Alinear». La pantalla dice una sola cosa («Toca
+«Judas,» y luego la caja de la palabra que traduce»), con el borrador arriba y una caja por palabra del griego.
+
+**⚠ Lo que frenaba, y se arregló**
+
+- **Una palabra repetida junto a una coma no se podía alinear.** En «…de Jesucristo… para Jesucristo, llamados:»
+  la segunda no entraba en ninguna caja, y al intentarlo la primera se salía de la suya. Las repeticiones se
+  contaban por la palabra escrita con su signo y se buscaban sin él. Arreglado en `usfm-ast` (repositorio
+  hermano): ahora el banco muestra «Jesucristo¹» y «Jesucristo,²».
+- **Con los cuatro versículos terminados no había forma visible de terminar el paso.** La barra ofrecía
+  «Seguir», que no hacía nada; la tarjeta ofrecía otra vez «Alinear»; el paso solo se terminaba con un «Aprobar»
+  pequeño bajo «Ver los pasos». *Ahora* la herramienta acaba con «Terminé de alinear», dice «Listo. Ahora tu
+  equipo revisa la alineación.» y lleva de vuelta; y la tarjeta pide «Terminé «Alinear»».
+- **«Toca la caja» llevaba el dedo a la palabra griega**, que abría su significado en vez de recibir la palabra.
+  *Ahora*, con una palabra elegida, la recibe.
+- **Al tocar una palabra del borrador todas las cajas crecían y la línea de arriba cambiaba de alto**: la caja a
+  la que se apuntaba se movía (25 px). *Ahora* las cajas vacías no cambian (y miden 40 px de alto, no 30) y la
+  línea guarda su sitio y siempre dice lo que sigue.
+
+Elena dejó dos fallos para la revisión: «Que» (1:2) en la caja de ἔλεος, y Χριστοῦ sin palabra en 1:1 y 1:4
+(«Jesucristo» entero en la caja de Ἰησοῦ).
+
+**⚠ Sin resolver**
+
+- Las glosas de las cajas están en inglés («a servant»).
+- Una palabra del original sin ninguna palabra no se avisa al terminar el versículo.
+- Las palabras del banco miden 32 px de alto.
+- Con cajas de 40 px, un versículo de 17 palabras griegas ya no cabe entero en la pantalla.
+
 ### Dónde quedó
 
 - **Traducción: terminada.** Las 29 subtareas de la fase están entregadas, y los tres equipos de la fase quedaron
   sin miembros.
 - **Afinación: en marcha.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (coordina abelperez;
-  abelperez, abelper8 y Elisha son «Persona habilitada»; valeska, «Practicante») y están asignados a Desafíos,
-  Palabras clave y Alinear de su texto.
-  **«Desafíos TPL · Judas 1:1–4» (subtarea 123) está cerrada**: 30 de 30 acordados, dos de ellos tras un
-  desacuerdo (el 17 por respuestas; el 5 por decisión del equipo), con dos correcciones del TPL (1:1 y 1:3).
-  Las otras nueve subtareas de Desafíos esperan en «Puedes sumarte»; «Palabras clave» espera a que cierren las
-  cinco de su texto.
+  abelperez, abelper8 y Elisha son «Persona habilitada»; valeska, «Practicante»).
+  **Cerradas y entregadas:** las diez subtareas de «Desafíos» y «Palabras clave TPL».
+  **«Palabras clave TPS»:** respondieron Priscila y Tomás (124 cada uno); falta Rubén y cerrar.
+  **«Alinear TPL · 1:1–4»:** Elena alineó y terminó el paso; falta «Revisar la alineación» (Tomás, Priscila,
+  Rubén), con sus dos fallos. Las otras cuatro de «Alinear TPL» están libres; las cinco de «Alinear TPS» esperan
+  a «Palabras clave TPS».
 - Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P,
   practicante)**, Elisha = **Priscila (P)**.
-- Lo que falta recorrer de Afinación, según el plan: Palabras clave (el mismo término de dos maneras); Alinear con
-  revisión, voto y plazo; alguien que no responde y hay que recordárselo.
-- En espera: Palabras clave, Alinear, Armonización, Validación y Publicación. Armonización, Validación y
-  Publicación todavía no tienen equipo: se les pone al llegar a cada una.
+- Lo que falta recorrer de Afinación, según el plan: la revisión de una alineación con propuesta, objeción,
+  decisión del equipo con voto y plazo, y alguien que no responde.
+- En espera: Armonización, Validación y Publicación, que todavía no tienen equipo: se les pone al llegar a cada
+  una.
+- En `usfm-ast` hay un commit local (`ef2ae1f`, en la rama en que estaba el repositorio) con el arreglo de las
+  repeticiones: sin él, una sesión que clone `usfm-ast` de GitHub no lo tiene.
