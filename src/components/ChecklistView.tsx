@@ -456,7 +456,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     const help: ProposalTarget[] = proposing?.onlyVerse
       ? [{ id: "verse", label: t("pr.targetVerse").replace("{what}", scopeLabel(kind, data.board?.settings?.resourceNames, language)).replace("{ref}", where), resource: kind, commentOnly: true, ...whose(kind) }]
       : kind === "notas"
-        ? [{ id: "help", label: t("pr.targetNote"), resource: kind, rowId: item.id, field: "Note", text: item.body, ...whose(kind) }]
+        ? [{ id: "help", label: t("pr.targetNote"), resource: kind, rowId: item.id, field: "Note", text: item.body, format: "note" as const, ...whose(kind) }]
         : kind === "preguntas"
           ? [
               { id: "answer", label: t("pr.targetAnswer"), resource: kind, rowId: item.id, field: "Response", text: item.body, ...whose(kind) },
@@ -466,9 +466,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     const article: ProposalTarget[] = proposing?.onlyVerse
       ? []
       : articlePath
-        ? [{ id: "article", label: t("pr.targetArticle"), resource: "academia", path: `${articlePath}/01.md`, text: academy[articlePath]?.text ?? undefined, ...whose("academia") }]
+        ? [{ id: "article", label: t("pr.targetArticle"), resource: "academia", path: `${articlePath}/01.md`, text: academy[articlePath]?.text ?? undefined, format: "markdown" as const, ...whose("academia") }]
         : slug
-          ? [{ id: "article", label: t("pr.targetArticle"), resource: kind, path: termArticlePath(termKind as TermKind, slug), text: articles[slug] ?? undefined, ...whose(kind) }]
+          ? [{ id: "article", label: t("pr.targetArticle"), resource: kind, path: termArticlePath(termKind as TermKind, slug), text: articles[slug] ?? undefined, format: "markdown" as const, ...whose(kind) }]
           : [];
     const read = texts.map<ProposalTarget>((resource) => ({ id: resource, label: t("pr.targetText").replace("{name}", textLabel(resource)), resource, text: data.texts[resource]?.verses[item.verse], ...whose(resource) }));
     // A step, or a group, that goes over the articles starts from the article.
@@ -905,7 +905,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                             {proposal.proposal.id === proposedHelp?.proposal.id ? null : (
                               // What is proposed for the help itself is read in the help, above: here, what is about something else.
                               <span className="ag-diff">
-                                <b>{scopeLabel(proposal.proposal.resource, data.board?.settings?.resourceNames, language)}:</b> {proposal.proposal.after ? <ProposalDiff before={proposal.proposal.before ?? ""} after={proposal.proposal.after} /> : excerpt(proposal.reason)}
+                                <b>{scopeLabel(proposal.proposal.resource, data.board?.settings?.resourceNames, language)}:</b> {proposal.proposal.after ? <ProposalDiff before={proposal.proposal.before ?? ""} after={proposal.proposal.after} plain /> : excerpt(proposal.reason)}
                               </span>
                             )}
                             {proposal.state === "open" && proposal.by.toLowerCase() === (session?.username ?? "").toLowerCase() && !stepDone ? (
@@ -979,7 +979,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           )}
         </>
       ) : null}
-      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} failed={proposing?.reason || undefined} reason="" saving={saving} onSend={(draft) => void sendProposal(draft)} />
+      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} failed={proposing?.reason || undefined} reason="" book={data?.book} saving={saving} onSend={(draft) => void sendProposal(draft)} />
     </div>
   );
 }

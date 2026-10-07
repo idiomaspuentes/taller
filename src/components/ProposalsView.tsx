@@ -268,7 +268,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       announce(t("ck.proposed"));
     });
   const answerTargets: ProposalTarget[] = answering
-    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
+    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(answering.proposal.path ? { format: "markdown" as const } : answering.proposal.rowId && (answering.proposal.field ?? "Note") === "Note" ? { format: "note" as const } : {}), ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
     : [];
   // A version the help no longer fits is not what the next one starts from: that one starts from the help.
   const answerStart = answering && changedTo(answering) === undefined ? answering.proposal.after : undefined;
@@ -361,7 +361,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                     <summary>
                       {view.proposal.after ? (
                         <span className="ag-diff ag-short">
-                          <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} />
+                          <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} plain />
                         </span>
                       ) : (
                         <span className="ag-comment">{view.reason}</span>
@@ -375,7 +375,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                     </summary>
                     {view.proposal.after ? (
                       <p className="ag-diff ag-whole">
-                        <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} whole />
+                        <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} whole plain />
                       </p>
                     ) : view.proposal.before ? (
                       <p className="ag-whole">{view.proposal.before}</p>
@@ -407,7 +407,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                       </p>
                       {changed.trim() ? (
                         <p className="ag-diff">
-                          <b>{t("ag.staleNow")}</b> <ProposalDiff before={view.proposal.before ?? ""} after={changed} />
+                          <b>{t("ag.staleNow")}</b> <ProposalDiff before={view.proposal.before ?? ""} after={changed} plain />
                         </p>
                       ) : null}
                     </div>
@@ -483,7 +483,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           </div>
         </>
       ) : null}
-      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} failed={answering ? askedOf(answering) || undefined : undefined} reason={answering?.reason ?? ""} startFrom={answerStart} saving={saving} onSend={(draft) => void answerWith(draft)} />
+      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} book={ctx?.book} failed={answering ? askedOf(answering) || undefined : undefined} reason={answering?.reason ?? ""} startFrom={answerStart} saving={saving} onSend={(draft) => void answerWith(draft)} />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { diffExcerpt, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
+import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
+import { MarkdownEditor } from "./MarkdownEditor";
 import { useT, type MessageKey } from "../i18n/messages";
 
 /** How a proposal stands, said to the person. `{team}`: who maintains what it would change, when it went to them. */
@@ -11,7 +13,10 @@ export const PROPOSAL_STATE_KEY: Record<ProposalState, MessageKey> = { open: "ag
  * every word of it, for reading the proposal; otherwise a few words around what changed.
  */
 export function ProposalDiff({ before, after, whole, plain }: { before: string; after: string; whole?: boolean; /** As it reads, without the marks it is written with (see `readable`). */ plain?: boolean }) {
-  const all = plain ? wordDiff(readable(before), readable(after)) : wordDiff(before, after);
+  // As it reads, unless the two versions read the same and differ only in how they are written (a link that now
+  // points elsewhere, bold put on a word): then what is written is what changed, and is what is shown.
+  const asRead = Boolean(plain) && readable(before) !== readable(after);
+  const all = asRead ? wordDiff(readable(before), readable(after)) : wordDiff(before, after);
   const pieces = whole ? all : diffExcerpt(all);
   // A note keeps its line ends as the two characters «\n»: they are line ends here too, not words of the note.
   const read = (text: string) => text.replace(/\\n/g, whole ? "\n" : " ");
@@ -35,6 +40,12 @@ export type ProposalTarget = {
   text?: string;
   /** The new version already proposed for it and still to be settled: another one starts from it, and takes its place. */
   start?: string;
+  /**
+   * How its words are kept: a `note` in a table file (its line ends written out), an article in `markdown`. Those
+   * are written as they look (bold is bold, a link to an article is a piece that names it), not as they are kept:
+   * the box showed «**Fe**» and «[[rc://…]]» to somebody who came to change a word.
+   */
+  format?: "note" | "markdown";
   /** There is nothing to rewrite (what is missing has no words yet): only a comment. */
   commentOnly?: boolean;
   /** Who maintains it, when it is not this team: the proposal is asked of them once the team agrees on it. */
@@ -54,6 +65,8 @@ type Props = {
   failed?: string;
   /** Why, to start with: what was said of the proposal this one answers. */
   reason: string;
+  /** The book the helps are of, for the links to its verses. */
+  book?: string;
   /** The version to start from, instead of the words as they are: answering a proposal with another. */
   startFrom?: string;
   saving?: boolean;
@@ -64,7 +77,7 @@ type Props = {
  * Proposing a change: what, how (the new version written over the words as they are, or a comment) and why. The
  * reason comes written: it is the question that failed. A sheet over the help, so the help stays where it was.
  */
-export function ProposalSheet({ open, onClose, targets, failed, reason: firstReason, startFrom, saving, onSend }: Props) {
+export function ProposalSheet({ open, onClose, targets, failed, reason: firstReason, book, startFrom, saving, onSend }: Props) {
   const t = useT();
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [mode, setMode] = useState<"text" | "comment">("text");
@@ -146,7 +159,19 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
               <label className="af-lbl" htmlFor="pr-text">
                 {t("pr.versionLbl")}
               </label>
-              <textarea id="pr-text" ref={textRef} className="af-textarea pr-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+              {target?.format ? (
+                <MarkdownEditor
+                  // Made anew for another help or another start: it keeps what it last said the text was.
+                  key={`${opening}|${targetId}`}
+                  id="pr-text"
+                  compact={target.format === "note"}
+                  book={book}
+                  value={target.format === "note" ? noteFromTsv(text) : text}
+                  onChange={(written) => setText(target.format === "note" ? noteToTsv(written) : written)}
+                />
+              ) : (
+                <textarea id="pr-text" ref={textRef} className="af-textarea pr-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+              )}
               {!changed ? <p className="af-hint">{t("pr.same")}</p> : target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : null}
             </div>
           ) : null}
