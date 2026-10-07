@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
-import { alignedGatewayQuoteForHelpQuote, matchHelpEntryToTokenIndicesByAlignment, matchHelpQuoteToTokenIndices, tokenizeVersePlainText, tokensSayingTheSame } from "../src/domain/helpQuoteMatch";
+import { alignedGatewayQuoteForHelpQuote, matchHelpEntryToTokenIndicesByAlignment, matchHelpQuoteThroughOriginal, matchHelpQuoteToTokenIndices, tokenizeVersePlainText, tokensSayingTheSame } from "../src/domain/helpQuoteMatch";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -95,6 +95,75 @@ test("las palabras de un texto que dicen lo que dice una palabra del otro: las e
   // The other way round, from the simple text to the literal one.
   assert.deepEqual(tokensSayingTheSame({ from: other, indices: [6], to: literal }).map((i) => tokens[i]), ["apóstol"]);
   assert.deepEqual(tokensSayingTheSame({ from: literal, indices: [1], to: { tokens: simple } }), [], "un texto sin alinear no marca nada");
+});
+
+// Jude 1:3–4 as the team's literal text has them aligned by hand in QA: «τῆς» and «ὑμῖν» have no word of their own
+// in Spanish and were left untied, and «nuestra salvación común» says the three words in another order than the
+// original («κοινῆς ἡμῶν σωτηρίας»).
+const jude3 = tokenizeVersePlainText("Amados, haciendo todo esfuerzo por escribirles sobre nuestra salvación común, tengo necesidad de escribirles,");
+const jude3Groups: AlignmentGroup[] = [
+  group(src("ἀγαπητοί"), tgt("Amados")),
+  group(src("ποιούμενος"), tgt("haciendo")),
+  group(src("πᾶσαν"), tgt("todo")),
+  group(src("σπουδὴν"), tgt("esfuerzo")),
+  group(src("γράφειν"), tgt("por"), tgt("escribirles", 1, 2)),
+  group(src("περὶ"), tgt("sobre")),
+  group(src("ἡμῶν"), tgt("nuestra")),
+  group(src("σωτηρίας"), tgt("salvación")),
+  group(src("κοινῆς"), tgt("común")),
+  group(src("ἔσχον"), tgt("tengo")),
+  group(src("ἀνάγκην"), tgt("necesidad")),
+  group(src("γράψαι"), tgt("de"), tgt("escribirles", 2, 2)),
+];
+const greek = (text: string) => {
+  const seen = new Map<string, number>();
+  return text.split(" ").map((content) => {
+    seen.set(content, (seen.get(content) ?? 0) + 1);
+    return { content, occurrence: seen.get(content)! };
+  });
+};
+const jude3Original = greek("ἀγαπητοί πᾶσαν σπουδὴν ποιούμενος γράφειν ὑμῖν περὶ τῆς κοινῆς ἡμῶν σωτηρίας ἀνάγκην ἔσχον γράψαι ὑμῖν");
+
+test("una palabra de la cita que el texto no dice no esconde el resto: «τῆς … σωτηρίας» marca «salvación»", () => {
+  const through = (quote: string) => (matchHelpQuoteThroughOriginal(jude3, quote, 1, jude3Groups, jude3Original) ?? []).map((i) => jude3[i]);
+  // The two notes and the key term of «salvación»: with «τῆς» untied, they had no place in the verse.
+  assert.deepEqual(through("περὶ τῆς κοινῆς ἡμῶν σωτηρίας"), ["sobre", "nuestra", "salvación", "común,"]);
+  assert.deepEqual(through("τῆς & σωτηρίας"), ["salvación"]);
+  assert.deepEqual(through("πᾶσαν σπουδὴν ποιούμενος γράφειν ὑμῖν"), ["haciendo", "todo", "esfuerzo", "por", "escribirles"]);
+  assert.deepEqual(through("τῆς"), [], "una cita de la que el texto no dice nada no marca nada");
+  assert.equal(matchHelpQuoteThroughOriginal(jude3, "χάρις", 1, jude3Groups, jude3Original), null, "y la que no está en el versículo se busca de la otra manera");
+  // Without the original at hand, the same quotes are found too.
+  const guessed = (quote: string) => matchHelpEntryToTokenIndicesByAlignment(jude3, quote, 1, jude3Groups).map((i) => jude3[i]);
+  assert.deepEqual(guessed("περὶ τῆς κοινῆς ἡμῶν σωτηρίας"), ["sobre", "nuestra", "salvación", "común,"]);
+  assert.deepEqual(guessed("τῆς & σωτηρίας"), ["salvación"]);
+  assert.deepEqual(guessed("τῆς"), []);
+  // And by the way the screens ask for it.
+  const asked = alignedGatewayQuoteForHelpQuote({ verseText: jude3.join(" "), quote: "τῆς & σωτηρίας", occurrence: 1, alignments: { "JUD 1:3": jude3Groups }, book: "JUD", chapter: 1, verse: 3, original: jude3Original });
+  assert.deepEqual(asked, { gatewayText: "salvación", tokenIndices: [8] });
+});
+
+test("de una palabra que el versículo dice dos veces se marca la de la cita, no la primera que aparece", () => {
+  // Jude 1:4: «…la gracia de nuestro Dios en libertinaje y niegan a nuestro único Amo y Señor, Jesucristo».
+  const four = tokenizeVersePlainText("la gracia de nuestro Dios en libertinaje y niegan a nuestro único Amo y Señor, Jesucristo.");
+  const fourGroups: AlignmentGroup[] = [
+    group(src("χάριτα"), tgt("la"), tgt("gracia")),
+    group(src("Θεοῦ"), tgt("de"), tgt("Dios")),
+    group(src("ἡμῶν", 1, 2), tgt("nuestro", 1, 2)),
+    group(src("ἀσέλγειαν"), tgt("en"), tgt("libertinaje")),
+    group(src("καὶ", 1, 2), tgt("y", 1, 2)),
+    group(src("ἀρνούμενοι"), tgt("niegan"), tgt("a")),
+    group(src("ἡμῶν", 2, 2), tgt("nuestro", 2, 2)),
+    group(src("μόνον"), tgt("único")),
+    group(src("Δεσπότην"), tgt("Amo")),
+    group(src("καὶ", 2, 2), tgt("y", 2, 2)),
+    group(src("Κύριον"), tgt("Señor")),
+    group(src("Ἰησοῦν"), tgt("Jesucristo")),
+  ];
+  const fourOriginal = greek("Θεοῦ ἡμῶν χάριτα ἀσέλγειαν καὶ τὸν μόνον Δεσπότην καὶ Κύριον ἡμῶν Ἰησοῦν Χριστὸν ἀρνούμενοι");
+  const quote = "τὸν μόνον Δεσπότην καὶ Κύριον ἡμῶν, Ἰησοῦν Χριστὸν, ἀρνούμενοι";
+  assert.deepEqual((matchHelpQuoteThroughOriginal(four, quote, 1, fourGroups, fourOriginal) ?? []).map((i) => `${i}:${four[i]}`), ["8:niegan", "9:a", "10:nuestro", "11:único", "12:Amo", "13:y", "14:Señor,", "15:Jesucristo."]);
+  // Guessed from the alignment alone it took the first «nuestro», of «nuestro Dios», and left the one quoted out.
+  assert.ok(matchHelpEntryToTokenIndicesByAlignment(four, quote, 1, fourGroups).includes(3), "sin el original, sigue tomando el primero");
 });
 
 console.log(`\nverify-help-quote: ${passed} checks passed.`);

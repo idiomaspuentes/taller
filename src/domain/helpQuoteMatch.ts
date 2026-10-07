@@ -4,6 +4,7 @@
  * `helps/alignment-annotate.ts` (those modules pull editor-core / DocumentStore).
  */
 import type { AlignmentGroup, AlignmentMap } from "@usfm-tools/types";
+import type { OriginalToken } from "./quoteFromSelection";
 
 export function normalizeHelpsText(s: string): string {
   return s
@@ -227,16 +228,23 @@ export function matchHelpEntryToTokenIndicesByAlignment(
     .filter(Boolean);
   if (rawParts.length === 0) return [];
   const flat = flattenSources(groups);
+  const aligned = new Set(flat.map((source) => source.contentNorm));
   const meta = buildGatewayTokenOccurrences(tokens);
   const multiSegment = rawParts.length > 1;
   let minFlat = 0;
   const tokenIdx = new Set<number>();
   for (let pi = 0; pi < rawParts.length; pi++) {
-    const partWords = rawParts[pi]!
+    const quoted = rawParts[pi]!
       .split(/\s+/)
       .map((w) => normalizeHelpsText(w))
       .filter(Boolean);
-    if (partWords.length === 0) return [];
+    if (quoted.length === 0) return [];
+    // A word of the quote the text has no word for (an article it does not say, a pronoun inside its verb) marks
+    // nothing, and does not hide what the rest of the quote points at. All of them were asked for: in Jude 1:3 the
+    // literal text has nothing tied to «τῆς», and the two notes and the key term about «τῆς … σωτηρίας» had no
+    // place in it at all, so «salvación» read as a word with no help.
+    const partWords = quoted.filter((word) => aligned.has(word));
+    if (partWords.length === 0) continue;
     const occ = pi === 0 ? Math.max(1, occurrence || 1) : 1;
     const ordered = enumerateSubsequenceMatches(flat, partWords, multiSegment ? 0 : minFlat);
     const hits = ordered.length > 0 ? ordered : enumerateMultisetMatches(flat, partWords, multiSegment ? 0 : minFlat);
@@ -260,6 +268,63 @@ export function matchHelpEntryToTokenIndicesByAlignment(
     }
   }
   return [...tokenIdx].sort((a, b) => a - b);
+}
+
+/**
+ * Where a quote is in a verse of the original: each stretch of it whole words in a row, the first one the n-th time
+ * the verse says it and the others after it. `null` when the verse does not say it.
+ */
+function quoteInOriginal(original: OriginalToken[], quote: string, occurrence: number): number[] | null {
+  const words = original.map((token) => normalizeHelpsText(token.content));
+  const parts = quote
+    .split("&")
+    .map((part) => part.split(/\s+/).map((word) => normalizeHelpsText(word)).filter(Boolean))
+    .filter((part) => part.length);
+  if (!parts.length) return null;
+  const found: number[] = [];
+  let from = 0;
+  for (let pi = 0; pi < parts.length; pi++) {
+    const part = parts[pi]!;
+    let left = pi === 0 ? Math.max(1, occurrence || 1) : 1;
+    let at = -1;
+    for (let i = from; i + part.length <= words.length; i++) {
+      if (part.every((word, k) => words[i + k] === word) && --left === 0) {
+        at = i;
+        break;
+      }
+    }
+    if (at < 0) return null;
+    part.forEach((_, k) => found.push(at + k));
+    from = at + part.length;
+  }
+  return found;
+}
+
+/**
+ * The words of a text a quote points at, found through the verse of the original itself: where the quote is in it
+ * (which words, and which time the verse says each), and then the words of the text tied to exactly those. None
+ * when the text has nothing tied to them; `null` when the quote is not in the verse, to look for it the other way.
+ *
+ * Without the original, the words the alignment names stand in for it, in the order of the text (see
+ * `matchHelpEntryToTokenIndicesByAlignment`): a text that says things in another order than the original has the
+ * quote looked for as loose words, and of a word the verse says twice the first one found is taken. In Jude 1:4
+ * «Κύριον ἡμῶν» marked the «nuestro» of «nuestro Dios», eight words before «Señor».
+ */
+export function matchHelpQuoteThroughOriginal(tokens: string[], quote: string, occurrence: number, groups: AlignmentGroup[], original: OriginalToken[]): number[] | null {
+  const at = quoteInOriginal(original, quote, occurrence);
+  if (!at) return null;
+  const key = (word: { content: string; occurrence: number }) => `${normalizeHelpsText(word.content)}\x00${word.occurrence}`;
+  const said = new Set(at.map((index) => key(original[index]!)));
+  const meta = buildGatewayTokenOccurrences(tokens);
+  const out = new Set<number>();
+  for (const group of groups) {
+    if (!group.sources.some((source) => said.has(key(source)))) continue;
+    for (const target of group.targets) {
+      const index = mapTargetToTokenIndex(meta, target);
+      if (index >= 0) out.add(index);
+    }
+  }
+  return [...out].sort((a, b) => a - b);
 }
 
 /** A text of a verse as it is aligned: its words, and the groups that tie them to the words of the original. */
@@ -316,6 +381,8 @@ export function tokenIndicesForHelpQuote(opts: {
   book?: string;
   chapter?: number;
   verse?: number;
+  /** The verse in the original, when it is at hand: the quote is found in it, and not guessed from the alignment. */
+  original?: OriginalToken[];
 }): number[] {
   const quote = opts.quote.trim();
   if (!quote) return [];
@@ -326,7 +393,8 @@ export function tokenIndicesForHelpQuote(opts: {
   if (opts.book && opts.chapter && opts.verse) {
     const groups = alignmentGroupsForVerse(opts.alignments, opts.book, opts.chapter, opts.verse);
     if (groups?.length) {
-      return matchHelpEntryToTokenIndicesByAlignment(tokens, quote, opts.occurrence, groups);
+      const exact = opts.original?.length ? matchHelpQuoteThroughOriginal(tokens, quote, opts.occurrence, groups, opts.original) : null;
+      return exact ?? matchHelpEntryToTokenIndicesByAlignment(tokens, quote, opts.occurrence, groups);
     }
   }
   return [];
@@ -379,6 +447,7 @@ export function alignedGatewayQuoteForHelpQuote(opts: {
   book?: string;
   chapter?: number;
   verse?: number;
+  original?: OriginalToken[];
 }): GatewayQuoteMatch {
   const tokens = tokenizeVersePlainText(opts.verseText);
   const tokenIndices = tokenIndicesForHelpQuote(opts);

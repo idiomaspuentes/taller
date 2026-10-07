@@ -78,7 +78,13 @@ async function loadText(session: GtSession, ctx: SolverLaunchContext, resource: 
 }
 
 /** The texts of a unit, and where its review documents are kept: what a screen needs to show a unit to its reviewers. */
-export async function loadUnitTexts(params: { session: GtSession; ctx: SolverLaunchContext; texts: ChecklistText[] }): Promise<Omit<ChecklistData, "kind" | "items" | "fromSource">> {
+export async function loadUnitTexts(params: {
+  session: GtSession;
+  ctx: SolverLaunchContext;
+  texts: ChecklistText[];
+  /** The book in the original too: what the quote of each help is found in (see `matchHelpQuoteThroughOriginal`). */
+  original?: boolean;
+}): Promise<Omit<ChecklistData, "kind" | "items" | "fromSource">> {
   const { session, ctx } = params;
   const book = (ctx.book || ctx.projectId || "").toUpperCase();
   if (!book || !ctx.chapter) throw new Error("Falta el libro o el capítulo en la tarea.");
@@ -91,13 +97,16 @@ export async function loadUnitTexts(params: { session: GtSession; ctx: SolverLau
   const home = resolveScriptureTarget({ ...ctx, resource: params.texts[0] ?? "tpl" }, pmConfig);
   if ("error" in home) throw new Error(home.error);
   const texts: ChecklistData["texts"] = {};
-  await Promise.all(
-    params.texts.map(async (resource) => {
+  const originalRef = params.original ? originalTextRef(book) : null;
+  const [original] = await Promise.all([
+    // A book that cannot be read does not hide the unit: its helps are placed the way they were without it.
+    originalRef ? readRaw(session, originalRef.owner, originalRef.repo, originalRef.filepath).catch(() => null) : Promise.resolve(null),
+    ...params.texts.map(async (resource) => {
       const text = await loadText(session, ctx, resource, board, pmConfig);
       if (text) texts[resource] = text;
     }),
-  );
-  return { book, chapter: ctx.chapter, texts, pmConfig, target: { owner: home.owner, repo: home.repo }, levelBook: pmConfig, board, task, step };
+  ]);
+  return { book, chapter: ctx.chapter, texts, original, pmConfig, target: { owner: home.owner, repo: home.repo }, levelBook: pmConfig, board, task, step };
 }
 
 /**

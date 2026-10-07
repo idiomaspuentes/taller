@@ -144,7 +144,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     setBusy(true);
     setError("");
     try {
-      const loaded = await loadUnitTexts({ session, ctx: decoded, texts: TEXTS });
+      const loaded = await loadUnitTexts({ session, ctx: decoded, texts: TEXTS, original: true });
       setData(loaded);
       // The helps of the unit are read apart, each kind on its own: one that fails does not hide the passage.
       setHelps({});
@@ -444,6 +444,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
             chapter={data.chapter}
             verses={unitVerses(ctx?.ref, data.chapter, [data.texts.tpl?.verses, data.texts.tps?.verses])}
             texts={data.texts}
+            original={data.original ?? undefined}
             helps={helps}
             label={aboutLabel}
             termTitles={termTitles}

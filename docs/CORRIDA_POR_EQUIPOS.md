@@ -1438,7 +1438,7 @@ versículo y «Volver a donde leía».
   ellas a la pestaña «TPS» sus palabras siguen marcadas.
   Comprobado con textos alineados de verdad (ULT y UST de Judas, en inglés): «servant» marca «serve»; «brother»,
   «I am a brother of»; «without stumbling», «from returning to a sinful life». En el Judas de esta corrida las
-  marcas caen mal («siervo» marca «y soy»): es la alineación por posición, no la app.
+  marcas del TPS caen mal («siervo» marca «y soy»): ver abajo «"Salvación" no marcaba "salvado"».
 - **La tarjeta es más baja y no tapa lo que explica.** Mide como mucho 40 % del alto de la pantalla (325 px de 812;
   eran hasta 422, sobre una barra de 64 px). Con la tarjeta llena quedan 423 px para el versículo (antes, unos 250:
   calculado, no medido). Y al abrirse o pasar de ayuda, la pantalla se acomoda para que las palabras de las que
@@ -1467,6 +1467,39 @@ Probado en QA con Judas a 375 × 812 con toques reales (abrir las ayudas, tocar 
 «Cerrar», empezar y cancelar una inquietud, ir a 1:15 desde la caja de versículos, abrir y cerrar el reporte) y a
 1280 px (pasaje y reporte lado a lado, la caja de versículos, la tarjeta dentro de la caja de lectura).
 
+**«Salvación» no marcaba «salvado», ni tenía sus ayudas.** Abel, al tocar «salvación» en 1:3: «debe haber un
+problema, o con la alineación, o con la cita de la nota o con la forma en que relacionamos ambos textos… debería
+haberse resaltado "salvado" y debería haber otras ayudas relacionadas con salvación». Eran dos cosas distintas,
+miradas con los datos de Judas en QA:
+
+- **El TPS de Judas no está alineado: está repartido.** En los 25 versículos, cada palabra griega tiene las dos o
+  tres palabras siguientes del español, en orden: en 1:3, «τῆς» → «salvado a» y «σωτηρίας» → «embargo tuve». Es
+  el guion de la corrida que «coloca cada palabra en la caja que le toca por posición» (ver arriba). El TPL está
+  alineado a mano en 1:1–4 («σωτηρίας» → «salvación») y repartido igual del 5 al 25. Son 46 de 50. Se distingue
+  porque las palabras griegas van en el orden exacto del original, todas, en grupos parejos. Con eso la app
+  responde lo que los datos dicen: «salvación» → «embargo, tuve». **No se arregla en el código.**
+- **Las ayudas de «salvación» sí faltaban por un fallo de la app.** La cita de una nota es un trozo del original
+  («περὶ τῆς κοινῆς ἡμῶν σωτηρίας»). Para ubicarla en el TPL se pedía que *todas* sus palabras estuvieran
+  enlazadas, y «τῆς» no lo está (en español no hay artículo ahí): la nota entera se quedaba sin lugar. En el
+  capítulo eran 9 de 283 ayudas (6 notas y 3 palabras clave, todas en 1:3–4, por «τῆς», «ὑμῖν», «τὸ» y
+  «Χριστὸν»). «Salvación» salía como palabra sin ayudas.
+  *Ahora* la cita se busca en el versículo original (el griego del paquete fuente), y de ahí se va a las palabras
+  enlazadas con exactamente esas: una palabra de la cita sin enlace no marca nada, y no esconde el resto. Quedan
+  con lugar 282 de 283; la que falta es la palabra clave «Χριστὸν» de 1:4, que el TPL dejó sin enlazar.
+  «Salvación» tiene ahora cuatro pasos: la palabra clave «salvar, salvo, a salvo, salvación», las dos notas de
+  «sobre nuestra salvación común» y el TPS.
+- **Y una palabra repetida se marcaba donde no era.** Sin el original, el orden del versículo se suponía por el
+  orden del texto, y de una palabra dicha dos veces se tomaba la primera: en 1:4 «Κύριον ἡμῶν» marcaba el
+  «nuestro» de «nuestro Dios», ocho palabras antes de «Señor»; en 1:1 la nota de «guardados para Jesucristo,
+  llamados» marcaba además el primer «de Jesucristo». Con el original se marca la de la cita.
+
+Contado sobre las 283 ayudas con cita del capítulo, en el TPL: 261 caen donde caían, 8 que no tenían lugar lo
+tienen, 13 caen ahora en otras palabras y 1 sigue sin lugar. Ninguna lo perdió.
+
+Esto último está en la revisión pastoral. Las otras pantallas que ubican citas (afinación, las listas de
+armonización, el editor de ayudas, las fuentes de una nota) no cargan el original: ganan lo primero (una palabra
+sin enlace ya no esconde la cita) pero siguen suponiendo el orden.
+
 **⚠ Sin resolver**
 
 - El subrayado distingue nota de palabra clave, pero no dice dónde hay más ayudas y dónde menos.
@@ -1474,9 +1507,14 @@ Probado en QA con Judas a 375 × 812 con toques reales (abrir las ayudas, tocar 
   estaba «ya leído» deja de estarlo hasta ver su TPS.
 - Con el teclado de un teléfono real no se probó nada: la caja de la inquietud y la tarjeta al pie se midieron sin
   él.
-- En Judas, las marcas del TPS y las palabras de algunas palabras clave caen donde no deben («Fiesta, festín» sobre
-  «temor con»; «siervo» → «y soy»): es la alineación por posición de esta corrida. Con un libro alineado a mano no
-  se ha visto la pantalla entera, solo la función que busca las palabras.
+- **Los datos de prueba de Judas no sirven para juzgar las marcas**: el TPS entero y el TPL de 1:5–25 están
+  repartidos por posición. Con un libro alineado a mano no se ha visto la pantalla entera, solo las funciones que
+  buscan las palabras (con el ULT y el UST publicados).
+- Las demás pantallas que ubican citas no usan todavía el original (ver arriba).
+- Nada avisa de una palabra del original que se quedó sin enlazar («Χριστὸν» en 1:4): su palabra clave no tiene
+  dónde marcarse. Ya estaba en la lista de Alineación.
+- El último cambio se comprobó en la pantalla tocando por guion, no con toques reales: la ventana quedó detrás de
+  otra.
 - De una palabra subrayada, cómo la dice el TPS queda al final, tras sus notas: a uno o dos toques de «Siguiente».
 - En la hoja del reporte no se entregó ni se guardó nada (Judas está terminado): se abrió y se cerró. La línea que
   confirma «Borrador guardado» dentro de la hoja está sin ver.

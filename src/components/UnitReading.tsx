@@ -6,6 +6,7 @@ import type { ChecklistItem, ChecklistKind } from "../dcs/checklistLoad";
 import { articleBody, termLabel } from "../domain/afinacionWords";
 import type { Concern } from "../domain/endorsement";
 import { alignedGatewayQuoteForHelpQuote, alignmentGroupsForVerse, gatewayQuoteFromTokenIndices, tokenizeVersePlainText, tokensSayingTheSame } from "../domain/helpQuoteMatch";
+import { originalTokens } from "../domain/quoteFromSelection";
 import { loadSeenHelps, saveSeenHelps, scrollToShow, verseInView, verseProgress } from "../domain/unitProgress";
 import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, helpsToOpen, shortestQuoteFirst } from "../domain/unitReading";
 import type { VerseTextMap } from "../domain/usfmAst";
@@ -23,6 +24,8 @@ type Props = {
   /** The verses of the unit, in order. */
   verses: number[];
   texts: Partial<Record<Text, { verses: VerseTextMap; alignments?: AlignmentMap }>>;
+  /** The book in the original language: what the quote of each help is found in. Without it, it is guessed. */
+  original?: string;
   helps: UnitHelps;
   /** How a resource is called to the person. */
   label: (resource: string) => string;
@@ -101,7 +104,7 @@ function scrollerOf(el: HTMLElement): HTMLElement {
  * Laid out on the page, every verse carried two texts, three chips and a line to note a concern (a hundred controls
  * in a chapter), over a row of verses, a legend and two switches.
  */
-export function UnitReading({ book, chapter, verses, texts, helps, label, termTitles, articles, onOpenTerms, onOpenArticle, concerns, onConcern, saving, progressKey }: Props) {
+export function UnitReading({ book, chapter, verses, texts, original, helps, label, termTitles, articles, onOpenTerms, onOpenArticle, concerns, onConcern, saving, progressKey }: Props) {
   const t = useT();
   const [open, setOpen] = useState<Open | null>(null);
   /** Where the person was among the helps of each verse, to open them there again. */
@@ -145,6 +148,13 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
    */
   const pointed = useMemo(() => {
     const out = new Map<string, { phrase: string | null; words: Marks }>();
+    // Each verse of the original, read once: the book is gone through to find it.
+    const inOriginal = new Map<string, ReturnType<typeof originalTokens>>();
+    const originalOf = (inChapter: number, verse: number) => {
+      const key = `${inChapter}:${verse}`;
+      if (original && !inOriginal.has(key)) inOriginal.set(key, originalTokens(original, inChapter, verse));
+      return inOriginal.get(key);
+    };
     for (const kind of OF_WORDS) {
       for (const row of helps[kind]?.items ?? []) {
         if (!row.quote) continue;
@@ -152,7 +162,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
         for (const resource of BOTH) {
           const text = texts[resource]?.verses[row.verse];
           if (!text) continue;
-          const match = alignedGatewayQuoteForHelpQuote({ verseText: text, quote: row.quote, occurrence: row.occurrence ?? 1, alignments: texts[resource]?.alignments, book, chapter: row.chapter, verse: row.verse });
+          const match = alignedGatewayQuoteForHelpQuote({ verseText: text, quote: row.quote, occurrence: row.occurrence ?? 1, alignments: texts[resource]?.alignments, book, chapter: row.chapter, verse: row.verse, original: originalOf(row.chapter, row.verse) });
           found.words[resource] = match.tokenIndices;
           if (resource === "tpl") found.phrase = match.gatewayText;
         }
@@ -160,7 +170,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
       }
     }
     return out;
-  }, [helps.notas, helps.palabras, texts, book]);
+  }, [helps.notas, helps.palabras, texts, book, original]);
 
   /**
    * Which helps each word of a verse has, in each text, by «verse|text»: from the one whose quote is shortest in
