@@ -19,6 +19,8 @@ export function RoundPanel(props: {
   stepDone: boolean;
   busy: boolean;
   onClose: () => void;
+  /** Where to go once the review is closed: there is nothing left to do here. */
+  onLeave?: () => void;
 }) {
   const t = useT();
   const { summary } = props;
@@ -32,7 +34,17 @@ export function RoundPanel(props: {
   return (
     <section className="round" aria-label={t("round.aria")}>
       {props.stepDone ? (
-        <p className="round__done">{t("round.closed")}</p>
+        props.onLeave ? (
+          // Closed, and the tool stayed as it was, its answers still to be touched: the way on is said.
+          <div className="round__done round__done--leave">
+            <p>{t("round.closed")}</p>
+            <Button type="button" variant="outline" onClick={props.onLeave}>
+              {t("fa.back")}
+            </Button>
+          </div>
+        ) : (
+          <p className="round__done">{t("round.closed")}</p>
+        )
       ) : summary.complete && props.closesHere ? (
         props.canClose === false ? (
           // Somebody whose answers do not count yet found the one large button of the page offering to end the

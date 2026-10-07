@@ -803,7 +803,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
       {summary ? (
         <div ref={roundRef} className="af-round-top">
-          <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} canClose={canConfirm} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} />
+          <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} canClose={canConfirm} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} onLeave={onClose} />
         </div>
       ) : null}
 

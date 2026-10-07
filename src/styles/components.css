@@ -7121,6 +7121,9 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 /* ---- how a round of review stands (RoundPanel) ---- */
 .round { display: grid; gap: 0.5rem; }
 .round__done { margin: 0; padding: 0.625rem 0.875rem; border-radius: var(--radius-md); background: var(--success-100); color: var(--success-700); font-weight: 600; }
+.round__done--leave { display: grid; gap: 0.5rem; }
+.round__done--leave p { margin: 0; }
+.round__done--leave button { height: auto; min-height: 2.75rem; justify-self: start; background: var(--surface); }
 .round__ready { display: grid; gap: 0.625rem; padding: 0.875rem; border: 1px solid var(--success-500); border-radius: var(--radius-lg); background: var(--surface); }
 .round__ready p { margin: 0; font-weight: 600; }
 .round__ready button { min-height: 48px; font-size: 1rem; }
