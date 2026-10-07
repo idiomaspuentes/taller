@@ -1034,7 +1034,8 @@ export function MyTasksView({
             {mentions.map((row) => (
               <div key={row.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0 grid gap-0.5">
-                  {row.text ? <span>{localizeThread(row.text, language)}</span> : <span className="font-semibold">{mentionName(row)}</span>}
+                  {/* A message about a place of the text names the place in words («1:3 — …»), not by its address. */}
+                  {row.text ? <span>{placedPreview(localizeThread(row.text, language))}</span> : <span className="font-semibold">{mentionName(row)}</span>}
                   {/* Who said it and where; when nothing could be read of what was said, the name is the row. */}
                   <span className="hub-place">{[row.by ? `@${row.by}` : "", row.text ? mentionName(row) : ""].filter(Boolean).join(" · ")}</span>
                 </span>

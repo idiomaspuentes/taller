@@ -2746,5 +2746,7 @@
   "org.removeAskText": "Deixará de ver as tarefas desta equipe. Você pode adicioná-la de novo depois.",
   "org.removeYes": "Sim, tirar",
   "af.second": "Penso o mesmo",
-  "af.secondNote": "De acordo com @{who}."
+  "af.secondNote": "De acordo com @{who}.",
+  "af.talk": "Conversar no chat",
+  "af.decisionSaid": "Decisão da equipe:"
 }

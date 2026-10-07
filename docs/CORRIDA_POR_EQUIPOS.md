@@ -632,11 +632,34 @@ Tres toques por desafío; al responder (1,7 s) pasa solo al siguiente. Se entien
   «Propongo un cambio» o «Tengo una objeción», con la caja vacía. *Ahora* bajo la propuesta de un compañero hay
   un botón «Pienso lo mismo»: un toque, y queda «@abelper8, @valeska no están de acuerdo».
 
+### La conversación del desacuerdo (lo que se pidió probar como un chat)
+
+**Priscila** objetó en el 17 («Otra respuesta» → «Tengo una objeción» → «¿Cuál es tu objeción?», con sus razones
+largas). Así estaba y así quedó:
+
+- **Nada salía de la herramienta.** La propuesta de Tomás y la objeción de Priscila se guardaban con el desafío y
+  en ningún otro lugar: nadie recibía nada, y «Para conversarlo en equipo» no llevaba a ninguna conversación.
+  *Ahora* una propuesta, una objeción y la decisión final se dicen también en la conversación de la subtarea, con
+  el lugar («1:3»), de qué se habla («Sustantivos abstractos · «tengo la necesidad de escribirles»») y la mención a
+  quienes ya contestaron ese desafío y a quien coordina. Y bajo el desacuerdo hay un botón «Conversarlo en el
+  chat».
+- **Cómo se lee.** Como un chat: «Hoy», «Nuevos», el mensaje de Priscila a la izquierda con su nombre y el lugar
+  «1:3» para tocar, la respuesta de Tomás a la derecha, la caja «Escribe un mensaje…» abajo y «Revisar» arriba
+  para volver al desafío.
+- **Los avisos.** A Tomás le llegó en «Avisos» por dos lados: «Necesitan tu atención» (la subtarea, con la última
+  línea) y «Menciones y respuestas». La mención mostraba la dirección en crudo («**JUD 1:3** — …»); *ahora* dice
+  el lugar con palabras («1:3 — …»).
+- **Mencionar a quien coordina.** «@» ofrecía solo a quienes ya estaban en el hilo, y la decisión es de quien
+  coordina, que no lo estaba. *Ahora* «@» ofrece también a quien coordina el equipo de la subtarea. Tomás escribió
+  «@abelperez Priscila tiene razón en lo del aoristo epistolar… ¿Lo registras tú?».
+
 **⚠ Sin resolver**
 
+- «Registrar la decisión del equipo» le sale a todo el que es «Persona habilitada», y en esta corrida lo son los
+  cuatro: hay que bajar el nivel de tres para que solo Rubén decida, como dice el plan.
+- En el chat, el lugar «1:3» no cita el versículo.
 - El aviso «1 punto sin acuerdo» nombra el punto con la frase en inglés («I have a necessity to write»), no con
   la del TPL.
-- «Para conversarlo en equipo»: no hay desde ahí un camino a la conversación de la subtarea.
 - La tarjeta de «Desafíos TPL · 1:1–4» dice «0 %» con 30 respuestas dadas: cuenta los desafíos acordados por tres.
 - Entre la cabecera, «Qué se pide», las pestañas, el filtro, el título del desafío y «Equipo: 0 de 3 de acuerdo»
   hay 400 px antes de llegar al texto.
@@ -648,10 +671,11 @@ Tres toques por desafío; al responder (1,7 s) pasa solo al siguiente. Se entien
   sin miembros.
 - **Afinación: empezada.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (todas «Persona
   habilitada», coordina abelperez) y están asignados a Desafíos, Palabras clave y Alinear de su texto.
-  En «Desafíos TPL · Judas 1:1–4»: Priscila (Elisha) contestó 29 de 30 (le falta el 17); Tomás (abelper8)
-  propuso un cambio en el 17 y Elena (valeska) se sumó. Falta: la objeción de Priscila en el 17, la decisión de
-  Rubén (abelperez), y las respuestas de Tomás y Elena a los otros 29. Las otras nueve subtareas de Desafíos
-  esperan en «Puedes sumarte».
+  En «Desafíos TPL · Judas 1:1–4» (subtarea 123): Priscila (Elisha) contestó los 30 (en el 17, una objeción);
+  Tomás (abelper8) propuso un cambio en el 17 y Elena (valeska) se sumó; Tomás pidió en el chat a Rubén
+  (abelperez) que registre la decisión («tengo necesidad de escribirles», sin artículo). Falta: la decisión de
+  Rubén y la corrección del versículo, y las respuestas de Tomás y Elena a los otros 29. Las otras nueve
+  subtareas de Desafíos esperan en «Puedes sumarte».
 - Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P)**,
   Elisha = **Priscila (P)**.
 - Lo que falta recorrer de Afinación, según el plan: un cambio propuesto con desacuerdo y decisión final de quien

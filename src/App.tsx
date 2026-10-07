@@ -1082,7 +1082,14 @@ export function App() {
             onClose={onSolverClose}
           />
         ) : route.name === "solver-afinar" ? (
-          <AfinacionView key={`${sessionEpoch}-${route.step}`} ctxEncoded={route.ctx} step={route.step === "palabras" ? "palabras" : "notas"} announce={announce} onClose={onSolverClose} />
+          <AfinacionView
+            key={`${sessionEpoch}-${route.step}`}
+            ctxEncoded={route.ctx}
+            step={route.step === "palabras" ? "palabras" : "notas"}
+            announce={announce}
+            onClose={onSolverClose}
+            onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
+          />
         ) : route.name === "solver-familiarize" ? (
           <FamiliarizeView key={sessionEpoch} ctxEncoded={route.ctx} onClose={onSolverClose} />
         ) : (

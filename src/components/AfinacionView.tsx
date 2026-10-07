@@ -9,6 +9,7 @@ import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
 import { commentOnIssue } from "../dcs/issues";
 import { formatChatEvent } from "../domain/chatEvent";
+import { refComment } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -27,7 +28,7 @@ import {
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
-import { canConfirmForTeam, confirmersOf, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
+import { canConfirmForTeam, confirmersOf, coordinatorsOf, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
@@ -49,6 +50,8 @@ type Props = {
   step?: AfinacionStep;
   onClose: () => void;
   announce: (msg: string) => void;
+  /** Open the conversation of the subtarea: where a point the team does not agree on is talked over. */
+  onOpenThread?: (issue: number) => void;
 };
 
 const STANCE_KEY: Record<ReviewStance, MessageKey> = {
@@ -101,7 +104,7 @@ function Words({ text, marked, onTap, selected }: { text: string; marked?: numbe
  * the words of the draft that render the note and answers; anyone may also
  * correct the verse at any moment, which makes earlier answers to it stale.
  */
-export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, announce }: Props) {
+export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, announce, onOpenThread }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const stanceLabel = (status: string) => t(STANCE_KEY[status as ReviewStance] ?? "rv.approved");
@@ -330,6 +333,20 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     }
   }
 
+  /**
+   * What somebody proposes or objects, and what the team decides, said in the conversation of the subtarea too, to
+   * whoever had already answered the challenge. It was written in the tool and nowhere else: the others learned
+   * of it only on opening the tool again, and nobody was told that what they had agreed to was in question.
+   */
+  async function tellTeam(said: string) {
+    if (!session || !data || !item || !ctx?.pmOrg || !ctx.issueNumber) return;
+    // Whoever coordinates the team is told as well: a point without agreement waits for their decision.
+    const who = [...new Set([...(tally?.answers ?? []).map((a) => a.reviewer.trim()), ...coordinatorsOf(data.levelBook, task?.orgTeamName)].filter((login) => login && login.toLowerCase() !== me))];
+    const about = [stepProp === "notas" ? nameOf(item) : "", chosenWords ? `«${chosenWords}»` : ""].filter(Boolean).join(" · ");
+    const body = `${who.map((login) => `@${login}`).join(" ")} ${about ? `${about}. ` : ""}${said}`.trim();
+    await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, `${item.chapter}:${item.verse}`, body)).catch(() => undefined);
+  }
+
   /** The team's final decision on the item in view, after talking it over. */
   async function decide(text: string) {
     if (!session || !data || !item || !ctx) return;
@@ -350,6 +367,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
+      await tellTeam(`${tNow("af.decisionSaid")} ${text}`);
       announce(t("round.decisionSaved"));
     } catch (err) {
       setError(explainError(err));
@@ -465,6 +483,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
+      if (status !== "approved") await tellTeam(`${stanceLabel(status)}: ${words}`);
       setPending(null);
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
       // On to the next one this person has not answered; after the last, the next in the list.
@@ -925,6 +944,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : (
                 <p className="af-hint">{t("af.teamNobody")}</p>
               )}
+              {tally.open.length && onOpenThread && ctx?.issueNumber ? (
+                // «Para conversarlo en equipo»: the way to where the team talks.
+                <button type="button" className="af-second" onClick={() => onOpenThread(ctx.issueNumber!)}>
+                  {t("af.talk")}
+                </button>
+              ) : null}
               <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} />
             </details>
           ) : null}

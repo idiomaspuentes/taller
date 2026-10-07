@@ -1,4 +1,6 @@
 import { issueTaskId } from "../domain/myTasks";
+import { coordinatorsOf } from "../domain/levels";
+import { loadPmConfig } from "../dcs/issues";
 import { SubtaskChangesPanel } from "./ChangesView";
 import { bookLabel } from "../domain/books";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -427,10 +429,29 @@ function ConversationThread({
     return new Set([...standing].filter(([, resolved]) => resolved).map(([id]) => id));
   }, [timeline, header]);
 
-  const participants = useMemo(
-    () => (issue ? mentionCandidates(issue, timeline, username) : []),
-    [issue, timeline, username],
-  );
+  // Whoever coordinates the team of this subtarea can be named in its conversation too. They are the one a point
+  // the team does not agree on waits for, and «@» offered only those already in the thread: nobody could call them.
+  const [coordinators, setCoordinators] = useState<string[]>([]);
+  const teamOfIssue = issue && board ? board.teams.find((task) => task.id === issueTaskId(issue))?.orgTeamName : undefined;
+  useEffect(() => {
+    setCoordinators([]);
+    if (!session || demo || !teamOfIssue) return;
+    let alive = true;
+    void loadPmConfig(session, pmOrg)
+      .then((config) => alive && setCoordinators(coordinatorsOf(config, teamOfIssue)))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, pmOrg, teamOfIssue, demo]);
+
+  const participants = useMemo(() => {
+    if (!issue) return [];
+    const known = mentionCandidates(issue, timeline, username);
+    const seen = new Set([username.trim().toLowerCase(), ...known.map((login) => login.toLowerCase())]);
+    return [...known, ...coordinators.filter((login) => !seen.has(login.trim().toLowerCase()))];
+  }, [issue, timeline, username, coordinators]);
 
   const statuses = useMemo(() => decisionStatuses(timeline), [timeline]);
   const pendingDecisions = useMemo(() => pendingDecisionIds(statuses), [statuses]);
