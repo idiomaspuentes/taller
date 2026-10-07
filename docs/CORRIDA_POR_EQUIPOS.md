@@ -828,21 +828,62 @@ Elena dejó dos fallos para la revisión: «Que» (1:2) en la caja de ἔλεο�
 - Las palabras del banco miden 32 px de alto.
 - Con cajas de 40 px, un versículo de 17 palabras griegas ya no cabe entero en la pantalla.
 
+### La revisión de la alineación: propuesta, objeción y decisión del equipo por voto (7 de octubre)
+
+Tomás, Priscila y Rubén revisaron lo que alineó Elena. La pantalla de revisión cabe entera en el teléfono:
+las cajas con su traducción, «2 palabras del original sin traducción», la pregunta y tres botones.
+
+- **Propuesta (1:1).** Tomás tocó «Propongo un cambio», juntó Ἰησοῦ y Χριστοῦ con «Jesucristo» («Juntar
+  cajas») y la envió con su motivo (11 s). Se abrió una decisión del equipo (subtarea 146): a los demás les sale
+  arriba, en «Para decidir», con «Tu equipo necesita tu opinión» y el botón «Decidir». La tarjeta muestra lo que
+  dice quien propone, la alineación de ahora y la propuesta con lo que cambia resaltado.
+- **Objeción (1:2).** Tomás tocó «Tengo una objeción», marcó la caja de ἔλεος y escribió que «Que» va con
+  πληθυνθείη (subtarea 147). El equipo votó «Hay que cambiar la alineación», Rubén confirmó el consenso, y a Elena
+  le llegó «por favor ajústenla». Ella volvió a la herramienta, movió «Que» y tocó «Terminé».
+- Después los tres dieron «De acuerdo» a los cuatro versículos (1,3–2,5 s cada uno), Rubén cerró la revisión y la
+  subtarea quedó entregada (11 s).
+
+**⚠ Lo que frenaba el proceso, y se arregló**
+
+- **Ninguna decisión por voto podía cerrarse.** Tres personas aceptaron la propuesta, dos de ellas independientes,
+  y la tarjeta seguía pidiendo votos: el recuento leía los niveles generales de la organización y no los del
+  equipo, así que en un equipo con niveles propios (todos los que se ponen desde «Organización») nadie contaba.
+  Tampoco habría habido nunca a quién recordarle. *Ahora* cuentan los niveles del equipo que tiene la tarea.
+- **El voto recién dado no se veía en la tarjeta** hasta recargar: el botón seguía en «(1)», y el voto que hacía
+  el consenso no ofrecía confirmarlo. *Ahora* la tarjeta vuelve a leer los votos tras cada uno, y aparece
+  «Confirmar el consenso y cerrar».
+- **Los botones de la decisión quedaban una pantalla más abajo** (la tarjeta mide 1105 px con dos alineaciones
+  enteras). *Ahora* se quedan sobre la caja de escribir mientras se lee la tarjeta. Con tres opciones, la de
+  confirmar tiene su propia fila (su texto salía cortado).
+- **A quien alineó se le pedía ajustar y no tenía por dónde.** El mensaje le llegaba en una conversación sin botón
+  (el paso en curso, la revisión, es de los demás), y la herramienta le decía «4 de 4 terminados» y «Listo».
+  *Ahora* la conversación le da el botón de su propio paso («Alinear»); el versículo pedido sale «!» en naranja,
+  la herramienta abre en él y dice arriba de las cajas lo que pidió el equipo.
+- **Cerrar la revisión de la alineación tampoco entregaba la subtarea.** *Ahora* sí, como en las otras rondas; y
+  cerrada la revisión ya no se ofrecen respuestas.
+
+**⚠ Sin resolver**
+
+- La tarjeta de «Para decidir» muestra la barra «0 de 2 pasos · 0 %» de la tarea, que ahí no dice nada.
+- La tarjeta decidida repite la misma frase dos veces (título y texto).
+- La decisión avisa dos veces a la misma persona (en su hilo y en el de la subtarea).
+- Tras enviar una propuesta, a quien la envió se le siguen ofreciendo «De acuerdo / Propongo / Objeción».
+- Proponer un cambio deja 160 px para las cajas en el teléfono: el panel de abajo ocupa 240 px.
+- El plazo (3 días) y los recordatorios (a un día del plazo) no se pueden ver en una corrida de una tarde: están
+  cubiertos por pruebas, no por el recorrido. El barrido de recordatorios toma a las personas de `memberIds` de la
+  tarea, que con equipos de Door43 puede estar vacío.
+
 ### Dónde quedó
 
 - **Traducción: terminada.** Las 29 subtareas de la fase están entregadas, y los tres equipos de la fase quedaron
   sin miembros.
 - **Afinación: en marcha.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (coordina abelperez;
   abelperez, abelper8 y Elisha son «Persona habilitada»; valeska, «Practicante»).
-  **Cerradas y entregadas:** las diez subtareas de «Desafíos» y «Palabras clave TPL».
-  **«Palabras clave TPS»:** respondieron Priscila y Tomás (124 cada uno); falta Rubén y cerrar.
-  **«Alinear TPL · 1:1–4»:** Elena alineó y terminó el paso; falta «Revisar la alineación» (Tomás, Priscila,
-  Rubén), con sus dos fallos. Las otras cuatro de «Alinear TPL» están libres; las cinco de «Alinear TPS» esperan
-  a «Palabras clave TPS».
+  **Cerradas y entregadas:** las diez subtareas de «Desafíos», «Palabras clave TPL», «Palabras clave TPS» y
+  **«Alinear TPL · Judas 1:1–4»** (alineada por Elena; revisada con una propuesta y una objeción decididas por
+  voto). Quedan cuatro de «Alinear TPL» y las cinco de «Alinear TPS», libres.
 - Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P,
   practicante)**, Elisha = **Priscila (P)**.
-- Lo que falta recorrer de Afinación, según el plan: la revisión de una alineación con propuesta, objeción,
-  decisión del equipo con voto y plazo, y alguien que no responde.
 - En espera: Armonización, Validación y Publicación, que todavía no tienen equipo: se les pone al llegar a cada
   una.
 - En `usfm-ast` hay un commit local (`ef2ae1f`, en la rama en que estaba el repositorio) con el arreglo de las

@@ -6,9 +6,10 @@ import { BookOpen, Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { levelsForTeam } from "../domain/levels";
+import { canConfirmForTeam, levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { useStepWork } from "../dcs/stepWork";
 import { RoundPanel } from "./RoundPanel";
 import {
@@ -435,6 +436,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [stepDone, setStepDone] = useState(false);
+  const [plan, setPlan] = useState<Awaited<ReturnType<typeof loadAssignmentsFromDcs>> | null>(null);
+  /** The subtarea was delivered here, with the closing of its last step. */
+  const [delivered, setDelivered] = useState(false);
   const [closingRound, setClosingRound] = useState(false);
 
   const sensors = useSensors(
@@ -459,6 +463,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       const board = await loadAssignmentsFromDcs(session, decoded.pmOrg, decoded.lang, decoded.projectId, decoded.contentOrg);
       const thisTask = board?.teams.find((t) => t.id === decoded.taskId) ?? null;
       setTask(thisTask);
+      setPlan(board ?? null);
       // The text read is the one its translation task writes, wherever this task stands in the phase.
       const sourceTaskId = (board && draftTaskId(board.teams, decoded.resource)) || thisTask?.waitsFor?.find((w) => w.taskId)?.taskId;
       if (!sourceTaskId) {
@@ -603,6 +608,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
 
   // The review of the alignment closes here, by consensus, when the step says so (objections are settled as team
   // decisions in the conversation, so there is no final decision to record on this screen).
+  /** Closing a review is of whoever may decide for the team: who coordinates it or a persona habilitada. */
+  const canClose = Boolean(session) && canConfirmForTeam(data?.levelBook, task?.orgTeamName, me);
   const closesHere = (shared || mode === "revisar") && Boolean(taskStep && closesInItsTool(taskStep) && ctx?.issueNumber);
   useEffect(() => {
     if (!session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
@@ -622,7 +629,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     try {
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id });
       setStepDone(true);
-      announce(t("round.closedNow"));
+      // The review is the last step of aligning a passage: closing it delivers the subtarea, as in the other rounds.
+      const done = plan ? await deliverSharedSubtask({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board: plan, issueNumber: ctx.issueNumber }).catch(() => false) : false;
+      setDelivered(done);
+      announce(t(done ? "round.closedDelivered" : "round.closedNow"));
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -1447,6 +1457,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           stepDone={stepDone}
           busy={closingRound}
           onClose={() => void closeRound()}
+          delivered={delivered}
+          onLeave={onClose}
+          canClose={canClose}
         />
       ) : null}
 
@@ -1733,6 +1746,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                     {t("al.cancel")}
                   </Button>
                 </div>
+              </div>
+            ) : stepDone ? (
+              // The review is closed: there is nothing left to answer, only the other verses to look at.
+              <div className="al-actionbar__row">
+                <Button type="button" variant="outline" disabled={position >= data.verses.length - 1} onClick={() => void goTo(position + 1)}>
+                  {t("al.continue")}
+                </Button>
               </div>
             ) : !readyToReview ? (
               // Nothing to answer here yet: the bar offers the way on instead of three buttons that do nothing.
