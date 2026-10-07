@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../src/domain/endorsement";
 import type { ChecklistQuestion } from "../src/domain/types";
-import { concernPlace, concernsAt, helpsOfVerse, unitVerses } from "../src/domain/unitReading";
+import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, unitVerses } from "../src/domain/unitReading";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -90,6 +90,20 @@ test("bajo cada versículo va lo suyo, y una inquietud se guarda donde se anotó
   assert.deepEqual(concernsAt(said, 1, 1).map((c) => c.id), ["a", "b"]);
   assert.deepEqual(concernsAt(said, 1, 12).map((c) => c.id), ["c"]);
   assert.deepEqual(concernsAt(said, 1, 2), []);
+});
+
+test("una inquietud es de la nota en que se anotó, aunque otra nota del versículo hable de las mismas palabras", () => {
+  const helps = [{ id: "n1", place: "1:1 «Judas»" }, { id: "n2", place: "1:1 «Judas»" }, { id: "n3", place: "1:1 «siervo»" }];
+  const said = [
+    { id: "a", kind: "observation" as const, about: "notas", where: "1:1 «Judas»", item: "n2", text: "de la segunda" },
+    { id: "b", kind: "observation" as const, about: "notas", where: "1:1 «Judas»", text: "anotada antes de que se guardara la nota" },
+    { id: "c", kind: "objection" as const, about: "palabras", where: "1:1 «Judas»", text: "de una palabra clave" },
+    { id: "d", kind: "observation" as const, about: "notas", where: "1:1 «siervo»", item: "n3", text: "retirada", withdrawn: true },
+  ];
+  const of = (id: string, place: string) => concernsOfHelp(said, "notas", id, place, helps).map((c) => c.id);
+  assert.deepEqual(of("n2", "1:1 «Judas»"), ["a"], "la que dice de qué nota es sale solo bajo esa");
+  assert.deepEqual(of("n1", "1:1 «Judas»"), ["b"], "la que no lo dice, bajo la primera de ese lugar, no bajo las dos");
+  assert.deepEqual(of("n3", "1:1 «siervo»"), [], "ni la retirada ni la de otro recurso");
 });
 
 console.log(`\nverify-endorsement: ${passed} checks passed.`);

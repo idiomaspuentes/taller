@@ -1,18 +1,18 @@
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import type { AlignmentMap } from "@usfm-tools/types";
 import type { ChecklistItem, ChecklistKind } from "../dcs/checklistLoad";
 import { articleBody, termLabel } from "../domain/afinacionWords";
 import type { Concern } from "../domain/endorsement";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
-import { concernPlace, concernsAt, helpsOfVerse } from "../domain/unitReading";
+import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse } from "../domain/unitReading";
 import type { VerseTextMap } from "../domain/usfmAst";
 import { useT, type MessageKey } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 
 export type UnitHelps = Partial<Record<ChecklistKind, { items: ChecklistItem[]; fromSource: boolean }>>;
 export type PlacedConcern = Concern & { by?: string };
-export type NewConcern = Pick<Concern, "kind" | "about" | "text"> & { where: string };
+export type NewConcern = Pick<Concern, "kind" | "about" | "text" | "item"> & { where: string };
 
 type Text = "tpl" | "tps";
 type Props = {
@@ -38,9 +38,18 @@ type Props = {
   saving?: boolean;
 };
 
+/** A help in view: what it is, and its row. */
+type Shown = { kind: ChecklistKind; row: ChecklistItem };
+/** What is open under a verse: its helps of one kind, or the helps of one of its words. */
+type Open = { verse: number; at: number } & ({ kind: ChecklistKind } | { kind: "word"; resource: Text; index: number });
+
 const KINDS: ChecklistKind[] = ["notas", "preguntas", "palabras"];
+/** The helps that point at words of the text. */
+const OF_WORDS = ["notas", "palabras"] as const;
+const BOTH: Text[] = ["tpl", "tps"];
 const COUNT: Record<ChecklistKind, [MessageKey, MessageKey]> = { notas: ["ur.noteOne", "ur.noteMany"], preguntas: ["ur.questionOne", "ur.questionMany"], palabras: ["ur.termOne", "ur.termMany"] };
 const AT: Record<ChecklistKind, MessageKey> = { notas: "ur.atNote", preguntas: "ur.atQuestion", palabras: "ur.atTerm" };
+const keyOf = (kind: ChecklistKind, row: ChecklistItem) => `${kind}-${row.id}`;
 
 /**
  * A unit read verse by verse, with what goes with each verse beside it.
@@ -54,31 +63,88 @@ const AT: Record<ChecklistKind, MessageKey> = { notas: "ur.atNote", preguntas: "
  * It is the idea of two linked panes (the text, and the helps of what is being read) done in one column: on a phone
  * two panes leave 336px to each, and the helps of one chapter run to 46,000px.
  *
- * The helps of a verse are read one at a time, right under it, and the words of the literal text the one in view is
- * about are marked in the verse. Opened as a list, the nine notes of one verse ran to 1,783px: the last was two
- * screens away from the text it explains.
+ * The helps of a verse are read one at a time, right under it, and the words the one in view is about are marked in
+ * both texts. Opened as a list, the nine notes of one verse ran to 1,783px: the last was two screens away from the
+ * text it explains. What has a note or a key term is underlined in the texts, as in the lists of a harmonization:
+ * touching a word shows the helps that are about it.
  */
 export function UnitReading({ book, chapter, verses, texts, helps, label, termTitles, articles, onOpenTerms, onOpenArticle, concerns, onConcern, saving }: Props) {
   const t = useT();
-  const [open, setOpen] = useState<{ verse: number; kind: ChecklistKind; at: number } | null>(null);
+  const [open, setOpen] = useState<Open | null>(null);
   /** The concern being written: `key` says under what (a verse, or one of its helps). */
-  const [writing, setWriting] = useState<{ key: string; kind: Concern["kind"]; about: string; where: string; text: string } | null>(null);
-  const both = (["tpl", "tps"] as Text[]).filter((resource) => texts[resource]);
+  const [writing, setWriting] = useState<{ key: string; kind: Concern["kind"]; about: string; where: string; item?: string; text: string } | null>(null);
+  const both = BOTH.filter((resource) => texts[resource]);
 
-  /** The words of the literal text an item's quote of the original points at: where they are in the verse, and as a phrase. */
-  const quoteOf = (item: ChecklistItem) => {
-    const text = texts.tpl?.verses[item.verse];
-    if (!item.quote || !text) return null;
-    return alignedGatewayQuoteForHelpQuote({ verseText: text, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: texts.tpl?.alignments, book, chapter: item.chapter, verse: item.verse });
-  };
-  /** What a person calls the item by. */
-  const phraseOf = (item: ChecklistItem): string | null => quoteOf(item)?.gatewayText ?? null;
+  /**
+   * For each note and key term, the words its quote of the original points at: where they are in each text (both
+   * are aligned to the original), and as a phrase of the literal one, which is what a person calls the help by.
+   */
+  const pointed = useMemo(() => {
+    const out = new Map<string, { phrase: string | null; words: Partial<Record<Text, number[]>> }>();
+    for (const kind of OF_WORDS) {
+      for (const row of helps[kind]?.items ?? []) {
+        if (!row.quote) continue;
+        const found: { phrase: string | null; words: Partial<Record<Text, number[]>> } = { phrase: null, words: {} };
+        for (const resource of BOTH) {
+          const text = texts[resource]?.verses[row.verse];
+          if (!text) continue;
+          const match = alignedGatewayQuoteForHelpQuote({ verseText: text, quote: row.quote, occurrence: row.occurrence ?? 1, alignments: texts[resource]?.alignments, book, chapter: row.chapter, verse: row.verse });
+          found.words[resource] = match.tokenIndices;
+          if (resource === "tpl") found.phrase = match.gatewayText;
+        }
+        out.set(keyOf(kind, row), found);
+      }
+    }
+    return out;
+  }, [helps.notas, helps.palabras, texts, book]);
+
+  /** Which helps each word of a verse has, in each text: its notes first, then its key terms. By «verse|text». */
+  const coverage = useMemo(() => {
+    const out = new Map<string, Map<number, Shown[]>>();
+    for (const kind of OF_WORDS) {
+      for (const row of helps[kind]?.items ?? []) {
+        for (const resource of BOTH) {
+          for (const index of new Set(pointed.get(keyOf(kind, row))?.words[resource] ?? [])) {
+            const key = `${row.verse}|${resource}`;
+            const words = out.get(key) ?? new Map<number, Shown[]>();
+            words.set(index, [...(words.get(index) ?? []), { kind, row }]);
+            out.set(key, words);
+          }
+        }
+      }
+    }
+    return out;
+  }, [helps.notas, helps.palabras, pointed]);
+
+  const phraseOf = (kind: ChecklistKind, row: ChecklistItem): string | null => pointed.get(keyOf(kind, row))?.phrase ?? null;
   const countLabel = (kind: ChecklistKind, count: number) => t(COUNT[kind][count === 1 ? 0 : 1]).replace("{n}", String(count));
+  /** Where a help is, as a concern about it is filed. */
+  const placeOfHelp = (kind: ChecklistKind, row: ChecklistItem) =>
+    concernPlace(chapter, row.verse, kind === "preguntas" ? row.title : kind === "palabras" ? phraseOf(kind, row) || termLabel(row.title, termTitles) : phraseOf(kind, row));
+  /** What was said about one help (see `concernsOfHelp`: two notes of a verse may be about the same words). */
+  const saidOf = (kind: ChecklistKind, row: ChecklistItem) =>
+    concernsOfHelp(
+      concerns,
+      kind,
+      row.id,
+      placeOfHelp(kind, row),
+      helpsOfVerse(helps[kind]?.items, row.verse).map((other) => ({ id: other.id, place: placeOfHelp(kind, other) })),
+    );
 
   const toggle = (verse: number, kind: ChecklistKind) => {
     const closing = open?.verse === verse && open.kind === kind;
     setOpen(closing ? null : { verse, kind, at: 0 });
     if (!closing && kind === "palabras") onOpenTerms(helpsOfVerse(helps.palabras?.items, verse));
+  };
+
+  /** A word was touched: the helps that are about it. Touched again, on to the next of them. */
+  const openWord = (verse: number, resource: Text, index: number) => {
+    const list = coverage.get(`${verse}|${resource}`)?.get(index) ?? [];
+    if (!list.length) return;
+    const again = open?.kind === "word" && open.verse === verse && open.resource === resource && open.index === index;
+    setOpen({ verse, kind: "word", resource, index, at: again ? (open.at + 1) % list.length : 0 });
+    const terms = list.filter((shown) => shown.kind === "palabras").map((shown) => shown.row);
+    if (terms.length) onOpenTerms(terms);
   };
 
   const concernBox = () =>
@@ -113,7 +179,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
             data-size="default"
             disabled={saving || !writing.text.trim() || !writing.about}
             onClick={() => {
-              onConcern?.({ kind: writing.kind, about: writing.about, where: writing.where, text: writing.text.trim() });
+              onConcern?.({ kind: writing.kind, about: writing.about, where: writing.where, text: writing.text.trim(), ...(writing.item ? { item: writing.item } : {}) });
               setWriting(null);
             }}
           >
@@ -127,126 +193,146 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
     ) : null;
 
   /** The line that starts a concern about something, or the box where it is being written. */
-  const concernLine = (key: string, about: string, where: string, said: MessageKey) =>
+  const concernLine = (key: string, about: string, where: string, said: MessageKey, item?: string) =>
     !onConcern ? null : writing?.key === key ? (
       concernBox()
     ) : (
-      <button type="button" className="ur-add" onClick={() => setWriting({ key, kind: "observation", about, where, text: "" })}>
+      <button type="button" className="ur-add" onClick={() => setWriting({ key, kind: "observation", about, where, text: "", ...(item ? { item } : {}) })}>
         <MessageSquare size={14} aria-hidden /> {t(said)}
       </button>
     );
 
   /**
-   * What was said about one help, under that help. It was listed only at the foot of its verse: whoever noted a
-   * concern on the first of nine notes saw the box close and the note as it was before, and found what they had
-   * written two screens further down.
+   * What was said about one help, under that help and set apart from it: in its own box, under its own heading,
+   * each concern named by whose it is. As more lines under the note, it read as part of what the note says.
    */
-  const saidHere = (kind: ChecklistKind, where: string) => {
-    const said = concerns.filter((concern) => !concern.withdrawn && concern.about === kind && (concern.where ?? "") === where);
-    return said.length ? (
-      <ul className="ur-said">
-        {said.map((concern) => (
-          <li key={`${concern.by ?? ""}-${concern.id}`} data-kind={concern.kind}>
-            <b>{t(concern.kind === "objection" ? "en.objection" : "en.observation")}</b>
-            {concern.by ? ` · @${concern.by}` : ""}: {concern.text}
-          </li>
-        ))}
-      </ul>
+  const noted = (list: PlacedConcern[]) =>
+    list.length ? (
+      <div className="ur-noted">
+        <p className="ur-noted__lbl">
+          <MessageSquare size={12} aria-hidden /> {t("ur.notedLbl")}
+        </p>
+        <ul className="ur-said">
+          {list.map((concern) => (
+            <li key={`${concern.by ?? ""}-${concern.id}`} data-kind={concern.kind}>
+              <b>{concern.by ? t(concern.kind === "objection" ? "ur.objectionBy" : "ur.observationBy").replace("{who}", concern.by) : t(concern.kind === "objection" ? "ur.yourObjection" : "ur.yourObservation")}</b>
+              <span>{concern.text}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     ) : null;
-  };
 
-  /** Where a help is, as a concern about it is filed. */
-  const placeOfHelp = (kind: ChecklistKind, row: ChecklistItem) =>
-    concernPlace(chapter, row.verse, kind === "preguntas" ? row.title : kind === "palabras" ? phraseOf(row) || termLabel(row.title, termTitles) : phraseOf(row));
-
-  const item = (kind: ChecklistKind, row: ChecklistItem) => {
-    const phrase = phraseOf(row);
-    const key = `${kind}-${row.id}`;
+  /** `tagged`: among the helps of a word a note and a key term come together, and each says which it is. */
+  const item = ({ kind, row }: Shown, tagged: boolean) => {
+    const phrase = phraseOf(kind, row);
+    const key = keyOf(kind, row);
+    const tag = tagged ? <p className="ur-item__kind">{t(kind === "palabras" ? "ur.kindTerm" : "ur.kindNote")}</p> : null;
     if (kind === "palabras") {
       const slug = row.title;
       const article = articles[slug];
       return (
         <li key={key} className="ur-item">
+          {tag}
           <details className="ur-term" onToggle={(e) => e.currentTarget.open && onOpenArticle(row)}>
             <summary>
               {phrase ? <b>«{phrase}»</b> : null}
               <span>{termLabel(slug, termTitles)}</span>
             </summary>
             {article === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : article === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article" content={articleBody(article)} />}
-            {saidHere(kind, placeOfHelp(kind, row))}
-            {/* With the article, not under every name of a list of eleven: a concern about a term comes of reading it. */}
-            {concernLine(key, kind, placeOfHelp(kind, row), "ur.concernTerm")}
           </details>
+          {noted(saidOf(kind, row))}
+          {concernLine(key, kind, placeOfHelp(kind, row), "ur.concernTerm", row.id)}
         </li>
       );
     }
     return (
       <li key={key} className="ur-item">
+        {tag}
         {kind === "preguntas" ? <p className="ur-item__head">{row.title}</p> : phrase ? <p className="ur-item__head">«{phrase}»</p> : null}
         {row.body ? <HelpMarkdownView className="ur-md" content={row.body} /> : null}
-        {saidHere(kind, placeOfHelp(kind, row))}
-        {concernLine(key, kind, placeOfHelp(kind, row), kind === "preguntas" ? "ur.concernQuestion" : "ur.concernNote")}
+        {noted(saidOf(kind, row))}
+        {concernLine(key, kind, placeOfHelp(kind, row), kind === "preguntas" ? "ur.concernQuestion" : "ur.concernNote", row.id)}
       </li>
     );
   };
 
   return (
     <div className="ur">
+      {coverage.size ? <p className="af-hint ur-hint">{t("ur.coveredHint")}</p> : null}
       {verses.map((verse) => {
-        const shown = open?.verse === verse ? open.kind : null;
+        const mine = open?.verse === verse ? open : null;
+        const shownKind = mine && mine.kind !== "word" ? mine.kind : null;
         // One help in view at a time: which, the words of the verse it is about, and what comes after the last.
-        const rows = shown ? helpsOfVerse(helps[shown]?.items, verse) : [];
-        const at = Math.min(open?.at ?? 0, Math.max(rows.length - 1, 0));
-        const inView = rows[at];
-        const marked = new Set(inView ? (quoteOf(inView)?.tokenIndices ?? []) : []);
-        const after = shown ? KINDS.slice(KINDS.indexOf(shown) + 1).find((kind) => helpsOfVerse(helps[kind]?.items, verse).length) : undefined;
+        const list: Shown[] = !mine
+          ? []
+          : mine.kind === "word"
+            ? (coverage.get(`${verse}|${mine.resource}`)?.get(mine.index) ?? [])
+            : helpsOfVerse(helps[mine.kind]?.items, verse).map((row) => ({ kind: mine.kind as ChecklistKind, row }));
+        const at = Math.min(mine?.at ?? 0, Math.max(list.length - 1, 0));
+        const inView = list[at];
+        const here = inView ? pointed.get(keyOf(inView.kind, inView.row))?.words : undefined;
+        const after = shownKind ? KINDS.slice(KINDS.indexOf(shownKind) + 1).find((kind) => helpsOfVerse(helps[kind]?.items, verse).length) : undefined;
         // What was said about the verse; what is about the help in view is under that help, and is not said twice.
-        const here = shown && inView ? placeOfHelp(shown, inView) : null;
-        const said = concernsAt(concerns, chapter, verse).filter((concern) => !concern.withdrawn && !(here !== null && concern.about === shown && (concern.where ?? "") === here));
+        const underHelp = new Set(inView ? saidOf(inView.kind, inView.row) : []);
+        const said = concernsAt(concerns, chapter, verse).filter((concern) => !concern.withdrawn && !underHelp.has(concern));
+        const touched = mine?.kind === "word" ? (tokenizeVersePlainText(texts[mine.resource]?.verses[verse] ?? "")[mine.index] ?? "").replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "") : "";
         return (
           <section key={verse} className="ur-verse" aria-label={`${chapter}:${verse}`}>
             <h3 className="ur-ref">
               {chapter}:{verse}
             </h3>
-            {both.map((resource) =>
-              texts[resource]!.verses[verse] ? (
+            {both.map((resource) => {
+              const text = texts[resource]!.verses[verse];
+              if (!text) return null;
+              const covered = coverage.get(`${verse}|${resource}`);
+              const marked = new Set(here?.[resource] ?? []);
+              return (
                 <p key={resource} className="ur-text">
                   <span className="af-lbl">{label(resource)}</span>{" "}
-                  {resource === "tpl" && marked.size
-                    ? tokenizeVersePlainText(texts.tpl!.verses[verse]!).map((token, index) => (
+                  {covered?.size
+                    ? tokenizeVersePlainText(text).map((token, index) => (
                         <Fragment key={index}>
                           {index ? " " : ""}
-                          {marked.has(index) ? <mark className="ur-mark">{token}</mark> : token}
+                          {covered.has(index) ? (
+                            <button type="button" className="ur-word" data-here={marked.has(index) || undefined} onClick={() => openWord(verse, resource, index)}>
+                              {token}
+                            </button>
+                          ) : (
+                            token
+                          )}
                         </Fragment>
                       ))
-                    : texts[resource]!.verses[verse]}
+                    : text}
                 </p>
-              ) : null,
-            )}
+              );
+            })}
             <div className="ur-kinds">
               {KINDS.map((kind) => {
                 const count = helpsOfVerse(helps[kind]?.items, verse).length;
                 return count ? (
-                  <button key={kind} type="button" aria-expanded={shown === kind} onClick={() => toggle(verse, kind)}>
+                  <button key={kind} type="button" aria-expanded={shownKind === kind} onClick={() => toggle(verse, kind)}>
                     {countLabel(kind, count)}
                   </button>
                 ) : null;
               })}
             </div>
-            {shown ? (
+            {mine && inView ? (
               <div className="ur-open">
-                {helps[shown]?.fromSource ? <p className="af-hint">{t("ur.fromSource")}</p> : null}
+                {helps[inView.kind]?.fromSource ? <p className="af-hint">{t("ur.fromSource")}</p> : null}
                 {/* Above the help, so the buttons stay where they are whatever the length of what is read. */}
                 <div className="ur-pager">
                   {/* The way back is its arrow alone: with its word the place («Nota 2 de 9») broke in two lines on a phone. */}
-                  <button type="button" className="btn" data-variant="outline" data-size="default" aria-label={t("af.prev")} disabled={at === 0} onClick={() => setOpen({ verse, kind: shown, at: at - 1 })}>
+                  <button type="button" className="btn" data-variant="outline" data-size="default" aria-label={t("af.prev")} disabled={at === 0} onClick={() => setOpen({ ...mine, at: at - 1 })}>
                     <ChevronLeft size={20} aria-hidden />
                   </button>
                   <span className="ur-pager__at" role="status">
-                    {t(AT[shown]).replace("{n}", String(at + 1)).replace("{of}", String(rows.length))}
+                    {mine.kind === "word"
+                      ? t("ur.atWord").replace("{n}", String(at + 1)).replace("{of}", String(list.length)).replace("{word}", touched)
+                      : t(AT[mine.kind]).replace("{n}", String(at + 1)).replace("{of}", String(list.length))}
                   </span>
-                  {at < rows.length - 1 ? (
-                    <button type="button" className="btn" data-variant="default" data-size="default" onClick={() => setOpen({ verse, kind: shown, at: at + 1 })}>
+                  {at < list.length - 1 ? (
+                    <button type="button" className="btn" data-variant="default" data-size="default" onClick={() => setOpen({ ...mine, at: at + 1 })}>
                       {t("af.next")} <ChevronRight size={16} aria-hidden />
                     </button>
                   ) : after ? (
@@ -260,7 +346,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
                     </button>
                   )}
                 </div>
-                <ul className="ur-items">{inView ? item(shown, inView) : null}</ul>
+                <ul className="ur-items">{item(inView, mine.kind === "word")}</ul>
               </div>
             ) : null}
             {said.length ? (

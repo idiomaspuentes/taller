@@ -14,6 +14,11 @@ export type Concern = {
   where?: string;
   /** What it is about, so it reaches whoever maintains it (a resource of the process). */
   about: string;
+  /**
+   * The note, question or term it is about, by the id of its row, when it was noted on one. Two notes of a verse
+   * may be about the same words («Judas», twice in 1:1): by their place alone, a concern about one showed under both.
+   */
+  item?: string;
   text: string;
   /** The member took it back, or says it was answered. */
   withdrawn?: boolean;

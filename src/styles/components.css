@@ -8587,7 +8587,17 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 .ur-pager { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; }
 .ur-pager .btn, .af .ur-pager .btn[data-size="default"] { height: auto; min-height: 2.75rem; min-width: 2.75rem; }
 .ur-pager__at { text-align: center; font-size: 0.875rem; font-weight: 700; color: var(--text-muted); }
-.ur-mark { padding: 0 0.125rem; border-radius: 3px; background: var(--warning-100); color: inherit; font-weight: 700; }
+/* What has a note or a key term is underlined in both texts, and touched; the words of the help in view stand out. */
+.ur-word { padding: 0.25rem 0.125rem; margin: -0.25rem -0.125rem; border: 0; border-bottom: 2px dotted var(--primary); border-radius: 3px 3px 0 0; background: none; color: inherit; font: inherit; line-height: inherit; cursor: pointer; }
+.ur-word[data-here] { background: var(--accent-100); border-bottom-style: solid; font-weight: 700; }
+.ur-text:has(.ur-word) { line-height: 1.9; }
+.ur-hint { margin: 0 0 0.375rem; font-size: 0.8125rem; }
+.ur-item__kind { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }
+/* What the committee noted about a help: a box of its own under it, so it does not read as more of the help. */
+.ur-noted { display: grid; gap: 0.375rem; margin-top: 0.375rem; padding: 0.5rem 0.625rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); }
+.ur-noted__lbl { display: flex; align-items: center; gap: 0.3125rem; margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }
+.ur-noted .ur-said li { display: grid; gap: 0.125rem; border-left: 3px solid var(--accent-500); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.ur-noted .ur-said li[data-kind="objection"] { border-left-color: var(--warning-500); }
 .ur-items { display: grid; gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
 .ur-item { display: grid; gap: 0.25rem; }
 .ur-item + .ur-item { padding-top: 0.625rem; border-top: 1px dashed var(--border-strong); }

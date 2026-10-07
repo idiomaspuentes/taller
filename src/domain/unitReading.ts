@@ -40,3 +40,13 @@ export function concernsAt<T extends Pick<Concern, "where">>(concerns: T[], chap
   const at = new RegExp(`^\\s*${chapter}:${verse}(?!\\d)`);
   return concerns.filter((concern) => at.test(concern.where ?? ""));
 }
+
+/**
+ * The concerns about one help of a verse. A concern says which help it is of (`item`); one noted before it did is
+ * told by its place, and when several helps of the verse share that place (two notes about the same words) it is
+ * of the first of them, not of all.
+ */
+export function concernsOfHelp<T extends Pick<Concern, "about" | "where" | "item" | "withdrawn">>(concerns: T[], about: string, id: string, place: string, helps: { id: string; place: string }[]): T[] {
+  const firstThere = helps.find((help) => help.place === place)?.id;
+  return concerns.filter((concern) => !concern.withdrawn && concern.about === about && (concern.item ? concern.item === id : (concern.where ?? "") === place && firstThere === id));
+}

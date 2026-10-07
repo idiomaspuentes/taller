@@ -1299,11 +1299,33 @@ medía **1783 px**: la novena nota quedaba a dos pantallas de su versículo.
 Recorrido entero en QA (9 notas, 3 preguntas y 9 palabras de Judas 1:1) a 375 px, y a 1280 px (el recuadro mide
 632 × 224 px, sin desborde).
 
+**Tres detalles más de Abel, el mismo día**, con la lectura de una en una ya puesta («buena solución para el
+equipo de validación»):
+
+- **«Pareciera que la observación formara parte de la nota.»** *Ahora* va en un recuadro propio bajo la nota, con
+  su rótulo («Inquietudes anotadas aquí») y de quién es («Observación de @valeska», o «Tu observación»). Y cada
+  inquietud recuerda en qué nota se anotó: en 1:1 hay dos notas sobre «Judas», y la observación de la primera
+  salía también bajo la segunda. Las que se anotaron antes de este cambio van bajo la primera nota de ese lugar.
+- **«Se está resaltando solo el TPL y no el TPS.»** *Ahora* las palabras de la ayuda que se lee se marcan en los
+  dos textos: con la nota 1, «Judas,» en el TPL y «Yo, Judas, sirvo» en el TPS.
+- **«Debería haber subrayado en el TPL y TPS para que al hacer clic se muestren las notas y palabras de la palabra
+  seleccionada, como en otras pantallas.»** *Ahora* lo que tiene nota o palabra clave va subrayado en los dos
+  textos («Lo subrayado tiene notas o palabras clave: tócalo»). Tocar «siervo» en el TPL abre «1 de 2 sobre
+  «siervo»»: la nota de «siervo de Jesucristo y hermano de Jacobo» y la palabra clave, cada una con su rótulo
+  («Nota», «Palabra clave»). Tocar la misma palabra otra vez pasa a la siguiente.
+
+Probado en QA con Judas 1:1 a 375 px y a 1280 px (sin desborde). Cada palabra subrayada se toca en 40 px de alto;
+las de una letra miden 12 px de ancho, y casi siempre van pegadas a otra palabra de la misma nota.
+
+**Lo que en Judas se ve raro, y por qué.** El TPS se marca por su alineación, y en esta corrida nueve de las diez
+alineaciones se colocaron por posición: la palabra clave «siervo» marca «y soy» en el TPS, que no es lo que
+traduce. Con un TPS alineado de verdad las marcas caen donde deben; con este no se puede comprobar. En 1:1 casi
+todo queda subrayado (19 de 20 palabras del TPL): nueve notas cubren el versículo entero.
+
 **⚠ Sin resolver**
 
-- Dos notas del mismo versículo sobre las mismas palabras («Judas» y «Judas», en 1:1) comparten lugar: una
-  inquietud anotada en una sale bajo las dos.
 - El artículo de una palabra clave sigue abriéndose dentro de una caja con su propio desplazamiento.
+- Las palabras subrayadas de una letra («a», «y») miden 12 px de ancho.
 
 ### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
 
