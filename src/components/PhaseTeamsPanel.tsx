@@ -4,7 +4,7 @@ import type { TeamOptions } from "../dcs/startBook";
 import { explainError } from "../dcs/userError";
 import { bookLabel, isBookProjectId } from "../domain/books";
 import { orgTeamLabel } from "../domain/roles";
-import { phaseTeams, phasesWithoutTeam, teamAccess, type TeamOption } from "../domain/startBook";
+import { phaseTeams, phasesWithoutTeam, teamAccess, teamGroups, type TeamOption } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
 import type { AssignmentsDoc, ProjectTask } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
@@ -110,8 +110,7 @@ export function PhaseTeamsPanel({ board, mode = "missing", loadTeams, onSave, on
   /** The teams in a list: first the ones that can already edit everything these tasks write. */
   function list(tasks: ProjectTask[]) {
     const needed = [...new Set(tasks.flatMap((task) => options?.needs(task) ?? []))];
-    const ready = teams.filter((team) => teamAccess(team, needed).state === "edits");
-    const rest = teams.filter((team) => !ready.includes(team));
+    const { ready, rest, foreign } = teamGroups(teams, needed);
     const row = (team: TeamOption) => (
       <option key={team.id} value={String(team.id)}>
         {orgTeamLabel(team)}
@@ -120,7 +119,8 @@ export function PhaseTeamsPanel({ board, mode = "missing", loadTeams, onSave, on
     return (
       <>
         {ready.length ? <optgroup label={t("sb.teamsReady")}>{ready.map(row)}</optgroup> : null}
-        {rest.length ? <optgroup label={t("sb.teamsOther")}>{rest.map(row)}</optgroup> : null}
+        {rest.length ? <optgroup label={t(ready.length ? "sb.teamsOther" : "sb.teamsWork")}>{rest.map(row)}</optgroup> : null}
+        {foreign.length ? <optgroup label={t("sb.teamsForeign")}>{foreign.map(row)}</optgroup> : null}
       </>
     );
   }

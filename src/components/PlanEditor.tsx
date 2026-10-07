@@ -32,7 +32,7 @@ import { scopeLabel } from "../domain/resourceNames";
 import { displayOrgTeamName, orgTeamLabel } from "../domain/roles";
 import { localizeScope } from "../domain/scopeNames";
 import type { SolverApp } from "../domain/solvers";
-import { teamAccess, type TeamOption } from "../domain/startBook";
+import { teamAccess, teamGroups, type TeamOption } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
 import { SCOPE_KEYS, filtersForResource, type ArticleFilter, type ChecklistQuestion, type Localized, type Phase, type ResourceNames, type ScopeKey, type StepCheck, type StepClosing, type TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
@@ -137,8 +137,7 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
   }
   function teamSelect(rows: PlanTask[], value: string, label: string, placeholder: string) {
     const needed = needsOf(rows);
-    const ready = teamList.filter((team) => teamAccess(team, needed).state === "edits");
-    const rest = teamList.filter((team) => !ready.includes(team));
+    const { ready, rest, foreign } = teamGroups(teamList, needed);
     const option = (team: TeamOption) => (
       <option key={team.id} value={String(team.id)}>
         {orgTeamLabel(team)}
@@ -154,7 +153,8 @@ export function PlanEditor({ plan, onChange, tools, resourceNames, teams, readOn
         <select id={`pe-team-${rows[0]?.id ?? "x"}`} className="af-input" value={value} disabled={!canEdit || !teams} onChange={(e) => setTeam(rows, e.target.value)}>
           <option value="">{teams ? placeholder : t("sb.loadingTeams")}</option>
           {ready.length ? <optgroup label={t("sb.teamsReady")}>{ready.map(option)}</optgroup> : null}
-          {rest.length ? <optgroup label={t("sb.teamsOther")}>{rest.map(option)}</optgroup> : null}
+          {rest.length ? <optgroup label={t(ready.length ? "sb.teamsOther" : "sb.teamsWork")}>{rest.map(option)}</optgroup> : null}
+          {foreign.length ? <optgroup label={t("sb.teamsForeign")}>{foreign.map(option)}</optgroup> : null}
         </select>
         {access?.state === "will-get" ? <small className="pe-hint">{t("sb.teamWillGet").replace("{repos}", access.missing.join(", "))}</small> : null}
         {access?.state === "read-only" ? <small className="pe-hint pe-hint--warn">{t("pe.teamReadOnly")}</small> : null}

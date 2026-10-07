@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { shippedWorkflow } from "../src/domain/processes";
-import { bookSize, firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, phasesAtStart, phaseTeams, phasesWithoutTeam, teamAccess, startNotices, tasksWithoutTeam } from "../src/domain/startBook";
+import { bookSize, firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, phasesAtStart, phaseTeams, phasesWithoutTeam, teamAccess, teamGroups, startNotices, tasksWithoutTeam, wasWithdrawn } from "../src/domain/startBook";
 import type { AssignmentsDoc, InventoryDoc, Portion } from "../src/domain/types";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 
@@ -97,6 +97,24 @@ test("a quien coordina se le avisa una sola vez: con la entrega que cruza la mar
   assert.equal(reachesNextBook(board, work.map((row) => (row.number === 7 ? { ...row, closed: true } : row)), 8), null, "la octava ya no avisa");
   assert.equal(reachesNextBook(board, work.map((row) => ({ ...row, closed: row.number < 5 })), 5), null, "la quinta todavía no");
   assert.deepEqual(firstPhaseTeams({ ...board, teams: board.teams.map((t) => ({ ...t, orgTeamName: t.phaseId === board.phases[0]!.id ? "Traducción" : "Otro" })) }), ["Traducción"]);
+});
+
+test("en la lista de equipos van primero los de trabajo; los que la organización tiene para otra cosa, aparte y al final", () => {
+  const team = (id: number, name: string, over: object = {}) => ({ id, name, canEdit: true, repos: [] as string[], allRepos: false, ...over });
+  const teams = [team(1, "admins", { allRepos: true, foreign: true }), team(2, "Owners", { allRepos: true, foreign: true }), team(3, "armonizadores"), team(4, "traductores-tpl", { repos: ["taller", "es-419_tn"] })];
+  const groups = teamGroups(teams, ["taller", "es-419_tn"]);
+  assert.deepEqual(groups.ready.map((row) => row.name), ["traductores-tpl"], "el que ya edita lo que la tarea escribe");
+  assert.deepEqual(groups.rest.map((row) => row.name), ["armonizadores"], "el recién creado, que todavía no tiene repositorios");
+  assert.deepEqual(groups.foreign.map((row) => row.name), ["admins", "Owners"], "aunque puedan editarlo todo");
+});
+
+test("una subtarea que el plan retiró no cuenta como trabajo del libro", () => {
+  const steps = [{ id: "estudiar" }, { id: "borrador" }];
+  const body = (done: string[]) => `<!-- gateway-task-progress ${JSON.stringify({ schema: "gateway-task-progress-1", doneStepIds: done })} -->`;
+  assert.equal(wasWithdrawn({ state: "closed", body: body(["estudiar"]) }, steps), true, "cerrada con un paso sin hacer: la retiró el plan");
+  assert.equal(wasWithdrawn({ state: "closed", body: body(["estudiar", "borrador"]) }, steps), false, "entregada");
+  assert.equal(wasWithdrawn({ state: "open", body: body([]) }, steps), false, "abierta: es trabajo por hacer");
+  assert.equal(wasWithdrawn({ state: "closed", body: "" }, []), false, "una tarea sin pasos se cierra al entregarla");
 });
 
 console.log(`\nverify-start-book: ${passed} checks passed.`);

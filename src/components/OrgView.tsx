@@ -138,14 +138,16 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
   }
 
   /** Make a person a coordinator of a team, or stop being one. Only who manages the organization decides this. */
-  async function setCoordinator(teamName: string, login: string, on: boolean) {
+  async function setCoordinator(team: Pick<DcsTeam, "name" | "description">, login: string, on: boolean) {
+    const teamName = team.name;
     if (!pmConfig) return;
     setLevelSaving(login.trim().toLowerCase());
     try {
       const next = { ...pmConfig, ...withCoordinator(pmConfig, teamName, login, on) };
       await savePmConfig(session, pmOrg, next);
       setPmConfig(next);
-      announce(t(on ? "org.nowCoordinator" : "org.notCoordinator").replace("{who}", login).replace("{team}", friendlyName(teamName)));
+      // By the name the team was given («Armonizadores»): Door43 keeps it in lower case, and it was said so.
+      announce(t(on ? "org.nowCoordinator" : "org.notCoordinator").replace("{who}", login).replace("{team}", orgTeamLabel(team, teamPrefix)));
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -539,7 +541,7 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
                         {usage ? (
                           used ? (
                             <span className="hub-used" title={[...used.projects.filter(Boolean), ...(used.projects.includes("") ? [t("org.usedDefault")] : [])].join(" · ")}>
-                              {t(used.tasks === 1 ? "org.usedOne" : "org.usedMany").replace("{n}", String(used.tasks))}
+                              {used.tasks ? t(used.tasks === 1 ? "org.usedOne" : "org.usedMany").replace("{n}", String(used.tasks)) : t("org.usedNew")}
                             </span>
                           ) : (
                             <span className="hub-used" data-unused="true">
@@ -626,7 +628,7 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
                                   size="sm"
                                   variant="ghost"
                                   disabled={levelSaving === m.id.toLowerCase()}
-                                  onClick={() => void setCoordinator(team.name, m.id, !isCoordinatorOf(pmConfig, team.name, m.id))}
+                                  onClick={() => void setCoordinator(team, m.id, !isCoordinatorOf(pmConfig, team.name, m.id))}
                                 >
                                   {isCoordinatorOf(pmConfig, team.name, m.id) ? t("org.unsetCoordinator") : t("org.setCoordinator")}
                                 </Button>

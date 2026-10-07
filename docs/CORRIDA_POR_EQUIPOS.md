@@ -579,14 +579,14 @@ Hecho por **Marta** (abelperez) desde la app, a 375 px, un ajuste a la vez:
   *Arreglado:* ahora pregunta antes, con el nombre de la persona y del equipo («¿Quitar a @Elisha de «Traductores
   TPL»?»), y lo que resalta es volver.
 - **«En uso · 6 tareas»** de un equipo que hace tres: cuenta las tres del proyecto y otra vez las mismas tres como
-  equipo por defecto para los libros que vengan. Lo mismo en los demás («4» por 2, «8» por 4).
+  equipo por defecto para los libros que vengan. Lo mismo en los demás («4» por 2, «8» por 4). *Arreglado después.*
 - **«Nadie podrá tomarlas hasta entonces»** no era verdad: los Desafíos, sin equipo, ya aparecían en «Puedes
-  sumarte» de quien estaba en los equipos de Traducción.
+  sumarte» de quien estaba en los equipos de Traducción. *Arreglado después: la frase ya no se dice.*
 - **El orden de «Puedes sumarte».** Las diez tarjetas de Desafíos salían 1:17–23, 1:12–16, 1:5–11, 1:1–4… y
   1:24–25 al final, mezclando TPS y TPL. *Arreglado:* salen por pasaje, como las libres: TPL 1:1–4, TPS 1:1–4,
   TPL 1:5–11…
-- En «Proyectos», el primer aviso dice «Traducción de Judas va en 71 de 71» (cuenta pasos, no subtareas) y propone
-  empezar el libro siguiente.
+- En «Proyectos», el primer aviso dice «Traducción de Judas va en 71 de 71» y propone empezar el libro siguiente.
+  *Arreglado después:* contaba también las subtareas que el plan retiró al cortar de nuevo los pasajes.
 
 ## Fase 2 · Afinación (empezada el 6 de octubre)
 
@@ -940,8 +940,9 @@ A Abigail (Elisha) le quedaron «Libres para tu equipo · 3», cada una con un b
 **⚠ Lo que se encontró**
 
 - La lista para elegir el equipo de una fase trae diez opciones, y antes del que se acaba de crear salen «admins»,
-  «Owners», «translators» y «br_translator», que no son equipos de trabajo.
+  «Owners», «translators» y «br_translator», que no son equipos de trabajo. *Arreglado después.*
 - El aviso de voz dice «@abelperez ahora coordina armonizadores», con el nombre del equipo en minúscula.
+  *Arreglado después.*
 - Una persona «Practicante» no tiene nada que hacer en la fase: sus tarjetas dicen «Pide nivel persona
   habilitada». Es lo que pide el proceso; para que Dina participara, Josué le subió el nivel en el equipo.
 
@@ -1236,4 +1237,23 @@ publicar» es para los proyectos que se armen desde ahora: Judas conserva «Publ
 
 - Leer la unidad todavía tarda medio minuto, y preparar la validación (copiar la unidad archivo por archivo) sigue
   tardando minutos.
+
+### «Organización» y «Proyectos» (7 de octubre)
+
+**⚠ Arreglado**
+
+- **«En uso · 6 tareas» de un equipo que hace tres.** *Ahora* cuenta las tareas de los proyectos: en QA,
+  «Organización» dice 3, 3, 3, 1, 1, 4, 2 y 2 (antes 6, 6, 6, 2, 2, 8, 4 y 4). Un equipo que solo está puesto para
+  los proyectos nuevos dice «En uso · proyectos nuevos».
+- **La lista para elegir equipo empezaba por «admins», «Owners», «translators» y «br_translator».** *Ahora* van
+  primero los equipos de trabajo, y esos cuatro al final, bajo «Otros equipos de la organización» (visto en el
+  proyecto de Judas).
+- **«Traducción de Judas va en 71 de 71».** Contaba las subtareas que el plan retiró cuando se cortaron de nuevo los
+  pasajes. *Ahora*: «va en 29 de 29» (visto en «Proyectos»).
+- **«Nadie podrá tomarlas hasta entonces»** no era verdad, y se quitó: «En Judas falta decir qué equipo hace 3
+  tareas. Elige uno por fase, o por tarea si no es el mismo».
+- **«@abelperez ahora coordina armonizadores».** *Ahora* con el nombre que se le dio al equipo: «Armonizadores».
+
+Lo que no se vio en pantalla: el aviso de «ahora coordina» (habría que cambiar a quien coordina un equipo) y la
+frase de las tareas sin equipo (en QA todas lo tienen).
 

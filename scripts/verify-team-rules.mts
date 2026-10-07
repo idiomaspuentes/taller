@@ -100,8 +100,8 @@ test("un equipo está en uso cuando alguna tarea lo tiene, en un proyecto o en l
     { projectId: "", tasks: [{ orgTeamName: "pm-traductores-tpl" }, { orgTeamName: "pm-traductores-tps" }, {}] },
     { projectId: "Hageo", tasks: [{ orgTeamName: "PM-Traductores-TPL" }, { orgTeamName: "pm-traductores-tpl" }] },
   ]);
-  assert.deepEqual(use.get("pm-traductores-tpl"), { tasks: 3, projects: ["", "Hageo"] });
-  assert.deepEqual(use.get("pm-traductores-tps"), { tasks: 1, projects: [""] });
+  assert.deepEqual(use.get("pm-traductores-tpl"), { tasks: 2, projects: ["", "Hageo"] }, "las dos de Hageo; las de un proyecto nuevo son las mismas y no se cuentan otra vez");
+  assert.deepEqual(use.get("pm-traductores-tps"), { tasks: 0, projects: [""] }, "en uso (un proyecto nuevo empieza con él), aunque ningún proyecto lo tenga todavía");
   assert.equal(use.get("pm-traductores-de-ayudas"), undefined, "sin tareas: se puede renombrar o quitar sin romper nada");
 });
 

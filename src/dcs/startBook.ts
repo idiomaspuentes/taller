@@ -6,8 +6,8 @@ import { listPmOrgTeams, loadAssignmentsFromDcs, saveProjectToDcs, teamCanEdit }
 import { bookName, normalizeProjectId } from "../domain/books";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
-import { firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, type NextBookHint, type TeamOption } from "../domain/startBook";
-import { reposForTask } from "../domain/roles";
+import { firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, wasWithdrawn, type NextBookHint, type TeamOption } from "../domain/startBook";
+import { isAppTeam, reposForTask } from "../domain/roles";
 import { emptyAssignments, mergePeople } from "../domain/store";
 import { portionStartsOfBook } from "../domain/extraWork";
 import { tNow } from "../i18n/messages";
@@ -133,7 +133,7 @@ export async function loadTeamOptions(params: { session: GtSession; pmOrg: strin
       const allRepos = Boolean((team as { includes_all_repositories?: boolean }).includes_all_repositories);
       // A team that cannot be read is shown as having nothing: choosing it says what it will be given.
       const repos = allRepos ? [] : await listTeamRepos(config, team.id, session.token, { limit: 100 }).then((list) => list.map((repo) => repo.name)).catch(() => []);
-      return { id: team.id, name: team.name, description: team.description, canEdit: teamCanEdit(team), unitsMap: team.units_map, repos, allRepos };
+      return { id: team.id, name: team.name, description: team.description, canEdit: teamCanEdit(team), unitsMap: team.units_map, repos, allRepos, ...(isAppTeam(team.name, pmConfig) ? {} : { foreign: true }) };
     }),
   );
   return { teams, needs: (task) => reposForTask(task, lang, pmConfig) };
@@ -181,6 +181,14 @@ export async function setTaskTeams(params: { session: GtSession; pmOrg: string; 
 }
 
 /**
+ * The subtareas that are work of the book: not the ones the plan withdrew (a passage cut otherwise), which are
+ * closed with steps left undone. Counted, the first phase of a book of 29 subtareas read «va en 71 de 71».
+ */
+function bookWork<T extends { state?: string; body?: string | null }>(board: Pick<AssignmentsDoc, "teams">, issues: T[]): T[] {
+  return issues.filter((issue) => !wasWithdrawn(issue, board.teams.find((task) => task.id === issueTaskId(issue as never))?.steps));
+}
+
+/**
  * Whether the next book should be started now: looks at the book started last and how far its first phase is.
  * `null` when it is not time yet, or when it cannot be told.
  */
@@ -190,7 +198,7 @@ export async function loadNextBookHint(params: { session: GtSession; pmOrg: stri
   const newest = boards.sort((a, b) => Date.parse(b.workflowAppliedAt!) - Date.parse(a.workflowAppliedAt!))[0];
   if (!newest) return null;
   const { issues } = await listProjectIssues(session, pmOrg, newest.projectId);
-  return nextBookHint(newest, issues.map((issue) => ({ taskId: issueTaskId(issue), closed: issue.state === "closed" })));
+  return nextBookHint(newest, bookWork(newest, issues).map((issue) => ({ taskId: issueTaskId(issue), closed: issue.state === "closed" })));
 }
 
 /**
@@ -201,7 +209,7 @@ export async function loadNextBookHint(params: { session: GtSession; pmOrg: stri
 export async function notifyNextBook(params: { session: GtSession; pmOrg: string; board: AssignmentsDoc; issueNumber: number }): Promise<string[]> {
   const { session, pmOrg, board } = params;
   const { issues } = await listProjectIssues(session, pmOrg, board.projectId);
-  const hint = reachesNextBook(board, issues.map((issue) => ({ taskId: issueTaskId(issue), closed: issue.state === "closed", number: issue.number })), params.issueNumber);
+  const hint = reachesNextBook(board, bookWork(board, issues).map((issue) => ({ taskId: issueTaskId(issue), closed: issue.state === "closed", number: issue.number })), params.issueNumber);
   if (!hint) return [];
   const config = await loadPmConfig(session, pmOrg);
   const who = [...new Set(firstPhaseTeams(board).flatMap((team) => coordinatorsOf(config, team)))];

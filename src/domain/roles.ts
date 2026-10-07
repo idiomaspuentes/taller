@@ -206,7 +206,10 @@ export function isAppTeam(
   return key === (config.managerTeam ?? "").trim().toLowerCase() || named(config.teamLevels) || named(config.coordinators);
 }
 
-/** Where a team is used: how many tasks have it, and in which projects (`""` = the tasks a new project starts with). */
+/**
+ * Where a team is used: how many tasks of projects have it, and in which projects (`""` = the tasks a new project
+ * starts with, which are not counted: they are the same tasks again, and a team that does three read «6 tareas»).
+ */
 export type TeamUse = { tasks: number; projects: string[] };
 
 /**
@@ -220,7 +223,7 @@ export function teamUsage(sources: { projectId: string; tasks: { orgTeamName?: s
       const key = (task.orgTeamName ?? "").trim().toLowerCase();
       if (!key) continue;
       const row = use.get(key) ?? { tasks: 0, projects: [] };
-      row.tasks += 1;
+      if (source.projectId) row.tasks += 1;
       if (!row.projects.includes(source.projectId)) row.projects.push(source.projectId);
       use.set(key, row);
     }

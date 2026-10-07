@@ -1,3 +1,4 @@
+import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc, InventoryDoc, ProjectTask } from "./types";
 
 /**
@@ -78,7 +79,20 @@ export type TeamOption = {
   /** Repositories the team was given; ignored when it has all of the organization's. */
   repos: string[];
   allRepos: boolean;
+  /** A team the organization has for something else (its owners, teams of other tools): listed last, apart. */
+  foreign?: boolean;
 };
+
+/**
+ * The teams of a list in the order a person looks for them: the working teams, those that can already edit what
+ * the tasks write first; then the rest of the organization's. The team just made for a phase came after «admins»,
+ * «Owners», «translators» and «br_translator», which may edit everything and do none of this work.
+ */
+export function teamGroups(teams: TeamOption[], needed: string[]): { ready: TeamOption[]; rest: TeamOption[]; foreign: TeamOption[] } {
+  const own = teams.filter((team) => !team.foreign);
+  const ready = own.filter((team) => teamAccess(team, needed).state === "edits");
+  return { ready, rest: own.filter((team) => !ready.includes(team)), foreign: teams.filter((team) => team.foreign) };
+}
 
 export type TeamAccess = {
   /** `edits`: can already write everything; `will-get`: may write, but lacks repositories; `read-only`: may not write. */
@@ -144,6 +158,13 @@ export function bookSize(inventory: Pick<InventoryDoc, "portions">): { chapters:
 }
 
 export type NextBookHint = { projectId: string; phase: string; done: number; total: number };
+
+/** A subtarea the plan withdrew: closed with steps of its task left undone. A delivered one has them all done. */
+export function wasWithdrawn(issue: { state?: string; body?: string | null }, steps: { id: string }[] | undefined): boolean {
+  if ((issue.state ?? "").toLowerCase() !== "closed" || !steps?.length) return false;
+  const done = parseTaskProgressMarker(issue.body ?? "").doneStepIds;
+  return steps.some((step) => !done.includes(step.id));
+}
 
 /** From how much of the first phase is closed it is time to have the next book ready. */
 export const NEXT_BOOK_AT = 0.7;
