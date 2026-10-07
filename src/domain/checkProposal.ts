@@ -113,6 +113,95 @@ export function proposalsSettled(views: ProposalView[]): boolean {
   return views.every((view) => view.state === "applied" || view.state === "sent" || view.state === "withdrawn" || view.state === "replaced");
 }
 
+// ---------------------------------------------------------------- a new version and the words it was written from
+
+/** The words alone: the line ends and spaces a file is kept with (a note keeps its line ends as «\n») make no other version. */
+const wording = (text: string) => text.replace(/\\n/g, " ").replace(/\s+/g, " ").trim();
+
+/** Whether two versions say the same, whatever spaces and line ends they are kept with. */
+export function sameWording(a: string, b: string): boolean {
+  return wording(a) === wording(b);
+}
+
+/**
+ * How a new version stands against the help as it is now. A new version is the whole of the words, written over
+ * the ones it was proposed from; the lists of a task go over the same notes and each knows only its own proposals,
+ * so two of them (or two people in one) can each propose a whole note starting from the same words, and the second
+ * one applied took out what the first had put in.
+ *
+ * `fits`: the help still says what the proposal was written from, and can be written over. `done`: it already
+ * says what is proposed (it was applied and saying so failed, or two people applied it at once), and there is
+ * nothing to write. `changed`: it says something else, and writing the proposal would take that out. A proposal
+ * that does not say what it was written from cannot be told, and fits.
+ */
+export type ProposalFit = "fits" | "done" | "changed";
+
+export function proposalFit(proposal: Pick<ProposalPayload, "before" | "after">, current: string): ProposalFit {
+  // Asked first: a proposal that only parts a paragraph in two says the same as what it was written from.
+  if (proposal.before === undefined || sameWording(current, proposal.before)) return "fits";
+  return proposal.after !== undefined && sameWording(current, proposal.after) ? "done" : "changed";
+}
+
+/**
+ * The help a proposal would change: the row of the notes or questions, or the file of an article. Empty when it is
+ * about no help of its own (a verse of a text, something that is missing).
+ */
+export function proposalHelp(proposal: ProposalPayload): string {
+  const part = proposal.rowId || proposal.path;
+  return part ? `${proposal.resource}:${part}` : "";
+}
+
+/** The words of that help a proposal would write over: of a row, one of its columns. */
+export function proposalWords(proposal: ProposalPayload): string {
+  const help = proposalHelp(proposal);
+  return help && proposal.rowId ? `${help}:${proposal.field ?? "Note"}` : help;
+}
+
+/**
+ * The proposals still to be resolved that are about a help another of them is about too, each with how many others
+ * there are: the team reads them together before agreeing on one. One carried out, taken back or answered with
+ * another version is no longer to be chosen among.
+ */
+export function sharedHelp(views: ProposalView[]): Map<string, number> {
+  const live = views.filter((view) => (view.state === "open" || view.state === "agreed") && proposalHelp(view.proposal));
+  const count = new Map<string, number>();
+  for (const view of live) count.set(proposalHelp(view.proposal), (count.get(proposalHelp(view.proposal)) ?? 0) + 1);
+  const others = new Map<string, number>();
+  for (const view of live) {
+    const rest = count.get(proposalHelp(view.proposal))! - 1;
+    if (rest) others.set(view.proposal.id, rest);
+  }
+  return others;
+}
+
+/**
+ * What each help says after the proposals already applied to it, by `proposalWords`. A trial writes nothing: there
+ * this is how a help is taken to read, so the next proposal for it is met as it would be in the project.
+ */
+export function appliedWords(views: ProposalView[]): Record<string, string> {
+  const words: Record<string, string> = {};
+  for (const view of [...views].sort((a, b) => a.at.localeCompare(b.at))) {
+    if (view.state === "applied" && view.proposal.after !== undefined && proposalWords(view.proposal)) words[proposalWords(view.proposal)] = view.proposal.after;
+  }
+  return words;
+}
+
+/**
+ * Proposals in the order they are read in: by place, those about one help together (where the first of them
+ * came), each help's in the order they were made. By time alone, two versions of a note stood apart with what was
+ * proposed for the other notes of the verse between them.
+ */
+export function byPlaceAndHelp<T extends ProposalView>(views: T[]): T[] {
+  const place = (where: string) => {
+    const [chapter, verse] = where.split(":").map(Number);
+    return (chapter || 0) * 1000 + (verse || 0);
+  };
+  const first = new Map<string, string>();
+  const group = (view: T) => proposalHelp(view.proposal) || view.proposal.id;
+  for (const view of views) if (!first.has(group(view)) || view.at < first.get(group(view))!) first.set(group(view), view.at);
+  return [...views].sort((a, b) => place(a.proposal.where) - place(b.proposal.where) || first.get(group(a))!.localeCompare(first.get(group(b))!) || group(a).localeCompare(group(b)) || a.at.localeCompare(b.at));
+}
+
 const ASK_MAX = 600;
 
 /**

@@ -1680,8 +1680,42 @@ equipo de afinación, igual que lo que pide el comité de validación; y un toqu
 - **De prueba se puede recorrer entero**: lo propuesto en una lista queda en la pestaña y sale en el acuerdo; como
   se prueba a solas, estar de acuerdo con la propuesta propia cuenta como «otra persona del equipo».
 
+**⚠ Arreglado (visto al leer el código, no en una corrida)**
+
+- **Dos propuestas para la misma nota se pisaban sin avisar.** Una propuesta lleva la nota entera, escrita a partir
+  de como estaba. Las tres listas de «Armonizar Notas y Academia» recorren las mismas notas y cada una solo conoce
+  sus propias propuestas: dos listas, o dos personas en una, podían proponer cada una su versión desde el mismo
+  texto, y al aplicar la segunda se escribía encima de la primera, cuyo cambio desaparecía. *Ahora* una propuesta
+  solo se escribe sobre el texto del que salió. Al aplicarla se lee la nota (o la pregunta, o el artículo) en el
+  borrador del equipo, y si ya dice otra cosa no se escribe nada. Se compara sin contar espacios ni saltos de
+  línea, y sobre el mismo archivo que se va a escribir: dos personas que acuerdan a la vez dos versiones no pasan
+  las dos.
+- **La tarjeta lo dice y lleva a «Otra propuesta».** «La ayuda cambió después de esta propuesta», con lo que dice
+  ahora (lo quitado tachado, lo puesto marcado); ya no ofrece «De acuerdo» ni «Aplicar el cambio», y «Otra
+  propuesta» pasa a ser el botón principal. La hoja se abre con la ayuda como está ahora, no con el texto viejo, y
+  la nueva versión guarda ese texto como su «antes». La pantalla lo sabe al abrirse (lee las ayudas que tienen
+  propuestas por resolver) y otra vez al aplicar.
+- **Las propuestas sobre la misma ayuda salen juntas y señaladas**: «Hay otra propuesta para esta misma ayuda.
+  Léelas juntas antes de acordar». Antes iban por hora, con las de otras notas del versículo en medio.
+- Una propuesta ya escrita que se aplica otra vez (se escribió y no se pudo anotar que estaba hecha) ni escribe ni
+  se rechaza. Y una para una nota que el equipo ya no tiene ya no se da por aplicada sin haber escrito nada: falla
+  diciéndolo.
+- Comprobado con `verify:check-proposal` (11) y, contra el Door43 de mentira con Tito, `verify:proposals-mock`
+  (13): otra lista propone otra versión de la misma nota, la segunda se rechaza tras aplicarse la primera y la nota
+  queda como estaba, «Otra propuesta» desde la nota actual sí se aplica, dos aplicadas a la vez dejan una sola, y
+  lo mismo con un artículo. En pantalla, en modo de prueba, a 375 y a 1280 px (la tarjeta, 352 px de ancho; sus
+  botones, 44 de alto; sin desplazamiento lateral).
+
 **⚠ Sin resolver**
 
+- **La lista sigue sin saber de las propuestas de las otras listas**: quien propone un cambio a una nota no ve que
+  otra lista ya propuso otro hasta llegar al acuerdo.
+- En modo de prueba nada se escribe, así que el acuerdo toma la ayuda como la dejó la última propuesta aplicada en
+  la prueba; la lista, de prueba, sigue mostrando la nota sin ese cambio.
+- **Una nota con párrafos queda escrita de otra forma al aplicarle una propuesta** (visto al probar esto, ya
+  pasaba): la celda se guarda entre comillas y con saltos de línea reales, en tres líneas del archivo, en vez de
+  con las marcas «\n» que usa Door43. Taller la sigue leyendo bien; otras herramientas que leen el TSV línea por
+  línea, no se sabe. En Tito son 10 de las 212 notas de versículo.
 - **Nada de esto se ha visto escribir en el Door43 de QA.** Judas está terminado y no hay tarea de armonización
   abierta. Se probó entero en modo de prueba (proponer sobre una nota y sobre el TPL, acordar, aplicar, pedir a
   afinación), y las escrituras, contra el Door43 de mentira con Tito (`npm run verify:proposals-mock`): la propuesta

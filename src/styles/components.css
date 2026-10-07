@@ -7284,6 +7284,11 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .ag-card__buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .ag-card__buttons .btn, .af .ag-card__buttons .btn[data-size="default"] { height: auto; min-height: 2.75rem; }
 .ag-mine { font-size: 0.8125rem; font-weight: 600; color: var(--success-700); }
+/* Two proposals about one help: said on each. And one the help no longer fits: what happened, and what it says now. */
+.ag-shared { margin: 0; font-size: 0.8125rem; font-weight: 600; color: var(--warning-700); }
+.ag-stale { display: grid; gap: 0.375rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--warning-100); font-size: 0.875rem; }
+.ag-stale p { margin: 0; }
+.ag-stale > p:first-child { color: var(--warning-700); }
 .ag .ck-go { grid-auto-flow: row; }
 .ag-foot { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
 /* Proposing a change: a sheet with what, how and why, and its two buttons held at its foot. */

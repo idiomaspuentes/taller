@@ -1,5 +1,6 @@
+import { getRawContent } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
-import { readRepoFile } from "./afinacionStore";
+import { isWriteRace, raceDelay, readRepoFile } from "./afinacionStore";
 import { forgetBranches } from "./branchList";
 import { loadCheckAnswers, type CheckTarget } from "./checkStore";
 import { dcsConfig } from "./config";
@@ -7,8 +8,9 @@ import { createCorrections } from "./corrections";
 import { commentOnIssue } from "./issues";
 import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { readTeamHelps, saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "./teamHelps";
-import { proposalAsk, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { proposalAsk, proposalFit, proposalWords, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
+import { helpsRowField } from "../domain/helpsDraft";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
 import { shippedStepsMissing } from "../domain/processes";
 import { bookBranchName } from "../domain/portionPr";
@@ -65,26 +67,116 @@ async function draftBranch(params: { session: GtSession; owner: string; repo: st
 }
 
 /**
+ * A proposal that cannot be written: the help no longer says what the proposal was written from. `current` is what
+ * it says now, for whoever writes the proposal again.
+ */
+export class HelpChangedError extends Error {
+  readonly current: string;
+  constructor(current: string) {
+    super(tNow("ag.stale"));
+    this.name = "HelpChangedError";
+    this.current = current;
+  }
+}
+
+type ProposalPlace = { session: GtSession; ctx: SolverLaunchContext; pmConfig: PmConfig; board: AssignmentsDoc | null };
+
+/**
+ * An article as the team has it now, without starting a draft to find out: on its draft of those articles, or as
+ * published. Empty when the team has none.
+ */
+async function articleNow(place: ProposalPlace, proposal: ProposalPayload, helps: { owner: string; repo: string; book: string }): Promise<string> {
+  const { session } = place;
+  const read = (ref?: string) => getRawContent(dcsConfig(session.host), helps.owner, helps.repo, proposal.path ?? "", { token: session.token, ...(ref ? { ref } : {}) }).catch(() => "");
+  const draft = await teamDraftBranch({ session, owner: helps.owner, repo: helps.repo, book: helps.book, teams: place.board?.teams ?? [], resource: proposal.resource });
+  return (draft ? await read(draft) : "") || (await read());
+}
+
+/**
+ * The words each of some proposals would write over, as the team has them now, by `proposalWords`: the agreement
+ * reads its proposals against them, so one written from words that are no longer there is seen before anybody
+ * agrees on it. What cannot be read is left out; applying finds it.
+ */
+export async function readProposedWords(params: ProposalPlace & { proposals: ProposalPayload[] }): Promise<Record<string, string>> {
+  // The notes of a book are one file: read once for all the proposals about them.
+  const files = new Map<string, Promise<string | undefined>>();
+  const words: Record<string, string> = {};
+  await Promise.all(
+    params.proposals.map(async (proposal) => {
+      const key = proposalWords(proposal);
+      const helps = resolveHelpsTarget({ ...params.ctx, resource: proposal.resource }, params.pmConfig);
+      if (!key || "error" in helps) return;
+      if (proposal.rowId && helps.filepath) {
+        if (!files.has(proposal.resource)) files.set(proposal.resource, readTeamHelps({ ...params, kind: proposal.resource as HelpsResource }).then((own) => own?.text, () => undefined));
+        const text = await files.get(proposal.resource);
+        const now = text === undefined ? undefined : helpsRowField(text, proposal.rowId, proposal.field ?? "Note");
+        if (now !== undefined) words[key] = now;
+      } else if (proposal.path) {
+        const now = await articleNow(params, proposal, helps).catch(() => "");
+        if (now) words[key] = now;
+      }
+    }),
+  );
+  return words;
+}
+
+/**
  * The new version of a proposal the team agreed on, written where the team keeps that help: the row of its notes
  * or questions, or the file of the article. Over the file as it is at that moment, so what somebody else changed
  * meanwhile in another row stays.
+ *
+ * And only over the words it was written from. A new version is the whole of a note: written over one that had
+ * changed since (another proposal for it applied first, from another list of the task or from the same one), it
+ * took that change out with nobody told. It is refused instead (`HelpChangedError`), on the file about to be
+ * written and not on one read earlier: two people who agree at the same moment on two versions of a note both
+ * find, reading first, the note as it was.
  */
-export async function applyProposal(params: { session: GtSession; ctx: SolverLaunchContext; pmConfig: PmConfig; board: AssignmentsDoc | null; proposal: ProposalPayload }): Promise<void> {
+export async function applyProposal(params: ProposalPlace & { proposal: ProposalPayload }): Promise<void> {
   const { session, ctx, board, proposal } = params;
-  if (!proposal.after) throw new Error(tNow("ag.needsVersion"));
+  const { after } = proposal;
+  if (!after) throw new Error(tNow("ag.needsVersion"));
   const helps = resolveHelpsTarget({ ...ctx, resource: proposal.resource }, params.pmConfig);
   if ("error" in helps) throw new Error(helps.error);
   const message = `Taller: propuesta acordada ${helps.book} ${proposal.where}`;
   if (proposal.rowId && helps.filepath) {
+    const { rowId } = proposal;
+    const column = proposal.field ?? "Note";
+    const edits = (text: string) => {
+      const now = helpsRowField(text, rowId, column);
+      // Written over no row, it was said to be applied and nothing had changed.
+      if (now === undefined) throw new Error(tNow("ag.helpGone"));
+      const fit = proposalFit(proposal, now);
+      if (fit === "changed") throw new HelpChangedError(now);
+      return fit === "done" ? [] : [{ id: rowId, fields: { [column]: after } }];
+    };
     const own = await readTeamHelps({ session, ctx, pmConfig: params.pmConfig, board, kind: proposal.resource as HelpsResource });
+    // Refused before a draft is started for it.
+    if (own) edits(own.text);
     const branch = await draftBranch({ session, owner: helps.owner, repo: helps.repo, book: helps.book, board, resource: proposal.resource, known: own?.branch });
-    await saveTeamHelpsRows({ session, owner: helps.owner, repo: helps.repo, filepath: helps.filepath, branch, edits: [{ id: proposal.rowId, fields: { [proposal.field ?? "Note"]: proposal.after } }], message });
+    await saveTeamHelpsRows({ session, owner: helps.owner, repo: helps.repo, filepath: helps.filepath, branch, edits, message });
     return;
   }
   if (!proposal.path) throw new Error(tNow("ag.noOwner"));
+  const { path } = proposal;
+  // Refused before a draft is started for it.
+  const known = await articleNow(params, proposal, helps);
+  if (known && proposalFit(proposal, known) === "changed") throw new HelpChangedError(known);
   const branch = await draftBranch({ session, owner: helps.owner, repo: helps.repo, book: helps.book, board, resource: proposal.resource });
-  const current = await readRepoFile(session, { owner: helps.owner, repo: helps.repo, branch }, proposal.path);
-  await saveTeamHelpsFile({ session, owner: helps.owner, repo: helps.repo, filepath: proposal.path, branch, content: proposal.after, sha: current?.sha, message });
+  for (let attempt = 1; ; attempt++) {
+    const current = await readRepoFile(session, { owner: helps.owner, repo: helps.repo, branch }, path);
+    // An article the team does not have yet is written new: there are no words of its own to take out.
+    const fit = current ? proposalFit(proposal, current.text) : "fits";
+    if (current && fit === "changed") throw new HelpChangedError(current.text);
+    if (fit === "done") return;
+    try {
+      await saveTeamHelpsFile({ session, owner: helps.owner, repo: helps.repo, filepath: path, branch, content: after, sha: current?.sha, message });
+      return;
+    } catch (err) {
+      // Somebody wrote it between the reading and the writing: read again, and it is told from what it says now.
+      if (!isWriteRace(err) || attempt === 3) throw err;
+      await raceDelay(attempt);
+    }
+  }
 }
 
 /**

@@ -121,6 +121,12 @@ export function selectTsvRowsForPortion(
   return rows.filter((row) => ids?.has(tsvRowId(row)) || onItsVerses(row));
 }
 
+/** What one row of a helps file says in one of its columns; `undefined` when the file has no such row. */
+export function helpsRowField(text: string, id: string, field: string): string | undefined {
+  const row = parseTsvTable(text).rows.find((candidate) => tsvRowId(candidate) === id);
+  return row ? (row[field] ?? "") : undefined;
+}
+
 export function applyHelpsTsvEdits(
   original: string,
   edits: { id: string; fields: Record<string, string> }[],

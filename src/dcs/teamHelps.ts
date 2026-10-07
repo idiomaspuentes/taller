@@ -26,17 +26,20 @@ export async function teamDraftBranch(params: { session: GtSession; owner: strin
   return names ? (candidates.find((branch) => names.has(branch)) ?? null) : (candidates[0] ?? null);
 }
 
+type HelpsRowEdit = { id: string; fields: Record<string, string> };
+
 /**
  * Corrections to rows of the team's notes or questions, by a task that works on the group draft (harmonizing,
  * validating): written straight onto that draft, over the file as it is at that moment, so a row somebody else
- * corrected meanwhile keeps what they wrote.
+ * corrected meanwhile keeps what they wrote. `edits` can be worked out from the file as it is at that moment, and
+ * refuse it by throwing: what is only right over the words it was written from is asked again at each try.
  */
-export async function saveTeamHelpsRows(params: { session: GtSession; owner: string; repo: string; filepath: string; branch: string; edits: { id: string; fields: Record<string, string> }[]; message: string }): Promise<{ text: string; sha?: string }> {
+export async function saveTeamHelpsRows(params: { session: GtSession; owner: string; repo: string; filepath: string; branch: string; edits: HelpsRowEdit[] | ((text: string) => HelpsRowEdit[]); message: string }): Promise<{ text: string; sha?: string }> {
   const { session, owner, repo, filepath, branch } = params;
   for (let attempt = 1; ; attempt++) {
     const current = await readRepoFile(session, { owner, repo, branch }, filepath);
     if (!current) throw new Error("No se encontró este archivo en las ayudas del equipo.");
-    const content = applyHelpsTsvEdits(current.text, params.edits);
+    const content = applyHelpsTsvEdits(current.text, typeof params.edits === "function" ? params.edits(current.text) : params.edits);
     if (content === current.text) return current;
     try {
       const saved = await createOrUpdateContents(dcsConfig(session.host), owner, repo, filepath, { content, message: params.message, sha: current.sha, branch, token: session.token });

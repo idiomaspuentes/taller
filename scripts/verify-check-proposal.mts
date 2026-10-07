@@ -1,9 +1,10 @@
 /**
  * A change proposed while checking a help: how a proposal stands as the team answers it, what is asked of another
- * team when it is not the team's to change, and the old words read beside the new.
+ * team when it is not the team's to change, the old words read beside the new, and whether a new version still
+ * fits the help it was written from.
  */
 import assert from "node:assert/strict";
-import { PROPOSAL_FREE, diffExcerpt, proposalAnswer, proposalAsk, proposalDone, proposalSaying, proposalsOf, proposalsSettled, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
+import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
 import { setActiveScope } from "../src/domain/scope";
 
@@ -101,6 +102,57 @@ test("la versión de antes y la nueva se leen como un solo texto, con lo quitado
   // The words put back together read as the new version.
   const pieces = wordDiff("uno dos tres cuatro", "uno dos y medio cuatro");
   assert.equal(pieces.filter((piece) => piece.kind !== "gone").map((piece) => piece.text).join(""), "uno dos y medio cuatro");
+});
+
+test("una nueva versión solo cabe sobre las palabras de las que se escribió: si la ayuda dice otra cosa, cambió", () => {
+  assert.equal(proposalFit(note, note.before!), "fits");
+  // As the file keeps it: line ends written «\n», spaces at the ends, two spaces where there was one.
+  const paragraphs: ProposalPayload = { ...note, before: "Primer párrafo.\n\nSegundo párrafo.", after: "Primer párrafo.\n\nOtro segundo párrafo." };
+  assert.equal(proposalFit(paragraphs, " Primer párrafo.\\n\\nSegundo  párrafo.\r\n"), "fits", "los espacios y los saltos de línea no hacen otra versión");
+  assert.equal(sameWording("a  b\n", "a b"), true);
+  assert.equal(sameWording("a b", "a c"), false);
+  // Another proposal for the same note was applied first.
+  assert.equal(proposalFit(note, "Traducción alternativa: [Yo, Judas,]"), "changed");
+  assert.equal(proposalFit(note, ""), "changed", "la nota quedó vacía: tampoco es de la que se escribió");
+  // Applied already (saying so failed, or two people applied it at once): nothing to write, and no refusal.
+  assert.equal(proposalFit(note, `${note.after}\n`), "done");
+  // A proposal that only parts a paragraph in two says the same as before: it is still to be written.
+  assert.equal(proposalFit({ before: "Uno. Dos.", after: "Uno.\n\nDos." }, "Uno. Dos."), "fits");
+  assert.equal(proposalFit({ after: "Sin saber de dónde salió." }, "Cualquier cosa"), "fits", "sin las palabras de antes no hay con qué comparar");
+});
+
+test("las propuestas por resolver sobre la misma ayuda se señalan, y se leen una tras otra", () => {
+  const second: ProposalPayload = { ...note, id: "p6", after: "Traducción alternativa: [Judas escribe]" };
+  const third: ProposalPayload = { ...note, id: "p7", after: "Traducción alternativa: [Les escribe Judas]" };
+  const otherNote: ProposalPayload = { id: "p8", resource: "notas", rowId: "zz99", where: "1:1", before: "Otra nota.", after: "Otra nota, cambiada." };
+  const text: ProposalPayload = { id: "p9", resource: "tpl", where: "1:1", before: "…", after: "…" };
+  assert.equal(proposalHelp(note), "notas:ek3q");
+  assert.equal(proposalHelp({ id: "a", resource: "academia", path: "translate/figs-metaphor/01.md", where: "1:1" }), "academia:translate/figs-metaphor/01.md");
+  assert.equal(proposalHelp(text), "", "un versículo del texto no es una ayuda del equipo");
+  // Made in this order: the note, another note of the verse, the text, and the same note again from another list.
+  const rows = [made(note, "abigail", 0), made(otherNote, "marcos", 1), made(text, "dina", 2), made(second, "marcos", 3)];
+  const views = proposalsOf(rows, 2, ours);
+  assert.deepEqual([...sharedHelp(views)], [["p1", 1], ["p6", 1]]);
+  assert.deepEqual(byPlaceAndHelp(views).map((view) => view.proposal.id), ["p1", "p6", "p8", "p9"], "las dos de la misma nota, juntas");
+  assert.deepEqual([...sharedHelp(proposalsOf([...rows, made(third, "dina", 4)], 2, ours)).values()], [2, 2, 2]);
+  // One applied, taken back or answered is no longer one to choose among.
+  const applied = proposalsOf([...rows, proposalSaying("p1", "marcos", at(5), true), proposalDone("p1", "marcos", at(6))], 2, ours);
+  assert.equal(sharedHelp(applied).size, 0);
+  const answered = proposalsOf([made(note), made({ ...second, replaces: "p1" }, "marcos", 3)], 2, ours);
+  assert.equal(sharedHelp(answered).size, 0, "una versión y la que la reemplaza no son dos por resolver");
+  // The question and the answer of one row are one help, and two different stretches of words.
+  const question: ProposalPayload = { id: "q1", resource: "preguntas", rowId: "ab12", field: "Question", where: "1:2" };
+  assert.equal(proposalHelp(question), proposalHelp({ ...question, id: "q2", field: "Response" }));
+  assert.notEqual(proposalWords(question), proposalWords({ ...question, id: "q2", field: "Response" }));
+  assert.equal(proposalWords(note), "notas:ek3q:Note");
+});
+
+test("de prueba, donde nada se escribe, una ayuda dice lo que dejó la última propuesta aplicada", () => {
+  const applied = proposalsOf([made(), proposalSaying("p1", "marcos", at(5), true), proposalDone("p1", "marcos", at(6)), made({ ...note, id: "p6", after: "Otra." }, "dina", 7)], 2, ours);
+  const words = appliedWords(applied);
+  assert.deepEqual(words, { "notas:ek3q:Note": note.after });
+  // The one still to resolve was written from the note as it was: against what the trial left, it changed.
+  assert.equal(proposalFit(applied[1]!.proposal, words[proposalWords(applied[1]!.proposal)]!), "changed");
 });
 
 test("lo que se responde de prueba se guarda aparte por espacio de trabajo", () => {
