@@ -70,29 +70,60 @@ const markOf = (answer: CheckAnswer | undefined): Mark =>
 const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.chapter}:${item.verse}`;
 
 /**
- * A verse with the words a quote points at marked. With `onToggle`, each word can be marked or unmarked. `covered`:
- * the words another help of the verse is about (see `verseCoverage`); they are underlined, and a touch on one goes
- * to that help (`onOpen`). The words of the help in view are touched too when another help shares them.
+ * A verse with the words a quote points at marked. With `onToggle`, each word can be marked or unmarked. `target`:
+ * the help a touch on a word leads to, when another help of the verse is about it (see `verseCoverage`); those
+ * words are underlined. The words of the help in view are touched too when another help shares them.
+ *
+ * Words in a row that lead to the same help are one thing to touch, the phrase. Each was a button of its own, as
+ * wide as its word: «de» was 20 px. The phrase is not made taller than its line (31 px): at 44 a verse of three
+ * lines would take 132 px instead of 77, and the two texts are what a note is read under.
  */
-function Verse({ text, marked, onToggle, covered, onOpen }: { text: string; marked: number[]; onToggle?: (index: number) => void; covered?: (index: number) => boolean; onOpen?: (index: number) => void }) {
+function Verse({ text, marked, onToggle, target, onOpen }: { text: string; marked: number[]; onToggle?: (index: number) => void; target?: (index: number) => string | undefined; onOpen?: (helpId: string) => void }) {
   const tokens = tokenizeVersePlainText(text);
   const on = new Set(marked);
-  return (
-    <span className="ck-verse">
-      {tokens.map((token, index) =>
-        onToggle ? (
+  if (onToggle) {
+    return (
+      <span className="ck-verse">
+        {tokens.map((token, index) => (
           <button key={index} type="button" className="ck-word" aria-pressed={on.has(index)} onClick={() => onToggle(index)}>
             {token}
           </button>
-        ) : covered?.(index) && onOpen ? (
-          <span key={index}>
-            <button type="button" className="ck-covered" data-here={on.has(index) || undefined} onClick={() => onOpen(index)}>
-              {token}
-            </button>{" "}
+        ))}
+      </span>
+    );
+  }
+  const runs: { to?: string; here: boolean; words: string[]; at: number }[] = [];
+  tokens.forEach((token, index) => {
+    const to = onOpen ? target?.(index) : undefined;
+    const here = on.has(index);
+    const last = runs[runs.length - 1];
+    if (last && last.to === to && last.here === here) last.words.push(token);
+    else runs.push({ to, here, words: [token], at: index });
+  });
+  return (
+    <span className="ck-verse">
+      {runs.map((run) =>
+        run.to ? (
+          <span key={run.at}>
+            {/* Not a <button>: a phrase goes on to the next line, and a button does not break. */}
+            <span
+              role="button"
+              tabIndex={0}
+              className="ck-covered"
+              data-here={run.here || undefined}
+              onClick={() => onOpen!(run.to!)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                onOpen!(run.to!);
+              }}
+            >
+              {run.words.join(" ")}
+            </span>{" "}
           </span>
         ) : (
-          <span key={index}>
-            {on.has(index) ? <mark>{token}</mark> : token}{" "}
+          <span key={run.at}>
+            {run.here ? <mark>{run.words.join(" ")}</mark> : run.words.join(" ")}{" "}
           </span>
         ),
       )}
@@ -733,11 +764,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                       text={verse}
                       marked={canPick(resource) && picking ? picking : hit?.tokenIndices ?? []}
                       onToggle={canPick(resource) && picking ? (index) => setPicking(picking.includes(index) ? picking.filter((i) => i !== index) : [...picking, index]) : undefined}
-                      covered={(index) => Boolean(others(resource, index))}
-                      onOpen={(index) => {
-                        const next = others(resource, index);
-                        if (next) jump(next);
-                      }}
+                      target={(index) => others(resource, index)}
+                      onOpen={jump}
                     />
                   ) : (
                     <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>

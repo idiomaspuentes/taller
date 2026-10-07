@@ -7214,7 +7214,8 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 /* ---- checklist step (ChecklistView) ---- */
 .ck-verse mark { background: var(--accent-100); color: inherit; border-radius: 3px; padding: 0 2px; }
 /* A word another help of the verse is about: underlined, and a touch goes to that help. */
-.ck-covered { padding: 0.1875rem 0.125rem; margin: -0.1875rem -0.125rem; border: 0; border-bottom: 2px dotted var(--primary); border-radius: 3px 3px 0 0; background: none; color: inherit; font: inherit; line-height: inherit; cursor: pointer; }
+.ck-covered { padding: 0.4375rem 0.125rem 0.25rem; border-bottom: 2px dotted var(--primary); border-radius: 3px 3px 0 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; cursor: pointer; }
+.ck-covered:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .ck-covered[data-here] { background: var(--accent-100); border-bottom-style: solid; }
 .ck-verse:has(.ck-covered) { line-height: 1.7; }
 .ck-covered-hint { font-size: 0.75rem; text-align: right; }
