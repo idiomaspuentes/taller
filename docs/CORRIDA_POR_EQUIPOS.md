@@ -1546,6 +1546,36 @@ enlaces.
 - Todo cambia de teléfono a escritorio en 1024 px: una tableta de lado queda con el reporte al lado y la lectura
   en su caja; no se miró a 768 px.
 
+### Mirar las pantallas de Armonización, y probarlas sin subtarea (7 de octubre)
+
+Abel pidió ver todas las pantallas del equipo de armonización y después probarlas él mismo. Judas está terminado,
+así que no hay tarea abierta por la que entrar.
+
+- **«Laboratorio» abre cualquier paso de un proyecto, de prueba.** Arriba hay una tarjeta «Probar los pasos de un
+  proyecto»: se elige el proyecto y el capítulo, y cada paso que tiene pantalla es un botón (44 px). Se abre con
+  los textos y las preguntas del proyecto y sin subtarea. Un paso sin herramienta dice «sin pantalla propia» (el
+  «Acuerdo del equipo»), y uno cuya pantalla todavía guarda lo que se responde, «todavía no se puede probar sin
+  subtarea» (afinación, alineación, revisión en pares, validación, publicación).
+- **La lista de comprobación, abierta así, no guarda nada.** Antes escribía cada respuesta en el proyecto, a nombre
+  de la tarea. *Ahora* las respuestas, un «No» explicado y una cita corregida quedan en la pantalla, y arriba dice
+  «Modo de prueba: lo que respondas aquí no se guarda». Comprobado respondiendo, explicando un «No» y corrigiendo
+  una cita con todas las peticiones a Door43 contadas: ninguna escribió.
+- **El artículo se salía de su caja** en «Academia», «Palabras frente al TPL» y «Sugerencias frente al TPS», y se
+  pintaba sobre las preguntas (2.566 px de artículo en una caja de 244). Lo rompió el cambio que pasó el artículo
+  de la revisión pastoral a una hoja: la caja de la lista tomaba de ahí su desplazamiento. *Ahora* lo dice ella.
+
+**⚠ Sin resolver, visto al capturar**
+
+- En «Notas frente al TPS» la primera pregunta empieza en 795 px de 812, y en «Sugerencias frente al TPS» en 848:
+  en esos dos pasos cada ayuda pide bajar antes de responder (159 y 124 veces).
+- El editor de ayudas dice «Traducir» y «Toca una nota para traducirla» aunque la tarea solo corrige.
+- En «Sugerencias frente al TPS» el término salió «Jesus», en inglés; no se comprobó si es un fallo o una carga
+  que no había terminado.
+- En el navegador de Elisha, el editor de la tarea real restaura un borrador local de la corrida («Hay cambios sin
+  guardar»). No se tocó.
+- No se pudo ver: la tarjeta de una tarea de armonización abierta, «Acuerdo del equipo» en curso, y la lista en
+  escritorio.
+
 ### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
 
 **⚠ Arreglado**
