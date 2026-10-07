@@ -1374,18 +1374,44 @@ texto, pasar a otro versículo, empezar una inquietud, ir al reporte y volver. L
 Lo que funcionó bien al usarla: «Siguiente» no se mueve (ocho toques en el mismo punto pasaron las nueve notas, y
 el noveno lleva a «3 preguntas»); las marcas siguen a cada nota; escribir no guarda nada hasta tocar «Anotar».
 
+**«Resuelve todo eso», y los dos textos.** Abel pidió resolver lo que quedaba de la lista de arriba, y añadió:
+«TPL y TPS no están distinguibles: se ve como un solo bloque de texto cuando son dos versiones diferentes».
+
+- **TPL y TPS son dos cajas.** Cada versión va en la suya, con su nombre en una etiqueta: el TPL sobre blanco, con
+  borde continuo y etiqueta oscura; el TPS sobre gris, con borde punteado y etiqueta de contorno. Sin colores
+  nuevos: el sistema reserva los suyos para lo que se hace, lo hecho y lo que pide atención.
+- **La ayuda se queda al pie de la pantalla mientras su versículo está en ella**, como un teclado. Los dos textos
+  de 1:12 miden 608 px: la tarjeta empezaba en 777 px de 812, toda fuera de la vista. *Ahora*, con el versículo
+  arriba, se ve el TPL entero (228 px), el comienzo del TPS y la tarjeta completa (de 449 a 733 px); los textos se
+  deslizan por encima y una ayuda larga se desliza dentro de la tarjeta, bajo sus botones.
+- **«Mostrar: TPL · TPS».** Cualquiera de los dos se puede guardar (nunca los dos). Sin el TPS, el pasaje pasa de
+  unas veinte pantallas a catorce y en 1:12 caben el texto, sus fichas y la tarjeta sin que nada flote.
+- **Una fila con los versículos queda fija arriba** (cada número, 44 × 44 px): tocar uno lleva a él; el que se
+  lee va en azul, el que ya se leyó entero en verde, y un punto ámbar dice que tiene inquietudes. «Ya leído» es
+  haber visto todas sus ayudas; se guarda en el teléfono, por persona y por tarea, y la ficha de cada clase lo
+  dice también («✓ 9 notas»). Reemplaza al título «Leer el pasaje», que era lo que quedaba fijo.
+- **El artículo de una palabra clave se abre en una hoja** que ocupa la pantalla, con el nombre del término y
+  «Cerrar» fijos arriba. Al cerrarla, la lectura está donde estaba.
+- **La caja de una inquietud es más corta y el cursor entra solo.** Observación y Objeción van en una fila, con
+  una línea que dice qué hace cada una («…detiene el aval hasta que se resuelva»), y «Cancelar» y «Anotar» en
+  otra. De donde se escribe al botón que lo guarda hay 137 px (antes, unos 190 con los botones apilados).
+- **El subrayado dice qué hay debajo**: punteado, una nota; línea continua, una palabra clave. «Qué es cada
+  marca» lo explica con las marcas mismas, plegado para no bajar el primer versículo.
+- **Las palabras de una o dos letras se tocan en 23 px de ancho** (medían de 9 a 19): su zona toma los espacios de
+  al lado.
+
+Probado en QA con Judas a 375 px (fila de versículos, ir a 1:5 y a 1:12, pasar las nueve notas, guardar el TPS,
+abrir y cerrar un artículo, empezar y cancelar una inquietud) y a 1280 px, donde la lectura va en su caja a la
+izquierda del reporte.
+
 **⚠ Sin resolver**
 
-- **En un versículo largo, el texto y su ayuda no caben juntos.** Los dos textos de 1:12 miden 517 px (1:4 y 1:7,
-  486): la tarjeta empieza bajo ellos y de ella se ven unos 120 px. El TPS queda entre el TPL y la nota.
-- **No hay cómo ir a un versículo ni saber por dónde se va.** Son 14.100 px (unas veinte pantallas) y 309 ayudas
-  (159 notas, 26 preguntas, 124 palabras) sin índice ni señal de lo ya leído.
-- La caja para anotar una inquietud mide 331 px y el cursor no entra solo en ella: con el teclado abierto,
-  «Anotar» quedaría debajo.
-- Las palabras subrayadas de una o dos letras miden entre 9 y 19 px de ancho.
-- En un versículo con muchas notas casi todo queda subrayado (el 79 % de las palabras del pasaje): el subrayado ya
-  no molesta, pero tampoco dice dónde hay más y dónde menos.
-- El artículo de una palabra clave sigue leyéndose en una caja de 447 px con 2.862 px dentro.
+- El subrayado distingue nota de palabra clave, pero no dice dónde hay más ayudas y dónde menos.
+- «Ya leído» se guarda en cada teléfono: en otro, empieza de cero.
+- Con el teclado de un teléfono real no se probó nada: la caja de la inquietud y la tarjeta al pie se midieron sin
+  él.
+- En Judas, las marcas del TPS y las palabras de algunas palabras clave caen donde no deben («Fiesta, festín» sobre
+  «temor con»): es la alineación por posición de esta corrida.
 
 ### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
 

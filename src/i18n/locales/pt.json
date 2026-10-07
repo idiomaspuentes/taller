@@ -2820,7 +2820,6 @@
   "ur.close": "Fechar",
   "ur.kindNote": "Nota",
   "ur.kindTerm": "Palavra-chave",
-  "ur.coveredHint": "O sublinhado tem notas ou palavras-chave: toque.",
   "ur.notedLbl": "Preocupações anotadas aqui",
   "ur.yourObservation": "Sua observação",
   "ur.yourObjection": "Sua objeção",
@@ -2836,5 +2835,18 @@
   "ur.concernResume": "Continuar a preocupação que você escrevia",
   "ur.verseNotedAll": "Anotado neste versículo",
   "ur.answer": "Resposta",
-  "en.backToReading": "← Voltar aonde eu lia"
+  "en.backToReading": "← Voltar aonde eu lia",
+  "ur.indexAria": "Versículos da passagem",
+  "ur.indexDone": "já lido",
+  "ur.indexNoted": "com preocupações",
+  "ur.legendLead": "Nos textos:",
+  "ur.legendNote": "tem nota",
+  "ur.legendTerm": "palavra-chave",
+  "ur.legendTouch": "Toque uma palavra para ver suas ajudas.",
+  "ur.legendVerses": "Acima, os versículos:",
+  "ur.texts": "Mostrar",
+  "ur.textsAria": "Que textos são mostrados",
+  "ur.observationHint": "Algo que convém melhorar; não detém o aval.",
+  "ur.objectionHint": "Não deveria ser publicado assim: detém o aval até ser resolvido.",
+  "ur.legend": "O que é cada marca"
 }

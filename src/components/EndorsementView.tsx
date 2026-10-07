@@ -17,6 +17,7 @@ import { commentOnIssue, listProjectOpenIssues } from "../dcs/issues";
 import { listPmOrgTeamMembers, listPmOrgTeams } from "../dcs/persist";
 import { correctionTitle } from "../domain/corrections";
 import { askedFrom } from "../domain/extraWork";
+import { seenHelpsKey } from "../domain/unitProgress";
 import { teamKey } from "../domain/levels";
 import { parseWorkOrderMarker } from "../domain/workOrder";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -414,6 +415,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
             concerns={placed}
             onConcern={mode === "reporte" && mine ? noteConcern : undefined}
             saving={saving}
+            progressKey={session && ctx && !ctx.lab ? seenHelpsKey(session.host, session.username, data.book, ctx.issueNumber || ctx.taskId) : undefined}
           />
           {mode === "reporte" && mine ? (
             // On a phone the report is under the whole reading: it stays one press away while reading.

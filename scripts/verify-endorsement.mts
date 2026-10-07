@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../src/domain/endorsement";
 import type { ChecklistQuestion } from "../src/domain/types";
 import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, unitVerses } from "../src/domain/unitReading";
+import { seenHelpsKey, verseInView, verseProgress } from "../src/domain/unitProgress";
+import { setActiveScope } from "../src/domain/scope";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -104,6 +106,29 @@ test("una inquietud es de la nota en que se anotó, aunque otra nota del versíc
   assert.deepEqual(of("n2", "1:1 «Judas»"), ["a"], "la que dice de qué nota es sale solo bajo esa");
   assert.deepEqual(of("n1", "1:1 «Judas»"), ["b"], "la que no lo dice, bajo la primera de ese lugar, no bajo las dos");
   assert.deepEqual(of("n3", "1:1 «siervo»"), [], "ni la retirada ni la de otro recurso");
+});
+
+test("un versículo está «ya leído» cuando se vieron todas sus ayudas; uno sin ayudas, nunca", () => {
+  const seen = new Set(["notas-n1", "notas-n2", "palabras-t1"]);
+  assert.deepEqual(verseProgress(["notas-n1", "notas-n2", "palabras-t1"], seen), { total: 3, seen: 3, done: true });
+  assert.deepEqual(verseProgress(["notas-n1", "preguntas-q1"], seen), { total: 2, seen: 1, done: false });
+  assert.deepEqual(verseProgress([], seen), { total: 0, seen: 0, done: false });
+});
+
+test("lo ya leído se guarda por espacio de trabajo, servidor, persona y tarea de revisión", () => {
+  setActiveScope("");
+  assert.equal(seenHelpsKey("https://qa.door43.org/", "Valeska", "jud", 144), "gt-unit-seen:qa.door43.org:valeska:JUD.144");
+  setActiveScope("pt");
+  assert.equal(seenHelpsKey("https://qa.door43.org", "valeska", "JUD", 144), "gt-unit-seen:pt:qa.door43.org:valeska:JUD.144", "otro espacio, otra clave");
+  setActiveScope("");
+});
+
+test("el versículo que se lee es el último que llegó arriba de la lectura", () => {
+  const tops = [{ verse: 1, top: -900 }, { verse: 2, top: -200 }, { verse: 3, top: 40 }, { verse: 4, top: 500 }];
+  assert.equal(verseInView(tops, 84), 3);
+  assert.equal(verseInView(tops, 20), 2, "el 3 todavía no llegó a la línea");
+  assert.equal(verseInView([{ verse: 1, top: 300 }, { verse: 2, top: 700 }], 84), 1, "al llegar, el primero");
+  assert.equal(verseInView([], 84), null);
 });
 
 console.log(`\nverify-endorsement: ${passed} checks passed.`);
