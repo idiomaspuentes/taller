@@ -1,4 +1,5 @@
 import { extraWorkOf } from "../domain/extraWork";
+import { subtaskName } from "../domain/noticeText";
 import { parseWorkOrderMarker } from "../domain/workOrder";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
@@ -705,14 +706,18 @@ function ConversationThread({
   const now = new Date();
   const failed = sources.filter((s) => s.status === "error");
   // The book in words ("3 Juan 1:5–8 · TPL"), as the tools name the same passage: a subtarea's title carries its code.
+  // And by its task, as its card and its notices call it: the title alone ends in the first resource of the task
+  // («Judas 1:1–25 · Academia» for «Armonizar Notas y Academia»), or in «Lote».
   const rawTitle = header?.title || issue?.title || `Subtarea #${issueNumber}`;
-  const title = threadTitle(rawTitle, language);
+  const title = issue ? subtaskName({ ...issue, title: rawTitle }, language) : threadTitle(rawTitle, language);
   // What the button says is the step's own word («Revisar», «Traducir»), as on the task: «Abrir editor» named a
   // review an editor.
   const stepButton = toolStep?.actionLabel ? localized(toolStep.actionLabel, toolStep.actionLabels, language) : "";
   const doorUrl = issue?.html_url || door43IssueUrl(session, pmOrg, issueNumber);
+  const taskLabel = header?.taskLabel ? localizeName(header.taskLabel, language) : "";
   const subline = [
-    header?.taskLabel ? localizeName(header.taskLabel, language) : "",
+    // Not twice: the title names the task now.
+    taskLabel && !title.includes(taskLabel) ? taskLabel : "",
     // A delivered subtarea has no step in hand: naming one sent whoever read it to do it again.
     header?.step && issue?.state !== "closed" ? t("cv.step").replace("{name}", localizeName(header.step.name, language)) : "",
     header?.assignees.length ? header.assignees.map((a) => `@${a}`).join(", ") : "",

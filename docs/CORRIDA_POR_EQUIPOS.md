@@ -1012,10 +1012,7 @@ en español y las correcciones de la fase.
 - Con dos textos, los versículos ocupan 366 px (el 45 % del teléfono) y la primera pregunta empieza en 808 px.
 - En «Sugerencias frente al TPS» la pregunta está en 848 px, y lo que hay que mirar (las sugerencias) está al
   final del artículo: hay que bajar dentro de su caja en cada una de las 124 palabras.
-- «Acuerdo del equipo» no muestra los cambios por sí mismo, y tras aprobar la tarjeta dice «Ya respondiste todo ·
-  Ver mis respuestas», aunque no hubo respuestas sino una aprobación.
-- Los avisos nombran la tarea por su número («Aprobaste «Acuerdo del equipo» en #141»).
-- La conversación de «Armonizar Notas y Academia» se titula «Judas 1:1–25 · Academia».
+- «Acuerdo del equipo» no muestra los cambios por sí mismo.
 - Si se cierra la app mientras se prepara la validación, queda a medias hasta que se entregue otra subtarea.
 
 ## Fase 4 · Validación (7 de octubre)
@@ -1067,9 +1064,8 @@ Elisha = **Pastor Samuel (P)**.
 
 - **Con un comité de cuatro, el paso de los reportes se cierra con dos**: los otros dos pastores no llegan a
   opinar, y la regla de mayoría se queda en «con dos personas hace falta el acuerdo de todas».
-- Los avisos y la conversación llaman a la tarea «Judas 1:1–25 · Lote · Validar».
-
-(Lo demás de esta lista se arregló después: ver «Las correcciones que pide un comité», al final.)
+(Lo demás de esta lista se arregló después: ver «Las correcciones que pide un comité» y «Nombres, y la pantalla
+de publicar», al final.)
 
 ## Fase 5 · Publicación (7 de octubre)
 
@@ -1109,12 +1105,7 @@ subtarea «Publicar» se cerró sola y al proyecto no le queda ninguna abierta.
 - Pasadas las comprobaciones, y después de publicar, la pantalla no tenía nada que tocar: ahora ofrece «Volver a
   mis tareas». El diálogo decía «JUD» en vez de «Judas»: ahora usa el nombre del libro.
 
-**⚠ Sin resolver**
-
-- Leer la unidad tarda casi tres minutos cada vez que se abre «Comprobaciones» o «Publicar».
-- El botón de la tarjeta dice «Publicar», y solo abre la pantalla donde se publica.
-- «Publicar esta unidad» queda debajo de la primera pantalla del teléfono.
-- La versión se llama «Versión validada JUD 1:1–25»: con el código del libro.
+(Lo que quedó sin resolver aquí se arregló después: ver «Nombres, y la pantalla de publicar», al final.)
 
 ### Dónde quedó
 
@@ -1215,4 +1206,34 @@ aval ya concedido para comprobar que sigue leyéndose bien. Quedan para la próx
 - Una corrección sigue pidiendo todos los pasos de su tarea y la aprobación de dos personas, aunque cada paso sea
   de un versículo.
 - Si el equipo que debe corregir está vacío, se avisa a quien decide, no a quien lleva el proyecto.
+
+### Nombres, y la pantalla de publicar (7 de octubre)
+
+**⚠ Arreglado**
+
+- **Los avisos nombraban la tarea por su número** («Aprobaste «Acuerdo del equipo» en #141»). *Ahora* por su
+  nombre: «…en Judas 1:1–25 · Armonizar Notas y Academia». Catorce textos.
+- **«Judas 1:1–25 · Lote · Validar».** «Lote» es como se archiva lo que toca varios recursos; ya no se le dice a
+  nadie. La conversación se titula «Judas 1:1–25 · Validar» (visto en QA).
+- **La conversación de «Armonizar Notas y Academia» se titulaba «Judas 1:1–25 · Academia».** *Ahora* lleva el
+  nombre de su tarea, como la tarjeta y los avisos (visto en QA).
+- **Tras aprobar «Acuerdo del equipo», la tarjeta decía «Ya respondiste todo · Ver mis respuestas».** *Ahora*:
+  «Ya diste tu aprobación. Falta la de otra persona de tu equipo», sin botón.
+- **Leer la unidad tardaba 2 min 40 s** cada vez que se abría «Comprobaciones» o «Publicar»: los artículos (unos
+  350 archivos, cada uno como lo tiene el equipo y como está publicado) se leían uno tras otro. *Ahora* ocho a la
+  vez: **34 s** y 32 s, medidos en QA con la unidad de Judas.
+- **«Publicar esta unidad» quedaba en 909 px de 812.** *Ahora*, en la pantalla de publicar, las comprobaciones que
+  pasaron son una línea que se abre (44 px): «Comprobaciones» mide 117 px y «Publicar» empieza en 248.
+- **La versión se llamaba «Versión validada JUD 1:1–25».** *Ahora* lleva el nombre del libro («Versión validada
+  Judas 1:1–25»), y también los avisos de publicación.
+- **El botón de la tarjeta decía «Publicar» y solo abría la pantalla.** En el proceso ahora dice «Ver y publicar».
+
+**Lo que no se pudo ver.** La unidad ya está publicada: el botón «Publicar esta unidad» ya no sale (se midió dónde
+empieza su sección) y no se creó otra versión, así que el nombre nuevo no se vio en Door43. El botón «Ver y
+publicar» es para los proyectos que se armen desde ahora: Judas conserva «Publicar».
+
+**⚠ Sin resolver**
+
+- Leer la unidad todavía tarda medio minuto, y preparar la validación (copiar la unidad archivo por archivo) sigue
+  tardando minutos.
 

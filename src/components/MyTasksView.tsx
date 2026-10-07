@@ -429,8 +429,8 @@ export function MyTasksView({
       openSolverApp(app, ctx, { newTab: opts?.newTab });
       announce(
         opts?.step
-          ? t("mt.openingStep").replace("{app}", app.name).replace("{step}", localizeName(opts.step.name, language)).replace("{n}", String(issue.number))
-          : t("mt.openingFor").replace("{app}", app.name).replace("{n}", String(issue.number)),
+          ? t("mt.openingStep").replace("{app}", app.name).replace("{step}", localizeName(opts.step.name, language)).replace("{n}", subtaskName(issue, language))
+          : t("mt.openingFor").replace("{app}", app.name).replace("{n}", subtaskName(issue, language)),
       );
       if (!issueIsInProgress(issue)) {
         await markIssueInProgress(session, pmOrg, issue);
@@ -459,7 +459,7 @@ export function MyTasksView({
         issue,
       });
       if (result.created) {
-        announce(t("mt.reviewOpened").replace("{n}", String(issue.number)));
+        announce(t("mt.reviewOpened").replace("{n}", subtaskName(issue, language)));
       }
     } catch (err) {
       announce(
@@ -500,7 +500,7 @@ export function MyTasksView({
       if (board && stepNeedsOpenPortionPr(step)) {
         await tryEnsurePortionPr(updated, board);
       }
-      announce(t("mt.tookStep").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)));
+      announce(t("mt.tookStep").replace("{step}", localizeName(step.name, language)).replace("{n}", subtaskName(issue, language)));
       // Its tool is opened next: the list is not read again only to be left.
       if (!opts.thenOpens) await reload();
       return updated;
@@ -540,7 +540,7 @@ export function MyTasksView({
       const board = projects.find((bucket) => bucket.board.projectId === offer.projectId)?.board;
       const delivered = completed && board ? await deliverSharedSubtask({ session, pmOrg, lang, contentOrg, board, issueNumber: issue.number, onStaging: () => setStaging(true) }).catch(() => false) : false;
       announce(
-        (delivered ? t("mt.stepDelivered") : completed ? t("mt.stepCompleted") : t("mt.stepApproved")).replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)),
+        (delivered ? t("mt.stepDelivered") : completed ? t("mt.stepCompleted") : t("mt.stepApproved")).replace("{step}", localizeName(step.name, language)).replace("{n}", subtaskName(issue, language)),
       );
       await reload();
     } catch (err) {
@@ -567,7 +567,7 @@ export function MyTasksView({
     try {
       const updated = await setIssueTaskProgress(session, pmOrg, issue, next);
       if (!wasDone && stepCompletesDraftForReview(steps, step.id)) await tryEnsurePortionPr(updated, board);
-      announce(t(wasDone ? "mt.stepUnmarked" : "mt.stepMarked").replace("{n}", String(issue.number)));
+      announce(t(wasDone ? "mt.stepUnmarked" : "mt.stepMarked").replace("{n}", subtaskName(issue, language)));
       await reload();
     } catch (err) {
       setError(explainError(err));
@@ -696,16 +696,16 @@ export function MyTasksView({
           : "";
       }
       if (publishError) {
-        setError(t("mt.closedNoConflict").replace("{n}", String(issue.number)).replace("{err}", publishError));
+        setError(t("mt.closedNoConflict").replace("{n}", subtaskName(issue, language)).replace("{err}", publishError));
       }
       announce(
         merge.status === "verses"
           ? conflictCount
-            ? t("mt.closedVersesConflict").replace("{n}", String(issue.number)).replace("{c}", String(conflictCount)).replace("{note}", conflictNote)
-            : t("mt.closedVerses").replace("{n}", String(issue.number))
+            ? t("mt.closedVersesConflict").replace("{n}", subtaskName(issue, language)).replace("{c}", String(conflictCount)).replace("{note}", conflictNote)
+            : t("mt.closedVerses").replace("{n}", subtaskName(issue, language))
           : merge.status === "merged"
-            ? t("mt.closedMerged").replace("{n}", String(issue.number))
-            : t("mt.closedPlain").replace("{n}", String(issue.number)),
+            ? t("mt.closedMerged").replace("{n}", subtaskName(issue, language))
+            : t("mt.closedPlain").replace("{n}", subtaskName(issue, language)),
       );
       await reload();
     } catch (err) {
@@ -728,7 +728,7 @@ export function MyTasksView({
       await unclaimIssue(session, pmOrg, issue.number);
       // Tidying up: the work branch of whoever had it. It never holds the release back.
       if (had && board) await retireReleasedWork({ session, pmOrg, lang, contentOrg, board, issue, username: had }).catch(() => false);
-      announce(t("mt.released").replace("{n}", String(issue.number)));
+      announce(t("mt.released").replace("{n}", subtaskName(issue, language)));
       await reload();
     } catch (err) {
       setError(explainError(err));
@@ -764,7 +764,7 @@ export function MyTasksView({
       setActing(issue.number);
       try {
         await claimIssue(session, pmOrg, issue.number);
-        announce(t("mt.tookIssue").replace("{n}", String(issue.number)));
+        announce(t("mt.tookIssue").replace("{n}", subtaskName(issue, language)));
       } catch (err) {
         setError(explainError(err));
         setActing(null);

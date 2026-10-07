@@ -98,7 +98,8 @@ export function TaskCard(props: Props) {
   else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : stepButton(action.step) || (card.started ? t("tb.continue") : t("tb.begin"));
   else if (action.kind === "deliver") label = t("tb.deliver");
   // My part of a round is done: the tool can be looked at, and it is not what the card asks for.
-  else if (action.kind === "none" && action.why === "othersAnswer") label = t("tb.seeMine");
+  // A step with no tool is an approval: there are no answers to look at, and the card offered «Ver mis respuestas».
+  else if (action.kind === "none" && action.why === "othersAnswer") label = action.step?.solverAppId ? t("tb.seeMine") : "";
   else if (action.kind === "vote") label = t("tb.vote");
   // A step somebody joins to do it says what is done in it, as any other («Revisar»): pressing it takes the seat and
   // opens its tool. One with no tool is only joined, and says so.
@@ -107,7 +108,7 @@ export function TaskCard(props: Props) {
   else if (action.kind === "approveStep") label = t(action.step.closing === "self" ? "tb.stepFinishNamed" : "tb.approveStep").replace("{step}", stepName(action.step));
 
   let status = "";
-  if (action.kind === "none" && action.why === "othersAnswer") status = t("tb.othersAnswer");
+  if (action.kind === "none" && action.why === "othersAnswer") status = t(action.step?.solverAppId ? "tb.othersAnswer" : "tb.othersApprove");
   else if (card.group === "waiting") status = localizeHold(card.holdText ?? "", language);
   else if (card.group === "done") {
     // Closed with steps left undone: the plan withdrew it (its portion was cut otherwise). It was not delivered,

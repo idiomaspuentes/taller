@@ -128,7 +128,8 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
   }, [load]);
 
   const label = (resource: string) => scopeLabel(resource, unit?.board?.settings?.resourceNames, language);
-  const unitName = unit ? `${unit.book} ${ctx?.ref || unit.chapter}` : "";
+  // The book in words, in the language of what is published: the version was called «Versión validada JUD 1:1–25».
+  const unitName = unit ? `${bookLabel(unit.book, (ctx?.lang ?? "").toLowerCase().startsWith("pt") ? "pt" : "es")} ${ctx?.ref || unit.chapter}` : "";
   const me = (session?.username ?? "").toLowerCase();
   const canPublish = Boolean(session) && (session!.canManage || canConfirmForTeam(unit?.levelBook, unit?.task?.orgTeamName, me));
   const title = unit?.step ? localized(unit.step.name, unit.step.names, language) : t("pu.title");
@@ -207,6 +208,21 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
     }
   }
 
+  const passedList = (of: UnitToPublish) => (
+    <ul className="pu-list">
+      {of.resources.map((r) => (
+        <li key={r.resource} data-ok="true">
+          <span aria-hidden>✓</span> {label(r.resource)}: {r.draft ? (r.kind === "articles" ? t("pu.okArticles").replace("{n}", String(r.articles?.length ?? 0)) : t(r.kind === "usfm" ? "pu.okText" : "pu.okTable")) : t("pu.o.nothing")}
+        </li>
+      ))}
+      {needsEndorsement ? (
+        <li data-ok="true">
+          <span aria-hidden>✓</span> {t("pu.okEndorsed")}
+        </li>
+      ) : null}
+    </ul>
+  );
+
   return (
     <div className="af pu">
       <ToolHeader
@@ -248,19 +264,15 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
                 </Button>
               </div>
             </>
+          ) : mode === "publicar" ? (
+            // Where the unit is published, what passed is one line that opens: seven green lines left «Publicar esta
+            // unidad» under the first screen of a phone (at 909 px of 812).
+            <details className="pu-passed">
+              <summary>{t("pu.checksPassedLine")}</summary>
+              {passedList(unit)}
+            </details>
           ) : (
-            <ul className="pu-list">
-              {unit.resources.map((r) => (
-                <li key={r.resource} data-ok="true">
-                  <span aria-hidden>✓</span> {label(r.resource)}: {r.draft ? (r.kind === "articles" ? t("pu.okArticles").replace("{n}", String(r.articles?.length ?? 0)) : t(r.kind === "usfm" ? "pu.okText" : "pu.okTable")) : t("pu.o.nothing")}
-                </li>
-              ))}
-              {needsEndorsement ? (
-                <li data-ok="true">
-                  <span aria-hidden>✓</span> {t("pu.okEndorsed")}
-                </li>
-              ) : null}
-            </ul>
+            passedList(unit)
           )}
           {mode === "comprobar" && stepDone ? (
             // The checks are a step of their own: once they pass there is nothing left to do on this screen.

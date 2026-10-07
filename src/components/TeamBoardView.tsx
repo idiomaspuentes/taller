@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "../i18n/messages";
+import { useUiLanguage } from "../i18n/language";
+import { subtaskName } from "../domain/noticeText";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { explainError } from "../dcs/userError";
 
@@ -31,6 +33,7 @@ export function TeamBoardView({
   announce,
 }: Props) {
   const t = useT();
+  const language = useUiLanguage();
   const [issues, setIssues] = useState<DcsIssue[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -103,7 +106,7 @@ export function TeamBoardView({
     setActing(issue.number);
     try {
       await claimIssue(session, pmOrg, issue.number);
-      announce(t("tb.took").replace("{n}", String(issue.number)));
+      announce(t("tb.took").replace("{n}", subtaskName(issue, language)));
       await reload();
     } catch (err) {
       setError(explainError(err));

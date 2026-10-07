@@ -13,7 +13,7 @@ import { readRepoFile } from "../src/dcs/afinacionStore";
 import { dcsConfig } from "../src/dcs/config";
 import { getBranchSha, getPullByBranches } from "../src/dcs/pulls";
 import { releaseUnit } from "../src/dcs/release";
-import { publishUnit, stageUnit, type UnitResource, type UnitToPublish } from "../src/dcs/unitPublish";
+import { eachFew, publishUnit, stageUnit, type UnitResource, type UnitToPublish } from "../src/dcs/unitPublish";
 import { setWorkspaceBranchNames } from "../src/domain/branchNames";
 import { correctionRows, correctionTitle, portionOfAsk } from "../src/domain/corrections";
 import { shippedWorkflows } from "../src/domain/processes";
@@ -32,6 +32,24 @@ async function test(name: string, fn: () => void | Promise<void>) {
 const empty = { projectId: "JUD", book: "JUD", books: ["JUD"], teams: [], phases: [], people: [], assignments: [] } as unknown as AssignmentsDoc;
 const board = applyWorkflowToBoard(empty, shippedWorkflows()[0]!);
 const phases = [...board.phases].sort((a, b) => a.order - b.order);
+
+await test("los archivos de una unidad se leen unos pocos a la vez, y quedan en su orden", async () => {
+  let running = 0;
+  let most = 0;
+  const out = await eachFew(
+    Array.from({ length: 30 }, (_, i) => i),
+    async (n) => {
+      most = Math.max(most, ++running);
+      await new Promise((done) => setTimeout(done, n % 3));
+      running--;
+      return n * 2;
+    },
+    8,
+  );
+  assert.deepEqual(out, Array.from({ length: 30 }, (_, i) => i * 2));
+  assert.equal(most, 8, "ocho a la vez: ni uno por uno, ni todos de golpe");
+  assert.deepEqual(await eachFew([], async (n: number) => n), []);
+});
 
 await test("la rama de validación se llama por el libro y la unidad, bajo su propia palabra", () => {
   assert.equal(validationBranchName("JUD", { chapter: 1, from: 1, to: 200 }), "validacion/jud/1", "un capítulo entero");

@@ -790,6 +790,9 @@ export const STATE_LABEL: Record<AssignmentState, string> = {
   hecho: "Hecho",
 };
 
+/** What a subtarea about several resources at once is filed under, in its title. Not a name to show: its task says what it is. */
+export const BUNDLE_LABEL = "Lote";
+
 export const SCOPE_LABEL: Record<ScopeKey, string> = {
   tpl: "TPL",
   tps: "TPS",

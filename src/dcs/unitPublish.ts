@@ -92,6 +92,28 @@ export type UnitToPublish = {
 
 const WHOLE = (chapter: number): RefRange => ({ chapter, from: 1, to: 200 });
 
+/** How many files of a unit are read from Door43 at once. */
+const READ_AT_ONCE = 8;
+
+/**
+ * `work` over every item, a few at a time, keeping their order. The articles a unit links to are some 350 files,
+ * each read as the team has it and as it is published: one after another, opening «Comprobaciones» or «Publicar»
+ * took 2 min 40 s.
+ */
+export async function eachFew<T, R>(items: T[], work: (item: T) => Promise<R>, atOnce = READ_AT_ONCE): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(atOnce, items.length) }, async () => {
+      while (next < items.length) {
+        const at = next++;
+        out[at] = await work(items[at]!);
+      }
+    }),
+  );
+  return out;
+}
+
 /** Everything about one unit: per resource, the team's version and the published one. */
 export async function loadUnitToPublish(params: { session: GtSession; ctx: SolverLaunchContext; resources: string[] }): Promise<UnitToPublish> {
   const { session, ctx } = params;
@@ -156,11 +178,14 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
             }),
           )
         ).flat();
-        for (const path of paths) {
-          const mine = await readRepoFile(session, { owner, repo, branch }, path).catch(() => null);
-          if (!mine) continue;
-          articles.push({ path, text: mine.text, published: await readRepoFile(session, { owner, repo, branch: defaultBranch }, path).catch(() => null) });
-        }
+        const read = await eachFew(paths, async (path): Promise<UnitArticle | null> => {
+          const [mine, published] = await Promise.all([
+            readRepoFile(session, { owner, repo, branch }, path).catch(() => null),
+            readRepoFile(session, { owner, repo, branch: defaultBranch }, path).catch(() => null),
+          ]);
+          return mine ? { path, text: mine.text, published } : null;
+        });
+        articles.push(...read.filter((row): row is UnitArticle => row !== null));
       }
       resources.push({ resource, kind: "articles", owner, repo, filepath: "", draft: branch ? { text: "", branch } : null, defaultBranch, published: null, expectedVerses: [], articles });
       continue;

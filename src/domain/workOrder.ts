@@ -6,7 +6,7 @@ import type {
   ScopeKey,
   Team,
 } from "./types";
-import { bundleGrainForDistributeUnit, SCOPE_LABEL, type ResourceNames } from "./types";
+import { BUNDLE_LABEL, bundleGrainForDistributeUnit, SCOPE_LABEL, type ResourceNames } from "./types";
 import {
   bundleEnabled,
   bundlesInScope,
@@ -44,7 +44,7 @@ export type WorkOrder = {
 };
 
 function resourceLabel(resource: ScopeKey | "bundle"): string {
-  if (resource === "bundle") return "Lote";
+  if (resource === "bundle") return BUNDLE_LABEL;
   return SCOPE_LABEL[resource] ?? resource.toUpperCase();
 }
 

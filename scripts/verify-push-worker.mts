@@ -232,6 +232,12 @@ await test("el libro sale del hito, de la etiqueta o del título, y la fase se d
   assert.equal(subtarea({ number: 3, title: "3JN 1:1–4 · TPL", body: "- Tarea: **Alinear TPL**\n- Fase: **Afinación**", milestone: { title: "3JN" } }), "3 Juan 1:1–4 · Alinear TPL · Afinación");
 });
 
+await test("«Lote», que es como se archiva lo que toca varios recursos, no se le dice a nadie", async () => {
+  assert.equal(subtarea({ number: 8, title: "JUD 1:1–25 · Lote", body: "- Tarea: **Validar**" }), "Judas 1:1–25 · Validar");
+  assert.equal(subtarea({ number: 9, title: "JUD 1:1–25 · Academia", body: "- Tarea: **Armonizar Notas y Academia**" }), "Judas 1:1–25 · Armonizar Notas y Academia");
+  assert.equal(subtarea({ number: 10, title: "JUD 1:12 · Corrección 1:12: no se entiende", body: "- Tarea: **Desafíos TPL**" }), "Judas 1:12 · Corrección 1:12: no se entiende · Desafíos TPL", "lo que alguien añadió a mano conserva su nombre");
+});
+
 await test("una subtarea que se llama como su tarea no se dice dos veces, y sin datos queda su título o su número", async () => {
   assert.equal(subtarea({ number: 4, title: "Leer la carta completa en voz alta", body: "- Tarea: **Leer la carta completa en voz alta**", milestone: { title: "2JN" } }), "2 Juan · Leer la carta completa en voz alta");
   assert.equal(subtarea({ number: 5, title: "Algo sin libro" }), "Algo sin libro");

@@ -2473,9 +2473,9 @@
               "names": {
                 "pt": "Publicar"
               },
-              "actionLabel": "Publicar",
+              "actionLabel": "Ver y publicar",
               "actionLabels": {
-                "pt": "Publicar"
+                "pt": "Ver e publicar"
               },
               "description": "La unidad avalada pasa a lo publicado de cada recurso y se crea su versión. No se edita contenido.",
               "descriptions": {

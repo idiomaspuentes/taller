@@ -2,6 +2,7 @@ import { tallerConfig } from "../../taller.config";
 import es from "../i18n/locales/es.json";
 import pt from "../i18n/locales/pt.json";
 import { BOOKS, bookLabel } from "./books";
+import { BUNDLE_LABEL } from "./types";
 import { parseChatEvent } from "./chatEvent";
 import { placedMessage, type CommentPlace } from "./commentPlace";
 import { localizeThread } from "./threadNames";
@@ -85,8 +86,9 @@ export function subtaskName(issue: NoticeIssue, lang: NoticeLang = "es"): string
   const phase = field("Fase");
   // The title without the book's code; and without the resource at its end when the task's name already says it.
   let rest = code ? title.replace(new RegExp(`^${code}\\s+`, "i"), "") : title;
+  // «Lote» is how work on several resources is filed, not a name: «Judas 1:1–25 · Lote · Validar» said nothing by it.
   const tail = / · ([^·]+)$/.exec(rest)?.[1];
-  if (tail && task && task.toLowerCase().includes(tail.toLowerCase())) rest = rest.slice(0, -(tail.length + 3));
+  if (tail && task && (task.toLowerCase().includes(tail.toLowerCase()) || tail === BUNDLE_LABEL)) rest = rest.slice(0, -(tail.length + 3));
   // A subtarea named after its task («Leer la carta completa en voz alta») is not told twice.
   // «3 Juan 1:5–8» reads as one reference; a subtarea that is not a passage is set apart from its book.
   const place = [code ? bookLabel(code, lang) : "", processName(rest, lang)].filter(Boolean).join(/^\d/.test(rest) ? " " : " · ");

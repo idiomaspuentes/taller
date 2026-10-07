@@ -7254,6 +7254,11 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .en-report p[data-kind="objection"] { color: var(--warning-700); }
 
 /* ---- publishing a unit (PublishUnitView) ---- */
+.pu-passed > summary { min-height: 2.75rem; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--success-100); color: var(--success-700); font-weight: 600; cursor: pointer; }
+.pu-passed > summary::-webkit-details-marker { display: none; }
+.pu-passed > summary::after { content: "▾"; margin-left: auto; }
+.pu-passed[open] > summary::after { content: "▴"; }
+.pu-passed[open] > summary { margin-bottom: 0.375rem; }
 .pu-list { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
 .pu-list li { padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: var(--surface-muted); overflow-wrap: anywhere; }
 .pu-list li[data-ok="true"] { background: var(--success-100); color: var(--success-700); }
