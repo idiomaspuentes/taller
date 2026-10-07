@@ -1500,6 +1500,31 @@ Esto último está en la revisión pastoral. Las otras pantallas que ubican cita
 armonización, el editor de ayudas, las fuentes de una nota) no cargan el original: ganan lo primero (una palabra
 sin enlace ya no esconde la cita) pero siguen suponiendo el orden.
 
+**El TPS de Judas 1:1–4, alineado a mano.** Abel lo pidió para tener dónde ver las marcas de verdad. Se guardó
+desde la cuenta de Elisha (la que alineó el TPS en la corrida), en el borrador `borrador/jud/tps` de
+`es-419_gl/es-419_gst` en QA, con la misma función con que guarda la pantalla de alineación (un cambio por
+versículo, más su copia en `alignments/`). El criterio es el del UST publicado: cada palabra del TPS queda con
+la palabra griega que la motiva, y lo que el texto añade va con la más cercana («Oro para que Dios … muestre cada
+vez más» con «πληθυνθείη»; «Sin embargo tuve que» con «ἀνάγκην ἔσχον»). Quedaron 16, 6, 18 y 23 grupos; las 77
+palabras griegas y las 178 del TPS se usan una vez cada una; el texto de los 25 versículos no cambió y los
+versículos 5–25 no se tocaron (comprobado antes de guardar y después).
+
+Visto después en la revisión pastoral, tocando palabras del TPL:
+
+| En el TPL | Marca en el TPS |
+|---|---|
+| «salvación» (1:3) | «cómo Dios … ha salvado» |
+| nota «sobre nuestra salvación común» | «sobre cómo Dios nos ha salvado a todos los que creemos» |
+| «siervo» (1:1) | «sirvo a» |
+| «amados» (1:1) | «a quienes … ama» |
+| «fe» (1:3) | «las verdades que creemos» |
+| «gracia» (1:4) | «porque él es bondadoso» |
+| nota «que cambian la gracia de nuestro Dios en libertinaje» | «Piensan que nuestro Dios permite que la gente sea sexualmente inmoral porque él es bondadoso» |
+
+Dos cosas que deja a la vista: lo publicado en QA (`master`) conserva la alineación repartida de esos cuatro
+versículos, y «Qué cambia respecto a lo publicado» dice «TPS · 0 cambios» porque compara el texto, no los
+enlaces.
+
 **⚠ Sin resolver**
 
 - El subrayado distingue nota de palabra clave, pero no dice dónde hay más ayudas y dónde menos.
@@ -1507,9 +1532,9 @@ sin enlace ya no esconde la cita) pero siguen suponiendo el orden.
   estaba «ya leído» deja de estarlo hasta ver su TPS.
 - Con el teclado de un teléfono real no se probó nada: la caja de la inquietud y la tarjeta al pie se midieron sin
   él.
-- **Los datos de prueba de Judas no sirven para juzgar las marcas**: el TPS entero y el TPL de 1:5–25 están
-  repartidos por posición. Con un libro alineado a mano no se ha visto la pantalla entera, solo las funciones que
-  buscan las palabras (con el ULT y el UST publicados).
+- **Los datos de prueba de Judas solo sirven para juzgar las marcas en 1:1–4**: del 5 al 25, el TPL y el TPS
+  siguen repartidos por posición (42 de 50). Con un libro entero alineado a mano no se ha visto la pantalla.
+- Un cambio de alineación hecho después de publicar no sale en «Qué cambia respecto a lo publicado».
 - Las demás pantallas que ubican citas no usan todavía el original (ver arriba).
 - Nada avisa de una palabra del original que se quedó sin enlazar («Χριστὸν» en 1:4): su palabra clave no tiene
   dónde marcarse. Ya estaba en la lista de Alineación.
