@@ -2771,5 +2771,6 @@
   "al.changedSince": "Este versículo mudou depois que @{who} o alinhou, e ficou sem concluir. Avise para que o complete e possam revisá-lo.",
   "al.tellAligner": "Avisar @{who}",
   "al.toldAligner": "@{who} já recebeu o aviso de que falta concluir este versículo. Quando concluir, você poderá responder.",
-  "al.tellAlignerSaid": "este versículo mudou depois que você o alinhou e ficou sem concluir. Por favor, complete-o para que possamos revisá-lo."
+  "al.tellAlignerSaid": "este versículo mudou depois que você o alinhou e ficou sem concluir. Por favor, complete-o para que possamos revisá-lo.",
+  "al.doneAgainSaid": "terminei de alinhar este versículo de novo. Já podem revisá-lo."
 }

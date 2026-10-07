@@ -1054,6 +1054,16 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
+      // Finished again after a change: those who had answered the verse, or asked for it, are waiting, and nothing
+      // on their list says it is their turn again. A first «Terminé» tells nobody: its review has not begun.
+      const again = decisions.some((d) => d.itemId === decision.itemId);
+      const waiting = [...new Set(decisions.filter((d) => d.itemId === itemId(data.chapter, verse.verse) || d.itemId === askId(data.chapter, verse.verse)).map((d) => d.reviewer.trim()))].filter(
+        (login) => login && login.toLowerCase() !== me,
+      );
+      if (again && waiting.length && ctx.pmOrg && ctx.issueNumber) {
+        const said = `${waiting.map((login) => `@${login}`).join(" ")} ${tNow("al.doneAgainSaid")}`;
+        await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, `${data.chapter}:${verse.verse}`, said)).catch(() => undefined);
+      }
       announce(n("al.verseDone", verse.verse));
       moveOnAfterAction();
     } catch (err) {
@@ -1181,8 +1191,15 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
 
   const doneCount = data ? data.verses.filter((v) => isDone(v)).length : 0;
   // By the step the tool was opened for, not by the view in hand: aligning counts verses done; its review, verses agreed.
-  useStepWork(session, ctx, initialMode === "alinear" ? doneCount : summary?.agreed ?? 0, data?.verses.length ?? 0, { stepId: taskStep?.id, on: !stepDone && !closingRound });
   const toAnswer = data ? data.verses.filter((v) => pendingForMe(v)).length : 0;
+  useStepWork(session, ctx, initialMode === "alinear" ? doneCount : summary?.agreed ?? 0, data?.verses.length ?? 0, {
+    stepId: taskStep?.id,
+    on: !stepDone && !closingRound,
+    // A review is answered by everybody: whoever has answered every verse waits for the others, and their card
+    // says so. It went on offering «Revisar», with nothing inside to answer. A verse still to be finished is not
+    // answered yet, so the card of its review stays one to open.
+    mine: initialMode === "alinear" || !data?.verses.length ? undefined : doneCount === data.verses.length && toAnswer === 0,
+  });
   const allAligned = Boolean(data?.verses.length) && doneCount === data!.verses.length && mode === "alinear";
   const readyToReview = verse ? isDone(verse) : false;
   const complete = verse ? verseComplete(verse, current) : false;
