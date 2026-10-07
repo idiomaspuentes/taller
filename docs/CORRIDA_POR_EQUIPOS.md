@@ -1322,10 +1322,36 @@ alineaciones se colocaron por posición: la palabra clave «siervo» marca «y s
 traduce. Con un TPS alineado de verdad las marcas caen donde deben; con este no se puede comprobar. En 1:1 casi
 todo queda subrayado (19 de 20 palabras del TPL): nueve notas cubren el versículo entero.
 
+**«El estilo está mal y todavía no hay separación cognitiva de ciertas cosas que parecen juntas».** Abel, con dos
+capturas de la palabra clave «de Jesucristo» abierta. Medido en QA a 375 px, eran cinco cosas:
+
+- **El subrayado no estaba bajo las palabras.** Era el borde de la caja que se toca (40 px de alto): la línea
+  quedaba 11 px por debajo de las letras, más cerca del renglón siguiente, y como casi todo 1:1 tiene ayuda se
+  leía como papel rayado. *Ahora* es un subrayado de texto, fino y punteado, pegado a cada palabra.
+- **El resaltado se salía del renglón y movía el texto.** Pintaba la caja de 40 px en renglones de 30, y la
+  negrita cambiaba el ancho de las palabras: el versículo se reacomodaba a cada «Siguiente». *Ahora* es una banda
+  del alto de las letras, con color y sin negrita, y el espacio entre dos palabras marcadas también se marca.
+- **Una franja blanca partía el recuadro de la ayuda y tapaba el rótulo «Palabra clave».** El estilo del título
+  «Leer el pasaje» se aplicaba a cualquier título plegable de dentro: el de la palabra clave subía 12 px, se
+  ensanchaba y se pintaba de blanco. Era un error, no una decisión. Corregido.
+- **La observación de otra nota parecía de la palabra que se leía.** La lista de inquietudes del versículo iba
+  6 px debajo del recuadro, con su mismo gris y su mismo ancho. *Ahora* va aparte: tras una línea y 16 px, con su
+  título («Anotado en otras partes de este versículo»), dice de qué es («Observación · Notas «Judas»») y trae
+  «Ver la nota», que abre esa nota.
+- **El recuadro no decía qué era cada parte.** *Ahora* la ayuda es una tarjeta de tres partes: arriba, dónde se
+  está («Notas · 1 de 9», o «Sobre «Jesucristo» · 3 de 4», en dos renglones cortos que caben junto a los botones);
+  en medio, la ayuda; abajo, tras una línea y sobre otro fondo, lo que se anotó de ella y «Inquietud sobre esta
+  nota». Una palabra clave son tres renglones: las palabras del texto, el nombre del término y «Leer el artículo».
+
+Visto en QA con Judas 1:1 a 375 px y a 1280 px (la tarjeta mide 632 px de ancho, sin desborde).
+
 **⚠ Sin resolver**
 
 - El artículo de una palabra clave sigue abriéndose dentro de una caja con su propio desplazamiento.
-- Las palabras subrayadas de una letra («a», «y») miden 12 px de ancho.
+- Las palabras subrayadas de una letra («a», «y») miden unos 10 px de ancho.
+- En un versículo con muchas notas casi todo queda subrayado: el subrayado ya no molesta, pero tampoco dice dónde
+  hay más y dónde menos.
+- El pie fijo («Ir a mi reporte») tapa el final de una tarjeta larga hasta que se desliza.
 
 ### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
 

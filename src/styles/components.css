@@ -7240,7 +7240,7 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 
 /* ---- committee endorsement (EndorsementView) ---- */
 .en-texts { padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
-.en-texts summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.en-texts > summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
 .en-verse { padding: 0.5rem 0; border-top: 1px solid var(--border); }
 .en-verse p { margin: 0.25rem 0 0; }
 .en-sub { margin: 0.5rem 0 0; font-size: 1rem; }
@@ -8571,51 +8571,67 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 /* The pastoral review: the passage is read in its own box, so that the report under it is one swipe away on a phone
    instead of seven screens down; on a wide screen the passage and the report sit side by side. */
 .en-texts[open] { max-height: 52dvh; overflow-y: auto; overscroll-behavior: contain; }
-.en-texts summary { position: sticky; top: -0.75rem; margin: -0.75rem -1rem 0; padding: 0 1rem; background: var(--surface); z-index: 1; }
+.en-texts > summary { position: sticky; top: -0.75rem; margin: -0.75rem -1rem 0; padding: 0 1rem; background: var(--surface); z-index: 1; }
 .en-verse .af-lbl { font-size: 0.75rem; }
-/* The unit read verse by verse, with what goes with each verse to open under it (`UnitReading`). */
+/* The unit read verse by verse, with what goes with each verse to open under it (`UnitReading`).
+   A verse is three things, each set apart by its room and its ground: its texts; the help in view, in a card (where
+   one is, the help, what was noted about it); and what concerns the verse as a whole. */
 .ur { display: grid; }
-.ur-verse { display: grid; gap: 0.375rem; padding: 0.75rem 0; border-top: 1px solid var(--border); }
+.ur-verse { display: grid; gap: 0.5rem; padding: 0.875rem 0; border-top: 1px solid var(--border); }
 .ur-ref { margin: 0; font-size: 0.875rem; font-weight: 700; color: var(--text-muted); }
 .ur-text { margin: 0; font-size: 1rem; line-height: 1.5; }
 .ur-text .af-lbl { font-size: 0.75rem; }
-.ur-kinds { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.ur-hint { margin: 0 0 0.375rem; font-size: 0.8125rem; }
+/* A small heading for a part of the verse: what is being gone over, what was noted. */
+.ur-lbl { margin: 0; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); overflow-wrap: anywhere; }
+/* What has a note or a key term: underlined under the word itself, and touched in a taller box that does not show.
+   The line was the edge of that box, 11 px under the letters: it read as ruled paper between the rows. */
+.ur-word { padding: 0.3125rem 0; margin: -0.3125rem 0; border: 0; border-radius: 3px; background: none; color: inherit; font: inherit; line-height: inherit; cursor: pointer; text-decoration: underline dotted color-mix(in srgb, var(--primary) 50%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 0.22em; -webkit-tap-highlight-color: transparent; }
+/* The words of the help in view: a band as tall as the letters, not as the box that is touched (it ran into the
+   rows above and below), and no bold, which moved the rest of the verse at every step. */
+.ur-word[data-here], .ur-space[data-here], .ur-word:active { background: linear-gradient(var(--accent-100), var(--accent-100)) no-repeat center / 100% 1.5em; }
+.ur-word[data-here] { color: var(--accent-700); text-decoration-style: solid; text-decoration-color: var(--primary); }
+.ur-space { white-space: pre-wrap; }
+.ur-text:has(.ur-word) { line-height: 1.9; }
+.ur-kinds { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.125rem; }
 .ur-kinds button { min-height: 40px; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.875rem; cursor: pointer; }
 .ur-kinds button[aria-expanded="true"], .ur-kinds button[aria-pressed="true"] { border-color: var(--primary); background: var(--accent-100); font-weight: 600; }
-.ur-open { display: grid; gap: 0.375rem; padding: 0.5rem 0.625rem; border-left: 3px solid var(--accent-300); background: var(--surface-muted); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+/* The help in view: a card. */
+.ur-open { display: grid; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 0.06)); overflow: hidden; }
+.ur-open > .af-hint { margin: 0; padding: 0.5rem 0.75rem 0; }
 /* One help at a time: where it is among those of the verse, and the way to the one before and the one after. */
-.ur-pager { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; }
+.ur-pager { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid var(--border); background: var(--surface-muted); }
 .ur-pager .btn, .af .ur-pager .btn[data-size="default"] { height: auto; min-height: 2.75rem; min-width: 2.75rem; }
-.ur-pager__at { text-align: center; font-size: 0.875rem; font-weight: 700; color: var(--text-muted); }
-/* What has a note or a key term is underlined in both texts, and touched; the words of the help in view stand out. */
-.ur-word { padding: 0.25rem 0.125rem; margin: -0.25rem -0.125rem; border: 0; border-bottom: 2px dotted var(--primary); border-radius: 3px 3px 0 0; background: none; color: inherit; font: inherit; line-height: inherit; cursor: pointer; }
-.ur-word[data-here] { background: var(--accent-100); border-bottom-style: solid; font-weight: 700; }
-.ur-text:has(.ur-word) { line-height: 1.9; }
-.ur-hint { margin: 0 0 0.375rem; font-size: 0.8125rem; }
-.ur-item__kind { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }
-/* What the committee noted about a help: a box of its own under it, so it does not read as more of the help. */
-.ur-noted { display: grid; gap: 0.375rem; margin-top: 0.375rem; padding: 0.5rem 0.625rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); }
-.ur-noted__lbl { display: flex; align-items: center; gap: 0.3125rem; margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }
-.ur-noted .ur-said li { display: grid; gap: 0.125rem; border-left: 3px solid var(--accent-500); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-.ur-noted .ur-said li[data-kind="objection"] { border-left-color: var(--warning-500); }
-.ur-items { display: grid; gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
-.ur-item { display: grid; gap: 0.25rem; }
-.ur-item + .ur-item { padding-top: 0.625rem; border-top: 1px dashed var(--border-strong); }
+.ur-pager .btn[data-variant="outline"] { background: var(--surface); }
+.ur-pager__at { display: grid; gap: 0.0625rem; justify-items: center; text-align: center; }
+.ur-pager__at b { font-size: 0.9375rem; }
+.ur-items { display: grid; margin: 0; padding: 0; list-style: none; }
+.ur-item { display: grid; gap: 0.375rem; padding: 0.75rem; }
+.ur-item__kind { justify-self: start; margin: 0; padding: 0.0625rem 0.5rem; border-radius: 999px; background: var(--surface-muted); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
 .ur-item__head { margin: 0; font-weight: 700; }
+.ur-item__term { margin: 0; color: var(--text-muted); font-size: 0.9375rem; }
 .ur-md { font-size: 0.9375rem; line-height: 1.5; }
-.ur-term > summary { min-height: 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; cursor: pointer; }
-.ur-term > summary span { color: var(--text-muted); font-size: 0.875rem; }
-.ur-term[open] > summary { margin-bottom: 0.25rem; }
-/* An article runs to several screens: it is read in a box of its own, so the verse it was opened from stays near. */
-.ur-article { max-height: 55dvh; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface); }
-.ur-item:has(> .ur-term) + .ur-item:has(> .ur-term) { padding-top: 0; border-top: 0; }
-.ur-items:has(.ur-term) { gap: 0; }
+/* The article of a key term opens from a line that says so. */
+.ur-term > summary { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 40px; color: var(--primary); font-size: 0.875rem; font-weight: 600; cursor: pointer; list-style: none; }
+.ur-term > summary::-webkit-details-marker { display: none; }
+.ur-term > summary::before { content: "▸"; }
+.ur-term[open] > summary::before { content: "▾"; }
+.ur-article { max-height: 55dvh; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+/* What was noted about the help, and the way to note something: the foot of the card, under a line and on another
+   ground, so it does not read as more of the help. */
+.ur-item__foot { display: grid; gap: 0.375rem; margin: 0.375rem -0.75rem -0.75rem; padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); background: var(--surface-muted); }
+.ur-item__foot .ur-said li { background: var(--surface); }
+/* What concerns the verse as a whole: apart from the card when one is open. */
+.ur-foot { display: grid; gap: 0.375rem; }
+.ur-foot[data-apart] { margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-strong); }
 .ur-add { justify-self: start; min-height: 40px; display: inline-flex; align-items: center; gap: 0.3125rem; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; font-size: 0.8125rem; cursor: pointer; }
 .ur-concern { background: var(--surface); }
 .ur-concern__about { margin: 0; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
-.ur-said { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
-.ur-said li { padding: 0.375rem 0.625rem; border-radius: var(--radius-sm); background: var(--surface-muted); }
-.ur-said li[data-kind="objection"] { background: var(--warning-100); color: var(--warning-700); }
+/* A concern: a line of colour at its left, whose it is or what it is about, and what it says under it. */
+.ur-said { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
+.ur-said li { display: grid; gap: 0.125rem; padding: 0.375rem 0.625rem; border-left: 3px solid var(--accent-500); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--surface-muted); }
+.ur-said li[data-kind="objection"] { border-left-color: var(--warning-500); background: var(--warning-100); color: var(--warning-700); }
+.ur-said li .ur-add { min-height: 2.5rem; }
 .en-jump { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 0 -1rem -0.75rem; padding: 0.5rem 1rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border-strong); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
 .en-jump p { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
 .en-jump .btn { flex: 0 0 auto; min-height: 40px; }

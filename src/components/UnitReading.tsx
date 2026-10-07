@@ -48,7 +48,7 @@ const KINDS: ChecklistKind[] = ["notas", "preguntas", "palabras"];
 const OF_WORDS = ["notas", "palabras"] as const;
 const BOTH: Text[] = ["tpl", "tps"];
 const COUNT: Record<ChecklistKind, [MessageKey, MessageKey]> = { notas: ["ur.noteOne", "ur.noteMany"], preguntas: ["ur.questionOne", "ur.questionMany"], palabras: ["ur.termOne", "ur.termMany"] };
-const AT: Record<ChecklistKind, MessageKey> = { notas: "ur.atNote", preguntas: "ur.atQuestion", palabras: "ur.atTerm" };
+const SEE: Record<ChecklistKind, MessageKey> = { notas: "ur.seeNote", preguntas: "ur.seeQuestion", palabras: "ur.seeTerm" };
 const keyOf = (kind: ChecklistKind, row: ChecklistItem) => `${kind}-${row.id}`;
 
 /**
@@ -203,23 +203,27 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
     );
 
   /**
-   * What was said about one help, under that help and set apart from it: in its own box, under its own heading,
-   * each concern named by whose it is. As more lines under the note, it read as part of what the note says.
+   * The foot of a help: what was said about it, each concern named by whose it is, and the way to note one. It is
+   * a part of the card of its own, under a line and on another ground: as more lines under the note, a concern read
+   * as part of what the note says.
    */
-  const noted = (list: PlacedConcern[]) =>
-    list.length ? (
-      <div className="ur-noted">
-        <p className="ur-noted__lbl">
-          <MessageSquare size={12} aria-hidden /> {t("ur.notedLbl")}
-        </p>
-        <ul className="ur-said">
-          {list.map((concern) => (
-            <li key={`${concern.by ?? ""}-${concern.id}`} data-kind={concern.kind}>
-              <b>{concern.by ? t(concern.kind === "objection" ? "ur.objectionBy" : "ur.observationBy").replace("{who}", concern.by) : t(concern.kind === "objection" ? "ur.yourObjection" : "ur.yourObservation")}</b>
-              <span>{concern.text}</span>
-            </li>
-          ))}
-        </ul>
+  const helpFoot = (list: PlacedConcern[], add: ReturnType<typeof concernLine>) =>
+    list.length || add ? (
+      <div className="ur-item__foot">
+        {list.length ? (
+          <>
+            <p className="ur-lbl">{t("ur.notedLbl")}</p>
+            <ul className="ur-said">
+              {list.map((concern) => (
+                <li key={`${concern.by ?? ""}-${concern.id}`} data-kind={concern.kind}>
+                  <b>{concern.by ? t(concern.kind === "objection" ? "ur.objectionBy" : "ur.observationBy").replace("{who}", concern.by) : t(concern.kind === "objection" ? "ur.yourObjection" : "ur.yourObservation")}</b>
+                  <span>{concern.text}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {add}
       </div>
     ) : null;
 
@@ -234,15 +238,14 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
       return (
         <li key={key} className="ur-item">
           {tag}
+          {/* The words of the text, the name of the term, and its article to open: three lines, each one thing. */}
+          {phrase ? <p className="ur-item__head">«{phrase}»</p> : null}
+          <p className="ur-item__term">{termLabel(slug, termTitles)}</p>
           <details className="ur-term" onToggle={(e) => e.currentTarget.open && onOpenArticle(row)}>
-            <summary>
-              {phrase ? <b>«{phrase}»</b> : null}
-              <span>{termLabel(slug, termTitles)}</span>
-            </summary>
+            <summary>{t("ur.readArticle")}</summary>
             {article === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : article === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article" content={articleBody(article)} />}
           </details>
-          {noted(saidOf(kind, row))}
-          {concernLine(key, kind, placeOfHelp(kind, row), "ur.concernTerm", row.id)}
+          {helpFoot(saidOf(kind, row), concernLine(key, kind, placeOfHelp(kind, row), "ur.concernTerm", row.id))}
         </li>
       );
     }
@@ -251,8 +254,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
         {tag}
         {kind === "preguntas" ? <p className="ur-item__head">{row.title}</p> : phrase ? <p className="ur-item__head">«{phrase}»</p> : null}
         {row.body ? <HelpMarkdownView className="ur-md" content={row.body} /> : null}
-        {noted(saidOf(kind, row))}
-        {concernLine(key, kind, placeOfHelp(kind, row), kind === "preguntas" ? "ur.concernQuestion" : "ur.concernNote", row.id)}
+        {helpFoot(saidOf(kind, row), concernLine(key, kind, placeOfHelp(kind, row), kind === "preguntas" ? "ur.concernQuestion" : "ur.concernNote", row.id))}
       </li>
     );
   };
@@ -293,7 +295,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
                   {covered?.size
                     ? tokenizeVersePlainText(text).map((token, index) => (
                         <Fragment key={index}>
-                          {index ? " " : ""}
+                          {index ? <span className="ur-space" data-here={(marked.has(index) && marked.has(index - 1)) || undefined}> </span> : null}
                           {covered.has(index) ? (
                             <button type="button" className="ur-word" data-here={marked.has(index) || undefined} onClick={() => openWord(verse, resource, index)}>
                               {token}
@@ -326,10 +328,10 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
                   <button type="button" className="btn" data-variant="outline" data-size="default" aria-label={t("af.prev")} disabled={at === 0} onClick={() => setOpen({ ...mine, at: at - 1 })}>
                     <ChevronLeft size={20} aria-hidden />
                   </button>
+                  {/* What is being gone over, and where one is in it: two short lines, which fit beside the buttons. */}
                   <span className="ur-pager__at" role="status">
-                    {mine.kind === "word"
-                      ? t("ur.atWord").replace("{n}", String(at + 1)).replace("{of}", String(list.length)).replace("{word}", touched)
-                      : t(AT[mine.kind]).replace("{n}", String(at + 1)).replace("{of}", String(list.length))}
+                    <span className="ur-lbl">{mine.kind === "word" ? t("ur.aboutWord").replace("{word}", touched) : label(mine.kind)}</span>
+                    <b>{t("ur.at").replace("{n}", String(at + 1)).replace("{of}", String(list.length))}</b>
                   </span>
                   {at < list.length - 1 ? (
                     <button type="button" className="btn" data-variant="default" data-size="default" onClick={() => setOpen({ ...mine, at: at + 1 })}>
@@ -349,19 +351,38 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
                 <ul className="ur-items">{item(inView, mine.kind === "word")}</ul>
               </div>
             ) : null}
-            {said.length ? (
-              <ul className="ur-said">
-                {said.map((concern) => (
-                  <li key={`${concern.by ?? ""}-${concern.id}`} data-kind={concern.kind}>
-                    {/* Which note or term of the verse it is about is in its place, after the verse the list is under. */}
-                    <b>{t(concern.kind === "objection" ? "en.objection" : "en.observation")}</b> · {label(concern.about)}
-                    {(concern.where ?? "").replace(/^\s*\d+:\d+\s*/, "") ? ` ${(concern.where ?? "").replace(/^\s*\d+:\d+\s*/, "")}` : ""}
-                    {concern.by ? ` · @${concern.by}` : ""}: {concern.text}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {concernLine(`v${verse}`, both.length === 1 ? both[0]! : "", concernPlace(chapter, verse), "ur.concernVerse")}
+            {/* About the verse, apart from the help in view: under the card of a key term, a concern about a note of
+                the verse read as said of that term. */}
+            <div className="ur-foot" data-apart={mine && inView ? true : undefined}>
+              {said.length ? (
+                <>
+                  <p className="ur-lbl">{t("ur.verseNoted")}</p>
+                  <ul className="ur-said">
+                    {said.map((concern) => {
+                      const kind = KINDS.find((candidate) => candidate === concern.about);
+                      const at = kind ? helpsOfVerse(helps[kind]?.items, verse).findIndex((row) => saidOf(kind, row).includes(concern)) : -1;
+                      return (
+                        <li key={`${concern.by ?? ""}-${concern.id}`} data-kind={concern.kind}>
+                          {/* Which note or term of the verse it is about is in its place, after the verse the list is under. */}
+                          <b>
+                            {t(concern.kind === "objection" ? "en.objection" : "en.observation")} · {label(concern.about)}
+                            {(concern.where ?? "").replace(/^\s*\d+:\d+\s*/, "") ? ` ${(concern.where ?? "").replace(/^\s*\d+:\d+\s*/, "")}` : ""}
+                            {concern.by ? ` · @${concern.by}` : ""}
+                          </b>
+                          <span>{concern.text}</span>
+                          {kind && at >= 0 ? (
+                            <button type="button" className="ur-add" onClick={() => setOpen({ verse, kind, at })}>
+                              {t(SEE[kind])} <ChevronRight size={14} aria-hidden />
+                            </button>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              ) : null}
+              {concernLine(`v${verse}`, both.length === 1 ? both[0]! : "", concernPlace(chapter, verse), "ur.concernVerse")}
+            </div>
           </section>
         );
       })}

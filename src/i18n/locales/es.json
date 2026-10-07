@@ -2817,11 +2817,7 @@
   "sb.teamsWork": "Equipos de trabajo",
   "ck.replied": "@{who} respondió:",
   "ck.repliedShort": "ya respondieron",
-  "ur.atNote": "Nota {n} de {of}",
-  "ur.atQuestion": "Pregunta {n} de {of}",
-  "ur.atTerm": "Palabra {n} de {of}",
   "ur.close": "Cerrar",
-  "ur.atWord": "{n} de {of} sobre «{word}»",
   "ur.kindNote": "Nota",
   "ur.kindTerm": "Palabra clave",
   "ur.coveredHint": "Lo subrayado tiene notas o palabras clave: tócalo.",
@@ -2829,5 +2825,12 @@
   "ur.yourObservation": "Tu observación",
   "ur.yourObjection": "Tu objeción",
   "ur.observationBy": "Observación de @{who}",
-  "ur.objectionBy": "Objeción de @{who}"
+  "ur.objectionBy": "Objeción de @{who}",
+  "ur.at": "{n} de {of}",
+  "ur.aboutWord": "Sobre «{word}»",
+  "ur.readArticle": "Leer el artículo",
+  "ur.verseNoted": "Anotado en otras partes de este versículo",
+  "ur.seeNote": "Ver la nota",
+  "ur.seeQuestion": "Ver la pregunta",
+  "ur.seeTerm": "Ver la palabra"
 }

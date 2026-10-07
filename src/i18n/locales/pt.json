@@ -2817,11 +2817,7 @@
   "sb.teamsWork": "Equipes de trabalho",
   "ck.replied": "@{who} respondeu:",
   "ck.repliedShort": "já responderam",
-  "ur.atNote": "Nota {n} de {of}",
-  "ur.atQuestion": "Pergunta {n} de {of}",
-  "ur.atTerm": "Palavra {n} de {of}",
   "ur.close": "Fechar",
-  "ur.atWord": "{n} de {of} sobre «{word}»",
   "ur.kindNote": "Nota",
   "ur.kindTerm": "Palavra-chave",
   "ur.coveredHint": "O sublinhado tem notas ou palavras-chave: toque.",
@@ -2829,5 +2825,12 @@
   "ur.yourObservation": "Sua observação",
   "ur.yourObjection": "Sua objeção",
   "ur.observationBy": "Observação de @{who}",
-  "ur.objectionBy": "Objeção de @{who}"
+  "ur.objectionBy": "Objeção de @{who}",
+  "ur.at": "{n} de {of}",
+  "ur.aboutWord": "Sobre «{word}»",
+  "ur.readArticle": "Ler o artigo",
+  "ur.verseNoted": "Anotado em outras partes deste versículo",
+  "ur.seeNote": "Ver a nota",
+  "ur.seeQuestion": "Ver a pergunta",
+  "ur.seeTerm": "Ver a palavra"
 }
