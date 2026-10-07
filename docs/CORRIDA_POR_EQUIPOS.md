@@ -1079,13 +1079,13 @@ Elisha = **Pastor Samuel (P)**.
 - La tarjeta de «Validar» no dice que hay correcciones pendientes ni que ya volvieron.
 - Los avisos y la conversación llaman a la tarea «Judas 1:1–25 · Lote · Validar».
 
-## Fase 5 · Publicación (7 de octubre): hasta antes de publicar
+## Fase 5 · Publicación (7 de octubre)
 
 Se creó «Publicación» con las cuatro cuentas (coordina abelper8 = **Benjamín**), se le asignó «Publicar» («Cada
 fase ya tiene su equipo») y se vaciaron «Comité pastoral», «Afinadores TPL» y «Armonizadores».
 
-Benjamín tocó «Comprobar». La pantalla dijo «Leyendo lo que tiene el equipo y lo que está publicado…» durante
-2 min 40 s y después:
+**Comprobaciones.** Benjamín tocó «Comprobar». La pantalla dijo «Leyendo lo que tiene el equipo y lo que está
+publicado…» durante 2 min 40 s y después:
 
 - ✓ TPL y TPS: completos y con el formato correcto.
 - ✓ Notas y Preguntas: filas completas y con el formato correcto.
@@ -1094,34 +1094,45 @@ Benjamín tocó «Comprobar». La pantalla dijo «Leyendo lo que tiene el equipo
 
 «Todas las comprobaciones pasaron. Este paso quedó completo.» La tarjeta quedó en «1 de 2 pasos · Publicar».
 
-La pantalla de «Publicar» se abrió solo para leerla (otros 2 min 40 s). Dice lo que haría: TPL, TPS, Notas y
-Preguntas «pasará a lo publicado»; Academia, 15 archivos de artículos por publicar; Palabras, 2. Y un botón:
-«Publicar esta unidad» (318 × 36 px, en 909 px: debajo de la primera pantalla).
+**La corrida se detuvo ahí hasta tener la confirmación de Abel**, que la dio para QA.
 
-**Aquí se detuvo la corrida: «Publicar» no se tocó.** Publicar fusiona la rama de validación en lo publicado de
-los seis repositorios de QA y crea una versión; espera la confirmación de Abel.
+**Publicar.** La pantalla tarda otros 2 min 40 s en leer la unidad y dice lo que hará: TPL, TPS, Notas y Preguntas
+«pasará a lo publicado»; Academia, 15 archivos de artículos; Palabras, 2. «Publicar esta unidad» (318 × 36 px, en
+909 px: debajo de la primera pantalla) pregunta antes: «¿Publicar JUD 1:1–25? Pasa a lo publicado de cada recurso
+y se crea su versión. Publicar no se puede deshacer desde la app», con «No, volver» resaltado y «Sí, publicar»,
+los dos de 48 px. Con «Sí, publicar», 63 s de «Publicando…» y:
+
+- TPL, TPS, Notas, Preguntas, Academia y Palabras: «pasó a lo publicado».
+- «Versión publicada: «Versión validada JUD 1:1–25 · 7 de octubre de 2026»».
+
+Comprobado en Door43 QA: las seis solicitudes fusionadas (`es-419_glt` #45, `es-419_gst` #37, `es-419_tn` #184,
+`es-419_tq` #36, `es-419_ta` #326, `es-419_tw` #1483), la rama `validacion/jud/1-1-25` quitada en los seis, y la
+versión creada en cada uno. En lo publicado: TPL y TPS con 25 versículos, los 25 alineados y ninguno con el texto
+pegado; las 160 notas en español con la corrección del comité; las 26 preguntas con la respuesta corregida. La
+subtarea «Publicar» se cerró sola y al proyecto no le queda ninguna abierta.
 
 **⚠ Arreglado**
 
-- **«Publicar» publicaba con un solo toque, sin preguntar.** *Ahora* pregunta: «¿Publicar Judas 1:1–25? Pasa a lo
-  publicado de cada recurso y se crea su versión. Publicar no se puede deshacer desde la app», y lo que resalta
-  es volver. (Comprobado en el código y con los tipos; no se probó tocando el botón, para no publicar.)
-- Pasadas las comprobaciones, la pantalla no tenía nada que tocar: ahora ofrece «Volver a mis tareas».
+- **«Publicar» publicaba con un solo toque, sin preguntar.** *Ahora* pregunta, y lo que resalta es volver.
+- Pasadas las comprobaciones, y después de publicar, la pantalla no tenía nada que tocar: ahora ofrece «Volver a
+  mis tareas». El diálogo decía «JUD» en vez de «Judas»: ahora usa el nombre del libro.
 
 **⚠ Sin resolver**
 
 - Leer la unidad tarda casi tres minutos cada vez que se abre «Comprobaciones» o «Publicar».
 - El botón de la tarjeta dice «Publicar», y solo abre la pantalla donde se publica.
+- «Publicar esta unidad» queda debajo de la primera pantalla del teléfono.
+- La versión se llama «Versión validada JUD 1:1–25»: con el código del libro.
 
 ### Dónde quedó
 
-- **Traducción, Afinación, Armonización y Validación: terminadas** (29 + 22 + 3 + 1 subtareas, más las dos
-  correcciones que pidió el comité).
-- **Publicación: comprobaciones pasadas; falta «Publicar», que espera confirmación.** La unidad está en
-  `validacion/jud/1-1-25` en los seis repositorios de QA, con una solicitud abierta en cada uno.
-- Solo «Publicación» tiene miembros (las cuatro cuentas). Ningún equipo se borró.
+- **El proceso completo de Judas quedó recorrido en QA, de la traducción a la versión publicada**: 29 + 22 + 3 + 1
+  + 1 subtareas, más las dos correcciones que pidió el comité. No queda ninguna abierta.
+- Solo «Publicación» tiene miembros (las cuatro cuentas). Ningún equipo se borró. Producción no se tocó.
 - En QA quedó la rama `borrador/jud/armonizar-notas` (`es-419_tn`), creada por un fallo ya corregido: no se lee
-  ni se publica; borrarla es decisión de Abel.
+  ni se publica. Abel decidió dejarla.
 - **Nada se publicó en GitHub.** Los cambios de Taller son commits locales en `main`; en `usfm-ast` hay dos
   commits locales (`ef2ae1f`, `471ad48`) en la rama en que estaba el repositorio, y sin ellos una sesión que
   clone `usfm-ast` de GitHub vuelve a perder alineaciones.
+- Lo que el contenido de la corrida **no** es: nueve de las diez alineaciones se colocaron por posición, y casi
+  todas las respuestas de las listas fueron «Sí» automáticos. Sirve para recorrer el proceso, no como Judas real.

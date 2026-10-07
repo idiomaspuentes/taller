@@ -1,3 +1,4 @@
+import { bookLabel } from "../domain/books";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { releaseUnit } from "../dcs/release";
 import { markPhaseIfClosed } from "../dcs/phaseMarks";
@@ -291,7 +292,14 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
       {unit && problems && mode === "publicar" ? (
         <section className="af-card" aria-label={t("pu.publishing")}>
           <h2 className="af-phrase">{t("pu.publishing")}</h2>
-          {stepDone && !outcomes ? <p className="round__done">{t("pu.published")}</p> : null}
+          {stepDone && !outcomes ? (
+            <div className="round__done round__done--leave">
+              <p>{t("pu.published")}</p>
+              <Button type="button" size="lg" variant="outline" onClick={onClose}>
+                {t("fa.back")}
+              </Button>
+            </div>
+          ) : null}
           {!outcomes && !stepDone ? (
             <>
               <ul className="pu-list">
@@ -339,7 +347,13 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
                   </Button>
                 </>
               ) : released ? (
-                <p className="round__done">{t("pu.released").replace("{version}", released)}</p>
+                // Published, and its version made: what is left is to leave. The screen ended on a line to read.
+                <div className="round__done round__done--leave">
+                  <p>{t("pu.released").replace("{version}", released)}</p>
+                  <Button type="button" size="lg" variant="outline" onClick={onClose}>
+                    {t("fa.back")}
+                  </Button>
+                </div>
               ) : (
                 // The unit is on the published branch but its version is not made yet: the same button finishes it.
                 <Button type="button" size="lg" disabled={working} onClick={() => void publish()}>
@@ -353,7 +367,8 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
       <ConfirmDialog
         open={confirming}
         safe
-        title={t("pu.confirmTitle").replace("{unit}", unitName)}
+        // By the name of the book, as everywhere else a person reads it: it asked «¿Publicar JUD 1:1–25?».
+        title={t("pu.confirmTitle").replace("{unit}", unit ? `${bookLabel(unit.book, language)} ${ctx?.ref || unit.chapter}` : "")}
         text={t("pu.confirmText")}
         yes={t("pu.confirmYes")}
         onYes={() => {
