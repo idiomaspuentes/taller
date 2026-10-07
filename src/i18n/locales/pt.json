@@ -2957,5 +2957,7 @@
   "ag.less": "Ver menos",
   "ck.withChange": "com uma mudança proposta",
   "pr.failed": "Não se cumpre: {q}",
-  "pr.reasonOptional": "Motivo (opcional)"
+  "pr.reasonOptional": "Motivo (opcional)",
+  "ck.answerLbl": "Resposta sugerida",
+  "hs.tabCorrect": "Corrigir"
 }

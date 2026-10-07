@@ -899,7 +899,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         <div className="fam-tabs">
           <div className="fam-tabs__set" role="tablist">
             <button type="button" role="tab" className="fam-tab" aria-selected={pane === "edit"} onClick={() => setPane("edit")}>
-              {t("hs.tabEdit")}
+              {t(shared ? "hs.tabCorrect" : "hs.tabEdit")}
             </button>
             <button type="button" role="tab" className="fam-tab" aria-selected={pane === "chapter"} onClick={() => setPane("chapter")}>
               {t("hs.tabChapter").replace("{n}", String(range.chapter))}

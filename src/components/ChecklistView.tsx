@@ -26,7 +26,7 @@ import { helpRowRef } from "../domain/commentPlace";
 import { consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
 import { PROPOSAL_FREE, loadTrialChecks, proposalAnswer, proposalSaying, proposalsOf, saveTrialChecks, withoutWithdrawn, type ProposalPayload } from "../domain/checkProposal";
 import { uid } from "../domain/assignment";
-import { ownerTaskOf } from "../domain/resourceOwner";
+import { ownerLabel } from "../domain/resourceOwner";
 import { PROPOSAL_STATE_KEY, ProposalDiff, ProposalSheet, type ProposalDraft, type ProposalTarget } from "./ProposalSheet";
 import { listIssueComments } from "@ip-lms/dcs-client";
 import { dcsConfig } from "../dcs/config";
@@ -224,6 +224,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const firstGroup = !grouped || group === groups[0];
   // A key term is shown by the name the team gives it (the title of its article), not by its code in English.
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
+  /** Those names have been read (or could not be): until then a term has no name to show but its code in English. */
+  const [titlesRead, setTitlesRead] = useState(false);
   useEffect(() => {
     const sess = loadSession();
     if (!sess?.token || !ctx || data?.kind !== "palabras" || !data.items.length) return;
@@ -234,7 +236,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     });
     void loadTermTitles(sess, null, uses, ctx)
       .then((titles) => !cancelled && setTermTitles(titles))
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .then(() => !cancelled && setTitlesRead(true));
     return () => {
       cancelled = true;
     };
@@ -429,10 +432,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const agreement = data?.task?.steps?.find((step) => step.closing === "consensus");
   const needed = agreement ? stepMinAssignees(agreement) : 2;
   const ours = (resource: string) => Boolean(data?.task?.rules.some((rule) => rule.resource === resource));
-  const teamOf = (resource: string) => {
-    const owner = ownerTaskOf(resource, data?.board, data?.task);
-    return owner ? owner.orgTeamName || localized(owner.name, owner.names, language) : "";
-  };
+  const teamOf = (resource: string) => ownerLabel(resource, data?.board, data?.task, language);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const proposals = useMemo(() => proposalsOf(answers, needed, ours), [answers, needed, data?.task]);
 
@@ -776,7 +776,12 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               <span className="af-chip">{t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm")}</span>
               {tally ? <span className="af-state" data-state={tally.state === "ok" ? "agreed" : tally.state === "pending" ? "pending" : "disputed"}>{t(`ck.state.${tally.state}` as MessageKey)}</span> : null}
             </div>
-            {item.title ? <h2 className="af-phrase">{kind === "palabras" ? termLabel(item.title, termTitles) : item.title}</h2> : null}
+            {item.title ? (
+              // The code of a term («Jesus») was shown until its name came, and then changed under the eyes.
+              <h2 className="af-phrase" aria-busy={kind === "palabras" && !titlesRead ? true : undefined}>
+                {kind !== "palabras" ? item.title : titlesRead ? termLabel(item.title, termTitles) : "\u00a0"}
+              </h2>
+            ) : null}
             {proposedHelp ? (
               // With a change proposed for it, the help is read as it would be, what goes out struck and what comes
               // in marked: the steps that follow check that version. It was shown under the help as well, a third
@@ -788,7 +793,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 </span>
               </p>
             ) : item.body ? (
-              <HelpMarkdownView className="af-note af-note--md" content={item.body} />
+              <>
+                {kind === "preguntas" ? <p className="af-lbl">{t("ck.answerLbl")}</p> : null}
+                <HelpMarkdownView className={kind === "preguntas" ? "af-note af-note--md ck-answer" : "af-note af-note--md"} content={item.body} />
+              </>
             ) : null}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}

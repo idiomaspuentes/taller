@@ -14,7 +14,7 @@ import { uid } from "../domain/assignment";
 import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
 import { localized } from "../domain/processes";
-import { ownerTaskOf } from "../domain/resourceOwner";
+import { ownerLabel } from "../domain/resourceOwner";
 import { scopeLabel } from "../domain/resourceNames";
 import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
@@ -118,10 +118,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
 
   const needed = data?.step ? stepMinAssignees(data.step) : 2;
   const ours = (resource: string) => Boolean(data?.task?.rules.some((rule) => rule.resource === resource));
-  const teamOf = (resource: string) => {
-    const owner = ownerTaskOf(resource, data?.board, data?.task);
-    return owner ? owner.orgTeamName || localized(owner.name, owner.names, language) : "";
-  };
+  const teamOf = (resource: string) => ownerLabel(resource, data?.board, data?.task, language);
   const nameOf = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
   /** The question a proposal answered «no» to, as its list asks it; and that said as what it is («No se cumple: …»). */
   const askedOf = (view: Listed): string => {
