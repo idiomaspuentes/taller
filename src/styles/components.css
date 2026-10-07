@@ -5691,8 +5691,8 @@ button.chat-place:focus-visible {
 .today-summary__item { display: grid; gap: 0.125rem; padding: 0.625rem 0.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .today-summary__count { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
 .today-summary__label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-.today-summary__item[data-group="stuck"] { border-color: var(--warning-500); background: var(--warning-100); }
-.today-summary__item[data-group="stuck"] .today-summary__label { color: var(--warning-700); }
+.today-summary__item[data-group="stuck"][data-empty="false"] { border-color: var(--warning-500); background: var(--warning-100); }
+.today-summary__item[data-group="stuck"][data-empty="false"] .today-summary__label { color: var(--warning-700); }
 .today-summary__item[data-group="done"] .today-summary__count { color: var(--success-700); }
 .today-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
 .today-group__head { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; text-align: left; }

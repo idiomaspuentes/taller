@@ -249,6 +249,14 @@ export function App() {
   useEffect(() => {
     if (openedIssue) markIssueRead(openedIssue);
   }, [openedIssue, markIssueRead]);
+  // «Ya lo vi» on a mention is said of the message, wherever it is listed: the subtarea it is of stops showing it as
+  // unread too, or it came back under «Necesitan tu atención» the moment it left «Menciones y respuestas».
+  const closeMention = (id: number) => {
+    const row = mentions.rows.find((mention) => mention.id === id);
+    mentions.markRead(id);
+    const latest = row ? activity.cursor.latest[String(row.issue)] : undefined;
+    if (row && latest) activity.markRead(row.issue, { pm: latest.pm?.id, pr: latest.pr?.id });
+  };
   useEffect(() => {
     if (route.name === "avisos" || route.name === "mis-tareas") void clearNotices(["asignaciones", "resumen"]);
   }, [route.name]);
@@ -1355,7 +1363,7 @@ export function App() {
             onMarkSeen={activity.markSeen}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
             mentions={mentions.rows}
-            onMentionRead={mentions.markRead}
+            onMentionRead={closeMention}
             canManage={effectiveCanManage}
           />
         ) : null}

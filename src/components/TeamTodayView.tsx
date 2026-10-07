@@ -201,7 +201,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
       {loaded && projects.length ? (
         <div className="today-summary" role="list" aria-label={t("td.summary")}>
           {GROUPS.map((group) => (
-            <div key={group.id} role="listitem" className="today-summary__item" data-group={group.id}>
+            <div key={group.id} role="listitem" className="today-summary__item" data-group={group.id} data-empty={rows[group.id].length === 0}>
               <span className="today-summary__count">{rows[group.id].length}</span>
               <span className="today-summary__label">{t(group.title)}</span>
             </div>

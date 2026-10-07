@@ -174,7 +174,8 @@ export function TaskCard(props: Props) {
 
   // A subtarea that waits with nothing done has no progress to show: its line is why it waits. One nobody has
   // taken has none either.
-  const showsRow = card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" && (card.group !== "waiting" || fraction > 0);
+  // A decision is not a task with steps: its card read «0 de 2 pasos · 0 %», those of the task its verse is of.
+  const showsRow = card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" && card.group !== "decide" && (card.group !== "waiting" || fraction > 0);
   // The button says what is done next when its step has words of its own («Traducir», «Revisar»). One that only
   // says «Empezar», or that opens a tool outside, leaves the step unnamed: then it is named beside it.
   const nextUnnamed = hasTool && card.stepsDone < card.stepsTotal && (!stepButton(action.kind === "begin" || action.kind === "continue" ? action.step : undefined) || props.externalTool);

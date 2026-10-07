@@ -303,9 +303,12 @@ export function MyTasksView({
 
   // Only the worker's own rows (assigned or step role) can need attention.
   const attentionRows = useMemo<AttentionRow[]>(() => {
+    // What «Menciones y respuestas» already says is not listed twice: the same message came here by its subtarea
+    // and there by what was said. A subtarea just assigned is still told here.
+    const mentioned = new Set(mentions.map((row) => row.issue));
     const rows: AttentionRow[] = mineRows
       .map(({ issue, bucket }) => ({ issue, bucket, activity: rowActivity(cursor, issue.number) }))
-      .filter((row) => row.activity.needsAttention);
+      .filter((row) => row.activity.needsAttention && (row.activity.isNew || !mentioned.has(row.issue.number)));
     const listed = new Set(mineRows.map((row) => row.issue.number));
     const decide: AttentionRow[] = conflictIssues
       .filter((issue) => !listed.has(issue.number))
@@ -319,7 +322,7 @@ export function MyTasksView({
       ...decide.sort((a, b) => attentionRank(a.activity, b.activity)),
       ...rows.sort((a, b) => attentionRank(a.activity, b.activity)),
     ];
-  }, [mineRows, conflictIssues, projects, cursor]);
+  }, [mineRows, conflictIssues, projects, cursor, mentions]);
 
   // Free subtareas of my teams that are ready to take, and everything held back.
   const freeRows = useMemo(() => {
