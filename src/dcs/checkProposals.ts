@@ -17,11 +17,11 @@ import { bookBranchName } from "../domain/portionPr";
 import type { PmConfig } from "../domain/roles";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { DEFAULT_SOLVERS_CATALOG, findSolverApp } from "../domain/solvers";
-import type { AssignmentsDoc, ProjectTask } from "../domain/types";
+import type { AssignmentsDoc, ChecklistQuestion, ProjectTask } from "../domain/types";
 import { tNow } from "../i18n/messages";
 
 /** A step of a task that is checked with a list, and where its answers are kept. */
-export type CheckedStep = { stepId: string; key: string; target: CheckTarget; /** The texts its helps are checked against. */ texts: string[] };
+export type CheckedStep = { stepId: string; key: string; target: CheckTarget; /** The texts its helps are checked against. */ texts: string[]; /** What it asks of each help. */ questions: ChecklistQuestion[] };
 
 /**
  * The steps of a task that are checked with a list, each with where its answers are: the list of a step is kept
@@ -37,7 +37,7 @@ export function checkedSteps(ctx: SolverLaunchContext, task: ProjectTask | null,
     const items = params?.items ?? task?.rules[0]?.resource ?? "";
     const helps = resolveHelpsTarget({ ...ctx, resource: items }, pmConfig);
     const texts = (params?.text ?? "").split(",").map((text) => text.trim()).filter(Boolean);
-    return "error" in helps ? [] : [{ stepId: step.id, key: `${book}.${ctx.issueNumber || ctx.taskId}.${step.id}`, target: { owner: helps.owner, repo: helps.repo }, texts }];
+    return "error" in helps ? [] : [{ stepId: step.id, key: `${book}.${ctx.issueNumber || ctx.taskId}.${step.id}`, target: { owner: helps.owner, repo: helps.repo }, texts, questions: step.checklist ?? [] }];
   });
 }
 
@@ -186,13 +186,13 @@ export async function applyProposal(params: ProposalPlace & { proposal: Proposal
  * correction in the task that maintains it, as what a committee does not endorse becomes, with the whole proposal
  * said in its conversation. Returns how that subtarea is called («#151»).
  */
-export async function sendProposal(params: { session: GtSession; ctx: SolverLaunchContext; board: AssignmentsDoc; task: ProjectTask; view: ProposalView }): Promise<string> {
+export async function sendProposal(params: { session: GtSession; ctx: SolverLaunchContext; board: AssignmentsDoc; task: ProjectTask; view: ProposalView; /** The question it answered «no» to, as it is said to a person. */ failed?: string }): Promise<string> {
   const { session, ctx, view } = params;
-  const { issues } = await createCorrections({ session, pmOrg: ctx.pmOrg, board: params.board, from: params.task, asks: [proposalAsk(view)], portionIds: ctx.portionIds, ...(ctx.issueNumber ? { askedIn: ctx.issueNumber } : {}) });
+  const { issues } = await createCorrections({ session, pmOrg: ctx.pmOrg, board: params.board, from: params.task, asks: [proposalAsk(view, params.failed)], portionIds: ctx.portionIds, ...(ctx.issueNumber ? { askedIn: ctx.issueNumber } : {}) });
   const issue = issues[0];
   if (!issue) throw new Error(tNow("ag.notSent"));
   if (view.proposal.after) {
-    const body = tNow("ag.askBody").replace("{who}", view.by).replace("{where}", view.proposal.where).replace("{after}", view.proposal.after).replace("{reason}", view.reason || "—");
+    const body = tNow("ag.askBody").replace("{who}", view.by).replace("{where}", view.proposal.where).replace("{after}", view.proposal.after).replace("{reason}", [params.failed, view.reason].filter(Boolean).join(" ") || "—");
     await commentOnIssue(session, ctx.pmOrg, issue.number, view.proposal.before ? `${body}\n\n${tNow("ag.askBefore").replace("{before}", view.proposal.before)}` : body).catch(() => undefined);
   }
   return `#${issue.number}`;

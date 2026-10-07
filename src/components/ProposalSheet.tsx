@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { diffExcerpt, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -47,7 +47,12 @@ type Props = {
   open: boolean;
   onClose: () => void;
   targets: ProposalTarget[];
-  /** Why, to start with: the question that was answered «no». */
+  /**
+   * The question that was answered «no»: said as what it is, over the sheet. It came written as the reason, and a
+   * question is not a reason: «Motivo: ¿Tiene sentido con el texto?» is what the team then read on the proposal.
+   */
+  failed?: string;
+  /** Why, to start with: what was said of the proposal this one answers. */
   reason: string;
   /** The version to start from, instead of the words as they are: answering a proposal with another. */
   startFrom?: string;
@@ -59,7 +64,7 @@ type Props = {
  * Proposing a change: what, how (the new version written over the words as they are, or a comment) and why. The
  * reason comes written: it is the question that failed. A sheet over the help, so the help stays where it was.
  */
-export function ProposalSheet({ open, onClose, targets, reason: firstReason, startFrom, saving, onSend }: Props) {
+export function ProposalSheet({ open, onClose, targets, failed, reason: firstReason, startFrom, saving, onSend }: Props) {
   const t = useT();
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [mode, setMode] = useState<"text" | "comment">("text");
@@ -70,7 +75,7 @@ export function ProposalSheet({ open, onClose, targets, reason: firstReason, sta
   const canWrite = Boolean(target && !target.commentOnly && target.text !== undefined);
 
   // Opened again: for another help, or for another question of the same one.
-  const opening = open ? `${targets.map((row) => row.id).join(",")}|${firstReason}|${startFrom ?? ""}` : "";
+  const opening = open ? `${targets.map((row) => row.id).join(",")}|${failed ?? ""}|${firstReason}|${startFrom ?? ""}` : "";
   useEffect(() => {
     if (!opening) return;
     setTargetId(targets[0]?.id ?? "");
@@ -86,6 +91,15 @@ export function ProposalSheet({ open, onClose, targets, reason: firstReason, sta
   }, [opening, targetId, current, canWrite]);
 
   const writing = mode === "text" && canWrite;
+  // The box is as tall as what is in it, up to half the screen: at six lines the end of a note of seven, where its
+  // alternate translation usually is, was out of sight, with room to spare under the box.
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const box = textRef.current;
+    if (!box) return;
+    box.style.height = "auto";
+    box.style.height = `${Math.min(box.scrollHeight + 2, Math.round(window.innerHeight * 0.5))}px`;
+  }, [text, writing, open]);
   const changed = text.trim() !== current.trim() && Boolean(text.trim());
   const ready = Boolean(target) && (writing ? changed : Boolean(reason.trim()));
 
@@ -99,6 +113,7 @@ export function ProposalSheet({ open, onClose, targets, reason: firstReason, sta
           </button>
         </header>
         <div className="ur-sheet__body pr-body">
+          {failed ? <p className="pr-failed">{t("pr.failed").replace("{q}", failed)}</p> : null}
           {targets.length > 1 ? (
             <div className="pr-field">
               <p className="af-lbl">{t("pr.what")}</p>
@@ -131,13 +146,13 @@ export function ProposalSheet({ open, onClose, targets, reason: firstReason, sta
               <label className="af-lbl" htmlFor="pr-text">
                 {t("pr.versionLbl")}
               </label>
-              <textarea id="pr-text" className="af-textarea pr-text" rows={6} value={text} onChange={(e) => setText(e.target.value)} />
+              <textarea id="pr-text" ref={textRef} className="af-textarea pr-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
               {!changed ? <p className="af-hint">{t("pr.same")}</p> : target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : null}
             </div>
           ) : null}
           <div className="pr-field">
             <label className="af-lbl" htmlFor="pr-reason">
-              {t(writing ? "pr.reason" : "pr.commentLbl")}
+              {t(writing ? "pr.reasonOptional" : "pr.commentLbl")}
             </label>
             <textarea id="pr-reason" className="af-textarea" rows={writing ? 2 : 4} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>

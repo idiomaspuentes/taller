@@ -2955,5 +2955,7 @@
   "ag.more": "Ver inteira, com o versículo",
   "ag.readingTexts": "Lendo os textos…",
   "ag.less": "Ver menos",
-  "ck.withChange": "com uma mudança proposta"
+  "ck.withChange": "com uma mudança proposta",
+  "pr.failed": "Não se cumpre: {q}",
+  "pr.reasonOptional": "Motivo (opcional)"
 }

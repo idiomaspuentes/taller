@@ -118,6 +118,10 @@ test("a otro equipo se le pide con el motivo y la nueva versión, y con el lugar
   assert.deepEqual(proposalAsk(view), { about: "tps", where: "1:3", text: "No coincide con lo que dice la nota → «Dios nos salvó a todos»", by: "dina" });
   const comment = proposalsOf([proposalAnswer({ itemId: "x", questionId: "coincide", by: "dina", at: at(0), reason: "Aquí «santos» confunde", proposal: { id: "p5", resource: "tpl", where: "1:3" } })], 2, ours)[0]!;
   assert.equal(proposalAsk(comment).text, "Aquí «santos» confunde", "solo un comentario: no inventa una versión");
+  // The reason is the person's to give or not: what it answered «no» to goes with it, or in its place.
+  const bare = proposalsOf([proposalAnswer({ itemId: "x", questionId: "coincide", by: "dina", at: at(0), reason: "", proposal: text })], 2, ours)[0]!;
+  assert.equal(proposalAsk(bare, "No se cumple: ¿Coincide con el TPS?").text, "No se cumple: ¿Coincide con el TPS? → «Dios nos salvó a todos»");
+  assert.equal(proposalAsk(view, "No se cumple: ¿Coincide con el TPS?").text, "No se cumple: ¿Coincide con el TPS? No coincide con lo que dice la nota → «Dios nos salvó a todos»");
 });
 
 test("la versión de antes y la nueva se leen como un solo texto, con lo quitado y lo puesto", () => {

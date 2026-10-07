@@ -971,7 +971,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           )}
         </>
       ) : null}
-      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} reason={proposing?.reason ?? ""} saving={saving} onSend={(draft) => void sendProposal(draft)} />
+      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} failed={proposing?.reason || undefined} reason="" saving={saving} onSend={(draft) => void sendProposal(draft)} />
     </div>
   );
 }

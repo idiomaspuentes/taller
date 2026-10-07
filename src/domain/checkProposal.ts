@@ -263,10 +263,11 @@ const ASK_MAX = 600;
  * A proposal as it is asked of the team that maintains what it would change: why, and the new version when there
  * is one.
  */
-export function proposalAsk(view: ProposalView): CorrectionAsk {
+export function proposalAsk(view: ProposalView, failed = ""): CorrectionAsk {
   const after = (view.proposal.after ?? "").replace(/\s+/g, " ").trim();
   const reason = view.reason.replace(/\s+/g, " ").trim();
-  const text = [reason, after ? `→ «${after}»` : ""].filter(Boolean).join(" ");
+  // The reason is the person's to give or not: what it answered «no» to is said with it, or in its place.
+  const text = [failed.trim(), reason, after ? `→ «${after}»` : ""].filter(Boolean).join(" ");
   return { about: view.proposal.resource, where: view.proposal.where, text: text.length > ASK_MAX ? `${text.slice(0, ASK_MAX - 1).trimEnd()}…` : text, by: view.by };
 }
 

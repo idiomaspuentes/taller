@@ -123,6 +123,12 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     return owner ? owner.orgTeamName || localized(owner.name, owner.names, language) : "";
   };
   const nameOf = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
+  /** The question a proposal answered «no» to, as its list asks it; and that said as what it is («No se cumple: …»). */
+  const askedOf = (view: Listed): string => {
+    const question = data?.steps.find((step) => step.key === view.stepKey)?.questions.find((row) => row.id === view.questionId);
+    return question ? localized(question.text, question.texts, language) : "";
+  };
+  const failedOf = (view: Listed): string => (askedOf(view) ? t("pr.failed").replace("{q}", askedOf(view)) : "");
 
   const listed = useMemo<Listed[]>(
     () => byPlaceAndHelp((data?.steps ?? []).flatMap((step) => proposalsOf(answers[step.key] ?? [], needed, ours).map((view) => ({ ...view, stepKey: step.key })))),
@@ -199,7 +205,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       return announce(t("ag.applied"));
     }
     if (!data.board || !data.task) throw new Error(t("ag.noOwner"));
-    const sentAs = await sendProposal({ session, ctx, board: data.board, task: data.task, view });
+    const sentAs = await sendProposal({ session, ctx, board: data.board, task: data.task, view, failed: failedOf(view) || undefined });
     await add(view.stepKey, [proposalDone(view.proposal.id, me, now, sentAs)]);
     announce(t("ag.sent").replace("{team}", teamOf(view.proposal.resource)));
   }
@@ -378,7 +384,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                       </p>
                     ))}
                   </details>
-                  {view.proposal.after && view.reason ? <p className="af-hint ag-reason">{view.reason}</p> : null}
+                  {failedOf(view) ? <p className="af-hint ag-reason">{failedOf(view)}</p> : null}
+                  {view.proposal.after && view.reason && !failedOf(view).includes(view.reason) ? <p className="ag-reason ag-reason--said">{view.reason}</p> : null}
                   <p className="ag-card__state">
                     <b>{t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</b>
                     {view.sentAs ? ` · ${view.sentAs}` : ""}
@@ -465,7 +472,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           </div>
         </>
       ) : null}
-      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} reason={answering?.reason ?? ""} startFrom={answerStart} saving={saving} onSend={(draft) => void answerWith(draft)} />
+      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} failed={answering ? askedOf(answering) || undefined : undefined} reason={answering?.reason ?? ""} startFrom={answerStart} saving={saving} onSend={(draft) => void answerWith(draft)} />
     </div>
   );
 }
