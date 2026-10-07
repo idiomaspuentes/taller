@@ -501,9 +501,25 @@ También:
   «Notas» a 7.069 px.
 - En 1:19 el borrador dice «animales» por «soulish»: queda para que Afinación lo encuentre.
 
+### Las dos lecturas grupales, completas (6 de octubre)
+
+Con todos los pasajes entregados, **Marta** y **Luis** acordaron los 25 versículos del TPL y los 25 del TPS con
+«De acuerdo con el pasaje» (un toque por pasaje). El pie pasó a «Todo llegó y todo está acordado» con un solo
+botón, «Cerrar la revisión grupal»; cerradas, la tarjeta ofreció «Entregar». Al entregar la segunda, **el proceso
+siguió solo**: a Marta le aparecieron en «Puedes sumarte» las diez subtareas de «Desafíos» (Afinación).
+
+Lo que se arregló: la tarjeta y la pregunta al entregar decían «…para que pase al borrador del grupo» de una
+lectura grupal, que no tiene borrador propio que pasar. Ahora: «Todos los pasos están hechos. Entrégala para
+terminarla» y «La tarea queda terminada».
+
+**⚠ Para decidir.** «Desafíos» se le ofrece a quien está en los equipos de Traducción: los equipos de Afinación
+todavía no existen y las tareas de esa fase siguen apuntando a los de Traducción. Es justo lo que el paso «un
+equipo a la vez» debe ordenar al cerrar la fase.
+
 ### Dónde quedó
 
-- Entregadas: las cinco porciones del TPL y las cinco del TPS; Notas 1:1–4, Preguntas 1:1–4 y el artículo de
-  Palabras «call…». De la lectura grupal del TPL están acordados los versículos 1:1–4.
-- Falta de Traducción: 4 porciones de Notas, 4 de Preguntas, el artículo de Palabras «age, era, time», 5 artículos
-  de Academia (abelper8 tiene «Blessings» en borrador) y el resto de las dos lecturas grupales.
+- Entregadas: las cinco porciones del TPL y las cinco del TPS, las dos lecturas grupales, Notas 1:1–4, Preguntas
+  1:1–4 y el artículo de Palabras «call…».
+- Falta de Traducción: 4 porciones de Notas, 4 de Preguntas, el artículo de Palabras «age, era, time» y 5 artículos
+  de Academia (abelper8 tiene «Blessings» en borrador).
+- Abiertas ya, de Afinación: las diez subtareas de «Desafíos» (TPL y TPS, cinco porciones cada uno).

@@ -2739,5 +2739,7 @@
   "gr.doubtYours": "A sua dúvida continua aberta. Quando ficar clara, toque em «Já não tenho a dúvida».",
   "gr.doubtAnswered": "Responderam. Se já ficou clara, toque em «Já não tenho a dúvida».",
   "gr.whyAgree": "Responda à dúvida: por que está bom assim (opcional)",
-  "gr.repliedNote": "Respondi à sua dúvida de {ref} ({text}) na revisão em grupo: {why}"
+  "gr.repliedNote": "Respondi à sua dúvida de {ref} ({text}) na revisão em grupo: {why}",
+  "tb.deliverAskPlain": "A tarefa fica concluída.",
+  "tb.readyToClose": "Todos os passos estão feitos. Entregue para concluí-la."
 }

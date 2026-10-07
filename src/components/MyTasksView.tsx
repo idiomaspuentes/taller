@@ -830,7 +830,8 @@ export function MyTasksView({
       onDeliver: (card) =>
         setConfirm({
           title: t("tb.deliverTitle"),
-          text: t("tb.deliverAsk"),
+          // A group reading has no draft of its own to hand over: what was read is already the group's.
+          text: t(parsePortionPrMarker(card.issue.body) ? "tb.deliverAsk" : "tb.deliverAskPlain"),
           yes: t("tb.deliverYes"),
           run: () => card.bucket && void close(card.issue, card.bucket.board),
         }),

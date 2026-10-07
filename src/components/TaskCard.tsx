@@ -1,3 +1,4 @@
+import { parsePortionPrMarker } from "../domain/portionPr";
 import { StepAskBody, TeamRuleChecks, stepAsks } from "./StepAsk";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
@@ -149,7 +150,7 @@ export function TaskCard(props: Props) {
     if (here(seat.assignees) && !here(seat.approvals)) status = t("tb.correctedLook").replace("{who}", assigneeOf(card));
   }
   // Every step is done and the card reads «100 %»: what is left is to hand it in, and the card says what that does.
-  if (action.kind === "deliver" && !status) status = t("tb.readyToDeliver");
+  if (action.kind === "deliver" && !status) status = t(parsePortionPrMarker(card.issue.body ?? "") ? "tb.readyToDeliver" : "tb.readyToClose");
   // Whoever reviewed has approved and the review waits for its author's word: the author's card says so. It showed
   // only «Ver la revisión», the same as while the reviewers were still reading.
   if (ownReview && !status && !waiting && (action.kind === "begin" || action.kind === "continue") && action.step) {
