@@ -605,11 +605,16 @@ texto, ya estaba. Medido a 375 px con Tito 1:1 en modo laboratorio: el recuadro 
 
 ### 5.4 Qué pasa cuando una respuesta es «no»
 
-| Salida | Qué hace la app |
-|--------|-----------------|
-| **Corregir aquí** | La persona edita la nota, el artículo o la pregunta y la respuesta pasa a «sí». |
-| **Crear lo que falta** | Se crea una nota nueva, o un **artículo nuevo** de Palabras o Academia, que queda como trabajo de esta fase. |
-| **Pedir el cambio a Afinación** | Si el problema está en el TPL o el TPS, se le pide el cambio al equipo de Afinación, **con la razón**. Armonización nunca edita esos textos. El ítem queda «en consulta» hasta que respondan. |
+Desde octubre de 2026 un «no» se resuelve con una **propuesta de cambio**, y nada cambia hasta que el equipo la
+acuerda. En cada pregunta, tocarla la marca bien; «No», a su lado, abre la hoja para proponer.
+
+| Momento | Qué hace la app |
+|---------|-----------------|
+| **Proponer** | Qué cambiaría (la ayuda, su artículo, el TPL o el TPS), cómo (la nueva versión, escrita sobre el texto como está, o un comentario) y, si quiere, el motivo. La ayuda se lee desde entonces con el cambio propuesto. |
+| **Acordar** | En «Acuerdo del equipo», cada propuesta se abre entera, con su versículo. «De acuerdo» la apoya; «Dejar como está» dice que no; «Otra propuesta» responde con otra versión; quien la hizo puede retirarla. |
+| **Con dos de acuerdo** | Si es de una ayuda del equipo, se escribe en su borrador. Si es del TPL o el TPS, se pide a Afinación como corrección, **con la razón**: Armonización nunca edita esos textos. |
+| **Con dos que prefieren dejarlo** | La propuesta no se acepta y la ayuda queda como está. |
+| **Lo que falta** | Una nota o un artículo que falta se propone con un comentario; acordado, alguien lo escribe en el editor y lo marca hecho. |
 
 ---
 

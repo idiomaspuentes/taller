@@ -1080,7 +1080,9 @@ export function App() {
           <EndorsementView key={`${sessionEpoch}-${route.mode}`} ctxEncoded={route.ctx} mode={route.mode === "decision" ? "decision" : "reporte"} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-checklist" ? (
           <ChecklistView
-            key={`${sessionEpoch}-${route.items}-${route.text}-${route.only ?? ""}`}
+            // Another subtarea is another list: opened right after one with the same helps and texts, it kept the
+            // place, the step in view and the article of the one before.
+            key={`${sessionEpoch}-${route.ctx}-${route.items}-${route.text}-${route.only ?? ""}`}
             ctxEncoded={route.ctx}
             onlyLinked={route.only === "linked"}
             kind={route.items === "preguntas" || route.items === "palabras" ? route.items : "notas"}
@@ -1089,7 +1091,7 @@ export function App() {
             onClose={onSolverClose}
           />
         ) : route.name === "solver-acuerdo" ? (
-          <ProposalsView key={sessionEpoch} ctxEncoded={route.ctx} announce={announce} onClose={onSolverClose} />
+          <ProposalsView key={`${sessionEpoch}-${route.ctx}`} ctxEncoded={route.ctx} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-afinar" && route.step === "alineacion" ? (
           <AlineacionView
             key={`${sessionEpoch}-alineacion`}

@@ -1576,6 +1576,57 @@ así que no hay tarea abierta por la que entrar.
 - No se pudo ver: la tarjeta de una tarea de armonización abierta, «Acuerdo del equipo» en curso, y la lista en
   escritorio.
 
+### Revisión del diseño de Armonización, y lo que se cambió (7 de octubre)
+
+Abel pidió revisar todas las pantallas de Armonización como quedaron, y aplicar lo encontrado. Se miraron las
+tres listas, la hoja «Proponer un cambio» y «Acuerdo del equipo» a 375 × 812, y se midió lo que se toca y lo que
+se lee. Lo más serio estaba en el acuerdo, que es donde se decide.
+
+- **Se puede decir que no.** No había más respuesta a una propuesta que estar de acuerdo o escribir otra: quien
+  quería dejar la ayuda como estaba no podía decirlo, y la propuesta seguía por resolver, con el paso detenido,
+  hasta que su autor la retiraba. «Dejar como está» lo dice; con dos personas, la propuesta queda «No aceptada» y
+  ya no detiene el paso. Antes de eso, quien la propuso lee quién prefiere dejarlo («@bea prefiere dejarlo como
+  está») y es quien puede retirarla.
+- **La propuesta se ve entera antes de acordar.** Se acordaba sobre las seis palabras de alrededor del cambio. Esas
+  palabras se tocan y abren la ayuda entera con lo quitado y lo puesto, y el versículo en el TPL y el TPS.
+- **En las listas, la propuesta una sola vez.** Estaba arriba, bajo la nota y bajo su pregunta (155 px). Ahora la
+  nota se lee ya con el cambio («Con el cambio propuesto: …», como se lee: un enlace por sus palabras), y bajo la
+  pregunta queda una línea. Una nota de Tito con un cambio propuesto deja 12 px bajo los dos textos, donde dejaba
+  56.
+- **Un «no» resuelto con un cambio no lleva la ✗.** Tenía la misma marca que uno sin resolver, y dos pasos con
+  propuestas se leían como dos fallos. Lleva un lápiz, en su línea y en su paso.
+- **La hoja de propuesta**: el cuadro de la nueva versión crece con el texto (a seis renglones, el final de una
+  nota de siete quedaba fuera); la pregunta que no se cumplió se dice arriba como lo que es («No se cumple: …») y
+  el motivo queda libre. Antes el motivo llegaba escrito con la pregunta.
+- **Palabras y Preguntas**: el artículo de un término mide 22dvh en el teléfono (eran 244 px sobre las preguntas,
+  ninguna en la primera pantalla); el nombre del término espera al que le da el equipo en vez de salir en inglés;
+  la respuesta sugerida de una pregunta lleva su rótulo y el tamaño de una nota.
+- **Lo que se toca mide 44 px**: «Volver», «Anterior» y «Siguiente», «Corregir la cita», el enlace al editor, el
+  título del artículo y «Retirar» medían de 36 a 40; «Qué se pide en…», 28. Los rótulos pasan de 11 a 12 px, y los
+  dos enlaces que se leían sobre el fondo, de 4,4:1 a 8,6:1.
+- **Quién mantiene un texto** se dice por su fase y su recurso, «Afinación (TPS)», no por el nombre de su equipo en
+  Door43 («pm-afinadores-tps»). El editor abierto por una tarea que corrige dice «Corregir», no «Traducir».
+- **En escritorio** la barra del pie queda bajo la tarjeta (480 px); cruzaba también los textos, con dos botones
+  de 585 px.
+- **Probado con dos personas escribiendo en el Door43 de mentira** (Tito, ana y bea, cada una en su pestaña): ana
+  propone en la lista; bea, que no es la autora, ve «De acuerdo · Dejar como está · Otra propuesta»; al acordar una,
+  la nota se escribe en el borrador del equipo; ana lee la objeción a la otra y la retira; las dos dan su acuerdo y
+  el paso queda cerrado en la subtarea. `npm run verify:proposals-mock` recorre lo mismo sin pantalla (14
+  comprobaciones), ya con una sola lista por tarea.
+
+**⚠ Sin resolver**
+
+- **Sigue sin verse en QA**: no hay tarea de armonización abierta. Y de lo probado en el mock quedó fuera pedir un
+  cambio a Afinación (necesita el inventario del proyecto) y la entrega de la tarea al cerrarse el paso.
+- En un equipo de dos, una propuesta que la otra persona prefiere dejar como está no llega a las dos que hacen
+  falta para darla por no aceptada: la resuelve quien la propuso, retirándola.
+- En la ayuda entera («Ver entera…») y en la hoja se ven las marcas con que está escrita la nota («**Fe**»,
+  «[[rc://…]]»): ahí se compara lo escrito, no lo leído.
+- El editor sigue permitiendo cambiar una nota sin proponerlo. No se quitó: para agregar la nota que falta no
+  hay otro camino.
+- Las palabras subrayadas del versículo miden 31 px de alto: son palabras de una frase.
+- El aviso de modo de prueba y «Qué se pide en…» ocupan juntos unos 100 px antes del contenido.
+
 ### Una sola pasada por nota en Armonización (7 de octubre)
 
 Abel preguntó si convenía unir «Notas y Academia» frente al TPL y frente al TPS en un solo propósito, o separarlas

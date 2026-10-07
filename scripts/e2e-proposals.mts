@@ -13,7 +13,7 @@ import { dcsConfig } from "../src/dcs/config";
 import { getPmIssue } from "../src/dcs/portionPr";
 import { agreeStepFromTool, stepAgreement } from "../src/dcs/roundClose";
 import { readTeamHelps } from "../src/dcs/teamHelps";
-import { byPlaceAndHelp, proposalAnswer, proposalDone, proposalFit, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sharedHelp } from "../src/domain/checkProposal";
+import { byPlaceAndHelp, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sharedHelp } from "../src/domain/checkProposal";
 import { shippedWorkflow } from "../src/domain/processes";
 import { DEFAULT_PM_CONFIG } from "../src/domain/roles";
 import { SOLVER_LAUNCH_SCHEMA, type SolverLaunchContext } from "../src/domain/solverLaunch";
@@ -35,6 +35,12 @@ const kept = (repo: string, branch: string, path: string): Promise<string> =>
 const seeded = Boolean(await kept("es-419_tn", "master", `tn_${BOOK}.tsv`));
 if (!seeded) {
   console.log(`verify-proposals-mock: no hay un mock de Door43 con ${BOOK} en ${HOST} (MOCK_PM_ORG=${ORG} MOCK_SEED_BOOK=${BOOK} npm run mock:door43); no se ejecutó.`);
+  process.exit(0);
+}
+
+// It starts from a team with no draft of its notes yet: on a mock somebody has worked on, that is not so.
+if (await kept("es-419_tn", `borrador/${BOOK.toLowerCase()}/notas-ayuda`, `tn_${BOOK}.tsv`)) {
+  console.log(`verify-proposals-mock: el mock de ${HOST} ya tiene trabajo sobre ${BOOK} (POST /__mock/reset lo deja como al empezar, o MOCK_HOST con otro); no se ejecutó.`);
   process.exit(0);
 }
 
@@ -75,16 +81,18 @@ const before = await notes();
 const row = rowsOf(before.text).find((r) => r.Note && r.Note.length > 40 && r.Reference !== "front:intro")!;
 const proposal = { id: "pr-e2e-1", resource: "notas", field: "Note", rowId: row.ID!, where: row.Reference!, before: row.Note!, after: `${row.Note} (cambiado por acuerdo del equipo)` };
 const list = steps[0]!;
-// The lists of the task go over the same notes, and each knows its own proposals only: another version of that
-// note, written in the second list from the note as it still is.
-const otherList = steps[1]!;
-const rival = { ...proposal, id: "pr-e2e-rival", after: `${row.Note} (otra versión, de otra lista)` };
+// Two people can each write a version of one note from the note as it still is. They did it from two lists of
+// the task while it had a list for each text; it has one now, and it is the same one for both.
+const otherList = steps.at(-1)!;
+const rival = { ...proposal, id: "pr-e2e-rival", after: `${row.Note} (otra versión, de otra persona)` };
 /** How many times the notes of the book were written, on any branch. */
 const noteWrites = async () => ((await fetch(`${HOST}/__mock/log`).then((r) => r.json())) as { write?: string }[]).filter((entry) => (entry.write ?? "").endsWith(`tn_${BOOK}.tsv`)).length;
 const views = async (who = bea) => (await loadTaskAnswers(who, steps)).flatMap((r) => proposalsOf(r.answers, needed, ours));
 
-await step("las tres listas de la tarea guardan sus respuestas con la ayuda que recorren, bajo la subtarea y el paso", async () => {
-  assert.equal(steps.length, 3);
+await step("la lista de la tarea guarda sus respuestas con la ayuda que recorre, bajo la subtarea y el paso", async () => {
+  assert.equal(steps.length, 1, "una sola lista: cada nota frente a los dos textos y su artículo");
+  assert.deepEqual(steps[0]!.texts, ["tpl", "tps"]);
+  assert.ok(steps[0]!.questions.length > 0, "con las preguntas que hace, para decir cuál no se cumplió");
   assert.deepEqual(steps.map((s) => s.key), lists.map((s) => `${BOOK}.${issue.number}.${s.id}`));
   assert.ok(steps.every((s) => s.target.owner === ORG && s.target.repo));
   assert.ok(ours("notas") && !ours("tpl"), "las notas son de este equipo; el texto no");
@@ -100,7 +108,7 @@ await step("una propuesta se guarda como respuesta de quien la hizo, y otra pers
   assert.equal((await notes()).text, before.text, "nada cambia al proponer");
 });
 
-await step("otra lista de la tarea propone otra versión de la misma nota, escrita de la nota como está: el acuerdo las señala y las pone juntas", async () => {
+await step("otra persona propone otra versión de la misma nota, escrita de la nota como está: el acuerdo las señala y las pone juntas", async () => {
   await appendCheckAnswers(carla, otherList.target, otherList.key, [proposalAnswer({ itemId: row.ID!, questionId: "e2e", by: "carla", at: new Date().toISOString(), reason: "No coincide con el otro texto", proposal: rival })]);
   const all = await views();
   assert.deepEqual(all.map((v) => [v.proposal.id, v.state]), [[proposal.id, "open"], [rival.id, "open"]]);
@@ -160,7 +168,7 @@ await step("otra nota acordada después se escribe en el mismo borrador, sin per
 
 await step("«Otra propuesta» sobre la que se rechazó parte de la nota como está ahora, y esa sí se aplica con los dos cambios", async () => {
   const now = (await readProposedWords({ session: carla, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposals: [rival] }))[proposalWords(rival)]!;
-  const again = { ...rival, id: "pr-e2e-rival-2", replaces: rival.id, before: now, after: `${now} (y lo que pedía la otra lista)` };
+  const again = { ...rival, id: "pr-e2e-rival-2", replaces: rival.id, before: now, after: `${now} (y lo que pedía la otra persona)` };
   await appendCheckAnswers(carla, otherList.target, otherList.key, [proposalAnswer({ itemId: row.ID!, questionId: "e2e", by: "carla", at: new Date().toISOString(), reason: "Sobre la nota como quedó", proposal: again })]);
   await appendCheckAnswers(ana, otherList.target, otherList.key, [proposalSaying(again.id, "ana", new Date().toISOString(), true)]);
   assert.deepEqual((await views()).map((v) => [v.proposal.id, v.state]), [[proposal.id, "agreed"], [rival.id, "replaced"], [again.id, "agreed"]]);
@@ -168,7 +176,22 @@ await step("«Otra propuesta» sobre la que se rechazó parte de la nota como es
   await appendCheckAnswers(ana, otherList.target, otherList.key, [proposalDone(again.id, "ana", new Date().toISOString())]);
   const note = rowsOf((await notes()).text).find((r) => r.ID === row.ID)!.Note!;
   assert.equal(note, again.after);
-  assert.ok(note.includes("(cambiado por acuerdo del equipo)") && note.includes("(y lo que pedía la otra lista)"), "lo de las dos listas");
+  assert.ok(note.includes("(cambiado por acuerdo del equipo)") && note.includes("(y lo que pedía la otra persona)"), "lo de las dos personas");
+});
+
+await step("una propuesta que dos personas prefieren dejar como está no se acepta: no se escribe nada, y ya no detiene el paso", async () => {
+  const kept = rowsOf((await notes()).text).filter((r) => r.Note && r.Note.length > 40 && r.Reference !== "front:intro" && r.ID !== row.ID)[3]!;
+  const unwanted = { id: "pr-e2e-no", resource: "notas", field: "Note", rowId: kept.ID!, where: kept.Reference!, before: kept.Note!, after: `${kept.Note} (un cambio que el equipo no quiere)` };
+  const written = await noteWrites();
+  await appendCheckAnswers(carla, list.target, list.key, [proposalAnswer({ itemId: kept.ID!, questionId: "e2e", by: "carla", at: new Date().toISOString(), reason: "", proposal: unwanted })]);
+  await appendCheckAnswers(ana, list.target, list.key, [proposalKeeping(unwanted.id, "ana", new Date().toISOString(), true)]);
+  const one = (await views()).find((v) => v.proposal.id === unwanted.id)!;
+  assert.deepEqual([one.state, one.against], ["open", ["ana"]], "una persona lo dice, y quien la propuso lo lee");
+  await appendCheckAnswers(bea, list.target, list.key, [proposalKeeping(unwanted.id, "bea", new Date().toISOString(), true)]);
+  const two = (await views(carla)).find((v) => v.proposal.id === unwanted.id)!;
+  assert.equal(two.state, "rejected");
+  assert.equal(proposalsSettled([two]), true);
+  assert.equal(await noteWrites(), written, "la nota queda como estaba");
 });
 
 await step("dos personas aplican a la vez dos versiones de una nota: se escribe una sola, y a la otra se le dice que la nota cambió", async () => {
@@ -213,7 +236,7 @@ await step("la nueva versión de un artículo se escribe en el borrador de los a
 await step("aplicada, la propuesta queda resuelta para todos", async () => {
   await appendCheckAnswers(bea, list.target, list.key, [proposalDone(proposal.id, "bea", new Date().toISOString())]);
   const all = await views(ana);
-  assert.deepEqual(all.map((v) => v.state), ["applied", "replaced", "applied"], "la primera, la que se rechazó y fue respondida, y la que la respondió");
+  assert.deepEqual(all.map((v) => v.state), ["applied", "replaced", "applied", "rejected"], "la primera, la que se rechazó y fue respondida, la que la respondió, y la que el equipo prefirió no aceptar");
   assert.equal(proposalsSettled(all), true);
 });
 
