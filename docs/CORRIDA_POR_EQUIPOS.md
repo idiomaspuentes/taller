@@ -924,17 +924,108 @@ alineación real de Judas. Tomás y Rubén las revisaron y Rubén cerró cada re
 - El espacio se pierde, en el fondo, porque el analizador de `usfm-ast` descarta el espacio que sigue a una marca
   de alineación; lo arreglado es la capa que rehace el texto. Vale la pena que el analizador lo conserve.
 
+## El cambio de equipo: de Afinación a Armonización (7 de octubre)
+
+Hecho por **Josué** (abelperez) desde la app, a 375 px:
+
+1. «Organización» → «+ Nuevo equipo» → «Armonizadores» → «Crear». El equipo se abre solo.
+2. Las cuatro cuentas, buscando cada una por su usuario (un toque cada una, alrededor de 1 s). Nivel «Persona
+   habilitada» a tres y «Practicante» a valeska; «Hacer coordinador» a abelperez.
+3. «Proyectos»: el aviso «En Judas falta decir qué equipo hace 5 tareas» ofrece un equipo por fase. Se eligió
+   «Armonizadores» para Armonización y «Guardar los equipos» (11,7 s); el aviso pasó a «2 tareas».
+4. En «Afinadores TPL» y «Afinadores TPS», «Quitar» a las cuatro (pregunta antes; 1 s cada una). Quedan con 0
+   miembros.
+
+A Abigail (Elisha) le quedaron «Libres para tu equipo · 3», cada una con un botón grande: «Comprobar».
+
+**⚠ Lo que se encontró**
+
+- La lista para elegir el equipo de una fase trae diez opciones, y antes del que se acaba de crear salen «admins»,
+  «Owners», «translators» y «br_translator», que no son equipos de trabajo.
+- El aviso de voz dice «@abelperez ahora coordina armonizadores», con el nombre del equipo en minúscula.
+- Una persona «Practicante» no tiene nada que hacer en la fase: sus tarjetas dicen «Pide nivel persona
+  habilitada». Es lo que pide el proceso; para que Dina participara, Josué le subió el nivel en el equipo.
+
+## Fase 3 · Armonización (7 de octubre)
+
+Personas: abelperez = **Josué** (coordina), abelper8 = **Marcos**, valeska = **Dina (P)**, Elisha = **Abigail
+(P)**.
+
+| Tarea | Quién | Pasos | Lo que se respondió |
+|---|---|---|---|
+| Armonizar Notas y Academia | Abigail | Notas frente al TPL (159), frente al TPS (159), Academia (135), Acuerdo | 1.274 respuestas; un «No · Lo corregí» con la nota corregida de verdad, y una consulta |
+| Armonizar Preguntas | Dina | Preguntas frente a los textos (26), Acuerdo | 52 respuestas; una respuesta equivocada (1:22–23), corregida |
+| Armonizar Palabras | Marcos | Palabras frente al TPL (124), Sugerencias frente al TPS (124), Acuerdo | 273 respuestas |
+
+Las primeras de cada lista se hicieron a mano; las demás, con un guion que toca los mismos botones (todas «Sí»:
+494 respuestas en 5 s, lo que mide la app y no a una persona, que necesita unos cuatro toques por nota). Cada
+«Acuerdo del equipo» lo aprobaron dos personas. Al cerrarse la última tarea, la unidad «Judas 1:1–25» pasó sola
+a validación: rama `validacion/jud/1-1-25` y una solicitud abierta en los seis repositorios de QA, con las notas
+en español y las correcciones de la fase.
+
+**Lo que la lista encontró (el fallo que tenía que verse)**
+
+- La nota 1 de 1:1 proponía «[Yo, Judas, escribo esta carta]» en lugar de «Judas», que no cabe en la frase.
+  Abigail respondió «No», la corrigió y lo dejó dicho; quedó en «1 con cambios, para acordar en equipo».
+- Una pregunta de 1:22–23 respondía que había que salvar «a los que tenían la ropa manchada». Dina lo vio al
+  tener los dos versículos delante, corrigió la respuesta y lo registró.
+- La consulta «Pedí el cambio a quien mantiene el texto» le llegó a Josué como «Consulta sobre TPL JUD 1:1…»; él
+  contestó en la conversación con una mención, y Abigail la dio por respondida.
+
+**⚠ Lo que bloqueaba, y se arregló**
+
+- **Un toque en «Abrir el editor para corregir o agregar» cambiaba las notas del equipo por las de la fuente, en
+  inglés.** El editor se abría como si la tarea tradujera: no encontró un borrador de «Armonizar Notas», y empezó
+  uno copiado de la fuente («0 de 160 notas», todo en inglés, con «Terminé el borrador»). Desde ese momento la
+  lista de comprobación, y todo lo que lee las notas del equipo, mostraba esa copia. *Ahora* el editor sabe que la
+  tarea solo corrige: abre las ayudas del equipo, en la nota que se estaba mirando, guarda solo lo que la persona
+  cambió (una línea, 1,9 s) y no ofrece entregar nada. Y lo del equipo se busca primero en el borrador de quien lo
+  tradujo, así que una rama de más ya no lo tapa.
+- **Las preguntas quedaban debajo de la primera pantalla.** Entre la nota y las preguntas había una caja de
+  «Mensajes de equipos anteriores» vacía y el enlace al editor: la primera pregunta estaba en 863 px de 812.
+  *Ahora* está en 624 px; los mensajes salen solo si hay alguno, y el enlace va después de las preguntas.
+- **En «Academia» se preguntaba por un artículo que no se podía leer.** Solo se veía su nombre. *Ahora* se abre
+  ahí mismo, como lo tiene el equipo, y dice dónde está: «publicado en tu idioma» (25 de 30), «tu equipo lo
+  tradujo: se publica con este libro» (5) o «todavía no está en tu idioma». Lo mismo con el artículo de cada
+  palabra clave, que se leía de lo publicado y salía en inglés si el equipo lo había traducido la semana pasada.
+- **Después de la última respuesta no había nada que tocar.** El botón para seguir quedaba en 878 px, y «Cerrar
+  este paso», arriba de una lista en cuyo final estaba la persona. *Ahora* «Siguiente pendiente» (y al final
+  «Cerrar este paso») queda al pie de la pantalla, de 48 px, en cuanto la ayuda está comprobada. Al cerrar un
+  paso se pasa al siguiente si es de la misma persona.
+- **Una pregunta de dos versículos mostraba uno solo.** *Ahora* se ven todos los de su referencia («Judas
+  1:22–23»).
+- **«Acuerdo del equipo» pedía aprobar lo que se cambió sin poder verlo.** *Ahora* los pasos ya cerrados tienen
+  «Ver» (48 × 40 px) en la lista de pasos, y ahí está la lista de cambios.
+- **Aprobado por dos, la tarea decía «Falta que @Elisha la entregue»** y a ella nadie le avisaba. *Ahora* la
+  aprobación que cierra el último paso entrega la tarea.
+- **La última entrega dejó la tarjeta seis minutos en «Un momento…»** mientras la unidad se copiaba, archivo por
+  archivo, a los seis repositorios. *Ahora* lo dice: «La tarea quedó entregada. Ahora se prepara todo para la
+  validación: tarda unos minutos. Deja la app abierta hasta que termine».
+
+**⚠ Sin resolver**
+
+- **En QA quedó la rama `borrador/jud/armonizar-notas`** (repositorio `es-419_tn`), la copia en inglés que creó
+  el fallo. Ya no se lee ni se publica. No se borró: es una decisión de Abel.
+- «¿La traducción alternativa encaja exactamente en la frase que reemplaza?» se pregunta también de las notas
+  que no traen traducción alternativa.
+- El editor se abre en otra pestaña; «Volver» lleva a «Mis tareas», no a la nota que se estaba comprobando.
+- La lista no dice que una consulta ya fue contestada: hay que verlo en «Avisos» y tocar «Ya respondieron».
+- Con dos textos, los versículos ocupan 366 px (el 45 % del teléfono) y la primera pregunta empieza en 808 px.
+- En «Sugerencias frente al TPS» la pregunta está en 848 px, y lo que hay que mirar (las sugerencias) está al
+  final del artículo: hay que bajar dentro de su caja en cada una de las 124 palabras.
+- «Acuerdo del equipo» no muestra los cambios por sí mismo, y tras aprobar la tarjeta dice «Ya respondiste todo ·
+  Ver mis respuestas», aunque no hubo respuestas sino una aprobación.
+- Los avisos nombran la tarea por su número («Aprobaste «Acuerdo del equipo» en #141»).
+- La conversación de «Armonizar Notas y Academia» se titula «Judas 1:1–25 · Academia».
+- Si se cierra la app mientras se prepara la validación, queda a medias hasta que se entregue otra subtarea.
+
 ### Dónde quedó
 
-- **Traducción: terminada.** Las 29 subtareas de la fase están entregadas, y los tres equipos de la fase quedaron
-  sin miembros.
-- **Afinación: terminada.** Cerradas y entregadas las diez subtareas de «Desafíos», «Palabras clave TPL»,
-  «Palabras clave TPS» y las diez de «Alinear» (la primera, alineada a mano por Elena y revisada con una
-  propuesta y una objeción decididas por voto; las otras nueve, alineadas por posición).
-- Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P,
-  practicante)**, Elisha = **Priscila (P)**.
-- En espera: Armonización, Validación y Publicación, que todavía no tienen equipo: se les pone al llegar a cada
-  una.
+- **Traducción, Afinación y Armonización: terminadas.** 29 + 22 + 3 subtareas entregadas.
+- **Validación: lista para empezar.** «Validar · Judas 1:1–25» está libre («Revisión pastoral»), con la unidad en
+  `validacion/jud/1-1-25` en los seis repositorios de QA. Falta crear «Comité pastoral» y mover a las cuatro
+  cuentas.
+- Publicación: sin equipo todavía. **No se publica sin confirmación.**
 - En `usfm-ast` hay dos commits locales (`ef2ae1f`, las repeticiones; `471ad48`, el espacio tras un grupo
   alineado), en la rama en que estaba el repositorio: sin ellos, una sesión que clone `usfm-ast` de GitHub
   vuelve a perder alineaciones.

@@ -17,7 +17,7 @@ import type { AssignmentsDoc } from "../domain/types";
  * from the conversation, did not have the subtarea on theirs. Nobody was told. There is nothing to land (the work
  * was done on the shared draft), so closing the last step is the delivery. Returns whether it delivered.
  */
-export async function deliverSharedSubtask(params: { session: GtSession; pmOrg: string; lang: string; contentOrg: string; board: AssignmentsDoc; issueNumber: number }): Promise<boolean> {
+export async function deliverSharedSubtask(params: { session: GtSession; pmOrg: string; lang: string; contentOrg: string; board: AssignmentsDoc; issueNumber: number; onStaging?: () => void }): Promise<boolean> {
   const { session, pmOrg, lang, contentOrg, board } = params;
   // Read again: the step was closed a moment ago, and somebody may have delivered meanwhile.
   const issue = await getPmIssue(session, pmOrg, params.issueNumber);
@@ -32,7 +32,7 @@ export async function deliverSharedSubtask(params: { session: GtSession; pmOrg: 
     archiveShared: () => archiveSharedDraft({ session, pmOrg, lang, contentOrg, board, issue }),
     afterClose: async () => {
       await markPhaseIfClosed({ session, pmOrg, lang, contentOrg, board, issue }).catch(() => null);
-      await stageUnitsAfterClose({ session, pmOrg, lang, contentOrg, board, issue }).catch(() => []);
+      await stageUnitsAfterClose({ session, pmOrg, lang, contentOrg, board, issue, onStart: params.onStaging }).catch(() => []);
     },
   });
   recordOwnClose({ host: session.host, username: session.username, pmOrg }, issue.number);

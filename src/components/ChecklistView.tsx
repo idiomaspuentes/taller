@@ -488,13 +488,18 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             <div className="af-dock__bar">
               <strong>
                 {bookLabel(data.book, language)} {item.chapter}:{item.verse}
+                {item.verseTo ? `–${item.verseTo}` : ""}
               </strong>
               {/* Beside the verse's name, not as one more line under two texts that already take half a phone. */}
               {anyCovered && !picking ? <span className="af-hint ck-covered-hint">{t(kind === "palabras" ? "ck.coveredTerms" : "ck.coveredNotes")}</span> : null}
             </div>
             {texts.map((resource) => {
               const text = data.texts[resource];
-              const verse = text?.verses[item.verse] ?? "";
+              // A question about verses 22 and 23 is checked against both: with the first alone, «¿se puede
+              // responder con los textos?» had no honest answer.
+              const verse = item.verseTo
+                ? Array.from({ length: item.verseTo - item.verse + 1 }, (_, i) => text?.verses[item.verse + i] ?? "").filter(Boolean).join(" ")
+                : (text?.verses[item.verse] ?? "");
               // The item's quote is in the original language: its words in this text come from the alignment.
               const hit = item.quote && verse ? alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: item.chapter, verse: item.verse }) : null;
               return (
@@ -655,11 +660,23 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               {t("af.next")}
             </Button>
           </nav>
-          {!summary.complete ? (
-            // Once this one is checked, going on is the thing to do: it is the button that stands out.
-            <Button type="button" variant={tally?.state === "ok" ? "default" : "outline"} onClick={nextPending}>
-              {t("ck.nextPending")}
-            </Button>
+          {/* What to do next stays in reach, at the foot of the screen. After the last answer of a help the button
+              to go on was under the fold (at 878 px of 812), and after the last help of all, «Cerrar este paso» was
+              at the top of a list the person was at the bottom of. */}
+          {stepDone ? null : !summary.complete ? (
+            // In reach once this help is checked; while it is being answered it would only cover its questions.
+            <div className="ck-go" data-on={tally?.state === "ok" || undefined}>
+              {/* Once this one is checked, going on is the thing to do: it is the button that stands out. */}
+              <Button type="button" size="lg" variant={tally?.state === "ok" ? "default" : "outline"} onClick={nextPending}>
+                {t("ck.nextPending")}
+              </Button>
+            </div>
+          ) : closesHere ? (
+            <div className="ck-go" data-on>
+              <Button type="button" size="lg" disabled={saving} onClick={() => void closeStep()}>
+                {t("ck.closeStep")}
+              </Button>
+            </div>
           ) : null}
         </>
       ) : null}

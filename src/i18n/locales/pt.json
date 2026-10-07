@@ -2781,5 +2781,6 @@
   "ck.article.source": "Este artigo ainda não está no seu idioma: aqui é lido no idioma de origem.",
   "ck.article.none": "Este artigo não foi encontrado.",
   "tb.seeStep": "Ver",
-  "mt.stepDelivered": "Com «{step}» a tarefa ficou entregue."
+  "mt.stepDelivered": "Com «{step}» a tarefa ficou entregue.",
+  "mt.staging": "A tarefa foi entregue. Agora tudo é preparado para a validação: leva alguns minutos. Deixe o app aberto até terminar."
 }

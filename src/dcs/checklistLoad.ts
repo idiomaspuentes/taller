@@ -28,6 +28,8 @@ export type ChecklistItem = {
   id: string;
   chapter: number;
   verse: number;
+  /** A question may be about several verses in a row («1:22-23»): the last of them. */
+  verseTo?: number;
   /** What the item is about, in a few words (the quoted phrase, the term, the question). */
   title: string;
   body: string;
@@ -148,10 +150,11 @@ export async function loadUnitItems(params: {
     items = parseTermRows(rows, chapter).map((term) => ({ id: term.id, chapter: term.chapter, verse: term.verse, title: term.termSlug, body: "", quote: term.quote, occurrence: term.occurrence, supportRef: `${term.termKind}/${term.termSlug}` }));
   } else {
     for (const row of rows) {
-      const match = /^(\d+):(\d+)/.exec((row.Reference ?? row.reference ?? "").trim());
+      const match = /^(\d+):(\d+)(?:\s*[-–]\s*(\d+))?/.exec((row.Reference ?? row.reference ?? "").trim());
       const id = (row.ID ?? row.Id ?? row.id ?? "").trim();
       if (!match || !id || Number(match[1]) !== chapter) continue;
-      items.push({ id, chapter, verse: Number(match[2]), title: (row.Question ?? row.question ?? "").trim(), body: (row.Response ?? row.response ?? "").trim() });
+      const to = Number(match[3] ?? 0);
+      items.push({ id, chapter, verse: Number(match[2]), ...(to > Number(match[2]) ? { verseTo: to } : {}), title: (row.Question ?? row.question ?? "").trim(), body: (row.Response ?? row.response ?? "").trim() });
     }
   }
   return { items: items.filter((item) => inRange(item.verse) && (!params.onlyLinked || Boolean(item.supportRef))).sort((a, b) => a.verse - b.verse), fromSource };

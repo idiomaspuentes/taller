@@ -185,6 +185,8 @@ export function MyTasksView({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   const [acting, setActing] = useState<number | null>(null);
+  /** A delivery set off the preparation of a unit for validation, which takes minutes: said while it lasts. */
+  const [staging, setStaging] = useState(false);
   const [conflictIssues, setConflictIssues] = useState<DcsIssue[]>([]);
   const [closedIssues, setClosedIssues] = useState<DcsIssue[]>([]);
   const [confirm, setConfirm] = useState<{ title: string; text: string; yes: string; run: () => void } | null>(null);
@@ -536,7 +538,7 @@ export function MyTasksView({
       // approval that was missing: that is its delivery, as when a tool closes it (see `deliverSharedSubtask`). The
       // card went on to «Falta que @quien la entregue», and nobody told them.
       const board = projects.find((bucket) => bucket.board.projectId === offer.projectId)?.board;
-      const delivered = completed && board ? await deliverSharedSubtask({ session, pmOrg, lang, contentOrg, board, issueNumber: issue.number }).catch(() => false) : false;
+      const delivered = completed && board ? await deliverSharedSubtask({ session, pmOrg, lang, contentOrg, board, issueNumber: issue.number, onStaging: () => setStaging(true) }).catch(() => false) : false;
       announce(
         (delivered ? t("mt.stepDelivered") : completed ? t("mt.stepCompleted") : t("mt.stepApproved")).replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)),
       );
@@ -545,6 +547,7 @@ export function MyTasksView({
       setError(explainError(err));
     } finally {
       setActing(null);
+      setStaging(false);
     }
   }
 
@@ -671,7 +674,7 @@ export function MyTasksView({
         // to their validation branch now. Neither undoes the close.
         afterClose: async () => {
           await markPhaseIfClosed({ session, pmOrg, lang, contentOrg, board, issue }).catch(() => null);
-          await stageUnitsAfterClose({ session, pmOrg, lang, contentOrg, board, issue }).catch(() => []);
+          await stageUnitsAfterClose({ session, pmOrg, lang, contentOrg, board, issue, onStart: () => setStaging(true) }).catch(() => []);
         },
         ensurePr: async () =>
           (await ensurePortionPr({ session, pmOrg, lang, contentOrg, board, issue })).issue,
@@ -709,6 +712,7 @@ export function MyTasksView({
       setError(explainError(err));
     } finally {
       setActing(null);
+      setStaging(false);
     }
   }
 
@@ -881,6 +885,11 @@ export function MyTasksView({
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {staging ? (
+          <Alert role="status">
+            <AlertDescription>{t("mt.staging")}</AlertDescription>
           </Alert>
         ) : null}
         {!pmOrg ? (

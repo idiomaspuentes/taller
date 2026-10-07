@@ -45,14 +45,17 @@ export async function stageUnitOf(params: Where & { issue: DcsIssue; resources: 
  * (the unit arrives), and a correction the committee asked for closes (the unit is renewed, and the committee sees
  * it again). Staging only writes what differs, so doing it again costs nothing. It never undoes the close.
  */
-export async function stageUnitsAfterClose(params: Where & { issue: DcsIssue }): Promise<StagedUnit[]> {
+export async function stageUnitsAfterClose(params: Where & { issue: DcsIssue; onStart?: () => void }): Promise<StagedUnit[]> {
   const { session, pmOrg, board, issue } = params;
   const projectId = board.projectId || board.book;
   if (!projectId) return [];
   const { issues } = await listProjectIssues(session, pmOrg, projectId);
   const staged: StagedUnit[] = [];
-  for (const row of stagingSubtasks(board, issues, issue)) {
-    if (issueTaskId(row.issue) === issueTaskId(issue)) continue;
+  const rows = stagingSubtasks(board, issues, issue).filter((row) => issueTaskId(row.issue) !== issueTaskId(issue));
+  // A unit is written file by file in every repository it has: minutes, for a chapter with its articles. Whoever
+  // made the delivery that set it off is told, instead of being left before a button that only says to wait.
+  if (rows.length) params.onStart?.();
+  for (const row of rows) {
     const done = await stageUnitOf({ ...params, issue: row.issue, resources: row.resources, aligned: row.aligned }).catch(() => null);
     if (done) staged.push(done);
   }
