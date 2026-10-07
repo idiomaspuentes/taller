@@ -316,6 +316,11 @@ export type ChecklistQuestion = {
   texts?: Localized;
   /** `item` (default): asked for each item. `verse`: asked once for each verse. */
   per?: "item" | "verse";
+  /**
+   * Asked only of an item whose text has one of these («Traducción alternativa»): whether the alternate
+   * translation fits was asked of every note, most of which bring none.
+   */
+  when?: string[];
 };
 
 export type TaskStep = {
@@ -342,6 +347,12 @@ export type TaskStep = {
   closing?: StepClosing;
   /** Questions of a `checklist` step. */
   checklist?: ChecklistQuestion[];
+  /**
+   * The headings of an article this step is about («Sugerencias de traducción»), as the article may have them in
+   * any language: the article is shown from the first one it has. Its box opened on «Definición», and what the
+   * question asked about was two screens further down inside it, for each of 124 terms.
+   */
+  articleFocus?: string[];
   /**
    * Things to look at before handing the step in, whatever way it closes: a short list the person ticks for
    * themselves («¿usted o ustedes?»). They remind; they do not close the step, and nobody else sees the ticks.

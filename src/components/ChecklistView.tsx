@@ -22,7 +22,10 @@ import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
 import { helpRowRef } from "../domain/commentPlace";
-import { helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome } from "../domain/checklist";
+import { consultReply, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
+import { listIssueComments } from "@ip-lms/dcs-client";
+import { dcsConfig } from "../dcs/config";
+import { PM_REPO_NAME } from "../domain/types";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
@@ -142,7 +145,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }, [load]);
 
   const questions = data?.step?.checklist ?? [];
-  const checkItems: CheckItem[] = useMemo(() => (data?.items ?? []).map((item) => ({ id: item.id, verseKey: verseKeyOf(item) })), [data]);
+  const checkItems: CheckItem[] = useMemo(() => (data?.items ?? []).map((item) => ({ id: item.id, verseKey: verseKeyOf(item), text: item.body })), [data]);
   // What each verse reads now in the texts on screen: an answer given before a change of the text is checked again.
   const hashes = useMemo(() => {
     const out: Record<string, string> = {};
@@ -152,6 +155,21 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }, [data, textsKey]);
   const summary = useMemo(() => summarizeChecklist({ items: checkItems, questions, answers, currentHashes: hashes }), [checkItems, questions, answers, hashes]);
   useStepWork(session, ctx, summary.done, data?.items.length ?? 0, { on: !stepDone && !closing });
+  // What was said in the conversation of the subtarea, read while a consultation waits: its answer is shown here.
+  const [thread, setThread] = useState<ThreadLine[]>([]);
+  const consulting = summary.consulting.length;
+  useEffect(() => {
+    if (!consulting || !session || !ctx?.pmOrg || !ctx.issueNumber) return;
+    let alive = true;
+    void listIssueComments(dcsConfig(session.host), ctx.pmOrg, PM_REPO_NAME, ctx.issueNumber, session.token)
+      .then((rows) => alive && setThread(rows.map((row) => ({ by: row.user?.login ?? "", at: row.created_at ?? "", body: row.body ?? "" }))))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consulting, session?.token, ctx?.pmOrg, ctx?.issueNumber]);
+  const replyTo = (answer: CheckAnswer | undefined) => (answer?.outcome === "consult" && !answer.resolved ? consultReply(answer, thread) : null);
   const item = data?.items[Math.min(position, Math.max((data?.items.length ?? 1) - 1, 0))];
   // A key term is shown by the name the team gives it (the title of its article), not by its code in English.
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
@@ -176,6 +194,16 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   // The article of the term in view. The checklist asks whether its definition is right for this verse, and showed
   // only its title: whoever checked had to know the article, or go and find it. Read once per term, as it comes up.
   const [articles, setArticles] = useState<Record<string, string | null>>({});
+  // The article of the item opens on the section the step is about, when the process names one.
+  const focusHeads = (data?.step?.articleFocus ?? []).join("\u0000");
+  const shownArticle = `${position}|${Object.keys(articles).length}`;
+  useEffect(() => {
+    if (!focusHeads) return;
+    const wanted = focusHeads.split("\u0000").map((head) => head.toLowerCase());
+    const box = document.querySelector<HTMLElement>(".ck-article");
+    const head = box ? [...box.querySelectorAll<HTMLElement>("h1, h2, h3, h4")].find((el) => wanted.includes((el.textContent ?? "").trim().toLowerCase())) : undefined;
+    if (box && head) box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 4;
+  }, [focusHeads, shownArticle]);
   const slug = kind === "palabras" && termKind ? termSlug.join("/") : "";
   // The Academy article a note points to. Its checklist asks whether the article teaches the difficulty of the
   // note and whether it is published in this language, and showed its name alone: neither could be answered here.
@@ -471,6 +499,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                         <span>{labelOf(row.itemId)}</span>
                         <span className="round__who">
                           {Object.values(row.answers).filter((a) => a?.value === "no").map((a) => a!.note).filter(Boolean).join(" · ")}
+                          {Object.values(row.answers).some((a) => replyTo(a)) ? <b> · {t("ck.repliedShort")}</b> : null}
                         </span>
                       </button>
                     </li>
@@ -586,7 +615,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             ) : null}
 
             <ul className="ck-questions">
-              {questionsFor({ id: item.id, verseKey: verseKeyOf(item) }, checkItems, questions).map(({ question, answerItemId }) => {
+              {questionsFor({ id: item.id, verseKey: verseKeyOf(item), text: item.body }, checkItems, questions).map(({ question, answerItemId }) => {
                 const answer = tally?.answers[question.id];
                 const writing = draft && draft.answerItemId === answerItemId && draft.questionId === question.id;
                 return (
@@ -607,8 +636,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                       <p className="ck-question__outcome" data-outcome={answer.outcome ?? "none"}>
                         {answer.outcome ? t(OUTCOME_KEY[answer.outcome]) : t("ck.noOutcome")}
                         {answer.note ? `: ${answer.note}` : ""}
+                        {replyTo(answer) ? (
+                          <span className="ck-question__reply">
+                            {t("ck.replied").replace("{who}", replyTo(answer)!.by)} «{replyTo(answer)!.text}»
+                          </span>
+                        ) : null}
                         {answer.outcome === "consult" && !answer.resolved ? (
-                          <Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => void save([{ ...answer, resolved: true, by: session?.username ?? "", at: new Date().toISOString() }], t("ck.saved"))}>
+                          <Button type="button" size="sm" variant={replyTo(answer) ? "default" : "outline"} disabled={saving} onClick={() => void save([{ ...answer, resolved: true, by: session?.username ?? "", at: new Date().toISOString() }], t("ck.saved"))}>
                             {t("ck.answered")}
                           </Button>
                         ) : null}

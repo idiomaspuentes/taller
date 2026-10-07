@@ -1,6 +1,6 @@
 /** A checklist step: every item answered yes, or its «no» settled (fixed, created, or answered by the owner). */
 import assert from "node:assert/strict";
-import { helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
+import { consultReply, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
 import { canApproveStep, closesInItsTool } from "../src/domain/stepClaim";
 import type { ChecklistQuestion, TaskStep } from "../src/domain/types";
 
@@ -36,6 +36,40 @@ const stateOf = (answers: CheckAnswer[], id: string) => sum(answers).items.find(
 test("la pregunta por versículo se hace una vez, en el primer ítem de ese versículo", () => {
   assert.deepEqual(questionsFor(items[0]!, items, questions).map((q) => [q.question.id, q.answerItemId]), [["sentido", "n1"], ["util", "n1"], ["cobertura", "verse:2:11"]]);
   assert.deepEqual(questionsFor(items[1]!, items, questions).map((q) => q.question.id), ["sentido", "util"]);
+});
+
+test("una pregunta que es solo para lo que el ítem trae no se le hace al que no lo trae, ni le falta para estar comprobado", () => {
+  const asked = [...questions, { id: "alternativa", text: "¿La traducción alternativa encaja?", when: ["Traducción alternativa", "Alternate translation"] }];
+  const notes: CheckItem[] = [
+    { id: "n1", verseKey: "2:11", text: "Aquí Pablo habla de sí mismo. Traducción alternativa: [Yo, Pablo]" },
+    { id: "n2", verseKey: "2:11", text: "Esta es una metáfora." },
+    { id: "n3", verseKey: "2:13", text: "See the note. alternate translation: [x]" },
+    { id: "n4", verseKey: "2:13" },
+  ];
+  const ids = (item: CheckItem) => questionsFor(item, notes, asked).map((q) => q.question.id);
+  assert.deepEqual(ids(notes[0]!), ["sentido", "util", "cobertura", "alternativa"]);
+  assert.deepEqual(ids(notes[1]!), ["sentido", "util"], "la nota sin traducción alternativa no la lleva");
+  assert.ok(ids(notes[2]!).includes("alternativa"), "sin importar mayúsculas, y en el idioma de la fuente");
+  assert.ok(ids(notes[3]!).includes("alternativa"), "de un ítem cuyo texto no se conoce se pregunta todo");
+  const yes = (item: string, q: string) => say(item, q, "yes");
+  const answers = [...notes.flatMap((n) => [yes(n.id, "sentido"), yes(n.id, "util")]), yes(verseItemId("2:11"), "cobertura"), yes(verseItemId("2:13"), "cobertura")];
+  const summary = summarizeChecklist({ items: notes, questions: asked, answers });
+  assert.deepEqual(summary.items.map((i) => i.state), ["pending", "ok", "pending", "pending"], "a la que no se le pregunta no le falta nada");
+  assert.equal(summarizeChecklist({ items: notes, questions: asked, answers: [...answers, yes("n1", "alternativa"), yes("n3", "alternativa"), yes("n4", "alternativa")] }).complete, true);
+});
+
+test("la respuesta a una consulta es lo primero que le dicen a quien consultó, después de consultar", () => {
+  const asked = { by: "Elisha", at: "2026-10-07T06:54:20Z" };
+  const thread = [
+    { by: "abelperez", at: "2026-10-07T06:40:00Z", body: "@Elisha esto es de antes" },
+    { by: "Elisha", at: "2026-10-07T06:54:23Z", body: "@abelperez Consulta sobre TPL JUD 1:1: ¿conviene decirlo de otra manera?" },
+    { by: "valeska", at: "2026-10-07T06:54:50Z", body: "Yo también lo dudo." },
+    { by: "abelperez", at: "2026-10-07T06:55:13Z", body: "@Elisha en español no hace falta: los dos se llaman Judas.\n<!-- marca -->" },
+    { by: "abelperez", at: "2026-10-07T07:01:00Z", body: "@Elisha otra cosa más" },
+  ];
+  assert.deepEqual(consultReply(asked, thread), { by: "abelperez", text: "en español no hace falta: los dos se llaman Judas." });
+  assert.equal(consultReply(asked, thread.slice(0, 3)), null, "lo dicho antes, o sin nombrar a quien consultó, no es la respuesta");
+  assert.equal(consultReply({ by: "Elisha", at: "2026-10-07T08:00:00Z" }, thread), null, "una consulta posterior espera la suya");
 });
 
 test("con todo en «sí» la lista está completa", () => {

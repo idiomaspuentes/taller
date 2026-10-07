@@ -2814,5 +2814,7 @@
   "pu.checksPassedLine": "✓ Todas las comprobaciones pasaron",
   "org.usedNew": "En uso · proyectos nuevos",
   "sb.teamsForeign": "Otros equipos de la organización",
-  "sb.teamsWork": "Equipos de trabajo"
+  "sb.teamsWork": "Equipos de trabajo",
+  "ck.replied": "@{who} respondió:",
+  "ck.repliedShort": "ya respondieron"
 }

@@ -166,6 +166,7 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
       if (step.decisionRule !== undefined && !["majority", "unanimous"].includes(text(step.decisionRule))) problems.push(`${at}: la regla de decisión es "majority" o "unanimous".`);
       if (step.scope !== undefined && !STEP_SCOPES.includes(text(step.scope))) problems.push(`${at}: «${text(step.scope)}» no es un alcance de paso (${STEP_SCOPES.join(", ")}).`);
       const checkIds = new Set<string>();
+      if (step.articleFocus !== undefined && !(Array.isArray(step.articleFocus) && step.articleFocus.length && step.articleFocus.every((head: unknown) => typeof head === "string" && head.trim()))) problems.push(`${at}: «articleFocus» es una lista de títulos de sección de un artículo.`);
       for (const check of list(step.checks)) {
         const checkId = text(check.id);
         if (!checkId || !text(check.text)) problems.push(`${at}: una comprobación no tiene id o texto.`);
@@ -182,6 +183,8 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
         questionIds.add(questionId);
         checkLocalized(question.texts, `${at}, pregunta «${questionId}»`, languages, problems);
         if (question.per !== undefined && !["item", "verse"].includes(text(question.per))) problems.push(`${at}, pregunta «${questionId}»: «per» es "item" o "verse".`);
+        if (question.when !== undefined && !(Array.isArray(question.when) && question.when.length && question.when.every((word) => typeof word === "string" && word.trim()))) problems.push(`${at}, pregunta «${questionId}»: «when» es una lista de textos que el ítem debe traer.`);
+        if (question.when !== undefined && question.per === "verse") problems.push(`${at}, pregunta «${questionId}»: «when» es para preguntas de cada ítem, no de cada versículo.`);
       }
     });
   }

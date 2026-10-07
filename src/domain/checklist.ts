@@ -31,6 +31,8 @@ export type CheckItem = {
   id: string;
   /** Where the item is, to ask the once-per-verse questions once. */
   verseKey: string;
+  /** What the item says, when known: some questions are only for an item that brings something (see `asksOf`). */
+  text?: string;
 };
 
 export type CheckItemTally = {
@@ -75,6 +77,16 @@ function stateOf(answer: CheckAnswer | undefined): CheckItemState {
 const RANK: Record<CheckItemState, number> = { ok: 0, pending: 1, consult: 2, open: 3 };
 
 /**
+ * Whether a question is asked of an item: one that names what the item must bring (`when`) is not asked of an item
+ * that does not bring it. An item whose text is not known is asked everything.
+ */
+export function asksOf(question: ChecklistQuestion, item: Pick<CheckItem, "text">): boolean {
+  if (!question.when?.length || item.text === undefined) return true;
+  const text = item.text.toLowerCase();
+  return question.when.some((piece) => text.includes(piece.toLowerCase()));
+}
+
+/**
  * How the checklist stands. Questions `per: "verse"` are asked once per verse, on the first item of that verse; the
  * rest are asked for every item.
  */
@@ -107,7 +119,7 @@ export function summarizeChecklist(params: {
   }
   const items: CheckItemTally[] = params.items.map((item) => {
     const answers: Record<string, CheckAnswer | undefined> = {};
-    for (const q of perItem) answers[q.id] = latest.get(`${item.id}\u0000${q.id}`);
+    for (const q of perItem) if (asksOf(q, item)) answers[q.id] = latest.get(`${item.id}\u0000${q.id}`);
     if (firstOfVerse.has(item.id)) for (const q of perVerse) answers[q.id] = latest.get(`${verseItemId(item.verseKey)}\u0000${q.id}`);
     const states = Object.values(answers).map(stateOf);
     const state = states.reduce<CheckItemState>((worst, s) => (RANK[s] > RANK[worst] ? s : worst), "ok");
@@ -125,11 +137,36 @@ export function summarizeChecklist(params: {
   };
 }
 
+export type ThreadLine = { by: string; at: string; body: string };
+
+const REPLY_MAX = 200;
+
+/**
+ * What was answered to a consultation: the first thing somebody else said to whoever asked, after they asked, in
+ * the conversation of the subtarea. The list went on saying «Consulta enviada» with the answer already given: it
+ * was learned of in «Avisos», and the item had to be found again to mark it.
+ */
+export function consultReply(asked: Pick<CheckAnswer, "by" | "at">, thread: ThreadLine[]): { by: string; text: string } | null {
+  const me = asked.by.trim().toLowerCase();
+  if (!me) return null;
+  const toMe = new RegExp(`@${me.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`, "i");
+  const reply = thread
+    .filter((line) => line.by.trim().toLowerCase() !== me && line.at > asked.at && toMe.test(line.body))
+    .sort((a, b) => a.at.localeCompare(b.at))[0];
+  if (!reply) return null;
+  const text = reply.body
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/^(?:\s*@[\w-]+)+[\s,:]*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? { by: reply.by, text: text.length > REPLY_MAX ? `${text.slice(0, REPLY_MAX - 1).trimEnd()}…` : text } : null;
+}
+
 /** The questions that apply to an item, and under which id each is answered. */
 export function questionsFor(item: CheckItem, items: CheckItem[], questions: ChecklistQuestion[]): { question: ChecklistQuestion; answerItemId: string }[] {
   const first = items.find((other) => other.verseKey === item.verseKey)?.id === item.id;
   return questions
-    .filter((q) => q.per !== "verse" || first)
+    .filter((q) => (q.per === "verse" ? first : asksOf(q, item)))
     .map((question) => ({ question, answerItemId: question.per === "verse" ? verseItemId(item.verseKey) : item.id }));
 }
 

@@ -463,7 +463,8 @@ function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
     if (!id || !text || seen.has(id)) continue;
     seen.add(id);
     const texts = normalizeLocalized(item.texts);
-    out.push({ id, text, ...(texts ? { texts } : {}), ...(item.per === "verse" ? { per: "verse" as const } : {}) });
+    const when = Array.isArray(item.when) ? item.when.map((word) => String(word ?? "").trim()).filter(Boolean) : [];
+    out.push({ id, text, ...(texts ? { texts } : {}), ...(item.per === "verse" ? { per: "verse" as const } : {}), ...(when.length ? { when } : {}) });
   }
   return out.length ? out : undefined;
 }
@@ -539,6 +540,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       actionLabels: normalizeLocalized(item.actionLabels),
       closing,
       checklist: normalizeChecklist(item.checklist),
+      ...(Array.isArray(item.articleFocus) && item.articleFocus.some((head) => String(head ?? "").trim()) ? { articleFocus: item.articleFocus.map((head) => String(head ?? "").trim()).filter(Boolean) } : {}),
       checks: normalizeChecks(item.checks),
       scope,
       ...(item.decisionRule === "unanimous" || item.decisionRule === "majority" ? { decisionRule: item.decisionRule } : {}),

@@ -66,7 +66,8 @@ Cada plantilla tiene `id`, `name`, `version`, `phases` y `tasks`.
 | `minAssignees`, `maxAssignees`, `minIndependent` | Cuántas personas, y cuántas no deben haber escrito el texto (`pool`) |
 | `excludeIssueAssignee`, `excludePriorStepIds`, `includeAuthorInApproval` | Quién no puede tomarlo, y si el autor también confirma |
 | `closing` | Cómo se completa: `self`, `approval`, `consensus`, `checklist`, `automatic` |
-| `checklist` | Las preguntas de sí o no de un paso `checklist` (`id`, `text`, `texts`, `per`) |
+| `articleFocus` | Los títulos de la sección de un artículo de que trata el paso («Sugerencias de traducción»): el artículo se muestra desde ahí |
+| `checklist` | Las preguntas de sí o no de un paso `checklist` (`id`, `text`, `texts`, `per`; `when`: la pregunta solo se hace en los ítems cuyo texto trae uno de esos textos) |
 | `scope` | Qué cubre: una subtarea, la unidad completa (`unit`), o un capítulo una vez por persona (`chapter-once`) |
 
 Los **ids no se cambian nunca**: las subtareas y su avance en Door43 los usan. Los nombres sí se

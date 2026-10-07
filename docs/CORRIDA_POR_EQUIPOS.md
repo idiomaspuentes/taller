@@ -1006,13 +1006,14 @@ en español y las correcciones de la fase.
 
 - **En QA quedó la rama `borrador/jud/armonizar-notas`** (repositorio `es-419_tn`), la copia en inglés que creó
   el fallo. Ya no se lee ni se publica. No se borró: es una decisión de Abel.
-- «¿La traducción alternativa encaja exactamente en la frase que reemplaza?» se pregunta también de las notas
-  que no traen traducción alternativa.
 - El editor se abre en otra pestaña; «Volver» lleva a «Mis tareas», no a la nota que se estaba comprobando.
-- La lista no dice que una consulta ya fue contestada: hay que verlo en «Avisos» y tocar «Ya respondieron».
 - Con dos textos, los versículos ocupan 366 px (el 45 % del teléfono) y la primera pregunta empieza en 808 px.
-- En «Sugerencias frente al TPS» la pregunta está en 848 px, y lo que hay que mirar (las sugerencias) está al
-  final del artículo: hay que bajar dentro de su caja en cada una de las 124 palabras.
+  (Vuelto a medir en «Preguntas frente a los textos» de 1:1: los textos ocupan 240 px y la primera pregunta está
+  en 581. Depende del largo del versículo.)
+- En «Sugerencias frente al TPS» la pregunta sigue bajo la primera pantalla (en 945 px con un término de artículo
+  largo).
+
+(Lo demás de esta lista se arregló después: ver «Las listas de Armonización», al final.)
 - «Acuerdo del equipo» no muestra los cambios por sí mismo.
 - Si se cierra la app mientras se prepara la validación, queda a medias hasta que se entregue otra subtarea.
 
@@ -1256,4 +1257,24 @@ publicar» es para los proyectos que se armen desde ahora: Judas conserva «Publ
 
 Lo que no se vio en pantalla: el aviso de «ahora coordina» (habría que cambiar a quien coordina un equipo) y la
 frase de las tareas sin equipo (en QA todas lo tienen).
+
+### Las listas de Armonización (7 de octubre)
+
+**⚠ Arreglado**
+
+- **«¿La traducción alternativa encaja…?» se preguntaba de todas las notas.** *Ahora* una pregunta del proceso
+  puede decir de qué ítems es (`when`): esta solo se hace en las notas que traen «Traducción alternativa». Con las
+  notas publicadas de Judas: 145 de 159 la traen; a las otras 14 (7 de las 35 de 1:1–4) ya no se les pregunta, ni
+  les falta para quedar comprobadas.
+- **La lista no decía que una consulta ya fue respondida.** *Ahora*, en la nota consultada, sale la respuesta
+  («@abelperez respondió: «en español no hace falta…»») con «Ya respondieron» resaltado, y la lista de «en
+  consulta» dice «ya respondieron» junto a las que la tienen.
+- **En «Sugerencias frente al TPS» había que bajar dentro de la caja del artículo en cada término.** *Ahora* el
+  paso dice de qué sección trata (`articleFocus`) y el artículo se muestra desde «Sugerencias de traducción».
+
+**Lo que no se pudo ver en pantalla.** Las tres cosas dependen de lo que dice el proceso o de una consulta abierta,
+y el plan de Judas es una copia del proceso de antes, con sus consultas ya resueltas. Se comprobó con las pruebas
+(`verify:checklist`, 11) y, en QA, con los datos reales: cuáles notas traen traducción alternativa, y que el
+cálculo deja «Sugerencias de traducción» como primera línea visible de la caja del artículo de un término.
+Valen para los proyectos que se armen desde ahora.
 
