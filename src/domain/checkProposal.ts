@@ -42,8 +42,14 @@ export const PROPOSAL_SAYS = "@acuerdo";
 export const PROPOSAL_DONE = "@hecha";
 /** The question a proposal answers when it is about no question of the step: something seen in passing. */
 export const PROPOSAL_FREE = "@propuesta";
+/**
+ * A row by which somebody says they would rather leave things as they are. There was no way to be against a
+ * proposal but to write another one: a team that did not want a change could not say so, and the proposal stayed
+ * to be resolved, with the step it kept open, until its author took it back.
+ */
+export const PROPOSAL_KEEPS = "@dejar";
 
-export type ProposalState = "open" | "agreed" | "applied" | "sent" | "withdrawn" | "replaced";
+export type ProposalState = "open" | "agreed" | "applied" | "sent" | "withdrawn" | "replaced" | "rejected";
 
 export type ProposalView = {
   proposal: ProposalPayload;
@@ -55,6 +61,8 @@ export type ProposalView = {
   reason: string;
   /** Who is for it, its author first. */
   inFavour: string[];
+  /** Who would rather leave things as they are. */
+  against: string[];
   state: ProposalState;
   /** The subtarea it became, when it was sent to another team. */
   sentAs?: string;
@@ -72,6 +80,11 @@ export function proposalSaying(proposalId: string, by: string, at: string, agree
   return { itemId: proposalId, questionId: PROPOSAL_SAYS, value: agree ? "yes" : "no", by, at };
 }
 
+/** What a person says of leaving things as they are instead of a proposal: that they would, or no longer. */
+export function proposalKeeping(proposalId: string, by: string, at: string, keep: boolean): CheckAnswer {
+  return { itemId: proposalId, questionId: PROPOSAL_KEEPS, value: keep ? "yes" : "no", by, at };
+}
+
 /** The row that says a proposal was carried out, and as what (the subtarea it became, when it went to another team). */
 export function proposalDone(proposalId: string, by: string, at: string, sentAs?: string): CheckAnswer {
   return { itemId: proposalId, questionId: PROPOSAL_DONE, value: "yes", by, at, ...(sentAs ? { note: sentAs } : {}) };
@@ -79,8 +92,9 @@ export function proposalDone(proposalId: string, by: string, at: string, sentAs?
 
 /**
  * The proposals among some answers, and how each stands. `needed`: how many people have to be for one, its author
- * among them, for it to be agreed. `ours`: whether the team maintains what a proposal would change; one it does
- * not is «sent» once carried out, not «applied».
+ * among them, for it to be agreed; as many who would rather leave things as they are, and it is not accepted.
+ * `ours`: whether the team maintains what a proposal would change; one it does not is «sent» once carried out,
+ * not «applied».
  */
 export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resource: string) => boolean = () => true): ProposalView[] {
   const byTime = [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
@@ -88,14 +102,37 @@ export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resou
   const replaced = new Set(made.flatMap((row) => (row.proposal!.replaces ? [row.proposal!.replaces] : [])));
   return made.map((row) => {
     const proposal = row.proposal!;
-    // The last thing each person said of it.
-    const said = new Map<string, { by: string; yes: boolean }>();
-    for (const other of byTime) if (other.questionId === PROPOSAL_SAYS && other.itemId === proposal.id) said.set(other.by.trim().toLowerCase(), { by: other.by, yes: other.value === "yes" });
-    const withdrawn = said.get(row.by.trim().toLowerCase())?.yes === false;
-    const inFavour = [row.by, ...[...said.values()].filter((line) => line.yes && !same(line.by, row.by)).map((line) => line.by)];
+    // The last thing each person said of it: for it, for leaving things as they are, or neither any more.
+    const said = new Map<string, { by: string; stand: "for" | "against" | "none" }>();
+    let withdrawn = false;
+    for (const other of byTime) {
+      if (other.itemId !== proposal.id || (other.questionId !== PROPOSAL_SAYS && other.questionId !== PROPOSAL_KEEPS)) continue;
+      const yes = other.value === "yes";
+      // Its author is for it while it stands: what they can say is that they take it back.
+      if (same(other.by, row.by)) {
+        if (other.questionId === PROPOSAL_SAYS) withdrawn = !yes;
+        continue;
+      }
+      said.set(other.by.trim().toLowerCase(), { by: other.by, stand: !yes ? "none" : other.questionId === PROPOSAL_SAYS ? "for" : "against" });
+    }
+    const standing = (stand: "for" | "against") => [...said.values()].filter((line) => line.stand === stand).map((line) => line.by);
+    const inFavour = [row.by, ...standing("for")];
+    const against = standing("against");
     const done = byTime.filter((other) => other.questionId === PROPOSAL_DONE && other.itemId === proposal.id).pop();
-    const state: ProposalState = withdrawn ? "withdrawn" : replaced.has(proposal.id) ? "replaced" : done ? (ours(proposal.resource) ? "applied" : "sent") : inFavour.length >= Math.max(1, needed) ? "agreed" : "open";
-    return { proposal, itemId: row.itemId, questionId: row.questionId, by: row.by, at: row.at, reason: row.note ?? "", inFavour: withdrawn ? [] : inFavour, state, ...(done?.note ? { sentAs: done.note } : {}) };
+    const state: ProposalState = withdrawn
+      ? "withdrawn"
+      : replaced.has(proposal.id)
+        ? "replaced"
+        : done
+          ? ours(proposal.resource)
+            ? "applied"
+            : "sent"
+          : against.length >= Math.max(1, needed)
+            ? "rejected"
+            : inFavour.length >= Math.max(1, needed)
+              ? "agreed"
+              : "open";
+    return { proposal, itemId: row.itemId, questionId: row.questionId, by: row.by, at: row.at, reason: row.note ?? "", inFavour: withdrawn ? [] : inFavour, against: withdrawn ? [] : against, state, ...(done?.note ? { sentAs: done.note } : {}) };
   });
 }
 
@@ -108,9 +145,9 @@ export function withoutWithdrawn(answers: CheckAnswer[]): CheckAnswer[] {
   return gone.size ? answers.filter((row) => !(row.outcome === "proposal" && row.proposal && gone.has(row.proposal.id))) : answers;
 }
 
-/** Whether nothing is left to settle: every proposal was carried out, taken back or answered with another. */
+/** Whether nothing is left to settle: every proposal was carried out, taken back, answered with another or not accepted. */
 export function proposalsSettled(views: ProposalView[]): boolean {
-  return views.every((view) => view.state === "applied" || view.state === "sent" || view.state === "withdrawn" || view.state === "replaced");
+  return views.every((view) => view.state === "applied" || view.state === "sent" || view.state === "withdrawn" || view.state === "replaced" || view.state === "rejected");
 }
 
 // ---------------------------------------------------------------- a new version and the words it was written from

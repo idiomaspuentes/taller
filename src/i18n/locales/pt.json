@@ -2888,7 +2888,7 @@
   "pr.targetText": "O {name}",
   "pr.targetVerse": "{what} de {ref}",
   "ag.title": "Acordo da equipe",
-  "ag.lede": "O que a equipe propôs mudar. Uma proposta é aplicada quando {n} pessoas concordam.",
+  "ag.lede": "O que a equipe propôs mudar. Com {n} pessoas de acordo, aplica-se; com {n} que preferem deixar como está, não.",
   "ag.none": "Ninguém propôs mudanças nesta tarefa.",
   "ag.count": "{n} propostas · {open} por resolver",
   "ag.countOne": "1 proposta · {open} por resolver",
@@ -2945,5 +2945,14 @@
   "ck.inSteps": "Verifica-se em {n} passos",
   "ck.proposedHere": "Proposta por acordar:",
   "pr.fromPrior": "Parte da proposta que já existe; a sua tomará o lugar dela.",
-  "lab.tryNewStep": "como é agora no processo"
+  "lab.tryNewStep": "como é agora no processo",
+  "ag.keep": "Deixar como está",
+  "ag.youKeep": "Você prefere deixar como está",
+  "ag.stateRejected": "Não aceita",
+  "ag.rejected": "Não aceita: fica como está.",
+  "ag.keepsWho": "{who} prefere deixar como está.",
+  "ag.keepsWhoMany": "{who} preferem deixar como está.",
+  "ag.more": "Ver inteira, com o versículo",
+  "ag.readingTexts": "Lendo os textos…",
+  "ag.less": "Ver menos"
 }

@@ -7272,8 +7272,19 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .ag-count { margin: 0; font-weight: 700; }
 .ag-list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
 .ag-card { display: grid; gap: 0.5rem; padding: 0.875rem; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
-.ag-card[data-state="applied"], .ag-card[data-state="sent"], .ag-card[data-state="withdrawn"], .ag-card[data-state="replaced"] { background: var(--surface-muted); border-color: var(--border); }
-.ag-card[data-state="withdrawn"] .ag-diff, .ag-card[data-state="replaced"] .ag-diff { color: var(--text-muted); }
+.ag-card[data-state="applied"], .ag-card[data-state="sent"], .ag-card[data-state="withdrawn"], .ag-card[data-state="replaced"], .ag-card[data-state="rejected"] { background: var(--surface-muted); border-color: var(--border); }
+.ag-card[data-state="withdrawn"] .ag-diff, .ag-card[data-state="replaced"] .ag-diff, .ag-card[data-state="rejected"] .ag-diff { color: var(--text-muted); }
+/* A proposal seen whole: every word of the help with what changes, and its verse in each text. The few words
+   around the change give way to it while it is open. */
+.ag-more > summary { display: grid; gap: 0.25rem; min-height: 2.75rem; list-style: none; cursor: pointer; }
+.ag-more > summary::-webkit-details-marker { display: none; }
+.ag-more__hint { color: var(--accent-700); font-size: 0.8125rem; font-weight: 600; }
+.ag-more:not([open]) .ag-more__hint[data-when="open"], .ag-more[open] .ag-more__hint[data-when="closed"], .ag-more[open] .ag-short { display: none; }
+.ag-more > * + * { margin-top: 0.5rem; }
+.ag-whole { margin: 0; padding: 0.625rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font-size: 0.9375rem; line-height: 1.6; overflow-wrap: anywhere; }
+.ag-verse { display: grid; gap: 0.125rem; margin: 0; font-size: 0.9375rem; line-height: 1.6; }
+/* Who would rather leave it as it is: said to whoever proposed it, who is the one who can take it back. */
+.ag-against { margin: 0; font-size: 0.8125rem; color: var(--warning-700); }
 .ag-card__head { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
 .ag-card__head b { color: var(--text); font-size: 0.9375rem; }
 .ag-card .ag-diff, .ag-comment { margin: 0; font-size: 0.9375rem; line-height: 1.6; overflow-wrap: anywhere; }

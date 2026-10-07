@@ -21,7 +21,7 @@ import type { AssignmentsDoc, ProjectTask } from "../domain/types";
 import { tNow } from "../i18n/messages";
 
 /** A step of a task that is checked with a list, and where its answers are kept. */
-export type CheckedStep = { stepId: string; key: string; target: CheckTarget };
+export type CheckedStep = { stepId: string; key: string; target: CheckTarget; /** The texts its helps are checked against. */ texts: string[] };
 
 /**
  * The steps of a task that are checked with a list, each with where its answers are: the list of a step is kept
@@ -33,9 +33,11 @@ export function checkedSteps(ctx: SolverLaunchContext, task: ProjectTask | null,
   const steps = [...(task?.steps ?? []), ...(ctx.lab && task ? shippedStepsMissing(task) : [])];
   return steps.flatMap((step) => {
     if (step.closing !== "checklist") return [];
-    const items = findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId)?.stepParams?.[step.id]?.items ?? task?.rules[0]?.resource ?? "";
+    const params = findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId)?.stepParams?.[step.id];
+    const items = params?.items ?? task?.rules[0]?.resource ?? "";
     const helps = resolveHelpsTarget({ ...ctx, resource: items }, pmConfig);
-    return "error" in helps ? [] : [{ stepId: step.id, key: `${book}.${ctx.issueNumber || ctx.taskId}.${step.id}`, target: { owner: helps.owner, repo: helps.repo } }];
+    const texts = (params?.text ?? "").split(",").map((text) => text.trim()).filter(Boolean);
+    return "error" in helps ? [] : [{ stepId: step.id, key: `${book}.${ctx.issueNumber || ctx.taskId}.${step.id}`, target: { owner: helps.owner, repo: helps.repo }, texts }];
   });
 }
 

@@ -4,7 +4,7 @@ import { diffExcerpt, wordDiff, type ProposalState } from "../domain/checkPropos
 import { useT, type MessageKey } from "../i18n/messages";
 
 /** How a proposal stands, said to the person. `{team}`: who maintains what it would change, when it went to them. */
-export const PROPOSAL_STATE_KEY: Record<ProposalState, MessageKey> = { open: "ag.stateOpen", agreed: "ag.stateAgreed", applied: "ag.stateApplied", sent: "ag.stateSent", withdrawn: "ag.stateWithdrawn", replaced: "ag.stateReplaced" };
+export const PROPOSAL_STATE_KEY: Record<ProposalState, MessageKey> = { open: "ag.stateOpen", agreed: "ag.stateAgreed", applied: "ag.stateApplied", sent: "ag.stateSent", withdrawn: "ag.stateWithdrawn", replaced: "ag.stateReplaced", rejected: "ag.stateRejected" };
 
 /**
  * A new version read against the one before: what was taken out struck through, what was put in marked. `whole`:

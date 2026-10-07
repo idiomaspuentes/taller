@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { HelpChangedError, applyProposal, checkedSteps, loadTaskAnswers, readProposedWords, sendProposal, type CheckedStep } from "../dcs/checkProposals";
+import { loadUnitTexts, type ChecklistText } from "../dcs/checklistLoad";
 import { appendCheckAnswers } from "../dcs/checkStore";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { loadPmConfig } from "../dcs/issues";
@@ -10,7 +11,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalSaying, proposalWords, proposalsOf, proposalsSettled, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
 import { localized } from "../domain/processes";
 import { ownerTaskOf } from "../domain/resourceOwner";
@@ -66,6 +67,12 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const [answering, setAnswering] = useState<Listed | null>(null);
   /** What the helps of the team with a proposal to resolve say now, by `proposalWords`. */
   const [read, setRead] = useState<Record<string, string>>({});
+  /**
+   * The verses of the unit in the texts its helps are checked against, read the first time a proposal is opened to
+   * be seen whole. A proposal was agreed on over the few words around what changed: neither the rest of the note
+   * nor the verse it is about was on this screen, and there was no way to them from it.
+   */
+  const [unit, setUnit] = useState<{ resource: string; verses: Record<number, string> }[] | "reading" | null>(null);
 
   const trying = Boolean(ctx?.lab && !ctx.labAllowWrite);
   const me = session?.username ?? "";
@@ -139,6 +146,22 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   );
   const unsettled = listed.filter(unsettledState);
 
+  function readUnit() {
+    if (unit || !session || !ctx || !data) return;
+    const texts = [...new Set(data.steps.flatMap((step) => step.texts))] as ChecklistText[];
+    if (!texts.length) return setUnit([]);
+    setUnit("reading");
+    void loadUnitTexts({ session, ctx, texts })
+      .then((loaded) => setUnit(texts.flatMap((resource) => (loaded.texts[resource] ? [{ resource, verses: loaded.texts[resource]!.verses }] : []))))
+      .catch(() => setUnit([]));
+  }
+  /** The verse a proposal is about, in each text, when it is of the chapter of this unit. */
+  const versesOf = (where: string): { resource: string; text: string }[] => {
+    const [chapter, verse] = where.split(":").map(Number);
+    if (!Array.isArray(unit) || !verse || chapter !== ctx?.chapter) return [];
+    return unit.flatMap((row) => (row.verses[verse] ? [{ resource: row.resource, text: row.verses[verse]! }] : []));
+  };
+
   /** Rows added to my file of a list: there they are read by everybody who opens the list or this screen. */
   async function add(stepKey: string, rows: CheckAnswer[]) {
     const step = data?.steps.find((row) => row.key === stepKey);
@@ -198,6 +221,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
    * somebody else): there, agreeing with it counts as another person of the team, and the trial goes all the way.
    */
   const voterFor = (view: Listed) => (trying && view.by.toLowerCase() === me.toLowerCase() ? t("ag.tryOther") : me);
+  /** The same for leaving things as they are, which takes as many people: in a trial, each touch is one more of them. */
+  const keeperFor = (view: Listed) => (trying && view.by.toLowerCase() === me.toLowerCase() ? `${t("ag.tryOther")}${view.against.length ? ` ${view.against.length + 1}` : ""}` : me);
   const agree = (view: Listed) =>
     act(async () => {
       const voter = voterFor(view);
@@ -205,6 +230,14 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       const inFavour = new Set([...view.inFavour.map((who) => who.toLowerCase()), voter.toLowerCase()]);
       if (inFavour.size >= needed) await carryOut(view);
       else announce(t("ag.saved"));
+    });
+  /** I would rather leave it as it is. With enough of the team saying so the proposal is not accepted, and no longer holds the step. */
+  const keepAsIs = (view: Listed) =>
+    act(async () => {
+      const keeper = keeperFor(view);
+      await add(view.stepKey, [proposalKeeping(view.proposal.id, keeper, new Date().toISOString(), true)]);
+      const against = new Set([...view.against.map((who) => who.toLowerCase()), keeper.toLowerCase()]);
+      announce(t(against.size >= needed ? "ag.rejected" : "ag.saved"));
     });
   const withdraw = (view: Listed) => act(() => add(view.stepKey, [proposalSaying(view.proposal.id, me, new Date().toISOString(), false)]));
   const markDone = (view: Listed) => act(() => add(view.stepKey, [proposalDone(view.proposal.id, me, new Date().toISOString())]));
@@ -289,7 +322,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       ) : null}
       {data && !busy ? (
         <>
-          <p className="af-hint">{t("ag.lede").replace("{n}", String(needed))}</p>
+          <p className="af-hint">{t("ag.lede").split("{n}").join(String(needed))}</p>
           {listed.length ? (
             <p className="ag-count" role="status">
               {t(listed.length === 1 ? "ag.countOne" : "ag.count").replace("{n}", String(listed.length)).replace("{open}", String(unsettled.length))}
@@ -301,6 +334,9 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             {listed.map((view) => {
               const mine = ours(view.proposal.resource);
               const forIt = view.inFavour.some((who) => who.toLowerCase() === voterFor(view).toLowerCase());
+              const keeps = view.against.some(isMe);
+              // Its author is for it and takes it back; anybody else is for it or for leaving things as they are.
+              const mayKeep = view.state === "open" && !keeps && (trying || !isMe(view.by));
               const live = unsettledState(view) && !stepDone;
               const changed = live ? changedTo(view) : undefined;
               const stale = changed !== undefined;
@@ -310,19 +346,47 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                   <p className="ag-card__head">
                     <b>{view.proposal.where}</b> · {nameOf(view.proposal.resource)} · {t("ag.by").replace("{who}", view.by)}
                   </p>
-                  {view.proposal.after ? (
-                    <p className="ag-diff">
-                      <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} />
-                    </p>
-                  ) : (
-                    <p className="ag-comment">{view.reason}</p>
-                  )}
+                  {/* The few words around what changes are what is touched to see it whole, with its verse. */}
+                  <details className="ag-more" onToggle={(event) => event.currentTarget.open && readUnit()}>
+                    <summary>
+                      {view.proposal.after ? (
+                        <span className="ag-diff ag-short">
+                          <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} />
+                        </span>
+                      ) : (
+                        <span className="ag-comment">{view.reason}</span>
+                      )}
+                      <span className="ag-more__hint" data-when="closed">
+                        {t("ag.more")}
+                      </span>
+                      <span className="ag-more__hint" data-when="open">
+                        {t("ag.less")}
+                      </span>
+                    </summary>
+                    {view.proposal.after ? (
+                      <p className="ag-diff ag-whole">
+                        <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} whole />
+                      </p>
+                    ) : view.proposal.before ? (
+                      <p className="ag-whole">{view.proposal.before}</p>
+                    ) : null}
+                    {unit === "reading" ? <p className="af-hint">{t("ag.readingTexts")}</p> : null}
+                    {versesOf(view.proposal.where).map((row) => (
+                      <p key={row.resource} className="ag-verse">
+                        <span className="af-lbl">{nameOf(row.resource)}</span>
+                        {row.text}
+                      </p>
+                    ))}
+                  </details>
                   {view.proposal.after && view.reason ? <p className="af-hint ag-reason">{view.reason}</p> : null}
                   <p className="ag-card__state">
                     <b>{t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</b>
                     {view.sentAs ? ` · ${view.sentAs}` : ""}
                     {view.state === "open" ? ` · ${t("ag.inFavour").replace("{n}", String(view.inFavour.length)).replace("{of}", String(needed))}` : ""}
                   </p>
+                  {live && view.against.length ? (
+                    <p className="ag-against">{t(view.against.length === 1 ? "ag.keepsWho" : "ag.keepsWhoMany").replace("{who}", view.against.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</p>
+                  ) : null}
                   {view.state === "agreed" && mine && !view.proposal.after ? <p className="af-hint">{t("ag.needsVersion")}</p> : null}
                   {others ? <p className="ag-shared">{t(others === 1 ? "ag.sameHelpOne" : "ag.sameHelp").replace("{n}", String(others))}</p> : null}
                   {stale ? (
@@ -344,6 +408,11 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                           {t("ag.agree")}
                         </Button>
                       ) : null}
+                      {mayKeep ? (
+                        <Button type="button" variant="outline" disabled={saving} onClick={() => void keepAsIs(view)}>
+                          {t("ag.keep")}
+                        </Button>
+                      ) : null}
                       {view.state === "agreed" && !stale && (view.proposal.after || !mine) ? (
                         // Agreed and not carried out: the write failed, or the last to agree could not make it.
                         <Button type="button" disabled={saving} onClick={() => void act(() => carryOut(view))}>
@@ -356,7 +425,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                         </Button>
                       ) : null}
                       {/* Written from words that are no longer there, another proposal is the one thing left to do with it. */}
-                      <Button type="button" variant={stale ? "default" : "outline"} disabled={saving} onClick={() => setAnswering(view)}>
+                      <Button type="button" variant={stale ? "default" : "ghost"} disabled={saving} onClick={() => setAnswering(view)}>
                         {t(view.state === "agreed" && mine && !view.proposal.after ? "pr.newVersion" : "ag.other")}
                       </Button>
                       {isMe(view.by) ? (
@@ -365,6 +434,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                         </Button>
                       ) : null}
                       {view.state === "open" && forIt && !isMe(view.by) ? <span className="ag-mine">{t("ag.youAgree")}</span> : null}
+                      {view.state === "open" && keeps ? <span className="ag-mine">{t("ag.youKeep")}</span> : null}
                     </div>
                   ) : null}
                 </li>
