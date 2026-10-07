@@ -1,0 +1,236 @@
+import type { CheckAnswer } from "./checklist";
+import type { CorrectionAsk } from "./corrections";
+import { scopeKey } from "./scope";
+
+/**
+ * A change proposed while checking: a «no» is settled by saying what should change, with the new version written
+ * out or with a comment, and nothing changes until the team agrees. A team checked its helps by answering «no»
+ * and then changing them in another screen, at once; its agreement came afterwards, over a line of what was said
+ * to have changed, with neither the old words nor the new ones in sight. And it could say nothing of an article.
+ *
+ * A proposal about something the team maintains is applied when enough of the team agrees. One about something
+ * another team maintains (a text, from a team that checks helps against it) goes to that team as a correction, as
+ * what a committee does not endorse does. Nothing here knows which resources those are.
+ *
+ * Proposals live with the answers of the checklist, one file per person that is only added to: a proposal is the
+ * answer that settles a «no», and what others say of it are rows that name it.
+ */
+
+export type ProposalPayload = {
+  id: string;
+  /** What it would change, as the project names its resources. */
+  resource: string;
+  /** Which part of a help with more than one (`Question`, `Response`): the column it is written in. */
+  field?: string;
+  /** The file of an article, when that is what would change. */
+  path?: string;
+  /** The row of the help, when that is what would change. */
+  rowId?: string;
+  /** Where in the passage («1:3»). */
+  where: string;
+  /** The words as they were when it was proposed. */
+  before?: string;
+  /** The new version. Without one the proposal is a comment: what should change, said in `note`. */
+  after?: string;
+  /** The proposal this one answers with another version. */
+  replaces?: string;
+};
+
+/** A row somebody adds about a proposal: `itemId` is the id of the proposal. */
+export const PROPOSAL_SAYS = "@acuerdo";
+/** The row that says a proposal was carried out: applied to the team's help, or sent to the team that maintains it. */
+export const PROPOSAL_DONE = "@hecha";
+/** The question a proposal answers when it is about no question of the step: something seen in passing. */
+export const PROPOSAL_FREE = "@propuesta";
+
+export type ProposalState = "open" | "agreed" | "applied" | "sent" | "withdrawn" | "replaced";
+
+export type ProposalView = {
+  proposal: ProposalPayload;
+  itemId: string;
+  questionId: string;
+  by: string;
+  at: string;
+  /** Why: the question it failed, or what the person wrote. */
+  reason: string;
+  /** Who is for it, its author first. */
+  inFavour: string[];
+  state: ProposalState;
+  /** The subtarea it became, when it was sent to another team. */
+  sentAs?: string;
+};
+
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** The answer that settles a «no» with a proposal. */
+export function proposalAnswer(params: { itemId: string; questionId: string; by: string; at: string; reason: string; proposal: ProposalPayload; textHash?: string }): CheckAnswer {
+  return { itemId: params.itemId, questionId: params.questionId, value: "no", outcome: "proposal", note: params.reason.trim(), proposal: params.proposal, by: params.by, at: params.at, ...(params.textHash ? { textHash: params.textHash } : {}) };
+}
+
+/** What a person says of a proposal: for it, or (its author) taking it back. */
+export function proposalSaying(proposalId: string, by: string, at: string, agree: boolean): CheckAnswer {
+  return { itemId: proposalId, questionId: PROPOSAL_SAYS, value: agree ? "yes" : "no", by, at };
+}
+
+/** The row that says a proposal was carried out, and as what (the subtarea it became, when it went to another team). */
+export function proposalDone(proposalId: string, by: string, at: string, sentAs?: string): CheckAnswer {
+  return { itemId: proposalId, questionId: PROPOSAL_DONE, value: "yes", by, at, ...(sentAs ? { note: sentAs } : {}) };
+}
+
+/**
+ * The proposals among some answers, and how each stands. `needed`: how many people have to be for one, its author
+ * among them, for it to be agreed. `ours`: whether the team maintains what a proposal would change; one it does
+ * not is «sent» once carried out, not «applied».
+ */
+export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resource: string) => boolean = () => true): ProposalView[] {
+  const byTime = [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const made = byTime.filter((row) => row.outcome === "proposal" && row.proposal?.id);
+  const replaced = new Set(made.flatMap((row) => (row.proposal!.replaces ? [row.proposal!.replaces] : [])));
+  return made.map((row) => {
+    const proposal = row.proposal!;
+    // The last thing each person said of it.
+    const said = new Map<string, { by: string; yes: boolean }>();
+    for (const other of byTime) if (other.questionId === PROPOSAL_SAYS && other.itemId === proposal.id) said.set(other.by.trim().toLowerCase(), { by: other.by, yes: other.value === "yes" });
+    const withdrawn = said.get(row.by.trim().toLowerCase())?.yes === false;
+    const inFavour = [row.by, ...[...said.values()].filter((line) => line.yes && !same(line.by, row.by)).map((line) => line.by)];
+    const done = byTime.filter((other) => other.questionId === PROPOSAL_DONE && other.itemId === proposal.id).pop();
+    const state: ProposalState = withdrawn ? "withdrawn" : replaced.has(proposal.id) ? "replaced" : done ? (ours(proposal.resource) ? "applied" : "sent") : inFavour.length >= Math.max(1, needed) ? "agreed" : "open";
+    return { proposal, itemId: row.itemId, questionId: row.questionId, by: row.by, at: row.at, reason: row.note ?? "", inFavour: withdrawn ? [] : inFavour, state, ...(done?.note ? { sentAs: done.note } : {}) };
+  });
+}
+
+/**
+ * The answers that count for the checklist itself: a proposal its author took back no longer settles its «no», so
+ * what was answered before it (or nothing) is what stands, and the help is to be checked again.
+ */
+export function withoutWithdrawn(answers: CheckAnswer[]): CheckAnswer[] {
+  const gone = new Set(proposalsOf(answers, 1).filter((view) => view.state === "withdrawn").map((view) => view.proposal.id));
+  return gone.size ? answers.filter((row) => !(row.outcome === "proposal" && row.proposal && gone.has(row.proposal.id))) : answers;
+}
+
+/** Whether nothing is left to settle: every proposal was carried out, taken back or answered with another. */
+export function proposalsSettled(views: ProposalView[]): boolean {
+  return views.every((view) => view.state === "applied" || view.state === "sent" || view.state === "withdrawn" || view.state === "replaced");
+}
+
+const ASK_MAX = 600;
+
+/**
+ * A proposal as it is asked of the team that maintains what it would change: why, and the new version when there
+ * is one.
+ */
+export function proposalAsk(view: ProposalView): CorrectionAsk {
+  const after = (view.proposal.after ?? "").replace(/\s+/g, " ").trim();
+  const reason = view.reason.replace(/\s+/g, " ").trim();
+  const text = [reason, after ? `→ «${after}»` : ""].filter(Boolean).join(" ");
+  return { about: view.proposal.resource, where: view.proposal.where, text: text.length > ASK_MAX ? `${text.slice(0, ASK_MAX - 1).trimEnd()}…` : text, by: view.by };
+}
+
+// ---------------------------------------------------------------- the old words beside the new
+
+export type DiffPiece = { text: string; kind: "same" | "gone" | "new" };
+
+/** More words than this on each side and the two versions are shown whole, one after the other. */
+const DIFF_CELLS = 2_000_000;
+
+/**
+ * What changed between two versions, word by word, for reading them as one text: the words taken out, the words
+ * put in, and those that stayed. Spaces go with the word before them.
+ */
+export function wordDiff(before: string, after: string): DiffPiece[] {
+  const a = before.match(/\S+\s*/g) ?? [];
+  const b = after.match(/\S+\s*/g) ?? [];
+  const word = (piece: string) => piece.trim();
+  let start = 0;
+  while (start < a.length && start < b.length && word(a[start]!) === word(b[start]!)) start++;
+  let endA = a.length;
+  let endB = b.length;
+  while (endA > start && endB > start && word(a[endA - 1]!) === word(b[endB - 1]!)) {
+    endA--;
+    endB--;
+  }
+  const out: DiffPiece[] = [];
+  const push = (text: string, kind: DiffPiece["kind"]) => {
+    const last = out[out.length - 1];
+    if (last && last.kind === kind) last.text += text;
+    else if (text) out.push({ text, kind });
+  };
+  push(b.slice(0, start).join(""), "same");
+  const midA = a.slice(start, endA);
+  const midB = b.slice(start, endB);
+  if (midA.length * midB.length > DIFF_CELLS) {
+    push(midA.join(""), "gone");
+    push(midB.join(""), "new");
+  } else {
+    // The longest run of words the two middles share, kept in order.
+    const rows = midA.length + 1;
+    const cols = midB.length + 1;
+    const table = new Uint32Array(rows * cols);
+    for (let i = midA.length - 1; i >= 0; i--) {
+      for (let j = midB.length - 1; j >= 0; j--) {
+        table[i * cols + j] = word(midA[i]!) === word(midB[j]!) ? table[(i + 1) * cols + j + 1]! + 1 : Math.max(table[(i + 1) * cols + j]!, table[i * cols + j + 1]!);
+      }
+    }
+    let i = 0;
+    let j = 0;
+    while (i < midA.length && j < midB.length) {
+      if (word(midA[i]!) === word(midB[j]!)) {
+        push(midB[j]!, "same");
+        i++;
+        j++;
+      } else if (table[(i + 1) * cols + j]! >= table[i * cols + j + 1]!) push(midA[i++]!, "gone");
+      else push(midB[j++]!, "new");
+    }
+    while (i < midA.length) push(midA[i++]!, "gone");
+    while (j < midB.length) push(midB[j++]!, "new");
+  }
+  push(b.slice(endB).join(""), "same");
+  // Words taken out at the end of a stretch keep the space that parted them from what follows.
+  return out.map((piece, index) => (piece.kind === "gone" && out[index + 1]?.kind === "new" && !/\s$/.test(piece.text) ? { ...piece, text: `${piece.text} ` } : piece));
+}
+
+/**
+ * The same, for reading in a line or two: the long stretches nothing changed in are cut to a few words at each
+ * end, so what was taken out and put in is what is read. A note of nine lines with three words changed showed its
+ * first two lines, where nothing had changed.
+ */
+export function diffExcerpt(pieces: DiffPiece[], keep = 6): DiffPiece[] {
+  if (pieces.every((piece) => piece.kind === "same")) return pieces;
+  return pieces.map((piece, index) => {
+    if (piece.kind !== "same") return piece;
+    const words = piece.text.match(/\S+\s*/g) ?? [];
+    const first = index === 0;
+    const last = index === pieces.length - 1;
+    if (first) return words.length > keep ? { ...piece, text: `… ${words.slice(-keep).join("")}` } : piece;
+    if (last) return words.length > keep ? { ...piece, text: `${words.slice(0, keep).join("").trimEnd()} …` } : piece;
+    return words.length > keep * 2 + 1 ? { ...piece, text: `${words.slice(0, keep).join("").trimEnd()} … ${words.slice(-keep).join("")}` } : piece;
+  });
+}
+
+// ---------------------------------------------------------------- a checklist opened to try
+
+/**
+ * Where the answers of a checklist opened to try are kept: in this tab, and nowhere else. A trial of one step is
+ * followed by a trial of the agreement on what it proposed, so they have to outlast the screen; they never reach
+ * the project.
+ */
+export function trialChecksKey(storeKey: string): string {
+  return `gt-trial-checks:${scopeKey()}${storeKey}`;
+}
+
+export function loadTrialChecks(storeKey: string): CheckAnswer[] {
+  try {
+    const rows = JSON.parse(sessionStorage.getItem(trialChecksKey(storeKey)) ?? "[]") as unknown;
+    return Array.isArray(rows) ? (rows as CheckAnswer[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveTrialChecks(storeKey: string, answers: CheckAnswer[]): void {
+  try {
+    sessionStorage.setItem(trialChecksKey(storeKey), JSON.stringify(answers));
+  } catch {
+    /* a private window: the trial lasts as long as its screen */
+  }
+}

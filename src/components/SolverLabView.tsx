@@ -3,7 +3,7 @@ import type { GtSession } from "../dcs/auth";
 import { listPmProjects, loadAssignmentsFromDcs } from "../dcs/persist";
 import { BOOKS, bookName } from "../domain/books";
 import type { LanguageOption } from "../domain/languages";
-import { localized } from "../domain/processes";
+import { localized, shippedStepTool } from "../domain/processes";
 import {
   buildLabSolverLaunchContext,
   defaultResourceForSolver,
@@ -101,8 +101,11 @@ export function SolverLabView({ username, lang: workspaceLang, languages, announ
     };
   }, [session?.token, projectId, workspacePmOrg, workspaceContentOrg, workspaceLang]);
 
+  /** The tool of a step: the project's, or the one the process gives that step now (see `shippedStepTool`). */
+  const toolOf = (task: ProjectTask, step: TaskStep) => findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId || shippedStepTool(task.id, step.id));
+
   function tryStep(task: ProjectTask, step: TaskStep) {
-    const tool = findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId);
+    const tool = toolOf(task, step);
     if (!tool || !opensForTrial(tool)) return;
     const base = buildLabSolverLaunchContext({ username, lang: workspaceLang || "es-419", book: projectId, chapter: Number(tryChapter) || 1, verseFrom: 1, verseTo: 1, resource: task.rules[0]?.resource ?? "tpl", contentOrg: workspaceContentOrg, pmOrg: workspacePmOrg });
     const url = resolveSolverLaunchUrl(tool, trialLaunchContext({ base, task, step, chapter: Number(tryChapter) || 1 }));
@@ -253,7 +256,7 @@ export function SolverLabView({ username, lang: workspaceLang, languages, announ
                         <b>{localized(task.name, task.names, language)}</b>
                         <ul className="solver-lab__steps">
                           {task.steps!.map((step) => {
-                            const tool = findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId);
+                            const tool = toolOf(task, step);
                             const name = localized(step.name, step.names, language);
                             return (
                               <li key={step.id}>

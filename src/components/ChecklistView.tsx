@@ -9,6 +9,7 @@ import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Circle, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -23,6 +24,10 @@ import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
 import { helpRowRef } from "../domain/commentPlace";
 import { consultReply, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
+import { PROPOSAL_FREE, loadTrialChecks, proposalAnswer, proposalSaying, proposalsOf, saveTrialChecks, withoutWithdrawn, type ProposalPayload } from "../domain/checkProposal";
+import { uid } from "../domain/assignment";
+import { ownerTaskOf } from "../domain/resourceOwner";
+import { PROPOSAL_STATE_KEY, ProposalDiff, ProposalSheet, type ProposalDraft, type ProposalTarget } from "./ProposalSheet";
 import { listIssueComments } from "@ip-lms/dcs-client";
 import { dcsConfig } from "../dcs/config";
 import { PM_REPO_NAME } from "../domain/types";
@@ -31,7 +36,7 @@ import { coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
 import { decodeSolverLaunchContext, encodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { textFingerprint } from "../domain/reviewRound";
-import { closesInItsTool } from "../domain/stepClaim";
+import { closesInItsTool, stepMinAssignees } from "../domain/stepClaim";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { scopeLabel } from "../domain/resourceNames";
@@ -52,7 +57,8 @@ type Props = {
   announce: (msg: string) => void;
 };
 
-const OUTCOME_KEY: Record<CheckOutcome, MessageKey> = { fixed: "ck.fixed", created: "ck.created", consult: "ck.consult" };
+const OUTCOME_KEY: Record<CheckOutcome, MessageKey> = { fixed: "ck.fixed", created: "ck.created", consult: "ck.consult", proposal: "ck.proposal" };
+const excerpt = (text: string) => (text.length > 120 ? `${text.slice(0, 119).trimEnd()}…` : text);
 const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.chapter}:${item.verse}`;
 
 /**
@@ -106,8 +112,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const saving = closing || writing > 0;
   const [error, setError] = useState("");
   const [stepDone, setStepDone] = useState(false);
-  /** A «no» being explained: which question, what was done about it and the note. */
-  const [draft, setDraft] = useState<{ answerItemId: string; questionId: string; outcome: CheckOutcome; note: string } | null>(null);
+  /**
+   * A change being proposed: the question that was answered «no» (or none: something seen in passing), and the
+   * reason it starts with. `onlyVerse`: the question is about the verse as a whole, not about the help in view.
+   */
+  const [proposing, setProposing] = useState<{ answerItemId: string; questionId: string; reason: string; onlyVerse?: boolean } | null>(null);
   /** Fixing the quote of the note in view: the words marked in the text so far. */
   const [picking, setPicking] = useState<number[] | null>(null);
 
@@ -134,7 +143,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       const loaded = await loadChecklist({ session, ctx: decoded, kind, texts: textsKey.split(",").filter(Boolean) as ChecklistText[], onlyLinked });
       setData(loaded);
       const key = `${(decoded.book || decoded.projectId).toUpperCase()}.${decoded.issueNumber || decoded.taskId}.${decoded.stepId || "paso"}`;
-      setAnswers(decoded.lab && !decoded.labAllowWrite ? [] : await loadCheckAnswers(session, loaded.target, key));
+      // A trial keeps its answers in this tab (see `loadTrialChecks`), so the agreement can be tried after it.
+      setAnswers(decoded.lab && !decoded.labAllowWrite ? loadTrialChecks(key) : await loadCheckAnswers(session, loaded.target, key));
       if (decoded.pmOrg && decoded.issueNumber && decoded.stepId) {
         setStepDone(await stepIsDone({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false));
       }
@@ -158,7 +168,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, textsKey]);
-  const summary = useMemo(() => summarizeChecklist({ items: checkItems, questions, answers, currentHashes: hashes }), [checkItems, questions, answers, hashes]);
+  const summary = useMemo(() => summarizeChecklist({ items: checkItems, questions, answers: withoutWithdrawn(answers), currentHashes: hashes }), [checkItems, questions, answers, hashes]);
   useStepWork(session, ctx, summary.done, data?.items.length ?? 0, { on: !stepDone && !closing });
   // What was said in the conversation of the subtarea, read while a consultation waits: its answer is shown here.
   const [thread, setThread] = useState<ThreadLine[]>([]);
@@ -241,13 +251,6 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const tally = item ? summary.items.find((row) => row.itemId === item.id) : undefined;
   const closesHere = Boolean(data?.step && closesInItsTool(data.step) && ctx?.issueNumber);
 
-  /** Who to tell when the problem is in a text this team may not change: the coordinators of the tasks it waits for. */
-  const owners = useMemo(() => {
-    if (!data?.board || !data.task) return [] as string[];
-    const awaited = (data.task.waitsFor ?? []).flatMap((rule) => (rule.taskId ? data.board!.teams.filter((task) => task.id === rule.taskId) : data.board!.teams.filter((task) => task.phaseId === rule.phaseId)));
-    return [...new Set(awaited.filter((task) => task.rules.some((rule) => texts.includes(rule.resource as ChecklistText))).flatMap((task) => coordinatorsOf(data.levelBook, task.orgTeamName)))];
-  }, [data, textsKey]);
-
   // What this checklist needs done before it: the helps translated and each text aligned. What is missing is said,
   // and its team told, instead of checking against half-done work.
   const missing = useMemo<MissingWork[]>(
@@ -304,7 +307,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   async function save(next: CheckAnswer[], said: string) {
     if (!session || !data) return;
     if (trying) {
-      setAnswers((prev) => [...prev, ...next]);
+      setAnswers((prev) => {
+        const all = [...prev, ...next];
+        saveTrialChecks(storeKey, all);
+        return all;
+      });
       announce(t("ck.tryKept"));
       return;
     }
@@ -332,16 +339,67 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     ...extra,
   });
 
-  async function saveNo() {
-    if (!draft || !item || !session || !ctx) return;
-    await save([stamp(draft.answerItemId, draft.questionId, "no", { outcome: draft.outcome, note: draft.note.trim() })], t("ck.saved"));
-    if (draft.outcome === "consult" && ctx.pmOrg && ctx.issueNumber) {
-      const where = `${data?.book ?? ""} ${item.chapter}:${item.verse}`;
-      const who = owners.map((login) => `@${login}`).join(" ");
-      await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${who ? `${who} ` : ""}Consulta sobre ${texts.map((x) => textLabel(x)).join(" y ")} ${where}: ${draft.note.trim()}`).catch(() => undefined);
-    }
-    setDraft(null);
+  /**
+   * How many of the team have to be for a proposal, its author among them: what the step where the team agrees
+   * asks for. And whether the team maintains a resource; what it does not is asked of whoever does.
+   */
+  const agreement = data?.task?.steps?.find((step) => step.closing === "consensus");
+  const needed = agreement ? stepMinAssignees(agreement) : 2;
+  const ours = (resource: string) => Boolean(data?.task?.rules.some((rule) => rule.resource === resource));
+  const teamOf = (resource: string) => {
+    const owner = ownerTaskOf(resource, data?.board, data?.task);
+    return owner ? owner.orgTeamName || localized(owner.name, owner.names, language) : "";
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const proposals = useMemo(() => proposalsOf(answers, needed, ours), [answers, needed, data?.task]);
+
+  /** What a proposal about the help in view can be about: the help, its article, and the texts it is checked against. */
+  const targets = useMemo<ProposalTarget[]>(() => {
+    if (!item || !data) return [];
+    const where = `${item.chapter}:${item.verse}`;
+    const whose = (resource: string) => (ours(resource) ? {} : { team: teamOf(resource) });
+    const help: ProposalTarget[] = proposing?.onlyVerse
+      ? [{ id: "verse", label: t("pr.targetVerse").replace("{what}", scopeLabel(kind, data.board?.settings?.resourceNames, language)).replace("{ref}", where), resource: kind, commentOnly: true, ...whose(kind) }]
+      : kind === "notas"
+        ? [{ id: "help", label: t("pr.targetNote"), resource: kind, rowId: item.id, field: "Note", text: item.body, ...whose(kind) }]
+        : kind === "preguntas"
+          ? [
+              { id: "answer", label: t("pr.targetAnswer"), resource: kind, rowId: item.id, field: "Response", text: item.body, ...whose(kind) },
+              { id: "question", label: t("pr.targetQuestion"), resource: kind, rowId: item.id, field: "Question", text: item.title, ...whose(kind) },
+            ]
+          : [];
+    const article: ProposalTarget[] = proposing?.onlyVerse
+      ? []
+      : articlePath
+        ? [{ id: "article", label: t("pr.targetArticle"), resource: "academia", path: `${articlePath}/01.md`, text: academy[articlePath]?.text ?? undefined, ...whose("academia") }]
+        : slug
+          ? [{ id: "article", label: t("pr.targetArticle"), resource: kind, path: termArticlePath(termKind as TermKind, slug), text: articles[slug] ?? undefined, ...whose(kind) }]
+          : [];
+    const read = texts.map<ProposalTarget>((resource) => ({ id: resource, label: t("pr.targetText").replace("{name}", textLabel(resource)), resource, text: data.texts[resource]?.verses[item.verse], ...whose(resource) }));
+    // A step that goes over the articles starts from the article.
+    return [...(onlyLinked ? [...article, ...help] : [...help, ...article]), ...read];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item, data, proposing?.onlyVerse, academy, articles, articlePath, slug, textsKey, language]);
+
+  async function sendProposal(draft: ProposalDraft) {
+    if (!proposing || !item || !session) return;
+    const payload: ProposalPayload = {
+      id: `pr-${uid()}`,
+      resource: draft.target.resource,
+      where: `${item.chapter}:${item.verse}`,
+      ...(draft.target.field ? { field: draft.target.field } : {}),
+      ...(draft.target.path ? { path: draft.target.path } : {}),
+      ...(draft.target.rowId ? { rowId: draft.target.rowId } : {}),
+      ...(draft.target.text !== undefined ? { before: draft.target.text } : {}),
+      ...(draft.after ? { after: draft.after } : {}),
+    };
+    const base = stamp(proposing.answerItemId, proposing.questionId, "no");
+    await save([proposalAnswer({ itemId: base.itemId, questionId: base.questionId, by: base.by, at: base.at, reason: draft.reason, proposal: payload, textHash: base.textHash })], draft.target.team ? t("ck.proposedOther").replace("{team}", draft.target.team) : t("ck.proposed"));
+    setProposing(null);
   }
+
+  /** Whoever made a proposal takes it back: its «no» is unanswered again. */
+  const withdraw = (proposalId: string) => save([proposalSaying(proposalId, session?.username ?? "", new Date().toISOString(), false)], t("ck.withdrawn"));
 
   /** The quote of the note in view becomes the words of the original under the words marked in the text. */
   async function saveQuote(resource: ChecklistText) {
@@ -419,6 +477,20 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const nextPending = () => {
     if (!data) return;
     const order = [...data.items.slice(position + 1), ...data.items.slice(0, position + 1)];
+    const found = order.find((row) => summary.items.find((s) => s.itemId === row.id)?.state !== "ok");
+    if (found) jump(found.id);
+  };
+  /** The questions of the help in view, and whether any is still to be answered. */
+  const rowsHere = item ? questionsFor({ id: item.id, verseKey: verseKeyOf(item), text: item.body }, checkItems, questions) : [];
+  const pendingHere = rowsHere.filter(({ question }) => !tally?.answers[question.id]);
+  /**
+   * Nothing wrong with the help in view: every question still to be answered is «yes», and on to the next help.
+   * It was a touch for each question: 1,274 answers in one task of the run, nearly all of them «yes».
+   */
+  const allGood = () => {
+    if (!data || !item) return;
+    if (pendingHere.length) void save(pendingHere.map(({ question, answerItemId }) => stamp(answerItemId, question.id, "yes")), t("ck.saved"));
+    const order = [...data.items.slice(position + 1), ...data.items.slice(0, position)];
     const found = order.find((row) => summary.items.find((s) => s.itemId === row.id)?.state !== "ok");
     if (found) jump(found.id);
   };
@@ -635,69 +707,61 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny />
             ) : null}
 
-            <ul className="ck-questions">
-              {questionsFor({ id: item.id, verseKey: verseKeyOf(item), text: item.body }, checkItems, questions).map(({ question, answerItemId }) => {
+            {/* What is checked of this help, in a line each: a touch on one says it is not right, and opens the
+                proposal. Each was a block of its own with two buttons, 440 px of them under a note. */}
+            <p className="af-lbl">{t("ck.checks")}</p>
+            <ul className="ck-checks">
+              {rowsHere.map(({ question, answerItemId }) => {
                 const answer = tally?.answers[question.id];
-                const writing = draft && draft.answerItemId === answerItemId && draft.questionId === question.id;
+                const proposal = answer?.outcome === "proposal" ? proposals.find((view) => view.proposal.id === answer.proposal?.id) : undefined;
+                const name = localized(question.text, question.texts, language);
                 return (
-                  <li key={question.id} className="ck-question">
-                    <p className="ck-question__text">
-                      {localized(question.text, question.texts, language)}
-                      {question.per === "verse" ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
-                    </p>
-                    <div className="ck-question__buttons">
-                      <Button type="button" variant={answer?.value === "yes" ? "default" : "outline"} aria-pressed={answer?.value === "yes"} disabled={closing || stepDone} onClick={() => void save([stamp(answerItemId, question.id, "yes")], t("ck.saved"))}>
-                        {t("ck.yes")}
-                      </Button>
-                      <Button type="button" variant={answer?.value === "no" ? "default" : "outline"} aria-pressed={answer?.value === "no"} disabled={closing || stepDone} onClick={() => setDraft({ answerItemId, questionId: question.id, outcome: answer?.outcome ?? "fixed", note: answer?.note ?? "" })}>
-                        {t("ck.no")}
-                      </Button>
-                    </div>
-                    {answer?.value === "no" && !writing ? (
-                      <p className="ck-question__outcome" data-outcome={answer.outcome ?? "none"}>
-                        {answer.outcome ? t(OUTCOME_KEY[answer.outcome]) : t("ck.noOutcome")}
-                        {answer.note ? `: ${answer.note}` : ""}
-                        {replyTo(answer) ? (
-                          <span className="ck-question__reply">
-                            {t("ck.replied").replace("{who}", replyTo(answer)!.by)} «{replyTo(answer)!.text}»
-                          </span>
-                        ) : null}
-                        {answer.outcome === "consult" && !answer.resolved ? (
-                          <Button type="button" size="sm" variant={replyTo(answer) ? "default" : "outline"} disabled={saving} onClick={() => void save([{ ...answer, resolved: true, by: session?.username ?? "", at: new Date().toISOString() }], t("ck.saved"))}>
-                            {t("ck.answered")}
-                          </Button>
-                        ) : null}
-                      </p>
-                    ) : null}
-                    {writing ? (
-                      <div className="ck-no" role="group" aria-label={t("ck.whatDone")}>
-                        <p className="af-lbl">{t("ck.whatDone")}</p>
-                        <div className="ck-no__outcomes">
-                          {(["fixed", "created", "consult"] as CheckOutcome[]).map((outcome) => (
-                            <button key={outcome} type="button" aria-pressed={draft.outcome === outcome} onClick={() => setDraft({ ...draft, outcome })}>
-                              {t(OUTCOME_KEY[outcome])}
-                            </button>
-                          ))}
-                        </div>
-                        <label htmlFor="ck-note" className="af-lbl">
-                          {t(draft.outcome === "consult" ? "ck.reason" : "ck.whatChanged")}
-                        </label>
-                        <textarea id="ck-note" className="af-textarea" rows={3} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
-                        {draft.outcome === "consult" ? <p className="af-hint">{owners.length ? t("ck.consultTo").replace("{who}", owners.map((o) => `@${o}`).join(", ")) : t("ck.consultNobody")}</p> : null}
-                        <div className="af-buttons">
-                          <Button type="button" disabled={saving || !draft.note.trim()} onClick={() => void saveNo()}>
-                            {saving ? t("af.saving") : t("ck.saveNo")}
-                          </Button>
-                          <Button type="button" variant="secondary" onClick={() => setDraft(null)}>
-                            {t("af.cancel")}
-                          </Button>
-                        </div>
+                  <li key={question.id} data-state={answer?.value ?? "none"}>
+                    <button type="button" className="ck-check" disabled={closing || stepDone} onClick={() => setProposing({ answerItemId, questionId: question.id, reason: name, onlyVerse: question.per === "verse" })}>
+                      <span className="ck-check__mark" aria-hidden="true">
+                        {answer?.value === "yes" ? <Check size={18} /> : answer?.value === "no" ? <X size={18} /> : <Circle size={12} />}
+                      </span>
+                      <span className="ck-check__text">
+                        {name}
+                        {question.per === "verse" ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
+                      </span>
+                      <span className="sr-only">{t(answer?.value === "yes" ? "ck.yes" : answer?.value === "no" ? "ck.no" : "ck.notYet")}</span>
+                    </button>
+                    {answer?.value === "no" ? (
+                      <div className="ck-question__outcome" data-outcome={answer.outcome ?? "none"}>
+                        {proposal ? (
+                          <>
+                            <b>{t(PROPOSAL_STATE_KEY[proposal.state]).replace("{team}", teamOf(proposal.proposal.resource))}</b>
+                            <span className="ag-diff">{proposal.proposal.after ? <ProposalDiff before={proposal.proposal.before ?? ""} after={proposal.proposal.after} /> : excerpt(proposal.reason)}</span>
+                            {proposal.state === "open" && proposal.by.toLowerCase() === (session?.username ?? "").toLowerCase() && !stepDone ? (
+                              <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={() => void withdraw(proposal.proposal.id)}>
+                                {t("ck.withdraw")}
+                              </Button>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            {answer.outcome ? t(OUTCOME_KEY[answer.outcome]) : t("ck.noOutcome")}
+                            {answer.note ? `: ${answer.note}` : ""}
+                            {replyTo(answer) ? (
+                              <span className="ck-question__reply">
+                                {t("ck.replied").replace("{who}", replyTo(answer)!.by)} «{replyTo(answer)!.text}»
+                              </span>
+                            ) : null}
+                            {answer.outcome === "consult" && !answer.resolved ? (
+                              <Button type="button" size="sm" variant={replyTo(answer) ? "default" : "outline"} disabled={saving} onClick={() => void save([{ ...answer, resolved: true, by: session?.username ?? "", at: new Date().toISOString() }], t("ck.saved"))}>
+                                {t("ck.answered")}
+                              </Button>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     ) : null}
                   </li>
                 );
               })}
             </ul>
+            {stepDone ? null : <p className="af-hint">{t("ck.tapWrong")}</p>}
             {/* What to do when the answer is «No»: after the questions, not before them. */}
             {editorHref ? (
               <a className="af-link" href={editorHref} target="_blank" rel="noopener noreferrer">
@@ -718,23 +782,29 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           {/* What to do next stays in reach, at the foot of the screen. After the last answer of a help the button
               to go on was under the fold (at 878 px of 812), and after the last help of all, «Cerrar este paso» was
               at the top of a list the person was at the bottom of. */}
-          {stepDone ? null : !summary.complete ? (
-            // In reach once this help is checked; while it is being answered it would only cover its questions.
-            <div className="ck-go" data-on={tally?.state === "ok" || undefined}>
-              {/* Once this one is checked, going on is the thing to do: it is the button that stands out. */}
-              <Button type="button" size="lg" variant={tally?.state === "ok" ? "default" : "outline"} onClick={nextPending}>
-                {t("ck.nextPending")}
-              </Button>
-            </div>
-          ) : closesHere ? (
+          {stepDone ? null : (
             <div className="ck-go" data-on>
-              <Button type="button" size="lg" disabled={saving} onClick={() => void closeStep()}>
-                {t("ck.closeStep")}
+              <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setProposing({ answerItemId: item.id, questionId: PROPOSAL_FREE, reason: "" })}>
+                {t("ck.propose")}
               </Button>
+              {pendingHere.length ? (
+                <Button type="button" size="lg" disabled={saving} onClick={allGood}>
+                  {t(pendingHere.length < rowsHere.length ? "ck.restGood" : "ck.allGood")}
+                </Button>
+              ) : !summary.complete ? (
+                <Button type="button" size="lg" onClick={nextPending}>
+                  {t("ck.nextPending")}
+                </Button>
+              ) : closesHere ? (
+                <Button type="button" size="lg" disabled={saving} onClick={() => void closeStep()}>
+                  {t("ck.closeStep")}
+                </Button>
+              ) : null}
             </div>
-          ) : null}
+          )}
         </>
       ) : null}
+      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} reason={proposing?.reason ?? ""} saving={saving} onSend={(draft) => void sendProposal(draft)} />
     </div>
   );
 }

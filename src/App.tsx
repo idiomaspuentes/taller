@@ -87,6 +87,7 @@ import { ScriptureEditorView } from "./components/ScriptureEditorView";
 import { HelpsEditorView } from "./components/HelpsEditorView";
 import { FamiliarizeView } from "./components/FamiliarizeView";
 import { SolverLabView } from "./components/SolverLabView";
+import { ProposalsView } from "./components/ProposalsView";
 import { PortionReviewView } from "./components/PortionReviewView";
 import { TemplatesView } from "./components/TemplatesView";
 import { StudyNotesDrawer } from "./components/StudyNotesDrawer";
@@ -1018,6 +1019,7 @@ export function App() {
     route.name === "solver-familiarize" ||
     route.name === "solver-afinar" ||
     route.name === "solver-checklist" ||
+    route.name === "solver-acuerdo" ||
     route.name === "solver-aval" ||
     route.name === "solver-lectura" ||
     route.name === "solver-publicar" ||
@@ -1086,6 +1088,8 @@ export function App() {
             announce={announce}
             onClose={onSolverClose}
           />
+        ) : route.name === "solver-acuerdo" ? (
+          <ProposalsView key={sessionEpoch} ctxEncoded={route.ctx} announce={announce} onClose={onSolverClose} />
         ) : route.name === "solver-afinar" && route.step === "alineacion" ? (
           <AlineacionView
             key={`${sessionEpoch}-alineacion`}

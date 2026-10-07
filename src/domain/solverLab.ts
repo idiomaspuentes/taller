@@ -191,7 +191,7 @@ export function labPlaceholderHelpsItems(
  * The screens that keep to themselves what is done in them when they are opened to try: nothing reaches Door43
  * unless writing was asked for. The others still write what is answered in them, so they are not offered.
  */
-const TRIAL_SCREENS = ["familiarize", "scripture", "helps", "checklist"];
+const TRIAL_SCREENS = ["familiarize", "scripture", "helps", "checklist", "acuerdo"];
 
 /**
  * Whether a tool can be opened to try, with no subtarea: a reading tool outside the app, or one of those screens.

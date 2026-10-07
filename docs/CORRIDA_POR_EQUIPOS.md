@@ -1576,6 +1576,54 @@ así que no hay tarea abierta por la que entrar.
 - No se pudo ver: la tarjeta de una tarea de armonización abierta, «Acuerdo del equipo» en curso, y la lista en
   escritorio.
 
+### Propuestas de cambio en Armonización (7 de octubre)
+
+Abel: «necesitamos que sea posible crear una propuesta de cambios, con un comentario o con la nueva versión de la
+nota, o academia u otra ayuda». Hasta aquí no se podía: un «No» se resolvía corrigiendo la nota en otra pantalla, al
+instante, y el acuerdo del equipo venía después, sobre una frase («Lo corregí: …») y sin ver el antes ni el
+después. De un artículo no se podía decir nada. Lo decidido con él: el cambio se aplica solo al acordarse; lo
+acuerda el propio equipo con la regla del «Acuerdo» (dos personas); lo que toca el TPL o el TPS se le propone al
+equipo de afinación, igual que lo que pide el comité de validación; y un toque basta cuando todo está bien.
+
+- **Un «No» se resuelve con una propuesta.** Tocar una de las líneas de «Se comprueba» abre la hoja «Proponer un
+  cambio»: qué cambiarías (esta nota, su artículo, el TPL, el TPS; de una pregunta, su respuesta o la pregunta),
+  cómo (la nueva versión, escrita sobre el texto como está, o solo un comentario) y el motivo, que llega escrito:
+  es la pregunta que falló. «Proponer un cambio», al pie, hace lo mismo sin pregunta. Nada cambia al enviarla.
+- **«Todo bien» al pie, de un toque.** Responde «Sí» a lo que falte de esa ayuda y pasa a la siguiente pendiente;
+  con una propuesta ya hecha dice «Lo demás, bien». La barra queda fija al pie: en «Notas frente al TPS» las
+  comprobaciones siguen empezando bajo la primera pantalla (941 px), pero lo que hay que tocar ya no.
+- **Las comprobaciones son una línea cada una** (44 a 73 px): las cuatro de una nota ocupan 225 px, donde ocupaban
+  unos 440 con sus dos botones.
+- **«Acuerdo del equipo» tiene pantalla.** Todas las propuestas de la tarea, de sus tres listas, con lo quitado
+  tachado y lo puesto marcado, quién la hizo y por qué, y «N de 2 de acuerdo». «De acuerdo» la apoya; con dos
+  personas se lleva a cabo sola: se escribe en la nota, la pregunta o el artículo del borrador del equipo, o, si
+  es del TPL o del TPS, se crea una corrección para el equipo que lo mantiene, con la propuesta entera en su
+  conversación. «Otra propuesta» responde con otra versión, que toma su lugar; quien la hizo puede retirarla.
+  El paso se cierra cuando no queda ninguna por resolver y cada persona da su acuerdo.
+- **Guardado donde ya se guardaban las respuestas**: una propuesta es la respuesta que resuelve un «No», y lo que
+  otros dicen de ella son filas que la nombran, en el archivo de cada persona. Las listas respondidas antes («Lo
+  corregí», «Pedí el cambio…») se siguen leyendo, y sus cambios salen en el acuerdo como «Cambio que ya hizo…».
+- **El paso «Acuerdo del equipo» abre esa pantalla en los proyectos nuevos** (el proceso le da su herramienta). Un
+  proyecto anterior, como Judas, conserva su copia del proceso: ahí se aprueba desde la tarjeta, como antes. El
+  Laboratorio sí la abre de prueba en cualquiera.
+- **De prueba se puede recorrer entero**: lo propuesto en una lista queda en la pestaña y sale en el acuerdo; como
+  se prueba a solas, estar de acuerdo con la propuesta propia cuenta como «otra persona del equipo».
+
+**⚠ Sin resolver**
+
+- **Nada de esto se ha visto escribir en Door43.** Judas está terminado: se probó entero en modo de prueba (proponer
+  sobre una nota y sobre el TPL, acordar, aplicar, pedir a afinación) y con pruebas del modelo. Escribir la nota
+  acordada, crear la corrección para afinación y abrir el paso desde la tarjeta están sin ejercer.
+- Una propuesta que es solo un comentario sobre una ayuda del propio equipo, una vez acordada, pide que alguien
+  escriba la nueva versión o diga «Ya se hizo»: no se aplica sola.
+- Proponer la nueva versión de un artículo es reescribirlo entero en un cuadro de texto; para uno largo se propone
+  por defecto un comentario.
+- El enlace al editor sigue («Abrir el editor para agregar una ayuda que falte»), y desde ahí todavía se puede
+  cambiar una nota sin proponerlo.
+- El nombre del equipo que mantiene el texto sale como lo tiene Door43 («pm-afinadores-tpl»).
+- Si la última persona en acordar no tiene permiso para escribir el plan, la corrección para afinación no se crea:
+  queda «Acordada», con el botón «Pedir el cambio a…» para quien sí pueda.
+
 ### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
 
 **⚠ Arreglado**

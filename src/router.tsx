@@ -40,6 +40,8 @@ export type AppRoute =
   | { name: "solver-afinar"; ctx: string; step: string; mode?: string }
   /** A step that closes by a checklist: `items` is what it goes over, `text` the text(s) it is checked against. */
   | { name: "solver-checklist"; ctx: string; items: string; text: string; only?: string }
+  /** A team agrees on the changes it proposed while checking. */
+  | { name: "solver-acuerdo"; ctx: string }
   /** A committee endorses a unit: `reporte` (a member's report) or `decision`. */
   | { name: "solver-aval"; ctx: string; mode: string }
   /** Publishing one unit: `comprobar` (the checks) or `publicar`. `aligned`: texts that must be aligned. */
@@ -123,6 +125,9 @@ export function parseHash(hash: string): AppRoute {
   if (parts[0] === "solver" && parts[1] === "checklist") {
     return { name: "solver-checklist", ctx: params.get("ctx") || "", items: params.get("items") || "notas", text: params.get("text") || "tpl", only: params.get("only") || undefined };
   }
+  if (parts[0] === "solver" && parts[1] === "acuerdo") {
+    return { name: "solver-acuerdo", ctx: params.get("ctx") || "" };
+  }
   if (parts[0] === "solver" && parts[1] === "afinar") {
     const mode = params.get("mode") || undefined;
     return { name: "solver-afinar", ctx: params.get("ctx") || "", step: params.get("step") || "notas", ...(mode ? { mode } : {}) };
@@ -201,6 +206,8 @@ export function routeToHash(route: AppRoute): string {
       return `#/solver/aval?mode=${encodeURIComponent(route.mode)}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-checklist":
       return `#/solver/checklist?items=${encodeURIComponent(route.items)}&text=${encodeURIComponent(route.text)}${route.only ? `&only=${encodeURIComponent(route.only)}` : ""}&ctx=${encodeURIComponent(route.ctx)}`;
+    case "solver-acuerdo":
+      return `#/solver/acuerdo?ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-review":
       return `#/solver/review?mode=${route.mode}&ctx=${encodeURIComponent(route.ctx)}`;
     case "solver-lectura":

@@ -2119,7 +2119,8 @@
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
-              "maxAssignees": 6
+              "maxAssignees": 6,
+              "solverAppId": "fcr-acuerdo"
             }
           ],
           "minLevel": "habilitada",
@@ -2232,7 +2233,8 @@
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
-              "maxAssignees": 6
+              "maxAssignees": 6,
+              "solverAppId": "fcr-acuerdo"
             }
           ],
           "minLevel": "habilitada",
@@ -2314,7 +2316,8 @@
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
-              "maxAssignees": 6
+              "maxAssignees": 6,
+              "solverAppId": "fcr-acuerdo"
             }
           ],
           "minLevel": "habilitada",
@@ -2717,6 +2720,15 @@
           "text": "tpl,tps"
         }
       }
+    },
+    {
+      "id": "fcr-acuerdo",
+      "name": "Acuerdo del equipo",
+      "description": "Lo que el equipo propuso cambiar al comprobar, con la versión de antes y la nueva, para acordarlo.",
+      "launchUrl": "/#/solver/acuerdo?ctx={context}",
+      "kind": "app",
+      "openMode": "tab",
+      "needsIssue": true
     },
     {
       "id": "fcr-aval",

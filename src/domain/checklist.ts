@@ -1,13 +1,16 @@
+import type { ProposalPayload } from "./checkProposal";
 import type { ChecklistQuestion } from "./types";
 
 /**
  * A step that closes by a checklist: every item (a note, a term, a question…) is checked with the yes/no questions
- * the process declares for that step. A «no» is settled by what the person does about it: they fix the item, create
- * what was missing, or ask the owner of something they may not change (and the item waits for the answer).
+ * the process declares for that step. A «no» is settled by proposing what should change (see `checkProposal`); the
+ * item is then checked, and the proposal goes on to the team's agreement. Lists answered before that settled a
+ * «no» by what the person had done about it: they fixed the item, created what was missing, or asked the owner of
+ * something they may not change (and the item waited for the answer). Those answers still count.
  * Nothing here knows what the items or the questions are.
  */
 
-export type CheckOutcome = "fixed" | "created" | "consult";
+export type CheckOutcome = "fixed" | "created" | "consult" | "proposal";
 
 export type CheckAnswer = {
   itemId: string;
@@ -19,6 +22,8 @@ export type CheckAnswer = {
   note?: string;
   /** A consultation that was answered: the item no longer waits. */
   resolved?: boolean;
+  /** What was proposed, when the «no» was settled by a proposal. */
+  proposal?: ProposalPayload;
   by: string;
   at: string;
   /** Fingerprint of the text the item was checked against. If the text changes later, the answer no longer counts. */
@@ -69,7 +74,7 @@ export function latestAnswers(answers: CheckAnswer[]): Map<string, CheckAnswer> 
 function stateOf(answer: CheckAnswer | undefined): CheckItemState {
   if (!answer) return "pending";
   if (answer.value === "yes") return "ok";
-  if (answer.outcome === "fixed" || answer.outcome === "created") return "ok";
+  if (answer.outcome === "fixed" || answer.outcome === "created" || answer.outcome === "proposal") return "ok";
   if (answer.outcome === "consult") return answer.resolved ? "ok" : "consult";
   return "open";
 }
@@ -123,7 +128,7 @@ export function summarizeChecklist(params: {
     if (firstOfVerse.has(item.id)) for (const q of perVerse) answers[q.id] = latest.get(`${verseItemId(item.verseKey)}\u0000${q.id}`);
     const states = Object.values(answers).map(stateOf);
     const state = states.reduce<CheckItemState>((worst, s) => (RANK[s] > RANK[worst] ? s : worst), "ok");
-    const changed = Object.values(answers).some((a) => a?.value === "no" && (a.outcome === "fixed" || a.outcome === "created"));
+    const changed = Object.values(answers).some((a) => a?.value === "no" && (a.outcome === "fixed" || a.outcome === "created" || a.outcome === "proposal"));
     return { itemId: item.id, state, answers, changed };
   });
   const done = items.filter((i) => i.state === "ok").length;

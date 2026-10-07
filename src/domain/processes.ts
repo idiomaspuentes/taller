@@ -37,6 +37,18 @@ export function shippedWorkflow(id: string, packages: ProcessPackage[] = tallerC
   return shippedWorkflows(packages).find((workflow) => workflow.id === id);
 }
 
+/**
+ * The tool a step opens in the process as it is shipped now. A project keeps the copy of the process it was created
+ * from: a step that got a screen later has none there, and trying it takes the screen from here.
+ */
+export function shippedStepTool(taskId: string, stepId: string, packages: ProcessPackage[] = tallerConfig.processes): string | undefined {
+  for (const workflow of shippedWorkflows(packages)) {
+    const tool = workflow.tasks.find((task) => task.id === taskId)?.steps?.find((step) => step.id === stepId)?.solverAppId;
+    if (tool) return tool;
+  }
+  return undefined;
+}
+
 /** `names[language]`, or the stored name. */
 export function localized(name: string, names: Localized | undefined, language: string): string {
   return names?.[language]?.trim() || name;
