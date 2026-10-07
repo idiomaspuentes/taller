@@ -238,7 +238,7 @@ Academia «Blessings» (#53, abelper8). Las 89 cerradas siguen en Door43 como ce
 - Quedaron sin dueño las ramas de trabajo y las revisiones abiertas de las seis subtareas empezadas (por ejemplo,
   la revisión 31 de `es-419_gst`). Cerrar una subtarea no cierra su revisión.
 
-## Fase 1 · Traducción (en curso)
+## Fase 1 · Traducción (terminada el 6 de octubre)
 
 ### El primer pasaje, de punta a punta: TPL · Judas 1:1–4 (6 de octubre)
 
@@ -516,10 +516,48 @@ terminarla» y «La tarea queda terminada».
 todavía no existen y las tareas de esa fase siguen apuntando a los de Traducción. Es justo lo que el paso «un
 equipo a la vez» debe ordenar al cerrar la fase.
 
+### El resto de las ayudas, y el cierre de la fase (6 de octubre)
+
+Con guion sobre la misma interfaz, **Luis** tradujo y **Marta** revisó: Preguntas de las otras cuatro porciones
+(18 preguntas con su respuesta), Notas de las otras cuatro porciones (124 notas), el artículo de Palabras «age,
+era, time» (13 párrafos) y los cinco artículos de Academia («Blessings», «Predictive Past», «Pronouns — When to
+Use Them», «Quotations and Quote Margins» y «Textual Variants»: 158 párrafos). Veinte subtareas más, sin que el
+proceso se trabara una vez.
+
+Lo que se comprobó de paso, con contenido de verdad:
+
+- **Los enlaces se conservan solos.** «Mira cómo lo tradujiste en el versículo 3» quedó enlazado a 1:3;
+  «1 Corintios 11:20» y «Mateo 24:31 y 25:31, Marcos 8:38 y 2 Tesalonicenses 1:7» quedaron enlazados a sus
+  pasajes sin que nadie escribiera un enlace. El enlace a un artículo que la traducción no nombra se puso con un
+  toque.
+- **«Equipo hoy»** con datos reales: «Judas · 29 de 56 subtareas · 52 %», «Ritmo de las últimas 4 semanas: 29 por
+  semana. A este ritmo, termina hacia el 13 de octubre».
+
+**⚠ Sin resolver**
+
+- La negrita de la fuente se pierde en las notas («Here, **the one** refers to God»): quien traduce escribe texto
+  llano y nada se lo recuerda. En 159 notas no quedó una sola negrita.
+- En «Equipo hoy», la casilla «Atascadas» va resaltada en naranja aunque diga 0.
+- La revisión abierta no se entera de que el autor ya confirmó y entregó: sigue diciendo «Falta que @abelper8…
+  diga que está de acuerdo».
+
+### Resumen de la fase
+
+| | |
+|---|---|
+| Subtareas cerradas | 29 de las 56 del proyecto: 5 TPL, 5 TPS, 2 lecturas grupales, 5 Notas, 5 Preguntas, 2 Palabras, 5 Academia |
+| A mano, a 375 px, con las personas poco hábiles | TPL 1:1–4, TPS 1:1–4, Notas 1:1–4, Palabras «call…», Preguntas 1:1–4, la lectura grupal del TPL |
+| Con guion sobre la misma interfaz | las otras 23 |
+| Fallos puestos a propósito y recorridos | figura explicada y falso amigo (TPL); frase omitida y desacuerdo en el hilo (TPS); notas sin traducir; artículo sin traducir; respuesta que no coincide y respuesta sin traducir; duda y corrección con motivo en la lectura grupal; decisión de vocabulario al glosario |
+| Defectos de verdad que se encontraron y arreglaron | el guardado rechazado al volver a corregir; «8 de 8 traducidas» con una respuesta en inglés; enlaces perdidos al traducir; un comentario bajo diez notas; la lista que no se enteraba de una aprobación; la duda que no se podía contestar ni cerrar; «100 %» sin terminar |
+| Sin recorrer todavía | «Devolver al equipo» de una subtarea que queda grande; recordar y reasignar desde «Equipo hoy»; los avisos con la app cerrada |
+
 ### Dónde quedó
 
-- Entregadas: las cinco porciones del TPL y las cinco del TPS, las dos lecturas grupales, Notas 1:1–4, Preguntas
-  1:1–4 y el artículo de Palabras «call…».
-- Falta de Traducción: 4 porciones de Notas, 4 de Preguntas, el artículo de Palabras «age, era, time» y 5 artículos
-  de Academia (abelper8 tiene «Blessings» en borrador).
-- Abiertas ya, de Afinación: las diez subtareas de «Desafíos» (TPL y TPS, cinco porciones cada uno).
+- **Traducción: terminada.** Las 29 subtareas de la fase están entregadas.
+- **Afinación: abierta sin equipo propio.** Las diez subtareas de «Desafíos» (TPL y TPS, cinco porciones cada uno)
+  aparecen en «Puedes sumarte» de las cuatro cuentas, que siguen en los equipos de Traducción. Lo siguiente es el
+  paso «un equipo a la vez»: crear «Afinadores TPL» y «Afinadores TPS» desde «Organización», ponerles las cuatro
+  cuentas con su nivel y su coordinador, asignarlos a las tareas de Afinación en el proyecto y sacar a las cuatro
+  de los equipos de Traducción.
+- En espera: 17 subtareas (Palabras clave, Alinear, Armonización, Validación y Publicación).
