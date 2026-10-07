@@ -533,8 +533,8 @@ sentido con la nota.
 
 **Una sola pasada (octubre de 2026).** Eran tres pasos, uno por lista, sobre las mismas notas: en Judas, 159 notas
 leídas tres veces (453 lecturas) para 1.274 respuestas. Ahora cada nota se lee una vez y lo que se comprueba de ella
-sale por grupos, uno en pantalla a la vez: con el TPL a la vista; después con el TPL y el TPS; después con su
-artículo abierto. «Todo bien» responde el grupo en vista y pasa al siguiente, y tras el último, a la nota siguiente.
+sale en pasos numerados dentro de la misma pantalla («① TPL — ② TPS — ③ Academia»), uno a la vez: con el TPL a
+la vista; después con el TPL y el TPS; después con su artículo abierto. «Todo bien» responde el grupo en vista y pasa al siguiente, y tras el último, a la nota siguiente.
 Lo que se decide es por nota (se deja o se cambia), y una nota tiene que servir con los dos textos a la vez: si se
 propone cambiarla al mirarla con el TPL, con el TPS se comprueba ya la versión propuesta, y otra propuesta sobre la
 misma nota parte de esa y toma su lugar. Un proyecto creado antes conserva sus tres listas.

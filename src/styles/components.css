@@ -7238,12 +7238,21 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .ck-checks .ck-question__outcome { margin: 0 0 0.5rem 2.125rem; }
 /* A new version read against the one before: what was put in on the ground of what is done, what was taken out
    struck through in the muted colour. Red is kept for errors. */
-/* A list asked in groups: what the questions in view are read against, a tab each, with how each stands. */
-.ck-groups { display: flex; gap: 0.375rem; }
-.ck-groups > button { flex: 1 1 0; min-width: 0; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text-muted); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; }
-.ck-groups > button[data-state="yes"] { color: var(--success-700); }
-.ck-groups > button[data-state="no"] { color: var(--warning-700); }
-.ck-groups > button[aria-selected="true"] { border-color: var(--primary); background: var(--accent-100); color: var(--accent-700); }
+/* A list asked in groups: the things the help is read against, numbered and joined by a line, the one in view
+   underlined. They are steps of one help, one after the other, not a choice between them. */
+.ck-steps { display: flex; align-items: center; margin: 0; padding: 0; list-style: none; }
+.ck-steps > li { display: flex; align-items: center; min-width: 0; }
+/* Each line takes the same share of what is left over: with three steps the one before the longest name was
+   left 12 px, and the row ran 7 px past its box at 375 px. */
+.ck-steps > li + li { flex: 1 1 auto; }
+.ck-steps > li + li::before { content: ""; flex: 1 1 0; min-width: 0.5rem; height: 2px; margin: 0 0.375rem; border-radius: 1px; background: var(--border-strong); }
+.ck-steps button { display: inline-flex; align-items: center; gap: 0.375rem; min-width: 0; min-height: 2.75rem; padding: 0 0.125rem; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--text-muted); font: inherit; font-size: 0.9375rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.ck-steps__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ck-steps button[aria-current="step"] { border-bottom-color: var(--primary); color: var(--text); }
+.ck-steps__n { flex: 0 0 auto; display: inline-grid; place-items: center; width: 1.625rem; height: 1.625rem; border: 2px solid var(--border-strong); border-radius: 999px; font-size: 0.8125rem; font-weight: 700; line-height: 1; }
+.ck-steps button[aria-current="step"] .ck-steps__n { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.ck-steps > li[data-state="yes"] .ck-steps__n, .ck-steps > li[data-state="yes"] button[aria-current="step"] .ck-steps__n { border-color: var(--success-700); background: var(--success-100); color: var(--success-700); }
+.ck-steps > li[data-state="no"] .ck-steps__n, .ck-steps > li[data-state="no"] button[aria-current="step"] .ck-steps__n { border-color: var(--warning-700); background: var(--warning-100); color: var(--warning-700); }
 /* What is proposed for the help in view, under it: the next group checks the help as it would be. */
 .ck-proposed { margin: 0; padding: 0.5rem 0.625rem; border-left: 3px solid var(--warning-700); border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.875rem; line-height: 1.5; overflow-wrap: anywhere; }
 .solver-lab__new { font-weight: 400; color: var(--text-muted); }

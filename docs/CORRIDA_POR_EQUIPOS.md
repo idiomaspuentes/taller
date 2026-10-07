@@ -1588,10 +1588,14 @@ que la segunda lista revisaba la nota vieja y podía proponer otra versión ente
   acuerdo; «Armonizar Palabras», «Palabras frente a los textos» y el acuerdo. Las preguntas son las mismas; cada
   una dice frente a qué se lee (`about`). Las de Academia solo se hacen en las notas que enlazan un artículo
   (135 de 159), y «Cuando la nota menciona el TPS…» solo en las que lo mencionan (4 de 159).
-- **La pantalla**: bajo la nota, «Se comprueba con» y una pestaña por grupo, «TPL · TPS · Academia», cada una con
-  su marca. En pantalla queda un grupo: sus dos a cuatro preguntas y aquello frente a lo que se leen (el TPL; el
+- **La pantalla**: bajo la nota, «Se comprueba en 3 pasos» y los pasos numerados y unidos por una línea,
+  «① TPL — ② TPS — ③ Academia»: el que está en vista, subrayado; los ya respondidos, con su marca. Primero fueron
+  pestañas, dos botones lado a lado, y se leían como una elección entre dos textos: nada decía que el segundo venía
+  después del primero (Abel, al verlo en Palabras, pidió «dos pasos internos: primero con el TPL y luego con el
+  TPS», en cada palabra). A 375 px los tres caben en los 318 px de la tarjeta, con 31 px de línea entre ellos. En
+  pantalla queda un grupo: sus dos a cuatro preguntas y aquello frente a lo que se leen (el TPL; el
   TPL y el TPS; el artículo abierto). «Todo bien» responde el grupo y pasa al siguiente; tras el último, a la nota
-  que sigue. Una nota sin artículo no tiene esa pestaña.
+  que sigue. Una nota sin artículo no tiene ese paso.
 - **Medido a 375 × 812 con Judas 1:1, de prueba**: al pasar al TPS el recuadro de los textos crece de 212 a 366 px
   y sus tres preguntas quedan entre 568 y 740 px, sobre la barra del pie (748); al pasar a Academia el artículo se
   abre (244 px) y sus dos preguntas quedan entre 634 y 740. Sin el ajuste, las del TPS empezaban en 788: bajo la

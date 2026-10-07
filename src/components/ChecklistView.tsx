@@ -782,20 +782,24 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
             {/* What is checked of this help, in a line each: a touch on one says it is not right, and opens the
                 proposal. Each was a block of its own with two buttons, 440 px of them under a note. */}
-            <p className="af-lbl">{t(grouped ? "ck.checksWith" : "ck.checks")}</p>
+            <p className="af-lbl">{grouped ? t("ck.inSteps").replace("{n}", String(groups.length)) : t("ck.checks")}</p>
             {grouped ? (
-              <div className="ck-groups" role="tablist" aria-label={t("ck.checksWith")}>
-                {groups.map((row) => {
+              // Numbered and joined by a line, one after the other: side by side as two buttons they read as a
+              // choice between two texts, and nothing said the second came after the first.
+              <ol className="ck-steps">
+                {groups.map((row, index) => {
                   const said = row.rows.map(({ question }) => tally?.answers[question.id]);
                   const state = said.some((answer) => answer?.value === "no") ? "no" : said.every(Boolean) ? "yes" : "none";
                   return (
-                    <button key={row.about} type="button" role="tab" aria-selected={row === group} data-state={state} onClick={() => setAsked({ itemId: item.id, about: row.about })}>
-                      {state === "yes" ? <Check size={14} aria-hidden /> : state === "no" ? <X size={14} aria-hidden /> : null}
-                      {scopeLabel(row.about, data.board?.settings?.resourceNames, language)}
-                    </button>
+                    <li key={row.about} data-state={state}>
+                      <button type="button" aria-current={row === group ? "step" : undefined} onClick={() => setAsked({ itemId: item.id, about: row.about })}>
+                        <span className="ck-steps__n">{state === "yes" ? <Check size={14} aria-hidden /> : state === "no" ? <X size={14} aria-hidden /> : index + 1}</span>
+                        <span className="ck-steps__name">{scopeLabel(row.about, data.board?.settings?.resourceNames, language)}</span>
+                      </button>
+                    </li>
                   );
                 })}
-              </div>
+              </ol>
             ) : null}
             <ul className="ck-checks" ref={checksRef}>
               {rowsShown.map(({ question, answerItemId }) => {
