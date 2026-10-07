@@ -588,14 +588,46 @@ Hecho por **Marta** (abelperez) desde la app, a 375 px, un ajuste a la vez:
 - En «Proyectos», el primer aviso dice «Traducción de Judas va en 71 de 71» (cuenta pasos, no subtareas) y propone
   empezar el libro siguiente.
 
+## Fase 2 · Afinación (empezada el 6 de octubre)
+
+### El primer desafío, a mano: Desafíos TPL · Judas 1:1–4
+
+**Priscila** (Elisha, poco hábil) abre la primera tarjeta de «Puedes sumarte» y pulsa «Revisar». La herramienta
+dice «0 de 30 acordadas»: 30 desafíos para 4 versículos. Cada uno son dos pasos:
+
+1. «Paso 1 de 2 · ¿Qué traduce lo resaltado?»: el original con una palabra resaltada («Ἰούδας»), el TPL debajo
+   con cada palabra para tocar, y «Esto lo traduce» / «No está en la traducción».
+2. «Paso 2 de 2 · ¿Cumple la regla?»: «Ἰούδας → TPL Judas», la pregunta («¿«Judas» reproduce la forma de «Primera,
+   Segunda o Tercera Persona» tal como está en el original?»), «¿Qué pide el TPL?» plegado, y «De acuerdo» / «Otra
+   respuesta».
+
+Tres toques por desafío; al responder (1,7 s) pasa solo al siguiente. Se entiende sin explicación.
+
+**⚠ Lo que se encontró y se arregló**
+
+- **Los botones del primer paso caían justo debajo de la pantalla** (y = 809 de 812 px): había que desplazar en cada
+  uno de los 30 desafíos. *Ahora* se quedan pegados al pie de la pantalla en el teléfono.
+- **La instrucción era la última línea**: «Toca en el TPL las palabras que traducen «τοῖς»» estaba debajo de las
+  palabras. *Ahora* va encima de ellas.
+
+**⚠ Sin resolver**
+
+- Entre la cabecera, «Qué se pide», las pestañas, el filtro, el título del desafío y «Equipo: 0 de 3 de acuerdo»
+  hay 400 px antes de llegar al texto.
+- Son 30 desafíos por porción y tres personas por desafío: 900 respuestas para Judas.
+
 ### Dónde quedó
 
 - **Traducción: terminada.** Las 29 subtareas de la fase están entregadas, y los tres equipos de la fase quedaron
   sin miembros.
-- **Afinación: lista para empezar.** «Afinadores TPL» y «Afinadores TPS» existen, con las cuatro cuentas (todas
-  «Persona habilitada», coordina abelperez) y asignados a Desafíos, Palabras clave y Alinear de su texto. Las diez
-  subtareas de «Desafíos» esperan en «Puedes sumarte». Nadie ha tomado ninguna.
+- **Afinación: empezada.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (todas «Persona
+  habilitada», coordina abelperez) y están asignados a Desafíos, Palabras clave y Alinear de su texto.
+  Priscila (Elisha) tomó «Desafíos TPL · Judas 1:1–4» y contestó el primer desafío de 30; va por el segundo.
+  Las otras nueve subtareas de Desafíos esperan en «Puedes sumarte».
 - Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P)**,
   Elisha = **Priscila (P)**.
+- Lo que falta recorrer de Afinación, según el plan: un cambio propuesto con desacuerdo y decisión final de quien
+  coordina; corregir un versículo ya contestado (las respuestas caducan); Palabras clave (el mismo término de dos
+  maneras); Alinear con revisión, voto y plazo; una discusión larga en el chat con menciones.
 - En espera: Palabras clave, Alinear, Armonización, Validación y Publicación. Armonización, Validación y
   Publicación todavía no tienen equipo: se les pone al llegar a cada una.

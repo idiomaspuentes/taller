@@ -8158,6 +8158,14 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 /* Refining: the answer under the question; moving between items at the top of the card. */
 .af-decide { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
 .af-decide > button { min-height: 44px; }
+/* What a challenge is answered with stays in reach. On a phone the two buttons of its first step fell just under the
+   screen (809 of 812 px), thirty times in a passage: they hold to the foot of the screen while the card is longer. */
+/* What to do with the words is said over them, not under: under them it was the last line of the screen. */
+.af-draft > .af-draft__words { order: 2; }
+.af-draft > .af-hint { order: 1; }
+@media (max-width: 47.99rem) {
+  .af-focus > .af-decide { position: sticky; bottom: 0; z-index: 5; margin: 0 -0.875rem -0.875rem; padding: 0.5rem 0.875rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--surface); }
+}
 .af-step { display: inline-flex; align-items: center; gap: 0.125rem; }
 .af-step .th-icon { width: 36px; height: 36px; border: 0; background: none; cursor: pointer; }
 .af-step .th-icon:disabled { opacity: 0.35; cursor: default; }
