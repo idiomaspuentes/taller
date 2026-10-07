@@ -1399,6 +1399,9 @@ el noveno lleva a «3 preguntas»); las marcas siguen a cada nota; escribir no g
   marca» lo explica con las marcas mismas, plegado para no bajar el primer versículo.
 - **Las palabras de una o dos letras se tocan en 23 px de ancho** (medían de 9 a 19): su zona toma los espacios de
   al lado.
+  Eso trajo un fallo que vio Abel («esto no se ve bien»): la marca de una palabra corta se pintaba sobre toda esa
+  zona, 7 px encima de cada vecina, y en «Dios el Padre» tapaba la «s» de «Dios» y la «P» de «Padre». *Ahora* la
+  marca va solo bajo las letras de la palabra (comprobado en todas las marcadas a 375 y a 640 px).
 
 Probado en QA con Judas a 375 px (fila de versículos, ir a 1:5 y a 1:12, pasar las nueve notas, guardar el TPS,
 abrir y cerrar un artículo, empezar y cancelar una inquietud) y a 1280 px, donde la lectura va en su caja a la
