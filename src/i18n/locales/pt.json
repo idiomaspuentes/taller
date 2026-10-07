@@ -2967,5 +2967,16 @@
   "ag.newNote": "nota nova",
   "pr.aboutWords": "Que palavras explica?",
   "pr.aboutWordsHint": "Toque no versículo as palavras de que a nota fala.",
-  "ag.about": "Sobre «{words}»"
+  "ag.about": "Sobre «{words}»",
+  "pr.split": "Dividi-la em duas",
+  "pr.splitWhich": "O que passa para a nota nova?",
+  "pr.splitHint": "Toque as frases que passam para a nota nova. Depois você pode retocar as duas.",
+  "pr.splitTo": "passa para a nota nova",
+  "pr.splitKeeps": "Esta nota fica assim",
+  "pr.splitNeeds": "Deixe algo em cada uma das duas notas.",
+  "ag.split": "dividir em duas",
+  "ag.splitNew": "E uma nota nova:",
+  "ag.splitTaken": "Não foi possível adicionar a nota nova. Retire a proposta e faça-a de novo.",
+  "ck.newNote": "Propor uma nota nova em {ref}",
+  "ag.splitKeeps": "Esta nota fica:"
 }

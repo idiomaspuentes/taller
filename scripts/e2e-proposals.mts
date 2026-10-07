@@ -2,6 +2,7 @@
  * End to end against the mock Door43, seeded with a book (`MOCK_PM_ORG=es-419_gl MOCK_SEED_BOOK=TIT npm run
  * mock:door43`): a change proposed while checking a note, agreed on by a second person, written on the team's
  * draft; another version of the same note from another list of the task, refused once the first is written; a
+ * note that was missing added, and one parted in two; a
  * change to a text another team maintains, asked of that team as a subtarea of correction; the agreement of the
  * team on the step, given in its tool by each of them; and the subtarea delivered there once that step closes.
  * Run: npm run verify:proposals-mock   (MOCK_HOST=http://localhost:8797 for a mock on another port)
@@ -257,6 +258,27 @@ await step("la nueva versión de un artículo se escribe en el borrador de los a
   const late = await applyProposal({ session: carla, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: { ...article, id: "pr-e2e-5", before: published, after: "# Metáfora\n\nEscrita de lo publicado.\n" } }).then(() => null, (err: unknown) => err);
   assert.ok(late instanceof HelpChangedError, "no se escribe encima de la segunda");
   assert.equal(await kept("es-419_ta", branch, article.path), "# Metáfora\n\nSegunda versión acordada.\n");
+});
+
+await step("una nota dividida en dos: la que estaba queda con su parte y la otra se agrega a su lado, las dos de una vez o ninguna", async () => {
+  const was = rowsOf((await notes()).text);
+  const whole = was.filter((r) => r.Note && r.Note.length > 40 && r.Reference !== "front:intro" && r.ID !== row.ID)[5]!;
+  const parted = { id: "pr-e2e-split", resource: "notas", field: "Note", rowId: whole.ID!, where: whole.Reference!, before: whole.Note!, after: "La primera mitad de la nota.", split: { rowId: "zz8y", after: "La otra mitad, que es de otras palabras.", fields: { Quote: "Θεοῦ", Occurrence: "1" }, about: "de Dios" } };
+  const written = await noteWrites();
+  // Written from words the note no longer has: neither half is written.
+  const stale = await applyProposal({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: { ...parted, id: "pr-e2e-split-0", before: "Lo que la nota no dice." } }).then(() => null, (err: unknown) => err);
+  assert.ok(stale instanceof HelpChangedError);
+  assert.equal(await noteWrites(), written, "ni la que queda ni la nueva");
+  await applyProposal({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: parted });
+  assert.equal(await noteWrites(), written + 1, "las dos en una sola escritura");
+  const now = rowsOf((await notes(bea)).text);
+  assert.equal(now.length, was.length + 1);
+  const at = now.findIndex((r) => r.ID === whole.ID);
+  assert.deepEqual([now[at]!.Note, now[at]!.Quote, now[at]!.Occurrence], [parted.after, whole.Quote, whole.Occurrence], "la que estaba, con su parte y su cita");
+  assert.deepEqual([now[at + 1]!.ID, now[at + 1]!.Reference, now[at + 1]!.Note, now[at + 1]!.Quote, now[at + 1]!.Occurrence], [parted.split.rowId, whole.Reference, parted.split.after, "Θεοῦ", "1"], "la nueva a su lado, con las palabras que explica");
+  await applyProposal({ session: bea, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: parted });
+  assert.equal(await noteWrites(), written + 1, "aplicada otra vez, no escribe nada");
+  assert.equal(await kept(list.target.repo, "master", `tn_${BOOK}.tsv`), before.text, "lo publicado no se toca");
 });
 
 await step("aplicada, la propuesta queda resuelta para todos", async () => {

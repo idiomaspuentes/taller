@@ -1681,6 +1681,45 @@ Recorrer ese camino destapó tres fallos, ya arreglados:
   fase con correcciones pedidas debe esperar a que vuelvan.
 - El aviso de modo de prueba ocupa 57 px y el contenido empieza a 237 px de arriba. Solo lo ve quien prueba.
 
+### Proponer una nota nueva, a la vista, y dividir una nota (7 de octubre)
+
+Abel preguntó si se podía crear una nota nueva en Armonización. Se podía, pero escondido: solo tras el «No» a la
+pregunta de si cada dificultad tiene nota, o como última opción de «Proponer un cambio». Pidió que se pudiera
+proponer, y agregó un caso: a veces lo que hace falta es **dividir** una nota, que es cambiar la que está y crear
+otra.
+
+- **«Proponer una nota nueva en 1:1»** está bajo las preguntas de cada nota (233 × 44 px). Abre la hoja con la nota
+  nueva ya elegida. Y «Una nota nueva en 1:1» es siempre una de las opciones de «¿Qué cambiarías?», sea cual sea
+  la pregunta desde la que se abrió.
+- **«Dividirla en dos»** es una de las formas de cambiar «Esta nota», entre «Escribir la nueva versión» y «Solo
+  comentar». La nota se ofrece en frases, una por renglón (344 px de ancho, 44 px o más de alto): se tocan las
+  que pasan a la nota nueva y quedan marcadas («pasa a la nota nueva»). Debajo están las dos notas como quedan,
+  cada una en su cuadro, para retocarlas; y las palabras del versículo, para tocar las que explica la nueva. En
+  un teléfono, dividir una nota era cortar de un cuadro y pegar en otro.
+- **Es una sola propuesta.** El equipo acuerda las dos mitades o ninguna: la nota recortada sin la nueva perdería
+  lo que se le quitó. Acordada, se escriben de una vez en el borrador del equipo: la que estaba queda con su
+  parte y su cita, y la nueva entra justo después de ella, con las palabras del original que se marcaron. Si la
+  nota cambió desde que se propuso, no se escribe ninguna de las dos.
+- **En la lista** la nota se lee como quedaría, y debajo «Y una nota nueva: …». Lo que pasa a la nueva salía
+  además tachado en la primera: una nota de cinco renglones ocupaba 255 px sobre sus preguntas, y ocupa 172.
+- **En el acuerdo** la tarjeta dice «dividir en dos» y cómo empieza cada nota («Esta nota queda: …», «Y una nota
+  nueva: …»); «Ver entera» muestra la primera con lo quitado tachado, la nueva completa y el versículo. «Otra
+  propuesta» abre la hoja con las dos mitades para retocarlas, o para dejarla en una sola otra vez.
+- **Probado** sin pantalla (`npm run verify:proposals-mock`, 19 comprobaciones) y con ana y bea contra el Door43 de
+  mentira, a 375 px: ana divide la nota de «conforme a la fe» y marca «conocimiento de la verdad»; con el «De
+  acuerdo» de bea aparece «Cambio aplicado», y en el borrador la nota queda en dos frases con su cita («κατὰ
+  πίστιν») y a su lado hay una nota nueva con las otras dos y la cita «ἐπίγνωσιν ἀληθείας», en una sola
+  escritura. A 1280 px la hoja mide 704 px y nada se desborda.
+
+**⚠ Sin resolver**
+
+- Las frases salen de cortar en cada punto seguido de espacio (salvo ante minúscula o número, para no partir «p.
+  ej.»). Son un punto de partida: una abreviatura ante mayúscula («cf. Tito») todavía parte la frase, y se
+  arregla retocando los cuadros.
+- Al tocar una frase después de haber retocado los cuadros, los dos vuelven a armarse con las frases y lo
+  retocado se pierde. La hoja lo dice («Después puedes retocar las dos»), pero no lo impide.
+- No se vio en QA.
+
 ### Una sola pasada por nota en Armonización (7 de octubre)
 
 Abel preguntó si convenía unir «Notas y Academia» frente al TPL y frente al TPS en un solo propósito, o separarlas

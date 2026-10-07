@@ -4,7 +4,7 @@
  * fits the help it was written from.
  */
 import assert from "node:assert/strict";
-import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
+import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, joinNotePieces, notePieces, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
 import { correctionTitle } from "../src/domain/corrections";
 import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
@@ -131,6 +131,38 @@ test("una nota que falta se agrega en su versículo, una sola vez, con un id que
   assert.notEqual(id, "aaaa", "el primero que salió ya estaba: se saca otro");
 });
 
+test("una nota se ofrece en frases para tocar las que pasan a otra, y lo tocado vuelve a ser una nota", () => {
+  const note = "**Fe** es un sustantivo abstracto. Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4). Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])\n\n¿Y **esto?** Otra línea.";
+  const pieces = notePieces(note);
+  assert.deepEqual(pieces.map((piece) => piece.text), [
+    "**Fe** es un sustantivo abstracto.",
+    "Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4).",
+    "Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])",
+    "¿Y **esto?**",
+    "Otra línea.",
+  ], "una abreviatura no corta la frase, y lo que sigue entre paréntesis es de la frase anterior");
+  assert.deepEqual(pieces.map((piece) => piece.paragraph), [0, 0, 0, 1, 1]);
+  assert.equal(joinNotePieces(pieces), note, "todas juntas son la nota");
+  // The second and the fourth go to the new note; the rest stays.
+  assert.equal(joinNotePieces(pieces.filter((_, index) => index === 1 || index === 3)), "Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4).\n\n¿Y **esto?**");
+  assert.equal(joinNotePieces(pieces.filter((_, index) => index !== 1 && index !== 3)), "**Fe** es un sustantivo abstracto. Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])\n\nOtra línea.");
+  assert.deepEqual(notePieces("Una sola frase sin punto"), [{ text: "Una sola frase sin punto", paragraph: 0 }]);
+  assert.deepEqual(notePieces("  \n "), []);
+});
+
+test("la otra mitad de una nota dividida se agrega al lado de la primera, no al final de su versículo", () => {
+  const file = ["Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote", "1:1\trtc9\t\t\tπίστιν\t1\tPrimera de 1:1", "1:1\txyz8\t\t\tἐπίγνωσιν\t1\tSegunda de 1:1", "1:3\tabc1\t\t\tλόγον\t1\tLa de 1:3"].join("\n");
+  const edits = [{ id: "rtc9", fields: { Note: "Primera, ya sin su otra mitad" } }, { id: "nv03", fields: { Note: "La otra mitad", Quote: "ἐκλεκτῶν", Occurrence: "1" }, addAt: "1:1", addAfter: "rtc9" }];
+  const parted = applyHelpsTsvEdits(file, edits);
+  const rows = parted.split("\n").filter(Boolean).map((line) => line.split("\t"));
+  assert.deepEqual(rows.map((row) => row[1]), ["ID", "rtc9", "nv03", "xyz8", "abc1"]);
+  assert.deepEqual(rows[1], ["1:1", "rtc9", "", "", "πίστιν", "1", "Primera, ya sin su otra mitad"], "la que estaba conserva su cita");
+  assert.deepEqual(rows[2], ["1:1", "nv03", "", "", "ἐκλεκτῶν", "1", "La otra mitad"]);
+  assert.equal(applyHelpsTsvEdits(parted, edits), parted, "aplicada otra vez no cambia nada");
+  // Beside a row the file does not have: where a new note of that verse goes.
+  assert.deepEqual(applyHelpsTsvEdits(file, [{ id: "nv04", fields: { Note: "Suelta" }, addAt: "1:1", addAfter: "zzzz" }]).split("\n").filter(Boolean).map((line) => line.split("\t")[1]), ["ID", "rtc9", "xyz8", "nv04", "abc1"]);
+});
+
 test("lo que se ve de paso, sin ser respuesta a una pregunta del paso, también es una propuesta", () => {
   const free = made({ ...note, id: "p4" }, "dina", 2, PROPOSAL_FREE);
   const summary = summarizeChecklist({ items: [{ id: "ek3q", verseKey: "1:1" }], questions: [{ id: "encaja", text: "¿Encaja?" }], answers: [free] });
@@ -163,6 +195,8 @@ test("la versión de antes y la nueva se leen como un solo texto, con lo quitado
   assert.equal(show("igual", "igual"), "igual");
   assert.equal(show("", "nuevo texto"), "+nuevo texto");
   assert.equal(show("se quita todo", ""), "-se quita todo");
+  // What stays before words taken out from the end keeps the space that parted it from them.
+  assert.equal(show("Queda esto. Y esto se va.", "Queda esto."), "Queda esto. |-Y esto se va.");
   // Read short, what changed is in sight with a few words on each side of it.
   const long = "En esta cultura, quienes escribían cartas daban primero su propio nombre y se referían a sí mismos en tercera persona. Traducción alternativa: [De parte de Judas,] y nada más que decir sobre esto aquí.";
   const short = diffExcerpt(wordDiff(long, long.replace("[De parte de Judas,]", "[Yo, Judas,]")), 3).map((piece) => `${piece.kind === "same" ? "" : piece.kind === "gone" ? "-" : "+"}${piece.text}`).join("|");

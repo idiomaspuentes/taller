@@ -11,7 +11,13 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { appliedWords, byPlaceAndHelp, loadTrialChecks, othersNeeded, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { appliedWords, byPlaceAndHelp, loadTrialChecks, othersNeeded, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, readable, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+
+/** The start of a text, for a line that says there is more of it. */
+const firstWords = (text: string, n = 12) => {
+  const words = text.split(/\s+/).filter(Boolean);
+  return words.length > n ? `${words.slice(0, n).join(" ")} …` : words.join(" ");
+};
 import type { CheckAnswer } from "../domain/checklist";
 import { localized } from "../domain/processes";
 import { ownerLabel } from "../domain/resourceOwner";
@@ -263,13 +269,14 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     act(async () => {
       if (!answering) return;
       const was = answering.proposal;
-      const proposal = { ...was, id: `pr-${uid()}`, replaces: was.id, ...(answerFrom !== undefined && !was.add ? { before: answerFrom } : {}), ...(draft.after ? { after: draft.after } : { after: undefined }) };
+      // Answering one that parts a note in two: still in two, with its new note as rewritten, or in one again.
+      const proposal = { ...was, id: `pr-${uid()}`, replaces: was.id, ...(answerFrom !== undefined && !was.add ? { before: answerFrom } : {}), ...(draft.after ? { after: draft.after } : { after: undefined }), split: draft.split && was.split ? { ...was.split, after: draft.split.after } : undefined };
       await add(answering.stepKey, [proposalAnswer({ itemId: answering.itemId, questionId: answering.questionId, by: me, at: new Date().toISOString(), reason: draft.reason, proposal })]);
       setAnswering(null);
       announce(t("ck.proposed"));
     });
   const answerTargets: ProposalTarget[] = answering
-    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(answering.proposal.add ? { add: true } : {}), ...(answering.proposal.path ? { format: "markdown" as const } : answering.proposal.rowId && (answering.proposal.field ?? "Note") === "Note" ? { format: "note" as const } : {}), ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
+    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(answering.proposal.add ? { add: true } : {}), ...(answering.proposal.split ? { split: { rowId: answering.proposal.split.rowId } } : {}), ...(answering.proposal.path ? { format: "markdown" as const } : answering.proposal.rowId && (answering.proposal.field ?? "Note") === "Note" ? { format: "note" as const } : {}), ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
     : [];
   // A version the help no longer fits is not what the next one starts from: that one starts from the help.
   const answerStart = answering && changedTo(answering) === undefined ? answering.proposal.after : undefined;
@@ -356,12 +363,23 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                 <li key={view.proposal.id} className="ag-card" data-state={view.state}>
                   <p className="ag-card__head">
                     <b>{view.proposal.where}</b> · {nameOf(view.proposal.resource)}
-                    {view.proposal.add ? ` · ${t("ag.newNote")}` : ""} · {t("ag.by").replace("{who}", view.by)}
+                    {view.proposal.add ? ` · ${t("ag.newNote")}` : view.proposal.split ? ` · ${t("ag.split")}` : ""} · {t("ag.by").replace("{who}", view.by)}
                   </p>
                   {/* The few words around what changes are what is touched to see it whole, with its verse. */}
                   <details className="ag-more" onToggle={(event) => event.currentTarget.open && readUnit()}>
                     <summary>
-                      {view.proposal.after ? (
+                      {view.proposal.split ? (
+                        // Parted in two: how each note begins. What goes to the new one, struck out of the first,
+                        // took six lines of a card to say what the next line says again.
+                        <>
+                          <span className="ag-split ag-short">
+                            <b>{t("ag.splitKeeps")}</b> {firstWords(readable(view.proposal.after ?? ""))}
+                          </span>
+                          <span className="ag-split ag-short">
+                            <b>{t("ag.splitNew")}</b> {firstWords(readable(view.proposal.split.after))}
+                          </span>
+                        </>
+                      ) : view.proposal.after ? (
                         <span className="ag-diff ag-short">
                           <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} plain />
                         </span>
@@ -382,6 +400,12 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                     ) : view.proposal.before ? (
                       <p className="ag-whole">{view.proposal.before}</p>
                     ) : null}
+                    {view.proposal.split ? (
+                      <p className="ag-whole ag-new">
+                        <span className="af-lbl">{t("pr.newNoteLbl")}</span>
+                        {readable(view.proposal.split.after)}
+                      </p>
+                    ) : null}
                     {unit === "reading" ? <p className="af-hint">{t("ag.readingTexts")}</p> : null}
                     {versesOf(view.proposal.where).map((row) => (
                       <p key={row.resource} className="ag-verse">
@@ -390,7 +414,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                       </p>
                     ))}
                   </details>
-                  {view.proposal.about ? <p className="af-hint ag-reason">{t("ag.about").replace("{words}", view.proposal.about)}</p> : null}
+                  {(view.proposal.about ?? view.proposal.split?.about) ? <p className="af-hint ag-reason">{t("ag.about").replace("{words}", view.proposal.about ?? view.proposal.split?.about ?? "")}</p> : null}
                   {failedOf(view) ? <p className="af-hint ag-reason">{failedOf(view)}</p> : null}
                   {view.proposal.after && view.reason && !failedOf(view).includes(view.reason) ? <p className="ag-reason ag-reason--said">{view.reason}</p> : null}
                   <p className="ag-card__state">
@@ -486,7 +510,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           </div>
         </>
       ) : null}
-      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} book={ctx?.book} failed={answering ? askedOf(answering) || undefined : undefined} reason={answering?.reason ?? ""} startFrom={answerStart} saving={saving} onSend={(draft) => void answerWith(draft)} />
+      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} book={ctx?.book} failed={answering ? askedOf(answering) || undefined : undefined} reason={answering?.reason ?? ""} startFrom={answerStart} startSplit={answering?.proposal.split?.after} saving={saving} onSend={(draft) => void answerWith(draft)} />
     </div>
   );
 }

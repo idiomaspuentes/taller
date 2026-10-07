@@ -614,7 +614,8 @@ acuerda. En cada pregunta, tocarla la marca bien; «No», a su lado, abre la hoj
 | **Acordar** | En «Acuerdo del equipo», cada propuesta se abre entera, con su versículo. «De acuerdo» la apoya; «Dejar como está» dice que no; «Otra propuesta» responde con otra versión; quien la hizo puede retirarla. |
 | **Con dos de acuerdo** | Si es de una ayuda del equipo, se escribe en su borrador. Si es del TPL o el TPS, se pide a Afinación como corrección, **con la razón**: Armonización nunca edita esos textos. La corrección es una subtarea de quien afina ese texto, nombrada por el motivo y las palabras que cambian; la versión entera va en su conversación. |
 | **Con otra persona que prefiere dejarlo** | La propuesta no se acepta y la ayuda queda como está. Hacen falta tantas personas, sin contar a quien la propuso, como para acordarla: una, donde el acuerdo es de dos. |
-| **Lo que falta** | Una nota que falta se propone como «una nota nueva» de ese versículo: se escribe y se tocan en el versículo las palabras que explica. Acordada, se agrega a las notas del equipo. Un artículo que falta se propone con un comentario; acordado, alguien lo escribe y lo marca hecho. |
+| **Lo que falta** | Una nota que falta se propone con «Proponer una nota nueva en 1:1», bajo las preguntas (o eligiendo «Una nota nueva» en la hoja): se escribe y se tocan en el versículo las palabras que explica. Acordada, se agrega a las notas del equipo. Un artículo que falta se propone con un comentario; acordado, alguien lo escribe y lo marca hecho. |
+| **Dividir una nota** | «Dividirla en dos», en la hoja: se tocan las frases que pasan a la nota nueva, se retocan las dos y se marcan las palabras que explica la nueva. Es una sola propuesta: acordada, la nota queda con su parte y la nueva se agrega a su lado, las dos a la vez. |
 | **Al cerrarse el paso** | Con el acuerdo de cada persona del equipo, y todo resuelto, la subtarea se entrega desde esa misma pantalla. |
 
 ---

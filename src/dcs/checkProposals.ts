@@ -10,7 +10,7 @@ import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { readTeamHelps, saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "./teamHelps";
 import { sameWording, proposalAsk, proposalFit, proposalWords, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
-import { helpsRowField } from "../domain/helpsDraft";
+import { helpsRowField, type HelpsRowEdit } from "../domain/helpsDraft";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
 import { shippedStepsMissing } from "../domain/processes";
 import { bookBranchName } from "../domain/portionPr";
@@ -156,7 +156,16 @@ export async function applyProposal(params: ProposalPlace & { proposal: Proposal
       if (now === undefined) throw new Error(tNow("ag.helpGone"));
       const fit = proposalFit(proposal, now);
       if (fit === "changed") throw new HelpChangedError(now);
-      return fit === "done" ? [] : [{ id: rowId, fields: { [column]: after } }];
+      const own: HelpsRowEdit[] = fit === "done" ? [] : [{ id: rowId, fields: { [column]: after } }];
+      // A note parted in two: what was taken out of it is a new row beside it, written with it or not at all.
+      // There already (the two were written, and saying so failed), it is not added again; with other words,
+      // another row has taken its id, and nothing is written rather than lose that half.
+      const half = proposal.split;
+      const there = half ? helpsRowField(text, half.rowId, column) : undefined;
+      if (!half) return own;
+      if (there === undefined) return [...own, { id: half.rowId, fields: { ...half.fields, [column]: half.after }, addAt: proposal.where, addAfter: rowId }];
+      if (!sameWording(there, half.after)) throw new Error(tNow("ag.splitTaken"));
+      return own;
     };
     const own = await readTeamHelps({ session, ctx, pmConfig: params.pmConfig, board, kind: proposal.resource as HelpsResource });
     // Refused before a draft is started for it.

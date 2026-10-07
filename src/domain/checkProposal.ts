@@ -40,6 +40,12 @@ export type ProposalPayload = {
   fields?: Record<string, string>;
   /** Those words as they read in the text they were marked in, to say what the new help is about. */
   about?: string;
+  /**
+   * The note is parted in two: `after` is what stays in it, and this is the new note the rest goes to, a row added
+   * beside it. One proposal and not two, so the team agrees on both or on neither: the note cut short without
+   * the new one would lose what was taken out of it.
+   */
+  split?: { rowId: string; after: string; fields?: Record<string, string>; about?: string };
 };
 
 /** A row somebody adds about a proposal: `itemId` is the id of the proposal. */
@@ -357,8 +363,10 @@ export function wordDiff(before: string, after: string): DiffPiece[] {
     while (j < midB.length) push(midB[j++]!, "new");
   }
   push(b.slice(endB).join(""), "same");
-  // Words taken out at the end of a stretch keep the space that parted them from what follows.
-  return out.map((piece, index) => (piece.kind === "gone" && out[index + 1]?.kind === "new" && !/\s$/.test(piece.text) ? { ...piece, text: `${piece.text} ` } : piece));
+  // Words taken out at the end of a stretch keep the space that parted them from what follows; and what stays
+  // before words taken out from the end, the space that parted it from them («… en Jesús.Si está…»).
+  const spaced = (piece: DiffPiece, next: DiffPiece | undefined) => (piece.kind === "gone" && next?.kind === "new") || (piece.kind === "same" && next?.kind === "gone");
+  return out.map((piece, index) => (spaced(piece, out[index + 1]) && !/\s$/.test(piece.text) ? { ...piece, text: `${piece.text} ` } : piece));
 }
 
 /**
@@ -377,6 +385,45 @@ export function diffExcerpt(pieces: DiffPiece[], keep = 6): DiffPiece[] {
     if (last) return words.length > keep ? { ...piece, text: `${words.slice(0, keep).join("").trimEnd()} …` } : piece;
     return words.length > keep * 2 + 1 ? { ...piece, text: `${words.slice(0, keep).join("").trimEnd()} … ${words.slice(-keep).join("")}` } : piece;
   });
+}
+
+// ---------------------------------------------------------------- a note parted in two
+
+/** A sentence of a note, and the paragraph it is of. */
+export type NotePiece = { text: string; paragraph: number };
+
+/**
+ * A note in sentences, for saying by touch which of them go to another note. A sentence ends at «.», «?» or «!»,
+ * with what closes after them, before a space; what opens in brackets after one is of that sentence («… en Él.
+ * (Ver: …)»). They are a start: the two notes are retouched afterwards.
+ */
+export function notePieces(note: string): NotePiece[] {
+  const pieces: NotePiece[] = [];
+  const lines = note.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  lines.forEach((line, paragraph) => {
+    const ends = /[.?!]+[»”"’'*_)\]]*\s+/g;
+    let from = 0;
+    const take = (to: number) => {
+      const text = line.slice(from, to).trim();
+      from = to;
+      if (!text) return;
+      const last = pieces[pieces.length - 1];
+      if (last && last.paragraph === paragraph && text.startsWith("(")) last.text += ` ${text}`;
+      else pieces.push({ text, paragraph });
+    };
+    for (let match = ends.exec(line); match; match = ends.exec(line)) {
+      // «p. ej. en», «v. 3»: a point before a small letter or a number ends no sentence.
+      if (/[a-zà-ÿ0-9]/.test(line[match.index + match[0].length] ?? "")) continue;
+      take(match.index + match[0].length);
+    }
+    take(line.length);
+  });
+  return pieces;
+}
+
+/** Some of those sentences as a note again: those of a paragraph in a line, and a line between paragraphs. */
+export function joinNotePieces(pieces: NotePiece[]): string {
+  return pieces.map((piece, index) => (index === 0 ? piece.text : `${piece.paragraph === pieces[index - 1]!.paragraph ? " " : "\n\n"}${piece.text}`)).join("");
 }
 
 // ---------------------------------------------------------------- a checklist opened to try

@@ -127,8 +127,11 @@ export function helpsRowField(text: string, id: string, field: string): string |
   return row ? (row[field] ?? "") : undefined;
 }
 
-/** What a row of a helps file is to say. `addAt`: the row is added, at that place («1:3»), when the file has none with its id. */
-export type HelpsRowEdit = { id: string; fields: Record<string, string>; addAt?: string };
+/**
+ * What one row of a helps file is to say. `addAt`: the row is added, at that place («1:3»), when the file has none
+ * with its id; `addAfter`: right after the row with that id, when the file has it.
+ */
+export type HelpsRowEdit = { id: string; fields: Record<string, string>; addAt?: string; addAfter?: string };
 
 /** Where a row is, to keep a file in the order of its book: the introductions first, then verse by verse. */
 function rowPlace(reference: string): number {
@@ -172,7 +175,9 @@ export function applyHelpsTsvEdits(original: string, edits: HelpsRowEdit[]): str
     next.forEach((other, index) => {
       if (rowPlace(other[header("reference")] ?? "") <= place) at = index + 1;
     });
-    next.splice(at, 0, row);
+    // The other half of a note parted in two stays by the first, wherever that is among the notes of its verse.
+    const beside = edit.addAfter ? next.findIndex((other) => tsvRowId(other) === edit.addAfter) : -1;
+    next.splice(beside >= 0 ? beside + 1 : at, 0, row);
   }
   return serializeTsv(headers, next);
 }

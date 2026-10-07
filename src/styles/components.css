@@ -7330,6 +7330,16 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .pr-text { resize: none; overflow-y: auto; }
 .pr-words { display: flex; flex-wrap: wrap; }
 .pr-words .ck-word { min-height: 2.75rem; }
+/* A note parted in two: its sentences, each touched to send it to the new note. A line each, as tall as a finger. */
+.pr-pieces { display: grid; gap: 0.375rem; }
+.pr-pieces button { display: grid; gap: 0.125rem; min-height: 2.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; line-height: 1.45; text-align: left; cursor: pointer; }
+.pr-pieces button[aria-pressed="true"] { border-color: var(--primary); background: var(--accent-100); }
+.pr-pieces__to { color: var(--accent-700); font-size: 0.75rem; font-weight: 700; }
+/* Proposing a note that is missing, under the questions of the one in view. */
+.af.ck .ck-add.btn[data-size] { justify-self: start; height: auto; min-height: 2.75rem; padding-inline: 0.25rem; color: var(--accent-700); }
+.ck-proposed__split { display: block; margin-top: 0.375rem; }
+.ag-split { display: block; font-size: 0.875rem; }
+.ag-new { display: grid; gap: 0.125rem; white-space: pre-line; }
 .ag-reason--said { margin: 0; font-size: 0.875rem; }
 .pr-body { display: grid; align-content: start; gap: 0.875rem; }
 .pr-field { display: grid; gap: 0.375rem; }

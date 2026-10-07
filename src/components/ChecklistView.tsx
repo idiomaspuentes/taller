@@ -9,7 +9,7 @@ import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Circle, Pencil, X } from "lucide-react";
+import { Check, Circle, Pencil, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -24,7 +24,7 @@ import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
 import { freshRowId } from "../domain/helpsDraft";
 import { consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
-import { PROPOSAL_FREE, loadTrialChecks, proposalAnswer, proposalSaying, proposalsOf, saveTrialChecks, withoutWithdrawn, type ProposalPayload } from "../domain/checkProposal";
+import { PROPOSAL_FREE, loadTrialChecks, proposalAnswer, proposalSaying, proposalsOf, readable, saveTrialChecks, withoutWithdrawn, type ProposalPayload } from "../domain/checkProposal";
 import { uid } from "../domain/assignment";
 import { ownerLabel } from "../domain/resourceOwner";
 import { PROPOSAL_STATE_KEY, ProposalDiff, ProposalSheet, type ProposalDraft, type ProposalTarget } from "./ProposalSheet";
@@ -155,7 +155,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
    * A change being proposed: the question that was answered «no» (or none: something seen in passing), and the
    * reason it starts with. `onlyVerse`: the question is about the verse as a whole, not about the help in view.
    */
-  const [proposing, setProposing] = useState<{ answerItemId: string; questionId: string; reason: string; onlyVerse?: boolean } | null>(null);
+  const [proposing, setProposing] = useState<{ answerItemId: string; questionId: string; reason: string; onlyVerse?: boolean; /** Opened to propose a note that is missing. */ newNote?: boolean } | null>(null);
   /** Fixing the quote of the note in view: the words marked in the text so far. */
   const [picking, setPicking] = useState<number[] | null>(null);
 
@@ -498,7 +498,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     const help: ProposalTarget[] = proposing?.onlyVerse
       ? [...fresh, { id: "verse", label: t("pr.targetVerse").replace("{what}", scopeLabel(kind, data.board?.settings?.resourceNames, language)).replace("{ref}", where), resource: kind, commentOnly: true, ...whose(kind) }]
       : kind === "notas"
-        ? [{ id: "help", label: t("pr.targetNote"), resource: kind, rowId: item.id, field: "Note", text: item.body, format: "note" as const, ...whose(kind) }]
+        ? // A note of the team can be parted in two as well: what is taken out of it becomes a new note beside it.
+          [{ id: "help", label: t("pr.targetNote"), resource: kind, rowId: item.id, field: "Note", text: item.body, format: "note" as const, ...(ours(kind) ? { split: { rowId: newRowId, ...(markable.length ? { words: markable } : {}) } } : {}), ...whose(kind) }]
         : kind === "preguntas"
           ? [
               { id: "answer", label: t("pr.targetAnswer"), resource: kind, rowId: item.id, field: "Response", text: item.body, ...whose(kind) },
@@ -514,22 +515,25 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           : [];
     const read = texts.map<ProposalTarget>((resource) => ({ id: resource, label: t("pr.targetText").replace("{name}", textLabel(resource)), resource, text: data.texts[resource]?.verses[item.verse], ...whose(resource) }));
     // A step, or a group, that goes over the articles starts from the article.
-    // Seen in passing, with no question behind it: a note that is missing can be that too, last of what is offered.
-    const also = proposing && !proposing.onlyVerse && proposing.questionId === PROPOSAL_FREE ? fresh : [];
-    return [...(onlyLinked || aboutArticle ? [...article, ...help] : [...help, ...article]), ...read, ...also].map((target) => {
+    // A note that is missing is always one of the things to propose, last of them, and first when that is what
+    // the sheet was opened for. It was offered only from the question that asks for it and from «Proponer un
+    // cambio», and nobody knew it was there.
+    const also = proposing?.onlyVerse ? [] : fresh;
+    const offered = [...(onlyLinked || aboutArticle ? [...article, ...help] : [...help, ...article]), ...read];
+    return (proposing?.newNote ? [...also, ...offered] : [...offered, ...also]).map((target) => {
       const prior = target.commentOnly ? undefined : priorOf(target, where);
       return prior ? { ...target, start: prior.proposal.after } : target;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item, data, proposing?.onlyVerse, proposing?.questionId, newRowId, academy, articles, articlePath, slug, textsKey, language, proposals, aboutArticle]);
+  }, [item, data, proposing?.onlyVerse, proposing?.newNote, newRowId, academy, articles, articlePath, slug, textsKey, language, proposals, aboutArticle]);
 
   /** The words of the original under the words marked for a new note, and how those read: what the note quotes. */
-  function quotedBy(draft: ProposalDraft): Pick<ProposalPayload, "fields" | "about"> {
-    if (!data || !item || !draft.marked?.length || !draft.target.words) return {};
+  function quotedBy(words: string[] | undefined, marked: number[] | undefined): Pick<ProposalPayload, "fields" | "about"> {
+    if (!data || !item || !marked?.length || !words) return {};
     const text = data.texts[texts[0]!];
     const sid = Object.keys(text?.alignments ?? {}).find((key) => verseFromSid(key, item.chapter) === item.verse);
-    const found = quoteFromSelection({ verseTokens: draft.target.words, selected: draft.marked, groups: sid ? text!.alignments![sid]! : [], original: originalTokens(data.original ?? "", item.chapter, item.verse) });
-    const about = draft.marked.map((index) => draft.target.words![index]).join(" ");
+    const found = quoteFromSelection({ verseTokens: words, selected: marked, groups: sid ? text!.alignments![sid]! : [], original: originalTokens(data.original ?? "", item.chapter, item.verse) });
+    const about = marked.map((index) => words[index]).join(" ");
     return found ? { fields: { Quote: found.quote, Occurrence: String(found.occurrence) }, about } : { about };
   }
 
@@ -544,7 +548,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       ...(draft.target.rowId ? { rowId: draft.target.rowId } : {}),
       ...(draft.target.text !== undefined && !draft.target.add ? { before: draft.target.text } : {}),
       ...(draft.after ? { after: draft.after } : {}),
-      ...(draft.target.add ? { add: true as const, ...quotedBy(draft) } : {}),
+      ...(draft.target.add ? { add: true as const, ...quotedBy(draft.target.words, draft.marked) } : {}),
+      ...(draft.split && draft.target.split ? { split: { rowId: draft.target.split.rowId, after: draft.split.after, ...quotedBy(draft.target.split.words, draft.split.marked) } } : {}),
       ...(draft.after && draft.target.start ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
     };
     const base = stamp(proposing.answerItemId, proposing.questionId, "no");
@@ -837,9 +842,20 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               // time counting the one under its question, and the help no longer fitted over its questions.
               <p className="af-note ck-proposed">
                 <b className="ck-proposed__label">{t("ck.proposedHere")}</b>{" "}
-                <span className="ag-diff">
-                  <ProposalDiff before={proposedHelp.proposal.before ?? item.body} after={proposedHelp.proposal.after ?? ""} whole plain />
-                </span>
+                {proposedHelp.proposal.split ? (
+                  // Parted in two, each note is read as it would be. Struck out in the first, what goes to the
+                  // second was read twice, and a note of five lines took fourteen over its questions.
+                  <>
+                    {readable(proposedHelp.proposal.after ?? "")}
+                    <span className="ck-proposed__split">
+                      <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(proposedHelp.proposal.split.after)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="ag-diff">
+                    <ProposalDiff before={proposedHelp.proposal.before ?? item.body} after={proposedHelp.proposal.after ?? ""} whole plain />
+                  </span>
+                )}
               </p>
             ) : item.body ? (
               <>
@@ -987,7 +1003,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             </ul>
             {stepDone ? null : <p className="af-hint">{t("ck.howToAnswer")}</p>}
             {/* No way from here to the editor of the helps: it changed a note at once, with nobody agreeing, and
-                the one thing its link promised (adding a help that is missing) it could not do. */}
+                the one thing its link promised (adding a help that is missing) it could not do. A note that is
+                missing is proposed from here, in sight: it was only behind «No» and «Proponer un cambio». */}
+            {!stepDone && kind === "notas" && ours(kind) ? (
+              <Button type="button" variant="ghost" className="ck-add" disabled={saving} onClick={() => setProposing({ answerItemId: item.id, questionId: PROPOSAL_FREE, reason: "", newNote: true })}>
+                <Plus size={16} aria-hidden /> {t("ck.newNote").replace("{ref}", `${item.chapter}:${item.verse}`)}
+              </Button>
+            ) : null}
           </section>
 
           <nav className="af-nav" aria-label={t("ck.navAria")}>
