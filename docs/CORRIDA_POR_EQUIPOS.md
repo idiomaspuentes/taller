@@ -653,33 +653,114 @@ largas). Así estaba y así quedó:
   coordina, que no lo estaba. *Ahora* «@» ofrece también a quien coordina el equipo de la subtarea. Tomás escribió
   «@abelperez Priscila tiene razón en lo del aoristo epistolar… ¿Lo registras tú?».
 
+### La decisión del equipo y la corrección del versículo (6 de octubre)
+
+**Rubén** (coordina) llegó por «Avisos» y decidió el desafío 17: «Se queda «tengo»… Se quita el artículo… Corrijo
+el versículo». Después corrigió 1:3 desde la herramienta. Lo que pasó, medido en 375 px:
+
+- **Sus avisos eran 28, y 27 eran de subtareas ya cerradas** (Door43 deja su aviso sin leer para siempre). *Ahora*
+  una subtarea terminada solo se lista si alguien te nombró en ella: quedaron 3.
+- **En el chat no tenía «Revisar» ni podía tocar el lugar «1:3»**: solo se le daban a quien tenía el paso. *Ahora*
+  también a quien coordina el equipo de la subtarea.
+- **La corrección deshizo la decisión que la pedía.** Al quitar una palabra, el desafío volvió a «0 de 3 de
+  acuerdo», decía «Nadie más ha respondido todavía» donde tres personas lo habían discutido, y a Rubén le pedía
+  «Vuelve a revisarlo» con «De acuerdo» apagado y «(sin palabras)». *Ahora* la decisión se vuelve a decir sobre
+  el texto corregido cuando la corrección se hace desde ese punto; lo que se respondió antes queda a la vista
+  («Respondieron antes de la corrección»); y un punto cuyas palabras ya no están se abre donde se eligen.
+- **Una palabra quitada hizo caducar 7 de las 30 respuestas de Priscila**, seis de ellas sobre palabras que nadie
+  tocó. *Ahora* un «De acuerdo» sigue en pie mientras las palabras sobre las que se dio estén en el versículo como
+  estaban (los signos de alrededor no cuentan). Propuestas, objeciones y la decisión final sí se vuelven a mirar.
+  Con el mismo cambio, a Priscila solo le caducó el 17.
+- **El aviso de la corrección era una línea gris de letra pequeña** («@Elisha @abelper8 Corregí JUD 1:3. Vuelvan
+  a revisarlo»), lo único que pedía hacer algo. *Ahora* es un mensaje de quien corrigió, con el lugar y lo que
+  cambió: «Corregí el versículo: «… y guardados y llamados en Jesucristo:» → «… y guardados para Jesucristo,
+  llamados:». Motivo: … Vuelvan a revisarlo.», y solo nombra a quien respondió sobre palabras que cambiaron.
+- **Para corregir había que tocar «Cambiar»**, que es de las palabras elegidas. *Ahora* bajo la decisión hay
+  «Corregir el versículo»; y mientras se corrige, la barra de la respuesta ya no tapa «Guardar corrección».
+
+Guardar la decisión tardó 2,0–3,8 s; la corrección, 6,0 s.
+
+### Los niveles: quién cuenta para el acuerdo
+
+Bajé a tres a «Practicante» para que solo Rubén decidiera, y la ronda dejó de poder cerrarse: el mínimo son tres
+**personas habilitadas**. Quedó así: Rubén, Tomás y Priscila habilitados; **Elena, practicante** (opina y puede
+objetar, pero no suma). Lo que se vio con ella:
+
+- Respondía «De acuerdo» y leía «Equipo: 0 de 3 de acuerdo». *Ahora* se le dice: «Tu respuesta queda a la vista
+  del equipo. Para el acuerdo cuentan las de quienes tienen el nivel «Persona habilitada».»
+- Al abrir la herramienta sin haber respondido nada, **el único botón grande de la pantalla era «Cerrar la
+  revisión»** de todo el equipo. *Ahora* cerrar es de quien coordina o de una persona habilitada; a los demás se
+  les dice quién la cierra. Y cuando el último acuerdo lo da alguien que no puede cerrar, se avisa en el chat a
+  quien coordina («Todo quedó de acuerdo: ya se puede cerrar la revisión.»).
+
+### Un segundo desacuerdo, de punta a punta (desafío 5, Judas 1:1)
+
+El TPL decía «guardados y llamados en Jesucristo». **Tomás** propuso «guardados para Jesucristo, llamados» (el
+dativo va con τετηρημένοις; el ULT dice «kept for Jesus Christ»): un fallo de la fase de Traducción que la
+revisión de pares no había visto. A Rubén le llegó el aviso, tocó el lugar «1:1» del mensaje, registró la
+decisión, tocó «Corregir el versículo» y lo corrigió. El desafío quedó «Acordado · decisión del equipo»; a Tomás
+y a Priscila les llegó el mensaje de la corrección, y solo tuvieron que volver al desafío 5.
+
+### Una objeción de quien está aprendiendo (desafío 19, «en libertinaje»)
+
+**Elena** objetó: «No conozco la palabra «libertinaje». ¿No se entendería mejor «desenfreno»?». El punto, que ya
+estaba acordado por tres, volvió a «sin acuerdo». Tomás le contestó en el chat nombrándola con «@»; a ella le
+llegó en «Avisos», volvió a la herramienta, abrió «1 punto sin acuerdo», fue al punto y tocó «De acuerdo»: la
+ronda quedó en 30 de 30 sin que nadie tuviera que decidir. Rubén recibió «ya se puede cerrar la revisión», la
+cerró (4,4 s) y volvió a «Mis tareas» con el botón del aviso.
+
+**⚠ Lo que se encontró y se arregló en la herramienta (375 × 812)**
+
+- **Las palabras que hay que tocar empezaban en y=748, bajo la barra de la respuesta (756)**: cada uno de los 30
+  desafíos pedía desplazarse antes de poder hacer nada. *Ahora* un desafío nuevo empieza en su propio comienzo,
+  «Corregido 1 vez» va después de las palabras, y la línea del equipo no sale mientras nadie ha respondido: el
+  desafío cabe entero (lugar, figura, original, traducción en 494–690 y la barra).
+- **Al abrirla desde un mensaje iba al primer desafío**, no al versículo del mensaje. *Ahora* va a ese versículo
+  y, si tiene un punto sin acuerdo, a ese punto. El lugar de un mensaje medía 27 px de alto; ahora 40.
+- **Durante unos segundos mostraba el primer desafío como si nadie hubiera respondido**, listo para tocar, y
+  luego saltaba a otro. *Ahora* no muestra nada que responder hasta haber leído las respuestas de todos.
+- **«1 punto sin acuerdo» ocupaba 215 px sobre todos los desafíos de todos** y nombraba el punto con la frase en
+  inglés de las notas. *Ahora* es una línea que se abre, y lo nombra con las palabras del TPL elegidas.
+- **La caja de una propuesta u objeción se abría bajo la pantalla** («Enviar» en y=823 de 812). *Ahora* se abre a
+  la vista, lista para escribir.
+- **Al tocar un nombre sugerido con «@», lo que se escribía después podía quedar antes del nombre**, y en un
+  teléfono el teclado se cerraba. *Ahora* la caja no pierde el cursor.
+- Tras la decisión seguía «Pienso lo mismo»; la decisión salía dos veces; un «De acuerdo» se llevaba la nota de
+  una objeción anterior; la lista de figuras decía «Activa o pasiva» y el título «Activo o pasivo»; en «Avisos»
+  la línea de una mención empezaba con los nombres. Arreglado.
+- Cerrada la revisión, la herramienta quedaba igual. *Ahora* el aviso trae «Volver a mis tareas».
+
 **⚠ Sin resolver**
 
-- «Registrar la decisión del equipo» le sale a todo el que es «Persona habilitada», y en esta corrida lo son los
-  cuatro: hay que bajar el nivel de tres para que solo Rubén decida, como dice el plan.
+- «Registrar la decisión del equipo» le sale a toda «Persona habilitada», no solo a quien coordina. Así está
+  definido; el plan decía «quien coordina».
+- Una decisión del equipo caduca si el versículo se corrige desde **otro** desafío: el punto vuelve a «pendiente»
+  y hay que responderlo de nuevo.
 - En el chat, el lugar «1:3» no cita el versículo.
-- El aviso «1 punto sin acuerdo» nombra el punto con la frase en inglés («I have a necessity to write»), no con
-  la del TPL.
-- La tarjeta de «Desafíos TPL · 1:1–4» dice «0 %» con 30 respuestas dadas: cuenta los desafíos acordados por tres.
-- Entre la cabecera, «Qué se pide», las pestañas, el filtro, el título del desafío y «Equipo: 0 de 3 de acuerdo»
-  hay 400 px antes de llegar al texto.
-- Son 30 desafíos por porción y tres personas por desafío: 900 respuestas para Judas.
+- Las palabras de un versículo miden 32 px de alto y las de una letra («a», «y») 17 px de ancho: difíciles de
+  tocar.
+- Al llegar a la herramienta (no al pasar de un desafío a otro) las palabras siguen bajo la pantalla (y=754).
+- Los nombres se escriben con el usuario de Door43 («@abelper8»), no con el nombre de la persona.
+- Las menciones de subtareas cerradas en las que sí te nombraron no se pueden marcar como leídas: se quedan.
+- Son 30 desafíos por porción y tres personas habilitadas por desafío: unas 900 respuestas para Judas. Con las
+  palabras ya marcadas por quien respondió primero, cada respuesta son dos toques y 1–2 s.
+- La pantalla de escritorio (1280 px) se comprobó por medidas (una columna de 763 px, sin desborde): el panel no
+  dio una captura legible.
 
 ### Dónde quedó
 
 - **Traducción: terminada.** Las 29 subtareas de la fase están entregadas, y los tres equipos de la fase quedaron
   sin miembros.
-- **Afinación: empezada.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (todas «Persona
-  habilitada», coordina abelperez) y están asignados a Desafíos, Palabras clave y Alinear de su texto.
-  En «Desafíos TPL · Judas 1:1–4» (subtarea 123): Priscila (Elisha) contestó los 30 (en el 17, una objeción);
-  Tomás (abelper8) propuso un cambio en el 17 y Elena (valeska) se sumó; Tomás pidió en el chat a Rubén
-  (abelperez) que registre la decisión («tengo necesidad de escribirles», sin artículo). Falta: la decisión de
-  Rubén y la corrección del versículo, y las respuestas de Tomás y Elena a los otros 29. Las otras nueve
-  subtareas de Desafíos esperan en «Puedes sumarte».
-- Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P)**,
-  Elisha = **Priscila (P)**.
-- Lo que falta recorrer de Afinación, según el plan: un cambio propuesto con desacuerdo y decisión final de quien
-  coordina; corregir un versículo ya contestado (las respuestas caducan); Palabras clave (el mismo término de dos
-  maneras); Alinear con revisión, voto y plazo; una discusión larga en el chat con menciones.
+- **Afinación: en marcha.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (coordina abelperez;
+  abelperez, abelper8 y Elisha son «Persona habilitada»; valeska, «Practicante») y están asignados a Desafíos,
+  Palabras clave y Alinear de su texto.
+  **«Desafíos TPL · Judas 1:1–4» (subtarea 123) está cerrada**: 30 de 30 acordados, dos de ellos tras un
+  desacuerdo (el 17 por respuestas; el 5 por decisión del equipo), con dos correcciones del TPL (1:1 y 1:3).
+  Las otras nueve subtareas de Desafíos esperan en «Puedes sumarte»; «Palabras clave» espera a que cierren las
+  cinco de su texto.
+- Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P,
+  practicante)**, Elisha = **Priscila (P)**.
+- Lo que falta recorrer de Afinación, según el plan: Palabras clave (el mismo término de dos maneras); Alinear con
+  revisión, voto y plazo; alguien que no responde y hay que recordárselo.
 - En espera: Palabras clave, Alinear, Armonización, Validación y Publicación. Armonización, Validación y
   Publicación todavía no tienen equipo: se les pone al llegar a cada una.
