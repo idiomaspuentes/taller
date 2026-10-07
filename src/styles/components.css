@@ -7210,8 +7210,10 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .ck-verse:has(.ck-covered) { line-height: 1.7; }
 .ck-covered-hint { font-size: 0.75rem; text-align: right; }
 /* The article of the term being checked: in a box of its own, so the questions about it stay a short way under. */
-/* Short enough for the question about it, and its buttons, to be on the same screen of a phone. */
-.ur-article.ck-article { max-height: 30dvh; border: 1px solid var(--border); }
+/* Short enough for the question about it, and its buttons, to be on the same screen of a phone. It scrolls inside
+   its box, and says so itself: it took that from the article box of the pastoral review, and when that one became
+   a sheet the 2,566 px of an article ran out of the box over the questions under it. */
+.ur-article.ck-article { max-height: 30dvh; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .en-requests > summary { padding: 0.5rem 0; color: var(--text-muted); font-size: 0.875rem; cursor: pointer; }
 .en-requests ul { display: grid; gap: 0.25rem; margin: 0; padding: 0 0 0 1rem; }
 .ck-go { display: grid; }
