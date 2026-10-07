@@ -1,4 +1,5 @@
 import type { ProjectTask, TaskStep } from "./types";
+import { taskHasOwnDraft } from "./branchNames";
 import {
   getStepRuntime,
   isStepDone,
@@ -212,6 +213,19 @@ export function releaseStep(
  */
 export function closesInItsTool(step: TaskStep): boolean {
   return (step.closing === "consensus" || step.closing === "checklist" || step.closing === "automatic") && Boolean(step.solverAppId);
+}
+
+/**
+ * Whether the tool that closed the last step of a subtarea may deliver it there and then: every step is done and
+ * the task works on the shared draft, so there is nothing to land. A task with a draft of its own lands verses
+ * when it is delivered, which is done from the list, where it is asked first.
+ */
+export function deliverableFromTool(params: { teams: ProjectTask[]; taskId: string; progress: TaskProgressMarker; closed: boolean }): boolean {
+  if (params.closed) return false;
+  if (taskHasOwnDraft(params.teams, params.taskId)) return false;
+  const task = params.teams.find((team) => team.id === params.taskId);
+  if (!task?.steps?.length) return false;
+  return task.steps.every((step) => isStepDone(params.progress, step.id));
 }
 
 export function canApproveStep(

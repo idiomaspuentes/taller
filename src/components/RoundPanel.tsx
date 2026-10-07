@@ -17,6 +17,8 @@ export function RoundPanel(props: {
   /** Whether this person may close it: who coordinates or a persona habilitada. Anybody, when it is not said. */
   canClose?: boolean;
   stepDone: boolean;
+  /** Closing the round delivered the subtarea too: nothing is left for anybody to do. */
+  delivered?: boolean;
   busy: boolean;
   onClose: () => void;
   /** Where to go once the review is closed: there is nothing left to do here. */
@@ -37,7 +39,7 @@ export function RoundPanel(props: {
         props.onLeave ? (
           // Closed, and the tool stayed as it was, its answers still to be touched: the way on is said.
           <div className="round__done round__done--leave">
-            <p>{t("round.closed")}</p>
+            <p>{t(props.delivered ? "round.closedDeliveredLong" : "round.closed")}</p>
             <Button type="button" variant="outline" onClick={props.onLeave}>
               {t("fa.back")}
             </Button>

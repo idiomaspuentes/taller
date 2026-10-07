@@ -32,6 +32,7 @@ import {
 import { canConfirmForTeam, confirmersOf, coordinatorsOf, countsForMinimum, levelLabel, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { useStepWork } from "../dcs/stepWork";
 import { FinalDecision, RoundPanel } from "./RoundPanel";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
@@ -124,6 +125,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     [given, data],
   );
   const [task, setTask] = useState<ProjectTask | null>(null);
+  const [plan, setPlan] = useState<Awaited<ReturnType<typeof loadAssignmentsFromDcs>> | null>(null);
+  /** The subtarea was delivered here, with the closing of its last step. */
+  const [delivered, setDelivered] = useState(false);
   const [category, setCategory] = useState("all");
   const [position, setPosition] = useState(0);
   // Key terms are gone through term by term unless the person asks for the order of the text.
@@ -183,6 +187,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       const phaseTeam = found && !found.orgTeamName ? board?.teams.find((t) => t.phaseId === found.phaseId && t.orgTeamName)?.orgTeamName : undefined;
       const thisTask = found && phaseTeam ? { ...found, orgTeamName: phaseTeam } : found;
       setTask(thisTask);
+      setPlan(board ?? null);
       // The text read is the one its translation task writes, wherever this task stands in the phase.
       const sourceTaskId = (board && draftTaskId(board.teams, decoded.resource)) || thisTask?.waitsFor?.find((w) => w.taskId)?.taskId;
       if (!sourceTaskId) {
@@ -360,7 +365,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     try {
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id });
       setStepDone(true);
-      announce(t("round.closedNow"));
+      // Its last step closed, the subtarea is delivered here. The button said «para que la tarea siga», and the
+      // task waited for one of those who had joined it to find «Entregar» on their list, without anybody being told.
+      const done = plan ? await deliverSharedSubtask({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board: plan, issueNumber: ctx.issueNumber }).catch(() => false) : false;
+      setDelivered(done);
+      announce(t(done ? "round.closedDelivered" : "round.closedNow"));
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -803,7 +812,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
       {summary ? (
         <div ref={roundRef} className="af-round-top">
-          <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} canClose={canConfirm} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} onLeave={onClose} />
+          <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} canClose={canConfirm} stepDone={stepDone} delivered={delivered} busy={closing} onClose={() => void closeRound()} onLeave={onClose} />
         </div>
       ) : null}
 

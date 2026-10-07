@@ -2756,5 +2756,7 @@
   "af.fixVerse": "Corregir el versículo",
   "af.notCounted": "Tu respuesta queda a la vista del equipo. Para el acuerdo cuentan las de quienes tienen el nivel «{level}».",
   "round.allAgreedWait": "Todo quedó de acuerdo. La revisión la cierra quien coordina o una persona habilitada.",
-  "round.allAgreedTell": "Todo quedó de acuerdo: ya se puede cerrar la revisión."
+  "round.allAgreedTell": "Todo quedó de acuerdo: ya se puede cerrar la revisión.",
+  "round.closedDelivered": "Revisión cerrada y tarea entregada.",
+  "round.closedDeliveredLong": "Revisión cerrada: todo quedó de acuerdo. La tarea está entregada."
 }

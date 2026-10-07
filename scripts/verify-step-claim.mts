@@ -20,6 +20,7 @@ import {
   stepClaimMode,
   formatStepClaimLabel,
   formatTaskClaimSummary,
+  deliverableFromTool,
 } from "../src/domain/stepClaim.ts";
 import {
   parseTaskProgressMarker,
@@ -189,6 +190,22 @@ assert(
   const inGroup = done(["draft", "pair"], { pair: { assignees: ["bob"], approvals: ["bob", "alice"] }, group: { assignees: ["carol", "dave"], approvals: ["dave"] } });
   const fromGroup = askForChanges(inGroup, steps, group, "carol");
   assert(!fromGroup.doneStepIds.includes("draft") && fromGroup.doneStepIds.includes("pair") && fromGroup.steps?.group?.approvals.length === 0, "group review sends the draft back");
+}
+
+{
+  // The tool that closes the last step of a subtarea delivers it, when there is nothing to land.
+  const round = [{ id: "revisar", name: "Revisar", claimMode: "pool", closing: "consensus", solverAppId: "x" }] as TaskStep[];
+  const teams = [
+    { id: "tpl", rules: [{ resource: "tpl" }], steps: [{ id: "draft", name: "Borrador" }] },
+    { id: "desafios", rules: [{ resource: "tpl" }], steps: round },
+    { id: "dos", rules: [{ resource: "tpl" }], steps: [...round, { id: "informe", name: "Informe" }] },
+  ] as never;
+  const marker = (ids: string[]) => ({ ...emptyTaskProgress(), doneStepIds: ids });
+  assert(deliverableFromTool({ teams, taskId: "desafios", progress: marker(["revisar"]), closed: false }), "its only step is done and it works on the shared draft");
+  assert(!deliverableFromTool({ teams, taskId: "desafios", progress: marker([]), closed: false }), "not while the step is open");
+  assert(!deliverableFromTool({ teams, taskId: "desafios", progress: marker(["revisar"]), closed: true }), "not twice");
+  assert(!deliverableFromTool({ teams, taskId: "dos", progress: marker(["revisar"]), closed: false }), "not while another step is left");
+  assert(!deliverableFromTool({ teams, taskId: "tpl", progress: marker(["draft"]), closed: false }), "a task with a draft of its own is delivered from the list, where its verses land");
 }
 
 console.log("verify-step-claim: ok");
