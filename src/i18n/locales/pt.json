@@ -2791,5 +2791,6 @@
   "en.endorsing": "Salvando o aval de cada recurso: leva um ou dois minutos. Deixe o app aberto.",
   "pu.confirmTitle": "Publicar {unit}?",
   "pu.confirmText": "Passa para o publicado de cada recurso e sua versão é criada. Publicar não pode ser desfeito pelo app.",
-  "pu.confirmYes": "Sim, publicar"
+  "pu.confirmYes": "Sim, publicar",
+  "mt.mentionSeen": "Já vi"
 }

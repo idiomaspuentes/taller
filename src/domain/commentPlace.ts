@@ -11,6 +11,16 @@ export function refComment(book: string, ref: string, text: string): string {
   return `**${book.toUpperCase()} ${ref}** — ${text.trim()}`;
 }
 
+const WHILE_OPEN = "<!-- gt:mientras-abierta -->";
+
+/**
+ * A message that asks for something to be done in its subtarea («ya se puede cerrar la revisión», «¿cómo va esta
+ * tarea?»), marked as such: once the subtarea is finished it asks nothing, and it stayed in «Avisos» of whoever it
+ * named until they opened it.
+ */
+export const whileOpen = (text: string) => `${text.trim()}\n${WHILE_OPEN}`;
+export const asksWhileOpen = (body: string | undefined) => (body ?? "").includes(WHILE_OPEN);
+
 /**
  * The name a comment about one row of a help (a note, a question) is filed under: its verse and the id of the row,
  * «1:3 §x7k2». Ten notes may be of one verse: named by the verse alone, «Falta traducir esta nota» was read under

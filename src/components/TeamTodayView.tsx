@@ -6,6 +6,7 @@ import { commentOnIssue, loadPmConfig, reassignIssue } from "../dcs/issues";
 import { remindDecisionVoters } from "../dcs/alignmentDecisionStore";
 import { loadTeamToday, type TodayProject } from "../dcs/teamToday";
 import { mergePeople, peopleWork, type HeatSlot } from "../domain/activity";
+import { whileOpen } from "../domain/commentPlace";
 import { endDateText, paceNumber, paceOf, PACE_WEEKS } from "../domain/pace";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
 import { projectTally } from "../domain/workProgress";
@@ -133,7 +134,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   async function remind(row: TodayRow) {
     if (!row.assignee) return;
     try {
-      await commentOnIssue(session, pmOrg, row.issue.number, t("td.pingText").replace("{who}", row.assignee));
+      await commentOnIssue(session, pmOrg, row.issue.number, whileOpen(t("td.pingText").replace("{who}", row.assignee)));
       setReminded((prev) => new Set(prev).add(row.issue.number));
       announce(t("td.didRemind").replace("{who}", row.assignee));
     } catch (err) {

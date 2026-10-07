@@ -8,7 +8,7 @@ import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTe
 import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
 import { commentOnIssue } from "../dcs/issues";
-import { refComment } from "../domain/commentPlace";
+import { refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -605,7 +605,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         });
         const who = coordinatorsOf(data.levelBook, task?.orgTeamName).filter((login) => login.toLowerCase() !== me);
         if (round.complete && who.length) {
-          await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${who.map((login) => `@${login}`).join(" ")} ${tNow("round.allAgreedTell")}`).catch(() => undefined);
+          await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, whileOpen(`${who.map((login) => `@${login}`).join(" ")} ${tNow("round.allAgreedTell")}`)).catch(() => undefined);
         }
       }
       setPending(null);

@@ -741,7 +741,6 @@ cerró (4,4 s) y volvió a «Mis tareas» con el botón del aviso.
   tocar.
 - Al llegar a la herramienta (no al pasar de un desafío a otro) las palabras siguen bajo la pantalla (y=754).
 - Los nombres se escriben con el usuario de Door43 («@abelper8»), no con el nombre de la persona.
-- Las menciones de subtareas cerradas en las que sí te nombraron no se pueden marcar como leídas: se quedan.
 - Son 30 desafíos por porción y tres personas habilitadas por desafío: unas 900 respuestas para Judas. Con las
   palabras ya marcadas por quien respondió primero, cada respuesta son dos toques y 1–2 s.
 - La pantalla de escritorio (1280 px) se comprobó por medidas (una columna de 763 px, sin desborde): el panel no
@@ -1131,8 +1130,59 @@ subtarea «Publicar» se cerró sola y al proyecto no le queda ninguna abierta.
 - Solo «Publicación» tiene miembros (las cuatro cuentas). Ningún equipo se borró. Producción no se tocó.
 - En QA quedó la rama `borrador/jud/armonizar-notas` (`es-419_tn`), creada por un fallo ya corregido: no se lee
   ni se publica. Abel decidió dejarla.
-- **Nada se publicó en GitHub.** Los cambios de Taller son commits locales en `main`; en `usfm-ast` hay dos
-  commits locales (`ef2ae1f`, `471ad48`) en la rama en que estaba el repositorio, y sin ellos una sesión que
-  clone `usfm-ast` de GitHub vuelve a perder alineaciones.
+- Con el visto bueno de Abel, los commits de la corrida se subieron a GitHub: Taller en `main` (hasta `8b47162`)
+  y `usfm-ast` en su rama `agent/fix-commit-not-found-fallback` (hasta `471ad48`), que es la que clona
+  `scripts/setup-workspace.mjs`. Nada se publicó en Cloudflare.
 - Lo que el contenido de la corrida **no** es: nueve de las diez alineaciones se colocaron por posición, y casi
   todas las respuestas de las listas fueron «Sí» automáticos. Sirve para recorrer el proceso, no como Judas real.
+
+## Después de la corrida: lo que quedaba sin resolver
+
+Lo que las listas «Sin resolver» de arriba dejaron pendiente y se arregló después. Cada punto dice qué se vio y
+cómo quedó; lo que se arregla se quita de su lista.
+
+### «Menciones y respuestas» que no se cerraban (7 de octubre)
+
+Terminada la corrida, «Avisos» de @abelperez seguía con **5** menciones, todas de subtareas ya cerradas. Abel
+preguntó cómo se cierran y por qué quedaron abiertas. Mirado en Door43 QA, aviso por aviso:
+
+| Aviso | Por qué seguía |
+|---|---|
+| Consulta de Priscila sobre TPL 1:1 | Rubén la respondió un minuto después, desde la conversación. Responder no la cerraba. |
+| «entienden»: propuesta de Priscila | Rubén registró la decisión nombrándola. Tampoco la cerraba. |
+| «Todo quedó de acuerdo: ya se puede cerrar la revisión» | Se abrió desde «Avisos» y se fue; al cerrar la revisión, Door43 tocó el aviso y volvió, sin nada nuevo. |
+| «Traducción de Judas va en 50 de 71…» | Nadie la abrió. |
+| «¿está bien «libertinaje»?» | Pregunta que quedó sin responder: la subtarea se entregó cuatro minutos después. |
+
+Un aviso de esta lista solo se cerraba tocando «Abrir» **en esa fila**. Llegar a la misma conversación desde la
+tarjeta, o responder desde la herramienta, lo dejaba ahí. Door43 tenía 38 avisos sin leer de este proyecto para
+esa persona, todos de subtareas cerradas (33 ocultos porque nadie la nombraba), y la app leía la subtarea y los
+comentarios de cada uno **cada minuto**.
+
+**⚠ Arreglado**
+
+- **Lo respondido deja de estar pendiente.** Si la persona escribió después en esa conversación, a quien se lo
+  dijo, el aviso se va. Vuelve si le dicen algo más.
+- **Abrir la conversación desde cualquier parte cierra su aviso**, no solo desde «Avisos».
+- **Que la subtarea se cierre ya no trae de vuelta lo que se abrió**: «ya lo vi» se compara con lo último que
+  alguien dijo, no con la fecha en que Door43 tocó el aviso.
+- **Cada fila tiene «Ya lo vi»** junto a «Abrir» (51 × 40 y 62 × 40 px), para lo que no pide nada: un aviso, un
+  «gracias». Door43 lo da por leído también (comprobado en QA: de 12 sin leer a 11), así que no sale en otro
+  teléfono.
+- **Lo que pedía hacer algo en una subtarea no queda cuando la subtarea termina**: «ya se puede cerrar la
+  revisión» y «¿Cómo va esta tarea?» se escriben ahora con una marca; cerrada la subtarea, no se listan. (Los
+  que se escribieron antes de este cambio no la tienen.)
+- Cada aviso se lee una vez, y de nuevo solo si Door43 lo toca.
+
+Comprobado en QA a 375 px: @abelperez pasó de 5 a 2 sin tocar nada (quedan el aviso del libro siguiente y la
+pregunta sin responder, cada uno con sus dos botones). Con @abelper8: «Ya lo vi» en «Aval concedido…» bajó la
+lista y la campana de 5 a 4; abrir la conversación de «Desafíos 1:1–4» escribiendo su dirección, de 4 a 3. A
+1280 px la lista no desborda y los botones quedan a la derecha de los textos cortos y debajo de los largos.
+
+**⚠ Sin resolver**
+
+- «Traducción de Judas va en 50 de 71. Conviene empezar ya el libro siguiente» se escribe en la conversación de
+  la subtarea que se acababa de entregar: «Abrir» lleva a «Judas 1:17–23 · Traducir TPL», que no tiene que ver.
+- Lo que una persona dio por visto en un teléfono y Door43 vuelve a tocar (alguien cierra la subtarea) puede
+  salir otra vez en **otro** teléfono: «ya lo vi» se guarda en cada uno.
+

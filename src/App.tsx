@@ -243,6 +243,12 @@ export function App() {
   useEffect(() => {
     if (openedIssue) void clearNotices([`subtarea-${openedIssue}`]);
   }, [openedIssue]);
+  // And so does what «Avisos» lists of it: a conversation reached from its card, and not from that list, left its
+  // mention there as if nobody had read it.
+  const { markIssueRead } = mentions;
+  useEffect(() => {
+    if (openedIssue) markIssueRead(openedIssue);
+  }, [openedIssue, markIssueRead]);
   useEffect(() => {
     if (route.name === "avisos" || route.name === "mis-tareas") void clearNotices(["asignaciones", "resumen"]);
   }, [route.name]);

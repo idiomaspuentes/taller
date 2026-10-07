@@ -1055,16 +1055,22 @@ export function MyTasksView({
                   {/* Who said it and where; when nothing could be read of what was said, the name is the row. */}
                   <span className="hub-place">{[row.by ? `@${row.by}` : "", row.text ? mentionName(row) : ""].filter(Boolean).join(" · ")}</span>
                 </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    onMentionRead?.(row.id);
-                    onOpenThread(row.issue);
-                  }}
-                >
-                  {t("mt.open")}
-                </Button>
+                {/* Opening it closes it; so does saying it was seen, for what asks nothing (a notice, a thank you). */}
+                <span className="hub-mention__actions">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      onMentionRead?.(row.id);
+                      onOpenThread(row.issue);
+                    }}
+                  >
+                    {t("mt.open")}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => onMentionRead?.(row.id)}>
+                    {t("mt.mentionSeen")}
+                  </Button>
+                </span>
               </div>
             ))}
           </div>

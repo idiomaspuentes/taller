@@ -60,5 +60,13 @@ export function useMentions(session: GtSession | null, pmOrg: string) {
     [all, key],
   );
 
-  return { rows: withoutSeen(all, seen), refresh, markRead };
+  /** A conversation was opened, from wherever: what was said in it has been seen. */
+  const markIssueRead = useCallback(
+    (issue: number) => {
+      for (const row of withoutSeen(all, key ? loadSeen(key) : {})) if (row.issue === issue) markRead(row.id);
+    },
+    [all, key, markRead],
+  );
+
+  return { rows: withoutSeen(all, seen), refresh, markRead, markIssueRead };
 }

@@ -1,6 +1,7 @@
 import type { NoticeIssue } from "../domain/noticeText";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
+import { asksWhileOpen } from "../domain/commentPlace";
 import { activeScope, issueInScope } from "../domain/scope";
 
 /**
@@ -18,27 +19,55 @@ export type MentionRow = {
   /** What was said to this person, and by whom, when it could be read. */
   text?: string;
   by?: string;
+  /**
+   * When somebody else last wrote in it. «Already seen» is compared with this, not with `at`: Door43 touches a
+   * notification when its subtarea is closed too, and what had been opened came back with nothing new in it.
+   */
+  saidAt?: string;
 };
 
 type CommentRow = { body?: string; user?: { login?: string }; created_at?: string };
 
+const naming = (login: string) => new RegExp(`@${login.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`, "i");
+const authorOf = (row: CommentRow) => (row.user?.login ?? "").toLowerCase();
+const newestFirst = (a: CommentRow, b: CommentRow) => (b.created_at ?? "").localeCompare(a.created_at ?? "");
+
 /**
- * What a notification is about, in the words of whoever wrote it: the latest comment that names this person, or
- * else the latest by somebody else. Mentions at the start and hidden marks are left out; it is cut to a few lines.
+ * The comment a notification is about for this person, and when somebody else last wrote: the latest that names
+ * them, or else the latest by somebody else. Once they answered it (they wrote later, to whoever said it), only
+ * what was said after their answer counts; `null` when that is nothing. Door43 keeps the notification unread all
+ * the same, and a question answered from its tool stayed in «Avisos» as if nobody had seen it.
  */
-export function mentionText(comments: CommentRow[], login: string): { text: string; by: string } | null {
+export function mentionComment(comments: CommentRow[], login: string): { about: CommentRow; lastAt: string } | null {
   const me = login.trim().toLowerCase();
-  const others = comments.filter((row) => typeof row.body === "string" && (row.user?.login ?? "").toLowerCase() !== me);
-  const named = others.filter((row) => new RegExp(`@${me.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`, "i").test(row.body!));
-  const pick = (named.length ? named : others).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
-  if (!pick) return null;
+  const said = comments.filter((row) => typeof row.body === "string");
+  const pick = (from: CommentRow[]) => {
+    const others = from.filter((row) => authorOf(row) !== me).sort(newestFirst);
+    const about = others.find((row) => naming(me).test(row.body!)) ?? others[0];
+    return about ? { about, lastAt: others[0]!.created_at ?? "" } : null;
+  };
+  const first = pick(said);
+  if (!first || !authorOf(first.about)) return first;
+  const toAuthor = naming(authorOf(first.about));
+  const answer = said.filter((row) => authorOf(row) === me && (row.created_at ?? "") > (first.about.created_at ?? "") && toAuthor.test(row.body!)).sort(newestFirst)[0];
+  return answer ? pick(said.filter((row) => (row.created_at ?? "") > (answer.created_at ?? ""))) : first;
+}
+
+/**
+ * What a notification is about, in the words of whoever wrote it. Mentions at the start and hidden marks are left
+ * out; it is cut to a few lines.
+ */
+export function mentionText(comments: CommentRow[], login: string): { text: string; by: string; saidAt: string } | null {
+  const found = mentionComment(comments, login);
+  if (!found) return null;
+  const pick = found.about;
   const text = pick
     .body!.replace(/<!--[\s\S]*?-->/g, "")
     .replace(/^(\*\*[^*]+\*\*\s*—\s*)?(?:\s*@[\w-]+)+[\s,:]*/, "$1")
     .replace(/\s+/g, " ")
     .trim();
   if (!text) return null;
-  return { text: text.length > 220 ? `${text.slice(0, 217).trimEnd()}…` : text, by: pick.user?.login ?? "" };
+  return { text: text.length > 220 ? `${text.slice(0, 217).trimEnd()}…` : text, by: pick.user?.login ?? "", saidAt: found.lastAt };
 }
 
 /** Whether somebody else named this person in what was said about a subtarea. */
@@ -80,59 +109,65 @@ function headers(session: GtSession): Record<string, string> {
   return { authorization: `token ${session.token}`, accept: "application/json" };
 }
 
-type Placed = { show: boolean; about?: NoticeIssue; closed?: boolean };
-
-/** Which issues belong to the active workspace, and what each is, remembered so each is looked up once. */
-const inSpace = new Map<string, Placed>();
+type Placed = { show: boolean; about?: NoticeIssue; closed?: boolean; sure: boolean };
 
 async function belongsToSpace(session: GtSession, org: string, repo: string, issue: number, doFetch: typeof fetch): Promise<Placed> {
-  const key = `${session.host}|${org}|${repo}|${issue}|${activeScope()}`;
-  const known = inSpace.get(key);
-  if (known !== undefined) return known;
   try {
     const res = await doFetch(`${dcsConfig(session.host).host}/api/v1/repos/${org}/${repo}/issues/${issue}`, { headers: headers(session) });
     // A subtarea that was deleted leaves its notification behind in Door43: there is nothing to open, so it is
     // not listed. Any other failure cannot tell: a mention is not hidden for it.
-    if (res.status === 404) {
-      inSpace.set(key, { show: false });
-      return { show: false };
-    }
-    if (!res.ok) return { show: true };
+    if (res.status === 404) return { show: false, sure: true };
+    if (!res.ok) return { show: true, sure: false };
     const found = (await res.json()) as NoticeIssue & { labels?: { name: string }[]; state?: string };
-    const placed = { show: issueInScope(found), about: { number: issue, title: found.title, body: found.body, milestone: found.milestone, labels: found.labels }, closed: found.state === "closed" };
-    inSpace.set(key, placed);
-    return placed;
+    return { show: issueInScope(found), about: { number: issue, title: found.title, body: found.body, milestone: found.milestone, labels: found.labels }, closed: found.state === "closed", sure: true };
   } catch {
-    return { show: true };
+    return { show: true, sure: false };
   }
 }
 
 /**
+ * What each notification came to, kept until Door43 touches it again. Forty notifications of finished subtareas had
+ * their subtarea and its comments read every minute, to be left out every time.
+ */
+const settled = new Map<string, MentionRow | null>();
+
+/**
  * Notifications are per person, not per workspace. When several workspaces share an organization, only the
- * mentions of issues of the active one are shown.
+ * mentions of issues of the active one are shown. Each says what was said, so the list can be read without opening
+ * every conversation; one whose comments cannot be read still shows, by its title.
  */
 export async function listMentions(session: GtSession, org: string, repo: string, doFetch: typeof fetch = fetch): Promise<MentionRow[]> {
   const base = `${dcsConfig(session.host).host}/api/v1`;
   const res = await doFetch(`${base}/notifications?status-types=unread&subject-type=issue&limit=50`, { headers: headers(session) });
   if (!res.ok) return [];
   const rows = mentionRows((await res.json()) as Thread[], org, repo);
-  const placed = await Promise.all(rows.map((row) => belongsToSpace(session, org, repo, row.issue, doFetch)));
-  const closed = new Set(rows.filter((_, i) => placed[i]!.closed).map((row) => row.id));
-  const mine = rows.map((row, i) => (placed[i]!.about ? { ...row, about: placed[i]!.about } : row)).filter((_, i) => placed[i]!.show);
-  // What each one says, so the list can be read without opening every conversation. A row whose comments cannot
-  // be read still shows, by its title.
   const said = await Promise.all(
-    mine.map(async (row): Promise<MentionRow | null> => {
+    rows.map(async (row): Promise<MentionRow | null> => {
+      const key = `${session.host}|${session.username}|${org}/${repo}|${activeScope()}|${row.id}|${row.at}`.toLowerCase();
+      if (settled.has(key)) return settled.get(key)!;
+      const placed = await belongsToSpace(session, org, repo, row.issue, doFetch);
+      const keep = (out: MentionRow | null, sure = placed.sure) => {
+        if (sure) settled.set(key, out);
+        return out;
+      };
+      if (!placed.show) return keep(null);
+      const mine = placed.about ? { ...row, about: placed.about } : row;
       try {
         const got = await doFetch(`${base}/repos/${org}/${repo}/issues/${row.issue}/comments`, { headers: headers(session) });
         const list = got.ok ? ((await got.json()) as unknown) : null;
-        // A subtarea that is finished, where nobody named this person: Door43 keeps its notification unread for
-        // ever (the app cannot mark it), and twenty-seven of them stood over the one mention that asked something.
-        if (closed.has(row.id) && Array.isArray(list) && !namesPerson(list as CommentRow[], session.username)) return null;
-        const text = Array.isArray(list) ? mentionText(list as CommentRow[], session.username) : null;
-        return text ? { ...row, ...text } : row;
+        if (!Array.isArray(list)) return keep(mine, false);
+        const comments = list as CommentRow[];
+        // A subtarea that is finished, where nobody named this person: Door43 keeps its notification unread until
+        // it is opened, and twenty-seven of them stood over the one mention that asked something.
+        if (placed.closed && !namesPerson(comments, session.username)) return keep(null);
+        const found = mentionComment(comments, session.username);
+        // Answered already; or it asked for something of a subtarea that is finished now.
+        if (!found && comments.some((comment) => typeof comment.body === "string")) return keep(null);
+        if (placed.closed && asksWhileOpen(found?.about.body)) return keep(null);
+        const text = mentionText(comments, session.username);
+        return keep(text ? { ...mine, ...text } : mine);
       } catch {
-        return row;
+        return mine;
       }
     }),
   );
@@ -145,14 +180,14 @@ export async function markMentionRead(session: GtSession, id: number, doFetch: t
 }
 
 /**
- * What this device has already opened, as notification id → its `updated_at` when it was opened.
- * Door43 only lets a token mark notifications read with `write:notification`, which the app does not
- * ask for, so "already seen" is remembered here. A newer comment on the thread shows it again.
+ * What this device has already opened, as notification id → its `updated_at` when it was opened. Door43 is told
+ * too, but a pasted token may not be allowed to, and Door43 makes a notification unread again whenever its subtarea
+ * is touched: "already seen" is remembered here. Something newer said in the conversation shows it again.
  */
 export type SeenMentions = Record<string, string>;
 
 export function withoutSeen(rows: MentionRow[], seen: SeenMentions): MentionRow[] {
-  return rows.filter((r) => !seen[String(r.id)] || r.at > seen[String(r.id)]!);
+  return rows.filter((r) => !seen[String(r.id)] || (r.saidAt || r.at) > seen[String(r.id)]!);
 }
 
 export function markSeen(seen: SeenMentions, row: Pick<MentionRow, "id" | "at">, max = 200): SeenMentions {
