@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { diffExcerpt, wordDiff, type ProposalState } from "../domain/checkProposal";
+import { diffExcerpt, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
 import { useT, type MessageKey } from "../i18n/messages";
 
 /** How a proposal stands, said to the person. `{team}`: who maintains what it would change, when it went to them. */
@@ -10,11 +10,14 @@ export const PROPOSAL_STATE_KEY: Record<ProposalState, MessageKey> = { open: "ag
  * A new version read against the one before: what was taken out struck through, what was put in marked. `whole`:
  * every word of it, for reading the proposal; otherwise a few words around what changed.
  */
-export function ProposalDiff({ before, after, whole }: { before: string; after: string; whole?: boolean }) {
-  const pieces = whole ? wordDiff(before, after) : diffExcerpt(wordDiff(before, after));
+export function ProposalDiff({ before, after, whole, plain }: { before: string; after: string; whole?: boolean; /** As it reads, without the marks it is written with (see `readable`). */ plain?: boolean }) {
+  const all = plain ? wordDiff(readable(before), readable(after)) : wordDiff(before, after);
+  const pieces = whole ? all : diffExcerpt(all);
+  // A note keeps its line ends as the two characters «\n»: they are line ends here too, not words of the note.
+  const read = (text: string) => text.replace(/\\n/g, whole ? "\n" : " ");
   return (
     <>
-      {pieces.map((piece, index) => (piece.kind === "gone" ? <del key={index}>{piece.text}</del> : piece.kind === "new" ? <ins key={index}>{piece.text}</ins> : <span key={index}>{piece.text}</span>))}
+      {pieces.map((piece, index) => (piece.kind === "gone" ? <del key={index}>{read(piece.text)}</del> : piece.kind === "new" ? <ins key={index}>{read(piece.text)}</ins> : <span key={index}>{read(piece.text)}</span>))}
     </>
   );
 }

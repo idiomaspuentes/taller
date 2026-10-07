@@ -7263,8 +7263,13 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
   /* And the article is a little shorter there, so a long note stays whole above it (it was cut by 64 px). */
   .ck:has(.af-dock[data-aside]) .ck-read[open] .ck-article { max-height: 22dvh; }
 }
-/* What is proposed for the help in view, under it: the next group checks the help as it would be. */
-.ck-proposed { margin: 0; padding: 0.5rem 0.625rem; border-left: 3px solid var(--warning-700); border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.875rem; line-height: 1.5; overflow-wrap: anywhere; }
+/* The help in view as it would be with what is proposed for it: the next group checks that version. */
+.ck-proposed { margin: 0; padding-left: 0.625rem; border-left: 3px solid var(--accent-700); font-size: 0.8125rem; white-space: pre-line; overflow-wrap: anywhere; }
+.ck-proposed__label { color: var(--accent-700); }
+.ag-whole.ag-diff { white-space: pre-line; }
+/* A «no» that a change settles: neither a tick nor a cross. */
+.ck-checks > li[data-state="change"] .ck-check__mark { background: var(--accent-100); color: var(--accent-700); }
+.ck-steps > li[data-state="change"] .ck-steps__n, .ck-steps > li[data-state="change"] button[aria-current="step"] .ck-steps__n { border-color: var(--accent-700); background: var(--accent-100); color: var(--accent-700); }
 .solver-lab__new { font-weight: 400; color: var(--text-muted); }
 .ag-diff del { color: var(--text-muted); text-decoration: line-through; }
 .ag-diff ins { padding: 0 0.125rem; border-radius: 3px; background: var(--success-100); color: var(--success-700); text-decoration: none; }

@@ -4,7 +4,7 @@
  * fits the help it was written from.
  */
 import assert from "node:assert/strict";
-import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
+import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
 import { setActiveScope } from "../src/domain/scope";
 
@@ -93,6 +93,16 @@ test("quien prefiere dejarlo como está lo dice, y con las personas que hacen fa
   assert.equal(proposalsOf([made(), keeps("abigail", 3), keeps("marcos", 4)], 2, ours)[0]!.state, "open");
   // What was carried out is not undone by saying so afterwards.
   assert.equal(proposalsOf([made(), proposalSaying("p1", "marcos", at(3), true), proposalDone("p1", "marcos", at(4)), keeps("dina", 5), keeps("eva", 6)], 2, ours)[0]!.state, "applied");
+});
+
+test("una versión se muestra como se lee: sin las marcas con que está escrita", () => {
+  const written = "**Fe** es un sustantivo abstracto. (Ver: [[rc://*/ta/man/translate/figs-abstractnouns]])\\n\\nMira [Mateo 24:31](../../mat/24/31.md). Traducción alternativa: [para fortalecer la fe]";
+  assert.equal(readable(written), "Fe es un sustantivo abstracto.\nMira Mateo 24:31. Traducción alternativa: [para fortalecer la fe]");
+  assert.equal(readable("Dice (como en 1:3: «gracia») algo."), "Dice (como en 1:3: «gracia») algo.", "un paréntesis con palabras se queda");
+  assert.equal(readable("sin marcas"), "sin marcas");
+  // What is put in and taken out is still told word by word.
+  const pieces = wordDiff(readable("**Fe** se refiere al creer o al confiar."), readable("**Fe** se refiere al confiar."));
+  assert.deepEqual(pieces.filter((piece) => piece.kind !== "same").map((piece) => [piece.kind, piece.text.trim()]), [["gone", "creer o al"]]);
 });
 
 test("lo que se ve de paso, sin ser respuesta a una pregunta del paso, también es una propuesta", () => {

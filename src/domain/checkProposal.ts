@@ -155,6 +155,24 @@ export function proposalsSettled(views: ProposalView[]): boolean {
 /** The words alone: the line ends and spaces a file is kept with (a note keeps its line ends as «\n») make no other version. */
 const wording = (text: string) => text.replace(/\\n/g, " ").replace(/\s+/g, " ").trim();
 
+/**
+ * A help as it reads, without the marks it is written with: a link as its words, bold without its asterisks, the
+ * «\n» a note keeps its line ends as, a line end. For showing a version where a person reads it (a note with a
+ * link took three lines more written out than read); two versions are told apart by what is written, not by this.
+ */
+export function readable(text: string): string {
+  return text
+    .replace(/\\n/g, "\n")
+    .replace(/\[\[[^\]]*\]\]/g, "")
+    // «(ver: )»: what is left of a pointer to an article once its link is gone.
+    .replace(/\s*\([^()\n]{0,20}:\s*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__)(.+?)\1/g, "$2")
+    .replace(/[ \t]*\n\s*/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 /** Whether two versions say the same, whatever spaces and line ends they are kept with. */
 export function sameWording(a: string, b: string): boolean {
   return wording(a) === wording(b);

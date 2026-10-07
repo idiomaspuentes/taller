@@ -2943,7 +2943,7 @@
   "ag.closed": "Paso cerrado: el equipo está de acuerdo.",
   "ag.closedDelivered": "El equipo está de acuerdo: tarea entregada.",
   "ck.inSteps": "Se comprueba en {n} pasos",
-  "ck.proposedHere": "Propuesta por acordar:",
+  "ck.proposedHere": "Con el cambio propuesto:",
   "pr.fromPrior": "Parte de la propuesta que ya hay; la tuya tomará su lugar.",
   "lab.tryNewStep": "como es ahora en el proceso",
   "ag.keep": "Dejar como está",
@@ -2954,5 +2954,6 @@
   "ag.keepsWhoMany": "{who} prefieren dejarlo como está.",
   "ag.more": "Ver entera, con el versículo",
   "ag.readingTexts": "Leyendo los textos…",
-  "ag.less": "Ver menos"
+  "ag.less": "Ver menos",
+  "ck.withChange": "con un cambio propuesto"
 }

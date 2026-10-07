@@ -9,7 +9,7 @@ import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Circle, X } from "lucide-react";
+import { Check, Circle, Pencil, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -59,6 +59,14 @@ type Props = {
 
 const OUTCOME_KEY: Record<CheckOutcome, MessageKey> = { fixed: "ck.fixed", created: "ck.created", consult: "ck.consult", proposal: "ck.proposal" };
 const excerpt = (text: string) => (text.length > 120 ? `${text.slice(0, 119).trimEnd()}…` : text);
+/**
+ * How a question stands, as its mark says it: answered «yes», a «no» with nothing done about it yet, or a «no»
+ * that something settles (a change proposed, or made, or an answer from whoever was asked). The two kinds of «no»
+ * had one mark, a cross: a step where a change had been proposed read as one that had gone wrong.
+ */
+type Mark = "none" | "yes" | "no" | "change";
+const markOf = (answer: CheckAnswer | undefined): Mark =>
+  !answer ? "none" : answer.value === "yes" ? "yes" : answer.outcome === "proposal" || answer.outcome === "fixed" || answer.outcome === "created" || (answer.outcome === "consult" && answer.resolved) ? "change" : "no";
 const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.chapter}:${item.verse}`;
 
 /**
@@ -769,14 +777,18 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               {tally ? <span className="af-state" data-state={tally.state === "ok" ? "agreed" : tally.state === "pending" ? "pending" : "disputed"}>{t(`ck.state.${tally.state}` as MessageKey)}</span> : null}
             </div>
             {item.title ? <h2 className="af-phrase">{kind === "palabras" ? termLabel(item.title, termTitles) : item.title}</h2> : null}
-            {item.body ? <HelpMarkdownView className="af-note af-note--md" content={item.body} /> : null}
             {proposedHelp ? (
-              <p className="ck-proposed">
-                <b>{t("ck.proposedHere")}</b>{" "}
+              // With a change proposed for it, the help is read as it would be, what goes out struck and what comes
+              // in marked: the steps that follow check that version. It was shown under the help as well, a third
+              // time counting the one under its question, and the help no longer fitted over its questions.
+              <p className="af-note ck-proposed">
+                <b className="ck-proposed__label">{t("ck.proposedHere")}</b>{" "}
                 <span className="ag-diff">
-                  <ProposalDiff before={proposedHelp.proposal.before ?? ""} after={proposedHelp.proposal.after ?? ""} />
+                  <ProposalDiff before={proposedHelp.proposal.before ?? item.body} after={proposedHelp.proposal.after ?? ""} whole plain />
                 </span>
               </p>
+            ) : item.body ? (
+              <HelpMarkdownView className="af-note af-note--md" content={item.body} />
             ) : null}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
@@ -816,12 +828,14 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               // choice between two texts, and nothing said the second came after the first.
               <ol className="ck-steps">
                 {groups.map((row, index) => {
-                  const said = row.rows.map(({ question }) => tally?.answers[question.id]);
-                  const state = said.some((answer) => answer?.value === "no") ? "no" : said.every(Boolean) ? "yes" : "none";
+                  const said = row.rows.map(({ question }) => markOf(tally?.answers[question.id]));
+                  // A «no» with nothing done about it shows at once; a step is ticked, or marked as bringing a
+                  // change, once all of it is answered.
+                  const state: Mark = said.includes("no") ? "no" : said.includes("none") ? "none" : said.includes("change") ? "change" : "yes";
                   return (
                     <li key={row.about} data-state={state}>
                       <button type="button" aria-current={row === group ? "step" : undefined} onClick={() => setAsked({ itemId: item.id, about: row.about })}>
-                        <span className="ck-steps__n">{state === "yes" ? <Check size={14} aria-hidden /> : state === "no" ? <X size={14} aria-hidden /> : index + 1}</span>
+                        <span className="ck-steps__n">{state === "yes" ? <Check size={14} aria-hidden /> : state === "no" ? <X size={14} aria-hidden /> : state === "change" ? <Pencil size={13} aria-hidden /> : index + 1}</span>
                         <span className="ck-steps__name">{scopeLabel(row.about, data.board?.settings?.resourceNames, language)}</span>
                       </button>
                     </li>
@@ -835,7 +849,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 const proposal = answer?.outcome === "proposal" ? proposals.find((view) => view.proposal.id === answer.proposal?.id) : undefined;
                 const name = localized(question.text, question.texts, language);
                 return (
-                  <li key={question.id} data-state={answer?.value ?? "none"}>
+                  <li key={question.id} data-state={markOf(answer)}>
                     {/* A line with a circle before it is ticked by touching it, and touched again is unticked: the
                         touch opened the sheet to propose a change, as if every line were wrong. A «no» has its own
                         button; one settled by a proposal is undone by taking the proposal back. */}
@@ -853,13 +867,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                       }}
                     >
                       <span className="ck-check__mark" aria-hidden="true">
-                        {answer?.value === "yes" ? <Check size={18} /> : answer?.value === "no" ? <X size={18} /> : <Circle size={12} />}
+                        {markOf(answer) === "yes" ? <Check size={18} /> : markOf(answer) === "no" ? <X size={18} /> : markOf(answer) === "change" ? <Pencil size={15} /> : <Circle size={12} />}
                       </span>
                       <span className="ck-check__text">
                         {name}
                         {question.per === "verse" ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
                       </span>
-                      <span className="sr-only">{t(answer?.value === "yes" ? "ck.yes" : answer?.value === "no" ? "ck.no" : "ck.notYet")}</span>
+                      <span className="sr-only">{t(markOf(answer) === "yes" ? "ck.yes" : markOf(answer) === "change" ? "ck.withChange" : markOf(answer) === "no" ? "ck.no" : "ck.notYet")}</span>
                     </button>
                     {answer?.value === "no" || stepDone ? null : (
                       <button
@@ -880,7 +894,12 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                         {proposal ? (
                           <>
                             <b>{t(PROPOSAL_STATE_KEY[proposal.state]).replace("{team}", teamOf(proposal.proposal.resource))}</b>
-                            <span className="ag-diff">{proposal.proposal.after ? <ProposalDiff before={proposal.proposal.before ?? ""} after={proposal.proposal.after} /> : excerpt(proposal.reason)}</span>
+                            {proposal.proposal.id === proposedHelp?.proposal.id ? null : (
+                              // What is proposed for the help itself is read in the help, above: here, what is about something else.
+                              <span className="ag-diff">
+                                <b>{scopeLabel(proposal.proposal.resource, data.board?.settings?.resourceNames, language)}:</b> {proposal.proposal.after ? <ProposalDiff before={proposal.proposal.before ?? ""} after={proposal.proposal.after} /> : excerpt(proposal.reason)}
+                              </span>
+                            )}
                             {proposal.state === "open" && proposal.by.toLowerCase() === (session?.username ?? "").toLowerCase() && !stepDone ? (
                               <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={() => void withdraw(proposal.proposal.id)}>
                                 {t("ck.withdraw")}
