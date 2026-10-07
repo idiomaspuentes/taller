@@ -1239,7 +1239,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <span aria-hidden> → </span>
                   <span className="af-res">{data.resource === "tps" ? "TPS" : "TPL"}</span> <b>{chosenWords || t("af.nothingChosen")}</b>
                 </p>
-                <button type="button" className="af-link" onClick={() => setConfirmed(false)}>
+                <button
+                  type="button"
+                  className="af-link"
+                  onClick={() => {
+                    setConfirmed(false);
+                    // The words to choose again open under the screen (their box started at 752 px of 812).
+                    window.setTimeout(() => document.querySelector(".af-draft__words")?.scrollIntoView({ block: "center" }), 80);
+                  }}
+                >
                   {t("af.changeWords")}
                 </button>
               </div>

@@ -737,9 +737,8 @@ cerró (4,4 s) y volvió a «Mis tareas» con el botón del aviso.
 - Una decisión del equipo caduca si el versículo se corrige desde **otro** desafío: el punto vuelve a «pendiente»
   y hay que responderlo de nuevo.
 - En el chat, el lugar «1:3» no cita el versículo.
-- Las palabras de un versículo miden 32 px de alto y las de una letra («a», «y») 17 px de ancho: difíciles de
-  tocar.
-- Al llegar a la herramienta (no al pasar de un desafío a otro) las palabras siguen bajo la pantalla (y=754).
+- Al llegar a la herramienta (no al pasar de un desafío a otro) las palabras siguen bajo la pantalla (y=754): antes
+  de ellas está la nota, que se lee primero.
 - Los nombres se escriben con el usuario de Door43 («@abelper8»), no con el nombre de la persona.
 - Son 30 desafíos por porción y tres personas habilitadas por desafío: unas 900 respuestas para Judas. Con las
   palabras ya marcadas por quien respondió primero, cada respuesta son dos toques y 1–2 s.
@@ -1305,4 +1304,52 @@ Recorrido entero en QA (9 notas, 3 preguntas y 9 palabras de Judas 1:1) a 375 px
 - Dos notas del mismo versículo sobre las mismas palabras («Judas» y «Judas», en 1:1) comparten lugar: una
   inquietud anotada en una sale bajo las dos.
 - El artículo de una palabra clave sigue abriéndose dentro de una caja con su propio desplazamiento.
+
+### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
+
+**⚠ Arreglado**
+
+- **El mismo aviso salía dos veces en «Avisos»** («Necesitan tu atención» y «Menciones y respuestas»). *Ahora* lo
+  que ya dice una mención no se lista otra vez por su subtarea, y «Ya lo vi» da por leída la conversación.
+- **La tarjeta de una decisión decía «0 de 2 pasos · 0 %».** Una decisión no tiene pasos: ya no lo dice.
+- **«Atascadas · 0» resaltaba en naranja.** *Ahora* solo cuando hay alguna (visto en «Equipo hoy»: blanco, como
+  los demás).
+- **Las palabras que se tocan en «Desafíos» medían 32 px de alto, y «y» o «a» 17 px de ancho.** *Ahora* 40 px de
+  alto y 28 de ancho como mínimo; el versículo de 20 palabras de Judas 1:1 sigue en cuatro filas (166 px).
+- **Al tocar «Cambiar», las palabras para elegir de nuevo se abrían bajo la pantalla** (su caja empezaba en 752 px
+  de 812). *Ahora* quedan a la vista (de 521 a 687 px).
+- Los botones de texto de la lectura grupal y de las referencias suben de 36 a 40 px de alto.
+
+Lo que no se vio en pantalla: la tarjeta de una decisión y el aviso repetido (no hay ninguno pendiente en QA), ni
+los botones de la lectura grupal.
+
+### Lo que sigue sin resolver
+
+De las listas «Sin resolver» de arriba, esto **no** se tocó. Casi todo es de herramientas que solo se pueden
+comprobar con trabajo abierto (traducir, alinear, afinar), y el único proyecto de QA está terminado:
+
+- **Traducción:** la segunda revisión muestra todo como «nuevo»; los comentarios no salen junto a su versículo en
+  el editor; «Sin guardar» antes de tocar nada; el glosario dice «No «Santiago»» y el borrador lo usa; la cuenta de
+  «Avisos» mezcla las subtareas libres; los botones «Leído» de «Estudio» quedan miles de píxeles abajo; «@» no
+  ofrece a nadie en un comentario de versículo; un borrador que espera revisor no sale en «Avisos»; una subtarea
+  retirada no se avisa; contadores que no coinciden (34 de 36 y 33 de 35); el contador de la introducción; las
+  negritas de la fuente se pierden; «Guardar como regla o en el glosario» bajo comentarios triviales; el pie de la
+  revisión mide 125 px; «Estudio» lee la introducción publicada y no el borrador; una pregunta cortada por el pie;
+  un título «Bible References:» vacío; «Avisos» da una línea por subtarea; dejar una duda tarda 20 s sin decir
+  «Guardando…»; una revisión abierta no se entera de que el autor confirmó y entregó.
+- **Afinación:** «Registrar la decisión del equipo» le sale a toda persona habilitada; una decisión caduca si el
+  versículo se corrige desde otro desafío; en el chat, «1:3» no cita el versículo; los nombres salen como usuarios
+  de Door43; el orden de los usos difiere entre TPL y TPS; las formas de un verbo cuentan como traducciones
+  distintas; un uso corregido queda sin palabras marcadas; los fallos de escritura de QA se achacan a permisos; la
+  herramienta del libro entero tarda 11 s.
+- **Alineación:** una palabra del original sin traducción no se avisa al terminar; las palabras del banco miden
+  32 px y un versículo de 17 no cabe; la tarjeta decidida repite su frase; la decisión avisa dos veces; tras
+  enviar una propuesta siguen las tres respuestas; proponer deja 160 px para las cajas; los recordatorios usan la
+  lista del plan; quien alineó no tiene cómo volver a una alineación terminada; un versículo corregido después de
+  entregar la alineación; «Preguntar al equipo» se titula «Duda al estudiar…»; el analizador de `usfm-ast` pierde
+  el espacio tras un hito.
+- **Armonización y validación:** el editor se abre en otra pestaña; «Acuerdo del equipo» no muestra los cambios;
+  cerrar la app mientras se prepara la validación la deja a medias; con un comité de cuatro, los reportes se
+  cierran con dos.
+- **De contenido, no de la app:** las glosas en inglés, el título «call» en inglés.
 
