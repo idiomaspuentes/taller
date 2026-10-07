@@ -2816,5 +2816,9 @@
   "sb.teamsForeign": "Outras equipes da organização",
   "sb.teamsWork": "Equipes de trabalho",
   "ck.replied": "@{who} respondeu:",
-  "ck.repliedShort": "já responderam"
+  "ck.repliedShort": "já responderam",
+  "ur.atNote": "Nota {n} de {of}",
+  "ur.atQuestion": "Pergunta {n} de {of}",
+  "ur.atTerm": "Palavra {n} de {of}",
+  "ur.close": "Fechar"
 }

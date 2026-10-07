@@ -1278,3 +1278,31 @@ y el plan de Judas es una copia del proceso de antes, con sus consultas ya resue
 cálculo deja «Sugerencias de traducción» como primera línea visible de la caja del artículo de un término.
 Valen para los proyectos que se armen desde ahora.
 
+### Leer las ayudas de un versículo, en la revisión pastoral (7 de octubre)
+
+Abel, mirando «Revisión pastoral» de Judas: «leer las notas de esta manera no es muy útil si están tan separadas:
+la última nota de la lista queda muy separada del texto al que pertenece». Con «9 notas» abierto bajo 1:1, la lista
+medía **1783 px**: la novena nota quedaba a dos pantallas de su versículo.
+
+**⚠ Arreglado**
+
+- **Las ayudas de un versículo se leen de una en una, justo debajo de él.** «Nota 3 de 9», con la flecha para
+  volver (44 × 44 px) y «Siguiente» (110 × 44) siempre en el mismo sitio, encima de la nota. El recuadro mide entre
+  153 y 430 px según la nota: a 375 px, el versículo y la nota que se lee caben juntos en la pantalla (de y=39 a
+  y=648 con la tercera nota de 1:1).
+- **En el TPL se marcan las palabras de las que habla la ayuda que se lee**: «siervo de Jesucristo y hermano de
+  Jacobo,» con la nota 3; «de Jesucristo … guardados para Jesucristo, llamados:» con la 9, que cita palabras
+  separadas. Con una palabra clave, su palabra.
+- **Después de la última, el botón lleva a lo que sigue del versículo**: tras la nota 9, «3 preguntas ›»; tras la
+  última pregunta, «9 palabras ›»; tras la última palabra, «Cerrar», que deja a la vista el versículo siguiente.
+- Lo que el comité anotó sobre la ayuda que se lee sale bajo ella, y ya no se repite al pie del versículo.
+
+Recorrido entero en QA (9 notas, 3 preguntas y 9 palabras de Judas 1:1) a 375 px, y a 1280 px (el recuadro mide
+632 × 224 px, sin desborde).
+
+**⚠ Sin resolver**
+
+- Dos notas del mismo versículo sobre las mismas palabras («Judas» y «Judas», en 1:1) comparten lugar: una
+  inquietud anotada en una sale bajo las dos.
+- El artículo de una palabra clave sigue abriéndose dentro de una caja con su propio desplazamiento.
+
