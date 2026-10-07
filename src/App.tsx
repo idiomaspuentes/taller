@@ -1675,6 +1675,9 @@ export function App() {
             lang={lang}
             languages={catalogLangs}
             announce={announce}
+            session={session ?? undefined}
+            pmOrg={pmOrg}
+            contentOrg={contentOrg}
           />
         ) : null}
       </main>

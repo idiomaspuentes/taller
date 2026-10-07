@@ -71,6 +71,7 @@
     "verify:levels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-levels.mts",
     "verify:endorsement": "tsx --tsconfig tsconfig.scripts.json scripts/verify-endorsement.mts",
     "verify:checklist": "tsx --tsconfig tsconfig.scripts.json scripts/verify-checklist.mts",
+    "verify:trial-launch": "tsx --tsconfig tsconfig.scripts.json scripts/verify-trial-launch.mts",
     "verify:handoff": "tsx --tsconfig tsconfig.scripts.json scripts/verify-handoff.mts",
     "verify:delivery": "tsx --tsconfig tsconfig.scripts.json scripts/verify-delivery.mts",
     "verify:unit-publish": "tsx --tsconfig tsconfig.scripts.json scripts/verify-unit-publish.mts",

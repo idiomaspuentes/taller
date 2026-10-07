@@ -2846,5 +2846,16 @@
   "ur.concernText": "Inquietud sobre el {name}",
   "ur.seeText": "Ver el {name}",
   "ur.legendTouchOther": "Toca una palabra para ver cómo la dice el {name} y sus ayudas.",
-  "ur.noMatch": "Ninguna palabra del {name} está enlazada con esta."
+  "ur.noMatch": "Ninguna palabra del {name} está enlazada con esta.",
+  "lab.tryTitle": "Probar los pasos de un proyecto",
+  "lab.tryLede": "Abre la pantalla de cualquier paso con los textos y las preguntas del proyecto, sin subtarea. Lo que hagas ahí no se guarda.",
+  "lab.tryProject": "Proyecto",
+  "lab.tryChapter": "Capítulo",
+  "lab.tryLoading": "Leyendo los pasos…",
+  "lab.tryNoProjects": "No hay proyectos en este espacio.",
+  "lab.tryNoSession": "Inicia sesión para ver los proyectos.",
+  "lab.tryNoScreen": "sin pantalla propia",
+  "lab.tryWrites": "todavía no se puede probar sin subtarea",
+  "ck.trying": "Modo de prueba: lo que respondas aquí no se guarda.",
+  "ck.tryKept": "Anotado solo en esta pantalla."
 }

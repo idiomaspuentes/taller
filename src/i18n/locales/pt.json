@@ -2846,5 +2846,16 @@
   "ur.concernText": "Inquietação sobre o {name}",
   "ur.seeText": "Ver o {name}",
   "ur.legendTouchOther": "Toque uma palavra para ver como o {name} a diz e suas ajudas.",
-  "ur.noMatch": "Nenhuma palavra do {name} está ligada a esta."
+  "ur.noMatch": "Nenhuma palavra do {name} está ligada a esta.",
+  "lab.tryTitle": "Experimentar os passos de um projeto",
+  "lab.tryLede": "Abra a tela de qualquer passo com os textos e as perguntas do projeto, sem subtarefa. O que você fizer ali não é salvo.",
+  "lab.tryProject": "Projeto",
+  "lab.tryChapter": "Capítulo",
+  "lab.tryLoading": "Lendo os passos…",
+  "lab.tryNoProjects": "Não há projetos neste espaço.",
+  "lab.tryNoSession": "Entre para ver os projetos.",
+  "lab.tryNoScreen": "sem tela própria",
+  "lab.tryWrites": "ainda não dá para experimentar sem subtarefa",
+  "ck.trying": "Modo de teste: o que você responder aqui não é salvo.",
+  "ck.tryKept": "Anotado só nesta tela."
 }

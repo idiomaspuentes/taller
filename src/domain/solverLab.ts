@@ -187,6 +187,52 @@ export function labPlaceholderHelpsItems(
   return items;
 }
 
+/**
+ * The screens that keep to themselves what is done in them when they are opened to try: nothing reaches Door43
+ * unless writing was asked for. The others still write what is answered in them, so they are not offered.
+ */
+const TRIAL_SCREENS = ["familiarize", "scripture", "helps", "checklist"];
+
+/**
+ * Whether a tool can be opened to try, with no subtarea: a reading tool outside the app, or one of those screens.
+ * `needsIssue` is not asked: it keeps a tool out of the lab's own launcher, which opens it with no task and no
+ * step, and a trial gives it both.
+ */
+export function opensForTrial(app: SolverApp): boolean {
+  if (isUrlSolver(app)) return true;
+  const screen = /#\/solver\/([a-z-]+)/.exec(app.launchUrl)?.[1];
+  return Boolean(screen && TRIAL_SCREENS.includes(screen));
+}
+
+/**
+ * A step of a project opened to try: the launch its screen gets, with the task and the step of the project (the
+ * questions and the texts are the project's own) and no subtarea. A whole chapter, as a unit is. It never asks to
+ * write, whatever the launch it starts from did.
+ */
+export function trialLaunchContext(params: {
+  base: SolverLaunchContext;
+  task: { id: string; name: string; rules?: { resource: string }[] };
+  step: { id: string; name: string };
+  chapter: number;
+}): SolverLaunchContext {
+  const chapter = Math.max(1, Math.floor(Number(params.chapter) || 1));
+  return {
+    ...params.base,
+    chapter,
+    ref: String(chapter),
+    taskId: params.task.id,
+    taskName: params.task.name,
+    stepId: params.step.id,
+    stepName: params.step.name,
+    resource: params.task.rules?.[0]?.resource ?? params.base.resource,
+    issueNumber: 0,
+    issueUrl: "",
+    lab: true,
+    labAllowWrite: undefined,
+    labUnsafeWrite: undefined,
+  };
+}
+
 /** Open in-app hash routes in this tab; TC Study / stub in a new tab. */
 export function openLabSolver(app: SolverApp, url: string): void {
   if (isUrlSolver(app)) {

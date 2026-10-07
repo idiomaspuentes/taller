@@ -1,20 +1,27 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { GtSession } from "../dcs/auth";
+import { listPmProjects, loadAssignmentsFromDcs } from "../dcs/persist";
 import { BOOKS, bookName } from "../domain/books";
 import type { LanguageOption } from "../domain/languages";
+import { localized } from "../domain/processes";
 import {
   buildLabSolverLaunchContext,
   defaultResourceForSolver,
   isProtectedContentOrg,
   labWriteDecision,
   openLabSolver,
+  opensForTrial,
   solverNeedsRealIssue,
+  trialLaunchContext,
 } from "../domain/solverLab";
 import {
   resolveSolverLaunchUrl,
   solverLaunchBlockReason,
 } from "../domain/solverLaunch";
-import { DEFAULT_SOLVERS_CATALOG, isUrlSolver } from "../domain/solvers";
-import { SCOPE_KEYS, SCOPE_LABEL, type ScopeKey } from "../domain/types";
+import { DEFAULT_SOLVERS_CATALOG, findSolverApp, isUrlSolver } from "../domain/solvers";
+import { SCOPE_KEYS, SCOPE_LABEL, type AssignmentsDoc, type ProjectIndexEntry, type ProjectTask, type ScopeKey, type TaskStep } from "../domain/types";
+import { useUiLanguage } from "../i18n/language";
+import { useT } from "../i18n/messages";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,11 +51,64 @@ type Props = {
   lang: string;
   languages?: LanguageOption[];
   announce: (msg: string) => void;
+  /** Who is signed in, and the organizations of the workspace: what the steps of its projects are read with. */
+  session?: GtSession;
+  pmOrg?: string;
+  contentOrg?: string;
 };
 
 const QUICK_BOOKS = ["NEH", "TIT"] as const;
 
-export function SolverLabView({ username, lang: workspaceLang, languages, announce }: Props) {
+export function SolverLabView({ username, lang: workspaceLang, languages, announce, session, pmOrg: workspacePmOrg = "", contentOrg: workspaceContentOrg = "" }: Props) {
+  const t = useT();
+  const language = useUiLanguage();
+  /**
+   * The steps of a project, each to be opened to try. The tools below open with a made-up portion and no task, and
+   * a screen that works by the step it is opened for (its questions, its texts) had nothing to show that way.
+   */
+  const [projects, setProjects] = useState<ProjectIndexEntry[] | null>(null);
+  const [projectId, setProjectId] = useState("");
+  const [tryBoard, setTryBoard] = useState<AssignmentsDoc | null>(null);
+  const [tryChapter, setTryChapter] = useState("1");
+  const [tryBusy, setTryBusy] = useState(false);
+  useEffect(() => {
+    if (!session?.token || !workspacePmOrg) return;
+    let live = true;
+    void listPmProjects(session, workspacePmOrg, workspaceLang || "es-419")
+      .catch(() => [])
+      .then((list) => {
+        if (!live) return;
+        setProjects(list);
+        setProjectId((was) => was || list[0]?.projectId || "");
+      });
+    return () => {
+      live = false;
+    };
+  }, [session?.token, workspacePmOrg, workspaceLang]);
+  useEffect(() => {
+    if (!session?.token || !projectId) return setTryBoard(null);
+    let live = true;
+    setTryBusy(true);
+    void loadAssignmentsFromDcs(session, workspacePmOrg, workspaceLang || "es-419", projectId, workspaceContentOrg)
+      .catch(() => null)
+      .then((board) => {
+        if (!live) return;
+        setTryBoard(board);
+        setTryBusy(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [session?.token, projectId, workspacePmOrg, workspaceContentOrg, workspaceLang]);
+
+  function tryStep(task: ProjectTask, step: TaskStep) {
+    const tool = findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId);
+    if (!tool || !opensForTrial(tool)) return;
+    const base = buildLabSolverLaunchContext({ username, lang: workspaceLang || "es-419", book: projectId, chapter: Number(tryChapter) || 1, verseFrom: 1, verseTo: 1, resource: task.rules[0]?.resource ?? "tpl", contentOrg: workspaceContentOrg, pmOrg: workspacePmOrg });
+    const url = resolveSolverLaunchUrl(tool, trialLaunchContext({ base, task, step, chapter: Number(tryChapter) || 1 }));
+    if (url) openLabSolver(tool, url);
+  }
+
   const [solverId, setSolverId] = useState(DEFAULT_SOLVERS_CATALOG.solvers[0]?.id ?? "");
   const [lang, setLang] = useState(workspaceLang || "es-419");
   const [book, setBook] = useState("NEH");
@@ -149,6 +209,75 @@ export function SolverLabView({ username, lang: workspaceLang, languages, announ
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("lab.tryTitle")}</CardTitle>
+          <CardDescription>{t("lab.tryLede")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!session?.token ? (
+            <p className="text-sm text-muted-foreground">{t("lab.tryNoSession")}</p>
+          ) : projects && !projects.length ? (
+            <p className="text-sm text-muted-foreground">{t("lab.tryNoProjects")}</p>
+          ) : (
+            <div className="solver-lab__try">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="lab-try-project">{t("lab.tryProject")}</Label>
+                  <Select value={projectId} onValueChange={setProjectId}>
+                    <SelectTrigger id="lab-try-project" className="w-full" aria-label={t("lab.tryProject")}>
+                      <SelectValue placeholder={t("lab.tryProject")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(projects ?? []).map((project) => (
+                        <SelectItem key={project.projectId} value={project.projectId}>
+                          {project.title || project.projectId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="lab-try-chapter">{t("lab.tryChapter")}</Label>
+                  <Input id="lab-try-chapter" inputMode="numeric" value={tryChapter} onChange={(e) => setTryChapter(e.target.value)} />
+                </div>
+              </div>
+              {tryBusy || !projects ? <p className="text-sm text-muted-foreground">{t("lab.tryLoading")}</p> : null}
+              {tryBoard ? (
+                <ul className="solver-lab__tasks">
+                  {tryBoard.teams
+                    .filter((task) => task.steps?.length)
+                    .map((task) => (
+                      <li key={task.id}>
+                        <b>{localized(task.name, task.names, language)}</b>
+                        <ul className="solver-lab__steps">
+                          {task.steps!.map((step) => {
+                            const tool = findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId);
+                            const name = localized(step.name, step.names, language);
+                            return (
+                              <li key={step.id}>
+                                {tool && opensForTrial(tool) ? (
+                                  <button type="button" className="btn" data-variant="outline" data-size="default" onClick={() => tryStep(task, step)}>
+                                    {name}
+                                  </button>
+                                ) : (
+                                  <span className="solver-lab__off">
+                                    {name} · {t(tool ? "lab.tryWrites" : "lab.tryNoScreen")}
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </li>
+                    ))}
+                </ul>
+              ) : null}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

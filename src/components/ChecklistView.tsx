@@ -117,6 +117,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   /** What the project's process calls each text. */
   const textLabel = (resource: ChecklistText) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
   const storeKey = ctx ? `${(ctx.book || ctx.projectId).toUpperCase()}.${ctx.issueNumber || ctx.taskId}.${ctx.stepId || "paso"}` : "";
+  /**
+   * Opened to try it (see `trialLaunchContext`): what is answered stays on this screen. Opened that way it wrote
+   * every answer to the project all the same, under the name of the task, where no subtarea would ever read it.
+   */
+  const trying = Boolean(ctx?.lab && !ctx.labAllowWrite);
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -129,7 +134,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       const loaded = await loadChecklist({ session, ctx: decoded, kind, texts: textsKey.split(",").filter(Boolean) as ChecklistText[], onlyLinked });
       setData(loaded);
       const key = `${(decoded.book || decoded.projectId).toUpperCase()}.${decoded.issueNumber || decoded.taskId}.${decoded.stepId || "paso"}`;
-      setAnswers(await loadCheckAnswers(session, loaded.target, key));
+      setAnswers(decoded.lab && !decoded.labAllowWrite ? [] : await loadCheckAnswers(session, loaded.target, key));
       if (decoded.pmOrg && decoded.issueNumber && decoded.stepId) {
         setStepDone(await stepIsDone({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false));
       }
@@ -298,6 +303,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
    */
   async function save(next: CheckAnswer[], said: string) {
     if (!session || !data) return;
+    if (trying) {
+      setAnswers((prev) => [...prev, ...next]);
+      announce(t("ck.tryKept"));
+      return;
+    }
     setAnswers((prev) => [...prev, ...next]);
     setWriting((n) => n + 1);
     setError("");
@@ -345,6 +355,12 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       original: originalTokens(data.original ?? "", item.chapter, item.verse),
     });
     if (!found) return setError(t("ck.quoteNotAligned"));
+    if (trying) {
+      setData({ ...data, items: data.items.map((row) => (row.id === item.id ? { ...row, quote: found.quote, occurrence: found.occurrence } : row)) });
+      setPicking(null);
+      announce(t("ck.tryKept"));
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -442,6 +458,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         </Alert>
       ) : null}
       {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
+      {trying ? (
+        <p className="ck-trying" role="status">
+          {t("ck.trying")}
+        </p>
+      ) : null}
       {data && missing.length ? (
         <div className="ck-missing" role="status">
           <p className="ck-missing__title">{t("ck.missTitle")}</p>
