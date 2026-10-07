@@ -471,9 +471,39 @@ conversación, que se lee como un chat (hoy, «nuevos», un mensaje tras otro), 
 - «De acuerdo», «Corregir» y «Tengo una duda» miden 36 px de alto.
 - Dejar la duda tardó más de 20 segundos una vez, con el botón apagado y sin decir «Guardando…».
 
+### Las otras cuatro porciones del TPL y del TPS (6 de octubre)
+
+Con guion sobre la misma interfaz: **Luis** (abelper8) estudió, tradujo y entregó a revisión 1:5–11, 1:12–16,
+1:17–23 y 1:24–25 de los dos textos; **Marta** (abelperez) las revisó y aprobó; Luis confirmó y entregó. Ocho
+subtareas sin un solo tropiezo del proceso: estudio → borrador → revisión → aprobación → confirmación → entrega.
+
+**⚠ Lo que frenaba el proceso: la lista no se enteraba.** Minutos después de que Marta aprobara las cuatro
+porciones, las tarjetas de Luis seguían diciendo «Ahora la revisan otras personas. Te avisaremos cuando te toque»,
+sin botón. Y a Marta no le aparecía para revisar el borrador que Luis acababa de terminar. «Mis tareas» solo se
+volvía a leer al entrar en ella o al volver a la app; una aprobación o un borrador terminado se escriben en la
+subtarea, no son un comentario, y el sondeo que corre cada minuto solo miraba comentarios. Era también la razón
+de que la tarjeta del autor no dijera «ya aprobó tu borrador» (anotado arriba como duda). *Arreglado:* el sondeo
+pregunta además qué subtareas del plan se tocaron desde la vez anterior (una consulta pequeña, dentro del espacio
+de trabajo propio) y, si hay algo nuevo, la lista se vuelve a leer sola. Medido: la tarjeta de Luis cambió a
+«@abelperez ya aprobó tu borrador. Falta que tú digas que estás de acuerdo» unos 10 segundos después de la
+aprobación, sin salir de la pantalla.
+
+También:
+
+- La tarjeta de la lectura grupal decía **«100 %»** con cuatro pasajes del capítulo todavía sin traducir (los
+  cuatro versículos que habían llegado estaban acordados). Ahora un paso abierto nunca llega a 100 %, y la lectura
+  se cuenta contra el capítulo entero: «16 %».
+- «Libres para tu equipo» muestra seis y un botón «Ver 13 más»: la porción que se buscaba estaba detrás.
+
+**⚠ Sin resolver**
+
+- En «Estudio», a 375 px, el botón «Leído, seguir» de «El pasaje» está a 6.453 px (casi diez pantallas) y el de
+  «Notas» a 7.069 px.
+- En 1:19 el borrador dice «animales» por «soulish»: queda para que Afinación lo encuentre.
+
 ### Dónde quedó
 
-- Entregadas: TPL 1:1–4, TPS 1:1–4, Notas 1:1–4, Preguntas 1:1–4 y el artículo de Palabras «call…». Las dos
-  lecturas grupales ya aparecen en «Puedes sumarte».
-- Libre: 4 porciones de TPL, 4 de TPS, 4 de Notas, 4 de Preguntas, 1 artículo de Palabras y 4 de Academia.
-  abelper8 tiene en revisión el artículo de Academia «Blessings».
+- Entregadas: las cinco porciones del TPL y las cinco del TPS; Notas 1:1–4, Preguntas 1:1–4 y el artículo de
+  Palabras «call…». De la lectura grupal del TPL están acordados los versículos 1:1–4.
+- Falta de Traducción: 4 porciones de Notas, 4 de Preguntas, el artículo de Palabras «age, era, time», 5 artículos
+  de Academia (abelper8 tiene «Blessings» en borrador) y el resto de las dos lecturas grupales.

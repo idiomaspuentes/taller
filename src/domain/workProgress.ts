@@ -13,11 +13,18 @@ import { parseWorkOrderMarker } from "./workOrder";
  * plan does not.
  */
 
-/** A step: closed, or as far as its tool last said, or not begun. Between 0 and 1. */
+/** What an open step counts for at most: everything its tool counts may be done, and the step still to be closed. */
+const OPEN_STEP_MOST = 0.99;
+
+/**
+ * A step: closed, or as far as its tool last said, or not begun. Between 0 and 1, and 1 only when it is closed:
+ * the four verses of a group reading that had arrived were all agreed, and the card read «100 %» with four
+ * passages of the chapter still being translated.
+ */
 export function stepFraction(marker: TaskProgressMarker, stepId: string): number {
   if (isStepDone(marker, stepId)) return 1;
   const work = marker.steps?.[stepId]?.work;
-  return work && work.total > 0 ? Math.min(1, Math.max(0, work.done / work.total)) : 0;
+  return work && work.total > 0 ? Math.min(OPEN_STEP_MOST, Math.max(0, work.done / work.total)) : 0;
 }
 
 /** A subtarea: closed, or the part of its steps that is done, the open one counting for what it has. */

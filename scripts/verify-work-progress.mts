@@ -23,6 +23,9 @@ test("un paso va por lo que su herramienta cuenta; cerrado, está entero", () =>
   const half = withStepWork(empty, "borrador", { done: 6, total: 12 });
   assert.equal(stepFraction(half, "borrador"), 0.5);
   assert.equal(stepFraction(markStepDone(half, "borrador"), "borrador"), 1, "cerrado con 6 de 12 anotados sigue siendo un paso cerrado");
+  const all = withStepWork(empty, "borrador", { done: 12, total: 12 });
+  assert.ok(stepFraction(all, "borrador") < 1, "con todo anotado y el paso sin cerrar, no está terminado");
+  assert.equal(percentOf(stepFraction(all, "borrador")), 99);
   // What is noted survives being written to the subtarea and read back, and somebody taking a seat on the step.
   const read = parseTaskProgressMarker(encodeTaskProgressMarker(half));
   assert.deepEqual(read.steps?.borrador?.work, { done: 6, total: 12 });

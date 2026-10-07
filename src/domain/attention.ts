@@ -32,6 +32,41 @@ function systemSummary(text: string): string | null {
  * One plain line for a Mis tareas row. Never returns HTML comments, base64
  * markers, SHAs, branch names or `archivo/` refs.
  */
+/**
+ * What a poll saw of a person's subtareas, to tell whether anything moved since the one before: when each was last
+ * touched on Door43, and the newest comment about any of them. An approval or a step closed is written on the
+ * subtarea itself and is no comment, so the comments alone would miss it.
+ */
+export type PollMark = {
+  moved: string;
+  newest: number;
+  /** The subtareas of the plan touched in the stretch this poll looked at, mine or not, each as «number:when». */
+  touched: string[];
+};
+
+export function pollMark(issues: { number: number; updated_at?: string | null }[], commentIds: number[], touched: string[] = []): PollMark {
+  return {
+    moved: issues
+      .map((issue) => `${issue.number}:${issue.updated_at ?? ""}`)
+      .sort()
+      .join("|"),
+    newest: Math.max(0, ...commentIds),
+    touched,
+  };
+}
+
+/**
+ * Whether the list a person is looking at is behind what Door43 has. Comments are read with an overlap, so the same
+ * one comes back in the next poll: only one newer than any seen counts. `before` null: the first poll, which is
+ * what the list was just read from.
+ */
+export function movedSince(before: PollMark | null, now: PollMark): boolean {
+  if (before === null) return false;
+  // The stretches two polls look at overlap: what the one before had already seen touched is not news, nor is it
+  // news that it fell out of the stretch.
+  return now.moved !== before.moved || now.newest > before.newest || now.touched.some((entry) => !before.touched.includes(entry));
+}
+
 export function rowPreview(body: string | undefined): string {
   const stripped = stripHtmlComments(body ?? "").trim();
   if (!stripped) return "";

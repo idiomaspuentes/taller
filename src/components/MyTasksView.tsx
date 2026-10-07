@@ -105,6 +105,8 @@ type Props = {
   announce: (msg: string) => void;
   /** Local read cursor (this browser only); drives dots and "Necesitan tu atención". */
   cursor: ReadCursorDoc;
+  /** Goes up when the background poll finds a subtarea of mine moved on Door43: the list is read again. */
+  changes?: number;
   /** Reports the "Mías" rows so step-role subtareas also feed the badge poll. */
   onMineIssues?: (issues: DcsIssue[]) => void;
   /** Free subtareas of my teams worth a notice, and the ones held back (waiting / level). */
@@ -161,6 +163,7 @@ export function MyTasksView({
   contentOrg,
   announce,
   cursor,
+  changes = 0,
   onMineIssues,
   onAudience,
   onRefreshActivity,
@@ -258,6 +261,15 @@ export function MyTasksView({
     setLoaded(false);
     void reload();
   }, [reload]);
+
+  // Something of mine moved on Door43 while this list was open (a reviewer approved, the author handed in again):
+  // it is read again, so a card does not go on saying «te avisaremos cuando te toque» when it already is.
+  const changesSeen = useRef(changes);
+  useEffect(() => {
+    if (changes === changesSeen.current) return;
+    changesSeen.current = changes;
+    void reload();
+  }, [changes, reload]);
 
   useEffect(() => {
     if (decisionIssues) setConflictIssues(decisionIssues);

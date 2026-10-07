@@ -18,6 +18,7 @@ import {
   listLabels,
   listMilestones,
   listOrgTeams,
+  listRepoIssues,
   listTeamMembers,
   listTeamRepos,
   removeTeamMember,
@@ -1042,6 +1043,16 @@ export async function pullIssues(params: {
   }
 
   return { assignments: next, issues };
+}
+
+/**
+ * The subtareas of this workspace touched on Door43 since a moment, each as «number:when»: one small question, for a
+ * list on somebody's screen to know it is behind. A draft handed in for review, an approval, a delivery are written
+ * on a subtarea that may not be the person's, and no comment says so.
+ */
+export async function listPmTouchedSince(session: GtSession, org: string, since: string): Promise<string[]> {
+  const batch = await listRepoIssues(dcsConfig(session.host), org, PM_REPO_NAME, { token: session.token, state: "all", since, limit: 50 });
+  return batch.filter((issue) => issueInScope(issue)).map((issue) => `${issue.number}:${issue.updated_at ?? ""}`);
 }
 
 /** Search PM-namespaced issues assigned to the current user. */

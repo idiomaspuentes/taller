@@ -1331,6 +1331,7 @@ export function App() {
             contentOrg={contentOrg}
             announce={announce}
             cursor={activity.cursor}
+            changes={activity.changes}
             onMineIssues={onMineIssues}
             onAudience={activity.setAudience}
             onRefreshActivity={() => {

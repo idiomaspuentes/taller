@@ -34,6 +34,8 @@ import {
 } from "../src/domain/readCursor.ts";
 import {
   attentionRank,
+  movedSince,
+  pollMark,
   formatRelativeEs,
   previewLine,
   rowActivity,
@@ -1279,6 +1281,24 @@ test("notified ids: parse is safe, key sits next to the cursor, list is capped",
   const r = shouldNotify({ candidates: many, notified: { v: 1, seeded: true, ids: [] }, visibility: "visible", permission: "granted" });
   assert.equal(r.notified.ids.length, 400);
   assert.equal(r.notified.ids.at(-1), "t:450");
+});
+
+test("la lista se vuelve a leer cuando una subtarea mía se movió en Door43, no en cada sondeo", () => {
+  const before = pollMark([{ number: 105, updated_at: "2026-10-06T10:00:00Z" }, { number: 110, updated_at: "2026-10-06T10:05:00Z" }], [900, 901]);
+  assert.equal(movedSince(null, before), false, "el primer sondeo es de lo que la lista acaba de leer");
+  assert.equal(movedSince(before, pollMark([{ number: 110, updated_at: "2026-10-06T10:05:00Z" }, { number: 105, updated_at: "2026-10-06T10:00:00Z" }], [901])), false, "lo mismo, en otro orden y con un comentario ya visto");
+  // A reviewer approved: nothing was commented, the subtarea itself was written.
+  assert.equal(movedSince(before, pollMark([{ number: 105, updated_at: "2026-10-06T10:20:00Z" }, { number: 110, updated_at: "2026-10-06T10:05:00Z" }], [])), true);
+  assert.equal(movedSince(before, pollMark([{ number: 105, updated_at: "2026-10-06T10:00:00Z" }], [])), true, "una subtarea dejó de ser mía");
+  assert.equal(movedSince(before, pollMark([{ number: 105, updated_at: "2026-10-06T10:00:00Z" }, { number: 110, updated_at: "2026-10-06T10:05:00Z" }], [902])), true, "alguien escribió");
+  assert.equal(movedSince(before, pollMark([{ number: 105, updated_at: "2026-10-06T10:00:00Z" }, { number: 110, updated_at: "2026-10-06T10:05:00Z" }], [])), false, "un sondeo sin comentarios no es una novedad");
+  // A draft somebody else handed in now waits for a reviewer: it is no subtarea of mine and nobody commented.
+  const mine = [{ number: 105, updated_at: "2026-10-06T10:00:00Z" }];
+  const seen = pollMark(mine, [], ["111:2026-10-06T10:10:00Z"]);
+  assert.equal(movedSince(pollMark(mine, []), seen), true, "algo del plan se movió");
+  assert.equal(movedSince(seen, pollMark(mine, [], ["111:2026-10-06T10:10:00Z"])), false, "lo mismo, visto otra vez por el solape de los sondeos");
+  assert.equal(movedSince(seen, pollMark(mine, [], [])), false, "salió del tramo que se mira: no es novedad");
+  assert.equal(movedSince(seen, pollMark(mine, [], ["111:2026-10-06T10:12:00Z"])), true, "la misma subtarea, tocada de nuevo");
 });
 
 console.log(`\n${passed} verify-conversation checks passed.`);

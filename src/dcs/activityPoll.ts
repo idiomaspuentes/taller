@@ -2,9 +2,9 @@ import { noticeLang, subtaskName } from "../domain/noticeText";
 import { getUiLanguage } from "../i18n/language";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
-import { listMyConflictIssues, listMyIssues } from "./issues";
+import { listMyConflictIssues, listMyIssues, listPmTouchedSince } from "./issues";
 import { listRepoComments } from "./comments";
-import { rowPreview } from "../domain/attention";
+import { pollMark, rowPreview, type PollMark } from "../domain/attention";
 import { isDecisionComment } from "../domain/chatEvent";
 import {
   buildPrIndex,
@@ -39,6 +39,8 @@ export type ActivityPollResult = {
   titles: Record<string, string>;
   /** Comment ids in this poll written by the signed-in user. */
   ownCommentIds: number[];
+  /** What this poll saw of my subtareas, to tell whether the list on the screen is behind (see `movedSince`). */
+  mark: PollMark;
 };
 
 /**
@@ -80,6 +82,7 @@ export async function pollActivity(params: {
   let doc = params.doc;
   const me = session.username.trim().toLowerCase();
   const ownCommentIds: number[] = [];
+  const mineCommentIds: number[] = [];
   const nextPollAt = new Date(now.getTime() - SINCE_OVERLAP_MS).toISOString();
   const seedSince = new Date(now.getTime() - SEED_LOOKBACK_MS).toISOString();
 
@@ -111,6 +114,7 @@ export async function pollActivity(params: {
       if (me && (c.user?.login ?? "").trim().toLowerCase() === me) ownCommentIds.push(c.id);
     }
     const mapped = all.filter((m) => mineSet.has(m.issue));
+    mineCommentIds.push(...mapped.map((m) => m.id));
     doc = recordDecisions(doc, all, isDecisionComment);
     doc = recordLatest(doc, mapped, { me: session.username, preview: rowPreview });
     if (firstTime && doc.seeded) {
@@ -127,5 +131,9 @@ export async function pollActivity(params: {
   const titles: Record<string, string> = {};
   // A notification names a subtarea as every notice does: the book in words, the passage, the task and the phase.
   for (const issue of mine) titles[String(issue.number)] = subtaskName(issue, noticeLang(getUiLanguage()));
-  return { doc, issues: [...mineSet], decisions, titles, ownCommentIds };
+  // What moved in the plan in the stretch this poll covers, whoever it is of: a draft that now waits for a reviewer
+  // is nobody's comment and not a subtarea of whoever may review it. Missing it only leaves the list as it was.
+  const touched = await listPmTouchedSince(session, pmOrg, params.doc.polls[repoKey(pmOrg, PM_REPO_NAME)] ?? nextPollAt).catch(() => [] as string[]);
+  // Only the subtareas just read from Door43 say when they were touched: the others are copies the list handed in.
+  return { doc, issues: [...mineSet], decisions, titles, ownCommentIds, mark: pollMark(assigned, mineCommentIds, touched) };
 }

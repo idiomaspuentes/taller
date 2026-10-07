@@ -1,7 +1,7 @@
 /** Workspaces that share an organization must never see each other's issues, projects or files. */
 import { teamRulesPath } from "../src/domain/teamRules";
 import assert from "node:assert/strict";
-import { listMyIssues, listProjectOpenIssues, pmIssueLabelNames } from "../src/dcs/issues";
+import { listMyIssues, listPmTouchedSince, listProjectOpenIssues, pmIssueLabelNames } from "../src/dcs/issues";
 import { assignmentsPath, projectsIndexPath, teamsPath, workflowsPath, inventoryPath } from "../src/domain/store";
 import { issueInScope, projectFromMilestone, scopeKey, scopeLabelName, scopedMilestone, setActiveScope } from "../src/domain/scope";
 import { issueProjectId } from "../src/domain/myTasks";
@@ -70,7 +70,7 @@ function fakeDoor43(all: unknown[]) {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
     urls.push(url);
-    if (url.includes("/issues/search")) return new Response(JSON.stringify(all), { status: 200, headers: { "content-type": "application/json" } });
+    if (url.includes("/issues/search") || /\/repos\/[^/]+\/taller\/issues\?/.test(url)) return new Response(JSON.stringify(all), { status: 200, headers: { "content-type": "application/json" } });
     return new Response("{}", { status: 404 });
   }) as typeof fetch;
   return urls;
@@ -92,6 +92,15 @@ await test("al pedir un proyecto se pide el hito con el prefijo del espacio", as
   const rows = await listProjectOpenIssues(session, "es-419_gl", "neh");
   assert.equal(rows.length, 1);
   assert.ok(urls.some((u) => decodeURIComponent(u).includes("milestones=pt/NEH")), urls.join("\n"));
+});
+
+await test("lo que se movió en el plan se mira solo en el espacio propio: lo de otro espacio no refresca esta lista", async () => {
+  const touched = (row: object, at: string) => ({ ...row, updated_at: at });
+  const urls = fakeDoor43([touched(legacy, "2026-10-06T10:00:00Z"), touched(portuguese, "2026-10-06T10:01:00Z"), touched(spanish, "2026-10-06T10:02:00Z")]);
+  assert.deepEqual(await listPmTouchedSince(session, "es-419_gl", "2026-10-06T09:58:00Z"), ["1:2026-10-06T10:00:00Z"]);
+  assert.ok(urls.some((u) => decodeURIComponent(u).includes("since=2026-10-06T09:58:00Z")), urls.join("\n"));
+  setActiveScope("pt");
+  assert.deepEqual(await listPmTouchedSince(session, "es-419_gl", "2026-10-06T09:58:00Z"), ["2:2026-10-06T10:01:00Z"]);
 });
 
 console.log(`\nverify-scope: ${passed} checks passed.`);

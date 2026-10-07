@@ -1,3 +1,4 @@
+import { movedSince, type PollMark } from "./domain/attention";
 import { noticeLang } from "./domain/noticeText";
 import { getUiLanguage } from "./i18n/language";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -63,6 +64,12 @@ export type ConversationActivity = {
   unreadCount: number;
   /** Last poll failed; lo ya cargado sigue visible. */
   offline: boolean;
+  /**
+   * Goes up each time a poll finds that a subtarea of mine moved on Door43 (a reviewer approved, a step was closed,
+   * somebody wrote): the list on the screen is read again. It read «Te avisaremos cuando te toque» for minutes after
+   * it was the person's turn, until they left the screen and came back.
+   */
+  changes: number;
   refresh: () => void;
   /** Mis tareas reports its "Mías" rows so step-role subtareas count too. */
   setExtraIssues: (issues: DcsIssue[]) => void;
@@ -91,6 +98,8 @@ export function useConversationActivity(
   const [issues, setIssues] = useState<number[]>([]);
   const [decisionIssues, setDecisionIssues] = useState<DcsIssue[] | null>(null);
   const [offline, setOffline] = useState(false);
+  const [changes, setChanges] = useState(0);
+  const markRef = useRef<PollMark | null>(null);
   const extraRef = useRef<DcsIssue[]>([]);
   const freeRef = useRef<DcsIssue[]>([]);
   const heldRef = useRef<Set<number>>(new Set());
@@ -104,6 +113,7 @@ export function useConversationActivity(
     setIssues([]);
     setDecisionIssues(null);
     setOffline(false);
+    markRef.current = null;
     extraRef.current = [];
     freeRef.current = [];
     heldRef.current = new Set();
@@ -169,6 +179,8 @@ export function useConversationActivity(
         setIssues(result.issues);
         if (result.decisions) setDecisionIssues(result.decisions);
         notifyNew(merged, result);
+        if (movedSince(markRef.current, result.mark)) setChanges((n) => n + 1);
+        markRef.current = { ...result.mark, newest: Math.max(markRef.current?.newest ?? 0, result.mark.newest) };
         setOffline(false);
         failures = 0;
         schedule(POLL_MS);
@@ -287,6 +299,7 @@ export function useConversationActivity(
     decisionIssues,
     unreadCount,
     offline,
+    changes,
     refresh,
     setExtraIssues,
     setAudience,

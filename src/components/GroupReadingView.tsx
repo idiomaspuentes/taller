@@ -108,7 +108,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     return map;
   }, [data, decisions, teamLevels, confirmers, minAgree, minIndependent]);
   const progress = useMemo(() => (data ? readingProgress(passages, data.texts, data.chapter, tallies) : null), [data, passages, tallies]);
-  useStepWork(session, ctx, progress?.agreed ?? 0, progress?.items ?? 0, { stepId: step?.id, on: !stepDone && !saving });
+  // Counted against the whole chapter: the verses of a passage still being translated are yet to be read.
+  const toRead = Math.max(progress?.items ?? 0, passages.reduce((sum, passage) => sum + passage.verses.length, 0) * (data?.texts.length ?? 0));
+  useStepWork(session, ctx, progress?.agreed ?? 0, toRead, { stepId: step?.id, on: !stepDone && !saving });
 
   const myAnswer = (id: string) => tallies.get(id)?.answers.find((answer) => answer.reviewer.trim().toLowerCase() === me);
 
