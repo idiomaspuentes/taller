@@ -85,7 +85,7 @@ test("orden por versículo y grupos por categoría en orden de aparición", () =
 });
 
 {
-  const { articlePathOf, articleName } = await import("../src/domain/afinacionNotes");
+  const { articlePathOf, articleName, articleShortName } = await import("../src/domain/afinacionNotes");
   assert.equal(articlePathOf("rc://*/ta/man/translate/figs-metaphor"), "translate/figs-metaphor");
   assert.equal(articlePathOf("rc://en/ta/man/checking/acceptable/"), "checking/acceptable");
   assert.equal(articlePathOf("figs-activepassive"), "translate/figs-activepassive");
@@ -94,6 +94,8 @@ test("orden por versículo y grupos por categoría en orden de aparición", () =
   const same = (label: string) => label;
   assert.equal(articleName(metaphor, { title: "La metáfora", own: true }, same), "La metáfora", "el título que el equipo le dio en su Academia");
   assert.equal(articleName(metaphor, { title: "Metaphor" }, same), "Metáfora", "sin traducir, el nombre conocido y no el inglés");
+  assert.equal(articleShortName(metaphor, { title: "La metáfora", own: true }, same), "La metáfora", "en la lista, el mismo nombre que sobre el punto");
+  assert.equal(articleShortName(metaphor, { title: "Cómo se traduce una metáfora que el lector no conoce", own: true }, same), "Metáfora", "un título que es una frase no cabe en la lista");
   assert.equal(articleName({ category: "figs-newthing", categoryLabel: "Newthing" }, { title: "A New Thing" }, same), "A New Thing", "un artículo que la app no conoce lleva su título");
   console.log("ok  cada nota lleva al artículo de la Academia que nombra su figura");
 }

@@ -34,7 +34,7 @@ export function mentionText(comments: CommentRow[], login: string): { text: stri
   if (!pick) return null;
   const text = pick
     .body!.replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/^(\s*@[\w-]+)+[\s,:]*/, "")
+    .replace(/^(\*\*[^*]+\*\*\s*—\s*)?(?:\s*@[\w-]+)+[\s,:]*/, "$1")
     .replace(/\s+/g, " ")
     .trim();
   if (!text) return null;

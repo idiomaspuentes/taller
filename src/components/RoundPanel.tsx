@@ -14,13 +14,17 @@ export function RoundPanel(props: {
   onJump: (itemId: string) => void;
   /** The step closes here, by consensus (see `closesInItsTool`); otherwise only the standing is shown. */
   closesHere: boolean;
+  /** Whether this person may close it: who coordinates or a persona habilitada. Anybody, when it is not said. */
+  canClose?: boolean;
   stepDone: boolean;
   busy: boolean;
   onClose: () => void;
 }) {
   const t = useT();
   const { summary } = props;
-  const [open, setOpen] = useState(true);
+  // Folded: it is the agenda of whoever settles the points, and it stood open, some two hundred pixels of it, over
+  // every point of everybody else.
+  const [open, setOpen] = useState(false);
   if (!summary.items.length) return null;
   // Nothing to say yet (no meeting needed, nothing to close): no empty box taking room.
   if (!props.stepDone && !(summary.complete && props.closesHere) && !summary.meeting.length) return null;
@@ -30,12 +34,18 @@ export function RoundPanel(props: {
       {props.stepDone ? (
         <p className="round__done">{t("round.closed")}</p>
       ) : summary.complete && props.closesHere ? (
-        <div className="round__ready">
-          <p>{t("round.allAgreed")}</p>
-          <Button type="button" size="lg" disabled={props.busy} onClick={props.onClose}>
-            {props.busy ? t("round.closing") : t("round.close")}
-          </Button>
-        </div>
+        props.canClose === false ? (
+          // Somebody whose answers do not count yet found the one large button of the page offering to end the
+          // review of the whole team, before answering anything.
+          <p className="round__done">{t("round.allAgreedWait")}</p>
+        ) : (
+          <div className="round__ready">
+            <p>{t("round.allAgreed")}</p>
+            <Button type="button" size="lg" disabled={props.busy} onClick={props.onClose}>
+              {props.busy ? t("round.closing") : t("round.close")}
+            </Button>
+          </div>
+        )
       ) : null}
 
       {summary.meeting.length ? (

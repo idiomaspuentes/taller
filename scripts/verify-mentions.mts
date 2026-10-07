@@ -77,6 +77,7 @@ await test("el aviso muestra lo que te dijeron: el último comentario que te nom
   assert.deepEqual(mentionText(comments, "ana"), { text: "Traducción de 3 Juan va en 15 de 21. Conviene empezar ya el libro siguiente.", by: "bea" });
   assert.deepEqual(mentionText(comments.slice(0, 3), "dina"), { text: "Listo, gracias.", by: "carla" }, "sin mención: lo último que dijo otra persona");
   assert.deepEqual(mentionText([{ body: "@ana primero", user: { login: "bea" }, created_at: "1" }, { body: "@anabel después", user: { login: "bea" }, created_at: "2" }], "ana")?.text, "primero", "«@anabel» no es «@ana»");
+  assert.equal(mentionText([{ body: "**JUD 1:1** — @ana @carla Propongo «guardados para Jesucristo».", user: { login: "bea" } }], "ana")?.text, "**JUD 1:1** — Propongo «guardados para Jesucristo».", "los nombres del principio se quitan también tras el lugar");
   assert.equal(mentionText([], "ana"), null);
   assert.equal(mentionText([{ body: "x".repeat(400), user: { login: "bea" } }], "ana")!.text.length, 218);
 });

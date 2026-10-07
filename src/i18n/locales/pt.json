@@ -2754,5 +2754,7 @@
   "af.beforeFix": "Responderam antes da correção",
   "af.teamDecided": "Acordado · decisão da equipe",
   "af.fixVerse": "Corrigir o versículo",
-  "af.notCounted": "Sua resposta fica à vista da equipe. Para o acordo contam as de quem tem o nível «{level}»."
+  "af.notCounted": "Sua resposta fica à vista da equipe. Para o acordo contam as de quem tem o nível «{level}».",
+  "round.allAgreedWait": "Tudo ficou de acordo. A revisão é fechada por quem coordena ou por uma pessoa habilitada.",
+  "round.allAgreedTell": "Tudo ficou de acordo: a revisão já pode ser fechada."
 }

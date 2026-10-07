@@ -3,7 +3,7 @@ import { coordinatorsOf } from "../domain/levels";
 import { loadPmConfig } from "../dcs/issues";
 import { SubtaskChangesPanel } from "./ChangesView";
 import { bookLabel } from "../domain/books";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, MoreHorizontal, SendHorizontal, TextQuote } from "lucide-react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -968,6 +968,15 @@ function Composer({
     el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
   }, [draft]);
 
+  // Where the writing goes on once a name was put in: set when the box already has the new text.
+  const caretAfter = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const pos = caretAfter.current;
+    if (pos === null) return;
+    caretAfter.current = null;
+    ref.current?.setSelectionRange(pos, pos);
+  }, [draft]);
+
   const mention = activeMention(draft, caret);
   const suggestions = mention
     ? participants.filter((p) => p.toLowerCase().startsWith(mention.query.toLowerCase())).slice(0, 5)
@@ -983,19 +992,20 @@ function Composer({
   function pickMention(login: string) {
     if (!mention) return;
     const next = `${draft.slice(0, mention.start)}@${login} ${draft.slice(caret)}`;
-    setDraft(next);
     const pos = mention.start + login.length + 2;
-    requestAnimationFrame(() => {
-      ref.current?.focus();
-      ref.current?.setSelectionRange(pos, pos);
-      setCaret(pos);
-    });
+    // The writing goes on after the name, with the keyboard where it was. The box was given back its place a frame
+    // later, out of the touch: a phone does not bring the keyboard back for that, and a page that is not in sight
+    // never runs the frame, which left the next words before the name.
+    caretAfter.current = pos;
+    setDraft(next);
+    setCaret(pos);
+    ref.current?.focus();
   }
 
   function pickCite(target: CiteTarget) {
     setDraft((prev) => insertQuote(prev, quoteVerse(target.ref, target.text)));
     setCiteOpen(false);
-    requestAnimationFrame(() => ref.current?.focus());
+    ref.current?.focus();
   }
 
   return (
@@ -1003,7 +1013,7 @@ function Composer({
       {suggestions.length ? (
         <div className="chat-composer__menu" role="listbox" aria-label={t("cv.mention")}>
           {suggestions.map((login) => (
-            <button key={login} type="button" role="option" aria-selected="false" onClick={() => pickMention(login)}>
+            <button key={login} type="button" role="option" aria-selected="false" onMouseDown={(e) => e.preventDefault()} onClick={() => pickMention(login)}>
               @{login}
             </button>
           ))}
@@ -1012,7 +1022,7 @@ function Composer({
       {citeOpen && cites.length ? (
         <div className="chat-composer__menu" role="listbox" aria-label={t("cv.quote")}>
           {cites.map((target) => (
-            <button key={target.id} type="button" role="option" aria-selected="false" onClick={() => pickCite(target)}>
+            <button key={target.id} type="button" role="option" aria-selected="false" onMouseDown={(e) => e.preventDefault()} onClick={() => pickCite(target)}>
               <strong>{target.ref}</strong> <span className="chat-composer__cite-text">{target.text}</span>
             </button>
           ))}

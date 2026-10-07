@@ -1,7 +1,7 @@
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
 import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
@@ -299,6 +299,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     };
   }, [session, ctx?.pmOrg, ctx?.issueNumber, taskStep?.id]);
 
+  const arriving = useRef(false);
   // The tool opens on the first item this person has not answered, not on the first of the list: in a round that
   // several people answer in turns, each one comes back to where they left it.
   useEffect(() => {
@@ -306,8 +307,28 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     const key = `${data.book}|${data.chapter}|${stepProp}|${category}|${order}`;
     if (openedAt === key) return;
     setOpenedAt(key);
-    const at = firstUnanswered({ items: visible, decisions, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? "") });
-    if (at > 0) setPosition(at);
+    const hashOf = (id: string) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? "");
+    // Opened from a message about a verse («1:3» in the conversation): at that verse, on the point the team does
+    // not agree on if it has one. It opened on the first point of the passage, and the one called to settle a
+    // disagreement had to find it among thirty.
+    const place = /^(\d+):(\d+)/.exec(ctx?.focus ?? "");
+    if (place) {
+      const there = visible.map((row, index) => ({ row, index })).filter(({ row }) => row.chapter === Number(place[1]) && row.verse === Number(place[2]));
+      const disputed = there.find(({ row }) => summary?.meeting.some((point) => point.itemId === row.id));
+      const mine = firstUnanswered({ items: there.map(({ row }) => row), decisions, me, hashOf });
+      const pick = disputed ?? there[mine > 0 ? mine : 0];
+      if (pick) {
+        setPosition(pick.index);
+        return;
+      }
+    }
+    const at = firstUnanswered({ items: visible, decisions, me, hashOf });
+    if (at > 0) {
+      // Arriving where one left it, the page stays at its top: what the round says (a point without agreement,
+      // everything agreed) is read there before the point.
+      arriving.current = true;
+      setPosition(at);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, busy, visible, decisions.length]);
 
@@ -390,6 +411,41 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     }
   }
 
+  // On a phone a new point starts at its own top, with the words to touch in sight: it was shown wherever the last
+  // one had been left, and the translation fell under the bar of the answer. Not the first one: whoever arrives
+  // reads from the top.
+  const kindRef = useRef<HTMLParagraphElement>(null);
+  const shownOnce = useRef(false);
+  useEffect(() => {
+    if (!item?.id) return;
+    if (!shownOnce.current || arriving.current) {
+      shownOnce.current = true;
+      arriving.current = false;
+      return;
+    }
+    if (!window.matchMedia("(max-width: 48rem)").matches) return;
+    // Once the point shows the step it opens at: before that the page is as short as the answer just given.
+    const later = window.setTimeout(() => kindRef.current?.scrollIntoView({ block: "start" }), 80);
+    return () => window.clearTimeout(later);
+  }, [item?.id]);
+
+  // The box where a change is proposed or an objection written opens in sight, with the button that sends it:
+  // on a phone it opened under the screen, the button eleven pixels beyond its foot.
+  const whyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (pending) whyRef.current?.scrollIntoView({ block: "center" });
+  }, [pending]);
+  // So does what tells that everything is agreed, to whoever gave the last answer: it is at the top of the page.
+  const roundRef = useRef<HTMLDivElement>(null);
+  const allAgreed = Boolean(summary?.complete);
+  useEffect(() => {
+    if (!allAgreed || stepDone) return;
+    // After the next point has been brought to its top, which the last answer also asks for.
+    const later = window.setTimeout(() => roundRef.current?.scrollIntoView({ block: "start" }), 200);
+    return () => window.clearTimeout(later);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allAgreed]);
+
   function jumpToItem(id: string) {
     setCategory("all");
     const at = groups.flatMap((g) => g.items).findIndex((i) => i.id === id);
@@ -399,7 +455,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   function labelOfItem(id: string): string {
     const found = data?.items.find((i) => i.id === id);
     if (!found) return id;
-    const what = "termSlug" in found ? termLabel((found as TermItem).termSlug, termTitles) : [nameOf(found), found.phrase ? `«${found.phrase}»` : ""].filter(Boolean).join(" ");
+    // Named by the words of the translation somebody chose for it. The notes name it by a phrase of the English
+    // text they were written for («of Jesus … kept and called in … Christ»), which the team does not have in front.
+    const chosen = [...decisions].reverse().find((d) => d.itemId === id && d.selectedText?.text)?.selectedText?.text.replace(/^[\s.,;:!?¡¿«»“”"'()]+|[\s.,;:!?¡¿«»“”"'()]+$/g, "");
+    const words = chosen || found.phrase;
+    const what = "termSlug" in found ? termLabel((found as TermItem).termSlug, termTitles) : [nameOf(found), words ? `«${words}»` : ""].filter(Boolean).join(" ");
     return `${found.chapter}:${found.verse}${what ? ` · ${what}` : ""}`;
   }
 
@@ -409,21 +469,26 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     const saved = decisions
       .filter((d) => d.itemId === item.id && d.reviewer.trim().toLowerCase() === me)
       .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
-    // Confirming what someone else answered starts from the words they chose: the question is whether those are right.
-    const theirs = saved
-      ? undefined
-      : decisions
-          .filter((d) => d.itemId === item.id && d.selectedText && d.reviewer.trim().toLowerCase() !== me)
-          .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
-    const words = saved?.selectedText ?? theirs?.selectedText;
-    const found = words ? wordsOfSelection(verseText, words) : [];
-    setSelected(found);
+    const own = saved?.selectedText ? wordsOfSelection(verseText, saved.selectedText) : [];
+    // The verse was corrected after this person answered, and the words they had chosen (if any) are no longer in
+    // it: they choose them again. The item opened at its second step with «(sin palabras)» and an answer that could
+    // not be pressed.
+    const again = Boolean(saved) && !own.length && (Boolean(saved?.selectedText?.text) || (saved?.textHash !== undefined && saved.textHash !== hash));
+    // Confirming what someone else answered starts from the words they chose: the question is whether those are
+    // right. The latest of them that are still in the verse.
+    const theirs =
+      saved && !again
+        ? []
+        : decisions
+            .filter((d) => d.itemId === item.id && d.selectedText && d.reviewer.trim().toLowerCase() !== me)
+            .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
+            .map((d) => wordsOfSelection(verseText, d.selectedText))
+            .find((words) => words.length) ?? [];
+    setSelected(own.length ? own : theirs);
     setNote(saved?.note ?? "");
     setPending(null);
     setChoosing(false);
-    // The words this person had chosen are no longer in the verse (it was corrected): they choose them again. The
-    // item opened at its second step with «(sin palabras)» and an answer that could not be pressed.
-    setConfirmed(Boolean(saved) && !(saved?.selectedText?.text && !found.length));
+    setConfirmed(Boolean(saved) && !again);
     // The person's own answers arrive after the item is shown: an item they answered opens at its second step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id, verseText, decisions.length]);
@@ -478,7 +543,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    */
   async function answer(status: ReviewStance, said?: string) {
     if (!session || !data || !item || !ctx) return;
-    const words = (said ?? note).trim();
+    // An agreement carries no note: what stays in the box from an earlier objection is not sent with it.
+    const words = (said ?? (status === "approved" ? "" : note)).trim();
     if (status !== "approved" && !words) {
       setPending(status);
       return;
@@ -501,6 +567,23 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
       if (status !== "approved") await tellTeam(`${stanceLabel(status)}: ${words}`);
+      // With this answer everything is agreed, and this person may not close the review: whoever coordinates is
+      // told. Nobody was: the round stood at «30 de 30» until somebody who may close it happened to open the tool.
+      if (status === "approved" && closesHere && !canConfirm && !stepDone && summary && !summary.complete && ctx.pmOrg && ctx.issueNumber) {
+        const round = summarizeRound({
+          itemIds: data.items.map((i) => i.id),
+          decisions: [...decisions, decision],
+          currentHashes: Object.fromEntries(data.items.map((i) => [i.id, textFingerprint(data.draftVerses[i.verse] ?? "")])),
+          levels: teamLevels,
+          authors: [],
+          thresholds,
+          confirmers,
+        });
+        const who = coordinatorsOf(data.levelBook, task?.orgTeamName).filter((login) => login.toLowerCase() !== me);
+        if (round.complete && who.length) {
+          await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${who.map((login) => `@${login}`).join(" ")} ${tNow("round.allAgreedTell")}`).catch(() => undefined);
+        }
+      }
       setPending(null);
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
       // On to the next one this person has not answered; after the last, the next in the list.
@@ -719,7 +802,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
 
       {summary ? (
-        <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} />
+        <div ref={roundRef} className="af-round-top">
+          <RoundPanel summary={summary} labelOf={labelOfItem} onJump={jumpToItem} closesHere={closesHere} canClose={canConfirm} stepDone={stepDone} busy={closing} onClose={() => void closeRound()} />
+        </div>
       ) : null}
 
       {data && item ? (
@@ -885,7 +970,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         </section>
       ) : null}
 
-      {data && item && pane === "review" ? (
+      {/* Not before the answers of everybody have been read: for some seconds the first point of the list was
+          shown as if nobody had answered anything, to be touched, and then the screen went to another point. */}
+      {data && item && pane === "review" && !busy ? (
         <section className="af-focus" aria-label={t("af.noteAria")}>
           {/* What this item is: the category of the note (or the key term). Everything below is about it. */}
           <div className="af-focus__top">
@@ -935,7 +1022,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               </button>
             </span>
           </div>
-          <p className="af-kind">{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
+          <p className="af-kind af-kind--top" ref={kindRef}>{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
           <h2 className="af-category">{stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
 
           {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}
@@ -948,7 +1035,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {/* How the team stands on it, and what the others said: before answering, not after. Where somebody does
               not agree it is found open: what they propose and why was folded under a line that did not look like
               something to touch, and the others read «no está de acuerdo» with no way to know about what. */}
-          {tally && !reviewing ? (
+          {tally && !reviewing && (tally.answers.length || tally.stale.length || tally.decided) ? (
             <details key={item.id} className="af-team" data-state={tally.state} open={tally.open.length > 0 || Boolean(tally.decided)}>
               <summary>
                 {tally.decided
@@ -1161,7 +1248,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : null}
               {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
               {/* Somebody who is not yet «habilitada» agreed and read «0 de 3 de acuerdo» over their own answer. */}
-              {mine && !reviewing && !countsForMinimum(levelOf(teamLevels, me)) ? <p className="af-hint">{t("af.notCounted").replace("{level}", levelLabel("habilitada", language))}</p> : null}
+              {mine?.status === "approved" && !reviewing && !countsForMinimum(levelOf(teamLevels, me)) ?<p className="af-hint">{t("af.notCounted").replace("{level}", levelLabel("habilitada", language))}</p> : null}
               {!choosing && !pending ? (
                 // The decision sits under what is decided. Agreeing is about the words chosen: none chosen, nothing to agree with yet.
                 <div className="af-decide">
@@ -1193,11 +1280,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </div>
               ) : null}
               {pending ? (
-                <div className="af-why">
+                <div className="af-why" ref={whyRef}>
                   <label htmlFor="af-note" className="af-lbl">
                     {pending === "revise" ? t("af.whatChange") : t("af.whatObjection")}
                   </label>
-                  <textarea id="af-note" className="af-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                  <textarea id="af-note" className="af-textarea" rows={3} value={note} autoFocus onChange={(e) => setNote(e.target.value)} />
                   <div className="af-row-buttons">
                     <Button type="button" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
                       {saving ? t("af.saving") : t("af.send")}

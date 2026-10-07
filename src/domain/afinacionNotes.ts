@@ -152,7 +152,13 @@ export type ArticleInfo = { title: string; question?: string; /** Read from the 
  * The same, for a narrow place (the list of the figures of a chapter): the short name this app knows the figure by,
  * when it knows one, since an article's title can be a whole sentence.
  */
+/** Up to here a title is a name; beyond, a sentence that does not fit a list. */
+const SHORT_NAME = 32;
+
 export function articleShortName(item: Pick<NoteItem, "category" | "categoryLabel">, info: ArticleInfo | undefined, known: (label: string) => string): string {
+  // The title the team gave it, when it is as short as a name: the list said «Activa o pasiva» and the point under
+  // it «Activo o pasivo».
+  if (info?.own && info.title && info.title.length <= SHORT_NAME) return info.title;
   return CATEGORY_LABEL[item.category] ? known(item.categoryLabel) : articleName(item, info, known);
 }
 
