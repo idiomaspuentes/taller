@@ -6988,7 +6988,12 @@ button.al-box--read { cursor: pointer; }
 .step-ask-bar:empty { display: none; }
 /* A tool laid out as a grid already keeps its children off the edges, and may have more than one column. */
 .af > .step-ask-bar { padding: 0; grid-column: 1 / -1; }
+.af > .step-ask-bar:has(.step-ask__asked) { position: sticky; top: 0; z-index: 19; background: var(--bg); }
+.af--round > .step-ask-bar:has(.step-ask__asked) { top: 2.5rem; }
 .step-ask-bar .step-ask { padding: 0.375rem 0 0.5rem; border-bottom: 1px solid var(--border); }
+/* It stays in sight while the tool is worked: a tool opens on its work, further down, and what was asked went out
+   of the screen with the first scroll. Three lines; the whole of it is in the conversation of the subtarea. */
+.step-ask__asked { margin: 0.5rem 0 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--warning-100); color: var(--warning-700); font-size: 0.875rem; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .step-ask { font-size: 0.875rem; color: var(--text-muted); }
 .step-ask summary { cursor: pointer; color: var(--primary); font-weight: 600; padding: 0.25rem 0; }
 .step-ask p { margin: 0.25rem 0 0; line-height: 1.5; }
@@ -7066,6 +7071,7 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
   flex: none;
   color: var(--text-faint);
 }
+.task-card__sub { margin: -0.25rem 0 0; font-size: 0.875rem; color: var(--text-muted); }
 .task-card__steps {
   display: flex;
   flex-direction: column;
@@ -7206,6 +7212,8 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 /* The article of the term being checked: in a box of its own, so the questions about it stay a short way under. */
 /* Short enough for the question about it, and its buttons, to be on the same screen of a phone. */
 .ur-article.ck-article { max-height: 30dvh; border: 1px solid var(--border); }
+.en-requests > summary { padding: 0.5rem 0; color: var(--text-muted); font-size: 0.875rem; cursor: pointer; }
+.en-requests ul { display: grid; gap: 0.25rem; margin: 0; padding: 0 0 0 1rem; }
 .ck-go { display: grid; }
 .ck-go[data-on] { position: sticky; bottom: 0; z-index: 4; margin: 0 -0.25rem; padding: 0.5rem 0.25rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border); }
 .ck-go .btn { min-height: 3rem; font-size: 1rem; }

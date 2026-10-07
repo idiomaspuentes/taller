@@ -18,6 +18,18 @@ export type CorrectionAsk = {
 
 const TITLE_MAX = 140;
 
+/**
+ * The passage a concern is about: of the passages of the unit, the one that has its verse («1:12 «arrecifes»» is of
+ * 1:12–16). A unit of a whole chapter is several passages, and every correction was filed under the first: the one
+ * about 1:12 read «JUD 1:1–4 · Corrección 1:12», and its tool opened on verses 1 to 4. `undefined` when the concern
+ * names no verse, or none of the passages has it.
+ */
+export function portionOfAsk(ask: Pick<CorrectionAsk, "where">, portions: { id: string; chapter: number; verses: number[] }[]): string | undefined {
+  const place = /^\s*(\d+):(\d+)/.exec(ask.where ?? "");
+  if (!place) return undefined;
+  return portions.find((portion) => portion.chapter === Number(place[1]) && portion.verses.includes(Number(place[2])))?.id;
+}
+
 /** «Corrección 1:3: dice "siervo" y la nota habla de "esclavo"». */
 export function correctionTitle(ask: CorrectionAsk): string {
   const text = ask.text.replace(/\s+/g, " ").trim();
@@ -34,7 +46,8 @@ export function correctionRows(
   board: Pick<AssignmentsDoc, "teams" | "phases" | "settings">,
   from: ProjectTask,
   asks: CorrectionAsk[],
-  portionId?: string,
+  /** The passage each correction opens on: one for them all, or the one of each concern. */
+  portion?: string | ((ask: CorrectionAsk) => string | undefined),
 ): { settings: ProjectSettings; added: ExtraWork[] } {
   let settings: ProjectSettings = board.settings ?? {};
   const had = new Set((settings.extraWork ?? []).map((row) => row.id));
@@ -44,6 +57,7 @@ export function correctionRows(
     if (!owner) continue;
     const title = correctionTitle(ask);
     if ((settings.extraWork ?? []).some((row) => row.taskId === owner.id && row.title === title)) continue;
+    const portionId = typeof portion === "function" ? portion(ask) : portion;
     settings = addExtraWork(settings, { taskId: owner.id, title, ...(portionId ? { portionId } : {}) });
   }
   return { settings, added: (settings.extraWork ?? []).filter((row) => !had.has(row.id)) };

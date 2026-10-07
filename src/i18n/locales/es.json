@@ -2782,5 +2782,11 @@
   "ck.article.none": "No se encontró este artículo.",
   "tb.seeStep": "Ver",
   "mt.stepDelivered": "Con «{step}» la tarea quedó entregada.",
-  "mt.staging": "La tarea quedó entregada. Ahora se prepara todo para la validación: tarda unos minutos. Deja la app abierta hasta que termine."
+  "mt.staging": "La tarea quedó entregada. Ahora se prepara todo para la validación: tarda unos minutos. Deja la app abierta hasta que termine.",
+  "en.requests": "Para quien usa Door43: las {n} solicitudes de esta unidad",
+  "sa.asked": "Lo que se pide aquí:",
+  "en.askObjector": "Pedir a @{who} que revise su objeción",
+  "en.askedObjector": "Se le pidió a @{who} que revise su objeción.",
+  "en.askObjectorSaid": "tu objeción sigue abierta y el comité no puede decidir el aval. Mira lo que se respondió o se corrigió; si ya no hace falta, retírala y vuelve a entregar tu reporte.",
+  "en.endorsing": "Guardando el aval de cada recurso: tarda uno o dos minutos. Deja la app abierta."
 }

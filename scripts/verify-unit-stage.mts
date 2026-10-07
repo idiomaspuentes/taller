@@ -15,7 +15,7 @@ import { getBranchSha, getPullByBranches } from "../src/dcs/pulls";
 import { releaseUnit } from "../src/dcs/release";
 import { publishUnit, stageUnit, type UnitResource, type UnitToPublish } from "../src/dcs/unitPublish";
 import { setWorkspaceBranchNames } from "../src/domain/branchNames";
-import { correctionRows, correctionTitle } from "../src/domain/corrections";
+import { correctionRows, correctionTitle, portionOfAsk } from "../src/domain/corrections";
 import { shippedWorkflows } from "../src/domain/processes";
 import type { AssignmentsDoc } from "../src/domain/types";
 import { validationBranchName } from "../src/domain/unitPublish";
@@ -107,6 +107,23 @@ await test("lo que el comité anota vuelve como subtarea a la tarea que mantiene
   assert.equal(text!.portionId, "JUD-01-01", "se abre sobre el pasaje de la unidad");
   assert.equal(correctionRows({ ...board, settings }, validating.task, asks, "JUD-01-01").added.length, 0, "pedida dos veces, no se duplica");
   assert.ok(correctionTitle({ about: "tpl", text: "x".repeat(400) }).length <= 140, "un título largo se recorta");
+});
+
+await test("cada corrección se abre sobre el pasaje de su versículo, no sobre el primero de la unidad", () => {
+  const unit = [
+    { id: "JUD-01-01", chapter: 1, verses: [1, 2, 3, 4] },
+    { id: "JUD-01-03", chapter: 1, verses: [12, 13, 14, 15, 16] },
+  ];
+  assert.equal(portionOfAsk({ where: "1:12" }, unit), "JUD-01-03");
+  assert.equal(portionOfAsk({ where: "1:1 «Judas»" }, unit), "JUD-01-01", "con la frase de la nota detrás");
+  assert.equal(portionOfAsk({ where: "1:9" }, unit), undefined, "un versículo que ningún pasaje de la unidad tiene");
+  assert.equal(portionOfAsk({ where: "" }, unit), undefined, "sin versículo");
+  const asks = [
+    { about: "tpl", where: "1:12", text: "«arrecifes ocultos» no se entiende." },
+    { about: "tpl", where: "", text: "En general, muy largo." },
+  ];
+  const { added } = correctionRows(board, validating.task, asks, (ask) => portionOfAsk(ask, unit) ?? "JUD-01-01");
+  assert.deepEqual(added.map((row) => row.portionId), ["JUD-01-03", "JUD-01-01"], "la de 1:12, en 1:12–16; la que no dice dónde, en el primero");
 });
 
 // ---------------------------------------------------------------- through Door43 (the mock)

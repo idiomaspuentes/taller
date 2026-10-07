@@ -128,6 +128,25 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
       </button>
     );
 
+  /**
+   * What was said about one help, under that help. It was listed only at the foot of its verse: whoever noted a
+   * concern on the first of nine notes saw the box close and the note as it was before, and found what they had
+   * written two screens further down.
+   */
+  const saidHere = (kind: ChecklistKind, where: string) => {
+    const said = concerns.filter((concern) => !concern.withdrawn && concern.about === kind && (concern.where ?? "") === where);
+    return said.length ? (
+      <ul className="ur-said">
+        {said.map((concern) => (
+          <li key={`${concern.by ?? ""}-${concern.id}`} data-kind={concern.kind}>
+            <b>{t(concern.kind === "objection" ? "en.objection" : "en.observation")}</b>
+            {concern.by ? ` · @${concern.by}` : ""}: {concern.text}
+          </li>
+        ))}
+      </ul>
+    ) : null;
+  };
+
   const item = (kind: ChecklistKind, row: ChecklistItem) => {
     const phrase = phraseOf(row);
     const key = `${kind}-${row.id}`;
@@ -142,6 +161,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
               <span>{termLabel(slug, termTitles)}</span>
             </summary>
             {article === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : article === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article" content={articleBody(article)} />}
+            {saidHere(kind, concernPlace(chapter, row.verse, phrase || termLabel(slug, termTitles)))}
             {/* With the article, not under every name of a list of eleven: a concern about a term comes of reading it. */}
             {concernLine(key, kind, concernPlace(chapter, row.verse, phrase || termLabel(slug, termTitles)), "ur.concernTerm")}
           </details>
@@ -152,6 +172,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
       <li key={key} className="ur-item">
         {kind === "preguntas" ? <p className="ur-item__head">{row.title}</p> : phrase ? <p className="ur-item__head">«{phrase}»</p> : null}
         {row.body ? <HelpMarkdownView className="ur-md" content={row.body} /> : null}
+        {saidHere(kind, concernPlace(chapter, row.verse, kind === "preguntas" ? row.title : phrase))}
         {concernLine(key, kind, concernPlace(chapter, row.verse, kind === "preguntas" ? row.title : phrase), kind === "preguntas" ? "ur.concernQuestion" : "ur.concernNote")}
       </li>
     );

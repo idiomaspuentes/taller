@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
-import { buildBoard, nextCard, nextStepOfMine, placeOf, type Board, type BoardCard } from "../src/domain/myTasksBoard";
+import { buildBoard, nextCard, nextStepOfMine, placeOf, type Board, type BoardCard, ownTitleOf } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
 import { emptyCursor } from "../src/domain/readCursor";
 import { encodeTaskProgressMarker } from "../src/domain/taskProgress";
@@ -429,6 +429,18 @@ await test("un paso que alguien tomó para hacerlo, con todo su trabajo hecho, p
   };
   assert.equal(at({ done: 2, total: 4 }).doing[0]?.action.kind, "continue", "mientras quedan versículos, la herramienta");
   assert.deepEqual(at({ done: 4, total: 4 }).doing[0]?.action, { kind: "approveStep", step: aligning.teams[3]!.steps![0] }, "con los cuatro hechos, terminar el paso");
+});
+
+await test("una subtarea añadida a mano se llama como la llamó quien la añadió, no como la tarea y el pasaje", () => {
+  const order = (itemIds: string[]) => `<!-- gateway-work-order ${JSON.stringify({ schema: "gateway-work-order-1", key: "k", book: "NEH", teamId: "tpl", resource: "tpl", portionIds: ["p1"], itemIds })} -->`;
+  const asked = { ...issue({ task: "tpl", title: "NEH 1:12–16 · Corrección 1:12: «arrecifes ocultos» no se entiende · así" }), body: order(["extra:x-93f193ea"]) } as DcsIssue;
+  const usual = { ...issue({ task: "tpl", title: "NEH 1:12–16 · TPL" }), body: order(["porcion:1:12-16"]) } as DcsIssue;
+  assert.equal(ownTitleOf(asked), "Corrección 1:12: «arrecifes ocultos» no se entiende · así");
+  assert.equal(ownTitleOf(usual), "", "el trabajo de siempre se llama por su tarea y su pasaje");
+  assert.equal(ownTitleOf(issue({ task: "tpl", title: "NEH 1:12–16 · Corrección" })), "", "sin la marca de trabajo añadido, tampoco");
+  const board = boardFor([asked, usual]);
+  assert.equal(where(board, asked.number)?.ownTitle, "Corrección 1:12: «arrecifes ocultos» no se entiende · así");
+  assert.equal(where(board, asked.number)?.place, "1:12–16", "y sigue sabiendo de qué pasaje es");
 });
 
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

@@ -32,6 +32,8 @@ import { scopeLabel } from "../domain/resourceNames";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { explainError } from "../dcs/userError";
+import { deliverSharedSubtask } from "../dcs/deliverShared";
+import { refComment } from "../domain/commentPlace";
 
 type Props = {
   ctxEncoded: string;
@@ -160,9 +162,12 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     }
   }
 
+  /** The endorsement is being kept, which reads every file of the unit: said while it lasts (it took 105 s). */
+  const [endorsing, setEndorsing] = useState(false);
   async function endorse() {
     if (!session || !ctx?.pmOrg || !ctx.issueNumber || !ctx.stepId || !data) return;
     setSaving(true);
+    setEndorsing(true);
     setError("");
     try {
       // What was endorsed is kept piece by piece, so publishing can tell whether anything changed afterwards.
@@ -170,11 +175,15 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, t("en.endorsedNote").replace("{n}", String(tally.supporters.length)).replace("{of}", String(tally.delivered.length)).replace("{who}", tally.supporters.map((s) => `@${s}`).join(", ")));
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       setStepDone(true);
+      // The decision is the last step: with it the subtarea is delivered (it works on the shared draft, see
+      // `deliverSharedSubtask`). It was left for whoever decided to find «Entregar» on their list.
+      if (data.board) await deliverSharedSubtask({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board: data.board, issueNumber: ctx.issueNumber }).catch(() => false);
       announce(t("en.endorsed"));
     } catch (err) {
       setError(explainError(err));
     } finally {
       setSaving(false);
+      setEndorsing(false);
     }
   }
 
@@ -201,7 +210,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
               board: data.board,
               from: data.task,
               asks: [...tally.objections, ...tally.observations].map((c) => ({ about: c.about, where: c.where, text: c.text, by: c.by })),
-              portionId: ctx.portionIds?.[0],
+              portionIds: ctx.portionIds,
             })
           : [];
       const body = [
@@ -211,6 +220,30 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       ].join("\n");
       await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, body);
       announce(created.length ? t("en.sentBack").replace("{n}", String(created.length)) : t("en.sentBackNone"));
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /**
+   * An objection stands until whoever made it takes it back, and while one stands the committee cannot endorse. Its
+   * author had handed in their report and had the task no longer on their list: once the corrections came back
+   * nobody told them, and whoever decided had a button that stayed off. They are asked from here, in the
+   * conversation of the task, where they get the way back to their report.
+   */
+  const [askedOf, setAskedOf] = useState<string[]>([]);
+  async function askObjector(who: string) {
+    if (!session || !ctx?.pmOrg || !ctx.issueNumber) return;
+    setSaving(true);
+    setError("");
+    try {
+      const where = /^\s*(\d+:\d+)/.exec(tally.objections.find((c) => c.by === who)?.where ?? "")?.[1];
+      const said = `@${who} ${tNow("en.askObjectorSaid")}`;
+      await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, where && data ? refComment(data.book, where, said) : said);
+      setAskedOf((prev) => [...prev, who]);
+      announce(t("en.askedObjector").replace("{who}", who));
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -338,11 +371,22 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
                     {t("en.articles").replace("{name}", aboutLabel(r.resource)).replace("{n}", String(unitChanges(unit, r)?.length ?? 0))}
                   </p>
                 ))}
-              {requests.map((url) => (
-                <a key={url} className="en-request" href={url} target="_blank" rel="noreferrer">
-                  {t("en.openRequest")}
-                </a>
-              ))}
+              {requests.length ? (
+                // One line, closed: they were six links in a row, each reading «Ver la solicitud en Door43», to a
+                // committee that reads the unit here. Whoever opens them is told which repository each one is of.
+                <details className="en-requests">
+                  <summary>{t("en.requests").replace("{n}", String(requests.length))}</summary>
+                  <ul>
+                    {requests.map((url) => (
+                      <li key={url}>
+                        <a className="en-request" href={url} target="_blank" rel="noreferrer">
+                          {url.replace(/^https?:\/\/[^/]+\//, "").split("/")[1] ?? t("en.openRequest")}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
             </>
           ) : (
             <p className="af-hint" aria-busy="true">{t("en.changesLoading")}</p>
@@ -429,7 +473,14 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
           )}
 
           <div className="af-buttons">
-            <Button type="button" size="lg" disabled={saving || questions.some((q) => mine.answers[q.id] === undefined)} onClick={() => void saveMine({ ...mine, delivered: true }, t("en.delivered"))}>
+            {mine.delivered ? (
+              // Handed in: what is left to do here is to leave. The button that stood out said «Volver a entregar»,
+              // as if something were still owed; that is for whoever changes an answer.
+              <Button type="button" size="lg" onClick={onClose}>
+                {t("fa.back")}
+              </Button>
+            ) : null}
+            <Button type="button" size="lg" variant={mine.delivered ? "outline" : undefined} disabled={saving || questions.some((q) => mine.answers[q.id] === undefined)} onClick={() => void saveMine({ ...mine, delivered: true }, t("en.delivered"))}>
               {saving ? t("af.saving") : mine.delivered ? t("en.deliverAgain") : t("en.deliver")}
             </Button>
             {!mine.delivered ? (
@@ -465,6 +516,19 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
               <p className="af-hint">
                 {tally.blocker === "few-reports" ? t("en.fewReports") : tally.blocker === "objections" ? t("en.blockedObjections") : tally.blocker === "no-majority" ? t("en.noMajority") : tally.consensus ? t("en.consensus") : t("en.byMajority")}
               </p>
+              {canDecide && tally.blocker === "objections"
+                ? [...new Set(tally.objections.map((c) => c.by ?? "").filter((who) => who && who.toLowerCase() !== (session?.username ?? "").toLowerCase()))].map((who) =>
+                    askedOf.includes(who) ? (
+                      <p key={who} className="af-hint" role="status">
+                        {t("en.askedObjector").replace("{who}", who)}
+                      </p>
+                    ) : (
+                      <Button key={who} type="button" size="lg" variant="outline" disabled={saving} onClick={() => void askObjector(who)}>
+                        {t("en.askObjector").replace("{who}", who)}
+                      </Button>
+                    ),
+                  )
+                : null}
               {canDecide ? (
                 <div className="af-buttons">
                   <Button type="button" size="lg" disabled={saving || !tally.canEndorse} onClick={() => void endorse()}>
@@ -477,7 +541,20 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
               ) : (
                 <p className="af-hint">{t("en.onlyCoordinator")}</p>
               )}
+              {endorsing ? (
+                <p className="af-hint" role="status">
+                  {t("en.endorsing")}
+                </p>
+              ) : null}
             </>
+          ) : mode === "decision" ? (
+            // Decided: there is nothing left to do here. The screen stayed on the reports, with no button at all.
+            <div className="round__done round__done--leave">
+              <p>{t("en.endorsed")}</p>
+              <Button type="button" size="lg" variant="outline" onClick={onClose}>
+                {t("fa.back")}
+              </Button>
+            </div>
           ) : null}
         </section>
       ) : null}

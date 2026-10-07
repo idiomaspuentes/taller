@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { GtSession } from "../dcs/auth";
 import { rememberedBoard } from "../dcs/notices";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
+import { extraItemId } from "../domain/extraWork";
 import { avoided, decisionsForText, decisionsForVerse, groupsOfVerse, type GlossaryText, type VerseDecision } from "../domain/glossary";
 import { teamKey } from "../domain/levels";
 import { formatWhen, itemChecks, parseWhen, stepWideChecks } from "../domain/stepChecks";
@@ -12,7 +13,7 @@ import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
 import { portionRange } from "../domain/usfmEdit";
-import type { ProjectTask, TaskStep } from "../domain/types";
+import type { ProjectSettings, ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useGlossaryEntries } from "../useGlossary";
@@ -206,18 +207,21 @@ export function isOfTeam(session: Pick<GtSession, "username" | "teams" | "canMan
 }
 
 /** The step a tool was opened for and its task, from the launch (which subtarea, which step) and the plan of its project. */
-export function useLaunchStep(session: GtSession | null | undefined, ctx: SolverLaunchContext | null | undefined): { task: ProjectTask; step: TaskStep } | null {
-  const [found, setFound] = useState<{ task: ProjectTask; step: TaskStep } | null>(null);
+export function useLaunchStep(session: GtSession | null | undefined, ctx: SolverLaunchContext | null | undefined): { task: ProjectTask; step: TaskStep; asked?: string } | null {
+  const [found, setFound] = useState<{ task: ProjectTask; step: TaskStep; asked?: string } | null>(null);
   const { pmOrg, projectId, taskId, stepId, lang, contentOrg } = ctx ?? {};
+  const items = (ctx?.itemIds ?? []).join(" ");
   useEffect(() => {
     setFound(null);
     if (!session || !pmOrg || !projectId || !taskId || !stepId) return;
     let cancelled = false;
-    const place = (board: { teams: ProjectTask[] } | null | undefined): boolean => {
+    const place = (board: { teams: ProjectTask[]; settings?: ProjectSettings } | null | undefined): boolean => {
       const task = board?.teams.find((row) => row.id === taskId);
       const step = task?.steps?.find((row) => row.id === stepId);
       if (!task || !step || cancelled) return false;
-      setFound({ task, step });
+      // A subtarea added by hand (a correction a committee asked for) is about what its title says.
+      const asked = (board?.settings?.extraWork ?? []).find((row) => items.split(" ").includes(extraItemId(row.id)))?.title;
+      setFound({ task, step, ...(asked ? { asked } : {}) });
       return true;
     };
     if (!place(rememberedBoard(session, pmOrg, projectId)))
@@ -227,7 +231,7 @@ export function useLaunchStep(session: GtSession | null | undefined, ctx: Solver
     return () => {
       cancelled = true;
     };
-  }, [session?.token, pmOrg, projectId, taskId, stepId, lang, contentOrg]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session?.token, pmOrg, projectId, taskId, stepId, lang, contentOrg, items]); // eslint-disable-line react-hooks/exhaustive-deps
   return found;
 }
 
@@ -327,9 +331,17 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
   const found = useLaunchStep(session, ctx);
   if (!found || !ctx) return null;
   const { task, step } = found;
-  if (!stepAsks(step, language) && !task.orgTeamName) return null;
+  if (!stepAsks(step, language) && !task.orgTeamName && !found.asked) return null;
   return (
-    <details className="step-ask">
+    <>
+      {/* What a subtarea added by hand asks, in plain sight: the tool of its task opens as it does for the work that
+          task had already finished, and what the committee asked to correct was said nowhere in it. */}
+      {found.asked ? (
+        <p className="step-ask__asked" role="note">
+          <b>{t("sa.asked")}</b> {found.asked}
+        </p>
+      ) : null}
+      <details className="step-ask">
       <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
       <StepAskBody step={step} />
       <TeamRuleChecks team={task.orgTeamName} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} />
@@ -340,7 +352,8 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
           {t(ofPassage(ctx) ? "gl.openPassage" : "gl.openSearch")}
         </a>
       )}
-    </details>
+      </details>
+    </>
   );
 }
 

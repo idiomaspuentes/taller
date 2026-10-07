@@ -14,6 +14,8 @@ import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
+import { isExtraItemId } from "./extraWork";
+import { parseWorkOrderMarker } from "./workOrder";
 
 /**
  * «Mis tareas» as a person who is not at ease with computers needs it: one flat list of cards, grouped by what
@@ -57,6 +59,12 @@ export type BoardCard = {
   /** Book code and the place inside it as written in the subtarea title: `NEH`, `2` or `1:1–8`. */
   book: string;
   place: string;
+  /**
+   * What a subtarea added by hand was called by whoever added it («Corrección 1:12: «arrecifes ocultos» no se
+   * entiende»). Its card read as the task and the passage alone («Desafíos TPL · Judas 1:1–4»), the same as the
+   * work that task had already finished there, and what the committee asked was nowhere on it.
+   */
+  ownTitle: string;
   stepsDone: number;
   stepsTotal: number;
   /** The first step not done yet. */
@@ -89,6 +97,14 @@ export type Board = Record<BoardGroup, BoardCard[]>;
 function taskOf(issue: DcsIssue, bucket?: MyTasksProjectBucket): ProjectTask | undefined {
   const id = issueTaskId(issue);
   return id && bucket ? bucket.board.teams.find((t) => t.id === id) : undefined;
+}
+
+/** The name a subtarea added by hand was given, from its title (`JUD 1:12–16 · Corrección 1:12: …`); empty for the rest. */
+export function ownTitleOf(issue: DcsIssue): string {
+  if (!parseWorkOrderMarker(issue.body ?? "")?.itemIds.some(isExtraItemId)) return "";
+  const title = (issue.title ?? "").trim();
+  const at = title.indexOf(" · ");
+  return at < 0 ? "" : title.slice(at + 3).trim();
 }
 
 /** `NEH 1:1–8 · TPL` → place `1:1–8`; `NEH 2 · Traducir TPL 1` → `2`. */
@@ -181,6 +197,7 @@ export function buildBoard(input: BoardInput): Board {
       taskName: task?.name ?? "",
       book,
       place,
+      ownTitle: ownTitleOf(issue),
       stepsDone: steps.filter((s) => progress.doneStepIds.includes(s.id)).length,
       stepsTotal: steps.length,
       nextStep: steps.find((s) => !progress.doneStepIds.includes(s.id)),

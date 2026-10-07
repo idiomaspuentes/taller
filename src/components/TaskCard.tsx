@@ -195,7 +195,7 @@ export function TaskCard(props: Props) {
           {/* «Nueva» is said of what is the person's to do. Of what nobody has taken, or waits, it stayed on every
               card for ever: nobody opens those. */}
           {card.activity.isNew && card.group !== "free" && card.group !== "waiting" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null}
-          {title}
+          {card.ownTitle || title}
         </h3>
         {menuItems.length ? (
           <div className="task-card__menu" ref={menuRef}>
@@ -223,6 +223,8 @@ export function TaskCard(props: Props) {
           </div>
         ) : null}
       </div>
+      {/* Named by what was asked; the task and the passage it belongs to come under it. */}
+      {card.ownTitle ? <p className="task-card__sub">{title}</p> : null}
 
       {props.projectLabel ? <span className="task-card__project">{props.projectLabel}</span> : null}
 
