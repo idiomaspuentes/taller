@@ -248,8 +248,36 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
   useEffect(() => {
     const row = indexRef.current;
     const button = row?.querySelector<HTMLElement>(`[data-verse="${current}"]`);
-    if (row && button) row.scrollTo({ left: button.offsetLeft - row.clientWidth / 2 + button.offsetWidth / 2, behavior: "smooth" });
+    if (row && button) row.scrollTo({ left: button.offsetLeft - row.offsetLeft - row.clientWidth / 2 + button.offsetWidth / 2, behavior: "smooth" });
   }, [current]);
+  /**
+   * Whether the row has verses out of sight at each end; `null` when they all fit. With a mouse the row cannot be
+   * slid, and nothing said it went on: twelve numbers showed of twenty-five, and no way to verse 15. It gets an
+   * arrow at each end, which moves it by the numbers that fit.
+   */
+  const [more, setMore] = useState<{ before: boolean; after: boolean } | null>(null);
+  useEffect(() => {
+    const row = indexRef.current;
+    if (!row) return;
+    const look = () => {
+      const over = row.scrollWidth - row.clientWidth;
+      const next = over > 4 ? { before: row.scrollLeft > 4, after: row.scrollLeft < over - 4 } : null;
+      setMore((prev) => (prev?.before === next?.before && prev?.after === next?.after && Boolean(prev) === Boolean(next) ? prev : next));
+    };
+    look();
+    row.addEventListener("scroll", look, { passive: true });
+    const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(look);
+    watch?.observe(row);
+    return () => {
+      row.removeEventListener("scroll", look);
+      watch?.disconnect();
+    };
+  }, [verses.length]);
+  const slide = (by: 1 | -1) => {
+    const row = indexRef.current;
+    // By what fits, less one number, so the last one seen is the first of the next stretch.
+    row?.scrollBy({ left: by * Math.max(row.clientWidth - 48, 96), behavior: "smooth" });
+  };
   const goTo = (verse: number) => sections.current.get(verse)?.scrollIntoView({ block: "start", behavior: "smooth" });
 
   const phraseOf = (kind: ChecklistKind, row: ChecklistItem): string | null => pointed.get(keyOf(kind, row))?.phrase ?? null;
@@ -426,7 +454,13 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
       {/* The verses of the passage, always in reach: where one is, which were gone through, which have something
           noted. Twenty screens of passage had no way to a verse but to slide to it. */}
       {verses.length > 1 ? (
-        <nav className="ur-index" aria-label={t("ur.indexAria")} ref={indexRef}>
+        <nav className="ur-index" aria-label={t("ur.indexAria")}>
+          {more ? (
+            <button type="button" className="ur-index__more" aria-label={t("ur.indexBefore")} title={t("ur.indexBefore")} disabled={!more.before} onClick={() => slide(-1)}>
+              <ChevronLeft size={20} aria-hidden />
+            </button>
+          ) : null}
+          <div className="ur-index__row" ref={indexRef}>
           {verses.map((verse) => {
             const progress = verseProgress(helpKeysOf(verse), seen);
             const noted = concernsAt(concerns, chapter, verse).some((concern) => !concern.withdrawn);
@@ -445,6 +479,12 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
               </button>
             );
           })}
+          </div>
+          {more ? (
+            <button type="button" className="ur-index__more" aria-label={t("ur.indexAfter")} title={t("ur.indexAfter")} disabled={!more.after} onClick={() => slide(1)}>
+              <ChevronRight size={20} aria-hidden />
+            </button>
+          ) : null}
         </nav>
       ) : null}
       <div className="ur-top">

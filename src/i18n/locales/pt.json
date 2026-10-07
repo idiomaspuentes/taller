@@ -2848,5 +2848,7 @@
   "ur.textsAria": "Que textos são mostrados",
   "ur.observationHint": "Algo que convém melhorar; não detém o aval.",
   "ur.objectionHint": "Não deveria ser publicado assim: detém o aval até ser resolvido.",
-  "ur.legend": "O que é cada marca"
+  "ur.legend": "O que é cada marca",
+  "ur.indexBefore": "Versículos anteriores",
+  "ur.indexAfter": "Mais versículos"
 }

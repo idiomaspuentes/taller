@@ -1390,6 +1390,11 @@ el noveno lleva a «3 preguntas»); las marcas siguen a cada nota; escribir no g
   lee va en azul, el que ya se leyó entero en verde, y un punto ámbar dice que tiene inquietudes. «Ya leído» es
   haber visto todas sus ayudas; se guarda en el teléfono, por persona y por tarea, y la ficha de cada clase lo
   dice también («✓ 9 notas»). Reemplaza al título «Leer el pasaje», que era lo que quedaba fijo.
+- **La fila de versículos tiene una flecha en cada extremo cuando no caben todos.** Abel: «en escritorio el
+  usuario que no es muy hábil no sabe cómo llegar al v15». Con ratón la fila no se puede deslizar y nada decía que
+  seguía: se veían doce números de veinticinco. *Ahora* «›» (44 × 44 px) la avanza por los que caben: a 640 px, un
+  toque pasa de 1–10 a 11–19, y tocar «15» deja ese versículo arriba. La flecha que no tiene más que mostrar se
+  ve apagada. En un teléfono también están, con cuatro números entre ellas.
 - **El artículo de una palabra clave se abre en una hoja** que ocupa la pantalla, con el nombre del término y
   «Cerrar» fijos arriba. Al cerrarla, la lectura está donde estaba.
 - **La caja de una inquietud es más corta y el cursor entra solo.** Observación y Objeción van en una fila, con

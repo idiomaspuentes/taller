@@ -8576,15 +8576,21 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 /* The unit read verse by verse, with what goes with each verse to open under it (`UnitReading`).
    A verse is three things, each set apart by its room and its ground: its texts; the help in view, in a card (where
    one is, the help, what was noted about it); and what concerns the verse as a whole. */
-.ur { display: grid; }
+.ur { display: grid; grid-template-columns: minmax(0, 1fr); }
 /* The verses of the passage, in reach all the way down: one row that slides sideways and stays at the top. Blue is
    where one is, teal what was gone through, amber what has something noted (the colours of the system). */
-.ur-index { position: sticky; top: -0.75rem; z-index: 2; display: flex; gap: 0.25rem; margin: 0 -1rem; padding: 0.375rem 1rem; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; background: var(--surface); border-bottom: 1px solid var(--border); }
-.ur-index::-webkit-scrollbar { display: none; }
-.ur-index button { position: relative; flex: 0 0 auto; min-width: 2.75rem; min-height: 2.75rem; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; font-variant-numeric: tabular-nums; cursor: pointer; }
-.ur-index button[data-done] { border-color: var(--success-500); background: var(--success-100); color: var(--success-700); }
-.ur-index button[aria-current="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); font-weight: 700; }
-.ur-index button[data-noted]::after { content: ""; position: absolute; top: 0.25rem; right: 0.25rem; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--warning-500); box-shadow: 0 0 0 2px var(--surface); }
+.ur-index { position: sticky; top: -0.75rem; z-index: 2; display: flex; align-items: center; gap: 0.375rem; min-width: 0; margin: 0 -1rem; padding: 0.375rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+.ur-index__row { flex: 1 1 auto; min-width: 0; display: flex; gap: 0.25rem; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.ur-index__row::-webkit-scrollbar { display: none; }
+/* An arrow at each end whenever the verses do not all fit: with a mouse the row cannot be slid, and with a finger
+   nothing but a number cut in half said it went on. */
+.ur-index__more { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); color: var(--text); cursor: pointer; }
+.ur-index__more:hover:not(:disabled) { background: var(--accent-100); border-color: var(--primary); }
+.ur-index__more:disabled { opacity: 0.35; cursor: default; }
+.ur-index__row button { position: relative; flex: 0 0 auto; min-width: 2.75rem; min-height: 2.75rem; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; font-variant-numeric: tabular-nums; cursor: pointer; }
+.ur-index__row button[data-done] { border-color: var(--success-500); background: var(--success-100); color: var(--success-700); }
+.ur-index__row button[aria-current="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); font-weight: 700; }
+.ur-index__row button[data-noted]::after { content: ""; position: absolute; top: 0.25rem; right: 0.25rem; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--warning-500); box-shadow: 0 0 0 2px var(--surface); }
 /* The reading box had its own heading fixed at the top: the row of verses is what stays there now. */
 .en-read > summary { position: static; }
 .ur-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.25rem 0.5rem; padding: 0.375rem 0; }
