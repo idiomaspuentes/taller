@@ -864,7 +864,7 @@
   "af.fixAria": "Corrigir o versículo",
   "af.verseText": "Texto do versículo",
   "af.why": "Por quê (opcional)",
-  "af.fixHint": "As respostas anteriores a este versículo pedirão nova revisão e quem as deu será avisado.",
+  "af.fixHint": "Quem respondeu sobre as palavras que você mudar terá de revisá-las de novo, e será avisado.",
   "af.saving": "Salvando…",
   "af.saveFix": "Salvar correção",
   "af.cancel": "Cancelar",
@@ -2748,5 +2748,11 @@
   "af.second": "Penso o mesmo",
   "af.secondNote": "De acordo com @{who}.",
   "af.talk": "Conversar no chat",
-  "af.decisionSaid": "Decisão da equipe:"
+  "af.decisionSaid": "Decisão da equipe:",
+  "af.correctedNote": "Corrigi o versículo: «{before}» → «{now}».",
+  "af.correctedAgain": "Vejam de novo.",
+  "af.beforeFix": "Responderam antes da correção",
+  "af.teamDecided": "Acordado · decisão da equipe",
+  "af.fixVerse": "Corrigir o versículo",
+  "af.notCounted": "Sua resposta fica à vista da equipe. Para o acordo contam as de quem tem o nível «{level}»."
 }

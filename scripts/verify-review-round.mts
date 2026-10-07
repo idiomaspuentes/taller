@@ -5,9 +5,11 @@
 import assert from "node:assert/strict";
 import type { CheckingDecisionsFile } from "@usfm-tools/types";
 import {
+  changedStretch,
   decisionsFilePath,
   mergeDecisionFiles,
   reviewersToNotifyAfterEdit,
+  standingAnswers,
   summarizeRound,
   tallyItem,
   textFingerprint,
@@ -153,6 +155,67 @@ test("quien alineó un versículo no cuenta como independiente en ese versículo
   assert.equal(summarizeRound(base).agreed, 2, "sin autores los dos versículos se acuerdan");
   const r = summarizeRound({ ...base, authorsByItem: { v1: ["ana", "bea"], v2: ["ana"] } });
   assert.deepEqual(r.items.map((i) => i.state), ["pending", "agreed"], "en v1 las dos son autoras; en v2 Bea es independiente");
+});
+
+// Jude 1:3 as the team had it, and after the article was taken out of «la necesidad».
+const VERSE = "Amados, haciendo todo esfuerzo por escribirles sobre nuestra salvación común, tengo la necesidad de escribirles, exhortándolos a luchar por la fe.";
+const FIXED = VERSE.replace("tengo la necesidad", "tengo necesidad");
+const about = (reviewer: string, itemId: string, status: string, words: string, o: { note?: string; final?: boolean } = {}): ReviewDecision =>
+  ({ ...answer(reviewer, itemId, status, { hash: textFingerprint(VERSE), note: o.note }), ...(words ? { selectedText: { text: words } } : {}), ...(o.final ? { final: true } : {}) }) as ReviewDecision;
+
+test("corregir una palabra no hace caducar el acuerdo sobre otras palabras del versículo", () => {
+  const given = [
+    about("ana", "salvacion", "approved", "sobre nuestra salvación común,"),
+    about("ana", "necesidad", "approved", "tengo la necesidad de escribirles,"),
+    about("ana", "fe", "approved", "a luchar por la fe."),
+  ];
+  const now = standingAnswers(given, () => FIXED);
+  const stale = (id: string) => tallyItem({ itemId: id, decisions: now, currentHash: textFingerprint(FIXED), levels, authors, thresholds }).stale.length;
+  assert.equal(stale("salvacion"), 0, "sus palabras siguen como estaban");
+  assert.equal(stale("fe"), 0, "«la» de «la fe» no es la que se quitó");
+  assert.equal(stale("necesidad"), 1, "de estas palabras sí se quitó una");
+  assert.equal(given[0]!.textHash, textFingerprint(VERSE), "lo que cada quien guardó no se toca");
+});
+
+test("una palabra elegida no vale por estar dentro de otra, ni un acuerdo sin palabras", () => {
+  const given = [about("ana", "a", "approved", "fe."), about("ana", "b", "approved", "")];
+  const now = standingAnswers(given, () => VERSE.replace("la fe.", "la confesión de fe.") + " café.");
+  assert.equal(now[0]!.textHash === given[0]!.textHash, false, "«fe.» sigue en el versículo como palabra entera");
+  const other = standingAnswers(given, () => VERSE.replace("la fe.", "el café."));
+  assert.equal(other[0]!.textHash, given[0]!.textHash, "«café.» no es «fe.»");
+  assert.equal(other[1]!.textHash, given[1]!.textHash, "sin palabras elegidas no hay de qué sostenerse");
+});
+
+test("un signo que cambia junto a las palabras elegidas no las cambia; uno entre ellas, sí", () => {
+  const given = [about("ana", "a", "approved", "sobre nuestra salvación común,"), about("ana", "b", "approved", "común, tengo")];
+  const now = standingAnswers(given, () => VERSE.replace("común, tengo", "común; tengo"));
+  assert.equal(now[0]!.textHash === given[0]!.textHash, false, "la coma de después pasó a punto y coma: las palabras son las mismas");
+  assert.equal(now[1]!.textHash, given[1]!.textHash, "el signo estaba entre las palabras elegidas");
+});
+
+test("una propuesta, una objeción y la decisión del equipo sí se vuelven a mirar tras una corrección", () => {
+  const given = [
+    about("bea", "salvacion", "revise", "sobre nuestra salvación común,", { note: "«común» mejor «compartida»" }),
+    about("carla", "salvacion", "rejected", "sobre nuestra salvación común,", { note: "no" }),
+    about("ana", "salvacion", "approved", "sobre nuestra salvación común,", { note: "se queda", final: true }),
+  ];
+  const now = standingAnswers(given, () => FIXED);
+  const after = tallyItem({ itemId: "salvacion", decisions: now, currentHash: textFingerprint(FIXED), levels, authors, thresholds, confirmers: ["ana"] });
+  assert.equal(after.stale.length, 3);
+  assert.equal(after.decided, undefined);
+});
+
+test("tras una corrección solo se avisa a quien respondió sobre palabras que cambiaron", () => {
+  const given = [about("bea", "salvacion", "approved", "sobre nuestra salvación común,"), about("carla", "necesidad", "approved", "tengo la necesidad de escribirles,")];
+  const after = standingAnswers(given, () => FIXED);
+  const told = (id: string) => reviewersToNotifyAfterEdit({ itemId: id, decisions: after, newHash: textFingerprint(FIXED), editor: "ana" });
+  assert.deepEqual(told("salvacion"), []);
+  assert.deepEqual(told("necesidad"), ["carla"]);
+});
+
+test("lo que cambió una corrección se dice en pocas palabras, con algo alrededor para encontrarlo", () => {
+  assert.deepEqual(changedStretch(VERSE, FIXED), { before: "… común, tengo la necesidad de …", now: "… común, tengo necesidad de …" });
+  assert.deepEqual(changedStretch("uno dos", "uno tres"), { before: "uno dos", now: "uno tres" });
 });
 
 console.log(`\nverify-review-round: ${passed} checks passed.`);

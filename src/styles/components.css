@@ -8603,6 +8603,8 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 .af-team[open] > summary::after { content: "▾"; }
 .af-team .af-others { margin-top: 0.25rem; color: var(--text); }
 .af-team .af-others li + li { margin-top: 0.25rem; }
+.af-team .af-others--before { color: var(--text-muted); }
+.af-team .af-others + .af-lbl, .af-team summary + .af-lbl { display: block; margin-top: 0.5rem; }
 
 /* Under what a colleague proposed about a challenge: taking it as one's own, by a touch. */
 .af-second { display: flex; align-items: center; min-height: 2.5rem; margin-top: 0.25rem; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--text); cursor: pointer; }

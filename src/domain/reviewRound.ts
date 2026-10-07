@@ -132,6 +132,64 @@ export function tallyItem(params: {
   return { itemId, state, answers, stale, agree, agreeIndependent, open };
 }
 
+const MARKS = ".,;:!?¡¿«»“”\"'()";
+const withoutMarksBefore = (word: string) => word.replace(new RegExp(`^[${MARKS}]+`), "");
+const withoutMarksAfter = (word: string) => word.replace(new RegExp(`[${MARKS}]+$`), "");
+
+/**
+ * Whether a verse still has these words, whole and in a row, as they were chosen. The marks around them are not
+ * part of what was asked about: a comma taken from after the last word leaves the words as they were.
+ */
+function hasWords(text: string, words: string): boolean {
+  const all = text.normalize("NFC").split(/\s+/).filter(Boolean);
+  const want = words.normalize("NFC").split(/\s+/).filter(Boolean);
+  if (!want.length) return false;
+  const last = want.length - 1;
+  const edge = (word: string, at: number) => (at === last ? withoutMarksAfter : (w: string) => w)(at === 0 ? withoutMarksBefore(word) : word);
+  for (let i = 0; i + want.length <= all.length; i++) {
+    if (want.every((word, j) => edge(all[i + j]!, j) === edge(word, j))) return true;
+  }
+  return false;
+}
+
+/**
+ * The answers as they stand over the text as it is now. Correcting one word of a verse made every answer about
+ * that verse stale, whatever it was about: an article taken out of Jude 1:3 sent seven challenges back to each
+ * person who had answered them, six of them about words nobody had touched. An agreement is given about some words:
+ * while a correction leaves those very words as they were, it holds. A proposal or an objection is looked at again
+ * (the correction may be its answer), and so is the team's final decision, which is about the whole point.
+ *
+ * Nothing is written: each person's file keeps the fingerprint of the text they saw.
+ */
+export function standingAnswers(decisions: ReviewDecision[], textNow: (decision: ReviewDecision) => string | undefined): ReviewDecision[] {
+  return decisions.map((d) => {
+    if (d.status !== "approved" || d.final || d.textHash === undefined || !d.selectedText?.text) return d;
+    const text = textNow(d);
+    if (text === undefined) return d;
+    const hash = textFingerprint(text);
+    return d.textHash !== hash && hasWords(text, d.selectedText.text) ? { ...d, textHash: hash } : d;
+  });
+}
+
+/**
+ * What a correction changed, short enough to be said in a message: the stretch of each text that differs, with a
+ * word or two around it so that it can be found in the verse.
+ */
+export function changedStretch(before: string, now: string, around = 2): { before: string; now: string } {
+  const a = before.trim().split(/\s+/).filter(Boolean);
+  const b = now.trim().split(/\s+/).filter(Boolean);
+  let head = 0;
+  while (head < a.length && head < b.length && a[head] === b[head]) head++;
+  let tail = 0;
+  while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail++;
+  const from = Math.max(0, head - around);
+  const cut = (words: string[]) => {
+    const to = Math.min(words.length, words.length - tail + around);
+    return `${from > 0 ? "… " : ""}${words.slice(from, to).join(" ")}${to < words.length ? " …" : ""}`;
+  };
+  return { before: cut(a), now: cut(b) };
+}
+
 /**
  * Someone corrected the text of an item: who had answered on the old text and
  * should look again. The person who made the correction is not told.

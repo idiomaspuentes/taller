@@ -8,7 +8,6 @@ import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTe
 import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
 import { commentOnIssue } from "../dcs/issues";
-import { formatChatEvent } from "../domain/chatEvent";
 import { refComment } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
@@ -20,15 +19,17 @@ import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUse
 import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
+  changedStretch,
   mergeDecisionFiles,
   reviewersToNotifyAfterEdit,
+  standingAnswers,
   summarizeRound,
   tallyItem,
   textFingerprint,
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
-import { canConfirmForTeam, confirmersOf, coordinatorsOf, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
+import { canConfirmForTeam, confirmersOf, coordinatorsOf, countsForMinimum, levelLabel, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
@@ -111,7 +112,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [session] = useState<GtSession | undefined>(() => loadSession());
   const [ctx, setCtx] = useState<SolverLaunchContext | null>(null);
   const [data, setData] = useState<AfinacionNotesData | null>(null);
-  const [decisions, setDecisions] = useState<ReviewDecision[]>([]);
+  // What each person answered, as their files have it; `decisions` is how it stands over the text of today.
+  const [given, setDecisions] = useState<ReviewDecision[]>([]);
+  const decisions = useMemo(
+    () =>
+      standingAnswers(given, (d) => {
+        const at = d.ref?.start;
+        if (!data || !at) return undefined;
+        return at.chapter === data.chapter ? data.draftVerses[at.verse] : data.bookDraft[`${at.chapter}:${at.verse}`];
+      }),
+    [given, data],
+  );
   const [task, setTask] = useState<ProjectTask | null>(null);
   const [category, setCategory] = useState("all");
   const [position, setPosition] = useState(0);
@@ -253,8 +264,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers })
     : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
-  const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
+  // The decision of the team is said once, as such, and not also as the answer of whoever registered it.
+  const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me && !(a.final && tally?.decided));
   const staleMine = tally?.stale.find((a) => a.reviewer.trim().toLowerCase() === me);
+  /** What the others had answered before the verse was corrected. */
+  const saidBefore = (tally?.stale ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
 
   const summary = useMemo(
     () =>
@@ -402,11 +416,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           .filter((d) => d.itemId === item.id && d.selectedText && d.reviewer.trim().toLowerCase() !== me)
           .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
     const words = saved?.selectedText ?? theirs?.selectedText;
-    setSelected(words ? wordsOfSelection(verseText, words) : []);
+    const found = words ? wordsOfSelection(verseText, words) : [];
+    setSelected(found);
     setNote(saved?.note ?? "");
     setPending(null);
     setChoosing(false);
-    setConfirmed(Boolean(saved));
+    // The words this person had chosen are no longer in the verse (it was corrected): they choose them again. The
+    // item opened at its second step with «(sin palabras)» and an answer that could not be pressed.
+    setConfirmed(Boolean(saved) && !(saved?.selectedText?.text && !found.length));
     // The person's own answers arrive after the item is shown: an item they answered opens at its second step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id, verseText, decisions.length]);
@@ -538,7 +555,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       ];
       await appendMyDecisions(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, batch);
       const all = [...decisions, ...batch];
-      setDecisions(all);
+      setDecisions((prev) => [...prev, ...batch]);
       announce(t("af.savedAlike").replace("{n}", String(batch.length)));
       const next = firstUnanswered({ items: visible, decisions: all, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1 });
       if (next >= 0) setPosition(next);
@@ -574,7 +591,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         // What was in hand: the note or the key term being checked, as the screen names it.
         from: { issue: ctx.issueNumber, task: ctx.taskId, step: taskStep?.id ?? ctx.stepId, item: item.id, label: item.phrase || item.quote },
       });
-      setData({ ...data, draftVerses: { ...data.draftVerses, [item.verse]: text } });
+      setData({ ...data, draftVerses: { ...data.draftVerses, [item.verse]: text }, bookDraft: { ...data.bookDraft, [`${item.chapter}:${item.verse}`]: text } });
       setFixing(false);
       setFixReason("");
       setFixReasons([]);
@@ -582,30 +599,45 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       if (result.clearedVerses.length) {
         announce(t("af.alignmentLost").replace("{v}", String(item.verse)));
       }
-      // Tell whoever had answered on the old text, in the subtarea of this task.
+      // The team had decided this point, and the correction is what it decided: the decision is said again over
+      // the text as it is now. It was undone by the very correction it asked for, with everything said about it.
+      const settled = tally?.decided;
+      if (settled && canConfirm && before !== text) {
+        const again: ReviewDecision = {
+          itemId: item.id,
+          ref: { start: { chapter: item.chapter, verse: item.verse } },
+          sessionId: String(ctx.issueNumber || ctx.taskId),
+          stageId: "afinacion",
+          status: "approved",
+          reviewer: session.username,
+          timestamp: new Date().toISOString(),
+          note: settled.note,
+          textHash: textFingerprint(text),
+          final: true,
+        };
+        await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, again);
+        setDecisions((prev) => [...prev, again]);
+      }
+      // Tell whoever answered about words that are no longer as they were, in the subtarea of this task.
       const ids = data.items.filter((i) => i.verse === item.verse).map((i) => i.id);
       // Whoever checked the alignment of this verse is told too.
       ids.push(`al:${item.chapter}:${item.verse}`, `al-done:${item.chapter}:${item.verse}`);
+      const after = standingAnswers(given, (d) => (d.ref?.start.chapter === item.chapter && d.ref.start.verse === item.verse ? text : undefined));
       const who = new Set<string>();
       for (const id of ids) {
-        for (const login of reviewersToNotifyAfterEdit({ itemId: id, decisions, newHash: textFingerprint(text), editor: session.username })) who.add(login);
+        for (const login of reviewersToNotifyAfterEdit({ itemId: id, decisions: after, newHash: textFingerprint(text), editor: session.username })) who.add(login);
       }
       if (who.size && ctx.issueNumber && ctx.pmOrg && before !== text) {
-        const logins = [...who];
-        const summary = `${logins.map((w) => `@${w}`).join(" ")} Corregí ${data.book} ${item.chapter}:${item.verse}. Vuelvan a revisarlo.${why ? ` Motivo: ${why}` : ""}`;
-        await commentOnIssue(
-          session,
-          ctx.pmOrg,
-          ctx.issueNumber,
-          formatChatEvent({
-            type: "afinacion-correccion",
-            emitter: "afinacion",
-            issue: ctx.issueNumber,
-            summary,
-            mentions: logins,
-            data: { book: data.book, chapter: item.chapter, verse: item.verse, reason: why, reasons: fixReasons, by: session.username },
-          }),
-        ).catch(() => undefined);
+        // Said as the person who corrected would say it, with the place and what changed: it was a line of small
+        // print («Corregí JUD 1:3») among the messages, the only one that asked the others to do something.
+        const change = changedStretch(before, text);
+        const said = [
+          [...who].map((login) => `@${login}`).join(" "),
+          tNow("af.correctedNote").replace("{before}", change.before).replace("{now}", change.now),
+          why ? tNow("gr.reason").replace("{why}", why) : "",
+          tNow("af.correctedAgain"),
+        ].filter(Boolean).join(" ");
+        await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, `${item.chapter}:${item.verse}`, said)).catch(() => undefined);
       }
     } catch (err) {
       setError(explainError(err));
@@ -906,6 +938,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           <p className="af-kind">{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
           <h2 className="af-category">{stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
 
+          {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}
+          {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
           {reviewing ? (
             <p className={answeredByMe >= data.items.length ? "af-team af-team--done" : "af-team"}>
               {stepDone ? t("af.reviewDoneShort") : t("af.reviewProgress").replace("{n}", String(answeredByMe)).replace("{of}", String(data.items.length))}
@@ -915,9 +949,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               not agree it is found open: what they propose and why was folded under a line that did not look like
               something to touch, and the others read «no está de acuerdo» with no way to know about what. */}
           {tally && !reviewing ? (
-            <details key={item.id} className="af-team" data-state={tally.state} open={tally.open.length > 0}>
+            <details key={item.id} className="af-team" data-state={tally.state} open={tally.open.length > 0 || Boolean(tally.decided)}>
               <summary>
-                {tally.state === "agreed"
+                {tally.decided
+                  ? t("af.teamDecided")
+                  : tally.state === "agreed"
                   ? t("af.teamAgreed").replace("{n}", String(tally.agree))
                   : [t("af.teamCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree)), tally.open.length ? t(tally.open.length === 1 ? "af.teamOpenOne" : "af.teamOpenMany").replace("{who}", tally.open.map((who) => `@${who}`).join(", ")) : ""].filter(Boolean).join(" · ")}
               </summary>
@@ -927,7 +963,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     <li key={a.reviewer}>
                       <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
                       {a.note ? `: ${a.note}` : ""}
-                      {a.status !== "approved" && a.note && !stepDone && mine?.status !== a.status ? (
+                      {a.status !== "approved" && a.note && !stepDone && !tally.decided && mine?.status !== a.status ? (
                         <button
                           type="button"
                           className="af-second"
@@ -941,9 +977,24 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     </li>
                   ))}
                 </ul>
-              ) : (
+              ) : saidBefore.length || tally.decided ? null : (
                 <p className="af-hint">{t("af.teamNobody")}</p>
               )}
+              {saidBefore.length ? (
+                // What was said before the verse was corrected stays in sight: «nadie ha respondido» was read where
+                // three people had, and the reasons of the disagreement were gone with the correction.
+                <>
+                  <p className="af-lbl">{t("af.beforeFix")}</p>
+                  <ul className="af-others af-others--before">
+                    {saidBefore.map((a) => (
+                      <li key={a.reviewer}>
+                        <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
+                        {a.note ? `: ${a.note}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
               {tally.open.length && onOpenThread && ctx?.issueNumber ? (
                 // «Para conversarlo en equipo»: the way to where the team talks.
                 <button type="button" className="af-second" onClick={() => onOpenThread(ctx.issueNumber!)}>
@@ -951,6 +1002,22 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </button>
               ) : null}
               <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} />
+              {tally.decided && canConfirm && !stepDone && !fixing ? (
+                // What was decided is often a change of the verse, and the way to it was «Cambiar», which is about
+                // the words chosen.
+                <button
+                  type="button"
+                  className="af-second"
+                  onClick={() => {
+                    setConfirmed(false);
+                    setFixText(verseText);
+                    setFixing(true);
+                    window.setTimeout(() => document.getElementById("af-fix-text")?.scrollIntoView({ block: "center" }), 50);
+                  }}
+                >
+                  {t("af.fixVerse")}
+                </button>
+              ) : null}
             </details>
           ) : null}
 
@@ -1042,6 +1109,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               )}
             </div>
   
+              {/* While the verse is being corrected the answer is not what is in hand: this bar, which stays at the
+                  foot of a phone, stood over the button that saves the correction. */}
+              {fixing ? null : (
               <div className="af-decide">
                 <Button type="button" disabled={needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => setConfirmed(true)}>
                   <Check size={16} aria-hidden /> {t("af.confirmWords")}
@@ -1058,6 +1128,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {t("af.notThere")}
                 </Button>
               </div>
+              )}
             </>
           ) : (
             // Step 2 of 2: whether those words keep the rule of the TPL or the TPS.
@@ -1088,8 +1159,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
                 </details>
               ) : null}
-              {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
               {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
+              {/* Somebody who is not yet «habilitada» agreed and read «0 de 3 de acuerdo» over their own answer. */}
+              {mine && !reviewing && !countsForMinimum(levelOf(teamLevels, me)) ? <p className="af-hint">{t("af.notCounted").replace("{level}", levelLabel("habilitada", language))}</p> : null}
               {!choosing && !pending ? (
                 // The decision sits under what is decided. Agreeing is about the words chosen: none chosen, nothing to agree with yet.
                 <div className="af-decide">
