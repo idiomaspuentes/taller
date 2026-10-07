@@ -56,8 +56,10 @@ import {
   type SolverLaunchContext,
 } from "../domain/solverLaunch";
 import { launchForRange } from "../domain/solverLab";
+import { getStepRuntime, parseTaskProgressMarker } from "../domain/taskProgress";
 import {
   DEFAULT_SOLVERS_CATALOG,
+  findSolverApp,
   isScriptureSolver,
   scriptureSolverFor,
   solverActionLabel,
@@ -479,6 +481,17 @@ function ConversationThread({
   const mine = Boolean(
     [...(header?.assignees ?? []), ...(header?.stepPeople ?? [])].some((a) => a.toLowerCase() === username.toLowerCase()),
   );
+  // Whoever did an earlier step of this subtarea with a tool (aligned it, say) is called back to it when the team
+  // asks for a change: «@valeska por favor ajústenla» reached them with nothing to open, since the step in hand
+  // (the review) is of the others. They get the tool of their own step.
+  const ownEarlier = useMemo(() => {
+    if (demo || !issue || !board || mine || issue.state === "closed") return undefined;
+    const steps = board.teams.find((task) => task.id === issueTaskId(issue))?.steps ?? [];
+    const progress = parseTaskProgressMarker(issue.body);
+    const me = username.trim().toLowerCase();
+    return [...steps].reverse().find((step) => step.solverAppId && progress.doneStepIds.includes(step.id) && getStepRuntime(progress, step.id).assignees.some((login) => login.toLowerCase() === me));
+  }, [demo, issue, board, mine, username]);
+  const toolStep = ownEarlier ?? header?.step;
   const launchCtx = useMemo(
     () =>
       demo
@@ -491,11 +504,11 @@ function ConversationThread({
               contentOrg,
               board,
               issue,
-              stepId: header?.step?.id,
-              stepName: header?.step?.name,
+              stepId: toolStep?.id,
+              stepName: toolStep?.name,
             })
           : null,
-    [demo, issue, board, session, lang, pmOrg, contentOrg, header],
+    [demo, issue, board, session, lang, pmOrg, contentOrg, toolStep],
   );
   // Whoever coordinates the team is called to the conversation to settle what the team does not agree on: they get
   // the way to the tool as well. It was only for those already in the step, and the coordinator read «¿lo registras
@@ -503,8 +516,8 @@ function ConversationThread({
   const coordinates = coordinators.some((login) => login.trim().toLowerCase() === username.trim().toLowerCase());
   const solver = demo
     ? demo.launch?.app
-    : (mine || coordinates) && launchCtx && issue?.state !== "closed"
-      ? (header?.solver ?? scriptureSolverFor(catalog, launchCtx.resource))
+    : (mine || coordinates || ownEarlier) && launchCtx && issue?.state !== "closed"
+      ? ((ownEarlier ? findSolverApp(catalog, ownEarlier.solverAppId) : undefined) ?? header?.solver ?? scriptureSolverFor(catalog, launchCtx.resource))
       : undefined;
   const solverBlock = solver && launchCtx ? solverLaunchBlockReason(solver, launchCtx) : null;
   const editorApp =
@@ -691,7 +704,7 @@ function ConversationThread({
   const title = threadTitle(rawTitle, language);
   // What the button says is the step's own word («Revisar», «Traducir»), as on the task: «Abrir editor» named a
   // review an editor.
-  const stepButton = header?.step?.actionLabel ? localized(header.step.actionLabel, header.step.actionLabels, language) : "";
+  const stepButton = toolStep?.actionLabel ? localized(toolStep.actionLabel, toolStep.actionLabels, language) : "";
   const doorUrl = issue?.html_url || door43IssueUrl(session, pmOrg, issueNumber);
   const subline = [
     header?.taskLabel ? localizeName(header.taskLabel, language) : "",

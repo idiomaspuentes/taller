@@ -2766,5 +2766,6 @@
   "al.finishStep": "Terminei de alinhar",
   "al.stepFinished": "Pronto. Agora sua equipe revisa o alinhamento.",
   "al.stepHandedIn": "Sua parte está entregue.",
-  "al.guideAllDone": "Todos os versículos estão alinhados. Se ficaram bons, toque em «Terminei de alinhar»."
+  "al.guideAllDone": "Todos os versículos estão alinhados. Se ficaram bons, toque em «Terminei de alinhar».",
+  "al.stAdjust": "a equipe pediu para ajustar"
 }

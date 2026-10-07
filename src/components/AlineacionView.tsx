@@ -525,8 +525,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   /** An accepted proposal is what the verse looks like now: its result carries the hash of that version. */
   const acceptedFor = (v: AlignmentVerse): ResultFile[] =>
     data ? proposals.results.filter((r) => r.outcome === "aceptada" && r.chapter === data.chapter && r.verse === v.verse && r.newHash === hashOf(v)) : [];
+  // A verse the team asked to adjust is not finished until it is adjusted: it went on reading «terminado», the tool
+  // told whoever aligned it «Listo», and nothing said which verse the team was waiting for.
   const isDone = (v: AlignmentVerse) =>
-    Boolean(data) && (effective.some((d) => d.itemId === doneId(data!.chapter, v.verse) && d.textHash === hashOf(v)) || acceptedFor(v).length > 0);
+    Boolean(data) && !realignFor(v).length && (effective.some((d) => d.itemId === doneId(data!.chapter, v.verse) && d.textHash === hashOf(v)) || acceptedFor(v).length > 0);
   /** Decisions about this verse that nobody has closed yet. */
   const openFor = (v: AlignmentVerse) =>
     data ? proposals.proposals.filter((p) => p.chapter === data.chapter && p.verse === v.verse && !proposals.results.some((r) => r.id === p.id)) : [];
@@ -665,6 +667,19 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shared, data]);
+
+  // A step that is one person's opens where that person is needed too: on the verse the team asked to adjust, or
+  // the first one left to align; in a review, on the first verse waiting for their answer. It opened on the first
+  // verse, finished or not, and whoever was called back had to find which one.
+  const arrived = useRef(false);
+  useEffect(() => {
+    if (shared || !data || busy || arrived.current) return;
+    arrived.current = true;
+    const asked = data.verses.findIndex((v) => realignFor(v).length > 0);
+    const at = mode === "alinear" ? (asked >= 0 ? asked : data.verses.findIndex((v) => !isDone(v))) : data.verses.findIndex(pendingForMe);
+    if (at > 0) setPosition(at);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared, data, busy, proposals]);
 
   useEffect(() => {
     setSelectedWords([]);
@@ -1168,6 +1183,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   function verseState(v: AlignmentVerse): { id: string; mark: string; label: string } {
     if (openFor(v).length) return { id: "discussion", mark: "…", label: t("al.stDiscussion") };
     if (mode === "alinear") {
+      if (realignFor(v).length) return { id: "adjust", mark: "!", label: t("al.stAdjust") };
       if (isDone(v)) return { id: "done", mark: "✓", label: t("al.stDone") };
       if (shared && ownerOf(v) && ownerOf(v) !== me) return { id: "taken", mark: "·", label: t("al.takenBy").replace("{who}", ownerOf(v)) };
       if (verseComplete(v, groups[v.verse] ?? [])) return { id: "complete", mark: "○", label: t("al.stComplete") };
@@ -1259,7 +1275,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                       : n("al.guideWords", selectedWords.length)
                     : selectedBoxes.length
                       ? t("al.boxChosen")
-                      : nextWord
+                      : mode === "alinear" && realignHere.length
+                        ? // What the team asked for, over the boxes it is about: it was told under them, behind the bar.
+                          `${t("al.teamAsked")} ${realignHere.map((r) => proposals.proposals.find((p) => p.id === r.id)?.note ?? t("al.objectionHeld")).join(" · ")}`
+                        : nextWord
                         ? t(current.length ? "al.guideGoOn" : "al.guideNext").replace("{word}", nextWord)
                         : allAligned && !shared
                           ? t(stepDone ? "al.stepFinished" : "al.guideAllDone")

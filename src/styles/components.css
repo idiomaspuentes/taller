@@ -5868,6 +5868,8 @@ button.chat-place:focus-visible {
 .al-pair__word--pick { padding: 0.25rem 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); min-height: 2.75rem; }
 .al-pair__word--pick[data-selected="true"] { border-color: var(--accent-500); background: var(--accent-100); box-shadow: 0 0 0 2px var(--accent-500); }
 .al-verse-tab[data-state="discussion"] { border-color: #d97706; color: #b45309; }
+/* The team asked for this verse to be adjusted: it is the one to go to. */
+.al-verse-tab[data-state="adjust"] { border-color: #d97706; background: var(--warning-100); color: var(--warning-700); font-weight: 700; }
 
 /* Alineación de solo lectura: las mismas cajas, más compactas, con resaltado */
 .al-read { display: grid; gap: 0.5rem; }

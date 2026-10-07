@@ -108,6 +108,13 @@ export function DecisionCard({
         return;
       }
       await onRun!(option.id, target);
+      // What the card says is read again. A vote just given was not counted on it until the page was opened
+      // again: the button went on reading «(1)», and when it made the consensus, nothing offered to confirm it.
+      const after = await prepare().catch(() => null);
+      if (after) {
+        setPrepared(after.prepared);
+        setPrepareError(after.prepareError);
+      }
     } catch (err) {
       setError(explainError(err));
     } finally {
