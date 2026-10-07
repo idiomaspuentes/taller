@@ -819,6 +819,7 @@ export function MyTasksView({
         if (!board) return;
         if (a.kind === "begin") return void begin(card.issue, board, a.step);
         if (a.kind === "continue") return void resolve(card.issue, board, { step: a.step });
+        if (a.kind === "none" && a.why === "othersAnswer") return void resolve(card.issue, board, { step: a.step });
         if (a.kind === "claimStep") return void claimStepOnIssue(card.issue, board, a.step);
         if (a.kind === "approveStep") return void approveStepOnIssue(card.issue, board, a.step);
         if (a.kind === "deliver") return handlers.onDeliver(card);

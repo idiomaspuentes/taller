@@ -142,6 +142,11 @@ export type TermComparison = {
   differing: TermItem[];
 };
 
+/** The words as they are said: a mark at either end is not part of them («entienden;» is «entienden»). */
+function withoutEdgeMarks(text: string): string {
+  return text.replace(/^[\s.,;:!?¡¿«»“”"'()]+|[\s.,;:!?¡¿«»“”"'()]+$/g, "");
+}
+
 function renderingKey(text: string): string {
   return normalizeHelpsText(text).toLocaleLowerCase("es");
 }
@@ -176,7 +181,7 @@ export function compareTermRenderings(params: {
       continue;
     }
     const key = renderingKey(mark.selectedText!.text);
-    const group = byKey.get(key) ?? { text: mark.selectedText!.text.trim(), uses: [] };
+    const group = byKey.get(key) ?? { text: withoutEdgeMarks(mark.selectedText!.text), uses: [] };
     group.uses.push(use);
     byKey.set(key, group);
   }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
-import { getStepRuntime, parseTaskProgressMarker, withStepWork } from "../domain/taskProgress";
+import { getStepRuntime, parseTaskProgressMarker, withStepApproval, withStepWork } from "../domain/taskProgress";
 import type { GtSession } from "./auth";
 import { issueAssigneeLogins, setIssueTaskProgress } from "./issues";
 import { getPmIssue } from "./portionPr";
@@ -23,13 +23,15 @@ const told = new Map<string, string>();
  * not have the subtarea, nor a seat on the step): whoever coordinates opens a tool to look, and a subtarea nobody
  * has touched in a week must not look as if it moved today because of that. Returns whether it wrote.
  */
-export async function reportStepWork(params: { session: GtSession; pmOrg: string; issueNumber: number; stepId: string; done: number; total: number }): Promise<boolean> {
+export async function reportStepWork(params: { session: GtSession; pmOrg: string; issueNumber: number; stepId: string; done: number; total: number; mine?: boolean }): Promise<boolean> {
   const { session, pmOrg, issueNumber, stepId, done, total } = params;
   const issue = await getPmIssue(session, pmOrg, issueNumber);
   const progress = parseTaskProgressMarker(issue.body);
   const me = session.username.trim().toLowerCase();
   if (![...issueAssigneeLogins(issue), ...getStepRuntime(progress, stepId).assignees].some((login) => login.toLowerCase() === me)) return false;
-  const next = withStepWork(progress, stepId, { done, total });
+  const told = withStepWork(progress, stepId, { done, total });
+  // In a round everybody answers: whether this person has answered everything, said with the count in one write.
+  const next = params.mine === undefined ? told : withStepApproval(told, stepId, session.username, params.mine);
   if (next === progress) return false;
   await setIssueTaskProgress(session, pmOrg, issue, next);
   return true;
@@ -43,11 +45,11 @@ type Launch = Pick<SolverLaunchContext, "pmOrg" | "issueNumber" | "stepId" | "la
  * the step is closed, or is being closed (a count told while the step is being completed could be written over
  * its completion, and open it again).
  */
-export function useStepWork(session: GtSession | null | undefined, ctx: Launch | null | undefined, done: number, total: number, options: { stepId?: string; on?: boolean } = {}): void {
+export function useStepWork(session: GtSession | null | undefined, ctx: Launch | null | undefined, done: number, total: number, options: { stepId?: string; on?: boolean; mine?: boolean } = {}): void {
   const stepId = options.stepId ?? ctx?.stepId ?? "";
   const live = Boolean(session?.token && ctx?.pmOrg && ctx.issueNumber && stepId && !ctx.lab && options.on !== false && total > 0);
   const key = live ? `${ctx!.pmOrg}#${ctx!.issueNumber}:${stepId}` : "";
-  const count = `${Math.max(0, Math.min(done, total))}/${total}`;
+  const count = `${Math.max(0, Math.min(done, total))}/${total}${options.mine === undefined ? "" : options.mine ? " mine" : " not mine"}`;
 
   // What there is to tell right now, for the timer and for leaving: whichever comes first tells the latest.
   const latest = useRef<() => void>(() => undefined);
@@ -55,7 +57,7 @@ export function useStepWork(session: GtSession | null | undefined, ctx: Launch |
     if (!key || !session || told.get(key) === count) return;
     told.set(key, count);
     // Not said after all: the next change, or the next visit, says it.
-    void reportStepWork({ session, pmOrg: ctx!.pmOrg, issueNumber: ctx!.issueNumber, stepId, done: Math.max(0, Math.min(done, total)), total }).catch(() => told.delete(key));
+    void reportStepWork({ session, pmOrg: ctx!.pmOrg, issueNumber: ctx!.issueNumber, stepId, done: Math.max(0, Math.min(done, total)), total, mine: options.mine }).catch(() => told.delete(key));
   };
 
   useEffect(() => {

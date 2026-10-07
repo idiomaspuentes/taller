@@ -226,6 +226,18 @@ export function withStepWork(marker: TaskProgressMarker, stepId: string, work: S
   return { schema: TASK_PROGRESS_SCHEMA, doneStepIds: marker.doneStepIds, steps: { ...(marker.steps ?? {}), [stepId]: { ...runtime, work: next } } };
 }
 
+/**
+ * A person marked as done with their part of a step, or no longer. In a round that everybody answers (a step that
+ * closes by consensus) it says who has answered everything; the step stays open for the others.
+ */
+export function withStepApproval(marker: TaskProgressMarker, stepId: string, login: string, on: boolean): TaskProgressMarker {
+  const user = login.trim().toLowerCase();
+  if (!stepId || !user || marker.doneStepIds.includes(stepId)) return marker;
+  const runtime = getStepRuntime(marker, stepId);
+  if (runtime.approvals.some((a) => a.toLowerCase() === user) === on) return marker;
+  return withStepRuntime(marker, stepId, { ...runtime, approvals: on ? [...runtime.approvals, login.trim()] : runtime.approvals.filter((a) => a.toLowerCase() !== user) });
+}
+
 export function isStepDone(marker: TaskProgressMarker, stepId: string): boolean {
   return marker.doneStepIds.includes(stepId);
 }

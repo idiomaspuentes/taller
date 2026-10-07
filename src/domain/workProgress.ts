@@ -14,7 +14,7 @@ import { parseWorkOrderMarker } from "./workOrder";
  */
 
 /** What an open step counts for at most: everything its tool counts may be done, and the step still to be closed. */
-const OPEN_STEP_MOST = 0.99;
+export const OPEN_STEP_MOST = 0.99;
 
 /**
  * A step: closed, or as far as its tool last said, or not begun. Between 0 and 1, and 1 only when it is closed:

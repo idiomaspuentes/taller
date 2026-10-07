@@ -228,6 +228,16 @@ export function deliverableFromTool(params: { teams: ProjectTask[]; taskId: stri
   return task.steps.every((step) => isStepDone(params.progress, step.id));
 }
 
+/**
+ * In a round that closes by consensus: this person has answered everything, and it is the others' turn. Their
+ * card read «0 %» and offered «Revisar» again, as if they had not begun.
+ */
+export function answeredRound(login: string, progress: TaskProgressMarker, step: TaskStep): boolean {
+  const user = login.trim().toLowerCase();
+  if (!user || step.closing !== "consensus" || isStepDone(progress, step.id)) return false;
+  return getStepRuntime(progress, step.id).approvals.some((a) => a.toLowerCase() === user);
+}
+
 export function canApproveStep(
   login: string,
   progress: TaskProgressMarker,

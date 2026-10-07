@@ -9,7 +9,8 @@ import { isDecisionIssue } from "./decisionAccess";
 import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
-import { canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { answeredRound, canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
@@ -39,7 +40,9 @@ export type CardAction =
   /** A review step I am seated in: approve it. */
   | { kind: "approveStep"; step: TaskStep }
   /** Nothing to press; `why` says what the card is waiting for. */
-  | { kind: "none"; why: "hold" | "othersReview" | "assigneeDelivers" | "done" | "noTool" };
+  | { kind: "none"; why: "hold" | "othersReview" | "assigneeDelivers" | "done" | "noTool" }
+  /** A round everybody answers, and I answered everything: it waits for the others. Its tool can still be opened. */
+  | { kind: "none"; why: "othersAnswer"; step: TaskStep };
 
 export type BoardCard = {
   issue: DcsIssue;
@@ -101,6 +104,16 @@ function assigneeOf(issue: DcsIssue): string | undefined {
   return issue.assignee?.login || issue.assignees?.[0]?.login || undefined;
 }
 
+/**
+ * I answered everything of a round and answers of the others are still missing: there is nothing for me to do in
+ * it. Once every answer is in, the round can be closed, and the card is one to act on again.
+ */
+function waitsForOthers(login: string, progress: ReturnType<typeof parseTaskProgressMarker>, step: TaskStep): boolean {
+  return answeredRound(login, progress, step) && stepFraction(progress, step.id) < OPEN_STEP_MOST;
+}
+
+const joined = (c: BoardCard) => c.action.kind === "none" && c.action.why === "othersAnswer";
+
 /** What the next pending step asks of me, for a subtarea that is mine (assigned or seated in a step). */
 function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boolean): { action: CardAction; next?: TaskStep } {
   const progress = parseTaskProgressMarker(issue.body ?? "");
@@ -115,6 +128,7 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
   const seats = getStepRuntime(progress, next.id).assignees;
   if (!seats.length && !canClaimStep(login, steps, progress, next, undefined, assignee)) return { action: { kind: "none", why: "othersReview" }, next };
   if (isStepActor(login, progress, next, assignee)) {
+    if (waitsForOthers(login, progress, next)) return { action: { kind: "none", why: "othersAnswer", step: next }, next };
     // Seated: my part is to do it (open its tool) and, in a review, approve it.
     if (canApproveStep(login, progress, next, assignee) && !next.solverAppId) return { action: { kind: "approveStep", step: next }, next };
     return { action: { kind: "continue", step: next }, next };
@@ -213,7 +227,10 @@ export function buildBoard(input: BoardInput): Board {
         }
         if (next && stepClaimMode(next) !== "none") {
           // A step of the whole team: people join the step, and the subtarea stays with the team. Nobody takes it whole.
-          if (isStepActor(login, progress, next, assigneeOf(issue))) board.doing.push(card(issue, bucket, "doing", { kind: "continue", step: next }));
+          if (isStepActor(login, progress, next, assigneeOf(issue))) {
+            if (waitsForOthers(login, progress, next)) board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "othersAnswer", step: next }));
+            else board.doing.push(card(issue, bucket, "doing", { kind: "continue", step: next }));
+          }
           else if (can && canClaimStep(login, steps, progress, next, undefined, assigneeOf(issue))) board.reviews.push(card(issue, bucket, "reviews", { kind: "claimStep", step: next }));
           continue;
         }
@@ -224,7 +241,7 @@ export function buildBoard(input: BoardInput): Board {
       if (steps.length) {
         const { action } = stepAction(login, steps, issue, mine);
         // My own task is under way only once I started it; a task of someone else is, as soon as I sit in one of its steps.
-        const group: BoardGroup = issueIsInProgress(issue) || (seated && !mine) ? "doing" : "todo";
+        const group: BoardGroup = action.kind === "none" && action.why === "othersAnswer" ? "waiting" : issueIsInProgress(issue) || (seated && !mine) ? "doing" : "todo";
         const shown = group === "todo" && action.kind === "continue" ? { kind: "begin" as const, step: action.step } : action;
         board[group].push(card(issue, bucket, group, shown));
       } else {
@@ -263,6 +280,9 @@ export function buildBoard(input: BoardInput): Board {
     // What somebody may join reads in the order of the book too: ten steps nobody had taken came 1:17–23, 1:12–16,
     // 1:5–11, 1:1–4…, by when each was last touched, and the first passage was nowhere near the top.
     else if (group === "free" || group === "later" || group === "waiting" || group === "reviews") board[group].sort(byPlace);
+    // Of what waits, first what the person already worked on (a round the others have yet to answer): it was found
+    // under ten tasks that have not begun.
+    if (group === "waiting") board.waiting = [...board.waiting.filter(joined), ...board.waiting.filter((c) => !joined(c))];
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
   }
   return board;

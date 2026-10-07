@@ -2758,5 +2758,8 @@
   "round.allAgreedWait": "Todo quedó de acuerdo. La revisión la cierra quien coordina o una persona habilitada.",
   "round.allAgreedTell": "Todo quedó de acuerdo: ya se puede cerrar la revisión.",
   "round.closedDelivered": "Revisión cerrada y tarea entregada.",
-  "round.closedDeliveredLong": "Revisión cerrada: todo quedó de acuerdo. La tarea está entregada."
+  "round.closedDeliveredLong": "Revisión cerrada: todo quedó de acuerdo. La tarea está entregada.",
+  "tb.othersAnswer": "Ya respondiste todo. Faltan las respuestas de tu equipo.",
+  "tb.seeMine": "Ver mis respuestas",
+  "af.manyForms": "Aparece de {n} formas. Mira si dicen lo mismo."
 }

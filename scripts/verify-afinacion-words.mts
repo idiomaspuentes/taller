@@ -82,6 +82,10 @@ test("se agrupa por cómo se tradujo y se ve si es consistente", () => {
   const mixed = compareTermRenderings({ uses: god, decisions: [mark("a1", "Dios", 1, 1), mark("a3", "Dios", 1, 5), mark("b1", "divinidad", 2, 4)], verseText });
   assert.equal(mixed.consistent, false);
   assert.deepEqual(mixed.renderings.map((r) => [r.text, r.uses.length]), [["Dios", 2], ["divinidad", 1]], "la más usada primero");
+
+  // The last word of a clause is marked with its comma or its semicolon: that is not another translation.
+  const marks = compareTermRenderings({ uses: god.slice(0, 2), decisions: [mark("a1", "Dios;", 1, 1), mark("a3", "Dios", 1, 5)], verseText });
+  assert.deepEqual(marks.renderings.map((r) => [r.text, r.uses.length]), [["Dios", 2]], "se dice sin el signo que la sigue");
 });
 
 test("lo que nadie marcó queda aparte, y una marca de un versículo que cambió ya no vale", () => {

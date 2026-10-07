@@ -61,15 +61,15 @@ function issue(opts: {
   title: string;
   assignee?: string;
   started?: boolean;
-  progress?: { done?: string[]; seats?: Record<string, string[]> };
+  progress?: { done?: string[]; seats?: Record<string, string[]>; answered?: Record<string, string[]>; work?: Record<string, { done: number; total: number }> };
   state?: "open" | "closed";
   closedAt?: string;
 }): DcsIssue {
   n++;
   const labels = [{ id: 1, name: `pm/tarea:${opts.task}` }];
   if (opts.started) labels.push({ id: 2, name: "pm/estado:en-curso" });
-  const steps: Record<string, { assignees: string[]; approvals: string[] }> = {};
-  for (const [id, who] of Object.entries(opts.progress?.seats ?? {})) steps[id] = { assignees: who, approvals: [] };
+  const steps: Record<string, { assignees: string[]; approvals: string[]; work?: { done: number; total: number } }> = {};
+  for (const [id, who] of Object.entries(opts.progress?.seats ?? {})) steps[id] = { assignees: who, approvals: opts.progress?.answered?.[id] ?? [], ...(opts.progress?.work?.[id] ? { work: opts.progress.work[id] } : {}) };
   const body = opts.progress ? encodeTaskProgressMarker({ schema: "gateway-task-progress-2", doneStepIds: opts.progress.done ?? [], steps } as never) : "";
   return {
     id: n,
@@ -387,6 +387,34 @@ await test("al terminar un paso se sigue con el siguiente si es de la misma pers
   assert.equal(nextStepOfMine("carla", steps, at(["estudio", "borrador"], { pares: ["bea"] })), undefined);
   assert.equal(nextStepOfMine("carla", steps, at(["estudio", "borrador", "pares"])), undefined, "con todo hecho solo queda entregar");
   assert.equal(nextStepOfMine("carla", [], at([])), undefined);
+});
+
+await test("en una ronda que responden todos, quien ya respondió todo la ve en espera hasta que respondan los demás", () => {
+  const round = {
+    ...plan,
+    teams: [
+      ...plan.teams,
+      { id: "ronda", name: "Desafíos", phaseId: "p2", memberIds: ["carla", "bea", "ana"], orgTeamName: "Equipo", rules: [], steps: [{ id: "revisar", name: "Revisar desafíos", actionLabel: "Revisar", solverAppId: "afinar-notas", closing: "consensus", claimMode: "pool", minAssignees: 2, maxAssignees: 6 }] },
+    ],
+  } as unknown as AssignmentsDoc;
+  const session = (login: string) => ({ username: login, canManage: false, teams: [{ id: 1, name: "Equipo", organization: { name: PM } }] }) as never;
+  const boardOf = (login: string, progress: Parameters<typeof issue>[0]["progress"]) => {
+    const issues = [issue({ task: "ronda", title: "NEH 1:1–4 · Desafíos", progress })];
+    return buildBoard({ session: session(login), pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: round, issues, openIssues: issues }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  };
+  const seats = { revisar: ["carla", "bea"] };
+  const during = boardOf("carla", { seats, work: { revisar: { done: 10, total: 90 } } });
+  assert.equal(during.doing[0]?.action.kind, "continue", "mientras le quedan puntos, es suya");
+  const after = boardOf("carla", { seats, answered: { revisar: ["carla"] }, work: { revisar: { done: 30, total: 90 } } });
+  assert.equal(after.doing.length, 0);
+  assert.deepEqual(after.waiting.map((c) => c.action), [{ kind: "none", why: "othersAnswer", step: round.teams[3]!.steps![0] }], "respondió todo: espera a los demás, y aún puede abrirla");
+  assert.equal(boardOf("bea", { seats, answered: { revisar: ["carla"] }, work: { revisar: { done: 30, total: 90 } } }).doing[0]?.action.kind, "continue", "a quien le falta responder le sigue tocando");
+  const all = boardOf("carla", { seats, answered: { revisar: ["carla", "bea"] }, work: { revisar: { done: 90, total: 90 } } });
+  assert.equal(all.doing[0]?.action.kind, "continue", "con todas las respuestas, vuelve a ser de hacer: ya se puede cerrar");
+  // Among what waits it comes first: it is the one the person has worked on.
+  const issues = [issue({ task: "afinar", title: "NEH 1 · Afinar TPL" }), issue({ task: "ronda", title: "NEH 3:1–4 · Desafíos", progress: { seats, answered: { revisar: ["carla"] }, work: { revisar: { done: 30, total: 90 } } } })];
+  const mixed = buildBoard({ session: session("carla"), pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: round, issues, openIssues: issues }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  if (mixed.waiting.length > 1) assert.equal(mixed.waiting[0]!.action.kind === "none" && mixed.waiting[0]!.action.why, "othersAnswer", "antes que lo que aún no empieza");
 });
 
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

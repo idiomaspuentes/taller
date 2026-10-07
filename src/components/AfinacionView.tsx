@@ -344,8 +344,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       return decisions.some((d) => d.itemId === row.id && d.reviewer.trim().toLowerCase() === me && (d.textHash === undefined || d.textHash === hash));
     }).length;
   }, [data, decisions, me]);
-  // The first pass is one person's: it goes by what they answered. A round goes by what the team agreed.
-  useStepWork(session, ctx, reviewing ? answeredByMe : summary?.agreed ?? 0, data?.items.length ?? 0, { stepId: taskStep?.id, on: !stepDone && !closing });
+  // The first pass is one person's: it goes by what they answered. A round goes by the answers that count, of
+  // those it needs: it went by the points agreed, and read «0 %» until the third person had answered everything.
+  const points = data?.items.length ?? 0;
+  const counted = (summary?.items ?? []).reduce((sum, point) => sum + (point.state === "agreed" ? thresholds.minAgree : Math.min(point.agree, thresholds.minAgree - 1)), 0);
+  useStepWork(session, ctx, reviewing ? answeredByMe : counted, reviewing ? points : points * thresholds.minAgree, {
+    stepId: taskStep?.id,
+    on: !stepDone && !closing && !busy,
+    mine: reviewing || !points ? undefined : answeredByMe >= points,
+  });
   useEffect(() => {
     if (!reviewing || stepDone || !data?.items.length || answeredByMe < data.items.length || !session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
     void completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
@@ -1182,20 +1189,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
                   </span>
                   <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
-                  {comparison && comparison.renderings.length ? (
-                  // Consistency: what was chosen as the rendering of this term in its other places.
-                  <div className="af-elsewhere">
-                    <p className="af-lbl">{t("af.elsewhere")}</p>
-                    <ul>
-                      {comparison.renderings.map((r) => (
-                        <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
-                          <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    {chosenWords && !comparison.renderings.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-stale">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
-                  </div>
-                ) : null}
                 <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
                     {t("af.tapMarked")
                       .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
@@ -1249,6 +1242,23 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
                   : t(QUESTION[stepProp][data.resource])}
               </p>
+              {comparison && comparison.renderings.length ? (
+                // What the question is about, where it is asked: how this term reads in its other places. It was
+                // shown a step before, over the words to touch, and was out of sight when the answer was given.
+                <div className="af-elsewhere">
+                  <p className="af-lbl">{t("af.elsewhere")}</p>
+                  <ul>
+                    {comparison.renderings.map((r) => (
+                      <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
+                        <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Asked, not warned: «salvación», «habiendo salvado» and «sálvenlos» are three forms and one translation. */}
+                  {comparison.renderings.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(comparison.renderings.length))}</p> : null}
+                  {chosenWords && !comparison.renderings.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-stale">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
+                </div>
+              ) : null}
               {stepProp === "notas" ? (
                 <details className="af-guide">
                   <summary>{t(data.resource === "tps" ? "af.guideAskTps" : "af.guideAskTpl")}</summary>

@@ -95,6 +95,8 @@ export function TaskCard(props: Props) {
   else if (action.kind === "begin") label = props.externalTool ? t("tb.study") : stepButton(action.step) || t("tb.begin");
   else if (action.kind === "continue") label = props.externalTool ? t("tb.study") : stepButton(action.step) || (card.started ? t("tb.continue") : t("tb.begin"));
   else if (action.kind === "deliver") label = t("tb.deliver");
+  // My part of a round is done: the tool can be looked at, and it is not what the card asks for.
+  else if (action.kind === "none" && action.why === "othersAnswer") label = t("tb.seeMine");
   else if (action.kind === "vote") label = t("tb.vote");
   // A step somebody joins to do it says what is done in it, as any other («Revisar»): pressing it takes the seat and
   // opens its tool. One with no tool is only joined, and says so.
@@ -102,7 +104,8 @@ export function TaskCard(props: Props) {
   else if (action.kind === "approveStep") label = t("tb.approveStep").replace("{step}", stepName(action.step));
 
   let status = "";
-  if (card.group === "waiting") status = localizeHold(card.holdText ?? "", language);
+  if (action.kind === "none" && action.why === "othersAnswer") status = t("tb.othersAnswer");
+  else if (card.group === "waiting") status = localizeHold(card.holdText ?? "", language);
   else if (card.group === "done") {
     // Closed with steps left undone: the plan withdrew it (its portion was cut otherwise). It was not delivered,
     // and whoever had it must know that what they wrote stayed where it was.
@@ -322,7 +325,7 @@ export function TaskCard(props: Props) {
 
       {label ? (
         <div className="task-card__actions">
-          <Button type="button" size="lg" className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
+          <Button type="button" size="lg" variant={action.kind === "none" ? "outline" : undefined} className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
             {props.busy ? t("tb.working") : label}
           </Button>
           {canFinishStep && stepInHand ? (
