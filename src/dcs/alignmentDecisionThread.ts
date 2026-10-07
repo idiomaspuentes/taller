@@ -6,7 +6,10 @@
 import type { GtSession } from "./auth";
 import { closeAlignmentDecision, postVote, readDecisionVotes } from "./alignmentDecisionStore";
 import { loadPmConfig } from "./issues";
-import { optionsFor, type DecisionOptionId } from "../domain/alignmentDecision";
+import { decisionLevels, optionsFor, type DecisionOptionId } from "../domain/alignmentDecision";
+import { issueTaskId } from "../domain/myTasks";
+import { loadAssignmentsFromDcs } from "./persist";
+import { getPmIssue } from "./portionPr";
 import { formatChatEvent } from "../domain/chatEvent";
 import {
   alineacionDecisionData,
@@ -30,17 +33,28 @@ function envOf(env: Record<string, unknown>) {
   return { session, pmOrg, threadIssue };
 }
 
+/** The levels of the team that has the task of this decision's subtarea (see `decisionLevels`). */
+async function teamLevelsOf(env: Record<string, unknown>) {
+  const { session, pmOrg, threadIssue } = envOf(env);
+  const config = await loadPmConfig(session, pmOrg).catch(() => null);
+  if (!config) return {};
+  const lang = typeof env.lang === "string" ? env.lang : "";
+  const projectId = typeof env.projectId === "string" ? env.projectId : "";
+  const contentOrg = typeof env.contentOrg === "string" ? env.contentOrg : "";
+  if (!lang || !projectId || !contentOrg) return decisionLevels(config, undefined);
+  const [issue, board] = await Promise.all([getPmIssue(session, pmOrg, threadIssue).catch(() => null), loadAssignmentsFromDcs(session, pmOrg, lang, projectId, contentOrg)]);
+  const team = issue ? board?.teams.find((task) => task.id === issueTaskId(issue))?.orgTeamName : undefined;
+  return decisionLevels(config, team);
+}
+
 registerChatEventType<DecisionPrepared>({
   ...alineacionDecisionType,
   async prepare(event, env) {
     const { session, pmOrg, threadIssue } = envOf(env);
     const data = alineacionDecisionData(event);
     if (!data) throw new Error("La decisión no es válida.");
-    const [thread, config] = await Promise.all([
-      readDecisionVotes(session, pmOrg, threadIssue, decisionId(data)),
-      loadPmConfig(session, pmOrg).catch(() => null),
-    ]);
-    return { votes: thread.votes, levels: config?.levels ?? {}, closed: thread.closed, now: new Date().toISOString() };
+    const [thread, levels] = await Promise.all([readDecisionVotes(session, pmOrg, threadIssue, decisionId(data)), teamLevelsOf(env).catch(() => ({}))]);
+    return { votes: thread.votes, levels, closed: thread.closed, now: new Date().toISOString() };
   },
   async run(optionId, event, env) {
     const { session, pmOrg, threadIssue } = envOf(env);
@@ -50,7 +64,7 @@ registerChatEventType<DecisionPrepared>({
     const before = await readDecisionVotes(session, pmOrg, threadIssue, id);
     if (before.closed) throw new Error("Esta decisión ya se cerró.");
 
-    const levels = (await loadPmConfig(session, pmOrg).catch(() => null))?.levels ?? {};
+    const levels = await teamLevelsOf(env).catch(() => ({}));
     const tallyNow = (votes: typeof before.votes) => tallyOf(data, { votes, levels, now: new Date().toISOString() });
 
     // Whoever coordinates may close it past the deadline.

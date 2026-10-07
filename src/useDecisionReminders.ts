@@ -26,6 +26,7 @@ export function useDecisionReminders(session: GtSession | undefined, pmOrg: stri
           issues: project.issues,
           isDecision: isDecisionIssue,
           teamOf: (issue) => project.board.teams.find((t) => t.id === issueTaskId(issue))?.memberIds ?? [],
+          teamNameOf: (issue) => project.board.teams.find((t) => t.id === issueTaskId(issue))?.orgTeamName,
         });
       }
     })();

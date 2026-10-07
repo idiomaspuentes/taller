@@ -472,8 +472,8 @@ function ConversationThread({
   );
   const projectId = issue ? issueProjectId(issue) : "";
   const decisionEnv = useMemo(
-    () => ({ session, pmOrg, issueNumber, lang, projectId }),
-    [session, pmOrg, issueNumber, lang, projectId],
+    () => ({ session, pmOrg, issueNumber, lang, projectId, contentOrg }),
+    [session, pmOrg, issueNumber, lang, projectId, contentOrg],
   );
 
   const mine = Boolean(

@@ -15,6 +15,7 @@ import { alignmentOfDraft, saveVerseAlignment, verseKey, type AlignmentSourceRef
 import { closeIssue, commentOnIssue, createDecisionIssue, loadPmConfig } from "./issues";
 import { alignmentHash, groupsToLines } from "../domain/alignmentHash";
 import {
+  decisionLevels,
   DECISION_DAYS,
   PROPOSALS_DIR,
   PROPOSAL_SCHEMA,
@@ -369,6 +370,8 @@ export async function remindDecisionVoters(params: {
   pmOrg: string;
   issue: number;
   team: string[];
+  /** The name of the team that has the task: its levels say who is still to be asked. */
+  teamName?: string;
   auto?: boolean;
   now?: Date;
 }): Promise<string[]> {
@@ -383,7 +386,7 @@ export async function remindDecisionVoters(params: {
   if (!card) throw new Error("Esta subtarea no tiene una decisión abierta.");
   const thread = readDecisionThread(events, decisionId(card));
   if (thread.closed) return [];
-  const levels = (await loadPmConfig(session, pmOrg).catch(() => null))?.levels ?? {};
+  const levels = decisionLevels(await loadPmConfig(session, pmOrg).catch(() => null), params.teamName);
   const waiting = waitingOn({ team: params.team, levels, votes: thread.votes, proposer: card.by });
   if (!waiting.length) return [];
   const lastReminderAt = events.filter((e) => e.event.type === "alineacion-recordatorio").map((e) => e.at).sort().at(-1);
@@ -418,6 +421,7 @@ export async function sweepDecisionReminders(params: {
   pmOrg: string;
   issues: DcsIssue[];
   teamOf: (issue: DcsIssue) => string[];
+  teamNameOf?: (issue: DcsIssue) => string | undefined;
   isDecision: (issue: DcsIssue) => boolean;
   now?: Date;
 }): Promise<{ issue: number; who: string[] }[]> {
@@ -429,7 +433,7 @@ export async function sweepDecisionReminders(params: {
     if (last !== undefined && now.getTime() - last < 3_600_000) continue;
     checkedAt.set(issue.number, now.getTime());
     try {
-      const who = await remindDecisionVoters({ session: params.session, pmOrg: params.pmOrg, issue: issue.number, team: params.teamOf(issue), auto: true, now });
+      const who = await remindDecisionVoters({ session: params.session, pmOrg: params.pmOrg, issue: issue.number, team: params.teamOf(issue), teamName: params.teamNameOf?.(issue), auto: true, now });
       if (who.length) out.push({ issue: issue.number, who });
     } catch {
       /* a reminder that fails is not worth an error on screen */

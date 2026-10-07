@@ -5,6 +5,7 @@ import type { PersonLevel } from "../src/domain/levels";
 import { alignmentHash, groupsToLines } from "../src/domain/alignmentHash";
 import {
   deadlineFrom,
+  decisionLevels,
   latestVotes,
   mayBeNearDeadline,
   newDecisionId,
@@ -137,6 +138,21 @@ test("solo se lee el hilo de una decisión que puede estar cerca del plazo", () 
   assert.equal(mayBeNearDeadline("2026-10-01T12:00:00Z", new Date("2026-10-01T20:00:00Z")), false);
   assert.equal(mayBeNearDeadline("2026-10-01T12:00:00Z", new Date("2026-10-03T12:00:00Z")), true, "a los 2 días queda 1");
   assert.equal(mayBeNearDeadline(undefined, new Date()), false);
+});
+
+test("cuentan los niveles del equipo que tiene la tarea, no los generales de la organización", () => {
+  // The organization has nobody enabled as a whole; the team that aligns has its own ladder.
+  const book = { levels: { rut: "aprendiz" as PersonLevel }, teamLevels: { "afinadores tpl": { tomas: "habilitada", priscila: "habilitada", ruben: "habilitada", elena: "practicante" } as Record<string, PersonLevel> } };
+  const votes: DecisionVote[] = [
+    { by: "priscila", option: "aceptar", at: "2026-10-07T01:15:00Z" },
+    { by: "ruben", option: "aceptar", at: "2026-10-07T01:16:00Z" },
+  ];
+  const tally = (levels: Record<string, PersonLevel>) =>
+    tallyDecision({ kind: "proposal", votes, proposer: "tomas", authors: ["elena"], levels, thresholds: { minAgree: 2, minIndependent: 2 }, deadline: "2026-10-10T00:00:00Z", now: new Date("2026-10-07T02:00:00Z") });
+  assert.equal(tally(decisionLevels(book, "Afinadores TPL")).winner, "aceptar", "tres habilitadas del equipo, dos de ellas independientes");
+  assert.equal(tally(book.levels).winner, undefined, "con los niveles generales nadie del equipo contaba");
+  assert.deepEqual(decisionLevels(book, "Otro equipo"), book.levels, "un equipo sin niveles propios usa los generales");
+  assert.deepEqual(decisionLevels(null, "Afinadores TPL"), {});
 });
 
 console.log(`\nverify-alignment-decision: ${passed} checks passed.`);

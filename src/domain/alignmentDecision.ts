@@ -106,6 +106,17 @@ export const OPTION_LABEL: Record<DecisionOptionId, string> = {
 
 export type DecisionVote = { by: string; option: DecisionOptionId; at: string };
 
+/**
+ * The levels that count in a decision: those of the team that has the task. A team that has levels of its own
+ * (each one set from «Organización») is read by them; the levels of the organization as a whole were read, and with
+ * those nobody of such a team counted: three people accepted a proposal and the card went on asking.
+ */
+export function decisionLevels(book: { levels?: Record<string, PersonLevel>; teamLevels?: Record<string, Record<string, PersonLevel>> } | null | undefined, teamName: string | undefined): Record<string, PersonLevel> {
+  if (!book) return {};
+  const own = book.teamLevels?.[String(teamName ?? "").trim().toLowerCase()];
+  return own && Object.keys(own).length ? own : book.levels ?? {};
+}
+
 /** Each person's newest vote. */
 export function latestVotes(votes: DecisionVote[]): DecisionVote[] {
   const byPerson = new Map<string, DecisionVote>();
