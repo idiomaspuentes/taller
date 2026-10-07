@@ -40,6 +40,8 @@ type Props = {
   onOpenNewTab?: () => void;
   onClaimStep: (step: TaskStep) => void;
   onApproveStep: (step: TaskStep) => void;
+  /** Open the tool of a step, when the card's own button asks for something else. */
+  onOpenStep?: (step: TaskStep) => void;
   /** A free step (no seats): mark it done, or take that back. */
   onToggleStep: (step: TaskStep) => void;
 };
@@ -101,7 +103,8 @@ export function TaskCard(props: Props) {
   // A step somebody joins to do it says what is done in it, as any other («Revisar»): pressing it takes the seat and
   // opens its tool. One with no tool is only joined, and says so.
   else if (action.kind === "claimStep") label = (action.step.solverAppId && stepButton(action.step)) || t("tb.join").replace("{step}", stepName(action.step));
-  else if (action.kind === "approveStep") label = t("tb.approveStep").replace("{step}", stepName(action.step));
+  // What a person did themselves they finish; what somebody else did, they approve.
+  else if (action.kind === "approveStep") label = t(action.step.closing === "self" ? "tb.stepFinishNamed" : "tb.approveStep").replace("{step}", stepName(action.step));
 
   let status = "";
   if (action.kind === "none" && action.why === "othersAnswer") status = t("tb.othersAnswer");
@@ -284,7 +287,7 @@ export function TaskCard(props: Props) {
                   </Button>
                 ) : approve && !(step.solverAppId && step.checklist?.length) ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onApproveStep(step)}>
-                    {t("mt.approve")}
+                    {t(step.closing === "self" ? "tb.stepFinish" : "mt.approve")}
                   </Button>
                 ) : mine && finishedHere(step) && card.group !== "done" && (done || isStepUnlocked(steps, progress, step.id)) ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onToggleStep(step)}>
@@ -328,6 +331,12 @@ export function TaskCard(props: Props) {
           <Button type="button" size="lg" variant={action.kind === "none" ? "outline" : undefined} className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
             {props.busy ? t("tb.working") : label}
           </Button>
+          {action.kind === "approveStep" && action.step.solverAppId && props.onOpenStep ? (
+            // The tool of a step that is all done can still be opened, beside what the card asks for.
+            <Button type="button" size="lg" variant="outline" className="task-card__action" disabled={props.busy} onClick={() => props.onOpenStep!(action.step)}>
+              {stepButton(action.step) || t("tb.continue")}
+            </Button>
+          ) : null}
           {canFinishStep && stepInHand ? (
             <Button type="button" size="lg" variant="outline" className="task-card__action" disabled={props.busy} onClick={() => props.onToggleStep(stepInHand)}>
               {t("tb.stepFinishNamed").replace("{step}", stepName(stepInHand))}

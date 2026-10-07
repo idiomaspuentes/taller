@@ -149,6 +149,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [fixReasons, setFixReasons] = useState<CorrectionReason[]>([]);
   const [preferredTerms, setPreferredTerms] = useState<PreferredTerms>({});
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
+  /** The titles were asked for and came (or could not be read): until then a term has no name to show. */
+  const [titlesRead, setTitlesRead] = useState(false);
   const [articles, setArticles] = useState<Record<string, ArticleInfo>>({});
   /** How many messages each note has for the team that will work on the notes. */
   const [noteMessages, setNoteMessages] = useState<Record<string, number>>({});
@@ -209,13 +211,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     void load();
   }, [load]);
 
-  // The article titles arrive after the screen is up; until then a term shows its name.
+  // The article titles arrive after the screen is up. Until then a term showed its address spelled out («Know»),
+  // and when the title came («Conocer, conocimiento, desconocido, distinguir») everything under it moved down a
+  // line, buttons included, under the finger.
   useEffect(() => {
     if (!session?.token || !data || data.step !== "palabras" || !data.termUses.length) return;
     let cancelled = false;
     void loadTermTitles(session, data.sourcePackage, data.termUses, ctx)
       .then((titles) => !cancelled && setTermTitles(titles))
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => !cancelled && setTitlesRead(true));
     return () => {
       cancelled = true;
     };
@@ -270,7 +275,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   // The decision of the team is said once, as such, and not also as the answer of whoever registered it.
-  const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me && !(a.final && tally?.decided));
+  // In the order they were given: whoever proposed something first, then whoever agreed with them.
+  const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me && !(a.final && tally?.decided)).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  /** The first proposal and the first objection: the ones that can be seconded. Under «De acuerdo con @ana» there was a second «Pienso lo mismo». */
+  const firstOf = (status: string) => others.find((a) => a.status === status && a.note);
   const staleMine = tally?.stale.find((a) => a.reviewer.trim().toLowerCase() === me);
   /** What the others had answered before the verse was corrected. */
   const saidBefore = (tally?.stale ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -1039,7 +1047,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             </span>
           </div>
           <p className="af-kind af-kind--top" ref={kindRef}>{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
-          <h2 className="af-category">{stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
+          <h2 className={termSlug ? "af-category af-category--term" : "af-category"}>{stepProp === "notas" ? nameOf(item) : termSlug ? (titlesRead || termTitles[termSlug] ? termLabel(termSlug, termTitles) : "…") : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
 
           {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}
           {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
@@ -1066,7 +1074,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     <li key={a.reviewer}>
                       <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
                       {a.note ? `: ${a.note}` : ""}
-                      {a.status !== "approved" && a.note && !stepDone && !tally.decided && mine?.status !== a.status ? (
+                      {a.status !== "approved" && a.note && !stepDone && !tally.decided && mine?.status !== a.status && firstOf(a.status) === a ? (
                         <button
                           type="button"
                           className="af-second"

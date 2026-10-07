@@ -112,6 +112,15 @@ function waitsForOthers(login: string, progress: ReturnType<typeof parseTaskProg
   return answeredRound(login, progress, step) && stepFraction(progress, step.id) < OPEN_STEP_MOST;
 }
 
+/**
+ * A step this person took to do themselves, whose tool says all its work is done: what is left is for them to say
+ * it is finished. The card went on offering the tool, where nothing was left to do, and the way to finish was a
+ * small button under «Ver los pasos».
+ */
+function finishable(login: string, progress: ReturnType<typeof parseTaskProgressMarker>, step: TaskStep, assignee: string | undefined): boolean {
+  return step.closing === "self" && Boolean(step.solverAppId) && stepFraction(progress, step.id) >= OPEN_STEP_MOST && canApproveStep(login, progress, step, assignee);
+}
+
 const joined = (c: BoardCard) => c.action.kind === "none" && c.action.why === "othersAnswer";
 
 /** What the next pending step asks of me, for a subtarea that is mine (assigned or seated in a step). */
@@ -129,6 +138,7 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
   if (!seats.length && !canClaimStep(login, steps, progress, next, undefined, assignee)) return { action: { kind: "none", why: "othersReview" }, next };
   if (isStepActor(login, progress, next, assignee)) {
     if (waitsForOthers(login, progress, next)) return { action: { kind: "none", why: "othersAnswer", step: next }, next };
+    if (finishable(login, progress, next, assignee)) return { action: { kind: "approveStep", step: next }, next };
     // Seated: my part is to do it (open its tool) and, in a review, approve it.
     if (canApproveStep(login, progress, next, assignee) && !next.solverAppId) return { action: { kind: "approveStep", step: next }, next };
     return { action: { kind: "continue", step: next }, next };
@@ -229,6 +239,7 @@ export function buildBoard(input: BoardInput): Board {
           // A step of the whole team: people join the step, and the subtarea stays with the team. Nobody takes it whole.
           if (isStepActor(login, progress, next, assigneeOf(issue))) {
             if (waitsForOthers(login, progress, next)) board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "othersAnswer", step: next }));
+            else if (finishable(login, progress, next, assigneeOf(issue))) board.doing.push(card(issue, bucket, "doing", { kind: "approveStep", step: next }));
             else board.doing.push(card(issue, bucket, "doing", { kind: "continue", step: next }));
           }
           else if (can && canClaimStep(login, steps, progress, next, undefined, assigneeOf(issue))) board.reviews.push(card(issue, bucket, "reviews", { kind: "claimStep", step: next }));

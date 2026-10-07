@@ -8,7 +8,7 @@ import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
-import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
 import { RoundPanel } from "./RoundPanel";
 import {
@@ -205,6 +205,7 @@ function Box({
   selected,
   hinted,
   editable,
+  placing,
   onTap,
   onWord,
   onRemoveWord,
@@ -219,6 +220,8 @@ function Box({
   /** The lexicon gives the draft word in hand as a rendering of this box's word. */
   hinted?: boolean;
   editable: boolean;
+  /** A word of the draft is in hand: a touch anywhere on the box puts it there. */
+  placing: boolean;
   onTap: (boxId: string) => void;
   /** A word of the original was tapped: show what it means. */
   onWord: (boxId: string, refIndex: number) => void;
@@ -251,7 +254,9 @@ function Box({
                 type="button"
                 className="al-ref"
                 aria-label={tNow("lx.wordAria").replace("{word}", tok.surface)}
-                onClick={() => onWord(box.id, refIndex)}
+                // With a word in hand, the word of the original is the box: «toca la caja de la palabra que traduce»
+                // sent the finger to it, and it opened its meaning instead of taking the word.
+                onClick={() => (placing && editable ? onTap(box.id) : onWord(box.id, refIndex))}
                 data-no-box-select
               >
                 <span className="al-ref__word">{tok.surface}</span>
@@ -620,6 +625,26 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       setError(explainError(err));
     } finally {
       setClosingRound(false);
+    }
+  }
+
+  /**
+   * Every verse of the passage is aligned and marked: whoever aligned says the step is finished, here. With the
+   * four verses done the bar offered «Seguir», which did nothing, and the card offered «Alinear» again; the way to
+   * finish was a small «Aprobar» under «Ver los pasos».
+   */
+  async function finishAligning() {
+    if (!session || !ctx?.pmOrg || !ctx.issueNumber || !taskStep) return;
+    setSaving(true);
+    setError("");
+    try {
+      const done = await approveStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, step: taskStep });
+      setStepDone(done);
+      announce(t(done ? "al.stepFinished" : "al.stepHandedIn"));
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -1086,6 +1111,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   // By the step the tool was opened for, not by the view in hand: aligning counts verses done; its review, verses agreed.
   useStepWork(session, ctx, initialMode === "alinear" ? doneCount : summary?.agreed ?? 0, data?.verses.length ?? 0, { stepId: taskStep?.id, on: !stepDone && !closingRound });
   const toAnswer = data ? data.verses.filter((v) => pendingForMe(v)).length : 0;
+  const allAligned = Boolean(data?.verses.length) && doneCount === data!.verses.length && mode === "alinear";
   const readyToReview = verse ? isDone(verse) : false;
   const complete = verse ? verseComplete(verse, current) : false;
   const pendingWords = aligned.filter((a) => !a).length;
@@ -1222,16 +1248,24 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                 </div>
               </Bank>
 
-              {/* What to do with what is chosen; before the first word, how it works. The rest is in the boxes. */}
-              {selectedWords.length || selectedBoxes.length ? (
-                <div className="al-guide" role="status">
-                  <p className="af-hint">
-                    {selectedWords.length
-                      ? selectedWords.length === 1
-                        ? `${t("al.guideWord").replace("{word}", verse.draft[selectedWords[0]!]?.surface ?? "")}${hintedWords.length ? ` ${t("al.guideHint").replace("{words}", hintedWords.join(", "))}` : ""}`
-                        : n("al.guideWords", selectedWords.length)
-                      : t("al.boxChosen")}
-                  </p>
+              {/* What to do with what is chosen; before the first word, how it works. The rest is in the boxes.
+                  It keeps its room whatever it says: it was two lines, then one line and a button, then nothing, and
+                  with each touch every box moved up or down, the one aimed at among them. */}
+              <div className="al-guide" role="status">
+                <p className="af-hint">
+                  {selectedWords.length
+                    ? selectedWords.length === 1
+                      ? `${t("al.guideWord").replace("{word}", verse.draft[selectedWords[0]!]?.surface ?? "")}${hintedWords.length ? ` ${t("al.guideHint").replace("{words}", hintedWords.join(", "))}` : ""}`
+                      : n("al.guideWords", selectedWords.length)
+                    : selectedBoxes.length
+                      ? t("al.boxChosen")
+                      : nextWord
+                        ? t(current.length ? "al.guideGoOn" : "al.guideNext").replace("{word}", nextWord)
+                        : allAligned && !shared
+                          ? t(stepDone ? "al.stepFinished" : "al.guideAllDone")
+                          : ""}
+                </p>
+                {selectedWords.length || selectedBoxes.length ? (
                   <div className="al-actions">
                     {selectedBoxes.length >= 2 ? (
                       <Button type="button" size="sm" variant="outline" onClick={join}>
@@ -1252,12 +1286,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                       {t("al.clearSel")}
                     </Button>
                   </div>
-                </div>
-              ) : !current.length && nextWord ? (
-                <p className="af-hint al-guide" role="status">
-                  {t("al.guideNext").replace("{word}", nextWord)}
-                </p>
-              ) : null}
+                ) : null}
+              </div>
               <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
                 <div className="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
                   {boxes.map((box) => (
@@ -1266,10 +1296,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                       box={box}
                       draft={verse.draft}
                       gloss={verse.gloss}
-                      compact={editable && box.alignedSourceWords.length === 0 && !selectedWords.length && !selectedBoxes.includes(box.id)}
+                      // An empty box stays one slim line also while a word is in hand: every box grew the moment a word
+                      // was touched, and the one aimed at was no longer where it had been.
+                      compact={editable && box.alignedSourceWords.length === 0 && !selectedBoxes.includes(box.id)}
                       selected={selectedBoxes.includes(box.id)}
                       hinted={hinted.has(box.id)}
                       editable={editable}
+                      placing={selectedWords.length > 0}
                       onTap={tapBox}
                       onWord={(boxId, refIndex) => setSheet({ boxId, refIndex })}
                       onRemoveWord={removeWord}
@@ -1620,10 +1653,23 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                       )}
                     </Button>
                   ) : null}
-                  <Button type="button" variant={complete && !readyToReview ? "outline" : "default"} onClick={() => void saveAndNext()} disabled={saving}>
-                    {/* Beside "Terminé", which is the main way on, saving alone has a short name: the bar is one row on a phone. */}
-                    {saving ? t("al.saving") : dirty[verse.verse] ? t(complete && !readyToReview ? "al.saveShort" : "al.saveNext") : t("al.continue")}
-                  </Button>
+                  {allAligned && !dirty[verse.verse] && !shared && taskStep ? (
+                    // Nothing is left to align: what is left is to say so, or, once said, to go back.
+                    stepDone ? (
+                      <Button type="button" className="al-actionbar__main" onClick={onClose}>
+                        {t("fa.back")}
+                      </Button>
+                    ) : (
+                      <Button type="button" className="al-actionbar__main" onClick={() => void finishAligning()} disabled={saving}>
+                        {saving ? t("al.saving") : t("al.finishStep")}
+                      </Button>
+                    )
+                  ) : (
+                    <Button type="button" variant={complete && !readyToReview ? "outline" : "default"} onClick={() => void saveAndNext()} disabled={saving}>
+                      {/* Beside "Terminé", which is the main way on, saving alone has a short name: the bar is one row on a phone. */}
+                      {saving ? t("al.saving") : dirty[verse.verse] ? t(complete && !readyToReview ? "al.saveShort" : "al.saveNext") : t("al.continue")}
+                    </Button>
+                  )}
                 </div>
               </>
             ) : proposing ? (

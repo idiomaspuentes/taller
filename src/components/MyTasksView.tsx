@@ -850,6 +850,7 @@ export function MyTasksView({
       },
       onClaimStep: (card, step) => card.bucket && void claimStepOnIssue(card.issue, card.bucket.board, step),
       onApproveStep: (card, step) => card.bucket && void approveStepOnIssue(card.issue, card.bucket.board, step),
+      onOpenStep: (card, step) => card.bucket && void resolve(card.issue, card.bucket.board, { step }),
       onToggleStep: (card, step) => card.bucket && void toggleFreeStep(card.issue, card.bucket.board, step),
       onCorrect: (card) => {
         const board = card.bucket?.board;

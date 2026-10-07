@@ -2761,5 +2761,10 @@
   "round.closedDeliveredLong": "Revisão fechada: tudo ficou de acordo. A tarefa está entregue.",
   "tb.othersAnswer": "Você já respondeu tudo. Faltam as respostas da sua equipe.",
   "tb.seeMine": "Ver minhas respostas",
-  "af.manyForms": "Aparece de {n} formas. Veja se dizem o mesmo."
+  "af.manyForms": "Aparece de {n} formas. Veja se dizem o mesmo.",
+  "al.guideGoOn": "Continue com «{word}»: toque nela e depois na caixa.",
+  "al.finishStep": "Terminei de alinhar",
+  "al.stepFinished": "Pronto. Agora sua equipe revisa o alinhamento.",
+  "al.stepHandedIn": "Sua parte está entregue.",
+  "al.guideAllDone": "Todos os versículos estão alinhados. Se ficaram bons, toque em «Terminei de alinhar»."
 }

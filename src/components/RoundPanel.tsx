@@ -40,7 +40,7 @@ export function RoundPanel(props: {
           // Closed, and the tool stayed as it was, its answers still to be touched: the way on is said.
           <div className="round__done round__done--leave">
             <p>{t(props.delivered ? "round.closedDeliveredLong" : "round.closed")}</p>
-            <Button type="button" variant="outline" onClick={props.onLeave}>
+            <Button type="button" size="lg" variant="outline" onClick={props.onLeave}>
               {t("fa.back")}
             </Button>
           </div>

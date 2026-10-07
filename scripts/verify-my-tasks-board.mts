@@ -417,4 +417,18 @@ await test("en una ronda que responden todos, quien ya respondió todo la ve en 
   if (mixed.waiting.length > 1) assert.equal(mixed.waiting[0]!.action.kind === "none" && mixed.waiting[0]!.action.why, "othersAnswer", "antes que lo que aún no empieza");
 });
 
+await test("un paso que alguien tomó para hacerlo, con todo su trabajo hecho, pide terminarlo y no abrir otra vez la herramienta", () => {
+  const steps = [
+    { id: "alinear", name: "Alinear", actionLabel: "Alinear", solverAppId: "afinar-alineacion", closing: "self", claimMode: "exclusive" },
+    { id: "revisar", name: "Revisar la alineación", solverAppId: "afinar-alineacion", closing: "consensus", claimMode: "pool", minAssignees: 2, excludePriorStepIds: ["alinear"] },
+  ];
+  const aligning = { ...plan, teams: [...plan.teams, { id: "alinear", name: "Alinear TPL", phaseId: "p2", memberIds: ["carla", "bea"], orgTeamName: "Equipo", rules: [], steps }] } as unknown as AssignmentsDoc;
+  const at = (work: { done: number; total: number }) => {
+    const issues = [issue({ task: "alinear", title: "NEH 1:1–4 · Alinear TPL", progress: { seats: { alinear: ["carla"] }, work: { alinear: work } } })];
+    return buildBoard({ session: carla, pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: aligning, issues, openIssues: issues }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  };
+  assert.equal(at({ done: 2, total: 4 }).doing[0]?.action.kind, "continue", "mientras quedan versículos, la herramienta");
+  assert.deepEqual(at({ done: 4, total: 4 }).doing[0]?.action, { kind: "approveStep", step: aligning.teams[3]!.steps![0] }, "con los cuatro hechos, terminar el paso");
+});
+
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);
