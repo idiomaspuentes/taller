@@ -41,6 +41,14 @@ export function mentionText(comments: CommentRow[], login: string): { text: stri
   return { text: text.length > 220 ? `${text.slice(0, 217).trimEnd()}…` : text, by: pick.user?.login ?? "" };
 }
 
+/** Whether somebody else named this person in what was said about a subtarea. */
+export function namesPerson(comments: CommentRow[], login: string): boolean {
+  const me = login.trim().toLowerCase();
+  if (!me) return false;
+  const named = new RegExp(`@${me.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`, "i");
+  return comments.some((row) => typeof row.body === "string" && (row.user?.login ?? "").toLowerCase() !== me && named.test(row.body));
+}
+
 type Thread = {
   id: number;
   unread?: boolean;
@@ -72,7 +80,7 @@ function headers(session: GtSession): Record<string, string> {
   return { authorization: `token ${session.token}`, accept: "application/json" };
 }
 
-type Placed = { show: boolean; about?: NoticeIssue };
+type Placed = { show: boolean; about?: NoticeIssue; closed?: boolean };
 
 /** Which issues belong to the active workspace, and what each is, remembered so each is looked up once. */
 const inSpace = new Map<string, Placed>();
@@ -90,8 +98,8 @@ async function belongsToSpace(session: GtSession, org: string, repo: string, iss
       return { show: false };
     }
     if (!res.ok) return { show: true };
-    const found = (await res.json()) as NoticeIssue & { labels?: { name: string }[] };
-    const placed = { show: issueInScope(found), about: { number: issue, title: found.title, body: found.body, milestone: found.milestone, labels: found.labels } };
+    const found = (await res.json()) as NoticeIssue & { labels?: { name: string }[]; state?: string };
+    const placed = { show: issueInScope(found), about: { number: issue, title: found.title, body: found.body, milestone: found.milestone, labels: found.labels }, closed: found.state === "closed" };
     inSpace.set(key, placed);
     return placed;
   } catch {
@@ -109,21 +117,26 @@ export async function listMentions(session: GtSession, org: string, repo: string
   if (!res.ok) return [];
   const rows = mentionRows((await res.json()) as Thread[], org, repo);
   const placed = await Promise.all(rows.map((row) => belongsToSpace(session, org, repo, row.issue, doFetch)));
+  const closed = new Set(rows.filter((_, i) => placed[i]!.closed).map((row) => row.id));
   const mine = rows.map((row, i) => (placed[i]!.about ? { ...row, about: placed[i]!.about } : row)).filter((_, i) => placed[i]!.show);
   // What each one says, so the list can be read without opening every conversation. A row whose comments cannot
   // be read still shows, by its title.
-  return Promise.all(
-    mine.map(async (row) => {
+  const said = await Promise.all(
+    mine.map(async (row): Promise<MentionRow | null> => {
       try {
         const got = await doFetch(`${base}/repos/${org}/${repo}/issues/${row.issue}/comments`, { headers: headers(session) });
         const list = got.ok ? ((await got.json()) as unknown) : null;
-        const said = Array.isArray(list) ? mentionText(list as CommentRow[], session.username) : null;
-        return said ? { ...row, ...said } : row;
+        // A subtarea that is finished, where nobody named this person: Door43 keeps its notification unread for
+        // ever (the app cannot mark it), and twenty-seven of them stood over the one mention that asked something.
+        if (closed.has(row.id) && Array.isArray(list) && !namesPerson(list as CommentRow[], session.username)) return null;
+        const text = Array.isArray(list) ? mentionText(list as CommentRow[], session.username) : null;
+        return text ? { ...row, ...text } : row;
       } catch {
         return row;
       }
     }),
   );
+  return said.filter((row): row is MentionRow => row !== null);
 }
 
 export async function markMentionRead(session: GtSession, id: number, doFetch: typeof fetch = fetch): Promise<void> {

@@ -497,9 +497,13 @@ function ConversationThread({
           : null,
     [demo, issue, board, session, lang, pmOrg, contentOrg, header],
   );
+  // Whoever coordinates the team is called to the conversation to settle what the team does not agree on: they get
+  // the way to the tool as well. It was only for those already in the step, and the coordinator read «¿lo registras
+  // tú?» with nothing to press.
+  const coordinates = coordinators.some((login) => login.trim().toLowerCase() === username.trim().toLowerCase());
   const solver = demo
     ? demo.launch?.app
-    : mine && launchCtx && issue?.state !== "closed"
+    : (mine || coordinates) && launchCtx && issue?.state !== "closed"
       ? (header?.solver ?? scriptureSolverFor(catalog, launchCtx.resource))
       : undefined;
   const solverBlock = solver && launchCtx ? solverLaunchBlockReason(solver, launchCtx) : null;

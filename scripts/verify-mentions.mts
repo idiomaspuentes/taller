@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { issueNumberOf, listMentions, markMentionRead, markSeen, mentionRows, mentionText, withoutSeen } from "../src/dcs/mentions";
+import { issueNumberOf, listMentions, markMentionRead, markSeen, mentionRows, mentionText, namesPerson, withoutSeen } from "../src/dcs/mentions";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void> | void) {
@@ -79,6 +79,26 @@ await test("el aviso muestra lo que te dijeron: el último comentario que te nom
   assert.deepEqual(mentionText([{ body: "@ana primero", user: { login: "bea" }, created_at: "1" }, { body: "@anabel después", user: { login: "bea" }, created_at: "2" }], "ana")?.text, "primero", "«@anabel» no es «@ana»");
   assert.equal(mentionText([], "ana"), null);
   assert.equal(mentionText([{ body: "x".repeat(400), user: { login: "bea" } }], "ana")!.text.length, 218);
+});
+
+await test("de una subtarea ya terminada solo queda el aviso si alguien te nombró", async () => {
+  assert.equal(namesPerson([{ body: "@ana mira esto", user: { login: "bea" } }], "ana"), true);
+  assert.equal(namesPerson([{ body: "@anabel mira esto", user: { login: "bea" } }, { body: "@ana nota mía", user: { login: "ana" } }], "ana"), false);
+  const url = (n: number) => `https://q/api/v1/repos/org/plan/issues/${n}`;
+  const comments: Record<number, object[]> = {
+    61: [{ body: "Listo.", user: { login: "bea" }, created_at: "1" }],
+    62: [{ body: "@ana ¿lo registras tú?", user: { login: "bea" }, created_at: "1" }],
+    63: [],
+  };
+  const state: Record<number, string> = { 61: "closed", 62: "closed", 63: "open" };
+  const fake = (async (input: string) => {
+    const issue = Number(/\/issues\/(\d+)/.exec(input)?.[1] ?? 0);
+    if (/\/comments$/.test(input)) return new Response(JSON.stringify(comments[issue] ?? []), { status: 200 });
+    if (issue) return new Response(JSON.stringify({ labels: [], state: state[issue] }), { status: 200 });
+    return new Response(JSON.stringify([t(1, "org/plan", url(61)), t(2, "org/plan", url(62)), t(3, "org/plan", url(63))]), { status: 200 });
+  }) as unknown as typeof fetch;
+  const rows = await listMentions({ host: "https://terminadas.example", token: "t", username: "ana" } as never, "org", "plan", fake);
+  assert.deepEqual(rows.map((row) => row.issue).sort(), [62, 63], "la terminada sin mención no se lista; la que te nombra y la abierta sí");
 });
 
 console.log(`\nverify-mentions: ${passed} checks passed.`);
