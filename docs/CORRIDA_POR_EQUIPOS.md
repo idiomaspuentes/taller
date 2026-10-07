@@ -552,12 +552,48 @@ Lo que se comprobó de paso, con contenido de verdad:
 | Defectos de verdad que se encontraron y arreglaron | el guardado rechazado al volver a corregir; «8 de 8 traducidas» con una respuesta en inglés; enlaces perdidos al traducir; un comentario bajo diez notas; la lista que no se enteraba de una aprobación; la duda que no se podía contestar ni cerrar; «100 %» sin terminar |
 | Sin recorrer todavía | «Devolver al equipo» de una subtarea que queda grande; recordar y reasignar desde «Equipo hoy»; los avisos con la app cerrada |
 
+## El cambio de equipo: de Traducción a Afinación (6 de octubre)
+
+Hecho por **Marta** (abelperez) desde la app, a 375 px, un ajuste a la vez:
+
+1. **«Organización» → «+ Nuevo equipo».** Un nombre y «Crear». Se crearon «Afinadores TPL» y «Afinadores TPS».
+   Al crearse, el equipo se abre solo y dice «Este equipo todavía no tiene quien lo coordine. Quien coordina
+   asigna los niveles y confirma las decisiones del equipo».
+2. **Las personas.** Se buscó cada cuenta por su usuario y se añadió con un toque: abelperez, abelper8, valeska y
+   Elisha en los dos equipos. «Hacer coordinador» a abelperez; el nivel de cada una («Persona habilitada») con su
+   selector. Cada cambio se guarda y lo dice («@Elisha ahora es persona habilitada»).
+3. **Las tareas.** «Proyectos» ya lo pedía en un aviso: «En Judas falta decir qué equipo hace 11 tareas. Nadie
+   podrá tomarlas hasta entonces. Elige uno por fase, o por tarea si no es el mismo». Con «Elegir por tarea» se
+   pusieron Desafíos, Palabras clave y Alinear del TPL a «Afinadores TPL» y los del TPS a «Afinadores TPS», y
+   «Guardar los equipos». El aviso pasó a «falta decir qué equipo hace 5 tareas» (Armonización, Validación y
+   Publicación).
+4. **Salir de Traducción.** En «Traductores TPL», «Traductores TPS» y «Traductores de Ayudas» se quitó a las cuatro
+   cuentas con «Quitar». Los tres equipos quedan, con 0 miembros.
+
+**Cómo quedó el panel.** A Priscila (Elisha) le quedan solo «Puedes sumarte · 10» (los Desafíos del TPL y del TPS),
+«En espera» y «Terminadas esta semana». Nada de Traducción.
+
+**⚠ Lo que se encontró**
+
+- **«Quitar» saca a la persona con un toque, sin preguntar.** Está junto a «Hacer coordinador» y al nivel. Volver a
+  añadirla es fácil, pero pierde su nivel y, si coordinaba, la coordinación.
+- **«En uso · 6 tareas»** de un equipo que hace tres: cuenta las tres del proyecto y otra vez las mismas tres como
+  equipo por defecto para los libros que vengan. Lo mismo en los demás («4» por 2, «8» por 4).
+- **«Nadie podrá tomarlas hasta entonces»** no era verdad: los Desafíos, sin equipo, ya aparecían en «Puedes
+  sumarte» de quien estaba en los equipos de Traducción.
+- **El orden de «Puedes sumarte».** Las diez tarjetas de Desafíos salen 1:17–23, 1:12–16, 1:5–11, 1:1–4… y 1:24–25
+  al final, mezclando TPS y TPL. Quien no sabe por dónde empezar no encuentra el primer pasaje arriba.
+- En «Proyectos», el primer aviso dice «Traducción de Judas va en 71 de 71» (cuenta pasos, no subtareas) y propone
+  empezar el libro siguiente.
+
 ### Dónde quedó
 
-- **Traducción: terminada.** Las 29 subtareas de la fase están entregadas.
-- **Afinación: abierta sin equipo propio.** Las diez subtareas de «Desafíos» (TPL y TPS, cinco porciones cada uno)
-  aparecen en «Puedes sumarte» de las cuatro cuentas, que siguen en los equipos de Traducción. Lo siguiente es el
-  paso «un equipo a la vez»: crear «Afinadores TPL» y «Afinadores TPS» desde «Organización», ponerles las cuatro
-  cuentas con su nivel y su coordinador, asignarlos a las tareas de Afinación en el proyecto y sacar a las cuatro
-  de los equipos de Traducción.
-- En espera: 17 subtareas (Palabras clave, Alinear, Armonización, Validación y Publicación).
+- **Traducción: terminada.** Las 29 subtareas de la fase están entregadas, y los tres equipos de la fase quedaron
+  sin miembros.
+- **Afinación: lista para empezar.** «Afinadores TPL» y «Afinadores TPS» existen, con las cuatro cuentas (todas
+  «Persona habilitada», coordina abelperez) y asignados a Desafíos, Palabras clave y Alinear de su texto. Las diez
+  subtareas de «Desafíos» esperan en «Puedes sumarte». Nadie ha tomado ninguna.
+- Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P)**,
+  Elisha = **Priscila (P)**.
+- En espera: Palabras clave, Alinear, Armonización, Validación y Publicación. Armonización, Validación y
+  Publicación todavía no tienen equipo: se les pone al llegar a cada una.
