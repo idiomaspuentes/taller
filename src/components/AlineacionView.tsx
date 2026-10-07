@@ -1,6 +1,8 @@
 import { toolHeading } from "./toolHeading";
 import { draftTaskId } from "../dcs/afinacionLoad";
 import { saveCorrection } from "../dcs/afinacionStore";
+import { commentOnIssue } from "../dcs/issues";
+import { refComment } from "../domain/commentPlace";
 import { ChapterReader } from "./ChapterReader";
 import { BookOpen, Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
@@ -99,6 +101,8 @@ const doneId = (chapter: number, verse: number) => `al-done:${chapter}:${verse}`
 /** «Lo tomo»: who is aligning a verse, so two people do not work the same one. A note `released` gives it back. */
 const takeId = (chapter: number, verse: number) => `al-take:${chapter}:${verse}`;
 const RELEASED = "released";
+/** «Avisar»: a reviewer told whoever aligned a verse that it changed and has to be finished again. */
+const askId = (chapter: number, verse: number) => `al-ask:${chapter}:${verse}`;
 
 type DragData =
   | { type: "word"; indices: number[] }
@@ -553,6 +557,15 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   const answeredByMe = (v: AlignmentVerse) =>
     Boolean(data) && effective.some((d) => d.itemId === itemId(data!.chapter, v.verse) && d.reviewer.trim().toLowerCase() === me && d.textHash === hashOf(v));
   const authoredByMe = (v: AlignmentVerse) => authorsOf(v).some((a) => a.trim().toLowerCase() === me);
+  /** Who finished the verse before it changed: the one to tell when a review finds it unfinished. */
+  const finishedBefore = (v: AlignmentVerse): string => {
+    if (!data) return "";
+    const id = doneId(data.chapter, v.verse);
+    const last = decisions.filter((d) => d.itemId === id).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+    return last ? last.reviewer.trim() : "";
+  };
+  /** Whether somebody already told them about the verse as it is now, so three reviewers do not send three notices. */
+  const alreadyTold = (v: AlignmentVerse) => Boolean(data) && decisions.some((d) => d.itemId === askId(data!.chapter, v.verse) && d.textHash === hashOf(v));
   /** In review: finished by its author, not written by me, and not answered by me since it last changed. */
   const pendingForMe = (v: AlignmentVerse) => isDone(v) && !answeredByMe(v) && !authoredByMe(v);
   /** Shared step: who took the verse to align it (the latest «lo tomo» that was not given back). */
@@ -952,6 +965,40 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       announce(n("al.decisionOpened", opened.issue.number));
     } catch (err) {
       setFixError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /**
+   * A verse whose text changed after it was aligned (a correction made from another tool, or by the team) is not
+   * finished any more. The review said «cuando lo marque podrás responder» and stopped there: whoever had aligned
+   * it had finished the step and was never told, so the review could not end. The reviewer tells them from here,
+   * and the note of it is kept with the verse so the next reviewer does not tell them again.
+   */
+  async function tellAligner() {
+    if (!session || !data || !verse || !ctx?.pmOrg || !ctx.issueNumber) return;
+    const who = finishedBefore(verse);
+    if (!who) return;
+    setSaving(true);
+    setError("");
+    try {
+      await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, `${data.chapter}:${verse.verse}`, `@${who} ${tNow("al.tellAlignerSaid")}`));
+      const decision: ReviewDecision = {
+        itemId: askId(data.chapter, verse.verse),
+        ref: { start: { chapter: data.chapter, verse: verse.verse } },
+        sessionId: String(ctx.issueNumber || ctx.taskId),
+        stageId: "afinacion",
+        status: "approved",
+        reviewer: session.username,
+        timestamp: new Date().toISOString(),
+        textHash: hashOf(verse),
+      };
+      await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
+      setDecisions((prev) => [...prev, decision]);
+      announce(t("al.toldAligner").replace("{who}", who));
+    } catch (err) {
+      setError(explainError(err));
     } finally {
       setSaving(false);
     }
@@ -1593,7 +1640,19 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
               {!readyToReview ? (
                 // On the aligning side an unstarted verse says what to do in its own card, above; here it is only a
                 // verse somebody left half aligned.
-                mode === "alinear" && !current.length ? null : (
+                mode === "alinear" && !current.length ? null : mode !== "alinear" && finishedBefore(verse) && finishedBefore(verse).toLowerCase() !== me ? (
+                  // Finished once and changed since: nobody is aligning it, so waiting is not enough.
+                  <>
+                    <p className="af-stale" role="status">
+                      {t(alreadyTold(verse) ? "al.toldAligner" : "al.changedSince").replace("{who}", finishedBefore(verse))}
+                    </p>
+                    {alreadyTold(verse) ? null : (
+                      <Button type="button" size="lg" onClick={() => void tellAligner()} disabled={saving}>
+                        {t("al.tellAligner").replace("{who}", finishedBefore(verse))}
+                      </Button>
+                    )}
+                  </>
+                ) : (
                   <p className="af-stale" role="status">
                     {mode !== "alinear" ? t("al.notMarked") : ownerOf(verse) ? t("al.takenHint").replace("{who}", ownerOf(verse)) : t("al.takeHint")}
                   </p>

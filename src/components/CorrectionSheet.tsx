@@ -53,15 +53,21 @@ export function CorrectionSheet({
     if (!busy) setActing(null);
   }, [busy]);
 
-  // Each opening starts from the verse as it is: nothing of a correction left half-written elsewhere.
-  useEffect(() => {
-    if (!open) return;
-    setDraft(text);
-    setWhy("");
-    setReasons([]);
-    setRefId((id) => (references.some((r) => r.id === id) ? id : (references[0]?.id ?? "")));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, text]);
+  // Each opening starts from the verse as it is: nothing of a correction left half-written elsewhere. Done while
+  // rendering, not in an effect after it: the sheet stays mounted, and opened right after moving to another verse
+  // it showed the text of the verse before under the name of the new one, with «Corregir ahora» within reach,
+  // until the effect ran (about a second on a slow phone).
+  const shown = open ? text : null;
+  const [last, setLast] = useState<string | null>(null);
+  if (shown !== last) {
+    setLast(shown);
+    if (open) {
+      setDraft(text);
+      setWhy("");
+      setReasons([]);
+      setRefId((id) => (references.some((r) => r.id === id) ? id : (references[0]?.id ?? "")));
+    }
+  }
 
   const reference = references.find((r) => r.id === refId) ?? references[0];
   // What is kept with the change, and what the group reads: the reasons chosen, then what the person wrote.

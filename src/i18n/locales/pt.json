@@ -2767,5 +2767,9 @@
   "al.stepFinished": "Pronto. Agora sua equipe revisa o alinhamento.",
   "al.stepHandedIn": "Sua parte está entregue.",
   "al.guideAllDone": "Todos os versículos estão alinhados. Se ficaram bons, toque em «Terminei de alinhar».",
-  "al.stAdjust": "a equipe pediu para ajustar"
+  "al.stAdjust": "a equipe pediu para ajustar",
+  "al.changedSince": "Este versículo mudou depois que @{who} o alinhou, e ficou sem concluir. Avise para que o complete e possam revisá-lo.",
+  "al.tellAligner": "Avisar @{who}",
+  "al.toldAligner": "@{who} já recebeu o aviso de que falta concluir este versículo. Quando concluir, você poderá responder.",
+  "al.tellAlignerSaid": "este versículo mudou depois que você o alinhou e ficou sem concluir. Por favor, complete-o para que possamos revisá-lo."
 }
