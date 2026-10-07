@@ -8584,3 +8584,6 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 
 /* In the line at the foot of a tool: the way to what the line speaks of. */
 .tool-foot__link { display: inline; padding: 0.25rem 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--primary); text-decoration: underline; cursor: pointer; }
+
+/* What was answered to a doubt of the group reading: set in from the doubt it answers. */
+.gr-doubt--reply { margin-left: 1rem; background: var(--surface-2, var(--bg)); border-left: 2px solid var(--border-strong); }

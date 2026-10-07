@@ -2732,5 +2732,12 @@
   "rv.askFinish": "Pedir que lo termine",
   "rv.approveAnyway": "Aprobar así",
   "rv.answerUntranslated": "La respuesta sigue sin traducir.",
-  "rv.questionUntranslated": "La pregunta sigue sin traducir."
+  "rv.questionUntranslated": "La pregunta sigue sin traducir.",
+  "gr.dropDoubt": "Ya no tengo la duda",
+  "gr.editDoubt": "Cambiar mi duda",
+  "gr.doubtDropped": "Guardado: ya no tienes la duda.",
+  "gr.doubtYours": "Tu duda sigue abierta. Cuando quede clara, pulsa «Ya no tengo la duda».",
+  "gr.doubtAnswered": "Te respondieron. Si ya quedó clara, pulsa «Ya no tengo la duda».",
+  "gr.whyAgree": "Responde a la duda: por qué está bien así (opcional)",
+  "gr.repliedNote": "Respondí tu duda de {ref} ({text}) en la revisión grupal: {why}"
 }

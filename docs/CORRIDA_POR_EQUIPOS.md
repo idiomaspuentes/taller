@@ -438,6 +438,39 @@ Lo demás que se arregló:
   aprobación; minutos después sí. Hay que ver si la lista llega con retraso.
 - El título de Palabras «Bible References:» no tiene referencias debajo en este artículo, y se traduce a mano.
 
+### La lectura grupal del TPL, con lo que ya llegó: 1:1–4 (6 de octubre)
+
+La lectura grupal se abre con el primer pasaje entregado y dice de los demás «Todavía en traducción». **Clara**
+dejó una duda en 1:3 y estuvo de acuerdo con los otros tres; **Marta** contestó la duda, corrigió 1:2 con su
+motivo («Selección de palabra» y una frase) y aprobó el resto; Clara volvió, leyó la respuesta y la corrección, y
+cerró. Pie: «4 de 4 acordados · faltan 4 pasajes por llegar».
+
+**⚠ Una duda no se podía contestar ni cerrar.** Bajo «hay una duda» había tres botones: «De acuerdo», «Corregir»,
+«Tengo una duda». Quien pensaba que el versículo estaba bien no tenía dónde decir por qué; a quien había
+preguntado no le llegaba nada, y nada le decía que cerrar la duda era cosa suya. El versículo se quedaba en «hay
+una duda». *Ahora:*
+
+- Quien pulsa «De acuerdo» donde otro tiene una duda puede decir por qué está bien así. Eso es la respuesta: se
+  lee bajo la duda y le llega a quien preguntó («Respondí tu duda de JUD 1:3 (TPL)…»).
+- Quien tiene la duda lee «Te respondieron. Si ya quedó clara, pulsa «Ya no tengo la duda»», y ese botón está en
+  lugar de «De acuerdo».
+- Cuando alguien corrige un versículo, quien ya había contestado lee el motivo junto a «El texto cambió después de
+  tu respuesta».
+
+También: sobre cada versículo salían el ULT y el UST juntos. Como en el editor y en la revisión, ahora sale solo
+el texto que se traduce, y el otro con «Ver también el UST» (la pantalla bajó de 2.638 a 2.173 px).
+
+Lo que se comprobó de los avisos y la conversación: «Avisos» mostró la mención de Marta con «Abrir»; lleva a la
+conversación, que se lee como un chat (hoy, «nuevos», un mensaje tras otro), con el botón «Revisar» arriba.
+
+**⚠ Sin resolver**
+
+- «Avisos» muestra una línea por subtarea: de los dos mensajes de Marta se veía el último.
+- La tarjeta de la lectura grupal dice «0 de 1 paso · 0 %» con 4 versículos acordados, y no muestra el último
+  mensaje.
+- «De acuerdo», «Corregir» y «Tengo una duda» miden 36 px de alto.
+- Dejar la duda tardó más de 20 segundos una vez, con el botón apagado y sin decir «Guardando…».
+
 ### Dónde quedó
 
 - Entregadas: TPL 1:1–4, TPS 1:1–4, Notas 1:1–4, Preguntas 1:1–4 y el artículo de Palabras «call…». Las dos

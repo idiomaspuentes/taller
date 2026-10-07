@@ -2732,5 +2732,12 @@
   "rv.askFinish": "Pedir que termine",
   "rv.approveAnyway": "Aprovar assim",
   "rv.answerUntranslated": "A resposta continua sem traduzir.",
-  "rv.questionUntranslated": "A pergunta continua sem traduzir."
+  "rv.questionUntranslated": "A pergunta continua sem traduzir.",
+  "gr.dropDoubt": "Já não tenho a dúvida",
+  "gr.editDoubt": "Mudar a minha dúvida",
+  "gr.doubtDropped": "Salvo: você já não tem a dúvida.",
+  "gr.doubtYours": "A sua dúvida continua aberta. Quando ficar clara, toque em «Já não tenho a dúvida».",
+  "gr.doubtAnswered": "Responderam. Se já ficou clara, toque em «Já não tenho a dúvida».",
+  "gr.whyAgree": "Responda à dúvida: por que está bom assim (opcional)",
+  "gr.repliedNote": "Respondi à sua dúvida de {ref} ({text}) na revisão em grupo: {why}"
 }

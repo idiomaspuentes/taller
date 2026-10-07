@@ -31,7 +31,7 @@ type Props = {
 };
 
 /** What is being written about one verse of one text: a correction of it, or a doubt about it. */
-type Open = { id: string; kind: "fix" | "doubt"; text: string; why: string; reasons?: CorrectionReason[] };
+type Open = { id: string; kind: "fix" | "doubt" | "agree"; text: string; why: string; reasons?: CorrectionReason[] };
 
 /**
  * The group review of a deliverable. The team reads together everything translated of the stretch, on the group's
@@ -47,6 +47,8 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const [data, setData] = useState<GroupReadingData | null>(null);
   const [decisions, setDecisions] = useState<ReviewDecision[]>([]);
   const [showSources, setShowSources] = useState(true);
+  /** The other English text, shown as a support only when it is asked for (as in the editor and in the review). */
+  const [support, setSupport] = useState(false);
   const [open, setOpen] = useState<Open | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -147,6 +149,19 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     }
   }
 
+  /**
+   * Agreeing with a verse somebody has a doubt about, saying why it is right as it is: the answer to the doubt.
+   * A doubt could only be answered by correcting the verse; whoever thought it was right had nowhere to say so, and
+   * whoever had asked was never told anything. The reason is kept with the agreement, shown under the doubt, and
+   * sent to whoever asked.
+   */
+  async function reply(text: GroupReadingText, verse: number, why: string, askers: string[]) {
+    await answer([{ text, verse, status: "approved", note: why.trim() || undefined }], t("gr.agreedSaved"));
+    if (!session || !data || !ctx?.pmOrg || !ctx.issueNumber || !why.trim() || !askers.length) return;
+    const said = tNow("gr.repliedNote").replace("{ref}", `${data.book} ${data.chapter}:${verse}`).replace("{text}", text.name).replace("{why}", why.trim());
+    await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${askers.map((login) => `@${login}`).join(" ")} ${said}`).catch(() => undefined);
+  }
+
   /** Everything of a passage I have not answered yet, agreed at once: reading it whole is the point. */
   const unanswered = (passage: ReadingPassage) =>
     (data?.texts ?? []).flatMap((text) => (passage.arrived[text.resource] ? passage.verses.filter((verse) => text.verses[verse]?.trim() && !myAnswer(readingItemId(text.resource, data!.chapter, verse))).map((verse) => ({ text, verse, status: "approved" as const })) : []));
@@ -209,6 +224,11 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     const mine = myAnswer(id);
     const stale = tally?.stale.some((row) => row.reviewer.trim().toLowerCase() === me);
     const doubts = (tally?.answers ?? []).filter((row) => row.status !== "approved");
+    // What was answered to a doubt: the reason somebody gave on agreeing with the verse as it is.
+    // Whoever corrected a verse says why the same way, and whoever had answered before the change reads it here.
+    const replies = doubts.length || stale ? (tally?.answers ?? []).filter((row) => row.status === "approved" && row.note?.trim()) : [];
+    const myDoubt = mine?.status === "revise";
+    const othersDoubt = doubts.filter((row) => row.reviewer.trim().toLowerCase() !== me).map((row) => row.reviewer);
     const writing = open?.id === id ? open : null;
     return (
       <div key={text.resource} className="gr-text" data-state={tally?.state}>
@@ -232,16 +252,34 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
             <strong>@{row.reviewer}</strong> {row.note}
           </p>
         ))}
+        {replies.map((row) => (
+          <p key={`${row.reviewer}-${row.timestamp}`} className="gr-doubt gr-doubt--reply">
+            <strong>@{row.reviewer}</strong> {row.note}
+          </p>
+        ))}
+        {/* Whoever asked closes the doubt, and is told how: nothing said so, and the verse stayed «hay una duda». */}
+        {myDoubt && !stale && !stepDone ? <p className="gr-stale">{t(replies.length ? "gr.doubtAnswered" : "gr.doubtYours")}</p> : null}
         {stale ? <p className="gr-stale">{t("gr.stale")}</p> : null}
         {stepDone ? null : writing ? (
           <div className="rv-composer">
             {writing.kind === "fix" ? <textarea className="af-textarea" rows={3} value={writing.text} aria-label={t("gr.fixAria")} onChange={(e) => setOpen({ ...writing, text: e.target.value })} /> : null}
             {writing.kind === "fix" ? <CorrectionReasons value={writing.reasons ?? []} onChange={(reasons) => setOpen({ ...writing, reasons })} /> : null}
-            <textarea className="af-textarea" rows={2} value={writing.why} placeholder={t(writing.kind === "fix" ? "gr.whyFix" : "gr.whyDoubt")} aria-label={t(writing.kind === "fix" ? "gr.whyFix" : "gr.whyDoubt")} onChange={(e) => setOpen({ ...writing, why: e.target.value })} />
+            <textarea
+              className="af-textarea"
+              rows={2}
+              value={writing.why}
+              placeholder={t(writing.kind === "fix" ? "gr.whyFix" : writing.kind === "agree" ? "gr.whyAgree" : "gr.whyDoubt")}
+              aria-label={t(writing.kind === "fix" ? "gr.whyFix" : writing.kind === "agree" ? "gr.whyAgree" : "gr.whyDoubt")}
+              onChange={(e) => setOpen({ ...writing, why: e.target.value })}
+            />
             <div className="rv-composer__row">
               {writing.kind === "fix" ? (
                 <Button type="button" size="sm" disabled={saving || !writing.text.trim() || writing.text.trim() === body} onClick={() => void correct(text, verse)}>
                   {t("gr.saveFix")}
+                </Button>
+              ) : writing.kind === "agree" ? (
+                <Button type="button" size="sm" disabled={saving} onClick={() => void reply(text, verse, writing.why, othersDoubt)}>
+                  <Check size={14} aria-hidden /> {t("gr.agree")}
                 </Button>
               ) : (
                 <Button type="button" size="sm" disabled={saving || !writing.why.trim()} onClick={() => void answer([{ text, verse, status: "revise", note: writing.why.trim() }], t("gr.doubtSaved"))}>
@@ -259,6 +297,15 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
               <span className="gr-mine">
                 <Check size={12} aria-hidden /> {t("gr.youAgreed")}
               </span>
+            ) : myDoubt ? (
+              <button type="button" disabled={saving} onClick={() => void answer([{ text, verse, status: "approved" }], t("gr.doubtDropped"))}>
+                <Check size={13} aria-hidden /> {t("gr.dropDoubt")}
+              </button>
+            ) : othersDoubt.length ? (
+              // Somebody has a doubt here: agreeing asks why it is right as it is, which is the answer to it.
+              <button type="button" disabled={saving} onClick={() => setOpen({ id, kind: "agree", text: "", why: "" })}>
+                <Check size={13} aria-hidden /> {t("gr.agree")}
+              </button>
             ) : (
               <button type="button" disabled={saving} onClick={() => void answer([{ text, verse, status: "approved" }], t("gr.agreedSaved"))}>
                 <Check size={13} aria-hidden /> {t("gr.agree")}
@@ -268,7 +315,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
               <Pencil size={13} aria-hidden /> {t("gr.fix")}
             </button>
             <button type="button" disabled={saving} onClick={() => setOpen({ id, kind: "doubt", text: "", why: mine?.status === "revise" ? (mine.note ?? "") : "" })}>
-              {t("gr.doubt")}
+              {t(myDoubt ? "gr.editDoubt" : "gr.doubt")}
             </button>
           </div>
         )}
@@ -338,16 +385,32 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                         <p className="gr-verse__ref">{`${data.chapter}:${verse}`}</p>
                         <div className="gr-verse__body">
                           {showSources && data.sources.some((source) => source.verses[verse]) ? (
-                            <dl className="rv-sources">
-                              {data.sources.map((source) =>
-                                source.verses[verse] ? (
-                                  <div key={source.short}>
-                                    <dt>{source.short}</dt>
-                                    <dd>{source.verses[verse]}</dd>
-                                  </div>
-                                ) : null,
-                              )}
-                            </dl>
+                            (() => {
+                              // What is read is compared with the text it translates: that one is shown. The two
+                              // English texts over every verse left nobody sure which of them the verse had to say.
+                              const own = data.sources.filter((source) => here.some((text) => (text.resource === "tps" ? /ust|gst|tps/i : /ult|glt|tpl/i).test(source.short)));
+                              const others = data.sources.filter((source) => !own.includes(source) && source.verses[verse]);
+                              const shown = own.length ? (support ? [...own, ...others] : own) : data.sources;
+                              return (
+                                <div className="rv-sources-box">
+                                  <dl className="rv-sources">
+                                    {shown.map((source) =>
+                                      source.verses[verse] ? (
+                                        <div key={source.short} data-support={(own.length > 0 && !own.includes(source)) || undefined}>
+                                          <dt>{source.short}</dt>
+                                          <dd>{source.verses[verse]}</dd>
+                                        </div>
+                                      ) : null,
+                                    )}
+                                  </dl>
+                                  {own.length && others.length ? (
+                                    <button type="button" className="se-peek__more" aria-pressed={support} onClick={() => setSupport(!support)}>
+                                      {t(support ? "se.supportHide" : "se.supportShow").replace("{name}", others.map((source) => source.short).join(", "))}
+                                    </button>
+                                  ) : null}
+                                </div>
+                              );
+                            })()
                           ) : null}
                           <div className="gr-texts">{here.map((text) => verseOf(text, passage, verse))}</div>
                         </div>
