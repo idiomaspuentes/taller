@@ -7229,7 +7229,10 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .ck-go { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0.5rem; }
 /* What is checked of a help, a line each: its mark, and what is asked. A touch on a line says it is not right. */
 .ck-checks { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border); }
-.ck-checks > li { display: grid; border-bottom: 1px solid var(--border); }
+.ck-checks > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 0.5rem; border-bottom: 1px solid var(--border); }
+.ck-checks > li > .ck-question__outcome { grid-column: 1 / -1; }
+/* «No», beside each line: what opens the sheet to propose a change. Quiet, so four of them are not a wall. */
+.ck-no { min-width: 2.75rem; min-height: 2.5rem; padding: 0 0.625rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-muted); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .ck-check { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); align-items: center; gap: 0.625rem; width: 100%; min-height: 2.75rem; padding: 0.375rem 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 0.9375rem; line-height: 1.35; text-align: left; cursor: pointer; }
 .ck-check:disabled { cursor: default; }
 .ck-check__mark { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; color: var(--text-muted); }

@@ -22,6 +22,8 @@ export type CheckAnswer = {
   note?: string;
   /** A consultation that was answered: the item no longer waits. */
   resolved?: boolean;
+  /** The answer was taken back (a line ticked by mistake, touched again): its question is to be answered again. */
+  cleared?: true;
   /** What was proposed, when the «no» was settled by a proposal. */
   proposal?: ProposalPayload;
   by: string;
@@ -70,6 +72,7 @@ export const verseItemId = (verseKey: string): string => `verse:${verseKey}`;
 export function latestAnswers(answers: CheckAnswer[]): Map<string, CheckAnswer> {
   const out = new Map<string, CheckAnswer>();
   for (const answer of [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) out.set(`${answer.itemId}\u0000${answer.questionId}`, answer);
+  for (const [key, answer] of out) if (answer.cleared) out.delete(key);
   return out;
 }
 

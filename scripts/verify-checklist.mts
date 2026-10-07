@@ -150,6 +150,15 @@ test("sobre el versículo se marca lo que tiene ayuda, y tocar una palabra lleva
   assert.equal(helpAtWord(undefined), undefined);
 });
 
+test("una respuesta dada por error se quita, y la pregunta vuelve a estar por responder", () => {
+  const ticked = [say("n3", "sentido", "yes"), say("n3", "util", "yes"), say(verseItemId("2:13"), "cobertura", "yes")];
+  assert.equal(stateOf(ticked, "n3"), "ok");
+  const taken = [...ticked, say("n3", "util", "yes", { cleared: true })];
+  assert.equal(stateOf(taken, "n3"), "pending");
+  assert.equal(sum(taken).items.find((row) => row.itemId === "n3")!.answers.util, undefined, "como si no se hubiera respondido");
+  assert.equal(stateOf([...taken, say("n3", "util", "yes")], "n3"), "ok", "y se puede volver a marcar");
+});
+
 // A list that checks a help against several things: two texts and the article the help links.
 const asked: ChecklistQuestion[] = [
   { id: "sentido", text: "¿Tiene sentido con el texto literal?", about: "tpl" },

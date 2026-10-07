@@ -1608,6 +1608,14 @@ que la segunda lista revisaba la nota vieja y podía proponer otra versión ente
   nota, solo en el suyo. El artículo llega un instante después de abrirse el paso y empujaba las preguntas 226 px,
   bajo la barra: la pantalla se vuelve a colocar cuando llega, hasta que la persona la mueve.
 - En 1280 px, textos a la izquierda y tarjeta a la derecha (480 px), sin desbordes; ahí el versículo no se quita.
+- **Tocar una pregunta la marca; «No» tiene su botón.** Cada línea lleva un círculo delante y se leía como una
+  casilla, pero tocarla abría la hoja de proponer un cambio, como si todas estuvieran mal (Abel, al probarlo).
+  Ahora un toque la marca bien, otro la desmarca, y a su derecha «No» abre la hoja; un «No» resuelto con una
+  propuesta se deshace retirando la propuesta. Marcadas una a una, el paso se queda en vista y el botón del pie
+  pasa a «Siguiente pendiente». Con «No» al lado, el texto de la pregunta tiene 232 px de ancho (eran 284) y las
+  largas ocupan tres renglones: las cuatro del TPL miden 254 px (eran 205). Con el TPS la nota de Judas 1:1 sigue
+  viéndose entera, con las preguntas entre 567 y 740 px. Vale para todas las listas, también las de un proyecto
+  anterior.
 - **Una propuesta por nota**: lo propuesto para la nota en vista se lee bajo ella («Propuesta por acordar»), y otra
   propuesta sobre lo mismo parte de esa versión y toma su lugar («Hay otra versión»). En el acuerdo queda una sola
   por acordar.

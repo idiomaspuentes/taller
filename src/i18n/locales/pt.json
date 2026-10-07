@@ -2863,7 +2863,7 @@
   "ck.allGood": "Tudo certo",
   "ck.restGood": "O resto, certo",
   "ck.checks": "Verifica-se",
-  "ck.tapWrong": "Toque o que não estiver certo para propor uma mudança.",
+  "ck.howToAnswer": "Toque uma pergunta se estiver certa; toque «Não» para propor uma mudança.",
   "ck.notYet": "sem responder",
   "ck.proposed": "Proposta enviada à sua equipe.",
   "ck.proposedOther": "Proposta salva. Quando sua equipe concordar, será pedida a {team}.",

@@ -836,7 +836,22 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 const name = localized(question.text, question.texts, language);
                 return (
                   <li key={question.id} data-state={answer?.value ?? "none"}>
-                    <button type="button" className="ck-check" disabled={closing || stepDone} onClick={() => setProposing({ answerItemId, questionId: question.id, reason: name, onlyVerse: question.per === "verse" })}>
+                    {/* A line with a circle before it is ticked by touching it, and touched again is unticked: the
+                        touch opened the sheet to propose a change, as if every line were wrong. A «no» has its own
+                        button; one settled by a proposal is undone by taking the proposal back. */}
+                    <button
+                      type="button"
+                      className="ck-check"
+                      role="checkbox"
+                      aria-checked={answer?.value === "yes"}
+                      disabled={closing || stepDone || answer?.value === "no"}
+                      onClick={() => {
+                        // The step stays in view: ticking its last line showed another step at once, and the
+                        // last line of the last step, the first one again.
+                        if (grouped) setAsked({ itemId: item.id, about: group?.about ?? "" });
+                        void save([stamp(answerItemId, question.id, "yes", answer?.value === "yes" ? { cleared: true } : {})], t("ck.saved"));
+                      }}
+                    >
                       <span className="ck-check__mark" aria-hidden="true">
                         {answer?.value === "yes" ? <Check size={18} /> : answer?.value === "no" ? <X size={18} /> : <Circle size={12} />}
                       </span>
@@ -846,6 +861,20 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                       </span>
                       <span className="sr-only">{t(answer?.value === "yes" ? "ck.yes" : answer?.value === "no" ? "ck.no" : "ck.notYet")}</span>
                     </button>
+                    {answer?.value === "no" || stepDone ? null : (
+                      <button
+                        type="button"
+                        className="ck-no"
+                        disabled={closing}
+                        aria-label={`${t("ck.no")}: ${name}`}
+                        onClick={() => {
+                          if (grouped) setAsked({ itemId: item.id, about: group?.about ?? "" });
+                          setProposing({ answerItemId, questionId: question.id, reason: name, onlyVerse: question.per === "verse" });
+                        }}
+                      >
+                        {t("ck.no")}
+                      </button>
+                    )}
                     {answer?.value === "no" ? (
                       <div className="ck-question__outcome" data-outcome={answer.outcome ?? "none"}>
                         {proposal ? (
@@ -880,7 +909,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 );
               })}
             </ul>
-            {stepDone ? null : <p className="af-hint">{t("ck.tapWrong")}</p>}
+            {stepDone ? null : <p className="af-hint">{t("ck.howToAnswer")}</p>}
             {/* What to do when the answer is «No»: after the questions, not before them. */}
             {editorHref ? (
               <a className="af-link" href={editorHref} target="_blank" rel="noopener noreferrer">
