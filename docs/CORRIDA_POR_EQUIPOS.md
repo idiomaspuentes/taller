@@ -873,18 +873,68 @@ las cajas con su traducción, «2 palabras del original sin traducción», la pr
   cubiertos por pruebas, no por el recorrido. El barrido de recordatorios toma a las personas de `memberIds` de la
   tarea, que con equipos de Door43 puede estar vacío.
 
+### Las otras ocho alineaciones, y un espacio que se perdía (7 de octubre)
+
+Priscila alineó las ocho subtareas que quedaban por la misma pantalla, con un guion que coloca cada palabra en
+la caja que le toca por posición. **Es una alineación aproximada**: sirve para recorrer el proceso, no como
+alineación real de Judas. Tomás y Rubén las revisaron y Rubén cerró cada revisión; las nueve quedaron entregadas
+(46 respuestas de Rubén y nueve cierres en 212 s).
+
+**⚠ Lo que se rompía, y se arregló**
+
+- **Un versículo perdía un espacio y, con el guardado siguiente, toda su alineación.** Al revisar «Alinear TPL ·
+  1:5–11», el 1:9 decía «Todavía no está terminado» y «24 palabras del original sin traducción», aunque Priscila
+  lo había terminado. El borrador guardado decía «dijo:«¡Que»: sin el espacio. Pasó en **8 de los 50
+  versículos** de los dos textos (TPL 1:9, 1:12, 1:18; TPS 1:5, 1:6, 1:9, 1:13, 1:14): siempre donde un signo
+  queda junto a otro («dijo: «¡Que», «ocultos— banquetean», «recordárselas. {Recuerden}», «En cambio,
+  {solamente}»). La causa estaba en el código compartido (`usfm-ast`): al volver a leer un versículo alineado,
+  el espacio que sigue a cada grupo se pierde y el texto se rehacía mirando solo las letras. Con el texto
+  cambiado, las palabras alineadas ya no coincidían y el guardado de cualquier otro versículo borraba la
+  alineación entera de ese. *Ahora* (`usfm-ast` `471ad48`, con pruebas de ida y vuelta) el espacio se conserva
+  tras cada grupo, con cualquier puntuación. Los ocho versículos se repararon por la app (abajo), y se comprobó
+  contra el historial de Door43: **el texto de los 25 versículos de cada borrador es idéntico al de antes de
+  alinear**, y todos están alineados (451 grupos en el TPL, 458 en el TPS).
+- **La revisión se quedaba esperando a alguien que no sabía nada.** A quien revisa se le decía «quien lo alinea
+  aún no lo marcó. Cuando lo marque podrás responder», con un solo botón: «Seguir». Pero quien alineó ya había
+  terminado su paso: su lista decía «No tienes nada pendiente». Lo mismo pasa cada vez que un versículo se
+  corrige después de alineado. *Ahora* la revisión dice «Este versículo cambió después de que @Elisha lo
+  alineó, y quedó sin terminar», con un botón: **«Avisar a @Elisha»** (318 × 36 px a 375 px). El aviso llega a
+  la conversación de la subtarea con el versículo señalado; a los demás revisores les sale «Ya se le avisó», para
+  que no lo manden tres veces. Recorrido de Priscila: «Avisos» → la conversación → «Alinear», que abre en el
+  versículo pendiente («6 de 7 terminados») → «Corregir o comentar» (muestra lo que cambia y «Quedarán 2
+  palabras por colocar. Lo alineado de las demás se conserva») → alinear → listo. De 26 a 37 s por subtarea.
+- **Y al revés: quien revisa no se enteraba de que ya podía responder.** *Ahora* quien vuelve a tocar «Terminé»
+  en un versículo que cambió avisa a quienes lo habían respondido o pedido.
+- **La hoja «Corregir o comentar» mostraba, por un segundo, el texto del versículo anterior** bajo el nombre del
+  nuevo (al cambiar de versículo y abrirla enseguida), con «Corregir ahora» a la mano. *Ahora* abre con el
+  versículo que está en pantalla.
+- **Nueve tarjetas decían «Revisar» sin nada que hacer dentro.** Tomás había respondido todo en las nueve
+  revisiones y su lista seguía igual. *Ahora*, como en las otras rondas, la tarjeta pasa a «En espera»: «Ya
+  respondiste todo. Faltan las respuestas de tu equipo», con «Ver mis respuestas».
+
+**⚠ Sin resolver**
+
+- Quien alineó no tiene por dónde volver a su alineación si nadie la menciona: su paso terminó, la subtarea
+  sigue abierta, y no sale ni en sus pendientes ni en «Terminadas esta semana».
+- Si un versículo se corrige desde otra herramienta **después** de entregada la alineación, quedan palabras sin
+  alinear y nadie se entera: ya no hay revisión abierta que lo muestre.
+- «Preguntar al equipo» desde la revisión encabeza el mensaje con «Duda al estudiar JUD 1:17–23», que no es lo
+  que está pasando ahí.
+- El mismo aviso sale dos veces en «Avisos» («Necesitan tu atención» y «Menciones y respuestas»).
+- El espacio se pierde, en el fondo, porque el analizador de `usfm-ast` descarta el espacio que sigue a una marca
+  de alineación; lo arreglado es la capa que rehace el texto. Vale la pena que el analizador lo conserve.
+
 ### Dónde quedó
 
 - **Traducción: terminada.** Las 29 subtareas de la fase están entregadas, y los tres equipos de la fase quedaron
   sin miembros.
-- **Afinación: en marcha.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (coordina abelperez;
-  abelperez, abelper8 y Elisha son «Persona habilitada»; valeska, «Practicante»).
-  **Cerradas y entregadas:** las diez subtareas de «Desafíos», «Palabras clave TPL», «Palabras clave TPS» y
-  **«Alinear TPL · Judas 1:1–4»** (alineada por Elena; revisada con una propuesta y una objeción decididas por
-  voto). Quedan cuatro de «Alinear TPL» y las cinco de «Alinear TPS», libres.
+- **Afinación: terminada.** Cerradas y entregadas las diez subtareas de «Desafíos», «Palabras clave TPL»,
+  «Palabras clave TPS» y las diez de «Alinear» (la primera, alineada a mano por Elena y revisada con una
+  propuesta y una objeción decididas por voto; las otras nueve, alineadas por posición).
 - Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P,
   practicante)**, Elisha = **Priscila (P)**.
 - En espera: Armonización, Validación y Publicación, que todavía no tienen equipo: se les pone al llegar a cada
   una.
-- En `usfm-ast` hay un commit local (`ef2ae1f`, en la rama en que estaba el repositorio) con el arreglo de las
-  repeticiones: sin él, una sesión que clone `usfm-ast` de GitHub no lo tiene.
+- En `usfm-ast` hay dos commits locales (`ef2ae1f`, las repeticiones; `471ad48`, el espacio tras un grupo
+  alineado), en la rama en que estaba el repositorio: sin ellos, una sesión que clone `usfm-ast` de GitHub
+  vuelve a perder alineaciones.
