@@ -7002,7 +7002,9 @@ button.al-box--read { cursor: pointer; }
    of the screen with the first scroll. Three lines; the whole of it is in the conversation of the subtarea. */
 .step-ask__asked { margin: 0.5rem 0 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--warning-100); color: var(--warning-700); font-size: 0.875rem; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .step-ask { font-size: 0.875rem; color: var(--text-muted); }
-.step-ask summary { cursor: pointer; color: var(--accent-700); font-weight: 600; padding: 0.75rem 0; }
+/* 44 px to touch in the 28 it takes up: the rest reaches into the bar's own margins, above and below it. Made
+   44 px tall it pushed every tool down 16 px. */
+.step-ask summary { cursor: pointer; color: var(--accent-700); font-weight: 600; padding: 0.75rem 0; margin: -0.5rem 0; }
 .step-ask p { margin: 0.25rem 0 0; line-height: 1.5; }
 .step-ask__team { margin-top: 0.75rem; padding-top: 0.625rem; border-top: 1px dashed var(--border); display: grid; gap: 0.375rem; }
 .step-ask__title { font-weight: 700; color: var(--text); margin: 0; }

@@ -179,17 +179,15 @@ await step("«Otra propuesta» sobre la que se rechazó parte de la nota como es
   assert.ok(note.includes("(cambiado por acuerdo del equipo)") && note.includes("(y lo que pedía la otra persona)"), "lo de las dos personas");
 });
 
-await step("una propuesta que dos personas prefieren dejar como está no se acepta: no se escribe nada, y ya no detiene el paso", async () => {
+await step("una propuesta que otra persona prefiere dejar como está no se acepta: no se escribe nada, y ya no detiene el paso", async () => {
   const kept = rowsOf((await notes()).text).filter((r) => r.Note && r.Note.length > 40 && r.Reference !== "front:intro" && r.ID !== row.ID)[3]!;
   const unwanted = { id: "pr-e2e-no", resource: "notas", field: "Note", rowId: kept.ID!, where: kept.Reference!, before: kept.Note!, after: `${kept.Note} (un cambio que el equipo no quiere)` };
   const written = await noteWrites();
   await appendCheckAnswers(carla, list.target, list.key, [proposalAnswer({ itemId: kept.ID!, questionId: "e2e", by: "carla", at: new Date().toISOString(), reason: "", proposal: unwanted })]);
   await appendCheckAnswers(ana, list.target, list.key, [proposalKeeping(unwanted.id, "ana", new Date().toISOString(), true)]);
-  const one = (await views()).find((v) => v.proposal.id === unwanted.id)!;
-  assert.deepEqual([one.state, one.against], ["open", ["ana"]], "una persona lo dice, y quien la propuso lo lee");
-  await appendCheckAnswers(bea, list.target, list.key, [proposalKeeping(unwanted.id, "bea", new Date().toISOString(), true)]);
+  // Two have to agree in this step: one besides the author, either way.
   const two = (await views(carla)).find((v) => v.proposal.id === unwanted.id)!;
-  assert.equal(two.state, "rejected");
+  assert.deepEqual([two.state, two.against], ["rejected", ["ana"]], "quien la propuso lee quién prefirió dejarlo");
   assert.equal(proposalsSettled([two]), true);
   assert.equal(await noteWrites(), written, "la nota queda como estaba");
 });

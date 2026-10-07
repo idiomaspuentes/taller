@@ -11,7 +11,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { appliedWords, byPlaceAndHelp, loadTrialChecks, othersNeeded, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
 import { localized } from "../domain/processes";
 import { ownerLabel } from "../domain/resourceOwner";
@@ -240,7 +240,14 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       const keeper = keeperFor(view);
       await add(view.stepKey, [proposalKeeping(view.proposal.id, keeper, new Date().toISOString(), true)]);
       const against = new Set([...view.against.map((who) => who.toLowerCase()), keeper.toLowerCase()]);
-      announce(t(against.size >= needed ? "ag.rejected" : "ag.saved"));
+      announce(t(against.size >= othersNeeded(needed) ? "ag.rejected" : "ag.saved"));
+    });
+  /** One touch leaves a proposal aside: whoever gave it by mistake takes it back, and the proposal is to be resolved again. */
+  const keepNoMore = (view: Listed) =>
+    act(async () => {
+      const mine = view.against.filter((who) => isMe(who) || (trying && who.startsWith(t("ag.tryOther"))));
+      await add(view.stepKey, mine.map((who) => proposalKeeping(view.proposal.id, who, new Date().toISOString(), false)));
+      announce(t("ag.saved"));
     });
   const withdraw = (view: Listed) => act(() => add(view.stepKey, [proposalSaying(view.proposal.id, me, new Date().toISOString(), false)]));
   const markDone = (view: Listed) => act(() => add(view.stepKey, [proposalDone(view.proposal.id, me, new Date().toISOString())]));
@@ -325,7 +332,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       ) : null}
       {data && !busy ? (
         <>
-          <p className="af-hint">{t("ag.lede").split("{n}").join(String(needed))}</p>
+          <p className="af-hint">{t(othersNeeded(needed) === 1 ? "ag.ledeOne" : "ag.lede").replace("{n}", String(needed)).replace("{m}", String(othersNeeded(needed)))}</p>
           {listed.length ? (
             <p className="ag-count" role="status">
               {t(listed.length === 1 ? "ag.countOne" : "ag.count").replace("{n}", String(listed.length)).replace("{open}", String(unsettled.length))}
@@ -388,7 +395,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                     {view.sentAs ? ` · ${view.sentAs}` : ""}
                     {view.state === "open" ? ` · ${t("ag.inFavour").replace("{n}", String(view.inFavour.length)).replace("{of}", String(needed))}` : ""}
                   </p>
-                  {live && view.against.length ? (
+                  {(live || view.state === "rejected") && view.against.length ? (
                     <p className="ag-against">{t(view.against.length === 1 ? "ag.keepsWho" : "ag.keepsWhoMany").replace("{who}", view.against.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</p>
                   ) : null}
                   {view.state === "agreed" && mine && !view.proposal.after ? <p className="af-hint">{t("ag.needsVersion")}</p> : null}
@@ -403,6 +410,13 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                           <b>{t("ag.staleNow")}</b> <ProposalDiff before={view.proposal.before ?? ""} after={changed} />
                         </p>
                       ) : null}
+                    </div>
+                  ) : null}
+                  {view.state === "rejected" && !stepDone && (view.against.some(isMe) || trying) ? (
+                    <div className="ag-card__buttons">
+                      <Button type="button" variant="ghost" disabled={saving} onClick={() => void keepNoMore(view)}>
+                        {t("ag.keepUndo")}
+                      </Button>
                     </div>
                   ) : null}
                   {live ? (

@@ -90,9 +90,15 @@ export function proposalDone(proposalId: string, by: string, at: string, sentAs?
   return { itemId: proposalId, questionId: PROPOSAL_DONE, value: "yes", by, at, ...(sentAs ? { note: sentAs } : {}) };
 }
 
+/** How many people besides its author a proposal takes, to be agreed on or to be left aside. */
+export const othersNeeded = (needed: number): number => Math.max(1, needed - 1);
+
 /**
  * The proposals among some answers, and how each stands. `needed`: how many people have to be for one, its author
- * among them, for it to be agreed; as many who would rather leave things as they are, and it is not accepted.
+ * among them, for it to be agreed. As many besides its author as that takes who would rather leave things as they
+ * are, and it is not accepted: a change needs the team's agreement, and without it things stay as they are. It
+ * took `needed` people to leave it, which a team of two never has besides the author: there one person proposed,
+ * the other did not want it, and it stayed to be resolved until the first took it back.
  * `ours`: whether the team maintains what a proposal would change; one it does not is «sent» once carried out,
  * not «applied».
  */
@@ -127,7 +133,7 @@ export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resou
           ? ours(proposal.resource)
             ? "applied"
             : "sent"
-          : against.length >= Math.max(1, needed)
+          : against.length >= othersNeeded(needed)
             ? "rejected"
             : inFavour.length >= Math.max(1, needed)
               ? "agreed"

@@ -4,7 +4,7 @@
  * fits the help it was written from.
  */
 import assert from "node:assert/strict";
-import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
+import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
 import { setActiveScope } from "../src/domain/scope";
 
@@ -72,25 +72,30 @@ test("quien la hizo puede retirarla, y otra versión la reemplaza", () => {
   assert.equal(summarizeChecklist({ items, questions, answers: withoutWithdrawn([made()]) }).complete, true);
 });
 
-test("quien prefiere dejarlo como está lo dice, y con las personas que hacen falta la propuesta no se acepta", () => {
+test("sin acuerdo no hay cambio: con tantas personas por dejarlo como está como hacían falta para acordarlo, no se acepta", () => {
   const keeps = (who: string, minute: number, keep = true) => proposalKeeping("p1", who, at(minute), keep);
-  const [one] = proposalsOf([made(), keeps("marcos", 3)], 2, ours);
-  assert.equal(one!.state, "open", "una sola persona no decide por el equipo");
+  // Where three have to agree, it takes two besides the author either way.
+  const [one] = proposalsOf([made(), keeps("marcos", 3)], 3, ours);
+  assert.equal(one!.state, "open", "una sola persona no decide por un equipo que pide tres");
   assert.deepEqual([one!.inFavour, one!.against], [["abigail"], ["marcos"]]);
   assert.equal(proposalsSettled([one!]), false);
-  const [two] = proposalsOf([made(), keeps("marcos", 3), keeps("Dina", 4)], 2, ours);
+  const [two] = proposalsOf([made(), keeps("marcos", 3), keeps("Dina", 4)], 3, ours);
   assert.equal(two!.state, "rejected");
   assert.equal(proposalsSettled([two!]), true, "ya no detiene el paso");
+  // Where two have to agree, the other person is the one who decides: a team of two was left with no way out.
+  assert.equal(othersNeeded(2), 1);
+  const [pair] = proposalsOf([made(), keeps("marcos", 3)], 2, ours);
+  assert.deepEqual([pair!.state, pair!.against], ["rejected", ["marcos"]]);
   // The «no» it answered stays settled: the team looked at it and left the help as it was.
-  assert.equal(summarizeChecklist({ items: [{ id: "ek3q", verseKey: "1:1" }], questions: [{ id: "encaja", text: "¿Encaja?" }], answers: withoutWithdrawn([made(), keeps("marcos", 3), keeps("dina", 4)]) }).complete, true);
+  assert.equal(summarizeChecklist({ items: [{ id: "ek3q", verseKey: "1:1" }], questions: [{ id: "encaja", text: "¿Encaja?" }], answers: withoutWithdrawn([made(), keeps("marcos", 3)]) }).complete, true);
   // Whoever thinks again is counted where they stand last: for it, against it, or neither.
-  assert.equal(proposalsOf([made(), keeps("marcos", 3), keeps("dina", 4), keeps("dina", 5, false)], 2, ours)[0]!.state, "open");
+  assert.equal(proposalsOf([made(), keeps("marcos", 3), keeps("marcos", 5, false)], 2, ours)[0]!.state, "open", "se deshace, y vuelve a estar por resolver");
   const [turned] = proposalsOf([made(), keeps("marcos", 3), proposalSaying("p1", "marcos", at(6), true)], 2, ours);
   assert.deepEqual([turned!.state, turned!.inFavour, turned!.against], ["agreed", ["abigail", "marcos"], []]);
-  const [back] = proposalsOf([made(), proposalSaying("p1", "marcos", at(3), true), keeps("marcos", 6), keeps("dina", 7)], 2, ours);
+  const [back] = proposalsOf([made(), proposalSaying("p1", "marcos", at(3), true), keeps("marcos", 6), keeps("dina", 7)], 3, ours);
   assert.deepEqual([back!.state, back!.inFavour], ["rejected", ["abigail"]], "quien estaba de acuerdo y cambió de parecer ya no cuenta a favor");
   // Its author does not vote against their own: they take it back.
-  assert.equal(proposalsOf([made(), keeps("abigail", 3), keeps("marcos", 4)], 2, ours)[0]!.state, "open");
+  assert.equal(proposalsOf([made(), keeps("abigail", 3)], 2, ours)[0]!.state, "open");
   // What was carried out is not undone by saying so afterwards.
   assert.equal(proposalsOf([made(), proposalSaying("p1", "marcos", at(3), true), proposalDone("p1", "marcos", at(4)), keeps("dina", 5), keeps("eva", 6)], 2, ours)[0]!.state, "applied");
 });

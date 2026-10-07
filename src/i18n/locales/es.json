@@ -2888,7 +2888,8 @@
   "pr.targetText": "El {name}",
   "pr.targetVerse": "{what} de {ref}",
   "ag.title": "Acuerdo del equipo",
-  "ag.lede": "Lo que el equipo propuso cambiar. Con {n} personas de acuerdo, se aplica; con {n} que prefieren dejarlo como está, no.",
+  "ag.lede": "Lo que el equipo propuso cambiar. Con {n} personas de acuerdo, contando a quien lo propuso, se aplica; con {m} que prefieren dejarlo como está, no.",
+  "ag.ledeOne": "Lo que el equipo propuso cambiar. Con {n} personas de acuerdo, contando a quien lo propuso, se aplica. Si otra persona prefiere dejarlo como está, no se aplica.",
   "ag.none": "Nadie propuso cambios en esta tarea.",
   "ag.count": "{n} propuestas · {open} por resolver",
   "ag.countOne": "1 propuesta · {open} por resolver",
@@ -2959,5 +2960,6 @@
   "pr.failed": "No se cumple: {q}",
   "pr.reasonOptional": "Motivo (opcional)",
   "ck.answerLbl": "Respuesta sugerida",
-  "hs.tabCorrect": "Corregir"
+  "hs.tabCorrect": "Corregir",
+  "ag.keepUndo": "Deshacer"
 }
