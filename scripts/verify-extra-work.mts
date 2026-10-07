@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { correctionOutcome, correctionRows, refOfAsk } from "../src/domain/corrections";
+import { correctionAsked, correctionOutcome, correctionRows, refOfAsk } from "../src/domain/corrections";
 import { addExtraWork, askedFrom, cutAt, extraItemId, extraWorkOf, extraWorkOrders, joinWithNext, normalizeExtraWork, normalizePortionStarts, portionStartsOfBook, portionsMatchStarts, removeExtraWork, startsOf, withoutGonePortions, withPortionStarts, withoutPortionStarts } from "../src/domain/extraWork";
 import { selectTsvRowsForPortion } from "../src/domain/helpsDraft";
 import { addTask, boardWithPlan, planOfBoard } from "../src/domain/plan";
@@ -173,6 +173,10 @@ test("una corrección que pide un comité va a su versículo, y recuerda quién 
   assert.ok(!orders[1]!.label.startsWith(`${verse} ·`));
   assert.deepEqual(normalizeExtraWork(JSON.parse(JSON.stringify(settings.extraWork))), settings.extraWork, "se guarda y se lee completa");
   assert.equal(correctionRows({ ...board, settings }, committee, asks, portion.id, 145).added.length, 0, "pedir otra vez lo mismo no crea nada");
+  // Which one it was, for whoever asks again without knowing: its subtarea is found by it.
+  assert.equal(correctionAsked(board, committee, asks[0]!), undefined);
+  assert.equal(correctionAsked({ ...board, settings }, committee, asks[0]!)?.id, added[0]!.id);
+  assert.equal(correctionAsked({ ...board, settings }, committee, { ...asks[0]!, text: "Otra cosa." }), undefined, "otras palabras son otra corrección");
 });
 
 test("de lo que se pidió desde una subtarea se sabe qué sigue en curso y qué volvió", () => {

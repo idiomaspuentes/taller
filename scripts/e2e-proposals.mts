@@ -1,25 +1,32 @@
 /**
  * End to end against the mock Door43, seeded with a book (`MOCK_PM_ORG=es-419_gl MOCK_SEED_BOOK=TIT npm run
  * mock:door43`): a change proposed while checking a note, agreed on by a second person, written on the team's
- * draft; another version of the same note from another list of the task, refused once the first is written; and
- * the agreement of the team on the step, given in its tool by each of them.
+ * draft; another version of the same note from another list of the task, refused once the first is written; a
+ * change to a text another team maintains, asked of that team as a subtarea of correction; the agreement of the
+ * team on the step, given in its tool by each of them; and the subtarea delivered there once that step closes.
  * Run: npm run verify:proposals-mock   (MOCK_HOST=http://localhost:8797 for a mock on another port)
  */
 import assert from "node:assert/strict";
-import { createIssue, createOrUpdateContents } from "@ip-lms/dcs-client";
-import { HelpChangedError, applyProposal, checkedSteps, loadTaskAnswers, readProposedWords } from "../src/dcs/checkProposals";
+import { createIssue, createOrUpdateContents, listIssueComments } from "@ip-lms/dcs-client";
+import { HelpChangedError, applyProposal, checkedSteps, loadTaskAnswers, readProposedWords, sendProposal } from "../src/dcs/checkProposals";
 import { appendCheckAnswers } from "../src/dcs/checkStore";
 import { dcsConfig } from "../src/dcs/config";
+import { deliverSharedSubtask } from "../src/dcs/deliverShared";
+import { loadAssignmentsFromDcs, saveProjectToDcs } from "../src/dcs/persist";
 import { getPmIssue } from "../src/dcs/portionPr";
 import { agreeStepFromTool, stepAgreement } from "../src/dcs/roundClose";
 import { readTeamHelps } from "../src/dcs/teamHelps";
 import { byPlaceAndHelp, proposalAnswer, proposalDone, proposalFit, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sharedHelp } from "../src/domain/checkProposal";
+import { issueTaskId } from "../src/domain/myTasks";
+import { archiveRefName } from "../src/domain/portionPr";
 import { shippedWorkflow } from "../src/domain/processes";
+import { ownerTaskOf } from "../src/domain/resourceOwner";
 import { DEFAULT_PM_CONFIG } from "../src/domain/roles";
 import { SOLVER_LAUNCH_SCHEMA, type SolverLaunchContext } from "../src/domain/solverLaunch";
 import { stepMinAssignees } from "../src/domain/stepClaim";
 import { emptyTaskProgress, isStepDone, parseTaskProgressMarker, upsertTaskProgressInBody } from "../src/domain/taskProgress";
-import type { AssignmentsDoc } from "../src/domain/types";
+import type { AssignmentsDoc, InventoryDoc } from "../src/domain/types";
+import { workOrderIssueBody, type WorkOrder } from "../src/domain/workOrder";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 
 const HOST = process.env.MOCK_HOST || "http://localhost:8787";
@@ -57,9 +64,12 @@ const task = board.teams.find((row) => row.id === "armonizar-notas")!;
 const agreement = task.steps!.find((row) => row.closing === "consensus")!;
 const lists = task.steps!.filter((row) => row.closing === "checklist");
 
+// The subtarea as the plan publishes it: its body says which task it is of, which is what delivering it reads.
+const order: WorkOrder = { key: `${BOOK}|${task.id}|c1`, teamId: task.id, teamName: task.name, book: BOOK, resource: "notas", chapter: 1, portionIds: ["c1"], itemIds: [], itemTypes: [], label: `1:1–4 · ${task.name}` };
+const inventory: InventoryDoc = { book: BOOK, lang: "es-419", contentOrg: ORG, portions: [{ id: "c1", ref: "1:1-4", chapter: 1, verses: [1, 2, 3, 4], tpl: 1, tps: 1, notas: 1, preguntas: 1, tplItems: [], tpsItems: [], notasItems: [], preguntasItems: [], academia: [], palabras: [] }], articles: [] };
 const issue = await createIssue(dcsConfig(HOST), ORG, "taller", {
   title: `${BOOK} 1 · ${task.name}`,
-  body: upsertTaskProgressInBody("", { ...emptyTaskProgress(), doneStepIds: lists.map((row) => row.id) }),
+  body: upsertTaskProgressInBody(workOrderIssueBody(order), { ...emptyTaskProgress(), doneStepIds: lists.map((row) => row.id) }),
   token: "token-ana",
 } as never);
 
@@ -256,12 +266,66 @@ await step("aplicada, la propuesta queda resuelta para todos", async () => {
   assert.equal(proposalsSettled(all), true);
 });
 
+// What the team does not maintain: the text. Agreed on, it is asked of whoever refined it.
+const sending = { ...ctx, portionIds: ["c1"] };
+const theirs = { id: "pr-e2e-tps", resource: "tps", where: "1:2", before: "con la esperanza de la vida eterna", after: "con la esperanza segura de la vida eterna" };
+const alsoTheirs = { id: "pr-e2e-tps-2", resource: "tps", where: "1:3", before: "a su debido tiempo", after: "en el momento que él había decidido" };
+const failed = "No se cumple: ¿La nota coincide con lo que dice el TPS?";
+const agreedOn = async (proposal: typeof theirs) => {
+  await appendCheckAnswers(ana, list.target, list.key, [proposalAnswer({ itemId: row.ID!, questionId: "e2e", by: "ana", at: new Date().toISOString(), reason: "El texto dice menos que la nota", proposal })]);
+  await appendCheckAnswers(bea, list.target, list.key, [proposalSaying(proposal.id, "bea", new Date().toISOString(), true)]);
+  return (await views()).find((v) => v.proposal.id === proposal.id)!;
+};
+const plan = async () => (await loadAssignmentsFromDcs(carla, ORG, "es-419", BOOK, ORG))!;
+const numberOf = (sentAs: string) => Number(sentAs.replace("#", ""));
+let firstAsked = "";
+
+await step("lo que mantiene otro equipo, acordado, se le pide: una subtarea de corrección para quien afinó el TPS, con la propuesta dicha en su conversación", async () => {
+  await saveProjectToDcs({ session: ana, org: ORG, lang: "es-419", book: BOOK, assignments: board, inventory });
+  const view = await agreedOn(theirs);
+  assert.equal(view.state, "agreed");
+  assert.equal(proposalsSettled(await views()), false, "acordada y sin pedir todavía, el paso no puede cerrarse");
+  const sentAs = await sendProposal({ session: bea, ctx: sending, board, task, view, failed });
+  const made = await getPmIssue(ana, ORG, numberOf(sentAs));
+  assert.equal(issueTaskId(made), ownerTaskOf("tps", board, task)!.id, "en la tarea que mantiene ese texto");
+  assert.equal(made.state, "open");
+  assert.match(made.title, /1:2/, "nombrada por el versículo del que habla");
+  const said = (await listIssueComments(dcsConfig(HOST), ORG, "taller", made.number, "token-ana")).map((comment) => comment.body ?? "").join("\n");
+  assert.ok(said.includes(theirs.after) && said.includes(theirs.before) && said.includes("@ana"), "la versión nueva, la de ahora y quién la propuso");
+  const extra = (await plan()).settings?.extraWork ?? [];
+  assert.deepEqual(extra.map((work) => [work.taskId, work.ref, work.portionId, work.askedBy, work.askedIn]), [[issueTaskId(made), "1:2", "c1", "ana", issue.number]], "y el plan la guarda, con quién la pidió y desde qué subtarea");
+  await appendCheckAnswers(bea, list.target, list.key, [proposalDone(theirs.id, "bea", new Date().toISOString(), sentAs)]);
+  const sent = (await views(ana)).find((v) => v.proposal.id === theirs.id)!;
+  assert.deepEqual([sent.state, sent.sentAs], ["sent", sentAs]);
+  firstAsked = sentAs;
+});
+
+await step("una segunda, pedida desde la misma pantalla, no saca la primera del plan; y la misma, pedida otra vez, es esa subtarea y no otra", async () => {
+  const first = (await plan()).settings!.extraWork![0]!;
+  const view = await agreedOn(alsoTheirs);
+  // `board` is the plan as the screen read it on opening: it knows nothing of the correction asked a moment ago.
+  const sentAs = await sendProposal({ session: bea, ctx: sending, board, task, view, failed });
+  const extra = (await plan()).settings?.extraWork ?? [];
+  assert.deepEqual(extra.map((work) => work.ref), ["1:2", "1:3"], "las dos siguen en el plan");
+  assert.equal(extra[0]!.id, first.id);
+  assert.notEqual(sentAs, firstAsked, "cada una es su subtarea");
+  assert.deepEqual([(await getPmIssue(ana, ORG, numberOf(firstAsked))).state, (await getPmIssue(ana, ORG, numberOf(sentAs))).state], ["open", "open"]);
+  // Somebody else, whose screen still shows it as agreed and not asked.
+  const again = (await views(carla)).find((v) => v.proposal.id === alsoTheirs.id)!;
+  assert.equal(await sendProposal({ session: carla, ctx: sending, board, task, view: again, failed }), sentAs, "ya pedida: se dice cuál es");
+  assert.equal(((await plan()).settings?.extraWork ?? []).length, 2);
+  assert.equal((await listIssueComments(dcsConfig(HOST), ORG, "taller", numberOf(sentAs), "token-ana")).length, 1, "y no se le dice dos veces a quien la corrige");
+  await appendCheckAnswers(bea, list.target, list.key, [proposalDone(alsoTheirs.id, "bea", new Date().toISOString(), sentAs)]);
+  assert.equal(proposalsSettled(await views()), true);
+});
+
 await step("cada persona da su acuerdo al paso en su pantalla: la primera se sienta y espera, con la segunda se cierra", async () => {
   const tell = { pmOrg: ORG, issueNumber: issue.number, steps: task.steps!, step: agreement };
   const start = await stepAgreement({ session: ana, ...tell });
   assert.deepEqual([start.open, start.done, start.seated.length], [true, false, 0]);
   const first = await agreeStepFromTool({ session: ana, ...tell, settled: true });
   assert.deepEqual([first.seated, first.agreed, first.done], [["ana"], ["ana"], false]);
+  assert.equal(await deliverSharedSubtask({ session: ana, pmOrg: ORG, lang: "es-419", contentOrg: ORG, board, issueNumber: issue.number }), false, "con el paso abierto no hay nada que entregar");
   // What the second person finds on opening the screen.
   const seen = await stepAgreement({ session: bea, ...tell });
   assert.deepEqual([seen.agreed, seen.done], [["ana"], false]);
@@ -270,6 +334,15 @@ await step("cada persona da su acuerdo al paso en su pantalla: la primera se sie
   const marker = parseTaskProgressMarker((await getPmIssue(ana, ORG, issue.number)).body);
   assert.ok(isStepDone(marker, agreement.id), "el paso quedó cerrado en la subtarea");
   assert.equal(marker.steps?.[agreement.id]?.done?.by, "bea", "y dice quién lo cerró");
+});
+
+await step("cerrado su último paso, la subtarea se entrega desde esa pantalla: queda cerrada, con una marca de cómo dejó las notas", async () => {
+  const where = { pmOrg: ORG, lang: "es-419", contentOrg: ORG, board, issueNumber: issue.number };
+  assert.equal(await deliverSharedSubtask({ session: bea, ...where }), true);
+  assert.equal((await getPmIssue(ana, ORG, issue.number)).state, "closed");
+  const tags = (await fetch(`${HOST}/api/v1/repos/${ORG}/${list.target.repo}/tags`, { headers: { Authorization: "token token-ana" } }).then((r) => r.json())) as { name: string }[];
+  assert.ok(tags.some((tag) => tag.name === archiveRefName(BOOK, issue.number)), "el borrador de las notas, como quedó");
+  assert.equal(await deliverSharedSubtask({ session: ana, ...where }), false, "entregada ya, no se entrega otra vez");
 });
 
 console.log(`\nverify-proposals-mock: ${passed} checks passed.`);

@@ -610,11 +610,12 @@ acuerda. En cada pregunta, tocarla la marca bien; «No», a su lado, abre la hoj
 
 | Momento | Qué hace la app |
 |---------|-----------------|
-| **Proponer** | Qué cambiaría (la ayuda, su artículo, el TPL o el TPS), cómo (la nueva versión, escrita sobre el texto como está, o un comentario) y, si quiere, el motivo. La ayuda se lee desde entonces con el cambio propuesto. |
+| **Proponer** | Qué cambiaría (la ayuda, su artículo, el TPL o el TPS), cómo (la nueva versión, escrita sobre el texto como está y como se lee, con su negrita y sus enlaces, o un comentario) y, si quiere, el motivo. La ayuda se lee desde entonces con el cambio propuesto. |
 | **Acordar** | En «Acuerdo del equipo», cada propuesta se abre entera, con su versículo. «De acuerdo» la apoya; «Dejar como está» dice que no; «Otra propuesta» responde con otra versión; quien la hizo puede retirarla. |
-| **Con dos de acuerdo** | Si es de una ayuda del equipo, se escribe en su borrador. Si es del TPL o el TPS, se pide a Afinación como corrección, **con la razón**: Armonización nunca edita esos textos. |
-| **Con dos que prefieren dejarlo** | La propuesta no se acepta y la ayuda queda como está. |
-| **Lo que falta** | Una nota o un artículo que falta se propone con un comentario; acordado, alguien lo escribe en el editor y lo marca hecho. |
+| **Con dos de acuerdo** | Si es de una ayuda del equipo, se escribe en su borrador. Si es del TPL o el TPS, se pide a Afinación como corrección, **con la razón**: Armonización nunca edita esos textos. La corrección es una subtarea de quien afina ese texto, nombrada por el motivo y las palabras que cambian; la versión entera va en su conversación. |
+| **Con otra persona que prefiere dejarlo** | La propuesta no se acepta y la ayuda queda como está. Hacen falta tantas personas, sin contar a quien la propuso, como para acordarla: una, donde el acuerdo es de dos. |
+| **Lo que falta** | Una nota que falta se propone como «una nota nueva» de ese versículo: se escribe y se tocan en el versículo las palabras que explica. Acordada, se agrega a las notas del equipo. Un artículo que falta se propone con un comentario; acordado, alguien lo escribe y lo marca hecho. |
+| **Al cerrarse el paso** | Con el acuerdo de cada persona del equipo, y todo resuelto, la subtarea se entrega desde esa misma pantalla. |
 
 ---
 

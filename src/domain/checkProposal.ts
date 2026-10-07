@@ -270,16 +270,31 @@ export function byPlaceAndHelp<T extends ProposalView>(views: T[]): T[] {
 }
 
 const ASK_MAX = 600;
+/** A new version of more words than this is told by what it changes. */
+const ASK_WORDS = 12;
 
 /**
- * A proposal as it is asked of the team that maintains what it would change: why, and the new version when there
- * is one.
+ * What a new version changes, for one line: the words taken out and those put in, with a couple around them
+ * («… más en él. Trabajo para …» → «… más en Jesús. Trabajo para …»). A short one is said whole.
+ */
+function changeInShort(before: string, after: string): string {
+  if (!before || (after.match(/\S+/g) ?? []).length <= ASK_WORDS) return `→ «${after}»`;
+  const pieces = diffExcerpt(wordDiff(before, after), 2);
+  const side = (kind: "gone" | "new") => pieces.filter((piece) => piece.kind === "same" || piece.kind === kind).map((piece) => piece.text).join("").replace(/\s+/g, " ").trim();
+  return `«${side("gone")}» → «${side("new")}»`;
+}
+
+/**
+ * A proposal as it is asked of the team that maintains what it would change: why, and what would change. It names
+ * the subtarea that team gets, which shows some 140 letters: it began with the question the proposal answered «no»
+ * to and ended with the whole verse, so it was cut in the middle of the reason and never reached the change. The
+ * whole of it is said in the conversation of that subtarea.
  */
 export function proposalAsk(view: ProposalView, failed = ""): CorrectionAsk {
-  const after = (view.proposal.after ?? "").replace(/\s+/g, " ").trim();
-  const reason = view.reason.replace(/\s+/g, " ").trim();
-  // The reason is the person's to give or not: what it answered «no» to is said with it, or in its place.
-  const text = [failed.trim(), reason, after ? `→ «${after}»` : ""].filter(Boolean).join(" ");
+  const one = (text: string) => text.replace(/\s+/g, " ").trim();
+  const after = one(view.proposal.after ?? "");
+  // The reason is the person's to give or not: without one, what it answered «no» to is said in its place.
+  const text = [one(view.reason) || failed.trim(), after ? changeInShort(one(view.proposal.before ?? ""), after) : ""].filter(Boolean).join(" ");
   return { about: view.proposal.resource, where: view.proposal.where, text: text.length > ASK_MAX ? `${text.slice(0, ASK_MAX - 1).trimEnd()}…` : text, by: view.by };
 }
 

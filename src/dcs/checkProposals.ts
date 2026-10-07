@@ -4,7 +4,7 @@ import { isWriteRace, raceDelay, readRepoFile } from "./afinacionStore";
 import { forgetBranches } from "./branchList";
 import { loadCheckAnswers, type CheckTarget } from "./checkStore";
 import { dcsConfig } from "./config";
-import { createCorrections } from "./corrections";
+import { correctionSubtask, createCorrections } from "./corrections";
 import { commentOnIssue } from "./issues";
 import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { readTeamHelps, saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "./teamHelps";
@@ -195,10 +195,14 @@ export async function applyProposal(params: ProposalPlace & { proposal: Proposal
  */
 export async function sendProposal(params: { session: GtSession; ctx: SolverLaunchContext; board: AssignmentsDoc; task: ProjectTask; view: ProposalView; /** The question it answered «no» to, as it is said to a person. */ failed?: string }): Promise<string> {
   const { session, ctx, view } = params;
-  const { issues } = await createCorrections({ session, pmOrg: ctx.pmOrg, board: params.board, from: params.task, asks: [proposalAsk(view, params.failed)], portionIds: ctx.portionIds, ...(ctx.issueNumber ? { askedIn: ctx.issueNumber } : {}) });
-  const issue = issues[0];
+  const ask = proposalAsk(view, params.failed);
+  const asking = { session, pmOrg: ctx.pmOrg, board: params.board, from: params.task };
+  const { issues } = await createCorrections({ ...asking, asks: [ask], portionIds: ctx.portionIds, ...(ctx.issueNumber ? { askedIn: ctx.issueNumber } : {}) });
+  // Asked already, and this screen does not know: it is that subtarea. It said «no se pudo pedir», and a proposal
+  // whose «pedida» could not be written down stayed agreed and never asked, holding the step for good.
+  const issue = issues[0] ?? (await correctionSubtask({ ...asking, ask }).catch(() => null));
   if (!issue) throw new Error(tNow("ag.notSent"));
-  if (view.proposal.after) {
+  if (issues[0] && view.proposal.after) {
     const body = tNow("ag.askBody").replace("{who}", view.by).replace("{where}", view.proposal.where).replace("{after}", view.proposal.after).replace("{reason}", [params.failed, view.reason].filter(Boolean).join(" ") || "—");
     await commentOnIssue(session, ctx.pmOrg, issue.number, view.proposal.before ? `${body}\n\n${tNow("ag.askBefore").replace("{before}", view.proposal.before)}` : body).catch(() => undefined);
   }

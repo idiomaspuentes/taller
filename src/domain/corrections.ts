@@ -45,6 +45,13 @@ export function correctionTitle(ask: CorrectionAsk): string {
   return `${head}${text.length > TITLE_MAX - head.length ? `${text.slice(0, TITLE_MAX - head.length - 1).trimEnd()}…` : text}`;
 }
 
+/** The correction a plan already has for a concern: the same words, asked of the same task. */
+export function correctionAsked(board: Pick<AssignmentsDoc, "teams" | "phases" | "settings">, from: ProjectTask, ask: CorrectionAsk): ExtraWork | undefined {
+  const owner = ownerTaskOf(ask.about, board as AssignmentsDoc, from);
+  const title = correctionTitle(ask);
+  return owner ? (board.settings?.extraWork ?? []).find((row) => row.taskId === owner.id && row.title === title) : undefined;
+}
+
 /**
  * The plan with one subtarea of correction for each concern, each in the task that maintains what it is about. A
  * concern about a resource nobody before `from` works on is left out, and one already asked (same task, same words)
@@ -66,7 +73,7 @@ export function correctionRows(
     const owner = ownerTaskOf(ask.about, board as AssignmentsDoc, from);
     if (!owner) continue;
     const title = correctionTitle(ask);
-    if ((settings.extraWork ?? []).some((row) => row.taskId === owner.id && row.title === title)) continue;
+    if (correctionAsked({ ...board, settings }, from, ask)) continue;
     const portionId = typeof portion === "function" ? portion(ask) : portion;
     const ref = refOfAsk(ask);
     settings = addExtraWork(settings, { taskId: owner.id, title, ...(portionId ? { portionId } : {}), ...(ref ? { ref } : {}), ...(ask.by ? { askedBy: ask.by } : {}), ...(askedIn ? { askedIn } : {}) });

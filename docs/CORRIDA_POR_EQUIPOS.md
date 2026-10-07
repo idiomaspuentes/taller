@@ -1612,9 +1612,10 @@ se lee. Lo más serio estaba en el acuerdo, que es donde se decide.
   propone en la lista; bea, que no es la autora, ve «De acuerdo · Dejar como está · Otra propuesta»; al acordar una,
   la nota se escribe en el borrador del equipo; ana lee la objeción a la otra y la retira; las dos dan su acuerdo y
   el paso queda cerrado en la subtarea. `npm run verify:proposals-mock` recorre lo mismo sin pantalla (14
-  comprobaciones), ya con una sola lista por tarea.
+  comprobaciones entonces, 18 con lo de la sección siguiente), ya con una sola lista por tarea.
 
-**⚠ Sin resolver**
+**⚠ Sin resolver** (lo que sigue se resolvió después, salvo lo que dice la lista del final de la sección
+siguiente)
 
 - **Sigue sin verse en QA**: no hay tarea de armonización abierta. Y de lo probado en el mock quedó fuera pedir un
   cambio a Afinación (necesita el inventario del proyecto) y la entrega de la tarea al cerrarse el paso.
@@ -1626,6 +1627,59 @@ se lee. Lo más serio estaba en el acuerdo, que es donde se decide.
   hay otro camino.
 - Las palabras subrayadas del versículo miden 31 px de alto: son palabras de una frase.
 - El aviso de modo de prueba y «Qué se pide en…» ocupan juntos unos 100 px antes del contenido.
+
+### Lo que esa revisión dejó sin resolver (7 de octubre)
+
+Abel pidió resolver la lista anterior. Punto por punto:
+
+- **Un equipo de dos puede decir que no.** Una propuesta deja de aceptarse con tantas personas, sin contar a quien
+  la propuso, como hacen falta para acordarla: una, donde el acuerdo es de dos. Hacían falta dos, y un equipo de
+  dos no las tiene aparte del autor. Quien dijo «Dejar como está» puede deshacerlo («Deshacer»).
+- **La nueva versión se escribe como se lee.** La hoja usa el editor de las notas (negrita, enlaces a Academia),
+  y «Ver entera» y las tarjetas del acuerdo muestran lo quitado y lo puesto sin marcas, salvo cuando lo único que
+  cambia es una marca. Lo que se guarda las conserva: una versión con una palabra cambiada difiere de la anterior
+  en esa palabra y nada más.
+- **La nota que falta se propone.** «Una nota nueva en 1:1» es una de las cosas que se pueden cambiar. Se escribe
+  en la hoja y se tocan en el versículo las palabras que explica; de ellas sale la cita en el original, por la
+  alineación, como al corregir una cita («siervo de Dios» → «δοῦλος Θεοῦ»). Acordada, se agrega a las notas del
+  equipo tras la última de su versículo, con un id que el archivo no tiene; aplicada dos veces no se repite. Con
+  eso salió de las listas el enlace al editor: llevaba a un editor que no agrega notas y que cambia una al momento,
+  sin que nadie la acuerde.
+- **En el versículo se toca la frase de la nota, no cada palabra**: de 81 a 216 px de ancho en Tito 1:1. El alto
+  sigue siendo el de un renglón, 31 px.
+- **«Qué se pide en…»** se toca en 44 px y ocupa 28.
+- **Pedir un cambio a Afinación y la entrega al cerrar, ejercidos** contra el Door43 de mentira: sin pantalla
+  (`npm run verify:proposals-mock`, 18 comprobaciones) y con ana y bea, cada una en su pestaña, sobre una subtarea
+  publicada como la publica el plan. Ana propone otra versión del TPS de 1:1; con el «De acuerdo» de bea aparece
+  «Pedido a Afinación (TPS)» y la tarjeta dice «Pedida a Afinación (TPS) · #7». Esa subtarea está en la tarea que
+  afina el TPS, con la versión nueva, la de ahora y el motivo en su conversación, y el plan la guarda con quién la
+  pidió y desde dónde. Las dos dan su acuerdo al paso y la subtarea queda entregada («El equipo está de acuerdo:
+  tarea entregada»), con la marca de cómo dejó las notas (`archivo/tit/6`).
+
+Recorrer ese camino destapó tres fallos, ya arreglados:
+
+- **Pedir un segundo cambio desde la misma pantalla sacaba el primero del plan.** La pantalla agregaba la
+  corrección al plan como lo leyó al abrirse, sin la que acababa de pedir, y lo guardaba. La primera subtarea
+  seguía en Door43, pero la siguiente publicación del plan la habría retirado. Ahora la corrección se agrega al
+  plan como está en ese momento. Vale también para las correcciones que pide el comité de validación.
+- **Una corrección ya pedida respondía «No se pudo pedir el cambio».** Le pasaba a quien la pedía otra vez sin
+  saberlo: otra persona la pidió un momento antes, o no se pudo anotar que estaba pedida. La propuesta quedaba
+  acordada y sin pedir, y el paso detenido. Ahora se busca su subtarea y se anota («Pedida a… · #7»), sin crear
+  otra ni repetir el mensaje a quien la corrige.
+- **El nombre de la corrección se cortaba antes de decir el cambio.** Empezaba por la pregunta que no se cumplió
+  y terminaba con el versículo entero: en 140 letras no llegaba ni al final del motivo. Dice el motivo (o la
+  pregunta, si no lo hay) y las palabras que cambian: «Corrección 1:1: La nota dice «confiar en Jesús» y el TPS
+  dice «en él». «… más en él. Trabajo para …» → «… más en Jesús. Trabajo para …»». La versión entera y la
+  pregunta están en la conversación de la subtarea.
+
+**⚠ Sin resolver**
+
+- **Sigue sin verse en QA.** En el navegador de pruebas no hay sesión de Door43 iniciada, y en QA no hay tarea de
+  armonización abierta. Todo lo de arriba está visto contra el Door43 de mentira.
+- Al entregarse la única subtarea de armonización del proyecto de prueba, la fase quedó marcada como cerrada
+  (`fase/tit/armonizacion`) con su corrección a Afinación todavía abierta. No se cambió: queda por decidir si una
+  fase con correcciones pedidas debe esperar a que vuelvan.
+- El aviso de modo de prueba ocupa 57 px y el contenido empieza a 237 px de arriba. Solo lo ve quien prueba.
 
 ### Una sola pasada por nota en Armonización (7 de octubre)
 

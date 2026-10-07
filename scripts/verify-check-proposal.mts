@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
+import { correctionTitle } from "../src/domain/corrections";
 import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
 import { setActiveScope } from "../src/domain/scope";
 
@@ -138,15 +139,21 @@ test("lo que se ve de paso, sin ser respuesta a una pregunta del paso, también 
 });
 
 test("a otro equipo se le pide con el motivo y la nueva versión, y con el lugar", () => {
-  const text: ProposalPayload = { id: "p2", resource: "tps", where: "1:3", before: "…", after: "Dios nos  salvó\na todos" };
+  const text: ProposalPayload = { id: "p2", resource: "tps", where: "1:3", before: "Dios nos salvó", after: "Dios nos  salvó\na todos" };
   const view = proposalsOf([proposalAnswer({ itemId: "x", questionId: "coincide", by: "dina", at: at(0), reason: "No coincide con lo que dice la nota", proposal: text })], 2, ours)[0]!;
   assert.deepEqual(proposalAsk(view), { about: "tps", where: "1:3", text: "No coincide con lo que dice la nota → «Dios nos salvó a todos»", by: "dina" });
   const comment = proposalsOf([proposalAnswer({ itemId: "x", questionId: "coincide", by: "dina", at: at(0), reason: "Aquí «santos» confunde", proposal: { id: "p5", resource: "tpl", where: "1:3" } })], 2, ours)[0]!;
   assert.equal(proposalAsk(comment).text, "Aquí «santos» confunde", "solo un comentario: no inventa una versión");
-  // The reason is the person's to give or not: what it answered «no» to goes with it, or in its place.
+  // The reason is the person's to give or not: without one, what it answered «no» to is said in its place.
   const bare = proposalsOf([proposalAnswer({ itemId: "x", questionId: "coincide", by: "dina", at: at(0), reason: "", proposal: text })], 2, ours)[0]!;
   assert.equal(proposalAsk(bare, "No se cumple: ¿Coincide con el TPS?").text, "No se cumple: ¿Coincide con el TPS? → «Dios nos salvó a todos»");
-  assert.equal(proposalAsk(view, "No se cumple: ¿Coincide con el TPS?").text, "No se cumple: ¿Coincide con el TPS? No coincide con lo que dice la nota → «Dios nos salvó a todos»");
+  assert.equal(proposalAsk(view, "No se cumple: ¿Coincide con el TPS?").text, "No coincide con lo que dice la nota → «Dios nos salvó a todos»", "con un motivo, la pregunta queda para la conversación");
+  // A whole verse with a word changed: the subtarea is named by the change, and its name is not cut before it.
+  const verse = "Yo, Pablo, te escribo esta carta, Tito. Soy servidor de Dios y apóstol de Jesús el Mesías. Dios me envió a enseñar al pueblo que él ha escogido como suyo para que confíe más en él. Trabajo para ayudar a su pueblo a saber lo que es verdad, para que puedan vivir de forma que agrade a Dios,";
+  const long = proposalsOf([proposalAnswer({ itemId: "x", questionId: "coincide", by: "dina", at: at(0), reason: "La nota dice «confiar en Jesús» y el TPS dice «en él».", proposal: { id: "p6", resource: "tps", where: "1:1", before: verse, after: verse.replace("más en él.", "más en Jesús.") } })], 2, ours)[0]!;
+  const asked = proposalAsk(long, "No se cumple: Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?");
+  assert.equal(asked.text, "La nota dice «confiar en Jesús» y el TPS dice «en él». «… más en él. Trabajo para …» → «… más en Jesús. Trabajo para …»");
+  assert.equal(correctionTitle(asked), `Corrección 1:1: ${asked.text}`, "cabe entera en el nombre de la subtarea");
 });
 
 test("la versión de antes y la nueva se leen como un solo texto, con lo quitado y lo puesto", () => {
