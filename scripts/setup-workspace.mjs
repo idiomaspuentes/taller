@@ -27,7 +27,7 @@ const sibling = path.resolve(root, "..", "usfm-ast");
 
 const URL = process.env.USFM_AST_URL || "https://github.com/abelpz/usfm-ast.git";
 // The commit of usfm-ast that Taller is known to build against. Move it forward on purpose, not by accident.
-const REF = process.env.USFM_AST_REF || "066e413";
+const REF = process.env.USFM_AST_REF || "471ad48";
 
 /** The packages of usfm-ast Taller uses, in the order they must be built (each needs the ones before it). */
 const BUILD_ORDER = ["shared-types", "usfm-parser", "usfm-usj-core", "usfm-adapters", "usfm-editor-checking", "usfm-editor-core", "usfm-readonly-react"];
