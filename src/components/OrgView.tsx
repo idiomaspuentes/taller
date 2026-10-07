@@ -1,5 +1,6 @@
 import { listPmProjects, loadAssignmentsFromDcs, loadTeamsFromDcs } from "../dcs/persist";
 import { TeamRulesPanel } from "./StepAsk";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DcsTeam } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
@@ -328,6 +329,10 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
     }
   }
 
+  // «Quitar» sits beside the level and «Hacer coordinador», and one touch took somebody out of the team: it is
+  // asked first, by name.
+  const [removing, setRemoving] = useState<{ id: string; team: string } | null>(null);
+
   async function removeMember(username: string) {
     if (selectedTeamId == null || !username) return;
     setActingUser(username);
@@ -632,7 +637,7 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
                                   size="sm"
                                   variant="ghost"
                                   disabled={actingUser === m.id}
-                                  onClick={() => void removeMember(m.id)}
+                                  onClick={() => setRemoving({ id: m.id, team: orgTeamLabel(team) })}
                                 >
                                   {actingUser === m.id ? "…" : t("org.remove")}
                                 </Button>
@@ -732,6 +737,19 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(removing)}
+        safe
+        title={t("org.removeAskTitle").replace("{who}", removing?.id ?? "").replace("{team}", removing?.team ?? "")}
+        text={t("org.removeAskText")}
+        yes={t("org.removeYes")}
+        onYes={() => {
+          const who = removing?.id;
+          setRemoving(null);
+          if (who) void removeMember(who);
+        }}
+        onNo={() => setRemoving(null)}
+      />
     </div>
   );
 }

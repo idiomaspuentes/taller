@@ -2741,5 +2741,8 @@
   "gr.whyAgree": "Responde a la duda: por qué está bien así (opcional)",
   "gr.repliedNote": "Respondí tu duda de {ref} ({text}) en la revisión grupal: {why}",
   "tb.deliverAskPlain": "La tarea queda terminada.",
-  "tb.readyToClose": "Todos los pasos están hechos. Entrégala para terminarla."
+  "tb.readyToClose": "Todos los pasos están hechos. Entrégala para terminarla.",
+  "org.removeAskTitle": "¿Quitar a @{who} de «{team}»?",
+  "org.removeAskText": "Dejará de ver las tareas de este equipo. Puedes volver a añadirla después.",
+  "org.removeYes": "Sí, quitar"
 }

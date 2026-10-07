@@ -207,6 +207,14 @@ await test("en mi tarea, terminado el borrador, la revisión en pares espera a q
   assert.equal(where(build([taken]), taken.number)!.action.kind, "approveStep", "con alguien revisando, a la autora le toca confirmar");
 });
 
+await test("lo que puedo sumarme sale en el orden del libro, no en el que se tocó por última vez", () => {
+  const late = issue({ task: "afinar", title: "NEH 9 · Afinar TPL" });
+  const first = issue({ task: "afinar", title: "NEH 2 · Afinar TPL" });
+  const middle = issue({ task: "afinar", title: "NEH 5 · Afinar TPL" });
+  const board = boardFor([late, first, middle]);
+  assert.deepEqual(board.reviews.map((card) => card.issue.number), [first.number, middle.number, late.number]);
+});
+
 await test("una tarea libre cuyo paso siguiente es de todo el equipo: me sumo al paso, nadie se queda con la subtarea entera", () => {
   const shared = issue({ task: "afinar", title: "NEH 5 · Afinar TPL" });
   const card = where(boardFor([shared]), shared.number)!;

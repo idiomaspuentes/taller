@@ -260,7 +260,9 @@ export function buildBoard(input: BoardInput): Board {
 
   for (const group of GROUP_ORDER) {
     if (group === "done") board.done.sort((a, b) => Date.parse(b.issue.closed_at ?? b.issue.updated_at ?? "") - Date.parse(a.issue.closed_at ?? a.issue.updated_at ?? ""));
-    else if (group === "free" || group === "later" || group === "waiting") board[group].sort(byPlace);
+    // What somebody may join reads in the order of the book too: ten steps nobody had taken came 1:17–23, 1:12–16,
+    // 1:5–11, 1:1–4…, by when each was last touched, and the first passage was nowhere near the top.
+    else if (group === "free" || group === "later" || group === "waiting" || group === "reviews") board[group].sort(byPlace);
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
   }
   return board;

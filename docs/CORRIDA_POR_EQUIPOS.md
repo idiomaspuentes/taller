@@ -575,14 +575,16 @@ Hecho por **Marta** (abelperez) desde la app, a 375 px, un ajuste a la vez:
 
 **⚠ Lo que se encontró**
 
-- **«Quitar» saca a la persona con un toque, sin preguntar.** Está junto a «Hacer coordinador» y al nivel. Volver a
-  añadirla es fácil, pero pierde su nivel y, si coordinaba, la coordinación.
+- **«Quitar» sacaba a la persona con un toque, sin preguntar.** Está junto a «Hacer coordinador» y al nivel.
+  *Arreglado:* ahora pregunta antes, con el nombre de la persona y del equipo («¿Quitar a @Elisha de «Traductores
+  TPL»?»), y lo que resalta es volver.
 - **«En uso · 6 tareas»** de un equipo que hace tres: cuenta las tres del proyecto y otra vez las mismas tres como
   equipo por defecto para los libros que vengan. Lo mismo en los demás («4» por 2, «8» por 4).
 - **«Nadie podrá tomarlas hasta entonces»** no era verdad: los Desafíos, sin equipo, ya aparecían en «Puedes
   sumarte» de quien estaba en los equipos de Traducción.
-- **El orden de «Puedes sumarte».** Las diez tarjetas de Desafíos salen 1:17–23, 1:12–16, 1:5–11, 1:1–4… y 1:24–25
-  al final, mezclando TPS y TPL. Quien no sabe por dónde empezar no encuentra el primer pasaje arriba.
+- **El orden de «Puedes sumarte».** Las diez tarjetas de Desafíos salían 1:17–23, 1:12–16, 1:5–11, 1:1–4… y
+  1:24–25 al final, mezclando TPS y TPL. *Arreglado:* salen por pasaje, como las libres: TPL 1:1–4, TPS 1:1–4,
+  TPL 1:5–11…
 - En «Proyectos», el primer aviso dice «Traducción de Judas va en 71 de 71» (cuenta pasos, no subtareas) y propone
   empezar el libro siguiente.
 

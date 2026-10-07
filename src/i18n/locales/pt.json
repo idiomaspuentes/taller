@@ -2741,5 +2741,8 @@
   "gr.whyAgree": "Responda à dúvida: por que está bom assim (opcional)",
   "gr.repliedNote": "Respondi à sua dúvida de {ref} ({text}) na revisão em grupo: {why}",
   "tb.deliverAskPlain": "A tarefa fica concluída.",
-  "tb.readyToClose": "Todos os passos estão feitos. Entregue para concluí-la."
+  "tb.readyToClose": "Todos os passos estão feitos. Entregue para concluí-la.",
+  "org.removeAskTitle": "Tirar @{who} de «{team}»?",
+  "org.removeAskText": "Deixará de ver as tarefas desta equipe. Você pode adicioná-la de novo depois.",
+  "org.removeYes": "Sim, tirar"
 }
