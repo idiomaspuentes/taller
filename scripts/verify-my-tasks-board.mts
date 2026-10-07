@@ -443,4 +443,17 @@ await test("una subtarea añadida a mano se llama como la llamó quien la añadi
   assert.equal(where(board, asked.number)?.place, "1:12–16", "y sigue sabiendo de qué pasaje es");
 });
 
+await test("la tarjeta de la tarea que pidió correcciones dice cuántas volvieron", () => {
+  const order = (itemIds: string[]) => `<!-- gateway-work-order ${JSON.stringify({ schema: "gateway-work-order-1", key: itemIds.join(), book: "NEH", teamId: "tpl", resource: "tpl", portionIds: ["p1"], itemIds })} -->`;
+  const asker = { ...issue({ task: "tpl", title: "NEH 1:1–25 · Validar" }), body: order(["porcion:1:1-25"]) } as DcsIssue;
+  const first = { ...issue({ task: "tpl", title: "NEH 1:12 · Corrección 1:12: no se entiende" }), body: order(["extra:x-1"]) } as DcsIssue;
+  const settings = { extraWork: [{ id: "x-1", taskId: "tpl", title: "Corrección 1:12: no se entiende", askedIn: asker.number }, { id: "x-2", taskId: "tpl", title: "Corrección 1:1: otra", askedIn: asker.number }] };
+  const build = (issues: DcsIssue[], open: DcsIssue[]) =>
+    buildBoard({ session: carla, pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: { ...plan, settings } as AssignmentsDoc, issues, openIssues: open }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  assert.deepEqual(where(build([asker, first], [asker, first]), asker.number)?.corrections, { total: 2, open: 1 }, "una sigue en curso; la otra ya se cerró");
+  assert.deepEqual(where(build([asker], [asker]), asker.number)?.corrections, { total: 2, open: 0 }, "cerradas las dos, volvieron todas");
+  assert.equal(where(build([asker, first], [asker, first]), first.number)?.corrections, undefined, "quien corrige no pidió nada");
+  assert.equal(where(boardFor([asker]), asker.number)?.corrections, undefined, "sin correcciones pedidas, la tarjeta no dice nada");
+});
+
 console.log(`\nverify-my-tasks-board: ${passed} checks passed.`);

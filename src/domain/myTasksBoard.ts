@@ -14,7 +14,7 @@ import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
-import { isExtraItemId } from "./extraWork";
+import { askedFrom, isExtraItemId } from "./extraWork";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -65,6 +65,11 @@ export type BoardCard = {
    * work that task had already finished there, and what the committee asked was nowhere on it.
    */
   ownTitle: string;
+  /**
+   * The corrections asked from this subtarea (a committee's, of the teams before it), and how many are still being
+   * worked on. Its card said nothing of them: neither that the endorsement waited for them, nor that they were back.
+   */
+  corrections?: { total: number; open: number };
   stepsDone: number;
   stepsTotal: number;
   /** The first step not done yet. */
@@ -180,6 +185,12 @@ export function buildBoard(input: BoardInput): Board {
   const board: Board = { decide: [], doing: [], todo: [], reviews: [], free: [], later: [], waiting: [], done: [] };
   const seen = new Set<number>();
   const onceApplied = new Set<number>();
+  // The items of every open subtarea of each project, read once: what tells a correction still worked on from one done.
+  const openItems = new Map<MyTasksProjectBucket, string[]>();
+  const openItemsOf = (bucket: MyTasksProjectBucket) => {
+    if (!openItems.has(bucket)) openItems.set(bucket, (bucket.openIssues ?? bucket.issues).flatMap((issue) => ((issue.state ?? "open").toLowerCase() === "closed" ? [] : (parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? []))));
+    return openItems.get(bucket)!;
+  };
 
   const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => {
     const task = taskOf(issue, bucket);
@@ -187,6 +198,7 @@ export function buildBoard(input: BoardInput): Board {
     const progress = parseTaskProgressMarker(issue.body ?? "");
     const { book, place } = placeOf(issue);
     const mineAssigned = isIssueAssignedTo(issue, login);
+    const asked = bucket?.board.settings?.extraWork?.some((row) => row.askedIn === issue.number) ? askedFrom(bucket.board.settings, issue.number, openItemsOf(bucket)) : [];
     return {
       issue,
       bucket,
@@ -198,6 +210,7 @@ export function buildBoard(input: BoardInput): Board {
       book,
       place,
       ownTitle: ownTitleOf(issue),
+      ...(asked.length ? { corrections: { total: asked.length, open: asked.filter((row) => row.open).length } } : {}),
       stepsDone: steps.filter((s) => progress.doneStepIds.includes(s.id)).length,
       stepsTotal: steps.length,
       nextStep: steps.find((s) => !progress.doneStepIds.includes(s.id)),

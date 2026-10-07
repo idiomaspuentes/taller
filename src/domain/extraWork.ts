@@ -32,7 +32,10 @@ export function normalizeExtraWork(raw: unknown): ExtraWork[] | undefined {
     const title = String(row.title ?? "").trim();
     if (!id || !taskId || !title || rows.some((have) => have.id === id)) continue;
     const portionId = String(row.portionId ?? "").trim();
-    rows.push({ id, taskId, title, ...(portionId ? { portionId } : {}) });
+    const ref = String(row.ref ?? "").trim();
+    const askedBy = String(row.askedBy ?? "").trim();
+    const askedIn = Number(row.askedIn);
+    rows.push({ id, taskId, title, ...(portionId ? { portionId } : {}), ...(ref ? { ref } : {}), ...(askedBy ? { askedBy } : {}), ...(Number.isInteger(askedIn) && askedIn > 0 ? { askedIn } : {}) });
   }
   return rows.length ? rows : undefined;
 }
@@ -40,6 +43,20 @@ export function normalizeExtraWork(raw: unknown): ExtraWork[] | undefined {
 /** The id of the one item a subtarea added by hand covers: what tells it apart, in its marker, from laid-out work. */
 export const extraItemId = (id: string) => `extra:${id}`;
 export const isExtraItemId = (itemId: string) => itemId.startsWith("extra:");
+
+/** The subtarea added by hand that a work order is, from the items its marker lists. */
+export function extraWorkOf(settings: ProjectSettings | undefined, itemIds: string[] | undefined): ExtraWork | undefined {
+  return (settings?.extraWork ?? []).find((row) => (itemIds ?? []).includes(extraItemId(row.id)));
+}
+
+/**
+ * The subtareas somebody asked for from a given subtarea (the corrections of a committee), and whether each is still
+ * being worked on: `openItemIds` are the items of every open subtarea of the project.
+ */
+export function askedFrom(settings: ProjectSettings | undefined, issueNumber: number, openItemIds: Iterable<string>): { row: ExtraWork; open: boolean }[] {
+  const open = new Set(openItemIds);
+  return (settings?.extraWork ?? []).filter((row) => row.askedIn === issueNumber).map((row) => ({ row, open: open.has(extraItemId(row.id)) }));
+}
 
 /**
  * The subtareas added by hand, as work orders. One whose task is gone is left out; one whose portion is gone (the
@@ -52,7 +69,8 @@ export function extraWorkOrders(board: Pick<AssignmentsDoc, "teams" | "settings"
     const task = board.teams.find((team) => team.id === row.taskId);
     if (!task) continue;
     const portion = row.portionId ? inventory?.portions.find((p) => portionKey(p) === row.portionId) : undefined;
-    const range = portion ? verseRangeLabel(portion.ref) || portion.ref : "";
+    // Named by its own verse when it has one: the place in the title is what its tools open on.
+    const range = row.ref || (portion ? verseRangeLabel(portion.ref) || portion.ref : "");
     orders.push({
       key: `${(portion?.book || book).toUpperCase()}|${task.id}|extra:${row.id}`,
       teamId: task.id,

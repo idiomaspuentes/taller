@@ -13,7 +13,13 @@ import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { unitVerses } from "../domain/unitReading";
 import { UnitReading, type NewConcern, type PlacedConcern, type UnitHelps } from "./UnitReading";
-import { commentOnIssue } from "../dcs/issues";
+import { commentOnIssue, listProjectOpenIssues } from "../dcs/issues";
+import { listPmOrgTeamMembers, listPmOrgTeams } from "../dcs/persist";
+import { correctionTitle } from "../domain/corrections";
+import { askedFrom } from "../domain/extraWork";
+import { teamKey } from "../domain/levels";
+import { parseWorkOrderMarker } from "../domain/workOrder";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { loadUnitToPublish, recordEndorsement, stageUnit, unitChanges, unitProblems, type UnitToPublish } from "../dcs/unitPublish";
 import { stagingTasks } from "../domain/unitStage";
@@ -27,7 +33,7 @@ import { canConfirmForTeam, coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { stepMinAssignees } from "../domain/stepClaim";
-import type { ChecklistQuestion } from "../domain/types";
+import type { ChecklistQuestion, ProjectSettings } from "../domain/types";
 import { scopeLabel } from "../domain/resourceNames";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
@@ -78,6 +84,9 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   /** The terms whose name or article was already asked for, so each is read once. */
   const asked = useRef(new Set<string>());
   const reportRef = useRef<HTMLElement>(null);
+  /** The plan's settings once corrections were asked from here, and the items of every open subtarea of the project. */
+  const [settings, setSettings] = useState<ProjectSettings | undefined>();
+  const [openItems, setOpenItems] = useState<string[]>([]);
 
   const me = (session?.username ?? "").toLowerCase();
   const keyOf = (c: SolverLaunchContext) => `${(c.book || c.projectId).toUpperCase()}.${c.issueNumber || c.taskId}.aval`;
@@ -112,6 +121,13 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
           setRequests([...new Set(staged.flatMap((row) => (row.pullUrl ? [row.pullUrl] : [])))]);
         })
         .catch(() => undefined);
+      // Which of the corrections asked from here are still being worked on.
+      setSettings(undefined);
+      if (decoded.pmOrg && loaded.board?.projectId) {
+        void listProjectOpenIssues(session, decoded.pmOrg, loaded.board.projectId)
+          .then((open) => setOpenItems(open.flatMap((issue) => parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? [])))
+          .catch(() => undefined);
+      }
       const docs = await loadPersonDocs<EndorsementReport>(session, loaded.target, keyOf(decoded));
       const list = docs.map((row) => ({ ...row.doc, by: row.doc.by || row.login }));
       setReports(list);
@@ -188,6 +204,38 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   }
 
   /**
+   * The corrections already asked from this subtarea, and the concerns that have none yet. The button asked again
+   * for the same ones (nothing was created twice) and the screen stayed as it was: whoever decided could not tell
+   * whether anything had been sent, nor whether it had come back.
+   */
+  const corrections = useMemo(() => askedFrom(settings ?? data?.board?.settings, ctx?.issueNumber ?? 0, openItems), [settings, data, ctx, openItems]);
+  const unsent = useMemo(
+    () => [...tally.objections, ...tally.observations].filter((c) => ownerTaskOf(c.about, data?.board, data?.task) && !corrections.some(({ row }) => row.title === correctionTitle(c))),
+    [tally, data, corrections],
+  );
+  /** The teams the corrections go to and how many people each has now: one emptied by a rotation sees nothing. */
+  const [confirming, setConfirming] = useState(false);
+  const [owners, setOwners] = useState<{ name: string; people: number }[]>([]);
+  async function askToSend() {
+    setOwners([]);
+    setConfirming(true);
+    if (!session || !ctx?.pmOrg || !data) return;
+    const names = [...new Set(unsent.map((c) => ownerTaskOf(c.about, data.board, data.task)?.orgTeamName ?? "").filter(Boolean))];
+    try {
+      const teams = await listPmOrgTeams(session, ctx.pmOrg);
+      const counted = await Promise.all(
+        names.map(async (name) => {
+          const team = teams.find((row) => teamKey(row.name) === teamKey(name));
+          return team ? { name, people: (await listPmOrgTeamMembers(session, team.id)).length } : null;
+        }),
+      );
+      setOwners(counted.filter((row): row is { name: string; people: number } => row !== null));
+    } catch {
+      /* the question is asked all the same, without the count */
+    }
+  }
+
+  /**
    * Not endorsed yet: each concern becomes a subtarea of correction for the task that maintains what it is about,
    * and all of them are listed in the conversation of this unit for whoever coordinates those teams.
    */
@@ -197,22 +245,28 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     setError("");
     try {
       const byOwner = new Map<string, string[]>();
-      for (const c of [...tally.objections, ...tally.observations]) {
+      for (const c of unsent) {
         const owner = ownerTaskOf(c.about, data.board, data.task);
         const who = coordinatorsOf(data.levelBook, owner?.orgTeamName).map((login) => `@${login}`).join(" ") || (owner?.name ?? c.about);
         byOwner.set(who, [...(byOwner.get(who) ?? []), `- ${c.kind === "objection" ? t("en.objection") : t("en.observation")}${c.where ? ` (${c.where})` : ""}: ${c.text} — @${c.by}`]);
       }
-      const created =
+      const sent =
         data.board && data.task
           ? await createCorrections({
               session,
               pmOrg: ctx.pmOrg,
-              board: data.board,
+              board: settings ? { ...data.board, settings } : data.board,
               from: data.task,
-              asks: [...tally.objections, ...tally.observations].map((c) => ({ about: c.about, where: c.where, text: c.text, by: c.by })),
+              asks: unsent.map((c) => ({ about: c.about, where: c.where, text: c.text, by: c.by })),
               portionIds: ctx.portionIds,
+              askedIn: ctx.issueNumber,
             })
-          : [];
+          : null;
+      const created = sent?.issues ?? [];
+      if (sent) {
+        setSettings(sent.settings);
+        setOpenItems((prev) => [...prev, ...created.flatMap((issue) => parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? [])]);
+      }
       const body = [
         t("en.pendingNote"),
         ...[...byOwner].map(([who, lines]) => `\n${who}\n${lines.join("\n")}`),
@@ -538,14 +592,40 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
                     ),
                   )
                 : null}
+              {corrections.length ? (
+                // What was asked and how it stands: sent, the screen stayed the same, and nothing said they were back.
+                <div className="en-asked" role="status" data-back={!corrections.some((row) => row.open)}>
+                  <p className="en-asked__head">
+                    {corrections.some((row) => row.open)
+                      ? t("en.askedOpen").replace("{done}", String(corrections.filter((row) => !row.open).length)).replace("{total}", String(corrections.length))
+                      : t("en.askedBack")}
+                  </p>
+                  <ul>
+                    {corrections.map(({ row, open }) => (
+                      <li key={row.id} data-open={open}>
+                        <span>{row.title}</span>
+                        <span className="hub-place">{[data.board?.teams.find((task) => task.id === row.taskId)?.orgTeamName ?? "", open ? t("en.askedPending") : t("en.askedDone")].filter(Boolean).join(" · ")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {corrections.some((row) => row.open) ? (
+                    <Button type="button" size="lg" onClick={onClose}>
+                      {t("fa.back")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
               {canDecide ? (
                 <div className="af-buttons">
-                  <Button type="button" size="lg" disabled={saving || !tally.canEndorse} onClick={() => void endorse()}>
+                  <Button type="button" size="lg" variant={corrections.some((row) => row.open) ? "outline" : undefined} disabled={saving || !tally.canEndorse} onClick={() => void endorse()}>
                     {t("en.endorse")}
                   </Button>
-                  <Button type="button" size="lg" variant="outline" disabled={saving || (!tally.objections.length && !tally.observations.length)} onClick={() => void sendBack()}>
-                    {t("en.sendBack")}
-                  </Button>
+                  {/* Only for what has not been asked yet: asked again, it did nothing that could be seen. */}
+                  {unsent.length || !corrections.length ? (
+                    <Button type="button" size="lg" variant="outline" disabled={saving || !unsent.length} onClick={() => void askToSend()}>
+                      {t("en.sendBack")}
+                    </Button>
+                  ) : null}
                 </div>
               ) : (
                 <p className="af-hint">{t("en.onlyCoordinator")}</p>
@@ -559,6 +639,20 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
           ) : null}
         </section>
       ) : null}
+      <ConfirmDialog
+        open={confirming}
+        title={unsent.length === 1 ? t("en.sendBackTitleOne") : t("en.sendBackTitle").replace("{n}", String(unsent.length))}
+        text={[
+          t("en.sendBackText"),
+          ...owners.map((team) => (team.people ? t(team.people === 1 ? "en.sendBackTeamOne" : "en.sendBackTeam").replace("{team}", team.name).replace("{n}", String(team.people)) : t("en.sendBackTeamEmpty").replace("{team}", team.name))),
+        ].join(" ")}
+        yes={t("en.sendBackYes")}
+        onYes={() => {
+          setConfirming(false);
+          void sendBack();
+        }}
+        onNo={() => setConfirming(false)}
+      />
     </div>
   );
 }

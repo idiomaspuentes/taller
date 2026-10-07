@@ -225,6 +225,13 @@ export function TaskCard(props: Props) {
       </div>
       {/* Named by what was asked; the task and the passage it belongs to come under it. */}
       {card.ownTitle ? <p className="task-card__sub">{title}</p> : null}
+      {card.corrections && card.group !== "done" ? (
+        <p className="task-card__asked" data-back={card.corrections.open === 0}>
+          {card.corrections.open
+            ? t("tb.correctionsOpen").replace("{done}", String(card.corrections.total - card.corrections.open)).replace("{total}", String(card.corrections.total))
+            : t("tb.correctionsBack")}
+        </p>
+      ) : null}
 
       {props.projectLabel ? <span className="task-card__project">{props.projectLabel}</span> : null}
 

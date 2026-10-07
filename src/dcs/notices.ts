@@ -51,10 +51,28 @@ export function noticesAfterProgress(session: GtSession, org: string, before: Dc
   });
 }
 
+/**
+ * A correction somebody asked for was finished: they are told in the subtarea they asked from, with what was
+ * answered. The answer stayed in the conversation of the correction, which a committee does not follow, and the
+ * task of the committee said nothing of its corrections having come back.
+ */
+async function tellWhoAsked(session: GtSession, org: string, board: AssignmentsDoc, closed: DcsIssue): Promise<void> {
+  const [{ parseWorkOrderMarker }, { askedFrom, extraWorkOf }, { correctionOutcome }] = await Promise.all([import("../domain/workOrder"), import("../domain/extraWork"), import("../domain/corrections")]);
+  const row = extraWorkOf(board.settings, parseWorkOrderMarker(closed.body ?? "")?.itemIds);
+  if (!row?.askedIn) return;
+  const [{ listIssueComments }, { dcsConfig }, { commentOnIssue, listProjectOpenIssues }, { tNow }] = await Promise.all([import("@ip-lms/dcs-client"), import("./config"), import("./issues"), import("../i18n/messages")]);
+  const comments = await listIssueComments(dcsConfig(session.host), org, PM_REPO_NAME, closed.number, session.token).catch(() => []);
+  const open = (await listProjectOpenIssues(session, org, board.projectId).catch(() => [])).filter((issue) => issue.number !== closed.number);
+  const left = askedFrom(board.settings, row.askedIn, open.flatMap((issue) => parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? [])).filter((asked) => asked.open).length;
+  await commentOnIssue(session, org, row.askedIn, correctionOutcome(row, comments.map((comment) => ({ body: comment.body ?? "", by: comment.user?.login ?? "" })), left, tNow));
+}
+
 export function noticesAfterClose(session: GtSession, org: string, closed: DcsIssue): void {
   later(async () => {
     const board = boardOf(session, org, closed);
-    if (!board || !board.teams.some((task) => task.waitsFor?.length)) return;
+    if (!board) return;
+    await tellWhoAsked(session, org, board, closed).catch(() => undefined);
+    if (!board.teams.some((task) => task.waitsFor?.length)) return;
     const [{ afterClose }, { listProjectOpenIssues }] = await Promise.all([import("../domain/askNotices"), import("./issues")]);
     const stillOpen = await listProjectOpenIssues(session, org, board.projectId);
     send(session, org, afterClose(closed, board, [...stillOpen.filter((issue) => issue.number !== closed.number), { ...closed, state: "open" }]));

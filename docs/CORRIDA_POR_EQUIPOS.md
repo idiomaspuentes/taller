@@ -1067,16 +1067,9 @@ Elisha = **Pastor Samuel (P)**.
 
 - **Con un comité de cuatro, el paso de los reportes se cierra con dos**: los otros dos pastores no llegan a
   opinar, y la regla de mayoría se queda en «con dos personas hace falta el acuerdo de todas».
-- **Una corrección repite todos los pasos de su tarea**: para cambiar una línea de una nota, 278 respuestas en
-  tres listas y la aprobación de dos personas.
-- **El comité no ve qué se hizo con cada inquietud.** La respuesta de quien corrige queda en la conversación de la
-  corrección, y la mención a la pastora no le llega porque no es de ese equipo (se ve como `@valeska`, sin aviso).
-- **Nada avisa de que los equipos anteriores están vacíos.** Las correcciones quedaron sin nadie que las viera
-  hasta que quien coordina volvió a poner gente en esos equipos.
-- «Dejar pendiente y pedir las correcciones» actúa sin preguntar, y la pantalla queda igual después (no crea
-  duplicados si se vuelve a tocar).
-- La tarjeta de «Validar» no dice que hay correcciones pendientes ni que ya volvieron.
 - Los avisos y la conversación llaman a la tarea «Judas 1:1–25 · Lote · Validar».
+
+(Lo demás de esta lista se arregló después: ver «Las correcciones que pide un comité», al final.)
 
 ## Fase 5 · Publicación (7 de octubre)
 
@@ -1185,4 +1178,41 @@ lista y la campana de 5 a 4; abrir la conversación de «Desafíos 1:1–4» esc
   la subtarea que se acababa de entregar: «Abrir» lleva a «Judas 1:17–23 · Traducir TPL», que no tiene que ver.
 - Lo que una persona dio por visto en un teléfono y Door43 vuelve a tocar (alguien cierra la subtarea) puede
   salir otra vez en **otro** teléfono: «ya lo vi» se guarda en cada uno.
+
+### Las correcciones que pide un comité (7 de octubre)
+
+Cinco de los puntos «sin resolver» de Validación eran de lo mismo: lo que pasa entre que el comité pide una
+corrección y que la corrección vuelve.
+
+**⚠ Arreglado**
+
+- **Una corrección repetía todas las listas de su pasaje.** *Ahora* la corrección es de su versículo: se llama
+  «Judas 1:12 · Corrección 1:12: …» y sus herramientas abren solo ese versículo. Comprobado en QA abriendo las
+  herramientas de las dos correcciones de la corrida con un solo versículo: «Notas frente al TPL» de 1:1 trae **9**
+  notas (el pasaje 1:1–4 tiene 34) y «Revisar desafíos» de 1:3 trae **7** desafíos (el pasaje tiene 30). Los pasos
+  de la tarea siguen siendo todos; cada uno es mucho más corto.
+- **El comité no veía qué se hizo con cada inquietud.** *Ahora*, al terminar una corrección, la app lo dice en la
+  conversación de la tarea del comité, nombrando a quien la pidió: «@valeska Se atendió lo que pidió el comité:
+  «Corrección 1:12: …». abelper8 respondió: «El TPL es literal; la nota y el TPS lo explican.» Ya volvieron todas
+  las correcciones que se pidieron: se puede decidir el aval» (o cuántas faltan). Y quien corrige ya puede nombrar
+  a quien pidió la corrección desde su conversación: su nombre sale al escribir «@» y le llega el aviso.
+- **«Dejar pendiente y pedir las correcciones» actuaba sin preguntar y la pantalla quedaba igual.** *Ahora*
+  pregunta («¿Pedir estas 2 correcciones?»), y después la pantalla lista lo pedido, a qué equipo fue y si está «en
+  curso» o «ya volvió», con «Volver a mis tareas». El botón solo se ofrece para lo que todavía no se pidió.
+- **Nada avisaba de que el equipo que debe corregir estaba vacío.** *Ahora* la pregunta dice cuánta gente tiene
+  cada equipo: «Afinadores TPL no tiene a nadie ahora: avisa a quien lleva el proyecto, o nadie verá la
+  corrección».
+- **La tarjeta de «Validar» no decía nada de las correcciones.** *Ahora* dice «Se pidieron correcciones: volvieron
+  1 de 2» y, cuando están todas, «Las correcciones que se pidieron ya volvieron: se puede decidir».
+
+**Lo que no se pudo ver en pantalla.** Judas es el único proyecto que llegó a validación y está terminado: la
+pregunta, la lista de lo pedido, la línea de la tarjeta y el aviso de vuelta **no se vieron funcionando**, solo en
+sus pruebas (10 de `verify:extra-work`, 28 de `verify:my-tasks-board`). La pantalla del comité se abrió con el
+aval ya concedido para comprobar que sigue leyéndose bien. Quedan para la próxima unidad que llegue a validación.
+
+**⚠ Sin resolver**
+
+- Una corrección sigue pidiendo todos los pasos de su tarea y la aprobación de dos personas, aunque cada paso sea
+  de un versículo.
+- Si el equipo que debe corregir está vacío, se avisa a quien decide, no a quien lleva el proyecto.
 

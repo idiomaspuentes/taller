@@ -1,7 +1,7 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { correctionRows, portionOfAsk, type CorrectionAsk } from "../domain/corrections";
 import { extraItemId, extraWorkOrders } from "../domain/extraWork";
-import type { AssignmentsDoc, ProjectTask } from "../domain/types";
+import type { AssignmentsDoc, ProjectSettings, ProjectTask } from "../domain/types";
 import type { GtSession } from "./auth";
 import { publishWorkOrders } from "./issues";
 import { loadInventoryFromDcs, saveProjectToDcs } from "./persist";
@@ -21,18 +21,20 @@ export async function createCorrections(params: {
   asks: CorrectionAsk[];
   /** The passages the unit covers, so the tools of the correcting task open on the one each concern is about. */
   portionIds?: string[];
-}): Promise<DcsIssue[]> {
+  /** The subtarea of the committee: each correction says there what came of it. */
+  askedIn?: number;
+}): Promise<{ issues: DcsIssue[]; settings: ProjectSettings }> {
   const { session, pmOrg } = params;
   const projectId = params.board.projectId || params.board.book;
   const inventory = await loadInventoryFromDcs(session, pmOrg, params.board.lang, projectId);
   if (!inventory) throw new Error("No se pudo leer el inventario del proyecto para crear las correcciones.");
   const unit = inventory.portions.filter((portion) => params.portionIds?.includes(portion.id));
-  const { settings, added } = correctionRows(params.board, params.from, params.asks, (ask) => portionOfAsk(ask, unit) ?? params.portionIds?.[0]);
-  if (!added.length) return [];
+  const { settings, added } = correctionRows(params.board, params.from, params.asks, (ask) => portionOfAsk(ask, unit) ?? params.portionIds?.[0], params.askedIn);
+  if (!added.length) return { issues: [], settings };
   const board: AssignmentsDoc = { ...params.board, settings };
   await saveProjectToDcs({ session, org: pmOrg, lang: board.lang, book: projectId, assignments: board, inventory: null });
   const wanted = new Set(added.map((row) => extraItemId(row.id)));
   const orders = extraWorkOrders(board, inventory).filter((order) => order.itemIds.some((id) => wanted.has(id)));
   const result = await publishWorkOrders({ session, org: pmOrg, board, inventory, orders, retireOrphans: false, keepAssignees: true });
-  return result.issues;
+  return { issues: result.issues, settings };
 }

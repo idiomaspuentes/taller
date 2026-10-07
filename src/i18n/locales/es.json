@@ -2792,5 +2792,22 @@
   "pu.confirmTitle": "¿Publicar {unit}?",
   "pu.confirmText": "Pasa a lo publicado de cada recurso y se crea su versión. Publicar no se puede deshacer desde la app.",
   "pu.confirmYes": "Sí, publicar",
-  "mt.mentionSeen": "Ya lo vi"
+  "mt.mentionSeen": "Ya lo vi",
+  "cx.attended": "Se atendió lo que pidió el comité: «{title}».",
+  "cx.attendedSaid": "{who} respondió: «{text}»",
+  "cx.stillOpen": "Todavía se trabaja en otras correcciones que se pidieron: {n}.",
+  "cx.allBack": "Ya volvieron todas las correcciones que se pidieron: se puede decidir el aval.",
+  "en.sendBackTitleOne": "¿Pedir esta corrección?",
+  "en.sendBackTitle": "¿Pedir estas {n} correcciones?",
+  "en.sendBackText": "Cada inquietud se vuelve una tarea para el equipo que mantiene ese recurso. El aval queda pendiente hasta que vuelvan.",
+  "en.sendBackTeam": "{team} tiene {n} personas.",
+  "en.sendBackTeamOne": "{team} tiene 1 persona.",
+  "en.sendBackTeamEmpty": "{team} no tiene a nadie ahora: avisa a quien lleva el proyecto, o nadie verá la corrección.",
+  "en.sendBackYes": "Sí, pedirlas",
+  "en.askedOpen": "Correcciones pedidas: volvieron {done} de {total}. El aval espera a las demás.",
+  "en.askedBack": "Ya volvieron todas las correcciones que se pidieron.",
+  "en.askedPending": "en curso",
+  "en.askedDone": "ya volvió",
+  "tb.correctionsOpen": "Se pidieron correcciones: volvieron {done} de {total}.",
+  "tb.correctionsBack": "Las correcciones que se pidieron ya volvieron: se puede decidir."
 }

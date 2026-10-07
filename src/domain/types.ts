@@ -574,6 +574,14 @@ export type ExtraWork = {
   title: string;
   /** The portion of the book it is about, when it is about one: the tools of the task open on it. */
   portionId?: string;
+  /**
+   * The verse it is about («1:12»), when it is about less than its portion: the tools open on that alone. A
+   * correction of one line of one note went through every note, word and article of its passage again.
+   */
+  ref?: string;
+  /** Who asked for it and in which subtarea (a concern of a committee): they are told there what came of it. */
+  askedBy?: string;
+  askedIn?: number;
 };
 
 /** What moves together from one phase to the next: see `handoff.ts`. Only split chapters are listed. */

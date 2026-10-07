@@ -1,3 +1,5 @@
+import { extraWorkOf } from "../domain/extraWork";
+import { parseWorkOrderMarker } from "../domain/workOrder";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
 import { loadPmConfig } from "../dcs/issues";
@@ -452,8 +454,11 @@ function ConversationThread({
     if (!issue) return [];
     const known = mentionCandidates(issue, timeline, username);
     const seen = new Set([username.trim().toLowerCase(), ...known.map((login) => login.toLowerCase())]);
-    return [...known, ...coordinators.filter((login) => !seen.has(login.trim().toLowerCase()))];
-  }, [issue, timeline, username, coordinators]);
+    // Whoever asked for this correction, from another team: named here, they were not told (the name was written
+    // as text, since they are not of this subtarea).
+    const askedBy = extraWorkOf(board?.settings, parseWorkOrderMarker(issue.body ?? "")?.itemIds)?.askedBy;
+    return [...known, ...[...coordinators, ...(askedBy ? [askedBy] : [])].filter((login, at, all) => !seen.has(login.trim().toLowerCase()) && all.findIndex((other) => other.toLowerCase() === login.toLowerCase()) === at)];
+  }, [issue, timeline, username, coordinators, board]);
 
   const statuses = useMemo(() => decisionStatuses(timeline), [timeline]);
   const pendingDecisions = useMemo(() => pendingDecisionIds(statuses), [statuses]);

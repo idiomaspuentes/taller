@@ -8539,6 +8539,16 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 .hub-free + .hub-free { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .hub-free__name { flex: 1 1 12rem; min-width: 0; display: grid; gap: 0.0625rem; }
 .hub-free__actions { flex: 0 0 auto; display: flex; gap: 0.375rem; }
+/* What a committee asked to be corrected, and whether it came back: on its screen and on the card of its task. */
+.en-asked { display: grid; gap: 0.5rem; padding: 0.75rem; border-radius: var(--radius-md); background: var(--warning-100); }
+.en-asked[data-back="true"] { background: var(--success-100); }
+.en-asked__head { margin: 0; font-weight: 700; }
+.en-asked ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.375rem; }
+.en-asked li { display: grid; gap: 0.0625rem; padding-left: 0.625rem; border-left: 3px solid var(--warning-500); }
+.en-asked li[data-open="false"] { border-left-color: var(--success-500); }
+.en-asked > button { justify-self: start; }
+.task-card__asked { margin: 0.25rem 0 0; font-size: 0.8125rem; line-height: 1.35; color: var(--text-muted); }
+.task-card__asked[data-back="true"] { color: var(--text); font-weight: 600; }
 .hub-mention__actions { flex: 0 0 auto; display: flex; gap: 0.5rem; }
 .hub-mention__actions > .btn { min-height: 2.5rem; }
 /* The foot of a tool: where it says how far along the work is and where it is finished. A bar at the bottom edge,
