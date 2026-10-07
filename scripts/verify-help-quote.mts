@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
-import { alignedGatewayQuoteForHelpQuote, matchHelpEntryToTokenIndicesByAlignment, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../src/domain/helpQuoteMatch";
+import { alignedGatewayQuoteForHelpQuote, matchHelpEntryToTokenIndicesByAlignment, matchHelpQuoteToTokenIndices, tokenizeVersePlainText, tokensSayingTheSame } from "../src/domain/helpQuoteMatch";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -72,6 +72,29 @@ test("una cita con una coma dentro se encuentra en el versículo, que también l
   assert.deepEqual(matchHelpQuoteToTokenIndices(two, "ὑμῖν", 1), [1]);
   assert.deepEqual(matchHelpQuoteToTokenIndices(two, "καὶ", 2), [4]);
   assert.deepEqual(matchHelpQuoteToTokenIndices(one, "ἀδελφὸς & Ἰακώβου", 1), [4, 6]);
+});
+
+test("las palabras de un texto que dicen lo que dice una palabra del otro: las enlazadas al mismo original", () => {
+  // The simple text of the same verse: it says «sirvo» where the literal one says «siervo», and «Dios» once.
+  const simple = tokenizeVersePlainText("Yo, Pablo, sirvo a Dios y soy apóstol de Jesucristo.");
+  const simpleGroups: AlignmentGroup[] = [
+    group(src("Παῦλος"), tgt("Yo"), tgt("Pablo")),
+    group(src("δοῦλος"), tgt("sirvo")),
+    group(src("Θεοῦ", 1, 2), tgt("a"), tgt("Dios")),
+    group(src("ἀπόστολος"), tgt("soy"), tgt("apóstol")),
+    group(src("Ἰησοῦ"), tgt("de"), tgt("Jesucristo")),
+  ];
+  const literal = { tokens, groups };
+  const other = { tokens: simple, groups: simpleGroups };
+  const says = (index: number, to = other) => tokensSayingTheSame({ from: literal, indices: [index], to }).map((i) => `${i}:${to.tokens[i]}`);
+  assert.deepEqual(says(1), ["2:sirvo"], "«siervo»");
+  assert.deepEqual(says(0), ["0:Yo,", "1:Pablo,"], "una palabra del literal puede ser dos del sencillo");
+  assert.deepEqual(says(3), ["3:a", "4:Dios"], "el primer «Dios»");
+  assert.deepEqual(says(16), [], "el segundo «Dios» del literal no está en el sencillo: no se marca el primero");
+  assert.deepEqual(says(3, literal), ["2:de", "3:Dios"], "y en su propio texto, lo que va con ella");
+  // The other way round, from the simple text to the literal one.
+  assert.deepEqual(tokensSayingTheSame({ from: other, indices: [6], to: literal }).map((i) => tokens[i]), ["apóstol"]);
+  assert.deepEqual(tokensSayingTheSame({ from: literal, indices: [1], to: { tokens: simple } }), [], "un texto sin alinear no marca nada");
 });
 
 console.log(`\nverify-help-quote: ${passed} checks passed.`);

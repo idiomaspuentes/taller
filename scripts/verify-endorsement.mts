@@ -5,8 +5,8 @@
 import assert from "node:assert/strict";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../src/domain/endorsement";
 import type { ChecklistQuestion } from "../src/domain/types";
-import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, shortestQuoteFirst, unitVerses } from "../src/domain/unitReading";
-import { seenHelpsKey, verseInView, verseProgress } from "../src/domain/unitProgress";
+import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, helpsToOpen, shortestQuoteFirst, unitVerses } from "../src/domain/unitReading";
+import { scrollToShow, seenHelpsKey, verseInView, verseProgress } from "../src/domain/unitProgress";
 import { setActiveScope } from "../src/domain/scope";
 
 let passed = 0;
@@ -145,6 +145,22 @@ test("el versículo que se lee es el último que llegó arriba de la lectura", (
   assert.equal(verseInView(tops, 20), 2, "el 3 todavía no llegó a la línea");
   assert.equal(verseInView([{ verse: 1, top: 300 }, { verse: 2, top: 700 }], 84), 1, "al llegar, el primero");
   assert.equal(verseInView([], 84), null);
+});
+
+test("las ayudas de un versículo se abren donde se dejaron; la primera vez, en la primera de su primera clase", () => {
+  const kinds = ["notas", "preguntas", "palabras"];
+  assert.deepEqual(helpsToOpen(kinds, undefined), { kind: "notas", at: 0 });
+  assert.deepEqual(helpsToOpen(kinds, { kind: "palabras", at: 2 }), { kind: "palabras", at: 2 });
+  assert.deepEqual(helpsToOpen(["preguntas"], { kind: "notas", at: 4 }), { kind: "preguntas", at: 0 }, "lo que se dejó ya no está: empieza por lo que hay");
+  assert.equal(helpsToOpen([], undefined), null, "un versículo sin ayudas no abre nada");
+});
+
+test("las palabras de la ayuda quedan a la vista entre la barra de arriba y la tarjeta del pie", () => {
+  const room = { top: 65, bottom: 472 };
+  assert.equal(scrollToShow({ top: 120, bottom: 160 }, room), 0, "ya se ven: no se mueve nada");
+  assert.equal(scrollToShow({ top: 500, bottom: 540 }, room), 68, "bajo la tarjeta: suben lo justo para quedar sobre ella");
+  assert.equal(scrollToShow({ top: 20, bottom: 60 }, room), -45, "bajo la barra de arriba: bajan hasta su borde");
+  assert.equal(scrollToShow({ top: 100, bottom: 700 }, room), 35, "una cita más larga que el hueco: se ve su comienzo, no su final");
 });
 
 console.log(`\nverify-endorsement: ${passed} checks passed.`);

@@ -1417,14 +1417,71 @@ Probado en QA con Judas a 375 px (fila de versículos, ir a 1:5 y a 1:12, pasar 
 abrir y cerrar un artículo, empezar y cancelar una inquietud) y a 1280 px, donde la lectura va en su caja a la
 izquierda del reporte.
 
+**La pantalla en capas, y el TPS como una ayuda.** Abel preguntó si no se intentaba poner demasiado en la
+pantalla; después: «la tarjeta sujeta al pie tapa una porción grande del versículo», «el TPS debería mostrarse como
+una ayuda en vez de al lado del TPL», «no debe ser la primera sino la última pestaña». Esto reemplaza varias cosas
+de arriba: las dos cajas de texto, «Mostrar: TPL · TPS», la fila de versículos con sus flechas, las tres fichas por
+versículo y «Volver a donde leía».
+
+- **La página es el pasaje en el TPL, y poco más.** Cada versículo lleva su texto y dos botones: «Ayudas · 22» (con
+  ✓ cuando ya se vieron todas) e «Inquietudes · 1» o «Anotar inquietud». En el capítulo quedan 51 botones además
+  de las palabras, y la lectura mide 7.422 px a 375 px de ancho (con los dos textos en la página medía 13.114).
+- **El TPS es una ayuda más: la última pestaña de la tarjeta.** «Notas · Preguntas · Palabras · TPS». «Siguiente»
+  las recorre en ese orden y, tras el TPS, el botón dice «Versículo 1:13 ›» y lleva al versículo que sigue. Las
+  ayudas se abren donde se dejaron («Notas 3 de 9»). La inquietud sobre el TPS se anota ahí mismo; la del botón
+  bajo el versículo es sobre el TPL (ya no pregunta «¿sobre cuál texto?»).
+- **Tocar una palabra del TPL muestra también cómo la dice el TPS.** Los dos textos están alineados con el
+  original: se marcan en el TPS las palabras enlazadas con las mismas palabras del original. Con una palabra
+  subrayada salen primero sus notas y palabras clave (de la cita más corta a la más larga) y al final el TPS; con
+  una sin subrayar, solo el TPS. Dentro de la tarjeta, el TPS se coloca en las palabras marcadas, y sus palabras
+  también se tocan. Cada nota y palabra clave dice además cómo lo dice el TPS («TPS «…»»), y al pasar de una de
+  ellas a la pestaña «TPS» sus palabras siguen marcadas.
+  Comprobado con textos alineados de verdad (ULT y UST de Judas, en inglés): «servant» marca «serve»; «brother»,
+  «I am a brother of»; «without stumbling», «from returning to a sinful life». En el Judas de esta corrida las
+  marcas caen mal («siervo» marca «y soy»): es la alineación por posición, no la app.
+- **La tarjeta es más baja y no tapa lo que explica.** Mide como mucho 40 % del alto de la pantalla (325 px de 812;
+  eran hasta 422, sobre una barra de 64 px). Con la tarjeta llena quedan 423 px para el versículo (antes, unos 250:
+  calculado, no medido). Y al abrirse o pasar de ayuda, la pantalla se acomoda para que las palabras de las que
+  habla queden a la vista entre la barra de arriba y la tarjeta: abriendo cada versículo del 2 al 25 desde la parte
+  baja de la pantalla y pasando todas sus ayudas, quedaron a la vista en 312 de 312.
+  Un primer intento las dejaba tapadas en 18 de 49: la tarjeta se queda al pie *sobre* su propio versículo cuando
+  este está bajo, y la pantalla se acomodaba una sola vez, antes de que la tarjeta tuviera su tamaño.
+- **La barra de arriba es el camino a cualquier versículo.** «Versículo 1:3 · 3 de 25 ▾» abre una caja con los 25
+  números a la vez (46 × 44 px, seis por fila en un teléfono y siete en escritorio): azul donde se está, verde lo
+  ya leído, punto ámbar lo que tiene inquietudes. Tocar «15» lo deja arriba. Responde a «el usuario no sabe cómo
+  llegar al v15»: ya no hay fila que deslizar ni flechas.
+- **«Mi reporte» es una hoja sobre la lectura, en el teléfono.** La barra del pie dice «1 inquietud anotada» y
+  «Abrir mi reporte»; la hoja ocupa la pantalla, con «Cerrar» arriba, y al cerrarla la lectura está donde estaba
+  (1:15 a 64 px del borde, antes y después). La barra va al pie de la herramienta y no de la lectura: plegar «Leer
+  el pasaje» se la llevaba. Cede el pie a la tarjeta mientras esta se ve, y vuelve si uno se aleja del versículo
+  con la tarjeta abierta. En escritorio el reporte sigue a la derecha del pasaje.
+- **Qué significa cada marca se dice una vez, al empezar la lectura**: «tiene nota · palabra clave. Toca una palabra
+  para ver cómo la dice el TPS y sus ayudas.»
+- **Con el teclado guardado, «Cancelar» y «Anotar» quedaban bajo el borde de la tarjeta** (la caja mide 325 px, lo
+  mismo que la tarjeta entera). *Ahora*, mientras se escribe una inquietud, la tarjeta va entera en la página
+  (399 px). «Anotar inquietud» abre la caja ya lista para escribir, y «Cancelar» sin nada anotado la cierra.
+- **Las cuatro pestañas caben junto a «Cerrar»** en un teléfono (225 px): con la letra de antes, «Palabras» salía
+  cortada.
+
+Probado en QA con Judas a 375 × 812 con toques reales (abrir las ayudas, tocar «siervo», «salvación» y «salvajes»,
+«Cerrar», empezar y cancelar una inquietud, ir a 1:15 desde la caja de versículos, abrir y cerrar el reporte) y a
+1280 px (pasaje y reporte lado a lado, la caja de versículos, la tarjeta dentro de la caja de lectura).
+
 **⚠ Sin resolver**
 
 - El subrayado distingue nota de palabra clave, pero no dice dónde hay más ayudas y dónde menos.
-- «Ya leído» se guarda en cada teléfono: en otro, empieza de cero.
+- «Ya leído» se guarda en cada teléfono: en otro, empieza de cero. Y ahora cuenta también el TPS: un versículo que
+  estaba «ya leído» deja de estarlo hasta ver su TPS.
 - Con el teclado de un teléfono real no se probó nada: la caja de la inquietud y la tarjeta al pie se midieron sin
   él.
 - En Judas, las marcas del TPS y las palabras de algunas palabras clave caen donde no deben («Fiesta, festín» sobre
-  «temor con»): es la alineación por posición de esta corrida.
+  «temor con»; «siervo» → «y soy»): es la alineación por posición de esta corrida. Con un libro alineado a mano no
+  se ha visto la pantalla entera, solo la función que busca las palabras.
+- De una palabra subrayada, cómo la dice el TPS queda al final, tras sus notas: a uno o dos toques de «Siguiente».
+- En la hoja del reporte no se entregó ni se guardó nada (Judas está terminado): se abrió y se cerró. La línea que
+  confirma «Borrador guardado» dentro de la hoja está sin ver.
+- Todo cambia de teléfono a escritorio en 1024 px: una tableta de lado queda con el reporte al lado y la lectura
+  en su caja; no se miró a 768 px.
 
 ### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
 

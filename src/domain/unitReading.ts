@@ -62,3 +62,13 @@ export function shortestQuoteFirst<T>(helps: T[], quoteWords: (help: T) => numbe
     .sort((a, b) => a.size - b.size || a.at - b.at)
     .map((row) => row.help);
 }
+
+/**
+ * Where the helps of a verse open: where the person left them (the kind, and which of them), or at the first of
+ * the first kind the verse has. `kinds`: the kinds of help the verse has, in the order they are read; `null`
+ * when it has none.
+ */
+export function helpsToOpen<K extends string>(kinds: K[], left: { kind: K; at: number } | undefined): { kind: K; at: number } | null {
+  if (left && kinds.includes(left.kind)) return left;
+  return kinds.length ? { kind: kinds[0]!, at: 0 } : null;
+}

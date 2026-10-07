@@ -46,3 +46,14 @@ export function verseInView(tops: { verse: number; top: number }[], line: number
   }
   return current;
 }
+
+/**
+ * How far to scroll so that the words a help is about are in sight, in the room left between what stays at the top
+ * and the help held at the foot of the screen (`top` to `bottom`); 0 when they already are. Words under the help
+ * come up over it, but never so far that the first of them goes under what stays at the top: of a quote longer
+ * than the room, its start is what shows.
+ */
+export function scrollToShow(words: { top: number; bottom: number }, room: { top: number; bottom: number }): number {
+  if (words.bottom > room.bottom) return Math.min(words.bottom - room.bottom, words.top - room.top);
+  return words.top < room.top ? words.top - room.top : 0;
+}

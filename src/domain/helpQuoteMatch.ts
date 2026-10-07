@@ -262,6 +262,36 @@ export function matchHelpEntryToTokenIndicesByAlignment(
   return [...tokenIdx].sort((a, b) => a - b);
 }
 
+/** A text of a verse as it is aligned: its words, and the groups that tie them to the words of the original. */
+export type AlignedVerse = { tokens: string[]; groups?: AlignmentGroup[] };
+
+/**
+ * The words of a text that say what some words of another say (or of the same one: the rest of what goes with
+ * them). Both texts are aligned to the original, so they are the words tied to the same original words. Where they
+ * are in `to`, in order; none when either text is not aligned in the verse.
+ */
+export function tokensSayingTheSame(opts: { from: AlignedVerse; indices: number[]; to: AlignedVerse }): number[] {
+  const wanted = new Set(opts.indices);
+  if (!wanted.size || !opts.from.groups?.length || !opts.to.groups?.length) return [];
+  const original = (source: { content: string; occurrence: number }) => `${normalizeHelpsText(source.content)}\x00${source.occurrence}`;
+  const fromMeta = buildGatewayTokenOccurrences(opts.from.tokens);
+  const said = new Set<string>();
+  for (const group of opts.from.groups) {
+    if (group.targets.some((target) => wanted.has(mapTargetToTokenIndex(fromMeta, target)))) group.sources.forEach((source) => said.add(original(source)));
+  }
+  if (!said.size) return [];
+  const toMeta = buildGatewayTokenOccurrences(opts.to.tokens);
+  const out = new Set<number>();
+  for (const group of opts.to.groups) {
+    if (!group.sources.some((source) => said.has(original(source)))) continue;
+    for (const target of group.targets) {
+      const index = mapTargetToTokenIndex(toMeta, target);
+      if (index >= 0) out.add(index);
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
 export function alignmentGroupsForVerse(
   map: AlignmentMap | undefined,
   book: string,

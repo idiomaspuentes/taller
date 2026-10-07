@@ -1,9 +1,10 @@
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPersonDocs, savePersonDoc } from "../dcs/checkStore";
 import { loadTermArticle, loadTermTitles } from "../dcs/afinacionLoad";
@@ -57,6 +58,41 @@ const blank = (by: string): EndorsementReport => ({ by, answers: {}, concerns: [
 /** What a committee endorses of a unit, when its board does not say otherwise: the two texts and their helps. */
 const ENDORSED = ["tpl", "tps", "notas", "preguntas", "academia", "palabras"];
 
+/** Whether the passage and the report fit side by side: the width the styles of this screen turn at. */
+const WIDE = "(min-width: 1024px)";
+function useWide(): boolean {
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia(WIDE).matches);
+  useEffect(() => {
+    const media = window.matchMedia(WIDE);
+    const look = () => setWide(media.matches);
+    look();
+    media.addEventListener("change", look);
+    return () => media.removeEventListener("change", look);
+  }, []);
+  return wide;
+}
+
+/**
+ * What goes beside the passage on a wide screen and, on a phone, on a sheet over it: one press away from any verse,
+ * with its way out said in a word.
+ */
+function PhoneSheet({ sheet, open, onClose, title, close, children }: { sheet: boolean; open: boolean; onClose: () => void; title: string; close: string; children: ReactNode }) {
+  if (!sheet) return <>{children}</>;
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="ur-sheet" showCloseButton={false}>
+        <header className="ur-sheet__head">
+          <DialogTitle>{title}</DialogTitle>
+          <button type="button" className="btn" data-variant="outline" data-size="default" onClick={onClose}>
+            {close}
+          </button>
+        </header>
+        <div className="ur-sheet__body en-sheet">{children}</div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /**
  * A committee endorses a unit. Each member reads it alone and hands in a report (the questions come from the step's
  * template); nobody sees another report before handing in their own. Then the committee decides, by the step's rule,
@@ -84,14 +120,15 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   const [articles, setArticles] = useState<Record<string, string | null>>({});
   /** The terms whose name or article was already asked for, so each is read once. */
   const asked = useRef(new Set<string>());
-  const reportRef = useRef<HTMLElement>(null);
   /**
-   * Where the person was reading when they went to their report, to go back to it. On a phone the report is under
-   * the whole passage (twenty screens of it): «Ir a mi reporte» took them there and left no way back to the verse.
+   * On a phone the report is a sheet over the reading. It was under the whole passage (twenty screens of it): going
+   * to it lost the verse one was at, and a way back had to be added. Closed, the reading is where it was left.
    */
-  const rootRef = useRef<HTMLDivElement>(null);
-  const readRef = useRef<HTMLDetailsElement>(null);
-  const [leftAt, setLeftAt] = useState<{ root: number; read: number } | null>(null);
+  const wide = useWide();
+  const asSheet = !wide && mode === "reporte";
+  const [reportOpen, setReportOpen] = useState(false);
+  /** The last thing kept, said where it can be seen: over a sheet nothing else says a draft was saved. */
+  const [told, setTold] = useState("");
   /** The plan's settings once corrections were asked from here, and the items of every open subtarea of the project. */
   const [settings, setSettings] = useState<ProjectSettings | undefined>();
   const [openItems, setOpenItems] = useState<string[]>([]);
@@ -179,6 +216,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
         await approveStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, step: data.step }).then(setStepDone).catch(() => undefined);
       }
       announce(said);
+      setTold(said);
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -371,7 +409,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   const aboutLabel = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
 
   return (
-    <div className="af en" ref={rootRef}>
+    <div className="af en">
       <ToolHeader
         title={toolHeading(ctx, language, title).title}
         onBack={onClose}
@@ -399,7 +437,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       ) : null}
 
       {data ? (
-        <details className="en-texts en-read" open={mode === "reporte"} ref={readRef}>
+        <details className="en-texts en-read" open={mode === "reporte"}>
           <summary>{t("en.readUnit")}</summary>
           <UnitReading
             book={data.book}
@@ -417,24 +455,6 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
             saving={saving}
             progressKey={session && ctx && !ctx.lab ? seenHelpsKey(session.host, session.username, data.book, ctx.issueNumber || ctx.taskId) : undefined}
           />
-          {mode === "reporte" && mine ? (
-            // On a phone the report is under the whole reading: it stays one press away while reading.
-            <div className="en-jump">
-              <p>{standing ? t(standing === 1 ? "en.jumpOne" : "en.jumpMany").replace("{n}", String(standing)) : t("en.jumpNone")}</p>
-              <button
-                type="button"
-                className="btn"
-                data-variant="outline"
-                data-size="default"
-                onClick={() => {
-                  setLeftAt({ root: rootRef.current?.scrollTop ?? 0, read: readRef.current?.scrollTop ?? 0 });
-                  reportRef.current?.scrollIntoView({ block: "start" });
-                }}
-              >
-                {t("en.jump")}
-              </button>
-            </div>
-          ) : null}
         </details>
       ) : null}
 
@@ -475,22 +495,15 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
         </details>
       ) : null}
 
+      <PhoneSheet sheet={asSheet} open={reportOpen} onClose={() => setReportOpen(false)} title={t("en.myReport")} close={t("ur.close")}>
       {data && mode === "reporte" && mine ? (
-        <section ref={reportRef} className="af-card" aria-label={t("en.myReport")}>
-          <h2 className="af-phrase">{t("en.myReport")}</h2>
-          {leftAt ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="en-back"
-              onClick={() => {
-                if (rootRef.current) rootRef.current.scrollTop = leftAt.root;
-                if (readRef.current) readRef.current.scrollTop = leftAt.read;
-                setLeftAt(null);
-              }}
-            >
-              {t("en.backToReading")}
-            </Button>
+        <section className="af-card" aria-label={t("en.myReport")}>
+          {asSheet ? null : <h2 className="af-phrase">{t("en.myReport")}</h2>}
+          {/* The page's own notice is under the sheet. */}
+          {asSheet && error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : null}
           <p className="af-hint">{mine.delivered ? t("en.deliveredHint") : t("en.blindHint")}</p>
           {!questions.length ? <p className="af-stale">{t("ck.noQuestions")}</p> : null}
@@ -584,6 +597,11 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
               </Button>
             ) : null}
           </div>
+          {told && !saving ? (
+            <p className="af-hint en-told" role="status">
+              {told}
+            </p>
+          ) : null}
         </section>
       ) : null}
 
@@ -670,6 +688,25 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
             </>
           ) : null}
         </section>
+      ) : null}
+      </PhoneSheet>
+      {asSheet && data && mine ? (
+        // The report, one press away whatever is being read.
+        <div className="en-jump">
+          <p>{standing ? t(standing === 1 ? "en.jumpOne" : "en.jumpMany").replace("{n}", String(standing)) : t("en.jumpNone")}</p>
+          <button
+            type="button"
+            className="btn"
+            data-variant="default"
+            data-size="default"
+            onClick={() => {
+              setTold("");
+              setReportOpen(true);
+            }}
+          >
+            {t("en.jump")}
+          </button>
+        </div>
       ) : null}
       <ConfirmDialog
         open={confirming}

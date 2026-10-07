@@ -8577,44 +8577,44 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
    A verse is three things, each set apart by its room and its ground: its texts; the help in view, in a card (where
    one is, the help, what was noted about it); and what concerns the verse as a whole. */
 .ur { display: grid; grid-template-columns: minmax(0, 1fr); }
-/* The verses of the passage, in reach all the way down: one row that slides sideways and stays at the top. Blue is
-   where one is, teal what was gone through, amber what has something noted (the colours of the system). */
-.ur-index { position: sticky; top: -0.75rem; z-index: 2; display: flex; align-items: center; gap: 0.375rem; min-width: 0; margin: 0 -1rem; padding: 0.375rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border); }
-.ur-index__row { flex: 1 1 auto; min-width: 0; display: flex; gap: 0.25rem; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
-.ur-index__row::-webkit-scrollbar { display: none; }
-/* An arrow at each end whenever the verses do not all fit: with a mouse the row cannot be slid, and with a finger
-   nothing but a number cut in half said it went on. */
-.ur-index__more { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); color: var(--text); cursor: pointer; }
-.ur-index__more:hover:not(:disabled) { background: var(--accent-100); border-color: var(--primary); }
-.ur-index__more:disabled { opacity: 0.35; cursor: default; }
-.ur-index__row button { position: relative; flex: 0 0 auto; min-width: 2.75rem; min-height: 2.75rem; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; font-variant-numeric: tabular-nums; cursor: pointer; }
-.ur-index__row button[data-done] { border-color: var(--success-500); background: var(--success-100); color: var(--success-700); }
-.ur-index__row button[aria-current="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); font-weight: 700; }
-.ur-index__row button[data-noted]::after { content: ""; position: absolute; top: 0.25rem; right: 0.25rem; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--warning-500); box-shadow: 0 0 0 2px var(--surface); }
-/* The reading box had its own heading fixed at the top: the row of verses is what stays there now. */
+/* What stays at the top of the reading: where one is, which is the way to any verse, and its options. The page is
+   the passage; what is used now and then comes when asked for. */
+.ur-bar { position: sticky; top: -0.75rem; z-index: 2; display: flex; align-items: center; gap: 0.5rem; min-width: 0; margin: 0 -1rem; padding: 0.375rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+.ur-bar .btn, .af .ur-bar .btn[data-size="default"] { height: auto; min-height: 2.75rem; }
+.ur-bar__verse { min-width: 0; gap: 0.5rem; }
+.ur-bar__verse > span { color: var(--text-muted); font-size: 0.8125rem; font-weight: 400; white-space: nowrap; }
+/* The reading box had its own heading fixed at the top: the bar is what stays there now. */
 .en-read > summary { position: static; }
-.ur-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.25rem 0.5rem; padding: 0.375rem 0; }
-.ur-legend { flex: 0 1 auto; min-width: 0; }
-.ur-legend[open] { flex-basis: 100%; }
-.ur-legend > summary { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.5rem; color: var(--accent-700); font-size: 0.8125rem; cursor: pointer; list-style: none; }
-.ur-legend > summary::-webkit-details-marker { display: none; }
-.ur-legend > summary::before { content: "▸"; }
-.ur-legend[open] > summary::before { content: "▾"; }
+/* What the marks mean, said once where the reading starts. */
+.ur-legend { padding: 0.5rem 0 0.25rem; }
+/* Going to a verse: a box over the passage, with its way out said in a word. Blue is where one is, teal what was
+   gone through, amber what has something noted (the colours of the system). */
+.dialog.ur-pick { width: min(26rem, calc(100vw - 1.5rem)); max-height: min(100dvh - 2rem, 40rem); padding: 0; overflow: hidden; }
+.dialog.ur-pick[open] { display: flex; flex-direction: column; }
+.ur-pick__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; gap: 0.625rem; padding: 0.875rem 1rem 1rem; }
+.ur-pick__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr)); gap: 0.375rem; }
+.ur-pick__grid button { position: relative; min-height: 2.75rem; padding: 0 0.25rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; font-variant-numeric: tabular-nums; cursor: pointer; }
+.ur-pick__grid button[data-done] { border-color: var(--success-500); background: var(--success-100); color: var(--success-700); }
+.ur-pick__grid button[aria-current="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); font-weight: 700; }
+.ur-pick__grid button[data-noted]::after { content: ""; position: absolute; top: 0.25rem; right: 0.25rem; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--warning-500); box-shadow: 0 0 0 2px var(--surface); }
 .ur-hint { margin: 0; font-size: 0.8125rem; line-height: 1.9; }
 .ur-key { padding: 0.0625rem 0.4375rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 0.75rem; white-space: nowrap; }
+.ur-key[data-current] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
 .ur-key[data-done] { border-color: var(--success-500); background: var(--success-100); color: var(--success-700); }
 .ur-key[data-noted]::after { content: ""; display: inline-block; width: 0.4375rem; height: 0.4375rem; margin-left: 0.3125rem; border-radius: 50%; background: var(--warning-500); vertical-align: 0.0625rem; }
-.ur-texts { flex: 0 0 auto; align-items: center; margin-top: 0; }
 .ur-verse { display: grid; gap: 0.5rem; padding: 0.875rem 0; border-top: 1px solid var(--border); scroll-margin-top: 4rem; }
 .ur-ref { margin: 0; font-size: 0.875rem; font-weight: 700; color: var(--text-muted); }
-/* Two versions of the verse, each in a box of its own under its name. The literal one is the text the helps were
-   written about, on white; the simple one, on the other ground. No new colour: the system keeps its hues for
-   what one does, what is done and what needs attention. */
+/* The verse in its literal text, the one the helps were written about, in a box under its name. The simple one is
+   read as a help, in the card: its name is the same pill, in outline. No new colour: the system keeps its hues
+   for what one does, what is done and what needs attention. */
 .ur-text { padding: 0.375rem 0.625rem 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); }
-.ur-text[data-text="tps"] { background: var(--surface-muted); border-style: dashed; }
 .ur-text > p { margin: 0; font-size: 1rem; line-height: 1.5; isolation: isolate; }
 .ur-text__name { display: inline-block; margin-right: 0.125rem; vertical-align: 0.0625rem; padding: 0 0.5rem; border-radius: 999px; background: var(--gray-800); color: #fff; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.04em; line-height: 1.6; }
-.ur-text[data-text="tps"] .ur-text__name { background: var(--surface); color: var(--gray-800); box-shadow: inset 0 0 0 1.5px var(--gray-800); }
+.ur-text__name[data-text="tps"] { background: var(--surface); color: var(--gray-800); box-shadow: inset 0 0 0 1.5px var(--gray-800); }
+/* The other text, in the card: its words are touched as those of the page are. */
+.ur-other { margin: 0; font-size: 1rem; line-height: 1.9; isolation: isolate; }
+/* How the other text says what a help is about, under how the page says it. */
+.ur-item__other { margin: 0; font-size: 0.9375rem; color: var(--text-muted); }
 /* A small heading for a part of the verse: what is being gone over, what was noted. */
 .ur-lbl { margin: 0; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); overflow-wrap: anywhere; }
 /* What has a note or a key term: underlined under the word itself, and touched in a taller box that does not show.
@@ -8623,6 +8623,8 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 /* A key term is told from a note by its line: with four words of five underlined, the lines said nothing of what
    was under each. */
 .ur-word[data-term] { text-decoration-style: solid; text-decoration-color: var(--primary); }
+/* A word with no help of its own: it is touched to see how the other text says it, and has no line under it. */
+.ur-word[data-plain]:not([data-here]) { text-decoration: none; }
 /* «a», «y», «de» were 9 to 19 px wide to a finger: they are touched over the spaces beside them too. */
 .ur-word[data-short] { position: relative; z-index: 1; padding-inline: 0.45em; margin-inline: -0.45em; }
 span.ur-word { padding: 0; margin: 0; cursor: default; }
@@ -8635,24 +8637,39 @@ span.ur-word { padding: 0; margin: 0; cursor: default; }
 .ur-word[data-here] { color: var(--accent-700); text-decoration-style: solid; text-decoration-color: var(--primary); }
 .ur-space { white-space: pre-wrap; }
 .ur-text:has(.ur-word) > p { line-height: 1.9; }
-.ur-kinds { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.125rem; }
-.ur-kinds button { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 40px; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.875rem; cursor: pointer; }
-.ur-kinds button[data-done] { border-color: var(--success-500); color: var(--success-700); }
-.ur-kinds button[aria-expanded="true"], .ur-kinds button[aria-pressed="true"] { border-color: var(--primary); background: var(--accent-100); font-weight: 600; }
+/* Under a verse: one button to its helps (what there is to do here) and one to what is noted about it. */
+.ur-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.125rem; }
+.ur-acts button { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.75rem; padding: 0 0.875rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text-muted); font: inherit; font-size: 0.9375rem; cursor: pointer; }
+.ur-acts button[data-helps] { border-color: var(--primary); color: var(--accent-700); font-weight: 600; }
+.ur-acts button[data-done] { border-color: var(--success-500); color: var(--success-700); }
+.ur-acts button[data-noted] { border-color: var(--warning-500); background: var(--warning-100); color: var(--warning-700); }
+.ur-acts button[aria-expanded="true"] { border-color: var(--primary); background: var(--accent-100); color: var(--accent-700); }
 /* The help in view: a card that holds to the foot of the screen while its verse is on it, as a keyboard does. The
    two texts of a long verse fill a phone (608 px in Jude 1:12): under them the help was out of sight, the simple
    text between the literal one and its note. Held at the foot, the texts slide above it and both are read together;
    a long help scrolls inside it, under its own row of buttons. */
-.ur-open { position: sticky; bottom: 0.5rem; z-index: 1; display: flex; flex-direction: column; max-height: min(52dvh, 28rem); border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); box-shadow: 0 -8px 20px -12px rgb(11 23 48 / 0.35), var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 0.06)); overflow: hidden; }
-/* Over the bar that leads to the report, where there is one. */
-.en-read:has(.en-jump) .ur-open { bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
-.ur-open > .ur-pager { flex: 0 0 auto; }
+.ur-open { position: sticky; bottom: 0.5rem; z-index: 1; display: flex; flex-direction: column; max-height: min(40dvh, 22rem); border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); box-shadow: 0 -8px 20px -12px rgb(11 23 48 / 0.35), var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 0.06)); overflow: hidden; }
+/* It was up to 52dvh, over a bar of 64 px that led to the report: some 250 px of 812 were left for the verse it
+   is about, and now 420. It is at most 40dvh, and the bar to the report gives way to it while it is on the screen
+   (`data-docked`: scrolled away with its card open, the verse does not keep the bar from coming back). */
+.af.en:has(.ur[data-docked]) > .en-jump { display: none; }
+.ur-open > .ur-tabs, .ur-open > .ur-pager { flex: 0 0 auto; }
+/* Its first row: what is open (the kinds of help the verse has, each the way to it) and the way out. */
+.ur-tabs { display: flex; align-items: center; justify-content: space-between; gap: 0.25rem; padding: 0.25rem 0.375rem 0 0.375rem; background: var(--surface-muted); }
+.ur-tabs__list { display: flex; gap: 0.125rem; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.ur-tabs__list::-webkit-scrollbar { display: none; }
+.ur-tabs__list button { flex: 0 0 auto; min-width: 2.5rem; min-height: 2.75rem; padding: 0 0.3125rem; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--text-muted); font: inherit; font-size: 0.8125rem; white-space: nowrap; cursor: pointer; }
+.ur-tabs__list button[aria-pressed="true"] { border-bottom-color: var(--primary); color: var(--accent-700); font-weight: 700; }
+.ur-tabs__title { min-width: 0; padding: 0.625rem 0; font-size: 0.9375rem; overflow-wrap: anywhere; }
+.ur-tabs .btn, .af .ur-tabs .btn[data-size="default"] { flex: 0 0 auto; height: auto; min-height: 2.5rem; margin-bottom: 0.25rem; background: var(--surface); }
 .ur-open > .ur-items { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-/* While something is typed in it, it is where it belongs in the page, whole: the keyboard takes the foot of the screen. */
-:root[data-typing="true"] .ur-open { position: static; max-height: none; }
+/* While something is typed in it, it is where it belongs in the page, whole: the keyboard takes the foot of the
+   screen. And so it stays while a concern is being written, with the keyboard put away too: held at the foot at
+   its low height, the box of 325 px had «Cancelar» and «Anotar» out of sight under its edge. */
+.ur-open:has(.ur-concern), :root[data-typing="true"] .ur-open { position: static; max-height: none; }
 .ur-open > .af-hint { flex: 0 0 auto; margin: 0; padding: 0.5rem 0.75rem 0; }
 /* One help at a time: where it is among those of the verse, and the way to the one before and the one after. */
-.ur-pager { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid var(--border); background: var(--surface-muted); }
+.ur-pager { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; padding: 0.25rem 0.5rem 0.375rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface-muted); }
 .ur-pager .btn, .af .ur-pager .btn[data-size="default"] { height: auto; min-height: 2.75rem; min-width: 2.75rem; }
 .ur-pager .btn[data-variant="outline"] { background: var(--surface); }
 .ur-pager__at { display: grid; gap: 0.0625rem; justify-items: center; text-align: center; }
@@ -8677,9 +8694,6 @@ span.ur-word { padding: 0; margin: 0; cursor: default; }
    ground, so it does not read as more of the help. */
 .ur-item__foot { display: grid; gap: 0.375rem; margin: 0.375rem -0.75rem -0.75rem; padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); background: var(--surface-muted); }
 .ur-item__foot .ur-said li { background: var(--surface); }
-/* What concerns the verse as a whole: apart from the card when one is open. */
-.ur-foot { display: grid; gap: 0.375rem; }
-.ur-foot[data-apart] { margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-strong); }
 .ur-add { justify-self: start; min-height: 40px; display: inline-flex; align-items: center; gap: 0.3125rem; padding: 0; border: 0; background: none; color: var(--accent-700); font: inherit; font-size: 0.8125rem; cursor: pointer; }
 /* Where a concern is written: short, with what is typed and the button that keeps it together above the keyboard. */
 .ur-concern { display: grid; gap: 0.375rem; padding: 0.625rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); }
@@ -8697,17 +8711,23 @@ span.ur-word { padding: 0; margin: 0; cursor: default; }
 .ur-said li { display: grid; gap: 0.125rem; padding: 0.375rem 0.625rem; border-left: 3px solid var(--accent-500); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--surface-muted); }
 .ur-said li[data-kind="objection"] { border-left-color: var(--warning-500); background: var(--warning-100); color: var(--warning-700); }
 .ur-said li .ur-add { min-height: 2.5rem; }
-.en-jump { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 0 -1rem -0.75rem; padding: 0.5rem 1rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border-strong); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+/* The way to the report, on a phone: a bar at the foot of the tool, whatever is being read. Inside the reading,
+   closing «Leer el pasaje» took it away. */
+.en-jump { position: sticky; bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 0 -0.75rem calc(-1rem - env(safe-area-inset-bottom, 0px)); padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border-strong); box-shadow: 0 -4px 12px rgb(0 0 0 / 0.06); }
 .en-jump p { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
-.en-back, .af .en-back.btn[data-size="default"] { justify-self: start; height: auto; min-height: 2.75rem; }
-.en-jump .btn { flex: 0 0 auto; min-height: 40px; }
+.en-jump .btn, .af .en-jump .btn[data-size="default"] { flex: 0 0 auto; height: auto; min-height: 2.75rem; }
+/* The report on its sheet: the sheet is its box. */
+.en-sheet { display: grid; align-content: start; gap: 1rem; }
+.en-sheet > .af-card { padding: 0; border: 0; border-radius: 0; background: none; }
+.en-sheet > .af-card + .af-card { padding-top: 1rem; border-top: 1px solid var(--border); }
+/* On a phone, where the sheet is: what is pressed in it is 44 px tall (the buttons of the report were 36 and 40). */
+.af .en-sheet .btn[data-size] { height: auto; min-height: 2.75rem; }
+.en-told { margin: 0; color: var(--success-700); font-weight: 600; }
 @media (max-width: 1023px) {
   /* On a phone the unit is read down the page, not in a box with a scroll of its own: its helps open inside it. */
   .en-read[open] { max-height: none; overflow: visible; }
   .en-read > summary { position: static; }
-}
-@media (min-width: 1024px) {
-  .en-jump { display: none; }
+  .en .ur-open { bottom: -0.5rem; }
 }
 @media (min-width: 1024px) {
   .af.en, .af.ck { max-width: 76rem; grid-template-columns: minmax(0, 1fr) minmax(22rem, 30rem); column-gap: 1rem; align-items: start; }
