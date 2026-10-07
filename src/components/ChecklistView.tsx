@@ -20,6 +20,7 @@ import { loadChecklist, type ChecklistData, type ChecklistItem, type ChecklistKi
 import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
+import { helpRowRef } from "../domain/commentPlace";
 import { helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome } from "../domain/checklist";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { coordinatorsOf } from "../domain/levels";
@@ -364,7 +365,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ck.title");
   // The helps editor opens for one resource: this checklist's.
-  const editorHref = ctx && kind !== "palabras" ? `#/solver/helps?ctx=${encodeURIComponent(encodeSolverLaunchContext({ ...ctx, resource: kind }))}` : "";
+  // On the note or the question in view: whoever goes to correct one of 160 does not look for it again.
+  const editorHref = ctx && kind !== "palabras" ? `#/solver/helps?ctx=${encodeURIComponent(encodeSolverLaunchContext({ ...ctx, resource: kind, ...(item ? { focus: helpRowRef(`${item.chapter}:${item.verse}`, item.id) } : {}) }))}` : "";
 
   return (
     <div className="af ck">
@@ -526,13 +528,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
             {item.supportRef && kind !== "palabras" ? <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p> : null}
             {session && ctx?.pmOrg && ctx.projectId && data ? (
-              // What the teams before this one said about this very help (those who refined the text, say).
-              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} />
-            ) : null}
-            {editorHref ? (
-              <a className="af-link" href={editorHref} target="_blank" rel="noopener noreferrer">
-                {t("ck.openEditor")}
-              </a>
+              // What the teams before this one said about this very help (those who refined the text, say): read
+              // before answering. With nothing said, «Mensajes de equipos anteriores… Puedes responder» stood over
+              // an empty box, and with the link to the editor it pushed the questions under the first screen of
+              // a phone (the first one at 863 px of 812).
+              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny />
             ) : null}
 
             <ul className="ck-questions">
@@ -593,6 +593,12 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 );
               })}
             </ul>
+            {/* What to do when the answer is «No»: after the questions, not before them. */}
+            {editorHref ? (
+              <a className="af-link" href={editorHref} target="_blank" rel="noopener noreferrer">
+                {t("ck.openEditor")}
+              </a>
+            ) : null}
           </section>
 
           <nav className="af-nav" aria-label={t("ck.navAria")}>
@@ -605,7 +611,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             </Button>
           </nav>
           {!summary.complete ? (
-            <Button type="button" variant="outline" onClick={nextPending}>
+            // Once this one is checked, going on is the thing to do: it is the button that stands out.
+            <Button type="button" variant={tally?.state === "ok" ? "default" : "outline"} onClick={nextPending}>
               {t("ck.nextPending")}
             </Button>
           ) : null}

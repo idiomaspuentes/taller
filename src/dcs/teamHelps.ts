@@ -2,18 +2,61 @@ import { knownBranches, onlyExisting } from "./branchList";
 import { createOrUpdateContents, DcsApiError, getRawContent } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
-import { readRepoFile } from "./afinacionStore";
+import { isWriteRace, raceDelay, readRepoFile } from "./afinacionStore";
 import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { withQuote } from "../domain/quoteFromSelection";
 import { bookBranchName, bookOnlyBranchName, groupDraftBranchNames } from "../domain/portionPr";
+import { draftReadOrder } from "../domain/branchNames";
+import { applyHelpsTsvEdits } from "../domain/helpsDraft";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
 import type { PmConfig } from "../domain/roles";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import type { AssignmentsDoc } from "../domain/types";
 
 /**
+ * The branch that holds the team's own version of a resource: the group draft of the task that translates it (see
+ * `draftReadOrder`). `null` when the team has no draft of it.
+ */
+export async function teamDraftBranch(params: { session: GtSession; owner: string; repo: string; book: string; teams: AssignmentsDoc["teams"]; resource: string }): Promise<string | null> {
+  const { session, owner, repo } = params;
+  const names = await knownBranches(dcsConfig(session.host), owner, repo, session.token);
+  const candidates = [...new Set(draftReadOrder(params.teams, params.resource).flatMap((id) => groupDraftBranchNames(params.book.toUpperCase(), id)))];
+  // The list could not be read: the draft of the task that translates is the one to try.
+  return names ? (candidates.find((branch) => names.has(branch)) ?? null) : (candidates[0] ?? null);
+}
+
+/**
+ * Corrections to rows of the team's notes or questions, by a task that works on the group draft (harmonizing,
+ * validating): written straight onto that draft, over the file as it is at that moment, so a row somebody else
+ * corrected meanwhile keeps what they wrote.
+ */
+export async function saveTeamHelpsRows(params: { session: GtSession; owner: string; repo: string; filepath: string; branch: string; edits: { id: string; fields: Record<string, string> }[]; message: string }): Promise<{ text: string; sha?: string }> {
+  const { session, owner, repo, filepath, branch } = params;
+  for (let attempt = 1; ; attempt++) {
+    const current = await readRepoFile(session, { owner, repo, branch }, filepath);
+    if (!current) throw new Error("No se encontró este archivo en las ayudas del equipo.");
+    const content = applyHelpsTsvEdits(current.text, params.edits);
+    if (content === current.text) return current;
+    try {
+      const saved = await createOrUpdateContents(dcsConfig(session.host), owner, repo, filepath, { content, message: params.message, sha: current.sha, branch, token: session.token });
+      return { text: content, sha: saved.content?.sha };
+    } catch (err) {
+      if (!isWriteRace(err) || attempt === 3) throw err;
+      await raceDelay(attempt);
+    }
+  }
+}
+
+/** The same for an article, which is a file of its own: written on the team's draft with the version it was read at. */
+export async function saveTeamHelpsFile(params: { session: GtSession; owner: string; repo: string; filepath: string; branch: string; content: string; sha?: string; message: string }): Promise<{ sha?: string }> {
+  const { session, owner, repo, filepath, branch } = params;
+  const saved = await createOrUpdateContents(dcsConfig(session.host), owner, repo, filepath, { content: params.content, message: params.message, sha: params.sha, branch, token: session.token });
+  return { sha: saved.content?.sha };
+}
+
+/**
  * The team's own version of a helps file (its translated notes or questions), as it stands now: the group draft
- * of the tasks that work on that resource, latest task of the process first, or else what is already published.
+ * of the task that translates that resource (see `draftReadOrder`), or else what is already published.
  * `null` when the team has none yet, so the caller can fall back to the source language.
  */
 export async function readTeamHelps(params: {
@@ -27,9 +70,8 @@ export async function readTeamHelps(params: {
   const helps = resolveHelpsTarget({ ...ctx, resource: kind }, params.pmConfig);
   if ("error" in helps || !helps.filepath) return null;
   const book = (ctx.book || ctx.projectId || "").toUpperCase();
-  const tasks = (board?.teams ?? []).filter((task) => task.rules.some((rule) => rule.resource === kind)).reverse();
   const branches: (string | undefined)[] = [
-    ...new Set(tasks.flatMap((task) => groupDraftBranchNames(book, task.id))),
+    ...new Set(draftReadOrder(board?.teams, kind).flatMap((id) => groupDraftBranchNames(book, id))),
     bookOnlyBranchName(book),
     undefined,
   ];

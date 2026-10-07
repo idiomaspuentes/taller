@@ -89,6 +89,19 @@ export function draftTaskId(teams: TaskWithResources[], resource: string): strin
 }
 
 /**
+ * The tasks whose group draft may hold the team's text of a resource, in the order to look for it: the task that
+ * translates it first, since its draft is the one every later task corrects. The others follow, latest first, for
+ * a book from before that rule, where a later task kept a draft of its own.
+ *
+ * They were looked for latest first only. A draft that a later task should never have had (the helps editor opened
+ * from a harmonization started one, copied from the source) was then read instead of what the team had translated.
+ */
+export function draftReadOrder(teams: TaskWithResources[] | undefined, resource: string): string[] {
+  const ids = (teams ?? []).filter((task) => task.rules.some((rule) => rule.resource === resource)).map((task) => task.id);
+  return ids.length ? [ids[0]!, ...ids.slice(1).reverse()] : [];
+}
+
+/**
  * Whether a task has a group draft of its own, with personal work branches and a review to land on it: only the
  * translation task of a resource. Every other task of that resource (a group reading, refining, aligning,
  * harmonizing, validating) works on that draft, and must never start a draft or a review of its own.

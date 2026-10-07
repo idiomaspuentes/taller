@@ -26,6 +26,8 @@ type Props = {
   lede: string;
   /** How many there are, once known. */
   onCount?: (count: number) => void;
+  /** For whoever only reads them: with none there is nothing to read nor to answer, so nothing is shown. */
+  onlyIfAny?: boolean;
 };
 
 /**
@@ -33,7 +35,7 @@ type Props = {
  * that will work on it: whoever refines the text and disagrees with a note says what they would change, and
  * whoever harmonizes that note later finds it there. They are shared study notes that name the help.
  */
-export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, verse, about, resource, resourceName, taskName, lede, onCount }: Props) {
+export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, verse, about, resource, resourceName, taskName, lede, onCount, onlyIfAny }: Props) {
   const t = useT();
   const [notes, setNotes] = useState<StudyNote[] | null>(null);
   const [text, setText] = useState("");
@@ -76,6 +78,8 @@ export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, v
       setBusy(false);
     }
   }
+
+  if (onlyIfAny && !here.length) return null;
 
   return (
     <div className="hm">

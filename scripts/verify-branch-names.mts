@@ -12,6 +12,7 @@ import {
   DEFAULT_BRANCH_NAMES,
   branchNameProblems,
   branchNames,
+  draftReadOrder,
   draftTaskId,
   mergeBranchNames,
   setWorkspaceBranchNames,
@@ -141,6 +142,20 @@ test("solo la tarea que traduce un recurso tiene borrador propio; las demás tra
   }
   assert.equal(taskHasOwnDraft(undefined, "x"), false);
   assert.equal(taskHasOwnDraft([], "x"), false, "una tarea que el plan no conoce no abre nada");
+});
+
+test("lo del equipo se busca primero en el borrador de quien lo traduce, aunque una tarea posterior tenga una rama", () => {
+  const teams = [
+    { id: "notas-ayuda", rules: [{ resource: "notas" }] },
+    { id: "desafios", rules: [{ resource: "tpl" }, { resource: "notas" }] },
+    { id: "armonizar-notas", rules: [{ resource: "notas" }, { resource: "academia" }] },
+    { id: "validar", rules: [{ resource: "tpl" }, { resource: "notas" }] },
+  ];
+  assert.deepEqual(draftReadOrder(teams, "notas"), ["notas-ayuda", "validar", "armonizar-notas", "desafios"], "quien traduce, y después las demás, la última primero (libros de antes)");
+  assert.equal(draftReadOrder(teams, "notas")[0], draftTaskId(teams, "notas"));
+  assert.deepEqual(draftReadOrder(teams, "academia"), ["armonizar-notas"]);
+  assert.deepEqual(draftReadOrder(teams, "preguntas"), []);
+  assert.deepEqual(draftReadOrder(undefined, "notas"), []);
 });
 
 console.log(`\nverify-branch-names: ${passed} checks passed.`);

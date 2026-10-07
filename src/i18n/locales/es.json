@@ -2772,5 +2772,8 @@
   "al.tellAligner": "Avisar a @{who}",
   "al.toldAligner": "Ya se le avisó a @{who} que falta terminar este versículo. Cuando lo termine, podrás responder.",
   "al.tellAlignerSaid": "este versículo cambió después de que lo alineaste y quedó sin terminar. Por favor complétalo para que podamos revisarlo.",
-  "al.doneAgainSaid": "terminé de alinear este versículo otra vez. Ya pueden revisarlo."
+  "al.doneAgainSaid": "terminé de alinear este versículo otra vez. Ya pueden revisarlo.",
+  "he.footShared": "Lo que corrijas aquí queda en las ayudas de tu equipo.",
+  "he.sharedNone": "Tu equipo todavía no tiene estas ayudas traducidas: aquí no hay nada que corregir.",
+  "he.savedShared": "Guardado en las ayudas de tu equipo."
 }

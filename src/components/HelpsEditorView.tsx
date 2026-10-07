@@ -38,6 +38,8 @@ import {
 } from "../dcs/portionPr";
 import { recordOwnSave } from "../domain/pendingEvents";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
+import { saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "../dcs/teamHelps";
+import { taskHasOwnDraft } from "../domain/branchNames";
 import {
   applyHelpsTsvEdits,
   articleRefsToDraftItems,
@@ -117,6 +119,9 @@ async function readFileOnRef(
   return { text, sha: ref ? meta.sha : undefined };
 }
 
+/** What a help says, to tell whether it was changed since it was opened. */
+const stampOf = (item: HelpsDraftItem) => JSON.stringify([item.text, item.secondary ?? ""]);
+
 async function readFilePreferBranch(
   session: GtSession,
   owner: string,
@@ -157,6 +162,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** Whether that was read (there is nothing to read while the draft is not in review): the piece found open depends on it. */
   const [reviewRead, setReviewRead] = useState(false);
   const loading = useRef(0);
+  /**
+   * The task that opened the editor does not translate this resource (it harmonizes, it validates): it corrects the
+   * team's own helps on their group draft, and has no draft, no work branch and no review of its own.
+   */
+  const [shared, setShared] = useState(false);
+  /** What each help read when it was opened, so only what this person changed is written over the team's file. */
+  const opened = useRef<Record<string, string>>({});
   const [pane, setPane] = useState<"edit" | "chapter">("edit");
   /** An article is worked piece by piece, each under its source; «todo junto» is the whole text in one box. */
   const [view, setView] = useState<"rows" | "whole">(() => (readPref("taller-article-view") === "whole" ? "whole" : "rows"));
@@ -176,6 +188,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     }
     setCtx(decoded);
     started.current = new Set();
+    opened.current = {};
     autoOpened.current = false;
     pieces.reset();
     const thisLoad = ++loading.current;
@@ -253,9 +266,24 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setBusy(true);
     setError("");
     try {
+      // Opened as a translation by a task that only corrects, the editor looked for a draft of that task, found
+      // none, and started one from the source: the notes of a harmonization came up in English, «0 de 160», and
+      // every later screen read that copy instead of what the team had translated.
+      const board = lab ? null : await loadAssignmentsFromDcs(sess, decoded.pmOrg, decoded.lang, decoded.projectId, decoded.contentOrg).catch(() => null);
+      const onTeamDraft = Boolean(board?.teams.some((task) => task.id === decoded.taskId)) && !taskHasOwnDraft(board!.teams, decoded.taskId);
+      setShared(onTeamDraft);
       let head = cache?.branch || fallbackBranch;
+      if (onTeamDraft) {
+        const draft = await teamDraftBranch({ session: sess, owner: resolved.owner, repo: resolved.repo, book: resolved.book, teams: board!.teams, resource: decoded.resource });
+        if (!draft) {
+          setItems([]);
+          setError(tNow("he.sharedNone"));
+          return;
+        }
+        head = draft;
+      }
       let review: PortionPrMarker | null = null;
-      if (!lab && decoded.issueNumber > 0 && decoded.pmOrg) {
+      if (!onTeamDraft && !lab && decoded.issueNumber > 0 && decoded.pmOrg) {
         try {
           const issue = await getPmIssue(sess, decoded.pmOrg, decoded.issueNumber);
           const visible = await resolveVisiblePortionPr({
@@ -292,8 +320,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       if (resolved.kind === "tsv" && resolved.filepath) {
         try {
           const filepath = resolved.filepath;
-          const file = await readFilePreferBranch(sess, resolved.owner, resolved.repo, filepath, head).catch(async (err) => {
-            if (lab) throw err;
+          const file = await (onTeamDraft ? readFileOnRef(sess, resolved.owner, resolved.repo, filepath, head) : readFilePreferBranch(sess, resolved.owner, resolved.repo, filepath, head)).catch(async (err) => {
+            if (lab || onTeamDraft) throw err;
             // A book the team has not worked yet: its rows are taken from the source and translated in place.
             const board = await loadAssignmentsFromDcs(sess, decoded.pmOrg, decoded.lang, decoded.projectId, decoded.contentOrg).catch(() => null);
             const pkg = resolveSourcePackage(board?.settings);
@@ -335,6 +363,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             });
           }
           if (!next.length && lab) next = labPlaceholderHelpsItems(decoded, resolved);
+          opened.current = Object.fromEntries(tsvRowsToDraftItems(tsvResource, resolved.filepath, selectTsvRowsForPortion(rows, decoded, inventory)).map((item) => [item.id, stampOf(item)]));
           setItems(next);
           setDirty(usedCache);
           if (usedCache) announce(tNow("se.restored"));
@@ -373,6 +402,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         const cached = cache?.texts[item.id];
         if (cached != null && cached !== remote) usedCache = true;
         nextItems.push({ ...item, text: cached ?? remote });
+        opened.current[item.id] = stampOf({ ...item, text: remote });
       }
       setFiles(nextFiles);
       setItems(nextItems.length || !lab ? nextItems : labPlaceholderHelpsItems(decoded, resolved));
@@ -446,6 +476,26 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setError("");
     try {
       const nextFiles = { ...files };
+      if (shared) {
+        // Straight onto the team's draft, and only what was changed here: there is no work branch nor review.
+        const changed = items.filter((item) => opened.current[item.id] !== stampOf(item));
+        const message = `TAS: corrección ${target.book} ${ctx.ref} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
+        if (target.kind === "tsv" && target.filepath) {
+          const resource = target.resource === "preguntas" ? "preguntas" : "notas";
+          nextFiles[target.filepath] = await saveTeamHelpsRows({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branch: head, edits: changed.map((item) => ({ id: item.id, fields: tsvFieldsForItem(resource, item) })), message });
+        } else {
+          for (const item of changed) {
+            const saved = await saveTeamHelpsFile({ session, owner: target.owner, repo: target.repo, filepath: item.filepath, branch: head, content: item.text, sha: files[item.filepath]?.sha, message });
+            nextFiles[item.filepath] = { text: item.text, sha: saved.sha };
+          }
+        }
+        for (const item of changed) opened.current[item.id] = stampOf(item);
+        setFiles(nextFiles);
+        setDirty(false);
+        persistLocal(items, head);
+        announce(tNow("he.savedShared"));
+        return true;
+      }
       if (target.kind === "tsv" && target.filepath) {
         const original = files[target.filepath]?.text ?? "";
         const resource = target.resource === "preguntas" ? "preguntas" : "notas";
@@ -648,7 +698,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const unit = target?.kind !== "tsv" ? "" : target.resource === "preguntas" ? "Questions" : "Notes";
   const { left: pending, total: toTranslate } = helpsLeft(texts, progress, unit ? "help" : "piece");
   const countKnown = sourceReady && texts.every((text) => progress[text.id]);
-  useStepWork(session, ctx, toTranslate - pending, toTranslate, { on: countKnown && !stepDone && !finishing });
+  // A correction of the team's helps is not the work of the step the editor was opened from (a checklist counts its own).
+  useStepWork(session, ctx, toTranslate - pending, toTranslate, { on: countKnown && !stepDone && !finishing && !shared });
   /** Whether the notes or the questions of the passage are worked by pieces: how is said once, over them all. */
   const helpsHint = Boolean(unit) && texts.some((text) => !text.item.intro);
   // A draft nobody has translated a piece of is not a draft yet: there is nothing to hand in.
@@ -1070,6 +1121,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
               ? t("he.footOffline")
               : dirty
                   ? t("he.footUnsaved")
+                  : shared
+                    ? t("he.footShared")
                   : pending
                     ? t(`he.footPending${unit}${pending === 1 ? "One" : "Many"}`).replace("{n}", String(pending))
                     : prUrl
@@ -1077,7 +1130,12 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                       : t("he.footSaved")}
           </p>
           <div className="tool-foot__actions">
-            {ctx && !isLabLaunch(ctx) && ctx.stepId && !stepDone ? (
+            {shared ? (
+              // Nothing to hand in: what is corrected is saved, and the step is finished where it was opened from.
+              <Button type="button" disabled={saving || !items.length || !dirty} onClick={() => void save()}>
+                {saving ? t("se.saving") : t("he.save")}
+              </Button>
+            ) : ctx && !isLabLaunch(ctx) && ctx.stepId && !stepDone ? (
               // The step this editor was opened for is still to be finished: one action does it.
               <>
                 {dirty ? (

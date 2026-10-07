@@ -2,6 +2,7 @@ import { knownBranches, onlyExisting } from "./branchList";
 import { createOrUpdateContents, DcsApiError, getContents } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { groupDraftBranches, readRaw } from "./afinacionLoad";
+import { draftReadOrder } from "../domain/branchNames";
 import { readRepoFile } from "./afinacionStore";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { loadPersonDocs, savePersonDoc, type CheckTarget } from "./checkStore";
@@ -134,10 +135,9 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
       const defaultBranch = await getDefaultBranch(config, owner, repo, session.token).catch(() => "");
       if (!defaultBranch) continue;
       // The team's articles are on the group draft of the work on them; with no such branch there is nothing new.
-      const tasks = (board?.teams ?? []).filter((t) => t.rules.some((rule) => rule.resource === resource)).reverse();
       let branch: string | undefined;
       const names = await knownBranches(config, owner, repo, session.token);
-      for (const candidate of onlyExisting([...new Set(tasks.flatMap((t) => groupDraftBranches(book, t.id)))], names)) {
+      for (const candidate of onlyExisting([...new Set(draftReadOrder(board?.teams, resource).flatMap((id) => groupDraftBranches(book, id)))], names)) {
         if (await branchExists(config, owner, repo, candidate, session.token).catch(() => false)) {
           branch = candidate;
           break;
