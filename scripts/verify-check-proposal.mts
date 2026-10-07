@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
+import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
 import { setActiveScope } from "../src/domain/scope";
 
 let passed = 0;
@@ -108,6 +109,25 @@ test("una versión se muestra como se lee: sin las marcas con que está escrita"
   // What is put in and taken out is still told word by word.
   const pieces = wordDiff(readable("**Fe** se refiere al creer o al confiar."), readable("**Fe** se refiere al confiar."));
   assert.deepEqual(pieces.filter((piece) => piece.kind !== "same").map((piece) => [piece.kind, piece.text.trim()]), [["gone", "creer o al"]]);
+});
+
+test("una nota que falta se agrega en su versículo, una sola vez, con un id que el archivo no tiene", () => {
+  const file = ["Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote", "front:intro\tm2jl\t\t\t\t0\tIntroducción", "1:1\trtc9\t\t\tπίστιν\t1\tPrimera de 1:1", "1:1\txyz8\t\t\tἐπίγνωσιν\t1\tSegunda de 1:1", "1:3\tabc1\t\t\tλόγον\t1\tLa de 1:3", "2:1\tdef2\t\t\tλάλει\t1\tLa de 2:1"].join("\n");
+  const added = applyHelpsTsvEdits(file, [{ id: "nv01", fields: { Note: "Una nota nueva de 1:1" }, addAt: "1:1" }]);
+  const rows = added.split("\n").filter(Boolean).map((line) => line.split("\t"));
+  assert.deepEqual(rows.map((row) => row[1]), ["ID", "m2jl", "rtc9", "xyz8", "nv01", "abc1", "def2"], "tras la última de su versículo");
+  assert.deepEqual(rows[4], ["1:1", "nv01", "", "", "", "0", "Una nota nueva de 1:1"], "sin cita todavía: se marca después, en el texto");
+  assert.equal(applyHelpsTsvEdits(added, [{ id: "nv01", fields: { Note: "Una nota nueva de 1:1" }, addAt: "1:1" }]), added, "aplicada otra vez no se agrega otra");
+  // A verse with no note of its own yet: after the notes of the verses before it.
+  assert.deepEqual(applyHelpsTsvEdits(file, [{ id: "nv02", fields: { Note: "De 1:2" }, addAt: "1:2" }]).split("\n").filter(Boolean).map((line) => line.split("\t")[1]), ["ID", "m2jl", "rtc9", "xyz8", "nv02", "abc1", "def2"]);
+  // The other rows are what they were.
+  assert.deepEqual(added.split("\n").filter((line) => line && !line.includes("nv01")), file.split("\n"));
+  // An id like the ones a file has, and none of them.
+  let turn = 0;
+  const taken = ["aaaa"];
+  const id = freshRowId(taken, () => (turn++ < 4 ? 0 : 0.5));
+  assert.match(id, /^[a-z][a-z0-9]{3}$/);
+  assert.notEqual(id, "aaaa", "el primero que salió ya estaba: se saca otro");
 });
 
 test("lo que se ve de paso, sin ser respuesta a una pregunta del paso, también es una propuesta", () => {

@@ -34,6 +34,12 @@ export type ProposalPayload = {
   after?: string;
   /** The proposal this one answers with another version. */
   replaces?: string;
+  /** The help does not exist yet: `after` is a new row of that file, with `rowId` for its id, at `where`. */
+  add?: true;
+  /** What else that new row says: the words of the original it is about (`Quote`, `Occurrence`). */
+  fields?: Record<string, string>;
+  /** Those words as they read in the text they were marked in, to say what the new help is about. */
+  about?: string;
 };
 
 /** A row somebody adds about a proposal: `itemId` is the id of the proposal. */

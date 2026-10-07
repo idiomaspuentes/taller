@@ -1410,7 +1410,6 @@
   "ck.state.open": "Sin resolver",
   "ck.state.consult": "En consulta",
   "ck.support": "Artículo: {ref}",
-  "ck.openEditor": "Abrir el editor para agregar una ayuda que falte",
   "ck.perVerse": "(una vez por versículo)",
   "ck.yes": "Sí",
   "ck.no": "No",
@@ -2961,5 +2960,12 @@
   "pr.reasonOptional": "Motivo (opcional)",
   "ck.answerLbl": "Respuesta sugerida",
   "hs.tabCorrect": "Corregir",
-  "ag.keepUndo": "Deshacer"
+  "ag.keepUndo": "Deshacer",
+  "pr.targetNewNote": "Una nota nueva en {ref}",
+  "pr.newNoteLbl": "La nota nueva",
+  "pr.writeNew": "Escribe la nota que falta.",
+  "ag.newNote": "nota nueva",
+  "pr.aboutWords": "¿Qué palabras explica?",
+  "pr.aboutWordsHint": "Toca en el versículo las palabras de las que habla la nota.",
+  "ag.about": "Sobre «{words}»"
 }

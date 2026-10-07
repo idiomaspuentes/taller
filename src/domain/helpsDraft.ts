@@ -127,10 +127,31 @@ export function helpsRowField(text: string, id: string, field: string): string |
   return row ? (row[field] ?? "") : undefined;
 }
 
-export function applyHelpsTsvEdits(
-  original: string,
-  edits: { id: string; fields: Record<string, string> }[],
-): string {
+/** What a row of a helps file is to say. `addAt`: the row is added, at that place («1:3»), when the file has none with its id. */
+export type HelpsRowEdit = { id: string; fields: Record<string, string>; addAt?: string };
+
+/** Where a row is, to keep a file in the order of its book: the introductions first, then verse by verse. */
+function rowPlace(reference: string): number {
+  const [chapter, verse] = reference.trim().split(":");
+  const n = (part: string | undefined) => parseInt(part ?? "", 10) || 0;
+  return n(chapter) * 1000 + n(verse);
+}
+
+/**
+ * An id for a new row of a helps file: four characters, a letter first, as the ones a file has; none of those
+ * already there.
+ */
+export function freshRowId(taken: Iterable<string>, random: () => number = Math.random): string {
+  const used = new Set([...taken].map((id) => id.toLowerCase()));
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const any = `${letters}0123456789`;
+  for (;;) {
+    const id = letters[Math.floor(random() * letters.length)]! + Array.from({ length: 3 }, () => any[Math.floor(random() * any.length)]!).join("");
+    if (!used.has(id)) return id;
+  }
+}
+
+export function applyHelpsTsvEdits(original: string, edits: HelpsRowEdit[]): string {
   const { headers, rows } = parseTsvTable(original);
   if (!headers.length) return original;
   const byId = new Map(edits.map((e) => [e.id, e.fields]));
@@ -138,6 +159,21 @@ export function applyHelpsTsvEdits(
     const patch = byId.get(tsvRowId(row));
     return patch ? { ...row, ...patch } : row;
   });
+  // A row the file does not have: after the last one of its verse, or of the verses before it. A note the team
+  // found missing could only be said to be missing; there was nowhere to write it.
+  const header = (name: string) => headers.find((h) => h.toLowerCase() === name) ?? "";
+  for (const edit of edits) {
+    if (!edit.addAt || next.some((row) => tsvRowId(row) === edit.id)) continue;
+    const row: Record<string, string> = { ...Object.fromEntries(headers.map((h) => [h, ""])), ...(header("occurrence") ? { [header("occurrence")]: "0" } : {}), ...edit.fields };
+    if (header("reference")) row[header("reference")] = edit.addAt;
+    if (header("id")) row[header("id")] = edit.id;
+    const place = rowPlace(edit.addAt);
+    let at = 0;
+    next.forEach((other, index) => {
+      if (rowPlace(other[header("reference")] ?? "") <= place) at = index + 1;
+    });
+    next.splice(at, 0, row);
+  }
   return serializeTsv(headers, next);
 }
 

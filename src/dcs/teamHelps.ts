@@ -7,7 +7,7 @@ import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { withQuote } from "../domain/quoteFromSelection";
 import { bookBranchName, bookOnlyBranchName, groupDraftBranchNames } from "../domain/portionPr";
 import { draftReadOrder } from "../domain/branchNames";
-import { applyHelpsTsvEdits } from "../domain/helpsDraft";
+import { applyHelpsTsvEdits, type HelpsRowEdit } from "../domain/helpsDraft";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
 import type { PmConfig } from "../domain/roles";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -26,7 +26,6 @@ export async function teamDraftBranch(params: { session: GtSession; owner: strin
   return names ? (candidates.find((branch) => names.has(branch)) ?? null) : (candidates[0] ?? null);
 }
 
-type HelpsRowEdit = { id: string; fields: Record<string, string> };
 
 /**
  * Corrections to rows of the team's notes or questions, by a task that works on the group draft (harmonizing,

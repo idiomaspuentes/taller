@@ -257,18 +257,19 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
    * is written from the help as it is now, when that is known: from the words of the proposal it answers, one
    * that could not be applied because the help had changed was answered with another that could not either.
    */
-  const answerFrom = answering ? (wordsNow(answering.proposal) ?? answering.proposal.before) : undefined;
+  // A help proposed as new has no words yet but the ones proposed: another version of it starts from nothing too.
+  const answerFrom = answering ? (answering.proposal.add ? "" : (wordsNow(answering.proposal) ?? answering.proposal.before)) : undefined;
   const answerWith = (draft: ProposalDraft) =>
     act(async () => {
       if (!answering) return;
       const was = answering.proposal;
-      const proposal = { ...was, id: `pr-${uid()}`, replaces: was.id, ...(answerFrom !== undefined ? { before: answerFrom } : {}), ...(draft.after ? { after: draft.after } : { after: undefined }) };
+      const proposal = { ...was, id: `pr-${uid()}`, replaces: was.id, ...(answerFrom !== undefined && !was.add ? { before: answerFrom } : {}), ...(draft.after ? { after: draft.after } : { after: undefined }) };
       await add(answering.stepKey, [proposalAnswer({ itemId: answering.itemId, questionId: answering.questionId, by: me, at: new Date().toISOString(), reason: draft.reason, proposal })]);
       setAnswering(null);
       announce(t("ck.proposed"));
     });
   const answerTargets: ProposalTarget[] = answering
-    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(answering.proposal.path ? { format: "markdown" as const } : answering.proposal.rowId && (answering.proposal.field ?? "Note") === "Note" ? { format: "note" as const } : {}), ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
+    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(answering.proposal.add ? { add: true } : {}), ...(answering.proposal.path ? { format: "markdown" as const } : answering.proposal.rowId && (answering.proposal.field ?? "Note") === "Note" ? { format: "note" as const } : {}), ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
     : [];
   // A version the help no longer fits is not what the next one starts from: that one starts from the help.
   const answerStart = answering && changedTo(answering) === undefined ? answering.proposal.after : undefined;
@@ -354,7 +355,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
               return (
                 <li key={view.proposal.id} className="ag-card" data-state={view.state}>
                   <p className="ag-card__head">
-                    <b>{view.proposal.where}</b> · {nameOf(view.proposal.resource)} · {t("ag.by").replace("{who}", view.by)}
+                    <b>{view.proposal.where}</b> · {nameOf(view.proposal.resource)}
+                    {view.proposal.add ? ` · ${t("ag.newNote")}` : ""} · {t("ag.by").replace("{who}", view.by)}
                   </p>
                   {/* The few words around what changes are what is touched to see it whole, with its verse. */}
                   <details className="ag-more" onToggle={(event) => event.currentTarget.open && readUnit()}>
@@ -388,6 +390,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                       </p>
                     ))}
                   </details>
+                  {view.proposal.about ? <p className="af-hint ag-reason">{t("ag.about").replace("{words}", view.proposal.about)}</p> : null}
                   {failedOf(view) ? <p className="af-hint ag-reason">{failedOf(view)}</p> : null}
                   {view.proposal.after && view.reason && !failedOf(view).includes(view.reason) ? <p className="ag-reason ag-reason--said">{view.reason}</p> : null}
                   <p className="ag-card__state">

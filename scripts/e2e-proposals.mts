@@ -192,6 +192,24 @@ await step("una propuesta que otra persona prefiere dejar como está no se acept
   assert.equal(await noteWrites(), written, "la nota queda como estaba");
 });
 
+await step("una nota que faltaba, acordada, se agrega a las notas del equipo en su versículo, y aplicada otra vez no se repite", async () => {
+  const was = rowsOf((await notes()).text);
+  const fresh = { id: "pr-e2e-new", resource: "notas", field: "Note", rowId: "zz9z", where: row.Reference!, after: "Una nota que faltaba en este versículo.", add: true as const, fields: { Quote: "δοῦλος", Occurrence: "1" }, about: "siervo" };
+  assert.ok(!was.some((r) => r.ID === fresh.rowId));
+  await applyProposal({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: fresh });
+  const now = rowsOf((await notes(bea)).text);
+  assert.equal(now.length, was.length + 1);
+  const at = now.findIndex((r) => r.ID === fresh.rowId);
+  assert.deepEqual([now[at]!.Reference, now[at]!.Note, now[at]!.Quote, now[at]!.Occurrence], [row.Reference, fresh.after, "δοῦλος", "1"], "con las palabras del original que se marcaron");
+  assert.equal(now[at - 1]!.Reference, row.Reference, "tras las notas de ese versículo");
+  assert.notEqual(now[at + 1]?.Reference, row.Reference, "y antes de las del siguiente");
+  const written = await noteWrites();
+  await applyProposal({ session: bea, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: fresh });
+  assert.equal(await noteWrites(), written, "ya estaba: no se escribe otra vez");
+  assert.equal(rowsOf((await notes()).text).filter((r) => r.ID === fresh.rowId).length, 1);
+  assert.equal(await kept(list.target.repo, "master", `tn_${BOOK}.tsv`), before.text, "lo publicado no se toca");
+});
+
 await step("dos personas aplican a la vez dos versiones de una nota: se escribe una sola, y a la otra se le dice que la nota cambió", async () => {
   const third = rowsOf((await notes()).text).filter((r) => r.Note && r.Note.length > 40 && r.Reference !== "front:intro" && r.ID !== row.ID)[1]!;
   const version = (id: string, text: string) => ({ id, resource: "notas", field: "Note", rowId: third.ID!, where: third.Reference!, before: third.Note!, after: text });

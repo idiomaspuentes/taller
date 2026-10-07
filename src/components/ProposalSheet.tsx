@@ -46,13 +46,20 @@ export type ProposalTarget = {
    * the box showed «**Fe**» and «[[rc://…]]» to somebody who came to change a word.
    */
   format?: "note" | "markdown";
+  /** A help that does not exist yet: what is written is all of it, and there is nothing to comment on instead. */
+  add?: boolean;
+  /**
+   * The words of the verse, for a new help to be said what it is about by touching them. A note that is added
+   * when its list is already closed has no other moment to be tied to its words.
+   */
+  words?: string[];
   /** There is nothing to rewrite (what is missing has no words yet): only a comment. */
   commentOnly?: boolean;
   /** Who maintains it, when it is not this team: the proposal is asked of them once the team agrees on it. */
   team?: string;
 };
 
-export type ProposalDraft = { target: ProposalTarget; after?: string; reason: string };
+export type ProposalDraft = { target: ProposalTarget; after?: string; reason: string; /** Which of `target.words` were marked. */ marked?: number[] };
 
 type Props = {
   open: boolean;
@@ -83,6 +90,7 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
   const [mode, setMode] = useState<"text" | "comment">("text");
   const [text, setText] = useState("");
   const [reason, setReason] = useState(firstReason);
+  const [marked, setMarked] = useState<number[]>([]);
   const target = targets.find((row) => row.id === targetId) ?? targets[0];
   const current = target?.text ?? "";
   const canWrite = Boolean(target && !target.commentOnly && target.text !== undefined);
@@ -93,13 +101,14 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
     if (!opening) return;
     setTargetId(targets[0]?.id ?? "");
     setReason(firstReason);
+    setMarked([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opening]);
   // What is written starts from the words of what was chosen; a long article starts as a comment.
   useEffect(() => {
     if (!open || !target) return;
     setText(startFrom ?? target.start ?? current);
-    setMode(canWrite && current.length <= 1200 ? "text" : "comment");
+    setMode(canWrite && (target.add || current.length <= 1200) ? "text" : "comment");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opening, targetId, current, canWrite]);
 
@@ -141,7 +150,7 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
           ) : target ? (
             <p className="pr-about">{target.label}</p>
           ) : null}
-          {canWrite ? (
+          {canWrite && !target?.add ? (
             <div className="pr-field">
               <p className="af-lbl">{t("pr.how")}</p>
               <div className="pr-chips" role="group" aria-label={t("pr.how")}>
@@ -157,7 +166,7 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
           {writing ? (
             <div className="pr-field">
               <label className="af-lbl" htmlFor="pr-text">
-                {t("pr.versionLbl")}
+                {t(target?.add ? "pr.newNoteLbl" : "pr.versionLbl")}
               </label>
               {target?.format ? (
                 <MarkdownEditor
@@ -172,7 +181,20 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
               ) : (
                 <textarea id="pr-text" ref={textRef} className="af-textarea pr-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
               )}
-              {!changed ? <p className="af-hint">{t("pr.same")}</p> : target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : null}
+              {!changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : null}
+            </div>
+          ) : null}
+          {writing && target?.add && target.words?.length ? (
+            <div className="pr-field">
+              <p className="af-lbl">{t("pr.aboutWords")}</p>
+              <div className="pr-words" role="group" aria-label={t("pr.aboutWords")}>
+                {target.words.map((word, index) => (
+                  <button key={index} type="button" className="ck-word" aria-pressed={marked.includes(index)} onClick={() => setMarked(marked.includes(index) ? marked.filter((i) => i !== index) : [...marked, index].sort((a, b) => a - b))}>
+                    {word}
+                  </button>
+                ))}
+              </div>
+              <p className="af-hint">{t("pr.aboutWordsHint")}</p>
             </div>
           ) : null}
           <div className="pr-field">
@@ -187,7 +209,7 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
           <button type="button" className="btn" data-variant="ghost" data-size="default" onClick={onClose}>
             {t("af.cancel")}
           </button>
-          <button type="button" className="btn" data-variant="default" data-size="default" disabled={saving || !ready} onClick={() => target && onSend({ target, reason: reason.trim(), ...(writing ? { after: text.trim() } : {}) })}>
+          <button type="button" className="btn" data-variant="default" data-size="default" disabled={saving || !ready} onClick={() => target && onSend({ target, reason: reason.trim(), ...(writing ? { after: text.trim() } : {}), ...(writing && target.add && marked.length ? { marked } : {}) })}>
             {t("pr.send")}
           </button>
         </footer>

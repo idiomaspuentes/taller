@@ -8,7 +8,7 @@ import { createCorrections } from "./corrections";
 import { commentOnIssue } from "./issues";
 import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { readTeamHelps, saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "./teamHelps";
-import { proposalAsk, proposalFit, proposalWords, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { sameWording, proposalAsk, proposalFit, proposalWords, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
 import { helpsRowField } from "../domain/helpsDraft";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
@@ -145,6 +145,13 @@ export async function applyProposal(params: ProposalPlace & { proposal: Proposal
     const column = proposal.field ?? "Note";
     const edits = (text: string) => {
       const now = helpsRowField(text, rowId, column);
+      if (proposal.add) {
+        // A help the team found missing: its row is added at its verse. There already (it was written, and saying
+        // so failed), nothing is written; there with other words, another row has taken its id.
+        if (now === undefined) return [{ id: rowId, fields: { ...proposal.fields, [column]: after }, addAt: proposal.where }];
+        if (sameWording(now, after)) return [];
+        throw new HelpChangedError(now);
+      }
       // Written over no row, it was said to be applied and nothing had changed.
       if (now === undefined) throw new Error(tNow("ag.helpGone"));
       const fit = proposalFit(proposal, now);

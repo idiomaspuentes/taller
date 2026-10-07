@@ -22,7 +22,7 @@ import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
-import { helpRowRef } from "../domain/commentPlace";
+import { freshRowId } from "../domain/helpsDraft";
 import { consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
 import { PROPOSAL_FREE, loadTrialChecks, proposalAnswer, proposalSaying, proposalsOf, saveTrialChecks, withoutWithdrawn, type ProposalPayload } from "../domain/checkProposal";
 import { uid } from "../domain/assignment";
@@ -34,7 +34,7 @@ import { PM_REPO_NAME } from "../domain/types";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { coordinatorsOf } from "../domain/levels";
 import { localized } from "../domain/processes";
-import { decodeSolverLaunchContext, encodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
+import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { textFingerprint } from "../domain/reviewRound";
 import { closesInItsTool, stepMinAssignees } from "../domain/stepClaim";
 import { useUiLanguage } from "../i18n/language";
@@ -479,13 +479,24 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   /** What is proposed for the help in view itself: read with it, since the next group checks the help as it would be. */
   const proposedHelp = item && kind !== "palabras" ? priorOf({ resource: kind, rowId: item.id, field: kind === "notas" ? "Note" : "Response" }, "") : undefined;
 
+  /** The id a note proposed as new would have, the same while its sheet is open: none of the notes of the unit has it. */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const newRowId = useMemo(() => freshRowId((data?.items ?? []).map((row) => row.id)), [proposing]);
+
   /** What a proposal about the help in view can be about: the help, its article, and the texts it is checked against. */
   const targets = useMemo<ProposalTarget[]>(() => {
     if (!item || !data) return [];
     const where = `${item.chapter}:${item.verse}`;
     const whose = (resource: string) => (ours(resource) ? {} : { team: teamOf(resource) });
+    // A note that is missing is proposed as what it is, a new note of that verse, written out: it could only be
+    // said to be missing, and the editor the list sent people to has no way to add one.
+    // The words it is about are marked in the first text, when that verse is aligned: the words of the original
+    // under them are what a note quotes.
+    const first = data.texts[texts[0]!];
+    const markable = Boolean(data.original) && !data.fromSource && verseIsAligned(first?.alignments, item.chapter, item.verse) ? tokenizeVersePlainText(first?.verses[item.verse] ?? "") : [];
+    const fresh: ProposalTarget[] = kind === "notas" && ours(kind) ? [{ id: "new", label: t("pr.targetNewNote").replace("{ref}", where), resource: kind, rowId: newRowId, field: "Note", text: "", format: "note" as const, add: true, ...(markable.length ? { words: markable } : {}) }] : [];
     const help: ProposalTarget[] = proposing?.onlyVerse
-      ? [{ id: "verse", label: t("pr.targetVerse").replace("{what}", scopeLabel(kind, data.board?.settings?.resourceNames, language)).replace("{ref}", where), resource: kind, commentOnly: true, ...whose(kind) }]
+      ? [...fresh, { id: "verse", label: t("pr.targetVerse").replace("{what}", scopeLabel(kind, data.board?.settings?.resourceNames, language)).replace("{ref}", where), resource: kind, commentOnly: true, ...whose(kind) }]
       : kind === "notas"
         ? [{ id: "help", label: t("pr.targetNote"), resource: kind, rowId: item.id, field: "Note", text: item.body, format: "note" as const, ...whose(kind) }]
         : kind === "preguntas"
@@ -503,12 +514,24 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           : [];
     const read = texts.map<ProposalTarget>((resource) => ({ id: resource, label: t("pr.targetText").replace("{name}", textLabel(resource)), resource, text: data.texts[resource]?.verses[item.verse], ...whose(resource) }));
     // A step, or a group, that goes over the articles starts from the article.
-    return [...(onlyLinked || aboutArticle ? [...article, ...help] : [...help, ...article]), ...read].map((target) => {
+    // Seen in passing, with no question behind it: a note that is missing can be that too, last of what is offered.
+    const also = proposing && !proposing.onlyVerse && proposing.questionId === PROPOSAL_FREE ? fresh : [];
+    return [...(onlyLinked || aboutArticle ? [...article, ...help] : [...help, ...article]), ...read, ...also].map((target) => {
       const prior = target.commentOnly ? undefined : priorOf(target, where);
       return prior ? { ...target, start: prior.proposal.after } : target;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item, data, proposing?.onlyVerse, academy, articles, articlePath, slug, textsKey, language, proposals, aboutArticle]);
+  }, [item, data, proposing?.onlyVerse, proposing?.questionId, newRowId, academy, articles, articlePath, slug, textsKey, language, proposals, aboutArticle]);
+
+  /** The words of the original under the words marked for a new note, and how those read: what the note quotes. */
+  function quotedBy(draft: ProposalDraft): Pick<ProposalPayload, "fields" | "about"> {
+    if (!data || !item || !draft.marked?.length || !draft.target.words) return {};
+    const text = data.texts[texts[0]!];
+    const sid = Object.keys(text?.alignments ?? {}).find((key) => verseFromSid(key, item.chapter) === item.verse);
+    const found = quoteFromSelection({ verseTokens: draft.target.words, selected: draft.marked, groups: sid ? text!.alignments![sid]! : [], original: originalTokens(data.original ?? "", item.chapter, item.verse) });
+    const about = draft.marked.map((index) => draft.target.words![index]).join(" ");
+    return found ? { fields: { Quote: found.quote, Occurrence: String(found.occurrence) }, about } : { about };
+  }
 
   async function sendProposal(draft: ProposalDraft) {
     if (!proposing || !item || !session) return;
@@ -519,8 +542,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       ...(draft.target.field ? { field: draft.target.field } : {}),
       ...(draft.target.path ? { path: draft.target.path } : {}),
       ...(draft.target.rowId ? { rowId: draft.target.rowId } : {}),
-      ...(draft.target.text !== undefined ? { before: draft.target.text } : {}),
+      ...(draft.target.text !== undefined && !draft.target.add ? { before: draft.target.text } : {}),
       ...(draft.after ? { after: draft.after } : {}),
+      ...(draft.target.add ? { add: true as const, ...quotedBy(draft) } : {}),
       ...(draft.after && draft.target.start ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
     };
     const base = stamp(proposing.answerItemId, proposing.questionId, "no");
@@ -632,9 +656,6 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   };
 
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ck.title");
-  // The helps editor opens for one resource: this checklist's.
-  // On the note or the question in view: whoever goes to correct one of 160 does not look for it again.
-  const editorHref = ctx && kind !== "palabras" ? `#/solver/helps?ctx=${encodeURIComponent(encodeSolverLaunchContext({ ...ctx, resource: kind, ...(item ? { focus: helpRowRef(`${item.chapter}:${item.verse}`, item.id) } : {}) }))}` : "";
 
   return (
     <div className="af ck">
@@ -933,7 +954,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                             {proposal.proposal.id === proposedHelp?.proposal.id ? null : (
                               // What is proposed for the help itself is read in the help, above: here, what is about something else.
                               <span className="ag-diff">
-                                <b>{scopeLabel(proposal.proposal.resource, data.board?.settings?.resourceNames, language)}:</b> {proposal.proposal.after ? <ProposalDiff before={proposal.proposal.before ?? ""} after={proposal.proposal.after} plain /> : excerpt(proposal.reason)}
+                                <b>{proposal.proposal.add ? t("ag.newNote") : scopeLabel(proposal.proposal.resource, data.board?.settings?.resourceNames, language)}:</b> {proposal.proposal.after ? <ProposalDiff before={proposal.proposal.before ?? ""} after={proposal.proposal.after} plain /> : excerpt(proposal.reason)}
                               </span>
                             )}
                             {proposal.state === "open" && proposal.by.toLowerCase() === (session?.username ?? "").toLowerCase() && !stepDone ? (
@@ -965,12 +986,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               })}
             </ul>
             {stepDone ? null : <p className="af-hint">{t("ck.howToAnswer")}</p>}
-            {/* What to do when the answer is «No»: after the questions, not before them. */}
-            {editorHref ? (
-              <a className="af-link" href={editorHref} target="_blank" rel="noopener noreferrer">
-                {t("ck.openEditor")}
-              </a>
-            ) : null}
+            {/* No way from here to the editor of the helps: it changed a note at once, with nobody agreeing, and
+                the one thing its link promised (adding a help that is missing) it could not do. */}
           </section>
 
           <nav className="af-nav" aria-label={t("ck.navAria")}>

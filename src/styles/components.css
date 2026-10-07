@@ -7328,6 +7328,8 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 /* Proposing a change: a sheet with what, how and why, and its two buttons held at its foot. */
 .pr-failed { margin: 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--warning-100); color: var(--warning-700); font-size: 0.9375rem; font-weight: 600; }
 .pr-text { resize: none; overflow-y: auto; }
+.pr-words { display: flex; flex-wrap: wrap; }
+.pr-words .ck-word { min-height: 2.75rem; }
 .ag-reason--said { margin: 0; font-size: 0.875rem; }
 .pr-body { display: grid; align-content: start; gap: 0.875rem; }
 .pr-field { display: grid; gap: 0.375rem; }
