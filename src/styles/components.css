@@ -7253,6 +7253,13 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .ck-steps button[aria-current="step"] .ck-steps__n { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
 .ck-steps > li[data-state="yes"] .ck-steps__n, .ck-steps > li[data-state="yes"] button[aria-current="step"] .ck-steps__n { border-color: var(--success-700); background: var(--success-100); color: var(--success-700); }
 .ck-steps > li[data-state="no"] .ck-steps__n, .ck-steps > li[data-state="no"] button[aria-current="step"] .ck-steps__n { border-color: var(--warning-700); background: var(--warning-100); color: var(--warning-700); }
+/* On a phone, while a help is read against its article the verse gives way to it: the note, the article and the
+   questions are 680 px, and under the verse there were 588. Side by side on a wide screen, it stays. */
+@media (max-width: 1023.98px) {
+  .af-dock[data-aside] .af-row, .af-dock[data-aside] .ck-covered-hint { display: none; }
+  /* And the article is a little shorter there, so a long note stays whole above it (it was cut by 64 px). */
+  .ck:has(.af-dock[data-aside]) .ck-read[open] .ck-article { max-height: 22dvh; }
+}
 /* What is proposed for the help in view, under it: the next group checks the help as it would be. */
 .ck-proposed { margin: 0; padding: 0.5rem 0.625rem; border-left: 3px solid var(--warning-700); border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.875rem; line-height: 1.5; overflow-wrap: anywhere; }
 .solver-lab__new { font-weight: 400; color: var(--text-muted); }

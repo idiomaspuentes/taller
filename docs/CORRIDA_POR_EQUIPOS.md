@@ -1596,10 +1596,18 @@ que la segunda lista revisaba la nota vieja y podía proponer otra versión ente
   pantalla queda un grupo: sus dos a cuatro preguntas y aquello frente a lo que se leen (el TPL; el
   TPL y el TPS; el artículo abierto). «Todo bien» responde el grupo y pasa al siguiente; tras el último, a la nota
   que sigue. Una nota sin artículo no tiene ese paso.
-- **Medido a 375 × 812 con Judas 1:1, de prueba**: al pasar al TPS el recuadro de los textos crece de 212 a 366 px
-  y sus tres preguntas quedan entre 568 y 740 px, sobre la barra del pie (748); al pasar a Academia el artículo se
-  abre (244 px) y sus dos preguntas quedan entre 634 y 740. Sin el ajuste, las del TPS empezaban en 788: bajo la
-  barra. En 1280 px, textos a la izquierda y tarjeta a la derecha (480 px), sin desbordes.
+- **Cada paso cabe entero en un teléfono** (375 × 812, Judas 1:1–2, de prueba). La pantalla se coloca sola al
+  pasar de un paso a otro y de una nota a la siguiente: la nota empieza justo bajo el texto y las preguntas quedan
+  sobre la barra del pie (748). Con el TPS, los dos textos ocupan 275 px, la nota se ve entera y sus tres preguntas
+  quedan entre 568 y 740. Con Academia el versículo cede el sitio (queda «Judas 1:1»), el artículo se abre en
+  179 px y sus dos preguntas quedan entre 634 y 740. En siete notas seguidas, en sus tres pasos, la nota se vio
+  entera y las preguntas libres de la barra.
+- **Lo que hubo que quitar para que cupiera.** Al principio las preguntas del TPS empezaban en 788, bajo la barra;
+  al subirlas, la nota quedaba tapada por los dos textos (366 px), y se pregunta justamente si la nota explica lo
+  que hay en pantalla. Ahora «Se refiere a…» y «Corregir la cita» solo salen en el primer paso, y el artículo de la
+  nota, solo en el suyo. El artículo llega un instante después de abrirse el paso y empujaba las preguntas 226 px,
+  bajo la barra: la pantalla se vuelve a colocar cuando llega, hasta que la persona la mueve.
+- En 1280 px, textos a la izquierda y tarjeta a la derecha (480 px), sin desbordes; ahí el versículo no se quita.
 - **Una propuesta por nota**: lo propuesto para la nota en vista se lee bajo ella («Propuesta por acordar»), y otra
   propuesta sobre lo mismo parte de esa versión y toma su lugar («Hay otra versión»). En el acuerdo queda una sola
   por acordar.
@@ -1618,9 +1626,12 @@ que la segunda lista revisaba la nota vieja y podía proponer otra versión ente
 - «Cuando la nota menciona el TPS…» se pregunta si la nota dice «el TPS» o «al TPS» (en portugués, «o TPS»; en
   inglés, «the UST»). Una nota que lo nombre de otro modo no la recibe. Fue una decisión mía al unir, fácil de
   deshacer en el paquete.
-- En la primera nota de un versículo las preguntas empiezan bajo la primera pantalla (786 px de prueba; unos 717
-  sin el aviso de prueba): arriba están el versículo y la nota, que es lo que se lee primero.
-- Con el grupo del TPS los dos textos ocupan 366 px de 812.
+- La primera nota que se abre no se coloca: queda bajo el nombre del paso y el avance, y sus preguntas empiezan
+  en 711 px de prueba (unos 642 sin el aviso de prueba), con la primera a la vista y las demás bajo la barra.
+- En un teléfono más bajo (375 × 667) las preguntas quedan siempre sobre la barra, pero una nota larga (7 líneas)
+  no cabe entera: con el TPS le quedan 122 px bajo los textos, y con Academia entre 56 y 76. Una nota de tres
+  líneas cabe en los tres pasos.
+- El artículo de una nota solo se ve en el paso de Academia: en los otros dos ya no está su enlace.
 - En escritorio solo se muestra el texto del grupo, aunque a la izquierda hay sitio para los dos.
 - «Preguntas frente a los textos» no cambió: sus dos preguntas son de los dos textos a la vez.
 

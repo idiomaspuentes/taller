@@ -122,7 +122,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
   const textsKey = texts.join(",");
   /** A note's quote is fixed on the first text of the step, the one its quote is read against. */
-  const canPick = (resource: ChecklistText) => kind === "notas" && resource === texts[0] && Boolean(data?.original) && !data?.fromSource;
+  const canPick = (resource: ChecklistText) => kind === "notas" && resource === texts[0] && Boolean(data?.original) && !data?.fromSource && (firstGroup || Boolean(picking));
   /** What the project's process calls each text. */
   const textLabel = (resource: ChecklistText) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
   const storeKey = ctx ? `${(ctx.book || ctx.projectId).toUpperCase()}.${ctx.issueNumber || ctx.taskId}.${ctx.stepId || "paso"}` : "";
@@ -207,6 +207,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const textsShown = !grouped ? texts : aboutText >= 0 ? texts.slice(0, aboutText + 1) : texts.slice(0, 1);
   /** The group is read against the article of the help, not against a text. */
   const aboutArticle = grouped && aboutText < 0 && Boolean(group?.about);
+  /**
+   * The first group, or a list that has none. What is only of use while the help is first read against its text
+   * (which words it is about, said in a line; fixing its quote) is left out of the groups that follow: with it,
+   * and with the article, a second text or the article open left no room for the note itself on a phone, and the
+   * question was whether the note explains what was on screen.
+   */
+  const firstGroup = !grouped || group === groups[0];
   // A key term is shown by the name the team gives it (the title of its article), not by its code in English.
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -272,9 +279,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, Boolean(data)]);
-  // On to another group of the same help: its questions are brought over the bar at the foot. The text it is read
-  // against had come on screen above, and the questions were left under the bar (the first at 788 px of 812). A
-  // new help is read from its beginning first: it is only kept from starting under the text, which stays on top.
+  // On to another group, or to another help: the screen is placed so that the help starts right under the text and
+  // its questions clear the bar at the foot. The text a group is read against had come on screen above, and its
+  // questions were left under the bar (the first at 788 px of 812); in the group after, the note itself was under
+  // the two texts. The first help opened is left where it is, under the name of the step and how far it has come.
   const checksRef = useRef<HTMLUListElement>(null);
   const shownFor = useRef("");
   const groupKey = `${group?.about ?? ""}|${aboutArticle ? Object.keys(academy).length : 0}`;
@@ -285,14 +293,34 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     // The screen scrolls inside itself (`.af`), not in the window.
     const screen = list?.closest<HTMLElement>(".af");
     if (!grouped || !item || !list || !screen || !was) return;
-    if (was !== item.id) {
-      const under = (screen.querySelector(".af-dock")?.getBoundingClientRect().bottom ?? 0) + 8 - (list.closest(".af-card")?.getBoundingClientRect().top ?? window.innerHeight);
-      if (under > 0) screen.scrollBy({ top: -under });
-      return;
-    }
-    const floor = (screen.querySelector<HTMLElement>(".ck-go[data-on]")?.getBoundingClientRect().top ?? window.innerHeight) - 8;
-    const over = list.getBoundingClientRect().bottom - floor;
-    if (over > 0) screen.scrollBy({ top: over });
+    // The help from its beginning, right under the text; further down only as far as its questions need to clear
+    // the bar. What is above may have grown (a second text) or shrunk (the texts give way to the article).
+    const card = list.closest<HTMLElement>(".af-card");
+    const place = () => {
+      const floor = (screen.querySelector<HTMLElement>(".ck-go[data-on]")?.getBoundingClientRect().top ?? window.innerHeight) - 8;
+      const top = (card?.getBoundingClientRect().top ?? 0) - (screen.querySelector(".af-dock")?.getBoundingClientRect().bottom ?? 0) - 8;
+      const by = Math.max(top, list.getBoundingClientRect().bottom - floor);
+      if (Math.abs(by) > 1) screen.scrollBy({ top: by });
+    };
+    place();
+    if (!card) return;
+    // What the group brings may take its size a moment later (an article is laid out after it is put in: the
+    // questions were placed, and then pushed 226 px down, under the bar). The place is taken again as the card
+    // changes, for a few seconds or until the person moves the screen themselves.
+    const changes = new MutationObserver(place);
+    changes.observe(card, { childList: true, subtree: true, characterData: true });
+    const sizes = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    sizes?.observe(card);
+    const moved = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+    const stop = () => {
+      changes.disconnect();
+      sizes?.disconnect();
+      window.clearTimeout(timer);
+      for (const name of moved) screen.removeEventListener(name, stop);
+    };
+    const timer = window.setTimeout(stop, 4000);
+    for (const name of moved) screen.addEventListener(name, stop, { passive: true });
+    return stop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupKey, item?.id]);
   const messageKey = kind === "palabras" && termKind && termSlug.length ? termMessageKey(termKind, termSlug.join("/")) : (item?.id ?? "");
@@ -671,7 +699,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
       {data && item ? (
         <>
-          <section className="af-dock" aria-label={t("ck.textsAria")}>
+          <section className="af-dock" data-aside={aboutArticle || undefined} aria-label={t("ck.textsAria")}>
             <div className="af-dock__bar">
               <strong>
                 {bookLabel(data.book, language)} {item.chapter}:{item.verse}
@@ -706,7 +734,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                   ) : (
                     <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>
                   )}
-                  {item.quote && verse ? (
+                  {item.quote && verse && (firstGroup || !hit?.gatewayText) ? (
                     <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
                       {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", textLabel(resource))}
                     </span>
@@ -752,7 +780,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             ) : null}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
-            {articlePath ? (
+            {grouped && !aboutArticle ? null : articlePath ? (
               // Closed until asked for: an article is several screens long, and the questions come after it.
               <details key={`${item.id}|${aboutArticle}`} className="ck-read" open={aboutArticle}>
                 <summary>{t("ck.support").replace("{ref}", academy[articlePath]?.title || localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef ?? "")), language))}</summary>
@@ -767,7 +795,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             ) : item.supportRef && kind !== "palabras" ? (
               <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p>
             ) : null}
-            {articlePath && academy[articlePath] ? (
+            {articlePath && academy[articlePath] && (!grouped || aboutArticle) ? (
               <p className="af-hint ck-read__where" data-where={academy[articlePath]!.where}>
                 {t(`ck.article.${academy[articlePath]!.where}` as MessageKey)}
               </p>
