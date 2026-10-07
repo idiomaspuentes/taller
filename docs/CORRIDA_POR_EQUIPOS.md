@@ -615,8 +615,29 @@ Tres toques por desafío; al responder (1,7 s) pasa solo al siguiente. Se entien
   de puntuación una por una y la cita entera, así que no se encontraba. *Arreglado:* la cita se limpia palabra
   por palabra. El 13 resalta ahora «ἔλεος … καὶ εἰρήνη, καὶ ἀγάπη πληθυνθείη» y lo dice en la instrucción.
 
+### Un cambio propuesto: desafío 17 de Judas 1:3
+
+**Priscila** contestó 29 de los 30 desafíos (tres toques cada uno; 6 segundos con el guardado). En el 17
+(«ἀνάγκην ἔσχον γράψαι» → «tengo la necesidad de escribirles») entró **Tomás** (abelper8): «Otra respuesta» →
+«Propongo un cambio» → «¿Qué cambio propones?» → «Propongo «tuve necesidad de escribirles». ἔσχον es aoristo y
+ἀνάγκην va sin artículo…» → «Enviar» (2 s). Luego **Elena** (valeska, poco hábil).
+
+**⚠ Lo que no se entendía, y se arregló**
+
+- **La propuesta no se leía.** A Elena le salía arriba «1 punto sin acuerdo. Para conversarlo en equipo» y en el
+  desafío «Equipo: 0 de 3 de acuerdo · @abelper8 no está de acuerdo». Qué proponía Tomás, y por qué, estaba
+  plegado bajo esa misma línea, que no parecía algo que se pudiera tocar. *Ahora* se encuentra abierto cuando
+  alguien no está de acuerdo, y la línea lleva una marca (▸ / ▾).
+- **Sumarse a una propuesta era escribir otra.** «Otra respuesta» ofrecía a Elena lo mismo que a Tomás:
+  «Propongo un cambio» o «Tengo una objeción», con la caja vacía. *Ahora* bajo la propuesta de un compañero hay
+  un botón «Pienso lo mismo»: un toque, y queda «@abelper8, @valeska no están de acuerdo».
+
 **⚠ Sin resolver**
 
+- El aviso «1 punto sin acuerdo» nombra el punto con la frase en inglés («I have a necessity to write»), no con
+  la del TPL.
+- «Para conversarlo en equipo»: no hay desde ahí un camino a la conversación de la subtarea.
+- La tarjeta de «Desafíos TPL · 1:1–4» dice «0 %» con 30 respuestas dadas: cuenta los desafíos acordados por tres.
 - Entre la cabecera, «Qué se pide», las pestañas, el filtro, el título del desafío y «Equipo: 0 de 3 de acuerdo»
   hay 400 px antes de llegar al texto.
 - Son 30 desafíos por porción y tres personas por desafío: 900 respuestas para Judas.
@@ -627,8 +648,10 @@ Tres toques por desafío; al responder (1,7 s) pasa solo al siguiente. Se entien
   sin miembros.
 - **Afinación: empezada.** «Afinadores TPL» y «Afinadores TPS» tienen las cuatro cuentas (todas «Persona
   habilitada», coordina abelperez) y están asignados a Desafíos, Palabras clave y Alinear de su texto.
-  Priscila (Elisha) tomó «Desafíos TPL · Judas 1:1–4» y contestó el primer desafío de 30; va por el segundo.
-  Las otras nueve subtareas de Desafíos esperan en «Puedes sumarte».
+  En «Desafíos TPL · Judas 1:1–4»: Priscila (Elisha) contestó 29 de 30 (le falta el 17); Tomás (abelper8)
+  propuso un cambio en el 17 y Elena (valeska) se sumó. Falta: la objeción de Priscila en el 17, la decisión de
+  Rubén (abelperez), y las respuestas de Tomás y Elena a los otros 29. Las otras nueve subtareas de Desafíos
+  esperan en «Puedes sumarte».
 - Personas de la fase: abelperez = **Rubén** (coordina), abelper8 = **Tomás**, valeska = **Elena (P)**,
   Elisha = **Priscila (P)**.
 - Lo que falta recorrer de Afinación, según el plan: un cambio propuesto con desacuerdo y decisión final de quien

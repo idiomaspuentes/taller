@@ -8595,3 +8595,15 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 
 /* What was answered to a doubt of the group reading: set in from the doubt it answers. */
 .gr-doubt--reply { margin-left: 1rem; background: var(--surface-2, var(--bg)); border-left: 2px solid var(--border-strong); }
+
+/* How the team stands on a challenge opens and closes: it says so. */
+.af-team > summary { list-style: none; }
+.af-team > summary::-webkit-details-marker { display: none; }
+.af-team > summary::after { content: "▸"; margin-left: auto; padding-left: 0.5rem; }
+.af-team[open] > summary::after { content: "▾"; }
+.af-team .af-others { margin-top: 0.25rem; color: var(--text); }
+.af-team .af-others li + li { margin-top: 0.25rem; }
+
+/* Under what a colleague proposed about a challenge: taking it as one's own, by a touch. */
+.af-second { display: flex; align-items: center; min-height: 2.5rem; margin-top: 0.25rem; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--text); cursor: pointer; }
+.af-second:disabled { opacity: 0.6; cursor: default; }

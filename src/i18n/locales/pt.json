@@ -2744,5 +2744,7 @@
   "tb.readyToClose": "Todos os passos estão feitos. Entregue para concluí-la.",
   "org.removeAskTitle": "Tirar @{who} de «{team}»?",
   "org.removeAskText": "Deixará de ver as tarefas desta equipe. Você pode adicioná-la de novo depois.",
-  "org.removeYes": "Sim, tirar"
+  "org.removeYes": "Sim, tirar",
+  "af.second": "Penso o mesmo",
+  "af.secondNote": "De acordo com @{who}."
 }

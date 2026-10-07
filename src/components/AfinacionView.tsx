@@ -437,9 +437,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     if (at >= 0) setPosition(at);
   }
 
-  async function answer(status: ReviewStance) {
+  /**
+   * `said`: what goes with the answer when it is not what was typed in the box. Taking a colleague's proposal as
+   * one's own is said by a touch («Pienso lo mismo»): whoever agreed with it had to write a proposal of their own.
+   */
+  async function answer(status: ReviewStance, said?: string) {
     if (!session || !data || !item || !ctx) return;
-    if (status !== "approved" && !note.trim()) {
+    const words = (said ?? note).trim();
+    if (status !== "approved" && !words) {
       setPending(status);
       return;
     }
@@ -455,7 +460,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         status,
         reviewer: session.username,
         timestamp: new Date().toISOString(),
-        note: note.trim() || undefined,
+        note: words || undefined,
         textHash: hash,
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
@@ -887,9 +892,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {stepDone ? t("af.reviewDoneShort") : t("af.reviewProgress").replace("{n}", String(answeredByMe)).replace("{of}", String(data.items.length))}
             </p>
           ) : null}
-          {/* How the team stands on it, and what the others said: before answering, not after. */}
+          {/* How the team stands on it, and what the others said: before answering, not after. Where somebody does
+              not agree it is found open: what they propose and why was folded under a line that did not look like
+              something to touch, and the others read «no está de acuerdo» with no way to know about what. */}
           {tally && !reviewing ? (
-            <details className="af-team" data-state={tally.state}>
+            <details key={item.id} className="af-team" data-state={tally.state} open={tally.open.length > 0}>
               <summary>
                 {tally.state === "agreed"
                   ? t("af.teamAgreed").replace("{n}", String(tally.agree))
@@ -901,6 +908,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     <li key={a.reviewer}>
                       <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
                       {a.note ? `: ${a.note}` : ""}
+                      {a.status !== "approved" && a.note && !stepDone && mine?.status !== a.status ? (
+                        <button
+                          type="button"
+                          className="af-second"
+                          disabled={saving || needsWords}
+                          title={needsWords ? t("af.pickFirst") : undefined}
+                          onClick={() => void answer(a.status as ReviewStance, t("af.secondNote").replace("{who}", a.reviewer))}
+                        >
+                          {t("af.second")}
+                        </button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
