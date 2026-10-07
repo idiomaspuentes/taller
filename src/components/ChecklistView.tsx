@@ -8,7 +8,7 @@ import { bookLabel } from "../domain/books";
 import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { termMessageKey } from "../domain/studyNotes";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Circle, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
 import { helpRowRef } from "../domain/commentPlace";
-import { consultReply, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
+import { consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
 import { PROPOSAL_FREE, loadTrialChecks, proposalAnswer, proposalSaying, proposalsOf, saveTrialChecks, withoutWithdrawn, type ProposalPayload } from "../domain/checkProposal";
 import { uid } from "../domain/assignment";
 import { ownerTaskOf } from "../domain/resourceOwner";
@@ -160,7 +160,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }, [load]);
 
   const questions = data?.step?.checklist ?? [];
-  const checkItems: CheckItem[] = useMemo(() => (data?.items ?? []).map((item) => ({ id: item.id, verseKey: verseKeyOf(item), text: item.body })), [data]);
+  const checkItems: CheckItem[] = useMemo(() => (data?.items ?? []).map((item) => ({ id: item.id, verseKey: verseKeyOf(item), text: item.body, linked: Boolean(item.supportRef) })), [data]);
   // What each verse reads now in the texts on screen: an answer given before a change of the text is checked again.
   const hashes = useMemo(() => {
     const out: Record<string, string> = {};
@@ -186,6 +186,27 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }, [consulting, session?.token, ctx?.pmOrg, ctx?.issueNumber]);
   const replyTo = (answer: CheckAnswer | undefined) => (answer?.outcome === "consult" && !answer.resolved ? consultReply(answer, thread) : null);
   const item = data?.items[Math.min(position, Math.max((data?.items.length ?? 1) - 1, 0))];
+  const tally = item ? summary.items.find((row) => row.itemId === item.id) : undefined;
+  /**
+   * The questions of the help in view. A list that checks a help against several things (two texts, its article)
+   * asks them a group at a time: what the group is read against is put on screen, its few questions are answered,
+   * and the next group follows. They were a list for each, and every note of a unit was read three times.
+   */
+  const rowsHere = item ? questionsFor({ id: item.id, verseKey: verseKeyOf(item), text: item.body, linked: Boolean(item.supportRef) }, checkItems, questions) : [];
+  const groups = groupsOf(rowsHere);
+  const grouped = groups.length > 1;
+  /** The group somebody asked for, of the help it was asked for: another help starts at what it has left. */
+  const [asked, setAsked] = useState<{ itemId: string; about: string } | null>(null);
+  const group = groupInView(groups, (id) => Boolean(tally?.answers[id]), asked && asked.itemId === item?.id ? asked.about : undefined);
+  const rowsShown = grouped ? (group?.rows ?? []) : rowsHere;
+  const pendingHere = rowsShown.filter(({ question }) => !tally?.answers[question.id]);
+  /** Another group of this help has something left to answer. */
+  const pendingElsewhere = grouped && groups.some((other) => other !== group && other.rows.some((row) => !tally?.answers[row.question.id]));
+  /** The texts on screen: up to the one the group is read against; all of them when the list is not asked in groups. */
+  const aboutText = texts.indexOf((group?.about ?? "") as ChecklistText);
+  const textsShown = !grouped ? texts : aboutText >= 0 ? texts.slice(0, aboutText + 1) : texts.slice(0, 1);
+  /** The group is read against the article of the help, not against a text. */
+  const aboutArticle = grouped && aboutText < 0 && Boolean(group?.about);
   // A key term is shown by the name the team gives it (the title of its article), not by its code in English.
   const [termTitles, setTermTitles] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -210,12 +231,16 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   // only its title: whoever checked had to know the article, or go and find it. Read once per term, as it comes up.
   const [articles, setArticles] = useState<Record<string, string | null>>({});
   // The article of the item opens on the section the step is about, when the process names one.
-  const focusHeads = (data?.step?.articleFocus ?? []).join("\u0000");
-  const shownArticle = `${position}|${Object.keys(articles).length}`;
+  const focusHeads = (rowsShown.find((row) => row.question.articleFocus?.length)?.question.articleFocus ?? data?.step?.articleFocus ?? []).join("\u0000");
+  const shownArticle = `${position}|${Object.keys(articles).length}|${group?.about ?? ""}`;
   useEffect(() => {
-    if (!focusHeads) return;
-    const wanted = focusHeads.split("\u0000").map((head) => head.toLowerCase());
     const box = document.querySelector<HTMLElement>(".ck-article");
+    // A group with no section of its own reads the article from its beginning.
+    if (!focusHeads) {
+      if (box && grouped) box.scrollTop = 0;
+      return;
+    }
+    const wanted = focusHeads.split("\u0000").map((head) => head.toLowerCase());
     const head = box ? [...box.querySelectorAll<HTMLElement>("h1, h2, h3, h4")].find((el) => wanted.includes((el.textContent ?? "").trim().toLowerCase())) : undefined;
     if (box && head) box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 4;
   }, [focusHeads, shownArticle]);
@@ -247,8 +272,30 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, Boolean(data)]);
+  // On to another group of the same help: its questions are brought over the bar at the foot. The text it is read
+  // against had come on screen above, and the questions were left under the bar (the first at 788 px of 812). A
+  // new help is read from its beginning first: it is only kept from starting under the text, which stays on top.
+  const checksRef = useRef<HTMLUListElement>(null);
+  const shownFor = useRef("");
+  const groupKey = `${group?.about ?? ""}|${aboutArticle ? Object.keys(academy).length : 0}`;
+  useEffect(() => {
+    const was = shownFor.current;
+    shownFor.current = item?.id ?? "";
+    const list = checksRef.current;
+    // The screen scrolls inside itself (`.af`), not in the window.
+    const screen = list?.closest<HTMLElement>(".af");
+    if (!grouped || !item || !list || !screen || !was) return;
+    if (was !== item.id) {
+      const under = (screen.querySelector(".af-dock")?.getBoundingClientRect().bottom ?? 0) + 8 - (list.closest(".af-card")?.getBoundingClientRect().top ?? window.innerHeight);
+      if (under > 0) screen.scrollBy({ top: -under });
+      return;
+    }
+    const floor = (screen.querySelector<HTMLElement>(".ck-go[data-on]")?.getBoundingClientRect().top ?? window.innerHeight) - 8;
+    const over = list.getBoundingClientRect().bottom - floor;
+    if (over > 0) screen.scrollBy({ top: over });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupKey, item?.id]);
   const messageKey = kind === "palabras" && termKind && termSlug.length ? termMessageKey(termKind, termSlug.join("/")) : (item?.id ?? "");
-  const tally = item ? summary.items.find((row) => row.itemId === item.id) : undefined;
   const closesHere = Boolean(data?.step && closesInItsTool(data.step) && ctx?.issueNumber);
 
   // What this checklist needs done before it: the helps translated and each text aligned. What is missing is said,
@@ -353,6 +400,18 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const proposals = useMemo(() => proposalsOf(answers, needed, ours), [answers, needed, data?.task]);
 
+  /**
+   * The new version still to be settled of something, the latest: another one about the same thing starts from it
+   * and takes its place. Two answers of the same note could each rewrite it from the words as they are, and of two
+   * versions agreed on, the second written wiped what the first had changed.
+   */
+  const priorOf = (target: Pick<ProposalTarget, "resource" | "rowId" | "path" | "field">, where: string) =>
+    [...proposals]
+      .reverse()
+      .find((view) => (view.state === "open" || view.state === "agreed") && Boolean(view.proposal.after) && view.proposal.resource === target.resource && view.proposal.rowId === target.rowId && view.proposal.path === target.path && view.proposal.field === target.field && (Boolean(target.rowId || target.path) || view.proposal.where === where));
+  /** What is proposed for the help in view itself: read with it, since the next group checks the help as it would be. */
+  const proposedHelp = item && kind !== "palabras" ? priorOf({ resource: kind, rowId: item.id, field: kind === "notas" ? "Note" : "Response" }, "") : undefined;
+
   /** What a proposal about the help in view can be about: the help, its article, and the texts it is checked against. */
   const targets = useMemo<ProposalTarget[]>(() => {
     if (!item || !data) return [];
@@ -376,10 +435,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           ? [{ id: "article", label: t("pr.targetArticle"), resource: kind, path: termArticlePath(termKind as TermKind, slug), text: articles[slug] ?? undefined, ...whose(kind) }]
           : [];
     const read = texts.map<ProposalTarget>((resource) => ({ id: resource, label: t("pr.targetText").replace("{name}", textLabel(resource)), resource, text: data.texts[resource]?.verses[item.verse], ...whose(resource) }));
-    // A step that goes over the articles starts from the article.
-    return [...(onlyLinked ? [...article, ...help] : [...help, ...article]), ...read];
+    // A step, or a group, that goes over the articles starts from the article.
+    return [...(onlyLinked || aboutArticle ? [...article, ...help] : [...help, ...article]), ...read].map((target) => {
+      const prior = target.commentOnly ? undefined : priorOf(target, where);
+      return prior ? { ...target, start: prior.proposal.after } : target;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item, data, proposing?.onlyVerse, academy, articles, articlePath, slug, textsKey, language]);
+  }, [item, data, proposing?.onlyVerse, academy, articles, articlePath, slug, textsKey, language, proposals, aboutArticle]);
 
   async function sendProposal(draft: ProposalDraft) {
     if (!proposing || !item || !session) return;
@@ -392,6 +454,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       ...(draft.target.rowId ? { rowId: draft.target.rowId } : {}),
       ...(draft.target.text !== undefined ? { before: draft.target.text } : {}),
       ...(draft.after ? { after: draft.after } : {}),
+      ...(draft.after && draft.target.start ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
     };
     const base = stamp(proposing.answerItemId, proposing.questionId, "no");
     await save([proposalAnswer({ itemId: base.itemId, questionId: base.questionId, by: base.by, at: base.at, reason: draft.reason, proposal: payload, textHash: base.textHash })], draft.target.team ? t("ck.proposedOther").replace("{team}", draft.target.team) : t("ck.proposed"));
@@ -473,23 +536,25 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, verseOf, textsKey]);
   const others = (resource: ChecklistText, index: number) => helpAtWord(coverage[resource]?.get(index), item?.id);
-  const anyCovered = texts.some((resource) => [...(coverage[resource]?.values() ?? [])].some((ids) => ids.some((id) => id !== item?.id)));
+  const anyCovered = textsShown.some((resource) => [...(coverage[resource]?.values() ?? [])].some((ids) => ids.some((id) => id !== item?.id)));
   const nextPending = () => {
     if (!data) return;
+    // What this help has left, in another group, comes before the next help.
+    if (pendingElsewhere) return setAsked(null);
     const order = [...data.items.slice(position + 1), ...data.items.slice(0, position + 1)];
     const found = order.find((row) => summary.items.find((s) => s.itemId === row.id)?.state !== "ok");
     if (found) jump(found.id);
   };
-  /** The questions of the help in view, and whether any is still to be answered. */
-  const rowsHere = item ? questionsFor({ id: item.id, verseKey: verseKeyOf(item), text: item.body }, checkItems, questions) : [];
-  const pendingHere = rowsHere.filter(({ question }) => !tally?.answers[question.id]);
   /**
-   * Nothing wrong with the help in view: every question still to be answered is «yes», and on to the next help.
-   * It was a touch for each question: 1,274 answers in one task of the run, nearly all of them «yes».
+   * Nothing wrong in what is asked of the help in view: every question on screen still to be answered is «yes»,
+   * and on to its next group, or to the next help. It was a touch for each question: 1,274 answers in one task of
+   * the run, nearly all of them «yes».
    */
   const allGood = () => {
     if (!data || !item) return;
     if (pendingHere.length) void save(pendingHere.map(({ question, answerItemId }) => stamp(answerItemId, question.id, "yes")), t("ck.saved"));
+    setAsked(null);
+    if (pendingElsewhere) return;
     const order = [...data.items.slice(position + 1), ...data.items.slice(0, position)];
     const found = order.find((row) => summary.items.find((s) => s.itemId === row.id)?.state !== "ok");
     if (found) jump(found.id);
@@ -615,7 +680,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               {/* Beside the verse's name, not as one more line under two texts that already take half a phone. */}
               {anyCovered && !picking ? <span className="af-hint ck-covered-hint">{t(kind === "palabras" ? "ck.coveredTerms" : "ck.coveredNotes")}</span> : null}
             </div>
-            {texts.map((resource) => {
+            {textsShown.map((resource) => {
               const text = data.texts[resource];
               // A question about verses 22 and 23 is checked against both: with the first alone, «¿se puede
               // responder con los textos?» had no honest answer.
@@ -677,11 +742,19 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             </div>
             {item.title ? <h2 className="af-phrase">{kind === "palabras" ? termLabel(item.title, termTitles) : item.title}</h2> : null}
             {item.body ? <HelpMarkdownView className="af-note af-note--md" content={item.body} /> : null}
+            {proposedHelp ? (
+              <p className="ck-proposed">
+                <b>{t("ck.proposedHere")}</b>{" "}
+                <span className="ag-diff">
+                  <ProposalDiff before={proposedHelp.proposal.before ?? ""} after={proposedHelp.proposal.after ?? ""} />
+                </span>
+              </p>
+            ) : null}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
             {articlePath ? (
               // Closed until asked for: an article is several screens long, and the questions come after it.
-              <details className="ck-read">
+              <details key={`${item.id}|${aboutArticle}`} className="ck-read" open={aboutArticle}>
                 <summary>{t("ck.support").replace("{ref}", academy[articlePath]?.title || localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef ?? "")), language))}</summary>
                 {academy[articlePath] === undefined ? (
                   <p className="af-hint">{t("ur.readingArticle")}</p>
@@ -709,9 +782,23 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
             {/* What is checked of this help, in a line each: a touch on one says it is not right, and opens the
                 proposal. Each was a block of its own with two buttons, 440 px of them under a note. */}
-            <p className="af-lbl">{t("ck.checks")}</p>
-            <ul className="ck-checks">
-              {rowsHere.map(({ question, answerItemId }) => {
+            <p className="af-lbl">{t(grouped ? "ck.checksWith" : "ck.checks")}</p>
+            {grouped ? (
+              <div className="ck-groups" role="tablist" aria-label={t("ck.checksWith")}>
+                {groups.map((row) => {
+                  const said = row.rows.map(({ question }) => tally?.answers[question.id]);
+                  const state = said.some((answer) => answer?.value === "no") ? "no" : said.every(Boolean) ? "yes" : "none";
+                  return (
+                    <button key={row.about} type="button" role="tab" aria-selected={row === group} data-state={state} onClick={() => setAsked({ itemId: item.id, about: row.about })}>
+                      {state === "yes" ? <Check size={14} aria-hidden /> : state === "no" ? <X size={14} aria-hidden /> : null}
+                      {scopeLabel(row.about, data.board?.settings?.resourceNames, language)}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <ul className="ck-checks" ref={checksRef}>
+              {rowsShown.map(({ question, answerItemId }) => {
                 const answer = tally?.answers[question.id];
                 const proposal = answer?.outcome === "proposal" ? proposals.find((view) => view.proposal.id === answer.proposal?.id) : undefined;
                 const name = localized(question.text, question.texts, language);
@@ -789,7 +876,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               </Button>
               {pendingHere.length ? (
                 <Button type="button" size="lg" disabled={saving} onClick={allGood}>
-                  {t(pendingHere.length < rowsHere.length ? "ck.restGood" : "ck.allGood")}
+                  {t(pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.allGood")}
                 </Button>
               ) : !summary.complete ? (
                 <Button type="button" size="lg" onClick={nextPending}>

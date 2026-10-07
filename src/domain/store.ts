@@ -464,7 +464,18 @@ function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
     seen.add(id);
     const texts = normalizeLocalized(item.texts);
     const when = Array.isArray(item.when) ? item.when.map((word) => String(word ?? "").trim()).filter(Boolean) : [];
-    out.push({ id, text, ...(texts ? { texts } : {}), ...(item.per === "verse" ? { per: "verse" as const } : {}), ...(when.length ? { when } : {}) });
+    const about = String(item.about ?? "").trim();
+    const focus = Array.isArray(item.articleFocus) ? item.articleFocus.map((head) => String(head ?? "").trim()).filter(Boolean) : [];
+    out.push({
+      id,
+      text,
+      ...(texts ? { texts } : {}),
+      ...(item.per === "verse" ? { per: "verse" as const } : {}),
+      ...(when.length ? { when } : {}),
+      ...(about ? { about } : {}),
+      ...(item.linked === true ? { linked: true as const } : {}),
+      ...(focus.length ? { articleFocus: focus } : {}),
+    });
   }
   return out.length ? out : undefined;
 }

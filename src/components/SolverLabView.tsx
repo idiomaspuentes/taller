@@ -3,7 +3,7 @@ import type { GtSession } from "../dcs/auth";
 import { listPmProjects, loadAssignmentsFromDcs } from "../dcs/persist";
 import { BOOKS, bookName } from "../domain/books";
 import type { LanguageOption } from "../domain/languages";
-import { localized, shippedStepTool } from "../domain/processes";
+import { localized, shippedStepsMissing, shippedStepTool } from "../domain/processes";
 import {
   buildLabSolverLaunchContext,
   defaultResourceForSolver,
@@ -255,14 +255,17 @@ export function SolverLabView({ username, lang: workspaceLang, languages, announ
                       <li key={task.id}>
                         <b>{localized(task.name, task.names, language)}</b>
                         <ul className="solver-lab__steps">
-                          {task.steps!.map((step) => {
+                          {[...task.steps!, ...shippedStepsMissing(task)].map((step) => {
                             const tool = toolOf(task, step);
                             const name = localized(step.name, step.names, language);
+                            // A step the process has now and this project, created before, does not.
+                            const isNew = !task.steps!.some((mine) => mine.id === step.id);
                             return (
                               <li key={step.id}>
                                 {tool && opensForTrial(tool) ? (
                                   <button type="button" className="btn" data-variant="outline" data-size="default" onClick={() => tryStep(task, step)}>
                                     {name}
+                                    {isNew ? <small className="solver-lab__new"> · {t("lab.tryNewStep")}</small> : null}
                                   </button>
                                 ) : (
                                   <span className="solver-lab__off">

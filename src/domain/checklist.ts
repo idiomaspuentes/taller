@@ -38,6 +38,8 @@ export type CheckItem = {
   verseKey: string;
   /** What the item says, when known: some questions are only for an item that brings something (see `asksOf`). */
   text?: string;
+  /** Whether the item links a support article, when known: some questions are about that article. */
+  linked?: boolean;
 };
 
 export type CheckItemTally = {
@@ -85,7 +87,8 @@ const RANK: Record<CheckItemState, number> = { ok: 0, pending: 1, consult: 2, op
  * Whether a question is asked of an item: one that names what the item must bring (`when`) is not asked of an item
  * that does not bring it. An item whose text is not known is asked everything.
  */
-export function asksOf(question: ChecklistQuestion, item: Pick<CheckItem, "text">): boolean {
+export function asksOf(question: ChecklistQuestion, item: Pick<CheckItem, "text" | "linked">): boolean {
+  if (question.linked && item.linked === false) return false;
   if (!question.when?.length || item.text === undefined) return true;
   const text = item.text.toLowerCase();
   return question.when.some((piece) => text.includes(piece.toLowerCase()));
@@ -173,6 +176,34 @@ export function questionsFor(item: CheckItem, items: CheckItem[], questions: Che
   return questions
     .filter((q) => (q.per === "verse" ? first : asksOf(q, item)))
     .map((question) => ({ question, answerItemId: question.per === "verse" ? verseItemId(item.verseKey) : item.id }));
+}
+
+// ---------------------------------------------------------------- a list asked in groups
+
+export type CheckRow = { question: ChecklistQuestion; answerItemId: string };
+/** The questions of an item that are read against the same thing. */
+export type CheckGroup = { about: string; rows: CheckRow[] };
+
+/**
+ * The questions of an item by what each is read against (`about`), in the order the process first names each. A
+ * help checked against two texts and its article is read once, a group at a time: what the group is read against
+ * is put on screen and its few questions answered, and the next group follows. Questions that name nothing are one
+ * group, which is a list as it always was.
+ */
+export function groupsOf(rows: CheckRow[]): CheckGroup[] {
+  const out: CheckGroup[] = [];
+  for (const row of rows) {
+    const about = row.question.about ?? "";
+    let group = out.find((other) => other.about === about);
+    if (!group) out.push((group = { about, rows: [] }));
+    group.rows.push(row);
+  }
+  return out;
+}
+
+/** The group to show: the one asked for when the item has it, else the first with something left to answer, else the first. */
+export function groupInView(groups: CheckGroup[], answered: (questionId: string) => boolean, asked?: string): CheckGroup | undefined {
+  return (asked === undefined ? undefined : groups.find((group) => group.about === asked)) ?? groups.find((group) => group.rows.some((row) => !answered(row.question.id))) ?? groups[0];
 }
 
 // ---------------------------------------------------------------- what a verse has a help for

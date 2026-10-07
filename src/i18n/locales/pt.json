@@ -2934,5 +2934,9 @@
   "ag.locked": "Antes é preciso fechar os passos anteriores desta tarefa.",
   "ag.cannot": "Não foi possível anotar o seu acordo: o passo já tem todas as suas pessoas.",
   "ag.closed": "Passo fechado: a equipe está de acordo.",
-  "ag.closedDelivered": "A equipe está de acordo: tarefa entregue."
+  "ag.closedDelivered": "A equipe está de acordo: tarefa entregue.",
+  "ck.checksWith": "Verifica-se com",
+  "ck.proposedHere": "Proposta por acordar:",
+  "pr.fromPrior": "Parte da proposta que já existe; a sua tomará o lugar dela.",
+  "lab.tryNewStep": "como é agora no processo"
 }

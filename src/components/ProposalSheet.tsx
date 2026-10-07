@@ -30,6 +30,8 @@ export type ProposalTarget = {
   rowId?: string;
   /** The words as they are now: what a new version starts from. Not there while it is being read. */
   text?: string;
+  /** The new version already proposed for it and still to be settled: another one starts from it, and takes its place. */
+  start?: string;
   /** There is nothing to rewrite (what is missing has no words yet): only a comment. */
   commentOnly?: boolean;
   /** Who maintains it, when it is not this team: the proposal is asked of them once the team agrees on it. */
@@ -75,7 +77,7 @@ export function ProposalSheet({ open, onClose, targets, reason: firstReason, sta
   // What is written starts from the words of what was chosen; a long article starts as a comment.
   useEffect(() => {
     if (!open || !target) return;
-    setText(startFrom ?? current);
+    setText(startFrom ?? target.start ?? current);
     setMode(canWrite && current.length <= 1200 ? "text" : "comment");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opening, targetId, current, canWrite]);
@@ -127,7 +129,7 @@ export function ProposalSheet({ open, onClose, targets, reason: firstReason, sta
                 {t("pr.versionLbl")}
               </label>
               <textarea id="pr-text" className="af-textarea pr-text" rows={6} value={text} onChange={(e) => setText(e.target.value)} />
-              {!changed ? <p className="af-hint">{t("pr.same")}</p> : null}
+              {!changed ? <p className="af-hint">{t("pr.same")}</p> : target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : null}
             </div>
           ) : null}
           <div className="pr-field">

@@ -9,6 +9,7 @@ import { loadAssignmentsFromDcs } from "./persist";
 import { parseNoteRows } from "../domain/afinacionNotes";
 import { parseTermRows } from "../domain/afinacionWords";
 import { helpsTsvFilename, resolveHelpsTarget } from "../domain/helpsTarget";
+import { shippedStepsMissing } from "../domain/processes";
 import type { LevelBook } from "../domain/levels";
 import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
@@ -186,7 +187,8 @@ export async function loadChecklist(params: {
     loadAssignmentsFromDcs(session, ctx.pmOrg, ctx.lang, ctx.projectId, ctx.contentOrg).catch(() => null),
   ]);
   const task = board?.teams.find((t) => t.id === ctx.taskId) ?? null;
-  const step = task?.steps?.find((s) => s.id === ctx.stepId) ?? null;
+  // Opened to try it, a step may be one the process has now and this project does not (see `shippedStepsMissing`).
+  const step = task?.steps?.find((s) => s.id === ctx.stepId) ?? (ctx.lab && task ? shippedStepsMissing(task).find((s) => s.id === ctx.stepId) : undefined) ?? null;
 
   // The helps live in the content organization.
   const helps = resolveHelpsTarget({ ...ctx, resource: kind === "palabras" ? "palabras" : kind }, pmConfig);

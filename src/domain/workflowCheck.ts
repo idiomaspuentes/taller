@@ -185,7 +185,14 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
         if (question.per !== undefined && !["item", "verse"].includes(text(question.per))) problems.push(`${at}, pregunta «${questionId}»: «per» es "item" o "verse".`);
         if (question.when !== undefined && !(Array.isArray(question.when) && question.when.length && question.when.every((word) => typeof word === "string" && word.trim()))) problems.push(`${at}, pregunta «${questionId}»: «when» es una lista de textos que el ítem debe traer.`);
         if (question.when !== undefined && question.per === "verse") problems.push(`${at}, pregunta «${questionId}»: «when» es para preguntas de cada ítem, no de cada versículo.`);
+        if (question.about !== undefined && !text(question.about)) problems.push(`${at}, pregunta «${questionId}»: «about» es el recurso frente al que se lee la pregunta.`);
+        if (question.linked !== undefined && question.linked !== true) problems.push(`${at}, pregunta «${questionId}»: «linked» es true, o no se pone.`);
+        if (question.linked === true && question.per === "verse") problems.push(`${at}, pregunta «${questionId}»: «linked» es para preguntas de cada ítem, no de cada versículo.`);
+        if (question.articleFocus !== undefined && !(Array.isArray(question.articleFocus) && question.articleFocus.length && question.articleFocus.every((head: unknown) => typeof head === "string" && head.trim()))) problems.push(`${at}, pregunta «${questionId}»: «articleFocus» es una lista de títulos de sección de un artículo.`);
       }
+      // A list asked in groups names what each question is read against: one that does not would be a group with no name.
+      const named = list(step.checklist).filter((question) => question.about !== undefined).length;
+      if (named && named < list(step.checklist).length) problems.push(`${at}: unas preguntas dicen frente a qué se leen («about») y otras no.`);
     });
   }
 

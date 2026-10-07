@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 36,
+      "version": 37,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -1981,10 +1981,10 @@
           ],
           "steps": [
             {
-              "id": "notas-tpl",
-              "name": "Notas frente al TPL",
+              "id": "notas-textos",
+              "name": "Notas frente a los textos",
               "names": {
-                "pt": "Notas diante do TPL"
+                "pt": "Notas diante dos textos"
               },
               "actionLabel": "Comprobar",
               "actionLabels": {
@@ -1998,14 +1998,16 @@
                   "text": "¿Tiene sentido con el texto del TPL?",
                   "texts": {
                     "pt": "Faz sentido com o texto do TPL?"
-                  }
+                  },
+                  "about": "tpl"
                 },
                 {
                   "id": "util",
                   "text": "¿Es útil: el traductor sabe qué hacer con la dificultad?",
                   "texts": {
                     "pt": "É útil: o tradutor sabe o que fazer com a dificuldade?"
-                  }
+                  },
+                  "about": "tpl"
                 },
                 {
                   "id": "alternativa",
@@ -2017,7 +2019,8 @@
                     "Traducción alternativa",
                     "Tradução alternativa",
                     "Alternate translation"
-                  ]
+                  ],
+                  "about": "tpl"
                 },
                 {
                   "id": "cobertura",
@@ -2025,43 +2028,38 @@
                   "texts": {
                     "pt": "Cada dificuldade do TPL tem uma nota que a explique?"
                   },
-                  "per": "verse"
-                }
-              ]
-            },
-            {
-              "id": "notas-tps",
-              "name": "Notas frente al TPS",
-              "names": {
-                "pt": "Notas diante do TPS"
-              },
-              "actionLabel": "Comprobar",
-              "actionLabels": {
-                "pt": "Verificar"
-              },
-              "solverAppId": "fcr-checklist",
-              "closing": "checklist",
-              "checklist": [
+                  "per": "verse",
+                  "about": "tpl"
+                },
                 {
                   "id": "explica",
                   "text": "¿Explica bien el texto del TPS?",
                   "texts": {
                     "pt": "Explica bem o texto do TPS?"
-                  }
+                  },
+                  "about": "tps"
                 },
                 {
                   "id": "camino",
                   "text": "¿Ayuda a ver cómo el TPS llegó ahí desde el TPL?",
                   "texts": {
                     "pt": "Ajuda a ver como o TPS chegou ali a partir do TPL?"
-                  }
+                  },
+                  "about": "tps"
                 },
                 {
                   "id": "coincide",
                   "text": "Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?",
                   "texts": {
                     "pt": "Quando a nota menciona o TPS, coincide com o que o TPS diz?"
-                  }
+                  },
+                  "about": "tps",
+                  "when": [
+                    "el TPS",
+                    "al TPS",
+                    "o TPS",
+                    "the UST"
+                  ]
                 },
                 {
                   "id": "diferencias",
@@ -2069,36 +2067,26 @@
                   "texts": {
                     "pt": "Cada diferença importante entre o TPL e o TPS tem uma nota?"
                   },
-                  "per": "verse"
-                }
-              ]
-            },
-            {
-              "id": "academia",
-              "name": "Academia",
-              "names": {
-                "pt": "Academia"
-              },
-              "actionLabel": "Comprobar",
-              "actionLabels": {
-                "pt": "Verificar"
-              },
-              "solverAppId": "fcr-checklist",
-              "closing": "checklist",
-              "checklist": [
+                  "per": "verse",
+                  "about": "tps"
+                },
                 {
                   "id": "pertinente",
                   "text": "¿El artículo enlazado enseña el tipo de dificultad que señala la nota?",
                   "texts": {
                     "pt": "O artigo vinculado ensina o tipo de dificuldade que a nota aponta?"
-                  }
+                  },
+                  "about": "academia",
+                  "linked": true
                 },
                 {
                   "id": "publicado",
                   "text": "¿El artículo está publicado en este idioma?",
                   "texts": {
                     "pt": "O artigo está publicado neste idioma?"
-                  }
+                  },
+                  "about": "academia",
+                  "linked": true
                 }
               ]
             },
@@ -2160,10 +2148,10 @@
           ],
           "steps": [
             {
-              "id": "palabras-tpl",
-              "name": "Palabras frente al TPL",
+              "id": "palabras-textos",
+              "name": "Palabras frente a los textos",
               "names": {
-                "pt": "Palavras diante do TPL"
+                "pt": "Palavras diante dos textos"
               },
               "actionLabel": "Comprobar",
               "actionLabels": {
@@ -2177,7 +2165,8 @@
                   "text": "¿La definición del artículo es correcta para este contexto?",
                   "texts": {
                     "pt": "A definição do artigo está correta para este contexto?"
-                  }
+                  },
+                  "about": "tpl"
                 },
                 {
                   "id": "cobertura",
@@ -2185,34 +2174,21 @@
                   "texts": {
                     "pt": "Cada palavra difícil do TPL tem seu artigo?"
                   },
-                  "per": "verse"
-                }
-              ]
-            },
-            {
-              "id": "palabras-tps",
-              "name": "Sugerencias frente al TPS",
-              "names": {
-                "pt": "Sugestões diante do TPS"
-              },
-              "actionLabel": "Comprobar",
-              "actionLabels": {
-                "pt": "Verificar"
-              },
-              "solverAppId": "fcr-checklist",
-              "closing": "checklist",
-              "articleFocus": [
-                "Sugerencias de traducción",
-                "Sugestões de tradução",
-                "Translation Suggestions"
-              ],
-              "checklist": [
+                  "per": "verse",
+                  "about": "tpl"
+                },
                 {
                   "id": "sugerencia",
                   "text": "¿La forma en que el TPS dice el término aparece en las sugerencias de traducción del artículo?",
                   "texts": {
                     "pt": "A forma como o TPS diz o termo aparece nas sugestões de tradução do artigo?"
-                  }
+                  },
+                  "about": "tps",
+                  "articleFocus": [
+                    "Sugerencias de traducción",
+                    "Sugestões de tradução",
+                    "Translation Suggestions"
+                  ]
                 }
               ]
             },
@@ -2718,6 +2694,14 @@
         "preguntas-textos": {
           "items": "preguntas",
           "text": "tpl,tps"
+        },
+        "notas-textos": {
+          "items": "notas",
+          "text": "tpl,tps"
+        },
+        "palabras-textos": {
+          "items": "palabras",
+          "text": "tpl,tps"
         }
       }
     },
@@ -2813,7 +2797,11 @@
       "Afinar TPL": "Afinar TPL",
       "Afinar TPS": "Afinar TPS",
       "Desafíos ": "Desafios ",
-      "Confirmar ": "Confirmar "
+      "Confirmar ": "Confirmar ",
+      "Notas frente al TPL": "Notas diante do TPL",
+      "Notas frente al TPS": "Notas diante do TPS",
+      "Palabras frente al TPL": "Palavras diante do TPL",
+      "Sugerencias frente al TPS": "Sugestões diante do TPS"
     }
   }
 }

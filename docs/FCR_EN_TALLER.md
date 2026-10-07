@@ -353,6 +353,9 @@ Si separamos bien, el FCR completo cabe en **datos**, y el motor queda reutiliza
 
 #### Listas de comprobación de Armonización (del antiguo paso 6)
 
+En la app, las listas de una misma ayuda (las dos de las notas con la de Academia, y las dos de las palabras) se
+recorren en una sola pasada, un grupo de preguntas a la vez: ver `PLANTILLA_FCR.md` § 5.1.
+
 **Notas frente al TPL** (por cada nota):
 1. ¿Tiene sentido con el texto del TPL?
 2. ¿Es útil: el traductor sabe qué hacer con la dificultad?

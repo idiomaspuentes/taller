@@ -1576,6 +1576,50 @@ así que no hay tarea abierta por la que entrar.
 - No se pudo ver: la tarjeta de una tarea de armonización abierta, «Acuerdo del equipo» en curso, y la lista en
   escritorio.
 
+### Una sola pasada por nota en Armonización (7 de octubre)
+
+Abel preguntó si convenía unir «Notas y Academia» frente al TPL y frente al TPS en un solo propósito, o separarlas
+por texto, y acordó unirlas. Lo que pesó, con Judas: 159 notas en 25 versículos (6.215 palabras, hasta 12 notas en
+un versículo) leídas tres veces, 453 lecturas, para 1.274 respuestas; la lista «frente al TPS» ya mostraba los dos
+textos, porque dos de sus preguntas los comparan; y desde que hay propuestas, nada se aplica hasta el acuerdo, así
+que la segunda lista revisaba la nota vieja y podía proponer otra versión entera de la misma nota.
+
+- **El proceso (versión 37)**: «Armonizar Notas y Academia» tiene una lista, «Notas frente a los textos», y el
+  acuerdo; «Armonizar Palabras», «Palabras frente a los textos» y el acuerdo. Las preguntas son las mismas; cada
+  una dice frente a qué se lee (`about`). Las de Academia solo se hacen en las notas que enlazan un artículo
+  (135 de 159), y «Cuando la nota menciona el TPS…» solo en las que lo mencionan (4 de 159).
+- **La pantalla**: bajo la nota, «Se comprueba con» y una pestaña por grupo, «TPL · TPS · Academia», cada una con
+  su marca. En pantalla queda un grupo: sus dos a cuatro preguntas y aquello frente a lo que se leen (el TPL; el
+  TPL y el TPS; el artículo abierto). «Todo bien» responde el grupo y pasa al siguiente; tras el último, a la nota
+  que sigue. Una nota sin artículo no tiene esa pestaña.
+- **Medido a 375 × 812 con Judas 1:1, de prueba**: al pasar al TPS el recuadro de los textos crece de 212 a 366 px
+  y sus tres preguntas quedan entre 568 y 740 px, sobre la barra del pie (748); al pasar a Academia el artículo se
+  abre (244 px) y sus dos preguntas quedan entre 634 y 740. Sin el ajuste, las del TPS empezaban en 788: bajo la
+  barra. En 1280 px, textos a la izquierda y tarjeta a la derecha (480 px), sin desbordes.
+- **Una propuesta por nota**: lo propuesto para la nota en vista se lee bajo ella («Propuesta por acordar»), y otra
+  propuesta sobre lo mismo parte de esa versión y toma su lugar («Hay otra versión»). En el acuerdo queda una sola
+  por acordar.
+- **Las sugerencias de una palabra** se leen en su sección del artículo: con el grupo del TPS el artículo se abre
+  en «Sugerencias de traducción», y con el del TPL, desde el principio.
+- **Un proyecto creado antes conserva sus listas**: al traer lo nuevo del proceso no se le agrega la lista única
+  (sería el mismo trabajo dos veces). El Laboratorio la ofrece de prueba en cualquier proyecto, marcada «como es
+  ahora en el proceso».
+
+**⚠ Sin resolver**
+
+- **Solo se ha visto de prueba**, con Judas, que ya está terminado: ninguna tarea real ha recorrido la lista única.
+  Lo que escribe es lo de siempre (las respuestas de la lista), bajo el nombre del paso nuevo.
+- «¿El artículo está publicado en este idioma?» se sigue preguntando en cada nota (135 veces para 30 artículos),
+  y la app ya lo sabe: lo dice bajo el artículo. No se quitó: es una pregunta del equipo.
+- «Cuando la nota menciona el TPS…» se pregunta si la nota dice «el TPS» o «al TPS» (en portugués, «o TPS»; en
+  inglés, «the UST»). Una nota que lo nombre de otro modo no la recibe. Fue una decisión mía al unir, fácil de
+  deshacer en el paquete.
+- En la primera nota de un versículo las preguntas empiezan bajo la primera pantalla (786 px de prueba; unos 717
+  sin el aviso de prueba): arriba están el versículo y la nota, que es lo que se lee primero.
+- Con el grupo del TPS los dos textos ocupan 366 px de 812.
+- En escritorio solo se muestra el texto del grupo, aunque a la izquierda hay sitio para los dos.
+- «Preguntas frente a los textos» no cambió: sus dos preguntas son de los dos textos a la vez.
+
 ### Propuestas de cambio en Armonización (7 de octubre)
 
 Abel: «necesitamos que sea posible crear una propuesta de cambios, con un comentario o con la nueva versión de la

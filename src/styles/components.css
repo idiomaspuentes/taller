@@ -7238,6 +7238,15 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 .ck-checks .ck-question__outcome { margin: 0 0 0.5rem 2.125rem; }
 /* A new version read against the one before: what was put in on the ground of what is done, what was taken out
    struck through in the muted colour. Red is kept for errors. */
+/* A list asked in groups: what the questions in view are read against, a tab each, with how each stands. */
+.ck-groups { display: flex; gap: 0.375rem; }
+.ck-groups > button { flex: 1 1 0; min-width: 0; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; padding: 0 0.5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--text-muted); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; }
+.ck-groups > button[data-state="yes"] { color: var(--success-700); }
+.ck-groups > button[data-state="no"] { color: var(--warning-700); }
+.ck-groups > button[aria-selected="true"] { border-color: var(--primary); background: var(--accent-100); color: var(--accent-700); }
+/* What is proposed for the help in view, under it: the next group checks the help as it would be. */
+.ck-proposed { margin: 0; padding: 0.5rem 0.625rem; border-left: 3px solid var(--warning-700); border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.875rem; line-height: 1.5; overflow-wrap: anywhere; }
+.solver-lab__new { font-weight: 400; color: var(--text-muted); }
 .ag-diff del { color: var(--text-muted); text-decoration: line-through; }
 .ag-diff ins { padding: 0 0.125rem; border-radius: 3px; background: var(--success-100); color: var(--success-700); text-decoration: none; }
 /* The agreement of a team: its proposals, a card each. One carried out, taken back or answered is put aside. */

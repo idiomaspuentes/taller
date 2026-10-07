@@ -67,7 +67,7 @@ Cada plantilla tiene `id`, `name`, `version`, `phases` y `tasks`.
 | `excludeIssueAssignee`, `excludePriorStepIds`, `includeAuthorInApproval` | Quién no puede tomarlo, y si el autor también confirma |
 | `closing` | Cómo se completa: `self`, `approval`, `consensus`, `checklist`, `automatic` |
 | `articleFocus` | Los títulos de la sección de un artículo de que trata el paso («Sugerencias de traducción»): el artículo se muestra desde ahí |
-| `checklist` | Las preguntas de sí o no de un paso `checklist` (`id`, `text`, `texts`, `per`; `when`: la pregunta solo se hace en los ítems cuyo texto trae uno de esos textos) |
+| `checklist` | Las preguntas de sí o no de un paso `checklist` (`id`, `text`, `texts`, `per`; `when`: la pregunta solo se hace en los ítems cuyo texto trae uno de esos textos; `linked: true`: solo en los que enlazan un artículo; `about`: frente a qué recurso se lee, ver «Una lista en grupos»; `articleFocus`: la sección del artículo que se abre con ella) |
 | `scope` | Qué cubre: una subtarea, la unidad completa (`unit`), o un capítulo una vez por persona (`chapter-once`) |
 
 Los **ids no se cambian nunca**: las subtareas y su avance en Door43 los usan. Los nombres sí se
@@ -169,6 +169,7 @@ organización cambió se respeta.
 | Dónde | Campo | Qué dice |
 |---|---|---|
 | Paso | `closing: "consensus"` con `solverAppId`, sin ítems | El acuerdo del equipo se da **en la herramienta del paso**, no en la tarjeta: quien lo da se sienta en el paso, y el paso se cierra cuando todas las personas sentadas lo dieron, son al menos `minAssignees` y en la herramienta no queda nada por resolver (`agreeInTool`). En el FCR es «Acuerdo del equipo», que abre la pantalla de las propuestas de cambio. |
+| Pregunta | `about: "tpl"` | **Una lista en grupos.** Cuando las preguntas de un paso dicen frente a qué recurso se lee cada una (`about`: un texto, o el recurso de los artículos), la lista recorre cada ítem una sola vez y las pregunta por grupos, en el orden en que el proceso nombra cada recurso: en pantalla quedan los textos del paso hasta el del grupo (o el artículo abierto, si el grupo no es de un texto) y solo sus preguntas. O todas dicen `about`, o ninguna. Un ítem que no tiene preguntas de un grupo (sin artículo, sin lo que pide `when`) no lo muestra. |
 | Paso | `closing: "checklist"` | Un «No» de la lista se resuelve con una **propuesta de cambio** (la nueva versión, o un comentario), que se acuerda en el paso de acuerdo de la misma tarea. Lo que es de la tarea se escribe en su borrador al acordarse; lo que mantiene otra tarea se le pide como corrección. |
 
 **Un proyecto y la versión de su proceso.** El proyecto recuerda con qué versión se creó (`workflowVersion`). Cuando el

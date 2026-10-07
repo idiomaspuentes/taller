@@ -321,6 +321,16 @@ export type ChecklistQuestion = {
    * translation fits was asked of every note, most of which bring none.
    */
   when?: string[];
+  /**
+   * What the question is read against: a resource of the project (a text, the articles). A list that checks its
+   * items against several things asks them a group at a time, with what the group is read against on screen. They
+   * were a list for each, over the same items: every note of a unit was read three times.
+   */
+  about?: string;
+  /** Asked only of an item that links a support article. */
+  linked?: true;
+  /** The section of the item's article the question is about: the article opens there while its group is in view. */
+  articleFocus?: string[];
 };
 
 export type TaskStep = {

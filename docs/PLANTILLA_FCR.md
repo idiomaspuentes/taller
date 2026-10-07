@@ -528,24 +528,31 @@ sentido con la nota.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Notas frente al TPL | Comprobar | Equipo de la pista | 1 o más | Notas con el TPL a la vista | Lista de comprobación por nota (A) |
-| 2 | Notas frente al TPS | Comprobar | Equipo de la pista | 1 o más | Notas con el TPL y el TPS a la vista | Lista de comprobación por nota (B) |
-| 3 | Academia | Comprobar | Equipo de la pista | 1 o más | Artículo enlazado por cada nota | Lista de comprobación (C) |
-| 4 | Acuerdo del equipo | Acordar | Todo el equipo de la pista | todos | Resumen de lo modificado, creado y consultado | Consenso por ítem: todos de acuerdo sobre dejar o modificar; lo confirma el coordinador o una habilitada |
+| 1 | Notas frente a los textos | Comprobar | Equipo de la pista | 1 o más | Cada nota una sola vez: con el TPL, con el TPS y con su artículo | Lista de comprobación por nota, en tres grupos (A, B, C) |
+| 2 | Acuerdo del equipo | Acordar | Todo el equipo de la pista | todos | Resumen de lo modificado, creado y consultado | Consenso por ítem: todos de acuerdo sobre dejar o modificar; lo confirma el coordinador o una habilitada |
 
-**Lista A · cada nota frente al TPL**
+**Una sola pasada (octubre de 2026).** Eran tres pasos, uno por lista, sobre las mismas notas: en Judas, 159 notas
+leídas tres veces (453 lecturas) para 1.274 respuestas. Ahora cada nota se lee una vez y lo que se comprueba de ella
+sale por grupos, uno en pantalla a la vez: con el TPL a la vista; después con el TPL y el TPS; después con su
+artículo abierto. «Todo bien» responde el grupo en vista y pasa al siguiente, y tras el último, a la nota siguiente.
+Lo que se decide es por nota (se deja o se cambia), y una nota tiene que servir con los dos textos a la vez: si se
+propone cambiarla al mirarla con el TPL, con el TPS se comprueba ya la versión propuesta, y otra propuesta sobre la
+misma nota parte de esa y toma su lugar. Un proyecto creado antes conserva sus tres listas.
+
+**Grupo A · cada nota frente al TPL**
 1. ¿Tiene sentido con el texto del TPL?
 2. ¿Es útil: el traductor sabe qué hacer con la dificultad?
 3. ¿La traducción alternativa encaja exactamente en la frase que reemplaza?
 4. (Por versículo) ¿Cada dificultad del TPL tiene una nota que la explique?
 
-**Lista B · cada nota frente al TPS**
+**Grupo B · cada nota frente al TPS**
 1. ¿Explica bien el texto del TPS?
 2. ¿Ayuda a ver cómo el TPS llegó ahí desde el TPL?
-3. Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?
+3. Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice? (Solo se pregunta en las notas que lo
+   mencionan: 4 de las 159 de Judas.)
 4. (Por versículo) ¿Cada diferencia importante entre el TPL y el TPS tiene una nota?
 
-**Lista C · Academia**
+**Grupo C · Academia** (solo en las notas que enlazan un artículo: 135 de las 159 de Judas, a 30 artículos)
 1. ¿El artículo enlazado enseña el tipo de dificultad que señala la nota?
 2. ¿El artículo está publicado en español? Si no, se crea.
 
@@ -553,15 +560,14 @@ sentido con la nota.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Palabras frente al TPL | Comprobar | Equipo de la pista | 1 o más | Término, artículo y TPL | Lista de comprobación por término (D) |
-| 2 | Sugerencias frente al TPS | Comprobar | Equipo de la pista | 1 o más | Término, artículo y TPS | Lista de comprobación por término (E) |
-| 3 | Acuerdo del equipo | Acordar | Todo el equipo de la pista | todos | Resumen | Consenso por ítem; lo confirma el coordinador o una habilitada |
+| 1 | Palabras frente a los textos | Comprobar | Equipo de la pista | 1 o más | Cada término una sola vez: su artículo con el TPL, y sus sugerencias con el TPS | Lista de comprobación por término, en dos grupos (D, E) |
+| 2 | Acuerdo del equipo | Acordar | Todo el equipo de la pista | todos | Resumen | Consenso por ítem; lo confirma el coordinador o una habilitada |
 
-**Lista D · cada término frente al TPL**
+**Grupo D · cada término frente al TPL**
 1. ¿La definición del artículo es correcta para este contexto?
 2. (Por versículo) ¿Cada palabra difícil del TPL tiene su artículo?
 
-**Lista E · cada término frente al TPS (opcional)**
+**Grupo E · cada término frente al TPS (opcional)** — el artículo se abre en «Sugerencias de traducción»
 1. ¿La forma en que el TPS dice el término aparece en las sugerencias de traducción del artículo?
 
 ### 5.3 Armonizar Preguntas

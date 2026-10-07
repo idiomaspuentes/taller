@@ -59,6 +59,19 @@ test("un proyecto anterior recibe la pantalla de su paso de acuerdo, sin pasos n
   assert.equal(result.board.teams.length, board.teams.length);
 });
 
+test("un proyecto con una lista por texto sigue con las suyas: no recibe además la lista única", () => {
+  // The process as it was while each text had a list of its own over the same notes.
+  const list = (id: string, name: string) => ({ id, name, solverAppId: "fcr-checklist", closing: "checklist" as const, checklist: [{ id: "q", text: "¿Está bien?" }] });
+  const before: WorkflowTemplate = {
+    ...fcr,
+    version: fcr.version - 1,
+    tasks: fcr.tasks.map((task) => (task.id === "armonizar-notas" ? { ...task, steps: [list("notas-tpl", "Notas frente al TPL"), list("notas-tps", "Notas frente al TPS"), list("academia", "Academia"), task.steps!.at(-1)!] } : task)),
+  };
+  const result = upgradeBoardToWorkflow(applyWorkflowToBoard(empty, before), fcr);
+  assert.deepEqual(result.board.teams.find((task) => task.id === "armonizar-notas")!.steps!.map((step) => step.id), ["notas-tpl", "notas-tps", "academia", "acuerdo"]);
+  assert.deepEqual(result.steps, [], "ningún paso de más: sería el mismo trabajo dos veces");
+});
+
 test("actualizar agrega lo nuevo en su lugar y no cambia lo que el proyecto ya tiene", () => {
   const created = applyWorkflowToBoard(empty, older);
   // The project made its own changes: people on a task, a renamed step, a different minimum.

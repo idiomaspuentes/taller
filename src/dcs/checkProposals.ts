@@ -10,6 +10,7 @@ import { readTeamHelps, saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } 
 import { proposalAsk, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
+import { shippedStepsMissing } from "../domain/processes";
 import { bookBranchName } from "../domain/portionPr";
 import type { PmConfig } from "../domain/roles";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -26,7 +27,9 @@ export type CheckedStep = { stepId: string; key: string; target: CheckTarget };
  */
 export function checkedSteps(ctx: SolverLaunchContext, task: ProjectTask | null, pmConfig: PmConfig): CheckedStep[] {
   const book = (ctx.book || ctx.projectId || "").toUpperCase();
-  return (task?.steps ?? []).flatMap((step) => {
+  // A trial may have gone over a list the process has now and the project does not: what was proposed there is read too.
+  const steps = [...(task?.steps ?? []), ...(ctx.lab && task ? shippedStepsMissing(task) : [])];
+  return steps.flatMap((step) => {
     if (step.closing !== "checklist") return [];
     const items = findSolverApp(DEFAULT_SOLVERS_CATALOG, step.solverAppId)?.stepParams?.[step.id]?.items ?? task?.rules[0]?.resource ?? "";
     const helps = resolveHelpsTarget({ ...ctx, resource: items }, pmConfig);

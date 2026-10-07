@@ -3,7 +3,7 @@ import { DEFAULT_LOAD_LIMITS, type LoadLimits } from "./processLoad";
 import type { ProcessPackage } from "../config/types";
 import { DEFAULT_SOLVERS_CATALOG } from "./solvers";
 import { normalizeWorkflowTemplate } from "./store";
-import type { Localized, WorkflowTemplate } from "./types";
+import type { Localized, TaskStep, WorkflowTemplate } from "./types";
 import { processProblems } from "./workflowCheck";
 
 /**
@@ -47,6 +47,17 @@ export function shippedStepTool(taskId: string, stepId: string, packages: Proces
     if (tool) return tool;
   }
   return undefined;
+}
+
+/**
+ * The steps the process gives a task now that a project's copy of the task does not have. A project keeps the steps
+ * it was created with (its lists, one for each text, where the process now has one for both): trying the step as it
+ * is now takes it from here.
+ */
+export function shippedStepsMissing(task: { id: string; steps?: { id: string }[] }, packages: ProcessPackage[] = tallerConfig.processes): TaskStep[] {
+  const have = new Set((task.steps ?? []).map((step) => step.id));
+  const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((row) => row.id === task.id))[0];
+  return (shipped?.steps ?? []).filter((step) => !have.has(step.id));
 }
 
 /** `names[language]`, or the stored name. */

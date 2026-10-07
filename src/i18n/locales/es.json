@@ -2934,5 +2934,9 @@
   "ag.locked": "Antes hay que cerrar los pasos anteriores de esta tarea.",
   "ag.cannot": "No se pudo anotar tu acuerdo: el paso ya tiene a todas sus personas.",
   "ag.closed": "Paso cerrado: el equipo está de acuerdo.",
-  "ag.closedDelivered": "El equipo está de acuerdo: tarea entregada."
+  "ag.closedDelivered": "El equipo está de acuerdo: tarea entregada.",
+  "ck.checksWith": "Se comprueba con",
+  "ck.proposedHere": "Propuesta por acordar:",
+  "pr.fromPrior": "Parte de la propuesta que ya hay; la tuya tomará su lugar.",
+  "lab.tryNewStep": "como es ahora en el proceso"
 }
