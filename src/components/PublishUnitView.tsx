@@ -1,3 +1,4 @@
+import { ConfirmDialog } from "./ConfirmDialog";
 import { releaseUnit } from "../dcs/release";
 import { markPhaseIfClosed } from "../dcs/phaseMarks";
 import { toolHeading } from "./toolHeading";
@@ -61,6 +62,8 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
   const [told, setTold] = useState(false);
   /** The name of the version this publication made. */
   const [released, setReleased] = useState("");
+  /** Asked once before publishing: it merges into what is published in every repository and makes a version. */
+  const [confirming, setConfirming] = useState(false);
   /** Where the unit departs from agreed glossary entries: shown, never a reason to stop. */
   const [notices, setNotices] = useState<GlossaryNotice[]>([]);
   const alignedKey = aligned.join(",");
@@ -258,7 +261,15 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
               ) : null}
             </ul>
           )}
-          {mode === "comprobar" && stepDone ? <p className="round__done">{t("pu.checksPassed")}</p> : null}
+          {mode === "comprobar" && stepDone ? (
+            // The checks are a step of their own: once they pass there is nothing left to do on this screen.
+            <div className="round__done round__done--leave">
+              <p>{t("pu.checksPassed")}</p>
+              <Button type="button" size="lg" variant="outline" onClick={onClose}>
+                {t("fa.back")}
+              </Button>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -293,7 +304,9 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
               {problems.length ? (
                 <p className="af-hint">{t("pu.fixFirst")}</p>
               ) : canPublish ? (
-                <Button type="button" size="lg" disabled={working} onClick={() => void publish()}>
+                // One press published: what cannot be taken back from the app is asked first, as handing in a task
+                // or taking somebody out of a team is.
+                <Button type="button" size="lg" disabled={working} onClick={() => setConfirming(true)}>
                   {working ? t("pu.working") : t("pu.publish")}
                 </Button>
               ) : (
@@ -337,6 +350,18 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
           ) : null}
         </section>
       ) : null}
+      <ConfirmDialog
+        open={confirming}
+        safe
+        title={t("pu.confirmTitle").replace("{unit}", unitName)}
+        text={t("pu.confirmText")}
+        yes={t("pu.confirmYes")}
+        onYes={() => {
+          setConfirming(false);
+          void publish();
+        }}
+        onNo={() => setConfirming(false)}
+      />
     </div>
   );
 }

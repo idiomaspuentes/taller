@@ -325,7 +325,16 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
         </Alert>
       ) : null}
       {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
-      {stepDone && mode === "decision" ? <p className="round__done">{t("en.endorsed")}</p> : null}
+      {stepDone && mode === "decision" ? (
+        // Decided: there is nothing left to do here, and the way out is said. It read «Aval concedido» over a screen
+        // with no button at all.
+        <div className="round__done round__done--leave">
+          <p>{t("en.endorsed")}</p>
+          <Button type="button" size="lg" variant="outline" onClick={onClose}>
+            {t("fa.back")}
+          </Button>
+        </div>
+      ) : null}
 
       {data ? (
         <details className="en-texts en-read" open={mode === "reporte"}>
@@ -547,14 +556,6 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
                 </p>
               ) : null}
             </>
-          ) : mode === "decision" ? (
-            // Decided: there is nothing left to do here. The screen stayed on the reports, with no button at all.
-            <div className="round__done round__done--leave">
-              <p>{t("en.endorsed")}</p>
-              <Button type="button" size="lg" variant="outline" onClick={onClose}>
-                {t("fa.back")}
-              </Button>
-            </div>
           ) : null}
         </section>
       ) : null}

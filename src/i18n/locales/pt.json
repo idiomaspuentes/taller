@@ -2788,5 +2788,8 @@
   "en.askObjector": "Pedir a @{who} que revise sua objeção",
   "en.askedObjector": "Foi pedido a @{who} que revise sua objeção.",
   "en.askObjectorSaid": "sua objeção continua aberta e o comitê não pode decidir o aval. Veja o que foi respondido ou corrigido; se não for mais necessária, retire-a e entregue seu relatório de novo.",
-  "en.endorsing": "Salvando o aval de cada recurso: leva um ou dois minutos. Deixe o app aberto."
+  "en.endorsing": "Salvando o aval de cada recurso: leva um ou dois minutos. Deixe o app aberto.",
+  "pu.confirmTitle": "Publicar {unit}?",
+  "pu.confirmText": "Passa para o publicado de cada recurso e sua versão é criada. Publicar não pode ser desfeito pelo app.",
+  "pu.confirmYes": "Sim, publicar"
 }

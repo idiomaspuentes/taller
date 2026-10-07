@@ -1019,13 +1019,109 @@ en español y las correcciones de la fase.
 - La conversación de «Armonizar Notas y Academia» se titula «Judas 1:1–25 · Academia».
 - Si se cierra la app mientras se prepara la validación, queda a medias hasta que se entregue otra subtarea.
 
+## Fase 4 · Validación (7 de octubre)
+
+El cambio de equipo, por **Pastor Eliseo** (abelperez): se creó «Comité pastoral» con las cuatro cuentas («Persona
+habilitada» todas; él coordina), se le asignó «Validar» en «Proyectos» y se sacó a las cuatro de «Armonizadores».
+
+Personas: abelperez = **Pastor Eliseo** (coordina), abelper8 = **Pastor Natán**, valeska = **Pastora Hulda (P)**,
+Elisha = **Pastor Samuel (P)**.
+
+**El recorrido**
+
+1. **Pastora Hulda, a mano.** «Revisar» abre el pasaje con el TPL y el TPS de cada versículo y, debajo, sus notas,
+   preguntas y palabras («9 notas · 3 preguntas · 9 palabras», de 74 × 40 px). Anotó una observación sobre la
+   primera nota de 1:1 y una **objeción** sobre el TPL de 1:12 («arrecifes ocultos» no se entiende), y en «Mi
+   reporte», que cabe entero en el teléfono, respondió Sí / No / Sí. «Entregar mi reporte»: 0,3 s.
+2. **Pastor Natán** entregó el suyo (tres «Sí»). Con dos reportes el paso se cerró: Samuel y Eliseo ya no
+   pudieron dar el suyo.
+3. **Pastor Samuel, «Decidir».** «1 de 2 apoyan · Hay objeciones sin resolver». Lo único que se puede tocar:
+   «Dejar pendiente y pedir las correcciones» (7 s): se crearon dos subtareas de corrección, una para «Desafíos
+   TPL» y otra para «Armonizar Notas y Academia».
+4. **Las correcciones.** Los dos equipos estaban vacíos por la rotación: Eliseo volvió a poner a dos personas en
+   cada uno. Tomás contestó la del TPL (el TPL es literal; la nota y el TPS lo explican) y cerró la revisión sin
+   cambiar el texto. Abigail corrigió la nota («[De parte de Judas,]»), recorrió las tres listas de su pasaje y
+   el equipo la aprobó. Al cerrarse la segunda, la unidad se renovó sola en validación (2 min 30 s).
+5. **De vuelta en el comité.** Samuel le pidió a Hulda que revisara su objeción; ella volvió a leer 1:12, la
+   retiró, cambió su respuesta y volvió a entregar. «2 de 2 apoyan · Hay consenso» → «Conceder el aval» (1 min 45 s).
+
+**⚠ Lo que bloqueaba o confundía, y se arregló**
+
+- **La inquietud que se anotaba desaparecía de la vista.** Se cerraba el recuadro y la nota quedaba igual; lo
+  escrito salía dos pantallas más abajo, al pie del versículo. *Ahora* aparece bajo la nota en que se escribió.
+- **Entregado el reporte, lo que resaltaba era «Volver a entregar».** *Ahora* resalta «Volver a mis tareas».
+- **La corrección de 1:12 quedó archivada en «Judas 1:1–4»**, y su herramienta abría los versículos 1 a 4.
+  *Ahora* cada corrección va al pasaje de su versículo. (La de esta corrida ya estaba creada: se respondió sin
+  poder ver el 1:12 en su herramienta.)
+- **La tarjeta de una corrección decía «Desafíos TPL · Judas 1:1–4»**, igual que el trabajo ya terminado, y la
+  herramienta no decía qué había que corregir. *Ahora* la tarjeta lleva lo que pidió el comité («Corrección
+  1:12: «arrecifes ocultos» no se entiende…») y la herramienta lo dice arriba, a la vista: «Lo que se pide aquí».
+- **La objeción bloqueaba el aval y su autora no tenía cómo enterarse.** Había entregado su reporte y la tarea ya
+  no estaba en su lista; a quien decidía solo le quedaba un botón apagado. *Ahora* quien decide tiene «Pedir a
+  @valeska que revise su objeción» (1,9 s); a ella le llega el aviso con el versículo, y la conversación le da el
+  botón para volver a su reporte.
+- **«Conceder el aval» trabajó 105 s con el botón gris y dejó una pantalla sin botones.** *Ahora* dice «Guardando
+  el aval de cada recurso: tarda uno o dos minutos», entrega la tarea al terminar y ofrece «Volver a mis tareas».
+- **Seis enlaces seguidos «Ver la solicitud en Door43».** *Ahora* son una línea cerrada, para quien usa Door43.
+
+**⚠ Sin resolver**
+
+- **Con un comité de cuatro, el paso de los reportes se cierra con dos**: los otros dos pastores no llegan a
+  opinar, y la regla de mayoría se queda en «con dos personas hace falta el acuerdo de todas».
+- **Una corrección repite todos los pasos de su tarea**: para cambiar una línea de una nota, 278 respuestas en
+  tres listas y la aprobación de dos personas.
+- **El comité no ve qué se hizo con cada inquietud.** La respuesta de quien corrige queda en la conversación de la
+  corrección, y la mención a la pastora no le llega porque no es de ese equipo (se ve como `@valeska`, sin aviso).
+- **Nada avisa de que los equipos anteriores están vacíos.** Las correcciones quedaron sin nadie que las viera
+  hasta que quien coordina volvió a poner gente en esos equipos.
+- «Dejar pendiente y pedir las correcciones» actúa sin preguntar, y la pantalla queda igual después (no crea
+  duplicados si se vuelve a tocar).
+- La tarjeta de «Validar» no dice que hay correcciones pendientes ni que ya volvieron.
+- Los avisos y la conversación llaman a la tarea «Judas 1:1–25 · Lote · Validar».
+
+## Fase 5 · Publicación (7 de octubre): hasta antes de publicar
+
+Se creó «Publicación» con las cuatro cuentas (coordina abelper8 = **Benjamín**), se le asignó «Publicar» («Cada
+fase ya tiene su equipo») y se vaciaron «Comité pastoral», «Afinadores TPL» y «Armonizadores».
+
+Benjamín tocó «Comprobar». La pantalla dijo «Leyendo lo que tiene el equipo y lo que está publicado…» durante
+2 min 40 s y después:
+
+- ✓ TPL y TPS: completos y con el formato correcto.
+- ✓ Notas y Preguntas: filas completas y con el formato correcto.
+- ✓ Academia: 90 artículos enlazados y completos. ✓ Palabras: 77.
+- ✓ «Es exactamente lo que avaló el comité.»
+
+«Todas las comprobaciones pasaron. Este paso quedó completo.» La tarjeta quedó en «1 de 2 pasos · Publicar».
+
+La pantalla de «Publicar» se abrió solo para leerla (otros 2 min 40 s). Dice lo que haría: TPL, TPS, Notas y
+Preguntas «pasará a lo publicado»; Academia, 15 archivos de artículos por publicar; Palabras, 2. Y un botón:
+«Publicar esta unidad» (318 × 36 px, en 909 px: debajo de la primera pantalla).
+
+**Aquí se detuvo la corrida: «Publicar» no se tocó.** Publicar fusiona la rama de validación en lo publicado de
+los seis repositorios de QA y crea una versión; espera la confirmación de Abel.
+
+**⚠ Arreglado**
+
+- **«Publicar» publicaba con un solo toque, sin preguntar.** *Ahora* pregunta: «¿Publicar Judas 1:1–25? Pasa a lo
+  publicado de cada recurso y se crea su versión. Publicar no se puede deshacer desde la app», y lo que resalta
+  es volver. (Comprobado en el código y con los tipos; no se probó tocando el botón, para no publicar.)
+- Pasadas las comprobaciones, la pantalla no tenía nada que tocar: ahora ofrece «Volver a mis tareas».
+
+**⚠ Sin resolver**
+
+- Leer la unidad tarda casi tres minutos cada vez que se abre «Comprobaciones» o «Publicar».
+- El botón de la tarjeta dice «Publicar», y solo abre la pantalla donde se publica.
+
 ### Dónde quedó
 
-- **Traducción, Afinación y Armonización: terminadas.** 29 + 22 + 3 subtareas entregadas.
-- **Validación: lista para empezar.** «Validar · Judas 1:1–25» está libre («Revisión pastoral»), con la unidad en
-  `validacion/jud/1-1-25` en los seis repositorios de QA. Falta crear «Comité pastoral» y mover a las cuatro
-  cuentas.
-- Publicación: sin equipo todavía. **No se publica sin confirmación.**
-- En `usfm-ast` hay dos commits locales (`ef2ae1f`, las repeticiones; `471ad48`, el espacio tras un grupo
-  alineado), en la rama en que estaba el repositorio: sin ellos, una sesión que clone `usfm-ast` de GitHub
-  vuelve a perder alineaciones.
+- **Traducción, Afinación, Armonización y Validación: terminadas** (29 + 22 + 3 + 1 subtareas, más las dos
+  correcciones que pidió el comité).
+- **Publicación: comprobaciones pasadas; falta «Publicar», que espera confirmación.** La unidad está en
+  `validacion/jud/1-1-25` en los seis repositorios de QA, con una solicitud abierta en cada uno.
+- Solo «Publicación» tiene miembros (las cuatro cuentas). Ningún equipo se borró.
+- En QA quedó la rama `borrador/jud/armonizar-notas` (`es-419_tn`), creada por un fallo ya corregido: no se lee
+  ni se publica; borrarla es decisión de Abel.
+- **Nada se publicó en GitHub.** Los cambios de Taller son commits locales en `main`; en `usfm-ast` hay dos
+  commits locales (`ef2ae1f`, `471ad48`) en la rama en que estaba el repositorio, y sin ellos una sesión que
+  clone `usfm-ast` de GitHub vuelve a perder alineaciones.
