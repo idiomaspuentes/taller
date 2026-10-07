@@ -50,3 +50,15 @@ export function concernsOfHelp<T extends Pick<Concern, "about" | "where" | "item
   const firstThere = helps.find((help) => help.place === place)?.id;
   return concerns.filter((concern) => !concern.withdrawn && concern.about === about && (concern.item ? concern.item === id : (concern.where ?? "") === place && firstThere === id));
 }
+
+/**
+ * The helps of one word in the order they are read: from the one whose quote is shortest, which is the nearest to
+ * the word touched, to the one whose quote is longest. Those of the same length stay as they came. Touching
+ * «Jesucristo» gave first the note about a phrase of six words, and the key term «de Jesucristo» third.
+ */
+export function shortestQuoteFirst<T>(helps: T[], quoteWords: (help: T) => number): T[] {
+  return helps
+    .map((help, at) => ({ help, at, size: quoteWords(help) }))
+    .sort((a, b) => a.size - b.size || a.at - b.at)
+    .map((row) => row.help);
+}

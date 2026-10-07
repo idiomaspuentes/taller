@@ -1395,6 +1395,11 @@ el noveno lleva a «3 preguntas»); las marcas siguen a cada nota; escribir no g
 - **La caja de una inquietud es más corta y el cursor entra solo.** Observación y Objeción van en una fila, con
   una línea que dice qué hace cada una («…detiene el aval hasta que se resuelva»), y «Cancelar» y «Anotar» en
   otra. De donde se escribe al botón que lo guarda hay 137 px (antes, unos 190 con los botones apilados).
+- **Las ayudas de una palabra van de la cita más corta a la más larga** (lo pidió Abel): la más corta es la más
+  cercana a la palabra tocada. Tocar «Jesucristo» daba primero la nota de una frase de siete palabras y la palabra
+  clave «de Jesucristo» en tercer lugar. *Ahora*: las dos palabras clave «de Jesucristo» (2 palabras), la nota de
+  6 y la de 7. El largo se cuenta en el texto que se tocó: en el TPS, «Jesús» da 2, 8 y 12. Las de igual largo
+  quedan como venían.
 - **El subrayado dice qué hay debajo**: punteado, una nota; línea continua, una palabra clave. «Qué es cada
   marca» lo explica con las marcas mismas, plegado para no bajar el primer versículo.
 - **Las palabras de una o dos letras se tocan en 23 px de ancho** (medían de 9 a 19): su zona toma los espacios de

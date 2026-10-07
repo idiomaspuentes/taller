@@ -7,7 +7,7 @@ import { articleBody, termLabel } from "../domain/afinacionWords";
 import type { Concern } from "../domain/endorsement";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { loadSeenHelps, saveSeenHelps, verseInView, verseProgress } from "../domain/unitProgress";
-import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse } from "../domain/unitReading";
+import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, shortestQuoteFirst } from "../domain/unitReading";
 import type { VerseTextMap } from "../domain/usfmAst";
 import { useT, type MessageKey } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -172,7 +172,10 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
     return out;
   }, [helps.notas, helps.palabras, texts, book]);
 
-  /** Which helps each word of a verse has, in each text: its notes first, then its key terms. By «verse|text». */
+  /**
+   * Which helps each word of a verse has, in each text, by «verse|text»: from the one whose quote is shortest in
+   * that text to the one whose quote is longest (see `shortestQuoteFirst`).
+   */
   const coverage = useMemo(() => {
     const out = new Map<string, Map<number, Shown[]>>();
     for (const kind of OF_WORDS) {
@@ -185,6 +188,12 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
             out.set(key, words);
           }
         }
+      }
+    }
+    for (const [key, words] of out) {
+      const resource = key.slice(key.indexOf("|") + 1) as Text;
+      for (const [index, list] of words) {
+        if (list.length > 1) words.set(index, shortestQuoteFirst(list, (shown) => new Set(pointed.get(keyOf(shown.kind, shown.row))?.words[resource] ?? []).size));
       }
     }
     return out;

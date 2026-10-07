@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../src/domain/endorsement";
 import type { ChecklistQuestion } from "../src/domain/types";
-import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, unitVerses } from "../src/domain/unitReading";
+import { concernPlace, concernsAt, concernsOfHelp, helpsOfVerse, shortestQuoteFirst, unitVerses } from "../src/domain/unitReading";
 import { seenHelpsKey, verseInView, verseProgress } from "../src/domain/unitProgress";
 import { setActiveScope } from "../src/domain/scope";
 
@@ -106,6 +106,22 @@ test("una inquietud es de la nota en que se anotó, aunque otra nota del versíc
   assert.deepEqual(of("n2", "1:1 «Judas»"), ["a"], "la que dice de qué nota es sale solo bajo esa");
   assert.deepEqual(of("n1", "1:1 «Judas»"), ["b"], "la que no lo dice, bajo la primera de ese lugar, no bajo las dos");
   assert.deepEqual(of("n3", "1:1 «siervo»"), [], "ni la retirada ni la de otro recurso");
+});
+
+test("las ayudas de una palabra van de la cita más corta a la más larga, y las de igual largo como venían", () => {
+  const helps = [
+    { id: "nota: siervo de Jesucristo y hermano de Jacobo", words: 6 },
+    { id: "nota: de Jesucristo … guardados para Jesucristo llamados", words: 6 },
+    { id: "palabra: de Jesucristo (Jesús)", words: 2 },
+    { id: "palabra: de Jesucristo (Cristo)", words: 2 },
+    { id: "nota: Jesucristo", words: 1 },
+  ];
+  assert.deepEqual(
+    shortestQuoteFirst(helps, (help) => help.words).map((help) => help.id),
+    ["nota: Jesucristo", "palabra: de Jesucristo (Jesús)", "palabra: de Jesucristo (Cristo)", "nota: siervo de Jesucristo y hermano de Jacobo", "nota: de Jesucristo … guardados para Jesucristo llamados"],
+  );
+  assert.deepEqual(shortestQuoteFirst([], () => 0), []);
+  assert.equal(helps[0]!.words, 6, "la lista que se da no se toca");
 });
 
 test("un versículo está «ya leído» cuando se vieron todas sus ayudas; uno sin ayudas, nunca", () => {
