@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
-import { alignedGatewayQuoteForHelpQuote, matchHelpEntryToTokenIndicesByAlignment, tokenizeVersePlainText } from "../src/domain/helpQuoteMatch";
+import { alignedGatewayQuoteForHelpQuote, matchHelpEntryToTokenIndicesByAlignment, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../src/domain/helpQuoteMatch";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -58,6 +58,20 @@ test("la frase que se le muestra a la persona es la del lugar correcto", () => {
   assert.deepEqual(phrase(1), { gatewayText: "de Dios", tokenIndices: [2, 3] });
   assert.deepEqual(phrase(2), { gatewayText: "de Dios", tokenIndices: [15, 16] }, "dice lo mismo, pero está en otro sitio del versículo");
   assert.deepEqual(alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: "χάρις", occurrence: 1, alignments: { "TIT 1:1": groups }, book: "TIT", chapter: 1, verse: 1 }), { gatewayText: null, tokenIndices: [] });
+});
+
+test("una cita con una coma dentro se encuentra en el versículo, que también la tiene", () => {
+  // Jude 1:1–2 as the notes quote them: the comma is inside the quote.
+  const one = tokenizeVersePlainText("Ἰούδας, Ἰησοῦ Χριστοῦ δοῦλος, ἀδελφὸς δὲ Ἰακώβου; τοῖς ἐν Θεῷ Πατρὶ ἠγαπημένοις,");
+  assert.deepEqual(matchHelpQuoteToTokenIndices(one, "Ἰησοῦ Χριστοῦ δοῦλος, ἀδελφὸς δὲ Ἰακώβου", 1), [1, 2, 3, 4, 5, 6]);
+  const two = tokenizeVersePlainText("ἔλεος ὑμῖν, καὶ εἰρήνη, καὶ ἀγάπη πληθυνθείη.");
+  assert.deepEqual(matchHelpQuoteToTokenIndices(two, "ἔλεος ὑμῖν, καὶ εἰρήνη, καὶ ἀγάπη πληθυνθείη", 1), [0, 1, 2, 3, 4, 5, 6]);
+  // In two stretches, the second with commas of its own.
+  assert.deepEqual(matchHelpQuoteToTokenIndices(two, "ἔλεος & καὶ εἰρήνη, καὶ ἀγάπη πληθυνθείη", 1), [0, 2, 3, 4, 5, 6]);
+  // What was found before is found as before.
+  assert.deepEqual(matchHelpQuoteToTokenIndices(two, "ὑμῖν", 1), [1]);
+  assert.deepEqual(matchHelpQuoteToTokenIndices(two, "καὶ", 2), [4]);
+  assert.deepEqual(matchHelpQuoteToTokenIndices(one, "ἀδελφὸς & Ἰακώβου", 1), [4, 6]);
 });
 
 console.log(`\nverify-help-quote: ${passed} checks passed.`);

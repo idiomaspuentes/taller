@@ -609,6 +609,11 @@ Tres toques por desafío; al responder (1,7 s) pasa solo al siguiente. Se entien
   uno de los 30 desafíos. *Ahora* se quedan pegados al pie de la pantalla en el teléfono.
 - **La instrucción era la última línea**: «Toca en el TPL las palabras que traducen «τοῖς»» estaba debajo de las
   palabras. *Ahora* va encima de ellas.
+- **Cuatro de los 30 desafíos no resaltaban nada** (el 4, el 13, el 15 y el 21) y pedían «Toca en el TPL las
+  palabras que traducen lo resaltado en la referencia». La cita de esas notas tiene una coma dentro («δοῦλος,
+  ἀδελφὸς δὲ Ἰακώβου», «ἔλεος ὑμῖν, καὶ εἰρήνη, καὶ ἀγάπη πληθυνθείη»): las palabras del versículo se limpiaban
+  de puntuación una por una y la cita entera, así que no se encontraba. *Arreglado:* la cita se limpia palabra
+  por palabra. El 13 resalta ahora «ἔλεος … καὶ εἰρήνη, καὶ ἀγάπη πληθυνθείη» y lo dice en la instrucción.
 
 **⚠ Sin resolver**
 

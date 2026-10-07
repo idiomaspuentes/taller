@@ -77,9 +77,18 @@ export function matchHelpQuoteToTokenIndices(
   if (!quote || tokens.length === 0) return [];
   const { joined, spans } = tokenJoinedSpans(tokens);
   if (!joined) return [];
+  // Each word of the quote is cleaned on its own, as those of the verse are. Cleaned whole, a quote with a comma
+  // inside («δοῦλος, ἀδελφὸς δὲ Ἰακώβου») kept the comma and was found nowhere: four of the thirty challenges of a
+  // passage asked which words translate «lo resaltado» with nothing marked.
   const parts = quote
     .split("&")
-    .map((p) => normalizeHelpsText(p))
+    .map((p) =>
+      p
+        .split(/\s+/)
+        .map((word) => normalizeHelpsText(word))
+        .filter(Boolean)
+        .join(" "),
+    )
     .filter(Boolean);
   if (parts.length === 0) return [];
   let searchFrom = 0;
