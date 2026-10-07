@@ -1345,13 +1345,47 @@ capturas de la palabra clave «de Jesucristo» abierta. Medido en QA a 375 px, e
 
 Visto en QA con Judas 1:1 a 375 px y a 1280 px (la tarjeta mide 632 px de ancho, sin desborde).
 
+**Usándola a mano.** Abel pidió interactuar con la pantalla. Recorrido con toques reales a 375 × 812 px, como
+quien revisa: llegar, abrir notas, pasar las nueve, las preguntas, las palabras y un artículo, tocar palabras del
+texto, pasar a otro versículo, empezar una inquietud, ir al reporte y volver. Lo que solo se ve usándola:
+
+- **Abrir las ayudas de otro versículo movía toda la pantalla.** Con la tarjeta de 1:1 abierta (684 px con su
+  artículo), tocar «4 notas» de 1:2 cerraba la de arriba y todo subía **713 px**: la ficha tocada quedaba fuera de
+  la pantalla, la tarjeta nueva también, y bajo el dedo estaba 1:3. Tocando la palabra «nuestra» de 1:3 pasaba lo
+  mismo: la palabra tocada desaparecía por arriba. *Ahora* el versículo se queda donde estaba (la ficha se movió
+  0 px) y después la pantalla se desliza lo justo para que la tarjeta se vea.
+- **Al llegar, la tarjeta se abría bajo la pantalla.** Antes del primer versículo hay 232 px de encabezados, así
+  que la tarjeta de 1:1 empezaba en 542 px y solo se veían 198 de sus 494. *Ahora* se ven 288.
+- **«Leer el artículo» abría el artículo fuera de la vista**: asomaban 31 px sobre el pie fijo. Y su caja
+  retenía el dedo: al llegar a su final, la página no seguía. *Ahora* la pantalla lo trae entero a la vista (447
+  px) y, al terminar la caja, sigue la página.
+- **Se podía perder lo escrito.** Con una inquietud a medio escribir sobre una nota, tocar «Anotar una inquietud
+  sobre este versículo» la reemplazaba sin avisar. *Ahora* cada una guarda lo suyo, y la que quedó a medias dice
+  «Seguir con la inquietud que escribías».
+- **«Ir a mi reporte» no tenía vuelta.** Lleva 11.500 px abajo (el pasaje son unas veinte pantallas). *Ahora* el
+  reporte trae «← Volver a donde leía», que deja la pantalla exactamente donde estaba.
+- **Cada palabra subrayada era una parada del teclado**: 1.357 en la pantalla. *Ahora* 120: las palabras se tocan
+  con el dedo, y con teclado o lector de pantalla el versículo se lee entero y las ayudas se alcanzan por sus
+  fichas.
+- El pie fijo se quita mientras se escribe; el enlace de cada versículo dice cuál («Anotar una inquietud sobre
+  1:3», porque se ven dos a la vez); con nada abierto el título es «Anotado en este versículo»; una pregunta
+  trae el rótulo «Respuesta»; los enlaces azules pasan de un contraste de 4,17 a 8,13.
+
+Lo que funcionó bien al usarla: «Siguiente» no se mueve (ocho toques en el mismo punto pasaron las nueve notas, y
+el noveno lleva a «3 preguntas»); las marcas siguen a cada nota; escribir no guarda nada hasta tocar «Anotar».
+
 **⚠ Sin resolver**
 
-- El artículo de una palabra clave sigue abriéndose dentro de una caja con su propio desplazamiento.
-- Las palabras subrayadas de una letra («a», «y») miden unos 10 px de ancho.
-- En un versículo con muchas notas casi todo queda subrayado: el subrayado ya no molesta, pero tampoco dice dónde
-  hay más y dónde menos.
-- El pie fijo («Ir a mi reporte») tapa el final de una tarjeta larga hasta que se desliza.
+- **En un versículo largo, el texto y su ayuda no caben juntos.** Los dos textos de 1:12 miden 517 px (1:4 y 1:7,
+  486): la tarjeta empieza bajo ellos y de ella se ven unos 120 px. El TPS queda entre el TPL y la nota.
+- **No hay cómo ir a un versículo ni saber por dónde se va.** Son 14.100 px (unas veinte pantallas) y 309 ayudas
+  (159 notas, 26 preguntas, 124 palabras) sin índice ni señal de lo ya leído.
+- La caja para anotar una inquietud mide 331 px y el cursor no entra solo en ella: con el teclado abierto,
+  «Anotar» quedaría debajo.
+- Las palabras subrayadas de una o dos letras miden entre 9 y 19 px de ancho.
+- En un versículo con muchas notas casi todo queda subrayado (el 79 % de las palabras del pasaje): el subrayado ya
+  no molesta, pero tampoco dice dónde hay más y dónde menos.
+- El artículo de una palabra clave sigue leyéndose en una caja de 447 px con 2.862 px dentro.
 
 ### Cosas pequeñas de «Avisos», tarjetas y botones (7 de octubre)
 

@@ -84,6 +84,13 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   /** The terms whose name or article was already asked for, so each is read once. */
   const asked = useRef(new Set<string>());
   const reportRef = useRef<HTMLElement>(null);
+  /**
+   * Where the person was reading when they went to their report, to go back to it. On a phone the report is under
+   * the whole passage (twenty screens of it): «Ir a mi reporte» took them there and left no way back to the verse.
+   */
+  const rootRef = useRef<HTMLDivElement>(null);
+  const readRef = useRef<HTMLDetailsElement>(null);
+  const [leftAt, setLeftAt] = useState<{ root: number; read: number } | null>(null);
   /** The plan's settings once corrections were asked from here, and the items of every open subtarea of the project. */
   const [settings, setSettings] = useState<ProjectSettings | undefined>();
   const [openItems, setOpenItems] = useState<string[]>([]);
@@ -363,7 +370,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   const aboutLabel = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
 
   return (
-    <div className="af en">
+    <div className="af en" ref={rootRef}>
       <ToolHeader
         title={toolHeading(ctx, language, title).title}
         onBack={onClose}
@@ -391,7 +398,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       ) : null}
 
       {data ? (
-        <details className="en-texts en-read" open={mode === "reporte"}>
+        <details className="en-texts en-read" open={mode === "reporte"} ref={readRef}>
           <summary>{t("en.readUnit")}</summary>
           <UnitReading
             book={data.book}
@@ -412,7 +419,16 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
             // On a phone the report is under the whole reading: it stays one press away while reading.
             <div className="en-jump">
               <p>{standing ? t(standing === 1 ? "en.jumpOne" : "en.jumpMany").replace("{n}", String(standing)) : t("en.jumpNone")}</p>
-              <button type="button" className="btn" data-variant="outline" data-size="default" onClick={() => reportRef.current?.scrollIntoView({ block: "start" })}>
+              <button
+                type="button"
+                className="btn"
+                data-variant="outline"
+                data-size="default"
+                onClick={() => {
+                  setLeftAt({ root: rootRef.current?.scrollTop ?? 0, read: readRef.current?.scrollTop ?? 0 });
+                  reportRef.current?.scrollIntoView({ block: "start" });
+                }}
+              >
                 {t("en.jump")}
               </button>
             </div>
@@ -460,6 +476,20 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
       {data && mode === "reporte" && mine ? (
         <section ref={reportRef} className="af-card" aria-label={t("en.myReport")}>
           <h2 className="af-phrase">{t("en.myReport")}</h2>
+          {leftAt ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="en-back"
+              onClick={() => {
+                if (rootRef.current) rootRef.current.scrollTop = leftAt.root;
+                if (readRef.current) readRef.current.scrollTop = leftAt.read;
+                setLeftAt(null);
+              }}
+            >
+              {t("en.backToReading")}
+            </Button>
+          ) : null}
           <p className="af-hint">{mine.delivered ? t("en.deliveredHint") : t("en.blindHint")}</p>
           {!questions.length ? <p className="af-stale">{t("ck.noQuestions")}</p> : null}
           <ul className="ck-questions">

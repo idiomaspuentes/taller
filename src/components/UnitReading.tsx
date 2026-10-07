@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import type { AlignmentMap } from "@usfm-tools/types";
 import type { ChecklistItem, ChecklistKind } from "../dcs/checklistLoad";
@@ -51,6 +51,22 @@ const COUNT: Record<ChecklistKind, [MessageKey, MessageKey]> = { notas: ["ur.not
 const SEE: Record<ChecklistKind, MessageKey> = { notas: "ur.seeNote", preguntas: "ur.seeQuestion", palabras: "ur.seeTerm" };
 const keyOf = (kind: ChecklistKind, row: ChecklistItem) => `${kind}-${row.id}`;
 
+/** A concern being written, and under what (`key`: a verse, or one of its helps). */
+type Draft = { key: string; kind: Concern["kind"]; about: string; where: string; item?: string; text: string };
+
+/** What stays at the top and at the bottom of the screen over the reading: its heading, and the way to the report. */
+const KEPT_ABOVE = 52;
+const KEPT_BELOW = 68;
+
+/** The box a verse scrolls in: the reading's own on a wide screen, the tool on a phone. */
+function scrollerOf(el: HTMLElement): HTMLElement {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const flow = getComputedStyle(node).overflowY;
+    if ((flow === "auto" || flow === "scroll") && node.scrollHeight > node.clientHeight) return node;
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+}
+
 /**
  * A unit read verse by verse, with what goes with each verse beside it.
  *
@@ -71,9 +87,51 @@ const keyOf = (kind: ChecklistKind, row: ChecklistItem) => `${kind}-${row.id}`;
 export function UnitReading({ book, chapter, verses, texts, helps, label, termTitles, articles, onOpenTerms, onOpenArticle, concerns, onConcern, saving }: Props) {
   const t = useT();
   const [open, setOpen] = useState<Open | null>(null);
-  /** The concern being written: `key` says under what (a verse, or one of its helps). */
-  const [writing, setWriting] = useState<{ key: string; kind: Concern["kind"]; about: string; where: string; item?: string; text: string } | null>(null);
+  /**
+   * The concerns being written, by what each is about, and the one in hand. Starting one about the verse with
+   * another half written about a note replaced it: what had been typed was gone without a word.
+   */
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [writingKey, setWritingKey] = useState<string | null>(null);
+  const writing = writingKey ? (drafts[writingKey] ?? null) : null;
+  const setWriting = (next: Draft) => setDrafts((prev) => ({ ...prev, [next.key]: next }));
+  const stopWriting = (key: string) => {
+    setDrafts(({ [key]: _gone, ...rest }) => rest);
+    setWritingKey(null);
+  };
   const both = BOTH.filter((resource) => texts[resource]);
+
+  /**
+   * Opening a help keeps its verse where it was on the screen, and then brings the help into view. Only one help
+   * is open: opening one of the next verse closed the one above, everything moved up by its height (713 px, with
+   * an article open), and the person was left looking at the verse after the one they touched, its help out of
+   * sight above. And a help opened low on the screen stayed under its lower edge.
+   */
+  const sections = useRef(new Map<number, HTMLElement>());
+  const held = useRef<{ verse: number; top: number } | null>(null);
+  const hold = (verse: number) => {
+    const section = sections.current.get(verse);
+    if (section) held.current = { verse, top: section.getBoundingClientRect().top };
+  };
+  const openKey = open ? `${open.verse}|${open.kind}|${open.kind === "word" ? `${open.resource}:${open.index}` : ""}` : "";
+  useLayoutEffect(() => {
+    const was = held.current;
+    held.current = null;
+    const section = was ? sections.current.get(was.verse) : undefined;
+    if (!was || !section) return;
+    const scroller = scrollerOf(section);
+    scroller.scrollTop += section.getBoundingClientRect().top - was.top;
+    // In the next frame, once the place is settled: asked for in the same one, the help stayed where it was.
+    const reveal = requestAnimationFrame(() => {
+      const card = section.querySelector<HTMLElement>(".ur-open");
+      if (!card) return;
+      const frame = scroller === document.scrollingElement ? { top: 0, bottom: window.innerHeight } : scroller.getBoundingClientRect();
+      const under = card.getBoundingClientRect().bottom - (frame.bottom - KEPT_BELOW);
+      const spare = section.getBoundingClientRect().top - (frame.top + KEPT_ABOVE);
+      if (under > 0 && spare > 0) scroller.scrollBy({ top: Math.min(under, spare), behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(reveal);
+  }, [openKey]);
 
   /**
    * For each note and key term, the words its quote of the original points at: where they are in each text (both
@@ -133,6 +191,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
 
   const toggle = (verse: number, kind: ChecklistKind) => {
     const closing = open?.verse === verse && open.kind === kind;
+    hold(verse);
     setOpen(closing ? null : { verse, kind, at: 0 });
     if (!closing && kind === "palabras") onOpenTerms(helpsOfVerse(helps.palabras?.items, verse));
   };
@@ -142,6 +201,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
     const list = coverage.get(`${verse}|${resource}`)?.get(index) ?? [];
     if (!list.length) return;
     const again = open?.kind === "word" && open.verse === verse && open.resource === resource && open.index === index;
+    hold(verse);
     setOpen({ verse, kind: "word", resource, index, at: again ? (open.at + 1) % list.length : 0 });
     const terms = list.filter((shown) => shown.kind === "palabras").map((shown) => shown.row);
     if (terms.length) onOpenTerms(terms);
@@ -180,25 +240,35 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
             disabled={saving || !writing.text.trim() || !writing.about}
             onClick={() => {
               onConcern?.({ kind: writing.kind, about: writing.about, where: writing.where, text: writing.text.trim(), ...(writing.item ? { item: writing.item } : {}) });
-              setWriting(null);
+              stopWriting(writing.key);
             }}
           >
             {t("en.addIt")}
           </button>
-          <button type="button" className="btn" data-variant="ghost" data-size="default" onClick={() => setWriting(null)}>
+          <button type="button" className="btn" data-variant="ghost" data-size="default" onClick={() => stopWriting(writing.key)}>
             {t("af.cancel")}
           </button>
         </div>
       </div>
     ) : null;
 
-  /** The line that starts a concern about something, or the box where it is being written. */
-  const concernLine = (key: string, about: string, where: string, said: MessageKey, item?: string) =>
+  /**
+   * The line that starts a concern about something, or the box where it is being written. One left half written
+   * (another was started) says so, and is found as it was.
+   */
+  const concernLine = (key: string, about: string, where: string, said: string, item?: string) =>
     !onConcern ? null : writing?.key === key ? (
       concernBox()
     ) : (
-      <button type="button" className="ur-add" onClick={() => setWriting({ key, kind: "observation", about, where, text: "", ...(item ? { item } : {}) })}>
-        <MessageSquare size={14} aria-hidden /> {t(said)}
+      <button
+        type="button"
+        className="ur-add"
+        onClick={() => {
+          if (!drafts[key]) setWriting({ key, kind: "observation", about, where, text: "", ...(item ? { item } : {}) });
+          setWritingKey(key);
+        }}
+      >
+        <MessageSquare size={14} aria-hidden /> {drafts[key]?.text.trim() ? t("ur.concernResume") : said}
       </button>
     );
 
@@ -241,11 +311,19 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
           {/* The words of the text, the name of the term, and its article to open: three lines, each one thing. */}
           {phrase ? <p className="ur-item__head">«{phrase}»</p> : null}
           <p className="ur-item__term">{termLabel(slug, termTitles)}</p>
-          <details className="ur-term" onToggle={(e) => e.currentTarget.open && onOpenArticle(row)}>
+          <details
+            className="ur-term"
+            onToggle={(e) => {
+              if (!e.currentTarget.open) return;
+              onOpenArticle(row);
+              // The article opened under the lower edge of the screen: 31 px of it showed over the bar at the foot.
+              e.currentTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+            }}
+          >
             <summary>{t("ur.readArticle")}</summary>
             {article === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : article === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article" content={articleBody(article)} />}
           </details>
-          {helpFoot(saidOf(kind, row), concernLine(key, kind, placeOfHelp(kind, row), "ur.concernTerm", row.id))}
+          {helpFoot(saidOf(kind, row), concernLine(key, kind, placeOfHelp(kind, row), t("ur.concernTerm"), row.id))}
         </li>
       );
     }
@@ -253,8 +331,10 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
       <li key={key} className="ur-item">
         {tag}
         {kind === "preguntas" ? <p className="ur-item__head">{row.title}</p> : phrase ? <p className="ur-item__head">«{phrase}»</p> : null}
+        {/* A question and its answer were two lines told apart by their weight alone. */}
+        {kind === "preguntas" && row.body ? <p className="ur-lbl">{t("ur.answer")}</p> : null}
         {row.body ? <HelpMarkdownView className="ur-md" content={row.body} /> : null}
-        {helpFoot(saidOf(kind, row), concernLine(key, kind, placeOfHelp(kind, row), kind === "preguntas" ? "ur.concernQuestion" : "ur.concernNote", row.id))}
+        {helpFoot(saidOf(kind, row), concernLine(key, kind, placeOfHelp(kind, row), t(kind === "preguntas" ? "ur.concernQuestion" : "ur.concernNote"), row.id))}
       </li>
     );
   };
@@ -280,7 +360,15 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
         const said = concernsAt(concerns, chapter, verse).filter((concern) => !concern.withdrawn && !underHelp.has(concern));
         const touched = mine?.kind === "word" ? (tokenizeVersePlainText(texts[mine.resource]?.verses[verse] ?? "")[mine.index] ?? "").replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "") : "";
         return (
-          <section key={verse} className="ur-verse" aria-label={`${chapter}:${verse}`}>
+          <section
+            key={verse}
+            className="ur-verse"
+            aria-label={`${chapter}:${verse}`}
+            ref={(el) => {
+              if (el) sections.current.set(verse, el);
+              else sections.current.delete(verse);
+            }}
+          >
             <h3 className="ur-ref">
               {chapter}:{verse}
             </h3>
@@ -292,20 +380,29 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
               return (
                 <p key={resource} className="ur-text">
                   <span className="af-lbl">{label(resource)}</span>{" "}
-                  {covered?.size
-                    ? tokenizeVersePlainText(text).map((token, index) => (
-                        <Fragment key={index}>
-                          {index ? <span className="ur-space" data-here={(marked.has(index) && marked.has(index - 1)) || undefined}> </span> : null}
-                          {covered.has(index) ? (
-                            <button type="button" className="ur-word" data-here={marked.has(index) || undefined} onClick={() => openWord(verse, resource, index)}>
-                              {token}
-                            </button>
-                          ) : (
-                            token
-                          )}
-                        </Fragment>
-                      ))
-                    : text}
+                  {covered?.size ? (
+                    <>
+                      {/* Each word a button made 1,357 stops for a keyboard in one chapter, and a verse read out
+                          word by word: the verse is said whole, and its helps are reached by their lists. */}
+                      <span className="sr-only">{text}</span>
+                      <span aria-hidden="true">
+                        {tokenizeVersePlainText(text).map((token, index) => (
+                          <Fragment key={index}>
+                            {index ? <span className="ur-space" data-here={(marked.has(index) && marked.has(index - 1)) || undefined}> </span> : null}
+                            {covered.has(index) ? (
+                              <button type="button" tabIndex={-1} className="ur-word" data-here={marked.has(index) || undefined} onClick={() => openWord(verse, resource, index)}>
+                                {token}
+                              </button>
+                            ) : (
+                              token
+                            )}
+                          </Fragment>
+                        ))}
+                      </span>
+                    </>
+                  ) : (
+                    text
+                  )}
                 </p>
               );
             })}
@@ -356,7 +453,7 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
             <div className="ur-foot" data-apart={mine && inView ? true : undefined}>
               {said.length ? (
                 <>
-                  <p className="ur-lbl">{t("ur.verseNoted")}</p>
+                  <p className="ur-lbl">{t(mine && inView ? "ur.verseNoted" : "ur.verseNotedAll")}</p>
                   <ul className="ur-said">
                     {said.map((concern) => {
                       const kind = KINDS.find((candidate) => candidate === concern.about);
@@ -371,7 +468,14 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
                           </b>
                           <span>{concern.text}</span>
                           {kind && at >= 0 ? (
-                            <button type="button" className="ur-add" onClick={() => setOpen({ verse, kind, at })}>
+                            <button
+                              type="button"
+                              className="ur-add"
+                              onClick={() => {
+                                hold(verse);
+                                setOpen({ verse, kind, at });
+                              }}
+                            >
                               {t(SEE[kind])} <ChevronRight size={14} aria-hidden />
                             </button>
                           ) : null}
@@ -381,7 +485,8 @@ export function UnitReading({ book, chapter, verses, texts, helps, label, termTi
                   </ul>
                 </>
               ) : null}
-              {concernLine(`v${verse}`, both.length === 1 ? both[0]! : "", concernPlace(chapter, verse), "ur.concernVerse")}
+              {/* By its verse: two of these lines show at once, each at the end of a verse. */}
+              {concernLine(`v${verse}`, both.length === 1 ? both[0]! : "", concernPlace(chapter, verse), t("ur.concernVerse").replace("{ref}", `${chapter}:${verse}`))}
             </div>
           </section>
         );

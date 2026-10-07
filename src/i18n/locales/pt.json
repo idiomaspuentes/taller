@@ -2628,7 +2628,7 @@
   "ur.fromSource": "Ainda não estão no seu idioma: mostram-se as da fonte.",
   "ur.readingArticle": "Lendo o artigo…",
   "ur.noArticle": "Não foi possível ler o artigo.",
-  "ur.concernVerse": "Anotar uma inquietação sobre este versículo",
+  "ur.concernVerse": "Anotar uma preocupação sobre {ref}",
   "ur.concernNote": "Inquietação sobre esta nota",
   "ur.concernQuestion": "Inquietação sobre esta pergunta",
   "ur.concernTerm": "Inquietação sobre esta palavra",
@@ -2832,5 +2832,9 @@
   "ur.verseNoted": "Anotado em outras partes deste versículo",
   "ur.seeNote": "Ver a nota",
   "ur.seeQuestion": "Ver a pergunta",
-  "ur.seeTerm": "Ver a palavra"
+  "ur.seeTerm": "Ver a palavra",
+  "ur.concernResume": "Continuar a preocupação que você escrevia",
+  "ur.verseNotedAll": "Anotado neste versículo",
+  "ur.answer": "Resposta",
+  "en.backToReading": "← Voltar aonde eu lia"
 }
