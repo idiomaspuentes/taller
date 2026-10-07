@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { applyProposal, checkedSteps, loadTaskAnswers, sendProposal, type CheckedStep } from "../dcs/checkProposals";
+import { HelpChangedError, applyProposal, checkedSteps, loadTaskAnswers, readProposedWords, sendProposal, type CheckedStep } from "../dcs/checkProposals";
 import { appendCheckAnswers } from "../dcs/checkStore";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { loadPmConfig } from "../dcs/issues";
@@ -10,7 +10,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { loadTrialChecks, proposalAnswer, proposalDone, proposalSaying, proposalsOf, proposalsSettled, saveTrialChecks, type ProposalView } from "../domain/checkProposal";
+import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalSaying, proposalWords, proposalsOf, proposalsSettled, saveTrialChecks, sharedHelp, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
 import { localized } from "../domain/processes";
 import { ownerTaskOf } from "../domain/resourceOwner";
@@ -36,10 +36,7 @@ type Loaded = { board: AssignmentsDoc | null; task: ProjectTask | null; step: Ta
 /** A proposal, with the list of the step it was made in: what is said of it is added there. */
 type Listed = ProposalView & { stepKey: string };
 
-const placeOf = (where: string) => {
-  const [chapter, verse] = where.split(":").map(Number);
-  return (chapter || 0) * 1000 + (verse || 0);
-};
+const unsettledState = (view: ProposalView) => view.state === "open" || view.state === "agreed";
 
 /**
  * The team agrees on what it proposed to change. Every proposal of the task, from all its lists, with the words as
@@ -47,6 +44,10 @@ const placeOf = (where: string) => {
  * it, the new version is written where the team keeps that help, or asked of the team that maintains it when it
  * is not this one's. The step had no screen: it was approved from the card of the task, over a line that said
  * something had changed.
+ *
+ * A new version is written only over the words it was proposed from. The lists of a task go over the same helps,
+ * so two proposals can be about one: they are read together, and once one is applied the other says that the help
+ * changed and is written again from what it says now.
  */
 export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const t = useT();
@@ -63,6 +64,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const [standing, setStanding] = useState<StepAgreement | null>(null);
   /** The proposal being answered with another version. */
   const [answering, setAnswering] = useState<Listed | null>(null);
+  /** What the helps of the team with a proposal to resolve say now, by `proposalWords`. */
+  const [read, setRead] = useState<Record<string, string>>({});
 
   const trying = Boolean(ctx?.lab && !ctx.labAllowWrite);
   const me = session?.username ?? "";
@@ -87,8 +90,12 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       setData({ board, task, step, pmConfig, steps });
       // A trial reads what the trials of the lists left in this tab; nothing of the project's.
       const lab = decoded.lab && !decoded.labAllowWrite;
-      const read = lab ? steps.map((row) => ({ step: row, answers: loadTrialChecks(row.key) })) : await loadTaskAnswers(session, steps);
-      setAnswers(Object.fromEntries(read.map((row) => [row.step.key, row.answers])));
+      const kept = lab ? steps.map((row) => ({ step: row, answers: loadTrialChecks(row.key) })) : await loadTaskAnswers(session, steps);
+      setAnswers(Object.fromEntries(kept.map((row) => [row.step.key, row.answers])));
+      // What those helps say now: a proposal written from other words says so on its card, before anybody agrees.
+      const own = (resource: string) => Boolean(task?.rules.some((rule) => rule.resource === resource));
+      const pending = kept.flatMap((row) => proposalsOf(row.answers, 1, own)).filter((view) => unsettledState(view) && own(view.proposal.resource));
+      setRead(pending.length ? await readProposedWords({ session, ctx: decoded, pmConfig, board, proposals: pending.map((view) => view.proposal) }).catch(() => ({})) : {});
       if (!lab && decoded.pmOrg && decoded.issueNumber && step) {
         setStanding(await stepAgreement({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, steps: task?.steps ?? [], step }).catch(() => null));
       }
@@ -111,19 +118,26 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const nameOf = (resource: string) => scopeLabel(resource, data?.board?.settings?.resourceNames, language);
 
   const listed = useMemo<Listed[]>(
-    () =>
-      (data?.steps ?? [])
-        .flatMap((step) => proposalsOf(answers[step.key] ?? [], needed, ours).map((view) => ({ ...view, stepKey: step.key })))
-        .sort((a, b) => placeOf(a.proposal.where) - placeOf(b.proposal.where) || a.at.localeCompare(b.at)),
+    () => byPlaceAndHelp((data?.steps ?? []).flatMap((step) => proposalsOf(answers[step.key] ?? [], needed, ours).map((view) => ({ ...view, stepKey: step.key })))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [answers, data, needed],
   );
+  /** The proposals to resolve that are about a help another one is about too, with how many others. */
+  const shared = useMemo(() => sharedHelp(listed), [listed]);
+  /** A trial writes nothing: there a help says what the last proposal the trial applied to it put in. */
+  const words = useMemo(() => (trying ? { ...read, ...appliedWords(listed) } : read), [trying, read, listed]);
+  const wordsNow = (proposal: ProposalPayload): string | undefined => words[proposalWords(proposal)];
+  /** What a help of the team says now, when it is no longer what a new version to resolve was written from. */
+  const changedTo = (view: Listed): string | undefined => {
+    const now = unsettledState(view) && ours(view.proposal.resource) && view.proposal.after ? wordsNow(view.proposal) : undefined;
+    return now !== undefined && proposalFit(view.proposal, now) === "changed" ? now : undefined;
+  };
   /** What was changed by hand, in lists answered before there were proposals: said, with nothing to agree on. */
   const byHand = useMemo(
     () => (data?.steps ?? []).flatMap((step) => (answers[step.key] ?? []).filter((row) => row.value === "no" && (row.outcome === "fixed" || row.outcome === "created") && row.note)),
     [answers, data],
   );
-  const unsettled = listed.filter((view) => view.state === "open" || view.state === "agreed");
+  const unsettled = listed.filter(unsettledState);
 
   /** Rows added to my file of a list: there they are read by everybody who opens the list or this screen. */
   async function add(stepKey: string, rows: CheckAnswer[]) {
@@ -146,7 +160,18 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       return announce(mine ? t("ag.applied") : t("ag.sent").replace("{team}", teamOf(view.proposal.resource)));
     }
     if (mine) {
-      await applyProposal({ session, ctx, pmConfig: data.pmConfig, board: data.board, proposal: view.proposal });
+      const key = proposalWords(view.proposal);
+      try {
+        await applyProposal({ session, ctx, pmConfig: data.pmConfig, board: data.board, proposal: view.proposal });
+      } catch (err) {
+        // The help changed after this screen read it: nothing was written, and the card says what to do.
+        if (!(err instanceof HelpChangedError)) throw err;
+        const { current } = err;
+        setRead((prev) => ({ ...prev, [key]: current }));
+        return announce(t("ag.stale"));
+      }
+      // The other proposals for that help are now read against what this one left.
+      setRead((prev) => ({ ...prev, [key]: view.proposal.after ?? "" }));
       await add(view.stepKey, [proposalDone(view.proposal.id, me, now)]);
       return announce(t("ag.applied"));
     }
@@ -184,19 +209,26 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const withdraw = (view: Listed) => act(() => add(view.stepKey, [proposalSaying(view.proposal.id, me, new Date().toISOString(), false)]));
   const markDone = (view: Listed) => act(() => add(view.stepKey, [proposalDone(view.proposal.id, me, new Date().toISOString())]));
 
-  /** Another version of the same thing, in answer to a proposal: it takes its place, and is the one to agree on. */
+  /**
+   * Another version of the same thing, in answer to a proposal: it takes its place, and is the one to agree on. It
+   * is written from the help as it is now, when that is known: from the words of the proposal it answers, one
+   * that could not be applied because the help had changed was answered with another that could not either.
+   */
+  const answerFrom = answering ? (wordsNow(answering.proposal) ?? answering.proposal.before) : undefined;
   const answerWith = (draft: ProposalDraft) =>
     act(async () => {
       if (!answering) return;
       const was = answering.proposal;
-      const proposal = { ...was, id: `pr-${uid()}`, replaces: was.id, ...(draft.after ? { after: draft.after } : { after: undefined }) };
+      const proposal = { ...was, id: `pr-${uid()}`, replaces: was.id, ...(answerFrom !== undefined ? { before: answerFrom } : {}), ...(draft.after ? { after: draft.after } : { after: undefined }) };
       await add(answering.stepKey, [proposalAnswer({ itemId: answering.itemId, questionId: answering.questionId, by: me, at: new Date().toISOString(), reason: draft.reason, proposal })]);
       setAnswering(null);
       announce(t("ck.proposed"));
     });
   const answerTargets: ProposalTarget[] = answering
-    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answering.proposal.before, commentOnly: answering.proposal.before === undefined, ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
+    ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
     : [];
+  // A version the help no longer fits is not what the next one starts from: that one starts from the help.
+  const answerStart = answering && changedTo(answering) === undefined ? answering.proposal.after : undefined;
 
   /**
    * My agreement on the step, and with it the step itself when it is everybody's. Closing the last step of a
@@ -269,7 +301,10 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             {listed.map((view) => {
               const mine = ours(view.proposal.resource);
               const forIt = view.inFavour.some((who) => who.toLowerCase() === voterFor(view).toLowerCase());
-              const live = (view.state === "open" || view.state === "agreed") && !stepDone;
+              const live = unsettledState(view) && !stepDone;
+              const changed = live ? changedTo(view) : undefined;
+              const stale = changed !== undefined;
+              const others = live ? (shared.get(view.proposal.id) ?? 0) : 0;
               return (
                 <li key={view.proposal.id} className="ag-card" data-state={view.state}>
                   <p className="ag-card__head">
@@ -289,14 +324,27 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                     {view.state === "open" ? ` · ${t("ag.inFavour").replace("{n}", String(view.inFavour.length)).replace("{of}", String(needed))}` : ""}
                   </p>
                   {view.state === "agreed" && mine && !view.proposal.after ? <p className="af-hint">{t("ag.needsVersion")}</p> : null}
+                  {others ? <p className="ag-shared">{t(others === 1 ? "ag.sameHelpOne" : "ag.sameHelp").replace("{n}", String(others))}</p> : null}
+                  {stale ? (
+                    <div className="ag-stale" role="status">
+                      <p>
+                        <b>{t("ag.staleTitle")}</b> {t("ag.staleNext")}
+                      </p>
+                      {changed.trim() ? (
+                        <p className="ag-diff">
+                          <b>{t("ag.staleNow")}</b> <ProposalDiff before={view.proposal.before ?? ""} after={changed} />
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {live ? (
                     <div className="ag-card__buttons">
-                      {view.state === "open" && !forIt ? (
+                      {view.state === "open" && !forIt && !stale ? (
                         <Button type="button" disabled={saving} onClick={() => void agree(view)}>
                           {t("ag.agree")}
                         </Button>
                       ) : null}
-                      {view.state === "agreed" && (view.proposal.after || !mine) ? (
+                      {view.state === "agreed" && !stale && (view.proposal.after || !mine) ? (
                         // Agreed and not carried out: the write failed, or the last to agree could not make it.
                         <Button type="button" disabled={saving} onClick={() => void act(() => carryOut(view))}>
                           {mine ? t("ag.apply") : t("ag.send").replace("{team}", teamOf(view.proposal.resource))}
@@ -307,7 +355,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                           {t("ag.done")}
                         </Button>
                       ) : null}
-                      <Button type="button" variant="outline" disabled={saving} onClick={() => setAnswering(view)}>
+                      {/* Written from words that are no longer there, another proposal is the one thing left to do with it. */}
+                      <Button type="button" variant={stale ? "default" : "outline"} disabled={saving} onClick={() => setAnswering(view)}>
                         {t(view.state === "agreed" && mine && !view.proposal.after ? "pr.newVersion" : "ag.other")}
                       </Button>
                       {isMe(view.by) ? (
@@ -346,7 +395,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           </div>
         </>
       ) : null}
-      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} reason={answering?.reason ?? ""} startFrom={answering?.proposal.after} saving={saving} onSend={(draft) => void answerWith(draft)} />
+      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} reason={answering?.reason ?? ""} startFrom={answerStart} saving={saving} onSend={(draft) => void answerWith(draft)} />
     </div>
   );
 }

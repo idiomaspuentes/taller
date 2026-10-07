@@ -1,18 +1,19 @@
 /**
  * End to end against the mock Door43, seeded with a book (`MOCK_PM_ORG=es-419_gl MOCK_SEED_BOOK=TIT npm run
  * mock:door43`): a change proposed while checking a note, agreed on by a second person, written on the team's
- * draft; and the agreement of the team on the step, given in its tool by each of them.
+ * draft; another version of the same note from another list of the task, refused once the first is written; and
+ * the agreement of the team on the step, given in its tool by each of them.
  * Run: npm run verify:proposals-mock   (MOCK_HOST=http://localhost:8797 for a mock on another port)
  */
 import assert from "node:assert/strict";
 import { createIssue, createOrUpdateContents } from "@ip-lms/dcs-client";
-import { applyProposal, checkedSteps, loadTaskAnswers } from "../src/dcs/checkProposals";
+import { HelpChangedError, applyProposal, checkedSteps, loadTaskAnswers, readProposedWords } from "../src/dcs/checkProposals";
 import { appendCheckAnswers } from "../src/dcs/checkStore";
 import { dcsConfig } from "../src/dcs/config";
 import { getPmIssue } from "../src/dcs/portionPr";
 import { agreeStepFromTool, stepAgreement } from "../src/dcs/roundClose";
 import { readTeamHelps } from "../src/dcs/teamHelps";
-import { proposalAnswer, proposalDone, proposalSaying, proposalsOf, proposalsSettled } from "../src/domain/checkProposal";
+import { byPlaceAndHelp, proposalAnswer, proposalDone, proposalFit, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sharedHelp } from "../src/domain/checkProposal";
 import { shippedWorkflow } from "../src/domain/processes";
 import { DEFAULT_PM_CONFIG } from "../src/domain/roles";
 import { SOLVER_LAUNCH_SCHEMA, type SolverLaunchContext } from "../src/domain/solverLaunch";
@@ -25,7 +26,7 @@ const HOST = process.env.MOCK_HOST || "http://localhost:8787";
 const ORG = "es-419_gl";
 const BOOK = "TIT";
 const as = (who: string) => ({ host: HOST, username: who, token: `token-${who}`, scopes: [], scopesVersion: 3 }) as never;
-const [ana, bea] = [as("ana"), as("bea")];
+const [ana, bea, carla] = [as("ana"), as("bea"), as("carla")];
 
 /** A file as the mock has it on a branch, read apart from the app (`/__mock/files`). */
 const kept = (repo: string, branch: string, path: string): Promise<string> =>
@@ -74,6 +75,12 @@ const before = await notes();
 const row = rowsOf(before.text).find((r) => r.Note && r.Note.length > 40 && r.Reference !== "front:intro")!;
 const proposal = { id: "pr-e2e-1", resource: "notas", field: "Note", rowId: row.ID!, where: row.Reference!, before: row.Note!, after: `${row.Note} (cambiado por acuerdo del equipo)` };
 const list = steps[0]!;
+// The lists of the task go over the same notes, and each knows its own proposals only: another version of that
+// note, written in the second list from the note as it still is.
+const otherList = steps[1]!;
+const rival = { ...proposal, id: "pr-e2e-rival", after: `${row.Note} (otra versión, de otra lista)` };
+/** How many times the notes of the book were written, on any branch. */
+const noteWrites = async () => ((await fetch(`${HOST}/__mock/log`).then((r) => r.json())) as { write?: string }[]).filter((entry) => (entry.write ?? "").endsWith(`tn_${BOOK}.tsv`)).length;
 const views = async (who = bea) => (await loadTaskAnswers(who, steps)).flatMap((r) => proposalsOf(r.answers, needed, ours));
 
 await step("las tres listas de la tarea guardan sus respuestas con la ayuda que recorren, bajo la subtarea y el paso", async () => {
@@ -93,6 +100,19 @@ await step("una propuesta se guarda como respuesta de quien la hizo, y otra pers
   assert.equal((await notes()).text, before.text, "nada cambia al proponer");
 });
 
+await step("otra lista de la tarea propone otra versión de la misma nota, escrita de la nota como está: el acuerdo las señala y las pone juntas", async () => {
+  await appendCheckAnswers(carla, otherList.target, otherList.key, [proposalAnswer({ itemId: row.ID!, questionId: "e2e", by: "carla", at: new Date().toISOString(), reason: "No coincide con el otro texto", proposal: rival })]);
+  const all = await views();
+  assert.deepEqual(all.map((v) => [v.proposal.id, v.state]), [[proposal.id, "open"], [rival.id, "open"]]);
+  assert.equal(rival.before, proposal.before, "las dos parten de las mismas palabras");
+  assert.deepEqual([...sharedHelp(all)], [[proposal.id, 1], [rival.id, 1]]);
+  assert.deepEqual(byPlaceAndHelp(all).map((v) => v.proposal.id), [proposal.id, rival.id]);
+  // What the screen reads to say so before anybody agrees: the note as the team has it, which both still fit.
+  const words = await readProposedWords({ session: bea, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposals: [proposal, rival] });
+  assert.deepEqual(Object.keys(words), [proposalWords(proposal)]);
+  assert.deepEqual([proposalFit(proposal, words[proposalWords(proposal)]!), proposalFit(rival, words[proposalWords(rival)]!)], ["fits", "fits"]);
+});
+
 await step("con el acuerdo de una segunda persona queda acordada, y se escribe en el borrador del equipo: solo esa nota", async () => {
   await appendCheckAnswers(bea, list.target, list.key, [proposalSaying(proposal.id, "bea", new Date().toISOString(), true)]);
   const [agreed] = await views(ana);
@@ -108,6 +128,25 @@ await step("con el acuerdo de una segunda persona queda acordada, y se escribe e
   assert.equal(await kept(list.target.repo, "master", `tn_${BOOK}.tsv`), before.text, "lo publicado no se toca");
 });
 
+await step("la otra versión de esa nota ya no se escribe encima: se rechaza diciendo cómo quedó, y la nota sigue como la dejó la primera", async () => {
+  const drafted = await notes();
+  const written = await noteWrites();
+  const refused = await applyProposal({ session: carla, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: rival }).then(() => null, (err: unknown) => err);
+  assert.ok(refused instanceof HelpChangedError, "no se aplica: la nota cambió desde que se propuso");
+  assert.equal(refused.current, proposal.after, "y dice lo que la nota dice ahora, para escribir la propuesta de nuevo");
+  assert.equal((await notes()).text, drafted.text, "la nota conserva el cambio de la primera");
+  assert.equal(await noteWrites(), written, "no se escribió nada");
+  // The screen reads the same on opening: the card of that proposal says the help changed.
+  const words = await readProposedWords({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposals: [rival] });
+  assert.equal(proposalFit(rival, words[proposalWords(rival)]!), "changed");
+});
+
+await step("la que ya está escrita, aplicada otra vez (no se pudo anotar que estaba hecha), ni escribe ni se rechaza", async () => {
+  const written = await noteWrites();
+  await applyProposal({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal });
+  assert.equal(await noteWrites(), written);
+});
+
 await step("otra nota acordada después se escribe en el mismo borrador, sin perder la primera", async () => {
   const other = rowsOf(before.text).find((r) => r.ID !== row.ID && r.Note && r.Note.length > 40 && r.Reference !== "front:intro")!;
   const drafted = await notes();
@@ -117,6 +156,39 @@ await step("otra nota acordada después se escribe en el mismo borrador, sin per
   const byId = new Map(rowsOf(after.text).map((r) => [r.ID, r.Note]));
   assert.equal(byId.get(other.ID!), "Otra nota, entera.");
   assert.equal(byId.get(row.ID!), proposal.after);
+});
+
+await step("«Otra propuesta» sobre la que se rechazó parte de la nota como está ahora, y esa sí se aplica con los dos cambios", async () => {
+  const now = (await readProposedWords({ session: carla, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposals: [rival] }))[proposalWords(rival)]!;
+  const again = { ...rival, id: "pr-e2e-rival-2", replaces: rival.id, before: now, after: `${now} (y lo que pedía la otra lista)` };
+  await appendCheckAnswers(carla, otherList.target, otherList.key, [proposalAnswer({ itemId: row.ID!, questionId: "e2e", by: "carla", at: new Date().toISOString(), reason: "Sobre la nota como quedó", proposal: again })]);
+  await appendCheckAnswers(ana, otherList.target, otherList.key, [proposalSaying(again.id, "ana", new Date().toISOString(), true)]);
+  assert.deepEqual((await views()).map((v) => [v.proposal.id, v.state]), [[proposal.id, "agreed"], [rival.id, "replaced"], [again.id, "agreed"]]);
+  await applyProposal({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: again });
+  await appendCheckAnswers(ana, otherList.target, otherList.key, [proposalDone(again.id, "ana", new Date().toISOString())]);
+  const note = rowsOf((await notes()).text).find((r) => r.ID === row.ID)!.Note!;
+  assert.equal(note, again.after);
+  assert.ok(note.includes("(cambiado por acuerdo del equipo)") && note.includes("(y lo que pedía la otra lista)"), "lo de las dos listas");
+});
+
+await step("dos personas aplican a la vez dos versiones de una nota: se escribe una sola, y a la otra se le dice que la nota cambió", async () => {
+  const third = rowsOf((await notes()).text).filter((r) => r.Note && r.Note.length > 40 && r.Reference !== "front:intro" && r.ID !== row.ID)[1]!;
+  const version = (id: string, text: string) => ({ id, resource: "notas", field: "Note", rowId: third.ID!, where: third.Reference!, before: third.Note!, after: text });
+  const [one, two] = [version("pr-e2e-a", `${third.Note} (versión de Ana)`), version("pr-e2e-b", `${third.Note} (versión de Bea)`)];
+  const ended = await Promise.allSettled([applyProposal({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: one }), applyProposal({ session: bea, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: two })]);
+  assert.deepEqual(ended.map((end) => end.status).sort(), ["fulfilled", "rejected"]);
+  const won = ended[0]!.status === "fulfilled" ? one : two;
+  const lost = ended.find((end) => end.status === "rejected") as PromiseRejectedResult;
+  assert.ok(lost.reason instanceof HelpChangedError);
+  assert.equal(lost.reason.current, won.after);
+  assert.equal(rowsOf((await notes()).text).find((r) => r.ID === third.ID)!.Note, won.after);
+});
+
+await step("una propuesta para una nota que el equipo ya no tiene no se da por aplicada", async () => {
+  const written = await noteWrites();
+  const gone = await applyProposal({ session: ana, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: { id: "pr-e2e-gone", resource: "notas", field: "Note", rowId: "zzzz", where: "1:1", before: "Una nota que no está.", after: "Otra." } }).then(() => null, (err: unknown) => err);
+  assert.ok(gone instanceof Error && !(gone instanceof HelpChangedError), "falla, y no como una nota que cambió");
+  assert.equal(await noteWrites(), written);
 });
 
 await step("la nueva versión de un artículo se escribe en el borrador de los artículos, y la siguiente sobre ella", async () => {
@@ -132,12 +204,16 @@ await step("la nueva versión de un artículo se escribe en el borrador de los a
   const branch = /@(.+):/.exec(writes[1]!)![1]!;
   assert.equal(await kept("es-419_ta", branch, article.path), "# Metáfora\n\nSegunda versión acordada.\n");
   assert.equal(await kept("es-419_ta", "master", article.path), published, "lo publicado no se toca");
+  // A third one, written from the article as published: the draft says something else by now.
+  const late = await applyProposal({ session: carla, ctx, pmConfig: DEFAULT_PM_CONFIG, board, proposal: { ...article, id: "pr-e2e-5", before: published, after: "# Metáfora\n\nEscrita de lo publicado.\n" } }).then(() => null, (err: unknown) => err);
+  assert.ok(late instanceof HelpChangedError, "no se escribe encima de la segunda");
+  assert.equal(await kept("es-419_ta", branch, article.path), "# Metáfora\n\nSegunda versión acordada.\n");
 });
 
 await step("aplicada, la propuesta queda resuelta para todos", async () => {
   await appendCheckAnswers(bea, list.target, list.key, [proposalDone(proposal.id, "bea", new Date().toISOString())]);
   const all = await views(ana);
-  assert.deepEqual(all.map((v) => v.state), ["applied"]);
+  assert.deepEqual(all.map((v) => v.state), ["applied", "replaced", "applied"], "la primera, la que se rechazó y fue respondida, y la que la respondió");
   assert.equal(proposalsSettled(all), true);
 });
 
