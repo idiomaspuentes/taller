@@ -73,6 +73,7 @@
     "verify:checklist": "tsx --tsconfig tsconfig.scripts.json scripts/verify-checklist.mts",
     "verify:trial-launch": "tsx --tsconfig tsconfig.scripts.json scripts/verify-trial-launch.mts",
     "verify:check-proposal": "tsx --tsconfig tsconfig.scripts.json scripts/verify-check-proposal.mts",
+    "verify:proposals-mock": "tsx --tsconfig tsconfig.scripts.json scripts/e2e-proposals.mts",
     "verify:handoff": "tsx --tsconfig tsconfig.scripts.json scripts/verify-handoff.mts",
     "verify:delivery": "tsx --tsconfig tsconfig.scripts.json scripts/verify-delivery.mts",
     "verify:unit-publish": "tsx --tsconfig tsconfig.scripts.json scripts/verify-unit-publish.mts",

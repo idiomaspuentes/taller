@@ -25,7 +25,7 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 ## Comandos
 
 - `npx tsc --noEmit -p .` — tipos. `npm run build` — versión publicada.
-- `npm run verify:<tema>` — pruebas (`scripts/verify-*.mts`, con `tsx`). Las de configuración: `verify:config`, `verify:scope`. Con el mock: `npm run mock:door43` y `npm run verify:scope-mock`. `verify:prep` falla desde antes (no es tuyo).
+- `npm run verify:<tema>` — pruebas (`scripts/verify-*.mts`, con `tsx`). Las de configuración: `verify:config`, `verify:scope`. Con el mock: `npm run mock:door43` y `npm run verify:scope-mock`; con un libro sembrado (`MOCK_PM_ORG=es-419_gl MOCK_SEED_BOOK=TIT`), `npm run verify:proposals-mock`. `verify:prep` falla desde antes (no es tuyo).
 - Mock de Door43 (en memoria, puerto 8787): sesiones de prueba `?mockUser=ana|bea|carla` en desarrollo.
 
 ## Convenciones

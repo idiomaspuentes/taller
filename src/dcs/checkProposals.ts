@@ -1,5 +1,6 @@
 import type { GtSession } from "./auth";
 import { readRepoFile } from "./afinacionStore";
+import { forgetBranches } from "./branchList";
 import { loadCheckAnswers, type CheckTarget } from "./checkStore";
 import { dcsConfig } from "./config";
 import { createCorrections } from "./corrections";
@@ -38,16 +39,25 @@ export async function loadTaskAnswers(session: GtSession, steps: CheckedStep[]):
   return Promise.all(steps.map(async (step) => ({ step, answers: await loadCheckAnswers(session, step.target, step.key).catch(() => [] as CheckAnswer[]) })));
 }
 
-/** The branch the team's version of a resource is written on: its group draft, started from what is published. */
+/**
+ * The branch the team's version of a resource is written on: its group draft, started from what is published when
+ * the team has none yet. `known` is the branch the team's version was just read from. Any other is made sure of
+ * before writing: when the branches cannot be listed the draft is known by its name alone, and taken as there, a
+ * note the team had agreed on found no file to be written in.
+ */
 async function draftBranch(params: { session: GtSession; owner: string; repo: string; book: string; board: AssignmentsDoc | null; resource: string; known?: string }): Promise<string> {
   const { session, owner, repo, book, board, resource } = params;
-  const found = params.known ?? (await teamDraftBranch({ session, owner, repo, book, teams: board?.teams ?? [], resource }));
-  if (found) return found;
-  const task = (board?.teams ?? []).find((row) => row.rules.some((rule) => rule.resource === resource));
-  if (!task) throw new Error(tNow("ag.noOwner"));
+  if (params.known) return params.known;
+  let branch = await teamDraftBranch({ session, owner, repo, book, teams: board?.teams ?? [], resource });
+  if (!branch) {
+    const task = (board?.teams ?? []).find((row) => row.rules.some((rule) => rule.resource === resource));
+    if (!task) throw new Error(tNow("ag.noOwner"));
+    branch = bookBranchName(book, task.id);
+  }
   const config = dcsConfig(session.host);
-  const branch = bookBranchName(book, task.id);
-  await ensureBranchFrom(config, owner, repo, branch, session.token, await getDefaultBranch(config, owner, repo, session.token));
+  const made = await ensureBranchFrom(config, owner, repo, branch, session.token, await getDefaultBranch(config, owner, repo, session.token));
+  // The list of branches kept for a few seconds does not have it: whoever reads the notes next would get the published ones.
+  if (made.created) forgetBranches(config, owner, repo);
   return branch;
 }
 

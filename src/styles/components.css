@@ -8797,6 +8797,8 @@ span.ur-word { padding: 0; margin: 0; cursor: default; }
   /* The checklist: the text being checked stays at the left, the item and its questions at the right. */
   .af.ck > .af-dock { grid-column: 1; grid-row: span 4; top: 0.75rem; }
   .af.ck > .af-card, .af.ck > .af-nav, .af.ck > .af-dock ~ .btn, .af.ck > .af-dock ~ button { grid-column: 2; }
+  /* The agreement has no text at its side: one column of a length to read (a proposal ran 1,192 px wide). */
+  .af.ck.ag { max-width: 52rem; grid-template-columns: minmax(0, 1fr); }
 }
 /* Reading tools on a wide screen: a line of text stays a readable length instead of running the whole column. */
 @media (min-width: 900px) {

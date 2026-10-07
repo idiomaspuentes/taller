@@ -40,6 +40,25 @@ test("se avisa solo cuando el proceso del proyecto tiene una versión más nueva
   assert.equal(workflowUpdateFor({ ...board, workflowId: undefined }, [fcr]), undefined, "un proyecto sin proceso no se toca");
 });
 
+test("un proyecto anterior recibe la pantalla de su paso de acuerdo, sin pasos nuevos ni tareas de más", () => {
+  // The process as it was while the team's agreement was given from the card of the task: the step had no tool.
+  const before: WorkflowTemplate = {
+    ...fcr,
+    version: fcr.version - 1,
+    tasks: fcr.tasks.map((task) => ({ ...task, steps: task.steps?.map((step) => (step.id === "acuerdo" ? { ...step, solverAppId: undefined } : step)) })),
+  };
+  const agreements = (doc: AssignmentsDoc) => doc.teams.flatMap((task) => task.steps ?? []).filter((step) => step.id === "acuerdo");
+  const board = applyWorkflowToBoard(empty, before);
+  assert.equal(agreements(board).length, 3);
+  assert.ok(agreements(board).every((step) => !step.solverAppId), "antes no abría nada");
+  assert.equal(workflowUpdateFor(board, [fcr])?.version, fcr.version, "se le ofrece traer lo nuevo");
+  const result = upgradeBoardToWorkflow(board, fcr);
+  assert.ok(agreements(result.board).every((step) => step.solverAppId && step.closing === "consensus"), "ahora abre su herramienta");
+  assert.equal(new Set(agreements(result.board).map((step) => step.solverAppId)).size, 1);
+  assert.deepEqual([result.phases, result.tasks, result.steps], [[], [], []]);
+  assert.equal(result.board.teams.length, board.teams.length);
+});
+
 test("actualizar agrega lo nuevo en su lugar y no cambia lo que el proyecto ya tiene", () => {
   const created = applyWorkflowToBoard(empty, older);
   // The project made its own changes: people on a task, a renamed step, a different minimum.

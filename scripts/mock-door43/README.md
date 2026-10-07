@@ -29,6 +29,16 @@ localStorage.setItem("gt-context-confirmed", "1");
 location.reload();
 ```
 
+## Con un libro de verdad
+
+`MOCK_PM_ORG=es-419_gl MOCK_SEED_BOOK=TIT npm run mock:door43` empieza con lo publicado de ese libro (los dos
+textos, las notas y las preguntas), leído una vez de Door43, sin credenciales. `MOCK_PORT=8797` lo pone en otro
+puerto cuando el 8787 está ocupado.
+
+`npm run verify:proposals-mock` (con `MOCK_HOST=http://localhost:8797` si no está en el 8787) recorre ahí una
+propuesta de cambio: se propone sobre una nota, otra persona la acuerda, se escribe en el borrador del equipo, y
+cada una da su acuerdo al paso. Sin un mock con ese libro, no se ejecuta.
+
 ## Para mirar y reiniciar
 
 - `GET /__mock/log`: escrituras hechas y peticiones que el servidor no implementa.

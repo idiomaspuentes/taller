@@ -164,6 +164,13 @@ Lo que sigue dentro del código, y en qué fase del plan sale
 Un catálogo de herramientas guardado por la organización recibe solo los parámetros que le falten; lo que la
 organización cambió se respeta.
 
+## Ajustes agregados el 7 de octubre de 2026
+
+| Dónde | Campo | Qué dice |
+|---|---|---|
+| Paso | `closing: "consensus"` con `solverAppId`, sin ítems | El acuerdo del equipo se da **en la herramienta del paso**, no en la tarjeta: quien lo da se sienta en el paso, y el paso se cierra cuando todas las personas sentadas lo dieron, son al menos `minAssignees` y en la herramienta no queda nada por resolver (`agreeInTool`). En el FCR es «Acuerdo del equipo», que abre la pantalla de las propuestas de cambio. |
+| Paso | `closing: "checklist"` | Un «No» de la lista se resuelve con una **propuesta de cambio** (la nueva versión, o un comentario), que se acuerda en el paso de acuerdo de la misma tarea. Lo que es de la tarea se escribe en su borrador al acordarse; lo que mantiene otra tarea se le pide como corrección. |
+
 **Un proyecto y la versión de su proceso.** El proyecto recuerda con qué versión se creó (`workflowVersion`). Cuando el
 paquete sube de versión, «Proceso» ofrece traer lo nuevo: se agregan fases, tareas y pasos nuevos y se completan
 ajustes que faltaban. Nada se cambia ni se quita.

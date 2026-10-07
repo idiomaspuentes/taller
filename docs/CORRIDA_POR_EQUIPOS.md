@@ -1603,17 +1603,29 @@ equipo de afinación, igual que lo que pide el comité de validación; y un toqu
 - **Guardado donde ya se guardaban las respuestas**: una propuesta es la respuesta que resuelve un «No», y lo que
   otros dicen de ella son filas que la nombran, en el archivo de cada persona. Las listas respondidas antes («Lo
   corregí», «Pedí el cambio…») se siguen leyendo, y sus cambios salen en el acuerdo como «Cambio que ya hizo…».
-- **El paso «Acuerdo del equipo» abre esa pantalla en los proyectos nuevos** (el proceso le da su herramienta). Un
-  proyecto anterior, como Judas, conserva su copia del proceso: ahí se aprueba desde la tarjeta, como antes. El
-  Laboratorio sí la abre de prueba en cualquiera.
+- **El acuerdo del paso se da en esa pantalla.** «Dar mi acuerdo al paso» sienta en el paso a quien lo da y guarda
+  su acuerdo; al pie se lee quién lo dio ya y de quién falta. Con todas las personas sentadas de acuerdo (dos al
+  menos) y nada por resolver, el paso se cierra y la tarea se entrega ahí mismo, como en las rondas de revisión.
+- **El paso «Acuerdo del equipo» abre esa pantalla en los proyectos nuevos** (el proceso le da su herramienta, y
+  sube a la versión 36). A un proyecto en marcha «Proceso» le ofrece traer lo nuevo: el paso recibe su herramienta
+  y nada más cambia; hasta entonces se aprueba desde la tarjeta, como antes. El Laboratorio la abre de prueba en
+  cualquiera.
 - **De prueba se puede recorrer entero**: lo propuesto en una lista queda en la pestaña y sale en el acuerdo; como
   se prueba a solas, estar de acuerdo con la propuesta propia cuenta como «otra persona del equipo».
 
 **⚠ Sin resolver**
 
-- **Nada de esto se ha visto escribir en Door43.** Judas está terminado: se probó entero en modo de prueba (proponer
-  sobre una nota y sobre el TPL, acordar, aplicar, pedir a afinación) y con pruebas del modelo. Escribir la nota
-  acordada, crear la corrección para afinación y abrir el paso desde la tarjeta están sin ejercer.
+- **Nada de esto se ha visto escribir en el Door43 de QA.** Judas está terminado y no hay tarea de armonización
+  abierta. Se probó entero en modo de prueba (proponer sobre una nota y sobre el TPL, acordar, aplicar, pedir a
+  afinación), y las escrituras, contra el Door43 de mentira con Tito (`npm run verify:proposals-mock`): la propuesta
+  guardada y leída por otra persona, la nota y el artículo acordados escritos en el borrador del equipo sin tocar lo
+  publicado, y el acuerdo de dos personas cerrando el paso. **Sin ejercer:** crear la corrección para afinación
+  desde aquí (es la misma función que usa el comité, con otro origen), abrir el paso desde la tarjeta de la tarea, y
+  la entrega de la tarea al cerrarse.
+- Esa prueba encontró dos fallos que la de pantalla no podía ver, ya corregidos. Con herramienta en el paso, el
+  acuerdo dado no se guardaba y nada podía cerrarlo: la lista no ofrece aprobar un paso que tiene herramienta, y la
+  pantalla aprobaba por la regla de la lista. Y una nota acordada no tenía dónde escribirse cuando el equipo aún no
+  tenía borrador de sus notas y no se podían listar las ramas: el borrador se daba por existente con solo su nombre.
 - Una propuesta que es solo un comentario sobre una ayuda del propio equipo, una vez acordada, pide que alguien
   escriba la nueva versión o diga «Ya se hizo»: no se aplica sola.
 - Proponer la nueva versión de un artículo es reescribirlo entero en un cuadro de texto; para uno largo se propone

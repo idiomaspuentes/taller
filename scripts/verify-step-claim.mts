@@ -21,12 +21,15 @@ import {
   formatStepClaimLabel,
   formatTaskClaimSummary,
   deliverableFromTool,
+  agreeInTool,
+  agreementStanding,
 } from "../src/domain/stepClaim.ts";
 import {
   parseTaskProgressMarker,
   encodeTaskProgressMarker,
   emptyTaskProgress,
   upsertTaskProgressInBody,
+  isStepDone,
 } from "../src/domain/taskProgress.ts";
 import { normalizeTaskSteps } from "../src/domain/store.ts";
 import type { TaskStep } from "../src/domain/types.ts";
@@ -206,6 +209,42 @@ assert(
   assert(!deliverableFromTool({ teams, taskId: "desafios", progress: marker(["revisar"]), closed: true }), "not twice");
   assert(!deliverableFromTool({ teams, taskId: "dos", progress: marker(["revisar"]), closed: false }), "not while another step is left");
   assert(!deliverableFromTool({ teams, taskId: "tpl", progress: marker(["draft"]), closed: false }), "a task with a draft of its own is delivered from the list, where its verses land");
+}
+
+// The agreement of a team on a step that has a tool is given in the tool: the list does not offer it.
+{
+  const list: TaskStep = { id: "lista", name: "Lista", closing: "checklist", solverAppId: "una-lista" };
+  const agreement: TaskStep = { id: "acuerdo", name: "Acuerdo", claimMode: "pool", closing: "consensus", minAssignees: 2, maxAssignees: 3, solverAppId: "un-acuerdo" };
+  const steps = [list, agreement];
+  const come = { ...emptyTaskProgress(), doneStepIds: ["lista"] };
+  const say = (progress: typeof come, login: string, more: { settled?: boolean; mine?: boolean } = {}) => agreeInTool({ progress, steps, step: agreement, login, settled: more.settled ?? true, mine: more.mine });
+  const done = (progress: typeof come) => isStepDone(progress, "acuerdo");
+
+  const seatedOnly = claimStep(come, agreement, "ana");
+  assert(!canApproveStep("ana", seatedOnly, agreement), "the list does not offer to approve a step that has a tool");
+  assert(approveStep(seatedOnly, agreement, "ana") === seatedOnly, "and an approval by the list is not kept: this is what left the step with no way to close");
+
+  const early = emptyTaskProgress();
+  assert(say(early, "ana") === early, "nobody agrees on a step before the ones it follows are closed");
+
+  const one = say(come, "ana");
+  assert(agreementStanding(one, agreement).seated.join() === "ana" && agreementStanding(one, agreement).agreed.join() === "ana", "agreeing seats whoever had not sat down, and keeps their agreement");
+  assert(!done(one), "one person is not the team");
+  assert(say(one, "ana") === one, "agreeing twice changes nothing");
+  assert(done(say(one, "bea")), "with enough people, all of them agreed, the step closes");
+
+  const three = claimStep(one, agreement, "carla");
+  const waitsForCarla = say(three, "bea");
+  assert(!done(waitsForCarla) && agreementStanding(waitsForCarla, agreement).missing.join() === "carla", "whoever sat down and has not agreed holds the step open, and is named");
+  assert(done(say(waitsForCarla, "carla")), "until they agree");
+  const full = say(waitsForCarla, "dani");
+  assert(full === waitsForCarla, "nobody is seated past the seats the step has");
+
+  const unsettled = say(one, "bea", { settled: false });
+  assert(!done(unsettled) && agreementStanding(unsettled, agreement).complete, "with something left to resolve in the tool the agreements are kept and the step stays open");
+  const closedLate = say(unsettled, "dani", { mine: false });
+  assert(done(closedLate) && !agreementStanding(closedLate, agreement).seated.includes("dani"), "once it is resolved the step closes, without seating whoever resolved it");
+  assert(say(one, "dani", { mine: false }) === one, "and looking whether it can close gives nobody's agreement");
 }
 
 console.log("verify-step-claim: ok");

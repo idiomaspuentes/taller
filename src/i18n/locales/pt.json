@@ -2926,5 +2926,13 @@
   "ag.notSent": "Não foi possível pedir a mudança: nenhuma equipe anterior mantém isso, ou já havia sido pedido.",
   "ag.askBody": "Proposta de @{who} para {where}: «{after}»\n\nMotivo: {reason}",
   "ag.askBefore": "Como está agora: «{before}»",
-  "ag.tryOther": "outra pessoa da equipe"
+  "ag.tryOther": "outra pessoa da equipe",
+  "ag.youAgreed": "Você já deu o seu acordo.",
+  "ag.missingWho": "Falta o de {who}.",
+  "ag.missingOther": "Falta o de outra pessoa da sua equipe.",
+  "ag.agreedBy": "{who} já deu o seu.",
+  "ag.locked": "Antes é preciso fechar os passos anteriores desta tarefa.",
+  "ag.cannot": "Não foi possível anotar o seu acordo: o passo já tem todas as suas pessoas.",
+  "ag.closed": "Passo fechado: a equipe está de acordo.",
+  "ag.closedDelivered": "A equipe está de acordo: tarefa entregue."
 }

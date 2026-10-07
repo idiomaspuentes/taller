@@ -516,6 +516,11 @@ async function handle(req, res) {
         return res.end();
       }
     }
+    // ---- git refs: every branch (the app lists them once, and then asks only the ones that exist) ----
+    if (rest === "git/refs/heads" && req.method === "GET") {
+      const repo = repos.get(repoKey);
+      return json(res, [...repo.branches.keys()].filter((name) => headSha(repo.branches.get(name))).map((name) => ({ ref: `refs/heads/${name}`, object: { sha: headSha(repo.branches.get(name)), type: "commit" } })));
+    }
     // ---- git refs: where a branch points, moving it, deleting it ----
     const refMatch = /^git\/refs\/heads\/(.+)$/.exec(rest);
     if (refMatch) {

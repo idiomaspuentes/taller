@@ -318,6 +318,40 @@ export function approveStep(
   return next;
 }
 
+/** How the agreement on a step stands: who sat down for it, who of them agreed, and whether that is everybody. */
+export type AgreementStanding = { seated: string[]; agreed: string[]; missing: string[]; needed: number; complete: boolean };
+
+export function agreementStanding(progress: TaskProgressMarker, step: TaskStep): AgreementStanding {
+  const runtime = getStepRuntime(progress, step.id);
+  const said = new Set(runtime.approvals.map((a) => a.toLowerCase()));
+  const agreed = runtime.assignees.filter((a) => said.has(a.toLowerCase()));
+  const needed = stepMinAssignees(step);
+  return { seated: runtime.assignees, agreed, missing: runtime.assignees.filter((a) => !said.has(a.toLowerCase())), needed, complete: runtime.assignees.length >= needed && agreed.length === runtime.assignees.length };
+}
+
+/**
+ * The team's agreement on a step, given in the tool of the step. The list does not offer to approve a step that
+ * has a tool (`canApproveStep`), and `approveStep` goes by the list: with a tool on the step, an agreement given
+ * there was not kept, and nothing could close the step. Whoever may sit down for the step and has not is seated,
+ * their agreement is kept, and the step closes when everybody seated has agreed and they are enough.
+ * `settled` is what only the tool knows: that nothing in it is left to resolve. `mine: false` gives no agreement:
+ * it only closes a step that was waiting for the last thing to be resolved.
+ */
+export function agreeInTool(params: { progress: TaskProgressMarker; steps: TaskStep[]; step: TaskStep; login: string; settled: boolean; mine?: boolean; author?: string }): TaskProgressMarker {
+  const { steps, step } = params;
+  let next = params.progress;
+  if (step.closing !== "consensus" || isStepDone(next, step.id) || !isStepUnlocked(steps, next, step.id)) return next;
+  const user = params.login.trim();
+  if (user && params.mine !== false) {
+    if (canClaimStep(user, steps, next, step, undefined, params.author)) next = claimStep(next, step, user);
+    const runtime = getStepRuntime(next, step.id);
+    const has = (list: string[]) => list.some((a) => a.toLowerCase() === user.toLowerCase());
+    if (has(runtime.assignees) && !has(runtime.approvals)) next = withStepRuntime(next, step.id, { ...runtime, approvals: [...runtime.approvals, user] });
+  }
+  if (params.settled && agreementStanding(next, step).complete) next = markStepDone(next, step.id);
+  return next;
+}
+
 /** The step whose work a review looks at (the draft): the first step it excludes, else the one right before it. */
 export function reviewedStepId(steps: TaskStep[], step: TaskStep): string | undefined {
   const named = step.excludePriorStepIds?.[0];

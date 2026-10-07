@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { applyProposal, checkedSteps, loadTaskAnswers, sendProposal, type CheckedStep } from "../dcs/checkProposals";
 import { appendCheckAnswers } from "../dcs/checkStore";
+import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { loadPmConfig } from "../dcs/issues";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
-import { approveStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
 import { loadTrialChecks, proposalAnswer, proposalDone, proposalSaying, proposalsOf, proposalsSettled, saveTrialChecks, type ProposalView } from "../domain/checkProposal";
@@ -58,13 +59,15 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [stepDone, setStepDone] = useState(false);
-  const [approved, setApproved] = useState(false);
+  /** The agreement on the step as the subtarea has it: who sat down for it, and who of them agreed. */
+  const [standing, setStanding] = useState<StepAgreement | null>(null);
   /** The proposal being answered with another version. */
   const [answering, setAnswering] = useState<Listed | null>(null);
 
   const trying = Boolean(ctx?.lab && !ctx.labAllowWrite);
   const me = session?.username ?? "";
+  const stepDone = Boolean(standing?.done);
+  const approved = Boolean(standing?.agreed.some((who) => who.toLowerCase() === me.toLowerCase()));
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -86,8 +89,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       const lab = decoded.lab && !decoded.labAllowWrite;
       const read = lab ? steps.map((row) => ({ step: row, answers: loadTrialChecks(row.key) })) : await loadTaskAnswers(session, steps);
       setAnswers(Object.fromEntries(read.map((row) => [row.step.key, row.answers])));
-      if (decoded.pmOrg && decoded.issueNumber && decoded.stepId) {
-        setStepDone(await stepIsDone({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, stepId: decoded.stepId }).catch(() => false));
+      if (!lab && decoded.pmOrg && decoded.issueNumber && step) {
+        setStanding(await stepAgreement({ session, pmOrg: decoded.pmOrg, issueNumber: decoded.issueNumber, steps: task?.steps ?? [], step }).catch(() => null));
       }
     } catch (err) {
       setError(explainError(err));
@@ -195,15 +198,42 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answering.proposal.before, commentOnly: answering.proposal.before === undefined, ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
     : [];
 
-  async function approve() {
+  /**
+   * My agreement on the step, and with it the step itself when it is everybody's. Closing the last step of a
+   * subtarea delivers it, as the rounds of review do: nobody is left to find «Entregar» on their list.
+   */
+  async function agreeOnStep(mine: boolean) {
     if (!session || !ctx || !data?.step) return;
     if (trying || !ctx.pmOrg || !ctx.issueNumber) return announce(t("ag.tryApprove"));
     await act(async () => {
-      setStepDone(await approveStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, step: data.step! }));
-      setApproved(true);
-      announce(t("ag.approved"));
+      const now = await agreeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, steps: data.task?.steps ?? [], step: data.step!, settled: proposalsSettled(listed), mine });
+      setStanding(now);
+      if (now.done) {
+        const delivered = data.board ? await deliverSharedSubtask({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board: data.board, issueNumber: ctx.issueNumber }).catch(() => false) : false;
+        return announce(t(delivered ? "ag.closedDelivered" : "ag.closed"));
+      }
+      if (!mine) return;
+      announce(t(!now.open ? "ag.locked" : now.agreed.some((who) => who.toLowerCase() === me.toLowerCase()) ? "ag.approved" : "ag.cannot"));
     });
   }
+  // Everybody had agreed and something was still to be resolved: the step closes when the last of it is, once.
+  const closedLate = useRef(false);
+  useEffect(() => {
+    if (closedLate.current || trying || saving || !standing || standing.done || !standing.open || !standing.complete || unsettled.length) return;
+    closedLate.current = true;
+    void agreeOnStep(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [standing, unsettled.length, saving]);
+
+  /** What the foot says: what is left to resolve, or whose agreement is given and whose is missing. */
+  const footSays = () => {
+    if (unsettled.length) return t(unsettled.length === 1 ? "ag.pendingOne" : "ag.pending").replace("{n}", String(unsettled.length));
+    if (!standing) return t("ag.allSettled");
+    if (!standing.open) return t("ag.locked");
+    const names = (list: string[]) => list.map((who) => `@${who}`).join(", ");
+    if (approved) return `${t("ag.youAgreed")} ${standing.missing.length ? t("ag.missingWho").replace("{who}", names(standing.missing)) : t("ag.missingOther")}`;
+    return standing.agreed.length ? `${t("ag.allSettled")} ${t("ag.agreedBy").replace("{who}", names(standing.agreed))}` : t("ag.allSettled");
+  };
 
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ag.title");
   const isMe = (who: string) => who.toLowerCase() === me.toLowerCase();
@@ -306,9 +336,9 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             ) : (
               <>
                 <p className="ag-foot" role="status">
-                  {unsettled.length ? t(unsettled.length === 1 ? "ag.pendingOne" : "ag.pending").replace("{n}", String(unsettled.length)) : approved ? t("tb.othersApprove") : t("ag.allSettled")}
+                  {footSays()}
                 </p>
-                <Button type="button" size="lg" disabled={saving || !proposalsSettled(listed) || approved} onClick={() => void approve()}>
+                <Button type="button" size="lg" disabled={saving || !proposalsSettled(listed) || approved || standing?.open === false} onClick={() => void agreeOnStep(true)}>
                   {t("ag.approve")}
                 </Button>
               </>
