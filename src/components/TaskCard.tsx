@@ -281,7 +281,13 @@ export function TaskCard(props: Props) {
                     </small>
                   ) : null}
                 </span>
-                {isPrimary ? null : claim ? (
+                {done && closesInItsTool(step) && props.onOpenStep && card.group !== "done" ? (
+                  // What a step closed in its tool left (what was checked, what was changed) can be looked at
+                  // again: the step after it asked a team to agree on changes nobody could see from here.
+                  <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onOpenStep!(step)}>
+                    {t("tb.seeStep")}
+                  </Button>
+                ) : isPrimary ? null : claim ? (
                   <Button type="button" size="sm" variant="outline" disabled={props.busy} onClick={() => props.onClaimStep(step)}>
                     {t("tb.joinShort")}
                   </Button>

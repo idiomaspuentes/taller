@@ -3,7 +3,7 @@ import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
 import { HelpMessages } from "./HelpMessages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { categoryFromSupportRef, categoryLabel } from "../domain/afinacionNotes";
+import { articlePathOf, categoryFromSupportRef, categoryLabel } from "../domain/afinacionNotes";
 import { bookLabel } from "../domain/books";
 import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
@@ -13,12 +13,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { appendCheckAnswers, loadCheckAnswers } from "../dcs/checkStore";
-import { loadTermArticle, loadTermTitles } from "../dcs/afinacionLoad";
+import { loadTermTitles } from "../dcs/afinacionLoad";
 import { resolveSourcePackage } from "../domain/sourcePackage";
-import { articleBody, termLabel, type TermKind } from "../domain/afinacionWords";
+import { articleBody, termArticlePath, termLabel, type TermKind } from "../domain/afinacionWords";
 import { loadChecklist, type ChecklistData, type ChecklistItem, type ChecklistKind, type ChecklistText } from "../dcs/checklistLoad";
 import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
 import { helpRowRef } from "../domain/commentPlace";
 import { helpAtWord, questionsFor, summarizeChecklist, verseCoverage, type CheckAnswer, type CheckItem, type CheckOutcome } from "../domain/checklist";
@@ -34,7 +35,7 @@ import { scopeLabel } from "../domain/resourceNames";
 import { originalTokens, quoteFromSelection } from "../domain/quoteFromSelection";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { verseFromSid } from "../domain/usfmAst";
-import { saveNoteQuote } from "../dcs/teamHelps";
+import { readTeamArticle, saveNoteQuote, type TeamArticle } from "../dcs/teamHelps";
 import { explainError } from "../dcs/userError";
 
 type Props = {
@@ -176,12 +177,28 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   // only its title: whoever checked had to know the article, or go and find it. Read once per term, as it comes up.
   const [articles, setArticles] = useState<Record<string, string | null>>({});
   const slug = kind === "palabras" && termKind ? termSlug.join("/") : "";
+  // The Academy article a note points to. Its checklist asks whether the article teaches the difficulty of the
+  // note and whether it is published in this language, and showed its name alone: neither could be answered here.
+  const articlePath = kind === "notas" && item?.supportRef ? articlePathOf(item.supportRef) : "";
+  const [academy, setAcademy] = useState<Record<string, TeamArticle | null>>({});
+  useEffect(() => {
+    if (!articlePath || !session?.token || !ctx || !data || articlePath in academy) return;
+    let cancelled = false;
+    void readTeamArticle({ session, ctx, pmConfig: data.pmConfig ?? DEFAULT_PM_CONFIG, board: data.board, pkg: resolveSourcePackage(data.board?.settings), resource: "academia", path: articlePath })
+      .catch(() => null)
+      .then((article) => !cancelled && setAcademy((prev) => ({ ...prev, [articlePath]: article })));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articlePath, session?.token, ctx?.issueNumber, data]);
   useEffect(() => {
     if (!slug || !session?.token || !ctx || !data || slug in articles) return;
     let cancelled = false;
-    void loadTermArticle(session, resolveSourcePackage(data.board?.settings), { termSlug: slug, termKind: termKind as TermKind }, ctx, data.pmConfig ?? DEFAULT_PM_CONFIG)
+    // As the team has it now: an article it translated for this book is on its draft, not published yet.
+    void readTeamArticle({ session, ctx, pmConfig: data.pmConfig ?? DEFAULT_PM_CONFIG, board: data.board, pkg: resolveSourcePackage(data.board?.settings), resource: "palabras", path: termArticlePath(termKind as TermKind, slug) })
       .catch(() => null)
-      .then((article) => !cancelled && setArticles((prev) => ({ ...prev, [slug]: article?.trim() ? article : null })));
+      .then((article) => !cancelled && setArticles((prev) => ({ ...prev, [slug]: article?.text?.trim() ? article.text : null })));
     return () => {
       cancelled = true;
     };
@@ -321,6 +338,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       setStepDone(true);
       announce(t("ck.stepClosed"));
+      // On to what follows, as the other tools do: the next list of the same task when it is this person's, or
+      // their tasks. The screen stayed on a list with every answer given, «Paso cerrado», and nothing to press.
+      await goOnAfterStep(session, ctx, onClose);
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -419,7 +439,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       {data && data.items.length ? (
         <section className="round" aria-label={t("ck.standingAria")}>
           {stepDone ? (
-            <p className="round__done">{t("ck.stepClosed")}</p>
+            // Opened again once closed: there is nothing left to do here, and the way out is said.
+            <div className="round__done round__done--leave">
+              <p>{t("ck.stepClosed")}</p>
+              <Button type="button" size="lg" variant="outline" onClick={onClose}>
+                {t("fa.back")}
+              </Button>
+            </div>
           ) : summary.complete && closesHere ? (
             <div className="round__ready">
               <p>{t("ck.allChecked")}</p>
@@ -526,7 +552,26 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             {item.body ? <HelpMarkdownView className="af-note af-note--md" content={item.body} /> : null}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
-            {item.supportRef && kind !== "palabras" ? <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p> : null}
+            {articlePath ? (
+              // Closed until asked for: an article is several screens long, and the questions come after it.
+              <details className="ck-read">
+                <summary>{t("ck.support").replace("{ref}", academy[articlePath]?.title || localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef ?? "")), language))}</summary>
+                {academy[articlePath] === undefined ? (
+                  <p className="af-hint">{t("ur.readingArticle")}</p>
+                ) : academy[articlePath]?.text ? (
+                  <HelpMarkdownView className="ur-md ur-article ck-article" content={academy[articlePath]!.text!} />
+                ) : (
+                  <p className="af-hint">{t("ur.noArticle")}</p>
+                )}
+              </details>
+            ) : item.supportRef && kind !== "palabras" ? (
+              <p className="af-hint">{t("ck.support").replace("{ref}", kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(item.supportRef)), language) : item.supportRef)}</p>
+            ) : null}
+            {articlePath && academy[articlePath] ? (
+              <p className="af-hint ck-read__where" data-where={academy[articlePath]!.where}>
+                {t(`ck.article.${academy[articlePath]!.where}` as MessageKey)}
+              </p>
+            ) : null}
             {session && ctx?.pmOrg && ctx.projectId && data ? (
               // What the teams before this one said about this very help (those who refined the text, say): read
               // before answering. With nothing said, «Mensajes de equipos anteriores… Puedes responder» stood over

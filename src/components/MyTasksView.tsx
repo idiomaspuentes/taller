@@ -44,6 +44,7 @@ import {
   stepNeedsOpenPortionPr,
 } from "../domain/portionPr";
 import { taskHasOwnDraft } from "../domain/branchNames";
+import { deliverSharedSubtask } from "../dcs/deliverShared";
 import {
   canClaimIssue,
   canUnassignIssue,
@@ -530,10 +531,14 @@ export function MyTasksView({
         });
       }
       await setIssueTaskProgress(session, pmOrg, issue, next);
+      const completed = next.doneStepIds.includes(step.id);
+      // The last step of a subtarea that works on the shared draft, closed from the list by whoever gave the
+      // approval that was missing: that is its delivery, as when a tool closes it (see `deliverSharedSubtask`). The
+      // card went on to «Falta que @quien la entregue», and nobody told them.
+      const board = projects.find((bucket) => bucket.board.projectId === offer.projectId)?.board;
+      const delivered = completed && board ? await deliverSharedSubtask({ session, pmOrg, lang, contentOrg, board, issueNumber: issue.number }).catch(() => false) : false;
       announce(
-        next.doneStepIds.includes(step.id)
-          ? t("mt.stepCompleted").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number))
-          : t("mt.stepApproved").replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)),
+        (delivered ? t("mt.stepDelivered") : completed ? t("mt.stepCompleted") : t("mt.stepApproved")).replace("{step}", localizeName(step.name, language)).replace("{n}", String(issue.number)),
       );
       await reload();
     } catch (err) {

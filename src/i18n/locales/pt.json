@@ -2775,5 +2775,11 @@
   "al.doneAgainSaid": "terminei de alinhar este versículo de novo. Já podem revisá-lo.",
   "he.footShared": "O que você corrigir aqui fica nas ajudas da sua equipe.",
   "he.sharedNone": "Sua equipe ainda não tem estas ajudas traduzidas: aqui não há nada para corrigir.",
-  "he.savedShared": "Salvo nas ajudas da sua equipe."
+  "he.savedShared": "Salvo nas ajudas da sua equipe.",
+  "ck.article.published": "Este artigo está publicado no seu idioma.",
+  "ck.article.draft": "Sua equipe traduziu este artigo: é publicado com este livro.",
+  "ck.article.source": "Este artigo ainda não está no seu idioma: aqui é lido no idioma de origem.",
+  "ck.article.none": "Este artigo não foi encontrado.",
+  "tb.seeStep": "Ver",
+  "mt.stepDelivered": "Com «{step}» a tarefa ficou entregue."
 }
