@@ -388,10 +388,20 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   renglones toman la forma que el original tiene en ese versículo. El texto del que se traduce usa
   la misma regla de formato (un solo bloque de estilos para `.usfm-para[data-marker]`), en todas
   las pantallas que lo muestran: antes todos sus renglones empezaban en el mismo sitio.
+- **Un campo por renglón.** Un versículo de un poema se escribe en tantos campos como renglones
+  tiene su original, cada uno dibujado como su renglón: la raya a la izquierda y su profundidad
+  (`VerseLines`, `src/domain/verseLines.ts`). Enter empieza un renglón (o «Otro renglón», bajo los
+  campos) y Retroceso al inicio de uno lo une al anterior; lo pegado con saltos de línea se reparte.
+  En un solo cuadro, un renglón nuevo era una tecla que había que conocer, con un aviso debajo para
+  decirlo, y la forma del versículo no se veía hasta salir del cuadro. El versículo sigue siendo un
+  solo texto con sus renglones separados por saltos de línea; un versículo de prosa es un cuadro,
+  como antes, y uno de un poema vacío y sin tocar también, hasta que se entra en él.
+- **¿Se guardó?** Bajo el cuadro del versículo que se escribe se dice «Sin guardar», «Guardando…»
+  o «Guardado». En un teléfono no se decía en ningún sitio: el estado junto al título se oculta a
+  ese ancho.
 - **El versículo que se escribe.** En su fila mandan dos cosas: el texto del que se traduce y el
   cuadro donde se escribe, que es lo único con aspecto de campo. Lo demás va en voz baja: el paso
-  al otro texto, junto al nombre de este; bajo el cuadro, cuántos renglones tiene el original (una
-  línea, y solo hasta que el versículo tiene los suyos) y «Fíjate en esto»; los botones de unir
+  al otro texto, junto al nombre de este; bajo el cuadro, si se guardó y «Fíjate en esto»; los botones de unir
   versículos, sin recuadro, y ocultos junto al versículo en el que se está escribiendo. Lo que pide
   el paso («Qué se pide en…») va a la cabeza del borrador y sube con él al desplazar: fijo arriba
   ocupaba una franja de la pantalla del teléfono (queda fijo solo cuando la subtarea trae un
@@ -463,8 +473,8 @@ compara texto, grupos, atributos y estructura; `verse-reach.test.ts` y
   conservan. Para eso hay que editar el archivo en Door43.
 - Un título en medio de un versículo, o una marca que no se cierra y no es de párrafo, se pierden
   al editar ese versículo, como antes.
-- Mientras se escribe en el cuadro, un renglón largo que dobla no se distingue de uno nuevo: la
-  forma se ve al salir de él. Un cuadro de texto no puede sangrar cada renglón por separado.
+- En un versículo de prosa que alguien escribe en varias líneas, el cuadro las muestra como se
+  teclearon; se guarda en una.
 - Un párrafo que empieza (`\p`) se ve igual que uno que sigue: solo la poesía, las listas y los
   párrafos sangrados tienen forma propia.
 - El título de un salmo (el versículo 0 de su capítulo) se conserva con su alineación al guardar

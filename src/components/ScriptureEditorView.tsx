@@ -57,7 +57,9 @@ import {
   type RefRange,
 } from "../domain/usfmEdit";
 import { joinMarkup, verseNotes, type VerseNote } from "../domain/verseMarkup";
-import { chapterShape, shownLines, typedOffset } from "../domain/verseShape";
+import { chapterShape, expectedLines, lineShapes, shownLines, typedOffset } from "../domain/verseShape";
+import { lineOfOffset } from "../domain/verseLines";
+import { VerseLines, lineFieldId } from "./VerseLines";
 import { VerseShown, type ShownPlace } from "./VerseShown";
 import { extractDraftVerses, parseSourceUsfm, type VerseTextMap } from "../domain/usfmAst";
 import {
@@ -147,8 +149,10 @@ function canJoinRows(cur: VerseDraft, next: VerseDraft, range: RefRange | null):
   return next.from === cur.to + 1 && rowInRange(cur, range) && rowInRange(next, range);
 }
 
+/** The same rows saying the same on the same lines. A line left empty, or a space at an end, is not a difference. */
 function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
-  return a.length === b.length && a.every((d, i) => slotKey(d) === slotKey(b[i]!) && d.text === b[i]!.text);
+  const said = (text: string) => textLines(text).join("\n");
+  return a.length === b.length && a.every((d, i) => slotKey(d) === slotKey(b[i]!) && said(d.text) === said(b[i]!.text));
 }
 
 /**
@@ -928,12 +932,17 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const shapeByVerse = useMemo(() => (usfm && range ? chapterShape(usfm, range.chapter) : {}), [usfm, range?.chapter]);
   /** The row that is being written in. The others are shown as they read, in the shape their marks give them. */
   const [editing, setEditing] = useState<string | null>(null);
-  /** The lines of a row as they will be written, each with its mark. Rows joined here and not saved yet are prose. */
-  const linesOf = (d: VerseDraft) => {
+  /** How a row stands in the book. Rows joined here and not saved yet are prose: they have no lines of their own. */
+  const shapeOf = (d: VerseDraft) => {
     const shape = shapeByVerse[d.from];
-    const own = shape && shape.to === d.to;
-    return shownLines(d.text, shape && !own ? { ...shape, leads: [] } : shape, d.from === d.to ? (sourceLeads[d.from] ?? []) : []);
+    return shape && shape.to !== d.to ? { ...shape, leads: [] } : shape;
   };
+  /** The marks the lines of a row begin with in the text it is translated from. */
+  const patternOf = (d: VerseDraft) => (d.from === d.to ? (sourceLeads[d.from] ?? []) : []);
+  /** The lines of a row as they will be written, each with its mark. */
+  const linesOf = (d: VerseDraft) => shownLines(d.text, shapeOf(d), patternOf(d));
+  /** How many lines a row is written in: a verse of a poem has a field to a line. */
+  const lineCount = (d: VerseDraft) => (d.from === d.to ? expectedLines(shapeOf(d), patternOf(d)) : 1);
   /** Goes back to writing a row, with the cursor where its text was touched. */
   const editRow = (d: VerseDraft, place: ShownPlace | null) => {
     const key = slotKey(d);
@@ -943,13 +952,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setActiveVerse(d.from);
       setEditing(key);
     });
-    const box = document.getElementById(`v-${key}`) as HTMLTextAreaElement | null;
+    const at = place ? typedOffset(d.text, shown, place.line, place.offset) : null;
+    // In a verse written a line to a field, the cursor goes to the field of its line.
+    const inLine = lineCount(d) > 1 ? lineOfOffset(d.text, at ?? 0) : null;
+    const box = document.getElementById(inLine ? lineFieldId(`v-${key}`, inLine.line) : `v-${key}`) as HTMLTextAreaElement | null;
     if (!box) return;
     box.focus();
-    if (place) {
-      const at = typedOffset(d.text, shown, place.line, place.offset);
-      box.setSelectionRange(at, at);
-    }
+    if (at !== null) box.setSelectionRange(inLine ? inLine.offset : at, inLine ? inLine.offset : at);
   };
   /** The notes of a row and the word each will follow in the text as it is written now. */
   const notesOf = (d: VerseDraft): VerseNote[] => {
@@ -2362,6 +2371,24 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           as deep as its mark says. In the box, such a line and a long one that wraps look the same. */}
                       {editing !== key && !recreating && d.text.trim() ? (
                         <VerseShown lines={linesOf(d)} label={t("se.editVerse").replace("{n}", label)} onEdit={(place) => editRow(d, place)} />
+                      ) : editing === key && lineCount(d) > 1 ? (
+                        // A verse of a poem: a field to a line, drawn as the lines of its source are. In one box a new
+                        // line was a key to know of, with a note under the box to say so.
+                        <VerseLines
+                          id={`v-${key}`}
+                          text={d.text}
+                          least={lineCount(d)}
+                          shapes={(count) => lineShapes(count, shapeOf(d), patternOf(d)) ?? []}
+                          placeholder={(line) => t("se.lineN").replace("{n}", String(line))}
+                          addLabel={t("se.addLine")}
+                          disabled={recreating}
+                          onChange={(text) => updateVerse(key, text)}
+                          onFocus={() => {
+                            setActiveVerse(d.from);
+                            setEditing(key);
+                          }}
+                          onBlur={() => setEditing((current) => (current === key ? null : current))}
+                        />
                       ) : (
                         <textarea
                           id={`v-${key}`}
@@ -2369,8 +2396,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           rows={3}
                           value={d.text}
                           onFocus={() => {
-                            setActiveVerse(d.from);
-                            setEditing(key);
+                            // An empty verse of a poem is one box until it is written in: then it is its lines.
+                            if (lineCount(d) > 1 && !recreating) editRow(d, null);
+                            else {
+                              setActiveVerse(d.from);
+                              setEditing(key);
+                            }
                           }}
                           onBlur={() => setEditing((current) => (current === key ? null : current))}
                           onChange={(e) => updateVerse(key, e.target.value)}
@@ -2378,11 +2409,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           disabled={recreating}
                         />
                       )}
-                      {/* A verse of a poem: said while it is written, and only until it has lines of its own (a team may
-                          break a verse in fewer lines than its source does, and that is not to be asked about again). */}
-                      {activeVerse === d.from && d.from === d.to && (sourceLeads[d.from]?.length ?? 0) > 1 && textLines(d.text).length <= 1 ? (
-                        <p className="scripture-editor__verse-note" data-poem>
-                          {t("se.poemLines").replace("{n}", String(sourceLeads[d.from]!.length))}
+                      {/* Whether what was written is saved, said where it is written: on a phone it was said nowhere. */}
+                      {activeVerse === d.from && saveState.tone !== "idle" ? (
+                        <p className="scripture-editor__save-state se-row-state" data-tone={saveState.tone} role="status">
+                          <span className="scripture-editor__save-dot" aria-hidden />
+                          {saveState.text}
                         </p>
                       ) : null}
                       {notesOf(d).map((note, at, all) => (

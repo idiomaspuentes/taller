@@ -7821,13 +7821,13 @@ input.pf-name { font-size: 1.625rem; }
 
    `--num` is the column a verse number hangs in, where there is one; `--indent` where a line begins, `--hang` how
    much deeper it goes on when it wraps, `--bar` and `--pad` the rule at its left and the room after it. */
-:is(.scripture-editor__usfm-ro, .se-shown) {
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) {
   --num: 0rem;
   /* The colour of the text, faint: a part of the text, not a notice. In the accent colour it read as one more
      «Fíjate en esto», which stands right under it with a rule of its own at its left. */
   --line-rule: color-mix(in srgb, currentColor 32%, transparent);
 }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para {
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para {
   --indent: 0rem;
   --hang: 0rem;
   --bar: 0px;
@@ -7837,22 +7837,36 @@ input.pf-name { font-size: 1.625rem; }
   /* Shorter than the block by a little, so two lines one under the other are two rules. */
   background: linear-gradient(var(--line-rule), var(--line-rule)) no-repeat calc(var(--num) + var(--indent)) 50% / var(--bar) calc(100% - 0.4rem);
 }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker^="q"]):not([data-marker="qa"], [data-marker="qc"], [data-marker="qr"], [data-marker="qd"]) { --bar: 2px; --pad: 0.5rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q2"], [data-marker="qm2"]) { --indent: 1rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q3"], [data-marker="qm3"]) { --indent: 2rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="q4"] { --indent: 3rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="pi"], [data-marker="pi1"], [data-marker="mi"], [data-marker="pm"], [data-marker="pmo"], [data-marker="pmc"]) { --indent: 1rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="pi2"] { --indent: 2rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="li"], [data-marker="li1"]) { --indent: 1rem; --hang: 1rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="li2"] { --indent: 2rem; --hang: 1rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="qc"], [data-marker="pc"]) { text-align: center; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="qr"], [data-marker="pr"], [data-marker="pmr"]) { text-align: right; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="d"] { font-style: italic; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para:is([data-marker^="q"]):not([data-marker="qa"], [data-marker="qc"], [data-marker="qr"], [data-marker="qd"]) { --bar: 2px; --pad: 0.5rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para:is([data-marker="q2"], [data-marker="qm2"]) { --indent: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para:is([data-marker="q3"], [data-marker="qm3"]) { --indent: 2rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para[data-marker="q4"] { --indent: 3rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para:is([data-marker="pi"], [data-marker="pi1"], [data-marker="mi"], [data-marker="pm"], [data-marker="pmo"], [data-marker="pmc"]) { --indent: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para[data-marker="pi2"] { --indent: 2rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para:is([data-marker="li"], [data-marker="li1"]) { --indent: 1rem; --hang: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para[data-marker="li2"] { --indent: 2rem; --hang: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para:is([data-marker="qc"], [data-marker="pc"]) { text-align: center; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para:is([data-marker="qr"], [data-marker="pr"], [data-marker="pmr"]) { text-align: right; }
+:is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para[data-marker="d"] { font-style: italic; }
 /* A line left empty between two stanzas. */
 .scripture-editor__usfm-ro .usfm-para[data-marker="b"] { min-height: 0.75em; }
 .se-shown .usfm-para[data-gap] { margin-top: 0.75em; }
 /* What sits inside a line as a box of its own (the number of a verse) does not take the indent of the line. */
 .scripture-editor__usfm-ro .usfm-para :is(.usfm-verse-num, .usfm-verse) { text-indent: 0; }
+
+/* A verse of a poem while it is written: a field to a line, each with the rule and the depth of its line. */
+.se-lines { display: grid; gap: 0.375rem; }
+.se-lines .usfm-para { margin: 0; }
+.scripture-editor--split .scripture-editor__verse .se-line__box { min-height: 2.75rem; padding: 0.5rem 0.625rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); box-shadow: none; }
+.scripture-editor--split .scripture-editor__verse .se-line__box:focus { border-color: var(--accent-400); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-300) 35%, transparent); }
+.se-lines__add { justify-self: start; min-height: 2.5rem; padding: 0 0.25rem; border: 0; background: none; font-family: inherit; font-size: 0.8125rem; color: var(--text-muted); cursor: pointer; }
+.se-lines__add::before { content: "+ "; }
+/* Whether what was written is saved, under the box. Where the head of the tool says it (a wide screen), it is not
+   said twice. */
+.scripture-editor--split .se-row-state { display: none; margin: 0.375rem 0 0; }
+@media (max-width: 48rem) {
+  .scripture-editor--split .se-row-state { display: inline-flex; }
+}
 
 /* The draft as it reads while nobody writes in it: sized and placed as the box it is written in. */
 .se-shown { padding: 0.35rem 0.25rem; font-size: var(--verse-font, 1.0625rem); line-height: var(--verse-leading, 1.6); color: var(--text); cursor: text; border-radius: var(--radius-sm, 0.25rem); overflow-wrap: anywhere; }

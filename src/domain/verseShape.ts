@@ -110,15 +110,34 @@ export function chapterShape(usfm: string, chapter: number): Record<number, Vers
 export function shownLines(text: string, shape: VerseShape | undefined, pattern: string[] = []): ShownLine[] {
   const said = textLines(text);
   if (!said.length) return [];
+  const shapes = lineShapes(said.length, shape, pattern);
+  if (!shapes) return [{ marker: shape?.marker ?? "p", opens: shape?.opens ?? false, gap: shape?.gap ?? false, text: said.join(" ") }];
+  return said.map((line, index) => ({ ...shapes[index]!, text: line }));
+}
+
+/** The shape of a line, whatever it says. */
+export type LineShape = Omit<ShownLine, "text">;
+
+/**
+ * The shape each of `count` lines of a verse would have: what a field to write a line in is drawn with, before
+ * anything is written in it. `null` for a verse of prose, which is one line however many are typed.
+ */
+export function lineShapes(count: number, shape: VerseShape | undefined, pattern: string[] = []): LineShape[] | null {
   const first = { marker: shape?.marker ?? "p", opens: shape?.opens ?? false, gap: shape?.gap ?? false };
-  const leads = leadsFor(said.length, shape?.leads ?? [], pattern);
-  if (!leads) return [{ ...first, text: said.join(" ") }];
+  const leads = leadsFor(count, shape?.leads ?? [], pattern);
+  if (!leads) return null;
   let marker = first.marker;
-  return said.map((line, index) => {
-    const marks = marksOf(leads[index] ?? "");
+  return leads.map((lead, index) => {
+    const marks = marksOf(lead);
     const own = marks.filter((mark) => mark !== "b").pop();
     if (own) marker = own;
-    if (index === 0 && !own) return { ...first, text: line };
-    return { marker, text: line, opens: Boolean(own), gap: marks.includes("b") || (index === 0 && first.gap) };
+    if (index === 0 && !own) return first;
+    return { marker, opens: Boolean(own), gap: marks.includes("b") || (index === 0 && first.gap) };
   });
+}
+
+/** How many lines a verse is expected to have: those its source has, or those it has in the book. One for prose. */
+export function expectedLines(shape: VerseShape | undefined, pattern: string[] = []): number {
+  const own = shape?.leads.some(Boolean) ? shape.leads.length : 0;
+  return Math.max(pattern.some(Boolean) ? pattern.length : 0, own, 1);
 }
