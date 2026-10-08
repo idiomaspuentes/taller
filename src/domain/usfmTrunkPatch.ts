@@ -5,7 +5,8 @@
  * and section markers, untouched verses, CRLF/LF) keeps the trunk bytes.
  */
 
-import { listVerseSpans, normalizeVerseText, verseParts, type RefRange, type VerseSpan } from "./usfmEdit";
+import { lineOfVerse, listVerseSpans, normalizeVerseText, verseMarkup, verseParts, type RefRange, type VerseSpan } from "./usfmEdit";
+import { carryMarkup, joinMarkup } from "./verseMarkup";
 import {
   mergeUsfmByVerse,
   verseSlotsOf,
@@ -51,11 +52,11 @@ function sameSlots(a: Slot[], b: Slot[]): boolean {
   return b.every((slot) => keys.has(slotKey(slot)));
 }
 
-/** End of the lines that carry verse text; trailing marker-only lines (`\p`, `\q1`, `\s1 …`) stay. */
+/** End of the lines that carry verse text, or a note of the verse; trailing marker-only lines (`\p`, `\q1`, `\s1 …`) stay. */
 function textEnd(usfm: string, span: VerseSpan): number {
   const lines = usfm.slice(span.start, span.end).split(/(?<=\n)/);
   let keep = lines.length;
-  while (keep > 1 && !normalizeVerseText(lines[keep - 1]!)) keep--;
+  while (keep > 1 && !lineOfVerse(lines[keep - 1]!)) keep--;
   return span.start + lines.slice(0, keep).join("").length;
 }
 
@@ -63,8 +64,20 @@ function verseNumber(slot: Range): string {
   return slot.to > slot.from ? `${slot.from}-${slot.to}` : `${slot.from}`;
 }
 
-function synthesizedLine(slot: Slot): string {
-  return slot.text ? `\\v ${verseNumber(slot)} ${slot.text}` : `\\v ${verseNumber(slot)}`;
+/**
+ * A slot written from its text: one that no side has as a verse of its own (`\v 10a` and `\v 10b` are read as
+ * one). It takes the notes and the marked words of the verses that say it, in the side that won or in the trunk:
+ * put together from its text alone, it lost them.
+ */
+function synthesizedLine(sources: string[], slot: Slot): string {
+  if (!slot.text) return `\\v ${verseNumber(slot)}`;
+  for (let i = sources.length - 1; i >= 0; i--) {
+    const source = sources[i]!;
+    const kept = joinMarkup(listVerseSpans(source).filter((s) => overlaps(spanRange(s), slot)).map((s) => verseMarkup(source, s)));
+    if (!kept.anchors.length && !kept.marks.length) continue;
+    if (normalizeVerseText(kept.text) === slot.text) return `\\v ${verseNumber(slot)} ${carryMarkup(kept, [slot.text])[0]}`;
+  }
+  return `\\v ${verseNumber(slot)} ${slot.text}`;
 }
 
 /**
@@ -187,7 +200,7 @@ export function patchTrunkByVerse(
     const writeSlots = groupSpans.length ? mSlots : mSlots.filter((s) => s.text);
     if (!writeSlots.length) continue;
 
-    const lines = writeSlots.map((slot) => sideLine(sides, slot, eol) ?? synthesizedLine(slot));
+    const lines = writeSlots.map((slot) => sideLine(sides, slot, eol) ?? synthesizedLine([trunk, ...sides], slot));
     const from = Math.min(...group.map((n) => n.from));
     const to = Math.max(...group.map((n) => n.to));
     patched.push({ chapter, from, to });

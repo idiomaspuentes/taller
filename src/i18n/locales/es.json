@@ -2981,5 +2981,10 @@
   "ag.splitKeeps": "Esta nota queda:",
   "pr.splitEdited": "la retocaste: muévela a mano",
   "se.wouldChangeOthers": "Al guardar cambiarían también los versículos {list}, que nadie tocó. No se guardó: avisa a quien coordina.",
-  "se.poemLines": "En el original este versículo tiene {n} renglones. Escribe cada uno en una línea aparte."
+  "se.poemLines": "En el original este versículo tiene {n} renglones. Escribe cada uno en una línea aparte.",
+  "se.footnoteAt": "Nota al pie junto a «{word}»: {text}",
+  "se.footnoteStart": "Nota al pie del versículo: {text}",
+  "se.crossrefAt": "Referencia junto a «{word}»: {text}",
+  "se.crossrefStart": "Referencia del versículo: {text}",
+  "se.noteStays": "Se guarda con el versículo; no hay que escribirla."
 }

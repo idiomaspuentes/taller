@@ -49,12 +49,14 @@ import {
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { loadDraftCache, saveDraftCache } from "../domain/draftCache";
 import {
+  chapterMarkup,
   portionRange,
   skeletonUsfm,
   textLines,
   verseLeads,
   type RefRange,
 } from "../domain/usfmEdit";
+import { joinMarkup, verseNotes, type VerseNote } from "../domain/verseMarkup";
 import { extractDraftVerses, parseSourceUsfm, type VerseTextMap } from "../domain/usfmAst";
 import {
   englishScriptureKindRef,
@@ -151,10 +153,16 @@ function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
  * What this device kept of a verse, in the lines the verse has when it says the same. A text kept from before
  * verses were edited in their lines is one run: shown that way, the first word changed in it made prose of a
  * verse of a poem, and it counted as something written here that was still to be saved.
+ *
+ * So did a text kept from when a note or a marked word was read as a space («al pueblo .»): saved, that space
+ * went into the verse. In a verse that has such things (`marked`), a text that differs from it in spaces alone
+ * is the verse.
  */
-function keptInLines(kept: VerseDraft[], remote: VerseDraft[]): VerseDraft[] {
+function keptInLines(kept: VerseDraft[], remote: VerseDraft[], marked: Record<number, unknown> = {}): VerseDraft[] {
+  const packed = (text: string) => text.replace(/\s+/g, "");
   return kept.map((d) => {
     const there = remote.find((r) => slotKey(r) === slotKey(d));
+    if (there && marked[d.from] && d.text !== there.text && packed(d.text) === packed(there.text)) return { ...d, text: there.text };
     if (!there || !there.text.includes("\n") || d.text.includes("\n")) return d;
     return textLines(d.text).join(" ") === textLines(there.text).join(" ") ? { ...d, text: there.text } : d;
   });
@@ -916,6 +924,17 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const decisionsAt = useVerseDecisions(session, ctx, english.alignments);
   /** The marks the lines of each verse begin with in the text that is translated: a verse of a poem, in its lines. */
   const sourceLeads = useMemo(() => (english.usfm && range ? verseLeads(english.usfm, range.chapter) : {}), [english.usfm, range?.chapter]);
+  /**
+   * What each verse of the draft has besides its words. Its notes are said under the verse: whoever writes it
+   * does not see them in the text, and they stay with it when it is saved.
+   */
+  const keptByVerse = useMemo(() => (usfm && range ? chapterMarkup(usfm, range.chapter) : {}), [usfm, range?.chapter]);
+  /** The notes of a row and the word each will follow in the text as it is written now. */
+  const notesOf = (d: VerseDraft): VerseNote[] => {
+    const kept = [];
+    for (let verse = d.from; verse <= d.to; verse++) if (keptByVerse[verse]) kept.push(keptByVerse[verse]!);
+    return kept.length ? verseNotes(joinMarkup(kept), d.text) : [];
+  };
   const [draftLoading, setDraftLoading] = useState(() => Boolean(loadSession()));
   const [ultLoading, setUltLoading] = useState(() => Boolean(loadSession()));
   const [ustLoading, setUstLoading] = useState(() => Boolean(loadSession()));
@@ -1111,7 +1130,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       const remote = extracted.slots;
       const cached =
         cache && Object.keys(cache.verses).length
-          ? keptInLines(placeholderDrafts(refRange, cache, remote), remote)
+          ? keptInLines(placeholderDrafts(refRange, cache, remote), remote, chapterMarkup(text, refRange.chapter))
           : null;
       const usedCache = Boolean(cached && !sameDrafts(cached, remote));
       const chosen = usedCache && cached ? cached : remote;
@@ -2307,6 +2326,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           {t("se.poemLines").replace("{n}", String(sourceLeads[d.from]!.length))}
                         </p>
                       ) : null}
+                      {notesOf(d).map((note, at, all) => (
+                        <p key={at} className="scripture-editor__verse-note" data-footnote>
+                          {t(note.kind === "crossref" ? (note.after ? "se.crossrefAt" : "se.crossrefStart") : note.after ? "se.footnoteAt" : "se.footnoteStart")
+                            .replace("{word}", note.after)
+                            .replace("{text}", note.says)}
+                          {activeVerse === d.from && at === all.length - 1 ? <span className="scripture-editor__verse-note-stays"> {t("se.noteStays")}</span> : null}
+                        </p>
+                      ))}
                       {!inside ? (
                         <p className="scripture-editor__verse-note">
                           {t("se.bridgeOutside")}

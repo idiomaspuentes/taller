@@ -1,8 +1,11 @@
 /**
  * Extract and patch plain verse text inside a USFM document for a chapter range.
  * Alignment markers are stripped for editing; a save writes `\v N text`, on as many lines as the verse has
- * (a verse of poetry is several: `\q1 …`, `\q2 …`), and leaves what follows the verse where it was.
+ * (a verse of poetry is several: `\q1 …`, `\q2 …`), with the notes and the marked words the verse had
+ * (`verseMarkup.ts`), and leaves what follows the verse where it was.
  */
+
+import { HAS_NOTE, NO_MARKUP, carryMarkup, joinMarkup, keptWords, markupAlone, readText, readVerse, type VerseMarkup } from "./verseMarkup";
 
 export type VerseSpan = {
   chapter: number;
@@ -75,22 +78,9 @@ export function normalizeVerseText(text: string): string {
   return stripAlignment(text).normalize("NFC");
 }
 
+/** What the text says, with nothing of how it is marked: read by the reader that keeps the marks (`readVerse`). */
 function stripAlignment(text: string): string {
-  let out = text;
-  out = out.replace(/\\fe\s[\s\S]*?\\fe\*/g, " ");
-  out = out.replace(/\\f\s[\s\S]*?\\f\*/g, " ");
-  out = out.replace(/\\x\s[\s\S]*?\\x\*/g, " ");
-  out = out.replace(/\\(?:s\d?|ms\d?|mr|r|d|sp|cl|cd|rem)(?=\s|$)[^\n]*/g, " ");
-  // A milestone ends in `\*`: read without its backslash, the attributes were left in the text.
-  out = out.replace(/\\zaln-s\s*\|[^\\]*\\?\*/g, "");
-  out = out.replace(/\\zaln-e\\?\*/g, "");
-  // Any other milestone (`\ts\*`, `\qt-s |who="x"\*`) is a mark to its end: its `\*` was read as text.
-  out = out.replace(/\\[a-z]+\d*(?:-[se])?(?:\s*\|[^\\]*)?\\\*/g, " ");
-  out = out.replace(/\\w\s+([^\\|]+)\|[^\\]*\\w\*/g, "$1");
-  out = out.replace(/\\w\s+([^\\*]+)\\w\*/g, "$1");
-  out = out.replace(/\\[a-zA-Z0-9-]+\*?/g, " ");
-  out = out.replace(/\s+/g, " ");
-  return out.trim();
+  return readText(text);
 }
 
 /**
@@ -161,11 +151,13 @@ export type VerseParts = {
   tail: string;
 };
 
-/**
- * A verse in its lines. In poetry a verse is written on several, each begun by a mark (`\q1`, `\q2`); read as
- * one run of text and written back as one line, it came out as prose.
- */
-export function verseParts(usfm: string, span: Pick<VerseSpan, "start" | "end">): VerseParts {
+/** A line of the file that is of a verse: it has text, or a note of it (which may stand on a line of its own). */
+export function lineOfVerse(line: string): boolean {
+  return Boolean(normalizeVerseText(line)) || HAS_NOTE.test(line);
+}
+
+/** A verse as it is read to be written again: its lines, and what it has besides its words, at its place in them. */
+function verseContent(usfm: string, span: Pick<VerseSpan, "start" | "end">): VerseParts & { kept: VerseMarkup } {
   const chunk = usfm.slice(span.start, span.end);
   const head = /^\\v\s+\S+[ \t]*/.exec(chunk)?.[0] ?? "";
   const from = span.start + head.length;
@@ -178,29 +170,65 @@ export function verseParts(usfm: string, span: Pick<VerseSpan, "start" | "end">)
   }
   let lastText = -1;
   physical.forEach((line, index) => {
-    if (normalizeVerseText(line.text)) lastText = index;
+    if (lineOfVerse(line.text)) lastText = index;
   });
-  // No text at all: everything after its `\v` is of what follows.
-  if (lastText < 0) return { lines: [], textEnd: from, tail: usfm.slice(from, span.end) };
+  // Nothing at all: everything after its `\v` is of what follows.
+  if (lastText < 0) return { lines: [], textEnd: from, tail: usfm.slice(from, span.end), kept: NO_MARKUP };
 
+  const last = physical[lastText]!;
+  const textEnd = last.at + (LINE_END.exec(last.text)?.index ?? last.text.length);
   const rows: { lead: string; raw: string }[] = [{ lead: "", raw: "" }];
   for (const line of physical.slice(0, lastText + 1)) {
-    const mark = LINE_MARK.exec(line.text);
-    if (mark) rows.push({ lead: mark[1]!, raw: line.text.slice(mark[0].length) });
-    else rows[rows.length - 1]!.raw += line.text;
+    // What hangs from the end of the last line (a chunk mark) is of what follows.
+    const text = line === last ? line.text.slice(0, textEnd - line.at) : line.text;
+    const mark = LINE_MARK.exec(text);
+    if (mark) rows.push({ lead: mark[1]!, raw: text.slice(mark[0].length) });
+    else rows[rows.length - 1]!.raw += text;
   }
+  // Read together: a run of marked words may go from one line to the next.
+  const read = readVerse(rows.map((row) => row.raw.normalize("NFC")));
   // A mark with no text of its own (`\b`, or the `\q1` a writer leaves alone on its line) goes with the line after it.
   const lines: VerseLine[] = [];
   let pending = "";
-  for (const row of rows) {
-    const text = normalizeVerseText(row.raw);
+  rows.forEach((row, index) => {
+    const text = read.rows[index]!;
     const lead = [pending, row.lead].filter(Boolean).join("\n");
     if (text) lines.push({ lead, text });
     pending = text ? "" : lead;
+  });
+  return { lines, textEnd, tail: usfm.slice(textEnd, span.end), kept: { text: read.text, anchors: read.anchors, marks: read.marks } };
+}
+
+/**
+ * A verse in its lines. In poetry a verse is written on several, each begun by a mark (`\q1`, `\q2`); read as
+ * one run of text and written back as one line, it came out as prose.
+ */
+export function verseParts(usfm: string, span: Pick<VerseSpan, "start" | "end">): VerseParts {
+  const { lines, textEnd, tail } = verseContent(usfm, span);
+  return { lines, textEnd, tail };
+}
+
+/**
+ * What a verse has besides its words (a footnote, words marked in it), at its place in the text of its lines
+ * (`verseLinesText`).
+ */
+export function verseMarkup(usfm: string, span: Pick<VerseSpan, "start" | "end">): VerseMarkup {
+  return verseContent(usfm, span).kept;
+}
+
+/**
+ * What each verse of a chapter has besides its words, for those that have something. Two verses written as one
+ * (`\v 2-3`) are under the first.
+ */
+export function chapterMarkup(usfm: string, chapter: number): Record<number, VerseMarkup> {
+  const out: Record<number, VerseMarkup> = {};
+  for (const span of listVerseSpans(usfm)) {
+    if (span.chapter !== chapter) continue;
+    const kept = verseMarkup(usfm, span);
+    if (!kept.anchors.length && !kept.marks.length) continue;
+    out[span.verse] = out[span.verse] ? joinMarkup([out[span.verse]!, kept]) : kept;
   }
-  const last = physical[lastText]!;
-  const textEnd = last.at + (LINE_END.exec(last.text)?.index ?? last.text.length);
-  return { lines, textEnd, tail: usfm.slice(textEnd, span.end) };
+  return out;
 }
 
 /** The text of a verse as it is written and edited: a line of text for each of its lines. */
@@ -281,19 +309,8 @@ export function textInLines(text: string, lines: string[]): string {
   const after = words(flat);
   if (lines.length < 2 || !after.length) return flat;
   const before = lines.flatMap(words);
-  // The longest run of words both have, in order: where each word of the verse is in the new text.
-  const run = Array.from({ length: before.length + 1 }, () => new Array<number>(after.length + 1).fill(0));
-  for (let i = before.length - 1; i >= 0; i--) {
-    for (let j = after.length - 1; j >= 0; j--) {
-      run[i]![j] = before[i] === after[j] ? run[i + 1]![j + 1]! + 1 : Math.max(run[i + 1]![j]!, run[i]![j + 1]!);
-    }
-  }
-  const at = new Array<number>(before.length).fill(-1);
-  for (let i = 0, j = 0; i < before.length && j < after.length; ) {
-    if (before[i] === after[j]) at[i++] = j++;
-    else if (run[i + 1]![j]! >= run[i]![j + 1]!) i++;
-    else j++;
-  }
+  // Where each word of the verse is in the new text.
+  const at = keptWords(before, after);
   const cuts: number[] = [];
   let end = 0;
   for (const line of lines.slice(0, -1)) {
@@ -322,13 +339,18 @@ export function textInLines(text: string, lines: string[]): string {
  * A verse written again with the lines its text has. Each line begins with the mark the verse had there; one
  * more line than it had takes the mark of the source for that line, or of the line before it. A verse that has
  * no such mark, and whose source has none, is prose: it is written on one line whatever was typed.
+ *
+ * `kept` is what the verse had besides its words: its notes stay after the word they followed, its marked words
+ * stay marked (`carryMarkup`). A verse left with no text keeps its notes: they may be all there is to say of it,
+ * and whoever clears a verse to write it again would lose them on the way.
  */
-function writtenVerse(num: string, text: string, own: VerseLine[], pattern: string[], eol: string, flat = false): string {
-  const typed = textLines(flat ? textInLines(text, own.map((line) => line.text)) : text);
+function writtenVerse(num: string, text: string, own: VerseLine[], pattern: string[], eol: string, flat = false, kept: VerseMarkup = NO_MARKUP): string {
+  const said = textLines(flat ? textInLines(text, own.map((line) => line.text)) : text);
   const leads = own.map((line) => line.lead);
   const any = [...leads, ...pattern].filter(Boolean);
-  if (!typed.length) return `\\v ${num}`;
-  if (!any.length) return `\\v ${num} ${typed.join(" ")}`;
+  if (!said.length) return [`\\v ${num}`, markupAlone(kept)].filter(Boolean).join(" ");
+  const typed = carryMarkup(kept, any.length ? said : [said.join(" ")]);
+  if (!any.length) return `\\v ${num} ${typed[0]}`;
   const leadAt = (index: number) => leads[index] ?? pattern[index] ?? [...leads.slice(0, index), ...pattern.slice(0, index)].filter(Boolean).pop() ?? any[any.length - 1]!;
   return typed
     .map((line, index) => {
@@ -340,9 +362,9 @@ function writtenVerse(num: string, text: string, own: VerseLine[], pattern: stri
 }
 
 /**
- * The edits of a chapter that say something else than the book says there. A verse is written again from its
- * text alone, so one written again as it was lost what it had besides its words: a footnote, what was marked in
- * it. And a portion is saved with all its verses, so that happened to verses nobody had touched.
+ * The edits of a chapter that say something else than the book says there. A portion is saved with all its
+ * verses, and a verse written again is not the verse as its writer left it, byte for byte (how its notes are
+ * spaced, on which lines its groups are): a verse nobody touched is not written.
  *
  * The same words on the same lines are the verse as it is; so are the same words on one line when the verse has
  * several (a text kept from before verses were edited in their lines comes that way, and written back it would
@@ -377,26 +399,40 @@ export function applyVerseEdits(
   if (!edits.length) return usfm;
   let result = usfm;
   const sorted = changingEdits(usfm, chapter, edits).sort((a, b) => b.from - a.from);
+  /** What a verse written as one with others (`\v 2-3`) had, for the part that keeps its number when they are parted. */
+  const parted = new Map<number, VerseMarkup>();
   for (const edit of sorted) {
     const spans = listVerseSpans(result);
     const chapterSpans = spans.filter((s) => s.chapter === chapter);
     const hits = chapterSpans.filter((s) => s.verse <= edit.to && s.verseTo >= edit.from);
     const body = textLines(edit.text).join(" ");
     const num = edit.to > edit.from ? `${edit.from}-${edit.to}` : `${edit.from}`;
-    const line = body ? `\\v ${num} ${body}\n` : `\\v ${num}\n`;
     if (hits.length) {
       const first = hits[0]!;
       const last = hits[hits.length - 1]!;
       const eol = result.includes("\r\n") ? "\r\n" : "\n";
       // The lines of the verse as it is, when it is one verse that is written again; verses joined are one line.
-      const own = hits.length === 1 ? verseParts(result, first).lines : [];
-      const { tail } = verseParts(result, last);
-      const written = writtenVerse(num, edit.text, own, hits.length === 1 ? (edit.leads ?? []) : [], eol, edit.flat);
+      const read = hits.map((hit) => verseContent(result, hit));
+      const own = hits.length === 1 ? read[0]!.lines : [];
+      const { tail } = read[read.length - 1]!;
+      // A verse that begins before this edit is being parted, and its first part is written after this one (the
+      // edits go from the last to the first): its notes wait for it there, where its text is.
+      const here = read.filter((verse, index) => {
+        const hit = hits[index]!;
+        if (hit.verse >= edit.from || !sorted.some((other) => other !== edit && other.from === hit.verse)) return true;
+        parted.set(hit.verse, verse.kept);
+        return false;
+      });
+      const kept = joinMarkup(here.map((verse) => verse.kept));
+      const written = writtenVerse(num, edit.text, own, hits.length === 1 ? (edit.leads ?? []) : [], eol, edit.flat, kept);
       // What followed the verse stays, on the lines it was on.
       const rest = tail.replace(/^[ \t]+/, "").replace(/^\r?\n/, "");
       result = result.slice(0, first.start) + written + eol + rest + result.slice(last.end);
       continue;
     }
+    const had = parted.get(edit.from) ?? NO_MARKUP;
+    const said = body ? carryMarkup(had, [body])[0]! : markupAlone(had);
+    const line = said ? `\\v ${num} ${said}\n` : `\\v ${num}\n`;
     const before = chapterSpans.filter((s) => s.verseTo < edit.from).pop();
     if (before) {
       const lead = result[before.end - 1] === "\n" ? "" : "\n";

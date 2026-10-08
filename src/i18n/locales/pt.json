@@ -2981,5 +2981,10 @@
   "ag.splitKeeps": "Esta nota fica:",
   "pr.splitEdited": "você a retocou: mova-a à mão",
   "se.wouldChangeOthers": "Ao salvar mudariam também os versículos {list}, que ninguém tocou. Não foi salvo: avise quem coordena.",
-  "se.poemLines": "No original este versículo tem {n} linhas. Escreva cada uma em uma linha separada."
+  "se.poemLines": "No original este versículo tem {n} linhas. Escreva cada uma em uma linha separada.",
+  "se.footnoteAt": "Nota de rodapé junto a «{word}»: {text}",
+  "se.footnoteStart": "Nota de rodapé do versículo: {text}",
+  "se.crossrefAt": "Referência junto a «{word}»: {text}",
+  "se.crossrefStart": "Referência do versículo: {text}",
+  "se.noteStays": "É salva com o versículo; não é preciso escrevê-la."
 }
