@@ -30,8 +30,17 @@ export default defineConfig({
       ),
     },
   },
+  // The checkouts other sessions work in live under `.claude/worktrees`, with a link to the whole of `usfm-ast`
+  // beside them. Watched and scanned as part of this app, they stopped its dev server answering whenever one of
+  // them was made: thousands of files, and every `index.html` among them taken for a page of this app.
+  optimizeDeps: {
+    entries: ["index.html"],
+  },
   server: {
     port: 5175,
     strictPort: false,
+    watch: {
+      ignored: [`${path.resolve(root, ".claude").replace(/\\/g, "/")}/**`],
+    },
   },
 });
