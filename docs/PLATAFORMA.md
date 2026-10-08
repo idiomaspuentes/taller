@@ -346,6 +346,18 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   lo lee así y el editor lo muestra así: un renglón del cuadro por renglón del versículo. Lo que
   sigue al texto de un versículo (la marca que abre el siguiente, un título, la marca de trozo, la
   etiqueta del capítulo que viene) no es suyo: ni se muestra con él ni se mueve al guardarlo.
+- **Qué es de un versículo, para la biblioteca.** `usfm-ast` tiene una sola regla (`verse-reach.ts`)
+  para quien lee el texto de un versículo, numera sus palabras, lee su alineación o la escribe; eran
+  tres, y donde no coincidían una palabra tenía un número para quien leía y otro para quien
+  escribía. Un versículo llega hasta el siguiente `\v` y no pasa de su capítulo. Un título, una
+  referencia o la etiqueta de un capítulo (`\s1`, `\ms`, `\r`, `\sp`, `\qa`, `\cl`…) no son suyos,
+  aunque estén escritos en medio: el versículo sigue después y sus palabras se numeran sin las del
+  título. Una nota al pie tampoco; lo marcado dentro del versículo (`\nd`, el `\qs` de un «Selah»)
+  sí. Lo que un capítulo trae antes de su primer versículo —el título de un salmo, `\d`— es el
+  **versículo 0** de ese capítulo (`PSA 3:0`), con sus palabras numeradas aparte, como las numera
+  el ULT; un `\d` escrito después del `\v 1` es texto de ese versículo, como también lo trae el ULT.
+  Los paneles que muestran un texto fuente leen por ahí (`extractDraftVerses().verses`,
+  `verseTextsFromUsj`) y ya dicen lo mismo que los renglones del editor.
 - **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
   que dice lo que ya decía no se vuelve a escribir: conserva su nota al pie y lo que tenga marcado.
   El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;
@@ -364,20 +376,30 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
 
 **Pruebas.** `npm run verify:usfm-poetry` recorre todo esto con Jonás 2 (leer, guardar, corregir,
 entregar, empezar el libro) y, si `../usfm-ast` está al lado, con el Jonás entero de un equipo:
-cambiar una palabra de 2:2 no cambia ninguna otra línea de los otros 47 versículos. En `usfm-ast`,
-`alignment-real-books.test.ts` escribe de vuelta cinco libros enteros y compara texto, grupos,
-atributos y estructura, y `alignment-reconcile.test.ts` cubre qué enlaces sobreviven a un cambio.
+cambiar una palabra de 2:2 no cambia ninguna otra línea de los otros 47 versículos.
+`npm run verify:alignment-keep` corrige un versículo de un salmo y comprueba que su título, y el
+del salmo siguiente, conservan sus enlaces, y que un título en medio de un versículo no se queda
+con el de una palabra que repite. En `usfm-ast`, `alignment-real-books.test.ts` escribe de vuelta
+seis libros enteros (entre ellos los salmos 3, 4 y 11 del ULT, con sus títulos y sus «Selah») y
+compara texto, grupos, atributos y estructura; `verse-reach.test.ts` y
+`alignment-verse-reach.test.ts` cubren lo que es de un versículo y lo que no, y
+`alignment-reconcile.test.ts` qué enlaces sobreviven a un cambio.
 
 **No hace todavía.**
 
 - Un versículo que se edita se escribe desde su texto: pierde su nota al pie y lo marcado dentro de
   él (`\nd`, `\add`). Los que no se tocan ya no.
 - En el cuadro del editor no se distingue un renglón largo que dobla de un renglón nuevo.
-- La biblioteca cuenta como texto de un versículo todo lo que hay hasta el siguiente `\v`, también
-  un título o la etiqueta del capítulo que sigue. El editor ya no lee por ahí; los paneles que solo
-  muestran un texto fuente, sí.
-- Los títulos de los salmos (`\d`) alineados quedan a cuenta del último versículo del salmo
-  anterior. Hay que resolverlo antes de trabajar Salmos.
+- El título de un salmo (el versículo 0 de su capítulo) se conserva con su alineación al guardar
+  cualquier versículo, pero ninguna pantalla lo enseña: ni el editor lo ofrece para traducirlo
+  (`usfmEdit` lee por `\v`), ni los paneles de texto fuente lo muestran (`verseFromSid`,
+  `bookVerses`), ni se puede alinear (`loadAlineacion`). Hay que decidir dónde se traduce y se
+  alinea antes de trabajar Salmos.
+- Una palabra alineada dentro de un título (`\s1`) o de una nota pierde su enlace al escribirse el
+  libro: no es de ningún versículo. Los textos de unfoldingWord no alinean ahí.
+- Un archivo alineado que trae la marca del renglón y el número en la misma línea (`\q1 \v 1 …`,
+  como los Salmos del ULT) se escribe con la marca sola en su línea: no cambia ninguna palabra,
+  pero sí esas líneas, la primera vez que se guarda.
 
 ## Registro de correcciones del texto
 
