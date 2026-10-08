@@ -393,9 +393,15 @@ export function diffExcerpt(pieces: DiffPiece[], keep = 6): DiffPiece[] {
 export type NotePiece = { text: string; paragraph: number };
 
 /**
+ * Short forms whose point ends no sentence, in the languages the teams write their notes in («cf. Tito», «p. ej.»,
+ * «el Sr. Pérez»). «etc.» is not among them: more often than not a sentence does end there.
+ */
+const SHORT_FORMS = new Set(["cf", "cfr", "cp", "comp", "ej", "ex", "pág", "págs", "vs", "vv", "cap", "caps", "núm", "aprox", "lit", "gr", "heb", "aram", "lat", "ed", "eds", "trad", "sr", "sra", "srta", "dr", "dra", "sto", "sta", "ud", "uds", "fig", "obs", "art", "vol", "ss"]);
+
+/**
  * A note in sentences, for saying by touch which of them go to another note. A sentence ends at «.», «?» or «!»,
  * with what closes after them, before a space; what opens in brackets after one is of that sentence («… en Él.
- * (Ver: …)»). They are a start: the two notes are retouched afterwards.
+ * (Ver: …)»). A point after a short form or a single letter («J. R.», «a. C.») ends none.
  */
 export function notePieces(note: string): NotePiece[] {
   const pieces: NotePiece[] = [];
@@ -414,6 +420,11 @@ export function notePieces(note: string): NotePiece[] {
     for (let match = ends.exec(line); match; match = ends.exec(line)) {
       // «p. ej. en», «v. 3»: a point before a small letter or a number ends no sentence.
       if (/[a-zà-ÿ0-9]/.test(line[match.index + match[0].length] ?? "")) continue;
+      // «cf. Tito», «el Sr. Pérez», «J. R.»: nor does the point of a short form, whatever follows. It parted the
+      // sentence there, and the half that went to the other note began with a name.
+      const word = /(\p{L}+)$/u.exec(line.slice(0, match.index))?.[1] ?? "";
+      const onePoint = match[0].startsWith(".") && !/^[.?!]/.test(match[0].slice(1));
+      if (onePoint && (/^[a-zA-Z]$/.test(word) || SHORT_FORMS.has(word.toLowerCase()))) continue;
       take(match.index + match[0].length);
     }
     take(line.length);
@@ -421,9 +432,37 @@ export function notePieces(note: string): NotePiece[] {
   return pieces;
 }
 
-/** Some of those sentences as a note again: those of a paragraph in a line, and a line between paragraphs. */
-export function joinNotePieces(pieces: NotePiece[]): string {
-  return pieces.map((piece, index) => (index === 0 ? piece.text : `${piece.paragraph === pieces[index - 1]!.paragraph ? " " : "\n\n"}${piece.text}`)).join("");
+/** A note without one of its sentences; `undefined` when it does not have it as it was (it was retouched). */
+function withoutPiece(note: string, piece: string): string | undefined {
+  const at = note.indexOf(piece);
+  if (at < 0) return undefined;
+  const [lead, rest] = [note.slice(0, at), note.slice(at + piece.length)];
+  const [head, tail] = [lead.replace(/\s+$/, ""), rest.replace(/^\s+/, "")];
+  if (!head || !tail) return head || tail;
+  // What is left on each side was in one line, or in two paragraphs.
+  const parted = /\n/.test(lead.slice(head.length)) || /\n/.test(rest.slice(0, rest.length - tail.length));
+  return `${head}${parted ? "\n\n" : " "}${tail}`;
+}
+
+/**
+ * A sentence of a note parted in two, taken from one half to the other, each as it reads now: what was retouched
+ * in either stays. It goes before the first of the sentences after it that the other half has, or at its end.
+ * Both halves were made again from the sentences at each touch, and one touch after retouching them wiped what
+ * had been written. `undefined` when the half it is taken from no longer has that sentence as it was: a sentence
+ * that was retouched is moved by hand.
+ */
+export function movePiece(pieces: NotePiece[], index: number, from: string, to: string): { from: string; to: string } | undefined {
+  const piece = pieces[index];
+  const left = piece ? withoutPiece(from, piece.text) : undefined;
+  if (!piece || left === undefined) return undefined;
+  const next = pieces.slice(index + 1).find((other) => to.includes(other.text));
+  if (next) {
+    const at = to.indexOf(next.text);
+    return { from: left, to: `${to.slice(0, at)}${piece.text}${next.paragraph === piece.paragraph ? " " : "\n\n"}${to.slice(at)}` };
+  }
+  const body = to.replace(/\s+$/, "");
+  const last = [...pieces.slice(0, index)].reverse().find((other) => body.includes(other.text));
+  return { from: left, to: body ? `${body}${last && last.paragraph !== piece.paragraph ? "\n\n" : " "}${piece.text}` : piece.text };
 }
 
 // ---------------------------------------------------------------- a checklist opened to try

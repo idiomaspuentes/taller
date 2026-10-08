@@ -1711,14 +1711,23 @@ otra.
   πίστιν») y a su lado hay una nota nueva con las otras dos y la cita «ἐπίγνωσιν ἀληθείας», en una sola
   escritura. A 1280 px la hoja mide 704 px y nada se desborda.
 
+Dos límites de esa primera versión, que Abel pidió arreglar:
+
+- **Una abreviatura ya no parte la frase.** Se cortaba en cada punto seguido de espacio, salvo ante minúscula o
+  número; «cf. Tito» o «el Sr. Pérez» quedaban en dos, y la mitad que pasaba a la otra nota empezaba por un nombre.
+  El punto de una abreviatura conocida («cf.», «ej.», «Sr.», «cap.»…) o de una sola letra («J. R.», «d. C.») no
+  termina frase. «etc.» sí puede terminarla.
+- **Tocar una frase ya no borra lo retocado.** Cada toque rehacía los dos cuadros con las frases, y lo escrito a
+  mano en cualquiera se perdía. Ahora la frase se saca de un cuadro y se pone en el otro como están en ese momento,
+  en su orden. Visto a 375 px: con «Esto lo escribí a mano.» al final de la nota que queda, se tocó otra frase,
+  que pasó a la nueva delante de la que ya estaba, y lo escrito siguió en su sitio. Una frase que se retocó por
+  dentro ya no es la que su renglón puede mover: queda apagada, con «la retocaste: muévela a mano».
+
 **⚠ Sin resolver**
 
-- Las frases salen de cortar en cada punto seguido de espacio (salvo ante minúscula o número, para no partir «p.
-  ej.»). Son un punto de partida: una abreviatura ante mayúscula («cf. Tito») todavía parte la frase, y se
-  arregla retocando los cuadros.
-- Al tocar una frase después de haber retocado los cuadros, los dos vuelven a armarse con las frases y lo
-  retocado se pierde. La hoja lo dice («Después puedes retocar las dos»), pero no lo impide.
-- No se vio en QA.
+- Una abreviatura que no está en la lista, ante mayúscula, todavía parte la frase; se arregla retocando los
+  cuadros.
+- **No se vio en QA.** El navegador de pruebas sigue sin sesión de Door43 iniciada.
 
 ### Una sola pasada por nota en Armonización (7 de octubre)
 

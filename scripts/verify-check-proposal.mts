@@ -4,7 +4,7 @@
  * fits the help it was written from.
  */
 import assert from "node:assert/strict";
-import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, joinNotePieces, notePieces, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
+import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, movePiece, notePieces, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
 import { correctionTitle } from "../src/domain/corrections";
 import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
@@ -131,7 +131,7 @@ test("una nota que falta se agrega en su versículo, una sola vez, con un id que
   assert.notEqual(id, "aaaa", "el primero que salió ya estaba: se saca otro");
 });
 
-test("una nota se ofrece en frases para tocar las que pasan a otra, y lo tocado vuelve a ser una nota", () => {
+test("una nota se ofrece en frases, para tocar las que pasan a otra", () => {
   const note = "**Fe** es un sustantivo abstracto. Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4). Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])\n\n¿Y **esto?** Otra línea.";
   const pieces = notePieces(note);
   assert.deepEqual(pieces.map((piece) => piece.text), [
@@ -142,12 +142,37 @@ test("una nota se ofrece en frases para tocar las que pasan a otra, y lo tocado 
     "Otra línea.",
   ], "una abreviatura no corta la frase, y lo que sigue entre paréntesis es de la frase anterior");
   assert.deepEqual(pieces.map((piece) => piece.paragraph), [0, 0, 0, 1, 1]);
-  assert.equal(joinNotePieces(pieces), note, "todas juntas son la nota");
-  // The second and the fourth go to the new note; the rest stays.
-  assert.equal(joinNotePieces(pieces.filter((_, index) => index === 1 || index === 3)), "Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4).\n\n¿Y **esto?**");
-  assert.equal(joinNotePieces(pieces.filter((_, index) => index !== 1 && index !== 3)), "**Fe** es un sustantivo abstracto. Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])\n\nOtra línea.");
+  // The second and the fourth go to the new note; the rest stays, each in its paragraph.
+  const one = movePiece(pieces, 1, note, "")!;
+  const two = movePiece(pieces, 3, one.from, one.to)!;
+  assert.equal(two.to, "Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4).\n\n¿Y **esto?**");
+  assert.equal(two.from, "**Fe** es un sustantivo abstracto. Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])\n\nOtra línea.");
   assert.deepEqual(notePieces("Una sola frase sin punto"), [{ text: "Una sola frase sin punto", paragraph: 0 }]);
+  // The point of a short form ends no sentence, whatever follows it; «etc.» may.
+  assert.deepEqual(notePieces("Véase cf. Tito 1:3. También lo dice el Sr. Pérez (p. ej. Juan). J. R. Tolkien lo escribió en el 30 d. C. Fin, etc. Otra.").map((piece) => piece.text), ["Véase cf. Tito 1:3.", "También lo dice el Sr. Pérez (p. ej. Juan).", "J. R. Tolkien lo escribió en el 30 d. C. Fin, etc.", "Otra."]);
+  assert.deepEqual(notePieces("¿Qué fe? La fe. Esa.").map((piece) => piece.text), ["¿Qué fe?", "La fe.", "Esa."], "una palabra corta que no es abreviatura sí termina la frase");
   assert.deepEqual(notePieces("  \n "), []);
+});
+
+test("una frase pasa de una mitad a la otra sin rehacerlas: lo retocado en las dos se queda", () => {
+  const pieces = notePieces("Uno. Dos. Tres.\n\nCuatro. Cinco.");
+  // The second and the fourth go to the new note, one after the other.
+  let halves = movePiece(pieces, 3, "Uno. Dos. Tres.\n\nCuatro. Cinco.", "")!;
+  assert.deepEqual(halves, { from: "Uno. Dos. Tres.\n\nCinco.", to: "Cuatro." });
+  halves = movePiece(pieces, 1, halves.from, halves.to)!;
+  assert.deepEqual(halves, { from: "Uno. Tres.\n\nCinco.", to: "Dos.\n\nCuatro." }, "antes de la que va después de ella, en su párrafo");
+  // Both are retouched; then one more goes, and what was written stays in both.
+  const kept = halves.from.replace("Uno.", "Uno, retocado.");
+  const fresh = `${halves.to} Y algo escrito a mano.`;
+  halves = movePiece(pieces, 4, kept, fresh)!;
+  assert.deepEqual(halves, { from: "Uno, retocado. Tres.", to: "Dos.\n\nCuatro. Y algo escrito a mano. Cinco." });
+  // The sentence that was retouched is no longer there as it was: it is not moved, and nothing is lost.
+  assert.equal(movePiece(pieces, 0, halves.from, halves.to), undefined);
+  // Back to where it was: before the sentence that came after it.
+  const back = movePiece(pieces, 1, halves.to, halves.from)!;
+  assert.deepEqual(back, { from: "Cuatro. Y algo escrito a mano. Cinco.", to: "Uno, retocado. Dos. Tres." });
+  // The whole of a half: the other gets it, and the first is left empty.
+  assert.deepEqual(movePiece(notePieces("Sola."), 0, "Sola.", ""), { from: "", to: "Sola." });
 });
 
 test("la otra mitad de una nota dividida se agrega al lado de la primera, no al final de su versículo", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { diffExcerpt, joinNotePieces, notePieces, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
+import { diffExcerpt, movePiece, notePieces, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -155,11 +155,16 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
     }
     setMode(next);
   }
+  /** The half a sentence is in, as it reads now. */
+  const halfOf = (index: number) => noteFromTsv(moved.includes(index) ? other : text);
   function move(index: number) {
-    const next = moved.includes(index) ? moved.filter((i) => i !== index) : [...moved, index].sort((a, b) => a - b);
-    setMoved(next);
-    setText(noteToTsv(joinNotePieces(pieces.filter((_, i) => !next.includes(i)))));
-    setOther(noteToTsv(joinNotePieces(pieces.filter((_, i) => next.includes(i)))));
+    const back = moved.includes(index);
+    // From one half to the other as they read now: what was retouched in either stays.
+    const done = movePiece(pieces, index, halfOf(index), noteFromTsv(back ? text : other));
+    if (!done) return;
+    setMoved(back ? moved.filter((i) => i !== index) : [...moved, index].sort((a, b) => a - b));
+    setText(noteToTsv(back ? done.to : done.from));
+    setOther(noteToTsv(back ? done.from : done.to));
     setTurn((n) => n + 1);
   }
 
@@ -248,12 +253,16 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
                 <div className="pr-field">
                   <p className="af-lbl">{t("pr.splitWhich")}</p>
                   <div className="pr-pieces" role="group" aria-label={t("pr.splitWhich")}>
-                    {pieces.map((piece, index) => (
-                      <button key={index} type="button" aria-pressed={moved.includes(index)} onClick={() => move(index)}>
-                        <span>{readable(piece.text) || piece.text}</span>
-                        {moved.includes(index) ? <span className="pr-pieces__to">{t("pr.splitTo")}</span> : null}
-                      </button>
-                    ))}
+                    {pieces.map((piece, index) => {
+                      // A sentence that was retouched in its box is no longer the one this line can move.
+                      const loose = halfOf(index).includes(piece.text);
+                      return (
+                        <button key={index} type="button" aria-pressed={moved.includes(index)} disabled={!loose} onClick={() => move(index)}>
+                          <span>{readable(piece.text) || piece.text}</span>
+                          {!loose ? <span className="pr-pieces__to">{t("pr.splitEdited")}</span> : moved.includes(index) ? <span className="pr-pieces__to">{t("pr.splitTo")}</span> : null}
+                        </button>
+                      );
+                    })}
                   </div>
                   <p className="af-hint">{t("pr.splitHint")}</p>
                 </div>

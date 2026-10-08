@@ -2978,5 +2978,6 @@
   "ag.splitNew": "Y una nota nueva:",
   "ag.splitTaken": "No se pudo agregar la nota nueva. Retira la propuesta y hazla otra vez.",
   "ck.newNote": "Proponer una nota nueva en {ref}",
-  "ag.splitKeeps": "Esta nota queda:"
+  "ag.splitKeeps": "Esta nota queda:",
+  "pr.splitEdited": "la retocaste: muévela a mano"
 }
