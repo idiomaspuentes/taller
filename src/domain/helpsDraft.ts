@@ -8,7 +8,7 @@ import type { SolverLaunchContext } from "./solverLaunch";
 import type { InventoryDoc, Portion } from "./types";
 import { portionRange } from "./usfmEdit";
 import { parseVerseRef } from "../prep/inventory";
-import { parseTsvTable, serializeTsv } from "../prep/tsv";
+import { parseTsvTable, tsvCell } from "../prep/tsv";
 
 export type HelpsDraftItem = {
   id: string;
@@ -154,32 +154,98 @@ export function freshRowId(taken: Iterable<string>, random: () => number = Math.
   }
 }
 
+/** A line of a table file: what it says and the line end it has. */
+type TableLine = { body: string; end: string };
+
+/**
+ * A table file as its lines. Whoever changes a row writes that line and leaves the others as they were read, with
+ * their line ends: the file was written again whole from what had been read of it, and saving one note changed
+ * rows nobody had touched (in the notes the team has published, 852 rows with a quote in them came back wrapped in
+ * quotes with each quote doubled, and 145 lost a space at the end of a cell).
+ */
+type TableLines = { eol: string; headers: string[]; head: number; lines: TableLine[] };
+
+function tableLines(text: string): TableLines {
+  const lines = text.split(/(?<=\n)/).map((chunk) => {
+    const end = /\r?\n$/.exec(chunk)?.[0] ?? "";
+    return { body: chunk.slice(0, chunk.length - end.length), end };
+  });
+  const head = lines.findIndex((line) => !emptyLine(line));
+  return { eol: text.includes("\r\n") ? "\r\n" : "\n", headers: head < 0 ? [] : lines[head]!.body.split("\t").map((h) => h.trim()), head, lines };
+}
+
+/** A line with nothing on it is not a row: the same lines `parseTsvTable` leaves out, so both count rows alike. */
+const emptyLine = (line: TableLine): boolean => line.body.replace(/\r/g, "") === "";
+
+const tableText = (table: TableLines): string => table.lines.map((line) => line.body + line.end).join("");
+
+/** The rows of the table, in order: the lines after the header that are not empty. */
+function tableRows(table: TableLines): { line: TableLine; record: Record<string, string> }[] {
+  return table.lines.flatMap((line, index) => {
+    if (index <= table.head || emptyLine(line)) return [];
+    const cells = line.body.split("\t");
+    return [{ line, record: Object.fromEntries(table.headers.map((h, at) => [h, (cells[at] ?? "").trim()])) }];
+  });
+}
+
+/** A new line at that place; a file that did not end with a line end still does not. */
+function insertLine(table: TableLines, at: number, body: string): TableLine {
+  const line = { body, end: table.eol };
+  const before = table.lines[at - 1];
+  if (at === table.lines.length && before && !before.end) {
+    before.end = table.eol;
+    line.end = "";
+  }
+  table.lines.splice(at, 0, line);
+  return line;
+}
+
 export function applyHelpsTsvEdits(original: string, edits: HelpsRowEdit[]): string {
-  const { headers, rows } = parseTsvTable(original);
+  const table = tableLines(original);
+  const { headers } = table;
   if (!headers.length) return original;
   const byId = new Map(edits.map((e) => [e.id, e.fields]));
-  const next = rows.map((row) => {
-    const patch = byId.get(tsvRowId(row));
-    return patch ? { ...row, ...patch } : row;
-  });
+  let changed = false;
+  for (const { line, record } of tableRows(table)) {
+    const patch = byId.get(tsvRowId(record));
+    if (!patch) continue;
+    const cells = line.body.split("\t");
+    let touched = false;
+    for (const [field, value] of Object.entries(patch)) {
+      const at = headers.indexOf(field);
+      const written = tsvCell(value);
+      // A cell that says what it said is left as it is written, with the spaces it has.
+      if (at < 0 || written.trim() === (cells[at] ?? "").trim()) continue;
+      while (cells.length < at) cells.push("");
+      cells[at] = written;
+      touched = true;
+    }
+    if (!touched) continue;
+    line.body = cells.join("\t");
+    changed = true;
+  }
   // A row the file does not have: after the last one of its verse, or of the verses before it. A note the team
   // found missing could only be said to be missing; there was nowhere to write it.
   const header = (name: string) => headers.find((h) => h.toLowerCase() === name) ?? "";
   for (const edit of edits) {
-    if (!edit.addAt || next.some((row) => tsvRowId(row) === edit.id)) continue;
+    if (!edit.addAt) continue;
+    const rows = tableRows(table);
+    if (rows.some((row) => tsvRowId(row.record) === edit.id)) continue;
     const row: Record<string, string> = { ...Object.fromEntries(headers.map((h) => [h, ""])), ...(header("occurrence") ? { [header("occurrence")]: "0" } : {}), ...edit.fields };
     if (header("reference")) row[header("reference")] = edit.addAt;
     if (header("id")) row[header("id")] = edit.id;
     const place = rowPlace(edit.addAt);
-    let at = 0;
-    next.forEach((other, index) => {
-      if (rowPlace(other[header("reference")] ?? "") <= place) at = index + 1;
-    });
+    let after: TableLine | undefined;
+    for (const other of rows) {
+      if (rowPlace(other.record[header("reference")] ?? "") <= place) after = other.line;
+    }
     // The other half of a note parted in two stays by the first, wherever that is among the notes of its verse.
-    const beside = edit.addAfter ? next.findIndex((other) => tsvRowId(other) === edit.addAfter) : -1;
-    next.splice(beside >= 0 ? beside + 1 : at, 0, row);
+    const beside = edit.addAfter ? rows.find((other) => tsvRowId(other.record) === edit.addAfter)?.line : undefined;
+    const at = beside ?? after;
+    insertLine(table, at ? table.lines.indexOf(at) + 1 : table.head + 1, headers.map((h) => tsvCell(row[h] ?? "")).join("\t"));
+    changed = true;
   }
-  return serializeTsv(headers, next);
+  return changed ? tableText(table) : original;
 }
 
 /**
@@ -190,32 +256,46 @@ export function applyHelpsTsvEdits(original: string, edits: HelpsRowEdit[]): str
  * the delivery does not merge lines: it takes the group's file as it is now and replaces the rows this draft
  * changed since it started (`ancestor`), adding the ones it added. A row the draft left alone keeps what the group
  * has, whoever changed it meanwhile.
+ *
+ * A row that goes in is the line the draft has; every other line of the group's file stays as it is written.
  */
 export function mergeTsvRows(trunk: string, work: string, ancestor: string): string {
-  const trunkTable = parseTsvTable(trunk);
-  const workTable = parseTsvTable(work);
-  if (!trunkTable.headers.length) return work;
+  const into = tableLines(trunk);
+  if (!into.headers.length) return work;
+  const from = tableLines(work);
   const key = (row: Record<string, string>, index: number) => tsvRowId(row) || `#${index}`;
-  const same = (x: Record<string, string>, y: Record<string, string>) => trunkTable.headers.every((h) => (x[h] ?? "") === (y[h] ?? ""));
-  const before = new Map(parseTsvTable(ancestor).rows.map((row, index) => [key(row, index), row]));
-  const mine = new Map(workTable.rows.map((row, index) => [key(row, index), row]));
-  const out = trunkTable.rows.map((row, index) => {
-    const id = key(row, index);
-    const changed = mine.get(id);
+  const same = (x: Record<string, string>, y: Record<string, string>) => into.headers.every((h) => (x[h] ?? "") === (y[h] ?? ""));
+  // The draft's own line, when its columns are the group's; put on the group's columns when they are not.
+  const sameColumns = from.headers.length === into.headers.length && from.headers.every((h, at) => h === into.headers[at]);
+  const bodyOf = (row: { line: TableLine; record: Record<string, string> }) => (sameColumns ? row.line.body : into.headers.map((h) => tsvCell(row.record[h] ?? "")).join("\t"));
+  const before = new Map(tableRows(tableLines(ancestor)).map((row, index) => [key(row.record, index), row.record]));
+  const workRows = tableRows(from);
+  const mine = new Map(workRows.map((row, index) => [key(row.record, index), row]));
+  let changed = false;
+  const out = tableRows(into).map((row, index) => {
+    const id = key(row.record, index);
+    const theirs = mine.get(id);
     const was = before.get(id);
-    return changed && (!was || !same(changed, was)) ? changed : row;
+    if (theirs && (!was || !same(theirs.record, was)) && !same(theirs.record, row.record)) {
+      row.line.body = bodyOf(theirs);
+      changed = true;
+    }
+    return { id, line: row.line };
   });
   // Rows the draft added go after the row they followed in the draft.
-  const have = new Set(trunkTable.rows.map(key));
-  workTable.rows.forEach((row, index) => {
-    const id = key(row, index);
+  const have = new Set(out.map((row) => row.id));
+  workRows.forEach((row, index) => {
+    const id = key(row.record, index);
     if (have.has(id) || before.has(id)) return;
-    const previous = index > 0 ? key(workTable.rows[index - 1]!, index - 1) : "";
-    const at = previous ? out.findIndex((r, i) => key(r, i) === previous) : -1;
-    out.splice(at >= 0 ? at + 1 : out.length, 0, row);
+    const previous = index > 0 ? key(workRows[index - 1]!.record, index - 1) : "";
+    const found = previous ? out.findIndex((r) => r.id === previous) : -1;
+    const at = found >= 0 ? found : out.length - 1;
+    const line = insertLine(into, at >= 0 ? into.lines.indexOf(out[at]!.line) + 1 : into.head + 1, bodyOf(row));
+    out.splice(at + 1, 0, { id, line });
     have.add(id);
+    changed = true;
   });
-  return serializeTsv(trunkTable.headers, out);
+  return changed ? tableText(into) : trunk;
 }
 
 function placeOf(row: Record<string, string>): Pick<HelpsDraftItem, "chapter" | "verse" | "intro"> {
