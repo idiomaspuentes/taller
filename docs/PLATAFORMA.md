@@ -362,6 +362,20 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   no la tiene, el del borrador del grupo, que es de donde esa rama sale; lo publicado, solo si no
   hay ninguno de los dos (`draftReadBranchNames`, `src/domain/portionPr.ts`). Se abría lo publicado
   en esa primera vez, y quien escribía ahí escribía sobre lo publicado, no sobre lo del equipo.
+  Cuando el borrador del grupo responde después de esa primera lectura, lo leído se conserva solo
+  si era la rama de la persona (`readIsOwnWork`); si no, vale el archivo del que su rama acaba de
+  salir.
+- **Los trozos** (`\ts\*`, las «translator's sections»). El TPL y el TPS los usan traductores en
+  herramientas que trabajan por trozos, y ningún archivo del equipo los traía: ni los empezados
+  aquí ni los hechos con translationCore. El borrador del grupo lleva los de su original, el ULT
+  para el TPL y el UST para el TPS, ante los mismos versículos (`withChunkMarksOf`,
+  `src/domain/usfmEdit.ts`): un libro nuevo nace con ellos, uno que se copia de lo publicado los
+  toma al copiarse, y un borrador de antes, que no tiene ninguno, los recibe una vez, la primera vez
+  que alguien abre el editor en ese libro (`ensureBookUsfm`, un commit «marcas de trozo del
+  original»). Cada marca va sola en su línea tras una vacía, justo después del texto del versículo
+  anterior: antes del `\c`, del título y del párrafo que el trozo abre. No se quita ninguna: las que
+  el equipo tenga se quedan, y a un borrador que ya tiene alguna no se le agregan. Guardar un
+  versículo, corregirlo o entregarlo no las mueve.
 - **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
   que dice lo que ya decía no se vuelve a escribir: queda como estaba, byte por byte.
   El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;
@@ -405,7 +419,7 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   y sus grupos, y deja lo que le sigue en el borrador como esté allí.
 - **Un libro nuevo** (`skeletonUsfmFromSource`) nace con los capítulos, los versículos, los
   párrafos y los renglones de poesía del texto del que se traduce, y con su nombre en el idioma del
-  equipo (`\h`, `\toc1`–`\toc3`, `\mt`). No copia los títulos ni las marcas de trozo del original.
+  equipo (`\h`, `\toc1`–`\toc3`, `\mt`), y con sus trozos. No copia los títulos del original.
 
 **Pruebas.** `npm run verify:usfm-poetry` recorre todo esto con Jonás 2 (leer, guardar, corregir,
 entregar, empezar el libro) y, si `../usfm-ast` está al lado, con el Jonás entero de un equipo:

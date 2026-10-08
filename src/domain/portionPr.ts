@@ -226,6 +226,15 @@ export function isOwnedWorkBranch(branch: string, params: PortionBranchNameParam
 }
 
 /**
+ * Whether the text an editor read first is the person's own work, to be kept when the group's draft answers
+ * after it. Anything else it may have read (the group's draft a moment before, what is published) is not: the
+ * person's branch is cut from what the group's draft is then, and that is the file they work on.
+ */
+export function readIsOwnWork(readFrom: string | undefined, params: PortionBranchNameParams): boolean {
+  return Boolean(readFrom) && isOwnedWorkBranch(readFrom!, params);
+}
+
+/**
  * Stored PR head is the current work ref, or a remapped leftover
  * (`trabajo/…` ↔ `w/…` ↔ nested ↔ `tas/…`) of the same user/task/issue.
  */

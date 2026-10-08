@@ -16,9 +16,11 @@ import {
 } from "../domain/portionPr";
 import { isWorkWord } from "../domain/branchNames";
 import {
+  CHUNK_MARK,
   buildBookUsfmSkeleton,
   isValidBookUsfm,
   usfmHasFilledVerses,
+  withChunkMarksOf,
   type RefRange,
 } from "../domain/usfmEdit";
 import { dcsConfig } from "./config";
@@ -52,6 +54,8 @@ export type EnsureBookUsfmParams = {
   fallbackRange?: RefRange;
   /** The language of the translation: a book that is begun here says its name in it. */
   lang?: string;
+  /** Reads the whole book this one is translated from. The app's own reader when it is not given. */
+  loadSource?: () => Promise<string | undefined>;
   /**
    * Recreate: never reuse shared leftovers (`neh`, `book/neh`, old phase
    * trunks). If parent `neh` blocks `neh/{taskId}`, use `t/neh/{taskId}`.
@@ -129,18 +133,24 @@ export async function tryReadExistingBookUsfm(params: {
   return reads.find((row) => row != null) ?? null;
 }
 
+/** The whole book a text is translated from: the ULT for the TPL, the UST for the TPS, or the other one when that one is not there. */
+async function loadSourceBook(session: GtSession, book: string, resource: string | undefined): Promise<string | undefined> {
+  const primary = resource?.toLowerCase() === "tps" ? "ust" : "ult";
+  const companion = primary === "ust" ? "ult" : "ust";
+  const first = await loadEnglishScriptureKindUsfm(session, primary, book);
+  const second = first ? null : await loadEnglishScriptureKindUsfm(session, companion, book);
+  return first?.usfm || second?.usfm || undefined;
+}
+
 async function loadSourceSkeleton(
   session: GtSession,
   book: string,
   resource: string | undefined,
   fallbackRange?: RefRange,
   lang?: string,
+  loadSource?: () => Promise<string | undefined>,
 ): Promise<string> {
-  const primary = resource?.toLowerCase() === "tps" ? "ust" : "ult";
-  const companion = primary === "ust" ? "ult" : "ust";
-  const first = await loadEnglishScriptureKindUsfm(session, primary, book);
-  const second = first ? null : await loadEnglishScriptureKindUsfm(session, companion, book);
-  const sourceUsfm = first?.usfm || second?.usfm;
+  const sourceUsfm = await (loadSource ? loadSource() : loadSourceBook(session, book, resource));
   return buildBookUsfmSkeleton({ book, sourceUsfm, fallbackRange, name: bookNamesIn(lang)?.(book) });
 }
 
@@ -316,12 +326,21 @@ async function writeOnBookBranch(params: {
  * 4. If USFM exists on default: copy onto the book branch.
  * 5. If missing: write a ULT-shaped skeleton on the book branch.
  * Empty repos: first commit on default, then branch — Gitea cannot create refs without a SHA.
+ *
+ * The group's draft has the chunk marks of the text it is translated from (`withChunkMarksOf`): a book begun here
+ * is born with them, one copied from what is published takes them as it is copied, and a draft from before, which
+ * has none, is given them once. Translators work on these texts in tools that go chunk by chunk.
  */
 export async function ensureBookUsfm(
   params: EnsureBookUsfmParams,
 ): Promise<EnsureBookUsfmResult> {
   const { session, owner, repo, filepath, book, resource, taskId, phaseSlug, fallbackRange } = params;
   await ensureContentRepo(session, owner, repo);
+  /** The text with the chunk marks of its source; as it is when the source cannot be read. */
+  const chunked = async (text: string): Promise<string> => {
+    const source = await (params.loadSource ? params.loadSource() : loadSourceBook(session, book, resource)).catch(() => undefined);
+    return source ? withChunkMarksOf(text, source) : text;
+  };
 
   const config = dcsConfig(session.host);
   let defaultBranch: string;
@@ -346,7 +365,7 @@ export async function ensureBookUsfm(
 
   if (!defaultSha) {
     const onDefault = await tryRead(session, owner, repo, filepath, defaultBranch);
-    const usfm = onDefault?.text || await loadSourceSkeleton(session, book, resource, fallbackRange, params.lang);
+    const usfm = onDefault?.text || await loadSourceSkeleton(session, book, resource, fallbackRange, params.lang, params.loadSource);
     try {
       await writeRepoFile({
         session,
@@ -394,6 +413,19 @@ export async function ensureBookUsfm(
 
   const onBook = await tryRead(session, owner, repo, filepath, bookBranch);
   if (onBook) {
+    // A draft from before chunk marks were kept has none: it is given those of its source, once. One that has
+    // any is the team's to keep as it is.
+    if (!CHUNK_MARK.test(onBook.text)) {
+      const marked = await chunked(onBook.text);
+      if (marked !== onBook.text) {
+        try {
+          const saved = await writeRepoFile({ session, owner, repo, filepath, branch: bookBranch, content: marked, sha: onBook.sha, message: `TAS: marcas de trozo del original en ${filepath}`, step: "file-copy" });
+          return { bookBranch, usfm: marked, sha: saved.sha, createdBranch: branched.created, createdFile: false };
+        } catch {
+          // Somebody else wrote the draft meanwhile, or it cannot be written from here: it is opened as it is.
+        }
+      }
+    }
     return {
       bookBranch,
       usfm: onBook.text,
@@ -405,6 +437,7 @@ export async function ensureBookUsfm(
 
   const onDefault = await tryRead(session, owner, repo, filepath, defaultBranch);
   if (onDefault) {
+    const copied = await chunked(onDefault.text);
     const saved = await writeOnBookBranch({
       session,
       owner,
@@ -412,7 +445,7 @@ export async function ensureBookUsfm(
       filepath,
       bookBranch,
       defaultBranch,
-      content: onDefault.text,
+      content: copied,
       message: `TAS: copiar ${filepath} a ${bookBranch}`,
       step: "file-copy",
       book,
@@ -420,14 +453,14 @@ export async function ensureBookUsfm(
     });
     return {
       bookBranch,
-      usfm: onDefault.text,
+      usfm: copied,
       sha: saved.sha,
       createdBranch: branched.created,
       createdFile: true,
     };
   }
 
-  const usfm = await loadSourceSkeleton(session, book, resource, fallbackRange, params.lang);
+  const usfm = await loadSourceSkeleton(session, book, resource, fallbackRange, params.lang, params.loadSource);
   const saved = await writeOnBookBranch({
     session,
     owner,

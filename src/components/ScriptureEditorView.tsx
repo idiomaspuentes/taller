@@ -43,6 +43,7 @@ import {
   bookBranchName,
   draftReadBranchNames,
   portionPrBranchFromCtx,
+  readIsOwnWork,
 } from "../domain/portionPr";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { loadDraftCache, saveDraftCache } from "../domain/draftCache";
@@ -1100,7 +1101,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       createdFile = false,
     ) => {
       if (!stillThisLoad()) return;
-      if (source === "boot" && usfmSource.current === "remote") {
+      // What was read first was the person's own branch, under any of the names it has had: that is their work.
+      const readOwnWork = readIsOwnWork(readFrom.current, {
+        book: decoded.book || decoded.projectId || "book",
+        username: decoded.username || sess.username,
+        taskId: decoded.taskId,
+        issueNumber: decoded.issueNumber,
+      });
+      if (source === "boot" && usfmSource.current === "remote" && readOwnWork) {
         if (head) setBranch(head);
         // What the bootstrap gives is the file of the GROUP's draft. Its hash is right for the person's branch only
         // while that branch is still a copy of it. Once the person had saved, coming back to correct took this hash
@@ -1110,6 +1118,10 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         setCreatedNew(false);
         return;
       }
+      // Otherwise what was read first was the group's draft as it was a moment before, or what is published, while
+      // the person's branch was being cut from what the bootstrap gives: that file is the one they work on. The text
+      // read first was kept with the hash of this one, and saving wrote it over the branch: a draft the bootstrap had
+      // just given its chunk marks was saved without them.
       if (source === "remote") readFrom.current = head;
       usfmSource.current = source;
       setUsfm(text);

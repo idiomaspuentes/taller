@@ -486,10 +486,70 @@ export function skeletonUsfm(book: string, chapter: number, from: number, to: nu
   return `${lines.join("\n")}\n`;
 }
 
+/** The mark a chunk begins with (a «translator's section»): what the tools that work chunk by chunk go by. */
+export const CHUNK_MARK = /\\ts\\\*/;
+
+/** The verses a chunk begins at, as `chapter:verse`: the first verse after each chunk mark of the text. */
+export function chunkStarts(usfm: string): string[] {
+  const spans = listVerseSpans(usfm);
+  const starts: string[] = [];
+  for (const mark of usfm.matchAll(new RegExp(CHUNK_MARK.source, "g"))) {
+    const next = spans.find((span) => span.start > mark.index!);
+    const key = next ? `${next.chapter}:${next.verse}` : "";
+    if (key && !starts.includes(key)) starts.push(key);
+  }
+  return starts;
+}
+
+/**
+ * A text with the chunk marks of the text it is translated from: one before each verse the source begins a chunk
+ * at, where the text has that verse and no mark there yet. The team's texts are worked on by translators in tools
+ * that go chunk by chunk, and they had none: not the books begun here, nor those written with translationCore.
+ *
+ * Nothing else changes, and nothing is taken out: a mark the team has and the source does not stays. A mark is
+ * written as unfoldingWord writes it, on a line of its own after an empty one, right after the text of the verse
+ * before: ahead of the paragraph the chunk opens, of its heading, and of the `\c` of a chapter. A chunk the
+ * source begins inside two verses the team wrote as one (`\v 4-5`) has no place, and is left out.
+ */
+export function withChunkMarksOf(usfm: string, source: string): string {
+  const wanted = new Set(chunkStarts(source));
+  if (!wanted.size) return usfm;
+  const eol = usfm.includes("\r\n") ? "\r\n" : "\n";
+  const spans = listVerseSpans(usfm);
+  let out = usfm;
+  // From the end, so that what is put in does not move what is still to be looked at.
+  for (let i = spans.length - 1; i >= 0; i--) {
+    const span = spans[i]!;
+    const before = spans[i - 1];
+    if (!wanted.has(`${span.chapter}:${span.verse}`)) continue;
+    // `\v 10b` goes on with `\v 10a`.
+    if (before && before.chapter === span.chapter && before.verse === span.verse) continue;
+    if (!before) {
+      // The first verse of the book: the mark goes before the line of its chapter.
+      const head = usfm.slice(0, span.start);
+      if (CHUNK_MARK.test(head)) continue;
+      const line = head.search(/^[ \t]*\\c\s+\d+/m);
+      const at = line >= 0 ? line : head.lastIndexOf("\n") + 1;
+      const blank = at === 0 || /\n[ \t]*\r?\n$/.test(usfm.slice(0, at));
+      out = `${out.slice(0, at)}${blank ? "" : eol}\\ts\\*${eol}${out.slice(at)}`;
+      continue;
+    }
+    const from = verseParts(usfm, before).textEnd;
+    const between = usfm.slice(from, span.start);
+    if (CHUNK_MARK.test(between)) continue;
+    // After what is left of that line (a space at its end stays where it was), and before an empty line there.
+    const rest = /^[ \t]*/.exec(between)![0].length;
+    const emptyAfter = /^(\r?\n)[ \t]*\r?\n/.exec(between.slice(rest));
+    const at = from + rest;
+    out = `${out.slice(0, at)}${eol}${eol}\\ts\\*${out.slice(at + (emptyAfter ? emptyAfter[1]!.length : 0))}`;
+  }
+  return out;
+}
+
 /**
  * The marks between two verses of the source that a translation begins with: where a paragraph opens, where a
- * line of poetry does, a line left empty. Not its headings, which are words of the source, nor its chunk marks,
- * which are of the tools that made it.
+ * line of poetry does, a line left empty. Not its headings, which are words of the source. Its chunk marks are
+ * put in apart (`withChunkMarksOf`).
  */
 function structureOf(between: string): string[] {
   const marks: string[] = [];
@@ -502,9 +562,9 @@ function structureOf(between: string): string[] {
 
 /**
  * Empty GLT/GST skeleton from a source book (typically ULT): same chapters and verse numbers, and each verse in
- * the paragraph or the line of poetry the source has it in; no borrowed English text. It was one `\p` to a
- * chapter: a psalm began as prose, and stayed so. The lines inside a verse are not laid here: they are taken from
- * the source when the verse is written (`verseLeads`).
+ * the paragraph or the line of poetry the source has it in, with its chunk marks; no borrowed English text. It
+ * was one `\p` to a chapter: a psalm began as prose, and stayed so. The lines inside a verse are not laid here:
+ * they are taken from the source when the verse is written (`verseLeads`).
  */
 export function skeletonUsfmFromSource(book: string, sourceUsfm: string, name?: string): string {
   const spans = listVerseSpans(sourceUsfm);
@@ -523,7 +583,7 @@ export function skeletonUsfmFromSource(book: string, sourceUsfm: string, name?: 
     // What opens the next verse of the chapter; what follows its last verse is of the next chapter.
     if (spans[index + 1]?.chapter === span.chapter) lines.push(...structureOf(verseParts(sourceUsfm, span).tail));
   });
-  return `${lines.join("\n")}\n`;
+  return withChunkMarksOf(`${lines.join("\n")}\n`, sourceUsfm);
 }
 
 /**
