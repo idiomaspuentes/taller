@@ -3816,12 +3816,21 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
 
 /* A word some help of the passage is about: it can be touched. */
 .scripture-editor__usfm-ro .usfm-ro-link {
-  /* Thin: in a verse where every word has a note, the whole of it is underlined, and it must still read as text. */
-  text-decoration: underline dotted;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-  text-decoration-color: var(--accent-500);
+  /* Thin: in a verse where every word has a note, the whole of it is underlined, and it must still read as text.
+     Drawn as a ground, not as an underline: an underline stops at the end of its word, and the line of a phrase
+     has to go on under the space to the next one. */
+  padding-bottom: 2px;
+  background-image: linear-gradient(to right, var(--accent-500) 50%, transparent 50%);
+  background-position: left bottom;
+  background-size: 4px 1px;
+  background-repeat: repeat-x;
   cursor: pointer;
+}
+
+/* A word of a phrase a help is about, with the next one in it: one line under the phrase, one place to touch. */
+.scripture-editor__usfm-ro .usfm-ro-link--on {
+  margin-right: -0.3em;
+  padding-right: 0.3em;
 }
 
 .scripture-editor__usfm-ro .usfm-ro-ul {
@@ -7810,6 +7819,31 @@ input.pf-name { font-size: 1.625rem; }
 .scripture-editor__draft > .step-ask-bar { padding: 0 0.25rem; margin: -0.25rem 0 0.5rem; }
 .scripture-editor__draft > .step-ask-bar:has(.step-ask__asked) { position: sticky; top: -0.75rem; z-index: 3; background: var(--surface); }
 
+/* ---------- The verse being written, on a phone: all the width, and one voice for what is secondary ----------
+   The source was the smallest text of the row (14 px, under a translation at 17) and the narrowest: a column of
+   31 px was kept at its left for a number of one figure. Its number now stands beside the name of the source. */
+@media (max-width: 48rem) {
+  .scripture-editor--split .scripture-editor__verse[data-active]:has(.se-peek__head) { grid-template-columns: minmax(0, 1fr); padding-left: 0.625rem; padding-right: 0.625rem; }
+  /* Still the label of the box, for whoever does not see the page. */
+  .scripture-editor--split .scripture-editor__verse[data-active]:has(.se-peek__head) > .scripture-editor__verse-num { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.se-peek__num { margin-right: 0.375rem; font-size: 0.875rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* What is secondary in the row says it in one size: the name of the source, the way to the other text, whether
+   it is saved, what to mind, a note the verse has. They were five sizes, from 11 px. */
+.se-peek .se-peek__more,
+.scripture-editor--split .se-row-state,
+.scripture-editor--split .scripture-editor__verse-note,
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__lead,
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__brief { font-size: 0.8125rem; }
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__n { font-size: 0.75rem; }
+/* One step between the parts of the row. */
+.scripture-editor--split .se-peek { margin-bottom: 0.5rem; }
+.scripture-editor--split .se-row-state { margin-top: 0.5rem; }
+/* What to mind is said whole, in two lines at most: cut at one, it ended before what it asked. */
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__open { align-items: flex-start; padding: 0.625rem 0; }
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.35; }
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__open svg { margin-top: 0.125rem; }
+
 /* ---------- Scripture in the shape its marks give it ----------
    One rule for the text that is translated from and for the draft once nobody writes in it, so a line of a poem
    reads the same above and below.
@@ -7825,7 +7859,7 @@ input.pf-name { font-size: 1.625rem; }
   --num: 0rem;
   /* The colour of the text, faint: a part of the text, not a notice. In the accent colour it read as one more
      «Fíjate en esto», which stands right under it with a rule of its own at its left. */
-  --line-rule: color-mix(in srgb, currentColor 32%, transparent);
+  --line-rule: color-mix(in srgb, var(--text) 50%, transparent);
 }
 :is(.scripture-editor__usfm-ro, .se-shown, .se-lines) .usfm-para {
   --indent: 0rem;
@@ -7885,9 +7919,9 @@ input.pf-name { font-size: 1.625rem; }
 .se-peek :is(.se-peek__own, .se-peek__support) .usfm-verse--marker { display: none; }
 /* With no number shown, there is no column to leave for it: its lines begin where those of the draft do. */
 .scripture-editor--split .se-peek :is(.se-peek__own, .se-peek__support) .scripture-editor__usfm-ro { --num: 0rem; }
-.se-peek .se-peek__own .usfm-ro-root { font-size: 0.875rem; line-height: 1.55; color: var(--text); }
+.se-peek .se-peek__own .usfm-ro-root { font-size: 1rem; line-height: 1.6; color: var(--text); }
 /* The other text, a support: in its lines as the one that is translated, and quieter. */
-.se-peek .se-peek__support .usfm-ro-root { font-size: 0.875rem; line-height: 1.55; color: var(--text-muted); }
+.se-peek .se-peek__support .usfm-ro-root { font-size: 0.9375rem; line-height: 1.6; color: var(--text-muted); }
 .se-peek :is(.se-peek__own, .se-peek__support) .usfm-para { margin: 0; }
 .se-peek :is(.se-peek__own, .se-peek__support) > b { display: block; }
 .se-peek__support { margin-top: 0.25rem; color: var(--text-muted); }
@@ -7902,7 +7936,7 @@ input.pf-name { font-size: 1.625rem; }
 .se-written { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
 .se-peek { display: none; gap: 0.25rem; margin-bottom: 0.375rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--surface-muted); font-size: 0.875rem; color: var(--text-muted); }
 .se-peek p { margin: 0; }
-.se-peek b { font-size: 0.6875rem; color: var(--accent-700); margin-right: 0.25rem; }
+.se-peek b { font-size: 0.75rem; color: var(--accent-700); margin-right: 0.25rem; }
 .scripture-editor--split .scripture-editor__input { field-sizing: content; }
 /* What is said under a verse of a poem stays clear of the button that sits on the seam below it. */
 .scripture-editor--split .scripture-editor__verse-note[data-poem] { margin-bottom: 0.9rem; }

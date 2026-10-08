@@ -406,6 +406,14 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   el paso («Qué se pide en…») va a la cabeza del borrador y sube con él al desplazar: fijo arriba
   ocupaba una franja de la pantalla del teléfono (queda fijo solo cuando la subtarea trae un
   pedido de corrección, como en las demás herramientas).
+- **La fuente, legible.** En un teléfono el texto del que se traduce va a 16 px (iba a 14, bajo una
+  traducción a 17) y a todo el ancho de la fila: el número del versículo pasa junto al nombre de la
+  fuente («3 ULT») y deja libre su columna de 31 px. Las palabras de las que habla una nota o una
+  palabra clave se subrayan por frases (`linkedPhrases`): una línea seguida bajo la frase, que es
+  también un solo sitio que tocar; palabra por palabra, un versículo con cuatro notas tenía dieciséis
+  trazos. Lo secundario de la fila se dice en un tamaño (13 px), con un paso de 8 px entre sus
+  partes, y «Fíjate en esto» se lee entero en dos líneas. La raya de un renglón tiene contraste 3:1
+  o más con el fondo: dice cuántos renglones hay.
 - **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
   que dice lo que ya decía no se vuelve a escribir: queda como estaba, byte por byte.
   El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;

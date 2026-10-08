@@ -22,6 +22,8 @@ type Props = {
   highlight?: QuoteHighlight | null;
   /** The words some help of the passage is about, by verse: underlined, so it is seen that touching them gives something. */
   linked?: Record<number, number[]>;
+  /** Those words as the phrases each help is about: the line under a phrase runs on from word to word. */
+  phrases?: Record<number, number[][]>;
   onWordClick?: (info: {
     verse: number;
     wordIndex: number;
@@ -78,6 +80,7 @@ export function UsfmReferencePane({
   className,
   highlight,
   linked,
+  phrases,
   onWordClick,
 }: Props) {
   const usj = useMemo(() => {
@@ -128,9 +131,12 @@ export function UsfmReferencePane({
             highlight.tokenIndices.includes(tokenIdx);
           const verseHit = Boolean(activeVerse && Number.isFinite(verse) && verse === activeVerse);
           const linkHit = Boolean(Number.isFinite(verse) && linked?.[verse]?.includes(tokenIdx));
+          // The next word is of the same phrase: the line goes on under the space between the two.
+          const runsOn = linkHit && Boolean(phrases?.[verse]?.some((phrase) => phrase.includes(tokenIdx) && phrase.includes(tokenIdx + 1)));
           if (!quoteHit && !verseHit && !linkHit) return;
           const className = [
             linkHit ? "usfm-ro-link" : "",
+            runsOn ? "usfm-ro-link--on" : "",
             verseHit ? "usfm-ro-hl" : "",
             quoteHit ? "usfm-ro-ul" : "",
             quoteHit && highlight?.active ? "usfm-ro-hl" : "",

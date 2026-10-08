@@ -544,6 +544,7 @@ function ScriptureTab({
   loading,
   highlight,
   linked,
+  phrases,
   onWordClick,
 }: {
   title: string;
@@ -554,6 +555,7 @@ function ScriptureTab({
   loading?: boolean;
   highlight?: QuoteHighlight | null;
   linked?: Record<number, number[]>;
+  phrases?: Record<number, number[][]>;
   onWordClick?: (info: WordClickInfo) => void;
 }) {
   const t = useT();
@@ -570,6 +572,7 @@ function ScriptureTab({
           fallbackVerses={pane.verses}
           highlight={highlight}
           linked={linked}
+          phrases={phrases}
           onWordClick={onWordClick}
         />
       ) : (
@@ -613,6 +616,20 @@ function HelpQuote({
       <span className="scripture-editor__help-quote-mark">”</span>
     </p>
   );
+}
+
+/**
+ * The same words as the phrases each help is about. Marked word by word, a verse with four notes had sixteen
+ * short lines under it, each a place to touch no wider than its word; a phrase is one line, and one place.
+ */
+function linkedPhrases(helps: ReferenceHelpRow[], pane: ScripturePane, range: RefRange | null): Record<number, number[][]> {
+  if (!range || !paneHasText(pane)) return {};
+  const found: Record<number, number[][]> = {};
+  for (const item of helps) {
+    const hit = highlightForHelp(item, pane, range, false);
+    if (hit?.tokenIndices.length) (found[hit.verse] ??= []).push(hit.tokenIndices);
+  }
+  return found;
 }
 
 /** The words of a source that some help is about, by verse (as positions among the words of the verse). */
@@ -1507,6 +1524,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   // shown, so it is seen which of them give something when touched.
   const ultLinked = useMemo(() => linkedWords([...notes, ...words], ult, range), [notes, words, ult, range]);
   const ustLinked = useMemo(() => linkedWords([...notes, ...words], ust, range), [notes, words, ust, range]);
+  const ultPhrases = useMemo(() => linkedPhrases([...notes, ...words], ult, range), [notes, words, ult, range]);
+  const ustPhrases = useMemo(() => linkedPhrases([...notes, ...words], ust, range), [notes, words, ust, range]);
   const activeHelpKey = activeHelp ? helpKey(activeHelp) : null;
   const displayQuotes = useMemo(() => {
     const map = new Map<string, string>();
@@ -2138,9 +2157,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                   {/* Said in so many words which one is translated: the two look alike. */}
                   <p className="se-source__name">{t(which === own ? "se.translateThis" : "se.supportName").replace("{name}", t(which === "ult" ? "se.literal" : "se.simple"))}</p>
                   {which === "ult" ? (
-                    <ScriptureTab title={t("se.ultEnglish")} range={sourceRange} pane={ult} activeVerse={activeVerse} loggedIn={loggedIn} loading={ultLoading} highlight={ultHighlight} linked={ultLinked} onWordClick={(info) => selectHelpFromWord(info, "ult")} />
+                    <ScriptureTab title={t("se.ultEnglish")} range={sourceRange} pane={ult} activeVerse={activeVerse} loggedIn={loggedIn} loading={ultLoading} highlight={ultHighlight} linked={ultLinked} phrases={ultPhrases} onWordClick={(info) => selectHelpFromWord(info, "ult")} />
                   ) : (
-                    <ScriptureTab title={t("se.ustEnglish")} range={sourceRange} pane={ust} activeVerse={activeVerse} loggedIn={loggedIn} loading={ustLoading} highlight={ustHighlight} linked={ustLinked} onWordClick={(info) => selectHelpFromWord(info, "ust")} />
+                    <ScriptureTab title={t("se.ustEnglish")} range={sourceRange} pane={ust} activeVerse={activeVerse} loggedIn={loggedIn} loading={ustLoading} highlight={ustHighlight} linked={ustLinked} phrases={ustPhrases} onWordClick={(info) => selectHelpFromWord(info, "ust")} />
                   )}
                 </div>
               ))}
@@ -2326,7 +2345,10 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                             // Its words that a note or a key term is about are underlined: touching one opens them.
                             <div className="se-peek__own">
                               <div className="se-peek__head">
-                                <b>{tag(own)}</b>
+                                <b>
+                                  <span className="se-peek__num">{label}</span>
+                                  {tag(own)}
+                                </b>
                                 {supportPane.verses[d.from] ? (
                                   <button type="button" className="se-peek__more" aria-pressed={support} onClick={() => setSupport(!support)}>
                                     {t(support ? "se.supportHide" : "se.supportShow").replace("{name}", supportTag)}
@@ -2339,6 +2361,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                                 label={t(own === "ult" ? "se.ultEnglish" : "se.ustEnglish")}
                                 fallbackVerses={english.verses}
                                 linked={own === "ult" ? ultLinked : ustLinked}
+                                phrases={own === "ult" ? ultPhrases : ustPhrases}
                                 onWordClick={(info) => openWordHelps(info, own)}
                               />
                             </div>
