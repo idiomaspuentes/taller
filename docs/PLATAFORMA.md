@@ -550,18 +550,34 @@ como estaba, byte por byte, y lo que se tocó, en el formato en que el recurso e
   última. Lo que alguien teclea en la fuente del artículo (dos espacios al final de una línea, otro
   número de líneas vacías) se guarda como lo tecleó. Un artículo que el equipo no tenía termina con
   un fin de línea.
+- **Un renglón cortado se escribe con sus dos espacios.** En Markdown un renglón se corta con dos
+  espacios al final de la línea; sin ellos, otro programa muestra las dos líneas seguidas. Así
+  escriben los artículos de la Academia en inglés un poema dentro de una cita y las opciones
+  «(1) …», «(2) …» de un párrafo: 433 renglones en 92 de sus 186 artículos. El árbol los leía y los
+  escribía como un salto simple. Ahora los distingue (`br` con `hard`): los lee, los muestra y los
+  escribe donde cortan un renglón (no junto a una línea vacía ni al final de un bloque, donde no
+  son nada). Un renglón que alguien corta al escribir es uno de esos; uno que el archivo trae sin
+  los dos espacios se queda como está. «Copiar el original» conserva los del original.
+- **En un párrafo que es una cita, Intro es el siguiente renglón de la misma cita**
+  (`MarkdownEditor`, solo en las piezas de un artículo). El navegador hacía otra cita, que se
+  guardaba aparte con una línea vacía delante, y un teléfono no tiene otra tecla para un renglón.
+  Dos veces Intro deja una línea vacía: otro párrafo de la cita (`>`).
 
 **Pruebas.** `npm run verify:helps-table` (leer, guardar una fila, una fila nueva, la entrega; con
 fin de línea de Windows, sin fin de línea al final, con una línea vacía en medio) y
 `npm run verify:help-markup` (un artículo sin cambios, una palabra corregida, un párrafo que entra
-o sale). Comprobado además, solo leyendo, con lo publicado en `es-419_gl`: 18 tablas y 465
-artículos se guardan idénticos sin cambios, y con una corrección cambia una sola línea.
+o sale, un renglón cortado). Comprobado además, solo leyendo, con lo publicado en `es-419_gl`: 18
+tablas y 465 artículos se guardan idénticos sin cambios, y con una corrección cambia una sola
+línea. Y con los 186 artículos de la Academia en inglés: los 169 que el árbol entiende se guardan
+idénticos, y corregir una palabra de un renglón cortado le deja su corte.
 
 **No hace todavía.**
 
-- Un artículo que se traduce del inglés no lleva los cortes de renglón que el original hace con dos
-  espacios al final de la línea: el árbol los lee y los escribe como un salto simple, que otros
-  programas muestran seguido. Los artículos que el equipo tiene publicados no los usan.
+- Los artículos que el equipo ya tiene publicados no cortan sus renglones con dos espacios (se
+  tradujeron sin ellos): un poema en una cita se ve renglón por renglón en Taller y seguido en
+  otros programas. Taller no los cambia; habría que cortarlos uno por uno, o con una acción aparte.
+- Fuera de una cita, Intro sigue siendo un párrafo nuevo: «(1) …» y «(2) …» quedan en dos párrafos
+  y no en uno con un corte, salvo que se copie el original y se escriba encima.
 - Una fila que ya estuviera guardada con comillas duplicadas se leería con ellas. No hay ninguna en
   las ramas de `es-419_tn` ni `es-419_tq`, ni en producción ni en QA (revisado el 8 de octubre de
   2026).

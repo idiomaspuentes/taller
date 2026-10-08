@@ -43,7 +43,8 @@ function inlineHtml(nodes: Inline[], names: { academia: string; palabra: string 
   return nodes
     .map((node) => {
       if (node.t === "text") return esc(node.v);
-      if (node.t === "br") return "<br>";
+      // A break the file has without its two spaces says so on its element: any other break is one somebody made.
+      if (node.t === "br") return node.hard ? "<br>" : '<br data-soft="1">';
       if (node.t === "b") return `<strong>${inlineHtml(node.c, names)}</strong>`;
       if (node.t === "i") return `<em>${inlineHtml(node.c, names)}</em>`;
       // A resource link is one piece: it is put in and taken out whole, never typed into.
@@ -79,7 +80,7 @@ function inlineOf(parent: Node): Inline[] {
     if (!(node instanceof HTMLElement)) return;
     const tag = node.tagName;
     if (node.dataset.rc) out.push({ t: "rc", href: node.dataset.rc });
-    else if (tag === "BR") out.push({ t: "br" });
+    else if (tag === "BR") out.push(node.dataset.soft ? { t: "br" } : { t: "br", hard: true });
     else if (tag === "B" || tag === "STRONG") out.push({ t: "b", c: inlineOf(node) });
     else if (tag === "I" || tag === "EM") out.push({ t: "i", c: inlineOf(node) });
     else if (tag === "A") out.push({ t: "link", href: node.dataset.href || node.getAttribute("href") || "", c: inlineOf(node) });
@@ -161,6 +162,25 @@ export function MarkdownEditor({ id, value, onChange, placeholder, book, rows = 
     said.current = value;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, source, names]);
+
+  // In a piece that is a quote, Enter is the next line of the same quote: a poem is written a line at a time. The
+  // browser makes another quote of it instead, which is saved as a quote of its own with an empty line before it,
+  // and a phone has no other key for a line. Twice, it leaves an empty line: another paragraph of the quote.
+  // Only in a piece, which is one block: in a whole text Enter is still how a quote is left behind.
+  useEffect(() => {
+    const el = box.current;
+    if (source || !compact || !el) return;
+    const onBeforeInput = (event: InputEvent) => {
+      if (event.inputType !== "insertParagraph") return;
+      const at = window.getSelection()?.anchorNode;
+      const quote = (at instanceof Element ? at : at?.parentElement)?.closest("blockquote");
+      if (!quote || !el.contains(quote)) return;
+      event.preventDefault();
+      document.execCommand("insertLineBreak");
+    };
+    el.addEventListener("beforeinput", onBeforeInput);
+    return () => el.removeEventListener("beforeinput", onBeforeInput);
+  }, [source, compact]);
 
   function emit() {
     if (!box.current) return;

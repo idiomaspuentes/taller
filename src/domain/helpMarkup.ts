@@ -14,7 +14,12 @@ export type Inline =
   | { t: "link"; href: string; c: Inline[] }
   /** A link to a resource as the helps write it: `[[rc://*​/ta/man/translate/figs-metaphor]]`. Kept as it is. */
   | { t: "rc"; href: string }
-  | { t: "br" };
+  /**
+   * The end of a line inside a block. `hard`: written with two spaces before it, which is how Markdown breaks a
+   * line: a poem in a quote, «(1) …» and «(2) …» in one paragraph. Without them another program shows the two
+   * lines as one. A break somebody makes while writing is one; one the file has without the spaces stays as it is.
+   */
+  | { t: "br"; hard?: boolean };
 
 export type Block =
   | { t: "p"; c: Inline[] }
@@ -51,21 +56,43 @@ export function parseInline(text: string): Inline[] {
   return out;
 }
 
+/** A line as it is read: what it says, and whether it ends with the two spaces that break it. */
+type ReadLine = { text: string; hard: boolean };
+
+const HARD = "  ";
+const lineBreak = (hard: boolean): Inline => (hard ? { t: "br", hard: true } : { t: "br" });
+
 /** Lines of one paragraph: a single line break inside it is kept as a break. */
-function inlineOfLines(lines: string[]): Inline[] {
-  return lines.flatMap((line, index) => [...(index ? [{ t: "br" } as Inline] : []), ...parseInline(line)]);
+function inlineOfLines(lines: ReadLine[]): Inline[] {
+  return lines.flatMap((line, index) => [...(index ? [lineBreak(lines[index - 1]!.hard)] : []), ...parseInline(line.text)]);
 }
 
-/** A text without what does not change what it says: line endings, spaces at the end of a line, extra blank lines. */
-export const normalizeMarkdown = (md: string) => clean(md);
+/**
+ * A text as the tree writes it, when the tree can write it: that is what the editor says a text is, and what a
+ * text is compared with to know whether somebody changed it. One the tree cannot write is left without what does
+ * not change what it says (line endings, spaces at the end of a line, extra blank lines).
+ */
+export const normalizeMarkdown = (md: string): string => {
+  const again = serializeMarkdown(parseMarkdown(md));
+  return clean(again) === clean(md) ? again : clean(md);
+};
 
 function clean(md: string) { return cleanOf(md); }
 const cleanOf = (md: string) => md.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
 
+/** `clean`, but a line that says something and ends with two spaces or more is left ending with two. */
+const tidy = (md: string) =>
+  md
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+$/gm, (run: string, at: number, whole: string) => (/ {2,}$/.test(run) && at > 0 && whole[at - 1] !== "\n" ? HARD : ""))
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
 export function parseMarkdown(md: string): Block[] {
   const blocks: Block[] = [];
-  const lines = clean(md).split("\n");
-  let para: string[] = [];
+  const read: ReadLine[] = tidy(md).split("\n").map((line) => (line.endsWith(HARD) ? { text: line.slice(0, -HARD.length), hard: true } : { text: line, hard: false }));
+  const lines = read.map((line) => line.text);
+  let para: ReadLine[] = [];
   const flush = () => {
     if (para.length) blocks.push({ t: "p", c: inlineOfLines(para) });
     para = [];
@@ -103,9 +130,12 @@ export function parseMarkdown(md: string): Block[] {
       const bare = Boolean(text) && !quote[2];
       // An empty line of a quote (`>`) belongs to the quote it is in, however that one is written.
       const same = last?.t === "quote" && (last.depth ?? 1) === depth && (!text || Boolean(last.bare) === bare);
-      if (same && last?.t === "quote" && i > 0 && lines[i - 1]!.trim() !== "") last.c.push({ t: "br" }, ...parseInline(text));
+      // Two spaces break a line of a quote before another line of it that says something; around an empty
+      // line of the quote they are nothing.
+      const said = /^>+ ?(.*)$/.exec(lines[i - 1] ?? "")?.[1] ?? "";
+      if (same && last?.t === "quote" && i > 0 && lines[i - 1]!.trim() !== "") last.c.push(lineBreak(read[i - 1]!.hard && Boolean(text) && Boolean(said)), ...parseInline(text));
       else blocks.push({ t: "quote", ...(i > 0 && lines[i - 1]!.trim() !== "" && blocks.length ? { tight: true } : {}), ...(depth > 1 ? { depth } : {}), ...(bare ? { bare } : {}), c: parseInline(text) });
-    } else para.push(line);
+    } else para.push(read[i]!);
   }
   flush();
   return blocks;
@@ -114,7 +144,7 @@ export function parseMarkdown(md: string): Block[] {
 export function serializeInline(nodes: Inline[]): string {
   return nodes
     .map((node) =>
-      node.t === "text" ? node.v : node.t === "br" ? "\n" : node.t === "rc" ? `[[${node.href}]]` : node.t === "b" ? `**${serializeInline(node.c)}**` : node.t === "i" ? `*${serializeInline(node.c)}*` : `[${serializeInline(node.c)}](${node.href})`,
+      node.t === "text" ? node.v : node.t === "br" ? (node.hard ? `${HARD}\n` : "\n") : node.t === "rc" ? `[[${node.href}]]` : node.t === "b" ? `**${serializeInline(node.c)}**` : node.t === "i" ? `*${serializeInline(node.c)}*` : `[${serializeInline(node.c)}](${node.href})`,
     )
     .join("");
 }
@@ -128,6 +158,20 @@ export function serializeMarkdown(blocks: Block[]): string {
     .join("");
 }
 
+/**
+ * The lines of a block as they are written: two spaces break a line only before another line of the block that
+ * says something. At the end of a block, or beside an empty line, they are left out; and more than two are two.
+ */
+function settled(text: string): string[] {
+  const lines = text.split("\n");
+  return lines.map((line, at) => {
+    const spaces = / {2,}$/.exec(line);
+    if (!spaces) return line;
+    const said = line.slice(0, spaces.index);
+    return said.trim() && (lines[at + 1] ?? "").trim() ? `${said}${HARD}` : said;
+  });
+}
+
 function blockText(block: Block): string {
   return [block]
     .map((block) => {
@@ -137,16 +181,20 @@ function blockText(block: Block): string {
       // An empty line of a quote is `>` alone: a space after it would be a change.
       if (block.t === "quote") {
         const mark = ">".repeat(block.depth ?? 1);
-        return serializeInline(block.c).split("\n").map((line) => (line ? `${mark}${block.bare ? "" : " "}${line}` : mark)).join("\n");
+        return settled(serializeInline(block.c)).map((line) => (line ? `${mark}${block.bare ? "" : " "}${line}` : mark)).join("\n");
       }
-      return serializeInline(block.c);
+      return settled(serializeInline(block.c)).join("\n");
     })
     .join("");
 }
 
-/** Does this text come back the same after being read into the tree? If not, it must not be edited through it. */
+/**
+ * Does this text come back the same after being read into the tree? If not, it must not be edited through it.
+ * The same but for the spaces at the ends of its lines: the tree keeps the ones that break a line, and the others
+ * are given back to the file when it is saved (`articleAsWritten`).
+ */
 export function roundTrips(md: string): boolean {
-  return serializeMarkdown(parseMarkdown(md)) === clean(md);
+  return clean(serializeMarkdown(parseMarkdown(md))) === clean(md);
 }
 
 // ---------------------------------------------------------------- an article on the lines its file has
@@ -203,9 +251,10 @@ export function articleAsWritten(original: string, edited: string): string {
     const mine = now[j]!;
     const theirs = had[i];
     if (theirs && theirs.key === mine.key) {
-      // Spaces somebody typed at the end of a line (in the source of the article) are theirs to keep; and so is a
-      // number of empty lines that is neither the one the tree writes nor the one the file had.
-      const typedOwn = mine.key === GAP ? mine.lines.length !== 1 && mine.lines.length !== theirs.lines.length : mine.lines[0]!.body !== mine.key;
+      // Spaces at the end of a line that the file does not have are somebody's (a line broken while writing, or
+      // typed in the source of the article), and are kept; where the file breaks the line too, it is the file's
+      // line. And so is a number of empty lines that is neither the one the tree writes nor the one the file had.
+      const typedOwn = mine.key === GAP ? mine.lines.length !== 1 && mine.lines.length !== theirs.lines.length : mine.lines[0]!.body !== mine.key && !/ {2,}$/.test(theirs.lines[0]!.body);
       out.push(...(typedOwn ? mine.lines : theirs.lines));
       i++;
       j++;

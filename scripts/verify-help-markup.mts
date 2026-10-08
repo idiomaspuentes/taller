@@ -4,7 +4,7 @@
  *   npm run verify:help-markup
  */
 import assert from "node:assert/strict";
-import { academyLink, articleAsWritten, describeRc, noteFromTsv, noteToTsv, parseMarkdown, referenceLink, roundTrips, serializeMarkdown, wordLink } from "../src/domain/helpMarkup";
+import { academyLink, articleAsWritten, describeRc, normalizeMarkdown, noteFromTsv, noteToTsv, parseMarkdown, referenceLink, roundTrips, serializeMarkdown, wordLink } from "../src/domain/helpMarkup";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -129,6 +129,51 @@ test("un artículo que el equipo no tiene todavía termina con un fin de línea,
   assert.equal(articleAsWritten("", ""), "");
   assert.equal(articleAsWritten("Gracia\n", "Gracia"), "Gracia\n", "un título, que es un archivo de una línea");
   assert.equal(articleAsWritten("Gracia", "La gracia"), "La gracia");
+});
+
+// ---------------------------------------------------------------- a line broken with two spaces
+// As the articles of the Academy in English write a poem in a quote, and a list in a paragraph.
+const poem = ["> My well beloved had a **vineyard** on a very fertile hill.  ", "> He spaded it, removed the stones.  ", "> He built a tower in the middle of it.  ", ">  ", "> (Isaiah 5:1b-2a ULT)", "", "(1) Use the third person.  ", "(2) Simply use the first person.", "", "Two spaces at the end of a block are nothing.  "].join("\n");
+const breaksOf = (md: string) => parseMarkdown(md).flatMap((block) => (block.t === "p" || block.t === "quote" ? block.c : [])).filter((node) => node.t === "br").map((node) => (node.t === "br" && node.hard ? "hard" : "soft"));
+
+test("dos espacios al final de un renglón lo cortan: el árbol lo lee y lo escribe así", () => {
+  assert.deepEqual(breaksOf(poem), ["hard", "hard", "soft", "soft", "hard"], "tres del poema, la línea vacía de la cita y el párrafo");
+  assert.equal(
+    serializeMarkdown(parseMarkdown(poem)),
+    ["> My well beloved had a **vineyard** on a very fertile hill.  ", "> He spaded it, removed the stones.  ", "> He built a tower in the middle of it.", ">", "> (Isaiah 5:1b-2a ULT)", "", "(1) Use the third person.  ", "(2) Simply use the first person.", "", "Two spaces at the end of a block are nothing."].join("\n"),
+    "se escriben donde cortan un renglón: no junto a una línea vacía ni al final de un bloque",
+  );
+  assert.ok(roundTrips(poem));
+  const once = normalizeMarkdown(poem);
+  assert.equal(normalizeMarkdown(once), once, "lo que el árbol escribe, leído otra vez, se escribe igual");
+  assert.equal(normalizeMarkdown(poem.replace(/ {2}$/gm, "    ")), once, "más de dos espacios son dos");
+});
+
+test("un renglón que el archivo tiene sin sus dos espacios se queda sin ellos", () => {
+  const soft = "> Un renglón\n> y otro\n\nUna línea\ny la siguiente";
+  assert.deepEqual(breaksOf(soft), ["soft", "soft"]);
+  assert.equal(serializeMarkdown(parseMarkdown(soft)), soft);
+});
+
+test("un renglón que alguien corta al escribir se guarda con sus dos espacios, y una línea vacía en una cita es otro párrafo de la cita", () => {
+  // As the editor reads them from the page: a break somebody made is `hard`.
+  const typed = serializeMarkdown([{ t: "quote", c: [{ t: "text", v: "Primer renglón" }, { t: "br", hard: true }, { t: "text", v: "Segundo renglón" }, { t: "br", hard: true }, { t: "br", hard: true }, { t: "text", v: "Otro párrafo" }] }]);
+  assert.equal(typed, "> Primer renglón  \n> Segundo renglón\n>\n> Otro párrafo");
+  assert.equal(serializeMarkdown([{ t: "p", c: [{ t: "text", v: "Uno " }, { t: "br", hard: true }, { t: "text", v: "Dos  " }] }]), "Uno  \nDos", "ni tres espacios, ni dos al final del bloque");
+});
+
+test("corregir una palabra de un renglón de un poema le deja sus dos espacios, y los demás renglones quedan como el archivo los tiene", () => {
+  const file = `${poem.replace("removed the stones.  ", "removed the stones.   ")}\n`;
+  assert.equal(articleAsWritten(file, normalizeMarkdown(file)), file, "sin cambios, igual: también el renglón con tres espacios");
+  const saved = articleAsWritten(file, normalizeMarkdown(file).replace("fertile hill", "fertile slope"));
+  const was = file.split("\n");
+  assert.deepEqual(saved.split("\n").filter((line, index) => line !== was[index]), ["> My well beloved had a **vineyard** on a very fertile slope.  "]);
+});
+
+test("una nota guarda en su celda el renglón cortado, y se lee igual", () => {
+  const note = "Primera línea  \nSegunda línea\n\nOtro párrafo";
+  assert.equal(noteToTsv(note), "Primera línea  \\nSegunda línea\\n\\nOtro párrafo");
+  assert.equal(normalizeMarkdown(noteFromTsv(noteToTsv(note))), note);
 });
 
 console.log(`\nverify-help-markup: ${passed} checks passed.`);
