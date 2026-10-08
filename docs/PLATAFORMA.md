@@ -358,6 +358,10 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   el ULT; un `\d` escrito después del `\v 1` es texto de ese versículo, como también lo trae el ULT.
   Los paneles que muestran un texto fuente leen por ahí (`extractDraftVerses().verses`,
   `verseTextsFromUsj`) y ya dicen lo mismo que los renglones del editor.
+- **Qué texto se abre.** El de la rama de la persona; si la subtarea se abre por primera vez y aún
+  no la tiene, el del borrador del grupo, que es de donde esa rama sale; lo publicado, solo si no
+  hay ninguno de los dos (`draftReadBranchNames`, `src/domain/portionPr.ts`). Se abría lo publicado
+  en esa primera vez, y quien escribía ahí escribía sobre lo publicado, no sobre lo del equipo.
 - **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
   que dice lo que ya decía no se vuelve a escribir: queda como estaba, byte por byte.
   El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;

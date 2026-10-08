@@ -181,6 +181,28 @@ export function ownedWorkBranchNames(params: PortionBranchNameParams): string[] 
   ])];
 }
 
+/**
+ * Where the text a person works on is looked for, first hit first: their own branch (as this device last knew
+ * it, and under every name it has had), then the draft of the group, then what is published (`undefined`, the
+ * default branch).
+ *
+ * The branch this device remembered went second, and with nothing remembered that place was empty, which reads
+ * as the default branch. A subtarea opened for the first time has no branch of its own yet, so the editor showed
+ * the published book while the branch was being cut from the group's draft: whoever wrote there was writing
+ * over what was published, not over what the team had.
+ */
+export function draftReadBranchNames(params: PortionBranchNameParams & { remembered?: string }): Array<string | undefined> {
+  const remembered = normalizeGitRefName(params.remembered || "");
+  return [
+    portionPrBranchName(params),
+    ...(remembered ? [remembered] : []),
+    ...ownedWorkBranchNames(params),
+    ...groupDraftBranchNames(params.book, params.taskId),
+    bookOnlyBranchName(params.book),
+    undefined,
+  ];
+}
+
 export function portionPrBranchFromCtx(ctx: {
   book?: string;
   projectId?: string;

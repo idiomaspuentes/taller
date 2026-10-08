@@ -41,10 +41,8 @@ import { isLabLaunch, labWriteDecision, launchDraftSlot } from "../domain/solver
 import {
   bookBranchLabel,
   bookBranchName,
-  bookOnlyBranchName,
-  ownedWorkBranchNames,
+  draftReadBranchNames,
   portionPrBranchFromCtx,
-  groupDraftBranchNames,
 } from "../domain/portionPr";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { loadDraftCache, saveDraftCache } from "../domain/draftCache";
@@ -363,20 +361,13 @@ function draftReadBranches(
   cacheBranch: string | undefined,
   username: string,
 ): Array<string | undefined> {
-  const owned = ownedWorkBranchNames({
+  return draftReadBranchNames({
     book: decoded.book || decoded.projectId || "book",
     username,
     taskId: decoded.taskId,
     issueNumber: decoded.issueNumber,
+    remembered: cacheBranch,
   });
-  return [
-    portionPrBranchFromCtx({ ...decoded, username }),
-    cacheBranch,
-    ...owned,
-    ...groupDraftBranchNames(decoded.book, decoded.taskId),
-    bookOnlyBranchName(decoded.book),
-    undefined,
-  ];
 }
 
 const SKEL_LINE_WIDTHS = ["92%", "76%", "58%"] as const;

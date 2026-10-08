@@ -23,6 +23,7 @@ import {
   bookBranchName,
   bookCodeFromWorkHead,
   bookTrunkFromWorkHead,
+  draftReadBranchNames,
   groupDraftBranchNames,
   isArchiveRefName,
   isGitRefDescendant,
@@ -75,6 +76,21 @@ test("los nombres antiguos se siguen leyendo, y el de hoy va primero", () => {
   assert.equal(bookTrunkFromWorkHead("trabajo/jud/tpl/valeska/160"), "borrador/jud/tpl", "una rama de trabajo de hoy salió del borrador de hoy");
   assert.equal(bookTrunkFromWorkHead("w/jud/tpl/valeska/160"), "jud/tpl", "y una antigua, del tronco antiguo");
   assert.ok(!isWorkRefName("borrador/jud/tpl") && !isWorkRefName("archivo/jud/160") && !isWorkRefName("master"));
+});
+
+test("el texto de una subtarea se busca primero en su rama, luego en el borrador del grupo, y lo publicado al final", () => {
+  // A subtarea opened for the first time has no branch of its own: what is shown is the group's draft, which is
+  // what that branch is cut from. With nothing remembered on the device, the published book came second.
+  const fresh = draftReadBranchNames(work);
+  assert.equal(fresh[0], "trabajo/jud/tpl/valeska/160");
+  assert.equal(fresh.indexOf(undefined), fresh.length - 1, "lo publicado (la rama por defecto) solo al final");
+  assert.ok(fresh.indexOf("borrador/jud/tpl") < fresh.indexOf(undefined) && fresh.indexOf("jud/tpl") < fresh.indexOf(undefined));
+  assert.deepEqual(fresh.filter((name) => name === undefined).length, 1);
+  // The branch this device remembered goes right after the person's own, as before.
+  const remembered = draftReadBranchNames({ ...work, remembered: "w/jud/tpl/valeska/160" });
+  assert.deepEqual(remembered.slice(0, 2), ["trabajo/jud/tpl/valeska/160", "w/jud/tpl/valeska/160"]);
+  assert.equal(remembered.indexOf(undefined), remembered.length - 1);
+  assert.equal(draftReadBranchNames({ ...work, remembered: "  " }).indexOf(undefined), fresh.length - 1, "un nombre vacío no es la rama por defecto");
 });
 
 test("un espacio de trabajo puede dar sus propias palabras, y lo que calla es de la organización", () => {
