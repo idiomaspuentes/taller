@@ -2326,9 +2326,21 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                             </div>
                           ) : null}
                           {support && supportPane.verses[d.from] ? (
-                            <p className="se-peek__support">
-                              <b>{supportTag}</b> {supportPane.verses[d.from]}
-                            </p>
+                            // In its lines too: shown as one run of text beside a source that is in lines, it read
+                            // as if this one had none.
+                            <div className="se-peek__support">
+                              <b>{supportTag}</b>
+                              {supportPane.usfm && range ? (
+                                <UsfmReferencePane
+                                  usfm={supportPane.usfm}
+                                  range={{ chapter: range.chapter, from: d.from, to: d.to }}
+                                  label={t(own === "ult" ? "se.ustEnglish" : "se.ultEnglish")}
+                                  fallbackVerses={supportPane.verses}
+                                />
+                              ) : (
+                                <p>{supportPane.verses[d.from]}</p>
+                              )}
+                            </div>
                           ) : null}
                           {supportPane.verses[d.from] ? (
                             <button type="button" className="se-peek__more" aria-pressed={support} onClick={() => setSupport(!support)}>

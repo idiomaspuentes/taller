@@ -7797,7 +7797,9 @@ input.pf-name { font-size: 1.625rem; }
    much deeper it goes on when it wraps, `--bar` and `--pad` the rule at its left and the room after it. */
 :is(.scripture-editor__usfm-ro, .se-shown) {
   --num: 0rem;
-  --line-rule: color-mix(in srgb, var(--accent-400) 55%, transparent);
+  /* The colour of the text, faint: a part of the text, not a notice. In the accent colour it read as one more
+     «Fíjate en esto», which stands right under it with a rule of its own at its left. */
+  --line-rule: color-mix(in srgb, currentColor 32%, transparent);
 }
 :is(.scripture-editor__usfm-ro, .se-shown) .usfm-para {
   --indent: 0rem;
@@ -7840,13 +7842,18 @@ input.pf-name { font-size: 1.625rem; }
 .se-source[data-support] { background: var(--surface-muted); border-style: dashed; }
 /* The source of the verse being written, with its words: sized as the text beside it, and without the number the
    verse already shows. */
-.se-peek .se-peek__own .usfm-verse--marker { display: none; }
+.se-peek :is(.se-peek__own, .se-peek__support) .usfm-verse--marker { display: none; }
 /* With no number shown, there is no column to leave for it: its lines begin where those of the draft do. */
-.scripture-editor--split .se-peek .se-peek__own .scripture-editor__usfm-ro { --num: 0rem; }
+.scripture-editor--split .se-peek :is(.se-peek__own, .se-peek__support) .scripture-editor__usfm-ro { --num: 0rem; }
 .se-peek .se-peek__own .usfm-ro-root { font-size: 0.875rem; line-height: 1.55; color: var(--text); }
-.se-peek .se-peek__own .usfm-para { margin: 0; }
-.se-peek__own > b { display: block; }
-.se-peek__support { color: var(--text-muted); }
+/* The other text, a support: in its lines as the one that is translated, and quieter. */
+.se-peek .se-peek__support .usfm-ro-root { font-size: 0.875rem; line-height: 1.55; color: var(--text-muted); }
+.se-peek :is(.se-peek__own, .se-peek__support) .usfm-para { margin: 0; }
+.se-peek :is(.se-peek__own, .se-peek__support) > b { display: block; }
+.se-peek__support { margin-top: 0.25rem; color: var(--text-muted); }
+/* What the verse calls for, right under its source: a row to touch, not one more line of the text. With a rule at
+   its left, as it has in other tools, it read as a line of the poem above it. */
+.scripture-editor__verse-body > .step-hints[data-item] { padding: 0 0.5rem; border-left: 0; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent-100) 70%, transparent); }
 .se-peek__more { justify-self: start; min-height: 40px; padding: 0; border: 0; background: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--primary); cursor: pointer; }
 .se-sources__texts { display: grid; gap: 0.5rem; min-height: 0; overflow: auto; }
 .se-source { padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); }
