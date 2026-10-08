@@ -157,8 +157,10 @@ export type ChoicePatch =
 /**
  * Trunk with the range taken from `source` (a real USFM file). Refuses when
  * the source is not the displaced text, when the copy would lose footnotes
- * or other markup (the patch falls back to normalized text for multi-line
- * verses), or when anything outside the range would change.
+ * or other markup (the patch falls back to normalized text for what is not
+ * written as one verse of its own: `\v 10a` and `\v 10b`), or when anything
+ * outside the range would change. A verse of several lines is copied in its
+ * lines.
  */
 export function computeChoicePatch(params: {
   trunk: string;

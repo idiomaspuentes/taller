@@ -7812,6 +7812,8 @@ input.pf-name { font-size: 1.625rem; }
 .se-peek p { margin: 0; }
 .se-peek b { font-size: 0.6875rem; color: var(--accent-700); margin-right: 0.25rem; }
 .scripture-editor--split .scripture-editor__input { field-sizing: content; }
+/* What is said under a verse of a poem stays clear of the button that sits on the seam below it. */
+.scripture-editor--split .scripture-editor__verse-note[data-poem] { margin-bottom: 0.9rem; }
 /* One panel at a time (a phone): the verse being written brings its own source texts. */
 @media (max-width: 48rem) {
   .se-peek { display: grid; }

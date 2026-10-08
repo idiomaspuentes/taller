@@ -8,7 +8,6 @@ import {
 import {
   draftSlots,
   extractVerseEdits,
-  listVerseSpans,
   type RefRange,
   type VerseSlotEdit,
 } from "./usfmEdit";
@@ -101,35 +100,28 @@ export function verseTextsFromUsj(usj: UsjDocument, range: RefRange): VerseTextM
 }
 
 /**
- * Prefer usfm-ast verse text; fall back to the regex slicer in `usfmEdit`.
- * Returns which path produced the map so the UI can fall back gracefully.
+ * The verses of a portion, to be read (`verses`, by usfm-ast when it can parse the file) and to be edited
+ * (`slots`). Returns which path produced the map so the UI can fall back gracefully.
+ *
+ * The rows to edit are always the verse as `usfmEdit` reads it, which is what saving compares them with: a row
+ * that says anything else is a verse that changed, and is written. They were taken from the tree, which counts as
+ * a verse everything up to the next `\v`: the last verse of a chapter came with the label of the next one
+ * («…tierra firme. Capítulo 3»), a verse before a heading with the heading, one with a footnote with the words
+ * of the note, and saving any other verse of the portion wrote them into it.
  */
 export function extractDraftVerses(
   usfm: string,
   range: RefRange,
 ): {
   verses: VerseTextMap;
-  /** Row structure from `draftSlots`; text from the AST map by `from` when present. */
+  /** A row for each verse of the portion, in its lines. */
   slots: VerseSlotEdit[];
   via: "ast" | "plain";
   usj: UsjDocument | null;
 } {
   const plainSlots = draftSlots(usfm, range);
   const usj = tryParseUsj(usfm);
-  if (usj) {
-    const fromAst = verseTextsFromUsj(usj, range) ?? {};
-    const segmented = new Set(
-      listVerseSpans(usfm)
-        .filter((s) => s.chapter === range.chapter && s.segment)
-        .map((s) => s.verse),
-    );
-    // `\v 10a`/`\v 10b` share one AST key; keep the joined plain text.
-    const slots = plainSlots.map((row) => ({
-      ...row,
-      text: segmented.has(row.from) ? row.text : (fromAst[row.from] ?? row.text),
-    }));
-    return { verses: fromAst, slots, via: "ast", usj };
-  }
+  if (usj) return { verses: verseTextsFromUsj(usj, range) ?? {}, slots: plainSlots, via: "ast", usj };
   const { spans } = extractVerseEdits(usfm, range);
   const verses: VerseTextMap = {};
   for (const span of spans) verses[span.verse] = span.text;

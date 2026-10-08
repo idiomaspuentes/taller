@@ -21,6 +21,7 @@
     "verify:portion-pr": "tsx scripts/verify-portion-pr.mts",
     "verify:book-bootstrap": "tsx scripts/verify-book-bootstrap.mts",
     "verify:usfm-merge": "tsx scripts/verify-usfm-merge.mts",
+    "verify:usfm-poetry": "tsx --tsconfig tsconfig.scripts.json scripts/verify-usfm-poetry.mts",
     "verify:usfm-chapters": "tsx scripts/verify-usfm-chapters.mts",
     "verify:help-quote": "tsx scripts/verify-help-quote.mts",
     "verify:source-versions": "tsx --tsconfig tsconfig.scripts.json scripts/verify-source-versions.mts",

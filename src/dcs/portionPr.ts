@@ -200,6 +200,7 @@ export async function ensurePortionPr(
       resource,
       taskId,
       phaseSlug,
+      lang,
     });
   } else {
     const defaultBranch = await getDefaultBranch(config, owner, repo, session.token);

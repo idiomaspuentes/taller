@@ -111,8 +111,9 @@ const z = (strong: string, content: string, word: string) =>
   String.raw`\zaln-s |x-strong="${strong}" x-lemma="${content}" x-morph="Gr,N,,,,,NMS," x-occurrence="1" x-occurrences="1" x-content="${content}"\*\w ${word}|x-occurrence="1" x-occurrences="1"\w*\zaln-e\*`;
 const draft = ["\\id TIT", "\\c 1", "\\p", `\\v 1 ${z("G1", "Παῦλος", "Pablo")} ${z("G2", "δοῦλος", "siervo")}`, `\\v 2 ${z("G3", "ἐλπίδι", "esperanza")}`, ""].join("\n");
 const draftPath = "57-TIT.usfm";
+/** The aligned words of a verse, on however many lines it is written (a group to a line). */
 const wordsOf = (usfm: string, verse: number) =>
-  [...(new RegExp(`\\\\v ${verse} ([^\\\\]*(?:\\\\(?!v )[^\\n]*)*)`).exec(usfm)?.[0] ?? "").matchAll(/\\w ([^|\\]+)\|/g)].map((x) => x[1]);
+  [...(new RegExp(`\\\\v ${verse} ([\\s\\S]*?)(?=\\\\v \\d|\\\\c \\d|$)`).exec(usfm)?.[1] ?? "").matchAll(/\\w ([^|\\]+)\|/g)].map((x) => x[1]);
 
 await test("corregir un versículo lo escribe en el borrador grupal y conserva las palabras que no cambiaron", async () => {
   put("tit/tpl", draftPath, draft);

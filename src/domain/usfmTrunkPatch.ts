@@ -5,7 +5,7 @@
  * and section markers, untouched verses, CRLF/LF) keeps the trunk bytes.
  */
 
-import { listVerseSpans, normalizeVerseText, type RefRange, type VerseSpan } from "./usfmEdit";
+import { listVerseSpans, normalizeVerseText, verseParts, type RefRange, type VerseSpan } from "./usfmEdit";
 import {
   mergeUsfmByVerse,
   verseSlotsOf,
@@ -67,8 +67,12 @@ function synthesizedLine(slot: Slot): string {
   return slot.text ? `\\v ${verseNumber(slot)} ${slot.text}` : `\\v ${verseNumber(slot)}`;
 }
 
-/** The winning side's own line when it wrote this slot as exactly one line. */
-function sideLine(sides: string[], slot: Slot): string | null {
+/**
+ * The winning side's own writing of this slot: its line, or its lines when it is a verse of several (a line of
+ * poetry each, begun by its mark). A verse of several lines was put together again as one line of text, so a
+ * verse of a psalm that somebody changed reached the trunk as prose.
+ */
+function sideLine(sides: string[], slot: Slot, eol: string): string | null {
   for (let i = sides.length - 1; i >= 0; i--) {
     const side = sides[i]!;
     const hits = listVerseSpans(side).filter((s) => overlaps(spanRange(s), slot));
@@ -76,9 +80,8 @@ function sideLine(sides: string[], slot: Slot): string | null {
     const span = hits[0]!;
     if (span.segment || span.verse !== slot.from || span.verseTo !== slot.to) continue;
     if (normalizeVerseText(span.rawBody) !== slot.text) continue;
-    const body = side.slice(span.start, textEnd(side, span)).replace(/\r?\n$/, "");
-    if (body.includes("\n")) return null;
-    return body.replace(/[ \t\r]+$/, "");
+    const body = side.slice(span.start, verseParts(side, span).textEnd);
+    return body.split(/\r?\n/).map((line) => line.replace(/[ \t\r]+$/, "")).join(eol);
   }
   return null;
 }
@@ -184,21 +187,17 @@ export function patchTrunkByVerse(
     const writeSlots = groupSpans.length ? mSlots : mSlots.filter((s) => s.text);
     if (!writeSlots.length) continue;
 
-    const lines = writeSlots.map((slot) => sideLine(sides, slot) ?? synthesizedLine(slot));
+    const lines = writeSlots.map((slot) => sideLine(sides, slot, eol) ?? synthesizedLine(slot));
     const from = Math.min(...group.map((n) => n.from));
     const to = Math.max(...group.map((n) => n.to));
     patched.push({ chapter, from, to });
 
     if (groupSpans.length) {
+      // From its `\v` to where its text ends: the line end after it, a chunk mark left hanging there and the
+      // marks of what follows are the trunk's, and stay.
       const start = groupSpans[0]!.start;
-      const end = textEnd(trunk, groupSpans[groupSpans.length - 1]!);
-      const region = trunk.slice(start, end);
-      const tail = /\n$/.test(region)
-        ? eol
-        : end >= trunk.length
-          ? ""
-          : (region.match(/[ \t]+$/)?.[0] ?? " ");
-      edits.push({ start, end, text: lines.join(eol) + tail, seq: seq++ });
+      const end = verseParts(trunk, groupSpans[groupSpans.length - 1]!).textEnd;
+      edits.push({ start, end, text: lines.join(eol), seq: seq++ });
       continue;
     }
 

@@ -7,7 +7,7 @@ import { StudyNotesPanel } from "./StudyNotesPanel";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { useStepWork } from "../dcs/stepWork";
 import { goOnAfterStep } from "../dcs/nextStep";
-import { bookLabel } from "../domain/books";
+import { bookLabel, bookNamesIn } from "../domain/books";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
@@ -51,6 +51,8 @@ import { loadDraftCache, saveDraftCache } from "../domain/draftCache";
 import {
   portionRange,
   skeletonUsfm,
+  textLines,
+  verseLeads,
   type RefRange,
 } from "../domain/usfmEdit";
 import { extractDraftVerses, parseSourceUsfm, type VerseTextMap } from "../domain/usfmAst";
@@ -143,6 +145,19 @@ function canJoinRows(cur: VerseDraft, next: VerseDraft, range: RefRange | null):
 
 function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
   return a.length === b.length && a.every((d, i) => slotKey(d) === slotKey(b[i]!) && d.text === b[i]!.text);
+}
+
+/**
+ * What this device kept of a verse, in the lines the verse has when it says the same. A text kept from before
+ * verses were edited in their lines is one run: shown that way, the first word changed in it made prose of a
+ * verse of a poem, and it counted as something written here that was still to be saved.
+ */
+function keptInLines(kept: VerseDraft[], remote: VerseDraft[]): VerseDraft[] {
+  return kept.map((d) => {
+    const there = remote.find((r) => slotKey(r) === slotKey(d));
+    if (!there || !there.text.includes("\n") || d.text.includes("\n")) return d;
+    return textLines(d.text).join(" ") === textLines(there.text).join(" ") ? { ...d, text: there.text } : d;
+  });
 }
 /** The helps beside the draft. The source texts are no longer a tab: they stay on screen above the helps. */
 type ResourceTab = "notas" | "preguntas" | "apuntes" | "revision";
@@ -899,6 +914,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const tag = (which: "ult" | "ust") => which.toUpperCase();
   const supportTag = tag(own === "ult" ? "ust" : "ult");
   const decisionsAt = useVerseDecisions(session, ctx, english.alignments);
+  /** The marks the lines of each verse begin with in the text that is translated: a verse of a poem, in its lines. */
+  const sourceLeads = useMemo(() => (english.usfm && range ? verseLeads(english.usfm, range.chapter) : {}), [english.usfm, range?.chapter]);
   const [draftLoading, setDraftLoading] = useState(() => Boolean(loadSession()));
   const [ultLoading, setUltLoading] = useState(() => Boolean(loadSession()));
   const [ustLoading, setUstLoading] = useState(() => Boolean(loadSession()));
@@ -1094,7 +1111,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       const remote = extracted.slots;
       const cached =
         cache && Object.keys(cache.verses).length
-          ? placeholderDrafts(refRange, cache, remote)
+          ? keptInLines(placeholderDrafts(refRange, cache, remote), remote)
           : null;
       const usedCache = Boolean(cached && !sameDrafts(cached, remote));
       const chosen = usedCache && cached ? cached : remote;
@@ -1173,6 +1190,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             taskId: decoded.taskId,
             phaseSlug: decoded.phaseSlug,
             fallbackRange: refRange,
+            lang: decoded.lang,
           });
           if (!stillThisLoad()) return;
           const task = await ensureTaskBranchFromBook({
@@ -1573,10 +1591,11 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     setError("");
     try {
       // Saving text must not erase the word alignment of the words that did not change.
+      // A line the verse did not have yet begins with the mark the text it is translated from has there.
       const kept = applyVerseEditsKeepingAlignment(
-        usfm || skeletonUsfm(target.book, range.chapter, range.from, range.to),
+        usfm || skeletonUsfm(target.book, range.chapter, range.from, range.to, bookNamesIn(ctx.lang)?.(target.book)),
         range.chapter,
-        drafts,
+        drafts.map((d) => (d.from === d.to && sourceLeads[d.from] ? { ...d, leads: sourceLeads[d.from] } : d)),
       );
       const nextUsfm = kept.usfm;
       if (kept.clearedVerses.length && !quiet) {
@@ -1753,6 +1772,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       taskId: ctx.taskId,
       phaseSlug: ctx.phaseSlug,
       fallbackRange: range || undefined,
+      lang: ctx.lang,
       workBranch,
       username: ctx.username || session.username,
       issueNumber: ctx.issueNumber,
@@ -2280,6 +2300,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                         placeholder={t("se.translationPlaceholder")}
                         disabled={recreating}
                       />
+                      {/* A verse of a poem: said while it is written, and only until it has lines of its own (a team may
+                          break a verse in fewer lines than its source does, and that is not to be asked about again). */}
+                      {activeVerse === d.from && d.from === d.to && (sourceLeads[d.from]?.length ?? 0) > 1 && textLines(d.text).length <= 1 ? (
+                        <p className="scripture-editor__verse-note" data-poem>
+                          {t("se.poemLines").replace("{n}", String(sourceLeads[d.from]!.length))}
+                        </p>
+                      ) : null}
                       {!inside ? (
                         <p className="scripture-editor__verse-note">
                           {t("se.bridgeOutside")}

@@ -821,11 +821,26 @@ test("computeChoicePatch: choosing what is there does not write; refusals", () =
   assert.deepEqual(same, { ok: true, usfm: trunkCrlf, changed: false });
   const wrongSource = computeChoicePatch({ trunk: trunkCrlf, source: beforeClose, range: { chapter: 1, from: 10, to: 10 }, expectedSourceText: "otro texto" });
   assert.equal(wrongSource.ok, false);
-  // Multi-line verse with a footnote: the engine would write normalized text → refuse.
-  const poetry = ["\\id NEH", "\\c 1", "\\p", "\\v 9 nueve", "\\v 10 Tus criados", "\\q2 y tu gente\\f + \\ft nota\\f*", "\\v 11 once", ""].join("\n");
-  const refused = computeChoicePatch({ trunk: trunkCrlf, source: poetry, range: { chapter: 1, from: 10, to: 10 }, expectedSourceText: "Tus criados y tu gente" });
+  // A verse written in two parts (`\v 10a`, `\v 10b`) is not one verse to copy: the engine would write its text
+  // as one line → refuse.
+  const parts = ["\\id NEH", "\\c 1", "\\p", "\\v 9 nueve", "\\v 10a Tus criados", "\\v 10b y tu gente\\f + \\ft nota\\f*", "\\v 11 once", ""].join("\n");
+  const refused = computeChoicePatch({ trunk: trunkCrlf, source: parts, range: { chapter: 1, from: 10, to: 10 }, expectedSourceText: "Tus criados y tu gente" });
   assert.equal(refused.ok, false);
   if (!refused.ok) assert.match(refused.reason, /notas o formato/);
+});
+
+test("computeChoicePatch: a verse of two lines with a footnote is copied as it is written", () => {
+  // It was refused: the engine put a verse of several lines together again as one line of text, without its note.
+  const poetry = ["\\id NEH", "\\c 1", "\\p", "\\v 9 nueve", "\\v 10 Tus criados", "\\q2 y tu gente\\f + \\ft nota\\f*", "\\q1", "\\v 11 once", ""].join("\n");
+  const chosen = computeChoicePatch({ trunk: trunkCrlf, source: poetry, range: { chapter: 1, from: 10, to: 10 }, expectedSourceText: "Tus criados y tu gente" });
+  assert.equal(chosen.ok, true);
+  if (!chosen.ok) return;
+  assert.ok(chosen.usfm.includes("\\v 10 Tus criados\r\n\\q2 y tu gente\\f + \\ft nota\\f*\r\n"), "its two lines and its note, with the line ends of the trunk");
+  const start = trunkCrlf.indexOf("\\v 10");
+  const end = trunkCrlf.indexOf("\\v 11");
+  assert.equal(chosen.usfm.slice(0, start), trunkCrlf.slice(0, start), "bytes before the verse identical");
+  // The mark that opens the next verse in the source (`\q1`) is the source's: what follows the verse in the trunk stays.
+  assert.equal(chosen.usfm.slice(chosen.usfm.indexOf("\\v 11")), trunkCrlf.slice(end), "bytes after the verse identical");
 });
 
 test("trunkChoiceCommitMessage round-trips through parseTrunkMergeCommit", () => {

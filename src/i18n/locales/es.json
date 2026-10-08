@@ -2979,5 +2979,7 @@
   "ag.splitTaken": "No se pudo agregar la nota nueva. Retira la propuesta y hazla otra vez.",
   "ck.newNote": "Proponer una nota nueva en {ref}",
   "ag.splitKeeps": "Esta nota queda:",
-  "pr.splitEdited": "la retocaste: muévela a mano"
+  "pr.splitEdited": "la retocaste: muévela a mano",
+  "se.wouldChangeOthers": "Al guardar cambiarían también los versículos {list}, que nadie tocó. No se guardó: avisa a quien coordina.",
+  "se.poemLines": "En el original este versículo tiene {n} renglones. Escribe cada uno en una línea aparte."
 }

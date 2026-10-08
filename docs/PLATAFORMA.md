@@ -330,6 +330,55 @@ Lo que hay que saber al leerlo:
   subtareas terminadas y el calendario sí alcanzan hacia atrás.
 - Todos los pasos de una subtarea valen lo mismo, aunque uno sea de cinco minutos y otro de horas.
 
+## Cómo se escribe el texto bíblico
+
+Un libro es un archivo USFM y cada guardado lo escribe entero. Lo que no se tocó tiene que quedar
+como estaba, y lo que se tocó, en el formato en que lo escriben las herramientas de unfoldingWord,
+para que el archivo del equipo y el del original se puedan comparar línea por línea.
+
+- **Formato.** Con alineación, un grupo por línea (`\zaln-s … \w palabra\w* \zaln-e\*`), cada
+  palabra más de un grupo en su propia línea, la puntuación después del grupo y la marca de trozo
+  (`\ts\*`) sola en su línea tras una vacía. Un grupo cuyas palabras no van seguidas se escribe otra
+  vez con el mismo original, nunca uno dentro de otro (los archivos antiguos, anidados, se siguen
+  leyendo). Lo hace `usfm-ast` (`mergeAlignmentIntoUsfm`, `layoutAlignedUsfm`).
+- **Un versículo es sus renglones.** En poesía un versículo ocupa varios, cada uno con su marca
+  (`\q1`, `\q2`; `\b` es la línea en blanco entre estrofas). `verseParts` (`src/domain/usfmEdit.ts`)
+  lo lee así y el editor lo muestra así: un renglón del cuadro por renglón del versículo. Lo que
+  sigue al texto de un versículo (la marca que abre el siguiente, un título, la marca de trozo, la
+  etiqueta del capítulo que viene) no es suyo: ni se muestra con él ni se mueve al guardarlo.
+- **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
+  que dice lo que ya decía no se vuelve a escribir: conserva su nota al pie y lo que tenga marcado.
+  El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;
+  un renglón de más toma la marca que el original tiene en ese lugar (`verseLeads`), o la del
+  anterior. Las palabras que no cambiaron conservan su enlace con el original. Antes de guardar se
+  comprueba que ningún otro versículo cambió de palabras ni perdió alineación
+  (`versesChangedBesides`); si pasara, no se guarda y se avisa.
+- **Una corrección que llega como texto corrido** (al afinar, al alinear, en la lectura grupal: quien
+  corrige ve el versículo en una sola línea) se parte donde el versículo se parte, después de las
+  mismas palabras (`textInLines`). Todas pasan por `saveCorrection`, que lo pide con `flat`.
+- **La entrega** (`patchTrunkByVerse`) lleva al borrador del grupo el versículo con sus renglones
+  y sus grupos, y deja lo que le sigue en el borrador como esté allí.
+- **Un libro nuevo** (`skeletonUsfmFromSource`) nace con los capítulos, los versículos, los
+  párrafos y los renglones de poesía del texto del que se traduce, y con su nombre en el idioma del
+  equipo (`\h`, `\toc1`–`\toc3`, `\mt`). No copia los títulos ni las marcas de trozo del original.
+
+**Pruebas.** `npm run verify:usfm-poetry` recorre todo esto con Jonás 2 (leer, guardar, corregir,
+entregar, empezar el libro) y, si `../usfm-ast` está al lado, con el Jonás entero de un equipo:
+cambiar una palabra de 2:2 no cambia ninguna otra línea de los otros 47 versículos. En `usfm-ast`,
+`alignment-real-books.test.ts` escribe de vuelta cinco libros enteros y compara texto, grupos,
+atributos y estructura, y `alignment-reconcile.test.ts` cubre qué enlaces sobreviven a un cambio.
+
+**No hace todavía.**
+
+- Un versículo que se edita se escribe desde su texto: pierde su nota al pie y lo marcado dentro de
+  él (`\nd`, `\add`). Los que no se tocan ya no.
+- En el cuadro del editor no se distingue un renglón largo que dobla de un renglón nuevo.
+- La biblioteca cuenta como texto de un versículo todo lo que hay hasta el siguiente `\v`, también
+  un título o la etiqueta del capítulo que sigue. El editor ya no lee por ahí; los paneles que solo
+  muestran un texto fuente, sí.
+- Los títulos de los salmos (`\d`) alineados quedan a cuenta del último versículo del salmo
+  anterior. Hay que resolverlo antes de trabajar Salmos.
+
 ## Registro de correcciones del texto
 
 Corregir un versículo del borrador del grupo (al afinar notas o palabras clave, al alinear, en la
@@ -370,6 +419,7 @@ pantalla, que necesita saber en qué rama está el borrador del grupo de cada te
 | Solvers / launch | `src/domain/solverLaunch.ts`, `src/domain/solvers.ts`, `src/domain/solverLab.ts` |
 | Laboratorio | `src/components/SolverLabView.tsx`, `#/lab` |
 | Scripture editor | `src/components/ScriptureEditorView.tsx`, `src/domain/usfmEdit.ts`, `src/domain/scriptureTarget.ts` |
+| Escribir el texto bíblico (renglones, alineación, entrega, libro nuevo) | `src/domain/usfmEdit.ts`, `src/domain/alignmentKeep.ts`, `src/domain/usfmTrunkPatch.ts`, `src/dcs/bookBootstrap.ts`, `scripts/verify-usfm-poetry.mts` |
 | Helps editor | `src/components/HelpsEditorView.tsx`, `src/domain/helpsDraft.ts`, `src/domain/helpsTarget.ts` |
 | Ramas y etiquetas | `src/domain/branchNames.ts`, `src/domain/portionPr.ts`, `src/dcs/portionPr.ts`, `src/dcs/pulls.ts` |
 | Marcas de fase y «Qué cambió» | `src/domain/phaseMarks.ts`, `src/dcs/phaseMarks.ts`, `src/domain/changesSince.ts`, `src/dcs/changesSince.ts`, `src/components/ChangesView.tsx` |

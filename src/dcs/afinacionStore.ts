@@ -185,8 +185,9 @@ export async function saveCorrection(params: {
   for (let attempt = 1; attempt <= 3; attempt++) {
     const current = await readRepoFile(session, target, filepath);
     if (!current) throw new Error("No se encontró el borrador grupal de este libro.");
+    // Whoever corrects reads the verse as one run of text: a verse of a poem keeps the lines it has.
     const kept = applyVerseEditsKeepingAlignment(current.text, params.chapter, [
-      { verse: params.verse, text: params.text },
+      { verse: params.verse, text: params.text, flat: true },
     ]);
     if (kept.usfm === current.text) return { clearedVerses: [], reducedVerses: [], usfm: current.text };
     const why = params.reason.trim();

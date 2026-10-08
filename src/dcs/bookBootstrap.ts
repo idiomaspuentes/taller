@@ -37,6 +37,7 @@ import {
   readRepoFile,
   writeRepoFile,
 } from "./repoFile";
+import { bookNamesIn } from "../domain/books";
 
 export type EnsureBookUsfmParams = {
   session: GtSession;
@@ -49,6 +50,8 @@ export type EnsureBookUsfmParams = {
   /** Reuse-only: look up `{oldPhaseSlug}/{book}` if that ref already exists. */
   phaseSlug?: string;
   fallbackRange?: RefRange;
+  /** The language of the translation: a book that is begun here says its name in it. */
+  lang?: string;
   /**
    * Recreate: never reuse shared leftovers (`neh`, `book/neh`, old phase
    * trunks). If parent `neh` blocks `neh/{taskId}`, use `t/neh/{taskId}`.
@@ -131,13 +134,14 @@ async function loadSourceSkeleton(
   book: string,
   resource: string | undefined,
   fallbackRange?: RefRange,
+  lang?: string,
 ): Promise<string> {
   const primary = resource?.toLowerCase() === "tps" ? "ust" : "ult";
   const companion = primary === "ust" ? "ult" : "ust";
   const first = await loadEnglishScriptureKindUsfm(session, primary, book);
   const second = first ? null : await loadEnglishScriptureKindUsfm(session, companion, book);
   const sourceUsfm = first?.usfm || second?.usfm;
-  return buildBookUsfmSkeleton({ book, sourceUsfm, fallbackRange });
+  return buildBookUsfmSkeleton({ book, sourceUsfm, fallbackRange, name: bookNamesIn(lang)?.(book) });
 }
 
 /**
@@ -342,7 +346,7 @@ export async function ensureBookUsfm(
 
   if (!defaultSha) {
     const onDefault = await tryRead(session, owner, repo, filepath, defaultBranch);
-    const usfm = onDefault?.text || await loadSourceSkeleton(session, book, resource, fallbackRange);
+    const usfm = onDefault?.text || await loadSourceSkeleton(session, book, resource, fallbackRange, params.lang);
     try {
       await writeRepoFile({
         session,
@@ -423,7 +427,7 @@ export async function ensureBookUsfm(
     };
   }
 
-  const usfm = await loadSourceSkeleton(session, book, resource, fallbackRange);
+  const usfm = await loadSourceSkeleton(session, book, resource, fallbackRange, params.lang);
   const saved = await writeOnBookBranch({
     session,
     owner,
@@ -729,7 +733,7 @@ async function rollbackBrokenTrunk(
     );
   }
   const rewriteTrunkFile = async () => {
-    const usfm = await loadSourceSkeleton(params.session, params.book, params.resource, params.fallbackRange);
+    const usfm = await loadSourceSkeleton(params.session, params.book, params.resource, params.fallbackRange, params.lang);
     await writeOnBookBranch({
       session: params.session,
       owner: params.owner,
