@@ -2986,5 +2986,6 @@
   "se.footnoteStart": "Nota al pie del versículo: {text}",
   "se.crossrefAt": "Referencia junto a «{word}»: {text}",
   "se.crossrefStart": "Referencia del versículo: {text}",
-  "se.noteStays": "Se guarda con el versículo; no hay que escribirla."
+  "se.noteStays": "Se guarda con el versículo; no hay que escribirla.",
+  "se.editVerse": "Versículo {n}. Toca para escribir."
 }

@@ -129,7 +129,7 @@ export function listVerseSpans(usfm: string): VerseSpan[] {
  * Marks that begin a line of a verse: a paragraph, a line of poetry, an item of a list. `\b` is a line left empty
  * between two stanzas.
  */
-const LINE_MARK = /^[ \t]*(\\(?:p|m|po|pr|cls|pm|pmo|pmc|pmr|pi\d?|mi|nb|pc|ph\d?|q\d?|qr|qc|qm\d?|li\d?|lim\d?|lh|lf|b)(?=\s|$))[ \t]*/;
+export const LINE_MARK = /^[ \t]*(\\(?:p|m|po|pr|cls|pm|pmo|pmc|pmr|pi\d?|mi|nb|pc|ph\d?|q\d?|qr|qc|qm\d?|li\d?|lim\d?|lh|lf|b)(?=\s|$))[ \t]*/;
 
 /** What is left at the end of the last line of text of a verse: spaces, a chunk mark (`\ts\*`), the line end. */
 const LINE_END = /[ \t]*(?:\\(?!zaln-)[a-z]+\d*(?:-[se])?(?:[ \t]*\|[^\\\n]*)?\\\*[ \t]*)*(?:\r?\n)?$/;
@@ -346,19 +346,30 @@ export function textInLines(text: string, lines: string[]): string {
  */
 function writtenVerse(num: string, text: string, own: VerseLine[], pattern: string[], eol: string, flat = false, kept: VerseMarkup = NO_MARKUP): string {
   const said = textLines(flat ? textInLines(text, own.map((line) => line.text)) : text);
-  const leads = own.map((line) => line.lead);
-  const any = [...leads, ...pattern].filter(Boolean);
+  const leads = leadsFor(said.length, own.map((line) => line.lead), pattern);
   if (!said.length) return [`\\v ${num}`, markupAlone(kept)].filter(Boolean).join(" ");
-  const typed = carryMarkup(kept, any.length ? said : [said.join(" ")]);
-  if (!any.length) return `\\v ${num} ${typed[0]}`;
-  const leadAt = (index: number) => leads[index] ?? pattern[index] ?? [...leads.slice(0, index), ...pattern.slice(0, index)].filter(Boolean).pop() ?? any[any.length - 1]!;
+  const typed = carryMarkup(kept, leads ? said : [said.join(" ")]);
+  if (!leads) return `\\v ${num} ${typed[0]}`;
   return typed
     .map((line, index) => {
-      const lead = index === 0 ? (leads[0] ?? pattern[0] ?? "") : leadAt(index) || any[any.length - 1]!;
+      const lead = leads[index]!;
       if (index === 0) return lead ? `\\v ${num}${eol}${lead.split("\n").join(eol)} ${line}` : `\\v ${num} ${line}`;
       return `${lead.split("\n").join(eol)} ${line}`;
     })
     .join(eol);
+}
+
+/**
+ * The mark each of the lines of a verse begins with when it is written: the one the verse had on that line, or
+ * the one its source has there, or that of the line before. `null` when neither the verse nor its source has any:
+ * that verse is prose, one line. It is what the verse is shown with before it is saved (`verseShape`), so it is
+ * said in one place.
+ */
+export function leadsFor(count: number, own: string[], pattern: string[]): string[] | null {
+  const any = [...own, ...pattern].filter(Boolean);
+  if (!any.length) return null;
+  const leadAt = (index: number) => own[index] ?? pattern[index] ?? [...own.slice(0, index), ...pattern.slice(0, index)].filter(Boolean).pop() ?? any[any.length - 1]!;
+  return Array.from({ length: count }, (_, index) => (index === 0 ? (own[0] ?? pattern[0] ?? "") : leadAt(index) || any[any.length - 1]!));
 }
 
 /**

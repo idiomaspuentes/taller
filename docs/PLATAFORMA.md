@@ -376,6 +376,15 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   anterior: antes del `\c`, del título y del párrafo que el trozo abre. No se quita ninguna: las que
   el equipo tenga se quedan, y a un borrador que ya tiene alguna no se le agregan. Guardar un
   versículo, corregirlo o entregarlo no las mueve.
+- **Cómo se ve.** Mientras nadie escribe en él, un versículo con texto se muestra con la forma que
+  le dan sus marcas (`src/domain/verseShape.ts`, `VerseShown`): cada renglón de un poema empieza
+  tan adentro como dice su marca (`\q1` a 1 rem, `\q2` a 2) y, si dobla, sigue más adentro (3 rem),
+  de modo que un renglón largo no se confunde con uno nuevo; `\b` deja una línea vacía. Al tocarlo
+  vuelve el cuadro para escribir, con el cursor donde se tocó. Lo que se muestra es lo que se va a
+  guardar (`leadsFor`, la misma regla que escribe), también antes de guardar: en un libro nuevo los
+  renglones toman la forma que el original tiene en ese versículo. El texto del que se traduce usa
+  la misma regla de formato (un solo bloque de estilos para `.usfm-para[data-marker]`), en todas
+  las pantallas que lo muestran: antes todos sus renglones empezaban en el mismo sitio.
 - **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
   que dice lo que ya decía no se vuelve a escribir: queda como estaba, byte por byte.
   El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;
@@ -443,7 +452,10 @@ compara texto, grupos, atributos y estructura; `verse-reach.test.ts` y
   conservan. Para eso hay que editar el archivo en Door43.
 - Un título en medio de un versículo, o una marca que no se cierra y no es de párrafo, se pierden
   al editar ese versículo, como antes.
-- En el cuadro del editor no se distingue un renglón largo que dobla de un renglón nuevo.
+- Mientras se escribe en el cuadro, un renglón largo que dobla no se distingue de uno nuevo: la
+  forma se ve al salir de él. Un cuadro de texto no puede sangrar cada renglón por separado.
+- Un párrafo que empieza (`\p`) se ve igual que uno que sigue: solo la poesía, las listas y los
+  párrafos sangrados tienen forma propia.
 - El título de un salmo (el versículo 0 de su capítulo) se conserva con su alineación al guardar
   cualquier versículo, pero ninguna pantalla lo enseña: ni el editor lo ofrece para traducirlo
   (`usfmEdit` lee por `\v`), ni los paneles de texto fuente lo muestran (`verseFromSid`,

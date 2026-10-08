@@ -9,6 +9,7 @@ import { useStepWork } from "../dcs/stepWork";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { bookLabel, bookNamesIn } from "../domain/books";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadPmConfig } from "../dcs/issues";
 import { applyVerseEditsKeepingAlignment } from "../domain/alignmentKeep";
@@ -56,6 +57,8 @@ import {
   type RefRange,
 } from "../domain/usfmEdit";
 import { joinMarkup, verseNotes, type VerseNote } from "../domain/verseMarkup";
+import { chapterShape, shownLines, typedOffset } from "../domain/verseShape";
+import { VerseShown, type ShownPlace } from "./VerseShown";
 import { extractDraftVerses, parseSourceUsfm, type VerseTextMap } from "../domain/usfmAst";
 import {
   englishScriptureKindRef,
@@ -921,6 +924,33 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
    * does not see them in the text, and they stay with it when it is saved.
    */
   const keptByVerse = useMemo(() => (usfm && range ? chapterMarkup(usfm, range.chapter) : {}), [usfm, range?.chapter]);
+  /** How each verse stands in the book: the paragraph or the line of a poem it begins in, and the marks of its lines. */
+  const shapeByVerse = useMemo(() => (usfm && range ? chapterShape(usfm, range.chapter) : {}), [usfm, range?.chapter]);
+  /** The row that is being written in. The others are shown as they read, in the shape their marks give them. */
+  const [editing, setEditing] = useState<string | null>(null);
+  /** The lines of a row as they will be written, each with its mark. Rows joined here and not saved yet are prose. */
+  const linesOf = (d: VerseDraft) => {
+    const shape = shapeByVerse[d.from];
+    const own = shape && shape.to === d.to;
+    return shownLines(d.text, shape && !own ? { ...shape, leads: [] } : shape, d.from === d.to ? (sourceLeads[d.from] ?? []) : []);
+  };
+  /** Goes back to writing a row, with the cursor where its text was touched. */
+  const editRow = (d: VerseDraft, place: ShownPlace | null) => {
+    const key = slotKey(d);
+    const shown = linesOf(d).length;
+    // The box is put on the page at once: a phone opens its keyboard only for a focus given while it is touched.
+    flushSync(() => {
+      setActiveVerse(d.from);
+      setEditing(key);
+    });
+    const box = document.getElementById(`v-${key}`) as HTMLTextAreaElement | null;
+    if (!box) return;
+    box.focus();
+    if (place) {
+      const at = typedOffset(d.text, shown, place.line, place.offset);
+      box.setSelectionRange(at, at);
+    }
+  };
   /** The notes of a row and the word each will follow in the text as it is written now. */
   const notesOf = (d: VerseDraft): VerseNote[] => {
     const kept = [];
@@ -2268,6 +2298,10 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                       <label
                         htmlFor={`v-${key}`}
                         title={range ? `${range.chapter}:${label}` : label}
+                        onClick={() => {
+                          // The number of a verse that is shown as it reads has no box to give the focus to.
+                          if (editing !== key && !recreating && d.text.trim()) editRow(d, null);
+                        }}
                       >
                         {label}
                       </label>
@@ -2312,16 +2346,26 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
                         />
                       ) : null}
-                      <textarea
-                        id={`v-${key}`}
-                        className="scripture-editor__input"
-                        rows={3}
-                        value={d.text}
-                        onFocus={() => setActiveVerse(d.from)}
-                        onChange={(e) => updateVerse(key, e.target.value)}
-                        placeholder={t("se.translationPlaceholder")}
-                        disabled={recreating}
-                      />
+                      {/* While nobody writes in it, a verse that has text is shown as it reads: the lines of a poem, each
+                          as deep as its mark says. In the box, such a line and a long one that wraps look the same. */}
+                      {editing !== key && !recreating && d.text.trim() ? (
+                        <VerseShown lines={linesOf(d)} label={t("se.editVerse").replace("{n}", label)} onEdit={(place) => editRow(d, place)} />
+                      ) : (
+                        <textarea
+                          id={`v-${key}`}
+                          className="scripture-editor__input"
+                          rows={3}
+                          value={d.text}
+                          onFocus={() => {
+                            setActiveVerse(d.from);
+                            setEditing(key);
+                          }}
+                          onBlur={() => setEditing((current) => (current === key ? null : current))}
+                          onChange={(e) => updateVerse(key, e.target.value)}
+                          placeholder={t("se.translationPlaceholder")}
+                          disabled={recreating}
+                        />
+                      )}
                       {/* A verse of a poem: said while it is written, and only until it has lines of its own (a team may
                           break a verse in fewer lines than its source does, and that is not to be asked about again). */}
                       {activeVerse === d.from && d.from === d.to && (sourceLeads[d.from]?.length ?? 0) > 1 && textLines(d.text).length <= 1 ? (

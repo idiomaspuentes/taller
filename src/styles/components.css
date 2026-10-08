@@ -3345,15 +3345,16 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
   color: var(--gray-700);
 }
 
-.scripture-editor--split .scripture-editor__usfm-ro .usfm-para {
-  padding-left: 2rem;
+.scripture-editor--split .scripture-editor__usfm-ro {
+  --num: 2rem;
 }
 
 .scripture-editor--split .scripture-editor__usfm-ro .usfm-verse-num {
   display: inline-block;
   box-sizing: border-box;
-  width: 2rem;
-  margin: 0 0 0 -2rem;
+  width: var(--num);
+  /* In its column at the left, however deep the line it is on begins. */
+  margin: 0 var(--first, 0rem) 0 calc(0rem - var(--num) - var(--first, 0rem));
   padding-right: 0.6rem;
   text-align: right;
   vertical-align: baseline;
@@ -3574,13 +3575,11 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
     font-size: 1rem;
   }
 
-  .scripture-editor--split .scripture-editor__usfm-ro .usfm-para {
-    padding-left: 1.75rem;
+  .scripture-editor--split .scripture-editor__usfm-ro {
+    --num: 1.75rem;
   }
 
   .scripture-editor--split .scripture-editor__usfm-ro .usfm-verse-num {
-    width: 1.75rem;
-    margin-left: -1.75rem;
     padding-right: 0.5rem;
   }
 
@@ -7785,6 +7784,40 @@ input.pf-name { font-size: 1.625rem; }
 .sn-note__del { margin-left: auto; color: var(--text-faint) !important; }
 .sn-note__del:hover { color: var(--destructive) !important; }
 
+/* ---------- Scripture in the shape its marks give it ----------
+   One rule for the text that is translated from and for the draft once nobody writes in it, so a line of a poem
+   reads the same above and below. `--first` is where a line begins and `--hang` where it goes on when it wraps;
+   `--num` is the column a verse number hangs in, where there is one. Every line of a poem began at the same place,
+   whatever its mark (`\q1`, `\q2`), and a line that wrapped could not be told from the next one. */
+:is(.scripture-editor__usfm-ro, .se-shown) { --num: 0rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para {
+  --first: 0rem;
+  --hang: 0rem;
+  padding-left: calc(var(--num) + var(--hang));
+  text-indent: calc(var(--first) - var(--hang));
+}
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q"], [data-marker="q1"], [data-marker="qm"], [data-marker="qm1"]) { --first: 1rem; --hang: 3rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q2"], [data-marker="qm2"]) { --first: 2rem; --hang: 3rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q3"], [data-marker="qm3"]) { --first: 3rem; --hang: 4rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="q4"] { --first: 4rem; --hang: 5rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="pi"], [data-marker="pi1"], [data-marker="mi"], [data-marker="pm"], [data-marker="pmo"], [data-marker="pmc"]) { --first: 1rem; --hang: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="pi2"] { --first: 2rem; --hang: 2rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="li"], [data-marker="li1"]) { --first: 1rem; --hang: 2rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="li2"] { --first: 2rem; --hang: 3rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="qc"], [data-marker="pc"]) { text-align: center; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="qr"], [data-marker="pr"], [data-marker="pmr"]) { text-align: right; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="d"] { font-style: italic; }
+/* A line left empty between two stanzas. */
+.scripture-editor__usfm-ro .usfm-para[data-marker="b"] { min-height: 0.75em; }
+.se-shown .usfm-para[data-gap] { margin-top: 0.75em; }
+/* What sits inside a line as a box of its own (the number of a verse) does not take the indent of the line. */
+.scripture-editor__usfm-ro .usfm-para :is(.usfm-verse-num, .usfm-verse) { text-indent: 0; }
+
+/* The draft as it reads while nobody writes in it: sized and placed as the box it is written in. */
+.se-shown { padding: 0.35rem 0.25rem; font-size: var(--verse-font, 1.0625rem); line-height: var(--verse-leading, 1.6); color: var(--text); cursor: text; border-radius: var(--radius-sm, 0.25rem); overflow-wrap: anywhere; }
+.se-shown .usfm-para { margin: 0; }
+.se-shown:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px; }
+
 /* ---------- Draft editor: the source texts stay on screen, the helps follow the verse in hand ---------- */
 .scripture-editor--split .scripture-editor__refs { display: flex; flex-direction: column; min-height: 0; gap: 0.5rem; }
 .se-sources { display: grid; gap: 0.375rem; flex: 0 1 auto; min-height: 0; max-height: 46%; padding-top: 0.5rem; }
@@ -7795,6 +7828,8 @@ input.pf-name { font-size: 1.625rem; }
 /* The source of the verse being written, with its words: sized as the text beside it, and without the number the
    verse already shows. */
 .se-peek .se-peek__own .usfm-verse--marker { display: none; }
+/* With no number shown, there is no column to leave for it: its lines begin where those of the draft do. */
+.scripture-editor--split .se-peek .se-peek__own .scripture-editor__usfm-ro { --num: 0rem; }
 .se-peek .se-peek__own .usfm-ro-root { font-size: 0.875rem; line-height: 1.55; color: var(--text); }
 .se-peek .se-peek__own .usfm-para { margin: 0; }
 .se-peek__own > b { display: block; }

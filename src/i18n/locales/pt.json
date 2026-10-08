@@ -2986,5 +2986,6 @@
   "se.footnoteStart": "Nota de rodapé do versículo: {text}",
   "se.crossrefAt": "Referência junto a «{word}»: {text}",
   "se.crossrefStart": "Referência do versículo: {text}",
-  "se.noteStays": "É salva com o versículo; não é preciso escrevê-la."
+  "se.noteStays": "É salva com o versículo; não é preciso escrevê-la.",
+  "se.editVerse": "Versículo {n}. Toque para escrever."
 }
