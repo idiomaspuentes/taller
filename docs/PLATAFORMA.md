@@ -377,9 +377,12 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   el equipo tenga se quedan, y a un borrador que ya tiene alguna no se le agregan. Guardar un
   versículo, corregirlo o entregarlo no las mueve.
 - **Cómo se ve.** Mientras nadie escribe en él, un versículo con texto se muestra con la forma que
-  le dan sus marcas (`src/domain/verseShape.ts`, `VerseShown`): cada renglón de un poema empieza
-  tan adentro como dice su marca (`\q1` a 1 rem, `\q2` a 2) y, si dobla, sigue más adentro (3 rem),
-  de modo que un renglón largo no se confunde con uno nuevo; `\b` deja una línea vacía. Al tocarlo
+  le dan sus marcas (`src/domain/verseShape.ts`, `VerseShown`): cada renglón de un poema es un
+  bloque con una raya a su izquierda, tan alta como el renglón por muchas veces que doble, y metido
+  hacia dentro según su marca (`\q1` al borde, `\q2` 1 rem adentro); `\b` deja una línea vacía. Las
+  rayas se cuentan: dos renglones son dos rayas. Primero se marcaron solo con sangrías (dónde
+  empieza un renglón, dónde uno más profundo y dónde sigue cualquiera al doblar), y en un teléfono
+  un versículo de dos renglones doblaba en cinco, a tres profundidades: parecían más. Al tocarlo
   vuelve el cuadro para escribir, con el cursor donde se tocó. Lo que se muestra es lo que se va a
   guardar (`leadsFor`, la misma regla que escribe), también antes de guardar: en un libro nuevo los
   renglones toman la forma que el original tiene en ese versículo. El texto del que se traduce usa

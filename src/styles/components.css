@@ -3354,7 +3354,7 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
   box-sizing: border-box;
   width: var(--num);
   /* In its column at the left, however deep the line it is on begins. */
-  margin: 0 var(--first, 0rem) 0 calc(0rem - var(--num) - var(--first, 0rem));
+  margin: 0 calc(var(--indent, 0rem) + var(--bar, 0px) + var(--pad, 0rem)) 0 calc(0rem - var(--num) - var(--indent, 0rem) - var(--bar, 0px) - var(--pad, 0rem));
   padding-right: 0.6rem;
   text-align: right;
   vertical-align: baseline;
@@ -7786,24 +7786,37 @@ input.pf-name { font-size: 1.625rem; }
 
 /* ---------- Scripture in the shape its marks give it ----------
    One rule for the text that is translated from and for the draft once nobody writes in it, so a line of a poem
-   reads the same above and below. `--first` is where a line begins and `--hang` where it goes on when it wraps;
-   `--num` is the column a verse number hangs in, where there is one. Every line of a poem began at the same place,
-   whatever its mark (`\q1`, `\q2`), and a line that wrapped could not be told from the next one. */
-:is(.scripture-editor__usfm-ro, .se-shown) { --num: 0rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para {
-  --first: 0rem;
-  --hang: 0rem;
-  padding-left: calc(var(--num) + var(--hang));
-  text-indent: calc(var(--first) - var(--hang));
+   reads the same above and below.
+
+   A line of a poem is a block with a rule at its left, as tall as the line however many times it wraps, and set
+   in by its depth (`\q1`, `\q2`). First it was told by indents alone: where a line begins, where a deeper one
+   does, and where either goes on when it wraps. On a phone a verse of two lines wraps into five, at three depths,
+   and it read as more lines than it has. The rules can be counted.
+
+   `--num` is the column a verse number hangs in, where there is one; `--indent` where a line begins, `--hang` how
+   much deeper it goes on when it wraps, `--bar` and `--pad` the rule at its left and the room after it. */
+:is(.scripture-editor__usfm-ro, .se-shown) {
+  --num: 0rem;
+  --line-rule: color-mix(in srgb, var(--accent-400) 55%, transparent);
 }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q"], [data-marker="q1"], [data-marker="qm"], [data-marker="qm1"]) { --first: 1rem; --hang: 3rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q2"], [data-marker="qm2"]) { --first: 2rem; --hang: 3rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q3"], [data-marker="qm3"]) { --first: 3rem; --hang: 4rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="q4"] { --first: 4rem; --hang: 5rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="pi"], [data-marker="pi1"], [data-marker="mi"], [data-marker="pm"], [data-marker="pmo"], [data-marker="pmc"]) { --first: 1rem; --hang: 1rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="pi2"] { --first: 2rem; --hang: 2rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="li"], [data-marker="li1"]) { --first: 1rem; --hang: 2rem; }
-:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="li2"] { --first: 2rem; --hang: 3rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para {
+  --indent: 0rem;
+  --hang: 0rem;
+  --bar: 0px;
+  --pad: 0rem;
+  padding-left: calc(var(--num) + var(--indent) + var(--bar) + var(--pad) + var(--hang));
+  text-indent: calc(0rem - var(--hang));
+  /* Shorter than the block by a little, so two lines one under the other are two rules. */
+  background: linear-gradient(var(--line-rule), var(--line-rule)) no-repeat calc(var(--num) + var(--indent)) 50% / var(--bar) calc(100% - 0.4rem);
+}
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker^="q"]):not([data-marker="qa"], [data-marker="qc"], [data-marker="qr"], [data-marker="qd"]) { --bar: 2px; --pad: 0.5rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q2"], [data-marker="qm2"]) { --indent: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="q3"], [data-marker="qm3"]) { --indent: 2rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="q4"] { --indent: 3rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="pi"], [data-marker="pi1"], [data-marker="mi"], [data-marker="pm"], [data-marker="pmo"], [data-marker="pmc"]) { --indent: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="pi2"] { --indent: 2rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="li"], [data-marker="li1"]) { --indent: 1rem; --hang: 1rem; }
+:is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="li2"] { --indent: 2rem; --hang: 1rem; }
 :is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="qc"], [data-marker="pc"]) { text-align: center; }
 :is(.scripture-editor__usfm-ro, .se-shown) .usfm-para:is([data-marker="qr"], [data-marker="pr"], [data-marker="pmr"]) { text-align: right; }
 :is(.scripture-editor__usfm-ro, .se-shown) .usfm-para[data-marker="d"] { font-style: italic; }
