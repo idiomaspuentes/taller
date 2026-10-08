@@ -4,7 +4,7 @@
  *   npm run verify:help-markup
  */
 import assert from "node:assert/strict";
-import { academyLink, describeRc, noteFromTsv, noteToTsv, parseMarkdown, referenceLink, roundTrips, serializeMarkdown, wordLink } from "../src/domain/helpMarkup";
+import { academyLink, articleAsWritten, describeRc, noteFromTsv, noteToTsv, parseMarkdown, referenceLink, roundTrips, serializeMarkdown, wordLink } from "../src/domain/helpMarkup";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -74,6 +74,61 @@ test("los artículos reales vuelven iguales: marcas con dos espacios, listas num
   assert.ok(roundTrips(under), "una lista o una cita pegada al párrafo de arriba");
   assert.ok(roundTrips(["> Un ejemplo. (Rut 2:16 TPL).", ">> Su alternativa, citada dentro.", "", ">Sin espacio", ">", ">sigue."].join("\n")), "una cita dentro de otra, y una cita sin espacio");
   assert.ok(roundTrips("1. uno\n2. dos\n3. tres") && roundTrips("5. cinco\n6. seis"));
+});
+
+// ---------------------------------------------------------------- an article on the lines its file has
+// As the articles the team has published are written: spaces at the ends of lines, a line with nothing but spaces,
+// two empty lines where one would do, a line broken with two spaces, and a line end at the end.
+const onFile = ["# Gracia  ", "", "## Definición: ", "", "", "La gracia es un **don**.  ", "Se da sin merecerlo.", "    ", "* primero ", "* segundo", "", "> Una cita.  ", ">  ", "> Sigue.", ""].join("\n");
+const asEdited = (md: string) => serializeMarkdown(parseMarkdown(md));
+
+test("un artículo que nadie cambió se guarda igual, byte por byte", () => {
+  assert.ok(roundTrips(onFile));
+  assert.notEqual(asEdited(onFile), onFile, "el árbol lo devuelve sin sus espacios ni su final");
+  assert.equal(articleAsWritten(onFile, asEdited(onFile)), onFile);
+  const windows = onFile.replace(/\n/g, "\r\n");
+  assert.equal(articleAsWritten(windows, asEdited(windows)), windows);
+  const noEnd = onFile.replace(/\n$/, "");
+  assert.equal(articleAsWritten(noEnd, asEdited(noEnd)), noEnd, "ni gana un fin de línea que no tenía");
+  const padded = `\n\n${onFile}\n\n`;
+  assert.equal(articleAsWritten(padded, asEdited(padded)), padded);
+});
+
+test("corregir una palabra cambia su línea y ninguna otra", () => {
+  const saved = articleAsWritten(onFile, asEdited(onFile).replace("sin merecerlo", "sin que se merezca"));
+  const was = onFile.split("\n");
+  assert.deepEqual(saved.split("\n").filter((line, index) => line !== was[index]), ["Se da sin que se merezca."]);
+  assert.equal(saved.split("\n").length, was.length);
+  const windows = onFile.replace(/\n/g, "\r\n");
+  const savedWindows = articleAsWritten(windows, asEdited(windows).replace("sin merecerlo", "sin que se merezca"));
+  assert.equal(savedWindows, saved.replace(/\n/g, "\r\n"), "con el fin de línea que el archivo tiene");
+});
+
+test("un párrafo nuevo entra donde se escribió, y uno que se quita sale, sin mover lo demás", () => {
+  const added = articleAsWritten(onFile, asEdited(onFile).replace("* primero", "Un párrafo nuevo.\n\n* primero"));
+  assert.deepEqual(added.split("\n"), ["# Gracia  ", "", "## Definición: ", "", "", "La gracia es un **don**.  ", "Se da sin merecerlo.", "    ", "Un párrafo nuevo.", "", "* primero ", "* segundo", "", "> Una cita.  ", ">  ", "> Sigue.", ""]);
+  const removed = articleAsWritten(onFile, asEdited(onFile).replace("\n\n* primero\n* segundo", ""));
+  assert.deepEqual(removed.split("\n"), ["# Gracia  ", "", "## Definición: ", "", "", "La gracia es un **don**.  ", "Se da sin merecerlo.", "    ", "> Una cita.  ", ">  ", "> Sigue.", ""]);
+  const atEnd = articleAsWritten(onFile, `${asEdited(onFile)}\n\nUn párrafo al final.`);
+  assert.ok(atEnd.endsWith("> Sigue.\n\nUn párrafo al final.\n"), "el archivo termina como terminaba");
+  assert.ok(atEnd.startsWith(onFile.replace(/\n$/, "")));
+});
+
+test("lo que alguien teclea en la fuente del artículo se guarda como lo tecleó", () => {
+  // Two spaces at the end of a line (a line break in Markdown), and three empty lines where the file had two.
+  const typed = onFile.replace("Se da sin merecerlo.", "Se da sin merecerlo.  ").replace("## Definición: \n\n\n", "## Definición: \n\n\n\n");
+  const saved = articleAsWritten(onFile, typed);
+  assert.ok(saved.includes("Se da sin merecerlo.  \n"));
+  assert.ok(saved.includes("## Definición: \n\n\n\nLa gracia"));
+  assert.ok(saved.startsWith("# Gracia  \n"), "y el resto, como el archivo lo tiene");
+});
+
+test("un artículo que el equipo no tiene todavía termina con un fin de línea, y uno vacío no se inventa", () => {
+  assert.equal(articleAsWritten("", "# Gracia\n\nUn don."), "# Gracia\n\nUn don.\n");
+  assert.equal(articleAsWritten("", "\n# Gracia\n\nUn don.\n\n\n"), "# Gracia\n\nUn don.\n");
+  assert.equal(articleAsWritten("", ""), "");
+  assert.equal(articleAsWritten("Gracia\n", "Gracia"), "Gracia\n", "un título, que es un archivo de una línea");
+  assert.equal(articleAsWritten("Gracia", "La gracia"), "La gracia");
 });
 
 console.log(`\nverify-help-markup: ${passed} checks passed.`);

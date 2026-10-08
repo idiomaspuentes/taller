@@ -8,6 +8,7 @@ import { correctionSubtask, createCorrections } from "./corrections";
 import { commentOnIssue } from "./issues";
 import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { readTeamHelps, saveTeamHelpsFile, saveTeamHelpsRows, teamDraftBranch } from "./teamHelps";
+import { articleAsWritten } from "../domain/helpMarkup";
 import { sameWording, proposalAsk, proposalFit, proposalWords, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import type { CheckAnswer } from "../domain/checklist";
 import { helpsRowField, type HelpsRowEdit } from "../domain/helpsDraft";
@@ -187,7 +188,7 @@ export async function applyProposal(params: ProposalPlace & { proposal: Proposal
     if (current && fit === "changed") throw new HelpChangedError(current.text);
     if (fit === "done") return;
     try {
-      await saveTeamHelpsFile({ session, owner: helps.owner, repo: helps.repo, filepath: path, branch, content: after, sha: current?.sha, message });
+      await saveTeamHelpsFile({ session, owner: helps.owner, repo: helps.repo, filepath: path, branch, content: articleAsWritten(current?.text ?? "", after), sha: current?.sha, message });
       return;
     } catch (err) {
       // Somebody wrote it between the reading and the writing: read again, and it is told from what it says now.

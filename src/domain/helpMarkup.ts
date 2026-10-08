@@ -149,6 +149,77 @@ export function roundTrips(md: string): boolean {
   return serializeMarkdown(parseMarkdown(md)) === clean(md);
 }
 
+// ---------------------------------------------------------------- an article on the lines its file has
+
+type FileLine = { body: string; end: string };
+/** A stretch of an article: a line that says something, or the empty lines between two of them. */
+type Stretch = { key: string; lines: FileLine[] };
+
+const GAP = "\u0000";
+
+function stretches(lines: FileLine[]): Stretch[] {
+  const out: Stretch[] = [];
+  for (const line of lines) {
+    const key = line.body.replace(/\s+$/, "");
+    const last = out[out.length - 1];
+    if (!key && last?.key === GAP) last.lines.push(line);
+    else out.push({ key: key || GAP, lines: [line] });
+  }
+  return out;
+}
+
+/**
+ * An article as it is to be saved: what was edited, on the lines the file had. The tree gives a text back without
+ * what does not change what it says (`normalizeMarkdown`), and that was what got saved: an article with one word
+ * corrected lost the line end at its end (102 of the 178 the team has published of the Academy would), the spaces
+ * at the ends of its lines and the empty lines it had more than one of. A line that says what it said is written
+ * as the file has it, with its own line end; so are the empty lines between two blocks that are both still there,
+ * and what the file has before its first line and after its last.
+ *
+ * An article the team does not have yet ends with a line end, as the ones it is translated from do.
+ */
+export function articleAsWritten(original: string, edited: string): string {
+  const typed = edited.replace(/\r\n/g, "\n").replace(/^\n+/, "").replace(/\s+$/, "");
+  if (!typed) return edited;
+  if (!original.trim()) return `${typed}\n`;
+  const eol = original.includes("\r\n") ? "\r\n" : "\n";
+  const file: FileLine[] = original.split(/(?<=\n)/).map((chunk) => {
+    const end = /\r?\n$/.exec(chunk)?.[0] ?? "";
+    return { body: chunk.slice(0, chunk.length - end.length), end };
+  });
+  const had = stretches(file);
+  const lead = had[0]?.key === GAP ? had.shift()!.lines : [];
+  const tail = had[had.length - 1]?.key === GAP ? had.pop()!.lines : [];
+  const now = stretches(typed.split("\n").map((body) => ({ body, end: eol })));
+  // The longest run of stretches both have, in order: those are the ones that stay as the file has them.
+  const common = Array.from({ length: had.length + 1 }, () => new Uint16Array(now.length + 1));
+  for (let i = had.length - 1; i >= 0; i--) {
+    for (let j = now.length - 1; j >= 0; j--) common[i]![j] = had[i]!.key === now[j]!.key ? common[i + 1]![j + 1]! + 1 : Math.max(common[i + 1]![j]!, common[i]![j + 1]!);
+  }
+  const out: FileLine[] = [...lead];
+  let i = 0;
+  let j = 0;
+  while (j < now.length) {
+    const mine = now[j]!;
+    const theirs = had[i];
+    if (theirs && theirs.key === mine.key) {
+      // Spaces somebody typed at the end of a line (in the source of the article) are theirs to keep; and so is a
+      // number of empty lines that is neither the one the tree writes nor the one the file had.
+      const typedOwn = mine.key === GAP ? mine.lines.length !== 1 && mine.lines.length !== theirs.lines.length : mine.lines[0]!.body !== mine.key;
+      out.push(...(typedOwn ? mine.lines : theirs.lines));
+      i++;
+      j++;
+    } else if (theirs && common[i + 1]![j]! >= common[i]![j + 1]!) i++;
+    else {
+      out.push(...mine.lines);
+      j++;
+    }
+  }
+  out.push(...tail);
+  const last = file[file.length - 1]?.end ?? "";
+  return out.map((line, index) => line.body + (index === out.length - 1 ? last : line.end || eol)).join("");
+}
+
 /**
  * A note in a table file keeps its line breaks written out (`\n` as two characters, and `<br>`): they are turned
  * into real ones to edit it, and written out again to save it.

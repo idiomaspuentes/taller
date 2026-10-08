@@ -21,7 +21,7 @@ import { answerTextId, helpTexts, helpsLeft, knownWords, type HelpText } from ".
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { helpRowRef } from "../domain/commentPlace";
-import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
+import { articleAsWritten, noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getContents, getRawContent } from "@ip-lms/dcs-client";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -400,8 +400,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           nextFiles[item.filepath] = { text: "" };
         }
         const cached = cache?.texts[item.id];
-        if (cached != null && cached !== remote) usedCache = true;
-        nextItems.push({ ...item, text: cached ?? remote });
+        // What was kept here is the text as the editor says it; the file has it on its own lines. The same words
+        // are not something to restore.
+        const kept = cached != null && articleAsWritten(remote, cached) !== remote ? cached : null;
+        if (kept != null) usedCache = true;
+        nextItems.push({ ...item, text: kept ?? remote });
         opened.current[item.id] = stampOf({ ...item, text: remote });
       }
       setFiles(nextFiles);
@@ -485,8 +488,11 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
           nextFiles[target.filepath] = await saveTeamHelpsRows({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branch: head, edits: changed.map((item) => ({ id: item.id, fields: tsvFieldsForItem(resource, item) })), message });
         } else {
           for (const item of changed) {
-            const saved = await saveTeamHelpsFile({ session, owner: target.owner, repo: target.repo, filepath: item.filepath, branch: head, content: item.text, sha: files[item.filepath]?.sha, message });
-            nextFiles[item.filepath] = { text: item.text, sha: saved.sha };
+            const remote = files[item.filepath]?.text ?? "";
+            const content = articleAsWritten(remote, item.text);
+            if (content === remote && files[item.filepath]?.sha) continue;
+            const saved = await saveTeamHelpsFile({ session, owner: target.owner, repo: target.repo, filepath: item.filepath, branch: head, content, sha: files[item.filepath]?.sha, message });
+            nextFiles[item.filepath] = { text: content, sha: saved.sha };
           }
         }
         for (const item of changed) opened.current[item.id] = stampOf(item);
@@ -528,15 +534,17 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       } else {
         for (const item of items) {
           const remote = files[item.filepath]?.text ?? "";
+          // On the lines the file has: a line that says what it said is written as it was.
+          const content = articleAsWritten(remote, item.text);
           // Nothing changed; or nothing was written in a file that does not exist yet, which is not to be made empty.
-          if (item.text === remote && (files[item.filepath]?.sha || !item.text.trim())) continue;
+          if (content === remote && (files[item.filepath]?.sha || !content.trim())) continue;
           const message = `TAS: ${item.label}${item.part ? ` (${item.part})` : ""} (${ctx.resource}) · #${ctx.issueNumber || "—"}`;
           const saved = await saveTextOnPortionBranch({
             session,
             owner: target.owner,
             repo: target.repo,
             filepath: item.filepath,
-            content: item.text,
+            content,
             message,
             branch: head,
             sha: files[item.filepath]?.sha,
@@ -548,7 +556,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             issueNumber: ctx.issueNumber,
           });
           recordOwnSave(ownAction, ctx.issueNumber, message, saved.commitSha);
-          nextFiles[item.filepath] = { text: item.text, sha: saved.sha };
+          nextFiles[item.filepath] = { text: content, sha: saved.sha };
         }
       }
       setFiles(nextFiles);

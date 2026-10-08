@@ -517,6 +517,55 @@ compara texto, grupos, atributos y estructura; `verse-reach.test.ts` y
   como los Salmos del ULT) se escribe con la marca sola en su línea: no cambia ninguna palabra,
   pero sí esas líneas, la primera vez que se guarda.
 
+## Cómo se escriben las ayudas
+
+Las notas y las preguntas son tablas (un archivo TSV por libro) y los artículos de la Academia y de
+las palabras, un archivo Markdown cada uno. Igual que con el texto bíblico: lo que no se tocó queda
+como estaba, byte por byte, y lo que se tocó, en el formato en que el recurso está escrito.
+
+- **Una tabla se lee como Door43 la escribe** (`parseTsvTable`, `src/prep/tsv.ts`): una fila por
+  línea, una tabulación entre dos celdas y nada entre comillas. Una comilla es una letra del texto.
+  Se leía como un CSV: una celda que empezaba con comilla la perdía (la respuesta de Ester 9:13 en
+  las preguntas del equipo) y una que no la cerraba se habría llevado las filas siguientes. Un
+  archivo con comas sí se lee como CSV.
+- **Guardar una fila escribe esa línea** (`applyHelpsTsvEdits`, `src/domain/helpsDraft.ts`). Las
+  demás líneas quedan como se leyeron, con su fin de línea, y de la fila que se guarda solo cambia
+  la celda que cambió. Antes se escribía la tabla entera a partir de lo leído: en las notas que el
+  equipo tiene publicadas (14 libros, 22.280 filas), guardar una fila envolvía entre comillas, con
+  cada comilla duplicada, otras 852 que nadie había tocado, y a 145 les quitaba un espacio al
+  final de una celda. Lo que la persona escribe se guarda como lo escribió (`tsvCell`): con sus
+  comillas, un salto de línea con sus dos letras (`\n`, como lo escriben las notas) y una
+  tabulación vuelta espacio, que partiría la fila. Pasa por aquí todo lo que corrige una ayuda: el
+  editor de ayudas, las correcciones al afinar y las propuestas acordadas (`saveTeamHelpsRows`).
+- **La entrega de las filas de un pasaje** (`mergeTsvRows`) pone en el archivo del grupo la línea
+  que el borrador tiene y deja las demás como están. La cita de una nota (`withQuote`) y la
+  publicación de una unidad (`publishUnitTsv`) ya escribían así.
+- **Un artículo se guarda en las líneas que su archivo tiene** (`articleAsWritten`,
+  `src/domain/helpMarkup.ts`). El editor trabaja sobre un árbol que devuelve el texto sin lo que no
+  cambia lo que dice, y eso era lo que se guardaba: un artículo con una palabra corregida perdía el
+  fin de línea del final (102 de los 178 de la Academia que el equipo tiene publicados), los
+  espacios al final de sus líneas y las líneas vacías de más. Ahora una línea que dice lo que decía
+  se escribe como el archivo la tiene, con su fin de línea; también las líneas vacías entre dos
+  bloques que siguen ahí, y lo que el archivo tiene antes de su primera línea y después de la
+  última. Lo que alguien teclea en la fuente del artículo (dos espacios al final de una línea, otro
+  número de líneas vacías) se guarda como lo tecleó. Un artículo que el equipo no tenía termina con
+  un fin de línea.
+
+**Pruebas.** `npm run verify:helps-table` (leer, guardar una fila, una fila nueva, la entrega; con
+fin de línea de Windows, sin fin de línea al final, con una línea vacía en medio) y
+`npm run verify:help-markup` (un artículo sin cambios, una palabra corregida, un párrafo que entra
+o sale). Comprobado además, solo leyendo, con lo publicado en `es-419_gl`: 18 tablas y 465
+artículos se guardan idénticos sin cambios, y con una corrección cambia una sola línea.
+
+**No hace todavía.**
+
+- Un artículo que se traduce del inglés no lleva los cortes de renglón que el original hace con dos
+  espacios al final de la línea: el árbol los lee y los escribe como un salto simple, que otros
+  programas muestran seguido. Los artículos que el equipo tiene publicados no los usan.
+- Una fila que ya estuviera guardada con comillas duplicadas se leería con ellas. No hay ninguna en
+  las ramas de `es-419_tn` ni `es-419_tq`, ni en producción ni en QA (revisado el 8 de octubre de
+  2026).
+
 ## Registro de correcciones del texto
 
 Corregir un versículo del borrador del grupo (al afinar notas o palabras clave, al alinear, en la
