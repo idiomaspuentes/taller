@@ -18,7 +18,7 @@ import { parseChatEvent } from "./chatEvent";
 import { verseChoiceDecisionId } from "./conflictChoice";
 import { verseConflictData } from "./verseConflictEvent";
 import { parseVerseConflictsComment } from "./verseConflicts";
-import { listVerseSpans, normalizeVerseText, parseRefRange, type RefRange } from "./usfmEdit";
+import { editedVersesInto, listVerseSpans, normalizeVerseText, parseRefRange, type RefRange, type VerseSpan } from "./usfmEdit";
 import { mergeIntoTrunkWithRetry } from "./trunkMerge";
 import { patchTrunkByVerse } from "./usfmTrunkPatch";
 import { verseSlotsOf } from "./usfmVerseMerge";
@@ -188,10 +188,41 @@ function outsideKey(usfm: string, ranges: RefRange[]): string[] {
 
 const CONFLICT_MARKER = /^(<{7}|={7}|>{7})( |$)/m;
 
+/** What the alignment of a verse says, in order, however it is laid out on its lines. */
+function alignmentKey(raw: string): string {
+  return (raw.match(/\\zaln-s\b[^\\]*\\\*|\\zaln-e\\\*|\\w\s[^\\]*\\w\*/g) ?? []).map((mark) => mark.replace(/\s+/g, " ")).join("");
+}
+
+/**
+ * The verses of `ranges` that say the same on both sides and that the group draft has aligned another way, written
+ * as the group draft has them. The patch compares what verses say: a verse somebody aligned after its text had
+ * reached the principal «was already there», and the alignment of a whole task never arrived. Its words are the
+ * same and the work is new.
+ *
+ * A verse the group draft has with no alignment is left as the principal has it: there is nothing to bring, and
+ * what the principal has still stands for those words.
+ */
+function withAlignmentOf(principal: string, grupal: string, ranges: RefRange[]): string {
+  const id = (span: VerseSpan) => `${span.chapter}:${span.verse}-${span.verseTo}`;
+  const own = new Map(listVerseSpans(principal).filter((span) => !span.segment).map((span) => [id(span), span]));
+  let usfm = principal;
+  for (const span of listVerseSpans(grupal)) {
+    if (span.segment || !ranges.some((r) => r.chapter === span.chapter && r.from <= span.verse && span.verseTo <= r.to)) continue;
+    const had = own.get(id(span));
+    const links = alignmentKey(span.rawBody);
+    if (!had || !links || links === alignmentKey(had.rawBody)) continue;
+    if (normalizeVerseText(span.rawBody) !== normalizeVerseText(had.rawBody)) continue;
+    // One verse at a time: a verse that cannot be taken (written twice in the principal) does not hold the rest.
+    usfm = editedVersesInto(usfm, grupal, span.chapter, [{ from: span.verse, to: span.verseTo }]) ?? usfm;
+  }
+  return usfm;
+}
+
 /**
  * Splice the grupal text of `ranges` into `principal`. `write` carries the
- * new principal text; `same` means both already agree on the range; `differ`
- * lists verses where both have different non-empty text (nothing to write).
+ * new principal text; `same` means both already agree on the range, in what
+ * the verses say and in how the group aligned them; `differ` lists verses
+ * where both have different non-empty text (nothing to write).
  *
  * With `replace` (review task), differing verses do not abort: the grupal
  * text wins inside the ranges and `write.replaced` lists them. Same patch,
@@ -234,6 +265,7 @@ export function computePrincipalPass(params: {
     }
     usfm = patch.usfm;
   }
+  usfm = withAlignmentOf(usfm, grupal, ranges);
   if (usfm === principal) return { status: "same" };
 
   const before = outsideKey(principal, ranges);

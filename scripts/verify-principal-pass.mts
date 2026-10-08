@@ -400,4 +400,63 @@ function issue(n: number, opts: { state?: "open" | "closed"; title?: string; con
   console.log("ok  commit message keeps audit detail");
 }
 
+// A verse the group aligned after its text had reached the principal: the words are the same, the work is new.
+{
+  const link = (strong: string, word: string) =>
+    `\\zaln-s |x-strong="${strong}" x-occurrence="1" x-occurrences="1" x-content="א"\\*\\w ${word}|x-occurrence="1" x-occurrences="1"\\w*\\zaln-e\\*`;
+  const plain = `\\id JON Borrador
+\\usfm 3.0
+\\c 2
+\\p
+\\v 1 Y Jonás oró a su Dios.
+\\v 2 Y dijo:
+\\q1 Clamé en mi angustia,
+\\q2 y él me respondió.
+
+\\ts\\*
+\\q1
+\\v 3 Me echaste a lo profundo.
+\\v 4 Yo dije: fui expulsado.
+`;
+  const aligned = plain
+    .replace("\\v 1 Y Jonás oró", `\\v 1 Y\n${link("H3124", "Jonás")}\n${link("H6419", "oró")}`)
+    .replace("\\q1 Clamé en", `\\q1 ${link("H7121", "Clamé")} en`)
+    .replace("\\v 4 Yo dije:", `\\v 4 Yo ${link("H0559", "dije")}:`);
+  const task = { chapter: 2, from: 1, to: 3 };
+  // 2:4 is not of the task: it stays as the principal has it.
+  const expected = aligned.replace(`\\v 4 Yo ${link("H0559", "dije")}:`, "\\v 4 Yo dije:");
+
+  const r = computePrincipalPass({ principal: plain, grupal: aligned, ranges: [task] });
+  assert(r.status === "write", `aligned after the text was passed: expected write, got ${r.status}`);
+  assert(r.usfm === expected, `the verses of the task are written as the group aligned them, and nothing else changes:\n${r.usfm}`);
+  console.log("ok  a verse aligned after its text was passed takes its alignment; lines, chunk mark and the rest stay");
+
+  const again = computePrincipalPass({ principal: r.usfm, grupal: aligned, ranges: [task] });
+  assert(again.status === "same", `passed twice: expected same, got ${again.status}`);
+  console.log("ok  passing it again finds nothing to write");
+
+  const behind = computePrincipalPass({ principal: expected, grupal: plain, ranges: [task] });
+  assert(behind.status === "same", `group draft with no alignment: expected same, got ${behind.status}`);
+  console.log("ok  a group draft with no alignment does not take the principal's away");
+
+  const refined = aligned.replace('x-strong="H7121"', 'x-strong="H7122"');
+  const better = computePrincipalPass({ principal: expected, grupal: refined, ranges: [task] });
+  assert(better.status === "write" && better.usfm === expected.replace('x-strong="H7121"', 'x-strong="H7122"'), "a word linked to another original word reaches the principal");
+  console.log("ok  an alignment that was changed reaches the principal");
+
+  const crlf = computePrincipalPass({ principal: plain.replace(/\n/g, "\r\n"), grupal: aligned, ranges: [task] });
+  assert(crlf.status === "write" && crlf.usfm === expected.replace(/\n/g, "\r\n"), "a principal with CRLF keeps its line ends");
+  console.log("ok  a principal with CRLF keeps its line ends");
+
+  const empty3 = plain.replace("\\v 3 Me echaste a lo profundo.", "\\v 3");
+  const both = computePrincipalPass({ principal: empty3, grupal: aligned, ranges: [task] });
+  assert(both.status === "write" && both.usfm === expected, `a verse to fill and a verse to align in one pass:\n${both.status === "write" ? both.usfm : both.status}`);
+  console.log("ok  one pass fills an empty verse and brings the alignment of another");
+
+  const other = plain.replace("Clamé en mi angustia,", "Grité en mi angustia,");
+  const differs = computePrincipalPass({ principal: other, grupal: aligned, ranges: [task] });
+  assert(differs.status === "differ", `another wording in the principal still stops the pass: got ${differs.status}`);
+  console.log("ok  another wording in the principal still stops the pass");
+}
+
 console.log("\nverify-principal-pass: all checks passed");

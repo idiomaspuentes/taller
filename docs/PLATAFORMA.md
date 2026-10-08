@@ -423,6 +423,15 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   quedan como el archivo los tiene, aunque los haya escrito otra herramienta a su manera. Antes de
   guardar se comprueba que ningún otro versículo cambió de palabras ni perdió alineación
   (`versesChangedBesides`); si pasara, no se guarda y se avisa.
+- **Alinear** (`saveVerseAlignment`). Guardar la alineación de un versículo escribe el libro entero
+  con la alineación puesta de nuevo, y de ese libro solo se toma el versículo que se alineó
+  (`editedVersesInto`, el mismo paso que al guardar texto). Antes se guardaba el libro escrito de
+  nuevo: en un Jonás hecho con translationCore, alinear un versículo cambiaba 73 líneas de 1317, en
+  versículos que nadie había tocado (dónde va una marca en su línea, dos grupos vecinos del mismo
+  original vueltos uno, espacios al final). El versículo alineado queda en sus renglones, con cada
+  grupo en su línea, y lo que le sigue (la marca de trozo, la marca que abre el siguiente) no se
+  mueve. Dos versículos unidos en uno (`\v 4-5`) no tienen versículo propio que tomar: ahí se
+  guarda el libro escrito de nuevo.
 - **Lo que un versículo tiene además de sus palabras** (`src/domain/verseMarkup.ts`): una nota al
   pie o una referencia cruzada (`\f … \f*`, `\x … \x*`), palabras marcadas (`\nd Jehová\nd*`,
   `\add …\add*`, `\qs Selah\qs*`), un hito (`\qt-s … \qt-e\*`). Quien edita ve y escribe solo las
@@ -455,6 +464,13 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   mismas palabras (`textInLines`). Todas pasan por `saveCorrection`, que lo pide con `flat`.
 - **La entrega** (`patchTrunkByVerse`) lleva al borrador del grupo el versículo con sus renglones
   y sus grupos, y deja lo que le sigue en el borrador como esté allí.
+- **El paso al borrador principal** (`computePrincipalPass`) usa esa misma entrega, que compara lo
+  que los versículos dicen. Un versículo que el grupo alineó después de que su texto ya estaba en
+  el borrador principal dice lo mismo en los dos lados: «ya estaba», y la alineación de una tarea
+  entera no llegaba. Ahora, de los versículos de la tarea que dicen lo mismo y que el borrador del
+  grupo tiene alineados de otra manera, se toma el del grupo (`withAlignmentOf`), con sus renglones.
+  Si el borrador del grupo no tiene alineación en un versículo, el del principal se deja: no hay
+  nada que traer.
 - **Un libro nuevo** (`skeletonUsfmFromSource`) nace con los capítulos, los versículos, los
   párrafos y los renglones de poesía del texto del que se traduce, y con su nombre en el idioma del
   equipo (`\h`, `\toc1`–`\toc3`, `\mt`), y con sus trozos. No copia los títulos del original.
@@ -467,6 +483,11 @@ cambiada antes de la nota, después y debajo de ella, la palabra marcada cambiad
 sin alineación, en un versículo de varios renglones, en la entrega, y con el Judas que publica
 unfoldingWord (cambiar una palabra de 1:5 conserva su nota y no toca ningún otro versículo). En
 cada caso comprueba que el resto del libro quedó igual, byte por byte.
+`npm run verify:alignment-store` alinea versículos de un libro en traducción (prosa, poesía, una
+nota, una palabra marcada, sus trozos) y de tres archivos reales (el Judas del ULT, el Jonás de un
+equipo hecho con translationCore, los salmos 3, 4 y 11 del ULT): el resto del libro queda igual,
+byte por byte. `npm run verify:principal-pass` pasa al borrador principal un versículo alineado
+después de que su texto ya estaba allí.
 `npm run verify:alignment-keep` corrige un versículo de un salmo y comprueba que su título, y el
 del salmo siguiente, conservan sus enlaces, y que un título en medio de un versículo no se queda
 con el de una palabra que repite. En `usfm-ast`, `alignment-real-books.test.ts` escribe de vuelta
