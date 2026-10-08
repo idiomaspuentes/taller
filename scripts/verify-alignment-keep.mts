@@ -71,4 +71,49 @@ test("sin alineación se comporta exactamente como el guardado de siempre", () =
   assert.equal(usfmHasAlignment(aligned), true);
 });
 
+// ---------------------------------------------------------------- what is next to a verse and is not the verse
+
+/** A word linked to one of the original, with the number it has among the words of its verse. */
+const zn = (content: string, word: string, occurrence = 1, occurrences = 1) =>
+  String.raw`\zaln-s |x-strong="H1" x-lemma="${content}" x-occurrence="1" x-occurrences="1" x-content="${content}"\*\w ${word}|x-occurrence="${occurrence}" x-occurrences="${occurrences}"\w*\zaln-e\*`;
+const wordsIn = (text: string): string[] => [...text.matchAll(/\\w ([^|\\]+)\|x-occurrence="(\d+)" x-occurrences="(\d+)"/g)].map((m) => `${m[1]}#${m[2]}/${m[3]}`);
+
+test("corregir un versículo de un salmo deja el título del salmo, y el del siguiente, con sus vínculos", () => {
+  const psalms = [
+    String.raw`\id PSA`,
+    String.raw`\c 3`,
+    String.raw`\d ${zn("מזמור", "Salmo")} ${zn("לדוד", "de", 1, 2)} ${zn("לדוד2", "David")}, hijo ${zn("בן", "de", 2, 2)} Isaí`,
+    String.raw`\q1 \v 1 ${zn("יהוה", "Jehová")}, ${zn("מה", "cuántos")} son.`,
+    String.raw`\q1 \v 2 ${zn("ישועה", "Salvación")} ${zn("ליהוה", "de")} Jehová.`,
+    String.raw`\c 4`,
+    String.raw`\d ${zn("למנצח", "Al")} músico; ${zn("מזמור", "salmo")} ${zn("לדוד", "de")} David.`,
+    String.raw`\q1 \v 1 ${zn("ענני", "Respóndeme")}.`,
+    "",
+  ].join("\n");
+  const title = (usfm: string, chapter: number) => wordsIn(/\\d [\s\S]*?(?=\\q1)/.exec(usfm.slice(usfm.indexOf(`\\c ${chapter}`)))![0]);
+  const res = applyVerseEditsKeepingAlignment(psalms, 3, [{ verse: 2, text: "Salvación viene de Jehová." }]);
+  assert.deepEqual(title(res.usfm, 3), ["Salmo#1/1", "de#1/2", "David#1/1", "de#2/2"], "cada palabra del título, con su número entre las del título");
+  assert.deepEqual(title(res.usfm, 4), ["Al#1/1", "salmo#1/1", "de#1/1"], "el título del salmo siguiente no es parte del último versículo de este");
+  assert.deepEqual(groupsIn(res.usfm, 2), ["Salvación", "de"], "el versículo corregido conserva lo que no cambió");
+  assert.match(res.usfm, /\\v 2 .*viene/s);
+  assert.deepEqual([res.clearedVerses, res.reducedVerses], [[], []]);
+});
+
+test("un título escrito en medio de un versículo no se queda con el vínculo de una palabra que repite", () => {
+  const split = [
+    String.raw`\id TIT`,
+    String.raw`\c 1`,
+    String.raw`\p`,
+    String.raw`\v 1 la ${zn("οἶκος", "casa", 1, 2)} de`,
+    String.raw`\s1 La casa nueva`,
+    String.raw`\p la ${zn("οἶκος2", "casa", 2, 2)} grande`,
+    String.raw`\v 2 ${zn("ἐλπίς", "esperanza")}`,
+    "",
+  ].join("\n");
+  const res = applyVerseEditsKeepingAlignment(split, 1, [{ verse: 2, text: "esperanza viva" }]);
+  assert.ok(res.usfm.includes("\\s1 La casa nueva\n"), "el título queda en palabras llanas");
+  assert.deepEqual(wordsIn(res.usfm), ["casa#1/2", "casa#2/2", "esperanza#1/1"]);
+  assert.match(res.usfm, /\\s1 La casa nueva\n\\p la\s+\\zaln-s [^\n]*\\w casa\|x-occurrence="2"/, "la segunda «casa» del versículo es la que sigue al título");
+});
+
 console.log(`\nverify-alignment-keep: ${passed} checks passed.`);

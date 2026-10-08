@@ -73,7 +73,8 @@ function bookVerses(usj: UsjDocument | null): BookVerseMap {
   try {
     for (const [sid, text] of Object.entries(collectVerseTextsFromContent(usj.content))) {
       const m = /(\d+):(\d+)\s*$/.exec(sid);
-      if (m) out[`${m[1]}:${m[2]}`] = text;
+      // Verse 0 is what a chapter says before its first verse (the title of a psalm): no screen shows it yet.
+      if (m && Number(m[2]) > 0) out[`${m[1]}:${m[2]}`] = text;
     }
   } catch {
     /* an unreadable book just has no other uses to compare */

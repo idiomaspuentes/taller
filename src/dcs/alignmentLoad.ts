@@ -102,7 +102,8 @@ export async function loadAlineacion(params: {
   const covered = verseRangeOf(params.ctx);
   for (const [sid, tokens] of Object.entries(draftTokens)) {
     const verse = verseNumber(sid, chapter);
-    if (verse === null) continue;
+    // Verse 0 is the title of a psalm: it keeps its alignment when the book is saved, and is not aligned here yet.
+    if (verse === null || verse < 1) continue;
     if (covered && (verse < covered.from || verse > covered.to)) continue;
     const originalSid = Object.keys(originalTokens).find((k) => verseNumber(k, chapter) === verse);
     const original = originalSid ? originalTokens[originalSid]! : [];
