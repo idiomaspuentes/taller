@@ -397,6 +397,37 @@ export function changingEdits(usfm: string, chapter: number, edits: VerseEdit[])
 }
 
 /**
+ * The book as it was, with some verses taken from another writing of it (`rewritten`): from each one's `\v` to the
+ * end of its text. Lifting the alignment out of a book and putting it back writes every verse of it, and the
+ * writer does not give back every verse as another tool wrote it (two neighbours of one original word become one
+ * group; a word inside `\nd …\nd*` comes back without its link): saving one verse changed lines of verses nobody
+ * had touched, or was refused because of them. It is also how a verse somebody aligned reaches the principal
+ * draft (`principalPass`).
+ *
+ * Null when a verse is not one verse in both books (verses joined or parted, a verse the book did not have): the
+ * book written again is then the one to save, and `versesChangedBesides` still stands in its way.
+ */
+export function editedVersesInto(book: string, rewritten: string, chapter: number, edits: Pick<VerseSlotEdit, "from" | "to">[]): string | null {
+  const eol = book.includes("\r\n") ? "\r\n" : "\n";
+  const verseOf = (usfm: string, edit: Pick<VerseSlotEdit, "from" | "to">) => {
+    const hits = listVerseSpans(usfm).filter((span) => span.chapter === chapter && span.verse <= edit.to && span.verseTo >= edit.from);
+    const only = hits.length === 1 ? hits[0]! : null;
+    return only && !only.segment && only.verse === edit.from && only.verseTo === edit.to ? only : null;
+  };
+  const pieces: { start: number; end: number; text: string }[] = [];
+  for (const edit of edits) {
+    const was = verseOf(book, edit);
+    const now = verseOf(rewritten, edit);
+    if (!was || !now) return null;
+    const body = rewritten.slice(now.start, verseParts(rewritten, now).textEnd);
+    pieces.push({ start: was.start, end: verseParts(book, was).textEnd, text: body.split(/\r?\n/).join(eol) });
+  }
+  let out = book;
+  for (const piece of pieces.sort((a, b) => b.start - a.start)) out = out.slice(0, piece.start) + piece.text + out.slice(piece.end);
+  return out;
+}
+
+/**
  * Write each edit that changes its verse (`changingEdits`) as `\v N text` (or `\v N-M text`) on the lines the
  * verse has, replacing every span of the chapter that intersects `[from, to]` at the first one's place, and
  * leaving what follows the verse (the mark that opens the next one, a heading) as it was. Missing slots are

@@ -11,6 +11,7 @@ import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { readRepoFile, isWriteRace, raceDelay, type RepoTarget } from "./afinacionStore";
 import { withoutPunctuation } from "../domain/alignmentKeep";
+import { editedVersesInto } from "../domain/usfmEdit";
 
 /**
  * Saving the alignment of one verse. The group draft carries the marks
@@ -62,11 +63,15 @@ export async function saveVerseAlignment(params: {
     const current = await readRepoFile(session, target, filepath);
     if (!current) throw new Error("No se encontró el borrador grupal de este libro.");
     const doc = withVerse(alignmentOfDraft(current.text, book, source), key, groups);
-    usfm = mergeAlignmentIntoUsfm(
-      // marks off first, so only the verses of the document are woven back in
-      current.text,
-      doc,
-    );
+    // marks off first, so only the verses of the document are woven back in
+    const whole = mergeAlignmentIntoUsfm(current.text, doc);
+    // Of the book written again, only the verse that was aligned is taken; the rest stays as the file has it,
+    // byte for byte. Aligning one verse wrote every verse of the book, and the writer does not give each one back
+    // as another tool wrote it (where a mark stands on its line, two neighbours of one original word as two
+    // groups, spaces at the ends of lines): in a book made with translationCore, 73 lines of 1317 changed under
+    // whoever aligned a single verse. Verses joined in one (`\v 4-5`) have no verse of their own to take: the
+    // book written again is saved then.
+    usfm = editedVersesInto(current.text, whole, params.chapter, [{ from: params.verse, to: params.verse }]) ?? whole;
     try {
       await createOrUpdateContents(dcsConfig(session.host), target.owner, target.repo, filepath, {
         content: usfm,
