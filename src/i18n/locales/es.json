@@ -2986,5 +2986,16 @@
   "se.footnoteStart": "Nota al pie del versículo: {text}",
   "se.crossrefAt": "Referencia junto a «{word}»: {text}",
   "se.crossrefStart": "Referencia del versículo: {text}",
-  "se.noteStays": "Se guarda con el versículo; no hay que escribirla."
+  "se.noteStays": "Se guarda con el versículo; no hay que escribirla.",
+  "kd.note": "Hay otro borrador guardado en este navegador. Tócalo para verlo.",
+  "kd.title": "Borrador guardado en este navegador",
+  "kd.why": "Se escribió en este navegador y puede que no esté en Door43. No se puso en tu borrador porque no se sabe si es de este pasaje. Copia lo que te sirva; lo demás lo puedes descartar.",
+  "kd.keptOn": "guardado el {date}",
+  "kd.copy": "Copiar",
+  "kd.copied": "Texto copiado",
+  "kd.copyFailed": "No se pudo copiar. Selecciona el texto para copiarlo.",
+  "kd.discard": "Descartar este borrador",
+  "kd.discardTitle": "¿Descartar este borrador?",
+  "kd.discardText": "Solo está en este navegador: no se podrá recuperar.",
+  "kd.discardYes": "Sí, descartar"
 }

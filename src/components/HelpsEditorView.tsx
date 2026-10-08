@@ -49,9 +49,12 @@ import {
   tsvRowsToDraftItems,
   type HelpsDraftItem,
 } from "../domain/helpsDraft";
-import { loadHelpsDraftCache, saveHelpsDraftCache } from "../domain/helpsDraftCache";
+import { discardKeptDraft, draftLaunch, passageLabel, type DraftLaunch, type KeptDraft } from "../domain/draftCache";
+import { loadHelpsDraftCache, saveHelpsDraftCache, type HelpsDraftCacheEntry } from "../domain/helpsDraftCache";
 import { resolveHelpsTarget, type HelpsTarget } from "../domain/helpsTarget";
-import { portionPrBranchFromCtx, type PortionPrMarker } from "../domain/portionPr";
+import { portionPrBranchFromCtx, workBranchParamsFromCtx, type PortionPrMarker } from "../domain/portionPr";
+import { loadContext } from "../domain/store";
+import { KeptDraftNote } from "./KeptDraftNote";
 import {
   decodeSolverLaunchContext,
   type SolverLaunchContext,
@@ -60,7 +63,6 @@ import {
   isLabLaunch,
   labPlaceholderHelpsItems,
   labWriteDecision,
-  launchDraftSlot,
 } from "../domain/solverLab";
 import type { InventoryDoc } from "../domain/types";
 import { parseTsvTable } from "../prep/tsv";
@@ -119,6 +121,14 @@ async function readFileOnRef(
   return { text, sha: ref ? meta.sha : undefined };
 }
 
+/**
+ * What the draft of a launch is kept under on this device, and what its work branch is named with. `also`: the
+ * team's draft, for a task that corrects it and has no branch of its own.
+ */
+function keptHelpsOf(decoded: SolverLaunchContext, sess: GtSession | undefined, also: string[] = []): DraftLaunch {
+  return draftLaunch(decoded, sess?.host || loadContext()?.host, workBranchParamsFromCtx(decoded), also);
+}
+
 /** What a help says, to tell whether it was changed since it was opened. */
 const stampOf = (item: HelpsDraftItem) => JSON.stringify([item.text, item.secondary ?? ""]);
 
@@ -167,6 +177,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
    * team's own helps on their group draft, and has no draft, no work branch and no review of its own.
    */
   const [shared, setShared] = useState(false);
+  /** What is kept on this device that may be of this subtarea and was not put in the editor. */
+  const [setAside, setSetAside] = useState<KeptDraft<HelpsDraftCacheEntry>[]>([]);
   /** What each help read when it was opened, so only what this person changed is written over the team's file. */
   const opened = useRef<Record<string, string>>({});
   const [pane, setPane] = useState<"edit" | "chapter">("edit");
@@ -194,13 +206,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     const thisLoad = ++loading.current;
     setReviewComments([]);
     setReviewRead(false);
-    const slot = launchDraftSlot(decoded);
-    const cache = loadHelpsDraftCache(slot.pmOrg, slot.issueNumber);
     const lab = isLabLaunch(decoded);
     const fallbackBranch = portionPrBranchFromCtx(decoded);
 
     const sess = loadSession();
     setSession(sess);
+    const first = loadHelpsDraftCache(keptHelpsOf(decoded, sess));
+    setSetAside(first.aside);
 
     let inventory: InventoryDoc | null = null;
     let pmConfig = undefined;
@@ -235,6 +247,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setTarget(resolved);
 
     if (!sess?.token) {
+      const cache = first.own;
       if (cache) {
         const restored: HelpsDraftItem[] = Object.entries(cache.texts).map(
           ([id, text]) => ({
@@ -272,7 +285,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       const board = lab ? null : await loadAssignmentsFromDcs(sess, decoded.pmOrg, decoded.lang, decoded.projectId, decoded.contentOrg).catch(() => null);
       const onTeamDraft = Boolean(board?.teams.some((task) => task.id === decoded.taskId)) && !taskHasOwnDraft(board!.teams, decoded.taskId);
       setShared(onTeamDraft);
-      let head = cache?.branch || fallbackBranch;
+      let head = first.own?.branch || fallbackBranch;
       if (onTeamDraft) {
         const draft = await teamDraftBranch({ session: sess, owner: resolved.owner, repo: resolved.repo, book: resolved.book, teams: board!.teams, resource: decoded.resource });
         if (!draft) {
@@ -282,6 +295,10 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         }
         head = draft;
       }
+      // A task that corrects the team's helps wrote on the team's draft: that is the branch its draft remembered.
+      const kept = onTeamDraft ? loadHelpsDraftCache(keptHelpsOf(decoded, sess, [head])) : first;
+      setSetAside(kept.aside);
+      const cache = kept.own;
       let review: PortionPrMarker | null = null;
       if (!onTeamDraft && !lab && decoded.issueNumber > 0 && decoded.pmOrg) {
         try {
@@ -433,8 +450,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       texts[item.id] = item.text;
       if (item.secondary != null) secondary[item.id] = item.secondary;
     }
-    const slot = launchDraftSlot(ctx);
-    saveHelpsDraftCache(slot.pmOrg, slot.issueNumber, {
+    saveHelpsDraftCache(keptHelpsOf(ctx, session, shared && nextBranch ? [nextBranch] : []), {
       texts,
       secondary: Object.keys(secondary).length ? secondary : undefined,
       savedAt: Date.now(),
@@ -892,6 +908,30 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         <Alert variant="destructive" className="mx-4 mt-3">
           <AlertDescription>{loc(error)}</AlertDescription>
         </Alert>
+      ) : null}
+
+      {setAside.length ? (
+        // Over the pane, not in it: the pane opens scrolled to the first help still to be translated.
+        <div className="kd-over">
+          <KeptDraftNote
+            drafts={setAside.map(({ key, entry }) => ({
+              key,
+              name: entry.place?.book ? `${bookLabel(entry.place.book, language)} ${passageLabel(entry.place.passage)}` : "",
+              savedAt: entry.savedAt,
+              // Each text under the name of its help when that help is here, or of its article; a row of notes that
+              // is not here has no name a person would know, and is counted. A question goes with its answer.
+              rows: Object.entries(entry.texts)
+                .map(([id, text]) => ({ label: items.find((item) => item.id === id)?.label ?? (id.includes("/") ? id : ""), text: [text, entry.secondary?.[id] ?? ""].filter((part) => part.trim()).join("\n\n") }))
+                .filter((row) => row.text)
+                .map((row, index) => ({ ...row, label: row.label || String(index + 1) })),
+            }))}
+            onDiscard={(key) => {
+              discardKeptDraft(key);
+              setSetAside((prev) => prev.filter((draft) => draft.key !== key));
+            }}
+            announce={announce}
+          />
+        </div>
       ) : null}
 
       {wantsSources && range && !busy ? (

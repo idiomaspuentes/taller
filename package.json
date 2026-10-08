@@ -104,7 +104,8 @@
     "verify:quote-selection": "tsx --tsconfig tsconfig.scripts.json scripts/verify-quote-selection.mts",
     "verify:second-process": "tsx --tsconfig tsconfig.scripts.json scripts/verify-second-process.mts",
     "check:door43-api": "node scripts/check-door43-api.mjs",
-    "verify:consensus": "tsx --tsconfig tsconfig.scripts.json scripts/verify-consensus.mts"
+    "verify:consensus": "tsx --tsconfig tsconfig.scripts.json scripts/verify-consensus.mts",
+    "verify:draft-cache": "tsx --tsconfig tsconfig.scripts.json scripts/verify-draft-cache.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

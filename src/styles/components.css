@@ -8953,3 +8953,19 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 /* Under what a colleague proposed about a challenge: taking it as one's own, by a touch. */
 .af-second { display: flex; align-items: center; min-height: 2.5rem; margin-top: 0.25rem; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--text); cursor: pointer; }
 .af-second:disabled { opacity: 0.6; cursor: default; }
+
+/* A draft kept on this device that was not put in the editor: said over the draft, and shown to take from it. */
+.kd-note { flex-shrink: 0; min-height: 2.75rem; padding: 0.5rem 0.75rem; border-color: var(--warning-500); border-radius: var(--radius-md); background: var(--warning-100); color: var(--warning-700); line-height: 1.35; text-align: left; }
+.kd-over { flex: 0 0 auto; padding: 0.5rem 1rem 0; }
+.dialog.kd-dialog { width: min(32rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); }
+.dialog.kd-dialog[open] { display: flex; flex-direction: column; }
+.kd-drafts { display: grid; gap: 1rem; min-height: 0; overflow-y: auto; }
+.kd-draft { display: grid; gap: 0.5rem; }
+.kd-draft + .kd-draft { padding-top: 1rem; border-top: 1px solid var(--border); }
+.kd-draft__name { margin: 0; font-size: 0.875rem; font-weight: 600; }
+.kd-draft__name::first-letter { text-transform: uppercase; }
+.kd-draft__discard { justify-self: start; }
+.kd-rows { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.kd-row { display: grid; grid-template-columns: minmax(1.5rem, auto) 1fr auto; align-items: start; gap: 0.5rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); }
+.kd-row__label { font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); overflow-wrap: anywhere; }
+.kd-row__text { margin: 0; font-size: 0.9375rem; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
