@@ -201,9 +201,9 @@ test("guardar una porción no vuelve a escribir los versículos que nadie tocó:
   assert.equal(applyVerseEdits(marked, 1, all), marked);
   all[2] = { ...all[2]!, text: "Pero Jonás se levantó para huir." };
   assert.equal(applyVerseEdits(marked, 1, all), marked.replace("Pero Jonás huyó.", "Pero Jonás se levantó para huir."));
-  // The one that is edited is written from its text: what was marked in it is not kept.
+  // The one that is edited keeps what was marked in it too (`npm run verify:usfm-notes` goes through all of that).
   all[0] = { ...all[0]!, text: "La palabra de Jehová llegó." };
-  assert.ok(applyVerseEdits(marked, 1, all).includes("\\v 1 La palabra de Jehová llegó.\n\\v 2a Levántate,"));
+  assert.ok(applyVerseEdits(marked, 1, all).includes("\\v 1 La palabra de \\nd Jehová\\nd* llegó.\n\\v 2a Levántate,"));
 });
 
 // ---------------------------------------------------------------- a correction that came as one run of text

@@ -359,12 +359,41 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   Los paneles que muestran un texto fuente leen por ahí (`extractDraftVerses().verses`,
   `verseTextsFromUsj`) y ya dicen lo mismo que los renglones del editor.
 - **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
-  que dice lo que ya decía no se vuelve a escribir: conserva su nota al pie y lo que tenga marcado.
+  que dice lo que ya decía no se vuelve a escribir: queda como estaba, byte por byte.
   El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;
   un renglón de más toma la marca que el original tiene en ese lugar (`verseLeads`), o la del
-  anterior. Las palabras que no cambiaron conservan su enlace con el original. Antes de guardar se
-  comprueba que ningún otro versículo cambió de palabras ni perdió alineación
+  anterior. Las palabras que no cambiaron conservan su enlace con el original. Con alineación, del
+  libro escrito de nuevo solo se toman los versículos editados (`editedVersesInto`): los demás
+  quedan como el archivo los tiene, aunque los haya escrito otra herramienta a su manera. Antes de
+  guardar se comprueba que ningún otro versículo cambió de palabras ni perdió alineación
   (`versesChangedBesides`); si pasara, no se guarda y se avisa.
+- **Lo que un versículo tiene además de sus palabras** (`src/domain/verseMarkup.ts`): una nota al
+  pie o una referencia cruzada (`\f … \f*`, `\x … \x*`), palabras marcadas (`\nd Jehová\nd*`,
+  `\add …\add*`, `\qs Selah\qs*`), un hito (`\qt-s … \qt-e\*`). Quien edita ve y escribe solo las
+  palabras. Al guardar, lo demás se lleva al texto nuevo comparando, palabra por palabra, el
+  versículo de antes con el de ahora (`carryMarkup`):
+  - Una **nota** sigue a la palabra a la que seguía, con su coma o su punto. Si esa palabra se
+    cambió por otra, sigue a la nueva; si se quitó, a la anterior. Nunca se pierde: un versículo
+    que se borra entero conserva su nota, y al escribirlo de nuevo le queda al final.
+  - Una **marca** sigue alrededor de sus palabras mientras estén. Lo que se escribe dentro de un
+    tramo marcado queda marcado; lo que se escribe junto a él, no. Una palabra marcada que se
+    cambia por otra sigue marcada («Jehová» → «el Señor», «de Jehová» → «del Señor»). La marca se
+    quita cuando no queda nada de lo que marcaba, y también cuando sus palabras se escribieron de
+    nuevo mezcladas con otras sin que se pueda decir cuál es cuál: una marca en la palabra
+    equivocada no se ve en la app, y nadie podría quitarla.
+  - Un tramo marcado que pasa de un renglón al siguiente se cierra al final del renglón y se abre
+    en el otro.
+  - Al leer, una nota o una marca no ocupan lugar: «al `\add pueblo\add*`.» se lee «al pueblo.»
+    (se leía «al pueblo .», con un espacio que la persona veía en el editor).
+  - Con alineación, una palabra marcada conserva también su enlace con el original cuando se edita
+    su versículo (`\qs \zaln-s … \w Selah\w* \zaln-e\*\qs*`): `usfm-ast` escribe los grupos que
+    están dentro de una marca. Un libro con palabras marcadas no se podía guardar («cambiarían
+    también los versículos…»).
+
+  En el editor, bajo el versículo se dice que tiene una nota, qué dice, y junto a qué palabra
+  quedará con el texto como va escrito en ese momento. La entrega (`patchTrunkByVerse`) copia el
+  versículo con todo eso, también cuando lo tiene que componer desde su texto (`\v 10a` y
+  `\v 10b`).
 - **Una corrección que llega como texto corrido** (al afinar, al alinear, en la lectura grupal: quien
   corrige ve el versículo en una sola línea) se parte donde el versículo se parte, después de las
   mismas palabras (`textInLines`). Todas pasan por `saveCorrection`, que lo pide con `flat`.
@@ -377,6 +406,11 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
 **Pruebas.** `npm run verify:usfm-poetry` recorre todo esto con Jonás 2 (leer, guardar, corregir,
 entregar, empezar el libro) y, si `../usfm-ast` está al lado, con el Jonás entero de un equipo:
 cambiar una palabra de 2:2 no cambia ninguna otra línea de los otros 47 versículos.
+`npm run verify:usfm-notes` hace lo mismo con una nota y con palabras marcadas: una palabra
+cambiada antes de la nota, después y debajo de ella, la palabra marcada cambiada o quitada, con y
+sin alineación, en un versículo de varios renglones, en la entrega, y con el Judas que publica
+unfoldingWord (cambiar una palabra de 1:5 conserva su nota y no toca ningún otro versículo). En
+cada caso comprueba que el resto del libro quedó igual, byte por byte.
 `npm run verify:alignment-keep` corrige un versículo de un salmo y comprueba que su título, y el
 del salmo siguiente, conservan sus enlaces, y que un título en medio de un versículo no se queda
 con el de una palabra que repite. En `usfm-ast`, `alignment-real-books.test.ts` escribe de vuelta
@@ -387,8 +421,10 @@ compara texto, grupos, atributos y estructura; `verse-reach.test.ts` y
 
 **No hace todavía.**
 
-- Un versículo que se edita se escribe desde su texto: pierde su nota al pie y lo marcado dentro de
-  él (`\nd`, `\add`). Los que no se tocan ya no.
+- Una nota o una marca no se pueden agregar, quitar, cambiar ni mover desde la app: solo se
+  conservan. Para eso hay que editar el archivo en Door43.
+- Un título en medio de un versículo, o una marca que no se cierra y no es de párrafo, se pierden
+  al editar ese versículo, como antes.
 - En el cuadro del editor no se distingue un renglón largo que dobla de un renglón nuevo.
 - El título de un salmo (el versículo 0 de su capítulo) se conserva con su alineación al guardar
   cualquier versículo, pero ninguna pantalla lo enseña: ni el editor lo ofrece para traducirlo
@@ -441,7 +477,7 @@ pantalla, que necesita saber en qué rama está el borrador del grupo de cada te
 | Solvers / launch | `src/domain/solverLaunch.ts`, `src/domain/solvers.ts`, `src/domain/solverLab.ts` |
 | Laboratorio | `src/components/SolverLabView.tsx`, `#/lab` |
 | Scripture editor | `src/components/ScriptureEditorView.tsx`, `src/domain/usfmEdit.ts`, `src/domain/scriptureTarget.ts` |
-| Escribir el texto bíblico (renglones, alineación, entrega, libro nuevo) | `src/domain/usfmEdit.ts`, `src/domain/alignmentKeep.ts`, `src/domain/usfmTrunkPatch.ts`, `src/dcs/bookBootstrap.ts`, `scripts/verify-usfm-poetry.mts` |
+| Escribir el texto bíblico (renglones, notas y marcas, alineación, entrega, libro nuevo) | `src/domain/usfmEdit.ts`, `src/domain/verseMarkup.ts`, `src/domain/alignmentKeep.ts`, `src/domain/usfmTrunkPatch.ts`, `src/dcs/bookBootstrap.ts`, `scripts/verify-usfm-poetry.mts`, `scripts/verify-usfm-notes.mts` |
 | Helps editor | `src/components/HelpsEditorView.tsx`, `src/domain/helpsDraft.ts`, `src/domain/helpsTarget.ts` |
 | Ramas y etiquetas | `src/domain/branchNames.ts`, `src/domain/portionPr.ts`, `src/dcs/portionPr.ts`, `src/dcs/pulls.ts` |
 | Marcas de fase y «Qué cambió» | `src/domain/phaseMarks.ts`, `src/dcs/phaseMarks.ts`, `src/domain/changesSince.ts`, `src/dcs/changesSince.ts`, `src/components/ChangesView.tsx` |

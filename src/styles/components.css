@@ -7814,6 +7814,11 @@ input.pf-name { font-size: 1.625rem; }
 .scripture-editor--split .scripture-editor__input { field-sizing: content; }
 /* What is said under a verse of a poem stays clear of the button that sits on the seam below it. */
 .scripture-editor--split .scripture-editor__verse-note[data-poem] { margin-bottom: 0.9rem; }
+/* The note of a verse, which is not in the text that is written: two lines of it, and all of it in the verse being written. */
+.scripture-editor--split .scripture-editor__verse-note[data-footnote] { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; line-height: 1.4; color: var(--text-muted); }
+.scripture-editor--split .scripture-editor__verse[data-active] .scripture-editor__verse-note[data-footnote] { display: block; }
+.scripture-editor--split .scripture-editor__verse-note[data-footnote]:last-child { margin-bottom: 0.9rem; }
+.scripture-editor__verse-note-stays { color: var(--text-faint); }
 /* One panel at a time (a phone): the verse being written brings its own source texts. */
 @media (max-width: 48rem) {
   .se-peek { display: grid; }
