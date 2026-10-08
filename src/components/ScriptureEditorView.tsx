@@ -2078,11 +2078,6 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           )}
         </div>
       </header>
-      {lab ? null : (
-        <div className="step-ask-bar">
-          <StepAsk session={session} ctx={ctx} />
-        </div>
-      )}
 
       {error ? (
         <Alert variant="destructive" className="scripture-editor__alert">
@@ -2255,6 +2250,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           aria-label={t("se.draftAria")}
           aria-busy={draftLoading || recreating || undefined}
         >
+          {/* What the step asks, at the head of the draft: it goes up with it when the verses are scrolled. Above the
+              draft, always in sight, it took a row of a phone's screen from the verse being written. */}
+          {lab ? null : (
+            <div className="step-ask-bar">
+              <StepAsk session={session} ctx={ctx} />
+            </div>
+          )}
           <div className="scripture-editor__draft-head">
             <p className="scripture-editor__eyebrow">{t("se.yourDraftRes").replace("{res}", resourceCode)}</p>
             {drafts.length ? <p className="se-written">{t("se.written").replace("{n}", String(written)).replace("{total}", String(drafts.length))}</p> : null}
@@ -2314,7 +2316,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           {english.verses[d.from] && range ? (
                             // Its words that a note or a key term is about are underlined: touching one opens them.
                             <div className="se-peek__own">
-                              <b>{tag(own)}</b>
+                              <div className="se-peek__head">
+                                <b>{tag(own)}</b>
+                                {supportPane.verses[d.from] ? (
+                                  <button type="button" className="se-peek__more" aria-pressed={support} onClick={() => setSupport(!support)}>
+                                    {t(support ? "se.supportHide" : "se.supportShow").replace("{name}", supportTag)}
+                                  </button>
+                                ) : null}
+                              </div>
                               <UsfmReferencePane
                                 usfm={english.usfm}
                                 range={{ chapter: range.chapter, from: d.from, to: d.to }}
@@ -2342,21 +2351,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                               )}
                             </div>
                           ) : null}
-                          {supportPane.verses[d.from] ? (
+                          {!english.verses[d.from] && supportPane.verses[d.from] ? (
                             <button type="button" className="se-peek__more" aria-pressed={support} onClick={() => setSupport(!support)}>
                               {t(support ? "se.supportHide" : "se.supportShow").replace("{name}", supportTag)}
                             </button>
                           ) : null}
                         </div>
-                      ) : null}
-                      {/* What this verse calls for by its own words («you»: one person or several), while it is the one being
-                          written. First what the glossary decided about them: it answers before the reminders ask. */}
-                      {activeVerse === d.from ? (
-                        <Hints
-                          lead={t("sa.mind")}
-                          lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
-                          context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
-                        />
                       ) : null}
                       {/* While nobody writes in it, a verse that has text is shown as it reads: the lines of a poem, each
                           as deep as its mark says. In the box, such a line and a long one that wraps look the same. */}
@@ -2393,6 +2393,16 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           {activeVerse === d.from && at === all.length - 1 ? <span className="scripture-editor__verse-note-stays"> {t("se.noteStays")}</span> : null}
                         </p>
                       ))}
+                      {/* What this verse calls for by its own words («you»: one person or several), while it is the one being
+                          written; first what the glossary decided about them. Under the box: the source and the box are
+                          what the eye is on, and this stood between the two. */}
+                      {activeVerse === d.from ? (
+                        <Hints
+                          lead={t("sa.mind")}
+                          lines={[...decisionsAt(range?.chapter, d.from, english.verses[d.from]), ...hintsFor(english.verses[d.from])]}
+                          context={{ ref: range ? `${bookLabel(ctx?.book ?? "", language)} ${range.chapter}:${label}` : label, sourceName: tag(own), source: english.verses[d.from], translation: d.text }}
+                        />
+                      ) : null}
                       {!inside ? (
                         <p className="scripture-editor__verse-note">
                           {t("se.bridgeOutside")}

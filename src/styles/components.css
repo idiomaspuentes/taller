@@ -7784,6 +7784,32 @@ input.pf-name { font-size: 1.625rem; }
 .sn-note__del { margin-left: auto; color: var(--text-faint) !important; }
 .sn-note__del:hover { color: var(--destructive) !important; }
 
+/* ---------- The verse being written: its source and its box, and little else ----------
+   The row held, one under the other and each as loud as the next: the button to join it to the verse before, a box
+   with the source, a link to the other text, a notice of what to mind, the box to write in, a note of two lines and
+   the button to join it to the next. The source and the box are what the eye is on; the rest is said low. */
+/* The source is in the row itself, not in a box inside it. */
+.scripture-editor--split .se-peek { padding: 0; margin-bottom: 0.375rem; background: none; }
+.se-peek__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.se-peek .se-peek__head > b { margin: 0; }
+/* The way to the other text: beside the name of this one, quiet, and as easy to touch as before. */
+.se-peek .se-peek__more { min-height: 0; margin: -0.625rem 0; padding: 0.75rem 0 0.75rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); }
+/* The box to write in is the one thing in the row that looks like a place to write. */
+.scripture-editor--split .scripture-editor__verse[data-active] .scripture-editor__input { padding: 0.5rem 0.625rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); box-shadow: none; }
+.scripture-editor--split .scripture-editor__verse[data-active] .scripture-editor__input:focus { border-color: var(--accent-400); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-300) 35%, transparent); }
+/* What the verse calls for: a quiet row under the box, to touch. */
+.scripture-editor__verse-body > .step-hints[data-item] { margin: 0.125rem 0 0; padding: 0; border-left: 0; border-radius: 0; background: none; }
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__lead { font-weight: 500; color: var(--text-faint); }
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__n { background: var(--surface-muted); color: var(--text-muted); }
+.scripture-editor__verse-body > .step-hints[data-item] .step-hints__brief { color: var(--text-faint); }
+/* Joining two verses is seldom done: said low, and not at all beside the verse that is being written in. */
+.scripture-editor--split .scripture-editor__seam-btn { border-color: transparent; box-shadow: none; font-weight: 400; color: var(--text-faint); }
+.scripture-editor--split .scripture-editor__verse:focus-within + .scripture-editor__seam,
+.scripture-editor--split .scripture-editor__seam:has(+ .scripture-editor__verse:focus-within) { visibility: hidden; }
+/* What the step asks, at the head of the draft. */
+.scripture-editor__draft > .step-ask-bar { padding: 0 0.25rem; margin: -0.25rem 0 0.5rem; }
+.scripture-editor__draft > .step-ask-bar:has(.step-ask__asked) { position: sticky; top: -0.75rem; z-index: 3; background: var(--surface); }
+
 /* ---------- Scripture in the shape its marks give it ----------
    One rule for the text that is translated from and for the draft once nobody writes in it, so a line of a poem
    reads the same above and below.
@@ -7851,9 +7877,6 @@ input.pf-name { font-size: 1.625rem; }
 .se-peek :is(.se-peek__own, .se-peek__support) .usfm-para { margin: 0; }
 .se-peek :is(.se-peek__own, .se-peek__support) > b { display: block; }
 .se-peek__support { margin-top: 0.25rem; color: var(--text-muted); }
-/* What the verse calls for, right under its source: a row to touch, not one more line of the text. With a rule at
-   its left, as it has in other tools, it read as a line of the poem above it. */
-.scripture-editor__verse-body > .step-hints[data-item] { padding: 0 0.5rem; border-left: 0; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent-100) 70%, transparent); }
 .se-peek__more { justify-self: start; min-height: 40px; padding: 0; border: 0; background: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--primary); cursor: pointer; }
 .se-sources__texts { display: grid; gap: 0.5rem; min-height: 0; overflow: auto; }
 .se-source { padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); }

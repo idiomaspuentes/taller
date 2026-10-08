@@ -388,6 +388,14 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   renglones toman la forma que el original tiene en ese versículo. El texto del que se traduce usa
   la misma regla de formato (un solo bloque de estilos para `.usfm-para[data-marker]`), en todas
   las pantallas que lo muestran: antes todos sus renglones empezaban en el mismo sitio.
+- **El versículo que se escribe.** En su fila mandan dos cosas: el texto del que se traduce y el
+  cuadro donde se escribe, que es lo único con aspecto de campo. Lo demás va en voz baja: el paso
+  al otro texto, junto al nombre de este; bajo el cuadro, cuántos renglones tiene el original (una
+  línea, y solo hasta que el versículo tiene los suyos) y «Fíjate en esto»; los botones de unir
+  versículos, sin recuadro, y ocultos junto al versículo en el que se está escribiendo. Lo que pide
+  el paso («Qué se pide en…») va a la cabeza del borrador y sube con él al desplazar: fijo arriba
+  ocupaba una franja de la pantalla del teléfono (queda fijo solo cuando la subtarea trae un
+  pedido de corrección, como en las demás herramientas).
 - **Guardar** (`applyVerseEdits`, y con alineación `applyVerseEditsKeepingAlignment`). Un versículo
   que dice lo que ya decía no se vuelve a escribir: queda como estaba, byte por byte.
   El que cambió se escribe en los renglones que la persona dejó, cada uno con la marca que tenía;
