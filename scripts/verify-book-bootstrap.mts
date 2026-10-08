@@ -1174,4 +1174,63 @@ const at = ["es-419_gl", "es-419_glt"] as const;
   assert(refused && !fake.tags["borrador/neh/t"], "only a phase name can be tagged as a phase");
 }
 
+// ---------------------------------------------------------------- the chunk marks of the source
+
+/** Nehemiah 1 of a source text: a chunk at 1:1 and another at 1:3. */
+const SOURCE = "\\id NEH EN_ULT\n\\usfm 3.0\n\\mt Nehemiah\n\n\\ts\\*\n\\c 1\n\\p\n\\v 1 The words.\n\\v 2 And Hanani came.\n\n\\ts\\*\n\\p\n\\v 3 And they said.\n";
+const PUBLISHED = "\\id NEH\n\\usfm 3.0\n\\mt Nehemías\n\\c 1\n\\p\n\\v 1 Las palabras.\n\\v 2 Y Hanani vino.\n\\p\n\\v 3 Y dijeron.\n";
+const WITH_MARKS = "\\id NEH\n\\usfm 3.0\n\\mt Nehemías\n\n\\ts\\*\n\\c 1\n\\p\n\\v 1 Las palabras.\n\\v 2 Y Hanani vino.\n\n\\ts\\*\n\\p\n\\v 3 Y dijeron.\n";
+const book = { session, owner: "es-419_gl", repo: "es-419_glt", filepath: "16-NEH.usfm", book: "NEH", resource: "tpl", taskId: "tpl" };
+const writes = (calls: Call[]) => calls.filter((c) => (c.method === "POST" || c.method === "PUT") && c.path.includes("/contents/16-NEH.usfm")).length;
+
+{
+  // A book begun here is born with the chunks of its source.
+  const fake = installFakeDcs({ branches: { master: "abc123master" }, files: {} });
+  const result = await ensureBookUsfm({ ...book, lang: "es-419", loadSource: async () => SOURCE });
+  assert(result.createdFile && fake.files["borrador/neh/tpl:16-NEH.usfm"] === result.usfm, "the new book is on the group's draft");
+  assert(result.usfm.includes("\n\n\\ts\\*\n\\c 1\n\\p\n\\v 1\n\\v 2\n\n\\ts\\*\n\\p\n\\v 3\n"), `a new book has the chunk marks of its source, got ${JSON.stringify(result.usfm)}`);
+  assert(!/words|Hanani/.test(result.usfm), "and none of its text");
+}
+
+{
+  // A draft copied from what is published takes them as it is copied; what is published is not touched.
+  const fake = installFakeDcs({ branches: { master: "abc123master" }, files: { "master:16-NEH.usfm": PUBLISHED } });
+  const result = await ensureBookUsfm({ ...book, loadSource: async () => SOURCE });
+  assert(result.usfm === WITH_MARKS, `the copy has the chunk marks, got ${JSON.stringify(result.usfm)}`);
+  assert(fake.files["borrador/neh/tpl:16-NEH.usfm"] === WITH_MARKS && fake.files["master:16-NEH.usfm"] === PUBLISHED, "on the group's draft, not on what is published");
+  assert(writes(fake.calls) === 1, "one write: the copy");
+}
+
+{
+  // A draft from before has none: it is given them once, and the hash that comes back is of what was written.
+  const fake = installFakeDcs({ branches: { master: "abc123master", "borrador/neh/tpl": "trunksha" }, files: { "master:16-NEH.usfm": PUBLISHED, "borrador/neh/tpl:16-NEH.usfm": PUBLISHED } });
+  const first = await ensureBookUsfm({ ...book, loadSource: async () => SOURCE });
+  assert(first.usfm === WITH_MARKS && fake.files["borrador/neh/tpl:16-NEH.usfm"] === WITH_MARKS, "the draft got the chunk marks");
+  assert(!first.createdFile && Boolean(first.sha), "it is the same file, with its new hash");
+  assert(writes(fake.calls) === 1 && fake.files["master:16-NEH.usfm"] === PUBLISHED, "written once, and only the draft");
+  const again = await ensureBookUsfm({ ...book, loadSource: async () => SOURCE });
+  assert(again.usfm === WITH_MARKS && writes(fake.calls) === 1, "opened again: nothing is written");
+}
+
+{
+  // A draft that has marks of its own is the team's to keep: none is added, even where the source has more.
+  const own = PUBLISHED.replace("\\p\n\\v 3", "\\ts\\*\n\\p\n\\v 3");
+  const fake = installFakeDcs({ branches: { master: "abc123master", "borrador/neh/tpl": "trunksha" }, files: { "borrador/neh/tpl:16-NEH.usfm": own } });
+  const result = await ensureBookUsfm({ ...book, loadSource: async () => SOURCE });
+  assert(result.usfm === own && writes(fake.calls) === 0, "a draft with chunk marks is left as it is");
+}
+
+{
+  // The source cannot be read, or has no chunk marks: the draft opens as it is, and nothing is written.
+  for (const loadSource of [async () => undefined, async () => { throw new Error("sin red"); }, async () => PUBLISHED]) {
+    const fake = installFakeDcs({ branches: { master: "abc123master", "borrador/neh/tpl": "trunksha" }, files: { "borrador/neh/tpl:16-NEH.usfm": PUBLISHED } });
+    const result = await ensureBookUsfm({ ...book, loadSource });
+    assert(result.usfm === PUBLISHED && writes(fake.calls) === 0, "no source to take the chunks from: the draft is opened as it is");
+  }
+  // And with the app's own reader, which finds no source in this fake Door43.
+  const fake = installFakeDcs({ branches: { master: "abc123master", "borrador/neh/tpl": "trunksha" }, files: { "borrador/neh/tpl:16-NEH.usfm": PUBLISHED } });
+  const result = await ensureBookUsfm(book);
+  assert(result.usfm === PUBLISHED && writes(fake.calls) === 0, "the source is not on this Door43: opened as it is");
+}
+
 console.log("verify-book-bootstrap: ok");

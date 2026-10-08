@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { applyVerseEditsKeepingAlignment, versesChangedBesides } from "../src/domain/alignmentKeep";
 import { patchTrunkByVerse } from "../src/domain/usfmTrunkPatch";
 import { extractDraftVerses } from "../src/domain/usfmAst";
-import { applyVerseEdits, buildBookUsfmSkeleton, draftSlots, listVerseSpans, skeletonUsfm, skeletonUsfmFromSource, textInLines, textLines, verseLeads, verseLinesText, verseParts } from "../src/domain/usfmEdit";
+import { applyVerseEdits, buildBookUsfmSkeleton, chunkStarts, draftSlots, listVerseSpans, skeletonUsfm, skeletonUsfmFromSource, textInLines, textLines, verseLeads, withChunkMarksOf, verseLinesText, verseParts } from "../src/domain/usfmEdit";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -426,18 +426,125 @@ const source = [
   "",
 ].join("\n");
 
-test("un libro que empieza aquí nace con los párrafos y la poesía del original, y sin su texto", () => {
+test("un libro que empieza aquí nace con los párrafos, la poesía y los trozos del original, y sin su texto", () => {
   const skeleton = skeletonUsfmFromSource("JON", source, "Jonás");
   assert.equal(
     skeleton,
-    ["\\id JON", "\\usfm 3.0", "\\ide UTF-8", "\\h Jonás", "\\toc1 Jonás", "\\toc2 Jonás", "\\toc3 Jon", "\\mt Jonás", "\\c 1", "\\p", "\\v 1", "\\v 2", "\\c 2", "\\p", "\\v 1", "\\v 2", "\\q1", "\\v 3", "\\b", "\\q1", "\\v 4-5", "\\m", "\\v 6", ""].join("\n"),
+    [
+      "\\id JON", "\\usfm 3.0", "\\ide UTF-8", "\\h Jonás", "\\toc1 Jonás", "\\toc2 Jonás", "\\toc3 Jon", "\\mt Jonás",
+      "", "\\ts\\*", "\\c 1", "\\p", "\\v 1", "\\v 2",
+      "", "\\ts\\*", "\\c 2", "\\p", "\\v 1", "\\v 2",
+      "", "\\ts\\*", "\\q1", "\\v 3", "\\b", "\\q1", "\\v 4-5", "\\m", "\\v 6", "",
+    ].join("\n"),
   );
-  assert.ok(!/Yahweh|prayer|ts\\\*/.test(skeleton), "ni el texto, ni los títulos, ni las marcas de trozo del original");
+  assert.ok(!/Yahweh|prayer/.test(skeleton), "ni el texto ni los títulos del original");
+  assert.deepEqual(chunkStarts(skeleton), chunkStarts(source), "los mismos trozos que el original");
   assert.equal(listVerseSpans(skeleton).map((s) => `${s.chapter}:${s.verse}`).join(" "), "1:1 1:2 2:1 2:2 2:3 2:4 2:6");
 });
 
+// ---------------------------------------------------------------- the chunks of the source
+
+test("los trozos de un texto son los versículos que siguen a cada marca de trozo", () => {
+  assert.deepEqual(chunkStarts(source), ["1:1", "2:1", "2:3"]);
+  assert.deepEqual(chunkStarts(psalm), [], "un texto sin marcas no tiene trozos");
+  assert.deepEqual(chunkStarts("\\c 1\n\\p\n\\v 1 Uno. \\ts\\*\n\\v 2 Dos.\n\n\\ts\\*\n\\v 3-4 Tres.\n\\ts\\*\n"), ["1:2", "1:3"], "colgada del renglón anterior, ante un puente, y la que no abre nada");
+});
+
+/** Jonah 1–2 of a team, with no chunk marks: prose, a psalm, a heading, a chapter label. */
+const unmarked = [
+  "\\id JON EN_GLT es-419_Español",
+  "\\usfm 3.0",
+  "\\h Jonás",
+  "\\mt Jonás",
+  "\\c 1",
+  "\\cl Capítulo 1",
+  "\\p",
+  "\\v 1 Y la palabra de Jehová vino.",
+  "\\v 2 «Levántate». ",
+  "\\c 2",
+  "\\cl Capítulo 2",
+  "\\p",
+  "\\v 1 Y Jonás oró.",
+  "\\v 2 Y él dijo:",
+  "\\q Clamé a Jehová;",
+  "\\q2 desde el vientre clamé.",
+  "\\s1 El abismo",
+  "\\q",
+  "\\v 3 Ahora me echaste;",
+  "\\q2 todas tus ondas.",
+  "\\b",
+  "\\q",
+  "\\v 4 Yo dije.",
+  "\\v 5 Las aguas.",
+  "\\m",
+  "\\v 6 Entonces.",
+  "",
+].join("\n");
+
+test("un texto del equipo toma las marcas de trozo de su original, ante los mismos versículos, y nada más cambia", () => {
+  const marked = withChunkMarksOf(unmarked, source);
+  assert.deepEqual(chunkStarts(marked), ["1:1", "2:1", "2:3"]);
+  assert.equal(
+    marked,
+    unmarked
+      .replace("\\mt Jonás\n\\c 1", "\\mt Jonás\n\n\\ts\\*\n\\c 1")
+      .replace("«Levántate». \n\\c 2", "«Levántate». \n\n\\ts\\*\n\\c 2")
+      .replace("desde el vientre clamé.\n\\s1 El abismo", "desde el vientre clamé.\n\n\\ts\\*\n\\s1 El abismo"),
+    "tras una línea vacía, sola en su línea, antes del capítulo, del título y del renglón que el trozo abre",
+  );
+  // Taken out again, the text is what it was, byte for byte.
+  assert.equal(marked.replace(/\n\n\\ts\\\*(?=\n)/g, "").replace("\n\\ts\\*\n\\c 1", "\\c 1"), unmarked);
+  const texts = (usfm: string) => listVerseSpans(usfm).map((s) => `${s.chapter}:${s.verse} ${s.text}`);
+  assert.deepEqual(texts(marked), texts(unmarked), "cada versículo dice lo mismo");
+  assert.deepEqual(parts(marked, 2, 2).lines, parts(unmarked, 2, 2).lines, "y tiene los mismos renglones");
+  assert.equal(parts(marked, 2, 2).tail, "\n\n\\ts\\*\n\\s1 El abismo\n\\q\n", "la marca queda fuera del versículo anterior");
+});
+
+test("poner las marcas de trozo otra vez no cambia nada, y las que el equipo ya tiene se quedan", () => {
+  const marked = withChunkMarksOf(unmarked, source);
+  assert.equal(withChunkMarksOf(marked, source), marked);
+  // A mark of the team's own, where the source has none, and one where it has: neither is touched nor doubled.
+  const own = unmarked.replace("\\m\n\\v 6", "\n\\ts\\*\n\\m\n\\v 6").replace("\\q\n\\v 3", "\\ts\\*\n\\q\n\\v 3");
+  const both = withChunkMarksOf(own, source);
+  assert.deepEqual(chunkStarts(both), ["1:1", "2:1", "2:3", "2:6"]);
+  assert.equal((both.match(/\\ts\\\*/g) ?? []).length, 4);
+  assert.ok(both.includes("\\s1 El abismo\n\\ts\\*\n\\q\n\\v 3"), "la del equipo, donde la puso");
+  assert.equal(withChunkMarksOf(unmarked, psalm), unmarked, "un original sin marcas no pone ninguna");
+});
+
+test("un trozo que el original empieza dentro de dos versículos que el equipo unió no tiene dónde ir", () => {
+  const bridged = unmarked.replace("\\v 2 Y él dijo:", "\\v 2-3 Y él dijo:").replace("\\s1 El abismo\n\\q\n\\v 3 Ahora me echaste;", "\\q Ahora me echaste;");
+  assert.deepEqual(chunkStarts(withChunkMarksOf(bridged, source)), ["1:1", "2:1"]);
+  // A verse in two parts takes its mark before the first.
+  const parted = "\\id JON\n\\c 1\n\\p\n\\v 1 Uno.\n\\v 2a Dos,\n\\p\n\\v 2b y tres.\n";
+  const src = "\\id JON\n\n\\ts\\*\n\\c 1\n\\p\n\\v 1 One.\n\n\\ts\\*\n\\v 2 Two.\n";
+  assert.equal(withChunkMarksOf(parted, src), "\\id JON\n\n\\ts\\*\n\\c 1\n\\p\n\\v 1 Uno.\n\n\\ts\\*\n\\v 2a Dos,\n\\p\n\\v 2b y tres.\n");
+});
+
+test("con alineación y con finales de línea de dos caracteres, la marca va tras el último grupo del versículo anterior", () => {
+  const aligned = withChunkMarksOf(alignedPsalm, source);
+  assert.deepEqual(chunkStarts(aligned), ["2:1", "2:3"]);
+  assert.ok(aligned.includes(`${Z("שאול", "vientre")}.\n\n\\ts\\*\n\\q\n\\v 3 `), "antes del renglón que abre 2:3");
+  assert.ok(aligned.includes("\\mt Jonás\n\n\\ts\\*\n\\c 2\n"));
+  for (const verse of [1, 2, 3, 4]) assert.deepEqual(linkedWords(aligned, verse), linkedWords(alignedPsalm, verse), `la alineación de 2:${verse}`);
+  // Saved again from the editor, untouched: nothing is written, and the marks are still there.
+  assert.equal(applyVerseEditsKeepingAlignment(aligned, 2, draftSlots(aligned, { chapter: 2, from: 1, to: 4 })).usfm, aligned);
+  const edited = applyVerseEditsKeepingAlignment(aligned, 2, [{ verse: 2, text: "Y dijo:\nClamé a Jehová desde mi aflicción;\ndesde el vientre." }]).usfm;
+  assert.deepEqual(chunkStarts(edited), ["2:1", "2:3"], "editar el versículo anterior a una marca no la quita");
+  const crlf = withChunkMarksOf(unmarked.replace(/\n/g, "\r\n"), source);
+  assert.ok(crlf.includes("desde el vientre clamé.\r\n\r\n\\ts\\*\r\n\\s1 El abismo") && !/[^\r]\n/.test(crlf));
+});
+
+test("la entrega de un versículo no quita la marca de trozo que le sigue en el borrador del grupo", () => {
+  const trunk = withChunkMarksOf(unmarked, source);
+  const work = applyVerseEdits(unmarked, 2, [{ verse: 2, text: "Y él dijo:\nClamé a Jehová;\ndesde el Seol clamé." }]);
+  const patched = patchTrunkByVerse(trunk, [work], { ancestor: unmarked, scope: { chapter: 2, from: 1, to: 6 } });
+  assert.deepEqual(chunkStarts(patched.usfm), ["1:1", "2:1", "2:3"]);
+  assert.ok(patched.usfm.includes("\\q2 desde el Seol clamé.\n\n\\ts\\*\n\\s1 El abismo"));
+});
+
 test("sin el nombre del libro dice su código, y sin original, un párrafo con sus versículos", () => {
-  assert.ok(skeletonUsfmFromSource("JON", source).startsWith("\\id JON\n\\usfm 3.0\n\\ide UTF-8\n\\h JON\n\\c 1\n"));
+  assert.ok(skeletonUsfmFromSource("JON", source).startsWith("\\id JON\n\\usfm 3.0\n\\ide UTF-8\n\\h JON\n\n\\ts\\*\n\\c 1\n"));
   assert.equal(skeletonUsfm("1JN", 1, 1, 2, "1 Juan"), "\\id 1JN\n\\usfm 3.0\n\\ide UTF-8\n\\h 1 Juan\n\\toc1 1 Juan\n\\toc2 1 Juan\n\\toc3 1Jn\n\\mt 1 Juan\n\\c 1\n\\p\n\\v 1\n\\v 2\n");
   assert.equal(buildBookUsfmSkeleton({ book: "JON", fallbackRange: { chapter: 2, from: 1, to: 1 }, name: "Jonás" }), skeletonUsfm("JON", 2, 1, 1, "Jonás"));
 });
@@ -451,10 +558,30 @@ test("al escribir un versículo de ese libro, sus renglones toman las marcas que
     { from: 2, to: 2, text: "Y él dijo:\nClamé a Jehová;\ndesde el vientre clamé.", leads: leads[2] },
     { from: 3, to: 3, text: "Ahora me echaste;\ntodas tus ondas.", leads: leads[3] },
   ]);
-  assert.ok(written.includes(["\\c 2", "\\p", "\\v 1 Y Jonás oró.", "\\v 2 Y él dijo:", "\\q1 Clamé a Jehová;", "\\q2 desde el vientre clamé.", "\\q1", "\\v 3 Ahora me echaste;", "\\q2 todas tus ondas.", "\\b", "\\q1", "\\v 4-5", "\\m", "\\v 6"].join("\n")));
+  assert.ok(written.includes(["\\c 2", "\\p", "\\v 1 Y Jonás oró.", "\\v 2 Y él dijo:", "\\q1 Clamé a Jehová;", "\\q2 desde el vientre clamé.", "", "\\ts\\*", "\\q1", "\\v 3 Ahora me echaste;", "\\q2 todas tus ondas.", "\\b", "\\q1", "\\v 4-5", "\\m", "\\v 6"].join("\n")));
+  assert.deepEqual(chunkStarts(written), chunkStarts(source), "escribir los versículos no mueve los trozos");
 });
 
 // ---------------------------------------------------------------- the whole book of a team
+
+const fixture = (name: string) => fileURLToPath(new URL(`../../usfm-ast/packages/usfm-parser/tests/fixtures/usfm/${name}`, import.meta.url));
+if (existsSync(fixture("jud.ult-aligned.usfm")) && existsSync(fixture("jud.tpl-nested-writer.usfm"))) {
+  const ult = readFileSync(fixture("jud.ult-aligned.usfm"), "utf8").replace(/\r\n/g, "\n");
+  const team = readFileSync(fixture("jud.tpl-nested-writer.usfm"), "utf8").replace(/\r\n/g, "\n");
+
+  test("Judas entero: el texto del equipo, que no tenía ninguna, toma las once marcas de trozo del ULT", () => {
+    assert.equal(chunkStarts(ult).length, 11);
+    assert.deepEqual(chunkStarts(team), []);
+    const marked = withChunkMarksOf(team, ult);
+    assert.deepEqual(chunkStarts(marked), chunkStarts(ult), "ante los mismos versículos");
+    const said = (usfm: string) => listVerseSpans(usfm).map((s) => `${s.verse} ${s.text} ${[...s.rawBody.matchAll(/\\zaln-s\b/g)].length}`);
+    assert.deepEqual(said(marked), said(team), "cada versículo, con su texto y su alineación, como estaba");
+    assert.equal(marked.split("\n").filter((line) => line !== "" && line !== "\\ts\\*").join("\n"), team.split("\n").filter((line) => line !== "").join("\n"), "solo se agregaron líneas");
+    assert.equal(withChunkMarksOf(marked, ult), marked);
+  });
+} else {
+  console.log("--  Judas entero: no están los archivos de prueba de usfm-ast; no se ejecutó.");
+}
 
 const real = fileURLToPath(new URL("../../usfm-ast/packages/usfm-parser/tests/fixtures/usfm/jon.tpl-aligned.usfm", import.meta.url));
 if (existsSync(real)) {

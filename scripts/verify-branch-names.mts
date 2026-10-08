@@ -29,6 +29,7 @@ import {
   isGitRefDescendant,
   ownedWorkBranchNames,
   portionPrBranchName,
+  readIsOwnWork,
   workUserFromHead,
 } from "../src/domain/portionPr";
 import { isWorkRefName } from "../src/domain/qaAdmin";
@@ -91,6 +92,15 @@ test("el texto de una subtarea se busca primero en su rama, luego en el borrador
   assert.deepEqual(remembered.slice(0, 2), ["trabajo/jud/tpl/valeska/160", "w/jud/tpl/valeska/160"]);
   assert.equal(remembered.indexOf(undefined), remembered.length - 1);
   assert.equal(draftReadBranchNames({ ...work, remembered: "  " }).indexOf(undefined), fresh.length - 1, "un nombre vacío no es la rama por defecto");
+});
+
+test("lo que el editor leyó primero se conserva solo si era la rama de la persona", () => {
+  // The group's draft answers after the first read. Kept over it, a text read from the draft a moment before was
+  // saved with the hash of the new one: over the person's branch, without the chunk marks just put in the draft.
+  for (const own of ["trabajo/jud/tpl/valeska/160", "w/jud/tpl/valeska/160"]) assert.ok(readIsOwnWork(own, work), `«${own}» es su trabajo`);
+  for (const other of ["borrador/jud/tpl", "jud/tpl", "t/jud/tpl", "jud", "master", "trabajo/jud/tpl/elisha/160", "trabajo/jud/tpl/valeska/161", "", undefined]) {
+    assert.ok(!readIsOwnWork(other, work), `«${other}» no es su trabajo`);
+  }
 });
 
 test("un espacio de trabajo puede dar sus propias palabras, y lo que calla es de la organización", () => {
