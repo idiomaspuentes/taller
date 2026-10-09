@@ -45,6 +45,8 @@
     "lexicons:build": "node scripts/build-lexicons.mjs",
     "parallels:build": "tsx --tsconfig tsconfig.scripts.json scripts/build-parallels.mts",
     "referents:build": "tsx --tsconfig tsconfig.scripts.json scripts/build-referents.mts",
+    "trees:build": "tsx --tsconfig tsconfig.scripts.json scripts/build-trees.mts",
+    "verify:trees": "tsx --tsconfig tsconfig.scripts.json scripts/verify-trees.mts",
     "verify:referents": "tsx --tsconfig tsconfig.scripts.json scripts/verify-referents.mts",
     "verify:parallels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-parallels.mts",
     "mock:door43": "node scripts/mock-door43/server.mjs",

@@ -3017,5 +3017,22 @@
   "lx.causer": "Quem faz acontecer",
   "lx.agent": "Quem faz",
   "lx.patient": "A quem ou a quê",
-  "lx.otherPart": "Também participa"
+  "lx.otherPart": "Também participa",
+  "st.open": "Ver como a oração está montada",
+  "st.title": "Como a oração está montada",
+  "st.loading": "Lendo a oração…",
+  "st.none": "Não temos a análise desta oração.",
+  "st.clause": "Oração",
+  "st.asClause": "{role} (uma oração)",
+  "st.v": "Verbo",
+  "st.s": "Sujeito",
+  "st.o": "Objeto",
+  "st.o2": "Segundo objeto",
+  "st.io": "Objeto indireto",
+  "st.p": "O que se diz do sujeito",
+  "st.vc": "Verbo «ser»",
+  "st.adv": "Circunstância",
+  "st.pp": "Com preposição",
+  "st.aux": "Auxiliar",
+  "st.credit": "Análise de MACULA, da Biblica (CC BY 4.0)."
 }

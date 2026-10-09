@@ -11,6 +11,7 @@ import { REFERENT_ORDER, referentsOf, type ReferentKind, type ReferentTarget } f
 import { describeMorph, type MorphLabel } from "../domain/morphology";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
+import { SentenceSheet } from "./SentenceSheet";
 
 /**
  * A word of the original as the text tags it. `occurrence` says which one it is among the words of its verse
@@ -191,9 +192,15 @@ export function WordSheet({
   const t = useT();
   const language = useUiLanguage();
   /** A word of the same field that was opened from the sheet, in place of the one the text was touched at. */
-  const [other, setOther] = useState<SheetWord | null>(null);
+  const [other, setOther] = useState<(SheetWord & { at?: { chapter: number; verse: number } }) | null>(null);
   useEffect(() => setOther(null), [asked]);
   const word = asked ? (other ?? asked) : null;
+  /** The verse the word in hand is read in: one opened from its sentence has its own, one from a field has none. */
+  const here = other?.at ? { book: at.book, ...other.at } : at;
+  const placed = !other || Boolean(other.at);
+  /** The sentence of the word, shown over this sheet. */
+  const [sentence, setSentence] = useState(false);
+  useEffect(() => setSentence(false), [asked]);
   const [found, setFound] = useState<Found[] | null>(null);
   /** The report being written about the entry; `null` while nobody is writing one. */
   const [report, setReport] = useState<string | null>(null);
@@ -263,6 +270,7 @@ export function WordSheet({
   }
 
   return (
+    <>
     <Dialog open={Boolean(word)} onOpenChange={(open) => (open ? undefined : onClose())}>
       <DialogContent className="word-sheet" aria-label={t("lx.aria")}>
         {word ? (
@@ -299,7 +307,12 @@ export function WordSheet({
             </dl>
 
             {/* Only of the word the text was touched at: one opened from here is not read in its verse. */}
-            {!other ? <Referents word={word} at={at} session={session} workspace={workspace} onOpen={(target) => setOther({ surface: target.text, lemma: target.text, strong: asTagged(target.strong) })} /> : null}
+            {placed ? <Referents word={word} at={here} session={session} workspace={workspace} onOpen={(target) => setOther({ surface: target.text, lemma: target.text, strong: asTagged(target.strong) })} /> : null}
+            {placed && here.book && here.chapter ? (
+              <button type="button" className="af-link ws-sentence-open" onClick={() => setSentence(true)}>
+                {t("st.open")}
+              </button>
+            ) : null}
 
             {found === null ? <p className="af-hint">{t("lx.loading")}</p> : null}
             {found !== null && !found.some((row) => row.file) ? <p className="af-hint">{t("lx.none")}</p> : null}
@@ -307,7 +320,7 @@ export function WordSheet({
             {(found ?? []).map(({ part, file, repo }) => {
               if (!file) return null;
               // A word opened from its field is not of the verse in hand: all its senses are shown.
-              const senses = sensesOfWord(file, other ? { book: "", chapter: 0, verse: 0 } : at, part.letter);
+              const senses = sensesOfWord(file, placed ? here : { book: "", chapter: 0, verse: 0 }, part.letter);
               const field = session && repo ? { strong: word.strong, load: (code: string) => loadLexiconField(session, repo, code), onOpen: (next: FieldWord) => setOther({ surface: next.lemma, lemma: next.lemma, strong: asTagged(next.strong) }) } : undefined;
               const pending = senses.entries.some((e) => e.review === "pending");
               return (
@@ -387,5 +400,19 @@ export function WordSheet({
         ) : null}
       </DialogContent>
     </Dialog>
+    {sentence && word && placed ? (
+      <SentenceSheet
+        at={here}
+        focus={{ surface: word.surface, occurrence: word.occurrence }}
+        session={session}
+        workspace={workspace}
+        onWord={(next, place) => {
+          setSentence(false);
+          setOther({ ...next, at: { chapter: place.chapter, verse: place.verse } });
+        }}
+        onClose={() => setSentence(false)}
+      />
+    ) : null}
+    </>
   );
 }

@@ -2,7 +2,7 @@
 
 Medido el 9 de octubre de 2026, solo leyendo los repositorios públicos. Es un plan: de lo que sigue, en la app están
 el léxico con sus campos de significado (fase 1), los pasajes paralelos (fase 2), «¿a quién se refiere?» (fase 3) y
-«quién hace qué a quién» (fase 4).
+«quién hace qué a quién» (fase 4) y cómo está armada la oración (fase 6). La fase 5 se omitió.
 
 ## Lo que ya usamos
 
@@ -52,6 +52,21 @@ Una palabra se encuentra por sus letras y por cuál es entre las iguales de su v
 ediciones (WLC y SBLGNT) que las nuestras (UHB y UGNT). Medido en 25 libros: el 99,2 % de las palabras que señalan
 a otra se halla en nuestro texto; del resto no se muestra nada. El hebreo se pasa a nuestra numeración con la misma
 tabla que los pasajes paralelos.
+
+«Cómo está armada la oración» sale de los árboles sintácticos de MACULA. Desde la ficha de cualquier palabra del
+original, «Ver cómo está armada la oración» abre la oración de ese versículo como una lista que se lee de arriba
+abajo, no como un diagrama: cada oración con sus partes una dentro de otra (Verbo, Sujeto, Objeto, Circunstancia…),
+y en cada parte sus palabras con lo que significan. La palabra de la que se vino queda marcada, y tocar otra abre su
+ficha. Una oración de 65 palabras y 7 niveles (Tito 1:1–4) cabe a 375 px sin desplazarse de lado.
+
+De los árboles (500 MB) se guarda solo qué partes tienen función y en qué lugar de su versículo está cada palabra:
+6,8 MB en `public/trees/`, un archivo por libro. Las palabras se leen de nuestro texto, y por eso una oración se
+muestra solo si cada versículo suyo tiene aquí tantas palabras como allá: el 94 % de las oraciones, medido en 25
+libros. De las demás se dice que no tenemos el análisis. Se rehacen con `npm run trees:build` (la cabecera del guion
+dice cómo bajar los árboles) y los vigila `npm run verify:trees`.
+
+Con esto, lo que la app sirve de estos recursos pesa unos 15 MB (referentes 8,1; árboles 6,8; paralelos 0,4). Cada
+libro se baja solo cuando se abre algo suyo.
 
 ## Lo que hay y no usamos
 
@@ -121,7 +136,8 @@ De lo que más ayuda a quien traduce sin ser especialista y menos cuesta, a lo m
 Cambió respecto a la primera propuesta: fauna, flora y realia bajan de la fase 2 a la 5 porque no están en español, y
 los pasajes paralelos y los referentes suben porque no dependen del idioma.
 
-Hechas: de la 1 a la 4. La 4 quedó en la ficha de palabra, no como vista propia en Estudio.
+Hechas: de la 1 a la 4 y la 6; la 5 se omitió. La 4 y la 6 quedaron en la ficha de palabra, no como vistas
+propias en Estudio.
 
 ### Cómo llegaría a la app
 

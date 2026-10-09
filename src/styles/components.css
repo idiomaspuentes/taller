@@ -5961,6 +5961,27 @@ button.al-box--read { cursor: pointer; }
 .pp-original .af-word { font-size: inherit; }
 .pp-credit { margin: 0; font-size: 0.75rem; color: var(--text-faint); }
 
+/* How a sentence is put together: parts one inside another, read from top to bottom. Each level is a thin line
+   at the side and a short step in, so that a sentence six parts deep still has room for its words on a phone. */
+.ws-sentence-open { justify-self: start; display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
+.st-sentence { display: grid; gap: 0.5rem; }
+.st-part { display: grid; gap: 0.25rem; padding-left: 0.5rem; border-left: 2px solid var(--border); }
+.st-part[data-top] { padding-left: 0; border-left: 0; }
+.st-part[data-clause]:not([data-top]) { border-left-color: var(--border-strong); }
+.st-part[data-role="v"] { border-left-color: var(--accent-500); }
+.st-part[data-role="s"] { border-left-color: var(--primary); }
+.st-part[data-role="o"], .st-part[data-role="o2"], .st-part[data-role="io"] { border-left-color: var(--warning-700); }
+.st-label { margin: 0; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.st-part[data-role="v"] > .st-label { color: var(--accent-700); }
+.st-part[data-role="s"] > .st-label { color: var(--primary); }
+.st-part[data-role="o"] > .st-label, .st-part[data-role="o2"] > .st-label, .st-part[data-role="io"] > .st-label { color: var(--warning-700); }
+.st-kids { display: grid; gap: 0.375rem; }
+.st-words { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.st-word { display: inline-grid; justify-items: center; gap: 0; min-height: 2.5rem; min-width: 2rem; padding: 0.125rem 0.375rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font: inherit; color: var(--text); cursor: pointer; }
+.st-word[data-here] { border-color: var(--accent-500); background: var(--accent-100); }
+.st-word__text { font-size: 1.0625rem; line-height: 1.5; }
+.st-gloss { max-width: 9rem; font-size: 0.6875rem; line-height: 1.2; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
+
 /* Who a word is about, in its sheet: set apart from what it means, since it is of this verse alone. */
 .ws-refs { display: grid; gap: 0.5rem; padding: 0.625rem 0.75rem; border-radius: var(--radius-sm); background: var(--surface-muted); }
 .ws-refs__group { display: grid; gap: 0.125rem; }
