@@ -1,7 +1,8 @@
 # Recursos abiertos que Taller puede aprovechar
 
 Medido el 9 de octubre de 2026, solo leyendo los repositorios públicos. Es un plan: de lo que sigue, en la app están
-el léxico con sus campos de significado (fase 1), los pasajes paralelos (fase 2) y «¿a quién se refiere?» (fase 3).
+el léxico con sus campos de significado (fase 1), los pasajes paralelos (fase 2), «¿a quién se refiere?» (fase 3) y
+«quién hace qué a quién» (fase 4).
 
 ## Lo que ya usamos
 
@@ -30,16 +31,25 @@ cita no se guardan: cuentan las palabras de la Septuaginta.
 ficha de una palabra del original, donde quiera que se abra (al alinear, al revisar desafíos y términos clave, en un
 pasaje paralelo), aparece a qué sustantivo apunta un pronombre o un sufijo («me» → Jonás) y de quién habla un verbo
 cuando la oración no lo nombra («tragar» → el pez), con su significado y el versículo si está en otro. Tocarlo abre
-esa palabra. Son 120 114 palabras en los 66 libros.
+esa palabra.
+
+«Quién hace qué a quién» sale de las mismas tablas (columna `frame`) y se muestra en el mismo recuadro de la ficha
+de un verbo: «Quién lo hace», «A quién o a qué», «También participa» y, en los causativos del hebreo, «Quién hace
+que pase» (Yahvé hizo que un viento cayera sobre el mar). Cuando ese lugar lo ocupa un pronombre, se da aquello que
+el pronombre nombra («te dejé» → Tito), que es lo que hay que saber para traducir. El sujeto callado y el sufijo que
+ya están dichos en el marco no se repiten. Los lugares de MACULA son los de PropBank (A0, A1, A2…): los dos primeros
+se dicen con seguridad; del tercero en adelante depende del verbo, y por eso solo se dice que «también participa».
+
+Entre las dos cosas son 152 155 palabras en los 66 libros.
 
 Los datos van con la app, en `public/referents/`, un archivo por libro que se lee la primera vez que se abre una
-palabra de ese libro: 8,4 MB entre todos, el mayor (Salmos) de 570 KB antes de comprimir. El plan decía guardarlos
+palabra de ese libro: 8,1 MB entre todos, el mayor (Salmos) de 507 KB antes de comprimir. El plan decía guardarlos
 en Door43; quedaron aquí porque no dependen del idioma y así no hay otro repositorio que publicar. Si el peso del
 repositorio molesta, es lo primero que se movería. Se rehacen con `npm run referents:build` (baja 90 MB de tablas) y
 los vigila `npm run verify:referents`.
 
 Una palabra se encuentra por sus letras y por cuál es entre las iguales de su versículo, porque MACULA usa otras
-ediciones (WLC y SBLGNT) que las nuestras (UHB y UGNT). Medido en 25 libros: el 99,3 % de las palabras que señalan
+ediciones (WLC y SBLGNT) que las nuestras (UHB y UGNT). Medido en 25 libros: el 99,2 % de las palabras que señalan
 a otra se halla en nuestro texto; del resto no se muestra nada. El hebreo se pasa a nuestra numeración con la misma
 tabla que los pasajes paralelos.
 
@@ -111,7 +121,7 @@ De lo que más ayuda a quien traduce sin ser especialista y menos cuesta, a lo m
 Cambió respecto a la primera propuesta: fauna, flora y realia bajan de la fase 2 a la 5 porque no están en español, y
 los pasajes paralelos y los referentes suben porque no dependen del idioma.
 
-Hechas: la 1, la 2 y la 3. La 4 puede salir de las mismas tablas de MACULA (columna `frame`), ya bajadas.
+Hechas: de la 1 a la 4. La 4 quedó en la ficha de palabra, no como vista propia en Estudio.
 
 ### Cómo llegaría a la app
 

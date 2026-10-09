@@ -7,7 +7,7 @@ import { lexiconRepos, loadLexiconEntry, loadLexiconField, reportLexiconEntry } 
 import { explainError } from "../dcs/userError";
 import { glossOfWord, lexiconReport, otherWordsOfField, sensesOfWord, strongCode, strongParts, type FieldWord, type LexiconField, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
 import { loadReferents } from "../dcs/referents";
-import { referentsOf, type ReferentTarget } from "../domain/referents";
+import { REFERENT_ORDER, referentsOf, type ReferentKind, type ReferentTarget } from "../domain/referents";
 import { describeMorph, type MorphLabel } from "../domain/morphology";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
@@ -91,9 +91,11 @@ function TargetWord({ target, at, session, workspace, onOpen }: { target: Refere
   );
 }
 
+const REFERENT_ASK: Record<ReferentKind, MessageKey> = { causer: "lx.causer", agent: "lx.agent", subject: "lx.subject", patient: "lx.patient", other: "lx.otherPart", refers: "lx.refers" };
+
 /**
- * Who the word is about: what a pronoun stands for, and who a verb speaks of when its sentence does not name
- * them. Nothing is shown for a word that points to no other.
+ * Who the word is about: what a pronoun stands for, and for a verb, who does it and to whom. Nothing is shown
+ * for a word that points to no other.
  */
 function Referents({ word, at, session, workspace, onOpen }: { word: SheetWord; at: { book: string; chapter: number; verse: number }; session: GtSession | null; workspace: Workspace | undefined; onOpen: (target: ReferentTarget) => void }) {
   const t = useT();
@@ -113,13 +115,14 @@ function Referents({ word, at, session, workspace, onOpen }: { word: SheetWord; 
   // A word of Hebrew may be a verb and its object in one: each piece under its own question.
   const groups = new Map<string, ReferentTarget[]>();
   for (const target of targets) groups.set(`${target.kind}|${target.piece ?? ""}`, [...(groups.get(`${target.kind}|${target.piece ?? ""}`) ?? []), target]);
+  const ordered = [...groups.values()].sort((a, b) => REFERENT_ORDER.indexOf(a[0]!.kind) - REFERENT_ORDER.indexOf(b[0]!.kind));
   return (
     <section className="ws-refs">
-      {[...groups.values()].map((group) => {
+      {ordered.map((group) => {
         const first = group[0]!;
         return (
           <div key={`${first.kind}|${first.piece ?? ""}`} className="ws-refs__group">
-            <p className="af-lbl">{first.kind === "subject" ? t("lx.subject") : first.piece ? t("lx.refersPiece").replace("{piece}", first.piece) : t("lx.refers")}</p>
+            <p className="af-lbl">{first.kind === "refers" && first.piece ? t("lx.refersPiece").replace("{piece}", first.piece) : t(REFERENT_ASK[first.kind])}</p>
             <ul className="ws-field__words">
               {group.map((target, i) => (
                 <li key={i}>

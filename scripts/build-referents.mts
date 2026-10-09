@@ -3,8 +3,8 @@
  * index of the books.
  *
  * The answers are MACULA's (github.com/Clear-Bible/macula-hebrew and macula-greek, by Biblica, CC BY 4.0): for a
- * pronoun, the word it stands for; for a verb, who does it. Its Hebrew table numbers the verses as the Hebrew
- * Bible does, so they are moved with the standard table of Paratext, as the parallel passages are.
+ * pronoun, the word it stands for; for a verb, who does it and to whom. Its Hebrew table numbers the verses as the
+ * Hebrew Bible does, so they are moved with the standard table of Paratext, as the parallel passages are.
  *
  *   npm run referents:build                                             # reads the tables from GitHub (90 MB)
  *   npm run referents:build -- --greek <tsv> --hebrew <tsv> --map <json> # or from files already at hand
@@ -47,9 +47,9 @@ const books = [...files.keys()].sort();
 let bytes = 0;
 let words = 0;
 for (const book of books) {
-  const text = `${JSON.stringify({ verses: files.get(book) })}\n`;
+  const text = `${JSON.stringify(files.get(book))}\n`;
   bytes += Buffer.byteLength(text);
-  words += Object.values(files.get(book)!).reduce((sum, verse) => sum + verse.length, 0);
+  words += Object.values(files.get(book)!.verses).reduce((sum, verse) => sum + verse.length, 0);
   await writeFile(path.join(OUT, `${book}.json`), text);
 }
 await writeFile(

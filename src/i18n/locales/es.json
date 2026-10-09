@@ -3013,5 +3013,9 @@
   "lx.refers": "A quién o a qué se refiere",
   "lx.refersPiece": "A quién o a qué se refiere «{piece}»",
   "lx.subject": "De quién habla este verbo",
-  "lx.refCredit": "Según MACULA, de Biblica (CC BY 4.0)."
+  "lx.refCredit": "Según MACULA, de Biblica (CC BY 4.0).",
+  "lx.causer": "Quién hace que pase",
+  "lx.agent": "Quién lo hace",
+  "lx.patient": "A quién o a qué",
+  "lx.otherPart": "También participa"
 }
