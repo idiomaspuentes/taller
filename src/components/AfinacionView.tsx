@@ -3,7 +3,9 @@ import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep } from "../dcs/afinacionLoad";
+import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type OriginalWord } from "../dcs/afinacionLoad";
+import { tallerConfig, workspaceOfOrg } from "../config";
+import { WordSheet } from "./WordSheet";
 import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
 import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
@@ -72,6 +74,49 @@ const TITLE: Record<AfinacionStep, MessageKey> = { notas: "af.titleNotas", palab
 
 const isRtl = (text: string) => /[\u0590-\u05FF\u0600-\u06FF]/.test(text);
 
+/** A word without what is not a letter of it, to find it among the words the original tags. */
+const bare = (word: string) => word.normalize("NFC").replace(/[^\p{L}\p{M}\p{N}]+/gu, "");
+
+/**
+ * The verse of the original with each word a button: touching one opens what it means and its grammar, as when
+ * aligning. The words are the ones the text is shown in (the marks of a note count them); each is matched with
+ * the word the original tags by what it says and which time it says it.
+ */
+function OriginalWords({ text, words, marked, onOpen }: { text: string; words: OriginalWord[] | undefined; marked?: number[]; onOpen: (word: OriginalWord) => void }) {
+  const t = useT();
+  const shown = wordSpans(text);
+  if (!shown.length) return <span className="af-empty">{t("af.noText")}</span>;
+  const seen = new Map<string, number>();
+  /** The word the original tags for a piece of what is shown: the same letters, the same time they are said. */
+  const tagged = (piece: string): OriginalWord | undefined => {
+    const key = bare(piece);
+    if (!key) return undefined;
+    const nth = seen.get(key) ?? 0;
+    seen.set(key, nth + 1);
+    const same = (words ?? []).filter((word) => bare(word.surface) === key);
+    return same[nth] ?? same[same.length - 1];
+  };
+  return (
+    <span className="af-words" dir={isRtl(text) ? "rtl" : undefined}>
+      {shown.map((w) => (
+        // Two words of Hebrew joined by a maqqef are shown as one and tagged as two: each opens its own.
+        <span key={w.index} className="af-word" data-marked={marked?.includes(w.index) ? "true" : undefined}>
+          {w.text.split(/(?<=\u05BE)/).map((piece, at) => {
+            const found = tagged(piece);
+            return found ? (
+              <button key={at} type="button" className="af-word--open" aria-label={t("lx.wordAria").replace("{word}", piece)} onClick={() => onOpen(found)}>
+                {piece}
+              </button>
+            ) : (
+              piece
+            );
+          })}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function Words({ text, marked, onTap, selected }: { text: string; marked?: number[]; onTap?: (i: number) => void; selected?: number[] }) {
   const t = useT();
   const words = wordSpans(text);
@@ -111,6 +156,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const language = useUiLanguage();
   const stanceLabel = (status: string) => t(STANCE_KEY[status as ReviewStance] ?? "rv.approved");
   const [session] = useState<GtSession | undefined>(() => loadSession());
+  /** The word of the original whose meaning is open, and the verse it is of. */
+  const [sheetWord, setSheetWord] = useState<{ word: OriginalWord; chapter: number; verse: number } | null>(null);
   const [ctx, setCtx] = useState<SolverLaunchContext | null>(null);
   const [data, setData] = useState<AfinacionNotesData | null>(null);
   // What each person answered, as their files have it; `decisions` is how it stands over the text of today.
@@ -802,6 +849,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
   return (
     <div className="af af--round">
+      <WordSheet word={sheetWord?.word ?? null} at={{ book: data?.book ?? "", chapter: sheetWord?.chapter ?? 0, verse: sheetWord?.verse ?? 0 }} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} onClose={() => setSheetWord(null)} />
       <ToolHeader
         title={toolHeading(ctx, language, t(TITLE[stepProp])).title}
         onBack={onClose}
@@ -887,7 +935,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 const verse = Number(key.split(":")[1]);
                 return (
                   <p key={key} className="hs-v" data-here={(readChapter || item.chapter) === item.chapter && verse === item.verse ? "true" : undefined}>
-                    <sup>{verse}</sup> {text}
+                    <sup>{verse}</sup> {chapterSource?.id === "orig" ? <OriginalWords text={text} words={data.originalWords[key]} onOpen={(word) => setSheetWord({ word, chapter: readChapter || item.chapter, verse })} /> : text}
                   </p>
                 );
               })}
@@ -1149,7 +1197,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </div>
               </div>
               <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
-                <Words text={refVerse} marked={refMarked} />
+                {reference?.id === "orig" ? (
+                  <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
+                ) : (
+                  <Words text={refVerse} marked={refMarked} />
+                )}
               </span>
             </div>
   

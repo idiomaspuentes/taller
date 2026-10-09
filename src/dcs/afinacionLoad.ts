@@ -1,4 +1,6 @@
 import { getRawContent } from "@ip-lms/dcs-client";
+import { tokenizeOriginalDocument } from "@usfm-tools/editor-core";
+import { parseUsfmToUsj } from "@usfm-tools/usfm-readonly-react";
 import type { AlignmentMap } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
@@ -31,6 +33,25 @@ export type AfinacionStep = "notas" | "palabras";
 /** Plain text of every verse of a book, by `"chapter:verse"`. */
 export type BookVerseMap = Record<string, string>;
 
+/** A word of the original as its text tags it: what the lexicon and the grammar of the word are found by. */
+export type OriginalWord = { surface: string; lemma: string; strong: string; morph?: string };
+
+/** The words of the original, verse by verse (`"chapter:verse"`), in the order they are written. */
+function originalWordsOf(raw: string | null): Record<string, OriginalWord[]> {
+  const out: Record<string, OriginalWord[]> = {};
+  if (!raw) return out;
+  try {
+    const tokens = tokenizeOriginalDocument(parseUsfmToUsj(raw, { stripAlignment: false }) as { content?: unknown[] });
+    for (const [sid, words] of Object.entries(tokens)) {
+      const at = /(\d+):(\d+)\s*$/.exec(sid);
+      if (at) out[`${Number(at[1])}:${Number(at[2])}`] = words.map((word) => ({ surface: word.surface, lemma: word.lemma, strong: word.strong, morph: word.morph }));
+    }
+  } catch {
+    // The words are a help: without them the text is still read.
+  }
+  return out;
+}
+
 export type AfinacionNotesData = {
   step: AfinacionStep;
   book: string;
@@ -59,6 +80,8 @@ export type AfinacionNotesData = {
    * Each with its alignment, to mark in it the words a note is about.
    */
   references: { id: "orig" | "ult" | "ust"; label: string; book: BookVerseMap; alignments?: AlignmentMap }[];
+  /** The words of the original of the whole book, to open what each one means where the original is shown. */
+  originalWords: Record<string, OriginalWord[]>;
   /** General levels; the views count with the levels of the task's team (`levelBook`). */
   levels: Record<string, PersonLevel>;
   levelBook: LevelBook;
@@ -324,6 +347,7 @@ export async function loadAfinacionNotes(params: {
         ...(ust ? [{ id: "ust" as const, label: "UST", book: bookVerses(ust.usj), alignments: ust.alignments }] : []),
       ];
     })(),
+    originalWords: originalWordsOf(originalRaw),
     levels: pmConfig.levels,
     levelBook: pmConfig,
     notesSource: `${pkg.owner}/${sourceRepo}`,

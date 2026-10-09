@@ -5943,6 +5943,10 @@ button.al-box--read { cursor: pointer; }
   color: var(--danger, #b3261e);
 }
 
+/* A word of the original that opens what it means: it reads as text, and says it can be touched with a dotted line. */
+.af-word--open { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted color-mix(in srgb, var(--text) 35%, transparent); text-underline-offset: 0.3em; }
+.af-word--open:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 2px; }
+
 /* ---- Welcome (first screen, signed out) ---- */
 .welcome {
   /* The page itself does not scroll (`html`, `body`). What the app is scrolls inside (`welcome__body`); which team
