@@ -5945,7 +5945,10 @@ button.al-box--read { cursor: pointer; }
 
 /* ---- Welcome (first screen, signed out) ---- */
 .welcome {
-  min-height: 100dvh;
+  /* The page itself does not scroll (`html`, `body`): the welcome is its own scroller, or what is below the fold
+     of a phone, the button to sign in, cannot be reached. */
+  height: 100dvh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background:
