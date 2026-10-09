@@ -353,7 +353,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
         <>
         <div className="fam__body">
           <div className="rv-bar">
-            <p className="rv-bar__count">{t("gr.lede").replace("{n}", String(minAgree))}</p>
+            <p className="rv-bar__count">{t(minAgree === 1 ? "gr.ledeOne" : "gr.lede").replace("{n}", String(minAgree))}</p>
             {data.sources.length ? (
               <label className="rv-toggle">
                 <input type="checkbox" checked={showSources} onChange={(e) => setShowSources(e.target.checked)} /> {t("rv.showSources")}

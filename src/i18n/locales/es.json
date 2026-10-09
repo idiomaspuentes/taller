@@ -2993,5 +2993,6 @@
   "wt.description": "Para probar cada paso en un servidor de pruebas, con un capítulo de un libro que ya está hecho. Todas las tareas quedan abiertas a la vez y una persona sola puede recorrer cada una. La revisión en pares sigue pidiendo a otra persona. No es para trabajo real.",
   "sb.chapter": "Capítulo que se recorre",
   "sb.startTrial": "Empezar el recorrido de {book} {n}",
-  "sb.noChapter": "Este libro no tiene el capítulo {n}. No se creó nada."
+  "sb.noChapter": "Este libro no tiene el capítulo {n}. No se creó nada.",
+  "gr.ledeOne": "Lee todo lo traducido. Cada versículo queda acordado cuando una persona está de acuerdo y nadie tiene una duda abierta."
 }
