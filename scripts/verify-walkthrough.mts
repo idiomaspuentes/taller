@@ -16,6 +16,7 @@ import { normalizeInventory, normalizeWorkflowTemplate } from "../src/domain/sto
 import { emptyTaskProgress, markStepDone } from "../src/domain/taskProgress";
 import type { AssignmentsDoc, InventoryDoc, TaskStep, WorkflowTemplate } from "../src/domain/types";
 import { isWalkthroughId, processOf, walkthroughId, walkthroughOf } from "../src/domain/walkthrough";
+import { waitBlocks } from "../src/domain/waits";
 import { publishableWorkOrders } from "../src/domain/workOrder";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
 import { runPrep } from "../src/prep/index";
@@ -54,7 +55,17 @@ test("tiene las fases, las tareas, los pasos y las herramientas de su proceso, y
     assert.deepEqual(trial.tasks.map((task) => [task.id, task.phaseId, task.rules, task.minLevel, task.distributeUnit, task.bundle]), workflow.tasks.map((task) => [task.id, task.phaseId, task.rules, task.minLevel, task.distributeUnit, task.bundle]));
     assert.deepEqual(stepsOf(trial).map(({ step }) => [step.id, step.solverAppId, step.closing, step.claimMode, step.scope, step.checklist]), stepsOf(workflow).map(({ step }) => [step.id, step.solverAppId, step.closing, step.claimMode, step.scope, step.checklist]));
     assert.ok(workflow.tasks.some((task) => task.waitsFor?.length), "el proceso encadena sus tareas");
-    assert.ok(trial.tasks.every((task) => !task.waitsFor?.length), "el recorrido no");
+    // What a task waits for is what its tools read: the rules are still said, and hold nothing.
+    assert.deepEqual(trial.tasks.map((task) => (task.waitsFor ?? []).map((rule) => [rule.taskId, rule.phaseId, rule.scope])), workflow.tasks.map((task) => (task.waitsFor ?? []).filter((rule) => !rule.source).map((rule) => [rule.taskId, rule.phaseId, rule.scope])));
+    assert.ok(trial.tasks.every((task) => (task.waitsFor ?? []).every((rule) => rule.open === true)), "en el recorrido ninguna detiene");
+    assert.ok(workflow.tasks.every((task) => (task.waitsFor ?? []).every((rule) => !rule.open)));
+    const kept = normalizeWorkflowTemplate(JSON.parse(JSON.stringify(trial)))!;
+    assert.ok(kept.tasks.some((task) => task.waitsFor?.length) && kept.tasks.every((task) => (task.waitsFor ?? []).every((rule) => rule.open === true)), "y escrito y leído otra vez, lo sigue diciendo");
+    for (const task of boardOf(trial).teams) {
+      const issue = { number: 1, state: "open", labels: [{ name: `pm/tarea:${task.id}` }], title: "TIT 2:1–5", body: "" } as never;
+      const others = boardOf(trial).teams.map((other, n) => ({ number: 10 + n, state: "open", labels: [{ name: `pm/tarea:${other.id}` }], title: "TIT 2:1–5", body: "" })) as never;
+      assert.deepEqual(waitBlocks(issue, boardOf(trial), others), [], `${task.id}: nada la detiene`);
+    }
     assert.ok(phasesAtStart(boardOf(trial)).every((phase) => phase.ready), "todas las fases pueden empezar desde el principio");
     assert.ok(phasesAtStart(boardOf(workflow)).some((phase) => !phase.ready));
     assert.equal(trial.version, workflow.version);

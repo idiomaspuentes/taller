@@ -7,7 +7,13 @@ import { bookName, normalizeProjectId } from "../domain/books";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
 import { firstPhaseTeams, inheritTeams, limitedToChapters, nextBookHint, reachesNextBook, wasWithdrawn, type NextBookHint, type TeamOption } from "../domain/startBook";
-import { processOf } from "../domain/walkthrough";
+import { isWalkthroughId, processOf } from "../domain/walkthrough";
+import { draftTaskId } from "../domain/branchNames";
+import { bookBranchName } from "../domain/portionPr";
+import { resolveScriptureTarget } from "../domain/scriptureTarget";
+import { SOLVER_LAUNCH_SCHEMA } from "../domain/solverLaunch";
+import { ensureBranchFromDefault, getDefaultBranch } from "./pulls";
+import { readRepoFile } from "./repoFile";
 import { isAppTeam, reposForTask } from "../domain/roles";
 import { emptyAssignments, mergePeople } from "../domain/store";
 import { portionStartsOfBook } from "../domain/extraWork";
@@ -101,6 +107,32 @@ export async function createProject(params: {
 }
 
 /**
+ * The group draft of each text of the book, started from what is published. In a real book it is started by the
+ * first translation that is handed in; a walkthrough is done on a book that is already translated, and every tool
+ * after translation opens that draft: without it they all said there was none yet. Only where the published
+ * branch has the book. Returns the branches it made sure of.
+ */
+export async function openGroupDrafts(params: { session: GtSession; pmOrg: string; board: AssignmentsDoc }): Promise<string[]> {
+  const { session, board } = params;
+  const config = dcsConfig(session.host);
+  const pmConfig = await loadPmConfig(session, params.pmOrg);
+  const book = (board.books?.[0] || board.book || board.projectId).toUpperCase();
+  const made: string[] = [];
+  for (const resource of new Set(board.teams.flatMap((task) => task.rules.map((rule) => rule.resource)))) {
+    const taskId = draftTaskId(board.teams, resource);
+    const target = resolveScriptureTarget({ schema: SOLVER_LAUNCH_SCHEMA, lang: board.lang, pmOrg: params.pmOrg, contentOrg: board.contentOrg, projectId: board.projectId, book, resource } as never, pmConfig);
+    if (!taskId || "error" in target) continue;
+    const published = await getDefaultBranch(config, target.owner, target.repo, session.token).catch(() => "");
+    const has = published ? await readRepoFile({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branch: published }).catch(() => null) : null;
+    if (!has?.text.trim()) continue;
+    const branch = bookBranchName(book, taskId);
+    await ensureBranchFromDefault(config, target.owner, target.repo, branch, session.token);
+    made.push(`${target.owner}/${target.repo}@${branch}`);
+  }
+  return made;
+}
+
+/**
  * Start a book in one action: apply the process, bring the teams of the last book done with it, read and divide the
  * book, save the project and lay out its subtareas. Each stage is reported as it begins.
  */
@@ -123,7 +155,9 @@ export async function startBook(params: {
   const inventory = await readBook({ book: params.book, lang, contentOrg, settings: board.settings }, (message) => onStage("reading", message));
   // Said before anything is written: a project with no subtarea in it would be left behind.
   if (params.chapters?.length && !inventory.portions.some((portion) => params.chapters!.includes(portion.chapter))) throw new Error(tNow("sb.noChapter").replace("{n}", params.chapters.join(", ")));
-  return createProject({ session, pmOrg, board, inventory, onStage });
+  const started = await createProject({ session, pmOrg, board, inventory, onStage });
+  if (isWalkthroughId(board.workflowId)) await openGroupDrafts({ session, pmOrg, board: started.board });
+  return started;
 }
 
 export type TeamOptions = { teams: TeamOption[]; needs: (task: Pick<ProjectTask, "scope" | "rules">) => string[] };

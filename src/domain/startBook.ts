@@ -140,6 +140,7 @@ export function phasesAtStart(board: Pick<AssignmentsDoc, "phases" | "teams">): 
       let source = false;
       for (const task of board.teams.filter((t) => t.phaseId === phase.id)) {
         for (const rule of task.waitsFor ?? []) {
+          if (rule.open) continue;
           if (rule.source) source = true;
           else {
             const id = rule.phaseId ?? phaseOf.get(rule.taskId ?? "");

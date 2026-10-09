@@ -114,6 +114,7 @@ export function waitBlocks(
   let someArrived = false;
   const mine = portionIdsOf(issue);
   for (const rule of task.waitsFor) {
+    if (rule.open) continue;
     if (rule.source) {
       const held = sourceHolds(rule, issue, sourceIssues);
       if (held) blocks.push({ rule, issues: held });

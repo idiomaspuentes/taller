@@ -58,6 +58,8 @@ export async function loadGroupReading(session: GtSession, ctx: SolverLaunchCont
   ]);
   const task = board?.teams.find((row) => row.id === ctx.taskId) ?? null;
   const awaited = (task?.waitsFor ?? []).flatMap((rule) => (rule.taskId && !rule.source ? (board?.teams.filter((row) => row.id === rule.taskId) ?? []) : []));
+  // In a walkthrough nothing is waited for: the text is read as the book has it, with no passage still to arrive.
+  const arrived = new Set((task?.waitsFor ?? []).flatMap((rule) => (rule.open && rule.taskId ? [rule.taskId] : [])));
 
   const texts: GroupReadingText[] = [];
   const authorsByItem: Record<string, string[]> = {};
@@ -86,7 +88,7 @@ export async function loadGroupReading(session: GtSession, ctx: SolverLaunchCont
       if (issueTaskId(issue) !== source.id || chapterFromIssue(issue) !== chapter) continue;
       const who = issue.assignee?.login || issue.assignees?.[0]?.login;
       const range = parseRefRange(refFromIssueTitle(issue.title ?? ""));
-      if (range && issue.state !== "closed") pending.push({ from: range.from, to: range.to });
+      if (range && issue.state !== "closed" && !arrived.has(source.id)) pending.push({ from: range.from, to: range.to });
       if (!who || !range) continue;
       for (let verse = range.from; verse <= range.to; verse++) authorsByItem[readingItemId(resource, chapter, verse)] = [who];
     }

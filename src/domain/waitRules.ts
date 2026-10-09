@@ -25,10 +25,11 @@ export function normalizeWaitRules(raw: unknown): WaitRule[] | undefined {
     // A wait on the source project names one of its tasks; it has no phases of ours to point at.
     const source = item.source === true && Boolean(taskId);
     const partial = item.partial === true && !source;
+    const open = item.open === true && !source;
     const key = `${source ? "s" : taskId ? "t" : "p"}:${taskId || phaseId}:${scope}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    rules.push(source ? { taskId, scope, source: true } : { ...(taskId ? { taskId } : { phaseId }), scope, ...(partial ? { partial: true } : {}) });
+    rules.push(source ? { taskId, scope, source: true } : { ...(taskId ? { taskId } : { phaseId }), scope, ...(partial ? { partial: true } : {}), ...(open ? { open: true } : {}) });
   }
   return rules.length ? rules : undefined;
 }

@@ -433,6 +433,12 @@ export type WaitRule = {
    * is enough. Finishing is another matter, and is the tool's (it knows what has not arrived yet).
    */
   partial?: boolean;
+  /**
+   * The rule is said and does not hold the task: a walkthrough of a process (`walkthrough.ts`). What a task waits
+   * for is also what its tools read (whose group draft is reviewed, which texts are read together), so the rule
+   * cannot simply be left out.
+   */
+  open?: boolean;
 };
 
 /**
