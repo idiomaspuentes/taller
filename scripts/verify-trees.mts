@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BOOKS } from "../src/domain/books";
 import { hebrewToOurs } from "../src/domain/parallels";
-import { encodeTree, isLeaf, leavesOf, normalizeTreeFile, parseLowfat, reduceSentence, sentenceFits, sentencesAt, type TreeNode } from "../src/domain/syntaxTree";
+import { clauseKind, encodeTree, isLeaf, leavesOf, normalizeTreeFile, parseLowfat, reduceSentence, sentenceFits, sentencesAt, sentenceShape, type TreeNode } from "../src/domain/syntaxTree";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -43,12 +43,12 @@ const GREEK = `<book><sentence><wg class="cl">
 
 test("de un árbol de MACULA queda lo que tiene función, y los grupos de en medio dan sus palabras", () => {
   const [first] = parseLowfat(HEBREW);
-  assert.equal(line(reduceSentence(first!)!), "*[v[1:1.1] s[1:1.2 1:1.3] pp[v*[1:1.8]]]", "el «y» va con su verbo; «para decir» es una parte con preposición, y dentro la oración de un solo verbo");
+  assert.equal(line(reduceSentence(first!)!), "*[&[1:1.1«וַ»] *[v[1:1.1«יְהִי»] s[1:1.2 1:1.3] pp[v*[1:1.8]]]]", "el «y» pegado al verbo se muestra como lo que une; «para decir» es una parte con preposición, y dentro la oración de un solo verbo");
 });
 
 test("las palabras de una parte van en el orden del texto, aunque el árbol las haya movido", () => {
   const tree = reduceSentence(parseLowfat(GREEK)[0]!)!;
-  assert.equal(line(tree), "*[s[1:1.1 1:1.2 1:1.3] adv[1:2.1 1:2.2]]");
+  assert.equal(line(tree), "*[s[1:1.1 1:1.2 &[1:1.3]] adv[1:2.1 1:2.2]]", "el «δὲ» que el árbol pone antes de su palabra queda después, como en el texto");
   assert.deepEqual(leavesOf(tree).map((leaf) => leaf.word), [1, 2, 3, 1, 2]);
 });
 
@@ -77,6 +77,29 @@ test("una oración se muestra solo si cada versículo suyo tiene aquí las misma
   assert.equal(sentenceFits(file, sentence!, () => undefined), false);
 });
 
+test("de una oración se dice si es simple, compuesta o compleja, y de cada oración suya cómo está en ella", () => {
+  const leaf = (word: number) => ({ chapter: 1, verse: 1, word });
+  const part = (role: string, ...kids: (TreeNode | ReturnType<typeof leaf>)[]): TreeNode => ({ role: role.replace("*", ""), clause: role.endsWith("*"), kids });
+  const simple = part("*", part("v", leaf(1)), part("s", leaf(2)));
+  assert.deepEqual(sentenceShape(simple), { clauses: 1, subordinate: 0, joined: 0 });
+  // «Se levantó y bajó»: dos oraciones lado a lado, y lo que las une.
+  const first = part("*", part("v", leaf(1)));
+  const second = part("*", part("v", leaf(3)));
+  const compound = part("*", first, part("&", leaf(2)), second);
+  assert.deepEqual(sentenceShape(compound), { clauses: 2, subordinate: 0, joined: 2 }, "la oración que solo las reúne no es una más");
+  assert.equal(clauseKind(first, compound), "joined");
+  assert.equal(clauseKind(compound, undefined), "main");
+  // «Dijo que vendría al barco que salía»: una oración hace de objeto; otra, dentro de una parte, la describe.
+  const describes = part("*", part("v", leaf(6)));
+  const object = part("o*", part("v", leaf(3)), part("adv", leaf(4), leaf(5), describes));
+  const complex = part("*", part("v", leaf(1)), object);
+  assert.deepEqual(sentenceShape(complex), { clauses: 3, subordinate: 2, joined: 0 });
+  assert.equal(clauseKind(object, complex), "as");
+  assert.equal(clauseKind(describes, object.kids[1] as TreeNode), "describes");
+  // Un infinitivo solo («para decir») es un verbo, no una oración más.
+  assert.deepEqual(sentenceShape(part("*", part("v", leaf(1)), part("pp", part("v*", leaf(2))))), { clauses: 1, subordinate: 0, joined: 0 });
+});
+
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", "trees");
 
 test("los archivos que la app sirve: los 66 libros, y Jonás 1:1 y Tito 1:5 como se esperan", () => {
@@ -86,7 +109,10 @@ test("los archivos que la app sirve: los 66 libros, y Jonás 1:1 y Tito 1:5 como
   assert.deepEqual([...index.books].sort(), BOOKS.map((book) => book.code).sort());
   const read = (book: string) => normalizeTreeFile(JSON.parse(readFileSync(path.join(OUT, `${book}.json`), "utf8")))!;
   const jonah = read("JON");
-  assert.equal(line(sentencesAt(jonah, { chapter: 1, verse: 1 })[0]!.root), "*[v[1:1.1] s[1:1.2 1:1.3] pp[1:1.4 1:1.5 1:1.6 1:1.7] pp[v*[1:1.8]]]");
+  assert.equal(line(sentencesAt(jonah, { chapter: 1, verse: 1 })[0]!.root), "*[&[1:1.1«וַ»] *[v[1:1.1«יְהִי»] s[1:1.2 1:1.3] pp[1:1.4 1:1.5 1:1.6 1:1.7] pp[v*[1:1.8]]]]");
+  assert.deepEqual(sentenceShape(sentencesAt(jonah, { chapter: 1, verse: 1 })[0]!.root), { clauses: 1, subordinate: 0, joined: 0 }, "Jonás 1:1 es una oración simple");
+  assert.equal(sentenceShape(sentencesAt(jonah, { chapter: 1, verse: 3 })[0]!.root).joined > 1, true, "Jonás 1:3 son varias oraciones unidas: se levantó, bajó, halló, pagó…");
+  assert.equal(sentenceShape(sentencesAt(read("TIT"), { chapter: 1, verse: 1 })[0]!.root).subordinate > 0, true, "Tito 1:1–4 tiene oraciones que dependen de otra");
   assert.equal(sentencesAt(jonah, { chapter: 1, verse: 17 }).length > 0, true, "Jonás 2:1 del hebreo es nuestro 1:17");
   assert.equal(sentencesAt(jonah, { chapter: 2, verse: 11 }).length, 0);
   assert.equal(sentencesAt(read("TIT"), { chapter: 1, verse: 5 }).length, 1);

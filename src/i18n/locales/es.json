@@ -3034,5 +3034,14 @@
   "st.adv": "Circunstancia",
   "st.pp": "Con preposición",
   "st.aux": "Auxiliar",
-  "st.credit": "Análisis de MACULA, de Biblica (CC BY 4.0)."
+  "st.credit": "Análisis de MACULA, de Biblica (CC BY 4.0).",
+  "st.simple": "Oración simple",
+  "st.compound": "Oración compuesta: {joined} oraciones unidas",
+  "st.complex": "Oración compleja: {n} oraciones, {sub} de ellas subordinadas",
+  "st.both": "Oración compuesta y compleja: {n} oraciones, {sub} de ellas subordinadas",
+  "st.clauseN": "Oración {n} de {of}",
+  "st.subAs": "Subordinada · hace de {role}",
+  "st.subDescribes": "Subordinada · describe lo anterior",
+  "st.and": "y",
+  "st.legend": "Qué es cada caja"
 }

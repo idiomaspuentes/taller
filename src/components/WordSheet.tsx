@@ -193,14 +193,17 @@ export function WordSheet({
   const language = useUiLanguage();
   /** A word of the same field that was opened from the sheet, in place of the one the text was touched at. */
   const [other, setOther] = useState<(SheetWord & { at?: { chapter: number; verse: number } }) | null>(null);
-  useEffect(() => setOther(null), [asked]);
+  // The word that was asked for, by what it is: a screen that draws itself again hands the same word as a new
+  // object, and that must not close what was opened from the sheet.
+  const askedKey = asked ? `${asked.surface}|${asked.strong}|${asked.occurrence ?? ""}|${at.chapter}:${at.verse}` : "";
+  useEffect(() => setOther(null), [askedKey]);
   const word = asked ? (other ?? asked) : null;
   /** The verse the word in hand is read in: one opened from its sentence has its own, one from a field has none. */
   const here = other?.at ? { book: at.book, ...other.at } : at;
   const placed = !other || Boolean(other.at);
   /** The sentence of the word, shown over this sheet. */
   const [sentence, setSentence] = useState(false);
-  useEffect(() => setSentence(false), [asked]);
+  useEffect(() => setSentence(false), [askedKey]);
   const [found, setFound] = useState<Found[] | null>(null);
   /** The report being written about the entry; `null` while nobody is writing one. */
   const [report, setReport] = useState<string | null>(null);

@@ -14,8 +14,13 @@ export type TreePlace = { chapter: number; verse: number };
 /** A word of a sentence, by its place in its verse (from 1). `piece` when only a part of it has the function. */
 export type TreeLeaf = TreePlace & { word: number; piece?: string };
 
-/** A part of a sentence with a function (`role`: `s`, `v`, `o`…), or a clause (`clause`), and what it is made of. */
+/**
+ * A part of a sentence with a function (`role`: `s`, `v`, `o`…), or a clause (`clause`), and what it is made of.
+ * The role `&` is a word that joins: an «and» between two clauses or two nouns, a «because» before a clause.
+ */
 export type TreeNode = { role: string; clause: boolean; kids: (TreeNode | TreeLeaf)[] };
+
+export const LINK = "&";
 
 export type TreeSentence = { root: TreeNode; verses: TreePlace[] };
 
@@ -27,6 +32,56 @@ const placeKey = (place: TreePlace) => `${place.chapter}:${place.verse}`;
 
 export function leavesOf(node: TreeNode): TreeLeaf[] {
   return node.kids.flatMap((kid) => (isLeaf(kid) ? [kid] : leavesOf(kid)));
+}
+
+// ---------------------------------------------------------------- what kind of sentence it is
+
+/** A clause that is shown as one: a verb alone that MACULA counts as a clause (an infinitive) is shown as a verb. */
+export const isClause = (node: TreeNode) => node.clause && node.role !== "v";
+
+const partsOf = (node: TreeNode) => node.kids.filter((kid): kid is TreeNode => !isLeaf(kid));
+
+/** The clauses a clause only holds together, when it is nothing but them: «he rose, and went, and found a ship». */
+export function joinedIn(node: TreeNode): TreeNode[] {
+  if (!isClause(node)) return [];
+  const parts = partsOf(node);
+  const own = node.kids.some(isLeaf) || parts.some((part) => part.role !== LINK && !(isClause(part) && !part.role));
+  return own ? [] : parts.filter((part) => isClause(part) && !part.role);
+}
+
+/**
+ * How a clause stands in its sentence. `joined`: one of several side by side. `as`: it fills a place of the clause
+ * it is in (its object, a circumstance). `describes`: it is inside a part, saying something of it («the ship
+ * that was going to Tarshish»). `main` otherwise.
+ */
+export type ClauseKind = "main" | "joined" | "as" | "describes";
+
+export function clauseKind(node: TreeNode, parent: TreeNode | undefined): ClauseKind {
+  if (node.role) return "as";
+  if (!parent) return "main";
+  if (!isClause(parent)) return "describes";
+  return joinedIn(parent).length > 1 ? "joined" : "main";
+}
+
+/**
+ * A sentence in three numbers: how many clauses it has, how many of them depend on another (a complex sentence),
+ * and how many stand side by side at most (a compound one). A clause that only holds others together is not
+ * counted as one more.
+ */
+export function sentenceShape(root: TreeNode): { clauses: number; subordinate: number; joined: number } {
+  const shape = { clauses: 0, subordinate: 0, joined: 0 };
+  const walk = (node: TreeNode, parent: TreeNode | undefined) => {
+    if (isClause(node)) {
+      const held = joinedIn(node);
+      if (!held.length) shape.clauses++;
+      if (held.length > 1) shape.joined = Math.max(shape.joined, held.length);
+      const kind = clauseKind(node, parent);
+      if (kind === "as" || kind === "describes") shape.subordinate++;
+    }
+    for (const part of partsOf(node)) walk(part, node);
+  };
+  walk(root, undefined);
+  return shape;
 }
 
 // ---------------------------------------------------------------- reading a served file
@@ -125,7 +180,8 @@ const shown = (text: string) => text.normalize("NFC").replace(/[֑-ֽ֯׀׃]/g, 
  * A sentence of MACULA reduced to its parts. Only what has a function, or is a clause, stays as a part; the
  * groups between (a noun with its article, two nouns joined) give their words to the part they are in. A part
  * that holds nothing but one other is one part with it. The pieces of a Hebrew word are one word; when two
- * parts share a word («me rodearon»: the verb and its object), each says which piece is its own.
+ * parts share a word («me rodearon»: the verb and its object; «y dijo»: the «and» and the verb), each says which
+ * piece is its own.
  */
 export function reduceSentence(raw: RawNode, toOurs: (book: string, place: TreePlace) => TreePlace = (_book, place) => place): TreeNode | null {
   const items = (node: RawNode): (Part | Leaf)[] => {
@@ -133,7 +189,9 @@ export function reduceSentence(raw: RawNode, toOurs: (book: string, place: TreeP
       if (!node.ref) return [];
       const place = toOurs(node.ref.book, node.ref);
       const leaf: Leaf = { chapter: place.chapter, verse: place.verse, word: node.ref.word, texts: [node.text] };
-      return node.role ? [{ role: node.role, clause: false, kids: [leaf] }] : [leaf];
+      // A word that joins is kept as what it is: it is what says whether two clauses stand side by side.
+      const role = node.role || (/^(cj|conj)$/.test(node.cls) ? LINK : "");
+      return role ? [{ role, clause: false, kids: [leaf] }] : [leaf];
     }
     const kids = node.kids.flatMap(items);
     return node.role || node.cls === "cl" ? [{ role: node.role, clause: node.cls === "cl", kids }] : kids;
