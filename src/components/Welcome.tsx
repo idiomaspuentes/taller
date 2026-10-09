@@ -50,6 +50,8 @@ export function Welcome({ initialWorkspaceId, onEnter, signedIn = false, config 
       </header>
 
       <main className="welcome__main">
+        {/* What the app is can be read by scrolling; how to get in is always on the screen. */}
+        <div className="welcome__body">
         <img className="welcome__logo" src="/brand/puentes-isotipo.svg" alt="" width={64} height={56} />
         <p className="welcome__kicker">{ORGANIZATION}</p>
         <h1 className="welcome__title">{copy.title}</h1>
@@ -68,7 +70,9 @@ export function Welcome({ initialWorkspaceId, onEnter, signedIn = false, config 
             );
           })}
         </ul>
+        </div>
 
+        <div className="welcome__foot">
         {several ? (
           <fieldset className="welcome__choose">
             <legend>{copy.workspacePrompt}</legend>
@@ -98,6 +102,7 @@ export function Welcome({ initialWorkspaceId, onEnter, signedIn = false, config 
           {signedIn ? t("welcome.continue") : copy.enter}
         </Button>
         <p className="welcome__trust">{copy.trust}</p>
+        </div>
       </main>
     </div>
   );
