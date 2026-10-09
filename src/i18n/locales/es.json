@@ -2994,5 +2994,9 @@
   "sb.chapter": "Capítulo que se recorre",
   "sb.startTrial": "Empezar el recorrido de {book} {n}",
   "sb.noChapter": "Este libro no tiene el capítulo {n}. No se creó nada.",
-  "gr.ledeOne": "Lee todo lo traducido. Cada versículo queda acordado cuando una persona está de acuerdo y nadie tiene una duda abierta."
+  "gr.ledeOne": "Lee todo lo traducido. Cada versículo queda acordado cuando una persona está de acuerdo y nadie tiene una duda abierta.",
+  "lx.field": "Otras palabras de «{name}»",
+  "lx.fieldLoading": "Buscando las palabras de este campo…",
+  "lx.fieldNone": "El léxico no tiene la lista de este campo.",
+  "lx.back": "Volver a «{word}»"
 }

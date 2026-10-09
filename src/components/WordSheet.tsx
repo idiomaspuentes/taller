@@ -3,9 +3,9 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { LexiconRepo, Workspace } from "../config/types";
 import type { GtSession } from "../dcs/auth";
-import { lexiconRepos, loadLexiconEntry, reportLexiconEntry } from "../dcs/lexicon";
+import { lexiconRepos, loadLexiconEntry, loadLexiconField, reportLexiconEntry } from "../dcs/lexicon";
 import { explainError } from "../dcs/userError";
-import { lexiconReport, sensesOfWord, strongCode, strongParts, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
+import { lexiconReport, otherWordsOfField, sensesOfWord, strongCode, strongParts, type FieldWord, type LexiconField, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
 import { describeMorph, type MorphLabel } from "../domain/morphology";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
@@ -15,7 +15,53 @@ export type SheetWord = { surface: string; lemma: string; strong: string; morph?
 
 type Found = { part: StrongPart; file: LexiconFile | null; repo: LexiconRepo | undefined };
 
-function Sense({ sense }: { sense: LexiconSense }) {
+/** How the app's readers write a word's number: the texts add a digit to the Greek ones. */
+const asTagged = (strong: string) => (strong.startsWith("G") ? `${strong}0` : strong);
+
+/**
+ * The other words of the field of meaning a sense is filed under: what else the original could have said, and
+ * says elsewhere. Read when it is opened; each word opens its own entry.
+ */
+function FieldWords({ sense, strong, load, onOpen }: { sense: LexiconSense; strong: string; load: (code: string) => Promise<LexiconField | null>; onOpen: (word: FieldWord) => void }) {
+  const t = useT();
+  const [field, setField] = useState<LexiconField | null | undefined>(undefined);
+  const [asked, setAsked] = useState(false);
+  useEffect(() => {
+    if (!asked || !sense.domainCode) return;
+    let alive = true;
+    void load(sense.domainCode).then((found) => {
+      if (alive) setField(found);
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked, sense.domainCode]);
+  if (!sense.domainCode) return null;
+  const others = field ? otherWordsOfField(field, strong) : [];
+  const hebrew = strong.includes("H");
+  return (
+    <details className="ws-more ws-field" onToggle={(e) => (e.currentTarget.open ? setAsked(true) : undefined)}>
+      <summary>{t("lx.field").replace("{name}", (sense.domain ?? "").split(" · ").pop() ?? "")}</summary>
+      {field === undefined ? <p className="af-hint">{t("lx.fieldLoading")}</p> : null}
+      {field === null || (field && !others.length) ? <p className="af-hint">{t("lx.fieldNone")}</p> : null}
+      {others.length ? (
+        <ul className="ws-field__words">
+          {others.map((word) => (
+            <li key={word.strong}>
+              <button type="button" className="ws-field__word" onClick={() => onOpen(word)}>
+                <span lang={hebrew ? "hbo" : "grc"}>{word.lemma}</span>
+                {word.gloss ? <span className="ws-field__gloss">{word.gloss}</span> : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </details>
+  );
+}
+
+function Sense({ sense, field }: { sense: LexiconSense; field?: Omit<Parameters<typeof FieldWords>[0], "sense"> }) {
   const t = useT();
   const english = sense.lang === "en" || sense.definitionLang === "en";
   return (
@@ -28,6 +74,7 @@ function Sense({ sense }: { sense: LexiconSense }) {
         </p>
       ) : null}
       {sense.domain ? <p className="ws-meta">{sense.domain}</p> : null}
+      {field ? <FieldWords sense={sense} {...field} /> : null}
       {sense.comments ? (
         <p className="ws-note">
           <strong>{t("lx.comments")}</strong> {sense.comments}
@@ -48,7 +95,7 @@ function Sense({ sense }: { sense: LexiconSense }) {
  * Whoever sees something wrong in an entry says so from here, and it reaches the people who keep the lexicon.
  */
 export function WordSheet({
-  word,
+  word: asked,
   at,
   session,
   workspace,
@@ -66,6 +113,10 @@ export function WordSheet({
 }) {
   const t = useT();
   const language = useUiLanguage();
+  /** A word of the same field that was opened from the sheet, in place of the one the text was touched at. */
+  const [other, setOther] = useState<SheetWord | null>(null);
+  useEffect(() => setOther(null), [asked]);
+  const word = asked ? (other ?? asked) : null;
   const [found, setFound] = useState<Found[] | null>(null);
   /** The report being written about the entry; `null` while nobody is writing one. */
   const [report, setReport] = useState<string | null>(null);
@@ -144,6 +195,11 @@ export function WordSheet({
                 {word.surface}
               </DialogTitle>
             </header>
+            {other && asked ? (
+              <button type="button" className="af-link" onClick={() => setOther(null)}>
+                {t("lx.back").replace("{word}", asked.surface)}
+              </button>
+            ) : null}
             <dl className="ws-facts">
               {word.lemma ? (
                 <div>
@@ -168,9 +224,11 @@ export function WordSheet({
             {found === null ? <p className="af-hint">{t("lx.loading")}</p> : null}
             {found !== null && !found.some((row) => row.file) ? <p className="af-hint">{t("lx.none")}</p> : null}
 
-            {(found ?? []).map(({ part, file }) => {
+            {(found ?? []).map(({ part, file, repo }) => {
               if (!file) return null;
-              const senses = sensesOfWord(file, at, part.letter);
+              // A word opened from its field is not of the verse in hand: all its senses are shown.
+              const senses = sensesOfWord(file, other ? { book: "", chapter: 0, verse: 0 } : at, part.letter);
+              const field = session && repo ? { strong: word.strong, load: (code: string) => loadLexiconField(session, repo, code), onOpen: (next: FieldWord) => setOther({ surface: next.lemma, lemma: next.lemma, strong: asTagged(next.strong) }) } : undefined;
               const pending = senses.entries.some((e) => e.review === "pending");
               return (
                 <section key={`${part.kind}-${part.number}`} className="ws-part">
@@ -179,7 +237,7 @@ export function WordSheet({
                       {senses.byVerse ? <p className="af-lbl">{t("lx.here")}</p> : senses.here.length > 1 ? <p className="af-lbl">{t("lx.senses").replace("{n}", String(senses.here.length))}</p> : null}
                       <ul className="ws-senses">
                         {senses.here.map((sense, i) => (
-                          <Sense key={i} sense={sense} />
+                          <Sense key={i} sense={sense} field={field} />
                         ))}
                       </ul>
                       {senses.other.length ? (
@@ -187,7 +245,7 @@ export function WordSheet({
                           <summary>{t("lx.others").replace("{n}", String(senses.other.length))}</summary>
                           <ul className="ws-senses">
                             {senses.other.map((sense, i) => (
-                              <Sense key={i} sense={sense} />
+                              <Sense key={i} sense={sense} field={field} />
                             ))}
                           </ul>
                         </details>

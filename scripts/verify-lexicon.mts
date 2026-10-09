@@ -1,6 +1,6 @@
 /** What a word of the original means: which entry its Strong's number points to, and which sense is the verse's. */
 import assert from "node:assert/strict";
-import { glossesInclude, glossOfWord, lexiconReport, normalizeLexiconFile, refsInclude, sensesOfWord, strongCode, strongParts } from "../src/domain/lexicon";
+import { glossesInclude, glossOfWord, lexiconReport, normalizeLexiconField, normalizeLexiconFile, otherWordsOfField, refsInclude, sensesOfWord, strongCode, strongParts } from "../src/domain/lexicon";
 import { lexiconRepos } from "../src/dcs/lexicon";
 
 let passed = 0;
@@ -150,6 +150,20 @@ test("un léxico sencillo, sin sentidos, se compara por su glosa breve", () => {
   const file = normalizeLexiconFile({ brief: "templo, santuario", long: "templo." })!;
   assert.equal(glossesInclude(file, "templos"), true);
   assert.equal(glossesInclude(file, ""), false);
+});
+
+test("un sentido dice en qué campo de significado está, y el campo lista las otras palabras", () => {
+  const file = normalizeLexiconFile({ brief: "YHVH", long: "", entries: [{ strong: "H3068", lemma: "יהוה", senses: [{ glosses: ["YHVH"], domain: "Nombres de deidades", domainCode: "003001004" }, { glosses: ["otro"], domainCode: "../../x" }] }] })!;
+  assert.equal(file.entries[0]!.senses[0]!.domainCode, "003001004");
+  assert.equal(file.entries[0]!.senses[1]!.domainCode, undefined, "un código que no es un nombre de archivo no se usa para leer uno");
+  const field = normalizeLexiconField({ name: "Nombres de deidades", words: [{ strong: "H0430", lemma: "אֱלֹהִים", gloss: "Dios" }, { strong: "H3068", lemma: "יהוה", gloss: "YHVH" }, { strong: "H1168a", lemma: "בַּעַל", gloss: "Baal" }, { lemma: "sin número" }] })!;
+  assert.equal(field.words.length, 3, "una palabra sin número no se puede abrir, y no se lista");
+  assert.deepEqual(otherWordsOfField(field, "H3068").map((word) => word.strong), ["H0430", "H1168a"], "la palabra en mano no es «otra»");
+  assert.deepEqual(otherWordsOfField(field, "c:H3068").map((word) => word.strong), ["H0430", "H1168a"], "tampoco con una partícula unida");
+  const greek = normalizeLexiconField({ name: "Comunicación", words: [{ strong: "G3004", lemma: "λέγω", gloss: "decir" }, { strong: "G2980", lemma: "λαλέω", gloss: "hablar" }] })!;
+  assert.deepEqual(otherWordsOfField(greek, "G30040").map((word) => word.lemma), ["λαλέω"], "el griego lleva un dígito de más en el texto");
+  assert.equal(normalizeLexiconField({ name: "Vacío", words: [] }), null);
+  assert.equal(normalizeLexiconField(null), null);
 });
 
 console.log(`\nverify-lexicon: ${passed} checks passed.`);

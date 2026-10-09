@@ -24,6 +24,8 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
+/** The most words a field of meaning may have and still be listed. */
+const MAX_FIELD_WORDS = 150;
 const flag = (name) => args.includes(name);
 const option = (name, fallback) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
 
@@ -252,6 +254,13 @@ function buildEntry(entry, code, target, english, report) {
       }
       const domain = [...(meaning.LEXDomains ?? []), ...(meaning.LEXSubDomains ?? [])].map((d) => clean(d.Domain)).filter(Boolean);
       if (domain.length) out.domain = [...new Set(domain)].join(" · ");
+      // The field of meaning the sense is filed under, the narrowest the source gives: the words that share it are
+      // listed in `domains/<code>.json`, for whoever wants to see what else could have been said.
+      const field = [...(meaning.LEXSubDomains ?? []), ...(meaning.LEXDomains ?? [])].find((d) => clean(d.DomainCode) && clean(d.Domain));
+      if (field) {
+        out.domainCode = clean(field.DomainCode);
+        report.domainNames.set(out.domainCode, clean(field.Domain));
+      }
       const entryCode = clean(meaning.LEXEntryCode);
       if (entryCode) out.code = entryCode;
       const comments = clean(sense.Comments);
@@ -486,7 +495,7 @@ Generado el ${TODAY} con \`scripts/build-lexicons.mjs\` del repositorio \`taller
 }
 
 async function buildTarget(target, dictionaries, original) {
-  const report = { senses: 0, sensesInEnglish: 0, definitionsInEnglish: 0, unknownRefs: { count: 0 }, unknownPos: new Set(), noStrong: 0, leftoverMarks: 0, byLemma: 0, added: 0 };
+  const report = { senses: 0, sensesInEnglish: 0, definitionsInEnglish: 0, unknownRefs: { count: 0 }, unknownPos: new Set(), noStrong: 0, leftoverMarks: 0, byLemma: 0, added: 0, domainNames: new Map() };
   const english = sensesById(dictionaries[target.english]);
   const files = new Map();
   let entries = 0;
@@ -541,6 +550,32 @@ async function buildTarget(target, dictionaries, original) {
   const content = path.join(repo, "content");
   await rm(content, { recursive: true, force: true });
   await mkdir(content, { recursive: true });
+
+  // The words of each field of meaning. A field with one word has nobody to be compared with, and one with
+  // hundreds (the names of people: 2808 in Hebrew) is a list nobody reads: neither is written, and their senses
+  // do not point to one.
+  const fields = new Map();
+  for (const list of files.values()) {
+    for (const entry of list) {
+      for (const sense of entry.senses) {
+        if (!sense.domainCode) continue;
+        if (!fields.has(sense.domainCode)) fields.set(sense.domainCode, new Map());
+        const words = fields.get(sense.domainCode);
+        if (!words.has(entry.strong)) words.set(entry.strong, { strong: entry.strong, lemma: entry.lemma, gloss: sense.glosses?.[0] ?? "" });
+      }
+    }
+  }
+  for (const [code, words] of fields) if (words.size < 2 || words.size > MAX_FIELD_WORDS) fields.delete(code);
+  for (const list of files.values()) for (const entry of list) for (const sense of entry.senses) if (sense.domainCode && !fields.has(sense.domainCode)) delete sense.domainCode;
+  const domains = path.join(repo, "domains");
+  await rm(domains, { recursive: true, force: true });
+  await mkdir(domains, { recursive: true });
+  for (const [code, words] of fields) {
+    // A word Strong numbered twice is listed once: the same lemma with the same gloss reads as a repeated line.
+    const once = new Map([...words.values()].reverse().map((word) => [`${word.lemma}\u0000${word.gloss}`, word]));
+    const sorted = [...once.values()].sort((a, b) => a.lemma.localeCompare(b.lemma));
+    await writeFile(path.join(domains, `${code}.json`), JSON.stringify({ name: report.domainNames.get(code) ?? "", words: sorted }, null, 1) + "\n");
+  }
   let bytes = 0;
   let largest = { number: 0, bytes: 0 };
   for (const [number, list] of files) {
@@ -561,6 +596,7 @@ async function buildTarget(target, dictionaries, original) {
   console.log(`\n${target.repo}`);
   console.log(`  ${files.size} files · ${entries} entries · ${report.senses} senses · ${(bytes / 1024 / 1024).toFixed(1)} MB`);
   console.log(`  largest file: ${largest.number}.json, ${(largest.bytes / 1024).toFixed(0)} KB`);
+  console.log(`  fields of meaning: ${fields.size} files, ${[...fields.values()].reduce((n, words) => n + words.size, 0)} words in them`);
   console.log(`  still in English: ${report.sensesInEnglish} senses, ${report.definitionsInEnglish} definitions`);
   console.log(`  filed by lemma, under the number the text uses: ${report.byLemma}`);
   console.log(`  added from ${ADDED_FROM[target.kind].id}, translated: ${report.added}`);

@@ -1,6 +1,6 @@
 import { createIssue } from "@ip-lms/dcs-client";
 import type { LexiconRepo, Workspace } from "../config/types";
-import { normalizeLexiconFile, type LexiconFile, type StrongPart } from "../domain/lexicon";
+import { normalizeLexiconField, normalizeLexiconFile, type LexiconField, type LexiconFile, type StrongPart } from "../domain/lexicon";
 import { readRaw } from "./afinacionLoad";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
@@ -48,6 +48,23 @@ export function loadLexiconEntry(session: GtSession, repos: LexiconRepo[], numbe
   // A failure is not remembered: the next tap tries again.
   void loading.then((found) => {
     if (!found) cache.delete(key);
+  });
+  return loading;
+}
+
+const fields = new Map<string, Promise<LexiconField | null>>();
+
+/** The words that share a field of meaning, from the repository the entry was read from. `null` when it has no such list. */
+export function loadLexiconField(session: GtSession, repo: LexiconRepo, code: string): Promise<LexiconField | null> {
+  const key = `${session.host}|${repo.owner}/${repo.repo}|${code}`;
+  const known = fields.get(key);
+  if (known) return known;
+  const loading = readRaw(session, repo.owner, repo.repo, `domains/${code}.json`)
+    .then((raw) => (raw ? normalizeLexiconField(JSON.parse(raw)) : null))
+    .catch(() => null);
+  fields.set(key, loading);
+  void loading.then((found) => {
+    if (!found) fields.delete(key);
   });
   return loading;
 }

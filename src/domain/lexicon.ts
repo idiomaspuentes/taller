@@ -8,6 +8,8 @@ export type LexiconSense = {
   definition?: string;
   glosses?: string[];
   domain?: string;
+  /** The field of meaning the sense is filed under, when the lexicon lists the words that share it (`domains/`). */
+  domainCode?: string;
   code?: string;
   comments?: string;
   etymology?: string;
@@ -77,6 +79,7 @@ export function normalizeLexiconFile(raw: unknown): LexiconFile | null {
         ...(definition ? { definition } : {}),
         ...(glosses.length ? { glosses } : {}),
         ...(text(sense.domain) ? { domain: text(sense.domain) } : {}),
+        ...(/^[\w.-]+$/.test(text(sense.domainCode)) ? { domainCode: text(sense.domainCode) } : {}),
         ...(text(sense.code) ? { code: text(sense.code) } : {}),
         ...(text(sense.comments) ? { comments: text(sense.comments) } : {}),
         ...(text(sense.etymology) ? { etymology: text(sense.etymology) } : {}),
@@ -100,6 +103,30 @@ export function normalizeLexiconFile(raw: unknown): LexiconFile | null {
   const brief = text(row.brief);
   const long = text(row.long);
   return brief || long || entries.length ? { brief, long, entries } : null;
+}
+
+/** A word of a field of meaning: enough to name it and to open its entry. */
+export type FieldWord = { strong: string; lemma: string; gloss: string };
+
+/** The words that share a field of meaning, as the lexicon lists them. */
+export type LexiconField = { name: string; words: FieldWord[] };
+
+export function normalizeLexiconField(raw: unknown): LexiconField | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const words: FieldWord[] = [];
+  for (const item of Array.isArray(row.words) ? row.words : []) {
+    if (!item || typeof item !== "object") continue;
+    const word = item as Record<string, unknown>;
+    if (text(word.strong) && text(word.lemma)) words.push({ strong: text(word.strong), lemma: text(word.lemma), gloss: text(word.gloss) });
+  }
+  return words.length ? { name: text(row.name), words } : null;
+}
+
+/** The other words of a field: every one but the word in hand, whichever of its homonyms it is. */
+export function otherWordsOfField(field: LexiconField, strong: string): FieldWord[] {
+  const mine = new Set(strongParts(strong).map((part) => `${part.kind}:${part.number}`));
+  return field.words.filter((word) => !strongParts(word.strong.startsWith("G") ? `${word.strong}0` : word.strong).some((part) => mine.has(`${part.kind}:${part.number}`)));
 }
 
 /** Whether a packed list of verses ("1:7,9;2:3") has this one. */
