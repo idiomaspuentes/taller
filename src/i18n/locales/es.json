@@ -3059,5 +3059,10 @@
   "st.save": "Guardar",
   "st.saving": "Guardando…",
   "st.restore": "Volver al diagrama de la app",
-  "st.teamMade": "Diagrama del equipo · lo dejó así {who}"
+  "st.teamMade": "Diagrama del equipo · lo dejó así {who}",
+  "st.viewTree": "Árbol",
+  "st.viewBoxes": "Cajas",
+  "st.treeAs": "{role} · oración",
+  "st.treeSub": "Subordinada",
+  "st.swipe": "Desliza hacia los lados para ver toda la oración."
 }

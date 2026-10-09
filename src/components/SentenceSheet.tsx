@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { Workspace } from "../config/types";
@@ -13,6 +13,7 @@ import { diagramSentences, dissolveBox, flatSentence, nodeAt, sentenceKey, sente
 import { glossOfWord, strongParts } from "../domain/lexicon";
 import { referentKey } from "../domain/referents";
 import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, type TreeLeaf, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
+import { layoutTree } from "../domain/treeLayout";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 
@@ -159,6 +160,82 @@ function Part({ node, parent, nth, path, shared }: { node: TreeNode; parent?: Tr
   );
 }
 
+/** The tree is drawn in rows of this height; a name is a pill this tall, and the words hang under the last row. */
+const ROW = 46;
+const PILL = 22;
+const LEAF = 52;
+
+/**
+ * The sentence as a syntax tree: the sentence at the top, branches down to its parts, and the words in a row at
+ * the bottom in the order they are read (from the right, in Hebrew). A long sentence is wider than a phone: the
+ * tree is moved sideways with a finger, and opens on the word one came from.
+ */
+function Tree({ root, shared }: { root: TreeNode; shared: Shared }) {
+  const t = useT();
+  const scroller = useRef<HTMLDivElement>(null);
+  const name = (node: TreeNode, parent: TreeNode | undefined, nth?: number) => {
+    const role = ROLE[node.role] ? t(ROLE[node.role]!) : "";
+    if (!isClause(node)) return role || "·";
+    const kind = clauseKind(node, parent);
+    if (kind === "as") return t("st.treeAs").replace("{role}", role);
+    if (kind === "describes") return t("st.treeSub");
+    return kind === "joined" && nth ? `${t("st.clause")} ${nth}` : t("st.clause");
+  };
+  const layout = useMemo(
+    () =>
+      layoutTree(root, {
+        // A name is drawn small, in capitals: about seven points a letter, and its pill around it.
+        labelWidth: (node, parent) => name(node, parent, 9).length * 7.2 + 18,
+        leafWidth: (leaf) => {
+          const word = shared.words[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1];
+          const letters = (leaf.piece ?? word?.surface ?? "").replace(/[^\p{L}]/gu, "").length;
+          return Math.min(120, Math.max(56, letters * 11 + 18));
+        },
+        gap: 6,
+        rtl: shared.rtl,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [root, shared.words, shared.rtl, t],
+  );
+  const leavesTop = (layout.depth + 1) * ROW;
+  const height = leavesTop + LEAF;
+  useEffect(() => {
+    const box = scroller.current;
+    if (!box) return;
+    const here = box.querySelector<HTMLElement>(".st-word[data-here]");
+    // On the word one came from; with none, where the sentence begins (the right end, in Hebrew).
+    if (here) box.scrollLeft = here.parentElement!.offsetLeft - box.clientWidth / 2 + here.offsetWidth / 2;
+    else box.scrollLeft = shared.rtl ? box.scrollWidth : 0;
+  }, [layout, shared.rtl]);
+  return (
+    <>
+      <div className="st-tree-scroll" ref={scroller}>
+        <div className="st-tree" style={{ width: layout.width, height }}>
+          <svg width={layout.width} height={height} aria-hidden>
+            {layout.branches.map((branch, i) => (
+              <line key={i} x1={branch.from.x} y1={branch.from.depth * ROW + PILL} x2={branch.to.x} y2={"leaf" in branch.to ? leavesTop : branch.to.depth * ROW} />
+            ))}
+          </svg>
+          {layout.nodes.map((placed) => {
+            const clause = isClause(placed.node);
+            return (
+              <span key={placed.path.join(".") || "root"} className="st-node" data-role={placed.node.role || undefined} data-clause={clause || undefined} data-kind={clause ? clauseKind(placed.node, placed.parent) : undefined} style={{ left: placed.x, top: placed.depth * ROW }}>
+                {name(placed.node, placed.parent, placed.nth)}
+              </span>
+            );
+          })}
+          {layout.leaves.map((placed) => (
+            <div key={placed.path.join(".")} className="st-leaf" style={{ left: placed.x - placed.width / 2, top: leavesTop, width: placed.width }}>
+              <Word leaf={placed.leaf} role={placed.role} path={placed.path} shared={shared} />
+            </div>
+          ))}
+        </div>
+      </div>
+      {layout.width > 330 ? <p className="af-hint">{t("st.swipe")}</p> : null}
+    </>
+  );
+}
+
 type Shown = TreeSentence & { key?: string; by?: { by: string; at: string } };
 
 /**
@@ -197,6 +274,8 @@ export function SentenceSheet({
   const [editing, setEditing] = useState<{ key: string; root: TreeNode; history: TreeNode[]; picked: Picked | null; wrapping: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  /** A tree, as grammars draw it, or boxes one inside another, which fit a phone and are what is changed. */
+  const [view, setView] = useState<"tree" | "boxes">("tree");
 
   useEffect(() => {
     setLoaded(null);
@@ -317,6 +396,15 @@ export function SentenceSheet({
           ) : (
             <>
               {loaded && !shown.length ? <p className="af-hint">{t("st.none")}</p> : null}
+              {shown.length ? (
+                <div className="st-views" role="tablist" aria-label={t("st.title")}>
+                  {(["tree", "boxes"] as const).map((which) => (
+                    <button key={which} type="button" role="tab" aria-selected={view === which} onClick={() => setView(which)}>
+                      {t(which === "tree" ? "st.viewTree" : "st.viewBoxes")}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               {loaded && !shown.length && teamOrg && wordsHere && at ? (
                 <Button type="button" variant="outline" onClick={() => {
                   const root = flatSentence([{ chapter: at.chapter, verse: at.verse, words: wordsHere }]);
@@ -329,7 +417,7 @@ export function SentenceSheet({
                 <section key={i} className="st-sentence">
                   {shown.length > 1 ? <h3 className="pp-passage__ref">{span(sentence)}</h3> : null}
                   <p className="st-kind">{kindOf(sentence.root)}</p>
-                  <Part node={sentence.root} path={[]} shared={shared()} />
+                  {view === "tree" ? <Tree root={sentence.root} shared={shared()} /> : <Part node={sentence.root} path={[]} shared={shared()} />}
                   {sentence.key ? <p className="ws-meta">{t("st.teamMade").replace("{who}", sentence.by?.by ?? "")}</p> : null}
                   {teamOrg ? (
                     <div className="st-actions">

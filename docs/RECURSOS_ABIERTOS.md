@@ -54,10 +54,15 @@ a otra se halla en nuestro texto; del resto no se muestra nada. El hebreo se pas
 tabla que los pasajes paralelos.
 
 «Cómo está armada la oración» sale de los árboles sintácticos de MACULA. Desde la ficha de cualquier palabra del
-original, «Ver cómo está armada la oración» abre la oración de ese versículo como un diagrama de cajas, una dentro
-de otra: cada oración es una caja de borde grueso, y cada parte suya (Verbo, Sujeto, Objeto, Circunstancia…) una
-caja de su color con sus palabras en el orden en que se leen y lo que significan. Son cajas y no ramas porque un
-árbol de sesenta palabras no cabe en un teléfono y esto sí: crece hacia abajo, nunca hacia los lados.
+original, «Ver cómo está armada la oración» abre la oración de ese versículo de dos maneras, que se cambian arriba.
+
+**Árbol**, la que se abre: un árbol sintáctico como los de las gramáticas, con la oración arriba, las ramas bajando
+a sus partes (Sujeto, Verbo, Objeto, Circunstancia…) y las palabras en fila al pie, en el orden en que se leen (desde
+la derecha en hebreo), cada una con lo que significa. Una oración larga es más ancha que un teléfono: el árbol se
+desliza hacia los lados dentro de su franja, y se abre sobre la palabra de la que se vino.
+
+**Cajas**: las mismas partes como cajas una dentro de otra, cada oración una caja de borde grueso. Cabe entera en un
+teléfono, porque crece hacia abajo y nunca hacia los lados, y es donde el diagrama se corrige.
 
 Arriba dice qué clase de oración es: simple, compuesta («3 oraciones unidas») o compleja («5 oraciones, 3 de ellas
 subordinadas»). Las oraciones unidas van numeradas («Oración 1 de 3») con lo que las une entre ellas; una

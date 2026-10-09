@@ -6003,6 +6003,25 @@ button.al-box--read { cursor: pointer; }
 .st-legend li[data-role="o"]::before { border-color: var(--warning-700); }
 .st-legend li[data-clause]::before { border-width: 2px; border-color: var(--text-muted); }
 
+/* The sentence as a tree: names in pills joined by branches, the words in a row at the foot. It is as wide as
+   the sentence needs and is moved sideways inside its own strip; the page itself never moves sideways. */
+.st-views { justify-self: start; display: inline-flex; padding: 0.125rem; border-radius: var(--radius-full); background: var(--surface-muted); }
+.st-views button { min-height: 2.25rem; padding: 0 0.875rem; border: 0; border-radius: var(--radius-full); background: none; font: inherit; font-size: 0.8125rem; color: var(--text-muted); cursor: pointer; }
+.st-views button[aria-selected="true"] { background: var(--surface); font-weight: 700; color: var(--text); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 15%, transparent); }
+.st-tree-scroll { margin: 0 -1rem; padding: 0.25rem 1rem 0.5rem; overflow-x: auto; overscroll-behavior-x: contain; }
+.st-tree { position: relative; margin: 0 auto; }
+.st-tree svg { position: absolute; inset: 0; }
+.st-tree line { stroke: var(--border-strong); stroke-width: 1.5; }
+.st-node { --edge: var(--text-faint); position: absolute; transform: translateX(-50%); box-sizing: border-box; height: 22px; padding: 0 0.4375rem; border: 1.5px solid var(--edge); border-radius: 999px; background: var(--surface); font-size: 0.625rem; font-weight: 700; letter-spacing: 0.04em; line-height: 19px; text-transform: uppercase; white-space: nowrap; color: var(--edge); }
+.st-node[data-role="v"] { --edge: var(--accent-500); color: var(--accent-700); }
+.st-node[data-role="s"] { --edge: var(--primary); }
+.st-node[data-role="o"], .st-node[data-role="o2"], .st-node[data-role="io"] { --edge: var(--warning-700); }
+.st-node[data-clause] { border-width: 2px; border-color: var(--text-muted); background: var(--surface-muted); line-height: 18px; color: var(--text); }
+.st-node[data-kind="as"], .st-node[data-kind="describes"] { border-style: dashed; }
+.st-leaf { position: absolute; display: grid; justify-items: stretch; }
+.st-leaf .st-word { width: 100%; min-width: 0; padding-inline: 0.125rem; }
+.st-leaf .st-gloss { max-width: 100%; }
+
 /* Changing a diagram: what is chosen is outlined, and what can be done to it sits at the foot, under the thumb. */
 .st-actions { display: flex; flex-wrap: wrap; gap: 0 1rem; }
 .st-actions .af-link { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }

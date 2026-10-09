@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BOOKS } from "../src/domain/books";
 import { hebrewToOurs } from "../src/domain/parallels";
+import { layoutTree } from "../src/domain/treeLayout";
 import { clauseKind, encodeTree, isLeaf, leavesOf, normalizeTreeFile, parseLowfat, reduceSentence, sentenceFits, sentencesAt, sentenceShape, type TreeNode } from "../src/domain/syntaxTree";
 
 let passed = 0;
@@ -98,6 +99,31 @@ test("de una oración se dice si es simple, compuesta o compleja, y de cada orac
   assert.equal(clauseKind(describes, object.kids[1] as TreeNode), "describes");
   // Un infinitivo solo («para decir») es un verbo, no una oración más.
   assert.deepEqual(sentenceShape(part("*", part("v", leaf(1)), part("pp", part("v*", leaf(2))))), { clauses: 1, subordinate: 0, joined: 0 });
+});
+
+test("dibujada como árbol: las palabras en fila en el orden del texto, cada parte sobre lo suyo, y ningún nombre encima de otro", () => {
+  const leaf = (word: number) => ({ chapter: 1, verse: 1, word });
+  const part = (role: string, ...kids: (TreeNode | ReturnType<typeof leaf>)[]): TreeNode => ({ role: role.replace("*", ""), clause: role.endsWith("*"), kids });
+  // Un verbo de una palabra, un sujeto de dos, y una parte de nombre largo sobre una sola palabra.
+  const root = part("*", part("v", leaf(1)), part("s", leaf(2), leaf(3)), part("pp", leaf(4)));
+  const sizes = { labelWidth: (node: TreeNode) => (node.role === "pp" ? 120 : 50), leafWidth: () => 60, gap: 6 };
+  const tree = layoutTree(root, sizes);
+  assert.deepEqual(tree.leaves.map((placed) => placed.leaf.word), [1, 2, 3, 4]);
+  assert.deepEqual(tree.leaves.map((placed) => placed.x), [30, 96, 162, 258], "la cuarta palabra queda en medio del sitio que pide el nombre largo de su parte");
+  assert.equal(tree.width, 60 + 6 + 126 + 6 + 120);
+  assert.equal(tree.depth, 1);
+  const at = (role: string) => tree.nodes.find((placed) => placed.node.role === role)!;
+  assert.equal(at("s").x, (96 + 162) / 2, "el sujeto, sobre el medio de sus dos palabras");
+  assert.equal(at("").x, (at("v").x + at("pp").x) / 2, "la oración, sobre el medio de sus partes");
+  const row = tree.nodes.filter((placed) => placed.depth === 1).sort((a, b) => a.x - b.x);
+  for (let i = 1; i < row.length; i++) assert.equal(row[i - 1]!.x + row[i - 1]!.width / 2 <= row[i]!.x - row[i]!.width / 2, true, "dos nombres vecinos no se pisan");
+  assert.equal(tree.branches.length, 3 + 4, "una rama a cada parte y una a cada palabra");
+  // El hebreo se lee desde la derecha: la primera palabra queda a la derecha.
+  const rtl = layoutTree(root, { ...sizes, rtl: true });
+  assert.deepEqual(rtl.leaves.map((placed) => placed.x), [tree.width - 30, tree.width - 96, tree.width - 162, tree.width - 258]);
+  // Las oraciones unidas se cuentan, para llamarlas «Oración 1», «Oración 2».
+  const joined = layoutTree(part("*", part("*", part("v", leaf(1))), part("&", leaf(2)), part("*", part("v", leaf(3)))), sizes);
+  assert.deepEqual(joined.nodes.filter((placed) => placed.depth === 1 && placed.node.clause).map((placed) => placed.nth), [1, 2]);
 });
 
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", "trees");
