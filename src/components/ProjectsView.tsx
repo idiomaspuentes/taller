@@ -30,7 +30,7 @@ export type CreateProjectInput = {
 };
 
 /** A template to start a project from. */
-export type ProjectTemplateOption = { id: string; name: string; description?: string; phases?: number; tasks?: number };
+export type ProjectTemplateOption = { id: string; name: string; description?: string; phases?: number; tasks?: number; /** A walkthrough of a process, for a test server. */ trial?: boolean };
 type StartBookProps = Parameters<typeof StartBookPanel>[0];
 
 type Props = {
@@ -206,7 +206,7 @@ export function ProjectsView({
       {canManage && creating === "book" && onStartBook ? (
         <>
           <StartBookPanel
-            templates={templates.map((row) => ({ id: row.id, name: row.name, description: row.description, phases: row.phases ?? 0, tasks: row.tasks ?? 0 }))}
+            templates={templates.map((row) => ({ id: row.id, name: row.name, description: row.description, phases: row.phases ?? 0, tasks: row.tasks ?? 0, trial: row.trial }))}
             taken={[...projects.filter((p) => p.kind === "book").map((p) => p.projectId), ...(draft ? [draft.projectId] : [])]}
             onStart={onStartBook}
             onAdjust={onAdjustBook}

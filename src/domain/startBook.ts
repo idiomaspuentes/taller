@@ -1,5 +1,6 @@
 import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc, InventoryDoc, ProjectTask } from "./types";
+import { processOf } from "./walkthrough";
 
 /**
  * Starting a book is one action: the process is applied, the book is read and divided, and the work is laid out.
@@ -10,9 +11,10 @@ import type { AssignmentsDoc, InventoryDoc, ProjectTask } from "./types";
 /**
  * The teams of the new project, taken from the last project made with the same process. A task that already says
  * who does it (the template named its team) is left alone; people are never copied onto a task that has them.
+ * A walkthrough of a process is that process: its tasks are done by the teams that do them in a real book.
  */
 export function inheritTeams(board: AssignmentsDoc, previous: AssignmentsDoc | null | undefined): AssignmentsDoc {
-  if (!previous || !previous.workflowId || previous.workflowId !== board.workflowId) return board;
+  if (!previous || !previous.workflowId || processOf(previous.workflowId) !== processOf(board.workflowId)) return board;
   const before = new Map(previous.teams.map((task) => [task.id, task]));
   let changed = false;
   const teams = board.teams.map((task): ProjectTask => {
@@ -25,6 +27,16 @@ export function inheritTeams(board: AssignmentsDoc, previous: AssignmentsDoc | n
   if (!changed) return board;
   const known = new Set(board.people.map((person) => person.id));
   return { ...board, teams, people: [...board.people, ...previous.people.filter((person) => !known.has(person.id))] };
+}
+
+/**
+ * The project with every task kept to some chapters of its book. A walkthrough is done on one chapter: on a whole
+ * book it would lay out every subtarea of every task at once.
+ */
+export function limitedToChapters(board: AssignmentsDoc, book: string, chapters: number[] | undefined): AssignmentsDoc {
+  const only = [...new Set((chapters ?? []).map((n) => Math.floor(Number(n))).filter((n) => n > 0))].sort((a, b) => a - b);
+  if (!only.length) return board;
+  return { ...board, teams: board.teams.map((task): ProjectTask => (task.general ? task : { ...task, scriptureScope: { mode: "chapters", book, chapters: only } })) };
 }
 
 /** Tasks of the new project nobody is set to do: the one thing left to arrange after starting. */

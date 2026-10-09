@@ -13,14 +13,22 @@ import { useT, type MessageKey } from "../i18n/messages";
 import { localizeName } from "../domain/templateNames";
 import { explainError } from "../dcs/userError";
 
-export type StartTemplateOption = { id: string; name: string; description?: string; phases: number; tasks: number };
+export type StartTemplateOption = {
+  id: string;
+  name: string;
+  description?: string;
+  phases: number;
+  tasks: number;
+  /** A walkthrough of a process: done on one chapter, on a test server. */
+  trial?: boolean;
+};
 export type StartedProject = { board: AssignmentsDoc; inventory: InventoryDoc; created: number };
 
 type Props = {
   templates: StartTemplateOption[];
   /** Books that already have a project: they are opened, not started again. */
   taken: string[];
-  onStart: (input: { book: string; workflowId: string }, onStage: (stage: StartStage, detail?: string) => void) => Promise<StartedProject>;
+  onStart: (input: { book: string; workflowId: string; chapter?: number }, onStage: (stage: StartStage, detail?: string) => void) => Promise<StartedProject>;
   /** Prepare the project without creating it: the process can be adjusted first. An empty `workflowId` starts from nothing. */
   onAdjust?: (input: { book: string; workflowId: string }) => Promise<void>;
   onOpen: (projectId: string, step: "subtareas" | "tareas") => void;
@@ -43,7 +51,11 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
   const language = useUiLanguage();
   const free = BOOKS.filter((b) => !taken.includes(b.code));
   const [book, setBook] = useState(free[0]?.code ?? "");
-  const [workflowId, setWorkflowId] = useState(() => usualTemplate(templates));
+  // A walkthrough is never the one offered first: it is chosen on purpose.
+  const [workflowId, setWorkflowId] = useState(() => usualTemplate(templates.filter((row) => !row.trial)));
+  const trial = Boolean(templates.find((row) => row.id === workflowId)?.trial);
+  const [chapter, setChapter] = useState("1");
+  const chapterNumber = Math.floor(Number(chapter));
   const [stage, setStage] = useState<{ at: StartStage; detail?: string } | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState<StartedProject | null>(null);
@@ -70,8 +82,8 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
     setStage({ at: "process" });
     try {
       // Only the count of subtareas is worth showing; what the reader reports while it works is for developers.
-      rememberTemplateUsed(workflowId);
-      setDone(await onStart({ book, workflowId }, (at, detail) => setStage({ at, detail: at === "tasks" ? detail : undefined })));
+      if (!trial) rememberTemplateUsed(workflowId);
+      setDone(await onStart({ book, workflowId, ...(trial ? { chapter: chapterNumber } : {}) }, (at, detail) => setStage({ at, detail: at === "tasks" ? detail : undefined })));
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -161,6 +173,14 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
         {!templates.length && !onAdjust ? <p className="af-stale">{t("sb.noTemplates")}</p> : null}
       </fieldset>
 
+      {trial ? (
+        <div className="grid gap-1.5">
+          <Label htmlFor="sb-chapter">{t("sb.chapter")}</Label>
+          <input id="sb-chapter" className="af-input" type="number" inputMode="numeric" min={1} value={chapter} disabled={Boolean(stage)} onChange={(e) => setChapter(e.target.value)} />
+          <p className="text-sm text-muted-foreground">{templates.find((row) => row.id === workflowId)?.description}</p>
+        </div>
+      ) : null}
+
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -184,11 +204,11 @@ export function StartBookPanel({ templates, taken, onStart, onAdjust, onOpen, on
         <>
           <p className="text-sm text-muted-foreground">{t(workflowId ? "sb.what" : "sb.whatBlank")}</p>
           {workflowId ? (
-            <Button type="button" size="lg" disabled={!book || adjusting} onClick={() => void start()}>
-              {t("sb.start").replace("{book}", name)}
+            <Button type="button" size="lg" disabled={!book || adjusting || (trial && !(chapterNumber > 0))} onClick={() => void start()}>
+              {trial ? t("sb.startTrial").replace("{book}", name).replace("{n}", String(chapterNumber > 0 ? chapterNumber : "")) : t("sb.start").replace("{book}", name)}
             </Button>
           ) : null}
-          {onAdjust ? (
+          {onAdjust && !trial ? (
             <Button type="button" size="lg" variant={workflowId ? "outline" : "default"} disabled={!book || adjusting} onClick={() => void adjust()}>
               {adjusting ? t("sb.preparing") : t(workflowId ? "sb.adjustFirst" : "sb.build")}
             </Button>

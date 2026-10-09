@@ -94,6 +94,7 @@
     "verify:workflow-upgrade": "tsx --tsconfig tsconfig.scripts.json scripts/verify-workflow-upgrade.mts",
     "verify:glossary": "tsx --tsconfig tsconfig.scripts.json scripts/verify-glossary.mts",
     "verify:start-book": "tsx --tsconfig tsconfig.scripts.json scripts/verify-start-book.mts",
+    "verify:walkthrough": "tsx --tsconfig tsconfig.scripts.json scripts/verify-walkthrough.mts",
     "verify:plan": "tsx --tsconfig tsconfig.scripts.json scripts/verify-plan.mts",
     "verify:study-notes": "tsx --tsconfig tsconfig.scripts.json scripts/verify-study-notes.mts",
     "verify:group-reading": "tsx --tsconfig tsconfig.scripts.json scripts/verify-group-reading.mts",

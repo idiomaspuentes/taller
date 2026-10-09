@@ -2988,5 +2988,10 @@
   "se.noteStays": "É salva com o versículo; não é preciso escrevê-la.",
   "se.editVerse": "Versículo {n}. Toque para escrever.",
   "se.lineN": "Linha {n}",
-  "se.addLine": "Outra linha"
+  "se.addLine": "Outra linha",
+  "wt.name": "Percurso de teste · {name}",
+  "wt.description": "Para testar cada passo em um servidor de testes, com um capítulo de um livro que já está pronto. Todas as tarefas ficam abertas ao mesmo tempo e uma pessoa sozinha pode percorrer cada uma. A revisão em pares continua pedindo outra pessoa. Não é para trabalho real.",
+  "sb.chapter": "Capítulo que se percorre",
+  "sb.startTrial": "Começar o percurso de {book} {n}",
+  "sb.noChapter": "Este livro não tem o capítulo {n}. Nada foi criado."
 }

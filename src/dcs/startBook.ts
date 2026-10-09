@@ -6,7 +6,8 @@ import { listPmOrgTeams, loadAssignmentsFromDcs, saveProjectToDcs, teamCanEdit }
 import { bookName, normalizeProjectId } from "../domain/books";
 import { issueTaskId } from "../domain/myTasks";
 import { coordinatorsOf } from "../domain/levels";
-import { firstPhaseTeams, inheritTeams, nextBookHint, reachesNextBook, wasWithdrawn, type NextBookHint, type TeamOption } from "../domain/startBook";
+import { firstPhaseTeams, inheritTeams, limitedToChapters, nextBookHint, reachesNextBook, wasWithdrawn, type NextBookHint, type TeamOption } from "../domain/startBook";
+import { processOf } from "../domain/walkthrough";
 import { isAppTeam, reposForTask } from "../domain/roles";
 import { emptyAssignments, mergePeople } from "../domain/store";
 import { portionStartsOfBook } from "../domain/extraWork";
@@ -43,7 +44,7 @@ export async function draftBook(params: {
   for (const id of params.earlierProjects) {
     if (normalizeProjectId(id) === book) continue;
     const earlier = await loadAssignmentsFromDcs(session, pmOrg, lang, id, contentOrg).catch(() => null);
-    if (earlier && earlier.workflowId === board.workflowId && earlier.teams.some((task) => task.orgTeamName || task.orgTeamId || task.memberIds.length)) {
+    if (earlier && processOf(earlier.workflowId) === processOf(board.workflowId) && earlier.teams.some((task) => task.orgTeamName || task.orgTeamId || task.memberIds.length)) {
       board = inheritTeams(board, earlier);
       break;
     }
@@ -111,13 +112,17 @@ export async function startBook(params: {
   book: string;
   template: WorkflowTemplate;
   earlierProjects: string[];
+  /** Only these chapters of the book: every task is kept to them (a walkthrough is done on one chapter). */
+  chapters?: number[];
   onStage: (stage: StartStage, detail?: string) => void;
 }): Promise<StartedBook> {
   const { session, pmOrg, lang, contentOrg, onStage } = params;
   onStage("process");
-  const board = await draftBook(params);
+  const board = limitedToChapters(await draftBook(params), normalizeProjectId(params.book), params.chapters);
   onStage("reading");
   const inventory = await readBook({ book: params.book, lang, contentOrg, settings: board.settings }, (message) => onStage("reading", message));
+  // Said before anything is written: a project with no subtarea in it would be left behind.
+  if (params.chapters?.length && !inventory.portions.some((portion) => params.chapters!.includes(portion.chapter))) throw new Error(tNow("sb.noChapter").replace("{n}", params.chapters.join(", ")));
   return createProject({ session, pmOrg, board, inventory, onStage });
 }
 

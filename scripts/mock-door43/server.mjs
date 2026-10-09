@@ -428,6 +428,11 @@ async function handle(req, res) {
   if (api === `/repos/${PM_ORG}/taller/issues/comments`) return json(res, []);
   if (/^\/orgs\/[^/]+\/teams$/.test(api)) return json(res, [{ id: 10, name: "managers", organization: { name: PM_ORG } }, { id: 11, name: "Equipo", organization: { name: PM_ORG } }]);
   if (/^\/teams\/\d+\/members$/.test(api)) return json(res, Object.values(USERS));
+  // What a team works on: here every team has every repository, so giving a phase its team has nothing to hand out.
+  if (/^\/teams\/\d+\/repos$/.test(api) && req.method === "GET") {
+    return json(res, [...repos.keys()].map((key) => ({ name: key.split("/")[1], full_name: key, owner: { login: key.split("/")[0] }, permissions: { admin: false, push: true, pull: true } })));
+  }
+  if (/^\/teams\/\d+\/repos\/[^/]+\/[^/]+$/.test(api) && (req.method === "PUT" || req.method === "DELETE")) return json(res, {}, 204);
   if (/^\/orgs\/[^/]+\/members$/.test(api)) return json(res, Object.values(USERS));
 
   if (api === "/repos/issues/search") {

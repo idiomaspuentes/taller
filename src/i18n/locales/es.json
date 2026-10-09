@@ -2988,5 +2988,10 @@
   "se.noteStays": "Se guarda con el versículo; no hay que escribirla.",
   "se.editVerse": "Versículo {n}. Toca para escribir.",
   "se.lineN": "Renglón {n}",
-  "se.addLine": "Otro renglón"
+  "se.addLine": "Otro renglón",
+  "wt.name": "Recorrido de prueba · {name}",
+  "wt.description": "Para probar cada paso en un servidor de pruebas, con un capítulo de un libro que ya está hecho. Todas las tareas quedan abiertas a la vez y una persona sola puede recorrer cada una. La revisión en pares sigue pidiendo a otra persona. No es para trabajo real.",
+  "sb.chapter": "Capítulo que se recorre",
+  "sb.startTrial": "Empezar el recorrido de {book} {n}",
+  "sb.noChapter": "Este libro no tiene el capítulo {n}. No se creó nada."
 }

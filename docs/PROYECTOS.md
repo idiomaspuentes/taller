@@ -84,6 +84,27 @@ se retiraron el 2 de octubre de 2026 (sus direcciones llevan a «Subtareas»).
 Tarjetas de las plantillas de la organización y de las incluidas en la aplicación. Las incluidas se leen y se copian
 para cambiarlas. Guardar sube la versión; un proyecto creado con una versión anterior ofrece «Traer lo nuevo».
 
+## Recorrido de prueba
+
+Para probar **cada paso** de un proceso en un servidor de pruebas, con una sola persona y en el teléfono. En
+«Empezar un libro», fuera de producción (`isProductionHost`), cada proceso incluido trae al final su «Recorrido de
+prueba · …». Pide un libro y **un capítulo**.
+
+- Se hace con un libro que **ya está hecho**: así cada paso tiene sobre qué trabajar (texto que alinear, notas que
+  afinar, un capítulo que validar). En QA, `es-419_gl` tiene completos Tito, Judas, Jonás, Rut y 3 Juan.
+- Es el mismo proceso (`walkthroughOf`, `src/domain/walkthrough.ts`): sus fases, tareas, pasos y herramientas. Se
+  deriva cada vez, no se escribe a mano. Cambia dos cosas: **ninguna tarea espera a otra**, y un paso que toman
+  varias personas tiene **un solo asiento** (`minAssignees: 1`, `minIndependent: 0`, sin excluir a quien hizo el
+  paso anterior).
+- Todas las tareas se limitan al capítulo elegido (`limitedToChapters`), y heredan los equipos del último libro
+  hecho con el proceso (`processOf`).
+- **La revisión en pares sigue pidiendo a otra persona**: Door43 no deja aprobar la propia solicitud. Para esos
+  pasos hace falta una segunda cuenta.
+- Lo que el recorrido no prueba son las esperas y los acuerdos entre varias personas: los quita.
+- El paso «Publicar» escribe en la rama publicada del servidor de pruebas.
+
+Un proyecto de recorrido no ofrece «Traer lo nuevo»: no es una plantilla guardada. `npm run verify:walkthrough`.
+
 ## Pruebas
 
 `verify:plan` (operaciones del editor), `verify:extra-work` (cortes de porciones y subtareas a mano),

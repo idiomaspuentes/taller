@@ -19,6 +19,7 @@ import { mergeOrgs, orgSlug } from "./domain/orgs";
 import { loadDoor43Languages } from "./dcs/languages";
 import { applyWorkflowToBoard } from "./domain/workflows";
 import { localized, shippedWorkflows } from "./domain/processes";
+import { isWalkthroughId, walkthroughOf } from "./domain/walkthrough";
 import { loadLocalWorkflows } from "./domain/store";
 import type { WorkflowTemplate } from "./domain/types";
 import { HandoffUnitsPanel } from "./components/HandoffUnitsPanel";
@@ -853,11 +854,16 @@ export function App() {
     setInventariarBook(nextBoard.books[0] || code);
   }
 
-  /** Templates a project can start from: the organization's own first, then the ones shipped with the app. */
+  /**
+   * Templates a project can start from: the organization's own first, then the ones shipped with the app. On a
+   * server that is not production, a walkthrough of each shipped process comes last: for trying every step of it.
+   */
   function projectTemplates(): WorkflowTemplate[] {
     const own = loadLocalWorkflows().workflows;
     const ids = new Set(own.map((workflow) => workflow.id));
-    return [...own, ...shippedWorkflows().filter((workflow) => !ids.has(workflow.id))];
+    const shipped = shippedWorkflows();
+    const trials = session && !isProductionHost(session.host) ? shipped.map((workflow) => walkthroughOf(workflow, { name: t("wt.name").replace("{name}", localized(workflow.name, workflow.names, uiLanguage)), description: t("wt.description") })) : [];
+    return [...own, ...shipped.filter((workflow) => !ids.has(workflow.id)), ...trials];
   }
 
   function onCreateProject(input: CreateProjectInput) {
@@ -917,7 +923,7 @@ export function App() {
   }
 
   /** «Empezar un libro»: everything from the process to the subtareas, then the project is the one in hand. */
-  async function onStartBook(input: { book: string; workflowId: string }, onStage: (stage: StartStage, detail?: string) => void) {
+  async function onStartBook(input: { book: string; workflowId: string; chapter?: number }, onStage: (stage: StartStage, detail?: string) => void) {
     const template = projectTemplates().find((workflow) => workflow.id === input.workflowId);
     if (!session || !pmOrg || !template) throw new Error(tNow("app.signInPickOrg"));
     const started = await startBook({
@@ -928,6 +934,7 @@ export function App() {
       book: input.book,
       template,
       earlierProjects: [...projects].reverse().map((project) => project.projectId),
+      chapters: input.chapter ? [input.chapter] : undefined,
       onStage,
     });
     const { board: doc, inventory: found } = started;
@@ -1441,6 +1448,7 @@ export function App() {
               description: workflow.descriptions?.[uiLanguage] ?? workflow.description,
               phases: workflow.phases.length,
               tasks: workflow.tasks.length,
+              trial: isWalkthroughId(workflow.id),
             }))}
             onCreateProject={onCreateProject}
             onStartBook={session && pmOrg ? onStartBook : undefined}

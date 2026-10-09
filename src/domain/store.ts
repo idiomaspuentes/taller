@@ -525,9 +525,11 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
           : minAssignees;
     }
 
+    // A 0 that is written is kept: the tools that close a step by agreement ask for independent people of their
+    // own when a step does not say, and a step one person closes alone has to say that it asks for none.
     const indRaw = Number(item.minIndependent);
     const minIndependent =
-      claimMode === "pool" && Number.isFinite(indRaw) && indRaw >= 1 ? Math.floor(indRaw) : undefined;
+      claimMode === "pool" && Number.isFinite(indRaw) && (indRaw >= 1 || item.minIndependent === 0) ? Math.floor(indRaw) : undefined;
 
     const includeAuthorInApproval =
       claimMode === "exclusive" ? Boolean(item.includeAuthorInApproval) : undefined;
