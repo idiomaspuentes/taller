@@ -33,6 +33,10 @@ import { isShaConflict } from "../dcs/afinacionStore";
 import { BootstrapError, explainRepoFileError } from "../dcs/repoFile";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { resolveScriptureTarget, type ScriptureTarget } from "../domain/scriptureTarget";
+import { formatParallelRef, parallelLabel, parallelsAt, type ParallelFile, type ParallelRef } from "../domain/parallels";
+import { loadParallels } from "../dcs/parallels";
+import { tallerConfig, workspaceOfOrg } from "../config";
+import { ParallelSheet } from "./ParallelSheet";
 import {
   decodeSolverLaunchContext,
   encodeSolverLaunchContext,
@@ -927,6 +931,28 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("editor");
   const [draftVia, setDraftVia] = useState<"ast" | "plain">("plain");
   const [activeVerse, setActiveVerse] = useState<number | undefined>();
+  /** What other books say of the same thing: read once for the book, and offered at the verse that has some. */
+  const [parallels, setParallels] = useState<ParallelFile | null>(null);
+  const [parallelsOpen, setParallelsOpen] = useState<{ verse: number; refs: ParallelRef[] } | null>(null);
+  const bookCode = (ctx?.book ?? "").toUpperCase();
+  useEffect(() => {
+    setParallels(null);
+    if (!bookCode) return;
+    let alive = true;
+    void loadParallels(bookCode).then((file) => {
+      if (alive) setParallels(file);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [bookCode]);
+  /** The parallels of a row, which may be several verses written as one. */
+  const parallelsOfRow = (from: number, to: number): ParallelRef[] => {
+    if (!parallels || !range) return [];
+    const found = new Map<string, ParallelRef>();
+    for (let verse = from; verse <= to; verse++) for (const ref of parallelsAt(parallels, bookCode, range.chapter, verse)) found.set(formatParallelRef(ref), ref);
+    return [...found.values()];
+  };
   // What the verse in hand calls for by its own words, among what the step and the team ask.
   const hintsFor = useItemHints(session, ctx);
   // The English text this draft is translated from: its alignment with the original is what a decision of the
@@ -2390,6 +2416,17 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                           ) : null}
                         </div>
                       ) : null}
+                      {activeVerse === d.from
+                        ? (() => {
+                            const refs = parallelsOfRow(d.from, d.to);
+                            if (!refs.length) return null;
+                            return (
+                              <button type="button" className="se-parallel" onClick={() => setParallelsOpen({ verse: d.from, refs })}>
+                                {refs.length === 1 ? t("pp.linkOne").replace("{ref}", parallelLabel(refs[0]!, (code) => bookLabel(code, language))) : t("pp.linkMany").replace("{n}", String(refs.length))}
+                              </button>
+                            );
+                          })()
+                        : null}
                       {/* While nobody writes in it, a verse that has text is shown as it reads: the lines of a poem, each
                           as deep as its mark says. In the box, such a line and a long one that wraps look the same. */}
                       {editing !== key && !recreating && d.text.trim() ? (
@@ -2553,6 +2590,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         </button>
       </div>
 
+      <ParallelSheet
+        at={parallelsOpen && range ? { book: bookCode, chapter: range.chapter, verse: parallelsOpen.verse } : null}
+        refs={parallelsOpen?.refs ?? []}
+        session={session ?? null}
+        workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined}
+        team={targetRepo ?? undefined}
+        onClose={() => setParallelsOpen(null)}
+      />
       <Dialog open={Boolean(wordHelps)} onOpenChange={(next) => (next ? undefined : setWordHelps(null))}>
         <DialogContent className="fix-sheet help-sheet" aria-label={t("se.wordHelps")}>
           <header className="fx-head">

@@ -5943,6 +5943,24 @@ button.al-box--read { cursor: pointer; }
   color: var(--danger, #b3261e);
 }
 
+/* Parallel passages: a quiet line under the verse in hand, and a sheet that shows one passage at a time. */
+.se-parallel { justify-self: start; display: inline-flex; align-items: center; min-height: 2.5rem; margin-bottom: 0.25rem; padding: 0; border: 0; background: none; font-family: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--primary); text-align: left; cursor: pointer; }
+.fix-sheet.pp-sheet { max-width: 36rem; }
+.pp-sheet .pp-body { grid-template-columns: minmax(0, 1fr); }
+/* One line that is drawn through with a finger: sixteen references in rows pushed the passage off the screen. */
+.pp-refs { display: flex; gap: 0.375rem; margin: 0 -1rem; padding: 0 1rem 0.25rem; overflow-x: auto; scrollbar-width: thin; }
+.pp-ref { flex: 0 0 auto; min-height: 2.5rem; padding: 0.25rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); font: inherit; font-size: 0.875rem; color: var(--text); cursor: pointer; }
+.pp-ref[aria-selected="true"] { border-color: var(--accent-500); background: var(--accent-100); color: var(--accent-700); font-weight: 700; }
+.pp-passage { display: grid; gap: 0.875rem; }
+.pp-passage__ref { margin: 0; font-size: 1rem; font-weight: 700; }
+.pp-text { display: grid; gap: 0.25rem; }
+.pp-text .usfm-para { margin: 0; }
+.pp-original { display: flex; align-items: baseline; gap: 0.375rem; margin: 0; font-size: 1.125rem; }
+.pp-original > sup { flex: 0 0 auto; font-size: 0.75rem; color: var(--text-muted); vertical-align: baseline; }
+.pp-original .af-words { flex: 1 1 auto; min-width: 0; gap: 0.125rem 0.25rem; line-height: 1.7; }
+.pp-original .af-word { font-size: inherit; }
+.pp-credit { margin: 0; font-size: 0.75rem; color: var(--text-faint); }
+
 /* The other words of a field of meaning, in the sheet of a word: each a place to touch, lemma first. */
 .ws-field__words { list-style: none; margin: 0.375rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.375rem; }
 .ws-field__word { display: inline-flex; align-items: baseline; gap: 0.375rem; min-height: 2.25rem; padding: 0.25rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); font: inherit; color: var(--text); cursor: pointer; }

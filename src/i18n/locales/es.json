@@ -1849,7 +1849,7 @@
   "pn.assignHint": "Dar subtareas a personas por su nombre",
   "pn.sync": "Escribir las subtareas",
   "pn.syncHint": "Volver a escribir en Door43 todo el plan",
-  "pp.title": "Proceso",
+  "pp.title": "Pasajes paralelos",
   "pp.lede": "Las fases, las tareas y los pasos de este proyecto.",
   "pp.ledeFrom": "Empezó de «{process}». Lo que cambies aquí vale solo para este proyecto.",
   "pp.bringUpdate": "Traer lo nuevo",
@@ -2998,5 +2998,15 @@
   "lx.field": "Otras palabras de «{name}»",
   "lx.fieldLoading": "Buscando las palabras de este campo…",
   "lx.fieldNone": "El léxico no tiene la lista de este campo.",
-  "lx.back": "Volver a «{word}»"
+  "lx.back": "Volver a «{word}»",
+  "pp.of": "Lo que otros libros dicen de lo mismo que {ref}",
+  "pp.linkOne": "Pasaje paralelo: {ref}",
+  "pp.linkMany": "{n} pasajes paralelos",
+  "pp.loading": "Leyendo el pasaje…",
+  "pp.none": "No se pudo leer este pasaje. Revisa la conexión y vuelve a abrirlo.",
+  "pp.team": "Texto del equipo",
+  "pp.ult": "ULT",
+  "pp.original": "Original",
+  "pp.touch": "Toca una palabra para ver qué significa.",
+  "pp.credit": "Lista de pasajes paralelos: Sociedades Bíblicas Unidas (CC BY-SA 4.0)."
 }

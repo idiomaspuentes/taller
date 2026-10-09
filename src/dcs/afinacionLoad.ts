@@ -37,7 +37,7 @@ export type BookVerseMap = Record<string, string>;
 export type OriginalWord = { surface: string; lemma: string; strong: string; morph?: string };
 
 /** The words of the original, verse by verse (`"chapter:verse"`), in the order they are written. */
-function originalWordsOf(raw: string | null): Record<string, OriginalWord[]> {
+export function originalWordsOf(raw: string | null): Record<string, OriginalWord[]> {
   const out: Record<string, OriginalWord[]> = {};
   if (!raw) return out;
   try {
