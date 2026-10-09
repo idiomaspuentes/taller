@@ -1,7 +1,7 @@
 # Recursos abiertos que Taller puede aprovechar
 
 Medido el 9 de octubre de 2026, solo leyendo los repositorios públicos. Es un plan: de lo que sigue, en la app están
-el léxico con sus campos de significado (fase 1) y los pasajes paralelos (fase 2).
+el léxico con sus campos de significado (fase 1), los pasajes paralelos (fase 2) y «¿a quién se refiere?» (fase 3).
 
 ## Lo que ya usamos
 
@@ -25,6 +25,23 @@ palabra que no es. Medido en 25 libros: cuadra en el 87 % de las referencias del
 que cita al Antiguo Testamento y el 76 % de las del hebreo; donde no cuadra, el pasaje se muestra sin resaltar. No
 averigüé por qué el hebreo falla más (casi siempre por una palabra). Las marcas del hebreo que el Nuevo Testamento
 cita no se guardan: cuentan las palabras de la Septuaginta.
+
+«¿A quién se refiere?» sale de MACULA (`Clear-Bible/macula-hebrew` y `macula-greek`, de Biblica, CC BY 4.0). En la
+ficha de una palabra del original, donde quiera que se abra (al alinear, al revisar desafíos y términos clave, en un
+pasaje paralelo), aparece a qué sustantivo apunta un pronombre o un sufijo («me» → Jonás) y de quién habla un verbo
+cuando la oración no lo nombra («tragar» → el pez), con su significado y el versículo si está en otro. Tocarlo abre
+esa palabra. Son 120 114 palabras en los 66 libros.
+
+Los datos van con la app, en `public/referents/`, un archivo por libro que se lee la primera vez que se abre una
+palabra de ese libro: 8,4 MB entre todos, el mayor (Salmos) de 570 KB antes de comprimir. El plan decía guardarlos
+en Door43; quedaron aquí porque no dependen del idioma y así no hay otro repositorio que publicar. Si el peso del
+repositorio molesta, es lo primero que se movería. Se rehacen con `npm run referents:build` (baja 90 MB de tablas) y
+los vigila `npm run verify:referents`.
+
+Una palabra se encuentra por sus letras y por cuál es entre las iguales de su versículo, porque MACULA usa otras
+ediciones (WLC y SBLGNT) que las nuestras (UHB y UGNT). Medido en 25 libros: el 99,3 % de las palabras que señalan
+a otra se halla en nuestro texto; del resto no se muestra nada. El hebreo se pasa a nuestra numeración con la misma
+tabla que los pasajes paralelos.
 
 ## Lo que hay y no usamos
 
@@ -94,12 +111,12 @@ De lo que más ayuda a quien traduce sin ser especialista y menos cuesta, a lo m
 Cambió respecto a la primera propuesta: fauna, flora y realia bajan de la fase 2 a la 5 porque no están en español, y
 los pasajes paralelos y los referentes suben porque no dependen del idioma.
 
-Hechas: la 1 y la 2.
+Hechas: la 1, la 2 y la 3. La 4 puede salir de las mismas tablas de MACULA (columna `frame`), ya bajadas.
 
 ### Cómo llegaría a la app
 
 Como el léxico: se prepara una vez, se guarda en un repositorio de Door43 y la app lee solo lo del versículo abierto.
-Nada de esto va dentro de la app, salvo los pasajes paralelos, que son pequeños y no dependen del idioma. Los árboles de un capítulo pesan entre 150 y 350 KB en su formato original; habría
+Así se pensó; al final los pasajes paralelos y los referentes van dentro de la app, porque no dependen del idioma. Los árboles de un capítulo pesan entre 150 y 350 KB en su formato original; habría
 que guardarlos reducidos a lo que se muestra.
 
 ### Atribución

@@ -3009,5 +3009,9 @@
   "pp.original": "Original",
   "pp.touch": "Toca una palabra para ver qué significa.",
   "pp.credit": "Lista de pasajes paralelos: Sociedades Bíblicas Unidas (CC BY-SA 4.0).",
-  "pp.shared": "Resaltado: lo que dice igual que {ref}."
+  "pp.shared": "Resaltado: lo que dice igual que {ref}.",
+  "lx.refers": "A quién o a qué se refiere",
+  "lx.refersPiece": "A quién o a qué se refiere «{piece}»",
+  "lx.subject": "De quién habla este verbo",
+  "lx.refCredit": "Según MACULA, de Biblica (CC BY 4.0)."
 }

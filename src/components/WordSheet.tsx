@@ -5,13 +5,18 @@ import type { LexiconRepo, Workspace } from "../config/types";
 import type { GtSession } from "../dcs/auth";
 import { lexiconRepos, loadLexiconEntry, loadLexiconField, reportLexiconEntry } from "../dcs/lexicon";
 import { explainError } from "../dcs/userError";
-import { lexiconReport, otherWordsOfField, sensesOfWord, strongCode, strongParts, type FieldWord, type LexiconField, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
+import { glossOfWord, lexiconReport, otherWordsOfField, sensesOfWord, strongCode, strongParts, type FieldWord, type LexiconField, type LexiconFile, type LexiconSense, type StrongPart } from "../domain/lexicon";
+import { loadReferents } from "../dcs/referents";
+import { referentsOf, type ReferentTarget } from "../domain/referents";
 import { describeMorph, type MorphLabel } from "../domain/morphology";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 
-/** A word of the original as the text tags it. */
-export type SheetWord = { surface: string; lemma: string; strong: string; morph?: string };
+/**
+ * A word of the original as the text tags it. `occurrence` says which one it is among the words of its verse
+ * that are written with the same letters, from 0: a verse may say «él» of two people.
+ */
+export type SheetWord = { surface: string; lemma: string; strong: string; morph?: string; occurrence?: number };
 
 type Found = { part: StrongPart; file: LexiconFile | null; repo: LexiconRepo | undefined };
 
@@ -58,6 +63,75 @@ function FieldWords({ sense, strong, load, onOpen }: { sense: LexiconSense; stro
         </ul>
       ) : null}
     </details>
+  );
+}
+
+/** A word another one points to: how it is written, what it means, and where it is when it is in another verse. */
+function TargetWord({ target, at, session, workspace, onOpen }: { target: ReferentTarget; at: { book: string; chapter: number; verse: number }; session: GtSession | null; workspace: Workspace | undefined; onOpen: () => void }) {
+  const [gloss, setGloss] = useState("");
+  const hebrew = target.strong.startsWith("H");
+  useEffect(() => {
+    setGloss("");
+    const part = strongParts(target.strong)[0];
+    if (!part || !session) return;
+    let alive = true;
+    void loadLexiconEntry(session, lexiconRepos(workspace, part.kind), part.number).then((entry) => {
+      if (alive && entry) setGloss(glossOfWord(entry.file, { book: at.book, chapter: target.chapter, verse: target.verse }, part.letter));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [target.strong, target.chapter, target.verse, at.book, session, workspace]);
+  const elsewhere = target.chapter !== at.chapter || target.verse !== at.verse;
+  return (
+    <button type="button" className="ws-field__word" disabled={!target.strong} onClick={onOpen}>
+      <span lang={hebrew ? "hbo" : "grc"}>{target.text}</span>
+      {gloss || elsewhere ? <span className="ws-field__gloss">{[gloss, elsewhere ? `${target.chapter}:${target.verse}` : ""].filter(Boolean).join(" · ")}</span> : null}
+    </button>
+  );
+}
+
+/**
+ * Who the word is about: what a pronoun stands for, and who a verb speaks of when its sentence does not name
+ * them. Nothing is shown for a word that points to no other.
+ */
+function Referents({ word, at, session, workspace, onOpen }: { word: SheetWord; at: { book: string; chapter: number; verse: number }; session: GtSession | null; workspace: Workspace | undefined; onOpen: (target: ReferentTarget) => void }) {
+  const t = useT();
+  const [targets, setTargets] = useState<ReferentTarget[]>([]);
+  useEffect(() => {
+    setTargets([]);
+    if (!at.book || !at.chapter) return;
+    let alive = true;
+    void loadReferents(at.book).then((file) => {
+      if (alive) setTargets(referentsOf(file, at, word.surface, word.occurrence));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [at.book, at.chapter, at.verse, word.surface, word.occurrence]);
+  if (!targets.length) return null;
+  // A word of Hebrew may be a verb and its object in one: each piece under its own question.
+  const groups = new Map<string, ReferentTarget[]>();
+  for (const target of targets) groups.set(`${target.kind}|${target.piece ?? ""}`, [...(groups.get(`${target.kind}|${target.piece ?? ""}`) ?? []), target]);
+  return (
+    <section className="ws-refs">
+      {[...groups.values()].map((group) => {
+        const first = group[0]!;
+        return (
+          <div key={`${first.kind}|${first.piece ?? ""}`} className="ws-refs__group">
+            <p className="af-lbl">{first.kind === "subject" ? t("lx.subject") : first.piece ? t("lx.refersPiece").replace("{piece}", first.piece) : t("lx.refers")}</p>
+            <ul className="ws-field__words">
+              {group.map((target, i) => (
+                <li key={i}>
+                  <TargetWord target={target} at={at} session={session} workspace={workspace} onOpen={() => onOpen(target)} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+      <p className="ws-meta">{t("lx.refCredit")}</p>
+    </section>
   );
 }
 
@@ -220,6 +294,9 @@ export function WordSheet({
                 </div>
               ) : null}
             </dl>
+
+            {/* Only of the word the text was touched at: one opened from here is not read in its verse. */}
+            {!other ? <Referents word={word} at={at} session={session} workspace={workspace} onOpen={(target) => setOther({ surface: target.text, lemma: target.text, strong: asTagged(target.strong) })} /> : null}
 
             {found === null ? <p className="af-hint">{t("lx.loading")}</p> : null}
             {found !== null && !found.some((row) => row.file) ? <p className="af-hint">{t("lx.none")}</p> : null}

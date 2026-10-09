@@ -71,6 +71,7 @@ import { tallerConfig, workspaceOfOrg } from "../config";
 import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
 import { glossesInclude, strongParts, type LexiconFile } from "../domain/lexicon";
 import { WordSheet } from "./WordSheet";
+import { referentKey } from "../domain/referents";
 import { CorrectionSheet, type CorrectionWhy } from "./CorrectionSheet";
 
 export type AlineacionMode = "alinear" | "revisar";
@@ -1451,7 +1452,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         />
       ) : null}
       <WordSheet
-        word={sheetToken ? { surface: sheetToken.surface, lemma: sheetToken.lemma, strong: sheetToken.strong, morph: sheetToken.morph } : null}
+        word={sheetToken && sheet && verse ? { surface: sheetToken.surface, lemma: sheetToken.lemma, strong: sheetToken.strong, morph: sheetToken.morph, occurrence: verse.original.slice(0, sheet.refIndex).filter((token) => referentKey(token.surface) === referentKey(sheetToken.surface)).length } : null}
         at={{ book: data?.book ?? "", chapter: data?.chapter ?? 0, verse: verse?.verse ?? 0 }}
         session={session ?? null}
         workspace={workspace}

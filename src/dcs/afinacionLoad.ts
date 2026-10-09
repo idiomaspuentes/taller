@@ -34,7 +34,7 @@ export type AfinacionStep = "notas" | "palabras";
 export type BookVerseMap = Record<string, string>;
 
 /** A word of the original as its text tags it: what the lexicon and the grammar of the word are found by. */
-export type OriginalWord = { surface: string; lemma: string; strong: string; morph?: string };
+export type OriginalWord = { surface: string; lemma: string; strong: string; morph?: string; occurrence?: number };
 
 /** The words of the original, verse by verse (`"chapter:verse"`), in the order they are written. */
 export function originalWordsOf(raw: string | null): Record<string, OriginalWord[]> {

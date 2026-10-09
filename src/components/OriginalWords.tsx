@@ -1,5 +1,6 @@
 import type { OriginalWord } from "../dcs/afinacionLoad";
 import { wordSpans } from "../domain/afinacionSelection";
+import { referentKey } from "../domain/referents";
 import { useT } from "../i18n/messages";
 
 export const isRtl = (text: string) => /[֐-׿؀-ۿ]/.test(text);
@@ -17,6 +18,8 @@ export function OriginalWords({ text, words, marked, onOpen }: { text: string; w
   const shown = wordSpans(text);
   if (!shown.length) return <span className="af-empty">{t("af.noText")}</span>;
   const seen = new Map<string, number>();
+  /** Which one a word is among those of the verse with the same letters: who it refers to is found by that. */
+  const lettered = new Map<string, number>();
   /** The word the original tags for a piece of what is shown: the same letters, the same time they are said. */
   const tagged = (piece: string): OriginalWord | undefined => {
     const key = bare(piece);
@@ -24,7 +27,12 @@ export function OriginalWords({ text, words, marked, onOpen }: { text: string; w
     const nth = seen.get(key) ?? 0;
     seen.set(key, nth + 1);
     const same = (words ?? []).filter((word) => bare(word.surface) === key);
-    return same[nth] ?? same[same.length - 1];
+    const found = same[nth] ?? same[same.length - 1];
+    if (!found) return undefined;
+    const letters = referentKey(found.surface);
+    const occurrence = lettered.get(letters) ?? 0;
+    lettered.set(letters, occurrence + 1);
+    return { ...found, occurrence };
   };
   return (
     <span className="af-words" dir={isRtl(text) ? "rtl" : undefined}>

@@ -44,6 +44,8 @@
     "verify:alignment-boxes": "tsx --tsconfig tsconfig.scripts.json scripts/verify-alignment-boxes.mts",
     "lexicons:build": "node scripts/build-lexicons.mjs",
     "parallels:build": "tsx --tsconfig tsconfig.scripts.json scripts/build-parallels.mts",
+    "referents:build": "tsx --tsconfig tsconfig.scripts.json scripts/build-referents.mts",
+    "verify:referents": "tsx --tsconfig tsconfig.scripts.json scripts/verify-referents.mts",
     "verify:parallels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-parallels.mts",
     "mock:door43": "node scripts/mock-door43/server.mjs",
     "verify:source-package": "tsx --tsconfig tsconfig.scripts.json scripts/verify-source-package.mts",
