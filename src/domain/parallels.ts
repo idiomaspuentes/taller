@@ -6,13 +6,16 @@
 
 export type VerseSpan = { from: number; to: number };
 
-/** Verses of one chapter: «MAT 12:40», «3JN 1:13-14», «LUK 6:27-28,35». */
-export type ParallelRef = { book: string; chapter: number; spans: VerseSpan[] };
+/**
+ * Verses of one chapter: «MAT 12:40», «3JN 1:13-14», «LUK 6:27-28,35». `marks` has a digit for each word of
+ * the original there, as the list counts them: which of them the passages share.
+ */
+export type ParallelRef = { book: string; chapter: number; spans: VerseSpan[]; marks?: string };
 
 /** The passages a book takes part in: each a list of references that are parallel to one another. */
 export type ParallelFile = { passages: ParallelRef[][] };
 
-const REF = /^([1-3A-Z][A-Z]{2}) (\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
+const REF = /^([1-3A-Z][A-Z]{2}) (\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)(?:\|(\d+))?$/;
 
 export function parseParallelRef(text: string): ParallelRef | null {
   const found = REF.exec(text.trim());
@@ -22,14 +25,32 @@ export function parseParallelRef(text: string): ParallelRef | null {
     return { from: from!, to: to ?? from! };
   });
   if (spans.some((span) => span.to < span.from)) return null;
-  return { book: found[1]!, chapter: Number(found[2]), spans };
+  return { book: found[1]!, chapter: Number(found[2]), spans, ...(found[4] ? { marks: found[4] } : {}) };
+}
+
+/**
+ * The words of a passage that its parallels share, verse by verse: the place of each among the words the verse
+ * is shown in. The list gives a digit to a word (0 not shared, 1 in part, 2 the same; 3 to 8 say the same and
+ * where a line would break). They are trusted only when they are as many as the words we show: the list counts
+ * the words of another edition, and a mark one word off would point at the wrong one. `null` when they are not.
+ */
+export function sharedWords(marks: string | undefined, verses: string[]): number[][] | null {
+  if (!marks) return null;
+  // What stands alone and has no letter (a paseq, a dash) is shown, and is no word.
+  const words = verses.map((text) => (text.match(/\S+/g) ?? []).map((piece, index) => ({ index, word: /\p{L}/u.test(piece) })).filter((piece) => piece.word));
+  if (words.reduce((sum, verse) => sum + verse.length, 0) !== marks.length) return null;
+  let at = 0;
+  return words.map((verse) => verse.filter(() => Number(marks[at++]) % 3 !== 0).map((piece) => piece.index));
 }
 
 const spansText = (spans: VerseSpan[]) => spans.map((span) => (span.to > span.from ? `${span.from}-${span.to}` : String(span.from))).join(",");
 
+/** The reference alone, without its marks: what two passages that name the same verses have in common. */
 export function formatParallelRef(ref: ParallelRef): string {
   return `${ref.book} ${ref.chapter}:${spansText(ref.spans)}`;
 }
+
+const written = (ref: ParallelRef) => (ref.marks ? `${formatParallelRef(ref)}|${ref.marks}` : formatParallelRef(ref));
 
 /** A reference as a person reads it: «Mateo 12:40», «Lucas 6:27-28, 35». */
 export function parallelLabel(ref: ParallelRef, bookName: (code: string) => string): string {
@@ -70,7 +91,8 @@ export function parallelsAt(file: ParallelFile | null | undefined, book: string,
   const here = (ref: ParallelRef) => ref.book === book && ref.chapter === chapter && ref.spans.some((span) => verse >= span.from && verse <= span.to);
   for (const passage of file?.passages ?? []) {
     if (!passage.some(here)) continue;
-    for (const ref of passage) if (!here(ref)) out.set(formatParallelRef(ref), ref);
+    // The same verses in two passages: the first one that says which words are shared is kept.
+    for (const ref of passage) if (!here(ref) && !out.get(formatParallelRef(ref))?.marks) out.set(formatParallelRef(ref), ref);
   }
   return [...out.values()];
 }
@@ -84,12 +106,12 @@ export function versesWithParallels(file: ParallelFile | null | undefined, book:
 
 // ---------------------------------------------------------------- building the files
 
-export type SourceVerse = { hebrew: boolean; ref: string };
+export type SourceVerse = { hebrew: boolean; ref: string; marks?: string };
 
 /** The passages of the UBS file: `<Passage><Verse HEB="…">JON 2:1</Verse><Verse GRK="…">MAT 12:40</Verse></Passage>`. */
 export function passagesOfXml(xml: string): SourceVerse[][] {
   return [...xml.matchAll(/<Passage\b[^>]*>([\s\S]*?)<\/Passage>/g)].map((passage) =>
-    [...passage[1]!.matchAll(/<Verse (HEB|GRK)="[^"]*">([^<]+)<\/Verse>/g)].map((verse) => ({ hebrew: verse[1] === "HEB", ref: verse[2]!.trim() })),
+    [...passage[1]!.matchAll(/<Verse (HEB|GRK)="([^"]*)">([^<]+)<\/Verse>/g)].map((verse) => ({ hebrew: verse[1] === "HEB", ref: verse[3]!.trim(), ...(/^\d+$/.test(verse[2]!) ? { marks: verse[2]! } : {}) })),
   );
 }
 
@@ -119,17 +141,22 @@ export function hebrewToOurs(mapped: Record<string, string>): (book: string, pla
   };
 }
 
-/** A reference of the list in our numbering. One that runs over the end of a chapter here becomes two. */
-export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Place) => Place): ParallelRef[] {
+/**
+ * A reference of the list in our numbering. One that runs over the end of a chapter here becomes two, and its
+ * marks are left behind: they count the words of the whole run. So are those of a Hebrew verse the New Testament
+ * quotes (`quoted`): there the list counts the words of the Greek translation the quote was made from.
+ */
+export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Place) => Place, quoted = false): ParallelRef[] {
   const ref = parseParallelRef(verse.ref);
   if (!ref) return [];
-  if (!verse.hebrew) return [ref];
+  if (!verse.hebrew) return [verse.marks ? { ...ref, marks: verse.marks } : ref];
   const byChapter = new Map<number, number[]>();
   for (const number of versesOfRef(ref)) {
     const place = toOurs(ref.book, { chapter: ref.chapter, verse: number });
     byChapter.set(place.chapter, [...(byChapter.get(place.chapter) ?? []), place.verse]);
   }
-  return [...byChapter].sort((a, b) => a[0] - b[0]).map(([chapter, verses]) => ({ book: ref.book, chapter, spans: spansOf(verses) }));
+  const marks = byChapter.size === 1 && !quoted ? verse.marks : undefined;
+  return [...byChapter].sort((a, b) => a[0] - b[0]).map(([chapter, verses]) => ({ book: ref.book, chapter, spans: spansOf(verses), ...(marks ? { marks } : {}) }));
 }
 
 /**
@@ -139,12 +166,17 @@ export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Plac
 export function parallelFiles(passages: SourceVerse[][], toOurs: (book: string, place: Place) => Place): Map<string, string[][]> {
   const files = new Map<string, string[][]>();
   for (const passage of passages) {
-    const refs = [...new Set(passage.flatMap((verse) => refInOurs(verse, toOurs)).map(formatParallelRef))];
+    const quoted = passage.some((verse) => verse.hebrew) && passage.some((verse) => !verse.hebrew);
+    const found = new Map<string, ParallelRef>();
+    for (const ref of passage.flatMap((verse) => refInOurs(verse, toOurs, quoted))) if (!found.has(formatParallelRef(ref))) found.set(formatParallelRef(ref), ref);
+    const refs = [...found.values()].map(written);
     if (refs.length < 2) continue;
     for (const book of new Set(refs.map((ref) => ref.slice(0, 3)))) files.set(book, [...(files.get(book) ?? []), refs]);
   }
+  const bare = (row: string[]) => row.map((ref) => ref.split("|")[0]!);
   for (const [book, rows] of files) {
-    const kept = rows.filter((row, at) => !rows.some((other, i) => i !== at && (other.length > row.length || (other.length === row.length && i < at)) && row.every((ref) => other.includes(ref))));
+    const names = rows.map(bare);
+    const kept = rows.filter((_, at) => !names.some((other, i) => i !== at && (other.length > names[at]!.length || (other.length === names[at]!.length && i < at)) && names[at]!.every((ref) => other.includes(ref))));
     files.set(book, kept);
   }
   return files;

@@ -6,6 +6,7 @@ import { loadSession, type GtSession } from "../dcs/auth";
 import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type OriginalWord } from "../dcs/afinacionLoad";
 import { tallerConfig, workspaceOfOrg } from "../config";
 import { isRtl, OriginalWords } from "./OriginalWords";
+import { ParallelLink } from "./ParallelSheet";
 import { WordSheet } from "./WordSheet";
 import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
 import type { CorrectionReason } from "../domain/correctionLog";
@@ -1159,6 +1160,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <Words text={refVerse} marked={refMarked} />
                 )}
               </span>
+              <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
             </div>
   
             {/* 2. The words of the translation that render it: tapped in the draft. */}

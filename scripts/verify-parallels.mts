@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatParallelRef, hebrewToOurs, normalizeParallelFile, parallelFiles, parallelLabel, parallelsAt, parseParallelRef, passagesOfXml, refInOurs, versesWithParallels } from "../src/domain/parallels";
+import { formatParallelRef, hebrewToOurs, normalizeParallelFile, parallelFiles, parallelLabel, parallelsAt, parseParallelRef, passagesOfXml, refInOurs, sharedWords, versesWithParallels } from "../src/domain/parallels";
 import { BOOKS, bookName } from "../src/domain/books";
 
 let passed = 0;
@@ -34,7 +34,7 @@ test("una referencia se lee y se vuelve a escribir igual: un versículo, un tram
 test("el archivo de las Sociedades Bíblicas se lee pasaje por pasaje, y dice cuáles son del hebreo", () => {
   const passages = passagesOfXml(XML);
   assert.equal(passages.length, 6);
-  assert.deepEqual(passages[0], [{ hebrew: true, ref: "JON 2:1" }, { hebrew: false, ref: "MAT 12:40" }]);
+  assert.deepEqual(passages[0], [{ hebrew: true, ref: "JON 2:1", marks: "0000" }, { hebrew: false, ref: "MAT 12:40", marks: "0022" }]);
 });
 
 test("la numeración de la Biblia hebrea pasa a la de nuestros textos: Jonás 2:1 es 1:17", () => {
@@ -53,8 +53,9 @@ test("un tramo que aquí cruza el fin de un capítulo se parte en dos; una refer
 
 test("cada libro recibe los pasajes en que está; uno que otro más largo ya dice entero no se repite", () => {
   const files = parallelFiles(passagesOfXml(XML), toOurs);
-  assert.deepEqual(files.get("JON"), [["JON 1:17", "MAT 12:40"]]);
-  assert.deepEqual(files.get("MAL"), [["MAL 4:5", "MAT 11:14", "LUK 1:17"]]);
+  assert.deepEqual(files.get("JON"), [["JON 1:17", "MAT 12:40|0022"]], "las marcas del hebreo que el Nuevo Testamento cita cuentan las palabras de la Septuaginta: no se guardan");
+  assert.deepEqual(files.get("MAL"), [["MAL 4:5", "MAT 11:14|22", "LUK 1:17|22"]]);
+  assert.deepEqual(files.get("3JN"), [["2JN 1:12|2", "3JN 1:13-14|2"]]);
   assert.equal(files.get("MAT")!.length, 3, "Mateo: Jonás, Malaquías (una vez) y Lucas 6");
   assert.equal(files.has("MAT") && !files.get("MAT")!.some((row) => row.length < 2), true, "un pasaje de una sola referencia no es paralelo de nada");
 });
@@ -98,6 +99,19 @@ test("en los archivos servidos, Jonás 1:17 lleva a Mateo 12:40, y Judas a 2 Ped
   assert.deepEqual(parallelsAt(read("JUD"), "JUD", 1, 6).map(formatParallelRef), ["2PE 2:4"]);
   assert.equal(parallelsAt(read("PSA"), "PSA", 51, 4).some((ref) => formatParallelRef(ref) === "ROM 3:4"), true, "Salmo 51:6 del hebreo");
   assert.equal(parallelsAt(read("JOL"), "JOL", 2, 32).some((ref) => formatParallelRef(ref) === "ROM 10:13"), true, "Joel 3:5 del hebreo");
+});
+
+test("las palabras que dos pasajes comparten se marcan solo si la lista cuenta las mismas palabras que mostramos", () => {
+  const ref = parseParallelRef("2PE 2:4|0120")!;
+  assert.equal(ref.marks, "0120");
+  assert.equal(formatParallelRef(ref), "2PE 2:4", "las marcas no son parte del nombre");
+  assert.deepEqual(sharedWords("0120", ["uno dos tres cuatro"]), [[1, 2]], "1 es en parte y 2 es igual: las dos se marcan");
+  assert.deepEqual(sharedWords("0453", ["uno dos tres cuatro"]), [[1, 2]], "de 3 a 8 dicen lo mismo, y dónde partir la línea");
+  assert.deepEqual(sharedWords("02012", ["uno \u05c0 dos tres", "cuatro cinco"]), [[2], [0, 1]], "una raya suelta se muestra y no es una palabra; las marcas siguen de un versículo al otro");
+  assert.equal(sharedWords("012", ["uno dos tres cuatro"]), null, "una palabra de diferencia marcaría la que no es");
+  assert.equal(sharedWords(undefined, ["uno"]), null);
+  const file = normalizeParallelFile({ passages: [["JUD 1:6", "2PE 2:4"], ["JUD 1:6|22", "2PE 2:4|0120", "REV 20:1|1"]] })!;
+  assert.equal(parallelsAt(file, "JUD", 1, 6).find((found) => found.book === "2PE")?.marks, "0120", "de dos pasajes con los mismos versículos se queda el que dice qué comparten");
 });
 
 console.log(`\nverify-parallels: ${passed} checks passed.`);

@@ -3008,5 +3008,6 @@
   "pp.ult": "ULT",
   "pp.original": "Original",
   "pp.touch": "Toca una palabra para ver qué significa.",
-  "pp.credit": "Lista de pasajes paralelos: Sociedades Bíblicas Unidas (CC BY-SA 4.0)."
+  "pp.credit": "Lista de pasajes paralelos: Sociedades Bíblicas Unidas (CC BY-SA 4.0).",
+  "pp.shared": "Resaltado: lo que dice igual que {ref}."
 }

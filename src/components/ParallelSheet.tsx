@@ -1,16 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { Workspace } from "../config/types";
 import type { OriginalWord } from "../dcs/afinacionLoad";
 import type { GtSession } from "../dcs/auth";
-import { loadParallelTexts, type ParallelText, type ParallelTexts } from "../dcs/parallels";
+import { loadParallels, loadParallelTexts, type ParallelText, type ParallelTexts } from "../dcs/parallels";
 import { bookLabel } from "../domain/books";
-import { formatParallelRef, parallelLabel, versesOfRef, type ParallelRef } from "../domain/parallels";
+import { formatParallelRef, parallelLabel, parallelsAt, sharedWords, versesOfRef, type ParallelFile, type ParallelRef } from "../domain/parallels";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { OriginalWords } from "./OriginalWords";
 import { UsfmReferencePane } from "./UsfmReferencePane";
 import { WordSheet } from "./WordSheet";
+
+/**
+ * The line a verse carries when other books tell the same thing: «Pasaje paralelo: Mateo 12:40». Nothing is shown
+ * for a verse that has none. Touching it opens the passages; `to` is given for verses written as one.
+ */
+export function ParallelLink({
+  book,
+  chapter,
+  from,
+  to = from,
+  session,
+  workspace,
+  team,
+}: {
+  book: string;
+  chapter: number;
+  from: number;
+  to?: number;
+  session: GtSession | null;
+  workspace: Workspace | undefined;
+  team?: { owner: string; repo: string };
+}) {
+  const t = useT();
+  const language = useUiLanguage();
+  const code = book.trim().toUpperCase();
+  const [file, setFile] = useState<ParallelFile | null>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    setFile(null);
+    if (!code) return;
+    let alive = true;
+    void loadParallels(code).then((loaded) => {
+      if (alive) setFile(loaded);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [code]);
+  const refs = useMemo(() => {
+    const found = new Map<string, ParallelRef>();
+    for (let verse = from; verse <= to; verse++) for (const ref of parallelsAt(file, code, chapter, verse)) found.set(formatParallelRef(ref), ref);
+    return [...found.values()];
+  }, [file, code, chapter, from, to]);
+  if (!refs.length) return null;
+  return (
+    <>
+      <button type="button" className="se-parallel" onClick={() => setOpen(true)}>
+        {refs.length === 1 ? t("pp.linkOne").replace("{ref}", parallelLabel(refs[0]!, (name) => bookLabel(name, language))) : t("pp.linkMany").replace("{n}", String(refs.length))}
+      </button>
+      {open ? <ParallelSheet at={{ book: code, chapter, verse: from }} refs={refs} session={session} workspace={workspace} team={team} onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
 
 /** A text of the passage in its lines, a run of verses at a time (a reference may skip some). */
 function Lines({ text, passage, label }: { text: ParallelText; passage: ParallelRef; label: string }) {
@@ -53,6 +106,9 @@ export function ParallelSheet({
   const [word, setWord] = useState<{ word: OriginalWord; verse: number } | null>(null);
   const passage = at ? (refs[chosen] ?? refs[0]) : undefined;
   const key = passage ? formatParallelRef(passage) : "";
+  const numbers = passage ? versesOfRef(passage) : [];
+  /** The words of the original the passages share, by verse; `null` when the list's count does not fit our text. */
+  const shared = passage && texts?.original ? sharedWords(passage.marks, numbers.map((verse) => texts.original!.verses[verse] ?? "")) : null;
 
   useEffect(() => setChosen(0), [at?.book, at?.chapter, at?.verse]);
   useEffect(() => {
@@ -106,13 +162,16 @@ export function ParallelSheet({
                 {texts?.original ? (
                   <div className="pp-text">
                     <p className="af-lbl">{t("pp.original")}</p>
-                    {versesOfRef(passage).map((verse) => (
+                    {numbers.map((verse, i) => (
                       <p key={verse} className="pp-original">
                         <sup>{verse}</sup>{" "}
-                        <OriginalWords text={texts.original!.verses[verse] ?? ""} words={texts.original!.words[`${passage.chapter}:${verse}`]} onOpen={(found) => setWord({ word: found, verse })} />
+                        <OriginalWords text={texts.original!.verses[verse] ?? ""} words={texts.original!.words[`${passage.chapter}:${verse}`]} marked={shared?.[i]} onOpen={(found) => setWord({ word: found, verse })} />
                       </p>
                     ))}
-                    <p className="af-hint">{t("pp.touch")}</p>
+                    <p className="af-hint">
+                      {shared?.some((verse) => verse.length) && at ? `${t("pp.shared").replace("{ref}", `${name(at.book)} ${at.chapter}:${at.verse}`.replace(/ /g, "\u00a0"))} ` : ""}
+                      {t("pp.touch")}
+                    </p>
                   </div>
                 ) : null}
               </section>

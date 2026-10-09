@@ -8,19 +8,23 @@ el léxico con sus campos de significado (fase 1) y los pasajes paralelos (fase 
 El léxico de la ficha de palabra sale de los diccionarios de las Sociedades Bíblicas Unidas (`ubsicap/ubs-open-license`,
 CC BY-SA 4.0): hebreo y griego, con definiciones, glosas y campos de significado.
 
-Los pasajes paralelos salen de la misma colección. En el editor, el versículo que se escribe dice «Pasaje paralelo:
-Mateo 12:40» (o «16 pasajes paralelos») y al tocarlo se lee ese pasaje, uno a la vez: en el texto del equipo si ya
-tiene ese libro, en el ULT y en el original, con cada palabra abriendo su ficha. Los datos son 60 archivos pequeños
-(150 KB entre todos) que la app sirve ella misma, en `public/parallels/`; se rehacen con `npm run parallels:build` y
-los vigila `npm run verify:parallels`.
+Los pasajes paralelos salen de la misma colección. En el editor, en la lectura grupal y al revisar desafíos o
+términos clave, el versículo dice «Pasaje paralelo: Mateo 12:40» (o «16 pasajes paralelos») y al tocarlo se lee ese
+pasaje, uno a la vez: en el texto del equipo si ya tiene ese libro, en el ULT y en el original, con cada palabra
+abriendo su ficha y resaltadas las que dicen lo mismo que el versículo de partida. Los datos son 60 archivos
+pequeños (370 KB entre todos) que la app sirve ella misma, en `public/parallels/`; se rehacen con
+`npm run parallels:build` y los vigila `npm run verify:parallels`.
 
 La lista numera el Antiguo Testamento como la Biblia hebrea (Jonás 2:1 es nuestro 1:17; el Salmo 51:6, nuestro
 51:4). Nuestros textos, UHB incluido, usan la numeración de las Biblias en español, así que cada referencia se pasa
 con la tabla estándar de Paratext (`Copenhagen-Alliance/versification-specification`, datos CC BY-SA 4.0).
 
-Lo que la lista trae y todavía no se muestra: qué palabras coinciden entre los dos pasajes (un dígito por palabra).
-Cuenta las palabras del texto de las Sociedades Bíblicas, y en las citas del Antiguo Testamento, las de la
-Septuaginta; habría que comprobar que caen en las mismas palabras de UHB y UGNT antes de marcarlas.
+Las palabras que coinciden vienen como un dígito por palabra, contando las palabras del texto de las Sociedades
+Bíblicas. Se resaltan solo cuando hay tantos dígitos como palabras mostramos: con una de diferencia se marcaría la
+palabra que no es. Medido en 25 libros: cuadra en el 87 % de las referencias del griego, el 90 % de las del griego
+que cita al Antiguo Testamento y el 76 % de las del hebreo; donde no cuadra, el pasaje se muestra sin resaltar. No
+averigüé por qué el hebreo falla más (casi siempre por una palabra). Las marcas del hebreo que el Nuevo Testamento
+cita no se guardan: cuentan las palabras de la Septuaginta.
 
 ## Lo que hay y no usamos
 
@@ -90,7 +94,7 @@ De lo que más ayuda a quien traduce sin ser especialista y menos cuesta, a lo m
 Cambió respecto a la primera propuesta: fauna, flora y realia bajan de la fase 2 a la 5 porque no están en español, y
 los pasajes paralelos y los referentes suben porque no dependen del idioma.
 
-Hechas: la 1 y la 2. La 2 está en el editor; falta ofrecerla en la lectura grupal y al afinar.
+Hechas: la 1 y la 2.
 
 ### Cómo llegaría a la app
 

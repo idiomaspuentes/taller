@@ -1,5 +1,7 @@
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
+import { ParallelLink } from "./ParallelSheet";
+import { tallerConfig, workspaceOfOrg } from "../config";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clock3, Pencil } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -414,6 +416,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                               );
                             })()
                           ) : null}
+                          <ParallelLink book={data.book} chapter={data.chapter} from={verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={here[0]?.draft ? { owner: here[0].draft.owner, repo: here[0].draft.repo } : undefined} />
                           <div className="gr-texts">{here.map((text) => verseOf(text, passage, verse))}</div>
                         </div>
                       </div>
