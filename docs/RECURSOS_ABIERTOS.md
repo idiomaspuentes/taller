@@ -54,18 +54,34 @@ a otra se halla en nuestro texto; del resto no se muestra nada. El hebreo se pas
 tabla que los pasajes paralelos.
 
 «Cómo está armada la oración» sale de los árboles sintácticos de MACULA. Desde la ficha de cualquier palabra del
-original, «Ver cómo está armada la oración» abre la oración de ese versículo como una lista que se lee de arriba
-abajo, no como un diagrama: cada oración con sus partes una dentro de otra (Verbo, Sujeto, Objeto, Circunstancia…),
-y en cada parte sus palabras con lo que significan. La palabra de la que se vino queda marcada, y tocar otra abre su
-ficha. Una oración de 65 palabras y 7 niveles (Tito 1:1–4) cabe a 375 px sin desplazarse de lado.
+original, «Ver cómo está armada la oración» abre la oración de ese versículo como un diagrama de cajas, una dentro
+de otra: cada oración es una caja de borde grueso, y cada parte suya (Verbo, Sujeto, Objeto, Circunstancia…) una
+caja de su color con sus palabras en el orden en que se leen y lo que significan. Son cajas y no ramas porque un
+árbol de sesenta palabras no cabe en un teléfono y esto sí: crece hacia abajo, nunca hacia los lados.
+
+Arriba dice qué clase de oración es: simple, compuesta («3 oraciones unidas») o compleja («5 oraciones, 3 de ellas
+subordinadas»). Las oraciones unidas van numeradas («Oración 1 de 3») con lo que las une entre ellas; una
+subordinada va dibujada, con borde de rayas, dentro de la parte que ocupa («Subordinada · hace de objeto») o de la
+parte que describe. La palabra de la que se vino queda marcada, y tocar otra abre su ficha.
+
+**El equipo puede hacer suyo un diagrama.** «Corregir este diagrama» lo abre para cambiarlo tocando: se eligen
+palabras o cajas y se meten en una caja nueva (de verbo, de sujeto, una oración…), a una caja se le dice qué es, o
+se quita dejando lo que tenía; hay «Deshacer». Un versículo sin diagrama ofrece «Armar el diagrama de este
+versículo», que empieza con sus palabras sueltas. Lo que el equipo deja se guarda en el repositorio del plan, en la
+carpeta de su espacio (`diagramas/<LIBRO>/<capítulo>.json`), con quién lo dejó así, y todos lo ven en lugar del de
+la app; «Volver al diagrama de la app» lo quita. En una pantalla abierta solo para probar (el laboratorio) los
+diagramas se leen y no se cambian. Lo vigila `npm run verify:diagrams`.
+
+Lo que todavía no hace: partir una oración en dos o juntar dos, cambiar el orden de las cajas, y mover una palabra
+de una caja a otra de un toque (hoy es quitar la caja y volver a armarla).
 
 De los árboles (500 MB) se guarda solo qué partes tienen función y en qué lugar de su versículo está cada palabra:
-6,8 MB en `public/trees/`, un archivo por libro. Las palabras se leen de nuestro texto, y por eso una oración se
+8,6 MB en `public/trees/`, un archivo por libro. Las palabras se leen de nuestro texto, y por eso una oración se
 muestra solo si cada versículo suyo tiene aquí tantas palabras como allá: el 94 % de las oraciones, medido en 25
-libros. De las demás se dice que no tenemos el análisis. Se rehacen con `npm run trees:build` (la cabecera del guion
+libros. De las demás se dice que no tenemos el análisis, y el equipo puede armarlo. Se rehacen con `npm run trees:build` (la cabecera del guion
 dice cómo bajar los árboles) y los vigila `npm run verify:trees`.
 
-Con esto, lo que la app sirve de estos recursos pesa unos 15 MB (referentes 8,1; árboles 6,8; paralelos 0,4). Cada
+Con esto, lo que la app sirve de estos recursos pesa unos 17 MB (referentes 8,1; árboles 8,6; paralelos 0,4). Cada
 libro se baja solo cuando se abre algo suyo.
 
 ## Lo que hay y no usamos

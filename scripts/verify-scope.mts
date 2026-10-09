@@ -1,5 +1,6 @@
 /** Workspaces that share an organization must never see each other's issues, projects or files. */
 import { teamRulesPath } from "../src/domain/teamRules";
+import { diagramsPath } from "../src/domain/diagrams";
 import assert from "node:assert/strict";
 import { listMyIssues, listPmTouchedSince, listProjectOpenIssues, pmIssueLabelNames } from "../src/dcs/issues";
 import { assignmentsPath, projectsIndexPath, teamsPath, workflowsPath, inventoryPath } from "../src/domain/store";
@@ -60,6 +61,7 @@ await test("los archivos del plan y las copias del navegador se separan por scop
   assert.equal(inventoryPath("es-419", "NEH"), "pt/es-419/NEH/inventory.json");
   assert.equal(projectsIndexPath("es-419"), "pt/es-419/projects.json");
   assert.equal(teamRulesPath("pm-traductores-tpl"), "pt/reglas/pm-traductores-tpl.json", "las reglas de un equipo son de su espacio");
+  assert.equal(diagramsPath("jon", 2), "pt/diagramas/JON/2.json", "los diagramas que un equipo corrige son de su espacio");
   assert.equal(workflowsPath(), "pt/workflows.json");
   assert.equal(scopeKey(), "pt:");
 });

@@ -1,21 +1,28 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { Workspace } from "../config/types";
 import type { OriginalWord } from "../dcs/afinacionLoad";
 import type { GtSession } from "../dcs/auth";
+import { loadDiagrams, saveDiagram } from "../dcs/diagramStore";
 import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
 import { loadOriginalWords, loadTrees } from "../dcs/syntaxTree";
+import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
+import { diagramSentences, dissolveBox, flatSentence, nodeAt, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
 import { glossOfWord, strongParts } from "../domain/lexicon";
 import { referentKey } from "../domain/referents";
-import { clauseKind, isClause, isLeaf, joinedIn, LINK, sentenceFits, sentencesAt, sentenceShape, type TreeFile, type TreeLeaf, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
+import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, type TreeLeaf, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 
 type Words = Record<string, OriginalWord[]>;
 
 /** What each function of a part is called. One the app has no name for is shown without one. */
-const ROLE: Record<string, MessageKey> = { v: "st.v", s: "st.s", o: "st.o", o2: "st.o2", io: "st.io", p: "st.p", vc: "st.vc", adv: "st.adv", pp: "st.pp", aux: "st.aux" };
+const ROLE: Record<string, MessageKey> = { v: "st.v", s: "st.s", o: "st.o", o2: "st.o2", io: "st.io", p: "st.p", vc: "st.vc", adv: "st.adv", pp: "st.pp", aux: "st.aux", [LINK]: "st.link" };
+
+/** The functions a box can be given by hand, in the order they are offered. */
+const OFFERED = ["v", "s", "o", "io", "p", "adv", "pp", LINK];
 
 /** What a word means in its verse, under it: the diagram is read by people who do not read the original. */
 function Gloss({ word, at, session, workspace }: { word: OriginalWord; at: { book: string } & TreePlace; session: GtSession | null; workspace: Workspace | undefined }) {
@@ -35,15 +42,41 @@ function Gloss({ word, at, session, workspace }: { word: OriginalWord; at: { boo
   return gloss ? <span className="st-gloss">{gloss}</span> : null;
 }
 
-type Shared = { book: string; words: Words; rtl: boolean; focus?: TreePlace & { word: number }; session: GtSession | null; workspace: Workspace | undefined; onWord: (word: OriginalWord, at: TreePlace) => void };
+/** What is chosen while a diagram is changed: some children of one box, words or boxes, next to one another or not. */
+type Picked = { parent: TreePath; items: number[] };
 
-function Word({ leaf, role, shared }: { leaf: TreeLeaf; role: string; shared: Shared }) {
+type Shared = {
+  book: string;
+  words: Words;
+  rtl: boolean;
+  focus?: TreePlace & { word: number };
+  session: GtSession | null;
+  workspace: Workspace | undefined;
+  onWord: (word: OriginalWord, at: TreePlace) => void;
+  /** Given while the diagram is being changed: a touch chooses instead of opening. */
+  pick?: { picked: Picked | null; onPick: (path: TreePath) => void };
+};
+
+const isPicked = (shared: Shared, path: TreePath) => {
+  const picked = shared.pick?.picked;
+  return Boolean(picked && path.length === picked.parent.length + 1 && picked.parent.every((step, i) => step === path[i]) && picked.items.includes(path[path.length - 1]!));
+};
+
+function Word({ leaf, role, path, shared }: { leaf: TreeLeaf; role: string; path: TreePath; shared: Shared }) {
   const t = useT();
   const word = shared.words[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1];
   if (!word) return null;
   const here = shared.focus && shared.focus.chapter === leaf.chapter && shared.focus.verse === leaf.verse && shared.focus.word === leaf.word;
   return (
-    <button type="button" className="st-word" data-here={here || undefined} data-link={role === LINK || undefined} onClick={() => shared.onWord(word, leaf)}>
+    <button
+      type="button"
+      className="st-word"
+      data-here={(!shared.pick && here) || undefined}
+      data-link={role === LINK || undefined}
+      data-picked={isPicked(shared, path) || undefined}
+      aria-pressed={shared.pick ? isPicked(shared, path) : undefined}
+      onClick={() => (shared.pick ? shared.pick.onPick(path) : shared.onWord(word, leaf))}
+    >
       <span className="st-word__text" lang={shared.rtl ? "hbo" : "grc"}>
         {leaf.piece ?? word.surface}
       </span>
@@ -59,17 +92,18 @@ function Word({ leaf, role, shared }: { leaf: TreeLeaf; role: string; shared: Sh
 }
 
 /**
- * A part of a sentence, drawn as a box: its name on its edge, and inside its words, or the boxes it is made of,
- * in the order they are read. A clause is a wider box with a heavier edge; one that depends on another is drawn
- * inside the part it fills, and clauses that stand side by side are numbered, with what joins them between.
+ * A part of a sentence, drawn as a box: its name on it, and inside its words, or the boxes it is made of, in the
+ * order they are read. A clause is a wider box with a heavier edge; one that depends on another is drawn inside
+ * the part it fills, and clauses that stand side by side are numbered, with what joins them between.
  */
-function Part({ node, parent, nth, shared }: { node: TreeNode; parent?: TreeNode; nth?: { n: number; of: number }; shared: Shared }) {
+function Part({ node, parent, nth, path, shared }: { node: TreeNode; parent?: TreeNode; nth?: { n: number; of: number }; path: TreePath; shared: Shared }) {
   const t = useT();
   if (node.role === LINK) {
+    // A word that joins is drawn as a word; while the diagram is changed, touching it chooses its box.
     return (
       <>
-        {node.kids.filter(isLeaf).map((leaf) => (
-          <Word key={`${leaf.chapter}:${leaf.verse}:${leaf.word}`} leaf={leaf} role={LINK} shared={shared} />
+        {node.kids.filter(isLeaf).map((leaf, i) => (
+          <Word key={i} leaf={leaf} role={LINK} path={path} shared={shared} />
         ))}
       </>
     );
@@ -79,7 +113,7 @@ function Part({ node, parent, nth, shared }: { node: TreeNode; parent?: TreeNode
   const name = ROLE[node.role] ? t(ROLE[node.role]!) : "";
   const kind = clause ? clauseKind(node, parent) : undefined;
   const label = !clause
-    ? name
+    ? name || (shared.pick ? t("st.noRole") : "")
     : kind === "as"
       ? t("st.subAs").replace("{role}", name.toLowerCase())
       : kind === "describes"
@@ -87,20 +121,37 @@ function Part({ node, parent, nth, shared }: { node: TreeNode; parent?: TreeNode
         : kind === "joined" && nth
           ? t("st.clauseN").replace("{n}", String(nth.n)).replace("{of}", String(nth.of))
           : // A clause that only holds others together is the whole of them: the line over the diagram names it.
-            held.length > 1 || !parent
+            // While the diagram is changed it has a name all the same, to be chosen by.
+            !parent || (held.length > 1 && !shared.pick)
             ? ""
             : t("st.clause");
   let seen = 0;
   const holds = node.kids.some((kid) => !isLeaf(kid) && kid.role !== LINK);
   return (
-    <div className="st-box" data-role={node.role || undefined} data-clause={clause || undefined} data-kind={kind} data-bare={(clause && !label) || undefined} data-holds={holds || undefined}>
-      {label ? <p className="st-label">{label}</p> : null}
+    <div
+      className="st-box"
+      data-role={node.role || undefined}
+      data-clause={clause || undefined}
+      data-kind={kind}
+      data-bare={(clause && !label) || undefined}
+      data-holds={holds || undefined}
+      data-picked={isPicked(shared, path) || undefined}
+    >
+      {label ? (
+        shared.pick ? (
+          <button type="button" className="st-label st-label--pick" aria-pressed={isPicked(shared, path)} onClick={() => shared.pick!.onPick(path)}>
+            {label}
+          </button>
+        ) : (
+          <p className="st-label">{label}</p>
+        )
+      ) : null}
       <div className="st-flow" dir={shared.rtl ? "rtl" : undefined}>
         {node.kids.map((kid, i) =>
           isLeaf(kid) ? (
-            <Word key={i} leaf={kid} role={node.role} shared={shared} />
+            <Word key={i} leaf={kid} role={node.role} path={[...path, i]} shared={shared} />
           ) : (
-            <Part key={i} node={kid} parent={node} nth={held.includes(kid) ? { n: ++seen, of: held.length } : undefined} shared={shared} />
+            <Part key={i} node={kid} parent={node} path={[...path, i]} nth={held.includes(kid) ? { n: ++seen, of: held.length } : undefined} shared={shared} />
           ),
         )}
       </div>
@@ -108,17 +159,24 @@ function Part({ node, parent, nth, shared }: { node: TreeNode; parent?: TreeNode
   );
 }
 
+type Shown = TreeSentence & { key?: string; by?: { by: string; at: string } };
+
 /**
  * How the sentence of a verse is put together, as a diagram of boxes one inside another: each clause a box, each
  * part of it (the verb, the subject, the object) a smaller one of its own colour, with its words in the order
  * they are read. Boxes and not branches, since a tree of sixty words does not fit a phone and this does. Over it,
  * whether the sentence is simple, compound or complex. Each word says what it means and opens its sheet.
+ *
+ * A team can make a diagram its own (`teamOrg`): correct the one that comes with the app, or make one for a verse
+ * that has none. It is done by touching: words or boxes are chosen and put into a new box, a box is told what it
+ * is, or is taken away. What the team leaves is kept with its plan and shown to everyone in place of the other.
  */
 export function SentenceSheet({
   at,
   focus,
   session,
   workspace,
+  teamOrg,
   onWord,
   onClose,
 }: {
@@ -128,30 +186,45 @@ export function SentenceSheet({
   focus?: { surface: string; occurrence?: number };
   session: GtSession | null;
   workspace: Workspace | undefined;
+  /** The organization whose plan repository keeps the team's diagrams. Without it they are only read. */
+  teamOrg?: string;
   onWord: (word: OriginalWord, at: TreePlace) => void;
   onClose: () => void;
 }) {
   const t = useT();
   const language = useUiLanguage();
-  const [loaded, setLoaded] = useState<{ file: TreeFile | null; sentences: TreeSentence[]; words: Words } | null>(null);
+  const [loaded, setLoaded] = useState<{ shipped: TreeSentence[]; words: Words; docs: Record<number, DiagramDoc> } | null>(null);
+  const [editing, setEditing] = useState<{ key: string; root: TreeNode; history: TreeNode[]; picked: Picked | null; wrapping: boolean } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     setLoaded(null);
+    setEditing(null);
+    setError("");
     if (!at || !session) return;
     let alive = true;
     void (async () => {
       const file = await loadTrees(at.book);
       const found = sentencesAt(file, at);
       // A sentence may begin in the chapter before, or end in the next one.
-      const chapters = [...new Set(found.flatMap((sentence) => sentence.verses.map((verse) => verse.chapter)))];
-      const words: Words = Object.assign({}, ...(await Promise.all(chapters.map((chapter) => loadOriginalWords(session, at.book, chapter)))));
-      const sentences = file ? found.filter((sentence) => sentenceFits(file, sentence, (verse) => words[`${verse.chapter}:${verse.verse}`]?.length)) : [];
-      if (alive) setLoaded({ file, sentences, words });
+      const chapters = [...new Set([at.chapter, ...found.flatMap((sentence) => sentence.verses.map((verse) => verse.chapter))])];
+      const [words, docs] = await Promise.all([
+        Promise.all(chapters.map((chapter) => loadOriginalWords(session, at.book, chapter))).then((all): Words => Object.assign({}, ...all)),
+        teamOrg ? Promise.all(chapters.map((chapter) => loadDiagrams(session, teamOrg, at.book, chapter))) : Promise.resolve([] as DiagramDoc[]),
+      ]);
+      const shipped = file ? found.filter((sentence) => sentenceFits(file, sentence, (verse) => words[`${verse.chapter}:${verse.verse}`]?.length)) : [];
+      if (alive) setLoaded({ shipped, words, docs: Object.fromEntries(docs.map((doc) => [doc.chapter, doc])) });
     })();
     return () => {
       alive = false;
     };
-  }, [at?.book, at?.chapter, at?.verse, session]);
+  }, [at?.book, at?.chapter, at?.verse, session, teamOrg]);
+
+  const team = loaded ? Object.values(loaded.docs).flatMap(diagramSentences) : [];
+  // A diagram of the team whose words our text no longer has (the text changed under it) is not shown.
+  const sound = team.filter((sentence) => leavesOf(sentence.root).every((leaf) => loaded?.words[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1]));
+  const shown: Shown[] = at && loaded ? sentencesShown(loaded.shipped, sound, at) : [];
 
   /** The place in its verse (from 1) of the word the sheet was opened from, when it can be told. */
   const focused = (() => {
@@ -169,8 +242,8 @@ export function SentenceSheet({
   };
 
   /** «Oración compuesta: 3 oraciones unidas», «Oración compleja: 5 oraciones, 3 de ellas subordinadas». */
-  const kindOf = (sentence: TreeSentence) => {
-    const shape = sentenceShape(sentence.root);
+  const kindOf = (root: TreeNode) => {
+    const shape = sentenceShape(root);
     const fill = (key: MessageKey) => t(key).replace("{n}", String(shape.clauses)).replace("{sub}", String(shape.subordinate)).replace("{joined}", String(shape.joined));
     if (shape.subordinate && shape.joined > 1) return fill("st.both");
     if (shape.subordinate) return fill("st.complex");
@@ -179,27 +252,103 @@ export function SentenceSheet({
   };
 
   const rtl = Boolean(loaded && Object.values(loaded.words).some((verse) => verse.some((word) => word.strong.includes("H"))));
+  const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick });
+
+  // ---- changing a diagram
+
+  const change = (root: TreeNode) => setEditing((now) => (now ? { ...now, root, history: [...now.history, now.root], picked: null, wrapping: false } : now));
+  const onPick = (path: TreePath) =>
+    setEditing((now) => {
+      if (!now || !path.length) return now;
+      const parent = path.slice(0, -1);
+      const item = path[path.length - 1]!;
+      const same = now.picked && now.picked.parent.length === parent.length && now.picked.parent.every((step, i) => step === parent[i]);
+      // What is chosen together is in one box: a touch in another box starts over there.
+      const items = same ? (now.picked!.items.includes(item) ? now.picked!.items.filter((other) => other !== item) : [...now.picked!.items, item]) : [item];
+      return { ...now, picked: items.length ? { parent, items } : null, wrapping: false };
+    });
+  const picked = editing?.picked ?? null;
+  const one = editing && picked?.items.length === 1 ? nodeAt(editing.root, [...picked.parent, picked.items[0]!]) : undefined;
+  const box = one && !isLeaf(one) ? one : undefined;
+  /** What a touch on a function does: says what the chosen box is, or puts what is chosen into a new box of it. */
+  const give = (role: string) => {
+    if (!editing || !picked) return;
+    if (box && !editing.wrapping) change(setBoxKind(editing.root, [...picked.parent, picked.items[0]!], { role: box.role === role ? "" : role, clause: box.clause }));
+    else change(wrapKids(editing.root, picked.parent, Math.min(...picked.items), Math.max(...picked.items), { role, clause: false }));
+  };
+  const giveClause = () => {
+    if (!editing || !picked) return;
+    if (box && !editing.wrapping) change(setBoxKind(editing.root, [...picked.parent, picked.items[0]!], { role: box.role, clause: !box.clause }));
+    else change(wrapKids(editing.root, picked.parent, Math.min(...picked.items), Math.max(...picked.items), { role: "", clause: true }));
+  };
+
+  async function keep(key: string, root: TreeNode | null) {
+    if (!at || !session || !teamOrg) return;
+    setSaving(true);
+    setError("");
+    try {
+      const chapter = Math.floor(Number(key) / 1e6) || at.chapter;
+      const doc = await saveDiagram(session, teamOrg, at.book, chapter, key, root);
+      setLoaded((now) => (now ? { ...now, docs: { ...now.docs, [chapter]: doc } } : now));
+      setEditing(null);
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const wordsHere = at ? (loaded?.words[`${at.chapter}:${at.verse}`]?.length ?? 0) : 0;
 
   return (
     <Dialog open={Boolean(at)} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent className="fix-sheet help-sheet pp-sheet st-sheet" aria-label={t("st.title")}>
+      <DialogContent className="fix-sheet help-sheet pp-sheet st-sheet" aria-label={t("st.title")} showCloseButton={!saving}>
         <header className="fx-head">
-          <DialogTitle className="fx-title">{t("st.title")}</DialogTitle>
-          {at ? <p className="ws-meta">{loaded?.sentences.length === 1 ? span(loaded.sentences[0]!) : `${bookLabel(at.book, language)} ${at.chapter}:${at.verse}`}</p> : null}
+          <DialogTitle className="fx-title">{t(editing ? "st.editTitle" : "st.title")}</DialogTitle>
+          {at ? <p className="ws-meta">{shown.length === 1 ? span(shown[0]!) : `${bookLabel(at.book, language)} ${at.chapter}:${at.verse}`}</p> : null}
         </header>
         <div className="fx-body pp-body">
           {!loaded ? <p className="af-hint">{t("st.loading")}</p> : null}
-          {loaded && !loaded.sentences.length ? <p className="af-hint">{t("st.none")}</p> : null}
-          {at && loaded
-            ? loaded.sentences.map((sentence, i) => (
+          {editing ? (
+            <section className="st-sentence">
+              <p className="st-kind">{kindOf(editing.root)}</p>
+              <Part node={editing.root} path={[]} shared={shared({ picked, onPick })} />
+            </section>
+          ) : (
+            <>
+              {loaded && !shown.length ? <p className="af-hint">{t("st.none")}</p> : null}
+              {loaded && !shown.length && teamOrg && wordsHere && at ? (
+                <Button type="button" variant="outline" onClick={() => {
+                  const root = flatSentence([{ chapter: at.chapter, verse: at.verse, words: wordsHere }]);
+                  setEditing({ key: sentenceKey(root), root, history: [], picked: null, wrapping: false });
+                }}>
+                  {t("st.create")}
+                </Button>
+              ) : null}
+              {shown.map((sentence, i) => (
                 <section key={i} className="st-sentence">
-                  {loaded.sentences.length > 1 ? <h3 className="pp-passage__ref">{span(sentence)}</h3> : null}
-                  <p className="st-kind">{kindOf(sentence)}</p>
-                  <Part node={sentence.root} shared={{ book: at.book, words: loaded.words, rtl, focus: focused, session, workspace, onWord }} />
+                  {shown.length > 1 ? <h3 className="pp-passage__ref">{span(sentence)}</h3> : null}
+                  <p className="st-kind">{kindOf(sentence.root)}</p>
+                  <Part node={sentence.root} path={[]} shared={shared()} />
+                  {sentence.key ? <p className="ws-meta">{t("st.teamMade").replace("{who}", sentence.by?.by ?? "")}</p> : null}
+                  {teamOrg ? (
+                    <div className="st-actions">
+                      <button type="button" className="af-link" disabled={saving} onClick={() => setEditing({ key: sentence.key ?? sentenceKey(sentence.root), root: sentence.root, history: [], picked: null, wrapping: false })}>
+                        {t("st.edit")}
+                      </button>
+                      {sentence.key ? (
+                        <button type="button" className="af-link" disabled={saving} onClick={() => void keep(sentence.key!, null)}>
+                          {t("st.restore")}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </section>
-              ))
-            : null}
-          {loaded?.sentences.length ? (
+              ))}
+            </>
+          )}
+          {error ? <p className="st-error" role="alert">{error}</p> : null}
+          {shown.length && !editing ? (
             <>
               <ul className="st-legend" aria-label={t("st.legend")}>
                 {(["v", "s", "o", "adv"] as const).map((role) => (
@@ -212,8 +361,51 @@ export function SentenceSheet({
               <p className="af-hint">{t("pp.touch")}</p>
             </>
           ) : null}
-          <p className="pp-credit">{t("st.credit")}</p>
+          {!editing ? <p className="pp-credit">{t("st.credit")}</p> : null}
         </div>
+        {editing ? (
+          // Under the thumb: what is done to what was chosen, and leaving.
+          <footer className="st-tools">
+            {!picked ? (
+              <p className="af-hint">{t("st.editHint")}</p>
+            ) : (
+              <>
+                <p className="af-lbl">{t(box && !editing.wrapping ? "st.boxIs" : "st.wrapAs")}</p>
+                <div className="st-chips">
+                  {OFFERED.map((role) => (
+                    <button key={role} type="button" className="st-chip" data-role={role} aria-pressed={box && !editing.wrapping ? box.role === role : undefined} onClick={() => give(role)}>
+                      {t(ROLE[role]!)}
+                    </button>
+                  ))}
+                  <button type="button" className="st-chip" data-clause aria-pressed={box && !editing.wrapping ? box.clause : undefined} onClick={giveClause}>
+                    {t("st.clause")}
+                  </button>
+                </div>
+                {box && !editing.wrapping ? (
+                  <div className="st-actions">
+                    <button type="button" className="af-link" onClick={() => change(dissolveBox(editing.root, [...picked.parent, picked.items[0]!]))}>
+                      {t("st.remove")}
+                    </button>
+                    <button type="button" className="af-link" onClick={() => setEditing({ ...editing, wrapping: true })}>
+                      {t("st.wrapBox")}
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            )}
+            <div className="st-tools__end">
+              <Button type="button" variant="ghost" size="sm" disabled={saving || !editing.history.length} onClick={() => setEditing({ ...editing, root: editing.history[editing.history.length - 1]!, history: editing.history.slice(0, -1), picked: null, wrapping: false })}>
+                {t("st.undo")}
+              </Button>
+              <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => setEditing(null)}>
+                {t("st.cancel")}
+              </Button>
+              <Button type="button" size="sm" disabled={saving || !editing.history.length} onClick={() => void keep(editing.key, editing.root)}>
+                {t(saving ? "st.saving" : "st.save")}
+              </Button>
+            </div>
+          </footer>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

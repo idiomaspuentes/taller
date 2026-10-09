@@ -179,6 +179,7 @@ export function WordSheet({
   workspace,
   onClose,
   onSeparate,
+  readOnly,
 }: {
   /** The word to show, or `null` while the sheet is closed. */
   word: SheetWord | null;
@@ -188,6 +189,8 @@ export function WordSheet({
   onClose: () => void;
   /** Given when the word shares its box with others and can be taken out of it. */
   onSeparate?: () => void;
+  /** On a screen that is only being tried, the diagram of the sentence is read and not changed. */
+  readOnly?: boolean;
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -409,6 +412,7 @@ export function WordSheet({
         focus={{ surface: word.surface, occurrence: word.occurrence }}
         session={session}
         workspace={workspace}
+        teamOrg={readOnly ? undefined : workspace?.pmOrg}
         onWord={(next, place) => {
           setSentence(false);
           setOther({ ...next, at: { chapter: place.chapter, verse: place.verse } });

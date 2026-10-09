@@ -47,6 +47,7 @@
     "referents:build": "tsx --tsconfig tsconfig.scripts.json scripts/build-referents.mts",
     "trees:build": "tsx --tsconfig tsconfig.scripts.json scripts/build-trees.mts",
     "verify:trees": "tsx --tsconfig tsconfig.scripts.json scripts/verify-trees.mts",
+    "verify:diagrams": "tsx --tsconfig tsconfig.scripts.json scripts/verify-diagrams.mts",
     "verify:referents": "tsx --tsconfig tsconfig.scripts.json scripts/verify-referents.mts",
     "verify:parallels": "tsx --tsconfig tsconfig.scripts.json scripts/verify-parallels.mts",
     "mock:door43": "node scripts/mock-door43/server.mjs",

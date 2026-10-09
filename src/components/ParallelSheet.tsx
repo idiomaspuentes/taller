@@ -24,6 +24,7 @@ export function ParallelLink({
   session,
   workspace,
   team,
+  readOnly,
 }: {
   book: string;
   chapter: number;
@@ -32,6 +33,8 @@ export function ParallelLink({
   session: GtSession | null;
   workspace: Workspace | undefined;
   team?: { owner: string; repo: string };
+  /** On a screen that is only being tried, nothing reached from here writes to Door43. */
+  readOnly?: boolean;
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -60,7 +63,7 @@ export function ParallelLink({
       <button type="button" className="se-parallel" onClick={() => setOpen(true)}>
         {refs.length === 1 ? t("pp.linkOne").replace("{ref}", parallelLabel(refs[0]!, (name) => bookLabel(name, language))) : t("pp.linkMany").replace("{n}", String(refs.length))}
       </button>
-      {open ? <ParallelSheet at={{ book: code, chapter, verse: from }} refs={refs} session={session} workspace={workspace} team={team} onClose={() => setOpen(false)} /> : null}
+      {open ? <ParallelSheet at={{ book: code, chapter, verse: from }} refs={refs} session={session} workspace={workspace} team={team} readOnly={readOnly} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
@@ -87,6 +90,7 @@ export function ParallelSheet({
   session,
   workspace,
   team,
+  readOnly,
   onClose,
 }: {
   /** The verse whose parallels are shown, or `null` while the sheet is closed. */
@@ -96,6 +100,7 @@ export function ParallelSheet({
   workspace: Workspace | undefined;
   /** Where the team keeps the text it is translating: its version of the passage is read from there. */
   team?: { owner: string; repo: string };
+  readOnly?: boolean;
   onClose: () => void;
 }) {
   const t = useT();
@@ -180,7 +185,7 @@ export function ParallelSheet({
           </div>
         </DialogContent>
       </Dialog>
-      <WordSheet word={word?.word ?? null} at={{ book: passage?.book ?? "", chapter: passage?.chapter ?? 0, verse: word?.verse ?? 0 }} session={session} workspace={workspace} onClose={() => setWord(null)} />
+      <WordSheet word={word?.word ?? null} at={{ book: passage?.book ?? "", chapter: passage?.chapter ?? 0, verse: word?.verse ?? 0 }} session={session} workspace={workspace} readOnly={readOnly} onClose={() => setWord(null)} />
     </>
   );
 }

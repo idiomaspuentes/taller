@@ -2394,7 +2394,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                       ) : null}
                       {/* What other books say of the same thing, offered at the verse in hand when it has some. */}
                       {activeVerse === d.from && range && ctx?.book ? (
-                        <ParallelLink book={ctx.book} chapter={range.chapter} from={d.from} to={d.to} session={session ?? null} workspace={workspaceOfOrg(tallerConfig, ctx.pmOrg)} team={targetRepo ?? undefined} />
+                        <ParallelLink book={ctx.book} chapter={range.chapter} from={d.from} to={d.to} session={session ?? null} workspace={workspaceOfOrg(tallerConfig, ctx.pmOrg)} team={targetRepo ?? undefined} readOnly={lab} />
                       ) : null}
                       {/* While nobody writes in it, a verse that has text is shown as it reads: the lines of a poem, each
                           as deep as its mark says. In the box, such a line and a long one that wraps look the same. */}

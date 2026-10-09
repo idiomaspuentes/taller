@@ -3043,5 +3043,21 @@
   "st.subAs": "Subordinada · faz de {role}",
   "st.subDescribes": "Subordinada · descreve o anterior",
   "st.and": "e",
-  "st.legend": "O que é cada caixa"
+  "st.legend": "O que é cada caixa",
+  "st.link": "Conector",
+  "st.noRole": "Sem nome",
+  "st.edit": "Corrigir este diagrama",
+  "st.editTitle": "Corrigir o diagrama",
+  "st.create": "Montar o diagrama deste versículo",
+  "st.editHint": "Toque as palavras, ou o nome de uma caixa, que quiser mudar.",
+  "st.boxIs": "Esta caixa é",
+  "st.wrapAs": "Pôr o escolhido em uma caixa de",
+  "st.remove": "Tirar a caixa",
+  "st.wrapBox": "Colocá-la em outra caixa",
+  "st.undo": "Desfazer",
+  "st.cancel": "Cancelar",
+  "st.save": "Salvar",
+  "st.saving": "Salvando…",
+  "st.restore": "Voltar ao diagrama do app",
+  "st.teamMade": "Diagrama da equipe · deixado assim por {who}"
 }
