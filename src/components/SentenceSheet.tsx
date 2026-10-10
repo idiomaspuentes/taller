@@ -12,7 +12,7 @@ import { bookLabel } from "../domain/books";
 import { diagramSentences, dissolveBox, flatSentence, nodeAt, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
 import { glossOfWord, strongParts } from "../domain/lexicon";
 import { referentKey } from "../domain/referents";
-import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, type TreeLeaf, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
+import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, type TreeLeaf, type TreeFile, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
 import { layoutTree } from "../domain/treeLayout";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -270,7 +270,12 @@ export function SentenceSheet({
 }) {
   const t = useT();
   const language = useUiLanguage();
-  const [loaded, setLoaded] = useState<{ shipped: TreeSentence[]; words: Words; docs: Record<number, DiagramDoc> } | null>(null);
+  const [loaded, setLoaded] = useState<{ file: TreeFile | null; shipped: TreeSentence[]; words: Words; docs: Record<number, DiagramDoc> } | null>(null);
+  /**
+   * The sentences before and after the ones of the verse, shown when asked for: a sentence that begins with «y» or
+   * «porque» is joined to what came before, and that may be in another verse or another chapter.
+   */
+  const [around, setAround] = useState<{ before: TreeSentence[]; after: TreeSentence[] }>({ before: [], after: [] });
   const [editing, setEditing] = useState<{ key: string; root: TreeNode; history: TreeNode[]; picked: Picked | null; wrapping: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -279,6 +284,7 @@ export function SentenceSheet({
 
   useEffect(() => {
     setLoaded(null);
+    setAround({ before: [], after: [] });
     setEditing(null);
     setError("");
     if (!at || !session) return;
@@ -293,7 +299,7 @@ export function SentenceSheet({
         teamOrg ? Promise.all(chapters.map((chapter) => loadDiagrams(session, teamOrg, at.book, chapter))) : Promise.resolve([] as DiagramDoc[]),
       ]);
       const shipped = file ? found.filter((sentence) => sentenceFits(file, sentence, (verse) => words[`${verse.chapter}:${verse.verse}`]?.length)) : [];
-      if (alive) setLoaded({ shipped, words, docs: Object.fromEntries(docs.map((doc) => [doc.chapter, doc])) });
+      if (alive) setLoaded({ file, shipped, words, docs: Object.fromEntries(docs.map((doc) => [doc.chapter, doc])) });
     })();
     return () => {
       alive = false;
@@ -379,6 +385,37 @@ export function SentenceSheet({
 
   const wordsHere = at ? (loaded?.words[`${at.chapter}:${at.verse}`]?.length ?? 0) : 0;
 
+  /** The sentence next to what is shown, on one side (-1 before, 1 after), in the order the book has them. */
+  const neighbour = (side: -1 | 1): TreeSentence | undefined => {
+    const all = loaded?.file?.sentences ?? [];
+    const edge = side < 0 ? (around.before[0] ?? loaded?.shipped[0]) : (around.after[around.after.length - 1] ?? loaded?.shipped[loaded.shipped.length - 1]);
+    const at = edge ? all.indexOf(edge) : -1;
+    return at < 0 ? undefined : all[at + side];
+  };
+  async function widen(side: -1 | 1) {
+    const next = neighbour(side);
+    if (!next || !loaded || !session || !at) return;
+    // Its words, when it is of a chapter not read yet.
+    const missing = [...new Set(next.verses.map((verse) => verse.chapter))].filter((chapter) => !Object.keys(loaded.words).some((key) => key.startsWith(`${chapter}:`)));
+    const more: Words = Object.assign({}, ...(await Promise.all(missing.map((chapter) => loadOriginalWords(session, at.book, chapter)))));
+    setLoaded((now) => (now ? { ...now, words: { ...now.words, ...more } } : now));
+    setAround((now) => (side < 0 ? { ...now, before: [next, ...now.before] } : { ...now, after: [...now.after, next] }));
+  }
+  const fits = (sentence: TreeSentence) => Boolean(loaded?.file && sentenceFits(loaded.file, sentence, (verse) => loaded.words[`${verse.chapter}:${verse.verse}`]?.length));
+  const beside = (sentence: TreeSentence, i: number) => (
+    <section key={`around-${i}-${span(sentence)}`} className="st-sentence st-sentence--around">
+      <h3 className="pp-passage__ref">{span(sentence)}</h3>
+      {fits(sentence) ? (
+        <>
+          <p className="st-kind">{kindOf(sentence.root)}</p>
+          {view === "tree" ? <Tree root={sentence.root} shared={shared()} /> : <Part node={sentence.root} path={[]} shared={shared()} />}
+        </>
+      ) : (
+        <p className="af-hint">{t("st.none")}</p>
+      )}
+    </section>
+  );
+
   return (
     <Dialog open={Boolean(at)} onOpenChange={(open) => (open ? undefined : onClose())}>
       <DialogContent className="fix-sheet help-sheet pp-sheet st-sheet" aria-label={t("st.title")} showCloseButton={!saving}>
@@ -413,6 +450,12 @@ export function SentenceSheet({
                   {t("st.create")}
                 </Button>
               ) : null}
+              {loaded?.shipped.length && neighbour(-1) ? (
+                <button type="button" className="af-link st-around" onClick={() => void widen(-1)}>
+                  {t("st.before")}
+                </button>
+              ) : null}
+              {around.before.map(beside)}
               {shown.map((sentence, i) => (
                 <section key={i} className="st-sentence">
                   {shown.length > 1 ? <h3 className="pp-passage__ref">{span(sentence)}</h3> : null}
@@ -433,6 +476,12 @@ export function SentenceSheet({
                   ) : null}
                 </section>
               ))}
+              {around.after.map(beside)}
+              {loaded?.shipped.length && neighbour(1) ? (
+                <button type="button" className="af-link st-around" onClick={() => void widen(1)}>
+                  {t("st.after")}
+                </button>
+              ) : null}
             </>
           )}
           {error ? <p className="st-error" role="alert">{error}</p> : null}

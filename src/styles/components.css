@@ -6043,6 +6043,10 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 .st-leaf .st-word { width: 100%; min-width: 0; padding-inline: 0.125rem; }
 .st-leaf .st-gloss { max-width: 100%; }
 
+/* The sentences beside the one of the verse, shown when asked for: drawn the same, a little apart. */
+.st-around { justify-self: start; display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
+.st-sentence--around { padding: 0.5rem 0; border-block: 1px dashed var(--border); }
+
 /* Changing a diagram: what is chosen is outlined, and what can be done to it sits at the foot, under the thumb. */
 .st-actions { display: flex; flex-wrap: wrap; gap: 0 1rem; }
 .st-actions .af-link { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }

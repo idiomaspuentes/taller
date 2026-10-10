@@ -3037,8 +3037,8 @@
   "st.credit": "Análise de MACULA, da Biblica (CC BY 4.0).",
   "st.simple": "Oração simples",
   "st.compound": "Oração composta: {joined} orações unidas",
-  "st.complex": "Oração complexa: {n} orações, {sub} delas subordinadas",
-  "st.both": "Oração composta e complexa: {n} orações, {sub} delas subordinadas",
+  "st.complex": "Oração complexa: {n} orações; subordinadas: {sub}",
+  "st.both": "Oração composta e complexa: {n} orações; subordinadas: {sub}",
   "st.clauseN": "Oração {n} de {of}",
   "st.subAs": "Subordinada · faz de {role}",
   "st.subDescribes": "Subordinada · descreve o anterior",
@@ -3087,5 +3087,7 @@
   "cv.openOrigin": "Abrir a tarefa de onde saiu",
   "tb.correctionAsked": "Correção pedida",
   "af.qPalabrasOnly": "Este termo aparece uma só vez no livro. Está bem traduzido aqui?",
-  "af.qPalabrasFirst": "É a primeira vez que este termo é revisado no livro. Está bem traduzido aqui?"
+  "af.qPalabrasFirst": "É a primeira vez que este termo é revisado no livro. Está bem traduzido aqui?",
+  "st.before": "Ver a oração anterior",
+  "st.after": "Ver a oração seguinte"
 }
