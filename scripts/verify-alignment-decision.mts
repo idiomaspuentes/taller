@@ -1,4 +1,5 @@
 /** A proposal or an objection as a decision of the team: who counts, when it is decided. */
+import { buildCloseEvent, buildDecisionEvent, toldOf, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { PersonLevel } from "../src/domain/levels";
@@ -115,6 +116,16 @@ test("pasado el plazo, una propuesta se acepta con dos personas de fuera, o con 
   assert.equal(tallyDecision({ ...few, votes: [vote("carla", "aceptar")], now: late }).winner, "aceptar");
   // Una objeción no cambia el texto: pasado el plazo sigue esperando a quien coordina.
   assert.equal(tallyDecision({ ...many, kind: "objection", votes: [vote("carla", "cambiar"), vote("dora", "cambiar")], now: late }).state, "plazo");
+});
+
+test("abrir una propuesta y aplicarla avisa a todo el equipo, a cada persona una vez y no a quien lo hace", () => {
+  const data = { id: "x1", kind: "proposal", book: "JON", chapter: 2, verse: 5, by: "bea", aligners: ["ana"], tell: ["Ana", "bea", "carla", "dora"], deadline, oldText: "a", newText: "b" } as unknown as DecisionEventData;
+  assert.deepEqual(toldOf(data, "bea"), ["ana", "carla", "dora"]);
+  assert.deepEqual(buildDecisionEvent(data, 7).mentions, ["ana", "carla", "dora"], "al abrirla: quien alineó y el equipo, no quien la propone");
+  assert.deepEqual(buildCloseEvent({ issue: 7, data, outcome: "aceptada", how: "consenso", by: "carla" }).mentions, ["bea", "ana", "dora"], "al aplicarla: quien la propuso, quien alineó y el equipo, no quien la confirma");
+  assert.deepEqual(buildCloseEvent({ issue: 7, data, outcome: "aceptada", how: "consenso", by: "bea" }).mentions, ["ana", "carla", "dora"], "quien la propuso también puede aplicarla");
+  // Una decisión abierta antes de esto no dice a quién avisar: se avisa a quien ya se avisaba.
+  assert.deepEqual(toldOf({ by: "bea", aligners: ["ana"], tell: undefined as unknown as string[] }, "carla"), ["bea", "ana"]);
 });
 
 test("una objeción usa sus propias opciones y nunca aplica una alineación", () => {

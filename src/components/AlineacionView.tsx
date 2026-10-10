@@ -939,6 +939,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         view: viewFromTokens({ rtl: data.originalRtl, original: verse.original, gloss: verse.gloss, draftBefore: verse.draft, draftAfter: textChanged ? tokensFromText(text, sid) : verse.draft }),
         oldText: verse.text,
         aligners: authorsAt(verse, hash),
+        tell: Object.keys(teamLevels),
         thresholds,
       });
       setFixing(false);

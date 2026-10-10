@@ -234,7 +234,8 @@ await test("una objeción no lleva alineación; si prospera se le pide a quien a
   assert.equal(closed.outcome, "realinear");
   assert.equal(draftNow(), before, "una objeción nunca cambia la alineación");
   const last = (comments.get(opened.issue.number) ?? []).at(-1)!;
-  assert.deepEqual(parseChatEvent(last.body)?.mentions, ["ana"]);
+  assert.deepEqual(parseChatEvent(last.body)?.mentions, ["bea", "ana"], "se avisa a quien objetó y a quien alineó, no a quien lo confirma");
+  assert.ok(last.body.includes("@bea @ana"), "y se les nombra donde Door43 lo lee");
 });
 
 await test("sin nota no se abre nada", async () => {

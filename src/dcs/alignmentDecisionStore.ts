@@ -98,6 +98,12 @@ export function currentVerseHash(usfm: string, book: string, chapter: number, ve
   return alignmentHash(draftWordsOf(usfm, chapter, verse), saved);
 }
 
+/** The people a comment tells, written so that Door43 tells them: «@ana @bea». Nothing when it tells nobody. */
+function named(mentions: string[] | undefined): string {
+  const missing = (mentions ?? []).filter(Boolean);
+  return missing.length ? `\n\n${missing.map((login) => `@${login}`).join(" ")}` : "";
+}
+
 export type OpenDecisionParams = {
   session: GtSession;
   pmOrg: string;
@@ -124,6 +130,8 @@ export type OpenDecisionParams = {
   words?: string[];
   /** Who aligned the verse (they are told, and do not count as independent). */
   aligners: string[];
+  /** The people of the team that has the task: told when the decision opens and when it is applied. */
+  tell?: string[];
   thresholds: DecisionThresholds;
   now?: Date;
 };
@@ -163,6 +171,7 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     deadline: deadlineFrom(now, DECISION_DAYS),
     thresholds: params.thresholds,
     aligners: params.aligners,
+    tell: params.tell ?? [],
     draft: { owner: target.owner, repo: target.repo, branch: target.branch, filepath: params.draftFilepath },
     source: params.source,
     parentIssue: params.task.parentIssue,
@@ -216,7 +225,8 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     pmOrg,
     PM_REPO_NAME,
     issue.number,
-    formatChatEvent(event, { visible: `${event.summary}\n\n> ${note.replace(/\n/g, "\n> ")}` }),
+    // The people told are named where Door43 reads them: a mention it does not see is a notice nobody gets.
+    formatChatEvent(event, { visible: `${event.summary}\n\n> ${note.replace(/\n/g, "\n> ")}${named(event.mentions)}` }),
     session.token,
   );
   if (params.task.parentIssue) {
@@ -347,7 +357,7 @@ export async function closeAlignmentDecision(params: {
   await writeNewFile(session, target, resultPath(data.book, data.chapter, data.verse, data.id), `${JSON.stringify(result, null, 2)}\n`, `TAS: decisión ${data.book} ${data.chapter}:${data.verse} · ${outcome} · ${data.id}`);
 
   const event = buildCloseEvent({ issue: params.threadIssue, data, outcome, how: params.how, by: session.username, aligners: data.aligners });
-  const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, params.threadIssue, formatChatEvent(event), session.token);
+  const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, params.threadIssue, formatChatEvent(event, { visible: `${event.summary}${named(event.mentions)}` }), session.token);
   await closeIssue(session, pmOrg, params.threadIssue).catch(() => undefined);
   if (data.parentIssue) {
     await commentOnIssue(session, pmOrg, data.parentIssue, `Decisión #${params.threadIssue} sobre ${data.book} ${data.chapter}:${data.verse}: ${event.summary}`).catch(() => undefined);
@@ -396,7 +406,7 @@ export async function remindDecisionVoters(params: {
   const who = waiting.map((w) => `@${w}`).join(" ");
   const summary =
     due === "vencido"
-      ? `${who} el plazo para votar en ${what} venció. Quien coordina puede decidir; si aún quieren opinar, háganlo ahora.`
+      ? `${who} el plazo para votar en ${what} venció. Con dos aprobaciones de fuera ya se puede aplicar, y quien coordina puede decidir; si aún quieren opinar, háganlo ahora.`
       : due === "cerca"
         ? `${who} mañana vence el plazo para votar en ${what}. Falta su voto.`
         : `${who} falta su voto en ${what}. Se decide antes del ${card.deadline.slice(0, 10)}.`;

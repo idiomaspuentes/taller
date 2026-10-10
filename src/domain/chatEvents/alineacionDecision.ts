@@ -51,10 +51,25 @@ export type DecisionEventData = {
   deadline: string;
   thresholds: DecisionThresholds;
   aligners: string[];
+  /** The people of the team that has the task: they are told when the decision opens and when it is applied. */
+  tell: string[];
   draft: { owner: string; repo: string; branch: string; filepath: string };
   source: { id: string; layerDir: string };
   parentIssue: number;
 };
+
+/**
+ * Who is told of a step of a decision: whoever proposed it, whoever aligned the verse and the team that has the
+ * task, each once, and not the person who has just done the step.
+ */
+export function toldOf(data: Pick<DecisionEventData, "by" | "aligners" | "tell">, except: string): string[] {
+  const out: string[] = [];
+  for (const login of [data.by, ...data.aligners, ...(data.tell ?? [])]) {
+    const key = login.trim().toLowerCase();
+    if (key && key !== except.trim().toLowerCase() && !out.some((have) => have.toLowerCase() === key)) out.push(login.trim());
+  }
+  return out;
+}
 
 export function decisionId(data: Pick<DecisionEventData, "id">): string {
   return `ad:${data.id}`;
@@ -86,6 +101,7 @@ function asData(value: unknown): DecisionEventData | null {
     deadline: String(d.deadline ?? ""),
     thresholds: { minAgree: Number(d.thresholds?.minAgree) || 2, minIndependent: Number(d.thresholds?.minIndependent) || 1 },
     aligners: Array.isArray(d.aligners) ? d.aligners.map(String) : [],
+    tell: Array.isArray(d.tell) ? d.tell.map(String) : [],
     draft: { owner: d.draft.owner, repo: d.draft.repo, branch: d.draft.branch, filepath: d.draft.filepath },
     source: { id: d.source.id, layerDir: String(d.source.layerDir ?? "") },
     parentIssue: Number(d.parentIssue) || 0,
@@ -118,7 +134,8 @@ export function buildDecisionEvent(data: DecisionEventData, issue: number): Omit
     emitter: "afinacion",
     issue,
     summary: `${decisionTitle(data)}. Vota en esta tarea; se decide con el equipo antes del ${data.deadline.slice(0, 10)}.`,
-    mentions: data.aligners.filter((a) => a.toLowerCase() !== data.by.toLowerCase()),
+    // Opening a proposal tells the whole team, not only whoever aligned: they are the ones to answer it.
+    mentions: toldOf(data, data.by),
     decision: {
       id: decisionId(data),
       state: "pendiente",
@@ -178,7 +195,8 @@ export function buildCloseEvent(params: { issue: number; data: DecisionEventData
     emitter: "afinacion",
     issue: params.issue,
     summary: `${who}. ${CLOSE_TEXT[params.outcome]}${ask}`,
-    mentions: params.outcome === "realinear" ? params.aligners : [params.data.by],
+    // Applying a decision changes the draft under everybody: all of them are told, whoever confirms it apart.
+    mentions: toldOf({ ...params.data, aligners: params.aligners ?? params.data.aligners }, params.by),
     data: { decisionId: decisionId(params.data), outcome: params.outcome, how: params.how, by: params.by } satisfies CloseData,
   };
 }
