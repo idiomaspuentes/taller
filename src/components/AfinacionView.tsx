@@ -1,3 +1,4 @@
+import { termAsk } from "../domain/afinacionWords";
 import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
@@ -1293,7 +1294,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                             <p className="af-question">
                 {stepProp === "notas"
                   ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
-                  : t(QUESTION[stepProp][data.resource])}
+                  : (() => {
+                      // The first time a term is met there is nothing to compare it with, and it is asked as what it is.
+                      const ask = termAsk(data.termUses.filter((use) => use.termSlug === termSlug), comparison, item.id);
+                      return ask === "only" ? t("af.qPalabrasOnly") : ask === "first" ? t("af.qPalabrasFirst") : t(QUESTION[stepProp][data.resource]);
+                    })()}
               </p>
               {comparison && comparison.renderings.length ? (
                 // What the question is about, where it is asked: how this term reads in its other places. It was

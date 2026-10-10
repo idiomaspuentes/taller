@@ -1,4 +1,5 @@
 /** The key terms of a chapter, and how each one was rendered across the book. */
+import { termAsk } from "../src/domain/afinacionWords";
 import assert from "node:assert/strict";
 import { articleBody,
   compareTermRenderings,
@@ -86,6 +87,17 @@ test("se agrupa por cómo se tradujo y se ve si es consistente", () => {
   // The last word of a clause is marked with its comma or its semicolon: that is not another translation.
   const marks = compareTermRenderings({ uses: god.slice(0, 2), decisions: [mark("a1", "Dios;", 1, 1), mark("a3", "Dios", 1, 5)], verseText });
   assert.deepEqual(marks.renderings.map((r) => [r.text, r.uses.length]), [["Dios", 2]], "se dice sin el signo que la sigue");
+});
+
+test("de un término se pregunta según haya con qué compararlo: solo aparece una vez, es el primero que se revisa, o ya hay otros", () => {
+  // Un término que el libro dice una sola vez no tiene «resto del libro».
+  assert.equal(termAsk(god.slice(0, 1), null, god[0]!.id), "only");
+  // Aparece más veces, y nadie ha marcado las otras: es la primera que se revisa.
+  assert.equal(termAsk(god, compareTermRenderings({ uses: god, decisions: [], verseText }), god[0]!.id), "first");
+  // Marcarlo aquí no hace que haya con qué compararlo: lo que cuenta son los otros usos.
+  assert.equal(termAsk(god, compareTermRenderings({ uses: god, decisions: [mark("a1", "Dios", 1, 1)], verseText }), god[0]!.id), "first");
+  // Con otro uso marcado, este se lee contra aquel.
+  assert.equal(termAsk(god, compareTermRenderings({ uses: god, decisions: [mark("a3", "Dios", 1, 5)], verseText }), god[0]!.id), "compare");
 });
 
 test("lo que nadie marcó queda aparte, y una marca de un versículo que cambió ya no vale", () => {

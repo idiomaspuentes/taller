@@ -142,6 +142,18 @@ export type TermComparison = {
   differing: TermItem[];
 };
 
+/**
+ * What can be asked about a use of a key term. `only`: the book says it once, and there is nothing to compare it
+ * with. `first`: it is said elsewhere, and nobody has yet marked how it reads there. `compare`: other uses are
+ * marked, and this one is read against them. Asking whether it was translated «as in the rest of the book» the
+ * first time looked like a mistake of the app: there was no rest yet.
+ */
+export function termAsk(uses: Pick<TermItem, "id">[], comparison: Pick<TermComparison, "renderings"> | null | undefined, itemId: string): "only" | "first" | "compare" {
+  if (uses.filter((use) => use.id !== itemId).length === 0) return "only";
+  const marked = (comparison?.renderings ?? []).some((rendering) => rendering.uses.some((use) => use.id !== itemId));
+  return marked ? "compare" : "first";
+}
+
 /** The words as they are said: a mark at either end is not part of them («entienden;» is «entienden»). */
 function withoutEdgeMarks(text: string): string {
   return text.replace(/^[\s.,;:!?¡¿«»“”"'()]+|[\s.,;:!?¡¿«»“”"'()]+$/g, "");

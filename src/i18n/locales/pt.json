@@ -842,8 +842,8 @@
   "rv.rejected": "Tenho uma objeção",
   "af.qNotasTpl": "{words} reproduz a forma de «{figure}» tal como está no original?",
   "af.qNotasTps": "{words} expressa de forma simples o que no original é «{figure}»?",
-  "af.qPalabrasTpl": "Este termo está traduzido como no resto do livro?",
-  "af.qPalabrasTps": "Este termo mantém o mesmo sentido que no resto do livro?",
+  "af.qPalabrasTpl": "Concorda com a forma como este termo foi traduzido no resto do livro? Se é diferente, tem um motivo?",
+  "af.qPalabrasTps": "Mantém o sentido que este termo tem no resto do livro? Se muda, tem um motivo?",
   "af.titleNotas": "Desafios de tradução",
   "af.titlePalabras": "Revisar palavras-chave",
   "af.noText": "Sem texto neste versículo",
@@ -3085,5 +3085,7 @@
   "cv.origin": "Sobre {ref}. Saiu de {task}.",
   "cv.originTask": "a tarefa #{n}",
   "cv.openOrigin": "Abrir a tarefa de onde saiu",
-  "tb.correctionAsked": "Correção pedida"
+  "tb.correctionAsked": "Correção pedida",
+  "af.qPalabrasOnly": "Este termo aparece uma só vez no livro. Está bem traduzido aqui?",
+  "af.qPalabrasFirst": "É a primeira vez que este termo é revisado no livro. Está bem traduzido aqui?"
 }
