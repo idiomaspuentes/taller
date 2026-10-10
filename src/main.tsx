@@ -6,6 +6,10 @@ import { startManifest } from "./manifest";
 import { applyServerFromUrl } from "./serverChoice";
 import { installTypingMode } from "./typingMode";
 import "./index.css";
+import { applyTextSize } from "./textSize";
+
+// The size of the texts the person chose on this device, before anything is drawn.
+applyTextSize();
 
 applyMockSessionFromUrl();
 applyServerFromUrl();

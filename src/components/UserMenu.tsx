@@ -6,6 +6,11 @@ import { initialsOf } from "../domain/profile";
 import { setUiLanguage, useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { BrowserNotifyToggle } from "./BrowserNotifyToggle";
+import { TEXT_SIZES, type TextSize } from "../domain/textSize";
+import { setTextSize, useTextSize } from "../textSize";
+import type { MessageKey } from "../i18n/messages";
+
+const TEXT_SIZE_NAME: Record<TextSize, MessageKey> = { normal: "menu.textNormal", large: "menu.textLarge", larger: "menu.textLarger" };
 
 const LANGUAGE_NAMES: Record<UiLanguage, string> = { es: "Español", pt: "Português" };
 
@@ -52,6 +57,7 @@ export function UserMenu(props: Props) {
   const { session, coordinator, workspaces, workspaceId } = props;
   const t = useT();
   const language = useUiLanguage();
+  const textSize = useTextSize();
   const [open, setOpen] = useState(false);
   const [noticesOpen, setNoticesOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -135,6 +141,21 @@ export function UserMenu(props: Props) {
               </span>
             </div>
           ) : null}
+
+          {/* The size of the texts of the tools: chosen once here, and every tool follows. */}
+          <div className="user-menu__row">
+            <span className="user-menu__icon user-menu__icon--letters" aria-hidden>
+              Aa
+            </span>
+            <span className="user-menu__text">{t("menu.textSize")}</span>
+            <span className="user-menu__langs user-menu__sizes" role="group" aria-label={t("menu.textSize")}>
+              {TEXT_SIZES.map((size) => (
+                <button key={size} type="button" data-size={size} aria-pressed={size === textSize} aria-label={t(TEXT_SIZE_NAME[size])} title={t(TEXT_SIZE_NAME[size])} onClick={() => setTextSize(size)}>
+                  A
+                </button>
+              ))}
+            </span>
+          </div>
 
           <Item
             icon={<Bell />}

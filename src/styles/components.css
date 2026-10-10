@@ -9250,3 +9250,31 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 .kd-row { display: grid; grid-template-columns: minmax(1.5rem, auto) 1fr auto; align-items: start; gap: 0.5rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); }
 .kd-row__label { font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); overflow-wrap: anywhere; }
 .kd-row__text { margin: 0; font-size: 0.9375rem; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+
+/* The size of the texts of the tools, chosen in the person's menu (see `src/textSize.ts`). Each text that is read
+   or written grows from the size it is drawn in; the names and buttons around it stay, since a phone has no room
+   for them to grow. One rule to a line: `verify:text-size` reads them. */
+html[data-text] .scripture-editor__verse textarea { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .se-shown { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .scripture-editor__usfm-ro, html[data-text] .usfm-ro-root { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af-draft__words .af-word--tap { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af-ref .af-word, html[data-text] .af-row--ref .af-word { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af-ref .af-orig .af-word, html[data-text] .af-row--ref .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
+html[data-text] .af-chapter__text { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .fx-ref__text, html[data-text] .af-textarea { font-size: calc(1rem * var(--ts)); }
+html[data-text] .gr-text__body { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] dl.rv-sources { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .al-word, html[data-text] .al-ref__word { font-size: calc(1rem * var(--ts)); }
+html[data-text] .al-chip { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .al-ref__gloss { font-size: calc(0.6875rem * var(--ts)); }
+html[data-text] .st-word__text { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .st-gloss { font-size: calc(0.6875rem * var(--ts)); }
+html[data-text] .pp-original { font-size: calc(1.125rem * var(--ts)); }
+html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
+
+/* The three sizes in the menu, each letter as large as what it gives. */
+.user-menu__icon--letters { font-size: 0.75rem; font-weight: 700; }
+.user-menu__sizes button { min-width: 2.5rem; min-height: 2.5rem; font-weight: 700; line-height: 1; }
+.user-menu__sizes button[data-size="normal"] { font-size: 0.8125rem; }
+.user-menu__sizes button[data-size="large"] { font-size: 1rem; }
+.user-menu__sizes button[data-size="larger"] { font-size: 1.1875rem; }

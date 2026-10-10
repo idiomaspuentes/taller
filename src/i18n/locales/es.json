@@ -3089,5 +3089,9 @@
   "af.qPalabrasOnly": "Este término aparece una sola vez en el libro. ¿Está bien traducido aquí?",
   "af.qPalabrasFirst": "Es la primera vez que se revisa este término en el libro. ¿Está bien traducido aquí?",
   "st.before": "Ver la oración anterior",
-  "st.after": "Ver la oración siguiente"
+  "st.after": "Ver la oración siguiente",
+  "menu.textSize": "Tamaño de la letra",
+  "menu.textNormal": "Normal",
+  "menu.textLarge": "Grande",
+  "menu.textLarger": "Muy grande"
 }
