@@ -3081,5 +3081,8 @@
   "al.titleLeftOut": "El título de este salmo todavía no se puede alinear aquí.",
   "fx.proposalNote": "Corrección propuesta",
   "gr.proposed": "Propusiste otra redacción para {ref}. El equipo la decide en la tarea #{n}.",
-  "gr.proposedNote": "Propuse otra redacción (decisión #{n}): {text}"
+  "gr.proposedNote": "Propuse otra redacción (decisión #{n}): {text}",
+  "cv.origin": "Sobre {ref}. Salió de {task}.",
+  "cv.originTask": "la tarea #{n}",
+  "cv.openOrigin": "Abrir la tarea de la que salió"
 }

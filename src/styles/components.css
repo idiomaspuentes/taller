@@ -6003,6 +6003,12 @@ button.al-box--read { cursor: pointer; }
 .st-legend li[data-role="o"]::before { border-color: var(--warning-700); }
 .st-legend li[data-clause]::before { border-width: 2px; border-color: var(--text-muted); }
 
+/* Where a decision of the team came from, over its conversation: the verse, what it says and the way to its task. */
+.chat-origin { display: grid; gap: 0.25rem; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--surface-muted); }
+.chat-origin__where { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
+.chat-origin__text { margin: 0; padding-left: 0.625rem; border-left: 3px solid var(--border-strong); font-size: 1rem; line-height: 1.5; }
+.chat-origin__open { justify-self: start; display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
+
 /* What a translation is read against is read as much as the translation: the same size. It was drawn smaller,
    as a note, and on a phone the text one compares with could hardly be read; the letters of the original, which
    are drawn smaller than ours at the same size, a step larger. */

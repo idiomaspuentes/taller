@@ -1,3 +1,4 @@
+import { alineacionDecisionData } from "../domain/chatEvents/alineacionDecision";
 import { extraWorkOf } from "../domain/extraWork";
 import { subtaskName } from "../domain/noticeText";
 import { parseWorkOrderMarker } from "../domain/workOrder";
@@ -725,6 +726,19 @@ function ConversationThread({
 
   const showAside = siblings.length > 1;
 
+  // A decision of the team (a proposal, an objection) lives in a subtarea of its own, and is opened from a notice
+  // by people who were not in the task it came from: what verse it is about, what the verse says and which task
+  // it came out of are said over the conversation, with the way to that task.
+  const origin = (() => {
+    for (const item of timeline) {
+      const decision = item.event ? alineacionDecisionData(item.event) : null;
+      if (!decision?.parentIssue || decision.parentIssue === issueNumber) continue;
+      const parent = siblings.find((row) => row.number === decision.parentIssue);
+      return { issue: decision.parentIssue, ref: `${bookLabel(decision.book, language)} ${decision.chapter}:${decision.verse}`, text: decision.oldText, task: parent ? threadTitle(parent.title, language) : t("cv.originTask").replace("{n}", String(decision.parentIssue)) };
+    }
+    return null;
+  })();
+
   return (
     <div className={showAside ? "chat-layout chat-layout--split" : "chat-layout"}>
       {showAside ? (
@@ -826,6 +840,15 @@ function ConversationThread({
             </div>
           </div>
           {solverBlock ? <p className="chat-header__sub">{loc(solverBlock)}</p> : null}
+          {origin ? (
+            <div className="chat-origin">
+              <p className="chat-origin__where">{t("cv.origin").replace("{ref}", origin.ref).replace("{task}", origin.task)}</p>
+              {origin.text ? <blockquote className="chat-origin__text">{origin.text}</blockquote> : null}
+              <button type="button" className="af-link chat-origin__open" onClick={() => onOpenThread(origin.issue)}>
+                {t("cv.openOrigin")}
+              </button>
+            </div>
+          ) : null}
           {demo ? (
             <p className="chat-header__sub">{demo.notice || t("cv.demoNotice")}</p>
           ) : null}
