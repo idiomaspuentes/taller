@@ -1,3 +1,4 @@
+import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
@@ -687,6 +688,31 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     const why = reasonLine(fixReasons, fixReason, t);
     const before = data.draftVerses[item.verse] ?? "";
     try {
+      // A correction is a proposal: it reaches the draft when the team agrees to it and somebody applies it. The
+      // one case that is written at once is the correction the team has already decided on this very point, made
+      // by whoever may confirm for the team: that is the team's decision being carried out, not one person's.
+      if (!(tally?.decided && canConfirm)) {
+        const opened = await openTextProposal({
+          session,
+          pmOrg: ctx.pmOrg,
+          task: { projectId: ctx.projectId, taskId: ctx.taskId, taskName: ctx.taskName || ctx.taskId, resource: data.resource, parentIssue: ctx.issueNumber },
+          target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch },
+          draftFilepath: data.draft.filepath,
+          book: data.book,
+          chapter: item.chapter,
+          verse: item.verse,
+          oldText: before,
+          newText: text,
+          note: why || tNow("fx.proposalNote"),
+          tell: Object.keys(teamLevels),
+          thresholds,
+        });
+        setFixing(false);
+        setFixReason("");
+        setFixReasons([]);
+        announce(t("gr.proposed").replace("{ref}", `${item.chapter}:${item.verse}`).replace("{n}", String(opened.issue.number)));
+        return;
+      }
       const result = await saveCorrection({
         session,
         target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch },
@@ -1195,7 +1221,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <p className="af-hint">{t("af.fixHint")}</p>
                   <div className="af-row-buttons">
                     <Button type="button" size="sm" disabled={saving || !fixText.trim()} onClick={() => void saveFix()}>
-                      {saving ? t("af.saving") : t("af.saveFix")}
+                      {saving ? t("af.saving") : tally?.decided && canConfirm ? t("af.saveFix") : t("fx.fixNow")}
                     </Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setFixing(false)}>
                       {t("af.cancel")}
