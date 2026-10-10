@@ -809,7 +809,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       <WordSheet word={sheetWord?.word ?? null} at={{ book: data?.book ?? "", chapter: sheetWord?.chapter ?? 0, verse: sheetWord?.verse ?? 0 }} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} onClose={() => setSheetWord(null)} />
       <ToolHeader
         title={toolHeading(ctx, language, t(TITLE[stepProp])).title}
-        onBack={onClose}
+        // From the helps or the chapter, back returns to what was being reviewed; from there it leaves.
+        onBack={() => (pane === "review" ? onClose() : setPane("review"))}
         meta={[toolHeading(ctx, language, t(TITLE[stepProp])).where, summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
         actions={
           data ? (

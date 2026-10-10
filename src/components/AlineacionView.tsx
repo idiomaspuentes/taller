@@ -1288,11 +1288,14 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                     <button
                       type="button"
                       className="af-link al-bank__fix"
-                      disabled={Boolean(dirty[verse.verse])}
-                      title={dirty[verse.verse] ? t("al.saveBeforeFix") : undefined}
+                      // With links not saved yet the button was off, and said why only where a mouse rests: on a
+                      // phone it was a button that did nothing. The links are saved first, and then it opens.
                       onClick={() => {
-                        setFixError("");
-                        setFixing(true);
+                        void (async () => {
+                          if (dirty[verse.verse] && !(await saveVerseOf(verse))) return;
+                          setFixError("");
+                          setFixing(true);
+                        })();
                       }}
                     >
                       {t("al.fixOrAsk")}
@@ -1461,7 +1464,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       />
       <ToolHeader
         title={toolHeading(ctx, language, title).title}
-        onBack={() => void leave()}
+        // With the chapter open over the tool, back closes the chapter: it left the tool, and what was being
+        // aligned with it.
+        onBack={() => (pane === "chapter" ? setPane("align") : void leave())}
         meta={[
           toolHeading(ctx, language, title).where,
           data ? (mode === "alinear" ? t("al.metaDone").replace("{a}", String(doneCount)) : t("al.metaAgreed").replace("{a}", String(summary?.agreed ?? 0))).replace("{b}", String(data.verses.length)) : "",
