@@ -69,8 +69,8 @@ export async function saveVerseAlignment(params: {
     // byte for byte. Aligning one verse wrote every verse of the book, and the writer does not give each one back
     // as another tool wrote it (where a mark stands on its line, two neighbours of one original word as two
     // groups, spaces at the ends of lines): in a book made with translationCore, 73 lines of 1317 changed under
-    // whoever aligned a single verse. Verses joined in one (`\v 4-5`) have no verse of their own to take: the
-    // book written again is saved then.
+    // whoever aligned a single verse. Verses joined in one (`\v 4-5`) are not offered for alignment (see
+    // `joinedVerses`), so the verse is always one of its own; should one not be, the book written again is saved.
     usfm = editedVersesInto(current.text, whole, params.chapter, [{ from: params.verse, to: params.verse }]) ?? whole;
     try {
       await createOrUpdateContents(dcsConfig(session.host), target.owner, target.repo, filepath, {

@@ -3075,5 +3075,8 @@
   "kd.discard": "Descartar este borrador",
   "kd.discardTitle": "¿Descartar este borrador?",
   "kd.discardText": "Solo está en este navegador: no se podrá recuperar.",
-  "kd.discardYes": "Sí, descartar"
+  "kd.discardYes": "Sí, descartar",
+  "al.joinedOne": "Los versículos {refs} están escritos como uno solo en el borrador y todavía no se pueden alinear aquí.",
+  "al.joinedMany": "Estos versículos están escritos como uno solo en el borrador y todavía no se pueden alinear aquí: {refs}.",
+  "al.titleLeftOut": "El título de este salmo todavía no se puede alinear aquí."
 }

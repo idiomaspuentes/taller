@@ -1,3 +1,4 @@
+import { joinedVerses } from "../domain/joinedVerses";
 import { tokenizeDocument, tokenizeOriginalDocument, type OriginalWordToken, type WordToken } from "@usfm-tools/editor-core";
 import { parseUsfmToUsj } from "@usfm-tools/usfm-readonly-react";
 import type { AlignmentGroup } from "@usfm-tools/types";
@@ -41,6 +42,10 @@ export type AlineacionData = {
   referenceLabel: string;
   source: AlignmentSourceRef;
   verses: AlignmentVerse[];
+  /** Verses the draft writes as one (`\v 4-5`): they are not offered, and the screen says so. */
+  joined: { from: number; to: number }[];
+  /** The chapter has a title with words (a psalm's, its verse 0), which is not offered either. */
+  titleLeftOut: boolean;
   /** General levels; the views count with the levels of the task's team (`levelBook`). */
   levels: Record<string, PersonLevel>;
   levelBook: LevelBook;
@@ -131,6 +136,8 @@ export async function loadAlineacion(params: {
     referenceLabel: resource === "tps" ? "UST" : "ULT",
     source,
     verses,
+    joined: joinedVerses(Object.keys(draftTokens), chapter, covered),
+    titleLeftOut: (!covered || covered.from <= 1) && Object.entries(draftTokens).some(([sid, tokens]) => verseNumber(sid, chapter) === 0 && tokens.length > 0),
     levels: pmConfig.levels,
     levelBook: pmConfig,
   };

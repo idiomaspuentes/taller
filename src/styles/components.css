@@ -6003,6 +6003,9 @@ button.al-box--read { cursor: pointer; }
 .st-legend li[data-role="o"]::before { border-color: var(--warning-700); }
 .st-legend li[data-clause]::before { border-width: 2px; border-color: var(--text-muted); }
 
+/* Verses the draft writes as one, which the alignment screen does not offer yet: said over the verses it does. */
+.al-joined { margin: 0.25rem 1rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--warning-100); color: var(--warning-700); }
+
 /* The sentence as a tree: names in pills joined by branches, the words in a row at the foot. It is as wide as
    the sentence needs and is moved sideways inside its own strip; the page itself never moves sideways. */
 .st-views { justify-self: start; display: inline-flex; padding: 0.125rem; border-radius: var(--radius-full); background: var(--surface-muted); }

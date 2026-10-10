@@ -1528,6 +1528,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         />
       ) : null}
 
+      {data?.joined.length && pane === "align" ? (
+        <p className="af-hint al-joined">{t(data.joined.length === 1 ? "al.joinedOne" : "al.joinedMany").replace("{refs}", data.joined.map((span) => `${data.chapter}:${span.from}–${span.to}`).join(", "))}</p>
+      ) : null}
+      {data?.titleLeftOut && pane === "align" ? <p className="af-hint al-joined">{t("al.titleLeftOut")}</p> : null}
       {data && verse && pane === "align" ? (
         <>
           <nav className="al-verses" aria-label={t("al.versesNav")}>

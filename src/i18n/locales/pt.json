@@ -3075,5 +3075,8 @@
   "kd.discard": "Descartar este rascunho",
   "kd.discardTitle": "Descartar este rascunho?",
   "kd.discardText": "Só está neste navegador: não será possível recuperá-lo.",
-  "kd.discardYes": "Sim, descartar"
+  "kd.discardYes": "Sim, descartar",
+  "al.joinedOne": "Os versículos {refs} estão escritos como um só no rascunho e ainda não podem ser alinhados aqui.",
+  "al.joinedMany": "Estes versículos estão escritos como um só no rascunho e ainda não podem ser alinhados aqui: {refs}.",
+  "al.titleLeftOut": "O título deste salmo ainda não pode ser alinhado aqui."
 }
