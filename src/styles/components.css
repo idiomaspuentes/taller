@@ -6009,8 +6009,8 @@ button.al-box--read { cursor: pointer; }
 .af-ref .af-word, .af-row--ref .af-word { font-size: 1.0625rem; }
 .af-ref .af-words, .af-row--ref .af-words { line-height: 1.7; }
 .af-ref .af-orig .af-word, .af-row--ref .af-orig .af-word { font-size: 1.3125rem; }
-.rv-sources { font-size: 1.0625rem; line-height: 1.6; }
-.rv-sources dt { font-size: 0.75rem; }
+dl.rv-sources { font-size: 1.0625rem; line-height: 1.6; }
+dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 
 /* Verses the draft writes as one, which the alignment screen does not offer yet: said over the verses it does. */
 .al-joined { margin: 0.25rem 1rem; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--warning-100); color: var(--warning-700); }

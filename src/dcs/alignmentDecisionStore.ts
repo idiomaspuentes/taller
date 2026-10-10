@@ -50,7 +50,8 @@ import {
   refLabel,
   type DecisionEventData,
 } from "../domain/chatEvents/alineacionDecision";
-import type { DecisionView } from "../domain/verseEditView";
+import { groupsAfterTextEdit, tokensFromText, viewFromTokens, type DecisionView } from "../domain/verseEditView";
+import { originalTextRef } from "../domain/sourcePackage";
 import { commentToItem, type ThreadItem } from "../domain/conversation";
 import { PM_REPO_NAME } from "../domain/types";
 import { tryParseUsj } from "../domain/usfmAst";
@@ -281,6 +282,61 @@ export async function postVote(session: GtSession, pmOrg: string, threadIssue: n
 }
 
 /**
+ * Proposes another wording for a verse from a screen that has no alignment at hand (the group reading, the
+ * review of challenges and key terms). A correction is a proposal: it reaches the draft when the team agrees to
+ * it. The verse is read from the draft as it is now, so the proposal is tied to that text; what is aligned of
+ * the words that stay is kept when it is applied, as with a proposal made while aligning.
+ */
+export async function openTextProposal(params: {
+  session: GtSession;
+  pmOrg: string;
+  task: OpenDecisionParams["task"];
+  target: RepoTarget;
+  draftFilepath: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  oldText: string;
+  newText: string;
+  note: string;
+  tell?: string[];
+  thresholds: DecisionThresholds;
+  now?: Date;
+}): Promise<{ id: string; issue: DcsIssue; card: ThreadItem }> {
+  const { session, target } = params;
+  const current = await readRepoFile(session, target, params.draftFilepath);
+  if (!current) throw new Error("No se encontró el borrador grupal de este libro.");
+  const ref = originalTextRef(params.book);
+  const source: AlignmentSourceRef = { id: `${ref.owner}/${ref.repo}`, layerDir: ref.repo };
+  const sid = verseKey(params.book, params.chapter, params.verse);
+  const before = alignmentOfDraft(current.text, params.book, source).verses[sid] ?? [];
+  return openAlignmentDecision({
+    session,
+    pmOrg: params.pmOrg,
+    task: params.task,
+    target,
+    draftFilepath: params.draftFilepath,
+    source,
+    book: params.book,
+    chapter: params.chapter,
+    verse: params.verse,
+    kind: "proposal",
+    note: params.note,
+    baseHash: currentVerseHash(current.text, params.book, params.chapter, params.verse, source),
+    before,
+    proposed: groupsAfterTextEdit(before, params.oldText, params.newText),
+    // The card shows the two wordings; the boxes of the original are drawn only where somebody was aligning.
+    view: viewFromTokens({ rtl: ref.repo === "hbo_uhb", original: [], gloss: [], draftBefore: tokensFromText(params.oldText, sid), draftAfter: tokensFromText(params.newText, sid) }),
+    oldText: params.oldText,
+    newText: params.newText,
+    aligners: [],
+    tell: params.tell,
+    thresholds: params.thresholds,
+    now: params.now,
+  });
+}
+
+/**
  * Ends the decision. An accepted proposal is applied to the group draft only if the verse
  * is still as it was when the proposal was made; otherwise it expires. The outcome is
  * written once in the text repository and the subtarea is closed with a summary.
@@ -324,17 +380,24 @@ export async function closeAlignmentDecision(params: {
           before: saved0?.oldText ?? data.oldText,
         });
       }
-      const saved = await saveVerseAlignment({
-        session,
-        target,
-        filepath: data.draft.filepath,
-        book: data.book,
-        chapter: data.chapter,
-        verse: data.verse,
-        groups: proposed,
-        source: data.source,
-      });
-      newHash = currentVerseHash(saved.usfm, data.book, data.chapter, data.verse, data.source);
+      if (proposed.length || data.groupsBefore.length) {
+        const saved = await saveVerseAlignment({
+          session,
+          target,
+          filepath: data.draft.filepath,
+          book: data.book,
+          chapter: data.chapter,
+          verse: data.verse,
+          groups: proposed,
+          source: data.source,
+        });
+        newHash = currentVerseHash(saved.usfm, data.book, data.chapter, data.verse, data.source);
+      } else {
+        // A verse nobody has aligned yet has no links to write: only its text changed. Writing none would send
+        // the verse through the alignment writer for nothing, and that writer does not keep the lines of a poem.
+        const after = await readRepoFile(session, target, data.draft.filepath);
+        newHash = after ? currentVerseHash(after.text, data.book, data.chapter, data.verse, data.source) : undefined;
+      }
     }
   }
 

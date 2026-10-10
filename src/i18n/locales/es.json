@@ -2061,7 +2061,7 @@
   "gr.fixAria": "Texto corregido",
   "gr.whyFix": "Por qué lo cambias (opcional)",
   "gr.whyDoubt": "¿Cuál es tu duda?",
-  "gr.saveFix": "Guardar la corrección",
+  "gr.saveFix": "Proponer la corrección",
   "gr.saveDoubt": "Dejar la duda",
   "gr.cancel": "Cancelar",
   "gr.youAgreed": "estás de acuerdo",
@@ -3079,5 +3079,7 @@
   "al.joinedOne": "Los versículos {refs} están escritos como uno solo en el borrador y todavía no se pueden alinear aquí.",
   "al.joinedMany": "Estos versículos están escritos como uno solo en el borrador y todavía no se pueden alinear aquí: {refs}.",
   "al.titleLeftOut": "El título de este salmo todavía no se puede alinear aquí.",
-  "fx.proposalNote": "Corrección propuesta"
+  "fx.proposalNote": "Corrección propuesta",
+  "gr.proposed": "Propusiste otra redacción para {ref}. El equipo la decide en la tarea #{n}.",
+  "gr.proposedNote": "Propuse otra redacción (decisión #{n}): {text}"
 }

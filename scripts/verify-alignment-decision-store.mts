@@ -3,6 +3,7 @@
  * opening it, voting, closing (applying the alignment only if the verse did not change),
  * and what is written where.
  */
+import { openTextProposal } from "../src/dcs/alignmentDecisionStore";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import type { OriginalWordToken, WordToken } from "@usfm-tools/editor-core";
@@ -451,6 +452,47 @@ await test("la app recuerda sola cuando alguien la abre: una sola vez al día, s
   const data = alineacionDecisionData(await cardOf(opened.issue.number))!;
   await postVote(session("carla"), "BSOJ", opened.issue.number, data, "aceptar");
   assert.deepEqual((await sweep("2026-10-14T16:00:00Z")).map((r) => r.who), [["ana"]]);
+});
+
+await test("desde la lectura grupal, otra redacción se propone y no se escribe; quien la propuso puede aplicarla, y un poema sin alinear conserva sus líneas", async () => {
+  const jonPath = "32-JON.usfm";
+  const poem = ["id JON", "c 2", "q1", "v 5 Las aguas me rodearon", "q2 hasta el cuello;", ""].map((l) => (l ? BS + l : l)).join(NL);
+  put(REPO, "neh", jonPath, poem);
+  const jonNow = () => files.get(fkey(REPO, "neh", jonPath))!.text;
+  actor = "bea";
+  const opened = await openTextProposal({
+    session: session("bea"),
+    pmOrg: "BSOJ",
+    task: { projectId: "JON", taskId: "revision-grupal-tpl", taskName: "Revisión grupal TPL", resource: "tpl", parentIssue: 1 },
+    target,
+    draftFilepath: jonPath,
+    book: "JON",
+    chapter: 2,
+    verse: 5,
+    oldText: "Las aguas me rodearon hasta el cuello;",
+    newText: "Las aguas me cercaron hasta el cuello;",
+    note: "Selección de palabra",
+    tell: ["ana", "bea", "carla"],
+    thresholds: { minAgree: 2, minIndependent: 1 },
+    now: new Date("2026-10-01T12:00:00Z"),
+  });
+  assert.equal(jonNow(), poem, "proponer no cambia el borrador");
+  const card = await cardOf(opened.issue.number);
+  assert.deepEqual(card.mentions, ["ana", "carla"], "se avisa al equipo, no a quien propone");
+  assert.ok((comments.get(opened.issue.number) ?? [])[0]!.body.includes("@ana @carla"), "nombrados donde Door43 lo lee");
+  const data = alineacionDecisionData(card)!;
+  assert.equal(data.newText, "Las aguas me cercaron hasta el cuello;");
+  actor = "carla";
+  await postVote(session("carla"), "BSOJ", opened.issue.number, data, "aceptar");
+  // Quien la propuso es quien la aplica.
+  actor = "bea";
+  const closed = await closeAlignmentDecision({ session: session("bea"), pmOrg: "BSOJ", threadIssue: opened.issue.number, data, option: "aceptar", how: "consenso" });
+  assert.equal(closed.outcome, "aceptada");
+  assert.ok(jonNow().includes("cercaron") && !jonNow().includes("rodearon"), "el texto aceptado llega al borrador");
+  assert.ok(jonNow().includes(BS + "q1") && jonNow().includes(BS + "q2"), "el versículo sigue en sus dos líneas");
+  assert.ok(!jonNow().includes(BS + "w "), "a un versículo sin alinear no se le escriben enlaces");
+  const last = (comments.get(opened.issue.number) ?? []).at(-1)!;
+  assert.deepEqual(parseChatEvent(last.body)?.mentions, ["ana", "carla"], "al aplicarla se avisa al equipo, no a quien la aplica");
 });
 
 console.log(`\nverify-alignment-decision-store: ${passed} checks passed.`);

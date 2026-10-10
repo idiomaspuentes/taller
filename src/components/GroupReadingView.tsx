@@ -6,7 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clock3, Pencil } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { appendMyDecisions, saveCorrection } from "../dcs/afinacionStore";
+import { appendMyDecisions } from "../dcs/afinacionStore";
+import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine } from "./CorrectionReasons";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -19,7 +20,7 @@ import { bookLabel } from "../domain/books";
 import { readingItemId, readingPassages, readingProgress, type ReadingPassage } from "../domain/groupReading";
 import { confirmersOf, levelsForTeam } from "../domain/levels";
 import { localized } from "../domain/processes";
-import { reviewersToNotifyAfterEdit, tallyItem, textFingerprint, type ItemTally, type ReviewDecision } from "../domain/reviewRound";
+import { tallyItem, textFingerprint, type ItemTally, type ReviewDecision } from "../domain/reviewRound";
 import { decodeSolverLaunchContext } from "../domain/solverLaunch";
 import { localizeName } from "../domain/templateNames";
 import { localizeThread } from "../domain/threadNames";
@@ -170,6 +171,11 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const unanswered = (passage: ReadingPassage) =>
     (data?.texts ?? []).flatMap((text) => (passage.arrived[text.resource] ? passage.verses.filter((verse) => text.verses[verse]?.trim() && !myAnswer(readingItemId(text.resource, data!.chapter, verse))).map((verse) => ({ text, verse, status: "approved" as const })) : []));
 
+/**
+   * Another wording for a verse is proposed, not written: it reaches the draft when the team agrees to it. It was
+   * written on the spot, and whoever wrote it was put down as agreeing: the one who corrected had the last word.
+   * Until the team decides, the person's answer to the verse is a doubt, with what they propose.
+   */
   async function correct(text: GroupReadingText, verse: number) {
     if (!session || !data || !ctx || !open || !text.draft) return;
     const next = open.text.trim();
@@ -177,23 +183,29 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     setSaving(true);
     setError("");
     try {
-      const itemId = readingItemId(text.resource, data.chapter, verse);
       const reasons = open.reasons ?? [];
-      await saveCorrection({ session, target: text.draft, filepath: text.draft.filepath, chapter: data.chapter, verse, text: next, reason: reasonLine(reasons, open.why, tNow), book: data.book, before: text.verses[verse] ?? "", reasons, note: open.why.trim(), from: { issue: ctx.issueNumber, task: ctx.taskId, step: step?.id ?? ctx.stepId, item: itemId } });
-      // Whoever had agreed with the old wording is told: their answer no longer counts.
-      const who = reviewersToNotifyAfterEdit({ itemId, decisions, newHash: textFingerprint(next), editor: session.username });
-      const texts = data.texts.map((row) => (row.resource === text.resource ? { ...row, verses: { ...row.verses, [verse]: next } } : row));
-      setData({ ...data, texts });
-      // Having written it, I agree with it.
-      const own = { ...decision({ ...text, verses: { ...text.verses, [verse]: next } }, verse, "approved", open.why.trim() || undefined) };
+      const why = reasonLine(reasons, open.why, tNow) || tNow("fx.proposalNote");
+      const resource: "tpl" | "tps" = text.resource === "tps" ? "tps" : "tpl";
+      const opened = await openTextProposal({
+        session,
+        pmOrg: ctx.pmOrg,
+        task: { projectId: ctx.projectId, taskId: ctx.taskId, taskName: ctx.taskName || ctx.taskId, resource, parentIssue: ctx.issueNumber },
+        target: text.draft,
+        draftFilepath: text.draft.filepath,
+        book: data.book,
+        chapter: data.chapter,
+        verse,
+        oldText: text.verses[verse] ?? "",
+        newText: next,
+        note: why,
+        tell: Object.keys(teamLevels),
+        thresholds: { minAgree, minIndependent },
+      });
+      const own = decision(text, verse, "revise", tNow("gr.proposedNote").replace("{n}", String(opened.issue.number)).replace("{text}", next));
       await appendMyDecisions(session, text.draft, data.book, [own]);
       setDecisions((prev) => [...prev, own]);
-      if (who.length && ctx.pmOrg && ctx.issueNumber) {
-        const why = open.why.trim();
-        await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, `${who.map((login) => `@${login}`).join(" ")} ${tNow("gr.correctedNote").replace("{ref}", `${data.book} ${data.chapter}:${verse}`).replace("{text}", text.name)}${why ? ` ${tNow("gr.reason").replace("{why}", why)}` : ""}`).catch(() => undefined);
-      }
       setOpen(null);
-      announce(t("gr.corrected").replace("{ref}", `${data.chapter}:${verse}`));
+      announce(t("gr.proposed").replace("{ref}", `${data.chapter}:${verse}`).replace("{n}", String(opened.issue.number)));
     } catch (err) {
       setError(explainError(err));
     } finally {

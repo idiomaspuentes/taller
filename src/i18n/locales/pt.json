@@ -2061,7 +2061,7 @@
   "gr.fixAria": "Texto corrigido",
   "gr.whyFix": "Por que você muda (opcional)",
   "gr.whyDoubt": "Qual é a sua dúvida?",
-  "gr.saveFix": "Guardar a correção",
+  "gr.saveFix": "Propor a correção",
   "gr.saveDoubt": "Deixar a dúvida",
   "gr.cancel": "Cancelar",
   "gr.youAgreed": "você está de acordo",
@@ -3079,5 +3079,7 @@
   "al.joinedOne": "Os versículos {refs} estão escritos como um só no rascunho e ainda não podem ser alinhados aqui.",
   "al.joinedMany": "Estes versículos estão escritos como um só no rascunho e ainda não podem ser alinhados aqui: {refs}.",
   "al.titleLeftOut": "O título deste salmo ainda não pode ser alinhado aqui.",
-  "fx.proposalNote": "Correção proposta"
+  "fx.proposalNote": "Correção proposta",
+  "gr.proposed": "Você propôs outra redação para {ref}. A equipe decide na tarefa #{n}.",
+  "gr.proposedNote": "Propus outra redação (decisão #{n}): {text}"
 }
