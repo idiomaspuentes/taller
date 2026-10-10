@@ -40,16 +40,19 @@ import {
   encodeSolverLaunchContext,
   type SolverLaunchContext,
 } from "../domain/solverLaunch";
-import { isLabLaunch, labWriteDecision, launchDraftSlot } from "../domain/solverLab";
+import { isLabLaunch, labWriteDecision } from "../domain/solverLab";
 import {
   bookBranchLabel,
   bookBranchName,
   draftReadBranchNames,
   portionPrBranchFromCtx,
   readIsOwnWork,
+  workBranchParamsFromCtx,
 } from "../domain/portionPr";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
-import { loadDraftCache, saveDraftCache } from "../domain/draftCache";
+import { loadContext } from "../domain/store";
+import { discardKeptDraft, draftLaunch, loadDraftCache, passageLabel, saveDraftCache, type DraftCacheEntry, type DraftLaunch, type KeptDraft } from "../domain/draftCache";
+import { KeptDraftNote } from "./KeptDraftNote";
 import {
   chapterMarkup,
   portionRange,
@@ -364,6 +367,24 @@ function placeholderDrafts(
     if (!next.some((d) => d.from <= v && v <= d.to)) next.push({ from: v, to: v, text: "" });
   }
   return next.sort((a, b) => a.from - b.from);
+}
+
+/**
+ * What the draft of a launch is kept under on this device, and what its work branch is named with. Without a
+ * session the server is the one the app was last set to: what was written stays in sight after a session ends.
+ */
+function keptDraftOf(decoded: SolverLaunchContext, sess: GtSession | undefined): DraftLaunch {
+  const work = workBranchParamsFromCtx({ ...decoded, username: decoded.username || sess?.username || "" });
+  return draftLaunch(decoded, sess?.host || loadContext()?.host, work);
+}
+
+/** The verses a draft that was set aside holds, in their order. */
+function keptRows(verses: Record<string, string>): { label: string; text: string }[] {
+  return Object.entries(verses)
+    .filter(([, text]) => text.trim())
+    .map(([key, text]) => ({ first: Number(key.split("-")[0]), label: key.replace("-", "–"), text }))
+    .sort((a, b) => a.first - b.first)
+    .map(({ label, text }) => ({ label, text }));
 }
 
 function draftReadBranches(
@@ -884,12 +905,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   );
   const [drafts, setDrafts] = useState<VerseDraft[]>(() => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
-    const slot = decoded ? launchDraftSlot(decoded) : null;
     return placeholderDrafts(
       rangeFromLaunch(decoded),
-      slot ? loadDraftCache(slot.pmOrg, slot.issueNumber) : null,
+      decoded ? loadDraftCache(keptDraftOf(decoded, loadSession())).own : null,
     );
   });
+  /** What is kept on this device that may be of this subtarea and was not put in the editor. */
+  const [setAside, setSetAside] = useState<KeptDraft<DraftCacheEntry>[]>([]);
   const [usfm, setUsfm] = useState("");
   const [sha, setSha] = useState<string | undefined>();
   const [targetLabel, setTargetLabel] = useState("");
@@ -1045,8 +1067,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
     const sess = loadSession();
     setSession(sess);
-    const slot = launchDraftSlot(decoded);
-    const cache = loadDraftCache(slot.pmOrg, slot.issueNumber);
+    const kept = loadDraftCache(keptDraftOf(decoded, sess));
+    const cache = kept.own;
+    setSetAside(kept.aside);
     const lab = isLabLaunch(decoded);
     const write = labWriteDecision(decoded);
     const fallbackBranch = portionPrBranchFromCtx({
@@ -1588,8 +1611,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     if (!ctx) return;
     const verses: Record<string, string> = {};
     for (const d of nextDrafts) verses[slotKey(d)] = d.text;
-    const slot = launchDraftSlot(ctx);
-    saveDraftCache(slot.pmOrg, slot.issueNumber, {
+    saveDraftCache(keptDraftOf(ctx, session), {
       verses,
       savedAt: Date.now(),
       branch: nextBranch,
@@ -2304,6 +2326,19 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               {t(reviewComments.length === 1 ? "se.reviewNoteOne" : "se.reviewNoteMany").replace("{n}", String(reviewComments.length))}
             </button>
           ) : null}
+          <KeptDraftNote
+            drafts={setAside.map(({ key, entry }) => ({
+              key,
+              name: entry.place?.book ? `${bookLabel(entry.place.book, language)} ${passageLabel(entry.place.passage)}` : "",
+              savedAt: entry.savedAt,
+              rows: keptRows(entry.verses),
+            }))}
+            onDiscard={(key) => {
+              discardKeptDraft(key);
+              setSetAside((prev) => prev.filter((draft) => draft.key !== key));
+            }}
+            announce={announce}
+          />
           {labNote ? (
             <p className="scripture-editor__lab-note">
               <Info className="scripture-editor__lab-icon" aria-hidden />

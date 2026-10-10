@@ -191,8 +191,29 @@ a mano.
 **Editor de ayudas** (`#/solver/helps`): un recurso por lanzamiento
 (`ctx.resource`). Notas/preguntas editan las filas TSV de la porción
 (`tn_BOOK.tsv` / `tq_BOOK.tsv`); palabras/academia editan el markdown del
-artículo. Offline-first (`tas-helps-draft:…`) y guardado en la rama de trabajo de la
+artículo. Offline-first (`tas-helps-draft-v2:…`) y guardado en la rama de trabajo de la
 subtarea; «Listo para revisión» abre la revisión como el editor de Escritura.
+
+**Lo que los dos editores guardan en el navegador** (`src/domain/draftCache.ts`,
+`helpsDraftCache.ts`): cada borrador se guarda con el nombre de aquello para lo
+que se escribió —servidor, organización y número de la subtarea, persona,
+organización de contenido, idioma, recurso, libro y pasaje— y solo lo lee un
+lanzamiento que coincida en todo. Los números de subtarea se repiten (QA se
+reemplaza por una copia de producción; un mock nuevo en la misma dirección), y
+con el número solo, un pasaje recibía los versículos de otro libro y los
+guardaba en la rama recordada de ese otro. Reglas:
+
+- La rama recordada solo se usa si es una de las propias de la subtarea
+  (`ownedWorkBranchNames`); si no, se guarda en la rama propia.
+- Una entrada de antes de este cambio (`tas-draft:{org}:{n}`, sin nada de eso)
+  se restaura solo si su rama es de esta subtarea y, en Escritura, si contiene
+  justo los versículos del pasaje; al guardar pasa a su nombre nuevo. Con la
+  rama de otro libro o de otra persona se deja donde está, sin tocarla.
+- Lo que puede ser de la subtarea y no se usa (otro pasaje del mismo libro con
+  el mismo número; una entrada de antes cuya rama no dice de quién es) no se
+  pone en el editor ni se borra: se avisa sobre el borrador («Hay otro borrador
+  guardado en este navegador») y la persona lo ve, copia lo que le sirva y lo
+  descarta ella. `npm run verify:draft-cache`.
 
 ## Textos fuente en el dispositivo
 

@@ -203,19 +203,24 @@ export function draftReadBranchNames(params: PortionBranchNameParams & { remembe
   ];
 }
 
-export function portionPrBranchFromCtx(ctx: {
+/** What the work branch of a launch is named with. */
+export function workBranchParamsFromCtx(ctx: {
   book?: string;
   projectId?: string;
   username?: string;
   taskId: string;
   issueNumber: number;
-}): string {
-  return portionPrBranchName({
+}): PortionBranchNameParams {
+  return {
     book: ctx.book || ctx.projectId || "book",
     username: ctx.username || "",
     taskId: ctx.taskId,
     issueNumber: ctx.issueNumber,
-  });
+  };
+}
+
+export function portionPrBranchFromCtx(ctx: Parameters<typeof workBranchParamsFromCtx>[0]): string {
+  return portionPrBranchName(workBranchParamsFromCtx(ctx));
 }
 
 /** Current or leftover work-branch spelling for this user/task/issue. */
@@ -232,6 +237,40 @@ export function isOwnedWorkBranch(branch: string, params: PortionBranchNameParam
  */
 export function readIsOwnWork(readFrom: string | undefined, params: PortionBranchNameParams): boolean {
   return Boolean(readFrom) && isOwnedWorkBranch(readFrom!, params);
+}
+
+/**
+ * Where the book may be in a branch of this app, whatever kind it is: somebody's work (`trabajo/neh/…`, `w/neh/…`,
+ * `tas/neh/…`, `neh/tpl/ana/41`) or a group draft (`borrador/neh/…`, `t/neh/…`, `book/neh`, `neh/tpl`, `neh`).
+ * Two words alone are a book and its task today and were a phase and its book before, so either may be the book.
+ */
+function bookWordsOfBranch(name: string): string[] {
+  const parts = normalizeGitRefName(name).split("/").filter(Boolean);
+  const first = parts[0] ?? "";
+  if (isWorkWord(first) || first === branchNames().draft || ["t", "tas", "book"].includes(first)) return parts.slice(1, 2);
+  return parts.length === 2 ? parts : parts.slice(0, 1);
+}
+
+/**
+ * What a branch name says about a subtarea: `own` when it is one of the names its work branch has had (or one of
+ * `also`, the other branches it writes to), `other` when it names another book or another person, and `unknown`
+ * when the name does not tell.
+ *
+ * A name a device remembered is no proof of where to write: subtarea numbers repeat (a server replaced by a copy
+ * of another, a new mock), and the branch remembered under a number may be of the subtarea that had it before.
+ */
+export function branchBelonging(
+  branch: string | undefined,
+  params: PortionBranchNameParams,
+  also: string[] = [],
+): "own" | "other" | "unknown" {
+  const name = normalizeGitRefName(branch || "");
+  if (!name) return "unknown";
+  if (isOwnedWorkBranch(name, params) || also.map(normalizeGitRefName).includes(name)) return "own";
+  if (!bookWordsOfBranch(name).includes(bookCode(params.book))) return "other";
+  const user = workUserFromHead(name);
+  if (user && user !== slug(params.username)) return "other";
+  return "unknown";
 }
 
 /**

@@ -3064,5 +3064,16 @@
   "st.viewBoxes": "Caixas",
   "st.treeAs": "{role} · oração",
   "st.treeSub": "Subordinada",
-  "st.swipe": "Deslize para os lados para ver toda a oração."
+  "st.swipe": "Deslize para os lados para ver toda a oração.",
+  "kd.note": "Há outro rascunho salvo neste navegador. Toque para ver.",
+  "kd.title": "Rascunho salvo neste navegador",
+  "kd.why": "Foi escrito neste navegador e talvez não esteja no Door43. Não foi colocado no seu rascunho porque não se sabe se é desta passagem. Copie o que servir; o resto pode ser descartado.",
+  "kd.keptOn": "salvo em {date}",
+  "kd.copy": "Copiar",
+  "kd.copied": "Texto copiado",
+  "kd.copyFailed": "Não foi possível copiar. Selecione o texto para copiá-lo.",
+  "kd.discard": "Descartar este rascunho",
+  "kd.discardTitle": "Descartar este rascunho?",
+  "kd.discardText": "Só está neste navegador: não será possível recuperá-lo.",
+  "kd.discardYes": "Sim, descartar"
 }

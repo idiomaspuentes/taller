@@ -15,7 +15,8 @@ import {
   skeletonUsfmFromSource,
 } from "../src/domain/usfmEdit.ts";
 import { rangeLabelForPortions } from "../src/domain/workOrder.ts";
-import { loadDraftCache, saveDraftCache } from "../src/domain/draftCache.ts";
+import { draftLaunch, loadDraftCache, saveDraftCache } from "../src/domain/draftCache.ts";
+import type { SolverLaunchContext } from "../src/domain/solverLaunch.ts";
 import { mergeUsfmBranchesWithGit } from "../src/domain/usfmGitMerge.ts";
 import { mergeIntoTrunkWithRetry } from "../src/domain/trunkMerge.ts";
 import {
@@ -523,9 +524,19 @@ function verseLines(usfm: string): string[] {
   (globalThis as { localStorage?: unknown }).localStorage = {
     getItem: (k: string) => store.get(k) ?? null,
     setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+    key: (i: number) => [...store.keys()][i] ?? null,
+    get length() {
+      return store.size;
+    },
   };
-  saveDraftCache("org", 7, { verses: { "9": "a", "10-11": "b", "x": "no" }, savedAt: 1 });
-  const loaded = loadDraftCache("org", 7);
+  const launch = draftLaunch(
+    { pmOrg: "org", issueNumber: 7, taskId: "tpl", contentOrg: "org", lang: "es-419", resource: "tpl", book: "NEH", projectId: "NEH", chapter: 1, ref: "1:9–12" } as SolverLaunchContext,
+    "https://door43.test",
+    { book: "NEH", username: "ana", taskId: "tpl", issueNumber: 7 },
+  );
+  saveDraftCache(launch, { verses: { "9": "a", "10-11": "b", "x": "no" }, savedAt: 1 });
+  const loaded = loadDraftCache(launch).own;
   assert(loaded?.verses["10-11"] === "b" && loaded.verses["9"] === "a", "cache-claves-rango: conserva \"10-11\"");
   assert(!("x" in (loaded?.verses ?? {})), "cache-claves-rango: descarta claves inválidas");
 }
