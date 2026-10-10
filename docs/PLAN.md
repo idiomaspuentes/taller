@@ -1,12 +1,13 @@
 # Taller: estado y plan
 
-*Actualizado el 1 de octubre de 2026.* Este documento es el punto de partida para quien continúe el trabajo (una persona o una sesión de Claude en la nube). Las decisiones de diseño están en los demás documentos de `docs/`; aquí se resume dónde estamos y qué sigue.
+*Actualizado el 10 de octubre de 2026.* Este documento es el punto de partida para quien continúe el trabajo (una persona o una sesión de Claude en la nube). Las decisiones de diseño están en los demás documentos de `docs/`; aquí se resume dónde estamos y qué sigue.
 
 ## Qué es Taller
 
 La app del equipo FCR de Idiomas Puentes para el trabajo de traducción: lo que te toca hoy, las revisiones entre varias personas, las decisiones de alineación sin reuniones y los avisos en el teléfono. Es una PWA (React + Vite + TypeScript), pensada primero para el móvil, en español y portugués, sobre **Door43** (los repositorios y las incidencias son los datos). Es de código abierto (MIT) y se adapta a otra organización editando `taller.config.ts` ([CONFIGURACION.md](CONFIGURACION.md)).
 
-- Producción de pruebas: https://taller.idiomaspuentes.org (Cloudflare Pages, proyecto `taller`). Arranca contra **QA** (`qa.door43.org`).
+- Publicada en https://taller.idiomaspuentes.org (Cloudflare Pages, proyecto `taller`). Arranca contra **producción** (`git.door43.org`); para QA se abre con `?server=qa`.
+- Lo que falta y lo que está por decidir se lleva en las incidencias de GitHub: https://github.com/idiomaspuentes/taller/issues
 - Avisos con la app cerrada: Worker `tas-push` en Cloudflare ([push-worker/README.md](../push-worker/README.md)).
 - Repositorio de datos en Door43: `{pmOrg}/taller` (`pmRepo` en `taller.config.ts`; antes `gateway-tasks`). En QA queda un `es-419_gl/gateway-tasks` viejo, de pruebas, que se puede borrar.
 
@@ -22,6 +23,14 @@ La app del equipo FCR de Idiomas Puentes para el trabajo de traducción: lo que 
 - **Español y portugués**: bienvenida, inicio de sesión, menús, Ahora, Mis tareas, Equipo hoy, Avisos (incluidos mensajes y nombres de las plantillas de flujo).
 - **Proyectos y plantillas con un solo editor** (2 de octubre, sin publicar todavía): borrador antes de crear, vista previa de subtareas, unir o partir porciones, subtareas a mano, y cambios a un proyecto en marcha con aviso de a qué afectan. Ver [`PROYECTOS.md`](PROYECTOS.md).
 - Puentes: diseño visual, PWA instalable, acceso por LAN para probar en el teléfono, mock de Door43 para pruebas con varias personas.
+
+**Hecho y publicado entre el 2 y el 10 de octubre**
+- **Los editores conservan el formato original**: alinear guarda solo su versículo; las tablas de ayudas se escriben fila por fila, sin comillas añadidas; un artículo se guarda en sus mismas líneas; los saltos de línea duros se conservan. Ver [`PLATAFORMA.md`](PLATAFORMA.md) («Cómo se escribe el texto bíblico», «Cómo se escriben las ayudas»).
+- **Un borrador se guarda bajo aquello para lo que se escribió** (servidor, persona, libro y pasaje), no bajo un número de subtarea que se repite.
+- **Recorrido de prueba**: fuera de producción, cada plantilla se ofrece también en una versión que una sola persona puede recorrer entera, sobre un capítulo. Ver [`PROYECTOS.md`](PROYECTOS.md) («Recorrido de prueba»).
+- **La bienvenida** cabe en la pantalla con el botón de entrar siempre a la vista.
+- **Ficha de palabra del original** también en desafíos, términos clave y «Leer el capítulo».
+- **Recursos abiertos** (UBS y MACULA), todos desde la ficha de palabra o junto al versículo: campo de significado, pasajes paralelos con las palabras compartidas, a quién se refiere un pronombre, quién hace qué a quién, y la oración dibujada como árbol sintáctico o como cajas, que el equipo puede corregir o armar. Ver [`RECURSOS_ABIERTOS.md`](RECURSOS_ABIERTOS.md).
 
 **Probado de verdad:** lo de la alineación y las decisiones con tres usuarios en el mock; los avisos push de punta a punta con un teléfono real; la bienvenida, los primeros pasos y las pantallas en portugués en el navegador (móvil y escritorio).
 
@@ -51,7 +60,21 @@ cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller
 
 (Se ejecuta fuera de la carpeta del proyecto para que wrangler no intente autoconfigurar Vite.) El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
 
-## Ahora (2 de octubre): pruebas de la persona dueña
+## Ahora (10 de octubre): cerrar para producción
+
+Abel recorre la app en su teléfono contra QA (`?server=qa`) con los proyectos de prueba de Jonás 2 y Tito 2, y lo que encuentra se arregla primero. Lo demás está en las incidencias de GitHub:
+
+- **Compuertas para producción**: [#24](https://github.com/idiomaspuentes/taller/issues/24). La corrida real contra Door43 se acuerda antes: producción no se toca para pruebas.
+- **Lo que solo se comprobó en el panel del navegador** y falta ver en un teléfono: [#19](https://github.com/idiomaspuentes/taller/issues/19). De las 14 herramientas del recorrido, tras el último arreglo solo se abrieron tres.
+- **Decisiones aplazadas**: quién corrige un diagrama ([#12](https://github.com/idiomaspuentes/taller/issues/12)), dónde viven los datos de los recursos ([#13](https://github.com/idiomaspuentes/taller/issues/13)), si se retira `fcr-prueba.json` ([#14](https://github.com/idiomaspuentes/taller/issues/14)), si el árbol se gira ([#15](https://github.com/idiomaspuentes/taller/issues/15)) y las fases de recursos sin hacer ([#16](https://github.com/idiomaspuentes/taller/issues/16)).
+- **Trabajo pendiente**: el editor de diagramas ([#20](https://github.com/idiomaspuentes/taller/issues/20)), la cobertura de los recursos ([#21](https://github.com/idiomaspuentes/taller/issues/21)), el léxico ([#22](https://github.com/idiomaspuentes/taller/issues/22)) y los límites al escribir el texto bíblico ([#23](https://github.com/idiomaspuentes/taller/issues/23)).
+
+**Lo que conviene saber antes de tocar nada**
+- Entrar con la misma cuenta en dos dispositivos cierra una de las dos sesiones: para probar en el teléfono y en el escritorio a la vez hacen falta dos cuentas.
+- El despliegue a Cloudflare lo hace Abel, o se hace con su visto bueno cada vez; desde una sesión de Claude el comando puede quedar bloqueado.
+- Los datos de los recursos abiertos pesan unos 17 MB en `public/` y se rehacen con `npm run parallels:build`, `referents:build` y `trees:build`.
+
+## Antes (2 de octubre): pruebas de la persona dueña
 
 Orden acordado para lo que sigue; Abel prueba la app y va diciendo qué cambiar, y los cambios se anotan aquí o en incidencias.
 
