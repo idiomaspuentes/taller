@@ -290,10 +290,23 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     setSaving(true);
     setError("");
     try {
+      // The people of each team a correction goes to: they are the ones to do it, and were not told. Only whoever
+      // coordinates the team was named, and a team with nobody coordinating it heard nothing.
+      const membersOf = new Map<string, string[]>();
+      try {
+        const teams = await listPmOrgTeams(session, ctx.pmOrg);
+        for (const name of new Set(unsent.map((c) => ownerTaskOf(c.about, data.board, data.task)?.orgTeamName ?? "").filter(Boolean))) {
+          const team = teams.find((row) => teamKey(row.name) === teamKey(name));
+          if (team) membersOf.set(teamKey(name), (await listPmOrgTeamMembers(session, team.id)).map((member) => member.id));
+        }
+      } catch {
+        /* the corrections are sent all the same; whoever coordinates is still named */
+      }
       const byOwner = new Map<string, string[]>();
       for (const c of unsent) {
         const owner = ownerTaskOf(c.about, data.board, data.task);
-        const who = coordinatorsOf(data.levelBook, owner?.orgTeamName).map((login) => `@${login}`).join(" ") || (owner?.name ?? c.about);
+        const told = [...coordinatorsOf(data.levelBook, owner?.orgTeamName), ...(membersOf.get(teamKey(owner?.orgTeamName ?? "")) ?? [])].filter((login, i, all) => login.toLowerCase() !== session.username.toLowerCase() && all.findIndex((other) => other.toLowerCase() === login.toLowerCase()) === i);
+        const who = told.map((login) => `@${login}`).join(" ") || (owner?.name ?? c.about);
         byOwner.set(who, [...(byOwner.get(who) ?? []), `- ${c.kind === "objection" ? t("en.objection") : t("en.observation")}${c.where ? ` (${c.where})` : ""}: ${c.text} — @${c.by}`]);
       }
       const sent =
