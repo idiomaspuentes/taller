@@ -3099,5 +3099,9 @@
   "st.takeOut": "Tirar da sua caixa",
   "st.splitHere": "Começar aqui outra oração",
   "st.joinNext": "Unir com a oração seguinte",
-  "st.second": "A segunda oração"
+  "st.second": "A segunda oração",
+  "cv.seePassage": "Ver a passagem de que se fala",
+  "cv.hidePassage": "Ocultar a passagem",
+  "cv.passageLoading": "Lendo a passagem…",
+  "cv.passageNone": "Não foi possível ler a passagem."
 }

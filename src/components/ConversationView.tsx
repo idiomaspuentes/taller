@@ -1,3 +1,4 @@
+import { hasPassage, PassageContext } from "./PassageContext";
 import { alineacionDecisionData } from "../domain/chatEvents/alineacionDecision";
 import { extraWorkOf } from "../domain/extraWork";
 import { subtaskName } from "../domain/noticeText";
@@ -281,6 +282,8 @@ function ConversationThread({
   const loc = (text: string) => localizeThread(text, language);
   const username = session?.username || demo?.viewer || "";
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
+  /** The passage the conversation is about, opened over it to be read. */
+  const [passageOpen, setPassageOpen] = useState(false);
   const [issue, setIssue] = useState<DcsIssue | null>(demo?.issue ?? null);
   const [board, setBoard] = useState<AssignmentsDoc | null>(null);
   const [catalog, setCatalog] = useState<SolversCatalog>(DEFAULT_SOLVERS_CATALOG);
@@ -725,6 +728,7 @@ function ConversationThread({
   ].filter(Boolean);
 
   const showAside = siblings.length > 1;
+  const canShowPassage = Boolean(!demo && session && board && launchCtx && hasPassage(launchCtx));
 
   // A decision of the team (a proposal, an objection) lives in a subtarea of its own, and is opened from a notice
   // by people who were not in the task it came from: what verse it is about, what the verse says and which task
@@ -847,6 +851,16 @@ function ConversationThread({
               <button type="button" className="af-link chat-origin__open" onClick={() => onOpenThread(origin.issue)}>
                 {t("cv.openOrigin")}
               </button>
+            </div>
+          ) : null}
+          {canShowPassage ? (
+            <button type="button" className="af-link chat-origin__open" aria-expanded={passageOpen} onClick={() => setPassageOpen((open) => !open)}>
+              {t(passageOpen ? "cv.hidePassage" : "cv.seePassage")}
+            </button>
+          ) : null}
+          {canShowPassage && passageOpen && session && board && launchCtx ? (
+            <div className="chat-passage">
+              <PassageContext session={session} ctx={launchCtx} board={board} />
             </div>
           ) : null}
           {demo ? (
