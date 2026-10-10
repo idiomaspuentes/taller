@@ -197,6 +197,7 @@ export function TaskCard(props: Props) {
           {/* «Nueva» is said of what is the person's to do. Of what nobody has taken, or waits, it stayed on every
               card for ever: nobody opens those. */}
           {card.activity.isNew && card.group !== "free" && card.group !== "waiting" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null}
+          {card.askedBack && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.correctionAsked")}</span> : null}
           {card.ownTitle || title}
         </h3>
         {menuItems.length ? (

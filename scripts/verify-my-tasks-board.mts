@@ -1,4 +1,5 @@
 /** «Mis tareas» as cards: which group each subtarea falls in, and the one button it shows. */
+import { correctionsFirst } from "../src/domain/myTasksBoard";
 import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { closedWithin } from "../src/dcs/issues";
@@ -453,6 +454,11 @@ await test("la tarjeta de la tarea que pidió correcciones dice cuántas volvier
   assert.deepEqual(where(build([asker, first], [asker, first]), asker.number)?.corrections, { total: 2, open: 1 }, "una sigue en curso; la otra ya se cerró");
   assert.deepEqual(where(build([asker], [asker]), asker.number)?.corrections, { total: 2, open: 0 }, "cerradas las dos, volvieron todas");
   assert.equal(where(build([asker, first], [asker, first]), first.number)?.corrections, undefined, "quien corrige no pidió nada");
+  assert.deepEqual(where(build([asker, first], [asker, first]), first.number)?.askedBack, { in: asker.number }, "la tarjeta de la corrección dice que fue pedida, y desde dónde");
+  assert.equal(where(build([asker, first], [asker, first]), asker.number)?.askedBack, undefined);
+  // Entre cincuenta tarjetas a las que sumarse, la corrección pedida va primero, y lo demás sigue en su orden.
+  const cards = [{ id: "a" }, { id: "b", askedBack: { in: 1 } }, { id: "c" }, { id: "d", askedBack: { in: 2 } }];
+  assert.deepEqual(correctionsFirst(cards).map((card) => card.id), ["b", "d", "a", "c"]);
   assert.equal(where(boardFor([asker]), asker.number)?.corrections, undefined, "sin correcciones pedidas, la tarjeta no dice nada");
 });
 

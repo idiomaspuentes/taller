@@ -14,7 +14,7 @@ import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
-import { askedFrom, isExtraItemId } from "./extraWork";
+import { askedFrom, extraItemId, isExtraItemId } from "./extraWork";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -65,6 +65,11 @@ export type BoardCard = {
    * work that task had already finished there, and what the committee asked was nowhere on it.
    */
   ownTitle: string;
+  /**
+   * This subtarea is a correction somebody asked for (a committee that did not endorse): from which subtarea, and
+   * who raised it. It was one more card among fifty that may be joined, and whoever asked could not find it.
+   */
+  askedBack?: { in: number; by?: string };
   /**
    * The corrections asked from this subtarea (a committee's, of the teams before it), and how many are still being
    * worked on. Its card said nothing of them: neither that the endorsement waited for them, nor that they were back.
@@ -179,6 +184,11 @@ export function nextStepOfMine(login: string, steps: TaskStep[], issue: DcsIssue
   return action.kind === "continue" && action.step && stepClaimMode(action.step) === "none" ? action.step : undefined;
 }
 
+/** The corrections that were asked for, first, in the order they had; then the rest, in theirs. */
+export function correctionsFirst<T extends Pick<BoardCard, "askedBack">>(cards: T[]): T[] {
+  return [...cards.filter((card) => card.askedBack), ...cards.filter((card) => !card.askedBack)];
+}
+
 export function buildBoard(input: BoardInput): Board {
   const { session, pmOrg, projects, cursor, myLevel } = input;
   const login = session.username;
@@ -199,6 +209,8 @@ export function buildBoard(input: BoardInput): Board {
     const { book, place } = placeOf(issue);
     const mineAssigned = isIssueAssignedTo(issue, login);
     const asked = bucket?.board.settings?.extraWork?.some((row) => row.askedIn === issue.number) ? askedFrom(bucket.board.settings, issue.number, openItemsOf(bucket)) : [];
+    const itemIds = parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? [];
+    const back = bucket?.board.settings?.extraWork?.find((row) => row.askedIn && itemIds.includes(extraItemId(row.id)));
     return {
       issue,
       bucket,
@@ -211,6 +223,7 @@ export function buildBoard(input: BoardInput): Board {
       place,
       ownTitle: ownTitleOf(issue),
       ...(asked.length ? { corrections: { total: asked.length, open: asked.filter((row) => row.open).length } } : {}),
+      ...(back?.askedIn ? { askedBack: { in: back.askedIn, ...(back.askedBy ? { by: back.askedBy } : {}) } } : {}),
       stepsDone: steps.filter((s) => progress.doneStepIds.includes(s.id)).length,
       stepsTotal: steps.length,
       nextStep: steps.find((s) => !progress.doneStepIds.includes(s.id)),
@@ -325,6 +338,8 @@ export function buildBoard(input: BoardInput): Board {
     // under ten tasks that have not begun.
     if (group === "waiting") board.waiting = [...board.waiting.filter(joined), ...board.waiting.filter((c) => !joined(c))];
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
+    // A correction that was asked for holds up whoever asked: it comes before the work that is only waiting its turn.
+    if (group !== "done") board[group] = correctionsFirst(board[group]);
   }
   return board;
 }

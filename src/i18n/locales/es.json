@@ -3084,5 +3084,6 @@
   "gr.proposedNote": "Propuse otra redacción (decisión #{n}): {text}",
   "cv.origin": "Sobre {ref}. Salió de {task}.",
   "cv.originTask": "la tarea #{n}",
-  "cv.openOrigin": "Abrir la tarea de la que salió"
+  "cv.openOrigin": "Abrir la tarea de la que salió",
+  "tb.correctionAsked": "Corrección pedida"
 }
