@@ -3093,5 +3093,11 @@
   "menu.textSize": "Tamaño de la letra",
   "menu.textNormal": "Normal",
   "menu.textLarge": "Grande",
-  "menu.textLarger": "Muy grande"
+  "menu.textLarger": "Muy grande",
+  "st.toBefore": "Pasar a la caja de antes",
+  "st.toAfter": "Pasar a la caja de después",
+  "st.takeOut": "Sacar de su caja",
+  "st.splitHere": "Empezar aquí otra oración",
+  "st.joinNext": "Unir con la oración siguiente",
+  "st.second": "La segunda oración"
 }

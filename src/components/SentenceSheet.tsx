@@ -9,7 +9,7 @@ import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
 import { loadOriginalWords, loadTrees } from "../dcs/syntaxTree";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
-import { diagramSentences, dissolveBox, flatSentence, nodeAt, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
+import { diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, moveBeside, moveOut, nodeAt, splitSentence, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
 import { glossOfWord, strongParts } from "../domain/lexicon";
 import { referentKey } from "../domain/referents";
 import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, type TreeLeaf, type TreeFile, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
@@ -276,7 +276,17 @@ export function SentenceSheet({
    * «porque» is joined to what came before, and that may be in another verse or another chapter.
    */
   const [around, setAround] = useState<{ before: TreeSentence[]; after: TreeSentence[] }>({ before: [], after: [] });
-  const [editing, setEditing] = useState<{ key: string; root: TreeNode; history: TreeNode[]; picked: Picked | null; wrapping: boolean } | null>(null);
+  const [editing, setEditing] = useState<{
+    key: string;
+    root: TreeNode;
+    /** The second sentence, when the one being changed was parted in two: both are kept on saving. */
+    tail?: TreeNode;
+    /** Diagrams of the team that were joined into this one: they are taken away on saving. */
+    absorbed?: string[];
+    history: { root: TreeNode; tail?: TreeNode; absorbed?: string[] }[];
+    picked: Picked | null;
+    wrapping: boolean;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   /** A tree, as grammars draw it, or boxes one inside another, which fit a phone and are what is changed. */
@@ -341,7 +351,8 @@ export function SentenceSheet({
 
   // ---- changing a diagram
 
-  const change = (root: TreeNode) => setEditing((now) => (now ? { ...now, root, history: [...now.history, now.root], picked: null, wrapping: false } : now));
+  const change = (root: TreeNode, more: { tail?: TreeNode; absorbed?: string[] } = {}) =>
+    setEditing((now) => (now ? { ...now, root, ...more, history: [...now.history, { root: now.root, tail: now.tail, absorbed: now.absorbed }], picked: null, wrapping: false } : now));
   const onPick = (path: TreePath) =>
     setEditing((now) => {
       if (!now || !path.length) return now;
@@ -355,6 +366,16 @@ export function SentenceSheet({
   const picked = editing?.picked ?? null;
   const one = editing && picked?.items.length === 1 ? nodeAt(editing.root, [...picked.parent, picked.items[0]!]) : undefined;
   const box = one && !isLeaf(one) ? one : undefined;
+  /** Where the one thing chosen may go in one touch: into the box before it, into the one after, or out of its own. */
+  const moves = (() => {
+    if (!editing || !picked || !one) return null;
+    const holder = nodeAt(editing.root, picked.parent);
+    if (!holder || isLeaf(holder)) return null;
+    const index = picked.items[0]!;
+    const before = holder.kids[index - 1];
+    const after = holder.kids[index + 1];
+    return { index, before: Boolean(before && !isLeaf(before)), after: Boolean(after && !isLeaf(after)), out: picked.parent.length > 0 && (index === 0 || index === holder.kids.length - 1) };
+  })();
   /** What a touch on a function does: says what the chosen box is, or puts what is chosen into a new box of it. */
   const give = (role: string) => {
     if (!editing || !picked) return;
@@ -367,14 +388,31 @@ export function SentenceSheet({
     else change(wrapKids(editing.root, picked.parent, Math.min(...picked.items), Math.max(...picked.items), { role: "", clause: true }));
   };
 
-  async function keep(key: string, root: TreeNode | null) {
+  /**
+   * The sentence that follows the one being changed, to join it: the team's own diagram of it, or the app's when
+   * it fits our text. None when the one in hand has already been parted, or nothing that can be drawn follows.
+   */
+  const following = (() => {
+    if (!editing || editing.tail || !loaded) return undefined;
+    const end = Math.max(...leavesOf(editing.root).map(leafOrder));
+    const start = (sentence: TreeSentence) => Math.min(...leavesOf(sentence.root).map(leafOrder));
+    const candidates: Shown[] = [...sound, ...(loaded.file?.sentences ?? [])].filter((sentence) => start(sentence) > end);
+    const first = candidates.sort((a, b) => start(a) - start(b))[0];
+    const drawn = first && (first.key || (loaded.file && sentenceFits(loaded.file, first, (verse) => loaded.words[`${verse.chapter}:${verse.verse}`]?.length)));
+    return first && drawn ? first : undefined;
+  })();
+
+  async function keep(key: string, root: TreeNode | null, more: { tail?: TreeNode; absorbed?: string[] } = {}) {
     if (!at || !session || !teamOrg) return;
     setSaving(true);
     setError("");
     try {
-      const chapter = Math.floor(Number(key) / 1e6) || at.chapter;
-      const doc = await saveDiagram(session, teamOrg, at.book, chapter, key, root);
-      setLoaded((now) => (now ? { ...now, docs: { ...now.docs, [chapter]: doc } } : now));
+      const chapterOf = (id: string) => Math.floor(Number(id) / 1e6) || at.chapter;
+      const docs: Record<number, DiagramDoc> = {};
+      // The sentence itself, the second one when it was parted, and the team's diagrams it took in, each in turn.
+      const writes: [string, TreeNode | null][] = [[key, root], ...(more.tail ? [[sentenceKey(more.tail), more.tail] as [string, TreeNode]] : []), ...(more.absorbed ?? []).filter((id) => id !== key).map((id): [string, null] => [id, null])];
+      for (const [id, tree] of writes) docs[chapterOf(id)] = await saveDiagram(session, teamOrg, at.book, chapterOf(id), id, tree);
+      setLoaded((now) => (now ? { ...now, docs: { ...now.docs, ...docs } } : now));
       setEditing(null);
     } catch (err) {
       setError(explainError(err));
@@ -429,6 +467,14 @@ export function SentenceSheet({
             <section className="st-sentence">
               <p className="st-kind">{kindOf(editing.root)}</p>
               <Part node={editing.root} path={[]} shared={shared({ picked, onPick })} />
+              {editing.tail ? (
+                // The second of the two the sentence was parted in: shown as it will be kept; it is changed on its own later.
+                <div className="st-tail">
+                  <p className="af-lbl">{t("st.second")}</p>
+                  <p className="st-kind">{kindOf(editing.tail)}</p>
+                  <Part node={editing.tail} path={[]} shared={{ ...shared(), onWord: () => undefined }} />
+                </div>
+              ) : null}
             </section>
           ) : (
             <>
@@ -504,7 +550,16 @@ export function SentenceSheet({
           // Under the thumb: what is done to what was chosen, and leaving.
           <footer className="st-tools">
             {!picked ? (
-              <p className="af-hint">{t("st.editHint")}</p>
+              <>
+                <p className="af-hint">{t("st.editHint")}</p>
+                {following ? (
+                  <div className="st-actions">
+                    <button type="button" className="af-link" onClick={() => change(joinSentences(editing.root, following.root), { absorbed: [...(editing.absorbed ?? []), ...(following.key ? [following.key] : [])] })}>
+                      {t("st.joinNext")}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <>
                 <p className="af-lbl">{t(box && !editing.wrapping ? "st.boxIs" : "st.wrapAs")}</p>
@@ -518,6 +573,39 @@ export function SentenceSheet({
                     {t("st.clause")}
                   </button>
                 </div>
+                {moves && (moves.before || moves.after || moves.out) ? (
+                  <div className="st-actions">
+                    {moves.before ? (
+                      <button type="button" className="af-link" onClick={() => change(moveBeside(editing.root, picked.parent, moves.index, -1))}>
+                        {t("st.toBefore")}
+                      </button>
+                    ) : null}
+                    {moves.after ? (
+                      <button type="button" className="af-link" onClick={() => change(moveBeside(editing.root, picked.parent, moves.index, 1))}>
+                        {t("st.toAfter")}
+                      </button>
+                    ) : null}
+                    {moves.out ? (
+                      <button type="button" className="af-link" onClick={() => change(moveOut(editing.root, [...picked.parent, moves.index]))}>
+                        {t("st.takeOut")}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {moves && !picked.parent.length && moves.index > 0 && !editing.tail ? (
+                  <div className="st-actions">
+                    <button
+                      type="button"
+                      className="af-link"
+                      onClick={() => {
+                        const parts = splitSentence(editing.root, moves.index);
+                        if (parts) change(parts[0], { tail: parts[1] });
+                      }}
+                    >
+                      {t("st.splitHere")}
+                    </button>
+                  </div>
+                ) : null}
                 {box && !editing.wrapping ? (
                   <div className="st-actions">
                     <button type="button" className="af-link" onClick={() => change(dissolveBox(editing.root, [...picked.parent, picked.items[0]!]))}>
@@ -531,13 +619,13 @@ export function SentenceSheet({
               </>
             )}
             <div className="st-tools__end">
-              <Button type="button" variant="ghost" size="sm" disabled={saving || !editing.history.length} onClick={() => setEditing({ ...editing, root: editing.history[editing.history.length - 1]!, history: editing.history.slice(0, -1), picked: null, wrapping: false })}>
+              <Button type="button" variant="ghost" size="sm" disabled={saving || !editing.history.length} onClick={() => setEditing({ ...editing, ...editing.history[editing.history.length - 1]!, history: editing.history.slice(0, -1), picked: null, wrapping: false })}>
                 {t("st.undo")}
               </Button>
               <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => setEditing(null)}>
                 {t("st.cancel")}
               </Button>
-              <Button type="button" size="sm" disabled={saving || !editing.history.length} onClick={() => void keep(editing.key, editing.root)}>
+              <Button type="button" size="sm" disabled={saving || !editing.history.length} onClick={() => void keep(editing.key, editing.root, { tail: editing.tail, absorbed: editing.absorbed })}>
                 {t(saving ? "st.saving" : "st.save")}
               </Button>
             </div>

@@ -77,8 +77,13 @@ carpeta de su espacio (`diagramas/<LIBRO>/<capítulo>.json`), con quién lo dej�
 la app; «Volver al diagrama de la app» lo quita. En una pantalla abierta solo para probar (el laboratorio) los
 diagramas se leen y no se cambian. Lo vigila `npm run verify:diagrams`.
 
-Lo que todavía no hace: partir una oración en dos o juntar dos, cambiar el orden de las cajas, y mover una palabra
-de una caja a otra de un toque (hoy es quitar la caja y volver a armarla).
+También de un toque: pasar una palabra (o una caja) a la caja de antes o a la de después, sacar de su caja la
+primera o la última, empezar otra oración en un punto («Empezar aquí otra oración», que guarda dos diagramas) y unir
+la oración con la siguiente. Las palabras nunca cambian de orden: es el del texto. Desde la hoja se puede además ver
+la oración anterior y la siguiente, para saber qué une un conector.
+
+Lo que todavía no hace: corregir desde la vista de árbol (abre las cajas), y armar de una vez un diagrama que abarque
+varios versículos (se arma el de uno y se une con el siguiente).
 
 De los árboles (500 MB) se guarda solo qué partes tienen función y en qué lugar de su versículo está cada palabra:
 8,6 MB en `public/trees/`, un archivo por libro. Las palabras se leen de nuestro texto, y por eso una oración se
