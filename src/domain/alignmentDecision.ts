@@ -21,6 +21,12 @@ export const RESULT_SCHEMA = "gateway-alignment-result-1";
 /** Days the team has to decide before whoever coordinates may close it. */
 export const DECISION_DAYS = 3;
 
+/**
+ * How many people other than whoever proposed it, and whoever aligned the verse, are enough to accept a proposal
+ * once its time is over: at most these, and fewer where the team asks for fewer.
+ */
+export const LATE_APPROVALS = 2;
+
 /** The proposal or the objection as the proposer saves it in the text repository. */
 export type ProposalFile = {
   schema: typeof PROPOSAL_SCHEMA;
@@ -153,8 +159,11 @@ function blank(): OptionCount {
 /**
  * The team has decided when one option has the minimum of habilitadas, with the minimum
  * of independent ones, and nobody else backs the other option. The proposer supports
- * their own proposal (or objection) without voting. Past the deadline with no consensus
- * the decision waits for whoever coordinates.
+ * their own proposal (or objection) without voting.
+ *
+ * A proposal is not left waiting for ever for a whole team to answer. Past the deadline it is accepted with the
+ * approval of two people from outside it (`LATE_APPROVALS`, or as many as the team asks for when that is fewer),
+ * as long as nobody is against. With somebody against, or with an objection, it waits for whoever coordinates.
  */
 export function tallyDecision(params: {
   kind: DecisionKind;
@@ -196,6 +205,7 @@ export function tallyDecision(params: {
   else if (won(no, othersForYes)) winner = no;
 
   const late = Number.isFinite(Date.parse(params.deadline)) && params.now.getTime() >= Date.parse(params.deadline);
+  if (!winner && late && params.kind === "proposal" && counts[no].people.length === 0 && counts[yes].independent >= Math.min(LATE_APPROVALS, Math.max(1, minIndependent))) winner = yes;
   return { counts, ...(winner ? { winner } : {}), state: winner ? "decidida" : late ? "plazo" : "abierta" };
 }
 

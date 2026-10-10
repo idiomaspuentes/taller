@@ -97,6 +97,26 @@ test("pasado el plazo sin consenso queda esperando a quien coordina", () => {
   assert.equal(t.state, "plazo");
 });
 
+test("pasado el plazo, una propuesta se acepta con dos personas de fuera, o con las que el equipo pida si son menos", () => {
+  const late = new Date("2026-10-05T00:00:00Z");
+  const many = { ...base, thresholds: { minAgree: 5, minIndependent: 3 }, levels: { ...levels, dora: "habilitada" as const, eva: "habilitada" as const } };
+  // Cinco acuerdos y tres de fuera es mucho para un equipo que no contesta: con el plazo cumplido bastan dos de fuera.
+  assert.equal(tallyDecision({ ...many, votes: [vote("carla", "aceptar"), vote("dora", "aceptar")] }).state, "abierta", "antes del plazo, dos no alcanzan");
+  const two = tallyDecision({ ...many, votes: [vote("carla", "aceptar"), vote("dora", "aceptar")], now: late });
+  assert.equal(two.winner, "aceptar");
+  assert.equal(two.state, "decidida");
+  assert.equal(tallyDecision({ ...many, votes: [vote("carla", "aceptar")], now: late }).state, "plazo", "una sola de fuera no basta donde el equipo pide más");
+  // Quien alineó el versículo no es de fuera, y quien propone tampoco.
+  assert.equal(tallyDecision({ ...many, votes: [vote("ana", "aceptar"), vote("carla", "aceptar")], now: late }).state, "plazo");
+  // Con alguien en contra no se aplica sola: espera a quien coordina.
+  assert.equal(tallyDecision({ ...many, votes: [vote("carla", "aceptar"), vote("dora", "aceptar"), vote("eva", "rechazar")], now: late }).state, "plazo");
+  // Donde el equipo pide una sola persona de fuera, pasado el plazo sigue bastando una.
+  const few = { ...base, thresholds: { minAgree: 4, minIndependent: 1 } };
+  assert.equal(tallyDecision({ ...few, votes: [vote("carla", "aceptar")], now: late }).winner, "aceptar");
+  // Una objeción no cambia el texto: pasado el plazo sigue esperando a quien coordina.
+  assert.equal(tallyDecision({ ...many, kind: "objection", votes: [vote("carla", "cambiar"), vote("dora", "cambiar")], now: late }).state, "plazo");
+});
+
 test("una objeción usa sus propias opciones y nunca aplica una alineación", () => {
   assert.deepEqual(optionsFor("objection"), { yes: "cambiar", no: "mantener" });
   const t = tallyDecision({ ...base, kind: "objection", votes: [vote("carla", "cambiar")] });

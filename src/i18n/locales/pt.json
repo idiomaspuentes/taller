@@ -2243,8 +2243,8 @@
   "lx.rFrom": "Enviado do Taller por",
   "fx.why": "Detalhe do motivo",
   "fx.whyHint": "Explique mais, se precisar (opcional)",
-  "fx.fixNow": "Corrigir agora",
-  "fx.fixNowHint": "Altera o rascunho do grupo neste momento.",
+  "fx.fixNow": "Propor a correção",
+  "fx.fixNowHint": "Ainda não altera o rascunho: é aplicada quando a equipe estiver de acordo. Passados {days} dias, basta que {n} outras pessoas a aprovem.",
   "fx.ask": "Pedir ao grupo",
   "fx.askHint": "Não altera nada: deixa seu comentário como uma decisão que os outros respondem.",
   "fx.askHintText": "Não altera nada: propõe este texto como uma decisão que os outros respondem.",
@@ -3078,5 +3078,6 @@
   "kd.discardYes": "Sim, descartar",
   "al.joinedOne": "Os versículos {refs} estão escritos como um só no rascunho e ainda não podem ser alinhados aqui.",
   "al.joinedMany": "Estes versículos estão escritos como um só no rascunho e ainda não podem ser alinhados aqui: {refs}.",
-  "al.titleLeftOut": "O título deste salmo ainda não pode ser alinhado aqui."
+  "al.titleLeftOut": "O título deste salmo ainda não pode ser alinhado aqui.",
+  "fx.proposalNote": "Correção proposta"
 }

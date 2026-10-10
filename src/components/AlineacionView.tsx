@@ -1,6 +1,5 @@
 import { toolHeading } from "./toolHeading";
 import { draftTaskId } from "../dcs/afinacionLoad";
-import { saveCorrection } from "../dcs/afinacionStore";
 import { commentOnIssue } from "../dcs/issues";
 import { refComment } from "../domain/commentPlace";
 import { ChapterReader } from "./ChapterReader";
@@ -72,7 +71,7 @@ import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
 import { glossesInclude, strongParts, type LexiconFile } from "../domain/lexicon";
 import { WordSheet } from "./WordSheet";
 import { referentKey } from "../domain/referents";
-import { CorrectionSheet, type CorrectionWhy } from "./CorrectionSheet";
+import { CorrectionSheet } from "./CorrectionSheet";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -907,26 +906,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     onClose();
   }
 
-  /** Correct the text of the verse in view on the group's draft; what is aligned of the words that stay is kept. */
-  async function saveFix(text: string, why: string, detail: CorrectionWhy) {
-    if (!session || !data || !verse || !text.trim()) return;
-    setSaving(true);
-    setFixError("");
-    try {
-      await saveCorrection({ session, target: { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, filepath: data.draft.filepath, chapter: data.chapter, verse: verse.verse, text: text.trim(), reason: why, book: data.book, before: verse.text, reasons: detail.reasons, note: detail.note, from: { issue: ctx?.issueNumber, task: ctx?.taskId, step: ctx?.stepId, item: itemId(data.chapter, verse.verse) } });
-      setFixing(false);
-      announce(t("af.corrected").replace("{ref}", `${data.book} ${data.chapter}:${verse.verse}`));
-      await load();
-    } catch (err) {
-      setFixError(explainError(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   /**
-   * Leave the verse for the group instead of changing it: the comment, with the wording proposed if the person
-   * wrote one, becomes a decision of the team in its own subtarea. Nothing is written to the draft.
+   * Leave the verse for the group instead of changing it: the comment, or the wording the person proposes,
+   * becomes a decision of the team in its own subtarea. Nothing is written to the draft: a correction reaches
+   * it when the team agrees to it (see `tallyDecision`), not when somebody writes it.
    */
   async function askGroup(text: string, why: string) {
     if (!session || !data || !verse || !ctx || !why.trim()) return;
@@ -1449,7 +1432,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           ]}
           busy={saving}
           error={fixError}
-          onFix={(text, why, detail) => void saveFix(text, why, detail)}
+          // A correction is a proposal: it reaches the draft when the team agrees to it, not when it is written.
+          onFix={(text, why) => void askGroup(text, why || t("fx.proposalNote"))}
           onAsk={(text, why) => void askGroup(text, why)}
           onClose={() => setFixing(false)}
         />

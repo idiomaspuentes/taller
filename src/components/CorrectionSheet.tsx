@@ -1,3 +1,4 @@
+import { DECISION_DAYS, LATE_APPROVALS } from "../domain/alignmentDecision";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -145,8 +146,10 @@ export function CorrectionSheet({
             >
               {busy && acting === "fix" ? t("af.saving") : t("fx.fixNow")}
             </Button>
-            <p className="ws-meta">{t("fx.fixNowHint")}</p>
+            <p className="ws-meta">{t("fx.fixNowHint").replace("{days}", String(DECISION_DAYS)).replace("{n}", String(LATE_APPROVALS))}</p>
           </div>
+          {/* With the text changed there is one way out: the change is proposed. A comment alone is asked of the group. */}
+          {changed ? null : (
           <div className="fx-choice">
             <Button type="button" variant="outline" disabled={busy || !reason} onClick={() => {
                 setActing("ask");
@@ -155,8 +158,9 @@ export function CorrectionSheet({
             >
               {busy && acting === "ask" ? t("lx.reportSending") : t("fx.ask")}
             </Button>
-            <p className="ws-meta">{!reason ? t("fx.askNeeds") : changed ? t("fx.askHintText") : t("fx.askHint")}</p>
+            <p className="ws-meta">{!reason ? t("fx.askNeeds") : t("fx.askHint")}</p>
           </div>
+          )}
         </footer>
       </DialogContent>
     </Dialog>
