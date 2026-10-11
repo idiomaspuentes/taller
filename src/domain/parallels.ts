@@ -36,31 +36,68 @@ export function parseParallelRef(text: string): ParallelRef | null {
  */
 export function sharedWords(marks: string | undefined, verses: string[]): number[][] | null {
   if (!marks) return null;
-  // What stands alone and has no letter (a paseq, a dash) is shown, and is no word.
-  const words = verses.map((text) => (text.match(/\S+/g) ?? []).map((piece, index) => ({ index, word: /\p{L}/u.test(piece) })).filter((piece) => piece.word));
+  // What stands alone and has no letter (a paseq, a dash) is shown, and is no word; nor is the sign that ends a
+  // section of the Hebrew (ס, פ), which is a letter.
+  const words = verses.map((text) => (text.match(/\S+/g) ?? []).map((piece, index) => ({ index, word: /\p{L}/u.test(piece) && !/^[ספ]$/.test(piece) })).filter((piece) => piece.word));
   if (words.reduce((sum, verse) => sum + verse.length, 0) !== marks.length) return null;
   let at = 0;
   return words.map((verse) => verse.filter(() => Number(marks[at++]) % 3 !== 0).map((piece) => piece.index));
 }
 
-/** A word of the Hebrew text the list counts, by what is written after it: a space, a maqqef, the end of a section. */
-export type CountedWord = { after: string };
+/**
+ * What the list counts in a verse of the Hebrew, each with a digit of its own: a word as it is shown (those a
+ * maqqef joins are one), the form a word is read in when it is written otherwise (it follows the written one),
+ * and the sign that ends a section (ס, פ).
+ */
+export type CountedToken = "word" | "read" | "section";
 
 /**
- * The marks of a Hebrew reference as a digit for each word that is shown. The list counts the Hebrew otherwise
- * than the Greek: the sign that ends a section (ס, פ) has a digit of its own, which is taken out here, since our
- * text does not write it. (Words joined by a maqqef have one digit between them, and are shown as one.) `words`
- * are those of the verses of the reference in the edition the list counts; when the marks are not as many as
- * that edition has, they are left as they are, and the app will not trust them.
+ * What the list counts in a verse of our Hebrew text, from its USFM. The form that is read is in a note after the
+ * written word, tagged as a word; the sign of a section is written after the end of the verse, joined to its last
+ * word or alone.
  */
-export function marksOfWords(marks: string, words: CountedWord[]): string {
-  const section: boolean[] = [];
-  for (const word of words) {
-    if (word.after.includes("־")) continue;
-    section.push(false);
-    if (/[ספ]/.test(word.after)) section.push(true);
+export function hebrewTokens(usfm: string): CountedToken[] {
+  const flat = usfm
+    .replace(/\\v \d+/, "")
+    .replace(/\\va \d+\\va\*/g, "")
+    // Each word of a note stands for a form that is read.
+    .replace(/\\f .*?\\f\*/gs, (note) => ` ${"\u00ab ".repeat((note.match(/\\\+w /g) ?? []).length)}`)
+    .replace(/\\w ([^|\\]+)\|[^\\]*\\w\*/g, "$1")
+    .replace(/\\[a-z0-9-]+\*?/g, " ");
+  const tokens: CountedToken[] = [];
+  for (const piece of flat.split(/\s+/).filter(Boolean)) {
+    if (piece === "\u00ab") {
+      // The note comes after the sign of the section when the word it is about ends the verse.
+      if (tokens[tokens.length - 1] === "section") tokens.splice(tokens.length - 1, 0, "read");
+      else tokens.push("read");
+    } else if (/^[ספ]$/.test(piece)) tokens.push("section");
+    else if (/\p{L}/u.test(piece)) {
+      tokens.push("word");
+      if (/׃[ספ]$/.test(piece)) tokens.push("section");
+    }
   }
-  return section.length === marks.length ? [...marks].filter((_, i) => !section[i]).join("") : marks;
+  return tokens;
+}
+
+const isShared = (mark: string | undefined) => Number(mark) % 3 !== 0;
+
+/**
+ * The marks of a Hebrew reference as a digit for each word that is shown. `tokens` is what the list counts in the
+ * verses of the reference in our text (`hebrewTokens`). The digits of the signs of section are taken out; a word
+ * that is read otherwise than it is written is shown once, and is marked when either form is shared (the
+ * parallel may have the one or the other). Marks that are not as many as the tokens are left as they came, and
+ * the app trusts them only if they happen to be as many as the words.
+ */
+export function marksOfWords(marks: string, tokens: CountedToken[]): string {
+  if (tokens.length !== marks.length) return marks;
+  let out = "";
+  tokens.forEach((token, i) => {
+    if (token !== "word") return;
+    let mark = marks[i]!;
+    for (let next = i + 1; tokens[next] === "read"; next++) if (!isShared(mark) && isShared(marks[next])) mark = marks[next]!;
+    out += mark;
+  });
+  return out;
 }
 
 const spansText = (spans: VerseSpan[]) => spans.map((span) => (span.to > span.from ? `${span.from}-${span.to}` : String(span.from))).join(",");
@@ -165,9 +202,9 @@ export function hebrewToOurs(mapped: Record<string, string>): (book: string, pla
  * A reference of the list in our numbering. One that runs over the end of a chapter here becomes two, and its
  * marks are left behind: they count the words of the whole run. So are those of a Hebrew verse the New Testament
  * quotes (`quoted`): there the list counts the words of the Greek translation the quote was made from.
- * `hebrewWords` gives the words of a verse of the Hebrew Bible, in its numbering (see `marksOfWords`).
+ * `counted` gives what the list counts in a verse of our Hebrew text, in our numbering (see `marksOfWords`).
  */
-export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Place) => Place, quoted = false, hebrewWords?: (book: string, place: Place) => CountedWord[]): ParallelRef[] {
+export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Place) => Place, quoted = false, counted?: (book: string, place: Place) => CountedToken[]): ParallelRef[] {
   const ref = parseParallelRef(verse.ref);
   if (!ref) return [];
   if (!verse.hebrew) return [verse.marks ? { ...ref, marks: verse.marks } : ref];
@@ -177,7 +214,7 @@ export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Plac
     byChapter.set(place.chapter, [...(byChapter.get(place.chapter) ?? []), place.verse]);
   }
   const kept = byChapter.size === 1 && !quoted ? verse.marks : undefined;
-  const marks = kept && hebrewWords ? marksOfWords(kept, versesOfRef(ref).flatMap((number) => hebrewWords(ref.book, { chapter: ref.chapter, verse: number }))) : kept;
+  const marks = kept && counted ? marksOfWords(kept, versesOfRef(ref).flatMap((number) => counted(ref.book, toOurs(ref.book, { chapter: ref.chapter, verse: number })))) : kept;
   return [...byChapter].sort((a, b) => a[0] - b[0]).map(([chapter, verses]) => ({ book: ref.book, chapter, spans: spansOf(verses), ...(marks ? { marks } : {}) }));
 }
 
@@ -185,12 +222,12 @@ export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Plac
  * What is written for each book: the passages it takes part in, as text. A passage that says nothing another one
  * of the book does not already say (the list repeats a short one inside a longer one) is left out.
  */
-export function parallelFiles(passages: SourceVerse[][], toOurs: (book: string, place: Place) => Place, hebrewWords?: (book: string, place: Place) => CountedWord[]): Map<string, string[][]> {
+export function parallelFiles(passages: SourceVerse[][], toOurs: (book: string, place: Place) => Place, counted?: (book: string, place: Place) => CountedToken[]): Map<string, string[][]> {
   const files = new Map<string, string[][]>();
   for (const passage of passages) {
     const quoted = passage.some((verse) => verse.hebrew) && passage.some((verse) => !verse.hebrew);
     const found = new Map<string, ParallelRef>();
-    for (const ref of passage.flatMap((verse) => refInOurs(verse, toOurs, quoted, hebrewWords))) if (!found.has(formatParallelRef(ref))) found.set(formatParallelRef(ref), ref);
+    for (const ref of passage.flatMap((verse) => refInOurs(verse, toOurs, quoted, counted))) if (!found.has(formatParallelRef(ref))) found.set(formatParallelRef(ref), ref);
     const refs = [...found.values()].map(written);
     if (refs.length < 2) continue;
     for (const book of new Set(refs.map((ref) => ref.slice(0, 3)))) files.set(book, [...(files.get(book) ?? []), refs]);

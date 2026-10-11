@@ -24,13 +24,21 @@ Las palabras que coinciden vienen como un dígito por palabra, contando las pala
 Bíblicas. Se resaltan solo cuando hay tantos dígitos como palabras mostramos: con una de diferencia se marcaría la
 palabra que no es. Donde no cuadra, el pasaje se muestra sin resaltar.
 
-En el hebreo la lista cuenta de otro modo: las palabras unidas por guion (maqqef) llevan un solo dígito, y la señal
-de fin de sección (ס, פ) lleva uno propio. Lo primero ya coincide con lo que mostramos; lo segundo se quita al
-construir los archivos, leyendo dónde están esas señales en el texto hebreo de MACULA (`marksOfWords`; por eso
-`parallels:build` pide `--hebrew`, la misma carpeta que `trees:build`). Medido en los 66 libros: cuadra el 94 % de
-las referencias del hebreo (antes el 78 %) y el 88 % de las del griego. Lo que falta en el griego son diferencias
-de edición; en el hebreo, unas 150 referencias que tienen un dígito de más sin que haya señal en ese texto. Las
-marcas del hebreo que el Nuevo Testamento cita no se guardan: cuentan las palabras de la Septuaginta.
+En el hebreo la lista cuenta de otro modo, y da un dígito a dos cosas que nuestro texto no muestra como palabra:
+la señal de fin de sección (ס, פ) y la forma en que se lee una palabra que se escribe de otro modo (la lista cuenta
+la escrita y, enseguida, la leída; la app muestra solo la escrita). Las palabras unidas por guion (maqqef) llevan
+un solo dígito, igual que como las mostramos. Al construir los archivos se lee de nuestro propio texto hebreo dónde
+están esas señales y esas notas (`hebrewTokens`; por eso `parallels:build` pide `--texts`, la misma carpeta que
+`trees:build`), se quitan los dígitos de las señales, y la palabra de doble lectura queda con una sola marca: se
+resalta si la lista da por compartida cualquiera de sus dos formas, porque el paralelo puede traer una u otra
+(1 Crónicas 14:1 escribe «Hiram» como 2 Samuel 5:11 y lee «Huram»). La señal que nuestro texto trae suelta en medio
+de un versículo se muestra y no se cuenta.
+
+Medido en los 66 libros: cuadra el 98,7 % de las referencias del hebreo (antes el 78 %) y el 88 % de las del
+griego. Lo que falta en el griego son diferencias de edición. En el hebreo quedan 33 referencias: Jeremías 52 y
+otras donde nuestro texto trae una palabra sin vocales y sin nota de lectura, 1 Reyes 22:43 (que la Biblia hebrea
+parte en dos versículos), y los Salmos 18:1 y 53:1 (el título). Las marcas del hebreo que el Nuevo Testamento cita
+no se guardan: cuentan las palabras de la Septuaginta.
 
 «¿A quién se refiere?» sale de MACULA (`Clear-Bible/macula-hebrew` y `macula-greek`, de Biblica, CC BY 4.0). En la
 ficha de una palabra del original, donde quiera que se abra (al alinear, al revisar desafíos y términos clave, en un

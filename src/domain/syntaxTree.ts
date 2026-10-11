@@ -216,7 +216,7 @@ export function fitWords(theirs: string[], ours: string[]): (number | null)[] {
 // ---------------------------------------------------------------- building the files
 
 /** A node of MACULA's tree: a group (`wg`) or a word, or a piece of a word in Hebrew (`w`). */
-export type RawNode = { word: boolean; role: string; cls: string; ref?: { book: string; chapter: number; verse: number; word: number }; text: string; /** What is written after a word: a space, a maqqef, the end of a verse or of a section. */ after?: string; kids: RawNode[] };
+export type RawNode = { word: boolean; role: string; cls: string; ref?: { book: string; chapter: number; verse: number; word: number }; text: string; kids: RawNode[] };
 
 const attrsOf = (tag: string) => Object.fromEntries([...tag.matchAll(/([\w:]+)="([^"]*)"/g)].map((found) => [found[1]!, found[2]!]));
 
@@ -241,7 +241,7 @@ export function parseLowfat(xml: string): RawNode[] {
     const a = attrsOf(attrs ?? "");
     const ref = /^([1-3A-Z][A-Z]{2}) (\d+):(\d+)!(\d+)/.exec(a.ref ?? "");
     // A few groups carry a note of the analysts' tool where the function goes: that is no function.
-    const node: RawNode = { word: name === "w", role: /^[a-z][a-z0-9]{0,5}$/.test(a.role ?? "") ? a.role! : "", cls: a.class ?? "", text: (text ?? "").trim(), ...(a.after ? { after: a.after } : {}), kids: [], ...(ref ? { ref: { book: ref[1]!, chapter: Number(ref[2]), verse: Number(ref[3]), word: Number(ref[4]) } } : {}) };
+    const node: RawNode = { word: name === "w", role: /^[a-z][a-z0-9]{0,5}$/.test(a.role ?? "") ? a.role! : "", cls: a.class ?? "", text: (text ?? "").trim(), kids: [], ...(ref ? { ref: { book: ref[1]!, chapter: Number(ref[2]), verse: Number(ref[3]), word: Number(ref[4]) } } : {}) };
     stack[stack.length - 1]!.kids.push(node);
     // The article a preposition swallowed («בַּיּוֹם») is written as a word with nothing in it, and nothing closes it.
     if (!alone) stack.push(node);
