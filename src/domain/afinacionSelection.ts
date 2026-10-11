@@ -24,6 +24,28 @@ export function toggleWord(selected: number[], index: number): number[] {
   return selected.includes(index) ? selected.filter((i) => i !== index) : [...selected, index].sort((a, b) => a - b);
 }
 
+/**
+ * What a touch on a word does to a run of words: the way to mark many with two touches. What is kept of a
+ * selection is the text from its first word to its last (`selectionFromWords`), so a run is what it always was;
+ * touched one by one, a phrase of twelve words was twelve touches, and the ones left between two marked words
+ * were kept all the same without showing it.
+ *
+ * The first touch marks a word. A touch on a word outside the run stretches it to that word, with all between.
+ * A touch on the first or the last word of the run takes it off; on one in the middle, starts over from it.
+ */
+export function touchRun(selected: number[], index: number): number[] {
+  if (!selected.length) return [index];
+  const first = Math.min(...selected);
+  const last = Math.max(...selected);
+  const run = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  if (index < first) return run(index, last);
+  if (index > last) return run(first, index);
+  if (first === last) return [];
+  if (index === first) return run(first + 1, last);
+  if (index === last) return run(first, last - 1);
+  return [index];
+}
+
 /** The text between the first and the last selected word (words in between are included). */
 export function selectionFromWords(
   verseText: string,

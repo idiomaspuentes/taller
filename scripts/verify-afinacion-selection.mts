@@ -1,7 +1,7 @@
 /** Marking the words of a verse, and finding them again after the text changed. */
 import assert from "node:assert/strict";
 import { resolveTextReference } from "@usfm-tools/checking";
-import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
+import { selectionFromWords, toggleWord, touchRun, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -24,6 +24,20 @@ test("tocar una palabra la marca y volver a tocarla la desmarca, siempre en orde
   sel = toggleWord(sel, 2);
   assert.deepEqual(sel, [2, 5]);
   assert.deepEqual(toggleWord(sel, 2), [5]);
+});
+
+test("muchas palabras se marcan con dos toques: la primera y la última, y las de en medio van con ellas", () => {
+  let run = touchRun([], 1);
+  assert.deepEqual(run, [1], "el primer toque marca una palabra");
+  run = touchRun(run, 5);
+  assert.deepEqual(run, [1, 2, 3, 4, 5], "el segundo, hasta ahí");
+  assert.deepEqual(touchRun(run, 0), [0, 1, 2, 3, 4, 5], "un toque antes del principio lo alarga hacia allá");
+  assert.deepEqual(touchRun(run, 5), [1, 2, 3, 4], "en la última la quita");
+  assert.deepEqual(touchRun(run, 1), [2, 3, 4, 5], "en la primera, también");
+  assert.deepEqual(touchRun(run, 3), [3], "en una de en medio empieza de nuevo desde ella");
+  assert.deepEqual(touchRun([3], 3), [], "y en la única marcada la desmarca");
+  // Lo marcado es justo lo que se guarda: el texto de la primera a la última.
+  assert.equal(selectionFromWords(verse, touchRun(touchRun([], 2), 4), { chapter: 1, verse: 2 })!.text, "esperanza de la");
 });
 
 test("la selección guarda el texto entre la primera y la última palabra y una copia del versículo", () => {

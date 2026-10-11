@@ -3110,5 +3110,8 @@
   "sa.introOfChapter": "Introdução ao capítulo {n}",
   "st.leftOut": "Este diagrama não tem todas as palavras do versículo. Faltam: {words}. A análise foi feita sobre outra edição do texto, que não as traz.",
   "af.paneIntro": "Introdução",
-  "al.readChapter": "Ler o capítulo"
+  "al.readChapter": "Ler o capítulo",
+  "af.pickAll": "Marcar o versículo inteiro",
+  "af.pickNone": "Tirar o que está marcado",
+  "af.runHint": "Se forem várias, toque na primeira e na última: as do meio são marcadas sozinhas."
 }

@@ -22,7 +22,7 @@ import { BookA, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-rea
 import { HelpMessages } from "./HelpMessages";
 import { termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
-import { selectionFromWords, toggleWord, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
+import { selectionFromWords, touchRun, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
   changedStretch,
@@ -1242,13 +1242,25 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : (
                 <>
                   <span className="af-draft__words">
-                    <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
+                    <Words text={verseText} onTap={(i) => setSelected((prev) => touchRun(prev, i))} selected={selected} />
                   </span>
+                  {/* Many words in two touches, or all of them in one. */}
+                  <div className="af-run">
+                    <button type="button" className="af-link" disabled={selected.length === wordSpans(verseText).length} onClick={() => setSelected(wordSpans(verseText).map((word) => word.index))}>
+                      {t("af.pickAll")}
+                    </button>
+                    {selected.length ? (
+                      <button type="button" className="af-link" onClick={() => setSelected([])}>
+                        {t("af.pickNone")}
+                      </button>
+                    ) : null}
+                  </div>
                   <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
                 <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
                     {t("af.tapMarked")
                       .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
-                      .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}
+                      .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}{" "}
+                    {t("af.runHint")}
                   </p>
                 </>
               )}

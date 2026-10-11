@@ -9305,3 +9305,8 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 /* The introductions of the book and the chapter, in a tab of the review screen: read as a page, not in a box. */
 .af-intro { display: grid; gap: 0.75rem; }
 .af-intro section { display: grid; gap: 0.25rem; }
+
+/* Under the words of the draft to mark: all of them in one touch, or none. */
+.af-run { order: 2; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
+.af-run .af-link { min-height: 2.5rem; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; cursor: pointer; }
+.af-run .af-link:disabled { opacity: 0.45; cursor: default; }
