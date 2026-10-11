@@ -1,4 +1,5 @@
 /** What a word of the original means: which entry its Strong's number points to, and which sense is the verse's. */
+import { inHebrewNumbering } from "../src/domain/hebrewNumbering";
 import assert from "node:assert/strict";
 import { glossesInclude, glossOfWord, lexiconReport, normalizeLexiconField, normalizeLexiconFile, otherWordsOfField, refsInclude, sensesOfWord, strongCode, strongParts } from "../src/domain/lexicon";
 import { lexiconRepos } from "../src/dcs/lexicon";
@@ -164,6 +165,21 @@ test("un sentido dice en qué campo de significado está, y el campo lista las o
   assert.deepEqual(otherWordsOfField(greek, "G30040").map((word) => word.lemma), ["λαλέω"], "el griego lleva un dígito de más en el texto");
   assert.equal(normalizeLexiconField({ name: "Vacío", words: [] }), null);
   assert.equal(normalizeLexiconField(null), null);
+});
+
+test("el sentido de un versículo del hebreo se busca como lo numera la Biblia hebrea", () => {
+  // «סוּף» en Jonás 2:5 (2:6 en la Biblia hebrea) son algas; en Éxodo, el Mar de Juncos.
+  const file = normalizeLexiconFile({ brief: "Mar de Juncos, cañas", long: "", entries: [{ strong: "H5488", lemma: "יָם־סוּף", senses: [{ glosses: ["Mar de Juncos"], refs: { EXO: "10:19" } }] }, { strong: "H5488", lemma: "סוּף", senses: [{ glosses: ["cañas", "algas"], refs: { EXO: "2:3", JON: "2:6" } }] }] })!;
+  assert.equal(glossOfWord(file, { book: "JON", chapter: 2, verse: 5 }), "cañas", "se le daba el otro sentido, «Mar de Juncos»");
+  assert.equal(sensesOfWord(file, { book: "JON", chapter: 2, verse: 5 }).byVerse, true);
+  assert.equal(glossOfWord(file, { book: "EXO", chapter: 10, verse: 19 }), "Mar de Juncos", "donde las dos numeraciones coinciden nada cambia");
+  assert.deepEqual(inHebrewNumbering("JON", { chapter: 1, verse: 17 }), { chapter: 2, verse: 1 });
+  assert.deepEqual(inHebrewNumbering("PSA", { chapter: 51, verse: 4 }), { chapter: 51, verse: 6 });
+  assert.deepEqual(inHebrewNumbering("RUT", { chapter: 2, verse: 3 }), { chapter: 2, verse: 3 });
+  assert.deepEqual(inHebrewNumbering("MAT", { chapter: 2, verse: 3 }), { chapter: 2, verse: 3 }, "el Nuevo Testamento no se toca");
+  // Una entrada del griego se busca por el versículo tal cual.
+  const greek = normalizeLexiconFile({ brief: "x", long: "", entries: [{ strong: "G0001", lemma: "α", senses: [{ glosses: ["uno"], refs: { JON: "2:6" } }, { glosses: ["otro"], refs: { JON: "2:5" } }] }] })!;
+  assert.equal(glossOfWord(greek, { book: "JON", chapter: 2, verse: 5 }), "otro");
 });
 
 console.log(`\nverify-lexicon: ${passed} checks passed.`);

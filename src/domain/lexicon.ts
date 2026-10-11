@@ -1,3 +1,5 @@
+import { inHebrewNumbering } from "./hebrewNumbering";
+
 /**
  * What a word of the original means, read from a lexicon repository: one small file per Strong's number, in the
  * layout Door43 lexicons use (`brief`, `long`), with, when the lexicon has them, the senses of the word and the
@@ -151,14 +153,19 @@ export type SensesOfWord = {
 
 /**
  * The senses of a word in a verse. The lexicon says which verses each sense applies to, so the sense of the verse
- * in hand comes first; with nothing for the verse (a word with one sense, or a verse numbered differently) every
- * sense is shown, in the lexicon's order.
+ * in hand comes first; with nothing for the verse (a word with one sense) every sense is shown, in the lexicon's
+ * order.
+ *
+ * The Hebrew lexicon lists those verses as the Hebrew Bible numbers them, and our texts number some otherwise:
+ * the verse in hand is looked up as it is numbered there. It was looked up as numbered here, and in Jonah 2:5
+ * («algas», which is 2:6 there) the word was given its other sense, «Mar de Juncos».
  */
 export function sensesOfWord(file: LexiconFile, at: { book: string; chapter: number; verse: number }, letter = ""): SensesOfWord {
   const exact = letter ? file.entries.filter((e) => e.strong.toLowerCase().endsWith(letter.toLowerCase())) : [];
   const entries = exact.length ? exact : file.entries;
   const all = entries.flatMap((e) => e.senses);
-  const here = all.filter((s) => refsInclude(s.refs?.[at.book], at.chapter, at.verse));
+  const where = entries.some((e) => /^H/i.test(e.strong)) ? inHebrewNumbering(at.book, at) : at;
+  const here = all.filter((s) => refsInclude(s.refs?.[at.book], where.chapter, where.verse));
   if (!here.length) return { entries, here: all, other: [], byVerse: false };
   return { entries, here, other: all.filter((s) => !here.includes(s)), byVerse: true };
 }
