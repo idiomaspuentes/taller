@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { BOOKS } from "../src/domain/books";
 import { hebrewToOurs } from "../src/domain/parallels";
 import { layoutTree } from "../src/domain/treeLayout";
-import { clauseKind, encodeTree, isLeaf, leavesOf, normalizeTreeFile, parseLowfat, reduceSentence, sentenceFits, sentencesAt, sentenceShape, type TreeNode } from "../src/domain/syntaxTree";
+import { clauseKind, encodeTree, fitWords, isLeaf, leavesOf, normalizeTreeFile, parseLowfat, reduceSentence, sentenceFits, sentencesAt, sentenceShape, wordsLeftOut, type TreeNode } from "../src/domain/syntaxTree";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -57,6 +57,59 @@ test("dos partes de una misma palabra dicen cada una su pedazo; el hebreo pasa a
   const toOurs = hebrewToOurs({ "JON 1:17": "JON 2:1", "JON 2:1-10": "JON 2:2-11" });
   const tree = reduceSentence(parseLowfat(HEBREW)[1]!, toOurs)!;
   assert.equal(line(tree), "*[v[2:5.1«אֲפָפוּ»] o[2:5.1«נִי»] s[2:5.2] 2:5.3]", "«me rodearon»: el verbo y su objeto; lo que no es una función (una nota de la herramienta) no se toma por una");
+});
+
+// 1 Reyes 13:3, cut short: «en el día aquel» writes the article the preposition swallowed as a word with nothing
+// in it, which nothing closes; what follows it is still of the group it was in, and the object is of the clause.
+const SWALLOWED = `<chapter><sentence><wg class="cl">
+  <w role="v" class="verb" ref="1KI 13:3!1">נָתַן֩</w>
+  <wg role="pp" class="pp"><w class="prep" ref="1KI 13:3!2">בַּ</w>
+    <wg class="np"><w class="art" ref="1KI 13:3!2"
+        />
+      <wg class="np"><w class="noun" ref="1KI 13:3!2">יּ֨וֹם</w><wg class="adjp"><w class="art" ref="1KI 13:3!3">הַ</w><w class="pron" ref="1KI 13:3!3">ה֤וּא</w></wg></wg>
+    </wg>
+  </wg>
+  <w role="o" class="noun" ref="1KI 13:3!4">מוֹפֵת֙</w>
+</wg></sentence></chapter>`;
+
+test("el artículo que una preposición se tragó no desordena lo que sigue", () => {
+  assert.equal(line(reduceSentence(parseLowfat(SWALLOWED)[0]!)!), "*[v[13:3.1] pp[13:3.2 13:3.3] o[13:3.4]]", "«aquel» sigue en su parte, y el objeto es de la oración y no de «en el día»");
+});
+
+test("cada palabra del análisis se halla en nuestro texto por sus letras", () => {
+  assert.deepEqual(fitWords(["Παῦλος", "δοῦλος", "Θεοῦ"], ["Παῦλος", "δοῦλος", "Θεοῦ"]), [0, 1, 2]);
+  assert.deepEqual(fitWords(["בְּרֵאשִׁ֖ית", "בָּרָ֣א"], ["בְּ⁠רֵאשִׁ֖ית", "בָּרָ֣א"]), [0, 1], "los acentos y la marca que parte la palabra no la hacen otra");
+  // Hechos 2:7: nuestro texto tiene una palabra que el otro no.
+  assert.deepEqual(fitWords(["ἐξίσταντο", "δὲ", "καὶ", "ἐθαύμαζον"], ["ἐξίσταντο", "δὲ", "ἅπαντες", "καὶ", "ἐθαύμαζον"]), [0, 1, 3, 4], "las que siguen a la que sobra aquí van un lugar más allá");
+  // Lucas 24:46: el otro texto tiene palabras que el nuestro no.
+  assert.deepEqual(fitWords(["καὶ", "εἶπεν", "αὐτοῖς", "ὅτι", "οὕτως"], ["καὶ", "ὅτι", "οὕτως"]), [0, null, null, 1, 2], "la que no está aquí no tiene lugar");
+  // Hechos 2:34: un nombre escrito de otro modo, entre palabras iguales, es la misma palabra.
+  assert.deepEqual(fitWords(["οὐ", "γὰρ", "Δαυὶδ", "ἀνέβη"], ["οὐ", "γὰρ", "Δαυεὶδ", "ἀνέβη"]), [0, 1, 2, 3]);
+  // Lucas 5:36: «μήγε» allá, «μή γε» aquí; 1 Crónicas 9:4: dos palabras allá, una aquí.
+  assert.deepEqual(fitWords(["εἰ", "δὲ", "μήγε", "καὶ"], ["εἰ", "δὲ", "μή", "γε", "καὶ"]), [0, 1, 2, 4], "la palabra de allá es la primera de las dos de aquí");
+  assert.deepEqual(fitWords(["בֶן", "בָּנִ֔י", "מִן", "בְּנֵי"], ["בֶן", "בני⁠מן", "בְּנֵי"]), [0, 1, 1, 2], "las dos de allá son la misma de aquí");
+  // El título de un salmo es del primer versículo en el hebreo, y de ninguno en nuestro texto.
+  assert.deepEqual(fitWords(["מִזְמ֥וֹר", "לְדָוִ֑ד", "יְהוָ֥ה", "רֹ֝עִ֗י"], ["יְהוָ֥ה", "רֹ֝עִ֗⁠י"]), [null, null, 0, 1]);
+  assert.deepEqual(fitWords(["א"], []), [null]);
+});
+
+test("una palabra que nuestro texto no tiene se deja fuera, con la parte que no tenía más", () => {
+  const [first] = parseLowfat(HEBREW);
+  // Sin el sujeto («la palabra de Yahweh»), y con «para decir» en el cuarto lugar.
+  const tree = reduceSentence(first!, (_book, place) => (place.word === 2 || place.word === 3 ? null : { chapter: 1, verse: 1, word: place.word === 8 ? 4 : place.word }))!;
+  assert.equal(line(tree), "*[&[1:1.1«וַ»] *[v[1:1.1«יְהִי»] pp[v*[1:1.4]]]]");
+  assert.equal(reduceSentence(first!, () => null), null, "sin ninguna palabra no queda oración");
+});
+
+test("las palabras de un versículo que no están en ninguna oración se saben decir", () => {
+  // Un versículo de cinco palabras: el análisis no trae la tercera ni la última.
+  const file = normalizeTreeFile({ sentences: [["*", ["v", 1001001], ["s", 1001002, 1001004]], ["*", ["v", 1002001]]], words: { "1:1": 5 } })!;
+  assert.equal(sentenceFits(file, file.sentences[0]!, () => 5), true, "el versículo cuenta lo que el archivo dice, no su última palabra con oración");
+  assert.equal(sentenceFits(file, file.sentences[0]!, () => 4), false);
+  assert.deepEqual(wordsLeftOut(file, file.sentences[0]!), [{ chapter: 1, verse: 1, word: 3 }, { chapter: 1, verse: 1, word: 5 }]);
+  assert.deepEqual(wordsLeftOut(file, file.sentences[1]!), []);
+  // Una cuenta menor que la última palabra no se cree.
+  assert.equal(sentenceFits(normalizeTreeFile({ sentences: [["*", ["v", 1001003]]], words: { "1:1": 2 } })!, file.sentences[0]!, () => 3), true);
 });
 
 test("lo que se escribe se vuelve a leer igual, y un versículo da su oración", () => {
@@ -143,6 +196,17 @@ test("los archivos que la app sirve: los 66 libros, y Jonás 1:1 y Tito 1:5 como
   assert.equal(sentencesAt(jonah, { chapter: 2, verse: 11 }).length, 0);
   assert.equal(sentencesAt(read("TIT"), { chapter: 1, verse: 5 }).length, 1);
   for (const book of ["JON", "TIT", "PSA"]) for (const sentence of read(book).sentences) for (const leaf of leavesOf(sentence.root)) assert.equal(leaf.verse > 0 && leaf.word > 0, true, `${book} ${leaf.chapter}:${leaf.verse}`);
+  // Hechos 24:6: nuestro texto sigue con palabras que el análisis no trae; el versículo dice cuántas tiene.
+  const acts = read("ACT");
+  const [paul] = sentencesAt(acts, { chapter: 24, verse: 6 });
+  assert.equal(wordsLeftOut(acts, paul!).filter((leaf) => leaf.verse === 6).length, 7);
+  assert.equal(sentenceFits(acts, paul!, (verse) => acts.counts.get(`${verse.chapter}:${verse.verse}`)), true);
+  // Salmo 4:1: el título es un versículo en la Biblia hebrea y ninguno en nuestro texto; sus cuatro palabras no
+  // se cuentan con las diez del versículo.
+  assert.equal(read("PSA").counts.get("4:1"), 10);
+  assert.equal(read("PSA").held.get("4:1")?.size, 10);
+  // 1 Reyes 13:3: «aquel» (la tercera palabra) está en su oración.
+  assert.equal(read("1KI").held.get("13:3")?.has(3), true);
 });
 
 console.log(`\nverify-trees: ${passed} checks passed.`);

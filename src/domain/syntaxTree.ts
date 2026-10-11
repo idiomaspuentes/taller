@@ -5,9 +5,11 @@
  * inside another, and the words of each by their place in the verse.
  *
  * The words themselves are not kept: they are read from the app's own text of the original, so each can open
- * its sheet. MACULA reads other editions, so a sentence is shown only where its verses have as many words there
- * as here.
+ * its sheet. MACULA reads other editions, so the files are built against the app's texts: each word of the
+ * analysis is found there by its letters (`fitWords`), one our text does not have is left out, and a sentence is
+ * shown only where its verses have as many words here as they had when the files were built.
  */
+import { referentKey } from "./referents";
 
 export type TreePlace = { chapter: number; verse: number };
 
@@ -24,7 +26,13 @@ export const LINK = "&";
 
 export type TreeSentence = { root: TreeNode; verses: TreePlace[] };
 
-export type TreeFile = { sentences: TreeSentence[]; /** How many words each verse has there, by `"chapter:verse"`. */ counts: Map<string, number> };
+export type TreeFile = {
+  sentences: TreeSentence[];
+  /** How many words each verse had in our text when the file was built, by `"chapter:verse"`. */
+  counts: Map<string, number>;
+  /** The words of each verse that some sentence holds. */
+  held: Map<string, Set<number>>;
+};
 
 export const isLeaf = (kid: TreeNode | TreeLeaf): kid is TreeLeaf => "word" in kid;
 
@@ -101,13 +109,15 @@ function decode(raw: unknown): TreeNode | TreeLeaf | null {
 /**
  * A file as it is served: `{ sentences: [["*", ["v", 1001001], ["s", 1001002, 1001003]]] }`. A part is its
  * function (with `*` when it is a clause) and then what it holds; a word is chapter, verse and place in one
- * number, or `[number, "piece"]`.
+ * number, or `[number, "piece"]`. `words` says how many words a verse has, where the last of them is in no
+ * sentence: `{ "24:6": 19 }`.
  */
 export function normalizeTreeFile(raw: unknown): TreeFile | null {
   const rows = (raw as { sentences?: unknown } | null)?.sentences;
   if (!Array.isArray(rows)) return null;
   const sentences: TreeSentence[] = [];
   const counts = new Map<string, number>();
+  const held = new Map<string, Set<number>>();
   for (const row of rows) {
     const root = decode(row);
     if (!root || isLeaf(root)) continue;
@@ -115,10 +125,13 @@ export function normalizeTreeFile(raw: unknown): TreeFile | null {
     for (const leaf of leavesOf(root)) {
       verses.set(placeKey(leaf), { chapter: leaf.chapter, verse: leaf.verse });
       counts.set(placeKey(leaf), Math.max(counts.get(placeKey(leaf)) ?? 0, leaf.word));
+      held.set(placeKey(leaf), (held.get(placeKey(leaf)) ?? new Set<number>()).add(leaf.word));
     }
     sentences.push({ root, verses: [...verses.values()] });
   }
-  return sentences.length ? { sentences, counts } : null;
+  const said = (raw as { words?: unknown }).words;
+  if (said && typeof said === "object") for (const [place, count] of Object.entries(said as Record<string, unknown>)) if (counts.has(place) && Number.isInteger(count) && (count as number) >= counts.get(place)!) counts.set(place, count as number);
+  return sentences.length ? { sentences, counts, held } : null;
 }
 
 /** The sentences a verse is part of: nearly always one, two when a verse ends one and begins the next. */
@@ -126,9 +139,78 @@ export function sentencesAt(file: TreeFile | null | undefined, at: TreePlace): T
   return (file?.sentences ?? []).filter((sentence) => sentence.verses.some((verse) => verse.chapter === at.chapter && verse.verse === at.verse));
 }
 
-/** Whether every verse of a sentence has here as many words as the analysis counted: only then is a place a word. */
+/** Whether every verse of a sentence has here as many words as when the file was built: only then is a place a word. */
 export function sentenceFits(file: TreeFile, sentence: TreeSentence, wordsHere: (place: TreePlace) => number | undefined): boolean {
   return sentence.verses.every((verse) => wordsHere(verse) === file.counts.get(placeKey(verse)));
+}
+
+/**
+ * The words of the verses of a sentence that are in no sentence: those our text has and the edition that was
+ * analysed does not. They are said beside the diagram, so that it is not read as the whole verse.
+ */
+export function wordsLeftOut(file: TreeFile, sentence: TreeSentence): TreeLeaf[] {
+  return sentence.verses.flatMap((verse) => {
+    const held = file.held.get(placeKey(verse));
+    const count = file.counts.get(placeKey(verse)) ?? 0;
+    return Array.from({ length: count }, (_, i) => i + 1).filter((word) => !held?.has(word)).map((word) => ({ ...verse, word }));
+  });
+}
+
+// ---------------------------------------------------------------- finding the words of the analysis in our text
+
+/**
+ * Which word of ours (from 0) each word of theirs is, in a verse; `null` for one our text does not have. The words
+ * written alike in both, in the same order, hold the rest in place. Between two of them, as many words there as
+ * here are the same words written another way (a name spelled otherwise, what is read for what is written); and
+ * the same letters cut otherwise («ἵνα τί», «ἱνατί») are each the word of ours it begins in.
+ */
+export function fitWords(theirs: string[], ours: string[]): (number | null)[] {
+  const a = theirs.map(referentKey);
+  const b = ours.map(referentKey);
+  if (a.length === b.length && a.every((key, i) => key === b[i])) return a.map((_, i) => i);
+  // The longest run of words both have, in order.
+  const run = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) run[i]![j] = a[i] && a[i] === b[j] ? run[i + 1]![j + 1]! + 1 : Math.max(run[i + 1]![j]!, run[i]![j + 1]!);
+  const out = new Array<number | null>(a.length).fill(null);
+  const between = (fromA: number, toA: number, fromB: number, toB: number) => {
+    const there = toA - fromA;
+    const here = toB - fromB;
+    if (!there || !here) return;
+    if (there === here) {
+      for (let k = 0; k < there; k++) out[fromA + k] = fromB + k;
+      return;
+    }
+    if (a.slice(fromA, toA).join("") !== b.slice(fromB, toB).join("")) return;
+    // Where each word of ours begins, counted in letters.
+    const starts: number[] = [];
+    let letters = 0;
+    for (let j = fromB; j < toB; j++) {
+      starts.push(letters);
+      letters += b[j]!.length;
+    }
+    let at = 0;
+    for (let i = fromA; i < toA; i++) {
+      let j = starts.length - 1;
+      while (starts[j]! > at) j--;
+      out[i] = fromB + j;
+      at += a[i]!.length;
+    }
+  };
+  let i = 0;
+  let j = 0;
+  let lastA = 0;
+  let lastB = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] && a[i] === b[j]) {
+      between(lastA, i, lastB, j);
+      out[i] = j;
+      lastA = ++i;
+      lastB = ++j;
+    } else if (run[i + 1]![j]! >= run[i]![j + 1]!) i++;
+    else j++;
+  }
+  between(lastA, a.length, lastB, b.length);
+  return out;
 }
 
 // ---------------------------------------------------------------- building the files
@@ -143,7 +225,7 @@ export function parseLowfat(xml: string): RawNode[] {
   const sentences: RawNode[] = [];
   let stack: RawNode[] = [];
   for (const tag of xml.matchAll(/<(\/?)(sentence|wg|w)\b([^>]*?)(\/?)>([^<]*)/g)) {
-    const [, close, name, attrs, , text] = tag;
+    const [, close, name, attrs, alone, text] = tag;
     if (name === "sentence") {
       if (close) {
         if (stack[0]?.kids.length) sentences.push(stack[0]);
@@ -161,7 +243,8 @@ export function parseLowfat(xml: string): RawNode[] {
     // A few groups carry a note of the analysts' tool where the function goes: that is no function.
     const node: RawNode = { word: name === "w", role: /^[a-z][a-z0-9]{0,5}$/.test(a.role ?? "") ? a.role! : "", cls: a.class ?? "", text: (text ?? "").trim(), kids: [], ...(ref ? { ref: { book: ref[1]!, chapter: Number(ref[2]), verse: Number(ref[3]), word: Number(ref[4]) } } : {}) };
     stack[stack.length - 1]!.kids.push(node);
-    stack.push(node);
+    // The article a preposition swallowed («בַּיּוֹם») is written as a word with nothing in it, and nothing closes it.
+    if (!alone) stack.push(node);
   }
   return sentences;
 }
@@ -182,18 +265,24 @@ const shown = (text: string) => text.normalize("NFC").replace(/[֑-ֽ֯׀׃]/g, 
  * that holds nothing but one other is one part with it. The pieces of a Hebrew word are one word; when two
  * parts share a word («me rodearon»: the verb and its object; «y dijo»: the «and» and the verb), each says which
  * piece is its own.
+ *
+ * `toOurs` says where a word is in our text: its verse in our numbering, and its place there when that is not
+ * the place it has in theirs. A word it answers `null` for is not in our text, and is left out with whatever
+ * held nothing else.
  */
-export function reduceSentence(raw: RawNode, toOurs: (book: string, place: TreePlace) => TreePlace = (_book, place) => place): TreeNode | null {
+export function reduceSentence(raw: RawNode, toOurs: (book: string, place: TreeLeaf) => (TreePlace & { word?: number }) | null = (_book, place) => place): TreeNode | null {
   const items = (node: RawNode): (Part | Leaf)[] => {
     if (node.word) {
       if (!node.ref) return [];
       const place = toOurs(node.ref.book, node.ref);
-      const leaf: Leaf = { chapter: place.chapter, verse: place.verse, word: node.ref.word, texts: [node.text] };
+      if (!place) return [];
+      const leaf: Leaf = { chapter: place.chapter, verse: place.verse, word: place.word ?? node.ref.word, texts: [node.text] };
       // A word that joins is kept as what it is: it is what says whether two clauses stand side by side.
       const role = node.role || (/^(cj|conj)$/.test(node.cls) ? LINK : "");
       return role ? [{ role, clause: false, kids: [leaf] }] : [leaf];
     }
     const kids = node.kids.flatMap(items);
+    if (!kids.length) return [];
     return node.role || node.cls === "cl" ? [{ role: node.role, clause: node.cls === "cl", kids }] : kids;
   };
   const tidy = (part: Part): Part => {

@@ -12,7 +12,7 @@ import { bookLabel } from "../domain/books";
 import { diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, moveBeside, moveOut, nodeAt, splitSentence, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
 import { glossOfWord, strongParts } from "../domain/lexicon";
 import { referentKey } from "../domain/referents";
-import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, type TreeLeaf, type TreeFile, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
+import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, wordsLeftOut, type TreeLeaf, type TreeFile, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
 import { layoutTree } from "../domain/treeLayout";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -439,6 +439,15 @@ export function SentenceSheet({
     setLoaded((now) => (now ? { ...now, words: { ...now.words, ...more } } : now));
     setAround((now) => (side < 0 ? { ...now, before: [next, ...now.before] } : { ...now, after: [...now.after, next] }));
   }
+  /**
+   * The words of its verses the app's diagram of a sentence does not have: our text has them and the edition
+   * that was analysed does not. Said under the diagram, so that it is not read as the whole verse.
+   */
+  const leftOut = (sentence: Shown) => {
+    if (sentence.key || !loaded?.file) return null;
+    const words = wordsLeftOut(loaded.file, sentence).map((leaf) => loaded.words[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1]?.surface).filter(Boolean);
+    return words.length ? <p className="af-hint st-left-out">{t("st.leftOut").replace("{words}", words.map((word) => `«${word}»`).join(", "))}</p> : null;
+  };
   const fits = (sentence: TreeSentence) => Boolean(loaded?.file && sentenceFits(loaded.file, sentence, (verse) => loaded.words[`${verse.chapter}:${verse.verse}`]?.length));
   const beside = (sentence: TreeSentence, i: number) => (
     <section key={`around-${i}-${span(sentence)}`} className="st-sentence st-sentence--around">
@@ -447,6 +456,7 @@ export function SentenceSheet({
         <>
           <p className="st-kind">{kindOf(sentence.root)}</p>
           {view === "tree" ? <Tree root={sentence.root} shared={shared()} /> : <Part node={sentence.root} path={[]} shared={shared()} />}
+          {leftOut(sentence)}
         </>
       ) : (
         <p className="af-hint">{t("st.none")}</p>
@@ -507,6 +517,7 @@ export function SentenceSheet({
                   {shown.length > 1 ? <h3 className="pp-passage__ref">{span(sentence)}</h3> : null}
                   <p className="st-kind">{kindOf(sentence.root)}</p>
                   {view === "tree" ? <Tree root={sentence.root} shared={shared()} /> : <Part node={sentence.root} path={[]} shared={shared()} />}
+                  {leftOut(sentence)}
                   {sentence.key ? <p className="ws-meta">{t("st.teamMade").replace("{who}", sentence.by?.by ?? "")}</p> : null}
                   {teamOrg ? (
                     <div className="st-actions">

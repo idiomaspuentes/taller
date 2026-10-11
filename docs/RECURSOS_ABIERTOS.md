@@ -86,10 +86,19 @@ Lo que todavía no hace: corregir desde la vista de árbol (abre las cajas), y a
 varios versículos (se arma el de uno y se une con el siguiente).
 
 De los árboles (500 MB) se guarda solo qué partes tienen función y en qué lugar de su versículo está cada palabra:
-8,6 MB en `public/trees/`, un archivo por libro. Las palabras se leen de nuestro texto, y por eso una oración se
-muestra solo si cada versículo suyo tiene aquí tantas palabras como allá: el 94 % de las oraciones, medido en 25
-libros. De las demás se dice que no tenemos el análisis, y el equipo puede armarlo. Se rehacen con `npm run trees:build` (la cabecera del guion
-dice cómo bajar los árboles) y los vigila `npm run verify:trees`.
+8,6 MB en `public/trees/`, un archivo por libro. Las palabras se leen de nuestro texto. MACULA analizó otras
+ediciones (el Códice de Leningrado de Westminster y el griego de la SBL; la app lee el UHB y el UGNT), así que al
+construir los archivos cada palabra del análisis se busca en nuestro texto por sus letras (`fitWords`) y se guarda
+con el lugar que tiene aquí. Una palabra que nuestro texto no tiene se deja fuera del diagrama (el título de un
+salmo, que aquí no es de ningún versículo); una que solo tiene el nuestro no está en ninguna oración, y la hoja lo
+dice bajo el diagrama («Faltan: …»). Eso incluye la forma leída de una palabra que se lee distinto de como se
+escribe: la app la cuenta como una palabra más del versículo. Medido en los 66 libros: el 99,9 % de los versículos
+tiene diagrama y el 99,6 % de las palabras está en uno; el 96 % de los versículos lo tiene con todas sus palabras.
+Quedan 22 versículos sin diagrama, los que la otra edición no trae (Hechos 8:37, Juan 5:4, Mateo 17:21…).
+
+Una oración se muestra solo si cada versículo suyo tiene, al abrirla, tantas palabras como tenía cuando se
+construyeron los archivos: si el texto original cambia, hay que rehacerlos. Se rehacen con `npm run trees:build`
+(la cabecera del guion dice cómo bajar los árboles y qué textos darle) y los vigila `npm run verify:trees`.
 
 Con esto, lo que la app sirve de estos recursos pesa unos 17 MB (referentes 8,1; árboles 8,6; paralelos 0,4). Cada
 libro se baja solo cuando se abre algo suyo.

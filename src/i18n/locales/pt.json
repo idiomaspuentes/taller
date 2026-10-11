@@ -3109,5 +3109,6 @@
   "sa.introLoading": "Lendo a introdução…",
   "sa.introNone": "Este livro não tem introdução nas notas.",
   "sa.introOfBook": "Introdução a {book}",
-  "sa.introOfChapter": "Introdução ao capítulo {n}"
+  "sa.introOfChapter": "Introdução ao capítulo {n}",
+  "st.leftOut": "Este diagrama não tem todas as palavras do versículo. Faltam: {words}. A análise foi feita sobre outra edição do texto, que não as traz."
 }
