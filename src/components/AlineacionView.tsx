@@ -1466,8 +1466,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
               type="button"
               className="th-icon"
               aria-pressed={pane === "chapter"}
-              aria-label={t("af.paneChapter")}
-              title={t("af.paneChapter")}
+              aria-label={t("al.readChapter")}
+              title={t("al.readChapter")}
               onClick={() => setPane(pane === "chapter" ? "align" : "chapter")}
             >
               <BookOpen size={20} aria-hidden />

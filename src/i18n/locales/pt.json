@@ -2166,7 +2166,7 @@
   "af.tapMarked": "Toque no {res} as palavras que traduzem {marked}.",
   "af.helps": "Ajudas",
   "af.paneReview": "Revisar",
-  "af.paneChapter": "Ler o capítulo",
+  "af.paneChapter": "Capítulo",
   "af.chapterPick": "Capítulo",
   "af.chapterN": "Capítulo {n}",
   "af.theWords": "Sua tradução do destacado",
@@ -3108,5 +3108,7 @@
   "sa.introNone": "Este livro não tem introdução nas notas.",
   "sa.introOfBook": "Introdução a {book}",
   "sa.introOfChapter": "Introdução ao capítulo {n}",
-  "st.leftOut": "Este diagrama não tem todas as palavras do versículo. Faltam: {words}. A análise foi feita sobre outra edição do texto, que não as traz."
+  "st.leftOut": "Este diagrama não tem todas as palavras do versículo. Faltam: {words}. A análise foi feita sobre outra edição do texto, que não as traz.",
+  "af.paneIntro": "Introdução",
+  "al.readChapter": "Ler o capítulo"
 }

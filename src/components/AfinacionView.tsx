@@ -2,7 +2,7 @@ import { termAsk } from "../domain/afinacionWords";
 import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
-import { StepAsk } from "./StepAsk";
+import { PassageIntroText, StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type OriginalWord } from "../dcs/afinacionLoad";
@@ -166,7 +166,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** The text the draft is read against: the original unless the person chose another. */
   const [refText, setRefText] = useState<"orig" | "ult" | "ust">("orig");
   /** «Revisar» (the item in hand) or «Capítulo» (whole chapters of a text, to read around it). */
-  const [pane, setPane] = useState<"review" | "helps" | "chapter">("review");
+  const [pane, setPane] = useState<"review" | "helps" | "chapter" | "intro">("review");
   const [readChapter, setReadChapter] = useState(0);
   /** The text read in «Leer el capítulo»: the original, an English text, or what the team's draft has so far. */
   const [chapterText, setChapterText] = useState<"orig" | "ult" | "ust" | "draft">("orig");
@@ -848,7 +848,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         }
       />
       <div className="step-ask-bar">
-        <StepAsk session={session} ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx} />
+        <StepAsk session={session} ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx} intro={false} />
       </div>
 
       {error ? (
@@ -885,7 +885,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           >
             {t("af.paneChapter")}
           </button>
+          <button type="button" role="tab" className="fam-tab" aria-selected={pane === "intro"} onClick={() => setPane("intro")}>
+            {t("af.paneIntro")}
+          </button>
         </div>
+      ) : null}
+
+      {data && item && pane === "intro" && ctx ? (
+        // The introduction of the book and of the chapter: a place to go to beside the work, as the chapter is.
+        <section className="af-chapter af-intro">
+          <PassageIntroText session={session} ctx={ctx} />
+        </section>
       ) : null}
 
       {data && item && pane === "chapter" ? (
