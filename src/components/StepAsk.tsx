@@ -17,6 +17,9 @@ import type { ProjectSettings, ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useGlossaryEntries } from "../useGlossary";
+import { bookLabel } from "../domain/books";
+import { loadIntroNotes } from "../domain/referenceResources";
+import { HelpMarkdownView } from "./HelpMarkdownView";
 import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from "../useTeamRules";
 
 /**
@@ -324,14 +327,64 @@ export function glossaryHref(ctx: SolverLaunchContext): string {
   return `#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${ctx.chapter}&de=${range?.from ?? 1}&a=${range?.to ?? 200}${ctx.resource === "tps" ? "&texto=tps" : ""}`;
 }
 
-/** Inside a tool: what the step it was opened for asks, folded over the work. */
+/**
+ * The introduction of the book and the one of the chapter in hand, folded over the work in every tool: what the
+ * book is, who wrote it and to whom, what the chapter is about. They were read once, in «Estudiar», and whoever
+ * aligned or reviewed a week later had no way back to them. Read when they are opened, and in the team's own
+ * language when the team has translated them. They scroll inside their own height: a book's introduction is
+ * several screens long, and would hide the work it is there to help with.
+ */
+function PassageIntro({ session, ctx }: { session: GtSession | null | undefined; ctx: SolverLaunchContext }) {
+  const t = useT();
+  const language = useUiLanguage();
+  const [asked, setAsked] = useState(false);
+  const [intro, setIntro] = useState<{ book: string; chapter: string } | null | undefined>(undefined);
+  useEffect(() => {
+    if (!asked || !session || !ctx.book) return;
+    let alive = true;
+    setIntro(undefined);
+    void loadIntroNotes(session, ctx.book, ctx.chapter, { contentOrg: ctx.contentOrg, lang: ctx.lang })
+      .then((found) => alive && setIntro(found))
+      .catch(() => alive && setIntro(null));
+    return () => {
+      alive = false;
+    };
+  }, [asked, session?.token, ctx.book, ctx.chapter, ctx.contentOrg, ctx.lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!ctx.book) return null;
+  return (
+    <details className="step-ask step-intro" onToggle={(event) => (event.currentTarget.open ? setAsked(true) : undefined)}>
+      <summary>{t(ctx.chapter ? "sa.intro" : "sa.introBook")}</summary>
+      <div className="step-intro__body">
+        {intro === undefined ? <p className="af-hint">{t("sa.introLoading")}</p> : null}
+        {intro === null || (intro && !intro.book && !intro.chapter) ? <p className="af-hint">{t("sa.introNone")}</p> : null}
+        {intro?.book ? (
+          <section>
+            {/* An introduction that names itself is not named twice. */}
+            {/^\s*#/.test(intro.book) ? null : <p className="step-ask__title">{t("sa.introOfBook").replace("{book}", bookLabel(ctx.book.toUpperCase(), language))}</p>}
+            <HelpMarkdownView content={intro.book} />
+          </section>
+        ) : null}
+        {intro?.chapter ? (
+          <section>
+            {/^\s*#/.test(intro.chapter) ? null : <p className="step-ask__title">{t("sa.introOfChapter").replace("{n}", String(ctx.chapter))}</p>}
+            <HelpMarkdownView content={intro.chapter} />
+          </section>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+/** Inside a tool: what the step it was opened for asks, and the introductions of its book, folded over the work. */
 export function StepAsk({ session, ctx }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined }) {
   const t = useT();
   const language = useUiLanguage();
   const found = useLaunchStep(session, ctx);
-  if (!found || !ctx) return null;
+  if (!ctx) return null;
+  // The introductions are there whatever the step asks, and when it asks nothing.
+  if (!found) return <PassageIntro session={session} ctx={ctx} />;
   const { task, step } = found;
-  if (!stepAsks(step, language) && !task.orgTeamName && !found.asked) return null;
+  if (!stepAsks(step, language) && !task.orgTeamName && !found.asked) return <PassageIntro session={session} ctx={ctx} />;
   return (
     <>
       {/* What a subtarea added by hand asks, in plain sight: the tool of its task opens as it does for the work that
@@ -353,6 +406,7 @@ export function StepAsk({ session, ctx }: { session: GtSession | null | undefine
         </a>
       )}
       </details>
+      <PassageIntro session={session} ctx={ctx} />
     </>
   );
 }

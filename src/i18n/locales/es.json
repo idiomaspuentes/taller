@@ -3103,5 +3103,11 @@
   "cv.seePassage": "Ver el pasaje del que se habla",
   "cv.hidePassage": "Ocultar el pasaje",
   "cv.passageLoading": "Leyendo el pasaje…",
-  "cv.passageNone": "No se pudo leer el pasaje."
+  "cv.passageNone": "No se pudo leer el pasaje.",
+  "sa.intro": "Introducción del libro y del capítulo",
+  "sa.introBook": "Introducción del libro",
+  "sa.introLoading": "Leyendo la introducción…",
+  "sa.introNone": "Este libro no tiene introducción en las notas.",
+  "sa.introOfBook": "Introducción a {book}",
+  "sa.introOfChapter": "Introducción al capítulo {n}"
 }
