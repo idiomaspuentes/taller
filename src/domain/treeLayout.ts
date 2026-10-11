@@ -2,6 +2,9 @@
  * Where each node of a sentence goes when it is drawn as a tree: the sentence at the top, its parts under it, and
  * the words in a row at the bottom, in the order they are read. A part stands over the middle of what it holds,
  * and is given as much room as its own name needs, so that two names side by side never run into each other.
+ *
+ * A sentence of sixty words drawn so is twelve screens of a phone wide: there the tree is turned on its side
+ * (`layoutSideways`).
  */
 import { isLeaf, type TreeLeaf, type TreeNode } from "./syntaxTree";
 import type { TreePath } from "./diagrams";
@@ -73,4 +76,55 @@ export function layoutTree(root: TreeNode, sizes: { labelWidth: (node: TreeNode,
     }
   }
   return { nodes, leaves, branches, width, depth };
+}
+
+export type SideNode = { path: TreePath; node: TreeNode; parent?: TreeNode; nth?: number; depth: number; y: number };
+export type SideLeaf = { path: TreePath; leaf: TreeLeaf; role: string; y: number };
+/** The line down from a part to the last thing that hangs from it, and the lines across to each of them. */
+export type SideBranch = { depth: number; from: number; to: number; twigs: { y: number; leaf: boolean }[] };
+export type SideLayout = { nodes: SideNode[]; leaves: SideLeaf[]; branches: SideBranch[]; height: number; depth: number };
+
+/**
+ * The same tree turned on its side, for a narrow screen: the sentence at the top of the near edge, each part a
+ * step further in under what it is part of, and the words in a column at the far edge, one under another in the
+ * order they are read. It grows downwards and never sideways. `y` is the middle of each thing, from the top.
+ *
+ * `node` and `leaf` are the heights of a name and of a word. A part that is one word alone has its word on its
+ * own line when `beside` says the name leaves it room there.
+ */
+export function layoutSideways(root: TreeNode, sizes: { node: number; leaf: number; beside?: (node: TreeNode, parent: TreeNode | undefined, depth: number) => boolean }): SideLayout {
+  const nodes: SideNode[] = [];
+  const leaves: SideLeaf[] = [];
+  const branches: SideBranch[] = [];
+  let top = 0;
+  let deepest = 0;
+  const place = (node: TreeNode, depth: number, path: TreePath, parent: TreeNode | undefined, nth: number | undefined): number => {
+    deepest = Math.max(deepest, depth);
+    const only = node.kids.length === 1 ? node.kids[0]! : undefined;
+    if (only && isLeaf(only) && sizes.beside?.(node, parent, depth)) {
+      const y = top + Math.max(sizes.node, sizes.leaf) / 2;
+      top += Math.max(sizes.node, sizes.leaf);
+      nodes.push({ path, node, parent, nth, depth, y });
+      leaves.push({ path: [...path, 0], leaf: only, role: node.role, y });
+      branches.push({ depth, from: y, to: y, twigs: [{ y, leaf: true }] });
+      return y;
+    }
+    const y = top + sizes.node / 2;
+    top += sizes.node;
+    nodes.push({ path, node, parent, nth, depth, y });
+    let clauses = 0;
+    const twigs = node.kids.map((kid, i) => {
+      if (isLeaf(kid)) {
+        const at = top + sizes.leaf / 2;
+        top += sizes.leaf;
+        leaves.push({ path: [...path, i], leaf: kid, role: node.role, y: at });
+        return { y: at, leaf: true };
+      }
+      return { y: place(kid, depth + 1, [...path, i], node, kid.clause && !kid.role ? ++clauses : undefined), leaf: false };
+    });
+    if (twigs.length) branches.push({ depth, from: y, to: twigs[twigs.length - 1]!.y, twigs });
+    return y;
+  };
+  place(root, 0, [], undefined, undefined);
+  return { nodes, leaves, branches, height: top, depth: deepest };
 }

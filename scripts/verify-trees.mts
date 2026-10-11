@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BOOKS } from "../src/domain/books";
 import { hebrewToOurs } from "../src/domain/parallels";
-import { layoutTree } from "../src/domain/treeLayout";
+import { layoutSideways, layoutTree } from "../src/domain/treeLayout";
 import { clauseKind, encodeTree, fitWords, isLeaf, leavesOf, normalizeTreeFile, parseLowfat, reduceSentence, sentenceFits, sentencesAt, sentenceShape, wordsLeftOut, type TreeNode } from "../src/domain/syntaxTree";
 
 let passed = 0;
@@ -177,6 +177,25 @@ test("dibujada como árbol: las palabras en fila en el orden del texto, cada par
   // Las oraciones unidas se cuentan, para llamarlas «Oración 1», «Oración 2».
   const joined = layoutTree(part("*", part("*", part("v", leaf(1))), part("&", leaf(2)), part("*", part("v", leaf(3)))), sizes);
   assert.deepEqual(joined.nodes.filter((placed) => placed.depth === 1 && placed.node.clause).map((placed) => placed.nth), [1, 2]);
+});
+
+test("girado, para un teléfono: cada parte un paso más adentro, las palabras una bajo otra en el orden del texto, y crece hacia abajo", () => {
+  const leaf = (word: number) => ({ chapter: 1, verse: 1, word });
+  const part = (role: string, ...kids: (TreeNode | ReturnType<typeof leaf>)[]): TreeNode => ({ role: role.replace("*", ""), clause: role.endsWith("*"), kids });
+  const root = part("*", part("v", leaf(1)), part("s", leaf(2), leaf(3)), part("pp", part("v*", leaf(4))));
+  const tree = layoutSideways(root, { node: 30, leaf: 50 });
+  assert.deepEqual(tree.leaves.map((placed) => placed.leaf.word), [1, 2, 3, 4]);
+  assert.deepEqual(tree.nodes.map((placed) => [placed.node.role, placed.depth, placed.y]), [["", 0, 15], ["v", 1, 45], ["s", 1, 125], ["pp", 1, 255], ["v", 2, 285]], "cada nombre en su renglón, sobre lo suyo");
+  assert.deepEqual(tree.leaves.map((placed) => placed.y), [85, 165, 215, 325]);
+  assert.equal(tree.height, 5 * 30 + 4 * 50);
+  assert.equal(tree.depth, 2);
+  const trunk = tree.branches.find((branch) => branch.depth === 0)!;
+  assert.deepEqual([trunk.from, trunk.to, trunk.twigs.map((twig) => twig.y)], [15, 255, [45, 125, 255]], "la línea baja de la oración hasta su última parte, con un ramal a cada una");
+  // Una parte de una sola palabra la lleva en su mismo renglón cuando el nombre le deja sitio.
+  const tight = layoutSideways(root, { node: 30, leaf: 50, beside: (node) => node.role === "v" });
+  assert.deepEqual(tight.nodes.map((placed) => placed.y), [15, 55, 95, 225, 265]);
+  assert.deepEqual(tight.leaves.map((placed) => placed.y), [55, 135, 185, 265], "el verbo y su palabra, a la misma altura");
+  assert.equal(tight.height, 30 + 50 + 30 + 100 + 30 + 50);
 });
 
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public", "trees");

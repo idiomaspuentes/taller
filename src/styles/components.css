@@ -9290,3 +9290,14 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 .user-menu__sizes button[data-size="normal"] { font-size: 0.8125rem; }
 .user-menu__sizes button[data-size="large"] { font-size: 1rem; }
 .user-menu__sizes button[data-size="larger"] { font-size: 1.1875rem; }
+
+/* The tree on its side, on a phone: names a step further in at each level from the near edge, the words in a column
+   at the far edge. The lines are drawn from the left; in Hebrew the whole drawing is mirrored. */
+.st-side { position: relative; width: 100%; }
+.st-side svg { position: absolute; inset: 0; }
+.st-side[dir="rtl"] svg { transform: scaleX(-1); }
+.st-side line { stroke: var(--border-strong); stroke-width: 1.5; }
+.st-side .st-node { transform: none; }
+.st-side .st-leaf { align-content: center; background: var(--surface); }
+.st-side .st-leaf .st-word { min-height: 0; height: 100%; align-content: center; }
+.st-side .st-word__text { line-height: 1.3; }

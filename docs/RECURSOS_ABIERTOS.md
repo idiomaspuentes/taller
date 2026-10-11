@@ -97,6 +97,11 @@ primera o la última, empezar otra oración en un punto («Empezar aquí otra or
 la oración con la siguiente. Las palabras nunca cambian de orden: es el del texto. Desde la hoja se puede además ver
 la oración anterior y la siguiente, para saber qué une un conector.
 
+En un teléfono (hasta 640 px de ancho) el árbol se dibuja girado: la oración arriba en el borde de inicio, cada
+parte un paso más adentro bajo aquello de lo que es parte, y las palabras en una columna al otro borde, una bajo
+otra en el orden del texto (`layoutSideways`). Cabe en el ancho y crece hacia abajo; en hebreo va en espejo. En una
+pantalla ancha sigue con la oración arriba y las palabras en fila al pie.
+
 Lo que todavía no hace: corregir desde la vista de árbol (abre las cajas), y armar de una vez un diagrama que abarque
 varios versículos (se arma el de uno y se une con el siguiente).
 

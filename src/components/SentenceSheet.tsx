@@ -13,7 +13,7 @@ import { diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, 
 import { glossOfWord, strongParts } from "../domain/lexicon";
 import { referentKey } from "../domain/referents";
 import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, wordsLeftOut, type TreeLeaf, type TreeFile, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
-import { layoutTree } from "../domain/treeLayout";
+import { layoutSideways, layoutTree } from "../domain/treeLayout";
 import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 
@@ -167,13 +167,13 @@ const LEAF = 52;
 
 /**
  * The sentence as a syntax tree: the sentence at the top, branches down to its parts, and the words in a row at
- * the bottom in the order they are read (from the right, in Hebrew). A long sentence is wider than a phone: the
- * tree is moved sideways with a finger, and opens on the word one came from.
+ * the bottom in the order they are read (from the right, in Hebrew). On a wide screen; a sentence too long for it
+ * is moved sideways, and opens on the word one came from. On a phone the tree is on its side (`SideTree`).
  */
-function Tree({ root, shared }: { root: TreeNode; shared: Shared }) {
+/** What a part is called on the tree: its function, and for a clause how it stands in its sentence. */
+function useNodeName() {
   const t = useT();
-  const scroller = useRef<HTMLDivElement>(null);
-  const name = (node: TreeNode, parent: TreeNode | undefined, nth?: number) => {
+  return (node: TreeNode, parent: TreeNode | undefined, nth?: number) => {
     const role = ROLE[node.role] ? t(ROLE[node.role]!) : "";
     if (!isClause(node)) return role || "·";
     const kind = clauseKind(node, parent);
@@ -181,11 +181,100 @@ function Tree({ root, shared }: { root: TreeNode; shared: Shared }) {
     if (kind === "describes") return t("st.treeSub");
     return kind === "joined" && nth ? `${t("st.clause")} ${nth}` : t("st.clause");
   };
+}
+
+/** A name is drawn small, in capitals: about seven points a letter, and its pill around it. */
+const pillWidth = (name: string) => name.length * 7.2 + 18;
+
+const NARROW = "(max-width: 640px)";
+
+/** Each step into the tree, the room of a name and of a word, and the column of the words, when it is on its side. */
+const STEP = 14;
+const SIDE_NODE = 30;
+const SIDE_LEAF = 54;
+const SIDE_WORDS = 124;
+
+/**
+ * The tree on its side, for a phone: the sentence at the top of the near edge, each part a step further in, and
+ * the words in a column at the far edge, in the order they are read. It is as wide as the screen and grows
+ * downwards. In Hebrew the near edge is the right one.
+ */
+function SideTree({ root, shared }: { root: TreeNode; shared: Shared }) {
+  const name = useNodeName();
+  const box = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    const measure = () => setWidth(element.clientWidth);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(element);
+    return () => watch.disconnect();
+  }, []);
+  const layout = useMemo(
+    () => layoutSideways(root, { node: SIDE_NODE, leaf: SIDE_LEAF, beside: (node, parent, depth) => depth * STEP + pillWidth(name(node, parent, 9)) + 8 <= width - SIDE_WORDS }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [root, width],
+  );
+  useEffect(() => {
+    // On the word one came from.
+    if (width) box.current?.querySelector<HTMLElement>(".st-word[data-here]")?.scrollIntoView({ block: "center" });
+  }, [layout, width]);
+  const trunk = (depth: number) => depth * STEP + 9;
+  const words = Math.max(0, width - SIDE_WORDS);
+  return (
+    <div className="st-side" ref={box} dir={shared.rtl ? "rtl" : "ltr"} style={{ height: layout.height }}>
+      {width ? (
+        <>
+          <svg width={width} height={layout.height} aria-hidden>
+            {layout.branches.map((branch, i) => (
+              <g key={i}>
+                {branch.to > branch.from ? <line x1={trunk(branch.depth)} y1={branch.from} x2={trunk(branch.depth)} y2={branch.to} /> : null}
+                {branch.twigs.map((twig, k) => (
+                  <line key={k} x1={trunk(branch.depth)} y1={twig.y} x2={twig.leaf ? words : (branch.depth + 1) * STEP} y2={twig.y} />
+                ))}
+              </g>
+            ))}
+          </svg>
+          {layout.nodes.map((placed) => {
+            const clause = isClause(placed.node);
+            return (
+              <span key={placed.path.join(".") || "root"} className="st-node" data-role={placed.node.role || undefined} data-clause={clause || undefined} data-kind={clause ? clauseKind(placed.node, placed.parent) : undefined} style={{ insetInlineStart: placed.depth * STEP, top: placed.y - PILL / 2 }}>
+                {name(placed.node, placed.parent, placed.nth)}
+              </span>
+            );
+          })}
+          {layout.leaves.map((placed) => (
+            <div key={placed.path.join(".")} className="st-leaf" style={{ insetInlineEnd: 0, top: placed.y - SIDE_LEAF / 2 + 2, width: SIDE_WORDS - 4, height: SIDE_LEAF - 4 }}>
+              <Word leaf={placed.leaf} role={placed.role} path={placed.path} shared={shared} />
+            </div>
+          ))}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function Tree({ root, shared }: { root: TreeNode; shared: Shared }) {
+  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia(NARROW).matches);
+  useEffect(() => {
+    const media = window.matchMedia(NARROW);
+    const follow = () => setNarrow(media.matches);
+    media.addEventListener("change", follow);
+    return () => media.removeEventListener("change", follow);
+  }, []);
+  return narrow ? <SideTree root={root} shared={shared} /> : <WideTree root={root} shared={shared} />;
+}
+
+function WideTree({ root, shared }: { root: TreeNode; shared: Shared }) {
+  const t = useT();
+  const scroller = useRef<HTMLDivElement>(null);
+  const name = useNodeName();
   const layout = useMemo(
     () =>
       layoutTree(root, {
-        // A name is drawn small, in capitals: about seven points a letter, and its pill around it.
-        labelWidth: (node, parent) => name(node, parent, 9).length * 7.2 + 18,
+        labelWidth: (node, parent) => pillWidth(name(node, parent, 9)),
         leafWidth: (leaf) => {
           const word = shared.words[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1];
           const letters = (leaf.piece ?? word?.surface ?? "").replace(/[^\p{L}]/gu, "").length;
