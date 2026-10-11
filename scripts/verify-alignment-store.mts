@@ -139,6 +139,44 @@ await test("una palabra con puntuación se guarda sin ella y el texto no cambia"
   assert.equal(layer().verses["TIT 1:1"][1].targets.map((t: { word: string }) => t.word).join(" "), "siervo de Dios");
 });
 
+// ---------------------------------------------------------------- verses written as one
+
+await test("un versículo que el borrador escribe unido a otro se alinea entero, con el nombre que el borrador le da", async () => {
+  const { originalWordsAsOne } = await import("../src/dcs/alignmentLoad");
+  const { saveCorrection } = await import("../src/dcs/afinacionStore");
+  const { currentVerseHash, draftWordsOf } = await import("../src/dcs/alignmentDecisionStore");
+  const jud = { owner: "es-419_gl", repo: "es-419_glt", branch: "borrador/jud/tpl" };
+  const judPath = "66-JUD.usfm";
+  const book = ["id JUD", "c 1", "p", "v 3 Amados hermanos.", "v 4-5 Algunos entraron y quiero recordarles esto.", "v 6 Y a los ángeles.", ""].map((l) => (l ? BS + l : l)).join(String.fromCharCode(10));
+  put(jud.branch, judPath, book);
+  const now = () => files.get(key(jud.branch, judPath))!.text;
+  // The words of the two verses of the original are those of one: the «γάρ» of verse 5 is the second of two.
+  const word = (verseSid: string, index: number, surface: string) => ({ verseSid, surface, strong: "G" + surface.length, lemma: surface, occurrence: 1, occurrences: 1, index }) as OriginalWordToken;
+  const original = originalWordsAsOne([[word("JUD 1:4", 0, "παρεισέδυσαν"), word("JUD 1:4", 1, "γάρ")], [word("JUD 1:5", 0, "ὑπομνῆσαι"), word("JUD 1:5", 1, "γάρ")]]);
+  assert.deepEqual(original.map((w) => [w.surface, w.index, w.occurrence, w.occurrences]), [["παρεισέδυσαν", 0, 1, 1], ["γάρ", 1, 1, 2], ["ὑπομνῆσαι", 2, 1, 1], ["γάρ", 3, 2, 2]]);
+  const target = ["Algunos", "entraron", "y", "quiero", "recordarles", "esto."].map((surface, index) => ({ verseSid: "JUD 1:4-5", surface, occurrence: 1, occurrences: 1, index }) as WordToken);
+  const groups = addSourcesToBox(original, target, addSourcesToBox(original, target, [], "u0", [1]), "u3", [4]);
+  // Given by its first number, as the screen knows it.
+  const saved = await saveVerseAlignment({ session: session("ana"), target: jud, filepath: judPath, book: "JUD", chapter: 1, verse: 4, groups, source });
+  assert.ok(has(now(), "@v 4-5 "), "sigue escrito como uno solo");
+  assert.ok(has(now(), "@v 3 Amados hermanos.") && has(now(), "@v 6 Y a los ángeles."), "los vecinos, como estaban");
+  assert.deepEqual(words(now()), ["entraron", "recordarles"]);
+  assert.equal(saved.stored.length, 2, "lo guardado se lee de vuelta");
+  const kept = JSON.parse(files.get(key(jud.branch, alignmentLayerPath(source, "JUD")))!.text);
+  assert.deepEqual(Object.keys(kept.verses), ["JUD 1:4-5"]);
+  assert.equal(kept.verses["JUD 1:4-5"][1].sources[0].occurrence, 2, "el segundo «γάρ» es el segundo de los dos versículos");
+  assert.deepEqual(draftWordsOf(now(), 1, 5), ["Algunos", "entraron", "y", "quiero", "recordarles", "esto."], "sus palabras se hallan por cualquiera de sus números");
+  assert.equal(currentVerseHash(now(), "JUD", 1, 4, source), currentVerseHash(now(), "JUD", 1, 5, source));
+  assert.notEqual(currentVerseHash(now(), "JUD", 1, 4, source), currentVerseHash(book, "JUD", 1, 4, source), "y su alineación cuenta en lo que se compara");
+
+  // Corregir su texto no lo parte ni se lleva el otro versículo, y los enlaces de las palabras que quedan siguen.
+  await saveCorrection({ session: session("bea"), target: jud, filepath: judPath, book: "JUD", chapter: 1, verse: 5, text: "Algunos entraron y deseo recordarles esto.", reason: "prueba" });
+  assert.ok(has(now(), "@v 4-5 ") && !has(now(), "@v 5 ") && !has(now(), "@v 4 "), "sigue siendo «4-5»");
+  assert.ok(now().includes("deseo") && !now().includes("quiero"));
+  assert.deepEqual(words(now()), ["entraron", "recordarles"], "los enlaces de las palabras que no cambiaron se conservan");
+  assert.ok(has(now(), "@v 6 Y a los ángeles."));
+});
+
 // ---------------------------------------------------------------- the format of the rest of the book
 
 const { existsSync, readFileSync } = await import("node:fs");

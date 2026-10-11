@@ -451,9 +451,12 @@ para que el archivo del equipo y el del original se puedan comparar línea por l
   versículos que nadie había tocado (dónde va una marca en su línea, dos grupos vecinos del mismo
   original vueltos uno, espacios al final). El versículo alineado queda en sus renglones, con cada
   grupo en su línea, y lo que le sigue (la marca de trozo, la marca que abre el siguiente) no se
-  mueve. Dos versículos unidos en uno (`\v 4-5`) no se ofrecen todavía para alinear, y la pantalla lo dice
-  (`joinedVerses`); tampoco el título de un salmo. Si aun así llegara uno sin versículo propio que tomar, ahí se
-  guarda el libro escrito de nuevo.
+  mueve. Dos versículos unidos en uno (`\v 4-5`) se alinean como el versículo entero que son, contra las
+  palabras de los dos del original puestas en fila y contadas entre todas (`originalWordsAsOne`); la pantalla lo
+  llama «4–5» y lo guarda con el nombre que el borrador le da (`JUD 1:4-5`, `draftVerseKey`). Corregir su texto
+  también lo escribe entero: antes una corrección hecha por uno de sus números lo dejaba como ese versículo solo
+  y se llevaba el otro (`saveCorrection`, `spanOfVerse`). El título de un salmo no se alinea. Si llegara un
+  versículo sin uno propio que tomar, ahí se guarda el libro escrito de nuevo.
 - **Lo que un versículo tiene además de sus palabras** (`src/domain/verseMarkup.ts`): una nota al
   pie o una referencia cruzada (`\f … \f*`, `\x … \x*`), palabras marcadas (`\nd Jehová\nd*`,
   `\add …\add*`, `\qs Selah\qs*`), un hito (`\qt-s … \qt-e\*`). Quien edita ve y escribe solo las

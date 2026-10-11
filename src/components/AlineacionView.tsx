@@ -72,6 +72,7 @@ import { glossesInclude, strongParts, type LexiconFile } from "../domain/lexicon
 import { WordSheet } from "./WordSheet";
 import { referentKey } from "../domain/referents";
 import { CorrectionSheet } from "./CorrectionSheet";
+import { spanLabel } from "../domain/joinedVerses";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -850,7 +851,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       });
       setGroups((prev) => ({ ...prev, [target.verse]: saved.stored }));
       setDirty((prev) => ({ ...prev, [target.verse]: false }));
-      announce(t("al.saved").replace("{ref}", `${data.book} ${data.chapter}:${target.verse}`));
+      announce(t("al.saved").replace("{ref}", `${data.book} ${data.chapter}:${spanLabel(target)}`));
       return saved.stored;
     } catch (err) {
       setError(explainError(err));
@@ -1425,7 +1426,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       {data && verse ? (
         <CorrectionSheet
           open={fixing}
-          refLabel={`${data.book} ${data.chapter}:${verse.verse}`}
+          refLabel={`${data.book} ${data.chapter}:${spanLabel(verse)}`}
           text={verse.text}
           references={[
             { id: "orig", label: data.originalLabel, text: verse.original.map((token) => token.surface).join(" "), lang: data.originalRtl ? "hbo" : "grc", rtl: data.originalRtl, original: true },
@@ -1518,9 +1519,6 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         />
       ) : null}
 
-      {data?.joined.length && pane === "align" ? (
-        <p className="af-hint al-joined">{t(data.joined.length === 1 ? "al.joinedOne" : "al.joinedMany").replace("{refs}", data.joined.map((span) => `${data.chapter}:${span.from}–${span.to}`).join(", "))}</p>
-      ) : null}
       {data?.titleLeftOut && pane === "align" ? <p className="af-hint al-joined">{t("al.titleLeftOut")}</p> : null}
       {data && verse && pane === "align" ? (
         <>
@@ -1536,10 +1534,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                   data-state={state.id}
                   data-dirty={dirty[v.verse] ? "true" : undefined}
                   onClick={() => void goTo(i)}
-                  aria-label={`${t("al.verseTab").replace("{n}", String(v.verse)).replace("{state}", state.label)}${dirty[v.verse] ? t("al.unsavedSuffix") : ""}`}
+                  aria-label={`${t("al.verseTab").replace("{n}", spanLabel(v)).replace("{state}", state.label)}${dirty[v.verse] ? t("al.unsavedSuffix") : ""}`}
                   aria-current={i === position ? "true" : undefined}
                 >
-                  <span>{v.verse}</span>
+                  <span>{spanLabel(v)}</span>
                   <span className="al-verse-tab__mark" aria-hidden>
                     {state.mark}
                   </span>
@@ -1576,7 +1574,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
             <section className="al-main al-unstarted" aria-label={`${data.book} ${data.chapter}:${verse.verse}`}>
               <div>
                 <p className="af-lbl">
-                  {t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")} · {data.book} {data.chapter}:{verse.verse}
+                  {t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")} · {data.book} {data.chapter}:{spanLabel(verse)}
                 </p>
                 <p className="al-unstarted__draft">{verse.text}</p>
               </div>
@@ -1599,7 +1597,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           ) : (
             <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
               <p className="af-lbl">
-                {data.originalLabel} · {data.book} {data.chapter}:{verse.verse}
+                {data.originalLabel} · {data.book} {data.chapter}:{spanLabel(verse)}
               </p>
               {reference}
               <AlignmentBoxes

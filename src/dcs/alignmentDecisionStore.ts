@@ -11,7 +11,8 @@ import type { AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { appendMyDecision, isShaConflict, readRepoFile, saveCorrection, type RepoTarget } from "./afinacionStore";
-import { alignmentOfDraft, saveVerseAlignment, verseKey, type AlignmentSourceRef } from "./alignmentStore";
+import { alignmentOfDraft, draftVerseKey, saveVerseAlignment, type AlignmentSourceRef } from "./alignmentStore";
+import { spanOfSid } from "../domain/joinedVerses";
 import { closeIssue, commentOnIssue, createDecisionIssue, loadPmConfig } from "./issues";
 import { alignmentHash, groupsToLines } from "../domain/alignmentHash";
 import {
@@ -86,16 +87,17 @@ export function draftWordsOf(usfm: string, chapter: number, verse: number): stri
   const usj = tryParseUsj(usfm);
   if (!usj) return [];
   const tokens = tokenizeDocument(usj);
+  // A verse written as one with others is found by any of its numbers.
   const sid = Object.keys(tokens).find((k) => {
-    const m = /(\d+):(\d+)\s*$/.exec(k);
-    return m && Number(m[1]) === chapter && Number(m[2]) === verse;
+    const span = spanOfSid(k, chapter);
+    return span && span.from <= verse && span.to >= verse;
   });
   return sid ? tokens[sid]!.map((t) => t.surface) : [];
 }
 
 /** Hash of the alignment of a verse as it is in the group draft right now. */
 export function currentVerseHash(usfm: string, book: string, chapter: number, verse: number, source: AlignmentSourceRef): string {
-  const saved = alignmentOfDraft(usfm, book, source).verses[verseKey(book, chapter, verse)] ?? [];
+  const saved = alignmentOfDraft(usfm, book, source).verses[draftVerseKey(usfm, book, chapter, verse)] ?? [];
   return alignmentHash(draftWordsOf(usfm, chapter, verse), saved);
 }
 
@@ -308,7 +310,7 @@ export async function openTextProposal(params: {
   if (!current) throw new Error("No se encontró el borrador grupal de este libro.");
   const ref = originalTextRef(params.book);
   const source: AlignmentSourceRef = { id: `${ref.owner}/${ref.repo}`, layerDir: ref.repo };
-  const sid = verseKey(params.book, params.chapter, params.verse);
+  const sid = draftVerseKey(current.text, params.book, params.chapter, params.verse);
   const before = alignmentOfDraft(current.text, params.book, source).verses[sid] ?? [];
   return openAlignmentDecision({
     session,

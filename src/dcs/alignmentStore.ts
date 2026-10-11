@@ -11,6 +11,7 @@ import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { readRepoFile, isWriteRace, raceDelay, type RepoTarget } from "./afinacionStore";
 import { withoutPunctuation } from "../domain/alignmentKeep";
+import { spanOfVerse } from "../domain/joinedVerses";
 import { editedVersesInto } from "../domain/usfmEdit";
 
 /**
@@ -29,6 +30,15 @@ export function alignmentLayerPath(source: AlignmentSourceRef, book: string): st
 
 export function verseKey(book: string, chapter: number, verse: number): string {
   return `${book.toUpperCase()} ${chapter}:${verse}`;
+}
+
+/**
+ * What the alignment of a verse is kept under in a draft: the verse, or the verses it is written as one with
+ * (`JUD 1:4-5`), which is how the draft itself names it.
+ */
+export function draftVerseKey(usfm: string, book: string, chapter: number, verse: number): string {
+  const span = spanOfVerse(usfm, chapter, verse);
+  return span.to > span.from ? `${book.toUpperCase()} ${chapter}:${span.from}-${span.to}` : verseKey(book, chapter, verse);
 }
 
 function withVerse(doc: AlignmentDocument, key: string, groups: AlignmentGroup[]): AlignmentDocument {
@@ -55,13 +65,16 @@ export async function saveVerseAlignment(params: {
   source: AlignmentSourceRef;
 }): Promise<{ usfm: string; stored: AlignmentGroup[] }> {
   const { session, target, filepath, book, source } = params;
-  const key = verseKey(book, params.chapter, params.verse);
+  let key = verseKey(book, params.chapter, params.verse);
   // A linked word is the word alone: "Hacalías." is saved as "Hacalías", or the period would be written twice.
   const groups = withoutPunctuation(params.groups);
   let usfm = "";
   for (let attempt = 1; attempt <= 3; attempt++) {
     const current = await readRepoFile(session, target, filepath);
     if (!current) throw new Error("No se encontró el borrador grupal de este libro.");
+    // A verse written as one with others (`\v 4-5`) is aligned as the whole it is, under the name the draft gives it.
+    const span = spanOfVerse(current.text, params.chapter, params.verse);
+    key = draftVerseKey(current.text, book, params.chapter, params.verse);
     const doc = withVerse(alignmentOfDraft(current.text, book, source), key, groups);
     // marks off first, so only the verses of the document are woven back in
     const whole = mergeAlignmentIntoUsfm(current.text, doc);
@@ -69,9 +82,8 @@ export async function saveVerseAlignment(params: {
     // byte for byte. Aligning one verse wrote every verse of the book, and the writer does not give each one back
     // as another tool wrote it (where a mark stands on its line, two neighbours of one original word as two
     // groups, spaces at the ends of lines): in a book made with translationCore, 73 lines of 1317 changed under
-    // whoever aligned a single verse. Verses joined in one (`\v 4-5`) are not offered for alignment (see
-    // `joinedVerses`), so the verse is always one of its own; should one not be, the book written again is saved.
-    usfm = editedVersesInto(current.text, whole, params.chapter, [{ from: params.verse, to: params.verse }]) ?? whole;
+    // whoever aligned a single verse.
+    usfm = editedVersesInto(current.text, whole, params.chapter, [span]) ?? whole;
     try {
       await createOrUpdateContents(dcsConfig(session.host), target.owner, target.repo, filepath, {
         content: usfm,
@@ -90,7 +102,7 @@ export async function saveVerseAlignment(params: {
   // with the same original word come back as one box with its neighbours. The layer keeps that same form, and the
   // caller gets it too, so the screen and any «Terminé» mark describe what a reload will show.
   const stored = alignmentOfDraft(usfm, book, source).verses[key] ?? [];
-  await saveLayerVerse({ ...params, groups: stored });
+  await saveLayerVerse({ ...params, key, groups: stored });
   return { usfm, stored };
 }
 
@@ -101,12 +113,13 @@ async function saveLayerVerse(params: {
   book: string;
   chapter: number;
   verse: number;
+  /** The name the draft gives the verse (`JUD 1:4-5` for verses written as one). */
+  key: string;
   groups: AlignmentGroup[];
   source: AlignmentSourceRef;
 }): Promise<void> {
-  const { session, target, book, source } = params;
+  const { session, target, book, source, key } = params;
   const path = alignmentLayerPath(source, book);
-  const key = verseKey(book, params.chapter, params.verse);
   for (let attempt = 1; attempt <= 3; attempt++) {
     const existing = await readRepoFile(session, target, path);
     let doc: AlignmentDocument;

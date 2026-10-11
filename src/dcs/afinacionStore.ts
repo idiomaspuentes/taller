@@ -10,6 +10,7 @@ import type { CheckingDecisionsFile } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { applyVerseEditsKeepingAlignment } from "../domain/alignmentKeep";
+import { spanOfVerse } from "../domain/joinedVerses";
 import { parsePreferredTerms, serializePreferredTerms, withPreferredTerm, type PreferredTerms } from "../domain/afinacionWords";
 import type { CorrectionFrom, CorrectionReason } from "../domain/correctionLog";
 import { decisionsFilePath, type ReviewDecision } from "../domain/reviewRound";
@@ -185,9 +186,12 @@ export async function saveCorrection(params: {
   for (let attempt = 1; attempt <= 3; attempt++) {
     const current = await readRepoFile(session, target, filepath);
     if (!current) throw new Error("No se encontró el borrador grupal de este libro.");
-    // Whoever corrects reads the verse as one run of text: a verse of a poem keeps the lines it has.
+    // Whoever corrects reads the verse as one run of text: a verse of a poem keeps the lines it has. A verse
+    // written as one with others (`\v 4-5`) is corrected as the whole it is: written under one of its numbers
+    // alone it would lose the others.
+    const span = spanOfVerse(current.text, params.chapter, params.verse);
     const kept = applyVerseEditsKeepingAlignment(current.text, params.chapter, [
-      { verse: params.verse, text: params.text, flat: true },
+      span.to > span.from ? { from: span.from, to: span.to, text: params.text, flat: true } : { verse: params.verse, text: params.text, flat: true },
     ]);
     if (kept.usfm === current.text) return { clearedVerses: [], reducedVerses: [], usfm: current.text };
     const why = params.reason.trim();

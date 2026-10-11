@@ -1,4 +1,4 @@
-import { joinedVerses } from "../domain/joinedVerses";
+import { spanOfSid } from "../domain/joinedVerses";
 import { tokenizeDocument, tokenizeOriginalDocument, type OriginalWordToken, type WordToken } from "@usfm-tools/editor-core";
 import { parseUsfmToUsj } from "@usfm-tools/usfm-readonly-react";
 import type { AlignmentGroup } from "@usfm-tools/types";
@@ -17,7 +17,10 @@ import { glossesFor } from "../domain/alignmentGloss";
 import { bookUsfmName } from "../prep/discover";
 
 export type AlignmentVerse = {
+  /** The verse; the first of them when the draft writes several as one (`\v 4-5`). */
   verse: number;
+  /** The last of the verses written as one, when they are several. */
+  to?: number;
   /** Words of the original text, as the alignment editor reads them. */
   original: OriginalWordToken[];
   /** Words of the draft. */
@@ -42,8 +45,6 @@ export type AlineacionData = {
   referenceLabel: string;
   source: AlignmentSourceRef;
   verses: AlignmentVerse[];
-  /** Verses the draft writes as one (`\v 4-5`): they are not offered, and the screen says so. */
-  joined: { from: number; to: number }[];
   /** The chapter has a title with words (a psalm's, its verse 0), which is not offered either. */
   titleLeftOut: boolean;
   /** General levels; the views count with the levels of the task's team (`levelBook`). */
@@ -54,6 +55,23 @@ export type AlineacionData = {
 function verseNumber(sid: string, chapter: number): number | null {
   const m = /(\d+):(\d+)\s*$/.exec(sid);
   return m && Number(m[1]) === chapter ? Number(m[2]) : null;
+}
+
+/**
+ * The words of several verses of the original as those of one: in their order, each counted among all of them
+ * (the second «καὶ» of the two verses is the second, whatever it was in its own), which is how a verse written
+ * as one with others keeps its links.
+ */
+export function originalWordsAsOne(verses: OriginalWordToken[][]): OriginalWordToken[] {
+  const all = verses.flat();
+  const total = new Map<string, number>();
+  for (const word of all) total.set(word.surface, (total.get(word.surface) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  return all.map((word, index) => {
+    const occurrence = (seen.get(word.surface) ?? 0) + 1;
+    seen.set(word.surface, occurrence);
+    return { ...word, index, occurrence, occurrences: total.get(word.surface)! };
+  });
 }
 
 /** Everything the alignment step shows for one chapter: original words, draft words, and the links made so far. */
@@ -106,21 +124,33 @@ export async function loadAlineacion(params: {
   // A subtarea of a passage aligns the verses of its passage.
   const covered = verseRangeOf(params.ctx);
   for (const [sid, tokens] of Object.entries(draftTokens)) {
-    const verse = verseNumber(sid, chapter);
-    // Verse 0 is the title of a psalm: it keeps its alignment when the book is saved, and is not aligned here yet.
-    if (verse === null || verse < 1) continue;
-    if (covered && (verse < covered.from || verse > covered.to)) continue;
-    const originalSid = Object.keys(originalTokens).find((k) => verseNumber(k, chapter) === verse);
-    const original = originalSid ? originalTokens[originalSid]! : [];
-    const key = Object.keys(saved).find((k) => verseNumber(k, chapter) === verse);
-    const gatewayKey = gateway ? Object.keys(gateway.alignments).find((k) => verseNumber(k, chapter) === verse) : undefined;
+    // A verse the draft writes as one with others (`\v 4-5`) is one verse here too, against the words of all of
+    // them in the original.
+    const span = spanOfSid(sid, chapter);
+    // Verse 0 is the title of a psalm: it keeps its alignment when the book is saved, and is not aligned here.
+    if (!span || span.from < 1) continue;
+    if (covered && (span.to < covered.from || span.from > covered.to)) continue;
+    const numbers = Array.from({ length: span.to - span.from + 1 }, (_, i) => span.from + i);
+    const perVerse = numbers.map((verse) => {
+      const originalSid = Object.keys(originalTokens).find((k) => verseNumber(k, chapter) === verse);
+      const original = originalSid ? originalTokens[originalSid]! : [];
+      const gatewayKey = gateway ? Object.keys(gateway.alignments).find((k) => verseNumber(k, chapter) === verse) : undefined;
+      // The English word of each is found in its own verse, where the English text links it.
+      return { original, gloss: gatewayKey ? glossesFor(original, gateway!.alignments[gatewayKey]!) : original.map(() => "") };
+    });
+    const one = numbers.length === 1;
+    const key = Object.keys(saved).find((k) => {
+      const other = spanOfSid(k, chapter);
+      return other && other.from === span.from && other.to === span.to;
+    });
     verses.push({
-      verse,
-      original,
+      verse: span.from,
+      ...(one ? {} : { to: span.to }),
+      original: one ? perVerse[0]!.original : originalWordsAsOne(perVerse.map((each) => each.original)),
       draft: tokens,
-      text: draftTexts[verse] ?? tokens.map((t) => t.surface).join(" "),
-      gloss: gatewayKey ? glossesFor(original, gateway!.alignments[gatewayKey]!) : [],
-      reference: gatewayVerses[verse] ?? "",
+      text: draftTexts[span.from] ?? tokens.map((t) => t.surface).join(" "),
+      gloss: perVerse.some((each) => each.gloss.some(Boolean)) ? perVerse.flatMap((each) => each.gloss) : [],
+      reference: numbers.map((verse) => gatewayVerses[verse] ?? "").filter(Boolean).join(" "),
       groups: key ? saved[key]! : [],
     });
   }
@@ -136,7 +166,6 @@ export async function loadAlineacion(params: {
     referenceLabel: resource === "tps" ? "UST" : "ULT",
     source,
     verses,
-    joined: joinedVerses(Object.keys(draftTokens), chapter, covered),
     titleLeftOut: (!covered || covered.from <= 1) && Object.entries(draftTokens).some(([sid, tokens]) => verseNumber(sid, chapter) === 0 && tokens.length > 0),
     levels: pmConfig.levels,
     levelBook: pmConfig,
