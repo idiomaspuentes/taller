@@ -60,14 +60,14 @@ cd /ruta/limpia && npx wrangler pages deploy <taller>/dist --project-name taller
 
 (Se ejecuta fuera de la carpeta del proyecto para que wrangler no intente autoconfigurar Vite.) El Worker se publica con `npx wrangler deploy` dentro de `push-worker/`. Los secretos del Worker (`VAPID_*`, `WEBHOOK_SECRET`) viven en Cloudflare, nunca en el repositorio.
 
-## Ahora (10 de octubre): cerrar para producción
+## Ahora (11 de octubre): beta en producción
 
 Abel recorre la app en su teléfono contra QA (`?server=qa`) con los proyectos de prueba de Jonás 2 y Tito 2, y lo que encuentra se arregla primero. Lo demás está en las incidencias de GitHub:
 
-- **Compuertas para producción**: [#24](https://github.com/idiomaspuentes/taller/issues/24). La corrida real contra Door43 se acuerda antes: producción no se toca para pruebas.
+- **Compuertas para producción**: [#24](https://github.com/idiomaspuentes/taller/issues/24). El 11 de octubre Abel decidió no hacer antes una corrida real de punta a punta: la beta se prueba directamente en producción, con el equipo.
 - **Lo que solo se comprobó en el panel del navegador** y falta ver en un teléfono: [#19](https://github.com/idiomaspuentes/taller/issues/19). De las 14 herramientas del recorrido, tras el último arreglo solo se abrieron tres.
-- **Decisiones aplazadas**: quién corrige un diagrama ([#12](https://github.com/idiomaspuentes/taller/issues/12)), dónde viven los datos de los recursos ([#13](https://github.com/idiomaspuentes/taller/issues/13)), si se retira `fcr-prueba.json` ([#14](https://github.com/idiomaspuentes/taller/issues/14)), si el árbol se gira ([#15](https://github.com/idiomaspuentes/taller/issues/15)) y las fases de recursos sin hacer ([#16](https://github.com/idiomaspuentes/taller/issues/16)).
-- **Trabajo pendiente**: el editor de diagramas ([#20](https://github.com/idiomaspuentes/taller/issues/20)), la cobertura de los recursos ([#21](https://github.com/idiomaspuentes/taller/issues/21)), el léxico ([#22](https://github.com/idiomaspuentes/taller/issues/22)) y los límites al escribir el texto bíblico ([#23](https://github.com/idiomaspuentes/taller/issues/23)).
+- **Decisiones tomadas el 11 de octubre**: un diagrama de oración lo corrige cualquiera del equipo, sin revisión (#12); los datos de los recursos se quedan en este repositorio (#13); se retiró `fcr-prueba.json` (#14); el árbol se dibuja girado en el teléfono y no en pantalla ancha (#15); la regla de las correcciones conserva su excepción, quien coordina aplica de una vez lo que el equipo ya decidió (#25); los títulos de los salmos no se alinean, los versículos unidos sí (#23).
+- **Para después de producción**: las fases de recursos abiertos sin hacer, plantas y animales con imagen, rutas y dudas del texto hebreo ([#16](https://github.com/idiomaspuentes/taller/issues/16)).
 
 **Lo que conviene saber antes de tocar nada**
 - Entrar con la misma cuenta en dos dispositivos cierra una de las dos sesiones: para probar en el teléfono y en el escritorio a la vez hacen falta dos cuentas.
