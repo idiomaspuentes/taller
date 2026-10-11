@@ -43,6 +43,26 @@ export function sharedWords(marks: string | undefined, verses: string[]): number
   return words.map((verse) => verse.filter(() => Number(marks[at++]) % 3 !== 0).map((piece) => piece.index));
 }
 
+/** A word of the Hebrew text the list counts, by what is written after it: a space, a maqqef, the end of a section. */
+export type CountedWord = { after: string };
+
+/**
+ * The marks of a Hebrew reference as a digit for each word that is shown. The list counts the Hebrew otherwise
+ * than the Greek: the sign that ends a section (ס, פ) has a digit of its own, which is taken out here, since our
+ * text does not write it. (Words joined by a maqqef have one digit between them, and are shown as one.) `words`
+ * are those of the verses of the reference in the edition the list counts; when the marks are not as many as
+ * that edition has, they are left as they are, and the app will not trust them.
+ */
+export function marksOfWords(marks: string, words: CountedWord[]): string {
+  const section: boolean[] = [];
+  for (const word of words) {
+    if (word.after.includes("־")) continue;
+    section.push(false);
+    if (/[ספ]/.test(word.after)) section.push(true);
+  }
+  return section.length === marks.length ? [...marks].filter((_, i) => !section[i]).join("") : marks;
+}
+
 const spansText = (spans: VerseSpan[]) => spans.map((span) => (span.to > span.from ? `${span.from}-${span.to}` : String(span.from))).join(",");
 
 /** The reference alone, without its marks: what two passages that name the same verses have in common. */
@@ -145,8 +165,9 @@ export function hebrewToOurs(mapped: Record<string, string>): (book: string, pla
  * A reference of the list in our numbering. One that runs over the end of a chapter here becomes two, and its
  * marks are left behind: they count the words of the whole run. So are those of a Hebrew verse the New Testament
  * quotes (`quoted`): there the list counts the words of the Greek translation the quote was made from.
+ * `hebrewWords` gives the words of a verse of the Hebrew Bible, in its numbering (see `marksOfWords`).
  */
-export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Place) => Place, quoted = false): ParallelRef[] {
+export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Place) => Place, quoted = false, hebrewWords?: (book: string, place: Place) => CountedWord[]): ParallelRef[] {
   const ref = parseParallelRef(verse.ref);
   if (!ref) return [];
   if (!verse.hebrew) return [verse.marks ? { ...ref, marks: verse.marks } : ref];
@@ -155,7 +176,8 @@ export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Plac
     const place = toOurs(ref.book, { chapter: ref.chapter, verse: number });
     byChapter.set(place.chapter, [...(byChapter.get(place.chapter) ?? []), place.verse]);
   }
-  const marks = byChapter.size === 1 && !quoted ? verse.marks : undefined;
+  const kept = byChapter.size === 1 && !quoted ? verse.marks : undefined;
+  const marks = kept && hebrewWords ? marksOfWords(kept, versesOfRef(ref).flatMap((number) => hebrewWords(ref.book, { chapter: ref.chapter, verse: number }))) : kept;
   return [...byChapter].sort((a, b) => a[0] - b[0]).map(([chapter, verses]) => ({ book: ref.book, chapter, spans: spansOf(verses), ...(marks ? { marks } : {}) }));
 }
 
@@ -163,12 +185,12 @@ export function refInOurs(verse: SourceVerse, toOurs: (book: string, place: Plac
  * What is written for each book: the passages it takes part in, as text. A passage that says nothing another one
  * of the book does not already say (the list repeats a short one inside a longer one) is left out.
  */
-export function parallelFiles(passages: SourceVerse[][], toOurs: (book: string, place: Place) => Place): Map<string, string[][]> {
+export function parallelFiles(passages: SourceVerse[][], toOurs: (book: string, place: Place) => Place, hebrewWords?: (book: string, place: Place) => CountedWord[]): Map<string, string[][]> {
   const files = new Map<string, string[][]>();
   for (const passage of passages) {
     const quoted = passage.some((verse) => verse.hebrew) && passage.some((verse) => !verse.hebrew);
     const found = new Map<string, ParallelRef>();
-    for (const ref of passage.flatMap((verse) => refInOurs(verse, toOurs, quoted))) if (!found.has(formatParallelRef(ref))) found.set(formatParallelRef(ref), ref);
+    for (const ref of passage.flatMap((verse) => refInOurs(verse, toOurs, quoted, hebrewWords))) if (!found.has(formatParallelRef(ref))) found.set(formatParallelRef(ref), ref);
     const refs = [...found.values()].map(written);
     if (refs.length < 2) continue;
     for (const book of new Set(refs.map((ref) => ref.slice(0, 3)))) files.set(book, [...(files.get(book) ?? []), refs]);

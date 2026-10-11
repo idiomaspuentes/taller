@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatParallelRef, hebrewToOurs, normalizeParallelFile, parallelFiles, parallelLabel, parallelsAt, parseParallelRef, passagesOfXml, refInOurs, sharedWords, versesWithParallels } from "../src/domain/parallels";
+import { formatParallelRef, hebrewToOurs, marksOfWords, normalizeParallelFile, parallelFiles, parallelLabel, parallelsAt, parseParallelRef, passagesOfXml, refInOurs, sharedWords, versesWithParallels } from "../src/domain/parallels";
 import { BOOKS, bookName } from "../src/domain/books";
 
 let passed = 0;
@@ -99,6 +99,19 @@ test("en los archivos servidos, Jonás 1:17 lleva a Mateo 12:40, y Judas a 2 Ped
   assert.deepEqual(parallelsAt(read("JUD"), "JUD", 1, 6).map(formatParallelRef), ["2PE 2:4"]);
   assert.equal(parallelsAt(read("PSA"), "PSA", 51, 4).some((ref) => formatParallelRef(ref) === "ROM 3:4"), true, "Salmo 51:6 del hebreo");
   assert.equal(parallelsAt(read("JOL"), "JOL", 2, 32).some((ref) => formatParallelRef(ref) === "ROM 10:13"), true, "Joel 3:5 del hebreo");
+});
+
+test("en el hebreo la lista cuenta la señal de fin de sección: su dígito se quita, y las palabras unidas por guion son una", () => {
+  // Génesis 10:14: «וְאֶת־פַּתְרֻסִים … וְאֶת־כַּפְתֹּרִים ס»: tres palabras unidas a la siguiente, y la señal al final.
+  const words = ["־", " ", "־", " ", " ", " ", " ", " ", "־", "׃ס"].map((after) => ({ after }));
+  assert.equal(marksOfWords("22522252", words), "2252225", "siete palabras como se muestran, y el dígito de la señal fuera");
+  // 1 Crónicas 1:51: la señal en medio del versículo.
+  assert.equal(marksOfWords("0013005", [" ", "ס", " ", " ", " ", "׃"].map((after) => ({ after }))), "003005", "se quita el dígito de donde está la señal, no el último");
+  assert.equal(marksOfWords("222", [" ", " ", "׃"].map((after) => ({ after }))), "222", "sin señal no cambia nada");
+  assert.equal(marksOfWords("2222", [" ", "׃ס"].map((after) => ({ after }))), "2222", "si no cuadra con esa edición se deja como vino, y la app no se fía");
+  const hebrewWords = () => [" ", "׃פ"].map((after) => ({ after }));
+  assert.deepEqual(refInOurs({ hebrew: true, ref: "GEN 1:1", marks: "220" }, (_book, place) => place, false, hebrewWords).map((ref) => ref.marks), ["22"]);
+  assert.deepEqual(refInOurs({ hebrew: false, ref: "MAT 1:1", marks: "220" }, (_book, place) => place, false, hebrewWords).map((ref) => ref.marks), ["220"], "el griego no se toca");
 });
 
 test("las palabras que dos pasajes comparten se marcan solo si la lista cuenta las mismas palabras que mostramos", () => {

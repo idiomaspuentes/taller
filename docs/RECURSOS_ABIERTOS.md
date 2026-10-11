@@ -22,10 +22,15 @@ con la tabla estándar de Paratext (`Copenhagen-Alliance/versification-specifica
 
 Las palabras que coinciden vienen como un dígito por palabra, contando las palabras del texto de las Sociedades
 Bíblicas. Se resaltan solo cuando hay tantos dígitos como palabras mostramos: con una de diferencia se marcaría la
-palabra que no es. Medido en 25 libros: cuadra en el 87 % de las referencias del griego, el 90 % de las del griego
-que cita al Antiguo Testamento y el 76 % de las del hebreo; donde no cuadra, el pasaje se muestra sin resaltar. No
-averigüé por qué el hebreo falla más (casi siempre por una palabra). Las marcas del hebreo que el Nuevo Testamento
-cita no se guardan: cuentan las palabras de la Septuaginta.
+palabra que no es. Donde no cuadra, el pasaje se muestra sin resaltar.
+
+En el hebreo la lista cuenta de otro modo: las palabras unidas por guion (maqqef) llevan un solo dígito, y la señal
+de fin de sección (ס, פ) lleva uno propio. Lo primero ya coincide con lo que mostramos; lo segundo se quita al
+construir los archivos, leyendo dónde están esas señales en el texto hebreo de MACULA (`marksOfWords`; por eso
+`parallels:build` pide `--hebrew`, la misma carpeta que `trees:build`). Medido en los 66 libros: cuadra el 94 % de
+las referencias del hebreo (antes el 78 %) y el 88 % de las del griego. Lo que falta en el griego son diferencias
+de edición; en el hebreo, unas 150 referencias que tienen un dígito de más sin que haya señal en ese texto. Las
+marcas del hebreo que el Nuevo Testamento cita no se guardan: cuentan las palabras de la Septuaginta.
 
 «¿A quién se refiere?» sale de MACULA (`Clear-Bible/macula-hebrew` y `macula-greek`, de Biblica, CC BY 4.0). En la
 ficha de una palabra del original, donde quiera que se abra (al alinear, al revisar desafíos y términos clave, en un
