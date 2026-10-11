@@ -19,6 +19,7 @@
  * It only writes local files. Publishing them to Door43 is a separate, deliberate step.
  */
 import { mkdir, readFile, writeFile, rm, readdir, copyFile, stat } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -225,6 +226,33 @@ function sensesById(dictionary) {
 
 const definitionOf = (sense) => clean(sense?.DefinitionShort || sense?.DefinitionLong || "");
 
+/**
+ * The names of the fields of meaning the source left in English in an edition of another language, said in that
+ * language (`lexicon-additions/domains.json`, by language): «Plants» is «Plantas». The Hebrew dictionary has a
+ * third of its field names untranslated in Spanish and in Portuguese.
+ */
+const DOMAIN_NAMES = existsSync(path.join(ADDITIONS_DIR, "domains.json")) ? JSON.parse(readFileSync(path.join(ADDITIONS_DIR, "domains.json"), "utf8")) : {};
+
+/** What each field of meaning is called in a dictionary, by its code. */
+function domainNamesOf(dictionary) {
+  const out = new Map();
+  for (const entry of dictionary) for (const base of entry.BaseForms ?? []) for (const meaning of base.LEXMeanings ?? []) for (const d of [...(meaning.LEXDomains ?? []), ...(meaning.LEXSubDomains ?? [])]) if (clean(d.DomainCode) && clean(d.Domain)) out.set(clean(d.DomainCode), clean(d.Domain));
+  return out;
+}
+
+/**
+ * The name of a field of meaning in the language of the target. One the source gives exactly as the English
+ * edition does was not translated there: it is said from the table, and counted when the table does not have it.
+ */
+function fieldName(d, target, report) {
+  const name = clean(d.Domain);
+  if (!name || target.srcLang === "en" || report.englishDomains.get(clean(d.DomainCode)) !== name) return name;
+  const own = DOMAIN_NAMES[target.srcLang]?.[name];
+  if (own) return own;
+  report.domainsInEnglish.set(name, (report.domainsInEnglish.get(name) ?? 0) + 1);
+  return name;
+}
+
 function buildEntry(entry, code, target, english, report) {
   const pos = [];
   const senses = [];
@@ -252,14 +280,14 @@ function buildEntry(entry, code, target, english, report) {
         out.definitionLang = "en";
         report.definitionsInEnglish += 1;
       }
-      const domain = [...(meaning.LEXDomains ?? []), ...(meaning.LEXSubDomains ?? [])].map((d) => clean(d.Domain)).filter(Boolean);
+      const domain = [...(meaning.LEXDomains ?? []), ...(meaning.LEXSubDomains ?? [])].map((d) => fieldName(d, target, report)).filter(Boolean);
       if (domain.length) out.domain = [...new Set(domain)].join(" · ");
       // The field of meaning the sense is filed under, the narrowest the source gives: the words that share it are
       // listed in `domains/<code>.json`, for whoever wants to see what else could have been said.
       const field = [...(meaning.LEXSubDomains ?? []), ...(meaning.LEXDomains ?? [])].find((d) => clean(d.DomainCode) && clean(d.Domain));
       if (field) {
         out.domainCode = clean(field.DomainCode);
-        report.domainNames.set(out.domainCode, clean(field.Domain));
+        report.domainNames.set(out.domainCode, fieldName(field, target, report));
       }
       const entryCode = clean(meaning.LEXEntryCode);
       if (entryCode) out.code = entryCode;
@@ -497,6 +525,8 @@ Generado el ${TODAY} con \`scripts/build-lexicons.mjs\` del repositorio \`taller
 async function buildTarget(target, dictionaries, original) {
   const report = { senses: 0, sensesInEnglish: 0, definitionsInEnglish: 0, unknownRefs: { count: 0 }, unknownPos: new Set(), noStrong: 0, leftoverMarks: 0, byLemma: 0, added: 0, domainNames: new Map() };
   const english = sensesById(dictionaries[target.english]);
+  report.englishDomains = domainNamesOf(dictionaries[target.english]);
+  report.domainsInEnglish = new Map();
   const files = new Map();
   let entries = 0;
   for (const entry of dictionaries[target.source]) {
@@ -597,7 +627,9 @@ async function buildTarget(target, dictionaries, original) {
   console.log(`  ${files.size} files · ${entries} entries · ${report.senses} senses · ${(bytes / 1024 / 1024).toFixed(1)} MB`);
   console.log(`  largest file: ${largest.number}.json, ${(largest.bytes / 1024).toFixed(0)} KB`);
   console.log(`  fields of meaning: ${fields.size} files, ${[...fields.values()].reduce((n, words) => n + words.size, 0)} words in them`);
-  console.log(`  still in English: ${report.sensesInEnglish} senses, ${report.definitionsInEnglish} definitions`);
+  console.log(`  still in English: ${report.sensesInEnglish} senses, ${report.definitionsInEnglish} definitions, ${report.domainsInEnglish.size} names of fields of meaning`);
+  // Asked for with --domains: the names left, to be put into lexicon-additions/domains.json.
+  if (flag("--domains") && report.domainsInEnglish.size) console.log(`  fields named as in English (${target.srcLang}): ${JSON.stringify([...report.domainsInEnglish.keys()].sort())}`);
   console.log(`  filed by lemma, under the number the text uses: ${report.byLemma}`);
   console.log(`  added from ${ADDED_FROM[target.kind].id}, translated: ${report.added}`);
   console.log(`  left out: ${report.noStrong} entries with no Strong's number`);
