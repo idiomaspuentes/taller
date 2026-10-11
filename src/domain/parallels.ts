@@ -54,7 +54,8 @@ export type CountedToken = "word" | "read" | "section";
 /**
  * What the list counts in a verse of our Hebrew text, from its USFM. The form that is read is in a note after the
  * written word, tagged as a word; the sign of a section is written after the end of the verse, joined to its last
- * word or alone.
+ * word or alone. A written word our text gives no reading for is still counted twice by the list: it is known by
+ * having no vowels.
  */
 export function hebrewTokens(usfm: string): CountedToken[] {
   const flat = usfm
@@ -65,17 +66,20 @@ export function hebrewTokens(usfm: string): CountedToken[] {
     .replace(/\\w ([^|\\]+)\|[^\\]*\\w\*/g, "$1")
     .replace(/\\[a-z0-9-]+\*?/g, " ");
   const tokens: CountedToken[] = [];
-  for (const piece of flat.split(/\s+/).filter(Boolean)) {
-    if (piece === "\u00ab") {
-      // The note comes after the sign of the section when the word it is about ends the verse.
-      if (tokens[tokens.length - 1] === "section") tokens.splice(tokens.length - 1, 0, "read");
-      else tokens.push("read");
-    } else if (/^[ספ]$/.test(piece)) tokens.push("section");
+  // The note comes after the sign of the section when the word it is about ends the verse.
+  const read = () => (tokens[tokens.length - 1] === "section" ? tokens.splice(tokens.length - 1, 0, "read") : tokens.push("read"));
+  // A word written without its vowels is one that is read otherwise, even where the text has no note saying how.
+  const bare = (piece: string) => piece.split("־").some((part) => /\p{L}/u.test(part) && !/[\u05b0-\u05bc\u05c1\u05c2\u05c7]/.test(part));
+  const pieces = flat.split(/\s+/).filter(Boolean);
+  pieces.forEach((piece, i) => {
+    if (piece === "\u00ab") read();
+    else if (/^[ספ]$/.test(piece)) tokens.push("section");
     else if (/\p{L}/u.test(piece)) {
       tokens.push("word");
       if (/׃[ספ]$/.test(piece)) tokens.push("section");
+      if (bare(piece.replace(/׃[ספ]$/, "")) && pieces[i + 1] !== "\u00ab") read();
     }
-  }
+  });
   return tokens;
 }
 

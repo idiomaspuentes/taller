@@ -113,6 +113,10 @@ test("en el hebreo la lista cuenta también la señal de fin de sección y la fo
   // Deuteronomio 5:10: la nota de la última palabra viene después de la señal; la lista la cuenta antes.
   assert.deepEqual(hebrewTokens(`\\v 10\n${w("מצותו")}׃ס\n\\f + \\ft Q \\+w מִצְוֺתָי|lemma="x"\\+w*\\f*`), ["word", "read", "section"]);
 
+  // Jeremías 52:1: una palabra escrita sin vocales es de las que se leen de otro modo, aunque no traiga nota.
+  assert.deepEqual(hebrewTokens(`\\v 1\n${w("אִמּוֹ")}\n${w("חמיטל")}\n${w("בַּֽת")}־${w("יִרְמְיָהוּ")}`), ["word", "word", "read", "word"]);
+  assert.deepEqual(hebrewTokens(`\\v 11\n${w("בבית")}־${w("הַפְּקֻדֹּת")}`), ["word", "read"], "también cuando va unida a otra por guion");
+
   assert.equal(marksOfWords("22522252", ["word", "word", "word", "word", "word", "word", "word", "section"]), "2252225", "el dígito de la señal, fuera");
   assert.equal(marksOfWords("0013005", ["word", "word", "section", "word", "word", "word", "word"]), "003005", "de donde está la señal, no el último");
   assert.equal(marksOfWords("0122", ["word", "read", "word", "word"]), "122", "la palabra se muestra una vez, y se marca si la forma que se lee es la compartida");

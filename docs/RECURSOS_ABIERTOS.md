@@ -34,10 +34,12 @@ resalta si la lista da por compartida cualquiera de sus dos formas, porque el pa
 (1 Crónicas 14:1 escribe «Hiram» como 2 Samuel 5:11 y lee «Huram»). La señal que nuestro texto trae suelta en medio
 de un versículo se muestra y no se cuenta.
 
-Medido en los 66 libros: cuadra el 98,7 % de las referencias del hebreo (antes el 78 %) y el 88 % de las del
-griego. Lo que falta en el griego son diferencias de edición. En el hebreo quedan 33 referencias: Jeremías 52 y
-otras donde nuestro texto trae una palabra sin vocales y sin nota de lectura, 1 Reyes 22:43 (que la Biblia hebrea
-parte en dos versículos), y los Salmos 18:1 y 53:1 (el título). Las marcas del hebreo que el Nuevo Testamento cita
+Una palabra escrita sin vocales y sin nota (Jeremías 52:1) también se cuenta dos veces en la lista, y así se toma.
+
+Medido en los 66 libros: cuadra el 99,2 % de las referencias del hebreo (antes el 78 %) y el 88 % de las del
+griego. Lo que falta en el griego son diferencias de edición. En el hebreo quedan 20 referencias: 1 Reyes 22:43
+(que la Biblia hebrea parte en dos versículos, y la lista marca cada mitad), los Salmos 18:1 y 53:1 (el título),
+y casos sueltos de una o dos palabras sin causa hallada (1 Crónicas 20:4, 2 Reyes 19:31, 2 Samuel 8:3…). Las marcas del hebreo que el Nuevo Testamento cita
 no se guardan: cuentan las palabras de la Septuaginta.
 
 «¿A quién se refiere?» sale de MACULA (`Clear-Bible/macula-hebrew` y `macula-greek`, de Biblica, CC BY 4.0). En la
