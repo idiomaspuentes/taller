@@ -3113,5 +3113,7 @@
   "al.readChapter": "Leer el capítulo",
   "af.pickAll": "Marcar todo el versículo",
   "af.pickNone": "Quitar lo marcado",
-  "af.runHint": "Si son varias, toca la primera y la última: las de en medio se marcan solas. Toca una marcada para quitarla."
+  "af.runHint": "Si son varias seguidas, toca la primera y la última.",
+  "af.fillOne": "Marcar también la de en medio",
+  "af.fillMany": "Marcar también las {n} de en medio"
 }

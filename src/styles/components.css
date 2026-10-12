@@ -9310,3 +9310,7 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 .af-run { order: 2; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
 .af-run .af-link { min-height: 2.5rem; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; cursor: pointer; }
 .af-run .af-link:disabled { opacity: 0.45; cursor: default; }
+
+/* What the screen offers once two words apart are marked: the ones between them too. First of its row, and a
+   button, since it is the next thing to do. */
+.af-run__fill { flex: 1 0 100%; min-height: 2.75rem; padding: 0.375rem 0.75rem; border: 1px solid var(--accent-500); border-radius: var(--radius-sm); background: var(--accent-100); font: inherit; font-weight: 600; color: var(--accent-700); cursor: pointer; }

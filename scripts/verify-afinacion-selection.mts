@@ -1,7 +1,7 @@
 /** Marking the words of a verse, and finding them again after the text changed. */
 import assert from "node:assert/strict";
 import { resolveTextReference } from "@usfm-tools/checking";
-import { selectionFromWords, stretchesOf, toggleWord, touchWords, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
+import { fillBetween, selectionFromWords, stretchesOf, toggleWord, unmarkedBetween, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -26,26 +26,26 @@ test("tocar una palabra la marca y volver a tocarla la desmarca, siempre en orde
   assert.deepEqual(toggleWord(sel, 2), [5]);
 });
 
-test("muchas palabras se marcan con pocos toques: la primera y la última, y las de en medio van con ellas", () => {
-  let marked = touchWords([], 1);
-  assert.deepEqual(marked, [1], "el primer toque marca una palabra");
-  marked = touchWords(marked, 5);
-  assert.deepEqual(marked, [1, 2, 3, 4, 5], "el segundo, hasta ahí");
-  assert.deepEqual(touchWords(marked, 0), [0, 1, 2, 3, 4, 5], "un toque antes del principio lo alarga hacia allá");
-  assert.deepEqual(touchWords(marked, 5), [1, 2, 3, 4], "un toque en una marcada la quita");
-  assert.deepEqual(touchWords(marked, 3), [1, 2, 4, 5], "también en medio, y solo esa");
-  assert.deepEqual(touchWords([3], 3), []);
+test("un toque marca una palabra sola; las de en medio se ofrecen, y se marcan de un toque", () => {
+  // Una palabra, otras que no van, y una más: dos toques, y nada entre ellas.
+  const apart = toggleWord(toggleWord([], 1), 6);
+  assert.deepEqual(apart, [1, 6]);
+  assert.equal(unmarkedBetween(apart), 4, "se ofrece marcar las cuatro de en medio");
+  // Muchas seguidas: la primera, la última, y lo que se ofrece.
+  assert.deepEqual(fillBetween(apart), [1, 2, 3, 4, 5, 6]);
+  assert.equal(unmarkedBetween(fillBetween(apart)), 0, "ya no hay nada que ofrecer");
+  assert.equal(unmarkedBetween([3]), 0);
+  assert.equal(unmarkedBetween([]), 0);
+  assert.deepEqual(fillBetween([]), []);
 });
 
-test("varios tramos: cuatro palabras, dos que no van y dos más son cuatro toques", () => {
-  // La primera y la última, y luego las dos que no van.
-  let marked = touchWords(touchWords([], 0), 7);
-  marked = touchWords(touchWords(marked, 4), 5);
+test("varios tramos: cuatro palabras, dos que no van y dos más", () => {
+  // La primera y la cuarta, lo de en medio, y las otras dos.
+  let marked = fillBetween(toggleWord(toggleWord([], 0), 3));
+  marked = toggleWord(toggleWord(marked, 6), 7);
   assert.deepEqual(marked, [0, 1, 2, 3, 6, 7]);
   assert.deepEqual(stretchesOf(marked), [{ from: 0, to: 3 }, { from: 6, to: 7 }]);
-  // Con dos tramos marcados, una palabra nueva se une al más cercano, sin llenar el hueco del otro lado.
-  assert.deepEqual(touchWords([0, 1, 6, 7], 9), [0, 1, 6, 7, 8, 9]);
-  assert.deepEqual(touchWords([0, 1, 6, 7], 3), [0, 1, 2, 3, 6, 7]);
+  assert.equal(unmarkedBetween(marked), 2);
 
   const long = "uno dos tres cuatro cinco seis siete ocho";
   const kept = selectionFromWords(long, marked, { chapter: 1, verse: 2 })!;

@@ -25,21 +25,21 @@ export function toggleWord(selected: number[], index: number): number[] {
 }
 
 /**
- * What a touch on a word does to what is marked: the way to mark many with few touches. Touched one by one, a
- * phrase of twelve words was twelve touches.
- *
- * A touch on a word that is not marked marks it, and with it every word between it and the nearest one already
- * marked: the first word and the last are enough for a run. A touch on a marked word takes that word off, and no
- * other: «four words, two that do not belong, two more» is the first, the last, and the two that do not belong.
+ * The words between the first and the last marked one that are not marked. A touch marks one word and no other,
+ * so that two words apart are two touches; a phrase of twelve words would be twelve. When there are words left
+ * between the marked ones the screen offers to mark them too, in one touch (`fillBetween`): the first word, the
+ * last, and that.
  */
-export function touchWords(selected: number[], index: number): number[] {
-  if (selected.includes(index)) return selected.filter((i) => i !== index);
-  if (!selected.length) return [index];
-  const nearest = selected.reduce((best, i) => (Math.abs(i - index) < Math.abs(best - index) ? i : best));
-  const from = Math.min(nearest, index);
-  const to = Math.max(nearest, index);
-  const filled = Array.from({ length: to - from + 1 }, (_, i) => from + i);
-  return [...new Set([...selected, ...filled])].sort((a, b) => a - b);
+export function unmarkedBetween(selected: number[]): number {
+  if (selected.length < 2) return 0;
+  return Math.max(...selected) - Math.min(...selected) + 1 - new Set(selected).size;
+}
+
+/** Every word from the first marked one to the last. */
+export function fillBetween(selected: number[]): number[] {
+  if (!selected.length) return [];
+  const from = Math.min(...selected);
+  return Array.from({ length: Math.max(...selected) - from + 1 }, (_, i) => from + i);
 }
 
 /** A stretch of a verse that was marked: its text and where it is. */
