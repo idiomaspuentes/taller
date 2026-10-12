@@ -3124,9 +3124,9 @@
   "sp.kept": "Lo que se guardaría",
   "sp.nothingSaved": "Esta página es solo para probar: no guarda nada ni toca ninguna tarea.",
   "sp.variants": "Formas de marcar",
-  "sp.varPhrases": "A · Por frases",
-  "sp.varEnds": "B · Propuesta",
-  "sp.varNow": "Actual",
+  "sp.varPhrases": "A Frases",
+  "sp.varEnds": "B Flechas",
+  "sp.varNow": "Hoy",
   "sp.aboutPhrases": "Propuesta A: el versículo viene partido en frases. Un toque marca la frase entera.",
   "sp.aboutEnds": "Propuesta B: la app ya marcó lo que cree que es. Tú confirmas o corriges dónde empieza y dónde termina.",
   "sp.aboutNow": "Como está hoy en la tarea: palabra por palabra, y un botón para llenar entre las dos últimas.",
@@ -3148,5 +3148,8 @@
   "sp.endEarlier": "Terminar una palabra antes",
   "sp.endLater": "Terminar una palabra después",
   "sp.tapToStart": "Toca una palabra para empezar.",
-  "sp.tapForAnother": "Para marcar otro tramo, toca una palabra suya."
+  "sp.tapForAnother": "Para marcar otro tramo, toca una palabra suya.",
+  "sp.varPaint": "C Deslizar",
+  "sp.aboutPaint": "Propuesta C: como un resaltador. Toca una palabra para marcarla, o desliza el dedo sobre varias. Si empiezas sobre una marcada, las quita.",
+  "sp.askPaint": "Toca o desliza el dedo sobre las palabras que traducen lo resaltado."
 }

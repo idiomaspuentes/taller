@@ -9335,3 +9335,8 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 .sp-end__what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sp-step { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 2.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--primary); cursor: pointer; }
 .sp-step:disabled { opacity: 0.35; cursor: default; }
+
+/* C: a finger slid over the words marks them. The page still moves under one that goes up or down first; the
+   words are not picked as text, nor called out by a long press, while a stroke passes over them. */
+.sp-paint { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sp-paint .af-word--tap { touch-action: pan-y; }

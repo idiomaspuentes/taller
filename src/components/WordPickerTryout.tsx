@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
 import { WordPicker } from "./WordPicker";
 import { WordPickerEnds } from "./WordPickerEnds";
+import { WordPickerPaint } from "./WordPickerPaint";
 import { WordPickerPhrases } from "./WordPickerPhrases";
 import { selectionFromWords, stretchesOf, wordSpans } from "../domain/afinacionSelection";
 import { useT } from "../i18n/messages";
@@ -55,6 +56,7 @@ const EXAMPLES = [
 const VARIANTS = [
   { id: "phrases", name: "sp.varPhrases", about: "sp.aboutPhrases" },
   { id: "ends", name: "sp.varEnds", about: "sp.aboutEnds" },
+  { id: "paint", name: "sp.varPaint", about: "sp.aboutPaint" },
   { id: "now", name: "sp.varNow", about: "sp.aboutNow" },
 ] as const;
 
@@ -130,8 +132,9 @@ export function WordPickerTryout({ onClose }: { onClose: () => void }) {
           </div>
           {variant === "phrases" ? <WordPickerPhrases key={at} text={example.draft} selected={selected} onChange={setSelected} /> : null}
           {variant === "ends" ? <WordPickerEnds text={example.draft} selected={selected} onChange={setSelected} /> : null}
+          {variant === "paint" ? <WordPickerPaint text={example.draft} selected={selected} onChange={setSelected} /> : null}
           {variant === "now" ? <WordPicker key={at} text={example.draft} selected={selected} onChange={setSelected} /> : null}
-          <p className="af-hint">{t(variant === "phrases" ? "sp.askPhrases" : variant === "ends" ? "sp.askEnds" : "sp.askNow")}</p>
+          <p className="af-hint">{t(variant === "phrases" ? "sp.askPhrases" : variant === "ends" ? "sp.askEnds" : variant === "paint" ? "sp.askPaint" : "sp.askNow")}</p>
         </div>
         {/* What the task would keep of these marks: said here, since nothing is saved. */}
         <div className="af-recap sp-kept" aria-live="polite">
