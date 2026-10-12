@@ -23,6 +23,7 @@ import { localized } from "../domain/processes";
 import { tallyItem, textFingerprint, type ItemTally, type ReviewDecision } from "../domain/reviewRound";
 import { decodeSolverLaunchContext } from "../domain/solverLaunch";
 import { localizeName } from "../domain/templateNames";
+import { heldByLaterPhase } from "../dcs/redoAfterCorrection";
 import { localizeThread } from "../domain/threadNames";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
@@ -186,6 +187,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
       const reasons = open.reasons ?? [];
       const why = reasonLine(reasons, open.why, tNow) || tNow("fx.proposalNote");
       const resource: "tpl" | "tps" = text.resource === "tps" ? "tps" : "tpl";
+      // A text a later phase already has in its hands is not proposed to be changed from this one: it is said there.
+      const held = await heldByLaterPhase({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, projectId: ctx.projectId, contentOrg: ctx.contentOrg, fromTaskId: ctx.taskId, resource, chapter: data.chapter, verse });
+      if (held) throw new Error(tNow("redo.heldBy").replace("{ref}", `${data.chapter}:${verse}`).replace("{phase}", localizeName(held, language)));
       const opened = await openTextProposal({
         session,
         pmOrg: ctx.pmOrg,

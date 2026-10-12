@@ -5,7 +5,9 @@ import { loadAssignmentsFromDcs, loadInventoryFromDcs, saveProjectToDcs } from "
 import { portionKey } from "../domain/chapters";
 import { extraItemId, extraWorkOrders } from "../domain/extraWork";
 import { tasksToRedoAfter } from "../domain/processes";
-import { portionOfVerse, redoRows, workStateOf, type TextCorrected } from "../domain/redoAfterCorrection";
+import { mayProposeFrom, phaseHolding, portionOfVerse, redoRows, workStateOf, type TextCorrected } from "../domain/redoAfterCorrection";
+import { issueTaskId } from "../domain/myTasks";
+import { waitBlocks } from "../domain/waits";
 import type { AssignmentsDoc } from "../domain/types";
 
 export type RedoAsked = {
@@ -52,4 +54,33 @@ export async function askRedoAfterCorrection(params: { session: GtSession; pmOrg
   const orders = extraWorkOrders(board, inventory).filter((order) => order.itemIds.some((id) => wanted.has(id)));
   const result = await publishWorkOrders({ session, org: pmOrg, board, inventory, orders, retireOrphans: false, keepAssignees: true });
   return { issues: result.issues, asked: plan.added.map((row) => named(row.taskId)), open };
+}
+
+/**
+ * The phase that holds a verse of a text, when the task that wants to propose a change to it is of a phase before
+ * that one; `""` when it may propose. A task has begun its work on the verse when it delivered it, or has it open
+ * and waits for nothing. What cannot be read holds nobody back: the rule is a courtesy between phases, and a
+ * proposal is still decided by the team.
+ */
+export async function heldByLaterPhase(params: { session: GtSession; pmOrg: string; lang: string; projectId: string; contentOrg: string; fromTaskId: string; resource: string; chapter: number; verse: number }): Promise<string> {
+  const { session, pmOrg, lang, projectId } = params;
+  const taskIds = tasksToRedoAfter(params.resource);
+  if (!taskIds.length || !lang || !projectId) return "";
+  try {
+    const [board, inventory, listed] = await Promise.all([loadAssignmentsFromDcs(session, pmOrg, lang, projectId, params.contentOrg), loadInventoryFromDcs(session, pmOrg, lang, projectId), listProjectIssues(session, pmOrg, projectId)]);
+    if (!board || !inventory) return "";
+    const corrected: TextCorrected = { resource: params.resource, chapter: params.chapter, from: params.verse, to: params.verse };
+    const portionId = portionOfVerse(inventory.portions.map((portion) => ({ id: portionKey(portion), chapter: portion.chapter, verses: portion.verses })), corrected);
+    const open = listed.issues.filter((issue) => (issue.state ?? "open").toLowerCase() !== "closed");
+    const begun = (taskId: string) => {
+      const state = workStateOf(taskId, listed.issues, board.settings, corrected, portionId);
+      if (state !== "open") return state === "closed";
+      // Open, and with nothing left to wait for: it is being worked on, or may be at any moment.
+      return open.some((issue) => issueTaskId(issue) === taskId && workStateOf(taskId, [issue], board.settings, corrected, portionId) === "open" && waitBlocks(issue, board, open).length === 0);
+    };
+    const holding = phaseHolding(board, taskIds, begun);
+    return mayProposeFrom(board, params.fromTaskId, holding) ? "" : (holding?.name ?? "");
+  } catch {
+    return "";
+  }
 }

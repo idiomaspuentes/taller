@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { extraWorkOrders, normalizeExtraWork } from "../src/domain/extraWork";
 import { tasksToRedoAfter } from "../src/domain/processes";
-import { correctedRef, portionOfVerse, redoRows, redoTitle, workStateOf, type TextCorrected } from "../src/domain/redoAfterCorrection";
+import { correctedRef, mayProposeFrom, phaseHolding, portionOfVerse, redoRows, redoTitle, workStateOf, type TextCorrected } from "../src/domain/redoAfterCorrection";
 import type { AssignmentsDoc, ProjectTask } from "../src/domain/types";
 import { waitBlocks } from "../src/domain/waits";
 
@@ -25,7 +25,7 @@ const board = {
     task("armonizar", "tres", "ayuda", [{ phaseId: "dos", scope: "chapter" }]),
     task("avalar", "cuatro", "texto", [{ phaseId: "tres", scope: "chapter" }]),
   ],
-  phases: [],
+  phases: [{ id: "uno", name: "Traducción", order: 1 }, { id: "dos", name: "Afinación", order: 2 }, { id: "tres", name: "Armonización", order: 3 }, { id: "cuatro", name: "Validación", order: 4 }],
   settings: {},
   books: ["JON"],
   book: "JON",
@@ -114,6 +114,25 @@ test("lo que se pide de nuevo espera su turno como cualquier subtarea de su tare
   const afterFirst = made.filter((other) => other !== afinar);
   assert.equal(waitBlocks(armonizar!, withPlan, afterFirst).length, 0, "entregada la de afinar, armonizar queda libre");
   assert.equal(waitBlocks(avalar!, withPlan, afterFirst).length, 1, "y el aval sigue esperando a armonizar");
+});
+
+test("un texto se propone cambiar desde la fase que lo tiene o desde una posterior, nunca desde una anterior", () => {
+  const reviews = ["afinar", "alinear", "armonizar", "avalar"];
+  // Nadie ha empezado a revisarlo: quien lo lee en la primera fase todavía puede proponer.
+  const none = phaseHolding(board, reviews, () => false);
+  assert.equal(none, undefined);
+  assert.equal(mayProposeFrom(board, "traducir", none), true);
+  // La afinación ya empezó con ese versículo: el texto es suyo.
+  const second = phaseHolding(board, reviews, (id) => id === "afinar");
+  assert.deepEqual([second?.name, second?.order], ["Afinación", 2]);
+  assert.equal(mayProposeFrom(board, "traducir", second), false, "la primera fase ya no propone cambiarlo");
+  assert.equal(mayProposeFrom(board, "afinar", second), true, "la fase que lo tiene, sí");
+  assert.equal(mayProposeFrom(board, "alinear", second), true, "otra tarea de esa misma fase, también");
+  assert.equal(mayProposeFrom(board, "armonizar", second), true, "y una posterior");
+  assert.equal(mayProposeFrom(board, "avalar", second), true);
+  // Con la armonización también en marcha, sigue siendo la afinación quien lo tiene: es la primera que lo revisa.
+  assert.equal(phaseHolding(board, reviews, (id) => id === "afinar" || id === "armonizar")?.name, "Afinación");
+  assert.equal(mayProposeFrom(board, "una tarea que el plan no tiene", second), true, "a una tarea que no se sabe de qué fase es no se le impide");
 });
 
 test("el paquete del proceso dice qué tareas vuelven a mirar, y tras la corrección de qué texto", () => {

@@ -113,3 +113,29 @@ export function redoRows(
 export function portionOfVerse(portions: { id: string; chapter: number; verses: number[] }[], corrected: Pick<TextCorrected, "chapter" | "from">): string | undefined {
   return portions.find((portion) => portion.chapter === corrected.chapter && portion.verses.includes(corrected.from))?.id;
 }
+
+/**
+ * The phase that has a text in its hands: the earliest one, among the tasks that would look at it again, that
+ * has begun its work on those verses (`begun`). A text is proposed to be changed from that phase or from a later
+ * one, never from one before it: whoever read it in an earlier phase handed it over, and what they see is no
+ * longer theirs to change. `undefined` while no such task has begun.
+ */
+export function phaseHolding(board: Pick<AssignmentsDoc, "teams" | "phases">, taskIds: string[], begun: (taskId: string) => boolean): { id: string; name: string; order: number } | undefined {
+  const wanted = new Set(taskIds);
+  const order = new Map(board.phases.map((phase) => [phase.id, phase]));
+  return board.teams
+    .filter((task) => wanted.has(task.id) && begun(task.id))
+    .map((task) => order.get(task.phaseId))
+    .filter((phase): phase is NonNullable<typeof phase> => Boolean(phase))
+    .sort((a, b) => a.order - b.order)
+    .map((phase) => ({ id: phase.id, name: phase.name, order: phase.order }))[0];
+}
+
+/** Whether a task may propose a change to a text some phase holds: its own phase is that one, or a later one. */
+export function mayProposeFrom(board: Pick<AssignmentsDoc, "teams" | "phases">, fromTaskId: string, holding: { order: number } | undefined): boolean {
+  if (!holding) return true;
+  const from = board.teams.find((task) => task.id === fromTaskId);
+  const phase = from ? board.phases.find((row) => row.id === from.phaseId) : undefined;
+  // A task the plan does not know (a plan read before it was added) is not held back by a rule it cannot be placed in.
+  return !phase || phase.order >= holding.order;
+}

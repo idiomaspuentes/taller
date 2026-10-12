@@ -203,5 +203,27 @@ luego armonización, luego el aval. No se reabre nada de lo ya entregado.
 En la conversación donde se decidió la corrección queda dicho qué se pidió revisar y qué tareas siguen en curso. Una
 propuesta rechazada, o una que solo cambia la alineación, no pide nada.
 
-Código: `src/domain/redoAfterCorrection.ts`, `src/dcs/redoAfterCorrection.ts`; pruebas, `npm run
-verify:redo-after-correction`.
+### Una propuesta se conversa hasta decidirse
+
+Una propuesta de cambiar un versículo tiene su propia conversación. Mientras no se decide:
+
+- Cualquiera del equipo que tiene la tarea, quien propuso, quien alineó el versículo y quien coordina puede
+  **escribirla de otra forma**. Cada versión es una tarjeta de la misma decisión en la misma conversación: las
+  anteriores quedan a la vista, sin botones, y se vota la más nueva.
+- Se puede **volver a una versión anterior**: se propone de nuevo como la versión siguiente.
+- Con cada versión **los votos empiezan de nuevo** y el plazo vuelve a contar. Quien la escribió ya cuenta a favor.
+- Un **no** a una propuesta **dice por qué**, y se le avisa a quien propuso.
+
+Al borrador llega la versión de la tarjeta que se confirmó. Las tareas de «Revisar de nuevo» se piden una sola
+vez, entonces.
+
+### Desde qué fase se propone
+
+Un texto se propone cambiar **desde la fase que lo tiene o desde una posterior, nunca desde una anterior**. Lo
+tiene la primera fase, de las que lo vuelven a mirar (`redoAfter`), que ya empezó su trabajo sobre ese versículo:
+lo entregó, o lo tiene abierto y no espera a nada. Antes de eso, quien lo lee en una fase anterior todavía puede
+proponer. Hoy la única pantalla de una fase anterior que propone es la lectura grupal, y es la que lo comprueba.
+
+Código: `src/domain/redoAfterCorrection.ts`, `src/dcs/redoAfterCorrection.ts`,
+`src/domain/chatEvents/alineacionDecision.ts`; pruebas, `npm run verify:redo-after-correction`,
+`verify:alignment-decision-store` y, contra el mock, `verify:redo-mock`.
