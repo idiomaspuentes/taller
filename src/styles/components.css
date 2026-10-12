@@ -9306,45 +9306,18 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 .af-intro { display: grid; gap: 0.75rem; }
 .af-intro section { display: grid; gap: 0.25rem; }
 
-/* Under the words of the draft to mark: all of them in one touch, or none. */
-.af-run { order: 2; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
-.af-run .af-link { min-height: 2.5rem; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; cursor: pointer; }
-.af-run .af-link:disabled { opacity: 0.45; cursor: default; }
-
-/* What the screen offers once two words apart are marked: the ones between them too. First of its row, and a
-   button, since it is the next thing to do. */
-.af-run__fill { flex: 1 0 100%; min-height: 2.75rem; padding: 0.375rem 0.75rem; border: 1px solid var(--accent-500); border-radius: var(--radius-sm); background: var(--accent-100); font: inherit; font-weight: 600; color: var(--accent-700); cursor: pointer; }
-
 /* The page to try the marking of words: what would be kept, each stretch on its line. */
 .sp-kept { display: grid; gap: 0.25rem; }
 .sp-kept ol { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.125rem; font-weight: 600; }
 
-/* The page to try the marking of words: two proposals.
-   A: the verse in the pieces it is read in, each a line to touch. */
-.sp-about { margin: 0; padding: 0.5rem 0.625rem; border-radius: var(--radius-sm); background: var(--surface-muted); color: var(--text); }
-.sp-phrases { order: 2; display: grid; gap: 0.375rem; }
-.sp-phrase { display: block; width: 100%; min-height: 2.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); font: inherit; font-size: 1.0625rem; line-height: 1.5; text-align: start; color: var(--text); cursor: pointer; }
-.sp-phrase[data-selected="true"] { border-color: var(--accent-500); background: var(--accent-100); color: var(--accent-700); font-weight: 700; }
-.sp-phrase[data-selected="part"] { border-style: dashed; border-color: var(--accent-500); }
-.sp-phrase [data-in] { border-radius: 3px; background: var(--accent-100); color: var(--accent-700); font-weight: 700; }
-/* B: under the words, each stretch with where it begins and ends, and two arrows for each end. */
-.sp-ends { order: 2; display: grid; gap: 0.5rem; }
-.sp-end { display: grid; gap: 0.25rem; padding: 0.5rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
-.sp-end__head { display: flex; align-items: center; justify-content: space-between; }
-.sp-end__row { display: flex; align-items: center; gap: 0.5rem; }
-.sp-end__what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sp-step { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 2.75rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--primary); cursor: pointer; }
-.sp-step:disabled { opacity: 0.35; cursor: default; }
-
-/* C: a finger slid over the words marks them. The page still moves under one that goes up or down first; the
-   words are not picked as text, nor called out by a long press, while a stroke passes over them. */
-.sp-paint { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.sp-paint .af-word--tap { touch-action: pan-y; }
+/* A finger slid over the words of the draft marks them (`WordPicker`). The page still moves under one that goes up
+   or down first; the words are not picked as text, nor called out by a long press, while a stroke passes over. */
+.af-words--stroke { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.af-words--stroke .af-word--tap { touch-action: pan-y; }
 
 /* A marked word is as wide as it was: its colour and its ground say it is marked, not a heavier letter. Heavier, it
    was wider, and the last word of a line jumped to the next one under the finger that was marking. */
 .af-draft__words .af-word--tap[data-selected="true"] { font-weight: inherit; }
-.sp-phrase[data-selected="true"], .sp-phrase [data-in] { font-weight: inherit; }
 
 /* What is marked is read first of all: its letters are as dark as the text gets, on a pale ground, and the mark is
    told by the ground and by a soft line (a dark one around each word of the draft was too much). A deeper ground made the mark plainer and the words on it harder to read.
