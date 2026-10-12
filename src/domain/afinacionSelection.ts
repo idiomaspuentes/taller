@@ -25,21 +25,22 @@ export function toggleWord(selected: number[], index: number): number[] {
 }
 
 /**
- * The words between the first and the last marked one that are not marked. A touch marks one word and no other,
- * so that two words apart are two touches; a phrase of twelve words would be twelve. When there are words left
- * between the marked ones the screen offers to mark them too, in one touch (`fillBetween`): the first word, the
- * last, and that.
+ * How many words between two words are not marked. A touch marks one word and no other, so that two words apart
+ * are two touches; a phrase of twelve words would be twelve. When words are left between the last two that were
+ * touched, the screen offers to mark them too, in one touch (`fillBetween`): the first word of a run, its last,
+ * and that. Only between those two: a word marked earlier, further away, stays apart from the run.
  */
-export function unmarkedBetween(selected: number[]): number {
-  if (selected.length < 2) return 0;
-  return Math.max(...selected) - Math.min(...selected) + 1 - new Set(selected).size;
+export function unmarkedBetween(selected: number[], a: number, b: number): number {
+  let count = 0;
+  for (let i = Math.min(a, b) + 1; i < Math.max(a, b); i++) if (!selected.includes(i)) count++;
+  return count;
 }
 
-/** Every word from the first marked one to the last. */
-export function fillBetween(selected: number[]): number[] {
-  if (!selected.length) return [];
-  const from = Math.min(...selected);
-  return Array.from({ length: Math.max(...selected) - from + 1 }, (_, i) => from + i);
+/** What is marked, and every word from one word to another. */
+export function fillBetween(selected: number[], a: number, b: number): number[] {
+  const from = Math.min(a, b);
+  const run = Array.from({ length: Math.max(a, b) - from + 1 }, (_, i) => from + i);
+  return [...new Set([...selected, ...run])].sort((x, y) => x - y);
 }
 
 /** A stretch of a verse that was marked: its text and where it is. */

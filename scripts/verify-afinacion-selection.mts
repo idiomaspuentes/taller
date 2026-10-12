@@ -26,26 +26,35 @@ test("tocar una palabra la marca y volver a tocarla la desmarca, siempre en orde
   assert.deepEqual(toggleWord(sel, 2), [5]);
 });
 
-test("un toque marca una palabra sola; las de en medio se ofrecen, y se marcan de un toque", () => {
+test("un toque marca una palabra sola; las que hay entre las dos últimas tocadas se ofrecen, y se marcan de un toque", () => {
   // Una palabra, otras que no van, y una más: dos toques, y nada entre ellas.
   const apart = toggleWord(toggleWord([], 1), 6);
   assert.deepEqual(apart, [1, 6]);
-  assert.equal(unmarkedBetween(apart), 4, "se ofrece marcar las cuatro de en medio");
+  assert.equal(unmarkedBetween(apart, 1, 6), 4, "se ofrece marcar las cuatro de en medio");
   // Muchas seguidas: la primera, la última, y lo que se ofrece.
-  assert.deepEqual(fillBetween(apart), [1, 2, 3, 4, 5, 6]);
-  assert.equal(unmarkedBetween(fillBetween(apart)), 0, "ya no hay nada que ofrecer");
-  assert.equal(unmarkedBetween([3]), 0);
-  assert.equal(unmarkedBetween([]), 0);
-  assert.deepEqual(fillBetween([]), []);
+  assert.deepEqual(fillBetween(apart, 1, 6), [1, 2, 3, 4, 5, 6]);
+  assert.equal(unmarkedBetween(fillBetween(apart, 1, 6), 1, 6), 0, "ya no hay nada que ofrecer");
+  assert.equal(unmarkedBetween([3, 4], 3, 4), 0, "entre dos vecinas no hay nada");
+  assert.deepEqual(fillBetween([2], 6, 4), [2, 4, 5, 6], "da igual cuál de las dos se tocó primero");
+});
+
+test("una palabra, varias que no van y luego varias que sí: solo se llena entre las dos últimas tocadas", () => {
+  // «uno», y después de «cuatro» a «siete»: la primera queda aparte.
+  const marked = toggleWord(toggleWord(toggleWord([], 0), 3), 6);
+  assert.deepEqual(marked, [0, 3, 6]);
+  assert.equal(unmarkedBetween(marked, 3, 6), 2, "se ofrecen las dos que hay entre las dos últimas");
+  const filled = fillBetween(marked, 3, 6);
+  assert.deepEqual(filled, [0, 3, 4, 5, 6], "«dos» y «tres» siguen sin marcar");
+  assert.deepEqual(stretchesOf(filled), [{ from: 0, to: 0 }, { from: 3, to: 6 }]);
 });
 
 test("varios tramos: cuatro palabras, dos que no van y dos más", () => {
   // La primera y la cuarta, lo de en medio, y las otras dos.
-  let marked = fillBetween(toggleWord(toggleWord([], 0), 3));
+  let marked = fillBetween(toggleWord(toggleWord([], 0), 3), 0, 3);
   marked = toggleWord(toggleWord(marked, 6), 7);
   assert.deepEqual(marked, [0, 1, 2, 3, 6, 7]);
   assert.deepEqual(stretchesOf(marked), [{ from: 0, to: 3 }, { from: 6, to: 7 }]);
-  assert.equal(unmarkedBetween(marked), 2);
+  assert.equal(unmarkedBetween(marked, 6, 7), 0, "y no se ofrece llenar el hueco que se dejó a propósito");
 
   const long = "uno dos tres cuatro cinco seis siete ocho";
   const kept = selectionFromWords(long, marked, { chapter: 1, verse: 2 })!;
