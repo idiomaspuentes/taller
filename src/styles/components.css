@@ -9345,3 +9345,9 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
    was wider, and the last word of a line jumped to the next one under the finger that was marking. */
 .af-draft__words .af-word--tap[data-selected="true"] { font-weight: inherit; }
 .sp-phrase[data-selected="true"], .sp-phrase [data-in] { font-weight: inherit; }
+
+/* What is marked has to be told at a glance, on a phone in daylight: the words of the draft somebody marked, and
+   the words of the reference a note is about. A deeper ground and a line drawn inside the box, which adds no
+   width (see above). */
+.af-draft__words .af-word--tap[data-selected="true"] { background: var(--accent-300); border-color: var(--accent-700); box-shadow: inset 0 0 0 1px var(--accent-700); color: var(--text); }
+.af-word[data-marked="true"] { background: color-mix(in srgb, var(--warning-500) 65%, var(--surface)); box-shadow: inset 0 -2px 0 var(--warning-700); color: color-mix(in srgb, var(--warning-700) 55%, black); border-radius: 3px; }
