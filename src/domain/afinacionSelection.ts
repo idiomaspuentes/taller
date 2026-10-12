@@ -25,61 +25,92 @@ export function toggleWord(selected: number[], index: number): number[] {
 }
 
 /**
- * What a touch on a word does to a run of words: the way to mark many with two touches. What is kept of a
- * selection is the text from its first word to its last (`selectionFromWords`), so a run is what it always was;
- * touched one by one, a phrase of twelve words was twelve touches, and the ones left between two marked words
- * were kept all the same without showing it.
+ * What a touch on a word does to what is marked: the way to mark many with few touches. Touched one by one, a
+ * phrase of twelve words was twelve touches.
  *
- * The first touch marks a word. A touch on a word outside the run stretches it to that word, with all between.
- * A touch on the first or the last word of the run takes it off; on one in the middle, starts over from it.
+ * A touch on a word that is not marked marks it, and with it every word between it and the nearest one already
+ * marked: the first word and the last are enough for a run. A touch on a marked word takes that word off, and no
+ * other: «four words, two that do not belong, two more» is the first, the last, and the two that do not belong.
  */
-export function touchRun(selected: number[], index: number): number[] {
+export function touchWords(selected: number[], index: number): number[] {
+  if (selected.includes(index)) return selected.filter((i) => i !== index);
   if (!selected.length) return [index];
-  const first = Math.min(...selected);
-  const last = Math.max(...selected);
-  const run = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
-  if (index < first) return run(index, last);
-  if (index > last) return run(first, index);
-  if (first === last) return [];
-  if (index === first) return run(first + 1, last);
-  if (index === last) return run(first, last - 1);
-  return [index];
+  const nearest = selected.reduce((best, i) => (Math.abs(i - index) < Math.abs(best - index) ? i : best));
+  const from = Math.min(nearest, index);
+  const to = Math.max(nearest, index);
+  const filled = Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  return [...new Set([...selected, ...filled])].sort((a, b) => a - b);
 }
 
-/** The text between the first and the last selected word (words in between are included). */
+/** A stretch of a verse that was marked: its text and where it is. */
+export type SelectedPart = Pick<SelectedText, "text" | "startOffset" | "endOffset">;
+
+/**
+ * What is kept of the words somebody marked. `text` runs from the first to the last of them, as it always did;
+ * when they are not all together, `parts` says each stretch on its own, so that the words between two stretches
+ * are not taken for marked ones.
+ */
+export type SelectedWords = SelectedText & { parts?: SelectedPart[] };
+
+/** The words marked, as the stretches they make: `[0, 1, 2, 5, 6]` is two, 0 to 2 and 5 to 6. */
+export function stretchesOf(selected: number[]): { from: number; to: number }[] {
+  const out: { from: number; to: number }[] = [];
+  for (const index of [...new Set(selected)].sort((a, b) => a - b)) {
+    const last = out[out.length - 1];
+    if (last && index === last.to + 1) last.to = index;
+    else out.push({ from: index, to: index });
+  }
+  return out;
+}
+
+/** The text between the first and the last selected word, and each stretch of it when they are several. */
 export function selectionFromWords(
   verseText: string,
   selected: number[],
   ref: { chapter: number; verse: number },
-): SelectedText | undefined {
+): SelectedWords | undefined {
   if (!selected.length) return undefined;
   const spans = wordSpans(verseText);
-  const picked = selected.map((i) => spans[i]).filter((s): s is WordSpan => Boolean(s));
-  if (!picked.length) return undefined;
-  const startOffset = picked[0]!.start;
-  const endOffset = picked[picked.length - 1]!.end;
+  const parts = stretchesOf(selected.filter((i) => spans[i])).map((stretch): SelectedPart => {
+    const startOffset = spans[stretch.from]!.start;
+    const endOffset = spans[stretch.to]!.end;
+    return { text: verseText.slice(startOffset, endOffset), startOffset, endOffset };
+  });
+  if (!parts.length) return undefined;
+  const startOffset = parts[0]!.startOffset;
+  const endOffset = parts[parts.length - 1]!.endOffset;
   return {
     text: verseText.slice(startOffset, endOffset),
     startOffset,
     endOffset,
     verseSnapshots: [{ chapter: ref.chapter, verse: ref.verse, text: verseText }],
+    ...(parts.length > 1 ? { parts } : {}),
   };
 }
 
-/** Which words of the current text a saved selection covers now, or none when it no longer applies. */
+/**
+ * Which words of the current text a saved selection covers now, or none when it no longer applies. One made of
+ * several stretches applies only while every stretch is still in the verse.
+ */
 export function wordsOfSelection(
   verseText: string,
-  selection: Pick<SelectedText, "text" | "startOffset" | "endOffset"> | undefined,
+  selection: (SelectedPart & { parts?: SelectedPart[] }) | undefined,
 ): number[] {
   if (!selection?.text) return [];
   const spans = wordSpans(verseText);
-  let start = selection.startOffset;
-  let end = selection.endOffset;
-  if (verseText.slice(start, end) !== selection.text) {
-    const at = verseText.indexOf(selection.text);
-    if (at < 0) return [];
-    start = at;
-    end = at + selection.text.length;
-  }
-  return spans.filter((s) => s.start < end && s.end > start).map((s) => s.index);
+  const wordsOf = (part: SelectedPart): number[] => {
+    let start = part.startOffset;
+    let end = part.endOffset;
+    if (verseText.slice(start, end) !== part.text) {
+      const at = verseText.indexOf(part.text);
+      if (at < 0) return [];
+      start = at;
+      end = at + part.text.length;
+    }
+    return spans.filter((s) => s.start < end && s.end > start).map((s) => s.index);
+  };
+  const parts = Array.isArray(selection.parts) && selection.parts.length > 1 ? selection.parts : null;
+  if (!parts) return wordsOf(selection);
+  const found = parts.map(wordsOf);
+  return found.every((words) => words.length) ? [...new Set(found.flat())].sort((a, b) => a - b) : [];
 }

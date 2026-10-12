@@ -22,7 +22,7 @@ import { BookA, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-rea
 import { HelpMessages } from "./HelpMessages";
 import { termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
-import { selectionFromWords, touchRun, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
+import { selectionFromWords, touchWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
   changedStretch,
@@ -1242,9 +1242,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : (
                 <>
                   <span className="af-draft__words">
-                    <Words text={verseText} onTap={(i) => setSelected((prev) => touchRun(prev, i))} selected={selected} />
+                    <Words text={verseText} onTap={(i) => setSelected((prev) => touchWords(prev, i))} selected={selected} />
                   </span>
-                  {/* Many words in two touches, or all of them in one. */}
+                  {/* Many words in few touches (see `touchWords`), or all of them in one. */}
                   <div className="af-run">
                     <button type="button" className="af-link" disabled={selected.length === wordSpans(verseText).length} onClick={() => setSelected(wordSpans(verseText).map((word) => word.index))}>
                       {t("af.pickAll")}

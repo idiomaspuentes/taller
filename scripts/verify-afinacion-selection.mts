@@ -1,7 +1,7 @@
 /** Marking the words of a verse, and finding them again after the text changed. */
 import assert from "node:assert/strict";
 import { resolveTextReference } from "@usfm-tools/checking";
-import { selectionFromWords, toggleWord, touchRun, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
+import { selectionFromWords, stretchesOf, toggleWord, touchWords, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -26,18 +26,38 @@ test("tocar una palabra la marca y volver a tocarla la desmarca, siempre en orde
   assert.deepEqual(toggleWord(sel, 2), [5]);
 });
 
-test("muchas palabras se marcan con dos toques: la primera y la última, y las de en medio van con ellas", () => {
-  let run = touchRun([], 1);
-  assert.deepEqual(run, [1], "el primer toque marca una palabra");
-  run = touchRun(run, 5);
-  assert.deepEqual(run, [1, 2, 3, 4, 5], "el segundo, hasta ahí");
-  assert.deepEqual(touchRun(run, 0), [0, 1, 2, 3, 4, 5], "un toque antes del principio lo alarga hacia allá");
-  assert.deepEqual(touchRun(run, 5), [1, 2, 3, 4], "en la última la quita");
-  assert.deepEqual(touchRun(run, 1), [2, 3, 4, 5], "en la primera, también");
-  assert.deepEqual(touchRun(run, 3), [3], "en una de en medio empieza de nuevo desde ella");
-  assert.deepEqual(touchRun([3], 3), [], "y en la única marcada la desmarca");
-  // Lo marcado es justo lo que se guarda: el texto de la primera a la última.
-  assert.equal(selectionFromWords(verse, touchRun(touchRun([], 2), 4), { chapter: 1, verse: 2 })!.text, "esperanza de la");
+test("muchas palabras se marcan con pocos toques: la primera y la última, y las de en medio van con ellas", () => {
+  let marked = touchWords([], 1);
+  assert.deepEqual(marked, [1], "el primer toque marca una palabra");
+  marked = touchWords(marked, 5);
+  assert.deepEqual(marked, [1, 2, 3, 4, 5], "el segundo, hasta ahí");
+  assert.deepEqual(touchWords(marked, 0), [0, 1, 2, 3, 4, 5], "un toque antes del principio lo alarga hacia allá");
+  assert.deepEqual(touchWords(marked, 5), [1, 2, 3, 4], "un toque en una marcada la quita");
+  assert.deepEqual(touchWords(marked, 3), [1, 2, 4, 5], "también en medio, y solo esa");
+  assert.deepEqual(touchWords([3], 3), []);
+});
+
+test("varios tramos: cuatro palabras, dos que no van y dos más son cuatro toques", () => {
+  // La primera y la última, y luego las dos que no van.
+  let marked = touchWords(touchWords([], 0), 7);
+  marked = touchWords(touchWords(marked, 4), 5);
+  assert.deepEqual(marked, [0, 1, 2, 3, 6, 7]);
+  assert.deepEqual(stretchesOf(marked), [{ from: 0, to: 3 }, { from: 6, to: 7 }]);
+  // Con dos tramos marcados, una palabra nueva se une al más cercano, sin llenar el hueco del otro lado.
+  assert.deepEqual(touchWords([0, 1, 6, 7], 9), [0, 1, 6, 7, 8, 9]);
+  assert.deepEqual(touchWords([0, 1, 6, 7], 3), [0, 1, 2, 3, 6, 7]);
+
+  const long = "uno dos tres cuatro cinco seis siete ocho";
+  const kept = selectionFromWords(long, marked, { chapter: 1, verse: 2 })!;
+  assert.equal(kept.text, long, "el texto va de la primera a la última, como siempre");
+  assert.deepEqual(kept.parts?.map((part) => part.text), ["uno dos tres cuatro", "siete ocho"], "y cada tramo se guarda aparte");
+  assert.deepEqual(wordsOfSelection(long, kept), [0, 1, 2, 3, 6, 7], "al volver a abrir, las de en medio no están marcadas");
+  assert.equal(selectionFromWords(long, [2, 3], { chapter: 1, verse: 2 })!.parts, undefined, "un solo tramo se guarda como antes");
+  // Si el versículo cambió: los tramos se hallan donde estén; si uno ya no está, hay que marcar de nuevo.
+  assert.deepEqual(wordsOfSelection(`y ${long}`, kept), [1, 2, 3, 4, 7, 8]);
+  assert.deepEqual(wordsOfSelection("uno dos tres cuatro cinco seis siete nueve", kept), []);
+  // Una respuesta guardada antes de este cambio, sin tramos, se lee como siempre.
+  assert.deepEqual(wordsOfSelection(long, { text: "dos tres", startOffset: 4, endOffset: 12 }), [1, 2]);
 });
 
 test("la selección guarda el texto entre la primera y la última palabra y una copia del versículo", () => {
