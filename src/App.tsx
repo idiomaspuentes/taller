@@ -73,6 +73,7 @@ import { WorkspaceDialog } from "./components/WorkspaceDialog";
 import { BookStepView } from "./components/BookStepView";
 import { AdvanceView } from "./components/AdvanceView";
 import { AfinacionView } from "./components/AfinacionView";
+import { WordPickerTryout } from "./components/WordPickerTryout";
 import { AlineacionView } from "./components/AlineacionView";
 import { TeamTodayView } from "./components/TeamTodayView";
 import { itemsFor, BottomNav, type BottomNavId } from "./components/BottomNav";
@@ -1131,6 +1132,15 @@ export function App() {
         {/* The study tool and the draft editor have their own notes tab; every other tool gets them here. */}
         {"ctx" in route && route.name !== "solver-scripture" && route.name !== "solver-familiarize" ? <StudyNotesDrawer key={route.ctx} ctxEncoded={route.ctx} /> : null}
         {signInModal}
+      </div>
+    );
+  }
+
+  // A page to try a piece of a tool on examples, as a tool is shown; it needs no session.
+  if (route.name === "seleccion-prueba") {
+    return (
+      <div className="app-shell app-shell--solver">
+        <WordPickerTryout onClose={() => navigate({ name: session ? "mis-tareas" : "home" })} />
       </div>
     );
   }

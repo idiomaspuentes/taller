@@ -22,7 +22,8 @@ import { BookA, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-rea
 import { HelpMessages } from "./HelpMessages";
 import { termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
-import { fillBetween, selectionFromWords, toggleWord, unmarkedBetween, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
+import { selectionFromWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
+import { WordPicker } from "./WordPicker";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
   changedStretch,
@@ -1241,25 +1242,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </div>
               ) : (
                 <>
-                  <span className="af-draft__words">
-                    <Words text={verseText} onTap={(i) => setSelected((prev) => toggleWord(prev, i))} selected={selected} />
-                  </span>
-                  {/* A touch marks one word. Many in a row: the first, the last, and what is offered here. */}
-                  <div className="af-run">
-                    {unmarkedBetween(selected) ? (
-                      <button type="button" className="af-run__fill" onClick={() => setSelected(fillBetween(selected))}>
-                        {t(unmarkedBetween(selected) === 1 ? "af.fillOne" : "af.fillMany").replace("{n}", String(unmarkedBetween(selected)))}
-                      </button>
-                    ) : null}
-                    <button type="button" className="af-link" disabled={selected.length === wordSpans(verseText).length} onClick={() => setSelected(wordSpans(verseText).map((word) => word.index))}>
-                      {t("af.pickAll")}
-                    </button>
-                    {selected.length ? (
-                      <button type="button" className="af-link" onClick={() => setSelected([])}>
-                        {t("af.pickNone")}
-                      </button>
-                    ) : null}
-                  </div>
+                  <WordPicker text={verseText} selected={selected} onChange={setSelected} />
                   <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
                 <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
                     {t("af.tapMarked")

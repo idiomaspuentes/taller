@@ -16,6 +16,8 @@ export type AppRoute =
   | { name: "conversacion"; issue: number; demo?: boolean }
   /** Fictional verse conflict, in memory only (`#/mis-tareas/prueba`). */
   | { name: "conflicto-prueba" }
+  /** The marking of words, to try on example verses; nothing is read or written (`#/prueba/seleccion`). */
+  | { name: "seleccion-prueba" }
   | { name: "equipo"; orgTeam: string }
   | { name: "proyectos" }
   /** A project being prepared, before it is created (`DraftProjectView`). */
@@ -96,6 +98,7 @@ export function parseHash(hash: string): AppRoute {
   if (parts[0] === "plantillas") {
     return { name: "plantillas", workflowId: parts[1] || undefined };
   }
+  if (parts[0] === "prueba" && parts[1] === "seleccion") return { name: "seleccion-prueba" };
   if (parts[0] === "lab" || (parts[0] === "solver" && parts[1] === "lab")) {
     return { name: "solver-lab" };
   }
@@ -169,6 +172,8 @@ export function routeToHash(route: AppRoute): string {
       return `#/mis-tareas/${route.issue}${route.demo ? "?demo=1" : ""}`;
     case "conflicto-prueba":
       return "#/mis-tareas/prueba";
+    case "seleccion-prueba":
+      return "#/prueba/seleccion";
     case "perfil":
       return "#/perfil";
     case "organizacion":

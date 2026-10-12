@@ -3115,5 +3115,15 @@
   "af.pickNone": "Quitar lo marcado",
   "af.runHint": "Si son varias seguidas, toca la primera y la última.",
   "af.fillOne": "Marcar también la de en medio",
-  "af.fillMany": "Marcar también las {n} de en medio"
+  "af.fillMany": "Marcar también las {n} de en medio",
+  "sp.title": "Probar: marcar palabras",
+  "sp.meta": "Versículos de ejemplo · no se guarda nada",
+  "sp.examples": "Ejemplos",
+  "sp.exLong": "Seguidas",
+  "sp.exApart": "Separadas",
+  "sp.exStretches": "Por tramos",
+  "sp.kept": "Lo que se guardaría",
+  "sp.keptOne": "{words} palabras marcadas, en un tramo.",
+  "sp.keptMany": "{words} palabras marcadas, en {n} tramos. Las de en medio no se guardan como marcadas.",
+  "sp.nothingSaved": "Esta página es solo para probar: no guarda nada ni toca ninguna tarea."
 }
