@@ -33,6 +33,11 @@ export type StudyNote = {
    * team whose work is not that help, for the team that will work on it.
    */
   about?: string;
+  /**
+   * The message this one says was attended to: `"<who wrote it>/<its id>"`. Written by somebody of the team the
+   * message was left for, in their own file, once they have looked at what it says. `text` is what they answer.
+   */
+  attends?: string;
   text: string;
   /** Shown to the whole team. A note that is not shared is only shown to its author. */
   shared: boolean;
@@ -77,6 +82,7 @@ export function normalizeStudyNotes(raw: unknown, owner: string): StudyNote[] {
       ...(String(row.resourceName ?? "").trim() ? { resourceName: String(row.resourceName).trim() } : {}),
       ...(String(row.task ?? "").trim() ? { task: String(row.task).trim() } : {}),
       ...(String(row.about ?? "").trim() ? { about: String(row.about).trim() } : {}),
+      ...(String(row.attends ?? "").trim() ? { attends: String(row.attends).trim() } : {}),
       text,
       shared: row.shared === true,
       at: String(row.at ?? ""),
@@ -101,7 +107,8 @@ export function studyNotesFor(notes: StudyNote[], where: { book: string; chapter
   const inPassage = (note: StudyNote) => note.chapter === where.chapter && note.verse !== undefined && (where.from === undefined || (note.verse <= (where.to ?? where.from) && (note.to ?? note.verse) >= where.from));
   const rank = (note: StudyNote) => (inPassage(note) ? 0 : note.chapter === where.chapter && note.verse === undefined ? 1 : note.chapter === 0 ? 2 : 3);
   return notes
-    .filter((note) => note.book === book && (note.chapter === where.chapter || note.chapter === 0))
+    // The mark that a message was attended to is read with that message, not as a note of the passage.
+    .filter((note) => !note.attends && note.book === book && (note.chapter === where.chapter || note.chapter === 0))
     .filter((note) => note.verse === undefined || where.from === undefined || inPassage(note))
     .sort((a, b) => rank(a) - rank(b) || (a.verse ?? 0) - (b.verse ?? 0) || a.at.localeCompare(b.at));
 }
@@ -125,9 +132,31 @@ export function termMessageKey(kind: string, slug: string): string {
   return `tw:${kind.trim().toLowerCase()}/${slug.trim().toLowerCase()}`;
 }
 
+/** What a message about an article of the academy names: the article, wherever a note links to it. */
+export function articleMessageKey(path: string): string {
+  return `ta:${path.trim().toLowerCase()}`;
+}
+
+/** What a message is known by across the files of everybody: who wrote it and its id in their file. */
+export const messageRef = (note: Pick<StudyNote, "by" | "id">): string => `${note.by.trim().toLowerCase()}/${note.id}`;
+
 /** The shared messages left about one help of a book, oldest first: what a later team finds when it gets to it. */
 export function messagesAbout(notes: StudyNote[], book: string, about: string): StudyNote[] {
   const code = book.toUpperCase();
-  return notes.filter((note) => note.shared && note.about === about && note.book === code).sort((a, b) => a.at.localeCompare(b.at));
+  return notes.filter((note) => note.shared && !note.attends && note.about === about && note.book === code).sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
+ * Which of those messages somebody of the team they were left for has attended to, by `messageRef`: who, when,
+ * and what they answered. The first one to say so is the one kept.
+ */
+export function attendedMessages(notes: StudyNote[], book: string, about: string): Map<string, { by: string; at: string; text: string }> {
+  const code = book.toUpperCase();
+  const out = new Map<string, { by: string; at: string; text: string }>();
+  for (const note of [...notes].sort((a, b) => a.at.localeCompare(b.at))) {
+    if (!note.shared || !note.attends || note.about !== about || note.book !== code || out.has(note.attends)) continue;
+    out.set(note.attends, { by: note.by, at: note.at, text: note.text });
+  }
+  return out;
 }
 

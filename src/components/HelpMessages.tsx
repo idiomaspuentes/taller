@@ -4,7 +4,7 @@ import type { GtSession } from "../dcs/auth";
 import { changeMyStudyNotes, loadStudyNotes } from "../dcs/studyNotes";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { messagesAbout, type StudyNote } from "../domain/studyNotes";
+import { attendedMessages, messageRef, messagesAbout, type StudyNote } from "../domain/studyNotes";
 import { useT } from "../i18n/messages";
 
 type Props = {
@@ -28,6 +28,11 @@ type Props = {
   onCount?: (count: number) => void;
   /** For whoever only reads them: with none there is nothing to read nor to answer, so nothing is shown. */
   onlyIfAny?: boolean;
+  /**
+   * For the team the messages were left for: each one can be said to be attended to, once it was looked at.
+   * Whoever left it sees that it was, and by whom.
+   */
+  canAttend?: boolean;
 };
 
 /**
@@ -35,7 +40,7 @@ type Props = {
  * that will work on it: whoever refines the text and disagrees with a note says what they would change, and
  * whoever harmonizes that note later finds it there. They are shared study notes that name the help.
  */
-export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, verse, about, resource, resourceName, taskName, lede, onCount, onlyIfAny }: Props) {
+export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, verse, about, resource, resourceName, taskName, lede, onCount, onlyIfAny, canAttend }: Props) {
   const t = useT();
   const [notes, setNotes] = useState<StudyNote[] | null>(null);
   const [text, setText] = useState("");
@@ -54,6 +59,24 @@ export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, v
   }, [session.token, session.host, pmOrg, lang, projectId]);
 
   const here = useMemo(() => messagesAbout(notes ?? [], book, about), [notes, book, about]);
+  const attended = useMemo(() => attendedMessages(notes ?? [], book, about), [notes, book, about]);
+
+  /** Says a message was looked at: a note of this person's own that names it, so its writer finds it answered. */
+  async function attend(message: StudyNote) {
+    const mark: StudyNote = { id: `n-${uid().slice(0, 8)}`, by: session.username.toLowerCase(), book: book.toUpperCase(), chapter, verse, kind: "remember", resource: resource.toLowerCase(), ...(taskName ? { task: taskName } : {}), about, attends: messageRef(message), text: t("hm.attendedText"), shared: true, at: new Date().toISOString() };
+    setBusy(true);
+    setError("");
+    const before = notes;
+    setNotes([...(notes ?? []), mark]);
+    try {
+      await changeMyStudyNotes({ session, pmOrg, lang, projectId }, (mine) => [...mine, mark]);
+    } catch (err) {
+      setNotes(before);
+      setError(explainError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
   useEffect(() => {
     if (notes) onCount?.(here.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,6 +113,13 @@ export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, v
             <li key={`${note.by}-${note.id}`} className="rv-comment">
               <p className="rv-comment__text">{note.text}</p>
               <p className="rv-comment__meta">{[`@${note.by}`, note.task ?? ""].filter(Boolean).join(" · ")}</p>
+              {attended.has(messageRef(note)) ? (
+                <p className="rv-comment__meta hm-attended">{t("hm.attendedBy").replace("{who}", `@${attended.get(messageRef(note))!.by}`)}</p>
+              ) : canAttend && note.by.toLowerCase() !== session.username.toLowerCase() ? (
+                <button type="button" className="af-link hm-attend" disabled={busy} onClick={() => void attend(note)}>
+                  {t("hm.attend")}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

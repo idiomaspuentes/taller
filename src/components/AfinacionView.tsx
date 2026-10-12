@@ -20,7 +20,7 @@ import { articleName, articlePathOf, articleShortName, groupByCategory, type Art
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { BookA, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { HelpMessages } from "./HelpMessages";
-import { termMessageKey } from "../domain/studyNotes";
+import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
@@ -965,6 +965,23 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 {articles[articlePathOf(item.supportRef)]?.question ? <p className="af-article-q">{articles[articlePathOf(item.supportRef)]!.question}</p> : null}
                 {reading?.path === articlePathOf(item.supportRef) ? (
                   reading.body === undefined ? <p className="af-hint">{t("af.loadingArticle")}</p> : reading.body ? <HelpMarkdownView content={reading.body} /> : <p className="af-hint">{t("af.noArticle")}</p>
+                ) : null}
+                {session && ctx?.pmOrg && ctx.projectId && articlePathOf(item.supportRef) ? (
+                  // The article is read here and maintained by whoever harmonizes: what is found in it is left for them.
+                  <HelpMessages
+                    key={articleMessageKey(articlePathOf(item.supportRef))}
+                    session={session}
+                    pmOrg={ctx.pmOrg}
+                    lang={ctx.lang}
+                    projectId={ctx.projectId}
+                    book={data.book}
+                    chapter={item.chapter}
+                    verse={item.verse}
+                    about={articleMessageKey(articlePathOf(item.supportRef))}
+                    resource="academia"
+                    taskName={ctx.taskName}
+                    lede={t("hm.ledeLeaveArticle")}
+                  />
                 ) : null}
               </>
             ) : helpsTab === "note" ? (

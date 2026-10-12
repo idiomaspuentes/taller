@@ -7,7 +7,7 @@ import { articlePathOf, categoryFromSupportRef, categoryLabel } from "../domain/
 import { bookLabel } from "../domain/books";
 import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
-import { termMessageKey } from "../domain/studyNotes";
+import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Circle, Pencil, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -890,7 +890,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               // before answering. With nothing said, «Mensajes de equipos anteriores… Puedes responder» stood over
               // an empty box, and with the link to the editor it pushed the questions under the first screen of
               // a phone (the first one at 863 px of 812).
-              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny />
+              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend />
+            ) : null}
+            {session && ctx?.pmOrg && ctx.projectId && data && articlePath ? (
+              // And what they said about the article this note links to, which this team maintains too.
+              <HelpMessages key={`ta:${item.id}`} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={articleMessageKey(articlePath)} resource="academia" taskName={ctx.taskName} lede={t("hm.ledeReadArticle")} onlyIfAny canAttend />
             ) : null}
 
             {/* What is checked of this help, in a line each: a touch on one says it is not right, and opens the

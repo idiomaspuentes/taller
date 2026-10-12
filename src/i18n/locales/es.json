@@ -3127,5 +3127,10 @@
   "redo.noProject": "no se supo de qué proyecto o de qué texto es",
   "tb.redoAsked": "Revisar de nuevo",
   "dc.send": "Enviar",
-  "redo.heldBy": "{ref} ya está en «{phase}»: un cambio de su texto se propone desde esa fase o una posterior. Aquí puedes dejar un comentario para que lo vean."
+  "redo.heldBy": "{ref} ya está en «{phase}»: un cambio de su texto se propone desde esa fase o una posterior. Aquí puedes dejar un comentario para que lo vean.",
+  "hm.attend": "Ya lo evaluamos",
+  "hm.attendedBy": "Evaluado por {who}",
+  "hm.attendedText": "Evaluado por el equipo.",
+  "hm.ledeLeaveArticle": "¿Ves algo que cambiar en este artículo? Déjalo dicho para quien lo armoniza.",
+  "hm.ledeReadArticle": "Lo que dijeron los equipos anteriores sobre este artículo:"
 }

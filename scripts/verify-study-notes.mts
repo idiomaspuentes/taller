@@ -4,7 +4,7 @@
  *   npm run verify:study-notes
  */
 import assert from "node:assert/strict";
-import { messagesAbout, termMessageKey, normalizeStudyNotes, notesByResource, studyNotesFor, studyNotesPath, visibleStudyNotes, type StudyNote } from "../src/domain/studyNotes";
+import { articleMessageKey, attendedMessages, messageRef, messagesAbout, normalizeStudyNotes, notesByResource, type StudyNote, studyNotesFor, studyNotesPath, termMessageKey, visibleStudyNotes } from "../src/domain/studyNotes";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -56,6 +56,27 @@ test("un mensaje sobre una nota llega a quien trabaje esa nota después: se busc
   assert.deepEqual(messagesAbout([left, mine, other, note("m4", "ana", true, 1, 3)], "3jn", "abc1").map((n) => n.id), ["m1"], "solo los compartidos de esa nota");
   assert.equal(normalizeStudyNotes({ notes: [{ id: "x", book: "3JN", chapter: 1, text: "a", about: " abc1 " }] }, "ana")[0]!.about, "abc1");
   assert.equal(termMessageKey("KT", "Truth"), "tw:kt/truth", "de un término se habla una vez, no por cada uso");
+});
+
+test("un mensaje para otro equipo se da por evaluado con una nota de quien lo evaluó, y un artículo de la academia tiene los suyos", () => {
+  const base = { book: "JON", chapter: 2, verse: 2, kind: "remember" as const, shared: true };
+  const left: StudyNote = { ...base, id: "n-1", by: "ana", about: "ta:translate/figs-metaphor", resource: "academia", text: "Aquí no es metáfora sino metonimia.", at: "2026-10-12T10:00:00Z" };
+  const other: StudyNote = { ...base, id: "n-2", by: "bea", about: "ta:translate/figs-metaphor", resource: "academia", text: "El ejemplo no se entiende.", at: "2026-10-12T11:00:00Z" };
+  const mark: StudyNote = { ...base, id: "n-9", by: "carla", about: "ta:translate/figs-metaphor", resource: "academia", attends: messageRef(left), text: "Evaluado por el equipo.", at: "2026-10-13T09:00:00Z" };
+  const all = [left, other, mark];
+  assert.equal(articleMessageKey("Translate/Figs-Metaphor"), "ta:translate/figs-metaphor", "el artículo se nombra igual lo lea quien lo lea");
+  assert.equal(messageRef(left), "ana/n-1");
+  assert.deepEqual(messagesAbout(all, "jon", "ta:translate/figs-metaphor").map((note) => note.id), ["n-1", "n-2"], "la marca de evaluado no es un mensaje más");
+  const attended = attendedMessages(all, "JON", "ta:translate/figs-metaphor");
+  assert.deepEqual([...attended.keys()], ["ana/n-1"]);
+  assert.deepEqual(attended.get("ana/n-1"), { by: "carla", at: "2026-10-13T09:00:00Z", text: "Evaluado por el equipo." }, "dice quién lo evaluó y cuándo");
+  assert.equal(attended.has(messageRef(other)), false, "el otro sigue por evaluar");
+  // Two people say so: the first is kept.
+  const again: StudyNote = { ...mark, id: "n-10", by: "dani", at: "2026-10-14T09:00:00Z" };
+  assert.equal(attendedMessages([...all, again], "JON", "ta:translate/figs-metaphor").get("ana/n-1")!.by, "carla");
+  assert.deepEqual(studyNotesFor(all, { book: "JON", chapter: 2, from: 2, to: 2 }).map((note) => note.id), ["n-1", "n-2"], "y no sale entre los apuntes del pasaje");
+  // What is written to a file is read back with what it attends to.
+  assert.equal(normalizeStudyNotes({ notes: [mark] }, "carla")[0]!.attends, "ana/n-1");
 });
 
 console.log(`\nverify-study-notes: ${passed} checks passed.`);
