@@ -115,3 +115,58 @@ export function wordsOfSelection(
   const found = parts.map(wordsOf);
   return found.every((words) => words.length) ? [...new Set(found.flat())].sort((a, b) => a - b) : [];
 }
+
+// ---------------------------------------------------------------- two other ways to mark, being tried
+
+/**
+ * The pieces a verse is read in: cut where its punctuation cuts it, and a long piece cut again before a word that
+ * joins («y», «pero», «porque»), so that none is a line and a half of a phone. What a note marks is nearly always
+ * a phrase, and a phrase is one of these or a few of them: a touch on a piece marks it whole.
+ */
+export function phrasesOf(verseText: string, most = 7): { from: number; to: number }[] {
+  const words = wordSpans(verseText);
+  const pieces: { from: number; to: number }[] = [];
+  let from = 0;
+  words.forEach((word, i) => {
+    if (/[,;:.!?»”)]$/.test(word.text) || i === words.length - 1) {
+      pieces.push({ from, to: i });
+      from = i + 1;
+    }
+  });
+  const JOINS = /^(y|e|o|u|ni|pero|sino|porque|pues|que|para|cuando|como|aunque|e|ou|mas|porém|quando)$/i;
+  return pieces.flatMap((piece) => {
+    const out: { from: number; to: number }[] = [];
+    let start = piece.from;
+    for (let i = piece.from + 3; i <= piece.to - 2; i++) {
+      // Only where both sides are left with something to read.
+      if (piece.to - start + 1 > most && i - start >= 3 && JOINS.test(words[i]!.text)) {
+        out.push({ from: start, to: i - 1 });
+        start = i;
+      }
+    }
+    out.push({ from: start, to: piece.to });
+    return out;
+  });
+}
+
+/** A piece marked whole, or taken off whole when all of it was marked. */
+export function togglePhrase(selected: number[], piece: { from: number; to: number }): number[] {
+  const words = Array.from({ length: piece.to - piece.from + 1 }, (_, i) => piece.from + i);
+  const all = words.every((i) => selected.includes(i));
+  return all ? selected.filter((i) => i < piece.from || i > piece.to) : [...new Set([...selected, ...words])].sort((a, b) => a - b);
+}
+
+/** How a stretch of marked words is moved by one word at one of its ends. */
+export type EndMove = "startEarlier" | "startLater" | "endEarlier" | "endLater";
+
+/**
+ * A stretch with one of its ends moved a word: it begins a word earlier or later, or ends a word earlier or
+ * later. Nothing changes when there is no word to take in, or when the stretch is one word and would be none.
+ */
+export function moveEnd(selected: number[], stretch: { from: number; to: number }, move: EndMove, wordCount: number): number[] {
+  const add = (i: number) => (i < 0 || i >= wordCount ? selected : [...new Set([...selected, i])].sort((a, b) => a - b));
+  const drop = (i: number) => (stretch.from === stretch.to ? selected : selected.filter((other) => other !== i));
+  if (move === "startEarlier") return add(stretch.from - 1);
+  if (move === "endLater") return add(stretch.to + 1);
+  return drop(move === "startLater" ? stretch.from : stretch.to);
+}
