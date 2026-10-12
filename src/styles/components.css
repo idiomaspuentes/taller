@@ -9340,3 +9340,8 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
    words are not picked as text, nor called out by a long press, while a stroke passes over them. */
 .sp-paint { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .sp-paint .af-word--tap { touch-action: pan-y; }
+
+/* A marked word is as wide as it was: its colour and its ground say it is marked, not a heavier letter. Heavier, it
+   was wider, and the last word of a line jumped to the next one under the finger that was marking. */
+.af-draft__words .af-word--tap[data-selected="true"] { font-weight: inherit; }
+.sp-phrase[data-selected="true"], .sp-phrase [data-in] { font-weight: inherit; }
