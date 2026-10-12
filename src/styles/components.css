@@ -9346,8 +9346,9 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 .af-draft__words .af-word--tap[data-selected="true"] { font-weight: inherit; }
 .sp-phrase[data-selected="true"], .sp-phrase [data-in] { font-weight: inherit; }
 
-/* What is marked has to be told at a glance, on a phone in daylight: the words of the draft somebody marked, and
-   the words of the reference a note is about. A deeper ground and a line drawn inside the box, which adds no
-   width (see above). */
-.af-draft__words .af-word--tap[data-selected="true"] { background: var(--accent-300); border-color: var(--accent-700); box-shadow: inset 0 0 0 1px var(--accent-700); color: var(--text); }
-.af-word[data-marked="true"] { background: color-mix(in srgb, var(--warning-500) 65%, var(--surface)); box-shadow: inset 0 -2px 0 var(--warning-700); color: color-mix(in srgb, var(--warning-700) 55%, black); border-radius: 3px; }
+/* What is marked is read first of all: its letters are as dark as the text gets, on a pale ground, and the mark is
+   told by the ground and by a line. A deeper ground made the mark plainer and the words on it harder to read.
+   What is marked has to be told at a glance, on a phone in daylight: the words of the draft somebody marked, and
+   the words of the reference a note is about. The line is drawn inside the box, which adds no width (see above). */
+.af-draft__words .af-word--tap[data-selected="true"] { background: var(--accent-100); border-color: var(--accent-700); box-shadow: inset 0 0 0 1px var(--accent-700); color: var(--text); }
+.af-word[data-marked="true"] { background: var(--warning-100); box-shadow: inset 0 -2px 0 var(--warning-500); color: var(--text); border-radius: 3px; }
