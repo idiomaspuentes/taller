@@ -301,7 +301,9 @@ await test("si alguien cambia su voto antes de confirmar, ya no hay consenso y c
   actor = "carla";
   await cardType().run!("aceptar", event, envFor("carla", n));
   actor = "ana";
-  await cardType().run!("rechazar", event, envFor("ana", n));
+  await assert.rejects(() => cardType().run!("rechazar", event, envFor("ana", n)), /Di por qué no/, "un no a una propuesta dice por qué");
+  await cardType().run!("rechazar", event, { ...envFor("ana", n), input: "prefiero como estaba" });
+  assert.match((comments.get(n) ?? []).at(-1)!.body, /prefiero como estaba/, "y queda dicho en la conversación");
   const { options } = await optionsNow("ana", n);
   assert.ok(!options.some((o) => o.id === "confirmar"), "ya no se ofrece confirmar");
   const before = draftNow();
@@ -493,6 +495,73 @@ await test("desde la lectura grupal, otra redacción se propone y no se escribe;
   assert.ok(!jonNow().includes(BS + "w "), "a un versículo sin alinear no se le escriben enlaces");
   const last = (comments.get(opened.issue.number) ?? []).at(-1)!;
   assert.deepEqual(parseChatEvent(last.body)?.mentions, ["ana", "carla"], "al aplicarla se avisa al equipo, no a quien la aplica");
+});
+
+await test("una propuesta se conversa: se escribe de otra forma, los votos empiezan de nuevo, se puede volver a una versión anterior, y se aplica la última", async () => {
+  const titPath = "57-TIT.usfm";
+  const verse = "Pablo, siervo de Dios";
+  put(REPO, "neh", titPath, ["id TIT", "c 1", "p", `v 1 ${verse}`, ""].map((l) => (l ? BS + l : l)).join(NL));
+  const titNow = () => files.get(fkey(REPO, "neh", titPath))!.text;
+  const start = titNow();
+  actor = "bea";
+  const opened = await openTextProposal({
+    session: session("bea"), pmOrg: "BSOJ", task: { projectId: "TIT", taskId: "desafios-tpl", taskName: "Desafíos TPL", resource: "tpl", parentIssue: 1 }, target, draftFilepath: titPath,
+    book: "TIT", chapter: 1, verse: 1, oldText: verse, newText: "Pablo, esclavo de Dios", note: "Selección de palabra", tell: ["ana", "bea", "carla"], thresholds: { minAgree: 2, minIndependent: 1 },
+  });
+  const n = opened.issue.number;
+  /** The card that has the buttons: the newest of the decision. */
+  const cardNow = () => (comments.get(n) ?? []).map((c) => parseChatEvent(c.body)).filter((e) => e && alineacionDecisionData(e)).at(-1)!;
+  const optionsOf = async (login: string) => {
+    const event = cardNow();
+    return cardType().options!(event, { viewer: viewerFor(login), prepared: await cardType().prepare!(event, envFor(login, n)) });
+  };
+  const run = (login: string, option: string, input?: string) => {
+    actor = login;
+    return cardType().run!(option, cardNow(), { ...envFor(login, n), ...(input !== undefined ? { input } : {}) });
+  };
+
+  // Carla says no, and why; nothing is decided, and the reason is where everybody reads it.
+  await run("carla", "rechazar", "«esclavo» suena muy duro aquí");
+  assert.match((comments.get(n) ?? []).at(-1)!.body, /suena muy duro/);
+  assert.ok((await optionsOf("carla")).some((o) => o.id === "version" && o.input?.initial === "Pablo, esclavo de Dios"), "quien es del equipo puede escribirla de otra forma, partiendo de la que hay");
+  assert.ok(!(await optionsOf("zoe")).some((o) => o.id === "version"), "quien no es de ninguno de los dos equipos, no");
+
+  // Carla words it again: a second card of the same decision; the first stays, and her no does not count against it.
+  const [second] = await run("carla", "version", "Pablo, servidor de Dios");
+  assert.ok(second);
+  const v2 = alineacionDecisionData(cardNow())!;
+  assert.deepEqual([v2.version, v2.by, v2.newText, v2.oldText], [2, "carla", "Pablo, servidor de Dios", verse]);
+  assert.deepEqual(v2.history, [{ n: 1, by: "bea", text: "Pablo, esclavo de Dios" }], "lo que decía la anterior se conserva");
+  assert.equal(cardNow().decision?.id, parseChatEvent((comments.get(n) ?? [])[0]!.body)!.decision?.id, "es la misma decisión: solo la más nueva tiene botones");
+  assert.match(cardNow().summary, /Versión 2/);
+  assert.ok(parseChatEvent((comments.get(n) ?? []).at(-1)!.body)!.mentions!.includes("bea"), "se avisa a quien había propuesto");
+  assert.equal(titNow(), start, "nada se escribe en el borrador mientras se conversa");
+  const afterV2 = await optionsOf("ana");
+  assert.ok(!afterV2.some((o) => o.id === "confirmar"), "los votos empiezan de nuevo");
+  assert.ok(afterV2.find((o) => o.id === "rechazar")!.label === "Rechazar" || !/\(1\)/.test(afterV2.find((o) => o.id === "rechazar")!.label), "el no de antes ya no cuenta");
+  await assert.rejects(() => run("carla", "aceptar"), /Es tu propuesta/, "quien escribió esta versión ya cuenta a favor");
+  await assert.rejects(() => run("ana", "version", "Pablo, servidor de Dios"), /ya se está decidiendo/);
+  await assert.rejects(() => run("ana", "version", verse), /vota en contra/);
+
+  // Bea prefers the first wording after all: the team goes back to it, as a third version.
+  assert.ok((await optionsOf("bea")).some((o) => o.id === "volver:1" && /esclavo/.test(o.confirm ?? "")), "se ofrece volver a la primera, diciendo qué decía");
+  await run("bea", "volver:1");
+  const v3 = alineacionDecisionData(cardNow())!;
+  assert.deepEqual([v3.version, v3.by, v3.newText], [3, "bea", "Pablo, esclavo de Dios"]);
+  assert.deepEqual(v3.history?.map((row) => [row.n, row.by]), [[1, "bea"], [2, "carla"]], "con las dos anteriores en su historial");
+  assert.ok((await optionsOf("ana")).some((o) => o.id === "volver:2") && !(await optionsOf("ana")).some((o) => o.id === "volver:1"), "y ahora se puede volver a la segunda; la primera es la que está");
+
+  // The team settles on the second after talking: back to it, voted, confirmed and applied.
+  await run("ana", "volver:2");
+  const v4 = alineacionDecisionData(cardNow())!;
+  assert.deepEqual([v4.version, v4.by, v4.newText], [4, "ana", "Pablo, servidor de Dios"]);
+  await run("carla", "aceptar");
+  const ready = await optionsOf("bea");
+  assert.equal(ready[0]!.id, "confirmar", "con el voto de otra persona sobre esta versión, hay consenso");
+  await run("bea", "confirmar");
+  assert.equal(issues.find((i) => i.number === n)!.state, "closed");
+  assert.ok(titNow().includes("Pablo, servidor de Dios") && !titNow().includes("esclavo"), "al borrador llega la última versión, no la primera que se guardó");
+  await assert.rejects(() => run("ana", "version", "Pablo, criado de Dios"), /ya se cerró/, "cerrada, ya no se escribe de otra forma");
 });
 
 console.log(`\nverify-alignment-decision-store: ${passed} checks passed.`);

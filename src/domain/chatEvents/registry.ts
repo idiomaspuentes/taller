@@ -37,6 +37,11 @@ export type DecisionOption = {
   busyLabel?: string;
   /** The block is fixed in the editor: the reason offers to open it on this range. */
   openEditor?: { chapter: number; from: number; to: number };
+  /**
+   * The option is given with words of the person's own: another wording, the reason of a no. The card asks for
+   * them before it runs, starting from `initial`, and `run` gets them as `env.input`.
+   */
+  input?: { label: string; initial?: string };
 };
 
 export type DecisionContext<P = unknown> = {

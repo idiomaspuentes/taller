@@ -11,7 +11,7 @@ import type { AlignmentGroup } from "@usfm-tools/types";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { appendMyDecision, isShaConflict, readRepoFile, saveCorrection, type RepoTarget } from "./afinacionStore";
-import { alignmentOfDraft, draftVerseKey, saveVerseAlignment, type AlignmentSourceRef } from "./alignmentStore";
+import { alignmentOfDraft, draftVerseKey, saveVerseAlignment, verseKey, type AlignmentSourceRef } from "./alignmentStore";
 import { spanOfSid } from "../domain/joinedVerses";
 import { closeIssue, commentOnIssue, createDecisionIssue, loadPmConfig } from "./issues";
 import { alignmentHash, groupsToLines } from "../domain/alignmentHash";
@@ -50,8 +50,9 @@ import {
   readDecisionThread,
   refLabel,
   type DecisionEventData,
+  rewordedData,
 } from "../domain/chatEvents/alineacionDecision";
-import { groupsAfterTextEdit, tokensFromText, viewFromTokens, type DecisionView } from "../domain/verseEditView";
+import { groupsAfterTextEdit, sameText, tokensFromText, viewFromTokens, type DecisionView } from "../domain/verseEditView";
 import { originalTextRef } from "../domain/sourcePackage";
 import { commentToItem, type ThreadItem } from "../domain/conversation";
 import { PM_REPO_NAME } from "../domain/types";
@@ -277,9 +278,39 @@ export async function readDecisionVotes(session: GtSession, pmOrg: string, threa
   return readDecisionThread(events, id);
 }
 
-export async function postVote(session: GtSession, pmOrg: string, threadIssue: number, data: DecisionEventData, option: DecisionOptionId): Promise<ThreadItem> {
-  const event = buildVoteEvent({ issue: threadIssue, data, by: session.username, option });
-  const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(event), session.token);
+export async function postVote(session: GtSession, pmOrg: string, threadIssue: number, data: DecisionEventData, option: DecisionOptionId, reason?: string): Promise<ThreadItem> {
+  const event = buildVoteEvent({ issue: threadIssue, data, by: session.username, option, reason });
+  // The reason of a no is said to whoever proposed, where Door43 reads it.
+  const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(event, event.mentions?.length ? { visible: `${event.summary}${named(event.mentions)}` } : undefined), session.token);
+  return commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME });
+}
+
+/**
+ * Words a proposal again, in its own conversation: the next version, as a card of the same decision. The card
+ * before it stays in the conversation as it was, without its buttons, so every wording the proposal had can be
+ * read, and gone back to (`text` is then the text of that one). Nothing is written to the draft, and the verse the
+ * proposal starts from is the same; the votes are asked again, and the team is told.
+ */
+export async function rewordProposal(params: { session: GtSession; pmOrg: string; threadIssue: number; data: DecisionEventData; text: string; note?: string; now?: Date }): Promise<ThreadItem> {
+  const { session, pmOrg, data } = params;
+  const text = params.text.replace(/\s+/g, " ").trim();
+  if (data.kind !== "proposal" || !editsText(data)) throw new Error("Solo una propuesta que cambia el texto se puede escribir de otra forma.");
+  if (!text) throw new Error("Escribe cómo quedaría el versículo.");
+  if (sameText(text, data.newText)) throw new Error("Esa es la versión que ya se está decidiendo.");
+  if (sameText(text, data.oldText)) throw new Error("Eso es lo que el versículo dice ahora: para dejarlo así, vota en contra de la propuesta.");
+  const now = params.now ?? new Date();
+  const sid = verseKey(data.book, data.chapter, data.verse);
+  const groups = groupsAfterTextEdit(data.groupsBefore, data.oldText, text);
+  const next = rewordedData(data, {
+    by: session.username,
+    text,
+    note: params.note?.trim() || "",
+    now,
+    deadline: deadlineFrom(now, DECISION_DAYS),
+    links: { groups, lines: groupsToLines(groups), draft: viewFromTokens({ rtl: data.view.rtl, original: [], gloss: [], draftBefore: [], draftAfter: tokensFromText(text, sid) }).draftAfter },
+  });
+  const event = buildDecisionEvent(next, params.threadIssue);
+  const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, params.threadIssue, formatChatEvent(event, { visible: `${event.summary}\n\n> ${text}${named(event.mentions)}` }), session.token);
   return commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME });
 }
 
@@ -364,11 +395,13 @@ export async function closeAlignmentDecision(params: {
     } else {
       const proposalFile = await readRepoFile(session, target, data.path);
       const saved0 = proposalFile ? (JSON.parse(proposalFile.text) as ProposalFile) : null;
-      const proposed = saved0?.proposed ?? null;
+      // A proposal worded again in its conversation is the one of its card: the file keeps the first wording.
+      const reworded = (data.version ?? 1) > 1;
+      const proposed = reworded ? data.groupsAfter : (saved0?.proposed ?? null);
       if (!proposed) throw new Error("No se pudo leer la propuesta guardada.");
       // A proposal that edits the text writes the text first (the links of the words that did not
       // change are kept), and then the alignment the proposer wants over the new words.
-      const newText = saved0?.newText ?? data.newText;
+      const newText = reworded ? data.newText : (saved0?.newText ?? data.newText);
       if (editsText({ kind: data.kind, oldText: saved0?.oldText ?? data.oldText, newText })) {
         await saveCorrection({
           session,

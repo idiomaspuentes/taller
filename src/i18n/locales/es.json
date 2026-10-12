@@ -3125,5 +3125,6 @@
   "redo.open": "Siguen en curso y verán el cambio al abrir su herramienta: {tasks}.",
   "redo.failed": "El texto de {ref} cambió, pero no se pudieron crear las subtareas para revisarlo de nuevo ({why}). Quien coordina debe pedirlas a mano.",
   "redo.noProject": "no se supo de qué proyecto o de qué texto es",
-  "tb.redoAsked": "Revisar de nuevo"
+  "tb.redoAsked": "Revisar de nuevo",
+  "dc.send": "Enviar"
 }

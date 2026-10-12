@@ -56,7 +56,20 @@ export type DecisionEventData = {
   draft: { owner: string; repo: string; branch: string; filepath: string };
   source: { id: string; layerDir: string };
   parentIssue: number;
+  /**
+   * A proposal that is talked over is worded again: each wording is a card of its own in the conversation, of the
+   * same decision, and only the newest keeps its buttons (see `group`). `version` counts them from 1; `since` is
+   * when this one was written, as its writer's clock had it (which votes count is told by when the conversation
+   * got the card, see `readDecisionThread`); `history` are the wordings before it, so that the team can go back
+   * to one of them.
+   */
+  version?: number;
+  since?: string;
+  history?: ProposalVersion[];
 };
+
+/** A wording a proposal had: which one, whose, and what it said. */
+export type ProposalVersion = { n: number; by: string; text: string };
 
 /**
  * Who is told of a step of a decision: whoever proposed it, whoever aligned the verse and the team that has the
@@ -105,8 +118,54 @@ function asData(value: unknown): DecisionEventData | null {
     draft: { owner: d.draft.owner, repo: d.draft.repo, branch: d.draft.branch, filepath: d.draft.filepath },
     source: { id: d.source.id, layerDir: String(d.source.layerDir ?? "") },
     parentIssue: Number(d.parentIssue) || 0,
+    ...(Number(d.version) > 1 ? { version: Number(d.version) } : {}),
+    ...(typeof d.since === "string" && d.since ? { since: d.since } : {}),
+    ...(Array.isArray(d.history) && d.history.length
+      ? { history: d.history.filter((row) => row && Number(row.n) > 0 && typeof row.text === "string").map((row) => ({ n: Number(row.n), by: String(row.by ?? ""), text: String(row.text) })) }
+      : {}),
   };
 }
+
+/** Which wording of the proposal a card is: 1 for the one it was opened with. */
+export const versionOf = (d: Pick<DecisionEventData, "version">): number => d.version ?? 1;
+
+/** Every wording the proposal has had, the one in hand last. */
+export function versionsOf(d: Pick<DecisionEventData, "version" | "history" | "by" | "newText">): ProposalVersion[] {
+  return [...(d.history ?? []), { n: versionOf(d), by: d.by, text: d.newText }];
+}
+
+/**
+ * Whoever may word a proposal again, or go back to an earlier wording: the people of the team that has the task,
+ * whoever proposed (this wording or an earlier one), whoever aligned the verse, and whoever coordinates.
+ */
+export function mayReword(d: Pick<DecisionEventData, "by" | "aligners" | "tell" | "history">, viewer: { username: string; canManage: boolean }): boolean {
+  const me = viewer.username.trim().toLowerCase();
+  return viewer.canManage || [d.by, ...d.aligners, ...(d.tell ?? []), ...(d.history ?? []).map((row) => row.by)].some((login) => login.trim().toLowerCase() === me);
+}
+
+/**
+ * The proposal worded again: the card of the next version. The verse it starts from is the same; what it would
+ * say, and the links that follow from it, are new. Whoever writes it backs it, the others vote again, and the
+ * days to decide count from now. `links` gives the alignment the new wording would leave.
+ */
+export function rewordedData(d: DecisionEventData, params: { by: string; text: string; note: string; now: Date; deadline: string; links: { groups: AlignmentGroup[]; lines: string[]; draft: DecisionView["draftAfter"] } }): DecisionEventData {
+  const told = [...(d.tell ?? []), d.by].filter((login, at, all) => all.findIndex((other) => other.toLowerCase() === login.toLowerCase()) === at);
+  return {
+    ...d,
+    by: params.by,
+    note: params.note,
+    newText: params.text,
+    groupsAfter: params.links.groups,
+    after: params.links.lines,
+    view: { ...d.view, draftAfter: params.links.draft },
+    deadline: params.deadline,
+    tell: told,
+    version: versionOf(d) + 1,
+    since: params.now.toISOString(),
+    history: versionsOf(d),
+  };
+}
+
 
 export function alineacionDecisionData(event: ChatEvent): DecisionEventData | null {
   return event.type === DECISION_EVENT ? asData(event.data) : null;
@@ -123,6 +182,7 @@ export function editsText(d: Pick<DecisionEventData, "kind" | "oldText" | "newTe
 
 export function decisionTitle(d: DecisionEventData): string {
   if (d.kind === "objection") return `Objeción de @${d.by} en ${refLabel(d)}`;
+  if (versionOf(d) > 1) return `Versión ${versionOf(d)} de la propuesta para ${refLabel(d)}, de @${d.by}`;
   return editsText(d) ? `Propuesta de @${d.by} para cambiar el texto de ${refLabel(d)}` : `Propuesta de @${d.by} para ${refLabel(d)}`;
 }
 
@@ -148,13 +208,16 @@ export function buildDecisionEvent(data: DecisionEventData, issue: number): Omit
   };
 }
 
-export function buildVoteEvent(params: { issue: number; data: DecisionEventData; by: string; option: DecisionOptionId }): Omit<ChatEvent, "schema"> {
+export function buildVoteEvent(params: { issue: number; data: DecisionEventData; by: string; option: DecisionOptionId; reason?: string }): Omit<ChatEvent, "schema"> {
+  const reason = params.reason?.replace(/\s+/g, " ").trim();
   return {
     type: VOTE_EVENT,
     emitter: "afinacion",
     issue: params.issue,
-    summary: `@${params.by} votó: ${OPTION_LABEL[params.option]}`,
-    data: { decisionId: decisionId(params.data), option: params.option, by: params.by },
+    // A no says why: it is what the conversation goes on from, and what another wording answers.
+    summary: `@${params.by} votó: ${OPTION_LABEL[params.option]}${reason ? `. «${reason}»` : ""}`,
+    ...(reason ? { mentions: [params.data.by] } : {}),
+    data: { decisionId: decisionId(params.data), option: params.option, by: params.by, ...(reason ? { reason } : {}) },
   };
 }
 
@@ -216,6 +279,8 @@ export function voteData(event: ChatEvent): { decisionId: string; option: Decisi
 /** What the card needs to know about the thread: the votes so far and, if it is over, how it ended. */
 export type DecisionPrepared = {
   votes: DecisionVote[];
+  /** When the conversation got the wording now being decided, if the proposal was worded again: votes before it do not count. */
+  since?: string;
   levels: Record<string, PersonLevel>;
   closed?: ChatEvent;
   /** ISO time the votes were read, so the card can tell if the deadline has passed. */
@@ -223,16 +288,19 @@ export type DecisionPrepared = {
 };
 
 /** Everything the thread says about one decision. */
-export function readDecisionThread(events: Array<{ event: ChatEvent; at: string }>, id: string): { votes: DecisionVote[]; closed?: ChatEvent } {
+export function readDecisionThread(events: Array<{ event: ChatEvent; at: string }>, id: string): { votes: DecisionVote[]; closed?: ChatEvent; since?: string } {
   const votes: DecisionVote[] = [];
   let closed: ChatEvent | undefined;
+  let since: string | undefined;
   for (const { event, at } of events) {
+    const card = alineacionDecisionData(event);
+    if (card && decisionId(card) === id && versionOf(card) > 1) since = at;
     const v = voteData(event);
     if (v && v.decisionId === id) votes.push({ by: v.by, option: v.option, at });
     const c = closeData(event);
     if (c && c.decisionId === id) closed = event;
   }
-  return { votes, closed };
+  return { votes, closed, ...(since ? { since } : {}) };
 }
 
 /** Plain text of who backs what, for the confirmation before closing. */
@@ -244,9 +312,11 @@ export function voteSummary(d: DecisionEventData, prepared: DecisionPrepared): s
 }
 
 export function tallyOf(d: DecisionEventData, prepared: DecisionPrepared) {
+  // A vote is for the wording it was given on: those from before this one was written do not count.
+  const since = prepared.since ? Date.parse(prepared.since) : NaN;
   return tallyDecision({
     kind: d.kind,
-    votes: prepared.votes,
+    votes: Number.isFinite(since) ? prepared.votes.filter((vote) => Date.parse(vote.at) > since) : prepared.votes,
     proposer: d.by,
     authors: d.aligners,
     levels: prepared.levels,
@@ -319,7 +389,8 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
     const prepared = ctx.prepared;
     const me = ctx.viewer.username.trim().toLowerCase();
     const tally = prepared ? tallyOf(d, prepared) : null;
-    const mine = prepared?.votes.filter((v) => v.by.trim().toLowerCase() === me).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+    const since = prepared?.since ? Date.parse(prepared.since) : NaN;
+    const mine = prepared?.votes.filter((v) => v.by.trim().toLowerCase() === me && !(Number.isFinite(since) && Date.parse(v.at) <= since)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
     const reason = ctx.prepareError
       ? `No se pudieron leer los votos: ${ctx.prepareError}`
       : !prepared
@@ -338,6 +409,8 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
         primary: id === yes && !winner,
         blockReason: reason,
         busyLabel: "Guardando tu voto…",
+        // A no to a proposal says why, so that whoever proposed knows what to word again.
+        ...(id === no && d.kind === "proposal" ? { input: { label: "¿Por qué no? Di qué cambiarías" } } : {}),
       };
     };
     const out: DecisionOption[] = [];
@@ -354,6 +427,21 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
       });
     }
     out.push(make(yes), make(no));
+    // A proposal that changes the text is talked over until it is decided: anybody of the two teams words it
+    // again, and the team may go back to a wording it had.
+    if (prepared && !prepared.closed && editsText(d) && mayReword(d, ctx.viewer)) {
+      out.push({ id: "version", label: "Proponer otra versión", blockReason: null, busyLabel: "Guardando la versión…", input: { label: "El versículo como lo propones ahora", initial: d.newText } });
+      for (const before of d.history ?? []) {
+        if (sameText(before.text, d.newText)) continue;
+        out.push({
+          id: `volver:${before.n}`,
+          label: `Volver a la versión ${before.n}`,
+          blockReason: null,
+          confirm: `La versión ${before.n}, de @${before.by}, decía: «${before.text}». Se propone de nuevo y los votos empiezan otra vez.`,
+          busyLabel: "Guardando la versión…",
+        });
+      }
+    }
     if (prepared && !prepared.closed && tally?.state === "plazo" && ctx.viewer.canManage) {
       for (const id of [yes, no]) {
         out.push({

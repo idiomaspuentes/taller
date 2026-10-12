@@ -4,7 +4,7 @@
  * and the closing if the team has now decided). `src/conversationTypes.ts` imports it.
  */
 import type { GtSession } from "./auth";
-import { closeAlignmentDecision, postVote, readDecisionVotes } from "./alignmentDecisionStore";
+import { closeAlignmentDecision, postVote, readDecisionVotes, rewordProposal } from "./alignmentDecisionStore";
 import { loadPmConfig } from "./issues";
 import { decisionLevels, optionsFor, type DecisionOptionId } from "../domain/alignmentDecision";
 import { issueTaskId } from "../domain/myTasks";
@@ -15,6 +15,7 @@ import {
   alineacionDecisionData,
   alineacionDecisionType,
   buildConsensusEvent,
+  mayReword,
   decisionId,
   tallyOf,
   type DecisionPrepared,
@@ -92,7 +93,7 @@ registerChatEventType<DecisionPrepared>({
     const data = alineacionDecisionData(event);
     if (!data) throw new Error("La decisión no es válida.");
     const [thread, levels] = await Promise.all([readDecisionVotes(session, pmOrg, threadIssue, decisionId(data)), teamLevelsOf(env).catch(() => ({}))]);
-    return { votes: thread.votes, levels, closed: thread.closed, now: new Date().toISOString() };
+    return { votes: thread.votes, levels, closed: thread.closed, since: thread.since, now: new Date().toISOString() };
   },
   async run(optionId, event, env) {
     const { session, pmOrg, threadIssue } = envOf(env);
@@ -103,7 +104,7 @@ registerChatEventType<DecisionPrepared>({
     if (before.closed) throw new Error("Esta decisión ya se cerró.");
 
     const levels = await teamLevelsOf(env).catch(() => ({}));
-    const tallyNow = (votes: typeof before.votes) => tallyOf(data, { votes, levels, now: new Date().toISOString() });
+    const tallyNow = (votes: typeof before.votes) => tallyOf(data, { votes, levels, since: before.since, now: new Date().toISOString() });
 
     // Whoever coordinates may close it past the deadline.
     if (optionId.startsWith("coord:")) {
@@ -121,12 +122,22 @@ registerChatEventType<DecisionPrepared>({
       return [...closed.items, ...(await redoAfterAccepted(env, data, closed.outcome))];
     }
 
+    const said = typeof env.input === "string" ? env.input.trim() : "";
+    // Another wording, or one the proposal had before: the next version, in this same conversation.
+    if (optionId === "version" || optionId.startsWith("volver:")) {
+      if (!mayReword(data, { username: session.username, canManage: Boolean(session.canManage) })) throw new Error("Solo el equipo de esta tarea y quien propuso pueden escribirla de otra forma.");
+      const back = optionId.startsWith("volver:") ? (data.history ?? []).find((row) => row.n === Number(optionId.slice("volver:".length))) : undefined;
+      if (optionId !== "version" && !back) throw new Error("Esa versión ya no está en la conversación.");
+      return [await rewordProposal({ session, pmOrg, threadIssue, data, text: back ? back.text : said, note: back ? `Vuelve a la versión ${back.n}, de @${back.by}.` : "" })];
+    }
+
     const { yes, no } = optionsFor(data.kind);
     if (optionId !== yes && optionId !== no) throw new Error("Opción desconocida.");
     if (session.username.toLowerCase() === data.by.toLowerCase()) throw new Error("Es tu propuesta: ya cuenta a favor.");
+    if (optionId === no && data.kind === "proposal" && !said) throw new Error("Di por qué no, para que se pueda escribir de otra forma.");
 
     const hadConsensus = Boolean(tallyNow(before.votes).winner);
-    const vote = await postVote(session, pmOrg, threadIssue, data, optionId);
+    const vote = await postVote(session, pmOrg, threadIssue, data, optionId, optionId === no ? said : undefined);
     const after = await readDecisionVotes(session, pmOrg, threadIssue, id);
     const tally = tallyNow(after.votes);
     // The votes only record; when they first reach consensus the people concerned are told to confirm it.

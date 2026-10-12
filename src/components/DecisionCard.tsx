@@ -27,8 +27,8 @@ type Props = {
   env: ChatEventEnv;
   /** Demo only: stands in for `prepare` (no DCS read). */
   demoPrepared?: unknown;
-  /** Runs the option on `event` (the card's, or its decided form) and shows its items. */
-  onRun?: (optionId: string, event: ChatEvent) => Promise<void>;
+  /** Runs the option on `event` (the card's, or its decided form) and shows its items; `input` is what was written for it. */
+  onRun?: (optionId: string, event: ChatEvent, input?: string) => Promise<void>;
   /** Opens the editor on a range; offered next to a block reason that is fixed there. */
   onOpenEditor?: (range: { chapter: number; from: number; to: number }) => void;
 };
@@ -59,6 +59,8 @@ export function DecisionCard({
   const [prepared, setPrepared] = useState<unknown>(demoPrepared);
   const [prepareError, setPrepareError] = useState<string | undefined>();
   const [confirming, setConfirming] = useState<string | null>(null);
+  /** The option that is being written for (another wording, the reason of a no), and what is written so far. */
+  const [writing, setWriting] = useState<{ id: string; text: string } | null>(null);
   const [busy, setBusy] = useState<DecisionOption | null>(null);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -93,8 +95,9 @@ export function DecisionCard({
   const reasons = [...new Set(options.map((o) => o.blockReason).filter((r): r is string => Boolean(r)))];
   const editorRange = options.find((o) => o.blockReason && o.openEditor)?.openEditor;
 
-  async function run(option: DecisionOption) {
+  async function run(option: DecisionOption, input?: string) {
     setConfirming(null);
+    setWriting(null);
     setError("");
     setBusy(option);
     try {
@@ -107,7 +110,7 @@ export function DecisionCard({
         setError(loc(again?.blockReason || "") || t("dc.unavailable"));
         return;
       }
-      await onRun!(option.id, target);
+      await onRun!(option.id, target, input);
       // What the card says is read again. A vote just given was not counted on it until the page was opened
       // again: the button went on reading «(1)», and when it made the consensus, nothing offered to confirm it.
       const after = await prepare().catch(() => null);
@@ -138,6 +141,7 @@ export function DecisionCard({
   ) : null;
 
   const confirmOption = confirming ? options.find((o) => o.id === confirming) : undefined;
+  const writeOption = writing ? options.find((o) => o.id === writing.id && o.input) : undefined;
   const controls = (
     <>
       {busy ? (
@@ -156,6 +160,22 @@ export function DecisionCard({
             </Button>
           </div>
         </div>
+      ) : writeOption && writing ? (
+        // Words of the person's own, asked for before the option runs: what is written goes with it.
+        <div className="chat-decision__confirm chat-decision__write" role="group" aria-label={loc(writeOption.input!.label)}>
+          <label className="chat-decision__confirm-text" htmlFor={`write-${item.key}`}>
+            {loc(writeOption.input!.label)}
+          </label>
+          <textarea id={`write-${item.key}`} className="af-textarea" rows={3} value={writing.text} autoFocus onChange={(e) => setWriting({ id: writing.id, text: e.target.value })} />
+          <div className="chat-decision__actions">
+            <Button type="button" disabled={!writing.text.trim()} onClick={() => void run(writeOption, writing.text.trim())}>
+              {t("dc.send")}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setWriting(null)}>
+              {t("dc.cancel")}
+            </Button>
+          </div>
+        </div>
       ) : options.length ? (
         <div className="chat-decision__actions">
           {options.map((option) => (
@@ -164,14 +184,14 @@ export function DecisionCard({
               type="button"
               variant={option.primary ? "default" : "outline"}
               disabled={Boolean(option.blockReason)}
-              onClick={() => (option.confirm ? setConfirming(option.id) : void run(option))}
+              onClick={() => (option.input ? setWriting({ id: option.id, text: option.input.initial ?? "" }) : option.confirm ? setConfirming(option.id) : void run(option))}
             >
               {loc(option.label)}
             </Button>
           ))}
         </div>
       ) : null}
-      {!busy && !confirmOption && reasons.length ? (
+      {!busy && !confirmOption && !writeOption && reasons.length ? (
         <p className="chat-decision__reason">
           {reasons.map(loc).join(" ")}
           {editorRange && onOpenEditor ? (
