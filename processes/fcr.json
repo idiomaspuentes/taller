@@ -1679,6 +1679,9 @@
               "minAgree": 3,
               "minIndependent": 2
             }
+          ],
+          "redoAfter": [
+            "tpl"
           ]
         },
         {
@@ -1730,6 +1733,9 @@
               "minAgree": 3,
               "minIndependent": 2
             }
+          ],
+          "redoAfter": [
+            "tpl"
           ]
         },
         {
@@ -1795,6 +1801,9 @@
                 "alinear"
               ]
             }
+          ],
+          "redoAfter": [
+            "tpl"
           ]
         },
         {
@@ -1844,6 +1853,9 @@
               "minAgree": 3,
               "minIndependent": 2
             }
+          ],
+          "redoAfter": [
+            "tps"
           ]
         },
         {
@@ -1895,6 +1907,9 @@
               "minAgree": 3,
               "minIndependent": 2
             }
+          ],
+          "redoAfter": [
+            "tps"
           ]
         },
         {
@@ -1960,6 +1975,9 @@
                 "alinear"
               ]
             }
+          ],
+          "redoAfter": [
+            "tps"
           ]
         },
         {
@@ -2131,7 +2149,11 @@
             "grain": "chapter"
           },
           "distributeUnit": "chapter",
-          "distributePolicy": "manual"
+          "distributePolicy": "manual",
+          "redoAfter": [
+            "tpl",
+            "tps"
+          ]
         },
         {
           "id": "armonizar-palabras",
@@ -2230,7 +2252,11 @@
           },
           "distributeUnit": "chapter",
           "distributePolicy": "manual",
-          "everyUnit": true
+          "everyUnit": true,
+          "redoAfter": [
+            "tpl",
+            "tps"
+          ]
         },
         {
           "id": "armonizar-preguntas",
@@ -2312,7 +2338,11 @@
             "grain": "chapter"
           },
           "distributeUnit": "chapter",
-          "distributePolicy": "manual"
+          "distributePolicy": "manual",
+          "redoAfter": [
+            "tpl",
+            "tps"
+          ]
         },
         {
           "id": "validar",
@@ -2410,7 +2440,11 @@
             "grain": "chapter"
           },
           "distributeUnit": "chapter",
-          "distributePolicy": "manual"
+          "distributePolicy": "manual",
+          "redoAfter": [
+            "tpl",
+            "tps"
+          ]
         },
         {
           "id": "publicar",

@@ -1440,6 +1440,7 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
   const steps = normalizeTaskSteps(item.steps);
   const waitsFor = normalizeWaitRules(item.waitsFor);
   const minLevel = isLevel(item.minLevel) ? item.minLevel : undefined;
+  const redoAfter = Array.isArray(item.redoAfter) ? [...new Set(item.redoAfter.map((resource) => String(resource).trim()).filter(Boolean))] : [];
   return {
     id: String(item.id || uid()),
     name,
@@ -1458,6 +1459,7 @@ function normalizeTaskTemplate(raw: unknown): TaskTemplate | null {
     steps: steps.length ? steps : undefined,
     waitsFor,
     minLevel,
+    ...(redoAfter.length ? { redoAfter } : {}),
   };
 }
 

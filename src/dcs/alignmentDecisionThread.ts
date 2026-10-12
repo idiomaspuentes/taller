@@ -24,6 +24,12 @@ import { PM_REPO_NAME } from "../domain/types";
 import { createIssueComment } from "@ip-lms/dcs-client";
 import { dcsConfig } from "./config";
 import { registerChatEventType } from "../domain/chatEvents/registry";
+import { askRedoAfterCorrection, redoSaid } from "./redoAfterCorrection";
+import { correctedRef, type TextCorrected } from "../domain/redoAfterCorrection";
+import { parseWorkOrderMarker } from "../domain/workOrder";
+import { tNow } from "../i18n/messages";
+import type { DecisionEventData } from "../domain/chatEvents/alineacionDecision";
+import type { ThreadItem } from "../domain/conversation";
 
 function envOf(env: Record<string, unknown>) {
   const session = env.session as GtSession | undefined;
@@ -45,6 +51,38 @@ async function teamLevelsOf(env: Record<string, unknown>) {
   const [issue, board] = await Promise.all([getPmIssue(session, pmOrg, threadIssue).catch(() => null), loadAssignmentsFromDcs(session, pmOrg, lang, projectId, contentOrg)]);
   const team = issue ? board?.teams.find((task) => task.id === issueTaskId(issue))?.orgTeamName : undefined;
   return decisionLevels(config, team);
+}
+
+const sameWords = (a: string, b: string) => a.replace(/\s+/g, " ").trim() === b.replace(/\s+/g, " ").trim();
+
+/**
+ * The team accepted a proposal that changes the text, and it is in the draft: the tasks that had delivered their
+ * work on that verse are asked to look at it again, and the conversation of the decision says which. A proposal
+ * that changes links alone asks nothing: the alignment is the work in hand. What cannot be asked is said too, so
+ * that the correction is not left with nobody knowing that its reviews stand on another text.
+ */
+async function redoAfterAccepted(env: Record<string, unknown>, data: DecisionEventData, outcome: string): Promise<ThreadItem[]> {
+  if (outcome !== "aceptada" || sameWords(data.oldText ?? "", data.newText ?? "")) return [];
+  const { session, pmOrg, threadIssue } = envOf(env);
+  const lang = typeof env.lang === "string" ? env.lang : "";
+  const projectId = typeof env.projectId === "string" ? env.projectId : "";
+  const contentOrg = typeof env.contentOrg === "string" ? env.contentOrg : "";
+  const ref = correctedRef({ chapter: data.chapter, from: data.verse, to: data.verse });
+  let said = "";
+  try {
+    if (!lang || !projectId || !contentOrg) throw new Error(tNow("redo.noProject"));
+    // Which text it is: the one the subtarea the proposal was made from works on.
+    const parent = data.parentIssue ? await getPmIssue(session, pmOrg, data.parentIssue) : null;
+    const resource = parent ? parseWorkOrderMarker(parent.body ?? "")?.resource : undefined;
+    if (!resource) throw new Error(tNow("redo.noProject"));
+    const corrected: TextCorrected = { resource, chapter: data.chapter, from: data.verse, to: data.verse, decision: threadIssue, by: session.username };
+    said = redoSaid(ref, await askRedoAfterCorrection({ session, pmOrg, lang, projectId, contentOrg, corrected }), tNow);
+  } catch (err) {
+    said = tNow("redo.failed").replace("{ref}", ref).replace("{why}", err instanceof Error ? err.message : String(err));
+  }
+  if (!said) return [];
+  const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, said, session.token).catch(() => null);
+  return comment ? [commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME })] : [];
 }
 
 registerChatEventType<DecisionPrepared>({
@@ -72,7 +110,7 @@ registerChatEventType<DecisionPrepared>({
       if (!session.canManage) throw new Error("Solo quien coordina puede decidir por el equipo.");
       const option = optionId.slice("coord:".length) as DecisionOptionId;
       const closed = await closeAlignmentDecision({ session, pmOrg, threadIssue, data, option, how: "coordinacion" });
-      return closed.items;
+      return [...closed.items, ...(await redoAfterAccepted(env, data, closed.outcome))];
     }
 
     // Closing is always a person's decision: they confirm that the consensus is real.
@@ -80,7 +118,7 @@ registerChatEventType<DecisionPrepared>({
       const winner = tallyNow(before.votes).winner;
       if (!winner) throw new Error("Ya no hay consenso: alguien cambió su voto. Mira los votos de nuevo.");
       const closed = await closeAlignmentDecision({ session, pmOrg, threadIssue, data, option: winner, how: "consenso" });
-      return closed.items;
+      return [...closed.items, ...(await redoAfterAccepted(env, data, closed.outcome))];
     }
 
     const { yes, no } = optionsFor(data.kind);

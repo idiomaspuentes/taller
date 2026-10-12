@@ -71,6 +71,11 @@ export type BoardCard = {
    */
   askedBack?: { in: number; by?: string };
   /**
+   * This subtarea asks to review again what a correction of the text left behind (see `redoAfterCorrection.ts`):
+   * the subtarea where the team decided that correction.
+   */
+  redoOf?: number;
+  /**
    * The corrections asked from this subtarea (a committee's, of the teams before it), and how many are still being
    * worked on. Its card said nothing of them: neither that the endorsement waited for them, nor that they were back.
    */
@@ -184,9 +189,13 @@ export function nextStepOfMine(login: string, steps: TaskStep[], issue: DcsIssue
   return action.kind === "continue" && action.step && stepClaimMode(action.step) === "none" ? action.step : undefined;
 }
 
-/** The corrections that were asked for, first, in the order they had; then the rest, in theirs. */
-export function correctionsFirst<T extends Pick<BoardCard, "askedBack">>(cards: T[]): T[] {
-  return [...cards.filter((card) => card.askedBack), ...cards.filter((card) => !card.askedBack)];
+/**
+ * The corrections that were asked for, first, in the order they had; then the rest, in theirs. What a correction
+ * asks to review again goes with them: the text stands on reviews of another text until it is done.
+ */
+export function correctionsFirst<T extends Pick<BoardCard, "askedBack" | "redoOf">>(cards: T[]): T[] {
+  const first = (card: T) => Boolean(card.askedBack || card.redoOf);
+  return [...cards.filter(first), ...cards.filter((card) => !first(card))];
 }
 
 export function buildBoard(input: BoardInput): Board {
@@ -211,6 +220,7 @@ export function buildBoard(input: BoardInput): Board {
     const asked = bucket?.board.settings?.extraWork?.some((row) => row.askedIn === issue.number) ? askedFrom(bucket.board.settings, issue.number, openItemsOf(bucket)) : [];
     const itemIds = parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? [];
     const back = bucket?.board.settings?.extraWork?.find((row) => row.askedIn && itemIds.includes(extraItemId(row.id)));
+    const redo = bucket?.board.settings?.extraWork?.find((row) => row.redoOf && itemIds.includes(extraItemId(row.id)));
     return {
       issue,
       bucket,
@@ -224,6 +234,7 @@ export function buildBoard(input: BoardInput): Board {
       ownTitle: ownTitleOf(issue),
       ...(asked.length ? { corrections: { total: asked.length, open: asked.filter((row) => row.open).length } } : {}),
       ...(back?.askedIn ? { askedBack: { in: back.askedIn, ...(back.askedBy ? { by: back.askedBy } : {}) } } : {}),
+      ...(redo?.redoOf ? { redoOf: redo.redoOf } : {}),
       stepsDone: steps.filter((s) => progress.doneStepIds.includes(s.id)).length,
       stepsTotal: steps.length,
       nextStep: steps.find((s) => !progress.doneStepIds.includes(s.id)),

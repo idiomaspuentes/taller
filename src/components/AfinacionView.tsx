@@ -24,6 +24,7 @@ import { termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
+import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
   changedStretch,
@@ -737,6 +738,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       announce(t("af.corrected").replace("{ref}", `${data.book} ${item.chapter}:${item.verse}`));
       if (result.clearedVerses.length) {
         announce(t("af.alignmentLost").replace("{v}", String(item.verse)));
+      }
+      // The text changed: the tasks that had delivered their work on this verse are asked to look at it again.
+      if (before !== text && ctx.pmOrg && ctx.projectId && ctx.contentOrg) {
+        const ref = `${item.chapter}:${item.verse}`;
+        const said = await askRedoAfterCorrection({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, projectId: ctx.projectId, contentOrg: ctx.contentOrg, corrected: { resource: data.resource, chapter: item.chapter, from: item.verse, to: item.verse, decision: ctx.issueNumber || undefined, by: session.username } })
+          .then((asked) => redoSaid(ref, asked, tNow))
+          .catch((err) => tNow("redo.failed").replace("{ref}", ref).replace("{why}", explainError(err)));
+        if (said && ctx.issueNumber) await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, ref, said)).catch(() => undefined);
       }
       // The team had decided this point, and the correction is what it decided: the decision is said again over
       // the text as it is now. It was undone by the very correction it asked for, with everything said about it.

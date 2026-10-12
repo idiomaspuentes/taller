@@ -153,6 +153,7 @@ Lo que sigue dentro del código, y en qué fase del plan sale
 |---|---|---|
 | Plantilla | `resourceNames` | Cómo llama el proceso a cada recurso: `{ "tpl": { "name": "Biblia", "names": { "pt": "Bíblia" } } }`. Se copia al proyecto; lo que no se nombra conserva el nombre usual. |
 | Plantilla | `nextBookAt` | Qué parte de la primera fase debe estar entregada (entre 0 y 1) para avisar a quien coordina de empezar el libro siguiente. Si no se dice, 0.7. |
+| Tarea | `redoAfter: ["tpl"]` | Los recursos cuyo texto, **al corregirse**, piden a esta tarea volver a mirar los versículos que cambiaron. Una revisión de un texto nombra ese texto; armonizar las ayudas y avalar nombran todos los textos contra los que se leen. Ver «Cuando se corrige un texto ya revisado». |
 | Tarea | `everyUnit: true` | La tarea recorre **cada unidad** de su alcance (cada capítulo o tramo), tenga o no artículos pendientes. Para revisiones de lo que ya existe. |
 | Tarea | `waitsFor[].source: true` | La tarea que se espera es del **proyecto fuente**: el mismo libro, en la organización del paquete de recursos de origen. Libre solo cuando ese proyecto la cerró para el mismo capítulo. |
 | Tarea | `waitsFor[].partial: true` | Basta **una parte** de lo esperado para empezar: la tarea queda libre cuando se cierra la primera porción de las que cubre, y sigue mientras llega el resto. Varias reglas parciales cuentan juntas (basta lo de cualquiera). Cuándo se puede terminar lo decide la herramienta. |
@@ -178,3 +179,29 @@ ajustes que faltaban. Nada se cambia ni se quita.
 
 **Otro proceso.** `processes/lengua-minoritaria.json` es un segundo paquete de ejemplo. Para usarlo se importa en
 `taller.config.ts` y se agrega a `processes`. `npm run verify:second-process` comprueba que el motor lo ejecuta.
+
+## Cuando se corrige un texto ya revisado
+
+Un texto pasa por varias tareas, una tras otra: se revisan sus desafíos, sus palabras clave y su alineación; luego
+las ayudas se armonizan contra él; luego un comité lo avala. Si se corrige un versículo cuando parte de eso ya se
+entregó, lo entregado queda hecho sobre un texto que ya no existe.
+
+Por eso, cuando el equipo **acepta una propuesta de corrección** y el texto llega al borrador, la app crea una
+subtarea «Revisar de nuevo 2:3: se corrigió el texto» en cada tarea que:
+
+1. el paquete nombra para ese recurso con `redoAfter`, y
+2. **ya había entregado** su trabajo sobre ese versículo.
+
+Una tarea que todavía trabaja en ese pasaje no recibe ninguna: lo hará sobre el texto como está, y su herramienta
+ya muestra qué cambió. Una que aún no empezó, tampoco.
+
+Las subtareas nuevas son subtareas añadidas al plan, como las correcciones que pide un comité: abren las
+herramientas de su tarea solo en ese versículo, salen primero en «Mis tareas» con la etiqueta «Revisar de nuevo», y
+**esperan su turno con las mismas reglas `waitsFor` de su tarea**. En el FCR eso da el orden: primero afinación,
+luego armonización, luego el aval. No se reabre nada de lo ya entregado.
+
+En la conversación donde se decidió la corrección queda dicho qué se pidió revisar y qué tareas siguen en curso. Una
+propuesta rechazada, o una que solo cambia la alineación, no pide nada.
+
+Código: `src/domain/redoAfterCorrection.ts`, `src/dcs/redoAfterCorrection.ts`; pruebas, `npm run
+verify:redo-after-correction`.

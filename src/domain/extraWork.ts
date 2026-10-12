@@ -35,7 +35,8 @@ export function normalizeExtraWork(raw: unknown): ExtraWork[] | undefined {
     const ref = String(row.ref ?? "").trim();
     const askedBy = String(row.askedBy ?? "").trim();
     const askedIn = Number(row.askedIn);
-    rows.push({ id, taskId, title, ...(portionId ? { portionId } : {}), ...(ref ? { ref } : {}), ...(askedBy ? { askedBy } : {}), ...(Number.isInteger(askedIn) && askedIn > 0 ? { askedIn } : {}) });
+    const redoOf = Number(row.redoOf);
+    rows.push({ id, taskId, title, ...(portionId ? { portionId } : {}), ...(ref ? { ref } : {}), ...(askedBy ? { askedBy } : {}), ...(Number.isInteger(askedIn) && askedIn > 0 ? { askedIn } : {}), ...(Number.isInteger(redoOf) && redoOf > 0 ? { redoOf } : {}) });
   }
   return rows.length ? rows : undefined;
 }

@@ -60,6 +60,16 @@ export function shippedStepsMissing(task: { id: string; steps?: { id: string }[]
   return (shipped?.steps ?? []).filter((step) => !have.has(step.id));
 }
 
+/**
+ * The tasks the process asks to look again at the verses of a text that was corrected (`TaskTemplate.redoAfter`),
+ * by their ids. Read from the process as it is shipped: a project keeps the copy of the tasks it was created with,
+ * which may be older than this.
+ */
+export function tasksToRedoAfter(resource: string, packages: ProcessPackage[] = tallerConfig.processes): string[] {
+  const ids = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.redoAfter?.includes(resource)).map((task) => task.id));
+  return [...new Set(ids)];
+}
+
 /** `names[language]`, or the stored name. */
 export function localized(name: string, names: Localized | undefined, language: string): string {
   return names?.[language]?.trim() || name;

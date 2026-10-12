@@ -3120,5 +3120,10 @@
   "sp.nothingSaved": "Esta página es solo para probar: no guarda nada ni toca ninguna tarea.",
   "sp.exOneAndRun": "Una y un tramo",
   "sp.prevExample": "Ejemplo anterior",
-  "sp.nextExample": "Ejemplo siguiente"
+  "sp.nextExample": "Ejemplo siguiente",
+  "redo.asked": "Como el texto de {ref} cambió, hay que revisarlo de nuevo en: {tasks} ({issues}). Cada una aparece en Mis tareas cuando le llega su turno.",
+  "redo.open": "Siguen en curso y verán el cambio al abrir su herramienta: {tasks}.",
+  "redo.failed": "El texto de {ref} cambió, pero no se pudieron crear las subtareas para revisarlo de nuevo ({why}). Quien coordina debe pedirlas a mano.",
+  "redo.noProject": "no se supo de qué proyecto o de qué texto es",
+  "tb.redoAsked": "Revisar de nuevo"
 }

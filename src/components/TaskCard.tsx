@@ -198,6 +198,7 @@ export function TaskCard(props: Props) {
               card for ever: nobody opens those. */}
           {card.activity.isNew && card.group !== "free" && card.group !== "waiting" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null}
           {card.askedBack && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.correctionAsked")}</span> : null}
+          {card.redoOf && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.redoAsked")}</span> : null}
           {card.ownTitle || title}
         </h3>
         {menuItems.length ? (

@@ -471,6 +471,12 @@ export type TaskTemplate = {
   steps?: TaskStep[];
   waitsFor?: WaitRule[];
   minLevel?: PersonLevel;
+  /**
+   * The resources whose text, once corrected, asks this task to look again at the verses that changed (see
+   * `redoAfterCorrection.ts`): a review of a text names that text; the harmonization of the helps and the
+   * endorsement name every text they are read against.
+   */
+  redoAfter?: string[];
 };
 
 /**
@@ -609,6 +615,11 @@ export type ExtraWork = {
   /** Who asked for it and in which subtarea (a concern of a committee): they are told there what came of it. */
   askedBy?: string;
   askedIn?: number;
+  /**
+   * The subtarea where the team decided a correction of the text, when this one asks to review again what that
+   * correction left behind (see `redoAfterCorrection.ts`).
+   */
+  redoOf?: number;
 };
 
 /** What moves together from one phase to the next: see `handoff.ts`. Only split chapters are listed. */
