@@ -15,6 +15,7 @@ import {
   alineacionDecisionData,
   alineacionDecisionType,
   buildConsensusEvent,
+  editsText,
   mayReword,
   decisionId,
   tallyOf,
@@ -26,6 +27,8 @@ import { createIssueComment } from "@ip-lms/dcs-client";
 import { dcsConfig } from "./config";
 import { registerChatEventType } from "../domain/chatEvents/registry";
 import { askRedoAfterCorrection, redoSaid } from "./redoAfterCorrection";
+import { tasksToRedoAfter } from "../domain/processes";
+import { teamKey } from "../domain/levels";
 import { correctedRef, type TextCorrected } from "../domain/redoAfterCorrection";
 import { parseWorkOrderMarker } from "../domain/workOrder";
 import { tNow } from "../i18n/messages";
@@ -52,6 +55,38 @@ async function teamLevelsOf(env: Record<string, unknown>) {
   const [issue, board] = await Promise.all([getPmIssue(session, pmOrg, threadIssue).catch(() => null), loadAssignmentsFromDcs(session, pmOrg, lang, projectId, contentOrg)]);
   const team = issue ? board?.teams.find((task) => task.id === issueTaskId(issue))?.orgTeamName : undefined;
   return decisionLevels(config, team);
+}
+
+/**
+ * The people of the team that has the text of a decision in its hands: those of the first phase, among the tasks
+ * that look at that text again when it is corrected, that the plan has. When the proposal was made from that same
+ * team they are the people it already tells; from another team (a reading of an earlier phase, a later one), they
+ * are the other team the proposal concerns. Nobody when the plan cannot be read: the proposal's own team is left.
+ */
+async function textOwners(env: Record<string, unknown>, data: DecisionEventData): Promise<string[]> {
+  try {
+    const { session, pmOrg } = envOf(env);
+    const lang = typeof env.lang === "string" ? env.lang : "";
+    const projectId = typeof env.projectId === "string" ? env.projectId : "";
+    const contentOrg = typeof env.contentOrg === "string" ? env.contentOrg : "";
+    if (!lang || !projectId || !contentOrg || !data.parentIssue) return [];
+    const [config, board, parent] = await Promise.all([loadPmConfig(session, pmOrg), loadAssignmentsFromDcs(session, pmOrg, lang, projectId, contentOrg), getPmIssue(session, pmOrg, data.parentIssue)]);
+    const resource = parseWorkOrderMarker(parent.body ?? "")?.resource;
+    if (!board || !resource) return [];
+    const named = new Set(tasksToRedoAfter(resource));
+    const order = new Map(board.phases.map((phase) => [phase.id, phase.order]));
+    const tasks = board.teams.filter((row) => named.has(row.id)).sort((a, b) => (order.get(a.phaseId) ?? 0) - (order.get(b.phaseId) ?? 0));
+    const first = tasks[0]?.phaseId;
+    const holders = tasks.filter((row) => row.phaseId === first);
+    const teams = new Set(holders.map((row) => teamKey(row.orgTeamName)).filter(Boolean));
+    // Whoever is looking is of that team when Door43 says so, or when the plan lists them in one of its tasks.
+    const me = session.username.trim().toLowerCase();
+    const mine = (session.teams ?? []).some((team) => team.organization?.name === pmOrg && teams.has(teamKey(team.name))) || holders.some((row) => (row.memberIds ?? []).some((id) => id.toLowerCase() === me));
+    // A team with no levels of its own is read by the levels of everybody: that names nobody in particular.
+    return [...new Set([...[...teams].flatMap((team) => Object.keys(config.teamLevels?.[team] ?? {})), ...(mine ? [session.username] : [])])];
+  } catch {
+    return [];
+  }
 }
 
 const sameWords = (a: string, b: string) => a.replace(/\s+/g, " ").trim() === b.replace(/\s+/g, " ").trim();
@@ -92,8 +127,8 @@ registerChatEventType<DecisionPrepared>({
     const { session, pmOrg, threadIssue } = envOf(env);
     const data = alineacionDecisionData(event);
     if (!data) throw new Error("La decisión no es válida.");
-    const [thread, levels] = await Promise.all([readDecisionVotes(session, pmOrg, threadIssue, decisionId(data)), teamLevelsOf(env).catch(() => ({}))]);
-    return { votes: thread.votes, levels, closed: thread.closed, since: thread.since, now: new Date().toISOString() };
+    const [thread, levels, owners] = await Promise.all([readDecisionVotes(session, pmOrg, threadIssue, decisionId(data)), teamLevelsOf(env).catch(() => ({})), editsText(data) ? textOwners(env, data) : Promise.resolve([])]);
+    return { votes: thread.votes, levels, closed: thread.closed, since: thread.since, owners, now: new Date().toISOString() };
   },
   async run(optionId, event, env) {
     const { session, pmOrg, threadIssue } = envOf(env);
@@ -125,7 +160,7 @@ registerChatEventType<DecisionPrepared>({
     const said = typeof env.input === "string" ? env.input.trim() : "";
     // Another wording, or one the proposal had before: the next version, in this same conversation.
     if (optionId === "version" || optionId.startsWith("volver:")) {
-      if (!mayReword(data, { username: session.username, canManage: Boolean(session.canManage) })) throw new Error("Solo el equipo de esta tarea y quien propuso pueden escribirla de otra forma.");
+      if (!mayReword(data, { username: session.username, canManage: Boolean(session.canManage) }, await textOwners(env, data))) throw new Error("Solo los dos equipos de esta propuesta pueden escribirla de otra forma.");
       const back = optionId.startsWith("volver:") ? (data.history ?? []).find((row) => row.n === Number(optionId.slice("volver:".length))) : undefined;
       if (optionId !== "version" && !back) throw new Error("Esa versión ya no está en la conversación.");
       return [await rewordProposal({ session, pmOrg, threadIssue, data, text: back ? back.text : said, note: back ? `Vuelve a la versión ${back.n}, de @${back.by}.` : "" })];

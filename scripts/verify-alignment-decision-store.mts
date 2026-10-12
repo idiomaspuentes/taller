@@ -12,7 +12,7 @@ import type { GtSession } from "../src/dcs/auth";
 import { closeAlignmentDecision, currentVerseHash, loadProposalFiles, openAlignmentDecision, postVote, readDecisionVotes, remindDecisionVoters, resetDecisionSweep, sweepDecisionReminders } from "../src/dcs/alignmentDecisionStore";
 import { saveVerseAlignment } from "../src/dcs/alignmentStore";
 import { loadDecisionFiles } from "../src/dcs/afinacionStore";
-import { tallyOf, alineacionDecisionData, DECISION_EVENT } from "../src/domain/chatEvents/alineacionDecision";
+import { tallyOf, alineacionDecisionData, mayReword, DECISION_EVENT } from "../src/domain/chatEvents/alineacionDecision";
 import { getChatEventType } from "../src/domain/chatEvents/registry";
 import "../src/dcs/alignmentDecisionThread";
 import { parseChatEvent } from "../src/domain/chatEvent";
@@ -525,6 +525,11 @@ await test("una propuesta se conversa: se escribe de otra forma, los votos empie
   assert.match((comments.get(n) ?? []).at(-1)!.body, /suena muy duro/);
   assert.ok((await optionsOf("carla")).some((o) => o.id === "version" && o.input?.initial === "Pablo, esclavo de Dios"), "quien es del equipo puede escribirla de otra forma, partiendo de la que hay");
   assert.ok(!(await optionsOf("zoe")).some((o) => o.id === "version"), "quien no es de ninguno de los dos equipos, no");
+  // The other team the proposal concerns: the one that has the text, when it comes from outside it.
+  const asZoe = cardType().options!(cardNow(), { viewer: viewerFor("zoe"), prepared: { ...((await cardType().prepare!(cardNow(), envFor("zoe", n))) as object), owners: ["zoe"] } });
+  assert.ok(asZoe.some((o) => o.id === "version"), "quien es del equipo que tiene el texto, también");
+  assert.equal(mayReword(alineacionDecisionData(cardNow())!, { username: "zoe", canManage: false }), false);
+  assert.equal(mayReword(alineacionDecisionData(cardNow())!, { username: "Zoe", canManage: false }, ["zoe"]), true);
 
   // Carla words it again: a second card of the same decision; the first stays, and her no does not count against it.
   const [second] = await run("carla", "version", "Pablo, servidor de Dios");

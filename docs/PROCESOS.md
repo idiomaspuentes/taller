@@ -207,8 +207,9 @@ propuesta rechazada, o una que solo cambia la alineación, no pide nada.
 
 Una propuesta de cambiar un versículo tiene su propia conversación. Mientras no se decide:
 
-- Cualquiera del equipo que tiene la tarea, quien propuso, quien alineó el versículo y quien coordina puede
-  **escribirla de otra forma**. Cada versión es una tarjeta de la misma decisión en la misma conversación: las
+- Cualquiera de **los dos equipos que la propuesta toca** puede **escribirla de otra forma**: el equipo desde el
+  que se propuso y el equipo que tiene el texto (el de la primera fase que lo revisa). Cuando un equipo propone
+  sobre su propio texto son el mismo. También quien alineó el versículo y quien coordina. Cada versión es una tarjeta de la misma decisión en la misma conversación: las
   anteriores quedan a la vista, sin botones, y se vota la más nueva.
 - Se puede **volver a una versión anterior**: se propone de nuevo como la versión siguiente.
 - Con cada versión **los votos empiezan de nuevo** y el plazo vuelve a contar. Quien la escribió ya cuenta a favor.

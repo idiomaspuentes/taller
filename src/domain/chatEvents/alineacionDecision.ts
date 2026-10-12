@@ -135,12 +135,14 @@ export function versionsOf(d: Pick<DecisionEventData, "version" | "history" | "b
 }
 
 /**
- * Whoever may word a proposal again, or go back to an earlier wording: the people of the team that has the task,
- * whoever proposed (this wording or an earlier one), whoever aligned the verse, and whoever coordinates.
+ * Whoever may word a proposal again, or go back to an earlier wording: anybody of the two teams it concerns. The
+ * team it was proposed from (`tell`, with whoever proposed and whoever aligned the verse), and the team that has
+ * the text in its hands (`owners`), which is another one when the proposal comes from outside it and the same
+ * when a team proposes about its own text. And whoever coordinates.
  */
-export function mayReword(d: Pick<DecisionEventData, "by" | "aligners" | "tell" | "history">, viewer: { username: string; canManage: boolean }): boolean {
+export function mayReword(d: Pick<DecisionEventData, "by" | "aligners" | "tell" | "history">, viewer: { username: string; canManage: boolean }, owners: string[] = []): boolean {
   const me = viewer.username.trim().toLowerCase();
-  return viewer.canManage || [d.by, ...d.aligners, ...(d.tell ?? []), ...(d.history ?? []).map((row) => row.by)].some((login) => login.trim().toLowerCase() === me);
+  return viewer.canManage || [d.by, ...d.aligners, ...(d.tell ?? []), ...(d.history ?? []).map((row) => row.by), ...owners].some((login) => login.trim().toLowerCase() === me);
 }
 
 /**
@@ -281,6 +283,8 @@ export type DecisionPrepared = {
   votes: DecisionVote[];
   /** When the conversation got the wording now being decided, if the proposal was worded again: votes before it do not count. */
   since?: string;
+  /** The people of the team that has the text in its hands, who may word the proposal again as its own team may. */
+  owners?: string[];
   levels: Record<string, PersonLevel>;
   closed?: ChatEvent;
   /** ISO time the votes were read, so the card can tell if the deadline has passed. */
@@ -429,7 +433,7 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
     out.push(make(yes), make(no));
     // A proposal that changes the text is talked over until it is decided: anybody of the two teams words it
     // again, and the team may go back to a wording it had.
-    if (prepared && !prepared.closed && editsText(d) && mayReword(d, ctx.viewer)) {
+    if (prepared && !prepared.closed && editsText(d) && mayReword(d, ctx.viewer, prepared.owners)) {
       out.push({ id: "version", label: "Proponer otra versión", blockReason: null, busyLabel: "Guardando la versión…", input: { label: "El versículo como lo propones ahora", initial: d.newText } });
       for (const before of d.history ?? []) {
         if (sameText(before.text, d.newText)) continue;
