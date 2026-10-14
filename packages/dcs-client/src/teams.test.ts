@@ -109,6 +109,21 @@ describe("createTeam", () => {
     });
     expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).units).toEqual(["repo.code", "repo.issues"]);
   });
+
+  it("sends the per-unit access alone, because the server refuses it together with the list of units", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(teamFixture, 201));
+    vi.stubGlobal("fetch", fetchMock);
+    await createTeam(config, "es-419_gl", {
+      name: "pm-afinadores-tpl",
+      permission: "write",
+      units: ["repo.code", "repo.issues"],
+      unitsMap: { "repo.code": "write", "repo.issues": "write" },
+      token: "tok",
+    });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.units_map).toEqual({ "repo.code": "write", "repo.issues": "write" });
+    expect("units" in body).toBe(false);
+  });
 });
 
 describe("getTeam / editTeam", () => {

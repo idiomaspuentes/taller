@@ -96,7 +96,8 @@ export function createTeam(config: DcsClientConfig, org: string, params: CreateT
       permission: params.permission,
       can_create_org_repo: params.canCreateOrgRepo ?? false,
       includes_all_repositories: params.includesAllRepositories ?? false,
-      units: params.units ?? ["repo.code"],
+      // The server refuses a request that carries both («only one of units or units_map can be set»).
+      units: params.unitsMap ? undefined : (params.units ?? ["repo.code"]),
       units_map: params.unitsMap,
     },
   });
@@ -130,7 +131,7 @@ export function editTeam(
       permission: params.permission,
       can_create_org_repo: params.canCreateOrgRepo,
       includes_all_repositories: params.includesAllRepositories,
-      units: params.units,
+      units: params.unitsMap ? undefined : params.units,
       units_map: params.unitsMap,
     },
   });
