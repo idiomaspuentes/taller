@@ -4,6 +4,7 @@ import { dcsConfig } from "./config";
 import { listProjectIssues } from "./issues";
 import { parseTaskProgressMarker, upsertTaskProgressInBody } from "../domain/taskProgress";
 import { PM_REPO_NAME, type AssignmentsDoc, type InventoryDoc } from "../domain/types";
+import { isExtraItemId } from "../domain/extraWork";
 import { parseWorkOrderMarker } from "../domain/workOrder";
 
 /**
@@ -39,6 +40,8 @@ export async function closeDeliveredElsewhere(params: {
     const order = parseWorkOrderMarker(issue.body ?? "");
     const task = order && board.teams.find((row) => row.id === order.teamId);
     if (!order || !task) continue;
+    // Work asked of the team here, a correction or a passage done again, was never done anywhere else.
+    if (order.itemIds.some(isExtraItemId)) continue;
     const row = (out.byTask[task.id] ??= { closed: 0, left: 0 });
     const mine = order.portionIds.map((id) => portions.get(id));
     const done = mine.length > 0 && mine.every((portion) => portion && params.delivered(task.id, portion));
