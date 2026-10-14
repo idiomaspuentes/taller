@@ -9427,9 +9427,50 @@ html[data-text] .rf-words.af-orig .rf-word { font-size: calc(1.25rem * var(--ts)
   .pl-item { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
   .pl-side { border-left: 1px solid var(--border); padding-left: 1rem; }
 }
-.pl-foot { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0 -1rem -1rem; padding: 0.5rem 1rem calc(0.5rem + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); }
-.pl-foot > button { min-height: 2.75rem; }
-.pl-foot__at { color: var(--text-muted); font-size: 0.875rem; font-weight: 600; }
+/* Where one is in the list: «3:7 · 3 de 9», the one before and after. Nothing is fixed on a phone. */
+.pl-pos { display: flex; align-items: center; gap: var(--space-8); }
+.pl-pos__step.btn { flex: 0 0 auto; min-width: var(--space-44); min-height: var(--space-44); padding: 0; border-radius: var(--radius-full); }
+.pl-pos__at { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--space-8); min-height: var(--space-44); margin: 0; padding: 0 var(--space-12); border: 0; border-radius: var(--radius-full); background: none; color: var(--text); font: inherit; }
+button.pl-pos__at { cursor: pointer; }
+button.pl-pos__at:hover, button.pl-pos__at:focus-visible { background: var(--surface-muted); }
+.pl-pos__at strong { font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: var(--text-heading); }
+.pl-pos__at span { color: var(--text-muted); font-size: 0.9375rem; font-weight: 600; }
+.pl-pos__at svg { color: var(--text-muted); }
+/* Why it is proposed, in its own box under the verse, as translationCore 4 puts «what to check». */
+.pl-reasons { display: grid; gap: var(--space-8); padding: var(--space-14) var(--space-16); border-radius: var(--radius-lg); background: var(--surface-muted); }
+.pl-reasons .pl-meta { margin: calc(-1 * var(--space-4)) 0 var(--space-4); }
+.pl-reasons .cr-item { background: var(--surface); }
+.pl-next.btn { min-height: var(--space-44); justify-content: center; }
+.pl-tag { justify-self: start; margin: 0; }
+/* The proposals of the chapter: a sheet on a phone, a column on a wide screen. */
+.pl-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.pl-list__row { display: flex; align-items: center; gap: var(--space-10); width: 100%; min-height: var(--space-44); padding: var(--space-8) var(--space-12); border: 0; border-radius: var(--radius-md); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.pl-list__row::before { content: ""; flex: 0 0 auto; width: 0.625rem; height: 0.625rem; border-radius: var(--radius-full); background: var(--warning-500); }
+.pl-list__row[data-state="decided"]::before { background: var(--success-500); }
+.pl-list__row:hover, .pl-list__row:focus-visible { background: var(--surface-muted); }
+.pl-list__row[aria-current="step"] { background: var(--accent-100); box-shadow: inset 3px 0 0 var(--accent-700); }
+.pl-list__ref { min-width: 2.75rem; font-size: 1rem; font-weight: 800; color: var(--text-heading); }
+.pl-list__state { color: var(--text-muted); font-size: 0.875rem; }
+.pl-list__row[data-state="decided"] .pl-list__state { color: var(--success-700); }
+.pl-list__new { margin-left: auto; padding: 2px var(--space-8); border-radius: var(--radius-full); background: var(--accent-100); color: var(--accent-800); font-size: 0.8125rem; font-weight: 700; white-space: nowrap; }
+.pl-sheet .pl-list { margin-top: var(--space-4); }
+.pl-rail { display: none; }
+.pl-rail__title { margin: 0 0 var(--space-6); padding: 0 var(--space-12); color: var(--text-muted); font-size: 0.8125rem; font-weight: 700; }
+@media (min-width: 1024px) {
+  .pl-body:has(.pl-rail) { max-width: 84rem; }
+  .pl-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "main side" "more side" "talk side"; grid-template-rows: auto auto 1fr; align-items: start; }
+  .pl-grid[data-rail] { grid-template-columns: 13rem minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "rail main side" "rail more side" "rail talk side"; }
+  .pl-rail { grid-area: rail; display: block; position: sticky; top: var(--space-8); max-height: calc(100dvh - 9rem); overflow-y: auto; padding-right: var(--space-12); border-right: 1px solid var(--border); }
+  .pl-grid > .pl-main { grid-area: main; }
+  .pl-grid > .pl-side { grid-area: side; }
+  .pl-grid > .pl-compare { grid-area: more; }
+  .pl-grid > .pl-talk { grid-area: talk; }
+  .pl:has(.pl-rail) .pl-strip { display: none; }
+  .pl:has(.pl-rail) .pl-pos { justify-content: center; }
+  .pl:has(.pl-rail) .pl-pos__at { flex: 0 0 auto; min-width: 10rem; }
+  .pl:has(.pl-rail) button.pl-pos__at { pointer-events: none; }
+  .pl:has(.pl-rail) button.pl-pos__at > svg { display: none; }
+}
 /* Each change of a verse apart: its words, its cause, why, its notes. */
 .cr { display: grid; gap: var(--space-10); margin: 0; padding: 0; list-style: none; }
 .cr-item { display: grid; gap: var(--space-8); padding: var(--space-12) var(--space-14); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }

@@ -1,5 +1,5 @@
 /** A proposal or an objection as a decision of the team: who counts, when it is decided. */
-import { buildCloseEvent, buildDecisionEvent, mayEdit, toldOf, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
+import { buildCloseEvent, buildDecisionEvent, mayEdit, toldOf, waitsOnVote, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { PersonLevel } from "../src/domain/levels";
@@ -196,6 +196,17 @@ test("quien propone edita su propuesta mientras nadie ha votado esa versión; co
   assert.equal(mayEdit(d, "ana", { votes: [{ by: "bea", option: "aceptar", at: "2026-10-14T10:00:00Z" }], closed: undefined }), false, "con un voto, se propone otra versión");
   assert.equal(mayEdit(d, "ana", { votes: [{ by: "bea", option: "rechazar", at: "2026-10-14T10:00:00Z" }], since: "2026-10-14T11:00:00Z", closed: undefined }), true, "los votos de una versión anterior no cuentan");
   assert.equal(mayEdit(d, "ana", { votes: [], closed: {} as never }), false, "cerrada, no");
+});
+
+test("una propuesta espera el voto de quien no la propuso y no votó esa versión; después, lo lleno es «Siguiente»", () => {
+  const d = { by: "ana" };
+  const vote = (by: string, at: string, option: "aceptar" | "retirado" = "aceptar") => ({ by, option, at });
+  assert.equal(waitsOnVote(d, "bea", { votes: [], closed: undefined }), true);
+  assert.equal(waitsOnVote(d, "ana", { votes: [], closed: undefined }), false, "la suya ya cuenta a favor");
+  assert.equal(waitsOnVote(d, "bea", { votes: [vote("Bea", "2026-10-14T10:00:00Z")], closed: undefined }), false, "ya votó");
+  assert.equal(waitsOnVote(d, "bea", { votes: [vote("bea", "2026-10-14T10:00:00Z")], since: "2026-10-14T11:00:00Z", closed: undefined }), true, "votó otra versión");
+  assert.equal(waitsOnVote(d, "bea", { votes: [vote("bea", "2026-10-14T10:00:00Z"), vote("bea", "2026-10-14T12:00:00Z", "retirado")], closed: undefined }), true, "el equipo le retiró el voto");
+  assert.equal(waitsOnVote(d, "bea", { votes: [], closed: {} as never }), false, "cerrada, nada espera");
 });
 
 console.log(`\nverify-alignment-decision: ${passed} checks passed.`);

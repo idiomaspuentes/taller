@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { MoreMenu, type MoreItem } from "./MoreMenu";
 import type { GtSession } from "../dcs/auth";
 import { finishProposalList, loadAlignedText, loadBookNotes, loadDecisionThread, loadProposalList, quoteInText, type AlignedText, type BookNote, type ProposalListData } from "../dcs/proposalList";
 import type { OriginalWord } from "../dcs/afinacionLoad";
@@ -11,7 +13,7 @@ import { WordSheet } from "./WordSheet";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import type { ChatEvent } from "../domain/chatEvent";
-import { alineacionDecisionData, editsText } from "../domain/chatEvents/alineacionDecision";
+import { alineacionDecisionData, decisionId, editsText, readDecisionThread, waitsOnVote } from "../domain/chatEvents/alineacionDecision";
 import { decisionStatuses, resolveChatEvent } from "../domain/chatEvents/registry";
 import type { ThreadItem } from "../domain/conversation";
 import { issueProjectId } from "../domain/myTasks";
@@ -21,7 +23,7 @@ import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { DecisionCard } from "./DecisionCard";
 import { CiteScope } from "./ReasonField";
-import { TextChangeView } from "./TextChangeView";
+import { LAYOUTS, TextChangeView, layoutLabelKey, saveLayout, savedLayout, type ChangeLayout } from "./TextChangeView";
 import { VerseCompare } from "./VerseCompare";
 import { buildSolverLaunchContext } from "../domain/solverLaunch";
 import { ChangeReasons, type ReasonLinks } from "./ChangeReasons";
@@ -69,7 +71,8 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const [finishing, setFinishing] = useState(false);
   // Open or not, as the person left it: whoever compares, compares every proposal.
   const [compareOpen, setCompareOpen] = useState(false);
-  const [writing, setWriting] = useState(false);
+  // How a change is read, chosen in «Más» and kept for every proposal.
+  const [layout, setLayout] = useState<ChangeLayout>(savedLayout);
 
   const loadList = useCallback(async () => {
     if (!session) return null;
@@ -254,6 +257,54 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const deadline = decision?.data.deadline && !isClosed(current ?? {}) ? new Date(decision.data.deadline).toLocaleDateString(language, { day: "numeric", month: "long" }) : "";
   const leftText = left ? t(left === 1 ? "pl.leftOne" : "pl.left").replace("{n}", String(left)) : t("pl.allDecided");
 
+  const isNew = (row: (typeof rows)[number], at: number) => at !== index && (hasUnread(cursor, row.number) || talkMoved(row, cursor.threads[String(row.number)]));
+  const refOf = (row: (typeof rows)[number], at: number) => {
+    const where = decisionPlace(row);
+    return where ? `${where.chapter}:${where.verse}` : String(at + 1);
+  };
+  // Up to six proposals the strip stays in view; with more, the list opens from «3 de 9» (decided with Abel).
+  const listInSheet = rows.length > 6;
+  const [listOpen, setListOpen] = useState(false);
+  const pick = (at: number) => {
+    setListOpen(false);
+    go(at);
+  };
+  // After voting, the way on is the filled button: to the next proposal still open, else the next one.
+  const nextAt = (() => {
+    const open = rows.findIndex((row, at) => at > index && !isClosed(row));
+    return open >= 0 ? open : index + 1 < rows.length ? index + 1 : -1;
+  })();
+  const waiting = useMemo(() => {
+    if (!decision || !thread) return true;
+    const events = thread.items.flatMap((item) => (item.event ? [{ event: item.event, at: item.createdAt }] : []));
+    return waitsOnVote(decision.data, session?.username ?? "", readDecisionThread(events, decisionId(decision.data)));
+  }, [decision, thread, session?.username]);
+  const more: MoreItem[] = changesText
+    ? LAYOUTS.map((one) => ({
+        id: one,
+        label: t(layoutLabelKey(one)),
+        hint: t(`${layoutLabelKey(one)}Hint`),
+        pressed: layout === one,
+        onSelect: () => {
+          setLayout(one);
+          saveLayout(one);
+        },
+      }))
+    : [];
+  const list = (
+    <ol className="pl-list">
+      {rows.map((row, at) => (
+        <li key={row.number}>
+          <button type="button" className="pl-list__row" aria-current={at === index ? "step" : undefined} data-state={isClosed(row) ? "decided" : "open"} onClick={() => pick(at)}>
+            <span className="pl-list__ref">{refOf(row, at)}</span>
+            <span className="pl-list__state">{t(isClosed(row) ? "pl.decided" : "pl.stateOpen")}</span>
+            {isNew(row, at) ? <span className="pl-list__new">{t("pl.newTalk")}</span> : null}
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+
   return (
     <div className="chat-main pl">
       <header className="chat-header">
@@ -266,6 +317,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
             <h1 className="chat-header__title">{single && place ? `${book} ${place.chapter}:${place.verse}` : [book, chapter].filter(Boolean).join(" ") || t("pl.title")}</h1>
             {data ? <p className="chat-header__sub">{single ? t("pl.subOne").replace("{text}", text) : `${t("pl.sub").replace("{text}", text)} · ${leftText}`}</p> : null}
           </div>
+          {more.length ? <MoreMenu items={more} /> : null}
         </div>
       </header>
       <div className="pl-body">
@@ -279,48 +331,106 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
         {data && current ? (
           <>
             {single ? null : (
-              // Where one is in the chapter, and what is decided already: each verse a touch away.
+              // Where one is, and the way to the one before and after: the same line in every tool that goes through items.
+              <nav className="pl-pos" aria-label={t("pl.stripAria")}>
+                <Button type="button" variant="outline" className="pl-pos__step" disabled={index === 0} aria-label={t("pl.prev")} onClick={() => go(index - 1)}>
+                  <ChevronLeft aria-hidden className="size-5" />
+                </Button>
+                {listInSheet ? (
+                  <button type="button" className="pl-pos__at" aria-haspopup="dialog" onClick={() => setListOpen(true)}>
+                    <strong>{place ? `${place.chapter}:${place.verse}` : current.title}</strong>
+                    <span>{t("pl.posShort").replace("{n}", String(index + 1)).replace("{total}", String(rows.length))}</span>
+                    {rows.some((row, at) => isNew(row, at)) ? <span className="pl-strip__new" role="img" aria-label={t("cv.unreadAria")} /> : null}
+                    <ChevronDown aria-hidden className="size-4" />
+                  </button>
+                ) : (
+                  <p className="pl-pos__at">
+                    <strong>{place ? `${place.chapter}:${place.verse}` : current.title}</strong>
+                    <span>{t("pl.posShort").replace("{n}", String(index + 1)).replace("{total}", String(rows.length))}</span>
+                  </p>
+                )}
+                <Button type="button" variant="outline" className="pl-pos__step" disabled={index >= rows.length - 1} aria-label={t("pl.next")} onClick={() => go(index + 1)}>
+                  <ChevronRight aria-hidden className="size-5" />
+                </Button>
+              </nav>
+            )}
+            {single || listInSheet ? null : (
+              // Few proposals: each verse a touch away, and what is decided already.
               <nav className="pl-strip" aria-label={t("pl.stripAria")}>
-                {rows.map((row, at) => {
-                  const where = decisionPlace(row);
-                  return (
-                    <button key={row.number} type="button" aria-current={at === index ? "step" : undefined} data-state={isClosed(row) ? "decided" : "open"} onClick={() => go(at)} ref={at === index ? (node) => node?.scrollIntoView({ block: "nearest", inline: "center" }) : undefined}>
-                      {where ? `${where.chapter}:${where.verse}` : at + 1}
-                      {isClosed(row) ? <Check aria-hidden className="size-3" /> : null}
-                      {at !== index && (hasUnread(cursor, row.number) || talkMoved(row, cursor.threads[String(row.number)])) ? <span className="pl-strip__new" role="img" aria-label={t("cv.unreadAria")} /> : null}
-                    </button>
-                  );
-                })}
+                {rows.map((row, at) => (
+                  <button key={row.number} type="button" aria-current={at === index ? "step" : undefined} data-state={isClosed(row) ? "decided" : "open"} onClick={() => go(at)} ref={at === index ? (node) => node?.scrollIntoView({ block: "nearest", inline: "center" }) : undefined}>
+                    {refOf(row, at)}
+                    {isClosed(row) ? <Check aria-hidden className="size-3" /> : null}
+                    {isNew(row, at) ? <span className="pl-strip__new" role="img" aria-label={t("cv.unreadAria")} /> : null}
+                  </button>
+                ))}
               </nav>
             )}
             {isClosed(data.card) && !single ? <p className="af-hint">{t("pl.done")}</p> : null}
-            {!isClosed(data.card) ? (
-              <details className="pl-how">
-                <summary>{t("pl.howTitle")}</summary>
-                <p>{t("pl.howTo")}</p>
-              </details>
-            ) : null}
-            <section className="pl-item" aria-labelledby="pl-ref">
-              <div className="pl-main">
-                <h2 id="pl-ref" className="pl-ref">
-                  {place ? `${book} ${place.chapter}:${place.verse}` : current.title}
-                  {isClosed(current) ? <span className="pl-tag">{t("pl.decided")}</span> : null}
-                </h2>
-                {threadError ? (
-                  <p className="pl-error" role="alert">
-                    {threadError}
-                  </p>
-                ) : null}
-                {!decision && !threadError && !thread ? <p className="hub-hint">{t("pl.loading")}</p> : null}
-                {!decision && thread ? (
-                  // Not a proposal this screen knows how to show: its conversation does.
-                  <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>
-                    {t("pl.thread")}
-                  </button>
-                ) : null}
-                {decision && changesText ? (
-                  <div className="pl-verse">
-                    <TextChangeView before={decision.data.oldText} after={decision.data.newText} />
+            <CiteScope.Provider value={here ? { session, ctx: launchCtx, chapter: here.chapter, verse: here.verse } : null}>
+              <div className="pl-item pl-grid" data-rail={single ? undefined : "true"}>
+                {single ? null : (
+                  // On a wide screen the list is a column, as translationCore 4 keeps its list beside the item.
+                  <nav className="pl-rail" aria-label={t("pl.stripAria")}>
+                    <h2 className="pl-rail__title">{t("pl.listTitle")}</h2>
+                    {list}
+                  </nav>
+                )}
+                <section className="pl-main" aria-label={place ? `${book} ${place.chapter}:${place.verse}` : current.title}>
+                  {isClosed(current) ? <p className="pl-tag">{t("pl.decided")}</p> : null}
+                  {threadError ? (
+                    <p className="pl-error" role="alert">
+                      {threadError}
+                    </p>
+                  ) : null}
+                  {!decision && !threadError && !thread ? <p className="hub-hint">{t("pl.loading")}</p> : null}
+                  {!decision && thread ? (
+                    // Not a proposal this screen knows how to show: its conversation does.
+                    <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>
+                      {t("pl.thread")}
+                    </button>
+                  ) : null}
+                  {decision && changesText ? (
+                    <div className="pl-verse">
+                      <TextChangeView before={decision.data.oldText} after={decision.data.newText} layout={layout} />
+                    </div>
+                  ) : null}
+                </section>
+                {decision ? (
+                  <div className="pl-side">
+                    <section className="pl-reasons" aria-labelledby="pl-why">
+                      <h3 id="pl-why" className="pl-why">
+                        {t("pl.whyTitle")}
+                      </h3>
+                      <p className="pl-meta">{(deadline ? t("pl.byDeadline").replace("{date}", deadline) : t("pl.by")).replace("{who}", decision.data.by)}</p>
+                      <ChangeReasons note={decision.data.note} links={links} />
+                    </section>
+                    <DecisionCard
+                      key={decision.item.key}
+                      item={decision.item}
+                      resolved={decision.resolved}
+                      time=""
+                      status={decision.status}
+                      viewer={viewer}
+                      env={env}
+                      onRun={session ? run : undefined}
+                      // A decision about the alignment alone is read in its own panels, its boxes.
+                      hidePanels={changesText}
+                      compact
+                    />
+                    {!single && !waiting && nextAt >= 0 ? (
+                      <Button type="button" className="pl-next" onClick={() => go(nextAt)}>
+                        {t("pl.nextTo").replace("{ref}", refOf(rows[nextAt]!, nextAt))}
+                        <ChevronRight aria-hidden className="size-5" />
+                      </Button>
+                    ) : null}
+                    {!isClosed(current) ? (
+                      // Under the buttons, where the doubt comes up.
+                      <details className="pl-how">
+                        <summary>{t("pl.howTitle")}</summary>
+                        <p>{t("pl.howTo")}</p>
+                      </details>
+                    ) : null}
                   </div>
                 ) : null}
                 {decision && session && launchCtx && place ? (
@@ -329,31 +439,13 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                     {compareOpen ? <VerseCompare session={session} ctx={launchCtx} board={data.board} chapter={place.chapter} verse={place.verse} /> : null}
                   </details>
                 ) : null}
+                {decision && thread?.issue === current.number ? (
+                  <div className="pl-talk">
+                    <ProposalTalk items={thread.items} me={session?.username ?? ""} links={links} onSend={send} />
+                  </div>
+                ) : null}
               </div>
-              {decision ? (
-                <div className="pl-side">
-                  <h3 className="pl-why">{t("pl.whyTitle")}</h3>
-                  <p className="pl-meta">{(deadline ? t("pl.byDeadline").replace("{date}", deadline) : t("pl.by")).replace("{who}", decision.data.by)}</p>
-                  <ChangeReasons note={decision.data.note} links={links} />
-                  <CiteScope.Provider value={here ? { session, ctx: launchCtx, chapter: here.chapter, verse: here.verse } : null}>
-                  <DecisionCard
-                    key={decision.item.key}
-                    item={decision.item}
-                    resolved={decision.resolved}
-                    time=""
-                    status={decision.status}
-                    viewer={viewer}
-                    env={env}
-                    onRun={session ? run : undefined}
-                    // A decision about the alignment alone is read in its own panels, its boxes.
-                    hidePanels={changesText}
-                    compact
-                  />
-                  {thread?.issue === current.number ? <ProposalTalk items={thread.items} me={session?.username ?? ""} links={links} onSend={send} onWriting={setWriting} /> : null}
-                  </CiteScope.Provider>
-                </div>
-              ) : null}
-            </section>
+            </CiteScope.Provider>
             {!single && !left && !isClosed(data.card) ? (
               <div className="pl-finish">
                 <p>{t("pl.finishLede")}</p>
@@ -362,23 +454,15 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 </Button>
               </div>
             ) : null}
-            {single || writing ? null : (
-              // Always at hand at the foot of the screen: the way on was under a page of reasons.
-              <nav className="pl-foot" aria-label={t("pl.stripAria")}>
-                <Button type="button" variant="outline" disabled={index === 0} onClick={() => go(index - 1)}>
-                  <ChevronLeft aria-hidden className="size-4" />
-                  {t("pl.prev")}
-                </Button>
-                <span className="pl-foot__at">{t("pl.posShort").replace("{n}", String(index + 1)).replace("{total}", String(rows.length))}</span>
-                <Button type="button" variant="outline" disabled={index >= rows.length - 1} onClick={() => go(index + 1)}>
-                  {t("pl.next")}
-                  <ChevronRight aria-hidden className="size-4" />
-                </Button>
-              </nav>
-            )}
           </>
         ) : null}
       </div>
+      <Dialog open={listOpen} onOpenChange={setListOpen}>
+        <DialogContent className="word-sheet pl-sheet" aria-describedby={undefined}>
+          <DialogTitle className="ns-title">{[book, chapter].filter(Boolean).join(" ")} · {t("pl.listTitle")}</DialogTitle>
+          {list}
+        </DialogContent>
+      </Dialog>
       {session ? (
         <WordSheet word={sheet?.word ?? null} at={{ book: bookCode, chapter: sheet?.chapter ?? 0, verse: sheet?.verse ?? 0 }} session={session} workspace={workspaceOfOrg(tallerConfig, pmOrg)} onClose={() => setSheet(null)} readOnly />
       ) : null}

@@ -236,11 +236,14 @@ aviso más entre el trabajo del equipo. Van en **una corrección por capítulo q
   del mismo versículo serían dos versiones del versículo entero, y al aceptarse la primera caducaría la otra.
 - Cada propuesta es una decisión como cualquier otra, con sus votos, su plazo y su conversación, pero **se lee en
   su lista**: en «Mis tareas» se ve la tarjeta del capítulo con cuántas faltan («9 propuestas por decidir»), y al
-  abrirla aparecen una a una, con el versículo marcado, el porqué, los botones de la decisión y «Siguiente».
+  abrirla aparecen una a una: arriba la línea «3:7 · 3 de 9 ‹ ›» (con más de seis, tocar «3 de 9» abre la lista en
+  una hoja; a 1280 px la lista es una columna), luego el versículo con el cambio, el porqué en su caja y los botones
+  de la decisión. Después de votar, el botón lleno es «Siguiente: 3:8» (`waitsOnVote`); la pantalla no avanza sola.
+  Cómo se ve el cambio (junto, uno bajo otro, lado a lado) se elige en «Más». Nada queda fijo al pie.
 - **La conversación de cada propuesta está en la misma pantalla**, bajo «Decidir»: los comentarios, los votos (el
   porqué de un voto se lee como algo dicho) y lo que le pasó; se ven los tres últimos y «Ver los anteriores».
-  «Escribir un comentario» abre el campo con «Citar», y mientras se escribe la barra de «Siguiente» se esconde. Un
-  versículo del que se habló después de leerlo lleva un punto en la tira de arriba (`talkMoved`: lo dice la hora
+  «Escribir un comentario» abre el campo con «Citar». Un versículo del que se habló después de leerlo lleva un punto
+  en la tira, en «3 de 9» y en la lista («Mensajes nuevos»; `talkMoved`: lo dice la hora
   en que Door43 tocó la propuesta, porque los avisos solo siguen las tareas de cada uno). `ProposalTalk.tsx`.
 - Las propuestas de una lista no salen como tarjetas sueltas, ni en «Equipo hoy», ni como avisos ni recordatorios:
   la marca `listed` de su subtarea lo dice.

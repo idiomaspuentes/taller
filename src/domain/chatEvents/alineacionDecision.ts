@@ -369,6 +369,19 @@ export function mayEdit(d: Pick<DecisionEventData, "by" | "kind" | "oldText" | "
   return !prepared.votes.some((vote) => !Number.isFinite(since) || Date.parse(vote.at) > since);
 }
 
+/**
+ * Whether a decision still waits for this person's vote on the wording now decided: not theirs (their own counts
+ * for it), not closed, and no vote of theirs since it was worded. A vote of theirs withdrawn by the team waits again.
+ * The screen that reads it makes the way on its filled button once nothing waits.
+ */
+export function waitsOnVote(d: Pick<DecisionEventData, "by">, username: string, prepared: Pick<DecisionPrepared, "votes" | "since" | "closed">): boolean {
+  const me = username.trim().toLowerCase();
+  if (!me || prepared.closed || d.by.trim().toLowerCase() === me) return false;
+  const since = prepared.since ? Date.parse(prepared.since) : NaN;
+  const last = prepared.votes.filter((vote) => vote.by.trim().toLowerCase() === me && !(Number.isFinite(since) && Date.parse(vote.at) <= since)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+  return !last || last.option === "retirado";
+}
+
 export function tallyOf(d: DecisionEventData, prepared: DecisionPrepared) {
   // A vote is for the wording it was given on: those from before this one was written do not count.
   const since = prepared.since ? Date.parse(prepared.since) : NaN;
@@ -470,7 +483,8 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
       return {
         id,
         label: `${OPTION_LABEL[id]}${n ? ` (${n})` : ""}${mine?.option === id ? " ✓" : ""}`,
-        primary: id === yes && !winner,
+        // One filled button: once this person voted, or when it is theirs, the screen's way on is the filled one.
+        primary: id === yes && !winner && !mine && me !== d.by.trim().toLowerCase(),
         blockReason: reason,
         busyLabel: "Guardando tu voto…",
         // A no to a proposal says why, so that whoever proposed knows what to word again.

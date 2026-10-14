@@ -232,7 +232,7 @@ Cada parte es un cambio aparte, que se prueba solo, con capturas de antes y desp
 1. **La cabecera común y el menú «Más»** (`ToolHeader`, la cabecera del editor). Es lo que más se repite y cambia poco en cada pantalla.
 2. **Mis tareas:** la bienvenida al menú después de la primera tarea, un solo saludo y «Actualizar» abajo. Es pequeño, se ve enseguida y no toca datos.
 3. **Un solo «Antes de empezar»** (`StepAsk`, `PassageIntroText`) en todas las herramientas.
-4. **Propuestas:** el versículo primero, la lista en una hoja cuando pasa de seis, la forma del cambio al menú y «Siguiente» lleno después de votar.
+4. **Propuestas:** el versículo primero, la lista en una hoja cuando pasa de seis, la forma del cambio al menú y «Siguiente» lleno después de votar. *Hecho el 14 de octubre, con la conversación de cada propuesta debajo de «Decidir».*
 5. **Editor:** «Unir» dentro de la tarjeta y, a 1280 px, las ayudas del versículo que falta.
 6. **Alinear:** la línea de posición, las palabras en los iconos, «Borrar todo» al menú y la medida de las palabras en un teléfono.
 7. **La hoja y el cajón** para artículos y textos largos, cuando los pasos anteriores ya estén.
