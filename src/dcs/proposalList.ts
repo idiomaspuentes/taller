@@ -1,4 +1,4 @@
-import { editIssue, listIssueComments, type DcsIssue } from "@ip-lms/dcs-client";
+import { editIssue, listIssueComments, listRepoIssues, type DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { closeIssue, listProjectIssues } from "./issues";
@@ -18,12 +18,31 @@ export type ProposalListData = {
   proposals: DcsIssue[];
 };
 
+/**
+ * The subtareas of the task and chapter of a list, open and closed: its decisions carry the same labels. Reading every
+ * subtarea of the book to find them took 14 seconds for Ezra (a thousand of them); these are a page.
+ */
+async function issuesNear(session: GtSession, pmOrg: string, card: DcsIssue): Promise<DcsIssue[]> {
+  const facets = (card.labels ?? []).map((label) => label.name ?? "").filter((name) => /\/(tarea|cap):/.test(name));
+  const milestone = card.milestone?.title;
+  if (facets.length !== 2 || !milestone) return (await listProjectIssues(session, pmOrg, issueProjectId(card))).issues;
+  const out = new Map<number, DcsIssue>();
+  for (let page = 1; page <= 10; page++) {
+    const batch = await listRepoIssues(dcsConfig(session.host), pmOrg, PM_REPO_NAME, { token: session.token, state: "all", labels: facets, milestones: [milestone], page, limit: 50 });
+    const had = out.size;
+    for (const issue of batch) out.set(issue.number, issue);
+    // A server that does not page answers the same page again: nothing new is the end too.
+    if (batch.length < 50 || out.size === had) break;
+  }
+  return [...out.values()];
+}
+
 /** A list of proposals and the decisions it has, as they stand. Throws when the subtarea is not such a list. */
 export async function loadProposalList(params: { session: GtSession; pmOrg: string; lang: string; contentOrg: string; issueNumber: number }): Promise<ProposalListData> {
   const { session, pmOrg } = params;
   const card = await getPmIssue(session, pmOrg, params.issueNumber);
   const projectId = issueProjectId(card);
-  const [board, { issues }] = await Promise.all([loadAssignmentsFromDcs(session, pmOrg, params.lang, projectId, params.contentOrg), listProjectIssues(session, pmOrg, projectId)]);
+  const [board, issues] = await Promise.all([loadAssignmentsFromDcs(session, pmOrg, params.lang, projectId, params.contentOrg), issuesNear(session, pmOrg, card)]);
   if (!board || !isProposalList(board.settings, card)) throw new Error("Esta subtarea no es una lista de propuestas.");
   return { card, board, proposals: proposalsOfList(issues, card.number) };
 }
