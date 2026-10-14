@@ -41,6 +41,10 @@ export type WorkOrder = {
   assignee?: { personId: string; person: string };
   /** Human-readable title fragment, e.g. `1:1–8 · TPL`. */
   label: string;
+  /** A decision of the team: the subtarea it was opened from. */
+  parentIssue?: number;
+  /** A decision read in the list of proposals of `parentIssue` (see `proposalList.ts`). */
+  listed?: true;
 };
 
 function resourceLabel(resource: ScopeKey | "bundle"): string {
@@ -590,6 +594,10 @@ export type WorkOrderMarker = {
   resource: string;
   portionIds: string[];
   itemIds: string[];
+  /** A decision of the team: the subtarea it was opened from. */
+  parentIssue?: number;
+  /** A decision read in the list of proposals of `parentIssue`, and not as a card or a notice of its own. */
+  listed?: true;
 };
 
 export function encodeWorkOrderMarker(order: WorkOrder): string {
@@ -601,6 +609,8 @@ export function encodeWorkOrderMarker(order: WorkOrder): string {
     resource: order.resource,
     portionIds: order.portionIds,
     itemIds: order.itemIds,
+    ...(order.parentIssue ? { parentIssue: order.parentIssue } : {}),
+    ...(order.parentIssue && order.listed ? { listed: true as const } : {}),
   };
   return `<!-- gateway-work-order ${JSON.stringify(marker)} -->`;
 }
@@ -612,6 +622,7 @@ export function parseWorkOrderMarker(body: string | undefined): WorkOrderMarker 
   try {
     const parsed = JSON.parse(match[1]) as Partial<WorkOrderMarker>;
     if (parsed.schema !== WORK_ORDER_SCHEMA || !parsed.key || !parsed.teamId) return null;
+    const parent = Number(parsed.parentIssue);
     return {
       schema: WORK_ORDER_SCHEMA,
       key: String(parsed.key),
@@ -620,6 +631,7 @@ export function parseWorkOrderMarker(body: string | undefined): WorkOrderMarker 
       resource: String(parsed.resource ?? ""),
       portionIds: Array.isArray(parsed.portionIds) ? parsed.portionIds.map(String) : [],
       itemIds: Array.isArray(parsed.itemIds) ? parsed.itemIds.map(String) : [],
+      ...(Number.isInteger(parent) && parent > 0 ? { parentIssue: parent, ...(parsed.listed === true ? { listed: true as const } : {}) } : {}),
     };
   } catch {
     return null;

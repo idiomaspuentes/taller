@@ -120,6 +120,8 @@ type Props = {
   onMarkRead: (issue: number, maxIds: Partial<Record<CommentSource, number>>) => void;
   onMarkSeen: (issue: number) => void;
   onBack: () => void;
+  /** Opened from a list of proposals: going back returns there, and the button says so. */
+  backToList?: boolean;
   onOpenThread: (issue: number) => void;
   onSignIn: () => void;
   announce: (msg: string) => void;
@@ -274,6 +276,7 @@ function ConversationThread({
   onMarkRead,
   onMarkSeen,
   onBack,
+  backToList,
   onOpenThread,
   announce,
 }: Props) {
@@ -770,9 +773,9 @@ function ConversationThread({
       <div className="chat-main">
         <header className="chat-header">
           <div className="chat-header__row">
-            <button type="button" className="chat-back" onClick={onBack} aria-label={t("cv.backToMy")}>
+            <button type="button" className="chat-back" onClick={onBack} aria-label={t(backToList ? "pl.backAria" : "cv.backToMy")}>
               <ArrowLeft aria-hidden className="size-4" />
-              <span className="chat-back__label">{t("nav.myTasks")}</span>
+              <span className="chat-back__label">{t(backToList ? "pl.back" : "nav.myTasks")}</span>
             </button>
             {/* The name and what it belongs to, one block beside the way back: the same short header the tools have. */}
             <div className="chat-header__name">

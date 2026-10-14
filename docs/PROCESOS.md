@@ -223,6 +223,24 @@ vencida por tiempo: quiere decir que el versículo cambió mientras se decidía 
 Al borrador llega la versión de la tarjeta que se confirmó. Las tareas de «Revisar de nuevo» se piden una sola
 vez, entonces.
 
+### Muchas propuestas a la vez: una lista por capítulo
+
+Cuando llegan muchas propuestas juntas (las 248 del TPL de Esdras, por ejemplo), cada una suelta sería una tarjeta y un
+aviso más entre el trabajo del equipo. Van en **una corrección por capítulo que es una lista de propuestas**
+(`proposals: true` en la corrección del plan):
+
+- Cada versículo es **una** propuesta con todos sus cambios, cada cambio con su causa y su porqué. Dos propuestas
+  del mismo versículo serían dos versiones del versículo entero, y al aceptarse la primera caducaría la otra.
+- Cada propuesta es una decisión como cualquier otra, con sus votos, su plazo y su conversación, pero **se lee en
+  su lista**: en «Mis tareas» se ve la tarjeta del capítulo con cuántas faltan («9 propuestas por decidir»), y al
+  abrirla aparecen una a una, con el versículo marcado, el porqué, los botones de la decisión y «Siguiente».
+- Las propuestas de una lista no salen como tarjetas sueltas, ni en «Equipo hoy», ni como avisos ni recordatorios:
+  la marca `listed` de su subtarea lo dice.
+- Cuando todas están decididas, la lista ofrece **«Terminar la corrección»**, que la cierra con sus pasos hechos.
+
+Código: `src/domain/proposalList.ts`, `src/dcs/proposalList.ts`, `src/components/ProposalListView.tsx`; pruebas,
+`npm run verify:proposal-list`.
+
 ### Desde qué fase se propone
 
 Un texto se propone cambiar **desde la fase que lo tiene o desde una posterior, nunca desde una anterior**. Lo

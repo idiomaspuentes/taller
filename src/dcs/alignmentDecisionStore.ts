@@ -139,6 +139,11 @@ export type OpenDecisionParams = {
   tell?: string[];
   thresholds: DecisionThresholds;
   now?: Date;
+  /**
+   * One of the proposals of the list `task.parentIssue` is (`proposalList.ts`), opened among many at once: it is
+   * read in that list, nobody is told of each one, and the list is not written to for each.
+   */
+  listed?: boolean;
 };
 
 /**
@@ -192,6 +197,8 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     decisionId: id,
     title: `${book} ${params.chapter}:${params.verse} · Decidir: ${params.kind === "proposal" ? "propuesta" : "objeción"} de @${session.username}`,
     text: `${decisionTitle(data)}.\n\n> ${note.replace(/\n/g, "\n> ")}\n\nEl equipo decide aquí, con comentarios y un voto por persona.`,
+    ...(params.task.parentIssue ? { parentIssue: params.task.parentIssue } : {}),
+    ...(params.listed ? { listed: true } : {}),
   });
   const file: ProposalFile = {
     schema: PROPOSAL_SCHEMA,
@@ -231,10 +238,10 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     PM_REPO_NAME,
     issue.number,
     // The people told are named where Door43 reads them: a mention it does not see is a notice nobody gets.
-    formatChatEvent(event, { visible: `${event.summary}\n\n> ${note.replace(/\n/g, "\n> ")}${named(event.mentions)}` }),
+    formatChatEvent(event, { visible: `${event.summary}\n\n> ${note.replace(/\n/g, "\n> ")}${named(params.listed ? [] : event.mentions)}` }),
     session.token,
   );
-  if (params.task.parentIssue) {
+  if (params.task.parentIssue && !params.listed) {
     await commentOnIssue(session, pmOrg, params.task.parentIssue, `Se abrió una decisión del equipo sobre ${book} ${params.chapter}:${params.verse}: #${issue.number}.`).catch(() => undefined);
   }
   return { id, issue, card: commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME }) };
@@ -343,6 +350,7 @@ export async function openTextProposal(params: {
   tell?: string[];
   thresholds: DecisionThresholds;
   now?: Date;
+  listed?: boolean;
 }): Promise<{ id: string; issue: DcsIssue; card: ThreadItem }> {
   const { session, target } = params;
   const current = await readRepoFile(session, target, params.draftFilepath);
@@ -374,6 +382,7 @@ export async function openTextProposal(params: {
     tell: params.tell,
     thresholds: params.thresholds,
     now: params.now,
+    listed: params.listed,
   });
 }
 

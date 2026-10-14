@@ -80,6 +80,7 @@ import { itemsFor, BottomNav, type BottomNavId } from "./components/BottomNav";
 import { MyTasksView } from "./components/MyTasksView";
 import { ConflictSandboxView } from "./components/ConflictSandboxView";
 import { ConversationView } from "./components/ConversationView";
+import { ProposalListView } from "./components/ProposalListView";
 import { DEMO_CITES, demoDecisions, demoIssue, demoThreadSources } from "./domain/conversationFixture";
 import "./conversationTypes";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -295,7 +296,7 @@ export function App() {
   const effectiveCanManage = computeEffectiveCanManage(canManage, roleView);
   const showQaAdmin = canShowQaAdmin({ host: session?.host, canManage, viewMode: roleView });
   const myTasksActive =
-    route.name === "mis-tareas" || route.name === "conversacion" || route.name === "conflicto-prueba" || route.name === "equipo";
+    route.name === "mis-tareas" || route.name === "conversacion" || route.name === "propuestas" || route.name === "conflicto-prueba" || route.name === "equipo";
   const [qaAdminOpen, setQaAdminOpen] = useState(false);
   const [draft, setDraft] = useState<AssignmentsDoc | null>(() => loadProjectDraft(lang, contentOrg, pmOrg));
   // A draft that was created stays on screen (its summary) until the person leaves; elsewhere it is gone.
@@ -1320,7 +1321,7 @@ export function App() {
 
       <main
         className={
-          route.name === "conversacion" || route.name === "conflicto-prueba" ? "app-main app-main--chat" : "app-main"
+          route.name === "conversacion" || route.name === "conflicto-prueba" || route.name === "propuestas" ? "app-main app-main--chat" : "app-main"
         }
       >
         <div className="sr-only" aria-live="polite">
@@ -1329,7 +1330,7 @@ export function App() {
         {route.name === "mis-tareas" && session && onboarding.visible ? (
           <Onboarding session={session} onHide={onboarding.hide} />
         ) : null}
-        {route.name !== "conversacion" && route.name !== "conflicto-prueba" && !(route.name === "mis-tareas" && onboarding.visible) ? (
+        {route.name !== "conversacion" && route.name !== "propuestas" && route.name !== "conflicto-prueba" && !(route.name === "mis-tareas" && onboarding.visible) ? (
           <PushPrompt session={session} />
         ) : null}
         {hydrating && route.name === "proyecto" ? (
@@ -1385,6 +1386,7 @@ export function App() {
             decisionIssues={activity.decisionIssues}
             onMarkSeen={activity.markSeen}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
+            onOpenProposals={(issue) => navigate({ name: "propuestas", issue })}
             mentions={mentions.rows}
             onMentionRead={closeMention}
             canManage={effectiveCanManage}
@@ -1403,9 +1405,25 @@ export function App() {
             siblings={mineIssues}
             onMarkRead={activity.markRead}
             onMarkSeen={activity.markSeen}
-            onBack={() => navigate({ name: "mis-tareas" })}
+            onBack={() => navigate(route.list ? { name: "propuestas", issue: route.list, at: route.issue } : { name: "mis-tareas" })}
+            backToList={Boolean(route.list)}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
             onSignIn={() => setSignInOpen(true)}
+            announce={announce}
+          />
+        ) : null}
+        {route.name === "propuestas" ? (
+          <ProposalListView
+            key={`${route.issue}:${session?.username ?? ""}`}
+            session={session}
+            pmOrg={pmOrg}
+            lang={lang}
+            contentOrg={contentOrg}
+            issueNumber={route.issue}
+            at={route.at}
+            canManage={effectiveCanManage}
+            onBack={() => navigate({ name: "mis-tareas" })}
+            onOpenThread={(issue) => navigate({ name: "conversacion", issue, list: route.issue })}
             announce={announce}
           />
         ) : null}

@@ -85,6 +85,7 @@ import type { AssignmentsDoc, TaskStep } from "../domain/types";
 import type { ReadCursorDoc } from "../domain/readCursor";
 import { useDecisionReminders } from "../useDecisionReminders";
 import { isDecisionIssue, opensAsTeamDecision } from "../domain/decisionAccess";
+import { isProposalList } from "../domain/proposalList";
 import { canOpenConversation } from "../domain/conversation";
 import {
   attentionRank,
@@ -120,6 +121,8 @@ type Props = {
   /** `effectiveCanManage`: gestor view may open any subtarea's thread. */
   canManage: boolean;
   onOpenThread: (issue: number) => void;
+  /** Opens a list of proposals to the text (`proposalList.ts`). */
+  onOpenProposals?: (issue: number) => void;
   /** Unread Door43 notifications of the project (mentions, replies), and how to mark one read. */
   mentions?: MentionRow[];
   onMentionRead?: (id: number) => void;
@@ -172,6 +175,7 @@ export function MyTasksView({
   onMarkSeen,
   canManage,
   onOpenThread,
+  onOpenProposals,
   mentions = [],
   onMentionRead,
   mode = "lista",
@@ -401,6 +405,12 @@ export function MyTasksView({
     board: MyTasksProjectBucket["board"],
     opts?: { step?: TaskStep; app?: SolverApp; newTab?: boolean },
   ) {
+    // A list of proposals opens on its list, whichever step of it is opened: the tool of its task opened on one verse.
+    if (onOpenProposals && isProposalList(board.settings, issue)) {
+      onMarkSeen?.(issue.number);
+      onOpenProposals(issue.number);
+      return;
+    }
     const app =
       opts?.app ||
       (opts?.step?.solverAppId
@@ -828,6 +838,10 @@ export function MyTasksView({
         // Steps done once per chapter that count here are saved with the first thing the person does on the card.
         if (card.onceApplied) void setIssueTaskProgress(session, pmOrg, card.issue, parseTaskProgressMarker(card.issue.body)).catch(() => undefined);
         if (a.kind === "vote") return onOpenThread(card.issue.number);
+        if (a.kind === "proposals") {
+          onMarkSeen?.(card.issue.number);
+          return onOpenProposals ? onOpenProposals(card.issue.number) : onOpenThread(card.issue.number);
+        }
         if (!board) return;
         if (a.kind === "begin") return void begin(card.issue, board, a.step);
         if (a.kind === "continue") return void resolve(card.issue, board, { step: a.step });

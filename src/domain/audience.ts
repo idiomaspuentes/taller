@@ -1,4 +1,5 @@
 import { isDecisionIssue } from "./decisionAccess";
+import { inProposalList } from "./proposalList";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { isIssueAssignedTo, isIssueUnassigned } from "../dcs/issues";
@@ -59,6 +60,9 @@ export function audienceOf(params: {
   const inTaskPeople = Boolean(task?.memberIds.some((m) => m.trim().toLowerCase() === me));
   let relation: Audience["relation"] = "other";
   if (isIssueAssignedTo(issue, session.username)) relation = "mine";
+  // One of the proposals of a list is decided in that list, which is the team's work and its notice: 162 of them
+  // for one book were 162 cards and notices of their own.
+  else if (inProposalList(issue)) relation = "other";
   else if (isIssueUnassigned(issue) && (onTeamOfTask(session, pmOrg, task?.orgTeamName) || (decision && inTaskPeople))) relation = "free";
   if (relation === "other") return { relation, notify: false };
 

@@ -16,6 +16,8 @@ export type CorrectionAsk = {
   where?: string;
   text: string;
   by?: string;
+  /** What is asked is a list of changes to the text, each decided by the team (see `proposalList.ts`). */
+  proposals?: true;
 };
 
 const TITLE_MAX = 140;
@@ -76,7 +78,7 @@ export function correctionRows(
     if (correctionAsked({ ...board, settings }, from, ask)) continue;
     const portionId = typeof portion === "function" ? portion(ask) : portion;
     const ref = refOfAsk(ask);
-    settings = addExtraWork(settings, { taskId: owner.id, title, ...(portionId ? { portionId } : {}), ...(ref ? { ref } : {}), ...(ask.by ? { askedBy: ask.by } : {}), ...(askedIn ? { askedIn } : {}) });
+    settings = addExtraWork(settings, { taskId: owner.id, title, ...(portionId ? { portionId } : {}), ...(ref ? { ref } : {}), ...(ask.by ? { askedBy: ask.by } : {}), ...(askedIn ? { askedIn } : {}), ...(ask.proposals ? { proposals: true as const } : {}) });
   }
   return { settings, added: (settings.extraWork ?? []).filter((row) => !had.has(row.id)) };
 }

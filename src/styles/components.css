@@ -9329,3 +9329,24 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 /* A message left for another team: said to be attended to by a touch, and shown as such to everybody. */
 .hm-attend { justify-self: start; min-height: 2.5rem; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; cursor: pointer; }
 .hm-attended { color: var(--success-700, var(--text-muted)); font-weight: 600; }
+
+/* A list of proposals to the text, one at a time: the verse, why, and the votes, with the way to the next. */
+.pl-body { display: grid; gap: 0.75rem; width: 100%; max-width: 48rem; margin-inline: auto; padding: 1rem; }
+.pl-count { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; margin: 0; font-weight: 600; }
+.pl-count__left { color: var(--text-muted); font-weight: 400; }
+.pl-item { display: grid; gap: 0.5rem; padding: 0.875rem; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
+.pl-ref { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0; font-size: 1.125rem; font-weight: 700; }
+.pl-tag { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--surface-muted); color: var(--text-muted); font-size: 0.8125rem; font-weight: 600; }
+.pl-verse .al-diff { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.pl-note { font-size: 0.9375rem; line-height: 1.6; overflow-wrap: anywhere; }
+.pl-note p { margin: 0 0 0.375rem; }
+.pl-item .chat-decision { width: 100%; max-width: none; margin: 0.25rem 0 0; }
+.pl-thread { justify-self: start; min-height: 2.75rem; }
+.pl-nav { display: flex; justify-content: space-between; gap: 0.5rem; }
+.pl-nav > * { min-height: 2.75rem; }
+.pl-finish { display: grid; gap: 0.5rem; padding: 0.875rem; border: 1px solid var(--success-500, var(--border-strong)); border-radius: var(--radius-lg); background: var(--success-100, var(--surface)); }
+.pl-finish p { margin: 0; }
+.pl-error { margin: 0; color: var(--danger-700, #991b1b); }
+@media (max-width: 640px) {
+  .pl-body { padding: 0.75rem 1rem; }
+}

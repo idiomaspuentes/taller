@@ -1195,6 +1195,13 @@ export async function createDecisionIssue(
     decisionId: string;
     title: string;
     text: string;
+    /** The subtarea it was opened from. */
+    parentIssue?: number;
+    /**
+     * One of the proposals of the list `parentIssue` is (`proposalList.ts`): read there, and nobody is asked for
+     * theirs on each one with the app closed. The list is what the team is told of.
+     */
+    listed?: boolean;
   },
 ): Promise<DcsIssue> {
   const config = dcsConfig(session.host);
@@ -1212,6 +1219,7 @@ export async function createDecisionIssue(
     itemIds: [],
     itemTypes: [],
     label: `${params.chapter}:${params.verse} · Decisión`,
+    ...(params.parentIssue ? { parentIssue: params.parentIssue, ...(params.listed ? { listed: true as const } : {}) } : {}),
   };
   const labelIds: number[] = [];
   for (const name of pmIssueLabelNames(order, namespaceId)) {
@@ -1232,7 +1240,7 @@ ${encodeWorkOrderMarker(order)}`,
     labels: labelIds,
   });
   // A decision of the team: each of its people is asked for theirs, with the app closed too.
-  noticesAfterDecision(session, org, opened);
+  if (!params.listed) noticesAfterDecision(session, org, opened);
   return opened;
 }
 

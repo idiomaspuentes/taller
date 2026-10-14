@@ -4,6 +4,7 @@ import { meetsTeamLevel, type LevelBook, type PersonLevel } from "./levels";
 import { DECISION_DAYS } from "./alignmentDecision";
 import { isDecisionIssue } from "./decisionAccess";
 import { issueTaskId } from "./myTasks";
+import { inProposalList } from "./proposalList";
 import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc, ProjectTask } from "./types";
 import { waitBlocks, waitReason } from "./waits";
@@ -109,6 +110,8 @@ export function classifyToday(params: {
       }
       continue;
     }
+    // One of the proposals of a list is decided in its list, which is the work shown.
+    if (inProposalList(issue)) continue;
     // A decision of the team is not work to take: the team votes on it before a deadline.
     if (isDecisionIssue(issue)) {
       const days = daysSince(issue.created_at, now);

@@ -620,6 +620,11 @@ export type ExtraWork = {
    * correction left behind (see `redoAfterCorrection.ts`).
    */
   redoOf?: number;
+  /**
+   * The correction is a list of changes to the text, each a decision of the team opened from this subtarea (see
+   * `proposalList.ts`): the subtarea opens on that list, not on the tool of its task.
+   */
+  proposals?: true;
 };
 
 /** What moves together from one phase to the next: see `handoff.ts`. Only split chapters are listed. */

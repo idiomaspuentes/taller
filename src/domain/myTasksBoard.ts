@@ -15,6 +15,7 @@ import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
 import type { ProjectTask, TaskStep } from "./types";
 import { askedFrom, extraItemId, isExtraItemId } from "./extraWork";
+import { inProposalList, proposalCount, proposalListNumbers } from "./proposalList";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -37,6 +38,8 @@ export type CardAction =
   /** Everything is done: hand the work over (closes the subtarea). Asks first. */
   | { kind: "deliver" }
   | { kind: "vote" }
+  /** A list of proposals to the text: open it, to decide them one at a time. */
+  | { kind: "proposals" }
   /** A review step others started: take a seat in it. */
   | { kind: "claimStep"; step: TaskStep }
   /** A review step I am seated in: approve it. */
@@ -80,6 +83,8 @@ export type BoardCard = {
    * worked on. Its card said nothing of them: neither that the endorsement waited for them, nor that they were back.
    */
   corrections?: { total: number; open: number };
+  /** A list of proposals (`proposalList.ts`): how many it has, and how many are still to be decided. */
+  proposalList?: { total: number; open: number };
   stepsDone: number;
   stepsTotal: number;
   /** The first step not done yet. */
@@ -210,6 +215,13 @@ export function buildBoard(input: BoardInput): Board {
     if (!openItems.has(bucket)) openItems.set(bucket, (bucket.openIssues ?? bucket.issues).flatMap((issue) => ((issue.state ?? "open").toLowerCase() === "closed" ? [] : (parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? []))));
     return openItems.get(bucket)!;
   };
+  // The lists of proposals of each project: their decisions are read in them, not as cards of their own.
+  const lists = new Map<MyTasksProjectBucket, Set<number>>();
+  const listsOf = (bucket: MyTasksProjectBucket | undefined) => {
+    if (!bucket) return new Set<number>();
+    if (!lists.has(bucket)) lists.set(bucket, proposalListNumbers(bucket.issues, bucket.board.settings));
+    return lists.get(bucket)!;
+  };
 
   const card = (issue: DcsIssue, bucket: MyTasksProjectBucket | undefined, group: BoardGroup, action: CardAction, extra: Partial<BoardCard> = {}): BoardCard => {
     const task = taskOf(issue, bucket);
@@ -253,6 +265,7 @@ export function buildBoard(input: BoardInput): Board {
     if (seen.has(issue.number)) continue;
     seen.add(issue.number);
     const bucket = projects.find((p) => p.projectId.toUpperCase() === issueProjectId(issue).toUpperCase());
+    if (inProposalList(issue)) continue;
     board.decide.push(card(issue, bucket, "decide", { kind: "vote" }));
   }
 
@@ -272,11 +285,16 @@ export function buildBoard(input: BoardInput): Board {
 
       seen.add(issue.number);
       if (isDecisionIssue(issue)) {
-        board.decide.push(card(issue, bucket, "decide", { kind: "vote" }));
+        if (!inProposalList(issue)) board.decide.push(card(issue, bucket, "decide", { kind: "vote" }));
         continue;
       }
       if (audience.hold) {
         board.waiting.push(card(issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: audience.hold.text }));
+        continue;
+      }
+      // A list of proposals is the team's to decide, all of it: nobody takes it, and it opens on its list.
+      if (listsOf(bucket).has(issue.number)) {
+        board.todo.push(card(issue, bucket, "todo", { kind: "proposals" }, { proposalList: proposalCount(bucket.issues, issue.number) }));
         continue;
       }
       if (audience.relation === "free") {
@@ -318,7 +336,7 @@ export function buildBoard(input: BoardInput): Board {
 
   // Review steps of my teams that I can take or approve, on subtareas that are not mine.
   for (const offer of listStepClaimOffers(session as GtSession, pmOrg, projects)) {
-    if (seen.has(offer.issue.number)) continue;
+    if (seen.has(offer.issue.number) || inProposalList(offer.issue)) continue;
     seen.add(offer.issue.number);
     const bucket = projects.find((p) => p.projectId === offer.projectId);
     // A step cannot be joined on a subtarea that still waits for other work: it is listed as waiting, with what it

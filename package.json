@@ -114,6 +114,7 @@
     "verify:review-items": "tsx --tsconfig tsconfig.scripts.json scripts/verify-review-items.mts",
     "verify:project-issues": "tsx --tsconfig tsconfig.scripts.json scripts/verify-project-issues.mts",
     "verify:extra-work": "tsx --tsconfig tsconfig.scripts.json scripts/verify-extra-work.mts",
+    "verify:proposal-list": "tsx --tsconfig tsconfig.scripts.json scripts/verify-proposal-list.mts",
     "verify:tc-import": "tsx --tsconfig tsconfig.scripts.json scripts/verify-tc-import.mts",
     "verify:redo-after-correction":"tsx --tsconfig tsconfig.scripts.json scripts/verify-redo-after-correction.mts",
     "verify:user-error": "tsx --tsconfig tsconfig.scripts.json scripts/verify-user-error.mts",

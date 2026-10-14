@@ -3,6 +3,7 @@ import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./dcs/auth";
 import { sweepDecisionReminders } from "./dcs/alignmentDecisionStore";
 import { isDecisionIssue } from "./domain/decisionAccess";
+import { inProposalList } from "./domain/proposalList";
 import { issueTaskId } from "./domain/myTasks";
 import type { AssignmentsDoc } from "./domain/types";
 
@@ -24,7 +25,8 @@ export function useDecisionReminders(session: GtSession | undefined, pmOrg: stri
           session,
           pmOrg,
           issues: project.issues,
-          isDecision: isDecisionIssue,
+          // The proposals of a list are not reminded one by one: a book's list was a mention per verse.
+          isDecision: (issue) => isDecisionIssue(issue) && !inProposalList(issue),
           teamOf: (issue) => project.board.teams.find((t) => t.id === issueTaskId(issue))?.memberIds ?? [],
           teamNameOf: (issue) => project.board.teams.find((t) => t.id === issueTaskId(issue))?.orgTeamName,
         });

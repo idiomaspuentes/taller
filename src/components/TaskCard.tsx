@@ -101,6 +101,7 @@ export function TaskCard(props: Props) {
   // A step with no tool is an approval: there are no answers to look at, and the card offered «Ver mis respuestas».
   else if (action.kind === "none" && action.why === "othersAnswer") label = action.step?.solverAppId ? t("tb.seeMine") : "";
   else if (action.kind === "vote") label = t("tb.vote");
+  else if (action.kind === "proposals") label = t("tb.proposals");
   // A step somebody joins to do it says what is done in it, as any other («Revisar»): pressing it takes the seat and
   // opens its tool. One with no tool is only joined, and says so.
   else if (action.kind === "claimStep") label = (action.step.solverAppId && stepButton(action.step)) || t("tb.join").replace("{step}", stepName(action.step));
@@ -120,6 +121,10 @@ export function TaskCard(props: Props) {
   else if (action.kind === "none" && action.why === "othersReview") status = t("tb.othersReview");
   else if (action.kind === "none" && action.why === "assigneeDelivers") status = t("tb.assigneeDelivers").replace("{who}", assigneeOf(card));
   else if (card.group === "decide") status = t("tb.decideLine");
+  else if (action.kind === "proposals" && card.proposalList) {
+    const left = card.proposalList.open;
+    status = left ? t(left === 1 ? "tb.proposalsLeftOne" : "tb.proposalsLeft").replace("{n}", String(left)) : t("tb.proposalsDecided");
+  }
   // As a free subtarea says nobody has taken it, a step nobody has joined says so: the button will take it.
   else if (action.kind === "claimStep" && !getStepRuntime(parseTaskProgressMarker(card.issue.body ?? ""), action.step.id).assignees.length) status = t("tb.stepUntaken").replace("{step}", stepName(action.step));
 
@@ -175,7 +180,8 @@ export function TaskCard(props: Props) {
   // A subtarea that waits with nothing done has no progress to show: its line is why it waits. One nobody has
   // taken has none either.
   // A decision is not a task with steps: its card read «0 de 2 pasos · 0 %», those of the task its verse is of.
-  const showsRow = card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" && card.group !== "decide" && (card.group !== "waiting" || fraction > 0);
+  // Nor is a list of proposals: what it has left is how many are still to be decided, said in its line.
+  const showsRow = card.stepsTotal > 0 && card.group !== "done" && card.group !== "free" && card.group !== "decide" && card.action.kind !== "proposals" && (card.group !== "waiting" || fraction > 0);
   // The button says what is done next when its step has words of its own («Traducir», «Revisar»). One that only
   // says «Empezar», or that opens a tool outside, leaves the step unnamed: then it is named beside it.
   const nextUnnamed = hasTool && card.stepsDone < card.stepsTotal && (!stepButton(action.kind === "begin" || action.kind === "continue" ? action.step : undefined) || props.externalTool);

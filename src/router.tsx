@@ -12,8 +12,13 @@ export type AppRoute =
   | { name: "mis-tareas" }
   /** The person's Door43 profile, read-only (editing happens in Door43). */
   | { name: "perfil" }
-  /** One subtarea as a conversation. `demo` = local fixture (dev only, no DCS). */
-  | { name: "conversacion"; issue: number; demo?: boolean }
+  /**
+   * One subtarea as a conversation. `demo` = local fixture (dev only, no DCS). `list`: the list of proposals it was
+   * opened from, where going back returns to.
+   */
+  | { name: "conversacion"; issue: number; demo?: boolean; list?: number }
+  /** A list of proposals to the text, one decision each, read one at a time (`proposalList.ts`). */
+  | { name: "propuestas"; issue: number; at?: number }
   /** Fictional verse conflict, in memory only (`#/mis-tareas/prueba`). */
   | { name: "conflicto-prueba" }
   /** The marking of words, to try on example verses; nothing is read or written (`#/prueba/seleccion`). */
@@ -77,9 +82,14 @@ export function parseHash(hash: string): AppRoute {
     if (parts[1] === "prueba") return { name: "conflicto-prueba" };
     const issue = Number(parts[1]);
     if (parts[1] && Number.isInteger(issue) && issue > 0) {
+      if (parts[2] === "propuestas") {
+        const at = Number(params.get("en"));
+        return { name: "propuestas", issue, ...(Number.isInteger(at) && at > 0 ? { at } : {}) };
+      }
+      const list = Number(params.get("lista"));
       return params.get("demo") === "1"
         ? { name: "conversacion", issue, demo: true }
-        : { name: "conversacion", issue };
+        : { name: "conversacion", issue, ...(Number.isInteger(list) && list > 0 ? { list } : {}) };
     }
     return { name: "mis-tareas" };
   }
@@ -169,7 +179,9 @@ export function routeToHash(route: AppRoute): string {
     case "mis-tareas":
       return "#/mis-tareas";
     case "conversacion":
-      return `#/mis-tareas/${route.issue}${route.demo ? "?demo=1" : ""}`;
+      return `#/mis-tareas/${route.issue}${route.demo ? "?demo=1" : route.list ? `?lista=${route.list}` : ""}`;
+    case "propuestas":
+      return `#/mis-tareas/${route.issue}/propuestas${route.at ? `?en=${route.at}` : ""}`;
     case "conflicto-prueba":
       return "#/mis-tareas/prueba";
     case "seleccion-prueba":

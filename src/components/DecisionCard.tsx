@@ -31,6 +31,8 @@ type Props = {
   onRun?: (optionId: string, event: ChatEvent, input?: string) => Promise<void>;
   /** Opens the editor on a range; offered next to a block reason that is fixed there. */
   onOpenEditor?: (range: { chapter: number; from: number; to: number }) => void;
+  /** The screen shows what is decided its own way: the card is its votes and buttons. */
+  hidePanels?: boolean;
 };
 
 export function DecisionCard({
@@ -44,6 +46,7 @@ export function DecisionCard({
   demoPrepared,
   onRun,
   onOpenEditor,
+  hidePanels = false,
 }: Props) {
   const t = useT();
   const language = useUiLanguage();
@@ -126,7 +129,7 @@ export function DecisionCard({
   }
 
   const shownPanels = decided ? resolveChatEvent(decided.event).panels : resolved.panels;
-  const panels = shownPanels.length ? (
+  const panels = shownPanels.length && !hidePanels ? (
     <div className="chat-decision__panels">
       {shownPanels.map((panel) => (
         <figure key={panel.label} className={`chat-decision__panel${panel.custom?.kind === "cajas" ? " chat-decision__panel--wide" : ""}`}>
@@ -227,14 +230,16 @@ export function DecisionCard({
         </p>
         <p className="chat-decision__sub">{loc(decided?.title ?? resolved.title)}</p>
         {expanded ? panels : null}
-        <button
-          type="button"
-          className="chat-link chat-decision__toggle"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? t("dc.hideTexts") : t("dc.seeTexts")}
-        </button>
+        {hidePanels ? null : (
+          <button
+            type="button"
+            className="chat-link chat-decision__toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? t("dc.hideTexts") : t("dc.seeTexts")}
+          </button>
+        )}
         {controls}
       </section>
     );
