@@ -24,7 +24,7 @@ function test(name: string, fn: () => void) {
 }
 
 const PM = "es-419_gl";
-const settings: ProjectSettings = { allowSelfAssign: true, extraWork: [{ id: "x-lista", taskId: "desafios", title: "Corrección 3:1: Correcciones al TPL del capítulo 3", ref: "3:1", proposals: true }, { id: "x-una", taskId: "desafios", title: "Corrección 3:5: una sola cosa", ref: "3:5" }] };
+const settings: ProjectSettings = { allowSelfAssign: true, extraWork: [{ id: "x-lista", taskId: "desafios", title: "Corrección 3:1: Correcciones al TPL del capítulo 3", ref: "3:1", proposals: true }, { id: "x-una", taskId: "desafios", title: "Corrección 3:5: una sola cosa", ref: "3:5" }, { id: "x-uno", taskId: "desafios", title: "Corrección 1:1: Correcciones al TPL del capítulo 1", ref: "1:1", proposals: true }] };
 const plan = {
   schema: "gateway-assignments-1",
   projectId: "EZR",
@@ -50,6 +50,8 @@ const decision = (verse: number, state: "open" | "closed" = "open", listed = tru
 const v10 = decision(10);
 const v3 = decision(3, "closed");
 const v4 = decision(4);
+// Asked after the list of chapter 3, and read before it.
+const first = issue("EZR 1:1 · Corrección 1:1: Correcciones al TPL del capítulo 1", { key: "EZR|desafios|extra:x-uno", itemIds: [extraItemId("x-uno")] });
 const own = issue("EZR 3:6 · Decidir: propuesta de @kene", { key: "desafios|decision:own", portionIds: ["decision:own"], parentIssue: single.number });
 
 test("el marcador de una decisión guarda de qué subtarea salió y si se lee en su lista; uno sin ellos no cambia", () => {
@@ -111,6 +113,20 @@ test("en «Mis tareas» la lista es una tarjeta que se abre en sus propuestas y 
   assert.equal(where(board, v10.number), undefined);
   assert.equal(where(board, own.number)?.group, "decide", "la decisión de otra corrección se vota como siempre");
   assert.notEqual(where(board, single.number)?.action.kind, "proposals");
+});
+
+test("las listas de un libro salen capítulo por capítulo, aunque la de un capítulo anterior se pidiera después", () => {
+  const board = boardFor([list, v10, v3, v4, first]);
+  assert.deepEqual(board.todo.filter((card) => card.action.kind === "proposals").map((card) => card.place), ["1:1", "3:1"]);
+});
+
+test("quien gestiona sin ser del equipo también ve la lista como lista, y no como un paso que tomar", () => {
+  const manager = { username: "abel", canManage: true, teams: [] } as never;
+  const bucket: MyTasksProjectBucket = { projectId: "EZR", title: "Esdras", browseProject: true, board: plan, issues: [list, v4], openIssues: [list, v4] };
+  const board = buildBoard({ session: manager, pmOrg: PM, projects: [bucket], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  const card = where(board, list.number);
+  assert.equal(card?.action.kind, "proposals", `llegó como ${card?.group}/${card?.action.kind}`);
+  assert.equal(where(board, v4.number), undefined);
 });
 
 test("una propuesta de una lista no es trabajo libre ni aviso de nadie: lo es la lista", () => {

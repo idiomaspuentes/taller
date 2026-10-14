@@ -346,6 +346,11 @@ export function buildBoard(input: BoardInput): Board {
       board.waiting.push(card(offer.issue, bucket, "waiting", { kind: "none", why: "hold" }, { holdText: waitReason(blocks, bucket.board) }));
       continue;
     }
+    // A list of proposals reached this way (whoever manages, from outside the team) opens on its list as well.
+    if (bucket && listsOf(bucket).has(offer.issue.number)) {
+      board.todo.push(card(offer.issue, bucket, "todo", { kind: "proposals" }, { proposalList: proposalCount(bucket.issues, offer.issue.number) }));
+      continue;
+    }
     board.reviews.push(card(offer.issue, bucket, "reviews", offer.action === "claim" ? { kind: "claimStep", step: offer.step } : { kind: "approveStep", step: offer.step }));
   }
 
@@ -367,6 +372,8 @@ export function buildBoard(input: BoardInput): Board {
     // under ten tasks that have not begun.
     if (group === "waiting") board.waiting = [...board.waiting.filter(joined), ...board.waiting.filter((c) => !joined(c))];
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
+    // The lists of a book are gone through chapter by chapter: they came 10, 8, 9, 7… by when each was touched.
+    if (group === "todo") board.todo = listsInOrder(board.todo);
     // A correction that was asked for holds up whoever asked: it comes before the work that is only waiting its turn.
     if (group !== "done") board[group] = correctionsFirst(board[group]);
   }
@@ -386,6 +393,16 @@ function startOf(place: string): [number, number] {
  * passage of a book was the last of 49 cards, and nothing said where to start. Something said about one of them
  * to this person still comes first.
  */
+/** The lists of proposals in the order of the book, each where one of them was among the other cards. */
+function listsInOrder(cards: BoardCard[]): BoardCard[] {
+  // By the book alone: the ones opened already went after the new ones, 4 to 10 and then 1 to 3.
+  const bookAt = (card: BoardCard) => BOOKS.findIndex((row) => row.code === card.book.toUpperCase());
+  const order = (a: BoardCard, b: BoardCard) => bookAt(a) - bookAt(b) || startOf(a.place)[0] - startOf(b.place)[0] || startOf(a.place)[1] - startOf(b.place)[1];
+  const lists = cards.filter((card) => card.action.kind === "proposals").sort(order);
+  let at = 0;
+  return cards.map((card) => (card.action.kind === "proposals" ? lists[at++]! : card));
+}
+
 function byPlace(a: BoardCard, b: BoardCard): number {
   if (a.activity.needsAttention !== b.activity.needsAttention) return a.activity.needsAttention ? -1 : 1;
   const bookAt = (card: BoardCard) => {
