@@ -206,14 +206,59 @@ guardaba en la rama recordada de ese otro. Reglas:
 - La rama recordada solo se usa si es una de las propias de la subtarea
   (`ownedWorkBranchNames`); si no, se guarda en la rama propia.
 - Una entrada de antes de este cambio (`tas-draft:{org}:{n}`, sin nada de eso)
-  se restaura solo si su rama es de esta subtarea y, en Escritura, si contiene
-  justo los versículos del pasaje; al guardar pasa a su nombre nuevo. Con la
-  rama de otro libro o de otra persona se deja donde está, sin tocarla.
+  es el borrador de la subtarea solo si su rama es de esta subtarea y, en
+  Escritura, si contiene justo los versículos del pasaje; al guardar pasa a su
+  nombre nuevo. Con la rama de otro libro o de otra persona se deja donde está,
+  sin tocarla.
 - Lo que puede ser de la subtarea y no se usa (otro pasaje del mismo libro con
   el mismo número; una entrada de antes cuya rama no dice de quién es) no se
   pone en el editor ni se borra: se avisa sobre el borrador («Hay otro borrador
   guardado en este navegador») y la persona lo ve, copia lo que le sirva y lo
   descarta ella. `npm run verify:draft-cache`.
+
+**Cuándo vuelve al editor un borrador guardado en el navegador.** Antes volvía
+siempre que dijera otra cosa que Door43. Un borrador ya guardado decía otra
+cosa en cuanto alguien cambiaba el pasaje (una corrección de la revisión, el
+borrador del grupo que avanza): el editor lo ponía de nuevo como trabajo sin
+guardar y lo guardaba solo, encima del texto más nuevo. Ahora cada borrador
+dice dos cosas más (`KeptEntry`): `unsaved`, si algo de él no llegó a Door43
+(lo marca cada edición; lo quita solo un guardado que terminó sin que se
+escribiera nada mientras tanto), y `typedOver`, lo que Door43 tenía del pasaje
+cuando se escribió (los versículos del pasaje, o cada ayuda con su respuesta;
+tras guardar, lo que dice el archivo que se escribió). Se comparan los textos
+del pasaje entero, no el hash del archivo —que cambia cuando se fusiona otro
+capítulo o se guarda una alineación— ni versículo por versículo, porque unir o
+separar versículos cambia sus claves. Al abrir (`keptStanding`):
+
+| El borrador… | y Door43… | Qué pasa |
+|---|---|---|
+| dice lo mismo | — | Nada: se muestra Door43. |
+| ya se guardó | dice otra cosa | Se muestra Door43. Nunca vuelve encima. |
+| tiene algo sin guardar | tiene el texto sobre el que se escribió | Vuelve al editor («Se restauró un borrador local») y se guarda solo. |
+| tiene algo sin guardar | cambió desde entonces | No se pone ni se borra: queda aparte, con el aviso. |
+| es de antes de este cambio | dice otra cosa | Igual: queda aparte (no se sabe si Door43 es más nuevo). |
+| no se guardó (o es de antes) | no tiene nada escrito en el pasaje | Vuelve: no hay nada de nadie que pisar. |
+
+El que queda aparte pasa a un nombre propio (`…:{pasaje}:aside:{fecha}`), para
+que lo que se escriba después no se guarde encima, y el aviso dice por qué no
+se puso («El texto de Door43 cambió desde que escribiste esto»). Door43 puede
+responder más de una vez al abrir el editor de Escritura (el borrador del
+grupo y luego la rama de la persona): si la segunda respuesta sí es el texto
+sobre el que se escribió, el borrador vuelve a su nombre y al editor
+(`keptDraftOpening`). Cuando el archivo no existe en Door43, el borrador vuelve
+como antes. Un borrador sin nada escrito ni vuelve (vaciaría el pasaje) ni se
+enseña aparte.
+
+«Rehacer mi borrador» borra la rama donde se guardó: lo que el navegador
+guarda vuelve a ser lo único que hay, así que deja de contar como guardado
+(`keptDraftLostItsBranch`). Vuelve al editor si el borrador nuevo no tiene nada
+en el pasaje, y queda aparte si tiene otro texto.
+
+Un guardado que termina mientras la persona sigue escribiendo no toca lo que
+el navegador guarda de ella: solo anota la rama y el nuevo `typedOver`
+(`rebaseKeptDraft`). Antes, el editor de Escritura volvía a guardar en el
+navegador el texto con el que empezó el guardado, y el de ayudas además daba
+el borrador por guardado.
 
 ## Textos fuente en el dispositivo
 

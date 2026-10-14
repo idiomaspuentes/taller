@@ -48,10 +48,23 @@ import {
 } from "../domain/portionPr";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { loadContext } from "../domain/store";
-import { discardKeptDraft, draftLaunch, loadDraftCache, passageLabel, saveDraftCache, type DraftCacheEntry, type DraftLaunch, type KeptDraft } from "../domain/draftCache";
+import {
+  discardKeptDraft,
+  draftCacheLostItsBranch,
+  draftCacheOpening,
+  draftLaunch,
+  loadDraftCache,
+  passageLabel,
+  rebaseDraftCache,
+  saveDraftCache,
+  type DraftCacheEntry,
+  type DraftLaunch,
+  type KeptDraft,
+} from "../domain/draftCache";
 import { KeptDraftNote } from "./KeptDraftNote";
 import {
   chapterMarkup,
+  draftSlots,
   portionRange,
   skeletonUsfm,
   textLines,
@@ -145,6 +158,13 @@ function rowInRange(d: VerseDraft, range: RefRange | null): boolean {
 
 function canJoinRows(cur: VerseDraft, next: VerseDraft, range: RefRange | null): boolean {
   return next.from === cur.to + 1 && rowInRange(cur, range) && rowInRange(next, range);
+}
+
+/** The texts of the rows of a passage, each under its slot: how a draft is kept, and what it was typed over. */
+function slotTexts(rows: VerseDraft[]): Record<string, string> {
+  const texts: Record<string, string> = {};
+  for (const d of rows) texts[slotKey(d)] = d.text;
+  return texts;
 }
 
 function sameDrafts(a: VerseDraft[], b: VerseDraft[]): boolean {
@@ -369,10 +389,15 @@ function keptDraftOf(decoded: SolverLaunchContext, sess: GtSession | undefined):
   return draftLaunch(decoded, sess?.host || loadContext()?.host, work);
 }
 
-/** The verses a draft that was set aside holds, in their order. */
-function keptRows(verses: Record<string, string>): { label: string; text: string }[] {
-  return Object.entries(verses)
-    .filter(([, text]) => text.trim())
+/**
+ * The verses a draft that was set aside holds, in their order: those that say something else than what it was
+ * typed over, which is what the person wrote. When none does, or the draft is from before it said what that was,
+ * those the editor does not have. The verses of the passage nobody touched are not listed again.
+ */
+function keptRows({ verses, typedOver }: DraftCacheEntry, inEditor: Record<string, string>): { label: string; text: string }[] {
+  const written = Object.entries(verses).filter(([, text]) => text.trim());
+  const otherThan = (base?: Record<string, string>) => (base ? written.filter(([key, text]) => base[key] !== text) : []);
+  return ([otherThan(typedOver), otherThan(inEditor)].find((rows) => rows.length) ?? written)
     .map(([key, text]) => ({ first: Number(key.split("-")[0]), label: key.replace("-", "–"), text }))
     .sort((a, b) => a.first - b.first)
     .map(({ label, text }) => ({ label, text }));
@@ -917,6 +942,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [finishing, setFinishing] = useState(false);
   /** Counts edits, so that a save that ends while the person kept typing does not call the draft saved. */
   const editCount = useRef(0);
+  /**
+   * What the draft kept on this device says of itself (see `KeptEntry`): whether something in it has not reached
+   * Door43, and what Door43 had of the passage when it was typed. Both go on from the draft found here until
+   * Door43 answers.
+   */
+  const unsaved = useRef<boolean | undefined>(undefined);
+  const typedOver = useRef<Record<string, string> | undefined>(undefined);
   const [hoveredHelp, setHoveredHelp] = useState<ReferenceHelpRow | null>(null);
   const [activeHelp, setActiveHelp] = useState<ReferenceHelpRow | null>(null);
   const [wordFilter, setWordFilter] = useState<WordFilter | null>(null);
@@ -1009,9 +1041,15 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
     const sess = loadSession();
     setSession(sess);
-    const kept = loadDraftCache(keptDraftOf(decoded, sess));
+    const launch = keptDraftOf(decoded, sess);
+    const kept = loadDraftCache(launch);
     const cache = kept.own;
+    const opening = draftCacheOpening(launch, cache);
+    /** The draft of this passage that this opening set aside, when it did. */
+    let changedUnder: KeptDraft<DraftCacheEntry> | null = null;
     setSetAside(kept.aside);
+    unsaved.current = cache?.unsaved;
+    typedOver.current = cache?.typedOver;
     const lab = isLabLaunch(decoded);
     const write = labWriteDecision(decoded);
     const fallbackBranch = portionPrBranchFromCtx({
@@ -1158,17 +1196,33 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         cache && Object.keys(cache.verses).length
           ? keptInLines(placeholderDrafts(refRange, cache, remote), remote, chapterMarkup(text, refRange.chapter))
           : null;
-      const usedCache = Boolean(cached && !sameDrafts(cached, remote));
+      // A kept draft is put back only when something in it did not reach Door43 and Door43 still has what it was
+      // typed over. Put back whenever it said something else, a draft already saved came back over a passage
+      // somebody had changed since, as work to be saved, and the editor saved it over the newer text by itself.
+      const now = slotTexts(remote);
+      const answer = opening.answered({ now, same: !cached || sameDrafts(cached, remote), blank: remote.every((d) => !d.text.trim()) });
+      const was = changedUnder;
+      changedUnder = answer.aside;
+      if (was?.key !== changedUnder?.key) {
+        const mine = changedUnder;
+        setSetAside((prev) => [...(mine ? [mine] : []), ...prev.filter((draft) => draft.key !== was?.key && draft.key !== mine?.key)]);
+      }
+      const usedCache = answer.standing === "restore";
       const chosen = usedCache && cached ? cached : remote;
+      typedOver.current = now;
       setDrafts((prev) => {
         if (!editedVerses.current.size) return chosen;
-        return prev.map((d) => {
+        const next = prev.map((d) => {
           const key = slotKey(d);
           if (editedVerses.current.has(key)) return d;
           const hit = chosen.find((s) => slotKey(s) === key);
           return hit ? { ...d, text: hit.text } : d;
         });
+        // What was written before Door43 answered is kept with the rows it has now, and with what they are typed over.
+        saveDraftCache(launch, { verses: slotTexts(next), savedAt: Date.now(), branch: head || cache?.branch || fallbackBranch, unsaved: true, typedOver: now });
+        return next;
       });
+      if (!editedVerses.current.size) unsaved.current = usedCache;
       if (usedCache) {
         setDirty(true);
         if (!announcedCache.current) {
@@ -1549,17 +1603,18 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   function persistLocal(nextDrafts: VerseDraft[], nextBranch: string) {
     if (!ctx) return;
-    const verses: Record<string, string> = {};
-    for (const d of nextDrafts) verses[slotKey(d)] = d.text;
     saveDraftCache(keptDraftOf(ctx, session), {
-      verses,
+      verses: slotTexts(nextDrafts),
       savedAt: Date.now(),
       branch: nextBranch,
+      unsaved: unsaved.current,
+      typedOver: typedOver.current,
     });
   }
 
   function updateVerse(key: string, text: string) {
     editCount.current += 1;
+    unsaved.current = true;
     editedVerses.current.add(key);
     setDrafts((prev) => {
       const next = prev.map((d) => (slotKey(d) === key ? { ...d, text } : d));
@@ -1571,6 +1626,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   function replaceRows(index: number, count: number, rows: VerseDraft[]) {
     editCount.current += 1;
+    unsaved.current = true;
     for (const row of rows) editedVerses.current.add(slotKey(row));
     const next = [...drafts.slice(0, index), ...rows, ...drafts.slice(index + count)];
     setDrafts(next);
@@ -1599,12 +1655,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   /**
    * `quiet`: a save the app does by itself while the person writes says nothing; the state beside the title does.
-   * `withSha`: the hash to save over, when the one in hand turned out not to be the file's.
+   * `withSha`: the hash to save over, when the one in hand turned out not to be the file's. That second try goes
+   * on from the first (`editsAtStart`): it saves the text the first began with, and what was written since is
+   * neither called saved nor kept over.
    */
-  async function save(quiet = false, withSha?: string): Promise<boolean> {
+  async function save(quiet = false, withSha?: string, editsAtStart = editCount.current): Promise<boolean> {
     if (!ctx || !range) return false;
-    const editsAtStart = editCount.current;
-    persistLocal(drafts, branch);
+    if (!withSha) persistLocal(drafts, branch);
     if (!session) {
       if (!quiet) announce(t("se.savedLocalAnnounce"));
       return false;
@@ -1672,10 +1729,18 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       setSha(saved.sha ?? withSha ?? sha);
       setBranch(saved.branch || head);
       setCreatedNew(false);
-      // What was written while this save was on its way is still to be saved.
-      if (editCount.current === editsAtStart) setDirty(false);
+      // What the passage reads in the file that was written: what is typed from now on is typed over that.
+      typedOver.current = slotTexts(draftSlots(nextUsfm, range));
+      if (editCount.current === editsAtStart) {
+        unsaved.current = false;
+        setDirty(false);
+        persistLocal(drafts, saved.branch || head);
+      } else {
+        // What was written while this save was on its way is still to be saved, and is what this device keeps.
+        // Kept again from the text this save began with, it was gone from here though still on screen.
+        rebaseDraftCache(keptDraftOf(ctx, session), { branch: saved.branch || head, typedOver: typedOver.current });
+      }
       setSavedOnce(true);
-      persistLocal(drafts, saved.branch || head);
       if (!quiet) announce(t("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${saved.branch || head}`));
       return true;
     } catch (err) {
@@ -1686,7 +1751,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         const now = await tryReadExistingBookUsfm({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branches: [head] }).catch(() => null);
         if (now?.sha && now.sha !== sha && now.text === usfm) {
           setSha(now.sha);
-          return save(quiet, now.sha);
+          return save(quiet, now.sha, editsAtStart);
         }
       }
       setError(
@@ -1894,6 +1959,9 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
         return;
       }
       const result = await recreateBookWorkspace(params);
+      // The branch the draft was saved on is gone: what this device keeps of it is all there is of it again. It
+      // comes back when the new draft has nothing written in the passage, and is shown apart when it has.
+      draftCacheLostItsBranch(keptDraftOf(ctx, session));
       setBranch(result.workBranch);
       setCreatedNew(result.createdFile);
       setPrUrl("");
@@ -2265,11 +2333,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             </button>
           ) : null}
           <KeptDraftNote
-            drafts={setAside.map(({ key, entry }) => ({
+            drafts={setAside.map(({ key, entry, why }) => ({
               key,
               name: entry.place?.book ? `${bookLabel(entry.place.book, language)} ${passageLabel(entry.place.passage)}` : "",
               savedAt: entry.savedAt,
-              rows: keptRows(entry.verses),
+              why,
+              rows: keptRows(entry, slotTexts(drafts)),
             }))}
             onDiscard={(key) => {
               discardKeptDraft(key);

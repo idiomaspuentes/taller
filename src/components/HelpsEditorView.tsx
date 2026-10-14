@@ -50,7 +50,7 @@ import {
   type HelpsDraftItem,
 } from "../domain/helpsDraft";
 import { discardKeptDraft, draftLaunch, passageLabel, type DraftLaunch, type KeptDraft } from "../domain/draftCache";
-import { loadHelpsDraftCache, saveHelpsDraftCache, type HelpsDraftCacheEntry } from "../domain/helpsDraftCache";
+import { helpsDraftCacheOpening, loadHelpsDraftCache, rebaseHelpsDraftCache, saveHelpsDraftCache, type HelpsDraftCacheEntry } from "../domain/helpsDraftCache";
 import { resolveHelpsTarget, type HelpsTarget } from "../domain/helpsTarget";
 import { portionPrBranchFromCtx, workBranchParamsFromCtx, type PortionPrMarker } from "../domain/portionPr";
 import { loadContext } from "../domain/store";
@@ -132,6 +132,11 @@ function keptHelpsOf(decoded: SolverLaunchContext, sess: GtSession | undefined, 
 /** What a help says, to tell whether it was changed since it was opened. */
 const stampOf = (item: HelpsDraftItem) => JSON.stringify([item.text, item.secondary ?? ""]);
 
+/** What each help of a passage says, under its name: what a draft is typed over (see `KeptEntry.typedOver`). */
+const stampsOf = (items: HelpsDraftItem[]): Record<string, string> => Object.fromEntries(items.map((item) => [item.id, stampOf(item)]));
+
+const isBlank = (item: HelpsDraftItem) => !item.text.trim() && !(item.secondary ?? "").trim();
+
 async function readFilePreferBranch(
   session: GtSession,
   owner: string,
@@ -181,6 +186,17 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [setAside, setSetAside] = useState<KeptDraft<HelpsDraftCacheEntry>[]>([]);
   /** What each help read when it was opened, so only what this person changed is written over the team's file. */
   const opened = useRef<Record<string, string>>({});
+  /** Counts edits, so that a save that ends while the person kept typing does not call the draft saved. */
+  const editCount = useRef(0);
+  /**
+   * What the draft kept on this device says of itself (see `KeptEntry`): whether something in it has not reached
+   * Door43, and what Door43 had of the passage when it was typed. Both go on from the draft found here until
+   * Door43 answers.
+   */
+  const unsaved = useRef<boolean | undefined>(undefined);
+  const typedOver = useRef<Record<string, string> | undefined>(undefined);
+  /** The helps of the passage as files of Door43 have them: read the same way when it opens and after a save. */
+  const readItems = useRef<((files: Record<string, FileMeta>) => HelpsDraftItem[]) | null>(null);
   const [pane, setPane] = useState<"edit" | "chapter">("edit");
   /** An article is worked piece by piece, each under its source; «todo junto» is the whole text in one box. */
   const [view, setView] = useState<"rows" | "whole">(() => (readPref("taller-article-view") === "whole" ? "whole" : "rows"));
@@ -213,6 +229,9 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
     setSession(sess);
     const first = loadHelpsDraftCache(keptHelpsOf(decoded, sess));
     setSetAside(first.aside);
+    unsaved.current = first.own?.unsaved;
+    typedOver.current = first.own?.typedOver;
+    readItems.current = null;
 
     let inventory: InventoryDoc | null = null;
     let pmConfig = undefined;
@@ -296,9 +315,29 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         head = draft;
       }
       // A task that corrects the team's helps wrote on the team's draft: that is the branch its draft remembered.
-      const kept = onTeamDraft ? loadHelpsDraftCache(keptHelpsOf(decoded, sess, [head])) : first;
+      const launch = keptHelpsOf(decoded, sess, onTeamDraft ? [head] : []);
+      const kept = onTeamDraft ? loadHelpsDraftCache(launch) : first;
       setSetAside(kept.aside);
       const cache = kept.own;
+      /**
+       * What goes in the editor now that Door43 said what it has: that, or the draft kept here over it. A kept
+       * draft is put back only when something in it did not reach Door43 and Door43 still has what it was typed
+       * over. Put back whenever it said something else, a draft already saved came back over helps somebody had
+       * changed since, and saving wrote the older text over theirs.
+       */
+      const settle = (remote: HelpsDraftItem[]): { items: HelpsDraftItem[]; restored: boolean } => {
+        const now = stampsOf(remote);
+        const inDraft = (item: HelpsDraftItem) => ({ text: cache?.texts[item.id] ?? item.text, secondary: cache?.secondary?.[item.id] ?? item.secondary });
+        const same = remote.every((item) => inDraft(item).text === item.text && (inDraft(item).secondary ?? "") === (item.secondary ?? ""));
+        const answer = helpsDraftCacheOpening(launch, cache).answered({ now, same, blank: remote.every(isBlank) });
+        const mine = answer.aside;
+        if (mine) setSetAside((prev) => [mine, ...prev.filter((draft) => draft.key !== mine.key)]);
+        const restored = answer.standing === "restore";
+        opened.current = now;
+        typedOver.current = { ...now };
+        unsaved.current = restored;
+        return { items: restored ? remote.map((item) => ({ ...item, ...inDraft(item) })) : remote, restored };
+      };
       let review: PortionPrMarker | null = null;
       if (!onTeamDraft && !lab && decoded.issueNumber > 0 && decoded.pmOrg) {
         try {
@@ -358,32 +397,13 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
             return { text: started.text, sha: started.sha } as FileMeta;
           });
           setFiles({ [resolved.filepath]: file });
-          const { rows } = parseTsvTable(file.text);
           const tsvResource = resolved.resource === "preguntas" ? "preguntas" : "notas";
-          let next = tsvRowsToDraftItems(
-            tsvResource,
-            resolved.filepath,
-            selectTsvRowsForPortion(rows, decoded, inventory),
-          );
-          let usedCache = false;
-          if (cache) {
-            next = next.map((item) => {
-              const cached = cache.texts[item.id];
-              const cachedSec = cache.secondary?.[item.id];
-              if (cached != null && cached !== item.text) usedCache = true;
-              if (cachedSec != null && cachedSec !== (item.secondary ?? "")) usedCache = true;
-              return {
-                ...item,
-                text: cached ?? item.text,
-                secondary: cachedSec ?? item.secondary,
-              };
-            });
-          }
-          if (!next.length && lab) next = labPlaceholderHelpsItems(decoded, resolved);
-          opened.current = Object.fromEntries(tsvRowsToDraftItems(tsvResource, resolved.filepath, selectTsvRowsForPortion(rows, decoded, inventory)).map((item) => [item.id, stampOf(item)]));
-          setItems(next);
-          setDirty(usedCache);
-          if (usedCache) announce(tNow("se.restored"));
+          const rowsIn = (text: string) => tsvRowsToDraftItems(tsvResource, filepath, selectTsvRowsForPortion(parseTsvTable(text).rows, decoded, inventory));
+          readItems.current = (files) => rowsIn(files[filepath]?.text ?? "");
+          const { items: put, restored } = settle(rowsIn(file.text));
+          setItems(!put.length && lab ? labPlaceholderHelpsItems(decoded, resolved) : put);
+          setDirty(restored);
+          if (restored) announce(tNow("se.restored"));
           return;
         } catch (err) {
           if (lab) {
@@ -399,32 +419,25 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       const mdResource = resolved.resource === "academia" ? "academia" : "palabras";
       const drafts = articleRefsToDraftItems(mdResource, refs);
       const nextFiles: Record<string, FileMeta> = {};
-      const nextItems: HelpsDraftItem[] = [];
-      let usedCache = false;
       for (const item of drafts) {
-        let remote = "";
         try {
-          const file = await readFilePreferBranch(
+          nextFiles[item.filepath] = await readFilePreferBranch(
             sess,
             resolved.owner,
             resolved.repo,
             item.filepath,
             head,
           );
-          nextFiles[item.filepath] = file;
-          remote = file.text;
         } catch {
           nextFiles[item.filepath] = { text: "" };
         }
-        const cached = cache?.texts[item.id];
-        if (cached != null && cached !== remote) usedCache = true;
-        nextItems.push({ ...item, text: cached ?? remote });
-        opened.current[item.id] = stampOf({ ...item, text: remote });
       }
+      readItems.current = (files) => drafts.map((item) => ({ ...item, text: files[item.filepath]?.text ?? "" }));
+      const { items: nextItems, restored } = settle(readItems.current(nextFiles));
       setFiles(nextFiles);
       setItems(nextItems.length || !lab ? nextItems : labPlaceholderHelpsItems(decoded, resolved));
-      setDirty(usedCache);
-      if (usedCache) announce(tNow("se.restored"));
+      setDirty(restored);
+      if (restored) announce(tNow("se.restored"));
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -455,10 +468,14 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       secondary: Object.keys(secondary).length ? secondary : undefined,
       savedAt: Date.now(),
       branch: nextBranch,
+      unsaved: unsaved.current,
+      typedOver: typedOver.current,
     });
   }
 
   function updateItem(id: string, patch: Partial<Pick<HelpsDraftItem, "text" | "secondary">>) {
+    editCount.current += 1;
+    unsaved.current = true;
     setItems((prev) => {
       const next = prev.map((item) => (item.id === id ? { ...item, ...patch } : item));
       persistLocal(next, branch);
@@ -470,7 +487,23 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** Returns whether what is written reached Door43. */
   async function save(): Promise<boolean> {
     if (!ctx || !target) return false;
+    const editsAtStart = editCount.current;
     persistLocal(items, branch);
+    /**
+     * What a save that reached Door43 leaves on this device. What was written while it was on its way is still to
+     * be saved, and is what is kept: called saved, and kept again from the text the save began with, it was gone
+     * from here though still on screen, and the next opening took it for work that had reached Door43.
+     */
+    const settleSaved = (head: string, written: Record<string, FileMeta>) => {
+      typedOver.current = stampsOf(readItems.current ? readItems.current(written) : items);
+      if (editCount.current === editsAtStart) {
+        unsaved.current = false;
+        setDirty(false);
+        persistLocal(items, head);
+      } else {
+        rebaseHelpsDraftCache(keptHelpsOf(ctx, session, shared && head ? [head] : []), { branch: head, typedOver: typedOver.current });
+      }
+    };
     if (!session) {
       announce(tNow("se.savedLocalAnnounce"));
       return false;
@@ -507,8 +540,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         }
         for (const item of changed) opened.current[item.id] = stampOf(item);
         setFiles(nextFiles);
-        setDirty(false);
-        persistLocal(items, head);
+        settleSaved(head, nextFiles);
         announce(tNow("he.savedShared"));
         return true;
       }
@@ -569,8 +601,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       }
       setFiles(nextFiles);
       setBranch(head);
-      setDirty(false);
-      persistLocal(items, head);
+      settleSaved(head, nextFiles);
       announce(tNow("se.savedIn").replace("{where}", `${target.owner}/${target.repo} @ ${head}`));
       return true;
     } catch (err) {
@@ -914,16 +945,30 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
         // Over the pane, not in it: the pane opens scrolled to the first help still to be translated.
         <div className="kd-over">
           <KeptDraftNote
-            drafts={setAside.map(({ key, entry }) => ({
+            drafts={setAside.map(({ key, entry, why }) => ({
               key,
               name: entry.place?.book ? `${bookLabel(entry.place.book, language)} ${passageLabel(entry.place.passage)}` : "",
               savedAt: entry.savedAt,
-              // Each text under the name of its help when that help is here, or of its article; a row of notes that
+              why,
+              // Each text under the name of its article, or under where its help is when that help is here (what a
+              // note or a question is called by is its own text, as long as what is shown beside it); a row that
               // is not here has no name a person would know, and is counted. A question goes with its answer.
+              // Only the helps that say something else than what the draft was typed over, which is what the person
+              // wrote (from before it said what that was: what the editor does not have). The helps of the passage
+              // nobody touched are not listed again.
               rows: Object.entries(entry.texts)
-                .map(([id, text]) => ({ label: items.find((item) => item.id === id)?.label ?? (id.includes("/") ? id : ""), text: [text, entry.secondary?.[id] ?? ""].filter((part) => part.trim()).join("\n\n") }))
-                .filter((row) => row.text)
-                .map((row, index) => ({ ...row, label: row.label || String(index + 1) })),
+                .map(([id, text]) => {
+                  const here = items.find((item) => item.id === id);
+                  const where = !here ? "" : here.intro ? introName(here) : here.verse ? `${here.chapter}:${here.verse}` : "";
+                  return {
+                    label: here?.kind === "tsv" ? where : (here?.label ?? (id.includes("/") ? id : "")),
+                    // In its lines, as the editor shows it and takes it when it is pasted (a row of a table has them written out).
+                    text: [text, entry.secondary?.[id] ?? ""].filter((part) => part.trim()).map((part) => (target?.kind === "tsv" ? noteFromTsv(part) : part)).join("\n\n"),
+                    written: (entry.typedOver ? entry.typedOver[id] : here && stampOf(here)) !== JSON.stringify([text, entry.secondary?.[id] ?? ""]),
+                  };
+                })
+                .filter((row, _, all) => row.text && (row.written || !all.some((other) => other.text && other.written)))
+                .map((row, index) => ({ label: row.label || String(index + 1), text: row.text })),
             }))}
             onDiscard={(key) => {
               discardKeptDraft(key);

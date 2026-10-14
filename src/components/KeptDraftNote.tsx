@@ -11,14 +11,16 @@ export type KeptDraftView = {
   /** What it is of, when it says so («Jonás 1:4–8»). */
   name: string;
   savedAt: number;
+  /** Why it was not put in the editor (see `KeptDraft`). */
+  why: "changed" | "unsure";
   rows: { label: string; text: string }[];
 };
 
 /**
- * A draft that is on this device and was not put in the editor, because nothing proves it is of this passage (see
- * `DraftLookup.aside`). It is said where the person writes and shown for them to take what is theirs: put in the
- * editor, the text of another passage would be saved over this one; dropped by the app, what somebody wrote and
- * had not saved would be gone without a word.
+ * A draft that is on this device and was not put in the editor: nothing proves it is of this passage, or it is
+ * and Door43 no longer has what it was typed over (see `DraftLookup.aside`). It is said where the person writes
+ * and shown for them to take what is theirs: put in the editor, it would be saved over another passage or over a
+ * newer text; dropped by the app, what somebody wrote and had not saved would be gone without a word.
  */
 export function KeptDraftNote({
   drafts,
@@ -58,6 +60,7 @@ export function KeptDraftNote({
             {drafts.map((draft) => (
               <section key={draft.key} className="kd-draft">
                 <h3 className="kd-draft__name">{[draft.name, when(draft.savedAt)].filter(Boolean).join(" · ")}</h3>
+                <p className="kd-draft__why">{t(draft.why === "changed" ? "kd.whyChanged" : "kd.whyUnsure")}</p>
                 <ul className="kd-rows">
                   {draft.rows.map((row, index) => (
                     <li key={index} className="kd-row">
