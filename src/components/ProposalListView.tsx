@@ -418,6 +418,13 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                       <TextChangeView before={decision.data.oldText} after={decision.data.newText} layout={layout} />
                     </div>
                   ) : null}
+                  {decision && session && launchCtx && place ? (
+                    // Under the verse it compares, opened there: after the vote it was far from what it helps to read.
+                    <details className="pl-compare" open={compareOpen} onToggle={(event) => setCompareOpen(event.currentTarget.open)}>
+                      <summary>{t("vc.title")}</summary>
+                      {compareOpen ? <VerseCompare session={session} ctx={launchCtx} board={data.board} chapter={place.chapter} verse={place.verse} /> : null}
+                    </details>
+                  ) : null}
                 </section>
                 {decision ? (
                   <div className="pl-side">
@@ -449,12 +456,6 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                       </details>
                     ) : null}
                   </div>
-                ) : null}
-                {decision && session && launchCtx && place ? (
-                  <details className="pl-compare" open={compareOpen} onToggle={(event) => setCompareOpen(event.currentTarget.open)}>
-                    <summary>{t("vc.title")}</summary>
-                    {compareOpen ? <VerseCompare session={session} ctx={launchCtx} board={data.board} chapter={place.chapter} verse={place.verse} /> : null}
-                  </details>
                 ) : null}
                 {decision && thread?.issue === current.number ? (
                   <div className="pl-talk">

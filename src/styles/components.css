@@ -9370,6 +9370,10 @@ html[data-text] .rf-words.af-orig .rf-word { font-size: calc(1.25rem * var(--ts)
 .tc-side[data-side="proposed"] .af-lbl { color: var(--success-700); }
 /* The verse in the texts it is weighed against, folded under the change. */
 .pl-compare { border-top: 1px solid var(--border); padding-top: var(--space-8); }
+/* In the verse's card it is a quiet line under the change, not a section of its own. */
+.pl-main .pl-compare { margin-top: calc(-1 * var(--space-4)); padding-top: 0; border-top: 0; }
+.pl-main .pl-compare > summary { justify-content: flex-start; gap: var(--space-6); font-size: 0.9375rem; }
+.pl-main .pl-compare[open] { display: grid; gap: var(--space-8); }
 .pl-compare > summary { min-height: 2.75rem; display: flex; align-items: center; font-weight: 700; color: var(--primary-700); cursor: pointer; }
 .vc { display: grid; gap: 0.5rem; padding-top: 0.25rem; }
 .vc-verse { margin: 0; font-family: var(--font-scripture); font-size: 1.09375rem; line-height: 1.6; overflow-wrap: anywhere; }
@@ -9474,12 +9478,11 @@ button.pl-pos__at:hover, button.pl-pos__at:focus-visible { background: var(--sur
 .pl-rail__title { margin: 0 0 var(--space-6); padding: 0 var(--space-12); color: var(--text-muted); font-size: 0.8125rem; font-weight: 700; }
 @media (min-width: 1024px) {
   .pl-body:has(.pl-rail) { max-width: 84rem; }
-  .pl-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "main side" "more side" "talk side"; grid-template-rows: auto auto 1fr; align-items: start; }
-  .pl-grid[data-rail] { grid-template-columns: 13rem minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "rail main side" "rail more side" "rail talk side"; }
+  .pl-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "main side" "talk side"; grid-template-rows: auto 1fr; align-items: start; }
+  .pl-grid[data-rail] { grid-template-columns: 13rem minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "rail main side" "rail talk side"; }
   .pl-rail { grid-area: rail; display: block; position: sticky; top: var(--space-8); max-height: calc(100dvh - 9rem); overflow-y: auto; padding-right: var(--space-12); border-right: 1px solid var(--border); }
   .pl-grid > .pl-main { grid-area: main; }
   .pl-grid > .pl-side { grid-area: side; }
-  .pl-grid > .pl-compare { grid-area: more; }
   .pl-grid > .pl-talk { grid-area: talk; }
   .pl:has(.pl-rail) .pl-strip { display: none; }
   .pl:has(.pl-rail) .pl-pos { justify-content: center; }
