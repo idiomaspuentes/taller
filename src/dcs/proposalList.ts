@@ -1,4 +1,8 @@
-import { editIssue, listIssueComments, listRepoIssues, type DcsIssue } from "@ip-lms/dcs-client";
+import { editIssue, getRawContent, listIssueComments, listRepoIssues, type DcsIssue } from "@ip-lms/dcs-client";
+import type { AlignmentMap } from "@usfm-tools/types";
+import type { UsjDocument } from "@usfm-tools/usj-core";
+import { alignedGatewayQuoteForHelpQuote } from "../domain/helpQuoteMatch";
+import { tryParseUsjWithAlignments, verseTextsFromUsj } from "../domain/usfmAst";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import { closeIssue, listProjectIssues, loadPmConfig } from "./issues";
@@ -86,7 +90,7 @@ export async function finishProposalList(params: { session: GtSession; pmOrg: st
 }
 
 /** A note of the book, as one opened from a reason reads it. */
-export type BookNote = { id: string; ref: string; quote: string; note: string; supportRef: string };
+export type BookNote = { id: string; ref: string; quote: string; occurrence: number; note: string; supportRef: string };
 
 /**
  * The notes of a book, by their id: the team's own when it has them (its draft, or what it published), else the
@@ -102,7 +106,30 @@ export async function loadBookNotes(session: GtSession, ctx: SolverLaunchContext
   for (const row of text ? parseTsvTable(text).rows : []) {
     const id = (row.ID ?? row.Id ?? row.id ?? "").trim();
     if (!id) continue;
-    out.set(id, { id, ref: (row.Reference ?? row.reference ?? "").trim(), quote: (row.Quote ?? row.OrigQuote ?? "").trim(), note: (row.Note ?? row.OccurrenceNote ?? "").replace(/\\n/g, "\n").trim(), supportRef: supportReferenceOf(row) });
+    out.set(id, { id, ref: (row.Reference ?? row.reference ?? "").trim(), quote: (row.Quote ?? row.OrigQuote ?? "").trim(), occurrence: Math.max(1, parseInt(row.Occurrence ?? "1", 10) || 1), note: (row.Note ?? row.OccurrenceNote ?? "").replace(/\\n/g, "\n").trim(), supportRef: supportReferenceOf(row) });
   }
   return out;
+}
+
+/** The team's text of a book with its alignment: what the quote of a note is found in, as the team words it. */
+export type AlignedText = { usj: UsjDocument; alignments: AlignmentMap };
+
+export async function loadAlignedText(session: GtSession, draft: { owner: string; repo: string; branch: string; filepath: string }): Promise<AlignedText | null> {
+  const raw = await getRawContent(dcsConfig(session.host), draft.owner, draft.repo, draft.filepath, { token: session.token, ref: draft.branch }).catch(() => null);
+  return raw ? tryParseUsjWithAlignments(raw) : null;
+}
+
+/**
+ * The words of the team's text a quote of the original stands for, found through the alignment, as notes are called
+ * by in the other screens: «בְּאֵימָה עֲלֵיהֶם» is «había terror sobre ellos». `null` when the verse is not aligned
+ * there, or the quote is not found.
+ */
+export function quoteInText(text: AlignedText, book: string, ref: string, quote: string, occurrence: number): string | null {
+  const at = /^(\d+):(\d+)/.exec(ref.trim());
+  if (!at || !quote) return null;
+  const chapter = Number(at[1]);
+  const verse = Number(at[2]);
+  const verseText = (verseTextsFromUsj(text.usj, { chapter, from: verse, to: verse }) ?? {})[verse];
+  if (!verseText) return null;
+  return alignedGatewayQuoteForHelpQuote({ verseText, quote, occurrence, alignments: text.alignments, book, chapter, verse }).gatewayText;
 }

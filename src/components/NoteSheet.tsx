@@ -14,7 +14,24 @@ import { HelpMarkdownView } from "./HelpMarkdownView";
  * A note named in a reason, opened over the proposal: where it is, the words of the original it is about, what it
  * says, and the article it points to, to read there too. The team's own wording when it has one.
  */
-export function NoteSheet({ note, session, ctx, pkg, onClose }: { note: BookNote | null; session: GtSession; ctx: SolverLaunchContext; pkg: SourcePackage; onClose: () => void }) {
+export function NoteSheet({
+  note,
+  phrase,
+  textName,
+  session,
+  ctx,
+  pkg,
+  onClose,
+}: {
+  note: BookNote | null;
+  /** The quote in the team's text, as notes are called by elsewhere; `"loading"` while it is looked for. */
+  phrase?: string | null | "loading";
+  textName: string;
+  session: GtSession;
+  ctx: SolverLaunchContext;
+  pkg: SourcePackage;
+  onClose: () => void;
+}) {
   const t = useT();
   const path = note ? articlePathOf(note.supportRef) : "";
   const [title, setTitle] = useState("");
@@ -48,9 +65,21 @@ export function NoteSheet({ note, session, ctx, pkg, onClose }: { note: BookNote
           <>
             <DialogTitle className="ns-title">{t("ns.title").replace("{id}", note.id).replace("{ref}", note.ref)}</DialogTitle>
             {note.quote ? (
-              <p className="ns-quote" lang="hbo" dir="rtl">
-                {note.quote}
-              </p>
+              <div className="ns-quote-box">
+                {phrase && phrase !== "loading" ? (
+                  <p className="ns-phrase">
+                    <span className="ns-phrase__text">{phrase}</span>
+                    <span className="pl-tag">{textName}</span>
+                  </p>
+                ) : phrase === "loading" ? (
+                  <p className="ns-phrase ns-phrase--wait" aria-busy="true">
+                    {" "}
+                  </p>
+                ) : null}
+                <p className="ns-quote" lang="hbo" dir="rtl">
+                  {note.quote}
+                </p>
+              </div>
             ) : null}
             <div className="ns-body">
               <HelpMarkdownView content={note.note.replace(/\n/g, "\n\n")} />

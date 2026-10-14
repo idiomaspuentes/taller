@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
-import { finishProposalList, loadBookNotes, loadDecisionThread, loadProposalList, type BookNote, type ProposalListData } from "../dcs/proposalList";
+import { finishProposalList, loadAlignedText, loadBookNotes, loadDecisionThread, loadProposalList, quoteInText, type AlignedText, type BookNote, type ProposalListData } from "../dcs/proposalList";
 import type { OriginalWord } from "../dcs/afinacionLoad";
 import { loadOriginalWords } from "../dcs/syntaxTree";
 import { tallerConfig, workspaceOfOrg } from "../config";
@@ -130,6 +130,26 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const [notes, setNotes] = useState<Map<string, BookNote>>(new Map());
   const [sheet, setSheet] = useState<{ word: OriginalWord; chapter: number; verse: number } | null>(null);
   const [openNote, setOpenNote] = useState<BookNote | null>(null);
+  // The team's aligned text, read the first time a note is opened: a note is called by its words there.
+  const [aligned, setAligned] = useState<{ key: string; text: AlignedText | null } | null>(null);
+  const draft = decision?.data.draft;
+  const draftKey = draft ? `${draft.owner}/${draft.repo}@${draft.branch}/${draft.filepath}` : "";
+  useEffect(() => {
+    if (!openNote || !session || !draft || aligned?.key === draftKey) return;
+    let alive = true;
+    void loadAlignedText(session, draft)
+      .then((text) => alive && setAligned({ key: draftKey, text }))
+      .catch(() => alive && setAligned({ key: draftKey, text: null }));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openNote?.id, draftKey]);
+  const notePhrase = useMemo(() => {
+    if (!openNote) return undefined;
+    if (aligned?.key !== draftKey) return "loading" as const;
+    return aligned.text ? quoteInText(aligned.text, bookCode, openNote.ref, openNote.quote, openNote.occurrence) : null;
+  }, [openNote, aligned, draftKey, bookCode]);
   useEffect(() => {
     if (!session || !bookCode || !here || words?.chapter === here.chapter) return;
     let alive = true;
@@ -333,7 +353,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
       {session ? (
         <WordSheet word={sheet?.word ?? null} at={{ book: bookCode, chapter: sheet?.chapter ?? 0, verse: sheet?.verse ?? 0 }} session={session} workspace={workspaceOfOrg(tallerConfig, pmOrg)} onClose={() => setSheet(null)} readOnly />
       ) : null}
-      {session && launchCtx && data ? <NoteSheet note={openNote} session={session} ctx={launchCtx} pkg={resolveSourcePackage(data.board.settings)} onClose={() => setOpenNote(null)} /> : null}
+      {session && launchCtx && data ? <NoteSheet note={openNote} phrase={notePhrase} textName={(launchCtx.resource || "tpl").toUpperCase()} session={session} ctx={launchCtx} pkg={resolveSourcePackage(data.board.settings)} onClose={() => setOpenNote(null)} /> : null}
     </div>
   );
 }
