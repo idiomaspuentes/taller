@@ -11,6 +11,7 @@ export type ReasonLinks = {
   notes: Set<string>;
   onWord: (index: number) => void;
   onNote: (id: string) => void;
+  onArticle?: (path: string) => void;
 };
 
 const isHebrew = (text: string) => /[֐-׿]/.test(text);
@@ -33,6 +34,14 @@ export function ReasonText({ text, links }: { text: string; links: ReasonLinks }
                   <span lang={isHebrew(piece.text) ? "hbo" : "grc"} dir={isHebrew(piece.text) ? "rtl" : undefined}>
                     {piece.text}
                   </span>
+                )
+              ) : piece.kind === "article" ? (
+                links.onArticle ? (
+                  <button type="button" className="rt-note" title={t("rt.articleTitle")} onClick={() => links.onArticle!(piece.path)}>
+                    {piece.text}
+                  </button>
+                ) : (
+                  piece.text
                 )
               ) : piece.kind === "note" ? (
                 <button type="button" className="rt-note" title={t("rt.noteTitle")} onClick={() => links.onNote(piece.id)}>

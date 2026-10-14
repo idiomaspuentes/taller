@@ -1438,6 +1438,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           onFix={(text, why) => void askGroup(text, why || t("fx.proposalNote"))}
           onAsk={(text, why) => void askGroup(text, why)}
           onClose={() => setFixing(false)}
+          cite={{ session, ctx, chapter: data.chapter, verse: verse.verse }}
         />
       ) : null}
       <WordSheet

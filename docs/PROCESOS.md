@@ -241,6 +241,12 @@ aviso más entre el trabajo del equipo. Van en **una corrección por capítulo q
 Código: `src/domain/proposalList.ts`, `src/dcs/proposalList.ts`, `src/components/ProposalListView.tsx`; pruebas,
 `npm run verify:proposal-list`.
 
+El porqué de una propuesta (al corregir en afinación o en la alineación, en la lectura en grupo, o al rechazar una)
+**cita con un toque**: bajo el campo, «Citar» ofrece las palabras del original, de la ULT y de la UST del versículo
+para tocarlas, sus notas y los artículos de Academia a los que remiten. Se escriben como se leen después
+(`reasonInsert.ts`), y quien lee la propuesta abre cada palabra del original, cada nota y cada artículo
+(`reasonText.ts`, `ReasonField.tsx`).
+
 Esa misma pantalla abre **cualquier decisión del equipo sobre el texto** desde «Mis tareas»: el cambio se lee junto, uno
 bajo otro o lado a lado, y se compara con el original (cada palabra abre su significado y el diagrama de la oración),
 la ULT, la UST y el otro texto del equipo (`TextChangeView.tsx`, `VerseCompare.tsx`).

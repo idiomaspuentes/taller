@@ -6,6 +6,7 @@
  */
 import assert from "node:assert/strict";
 import { findOriginal, originalKey, reasonPieces } from "../src/domain/reasonText";
+import { articleSnippet, insertAt, noteSnippet, originalSnippet, textSnippet } from "../src/domain/reasonInsert";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -48,6 +49,22 @@ test("cada línea es un párrafo, y una palabra que el versículo no tiene se ma
   const paras = reasonPieces("Uno.\n\nDos dice שָׁלוֹם.", verse, new Set());
   assert.equal(paras.length, 2);
   assert.deepEqual(paras[1]!.find((piece) => piece.kind === "word"), { kind: "word", text: "שָׁלוֹם", match: -1 });
+});
+
+test("un artículo de Academia se reconoce por su ruta, y lo que se inserta al tocar se vuelve a leer igual", () => {
+  const notes = new Set(["n3m4"]);
+  const text = `El hebreo dice ${originalSnippet(["בְּ⁠אֵימָה֙", "עֲלֵי⁠הֶ֔ם"])}, ${textSnippet("ULT", ["in", "terror", "on", "them"])}; ${noteSnippet("n3m4")} y ${articleSnippet("Metáfora", "translate/figs-metaphor")}.`;
+  assert.equal(text, "El hebreo dice בְּאֵימָה עֲלֵיהֶם, «in terror on them» (ULT); la nota n3m4 y el artículo «Metáfora» (translate/figs-metaphor).");
+  const [para] = reasonPieces(text, verse, notes);
+  assert.deepEqual(para!.filter((piece) => piece.kind !== "text").map((piece) => (piece.kind === "word" ? `w${piece.match}` : piece.kind === "note" ? `n:${piece.id}` : piece.kind === "article" ? `a:${piece.path}` : "")), ["w3", "w4", "n:n3m4", "a:translate/figs-metaphor"]);
+});
+
+test("lo tocado se pone donde se escribía, con un espacio a cada lado si hace falta", () => {
+  assert.deepEqual(insertAt("dice  y", 5, 5, "X"), { text: "dice X y", cursor: 6 });
+  assert.deepEqual(insertAt("dice", 4, 4, "X"), { text: "dice X", cursor: 6 });
+  assert.deepEqual(insertAt("", 0, 0, "X"), { text: "X", cursor: 1 });
+  assert.deepEqual(insertAt("«», ok", 1, 1, "X"), { text: "«X», ok", cursor: 2 });
+  assert.deepEqual(insertAt("cambia esto aquí", 7, 11, "X"), { text: "cambia X aquí", cursor: 8 }, "en lugar de lo elegido");
 });
 
 console.log(`\n${passed} pruebas de las razones que se abren pasaron.`);

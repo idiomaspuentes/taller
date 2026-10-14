@@ -10,6 +10,7 @@ import { tallerConfig, workspaceOfOrg } from "../config";
 import { isRtl, OriginalWords } from "./OriginalWords";
 import { ParallelLink } from "./ParallelSheet";
 import { WordSheet } from "./WordSheet";
+import { ReasonField } from "./ReasonField";
 import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTerm, saveCorrection } from "../dcs/afinacionStore";
 import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
@@ -1255,7 +1256,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {/* Why, by a touch; what a touch does not say can be written. */}
                   <span className="af-lbl">{t("fx.reasons")}</span>
                   <CorrectionReasons value={fixReasons} onChange={setFixReasons} />
-                  <input id="af-fix-reason" className="af-input" value={fixReason} placeholder={t("fx.whyHint")} aria-label={t("fx.why")} onChange={(e) => setFixReason(e.target.value)} />
+                  <ReasonField id="af-fix-reason" rows={2} value={fixReason} onChange={setFixReason} session={session} ctx={ctx} chapter={item.chapter} verse={item.verse} placeholder={t("fx.whyHint")} ariaLabel={t("fx.why")} />
                   <p className="af-hint">{t("af.fixHint")}</p>
                   <div className="af-row-buttons">
                     <Button type="button" size="sm" disabled={saving || !fixText.trim()} onClick={() => void saveFix()}>

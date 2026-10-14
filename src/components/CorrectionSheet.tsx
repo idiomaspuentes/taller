@@ -6,6 +6,9 @@ import type { CorrectionReason } from "../domain/correctionLog";
 import { sameText, wordDiff } from "../domain/verseEditView";
 import { useT } from "../i18n/messages";
 import { CorrectionReasons, reasonLine } from "./CorrectionReasons";
+import { ReasonField } from "./ReasonField";
+import type { GtSession } from "../dcs/auth";
+import type { SolverLaunchContext } from "../domain/solverLaunch";
 
 /** Why a verse is corrected, as it is kept: the kinds chosen and what the person wrote. */
 export type CorrectionWhy = { reasons: CorrectionReason[]; note: string };
@@ -30,6 +33,7 @@ export function CorrectionSheet({
   onFix,
   onAsk,
   onClose,
+  cite,
 }: {
   open: boolean;
   /** "3JN 1:5" */
@@ -42,6 +46,8 @@ export function CorrectionSheet({
   onFix: (text: string, why: string, detail: CorrectionWhy) => void;
   onAsk: (text: string, why: string) => void;
   onClose: () => void;
+  /** Where the verse is, so that the reason can cite its original, its texts and its notes by a touch. */
+  cite?: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined; chapter: number; verse: number };
 }) {
   const t = useT();
   const [draft, setDraft] = useState(text);
@@ -127,7 +133,7 @@ export function CorrectionSheet({
           <div className="fx-field" role="group" aria-label={t("fx.reasons")}>
             <span className="af-lbl">{t("fx.reasons")}</span>
             <CorrectionReasons value={reasons} onChange={setReasons} />
-            <textarea className="af-textarea" rows={2} value={why} aria-label={t("fx.why")} placeholder={t("fx.whyHint")} onChange={(e) => setWhy(e.target.value)} />
+            <ReasonField rows={2} value={why} onChange={setWhy} session={cite?.session} ctx={cite?.ctx} chapter={cite?.chapter ?? 0} verse={cite?.verse ?? 0} ariaLabel={t("fx.why")} placeholder={t("fx.whyHint")} />
           </div>
 
           {error ? (

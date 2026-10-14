@@ -9293,6 +9293,8 @@ html[data-text] .cr-why, html[data-text] .pl-note, html[data-text] .ns-body, htm
 html[data-text] .ns-phrase__text, html[data-text] .ns-quote { font-size: calc(1.125rem * var(--ts)); }
 html[data-text] .vc .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
 html[data-text] .word-sheet, html[data-text] .st-sheet { font-size: calc(1rem * var(--ts)); }
+html[data-text] .rf-word, html[data-text] .rf-item { font-size: calc(1rem * var(--ts)); }
+html[data-text] .rf-words.af-orig .rf-word { font-size: calc(1.25rem * var(--ts)); }
 
 /* The three sizes in the menu, each letter as large as what it gives. */
 .user-menu__icon--letters { font-size: 0.75rem; font-weight: 700; }
@@ -9375,6 +9377,28 @@ html[data-text] .word-sheet, html[data-text] .st-sheet { font-size: calc(1rem * 
 .sg-prepare p { margin: 0; }
 .sg-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .sg-actions > * { flex: 1 1 10rem; min-height: 2.75rem; }
+/* The reason of a change, with what it cites a touch away. */
+.rf { display: grid; gap: 0.375rem; }
+/* While something is being picked to cite, the buttons of the card go under it: pinned, they covered its own. */
+.chat-decision__write:has(.rf-pick) .chat-decision__actions { position: static; }
+.rf-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
+.rf-bar__label { color: var(--text-muted); font-size: 0.875rem; font-weight: 600; }
+.rf-chip { min-height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.rf-chip[aria-pressed="true"] { border-color: var(--primary-600, #2563eb); background: var(--primary-100, #dbeafe); color: var(--primary-800, #1e40af); }
+.rf-pick { display: grid; gap: 0.5rem; padding: 0.625rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md, 8px); background: var(--surface); }
+.rf-pick .af-hint { margin: 0; }
+.rf-words { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.rf-word { min-height: 2.5rem; padding: 0 0.625rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 1rem; cursor: pointer; }
+.rf-words.af-orig .rf-word { font-family: "Times New Roman", serif; font-size: 1.25rem; }
+.rf-word[aria-pressed="true"] { border-color: var(--primary-600, #2563eb); background: var(--primary-100, #dbeafe); }
+.rf-actions { display: flex; gap: 0.5rem; }
+.rf-actions > * { min-height: 2.5rem; }
+.rf-list { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.rf-item { display: grid; gap: 0.125rem; width: 100%; min-height: 2.75rem; padding: 0.5rem 0.625rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.rf-item:hover { background: var(--primary-50, #eff6ff); }
+.rf-item__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; font-weight: 600; }
+.rf-item__head [lang="hbo"] { font-family: "Times New Roman", serif; font-size: 1.125rem; font-weight: 400; }
+.rf-item__text { color: var(--text-muted); font-size: 0.875rem; }
 /* The proposal screen, read top to bottom on a phone and in two columns on a wide screen. */
 .pl-strip { display: flex; gap: 0.375rem; overflow-x: auto; padding: 0.125rem 0 0.375rem; scrollbar-width: thin; }
 .pl-strip button { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.5rem; min-width: 3rem; padding: 0 0.625rem; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 0.875rem; font-weight: 600; cursor: pointer; }

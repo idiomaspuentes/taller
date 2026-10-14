@@ -16,6 +16,7 @@ import { HelpMarkdownView } from "./HelpMarkdownView";
  */
 export function NoteSheet({
   note,
+  articlePath,
   phrase,
   textName,
   session,
@@ -24,6 +25,8 @@ export function NoteSheet({
   onClose,
 }: {
   note: BookNote | null;
+  /** An Academy article opened on its own, from a reason that cites it («translate/figs-metaphor»). */
+  articlePath?: string | null;
   /** The quote in the team's text, as notes are called by elsewhere; `"loading"` while it is looked for. */
   phrase?: string | null | "loading";
   textName: string;
@@ -33,7 +36,8 @@ export function NoteSheet({
   onClose: () => void;
 }) {
   const t = useT();
-  const path = note ? articlePathOf(note.supportRef) : "";
+  const path = note ? articlePathOf(note.supportRef) : (articlePath ?? "");
+  const alone = !note && Boolean(articlePath);
   const [title, setTitle] = useState("");
   const [article, setArticle] = useState<string | null | undefined>(undefined);
   const [reading, setReading] = useState(false);
@@ -47,11 +51,13 @@ export function NoteSheet({
     void loadArticleInfo(session, ctx, pkg, [path])
       .then((found) => alive && setTitle(found[path]?.title ?? ""))
       .catch(() => undefined);
+    // Opened for the article alone: it is what there is to read.
+    if (alone) void loadArticleBody(session, ctx, pkg, path).then((body) => alive && setArticle(body), () => alive && setArticle(null));
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, note?.id]);
+  }, [path, note?.id, alone]);
 
   async function read() {
     setReading(true);
@@ -59,8 +65,14 @@ export function NoteSheet({
   }
 
   return (
-    <Dialog open={Boolean(note)} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent className="word-sheet note-sheet" aria-label={t("ns.aria")}>
+    <Dialog open={Boolean(note) || alone} onOpenChange={(open) => (open ? undefined : onClose())}>
+      <DialogContent className="word-sheet note-sheet" aria-label={t(alone ? "ns.articleAria" : "ns.aria")}>
+        {alone ? (
+          <>
+            <DialogTitle className="ns-title">{title || path}</DialogTitle>
+            <section className="ns-article ns-article--alone">{article === undefined ? <p className="af-hint">{t("ns.loading")}</p> : article ? <HelpMarkdownView content={article} /> : <p className="af-hint">{t("ns.noArticle")}</p>}</section>
+          </>
+        ) : null}
         {note ? (
           <>
             <DialogTitle className="ns-title">{t("ns.title").replace("{id}", note.id).replace("{ref}", note.ref)}</DialogTitle>

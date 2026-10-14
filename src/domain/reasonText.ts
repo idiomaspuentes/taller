@@ -8,7 +8,9 @@ export type ReasonPiece =
   | { kind: "text"; text: string; strong?: true }
   /** A word of the original; `match` is its place among the words it was looked for in, or -1 when not found. */
   | { kind: "word"; text: string; match: number; strong?: true }
-  | { kind: "note"; text: string; id: string; strong?: true };
+  | { kind: "note"; text: string; id: string; strong?: true }
+  /** An Academy article, by its path («translate/figs-metaphor»). */
+  | { kind: "article"; text: string; path: string; strong?: true };
 
 /** Hebrew (with Aramaic, which is written the same) or Greek, without the marks two writings of a word may differ in. */
 export function originalKey(word: string): string {
@@ -40,8 +42,9 @@ export function findOriginal(word: string, among: string[]): number {
 
 // A word of the original: Hebrew letters and points (not the maqaf, which joins two words), or Greek.
 const ORIGINAL = "[\\u0591-\\u05BD\\u05BF-\\u05F4\\uFB1D-\\uFB4F\\u2060\\u0370-\\u03FF\\u1F00-\\u1FFF]+";
-// «la nota n3m4», «notas d9rn, fr03 y vvzw»: the ids after the word; and an id that has a figure, alone.
-const PIECES = new RegExp(`(\\bnotas?\\s+)([a-z0-9]{4}(?:\\s*(?:,|y)\\s*[a-z0-9]{4})*)\\b|(${ORIGINAL})|\\b([a-z0-9]*\\d[a-z0-9]*)\\b`, "giu");
+// «la nota n3m4», «notas d9rn, fr03 y vvzw»: the ids after the word; an Academy article by its path
+// («translate/figs-metaphor»); and a note's id that has a figure, alone.
+const PIECES = new RegExp(`(\\bnotas?\\s+)([a-z0-9]{4}(?:\\s*(?:,|y)\\s*[a-z0-9]{4})*)\\b|(${ORIGINAL})|\\b((?:translate|checking|intro|process)/[a-z0-9-]+[a-z0-9])|\\b([a-z0-9]*\\d[a-z0-9]*)\\b`, "giu");
 
 function piecesOf(text: string, strong: boolean, among: string[], notes: Set<string>): ReasonPiece[] {
   const out: ReasonPiece[] = [];
@@ -66,8 +69,10 @@ function piecesOf(text: string, strong: boolean, among: string[], notes: Set<str
       }
     } else if (match[3] !== undefined) {
       out.push({ kind: "word", text: match[3], match: findOriginal(match[3], among), ...flag });
-    } else if (match[4] !== undefined && match[4].length === 4 && notes.has(match[4])) {
-      out.push({ kind: "note", text: match[4], id: match[4], ...flag });
+    } else if (match[4] !== undefined) {
+      out.push({ kind: "article", text: match[4], path: match[4].toLowerCase(), ...flag });
+    } else if (match[5] !== undefined && match[5].length === 4 && notes.has(match[5])) {
+      out.push({ kind: "note", text: match[5], id: match[5], ...flag });
     } else {
       plain(match[0]);
     }

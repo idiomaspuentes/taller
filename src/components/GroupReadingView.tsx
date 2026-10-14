@@ -27,6 +27,7 @@ import { heldByLaterPhase } from "../dcs/redoAfterCorrection";
 import { localizeThread } from "../domain/threadNames";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
+import { ReasonField } from "./ReasonField";
 
 type Props = {
   ctxEncoded: string;
@@ -284,13 +285,16 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
           <div className="rv-composer">
             {writing.kind === "fix" ? <textarea className="af-textarea" rows={3} value={writing.text} aria-label={t("gr.fixAria")} onChange={(e) => setOpen({ ...writing, text: e.target.value })} /> : null}
             {writing.kind === "fix" ? <CorrectionReasons value={writing.reasons ?? []} onChange={(reasons) => setOpen({ ...writing, reasons })} /> : null}
-            <textarea
-              className="af-textarea"
+            <ReasonField
               rows={2}
               value={writing.why}
+              session={session}
+              ctx={ctx}
+              chapter={data?.chapter ?? ctx?.chapter ?? 0}
+              verse={verse}
               placeholder={t(writing.kind === "fix" ? "gr.whyFix" : writing.kind === "agree" ? "gr.whyAgree" : "gr.whyDoubt")}
-              aria-label={t(writing.kind === "fix" ? "gr.whyFix" : writing.kind === "agree" ? "gr.whyAgree" : "gr.whyDoubt")}
-              onChange={(e) => setOpen({ ...writing, why: e.target.value })}
+              ariaLabel={t(writing.kind === "fix" ? "gr.whyFix" : writing.kind === "agree" ? "gr.whyAgree" : "gr.whyDoubt")}
+              onChange={(why) => setOpen({ ...writing, why })}
             />
             <div className="rv-composer__row">
               {writing.kind === "fix" ? (

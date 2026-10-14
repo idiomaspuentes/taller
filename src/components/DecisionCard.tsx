@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { CiteScope, ReasonField } from "./ReasonField";
 import type { ChatEvent } from "../domain/chatEvent";
 import type { ThreadItem } from "../domain/conversation";
 import {
@@ -53,6 +54,7 @@ export function DecisionCard({
 }: Props) {
   const t = useT();
   const language = useUiLanguage();
+  const cite = useContext(CiteScope);
   const loc = (text: string) => localizeThread(text, language);
   const event = item.event!;
   const definition = resolved.definition;
@@ -172,7 +174,12 @@ export function DecisionCard({
           <label className="chat-decision__confirm-text" htmlFor={`write-${item.key}`}>
             {loc(writeOption.input!.label)}
           </label>
-          <textarea id={`write-${item.key}`} className="af-textarea" rows={3} value={writing.text} autoFocus onChange={(e) => setWriting({ id: writing.id, text: e.target.value })} />
+          {cite && writing.id !== "version" ? (
+            // A reason, said with what it cites: the words of the original, the texts, the notes.
+            <ReasonField id={`write-${item.key}`} rows={3} value={writing.text} autoFocus session={cite.session} ctx={cite.ctx} chapter={cite.chapter} verse={cite.verse} onChange={(text) => setWriting({ id: writing.id, text })} />
+          ) : (
+            <textarea id={`write-${item.key}`} className="af-textarea" rows={3} value={writing.text} autoFocus onChange={(e) => setWriting({ id: writing.id, text: e.target.value })} />
+          )}
           <div className="chat-decision__actions">
             <Button type="button" disabled={!writing.text.trim()} onClick={() => void run(writeOption, writing.text.trim())}>
               {t("dc.send")}

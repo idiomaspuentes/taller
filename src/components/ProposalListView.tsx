@@ -20,6 +20,7 @@ import { routeToHash } from "../router";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { DecisionCard } from "./DecisionCard";
+import { CiteScope } from "./ReasonField";
 import { TextChangeView } from "./TextChangeView";
 import { VerseCompare } from "./VerseCompare";
 import { buildSolverLaunchContext } from "../domain/solverLaunch";
@@ -130,6 +131,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const [notes, setNotes] = useState<Map<string, BookNote>>(new Map());
   const [sheet, setSheet] = useState<{ word: OriginalWord; chapter: number; verse: number } | null>(null);
   const [openNote, setOpenNote] = useState<BookNote | null>(null);
+  const [openArticle, setOpenArticle] = useState<string | null>(null);
   // The team's aligned text, read the first time a note is opened: a note is called by its words there.
   const [aligned, setAligned] = useState<{ key: string; text: AlignedText | null } | null>(null);
   const draft = decision?.data.draft;
@@ -183,6 +185,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
       notes: new Set(notes.keys()),
       onWord: (index) => setSheet(candidates[index] ?? null),
       onNote: (id) => setOpenNote(notes.get(id) ?? null),
+      onArticle: (path) => setOpenArticle(path),
     };
   }, [here?.chapter, here?.verse, words, notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -306,6 +309,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                   <h3 className="pl-why">{t("pl.whyTitle")}</h3>
                   <p className="pl-meta">{(deadline ? t("pl.byDeadline").replace("{date}", deadline) : t("pl.by")).replace("{who}", decision.data.by)}</p>
                   <ChangeReasons note={decision.data.note} links={links} />
+                  <CiteScope.Provider value={here ? { session, ctx: launchCtx, chapter: here.chapter, verse: here.verse } : null}>
                   <DecisionCard
                     key={decision.item.key}
                     item={decision.item}
@@ -319,6 +323,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                     hidePanels={changesText}
                     compact
                   />
+                  </CiteScope.Provider>
                   <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>
                     {t("pl.thread")}
                   </button>
@@ -353,7 +358,10 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
       {session ? (
         <WordSheet word={sheet?.word ?? null} at={{ book: bookCode, chapter: sheet?.chapter ?? 0, verse: sheet?.verse ?? 0 }} session={session} workspace={workspaceOfOrg(tallerConfig, pmOrg)} onClose={() => setSheet(null)} readOnly />
       ) : null}
-      {session && launchCtx && data ? <NoteSheet note={openNote} phrase={notePhrase} textName={(launchCtx.resource || "tpl").toUpperCase()} session={session} ctx={launchCtx} pkg={resolveSourcePackage(data.board.settings)} onClose={() => setOpenNote(null)} /> : null}
+      {session && launchCtx && data ? <NoteSheet note={openNote} articlePath={openArticle} phrase={notePhrase} textName={(launchCtx.resource || "tpl").toUpperCase()} session={session} ctx={launchCtx} pkg={resolveSourcePackage(data.board.settings)} onClose={() => {
+            setOpenNote(null);
+            setOpenArticle(null);
+          }} /> : null}
     </div>
   );
 }
