@@ -1380,6 +1380,7 @@
   "pl.listTitle": "Propuestas",
   "pl.stateOpen": "Por decidir",
   "pl.newTalk": "Mensajes nuevos",
+  "pl.prevTo": "Anterior: {ref}",
   "pl.nextTo": "Siguiente: {ref}",
   "tc.togetherHint": "El cambio marcado dentro del versículo",
   "tc.stackedHint": "Cómo está ahora y, debajo, la propuesta",
