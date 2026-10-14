@@ -95,6 +95,35 @@ export function withChanges(verse: string, changes: TextChange[]): { text: strin
   return { text, missing };
 }
 
+/**
+ * The changes a proposal says, read back from what `changesNote` wrote, to show each apart: its words, its cause, why,
+ * its notes. `null` for a note written otherwise (by a person, from a tool): it is shown as it was written.
+ */
+export function readChangesNote(note: string): TextChange[] | null {
+  const blocks = note.replace(/\r/g, "").trim().split(/\n\s*\n/);
+  const out: TextChange[] = [];
+  for (const block of blocks) {
+    const [head, ...lines] = block.split("\n");
+    const pair = /^(?:\d+\.\s+)?«(.*)» → «(.*)»$/.exec((head ?? "").trim());
+    if (!pair) return null;
+    const change: TextChange = { before: pair[1]!, after: pair[2]! };
+    for (const line of lines) {
+      const field = /^(Causa|Por qué|Notas):\s*(.*)$/.exec(line.trim());
+      if (!field) {
+        // A reason of more than one line goes on.
+        if (change.why !== undefined) change.why += `\n${line}`;
+        else return null;
+        continue;
+      }
+      if (field[1] === "Causa") change.cause = field[2]!.replace(/\.$/, "");
+      else if (field[1] === "Por qué") change.why = field[2]!;
+      else change.notes = field[2]!;
+    }
+    out.push(change);
+  }
+  return out.length ? out : null;
+}
+
 /** What the proposal of a verse says: each change, why, and the notes it is about. */
 export function changesNote(changes: TextChange[]): string {
   return changes

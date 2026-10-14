@@ -11,7 +11,7 @@ import { correctionRows } from "../src/domain/corrections";
 import { extraItemId, normalizeExtraWork } from "../src/domain/extraWork";
 import { buildBoard, type Board, type BoardCard } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
-import { changesNote, decisionParent, firstToRead, inProposalList, isProposalList, proposalCount, proposalsOfList, withChanges } from "../src/domain/proposalList";
+import { changesNote, decisionParent, firstToRead, inProposalList, isProposalList, proposalCount, proposalsOfList, readChangesNote, withChanges } from "../src/domain/proposalList";
 import { emptyCursor } from "../src/domain/readCursor";
 import type { AssignmentsDoc, ProjectSettings } from "../src/domain/types";
 import { encodeWorkOrderMarker, parseWorkOrderMarker, type WorkOrder } from "../src/domain/workOrder";
@@ -152,6 +152,17 @@ test("lo que dice la propuesta de un versículo: cada cambio, su causa, por qué
   assert.equal(one, "«tenían miedo» → «había terror sobre ellos»\nCausa: Explicar la figura.\nPor qué: El hebreo dice «con terror sobre ellos».\nNotas: n3m4");
   const two = changesNote([{ before: "a", after: "b" }, { before: "c", after: "d", cause: "Completar lo abreviado" }]);
   assert.equal(two, "1. «a» → «b»\n\n2. «c» → «d»\nCausa: Completar lo abreviado.");
+});
+
+test("lo que dice la propuesta se lee de nuevo cambio por cambio; una nota escrita de otra forma se deja como está", () => {
+  const changes = [
+    { before: "tenían miedo", after: "había terror sobre ellos", cause: "Explicar la figura", why: "El hebreo dice «con terror sobre ellos».", notes: "n3m4" },
+    { before: "c", after: "d", cause: "Completar lo abreviado" },
+  ];
+  assert.deepEqual(readChangesNote(changesNote(changes)), changes);
+  assert.deepEqual(readChangesNote(changesNote([changes[0]!])), [changes[0]]);
+  assert.equal(readChangesNote("Corrijo el nombre: es Zorobabel."), null);
+  assert.equal(readChangesNote(""), null);
 });
 
 console.log(`\n${passed} pruebas de las listas de propuestas pasaron.`);

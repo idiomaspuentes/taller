@@ -33,6 +33,8 @@ type Props = {
   onOpenEditor?: (range: { chapter: number; from: number; to: number }) => void;
   /** The screen shows what is decided its own way: the card is its votes and buttons. */
   hidePanels?: boolean;
+  /** The screen already names what is decided: the card does not say it again. */
+  compact?: boolean;
 };
 
 export function DecisionCard({
@@ -47,6 +49,7 @@ export function DecisionCard({
   onRun,
   onOpenEditor,
   hidePanels = false,
+  compact = false,
 }: Props) {
   const t = useT();
   const language = useUiLanguage();
@@ -228,7 +231,7 @@ export function DecisionCard({
           {loc(resolveChatEvent(resolution).title)}
           {resolutionTime ? <span className="chat-decision__when"> · {resolutionTime}</span> : null}
         </p>
-        <p className="chat-decision__sub">{loc(decided?.title ?? resolved.title)}</p>
+        {compact ? null : <p className="chat-decision__sub">{loc(decided?.title ?? resolved.title)}</p>}
         {expanded ? panels : null}
         {hidePanels ? null : (
           <button
@@ -248,7 +251,7 @@ export function DecisionCard({
   return (
     <section className="chat-decision" data-key={item.key} aria-label={t("dc.pendingAria")} aria-busy={Boolean(busy)}>
       <p className="chat-decision__eyebrow">{t("dc.decide")}</p>
-      <p className="chat-decision__title">{loc(resolved.title)}</p>
+      {compact ? null : <p className="chat-decision__title">{loc(resolved.title)}</p>}
       {panels}
       {status?.superseded ? (
         <p className="chat-decision__reason">{t("dc.superseded")}</p>

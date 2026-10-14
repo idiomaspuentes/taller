@@ -39,6 +39,19 @@ export function SuggestionsView({ session, pmOrg, lang, contentOrg, onBack, onOp
   const [preparing, setPreparing] = useState<string>("");
   const [asking, setAsking] = useState<IntakeRepo | null>(null);
   const place = { session, pmOrg, lang, contentOrg };
+  const [copied, setCopied] = useState("");
+
+  // The page where anybody opens a suggestion: to be passed on to whoever uses the texts.
+  async function copyLink(repo: IntakeRepo) {
+    const url = newIssueUrl(session.host, repo);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(repo.repo);
+      window.setTimeout(() => setCopied(""), 2500);
+    } catch {
+      window.open(url, "_blank", "noreferrer");
+    }
+  }
 
   const load = useCallback(async () => {
     setError("");
@@ -93,12 +106,12 @@ export function SuggestionsView({ session, pmOrg, lang, contentOrg, onBack, onOp
         {repos === null && !error ? <p className="hub-hint">{t("sg.loading")}</p> : null}
         {(repos ?? []).map((repo) =>
           repo.ready ? (
-            <p key={repo.repo} className="sg-intake">
-              {t("sg.ready").replace("{text}", repo.name)}{" "}
-              <a className="chat-link" href={newIssueUrl(session.host, repo)} target="_blank" rel="noreferrer">
-                {t("sg.formLink")}
-              </a>
-            </p>
+            <div key={repo.repo} className="sg-intake">
+              <span>{t("sg.ready").replace("{text}", repo.name)}</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => void copyLink(repo)}>
+                {copied === repo.repo ? t("sg.copied") : t("sg.copyLink")}
+              </Button>
+            </div>
           ) : (
             <div key={repo.repo} className="pl-item sg-prepare">
               <p>{t("sg.notReady").replace("{text}", repo.name)}</p>
@@ -228,7 +241,7 @@ function SuggestionCard({
           {now === null && at ? <p className="af-hint">{t("sg.noVerse")}</p> : null}
           {suggestion.why ? (
             <>
-              <p className="af-lbl">{t("sg.why")}</p>
+              <h3 className="pl-why">{t("sg.why")}</h3>
               <div className="pl-note">
                 <HelpMarkdownView content={suggestion.why} />
               </div>

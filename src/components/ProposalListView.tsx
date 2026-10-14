@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
 import { finishProposalList, loadDecisionThread, loadProposalList, type ProposalListData } from "../dcs/proposalList";
 import { explainError } from "../dcs/userError";
@@ -9,7 +9,6 @@ import { alineacionDecisionData, editsText } from "../domain/chatEvents/alineaci
 import { decisionStatuses, resolveChatEvent } from "../domain/chatEvents/registry";
 import type { ThreadItem } from "../domain/conversation";
 import { issueProjectId } from "../domain/myTasks";
-import { ownTitleOf } from "../domain/myTasksBoard";
 import { decisionPlace, firstToRead } from "../domain/proposalList";
 import { routeToHash } from "../router";
 import { useUiLanguage } from "../i18n/language";
@@ -18,7 +17,7 @@ import { DecisionCard } from "./DecisionCard";
 import { TextChangeView } from "./TextChangeView";
 import { VerseCompare } from "./VerseCompare";
 import { buildSolverLaunchContext } from "../domain/solverLaunch";
-import { HelpMarkdownView } from "./HelpMarkdownView";
+import { ChangeReasons } from "./ChangeReasons";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -154,6 +153,10 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const chapter = place?.chapter ?? (rows[0] ? decisionPlace(rows[0])?.chapter : undefined);
   const go = (to: number) => setIndex(Math.max(0, Math.min(rows.length - 1, to)));
 
+  const text = (launchCtx?.resource || "tpl").toUpperCase();
+  const deadline = decision?.data.deadline && !isClosed(current ?? {}) ? new Date(decision.data.deadline).toLocaleDateString(language, { day: "numeric", month: "long" }) : "";
+  const leftText = left ? t(left === 1 ? "pl.leftOne" : "pl.left").replace("{n}", String(left)) : t("pl.allDecided");
+
   return (
     <div className="chat-main pl">
       <header className="chat-header">
@@ -163,8 +166,8 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
             <span className="chat-back__label">{t("nav.myTasks")}</span>
           </button>
           <div className="chat-header__name">
-            <h1 className="chat-header__title">{[t(single ? "pl.titleOne" : "pl.title"), [book, chapter].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}</h1>
-            {data ? <p className="chat-header__sub">{ownTitleOf(data.card) || data.card.title}</p> : null}
+            <h1 className="chat-header__title">{single && place ? `${book} ${place.chapter}:${place.verse}` : [book, chapter].filter(Boolean).join(" ") || t("pl.title")}</h1>
+            {data ? <p className="chat-header__sub">{single ? t("pl.subOne").replace("{text}", text) : `${t("pl.sub").replace("{text}", text)} · ${leftText}`}</p> : null}
           </div>
         </div>
       </header>
@@ -179,50 +182,61 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
         {data && current ? (
           <>
             {single ? null : (
-              <p className="pl-count" role="status">
-                <span>{t("pl.position").replace("{n}", String(index + 1)).replace("{total}", String(rows.length))}</span>
-                <span className="pl-count__left">{left ? t(left === 1 ? "pl.leftOne" : "pl.left").replace("{n}", String(left)) : t("pl.allDecided")}</span>
-              </p>
+              // Where one is in the chapter, and what is decided already: each verse a touch away.
+              <nav className="pl-strip" aria-label={t("pl.stripAria")}>
+                {rows.map((row, at) => {
+                  const where = decisionPlace(row);
+                  return (
+                    <button key={row.number} type="button" aria-current={at === index ? "step" : undefined} data-state={isClosed(row) ? "decided" : "open"} onClick={() => go(at)} ref={at === index ? (node) => node?.scrollIntoView({ block: "nearest", inline: "center" }) : undefined}>
+                      {where ? `${where.chapter}:${where.verse}` : at + 1}
+                      {isClosed(row) ? <Check aria-hidden className="size-3" /> : null}
+                    </button>
+                  );
+                })}
+              </nav>
             )}
-            {isClosed(data.card) ? (single ? null : <p className="af-hint">{t("pl.done")}</p>) : <p className="af-hint">{t("pl.howTo")}</p>}
+            {isClosed(data.card) && !single ? <p className="af-hint">{t("pl.done")}</p> : null}
+            {!isClosed(data.card) ? (
+              <details className="pl-how">
+                <summary>{t("pl.howTitle")}</summary>
+                <p>{t("pl.howTo")}</p>
+              </details>
+            ) : null}
             <section className="pl-item" aria-labelledby="pl-ref">
-              <h2 id="pl-ref" className="pl-ref">
-                {place ? `${book} ${place.chapter}:${place.verse}` : current.title}
-                {isClosed(current) ? <span className="pl-tag">{t("pl.decided")}</span> : null}
-              </h2>
-              {threadError ? (
-                <p className="pl-error" role="alert">
-                  {threadError}
-                </p>
-              ) : null}
-              {!decision && !threadError && !thread ? <p className="hub-hint">{t("pl.loading")}</p> : null}
-              {!decision && thread ? (
-                // Not a proposal this screen knows how to show: its conversation does.
-                <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>
-                  {t("pl.thread")}
-                </button>
-              ) : null}
-              {decision ? (
-                <>
-                  {changesText ? (
-                    <>
-                      <p className="af-lbl">{t("pl.verse")}</p>
-                      <div className="pl-verse">
-                        <TextChangeView before={decision.data.oldText} after={decision.data.newText} />
-                      </div>
-                    </>
-                  ) : null}
-                  {session && launchCtx && place ? (
-                    <details className="pl-compare" open={compareOpen} onToggle={(event) => setCompareOpen(event.currentTarget.open)}>
-                      <summary>{t("vc.title")}</summary>
-                      {compareOpen ? <VerseCompare session={session} ctx={launchCtx} board={data.board} chapter={place.chapter} verse={place.verse} /> : null}
-                    </details>
-                  ) : null}
-                  <p className="af-lbl">{t("pl.why").replace("{who}", decision.data.by)}</p>
-                  <div className="pl-note">
-                    {/* Each line of a proposal is its own: what changes, its cause, why. */}
-                    <HelpMarkdownView content={decision.data.note.replace(/\n/g, "\n\n")} />
+              <div className="pl-main">
+                <h2 id="pl-ref" className="pl-ref">
+                  {place ? `${book} ${place.chapter}:${place.verse}` : current.title}
+                  {isClosed(current) ? <span className="pl-tag">{t("pl.decided")}</span> : null}
+                </h2>
+                {threadError ? (
+                  <p className="pl-error" role="alert">
+                    {threadError}
+                  </p>
+                ) : null}
+                {!decision && !threadError && !thread ? <p className="hub-hint">{t("pl.loading")}</p> : null}
+                {!decision && thread ? (
+                  // Not a proposal this screen knows how to show: its conversation does.
+                  <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>
+                    {t("pl.thread")}
+                  </button>
+                ) : null}
+                {decision && changesText ? (
+                  <div className="pl-verse">
+                    <TextChangeView before={decision.data.oldText} after={decision.data.newText} />
                   </div>
+                ) : null}
+                {decision && session && launchCtx && place ? (
+                  <details className="pl-compare" open={compareOpen} onToggle={(event) => setCompareOpen(event.currentTarget.open)}>
+                    <summary>{t("vc.title")}</summary>
+                    {compareOpen ? <VerseCompare session={session} ctx={launchCtx} board={data.board} chapter={place.chapter} verse={place.verse} /> : null}
+                  </details>
+                ) : null}
+              </div>
+              {decision ? (
+                <div className="pl-side">
+                  <h3 className="pl-why">{t("pl.whyTitle")}</h3>
+                  <p className="pl-meta">{(deadline ? t("pl.byDeadline").replace("{date}", deadline) : t("pl.by")).replace("{who}", decision.data.by)}</p>
+                  <ChangeReasons note={decision.data.note} />
                   <DecisionCard
                     key={decision.item.key}
                     item={decision.item}
@@ -234,25 +248,14 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                     onRun={session ? run : undefined}
                     // A decision about the alignment alone is read in its own panels, its boxes.
                     hidePanels={changesText}
+                    compact
                   />
                   <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>
                     {t("pl.thread")}
                   </button>
-                </>
+                </div>
               ) : null}
             </section>
-            {single ? null : (
-            <nav className="pl-nav" aria-label={t("pl.position").replace("{n}", String(index + 1)).replace("{total}", String(rows.length))}>
-              <Button type="button" variant="outline" disabled={index === 0} onClick={() => go(index - 1)}>
-                <ChevronLeft aria-hidden className="size-4" />
-                {t("pl.prev")}
-              </Button>
-              <Button type="button" variant="outline" disabled={index >= rows.length - 1} onClick={() => go(index + 1)}>
-                {t("pl.next")}
-                <ChevronRight aria-hidden className="size-4" />
-              </Button>
-            </nav>
-            )}
             {!single && !left && !isClosed(data.card) ? (
               <div className="pl-finish">
                 <p>{t("pl.finishLede")}</p>
@@ -261,6 +264,20 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 </Button>
               </div>
             ) : null}
+            {single ? null : (
+              // Always at hand at the foot of the screen: the way on was under a page of reasons.
+              <nav className="pl-foot" aria-label={t("pl.stripAria")}>
+                <Button type="button" variant="outline" disabled={index === 0} onClick={() => go(index - 1)}>
+                  <ChevronLeft aria-hidden className="size-4" />
+                  {t("pl.prev")}
+                </Button>
+                <span className="pl-foot__at">{t("pl.posShort").replace("{n}", String(index + 1)).replace("{total}", String(rows.length))}</span>
+                <Button type="button" variant="outline" disabled={index >= rows.length - 1} onClick={() => go(index + 1)}>
+                  {t("pl.next")}
+                  <ChevronRight aria-hidden className="size-4" />
+                </Button>
+              </nav>
+            )}
           </>
         ) : null}
       </div>
