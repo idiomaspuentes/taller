@@ -262,6 +262,8 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
     const where = decisionPlace(row);
     return where ? `${where.chapter}:${where.verse}` : String(at + 1);
   };
+  const prevRef = index > 0 && rows[index - 1] ? refOf(rows[index - 1]!, index - 1) : "";
+  const nextRef = index + 1 < rows.length && rows[index + 1] ? refOf(rows[index + 1]!, index + 1) : "";
   // Up to six proposals the strip stays in view; with more, the list opens from «3 de 9» (decided with Abel).
   const listInSheet = rows.length > 6;
   const [listOpen, setListOpen] = useState(false);
@@ -269,11 +271,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
     setListOpen(false);
     go(at);
   };
-  // After voting, the way on is the filled button: to the next proposal still open, else the next one.
-  const nextAt = (() => {
-    const open = rows.findIndex((row, at) => at > index && !isClosed(row));
-    return open >= 0 ? open : index + 1 < rows.length ? index + 1 : -1;
-  })();
+  // Whether this proposal still waits for this person's vote: once it does not, the way on is tinted stronger.
   const waiting = useMemo(() => {
     if (!decision || !thread) return true;
     const events = thread.items.flatMap((item) => (item.event ? [{ event: item.event, at: item.createdAt }] : []));
@@ -332,10 +330,17 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
           <>
             {single ? null : (
               // Where one is, and the way to the one before and after: the same line in every tool that goes through items.
+              // It stays at the top while reading: whoever had scrolled past it did not know there was a next one.
               <nav className="pl-pos" aria-label={t("pl.stripAria")}>
-                <Button type="button" variant="outline" className="pl-pos__step" disabled={index === 0} aria-label={t("pl.prev")} onClick={() => go(index - 1)}>
-                  <ChevronLeft aria-hidden className="size-5" />
-                </Button>
+                {/* Each arrow says where it goes: two bare grey circles were not seen as the way on. */}
+                {prevRef ? (
+                  <Button type="button" variant="outline" className="pl-pos__step" aria-label={t("pl.prevTo").replace("{ref}", prevRef)} onClick={() => go(index - 1)}>
+                    <ChevronLeft aria-hidden className="size-5" />
+                    {prevRef}
+                  </Button>
+                ) : (
+                  <span className="pl-pos__step" aria-hidden />
+                )}
                 {listInSheet ? (
                   <button type="button" className="pl-pos__at" aria-haspopup="dialog" onClick={() => setListOpen(true)}>
                     <strong>{place ? `${place.chapter}:${place.verse}` : current.title}</strong>
@@ -349,9 +354,15 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                     <span>{t("pl.posShort").replace("{n}", String(index + 1)).replace("{total}", String(rows.length))}</span>
                   </p>
                 )}
-                <Button type="button" variant="outline" className="pl-pos__step" disabled={index >= rows.length - 1} aria-label={t("pl.next")} onClick={() => go(index + 1)}>
-                  <ChevronRight aria-hidden className="size-5" />
-                </Button>
+                {nextRef ? (
+                  // Once this person voted, the way on is tinted stronger: a filled button looked like the thing to decide.
+                  <Button type="button" variant="outline" className="pl-pos__step" data-go={waiting ? undefined : "true"} aria-label={t("pl.nextTo").replace("{ref}", nextRef)} onClick={() => go(index + 1)}>
+                    {nextRef}
+                    <ChevronRight aria-hidden className="size-5" />
+                  </Button>
+                ) : (
+                  <span className="pl-pos__step" aria-hidden />
+                )}
               </nav>
             )}
             {single || listInSheet ? null : (
@@ -418,12 +429,6 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                       hidePanels={changesText}
                       compact
                     />
-                    {!single && !waiting && nextAt >= 0 ? (
-                      <Button type="button" className="pl-next" onClick={() => go(nextAt)}>
-                        {t("pl.nextTo").replace("{ref}", refOf(rows[nextAt]!, nextAt))}
-                        <ChevronRight aria-hidden className="size-5" />
-                      </Button>
-                    ) : null}
                     {!isClosed(current) ? (
                       // Under the buttons, where the doubt comes up.
                       <details className="pl-how">

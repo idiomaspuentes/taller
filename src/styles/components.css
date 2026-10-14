@@ -9430,8 +9430,16 @@ html[data-text] .rf-words.af-orig .rf-word { font-size: calc(1.25rem * var(--ts)
   .pl-side { border-left: 1px solid var(--border); padding-left: 1rem; }
 }
 /* Where one is in the list: «3:7 · 3 de 9», the one before and after. Nothing is fixed on a phone. */
-.pl-pos { display: flex; align-items: center; gap: var(--space-8); }
-.pl-pos__step.btn { flex: 0 0 auto; min-width: var(--space-44); min-height: var(--space-44); padding: 0; border-radius: var(--radius-full); }
+/* It stays at the top while one reads: whoever had scrolled past it did not know there was a next proposal. */
+.pl-pos { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: var(--space-8); margin: calc(-1 * var(--space-8)) -1rem 0; padding: var(--space-6) 1rem; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); }
+/* The arrows say where they go, on a tint: grey circles alone were not seen as the way on. */
+.pl-pos__step { flex: 0 0 auto; min-width: 4.75rem; }
+.pl-pos__step.btn { gap: var(--space-4); min-height: var(--space-44); padding: 0 var(--space-12) 0 var(--space-8); border-color: transparent; border-radius: var(--radius-full); background: var(--accent-100); color: var(--accent-800); font-size: 1rem; font-weight: 800; }
+.pl-pos__step.btn:last-child { padding: 0 var(--space-8) 0 var(--space-12); }
+.pl-pos__step.btn:hover { background: var(--accent-200); color: var(--accent-900); }
+/* The same way on at the end of the screen, not fixed. */
+/* Once this person voted, the way on says so a little more, without looking like the thing to decide. */
+.pl-pos__step.btn[data-go] { background: var(--accent-200); color: var(--accent-900); box-shadow: inset 0 0 0 1.5px var(--accent-400); }
 .pl-pos__at { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--space-8); min-height: var(--space-44); margin: 0; padding: 0 var(--space-12); border: 0; border-radius: var(--radius-full); background: none; color: var(--text); font: inherit; }
 button.pl-pos__at { cursor: pointer; }
 button.pl-pos__at:hover, button.pl-pos__at:focus-visible { background: var(--surface-muted); }
@@ -9442,7 +9450,6 @@ button.pl-pos__at:hover, button.pl-pos__at:focus-visible { background: var(--sur
 .pl-reasons { display: grid; gap: var(--space-8); padding: var(--space-14) var(--space-16); border-radius: var(--radius-lg); background: var(--surface-muted); }
 .pl-reasons .pl-meta { margin: calc(-1 * var(--space-4)) 0 var(--space-4); }
 .pl-reasons .cr-item { background: var(--surface); }
-.pl-next.btn { min-height: var(--space-44); justify-content: center; }
 .pl-tag { justify-self: start; margin: 0; }
 /* The proposals of the chapter: a sheet on a phone, a column on a wide screen. */
 .pl-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
@@ -9517,11 +9524,11 @@ button.cr-note:hover { background: var(--primary-100); }
 .pl-note p { margin: 0 0 0.375rem; }
 /* The vote, as a card of its own in the colour of what waits for the person (green once decided), with one filled
    button: the way the team goes on. */
-.pl-item .chat-decision { width: 100%; max-width: none; margin: var(--space-4) 0 0; padding: var(--space-14) var(--space-16) var(--space-10); border: 1px solid var(--warning-200); border-radius: var(--radius-lg); background: var(--warning-100); box-shadow: none; }
-.pl-item .chat-decision__eyebrow { font-size: 1rem; font-weight: 800; letter-spacing: normal; text-transform: none; color: var(--warning-700); }
+.pl-item .chat-decision { width: 100%; max-width: none; margin: var(--space-4) 0 0; padding: var(--space-14) var(--space-16) var(--space-10); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: none; }
+.pl-item .chat-decision__eyebrow { font-size: 1rem; font-weight: 800; letter-spacing: normal; text-transform: none; color: var(--text-heading); }
 .pl-item .chat-decision__reason, .pl-item .chat-decision__confirm-text, .pl-item .chat-decision__busy { font-size: 0.9375rem; }
 .pl-item .chat-decision__meta { font-size: 0.8125rem; color: var(--text-muted); }
-.pl-item .chat-decision__actions { background: color-mix(in srgb, var(--warning-100) 94%, transparent); box-shadow: 0 -1px 0 var(--warning-200); }
+.pl-item .chat-decision__actions { background: var(--surface); box-shadow: none; }
 .pl-item .chat-decision__actions > .btn[data-variant="default"] ~ .btn[data-variant="default"] { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
 .pl-item .chat-decision--resolved { border-color: var(--success-200); background: var(--success-100); }
 .pl-item .chat-decision--resolved .chat-decision__eyebrow { color: var(--success-700); }
