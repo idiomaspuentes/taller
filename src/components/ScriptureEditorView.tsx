@@ -1,5 +1,6 @@
 import { Hints, StepAsk, useItemHints, useVerseDecisions } from "./StepAsk";
 import { toolHeading } from "./toolHeading";
+import { MoreMenu, type MoreItem } from "./MoreMenu";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
@@ -105,7 +106,6 @@ import {
   ExternalLink,
   Info,
   Link2,
-  MoreHorizontal,
   RefreshCw,
   Save,
   Unlink2,
@@ -1515,7 +1515,15 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const canRecreate = Boolean(
     session?.token && ctx && (!lab || write?.mode === "dcs"),
   );
-  const showDetails = hasGitDetails || canRecreate;
+  // What the editor does besides the draft, in «Más»: the glossary and the study tool open in another tab, so the
+  // draft in hand stays as it is. On a wide screen they were two more buttons in the header.
+  const editorMore: MoreItem[] = [
+    ...(!lab && ctx && range
+      ? [{ id: "glossary", label: t("gl.open"), hint: t("mm.glossaryHint"), href: `#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}${ctx.resource === "tps" ? "&texto=tps" : ""}` }]
+      : []),
+    ...(studyHref ? [{ id: "study", label: t("se.study"), hint: t("mm.studyHint"), href: studyHref }] : []),
+    ...(canRecreate ? [{ id: "recreate", label: t("se.recreateBtn"), hint: t("mm.recreateHint"), disabled: recreating, onSelect: () => void openRecreateDialog() }] : []),
+  ];
   const loggedIn = Boolean(session);
   const resourceCode = ctx?.resourceName || (ctx?.resource || "tpl").toUpperCase();
   const labLocal = lab && write?.mode !== "dcs";
@@ -2011,16 +2019,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           ) : null}
         </div>
         <div className="scripture-editor__actions">
-          {showDetails ? (
-            <details className="scripture-editor__details">
-              <summary
-                className="scripture-editor__details-toggle"
-                title={t("se.details")}
-                aria-label={t("se.details")}
-              >
-                <MoreHorizontal className="scripture-editor__details-icon" aria-hidden />
-              </summary>
-              <div className="scripture-editor__details-panel">
+          <MoreMenu
+            items={editorMore}
+            details={
+              hasGitDetails ? (
+              <>
+                <p className="mm-details__title">{t("se.details")}</p>
                 {ctx?.taskName || ctx?.issueNumber ? (
                   <p className="scripture-editor__details-row">
                     <span className="scripture-editor__details-key">{t("se.task")}</span>
@@ -2066,41 +2070,10 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     </a>
                   </p>
                 ) : null}
-                {!lab && ctx && range ? (
-                  // On a phone the header has no room for these two: they are here.
-                  <p className="scripture-editor__details-row se-details-links">
-                    <a href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}${ctx.resource === "tps" ? "&texto=tps" : ""}`} target="_blank" rel="noreferrer">
-                      {t("gl.open")}
-                    </a>
-                    {studyHref ? (
-                      <a href={studyHref} target="_blank" rel="noreferrer">
-                        {t("se.study")}
-                      </a>
-                    ) : null}
-                  </p>
-                ) : null}
-                {canRecreate ? (
-                  <div className="scripture-editor__details-actions">
-                    <RecreateActionButton
-                      disabled={recreating}
-                      onClick={() => void openRecreateDialog()}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </details>
-          ) : null}
-          {!lab && ctx && range ? (
-            // In another tab, so the draft in hand stays as it is.
-            <a className="scripture-editor__glossary" href={`#/glosario?libro=${encodeURIComponent(ctx.book)}&c=${range.chapter}&de=${range.from}&a=${range.to}${ctx.resource === "tps" ? "&texto=tps" : ""}`} target="_blank" rel="noreferrer">
-              {t("gl.open")}
-            </a>
-          ) : null}
-          {studyHref ? (
-            <a className="scripture-editor__glossary" href={studyHref} target="_blank" rel="noreferrer">
-              {t("se.study")}
-            </a>
-          ) : null}
+              </>
+              ) : undefined
+            }
+          />
           <p className="scripture-editor__save-state se-head-state" data-tone={saveState.tone} role="status">
             <span className="scripture-editor__save-dot" aria-hidden />
             {saveState.text}

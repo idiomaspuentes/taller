@@ -3,7 +3,7 @@ import { draftTaskId } from "../dcs/afinacionLoad";
 import { commentOnIssue } from "../dcs/issues";
 import { refComment } from "../domain/commentPlace";
 import { ChapterReader } from "./ChapterReader";
-import { BookOpen, Eraser, Redo2, Undo2 } from "lucide-react";
+import { Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -1461,19 +1461,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         ]
           .filter(Boolean)
           .join(" · ")}
-        actions={
-          data && verse && session ? (
-            <button
-              type="button"
-              className="th-icon"
-              aria-pressed={pane === "chapter"}
-              aria-label={t("al.readChapter")}
-              title={t("al.readChapter")}
-              onClick={() => setPane(pane === "chapter" ? "align" : "chapter")}
-            >
-              <BookOpen size={20} aria-hidden />
-            </button>
-          ) : undefined
+        more={
+          data && verse && session
+            ? [{ id: "chapter", label: t("al.readChapter"), hint: t("mm.chapterHint"), pressed: pane === "chapter", onSelect: () => setPane(pane === "chapter" ? "align" : "chapter") }]
+            : []
         }
       >
         {shared ? (

@@ -128,6 +128,8 @@ type Props = {
   onMentionRead?: (id: number) => void;
   /** ahora: the next thing to do · avisos: what needs attention · lista: every subtarea. */
   mode?: "avisos" | "lista";
+  /** Say hello under the title: not while the first-steps card above says it already. */
+  greet?: boolean;
 };
 
 type AttentionRow = {
@@ -179,6 +181,7 @@ export function MyTasksView({
   mentions = [],
   onMentionRead,
   mode = "lista",
+  greet = true,
 }: Props) {
   // Declared first: helpers below (waiting reasons, messages) use them while the component renders.
   const t = useT();
@@ -187,6 +190,8 @@ export function MyTasksView({
   useDecisionReminders(session, pmOrg, projects);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  /** When the list was last read without an error: said at its foot, beside the way to read it again. */
+  const [readAt, setReadAt] = useState<Date | null>(null);
   const [error, setError] = useState("");
   const [acting, setActing] = useState<number | null>(null);
   /** A delivery set off the preparation of a unit for validation, which takes minutes: said while it lasts. */
@@ -242,6 +247,7 @@ export function MyTasksView({
       setConflictIssues(conflicted);
       setClosedIssues(closed);
       setSolversCatalog(catalog);
+      setReadAt(new Date());
     } catch (err) {
       if (mine === reading.current) setError(explainError(err));
     } finally {
@@ -894,11 +900,8 @@ export function MyTasksView({
         <div className="task-home__head">
           <div>
             <h1 className="hub-title">{t("mt.title")}</h1>
-            <p className="task-home__hello">{t("tb.hello").replace("{name}", name)}</p>
+            {greet ? <p className="task-home__hello">{t("tb.hello").replace("{name}", name)}</p> : null}
           </div>
-          <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { void reload(); onRefreshActivity?.(); }}>
-            {busy ? t("mt.refreshing") : t("mt.refresh")}
-          </Button>
         </div>
         {error ? (
           <Alert variant="destructive">
@@ -927,6 +930,16 @@ export function MyTasksView({
             {count === 0 ? <p className="hub-hint">{t("empty.upBody")}</p> : null}
             <MyTasksBoard board={taskBoard} login={session.username} now={now} acting={acting} handlers={handlers} />
           </>
+        ) : null}
+        {pmOrg && loaded ? (
+          // The list is read again by itself when the person comes back to the app; reading it by hand is a line at
+          // the foot, not a button beside the title that looked like part of it.
+          <p className="task-home__fresh">
+            <span>{readAt ? t("mt.readAgo").replace("{when}", formatRelativeEs(readAt, now, language)) : ""}</span>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => { void reload(); onRefreshActivity?.(); }}>
+              {busy ? t("mt.refreshing") : t("mt.refresh")}
+            </Button>
+          </p>
         ) : null}
         {import.meta.env.DEV ? (
           <a className="task-home__dev" href="#/mis-tareas/prueba">

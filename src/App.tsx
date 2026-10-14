@@ -225,6 +225,12 @@ export function App() {
   // Notices with the app closed are worded for each device: it tells the Worker its language, now and when it changes.
   useEffect(() => (session ? keepPushLanguage(session) : undefined), [session?.token, session?.host]); // eslint-disable-line react-hooks/exhaustive-deps
   const onboarding = useOnboarding(session);
+  // The first steps are put away once the person opens a task of theirs: from then on they know the way, and the
+  // card took a third of «Mis tareas». It stays in their menu, «Cómo empezar».
+  const opensTask = route.name === "conversacion" || route.name === "propuestas" || (route.name.startsWith("solver-") && route.name !== "solver-lab");
+  useEffect(() => {
+    if (opensTask && onboarding.visible) onboarding.hide();
+  }, [opensTask, onboarding.visible, onboarding.hide]); // eslint-disable-line react-hooks/exhaustive-deps
   // Mentions of issues the plan already tracks are counted there; only the others add to the badge.
   // The rules of the teams are read once and shared by the card, the tool, the team's screen and this count.
   useEffect(() => setTeamRulesContext(session, pmOrg), [session?.token, session?.host, pmOrg]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1280,6 +1286,10 @@ export function App() {
               onOpenProfile={() => navigate({ name: "perfil" })}
               onOpenOrganization={() => navigate({ name: "organizacion" })}
               onOpenTemplates={() => navigate({ name: "plantillas" })}
+              onOpenFirstSteps={() => {
+                onboarding.show();
+                navigate({ name: "mis-tareas" });
+              }}
               onOpenFromDoor43={effectiveCanManage ? () => void openFromDcs() : undefined}
               onOpenSessionSettings={workspace ? undefined : () => setWorkspaceOpen(true)}
               preview={canPreview ? { on: viewMode === "trabajador", toggle: () => setViewModeAndPersist(viewMode === "trabajador" ? "gestor" : "trabajador") } : undefined}
@@ -1404,6 +1414,7 @@ export function App() {
             mentions={mentions.rows}
             onMentionRead={closeMention}
             canManage={effectiveCanManage}
+            greet={!onboarding.visible}
           />
         ) : null}
         {route.name === "conversacion" ? (

@@ -73,7 +73,7 @@ export function Onboarding({ session, onHide }: Props) {
   return (
     <section className="onboarding" aria-labelledby="onboarding-title">
       <h2 id="onboarding-title" className="onboarding__title">
-        {t("onboarding.greeting").replace("{name}", session.username)}
+        {t("onboarding.greeting").replace("{name}", session.username.charAt(0).toUpperCase() + session.username.slice(1))}
       </h2>
       <p className="onboarding__lead">{t("onboarding.lead")}</p>
       <ul className="onboarding__steps">
