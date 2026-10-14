@@ -237,6 +237,11 @@ aviso más entre el trabajo del equipo. Van en **una corrección por capítulo q
 - Cada propuesta es una decisión como cualquier otra, con sus votos, su plazo y su conversación, pero **se lee en
   su lista**: en «Mis tareas» se ve la tarjeta del capítulo con cuántas faltan («9 propuestas por decidir»), y al
   abrirla aparecen una a una, con el versículo marcado, el porqué, los botones de la decisión y «Siguiente».
+- **La conversación de cada propuesta está en la misma pantalla**, bajo «Decidir»: los comentarios, los votos (el
+  porqué de un voto se lee como algo dicho) y lo que le pasó; se ven los tres últimos y «Ver los anteriores».
+  «Escribir un comentario» abre el campo con «Citar», y mientras se escribe la barra de «Siguiente» se esconde. Un
+  versículo del que se habló después de leerlo lleva un punto en la tira de arriba (`talkMoved`: lo dice la hora
+  en que Door43 tocó la propuesta, porque los avisos solo siguen las tareas de cada uno). `ProposalTalk.tsx`.
 - Las propuestas de una lista no salen como tarjetas sueltas, ni en «Equipo hoy», ni como avisos ni recordatorios:
   la marca `listed` de su subtarea lo dice.
 - Cuando todas están decididas, la lista ofrece **«Terminar la corrección»**, que la cierra con sus pasos hechos.

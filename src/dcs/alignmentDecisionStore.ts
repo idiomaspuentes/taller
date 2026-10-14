@@ -44,6 +44,7 @@ import { formatChatEvent, parseChatEvent } from "../domain/chatEvent";
 import {
   buildCloseEvent,
   buildDecisionEvent,
+  buildEditEvent,
   buildVoteEvent,
   buildWithdrawEvent,
   decisionId,
@@ -380,7 +381,7 @@ export async function editProposal(params: { session: GtSession; pmOrg: string; 
   if (issue && at >= 0) {
     await editIssue(config, pmOrg, PM_REPO_NAME, params.threadIssue, { token: session.token, body: `${decisionTitle(next)}.\n\n> ${note.replace(/\n/g, "\n> ")}\n\nEl equipo decide aquí, con comentarios y un voto por persona.\n\n${issue.body!.slice(at)}` }).catch(() => undefined);
   }
-  const told = await createIssueComment(config, pmOrg, PM_REPO_NAME, params.threadIssue, `@${session.username} editó su propuesta antes de que nadie votara.`, session.token);
+  const told = await createIssueComment(config, pmOrg, PM_REPO_NAME, params.threadIssue, formatChatEvent(buildEditEvent({ issue: params.threadIssue, data, by: session.username })), session.token);
   return [commentToItem(card, "issue", { owner: pmOrg, repo: PM_REPO_NAME }), commentToItem(told, "issue", { owner: pmOrg, repo: PM_REPO_NAME })];
 }
 

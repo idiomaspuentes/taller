@@ -25,6 +25,7 @@ export const VOTE_EVENT = "alineacion-voto";
 export const CLOSE_EVENT = "alineacion-cierre";
 export const CONSENSUS_EVENT = "alineacion-consenso";
 export const WITHDRAW_EVENT = "alineacion-retiro";
+export const EDIT_EVENT = "alineacion-edicion";
 
 export type DecisionEventData = {
   id: string;
@@ -246,6 +247,17 @@ export function buildWithdrawEvent(params: { issue: number; data: DecisionEventD
   };
 }
 
+/** Whoever proposed put their proposal right before anybody voted: a line of the conversation, not something said. */
+export function buildEditEvent(params: { issue: number; data: DecisionEventData; by: string }): Omit<ChatEvent, "schema"> {
+  return {
+    type: EDIT_EVENT,
+    emitter: "afinacion",
+    issue: params.issue,
+    summary: `@${params.by} editó su propuesta antes de que nadie votara.`,
+    data: { decisionId: decisionId(params.data), by: params.by },
+  };
+}
+
 export function withdrawData(event: ChatEvent): { decisionId: string; of: string; by: string } | null {
   const d = event.data as { decisionId?: string; of?: string; by?: string } | undefined;
   if (event.type !== WITHDRAW_EVENT || !d?.decisionId || !d.of || !d.by) return null;
@@ -301,10 +313,10 @@ export function closeData(event: ChatEvent): CloseData | null {
   return { decisionId: String(d.decisionId), outcome: d.outcome, how: d.how === "coordinacion" ? "coordinacion" : "consenso", by: String(d.by ?? "") };
 }
 
-export function voteData(event: ChatEvent): { decisionId: string; option: DecisionOptionId; by: string } | null {
-  const d = event.data as { decisionId?: string; option?: DecisionOptionId; by?: string } | undefined;
+export function voteData(event: ChatEvent): { decisionId: string; option: DecisionOptionId; by: string; reason?: string } | null {
+  const d = event.data as { decisionId?: string; option?: DecisionOptionId; by?: string; reason?: string } | undefined;
   if (event.type !== VOTE_EVENT || !d?.decisionId || !d.option || !d.by) return null;
-  return { decisionId: d.decisionId, option: d.option, by: d.by };
+  return { decisionId: d.decisionId, option: d.option, by: d.by, ...(d.reason ? { reason: String(d.reason) } : {}) };
 }
 
 /** What the card needs to know about the thread: the votes so far and, if it is over, how it ended. */
@@ -533,6 +545,7 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
 
 registerChatEventType(alineacionDecisionType);
 registerChatEventType({ type: VOTE_EVENT, render: "system", valid: (e) => voteData(e) !== null, title: (e) => e.summary });
+registerChatEventType({ type: EDIT_EVENT, render: "system", title: (e) => e.summary });
 registerChatEventType({ type: WITHDRAW_EVENT, render: "system", valid: (e) => withdrawData(e) !== null, title: (e) => e.summary });
 registerChatEventType({ type: CONSENSUS_EVENT, render: "system", valid: (e) => consensusData(e) !== null, title: (e) => e.summary });
 registerChatEventType({ type: CLOSE_EVENT, render: "system", valid: (e) => closeData(e) !== null, title: (e) => e.summary, resolves: (e) => closeData(e)?.decisionId ?? null });

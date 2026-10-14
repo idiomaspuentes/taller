@@ -11,7 +11,7 @@ import { correctionRows } from "../src/domain/corrections";
 import { extraItemId, normalizeExtraWork } from "../src/domain/extraWork";
 import { buildBoard, type Board, type BoardCard } from "../src/domain/myTasksBoard";
 import type { MyTasksProjectBucket } from "../src/domain/myTasks";
-import { changesNote, decisionParent, firstToRead, inProposalList, isProposalList, proposalCount, proposalsOfList, readChangesNote, withChanges } from "../src/domain/proposalList";
+import { changesNote, decisionParent, firstToRead, inProposalList, isProposalList, proposalCount, proposalsOfList, readChangesNote, talkMoved, withChanges } from "../src/domain/proposalList";
 import { emptyCursor } from "../src/domain/readCursor";
 import type { AssignmentsDoc, ProjectSettings } from "../src/domain/types";
 import { encodeWorkOrderMarker, parseWorkOrderMarker, type WorkOrder } from "../src/domain/workOrder";
@@ -163,6 +163,14 @@ test("lo que dice la propuesta se lee de nuevo cambio por cambio; una nota escri
   assert.deepEqual(readChangesNote(changesNote([changes[0]!])), [changes[0]]);
   assert.equal(readChangesNote("Corrijo el nombre: es Zorobabel."), null);
   assert.equal(readChangesNote(""), null);
+});
+
+test("un versículo dice que tiene algo nuevo cuando se habló de él después de leerlo, y no por lo que uno mismo escribió", () => {
+  const read = { at: "2026-10-14T10:00:00Z" };
+  assert.equal(talkMoved({ updated_at: "2026-10-14T11:00:00Z" }, read), true, "un comentario una hora después");
+  assert.equal(talkMoved({ updated_at: "2026-10-14T10:00:20Z" }, read), false, "el propio comentario, con el reloj de Door43 un poco adelantado");
+  assert.equal(talkMoved({ updated_at: "2026-10-14T09:00:00Z" }, read), false, "nada después de leerlo");
+  assert.equal(talkMoved({ updated_at: "2026-10-14T11:00:00Z" }, undefined), false, "uno que no se ha leído se lee en su turno");
 });
 
 console.log(`\n${passed} pruebas de las listas de propuestas pasaron.`);

@@ -68,6 +68,19 @@ export function firstToRead(rows: Pick<DcsIssue, "state" | "number">[], voted: (
   return any >= 0 ? any : 0;
 }
 
+/** How far the clock of this device and Door43's may be apart: one's own comment does not read as new. */
+const CLOCK_SLACK_MS = 60_000;
+
+/**
+ * Whether a proposal was talked about since this person last read it here. The poll of notices follows only the
+ * person's own subtareas, not every proposal of a list, so the proposal says it: Door43 sets the time a comment,
+ * a vote or an edit last touched it. One never read says nothing; it is read in its turn.
+ */
+export function talkMoved(row: Pick<DcsIssue, "updated_at">, read: { at: string } | undefined): boolean {
+  if (!read?.at || !row.updated_at) return false;
+  return Date.parse(row.updated_at) - Date.parse(read.at) > CLOCK_SLACK_MS;
+}
+
 // ---------------------------------------------------------------- the proposals of a verse, as one
 
 /** One change to a verse: the words as they are, the words proposed, and why. */

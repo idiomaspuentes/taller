@@ -1436,6 +1436,9 @@ export function App() {
             issueNumber={route.issue}
             at={route.at}
             canManage={effectiveCanManage}
+            cursor={activity.cursor}
+            onMarkRead={activity.markRead}
+            onMarkSeen={activity.markSeen}
             onBack={() => navigate({ name: "mis-tareas" })}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue, list: route.issue })}
             announce={announce}

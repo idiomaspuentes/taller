@@ -15,7 +15,7 @@ import { alineacionDecisionData, editsText } from "../domain/chatEvents/alineaci
 import { decisionStatuses, resolveChatEvent } from "../domain/chatEvents/registry";
 import type { ThreadItem } from "../domain/conversation";
 import { issueProjectId } from "../domain/myTasks";
-import { decisionPlace, firstToRead } from "../domain/proposalList";
+import { decisionPlace, firstToRead, talkMoved } from "../domain/proposalList";
 import { routeToHash } from "../router";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
@@ -25,6 +25,10 @@ import { TextChangeView } from "./TextChangeView";
 import { VerseCompare } from "./VerseCompare";
 import { buildSolverLaunchContext } from "../domain/solverLaunch";
 import { ChangeReasons, type ReasonLinks } from "./ChangeReasons";
+import { ProposalTalk } from "./ProposalTalk";
+import { postThreadReply } from "../dcs/conversationPost";
+import { sanitizeMentions } from "../domain/conversation";
+import { hasUnread, type CommentSource, type ReadCursorDoc } from "../domain/readCursor";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -37,8 +41,12 @@ type Props = {
   /** The proposal to open on (its decision's number), when coming back from its conversation. */
   at?: number;
   canManage: boolean;
+  /** What was read of each conversation: a verse with something new to read says so. */
+  cursor: ReadCursorDoc;
+  onMarkRead: (issue: number, maxIds: Partial<Record<CommentSource, number>>) => void;
+  onMarkSeen: (issue: number) => void;
   onBack: () => void;
-  /** Opens the whole conversation of one proposal. */
+  /** Opens the conversation of a subtarea this screen does not know how to show. */
   onOpenThread: (issue: number) => void;
   announce: (msg: string) => void;
 };
@@ -50,7 +58,7 @@ const isClosed = (issue: { state?: string | null }) => (issue.state ?? "").toLow
  * of the team, with the buttons of its decision. Whoever goes through it votes on each and goes on to the next; the
  * whole conversation of each one is a tap away. When every proposal is decided, the correction is finished here.
  */
-export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber, at, canManage, onBack, onOpenThread, announce }: Props) {
+export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber, at, canManage, cursor, onMarkRead, onMarkSeen, onBack, onOpenThread, announce }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [data, setData] = useState<ProposalListData | null>(null);
@@ -61,6 +69,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const [finishing, setFinishing] = useState(false);
   // Open or not, as the person left it: whoever compares, compares every proposal.
   const [compareOpen, setCompareOpen] = useState(false);
+  const [writing, setWriting] = useState(false);
 
   const loadList = useCallback(async () => {
     if (!session) return null;
@@ -91,11 +100,16 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
     if (!session || !current) return;
     setThreadError("");
     try {
-      setThread({ issue: current.number, items: await loadDecisionThread(session, pmOrg, current.number) });
+      const items = await loadDecisionThread(session, pmOrg, current.number);
+      setThread({ issue: current.number, items });
+      // Read here as in its conversation: what it says is on this screen.
+      const last = Math.max(0, ...items.map((item) => item.id));
+      if (last) onMarkRead(current.number, { pm: last });
+      onMarkSeen(current.number);
     } catch (err) {
       setThreadError(t("pl.threadFailed").replace("{why}", explainError(err)));
     }
-  }, [session, pmOrg, current, t]);
+  }, [session, pmOrg, current, t, onMarkRead, onMarkSeen]);
 
   useEffect(() => {
     setThread(null);
@@ -202,6 +216,17 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
     [env, loadThread, loadList, announce, decision?.item.id],
   );
 
+  const send = useCallback(
+    async (text: string) => {
+      if (!session || !current || !decision) return;
+      // Only the people of the proposal are called by name; any other @ is written as text.
+      const people = [decision.data.by, ...decision.data.aligners, ...(thread?.items ?? []).map((item) => item.author)].filter(Boolean);
+      await postThreadReply(session, pmOrg, current.number, sanitizeMentions(text, people));
+      await loadThread();
+    },
+    [session, pmOrg, current, decision, thread, loadThread],
+  );
+
   async function finish() {
     if (!session || !data) return;
     setFinishing(true);
@@ -262,6 +287,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                     <button key={row.number} type="button" aria-current={at === index ? "step" : undefined} data-state={isClosed(row) ? "decided" : "open"} onClick={() => go(at)} ref={at === index ? (node) => node?.scrollIntoView({ block: "nearest", inline: "center" }) : undefined}>
                       {where ? `${where.chapter}:${where.verse}` : at + 1}
                       {isClosed(row) ? <Check aria-hidden className="size-3" /> : null}
+                      {at !== index && (hasUnread(cursor, row.number) || talkMoved(row, cursor.threads[String(row.number)])) ? <span className="pl-strip__new" role="img" aria-label={t("cv.unreadAria")} /> : null}
                     </button>
                   );
                 })}
@@ -323,10 +349,8 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                     hidePanels={changesText}
                     compact
                   />
+                  {thread?.issue === current.number ? <ProposalTalk items={thread.items} me={session?.username ?? ""} links={links} onSend={send} onWriting={setWriting} /> : null}
                   </CiteScope.Provider>
-                  <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>
-                    {t("pl.thread")}
-                  </button>
                 </div>
               ) : null}
             </section>
@@ -338,7 +362,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 </Button>
               </div>
             ) : null}
-            {single ? null : (
+            {single || writing ? null : (
               // Always at hand at the foot of the screen: the way on was under a page of reasons.
               <nav className="pl-foot" aria-label={t("pl.stripAria")}>
                 <Button type="button" variant="outline" disabled={index === 0} onClick={() => go(index - 1)}>
