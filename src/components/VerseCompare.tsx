@@ -32,7 +32,7 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
   const [texts, setTexts] = useState<Texts | null | undefined>(undefined);
   const [words, setWords] = useState<Record<string, OriginalWord[]>>({});
   const [tab, setTab] = useState<string>("orig");
-  const [sheet, setSheet] = useState<{ word: OriginalWord; chapter: number; verse: number } | null>(null);
+  const [sheet, setSheet] = useState<{ word: OriginalWord; chapter: number; verse: number; inDiagram?: boolean } | null>(null);
   const [sentence, setSentence] = useState(false);
   const workspace = workspaceOfOrg(tallerConfig, ctx.pmOrg);
   // Under each word of the diagram: how the text being decided says it, or its English where it is not aligned.
@@ -115,16 +115,14 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
         <p className="vc-verse">{shown.book[key] || t("af.noText")}</p>
       )}
       <ParallelLink book={book} chapter={chapter} from={verse} session={session} workspace={workspace} />
-      <WordSheet word={sheet?.word ?? null} at={{ book, chapter: sheet?.chapter ?? chapter, verse: sheet?.verse ?? verse }} session={session} workspace={workspace} onClose={() => setSheet(null)} readOnly />
+      <WordSheet word={sheet?.word ?? null} at={{ book, chapter: sheet?.chapter ?? chapter, verse: sheet?.verse ?? verse }} session={session} workspace={workspace} onClose={() => setSheet(null)} readOnly inDiagram={sheet?.inDiagram} />
       <SentenceSheet
         at={sentence ? { book, chapter, verse } : null}
         session={session}
         workspace={workspace}
         aligned={aligned}
-        onWord={(word, place) => {
-          setSentence(false);
-          setSheet({ word, chapter: place.chapter, verse: place.verse });
-        }}
+        // Over the diagram, which stays open under the word: closing the word goes back to it.
+        onWord={(word, place) => setSheet({ word, chapter: place.chapter, verse: place.verse, inDiagram: true })}
         onClose={() => setSentence(false)}
       />
     </div>

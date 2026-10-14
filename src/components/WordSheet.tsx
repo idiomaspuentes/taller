@@ -180,6 +180,7 @@ export function WordSheet({
   onClose,
   onSeparate,
   readOnly,
+  inDiagram,
 }: {
   /** The word to show, or `null` while the sheet is closed. */
   word: SheetWord | null;
@@ -191,6 +192,8 @@ export function WordSheet({
   onSeparate?: () => void;
   /** On a screen that is only being tried, the diagram of the sentence is read and not changed. */
   readOnly?: boolean;
+  /** Opened over the diagram of its sentence: closing it goes back there, so it does not offer to open it again. */
+  inDiagram?: boolean;
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -206,6 +209,8 @@ export function WordSheet({
   const placed = !other || Boolean(other.at);
   /** The sentence of the word, shown over this sheet. */
   const [sentence, setSentence] = useState(false);
+  /** A word touched in that diagram, opened over it: the diagram stays where it was, under the word. */
+  const [inSentence, setInSentence] = useState<{ word: SheetWord; chapter: number; verse: number } | null>(null);
   useEffect(() => setSentence(false), [askedKey]);
   const [found, setFound] = useState<Found[] | null>(null);
   /** The report being written about the entry; `null` while nobody is writing one. */
@@ -314,7 +319,7 @@ export function WordSheet({
 
             {/* Only of the word the text was touched at: one opened from here is not read in its verse. */}
             {placed ? <Referents word={word} at={here} session={session} workspace={workspace} onOpen={(target) => setOther({ surface: target.text, lemma: target.text, strong: asTagged(target.strong) })} /> : null}
-            {placed && here.book && here.chapter ? (
+            {placed && here.book && here.chapter && !inDiagram ? (
               <button type="button" className="af-link ws-sentence-open" onClick={() => setSentence(true)}>
                 {t("st.open")}
               </button>
@@ -413,12 +418,15 @@ export function WordSheet({
         session={session}
         workspace={workspace}
         teamOrg={readOnly ? undefined : workspace?.pmOrg}
-        onWord={(next, place) => {
+        onWord={(next, place) => setInSentence({ word: next, chapter: place.chapter, verse: place.verse })}
+        onClose={() => {
+          setInSentence(null);
           setSentence(false);
-          setOther({ ...next, at: { chapter: place.chapter, verse: place.verse } });
         }}
-        onClose={() => setSentence(false)}
       />
+    ) : null}
+    {sentence && inSentence ? (
+      <WordSheet word={inSentence.word} at={{ book: here.book, chapter: inSentence.chapter, verse: inSentence.verse }} session={session} workspace={workspace} onClose={() => setInSentence(null)} readOnly inDiagram />
     ) : null}
     </>
   );
