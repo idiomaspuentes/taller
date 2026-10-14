@@ -5,6 +5,7 @@ import { closeIssue, listProjectIssues } from "./issues";
 import { loadAssignmentsFromDcs } from "./persist";
 import { getPmIssue } from "./portionPr";
 import { commentToItem, type ThreadItem } from "../domain/conversation";
+import { isDecisionIssue } from "../domain/decisionAccess";
 import { issueProjectId, issueTaskId } from "../domain/myTasks";
 import { isProposalList, proposalsOfList } from "../domain/proposalList";
 import { parseTaskProgressMarker, upsertTaskProgressInBody } from "../domain/taskProgress";
@@ -16,6 +17,8 @@ export type ProposalListData = {
   board: AssignmentsDoc;
   /** The decisions opened from it, open and closed, in the order of the text. */
   proposals: DcsIssue[];
+  /** One proposal opened on its own, not a list: `card` is the decision itself. */
+  single?: true;
 };
 
 /**
@@ -37,11 +40,19 @@ async function issuesNear(session: GtSession, pmOrg: string, card: DcsIssue): Pr
   return [...out.values()];
 }
 
-/** A list of proposals and the decisions it has, as they stand. Throws when the subtarea is not such a list. */
+/**
+ * A list of proposals and the decisions it has, as they stand; or one decision about the text, read the same way.
+ * Throws when the subtarea is neither.
+ */
 export async function loadProposalList(params: { session: GtSession; pmOrg: string; lang: string; contentOrg: string; issueNumber: number }): Promise<ProposalListData> {
   const { session, pmOrg } = params;
   const card = await getPmIssue(session, pmOrg, params.issueNumber);
   const projectId = issueProjectId(card);
+  if (isDecisionIssue(card)) {
+    const board = await loadAssignmentsFromDcs(session, pmOrg, params.lang, projectId, params.contentOrg);
+    if (!board) throw new Error("No se pudo leer el plan del proyecto.");
+    return { card, board, proposals: [card], single: true };
+  }
   const [board, issues] = await Promise.all([loadAssignmentsFromDcs(session, pmOrg, params.lang, projectId, params.contentOrg), issuesNear(session, pmOrg, card)]);
   if (!board || !isProposalList(board.settings, card)) throw new Error("Esta subtarea no es una lista de propuestas.");
   return { card, board, proposals: proposalsOfList(issues, card.number) };

@@ -837,7 +837,8 @@ export function MyTasksView({
         const a = card.action;
         // Steps done once per chapter that count here are saved with the first thing the person does on the card.
         if (card.onceApplied) void setIssueTaskProgress(session, pmOrg, card.issue, parseTaskProgressMarker(card.issue.body)).catch(() => undefined);
-        if (a.kind === "vote") return onOpenThread(card.issue.number);
+        // A decision of the team about the text is read where its change can be compared; any other in its conversation.
+        if (a.kind === "vote") return isDecisionIssue(card.issue) && onOpenProposals ? onOpenProposals(card.issue.number) : onOpenThread(card.issue.number);
         if (a.kind === "proposals") {
           onMarkSeen?.(card.issue.number);
           return onOpenProposals ? onOpenProposals(card.issue.number) : onOpenThread(card.issue.number);
@@ -1151,7 +1152,7 @@ export function MyTasksView({
                     </span>
                     <span className="hub-free__actions">
                       {isDecisionIssue(issue) ? (
-                        <Button type="button" size="sm" onClick={() => onOpenThread(issue.number)}>
+                        <Button type="button" size="sm" onClick={() => (onOpenProposals ? onOpenProposals(issue.number) : onOpenThread(issue.number))}>
                           {t("mt.vote")}
                         </Button>
                       ) : (
