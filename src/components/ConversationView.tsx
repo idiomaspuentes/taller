@@ -852,6 +852,15 @@ function ConversationThread({
             </div>
           </div>
           {solverBlock ? <p className="chat-header__sub">{loc(solverBlock)}</p> : null}
+          {demo ? (
+            <p className="chat-header__sub">{demo.notice || t("cv.demoNotice")}</p>
+          ) : null}
+          {demo?.toolbar ?? null}
+        </header>
+        {/* Where the conversation comes from and its passage scroll with it: pinned in the header, on a phone they
+            took 311 px of the 812 and left a few lines to read the decision in. */}
+        {origin || canShowPassage ? (
+          <div className="chat-context">
           {origin ? (
             <div className="chat-origin">
               <p className="chat-origin__where">{t("cv.origin").replace("{ref}", origin.ref).replace("{task}", origin.task)}</p>
@@ -871,11 +880,8 @@ function ConversationThread({
               <PassageContext session={session} ctx={launchCtx} board={board} />
             </div>
           ) : null}
-          {demo ? (
-            <p className="chat-header__sub">{demo.notice || t("cv.demoNotice")}</p>
-          ) : null}
-          {demo?.toolbar ?? null}
-        </header>
+          </div>
+        ) : null}
 
         {/* A delivered subtarea: what the later phases changed in its passage, one touch away. */}
         {!demo && session && board && issue?.state === "closed" && issueTaskId(issue) ? (

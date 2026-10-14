@@ -1,4 +1,5 @@
 import { AlignmentBoxes } from "./AlignmentBoxes";
+import { ChangeReasons } from "./ChangeReasons";
 import { draftTokensOf, originalTokensOf, type DecisionView, type DiffPiece } from "../domain/verseEditView";
 import type { AlignmentGroup } from "@usfm-tools/types";
 
@@ -18,6 +19,8 @@ type BoxesData = {
  * objection is about in yellow).
  */
 export function DecisionCustomPanel({ custom }: { custom: Custom }) {
+  // What a proposal says, change by change when it was written that way; as it was written otherwise.
+  if (custom.kind === "reasons") return <ChangeReasons note={(custom.data as { note: string }).note} />;
   if (custom.kind === "diff") {
     const pieces = (custom.data as { pieces: DiffPiece[] }).pieces;
     return (

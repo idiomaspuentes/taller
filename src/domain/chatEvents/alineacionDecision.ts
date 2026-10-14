@@ -374,7 +374,8 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
     const d = alineacionDecisionData(event);
     if (!d) return [];
     const sid = `${d.book} ${d.chapter}:${d.verse}`;
-    const panels: DecisionPanel[] = [{ label: `Lo que dice @${d.by}`, text: d.note }];
+    // What the proposer says, change by change when it was written that way (`changesNote`).
+    const panels: DecisionPanel[] = [{ label: `Lo que dice @${d.by}`, text: d.note, custom: { kind: "reasons", data: { note: d.note } } }];
     const hasBoxes = d.view.original.length > 0;
     const boxes = (draft: DecisionView["draftBefore"], groups: AlignmentGroup[]) => boxesOf(d.view, draft, groups, sid);
     if (d.kind === "proposal") {
@@ -399,7 +400,10 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
           },
         );
       } else {
-        panels.push({ label: "Alineación ahora", text: d.before.join("\n") }, { label: "Alineación propuesta", text: d.after.join("\n"), tag: "propuesta" });
+        // Without the boxes the links are lines of words: who decides a change of wording reads them only if they
+        // want. Open, they took 358 px of a phone between the change and the buttons.
+        const fold = editsText(d) ? { fold: true as const } : {};
+        panels.push({ label: "Alineación ahora", text: d.before.join("\n"), ...fold }, { label: "Alineación propuesta", text: d.after.join("\n"), tag: "propuesta", ...fold });
       }
     } else if (hasBoxes) {
       const now = boxes(d.view.draftBefore, d.groupsBefore);
@@ -413,6 +417,9 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
       if (d.words.length) panels.push({ label: "Palabras señaladas", text: d.words.join(" · ") });
       panels.push({ label: "Alineación ahora", text: d.before.join("\n") });
     }
+    // A change of wording is read as on the proposal screen: what changes, then why.
+    const change = panels.findIndex((panel) => panel.custom?.kind === "diff");
+    if (change > 0) panels.unshift(...panels.splice(change, 1));
     return panels;
   },
   group: (event) => event.decision?.id ?? null,

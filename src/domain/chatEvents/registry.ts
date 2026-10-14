@@ -16,6 +16,8 @@ export type DecisionPanel = {
   tag?: string;
   /** Something other than text: the card draws it with a renderer registered for its `kind`. */
   custom?: { kind: string; data: unknown };
+  /** Read only by whoever wants it: folded under the others, behind one line. */
+  fold?: true;
 };
 
 export type DecisionViewer = {

@@ -133,21 +133,32 @@ export function DecisionCard({
     }
   }
 
-  const shownPanels = decided ? resolveChatEvent(decided.event).panels : resolved.panels;
-  const panels = shownPanels.length && !hidePanels ? (
+  const allPanels = decided ? resolveChatEvent(decided.event).panels : resolved.panels;
+  const shownPanels = allPanels.filter((panel) => !panel.fold);
+  const foldedPanels = allPanels.filter((panel) => panel.fold);
+  // A card that draws alignment boxes is taller than a phone: its buttons stay in reach while it is read. Any other
+  // card has them at its end, where they covered nothing.
+  const tall = allPanels.some((panel) => panel.custom?.kind === "cajas");
+  const panelOf = (panel: (typeof allPanels)[number]) => (
+    <figure key={panel.label} className={`chat-decision__panel${panel.custom?.kind === "cajas" ? " chat-decision__panel--wide" : ""}`}>
+      <figcaption className="chat-decision__label">
+        <span>{loc(panel.label)}</span>
+        {panel.tag ? <span className="chat-decision__tag">{loc(panel.tag)}</span> : null}
+      </figcaption>
+      {panel.custom ? <DecisionCustomPanel custom={panel.custom} /> : <blockquote className="chat-decision__text">{panel.text || t("dc.empty")}</blockquote>}
+    </figure>
+  );
+  const panels = allPanels.length && !hidePanels ? (
     <div className="chat-decision__panels">
-      {shownPanels.map((panel) => (
-        <figure key={panel.label} className={`chat-decision__panel${panel.custom?.kind === "cajas" ? " chat-decision__panel--wide" : ""}`}>
-          <figcaption className="chat-decision__label">
-            <span>{loc(panel.label)}</span>
-            {panel.tag ? <span className="chat-decision__tag">{loc(panel.tag)}</span> : null}
-          </figcaption>
-          {panel.custom ? <DecisionCustomPanel custom={panel.custom} /> : <blockquote className="chat-decision__text">{panel.text || t("dc.empty")}</blockquote>}
-        </figure>
-      ))}
+      {shownPanels.map(panelOf)}
+      {foldedPanels.length ? (
+        <details className="chat-decision__fold">
+          <summary>{t("dc.seeAlignment")}</summary>
+          {foldedPanels.map(panelOf)}
+        </details>
+      ) : null}
     </div>
   ) : null;
-
   const confirmOption = confirming ? options.find((o) => o.id === confirming) : undefined;
   const writeOption = writing ? options.find((o) => o.id === writing.id && o.input) : undefined;
   const controls = (
@@ -256,7 +267,7 @@ export function DecisionCard({
   }
 
   return (
-    <section className="chat-decision" data-key={item.key} aria-label={t("dc.pendingAria")} aria-busy={Boolean(busy)}>
+    <section className={`chat-decision${tall ? " chat-decision--tall" : ""}`} data-key={item.key} aria-label={t("dc.pendingAria")} aria-busy={Boolean(busy)}>
       <p className="chat-decision__eyebrow">{t("dc.decide")}</p>
       {compact ? null : <p className="chat-decision__title">{loc(resolved.title)}</p>}
       {panels}
