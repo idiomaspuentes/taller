@@ -10,6 +10,7 @@ import { whileOpen } from "../domain/commentPlace";
 import { endDateText, paceNumber, paceOf, PACE_WEEKS } from "../domain/pace";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
 import { projectTally } from "../domain/workProgress";
+import { intakeRepos, listSuggestions } from "../dcs/outsideSuggestions";
 import { useDecisionReminders } from "../useDecisionReminders";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
@@ -28,6 +29,8 @@ type Props = {
   contentOrg: string;
   announce: (msg: string) => void;
   onOpenThread: (issue: number) => void;
+  /** Opens the suggestions to the text that came from outside. */
+  onOpenSuggestions?: () => void;
 };
 
 const GROUPS: { id: TodayGroup; title: MessageKey; empty: MessageKey }[] = [
@@ -66,7 +69,7 @@ function shortTitle(row: TodayRow): string {
  * Equipo hoy: how the work stands, for whoever coordinates. Stuck work first,
  * each row with what can be done about it from the same place.
  */
-export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOpenThread }: Props) {
+export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOpenThread, onOpenSuggestions }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [projects, setProjects] = useState<TodayProject[]>([]);
@@ -81,6 +84,20 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   const [open, setOpen] = useState<Set<TodayGroup>>(new Set(["decisions", "stuck", "waiting", "running"]));
   const [person, setPerson] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
+  // What came from outside: how many suggestions wait, and whether the texts can receive them at all.
+  const [outside, setOutside] = useState<{ waiting: number; ready: boolean } | null>(null);
+  useEffect(() => {
+    if (!pmOrg || !onOpenSuggestions) return;
+    let alive = true;
+    void (async () => {
+      const repos = await intakeRepos({ session, pmOrg, lang, contentOrg });
+      const rows = await listSuggestions(session, repos.filter((repo) => repo.ready));
+      if (alive) setOutside({ waiting: rows.length, ready: repos.length > 0 && repos.every((repo) => repo.ready) });
+    })().catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [session, pmOrg, lang, contentOrg, onOpenSuggestions]);
 
   const reload = useCallback(async () => {
     if (!pmOrg) return;
@@ -188,6 +205,14 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
         </Alert>
       ) : null}
       {!pmOrg ? <p className="hub-hint">{t("td.pickOrg")}</p> : null}
+      {outside && onOpenSuggestions ? (
+        <p className="today-outside" data-waiting={outside.waiting > 0 || undefined}>
+          <span>{outside.waiting ? t(outside.waiting === 1 ? "sg.waitingOne" : "sg.waiting").replace("{n}", String(outside.waiting)) : outside.ready ? t("sg.noneShort") : t("sg.notReadyShort")}</span>
+          <button type="button" className="chat-link" onClick={onOpenSuggestions}>
+            {outside.waiting ? t("sg.review") : outside.ready ? t("sg.see") : t("sg.setUp")}
+          </button>
+        </p>
+      ) : null}
       {busy && !loaded ? <p className="hub-hint">{t("td.loading")}</p> : null}
 
       {loaded && !projects.length && !error ? (

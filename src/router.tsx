@@ -9,6 +9,8 @@ export type AppRoute =
   | { name: "avisos" }
   /** «Equipo hoy»: how the work stands, for whoever coordinates. */
   | { name: "hoy" }
+  /** Changes to the text suggested from outside, on Door43, to look at (`outsideSuggestion.ts`). */
+  | { name: "sugerencias" }
   | { name: "mis-tareas" }
   /** The person's Door43 profile, read-only (editing happens in Door43). */
   | { name: "perfil" }
@@ -103,6 +105,7 @@ export function parseHash(hash: string): AppRoute {
     return { name: "glosario", book, chapter, from: Number(params.get("de")) || 1, to: Number(params.get("a")) || 200, text: params.get("texto") === "tps" ? "tps" : undefined };
   }
   if (parts[0] === "hoy") return { name: "hoy" };
+  if (parts[0] === "sugerencias") return { name: "sugerencias" };
   if (parts[0] === "perfil") return { name: "perfil" };
   if (parts[0] === "organizacion") return { name: "organizacion" };
   if (parts[0] === "plantillas") {
@@ -176,6 +179,8 @@ export function routeToHash(route: AppRoute): string {
       return "#/avisos";
     case "hoy":
       return "#/hoy";
+    case "sugerencias":
+      return "#/sugerencias";
     case "mis-tareas":
       return "#/mis-tareas";
     case "conversacion":

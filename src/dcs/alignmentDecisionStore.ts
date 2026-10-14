@@ -1,6 +1,7 @@
 import {
   createIssueComment,
   createOrUpdateContents,
+  editIssue,
   getContents,
   getRawContent,
   listIssueComments,
@@ -57,6 +58,8 @@ import { groupsAfterTextEdit, sameText, tokensFromText, viewFromTokens, type Dec
 import { originalTextRef } from "../domain/sourcePackage";
 import { commentToItem, type ThreadItem } from "../domain/conversation";
 import { PM_REPO_NAME } from "../domain/types";
+import { decidedComment } from "../domain/outsideSuggestion";
+import { bookName } from "../domain/books";
 import { tryParseUsj } from "../domain/usfmAst";
 
 /**
@@ -144,6 +147,8 @@ export type OpenDecisionParams = {
    * read in that list, nobody is told of each one, and the list is not written to for each.
    */
   listed?: boolean;
+  /** A suggestion from outside the organization: the issue its author is answered in when it is decided. */
+  outside?: DecisionEventData["outside"];
 };
 
 /**
@@ -185,6 +190,7 @@ export async function openAlignmentDecision(params: OpenDecisionParams): Promise
     draft: { owner: target.owner, repo: target.repo, branch: target.branch, filepath: params.draftFilepath },
     source: params.source,
     parentIssue: params.task.parentIssue,
+    ...(params.outside ? { outside: params.outside } : {}),
   };
   const issue = await createDecisionIssue(session, pmOrg, {
     projectId: params.task.projectId,
@@ -351,6 +357,7 @@ export async function openTextProposal(params: {
   thresholds: DecisionThresholds;
   now?: Date;
   listed?: boolean;
+  outside?: DecisionEventData["outside"];
 }): Promise<{ id: string; issue: DcsIssue; card: ThreadItem }> {
   const { session, target } = params;
   const current = await readRepoFile(session, target, params.draftFilepath);
@@ -383,6 +390,7 @@ export async function openTextProposal(params: {
     thresholds: params.thresholds,
     now: params.now,
     listed: params.listed,
+    outside: params.outside,
   });
 }
 
@@ -476,6 +484,13 @@ export async function closeAlignmentDecision(params: {
   await closeIssue(session, pmOrg, params.threadIssue).catch(() => undefined);
   if (data.parentIssue) {
     await commentOnIssue(session, pmOrg, data.parentIssue, `Decisión #${params.threadIssue} sobre ${data.book} ${data.chapter}:${data.verse}: ${event.summary}`).catch(() => undefined);
+  }
+  // Whoever suggested it from outside is answered where they asked, and their suggestion is closed there.
+  if (data.outside) {
+    const { owner, repo, number } = data.outside;
+    const config = dcsConfig(session.host);
+    await createIssueComment(config, owner, repo, number, decidedComment(outcome, `${bookName(data.book)} ${data.chapter}:${data.verse}`, data.newText), session.token).catch(() => undefined);
+    await editIssue(config, owner, repo, number, { token: session.token, state: "closed" }).catch(() => undefined);
   }
   return { outcome, items: [commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME })] };
 }

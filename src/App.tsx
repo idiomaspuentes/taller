@@ -81,6 +81,7 @@ import { MyTasksView } from "./components/MyTasksView";
 import { ConflictSandboxView } from "./components/ConflictSandboxView";
 import { ConversationView } from "./components/ConversationView";
 import { ProposalListView } from "./components/ProposalListView";
+import { SuggestionsView } from "./components/SuggestionsView";
 import { DEMO_CITES, demoDecisions, demoIssue, demoThreadSources } from "./domain/conversationFixture";
 import "./conversationTypes";
 import type { DcsIssue } from "@ip-lms/dcs-client";
@@ -313,6 +314,7 @@ export function App() {
     if (mode === "trabajador") {
       if (
         route.name === "hoy" ||
+        route.name === "sugerencias" ||
         route.name === "proyectos" ||
         route.name === "proyecto" ||
         route.name === "organizacion" ||
@@ -406,7 +408,7 @@ export function App() {
   // Kick managers out of manager-only routes while previewing trabajador.
   useEffect(() => {
     if (!canManage || roleView !== "trabajador") return;
-    if (route.name === "hoy" || route.name === "proyectos" || route.name === "proyecto") {
+    if (route.name === "hoy" || route.name === "sugerencias" || route.name === "proyectos" || route.name === "proyecto") {
       navigate({ name: "mis-tareas" });
     }
   }, [canManage, roleView, route.name, navigate]);
@@ -1215,7 +1217,7 @@ export function App() {
                     {
                       id: "hoy",
                       label: t("nav.teamToday"),
-                      active: route.name === "hoy",
+                      active: route.name === "hoy" || route.name === "sugerencias",
                       onSelect: () => navigate({ name: "hoy" }),
                     },
                     {
@@ -1321,7 +1323,7 @@ export function App() {
 
       <main
         className={
-          route.name === "conversacion" || route.name === "conflicto-prueba" || route.name === "propuestas" ? "app-main app-main--chat" : "app-main"
+          route.name === "conversacion" || route.name === "conflicto-prueba" || route.name === "propuestas" || route.name === "sugerencias" ? "app-main app-main--chat" : "app-main"
         }
       >
         <div className="sr-only" aria-live="polite">
@@ -1365,6 +1367,18 @@ export function App() {
             contentOrg={contentOrg}
             announce={announce}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
+            onOpenSuggestions={() => navigate({ name: "sugerencias" })}
+          />
+        ) : null}
+        {route.name === "sugerencias" && session && effectiveCanManage ? (
+          <SuggestionsView
+            session={session}
+            pmOrg={pmOrg}
+            lang={lang}
+            contentOrg={contentOrg}
+            announce={announce}
+            onBack={() => navigate({ name: "hoy" })}
+            onOpenProposal={(issue) => navigate({ name: "propuestas", issue })}
           />
         ) : null}
         {(route.name === "mis-tareas" || route.name === "avisos") && session ? (

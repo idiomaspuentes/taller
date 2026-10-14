@@ -68,6 +68,8 @@ export type DecisionEventData = {
   version?: number;
   since?: string;
   history?: ProposalVersion[];
+  /** A suggestion from outside the organization (`outsideSuggestion.ts`): the issue its author is answered in. */
+  outside?: { owner: string; repo: string; number: number; by: string };
 };
 
 /** A wording a proposal had: which one, whose, and what it said. */
@@ -124,6 +126,9 @@ function asData(value: unknown): DecisionEventData | null {
     ...(typeof d.since === "string" && d.since ? { since: d.since } : {}),
     ...(Array.isArray(d.history) && d.history.length
       ? { history: d.history.filter((row) => row && Number(row.n) > 0 && typeof row.text === "string").map((row) => ({ n: Number(row.n), by: String(row.by ?? ""), text: String(row.text) })) }
+      : {}),
+    ...(d.outside?.owner && d.outside.repo && Number(d.outside.number) > 0
+      ? { outside: { owner: String(d.outside.owner), repo: String(d.outside.repo), number: Number(d.outside.number), by: String(d.outside.by ?? "") } }
       : {}),
   };
 }

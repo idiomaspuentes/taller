@@ -241,6 +241,28 @@ aviso más entre el trabajo del equipo. Van en **una corrección por capítulo q
 Código: `src/domain/proposalList.ts`, `src/dcs/proposalList.ts`, `src/components/ProposalListView.tsx`; pruebas,
 `npm run verify:proposal-list`.
 
+Esa misma pantalla abre **cualquier decisión del equipo sobre el texto** desde «Mis tareas»: el cambio se lee junto, uno
+bajo otro o lado a lado, y se compara con el original (cada palabra abre su significado y el diagrama de la oración),
+la ULT, la UST y el otro texto del equipo (`TextChangeView.tsx`, `VerseCompare.tsx`).
+
+### Sugerencias de fuera
+
+Quien no es de la organización (traductores que usan estos recursos, personas que estudian el texto con ellos) sugiere
+cambios desde **Door43**, en el repositorio público del texto (`es-419_glt`, `es-419_gst`):
+
+1. Quien gestiona prepara cada repositorio desde «Equipo hoy» → «Sugerencias de fuera». Se agregan un formulario
+   (`.gitea/ISSUE_TEMPLATE/sugerencia.yaml`) y las etiquetas `sugerencia` y `en-taller`. Desde entonces, cualquiera con
+   cuenta en Door43 abre ahí una sugerencia: qué versículo, cómo quedaría y por qué. La página de esa pantalla da el
+   enlace para compartir.
+2. En «Sugerencias de fuera» se ve cada una con su cambio marcado sobre el texto del equipo. **Llevar al equipo** la
+   abre como propuesta de la tarea que tiene el texto (la primera de las que lo revisan otra vez, `redoAfter`), con su
+   autor y el enlace en lo que dice. **No procede** le responde a su autor con el porqué y la cierra.
+3. Al llevarla, su autor recibe un aviso en su issue; cuando el equipo decide, la respuesta (aceptada, como queda el
+   versículo; o rechazada; o caducada) y el issue se cierra.
+
+Código: `src/domain/outsideSuggestion.ts`, `src/dcs/outsideSuggestions.ts`, `src/components/SuggestionsView.tsx`;
+pruebas, `npm run verify:outside-suggestions`.
+
 ### Desde qué fase se propone
 
 Un texto se propone cambiar **desde la fase que lo tiene o desde una posterior, nunca desde una anterior**. Lo
