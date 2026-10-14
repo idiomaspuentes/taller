@@ -5964,9 +5964,9 @@ button.al-box--read { cursor: pointer; }
 /* How a sentence is put together, as a diagram of boxes one inside another. A clause is a box with a heavy edge;
    a part of it (verb, subject, object) a lighter one of its own colour, its name set into its top edge. The
    boxes follow one another as the words are read and wrap, so a long sentence grows down and never sideways. */
-.ws-sentence-open { justify-self: start; display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
+.ws-sentence-open { justify-self: start; font-size: 0.9375em; display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
 .st-sentence { display: grid; gap: 0.5rem; }
-.st-kind { justify-self: start; margin: 0; padding: 0.25rem 0.625rem; border-radius: var(--radius-full); background: var(--accent-100); font-size: 0.8125rem; font-weight: 700; color: var(--accent-700); }
+.st-kind { justify-self: start; margin: 0; padding: 0.25rem 0.625rem; border-radius: var(--radius-full); background: var(--accent-100); font-size: 0.875em; font-weight: 700; color: var(--accent-700); }
 .st-box { --edge: var(--border-strong); --tint: transparent; position: relative; display: block; min-width: 0; margin-top: 0.5rem; padding: 0.625rem 0.375rem 0.375rem; border: 1.5px solid var(--edge); border-radius: 8px; background: var(--tint); }
 .st-box[data-role="v"] { --edge: var(--accent-500); --tint: color-mix(in srgb, var(--accent-500) 8%, transparent); }
 .st-box[data-role="s"] { --edge: var(--primary); --tint: color-mix(in srgb, var(--primary) 7%, transparent); }
@@ -5995,7 +5995,7 @@ button.al-box--read { cursor: pointer; }
 .st-word[data-link] { align-self: center; border: 1px dashed var(--border-strong); border-radius: var(--radius-full); background: var(--surface-muted); }
 .st-word__text { font-size: 1.0625rem; line-height: 1.5; }
 .st-gloss { max-width: 8rem; font-size: 0.6875rem; line-height: 1.2; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
-.st-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; margin: 0.25rem 0 0; padding: 0; font-size: 0.75rem; color: var(--text-muted); }
+.st-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; margin: 0.25rem 0 0; padding: 0; font-size: 0.8125em; color: var(--text-muted); }
 .st-legend li { display: inline-flex; align-items: center; gap: 0.3125rem; }
 .st-legend li::before { content: ""; width: 0.75rem; height: 0.75rem; border: 1.5px solid var(--text-faint); border-radius: 3px; }
 .st-legend li[data-role="v"]::before { border-color: var(--accent-500); }
@@ -6036,7 +6036,7 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 /* The sentence as a tree: names in pills joined by branches, the words in a row at the foot. It is as wide as
    the sentence needs and is moved sideways inside its own strip; the page itself never moves sideways. */
 .st-views { justify-self: start; display: inline-flex; padding: 0.125rem; border-radius: var(--radius-full); background: var(--surface-muted); }
-.st-views button { min-height: 2.25rem; padding: 0 0.875rem; border: 0; border-radius: var(--radius-full); background: none; font: inherit; font-size: 0.8125rem; color: var(--text-muted); cursor: pointer; }
+.st-views button { min-height: 2.25rem; padding: 0 0.875rem; border: 0; border-radius: var(--radius-full); background: none; font: inherit; font-size: 0.875em; color: var(--text-muted); cursor: pointer; }
 .st-views button[aria-selected="true"] { background: var(--surface); font-weight: 700; color: var(--text); box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 15%, transparent); }
 .st-tree-scroll { margin: 0 -1rem; padding: 0.25rem 1rem 0.5rem; overflow-x: auto; overscroll-behavior-x: contain; }
 .st-tree { position: relative; margin: 0 auto; }
@@ -6066,10 +6066,10 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 .st-box:not([data-clause]) > .st-label--pick { display: block; min-height: 1.5rem; }
 .st-box[data-picked] { outline: 2.5px solid var(--accent-500); outline-offset: 1px; }
 .st-word[data-picked] { border-color: var(--accent-500); background: var(--accent-100); }
-.st-error { margin: 0; font-size: 0.875rem; color: var(--danger, #b42318); }
+.st-error { margin: 0; font-size: 0.9375em; color: var(--danger, #b42318); }
 .st-tools { flex: 0 0 auto; display: grid; gap: 0.375rem; padding: 0.5rem 1rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: var(--surface); }
 .st-chips { display: flex; flex-wrap: wrap; gap: 0.3125rem; }
-.st-chip { min-height: 2.5rem; padding: 0.25rem 0.625rem; border: 1.5px solid var(--border-strong); border-radius: var(--radius-full); background: var(--surface); font: inherit; font-size: 0.8125rem; color: var(--text); cursor: pointer; }
+.st-chip { min-height: 2.5rem; padding: 0.25rem 0.625rem; border: 1.5px solid var(--border-strong); border-radius: var(--radius-full); background: var(--surface); font: inherit; font-size: 0.9375em; color: var(--text); cursor: pointer; }
 .st-chip[data-role="v"] { border-color: var(--accent-500); }
 .st-chip[data-role="s"] { border-color: var(--primary); }
 .st-chip[data-role="o"], .st-chip[data-role="io"] { border-color: var(--warning-700); }
@@ -6086,7 +6086,7 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 /* The other words of a field of meaning, in the sheet of a word: each a place to touch, lemma first. */
 .ws-field__words { list-style: none; margin: 0.375rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.375rem; }
 .ws-field__word { display: inline-flex; align-items: baseline; gap: 0.375rem; min-height: 2.25rem; padding: 0.25rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); font: inherit; color: var(--text); cursor: pointer; }
-.ws-field__gloss { font-size: 0.8125rem; color: var(--text-muted); }
+.ws-field__gloss { font-size: 0.875em; color: var(--text-muted); }
 
 /* A word of the original that opens what it means: it reads as text, and says it can be touched with a dotted line. */
 .af-word--open { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted color-mix(in srgb, var(--text) 35%, transparent); text-underline-offset: 0.3em; }
@@ -7604,11 +7604,11 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
 
 /* ---- the steps editor (StepsEditor): the settings of one step ---- */
 .st-settings { display: grid; gap: 0.75rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted); }
-.st-field { display: grid; gap: 0.25rem; font-size: 0.875rem; }
+.st-field { display: grid; gap: 0.25rem; font-size: 0.9375em; }
 .st-field > span { font-weight: 600; }
 .st-field small { color: var(--text-muted); }
 .st-question { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 0.5rem; align-items: center; }
-.st-check { grid-column: 1; display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; color: var(--text-muted); }
+.st-check { grid-column: 1; display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.875em; color: var(--text-muted); }
 
 /* ---- «Empezar un libro» (StartBookPanel) ---- */
 .sb { display: grid; gap: 1rem; }
@@ -8765,33 +8765,38 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
 .af.al > * { flex: 0 0 auto; min-width: 0; }
 .af.al > .al-actionbar { margin-top: auto; margin-bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); bottom: calc(-1rem - env(safe-area-inset-bottom, 0px)); }
 /* What a word of the original means: a sheet from the bottom edge on a phone, a dialog on a desk. */
-.word-sheet { width: min(30rem, calc(100vw - 2rem)); max-height: min(80dvh, 40rem); overflow-y: auto; }
+.word-sheet { width: min(30rem, calc(100vw - 2rem)); max-height: min(80dvh, 40rem); overflow-y: auto; font-size: 1rem; }
+/* Everything in a sheet is sized from the sheet, which grows with the size the person chose. */
+.word-sheet .af-hint, .word-sheet .af-link { font-size: 0.9375em; }
+.st-sheet { font-size: 1rem; }
+.st-sheet .dialog-title { font-size: 1.0625em; }
+.st-sheet .af-hint, .st-sheet .af-link, .st-sheet .ws-meta, .st-sheet .pp-credit { font-size: 0.875em; }
 .word-sheet[open] { display: grid; gap: 0.625rem; align-content: start; }
 .ws-head { display: grid; gap: 0.125rem; padding-inline-end: 2rem; }
-.ws-word { margin: 0; font-family: "Times New Roman", serif; font-size: 1.625rem; font-weight: 700; line-height: 1.25; }
+.ws-word { margin: 0; font-family: "Times New Roman", serif; font-size: 1.625em; font-weight: 700; line-height: 1.25; }
 .ws-head .ws-meta { margin: 0; }
 .word-sheet p { margin-block: 0; }
-.ws-meta { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
+.ws-meta { margin: 0; font-size: 0.875em; color: var(--text-muted); }
 .ws-part { display: grid; gap: 0.375rem; }
 .ws-senses { display: grid; gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
 .ws-sense { display: grid; gap: 0.1875rem; padding-inline-start: 0.625rem; border-inline-start: 3px solid var(--accent-200); }
-.ws-glosses { margin: 0; font-weight: 700; font-size: 1rem; }
-.ws-def { margin: 0; font-size: 0.9375rem; line-height: 1.45; }
-.ws-tag { font-size: 0.75rem; color: var(--text-muted); }
-.ws-note { margin: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--text-muted); }
-.ws-more summary { min-height: 2.5rem; display: flex; align-items: center; font-weight: 600; font-size: 0.875rem; color: var(--accent-700); cursor: pointer; }
+.ws-glosses { margin: 0; font-weight: 700; font-size: 1.0625em; }
+.ws-def { margin: 0; font-size: 1em; line-height: 1.5; }
+.ws-tag { font-size: 0.8125em; color: var(--text-muted); }
+.ws-note { margin: 0; font-size: 0.9375em; line-height: 1.5; color: var(--text-muted); }
+.ws-more summary { min-height: 2.5rem; display: flex; align-items: center; font-weight: 600; font-size: 0.9375em; color: var(--accent-700); cursor: pointer; }
 .ws-more .ws-senses { margin-top: 0.25rem; }
-.ws-credit { margin: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.6875rem; color: var(--text-faint); }
+.ws-credit { margin: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.75em; color: var(--text-faint); }
 .al-ref { cursor: pointer; }
 .al-ref:hover .al-ref__word, .al-ref:focus-visible .al-ref__word { text-decoration: underline; text-decoration-color: var(--accent-400); text-underline-offset: 0.2em; }
 @media (max-width: 40rem) {
   .word-sheet { width: 100vw; max-width: 100vw; max-height: 75dvh; margin: auto 0 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: 0; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
 }
 .ws-report { display: grid; gap: 0.375rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
-.ws-report-open { justify-self: start; min-height: 2.5rem; font-size: 0.875rem; }
-.ws-sent { margin: 0; font-size: 0.875rem; }
+.ws-report-open { justify-self: start; min-height: 2.5rem; font-size: 0.9375em; }
+.ws-sent { margin: 0; font-size: 0.9375em; }
 .ws-sent a { font-weight: 600; color: var(--accent-700); }
-.ws-error { margin: 0; font-size: 0.8125rem; color: var(--danger-700, #b91c1c); }
+.ws-error { margin: 0; font-size: 0.9375em; color: var(--danger-700, #b91c1c); }
 /* Correcting a verse, or asking the group to: over the tool, with the texts it is read against in view. The whole
    screen on a phone, so the keyboard takes its half and the verse stays above it. */
 .fix-sheet { width: min(36rem, calc(100vw - 2rem)); max-height: min(90dvh, 46rem); padding: 0; overflow: hidden; }
@@ -8812,11 +8817,11 @@ p.af-team { margin: 0; padding: 0.375rem 0.625rem; }
   .fix-sheet { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
   .fx-foot { grid-template-columns: 1fr; gap: 0.5rem; }
 }
-.ws-facts { display: grid; gap: 0.125rem; margin: 0; font-size: 0.875rem; line-height: 1.45; }
+.ws-facts { display: grid; gap: 0.125rem; margin: 0; font-size: 1em; line-height: 1.5; }
 .ws-facts > div { display: grid; grid-template-columns: 5.75rem minmax(0, 1fr); gap: 0.5rem; }
 .ws-facts dt { margin: 0; font-weight: 700; color: var(--text-muted); }
 .ws-facts dd { margin: 0; }
-.ws-facts dd[lang] { font-family: "Times New Roman", serif; font-size: 1.0625rem; line-height: 1.3; }
+.ws-facts dd[lang] { font-family: "Times New Roman", serif; font-size: 1.125em; line-height: 1.3; }
 /* The boxes the lexicon points to for the draft word in hand: a quiet mark, under the chosen and the drop states. */
 .al-box[data-hint="true"]:not([data-selected="true"]):not([data-over="true"]) { border-color: var(--accent-500); background: var(--accent-50); }
 .al-box[data-hint="true"] .al-ref__word { text-decoration: underline; text-decoration-color: var(--accent-400); text-underline-offset: 0.2em; }
@@ -9287,6 +9292,7 @@ html[data-text] .tc .al-diff, html[data-text] .cr-words, html[data-text] .vc-ver
 html[data-text] .cr-why, html[data-text] .pl-note, html[data-text] .ns-body, html[data-text] .ns-article { font-size: calc(1rem * var(--ts)); }
 html[data-text] .ns-phrase__text, html[data-text] .ns-quote { font-size: calc(1.125rem * var(--ts)); }
 html[data-text] .vc .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
+html[data-text] .word-sheet, html[data-text] .st-sheet { font-size: calc(1rem * var(--ts)); }
 
 /* The three sizes in the menu, each letter as large as what it gives. */
 .user-menu__icon--letters { font-size: 0.75rem; font-weight: 700; }
