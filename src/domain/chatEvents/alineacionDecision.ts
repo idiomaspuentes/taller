@@ -330,7 +330,6 @@ export function tallyOf(d: DecisionEventData, prepared: DecisionPrepared) {
   });
 }
 
-const SHORT: Record<DecisionOptionId, string> = { aceptar: "aceptar", rechazar: "rechazar", cambiar: "cambiarla", mantener: "mantenerla" };
 
 export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
   type: DECISION_EVENT,
@@ -443,17 +442,6 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
           blockReason: null,
           confirm: `La versión ${before.n}, de @${before.by}, decía: «${before.text}». Se propone de nuevo y los votos empiezan otra vez.`,
           busyLabel: "Guardando la versión…",
-        });
-      }
-    }
-    if (prepared && !prepared.closed && tally?.state === "plazo" && ctx.viewer.canManage) {
-      for (const id of [yes, no]) {
-        out.push({
-          id: `coord:${id}`,
-          label: `Decidir yo: ${SHORT[id]}`,
-          blockReason: null,
-          confirm: `Pasó el plazo sin consenso. Vas a decidir ${SHORT[id]} en nombre del equipo.`,
-          busyLabel: "Cerrando la decisión…",
         });
       }
     }

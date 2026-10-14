@@ -569,4 +569,16 @@ await test("una propuesta se conversa: se escribe de otra forma, los votos empie
   await assert.rejects(() => run("ana", "version", "Pablo, criado de Dios"), /ya se cerró/, "cerrada, ya no se escribe de otra forma");
 });
 
+await test("pasado el plazo sin las aprobaciones, nadie la cierra en nombre del equipo, ni quien coordina", async () => {
+  actor = "bea";
+  const h = currentVerseHash(draftNow(), "NEH", 1, 1, source);
+  const opened = await openAlignmentDecision({ ...common, session: session("bea"), kind: "proposal", note: "sin votos", baseHash: h, before: anas, proposed: beas, now: new Date("2026-09-01T10:00:00Z") });
+  const n = opened.issue.number;
+  const { event, options } = await optionsNow("ana", n);
+  assert.deepEqual(options.map((o) => o.id).filter((id) => id.startsWith("coord:") || id === "confirmar"), [], "a quien coordina no se le ofrece cerrarla");
+  actor = "ana";
+  await assert.rejects(() => cardType().run!("coord:aceptar", event, envFor("ana", n)), /Opción desconocida/);
+  assert.equal(issues.find((i) => i.number === n)!.state, "open", "sigue abierta hasta que tenga sus aprobaciones");
+});
+
 console.log(`\nverify-alignment-decision-store: ${passed} checks passed.`);

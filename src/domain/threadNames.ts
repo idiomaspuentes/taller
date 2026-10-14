@@ -17,7 +17,6 @@ const CLOSINGS: [string, string][] = Object.entries(glossary.threadClosings);
 /** The whole string, as it is. */
 const EXACT: [string, string][] = Object.entries(glossary.thread);
 
-const SHORT: Record<string, string> = glossary.threadShort;
 const OWNER = "(la versión de (.+?)|la otra versión)";
 
 /** A whole sentence with parts to carry over, tried in order; the first that matches wins. */
@@ -26,7 +25,6 @@ const SENTENCES: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^Propuesta de (@\S+) para cambiar el texto de (.+)$/, (m) => `Proposta de ${m[1]} para mudar o texto de ${m[2]}`],
   [/^Propuesta de (@\S+) para (.+)$/, (m) => `Proposta de ${m[1]} para ${m[2]}`],
   [/^Lo que dice (@\S+)$/, (m) => `O que diz ${m[1]}`],
-  [/^Decidir yo: (aceptar|rechazar|cambiarla|mantenerla)$/, (m) => `Decidir eu: ${SHORT[m[1]!]}`],
   [/^Versión de (.+)$/, (m) => `Versão de ${m[1]}`],
   [/^Dejar la de (.+)$/, (m) => `Manter a de ${m[1]}`],
   [/^Usar la de (.+)$/, (m) => `Usar a de ${m[1]}`],

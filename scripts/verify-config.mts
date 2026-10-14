@@ -260,7 +260,7 @@ await test("las razones de «Equipo hoy» se muestran en el idioma de la interfa
     ["Se decide antes de mañana", "Decide-se antes de amanhã"],
     ["Se decide antes de 2 días", "Decide-se antes de 2 dias"],
     ["El plazo vence hoy", "O prazo vence hoje"],
-    ["El plazo venció hace 1 día: decide quien coordina", "O prazo venceu há 1 dia: decide quem coordena"],
+    ["El plazo venció hace 1 día: bastan dos aprobaciones", "O prazo venceu há 1 dia: bastam duas aprovações"],
     ["Nadie la ha tomado en 4 días", "Ninguém pegou há 4 dias"],
     ["Libre para el equipo", "Livre para a equipe"],
     ["Sin movimiento hace 6 días", "Sem movimento há 6 dias"],

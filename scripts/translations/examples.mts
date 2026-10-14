@@ -39,7 +39,6 @@ export function buildExamples(): Example[] {
     "Decidido por el equipo; @ana confirmó el consenso. Se aceptó la propuesta y la alineación quedó cambiada.",
     "Decidido por @ana, quien coordina. La objeción no prospera; la alineación se mantiene.",
     "Hay consenso en «Aceptar la propuesta». Aceptar la propuesta: @ana, @bea. Rechazar la propuesta: nadie. ¿Confirmas que el equipo está de acuerdo y se cierra?",
-    "Pasó el plazo sin consenso. Vas a decidir aceptar en nombre del equipo.", "Decidir yo: aceptar",
     "Resuelto por @ana: quedó la versión de @bea", "Versículos 1:2 guardados en el borrador grupal", "Aprobado: Revisión grupal",
     "Añade integrantes a Traducir TPL antes de autoasignar.",
     "No queda trabajo sin asignar en el alcance de Traducir TPL.",
@@ -48,7 +47,7 @@ export function buildExamples(): Example[] {
     assignableCountLabel("notas", "item", 1), assignableCountLabel("notas", "item", 5), assignableCountLabel("tpl", "portion", 12),
     articleFilterHelp("academia", "pending"), articleFilterHelp("palabras", "all", "item"),
     "Cerrada hoy", "Cerrada hace 3 días", "Se decide antes de mañana", "Se decide antes de 2 días", "El plazo vence hoy",
-    "El plazo venció hace 1 día: decide quien coordina", "Nadie la ha tomado en 4 días", "Sin movimiento hace 6 días",
+    "El plazo venció hace 1 día: bastan dos aprobaciones", "Nadie la ha tomado en 4 días", "Sin movimiento hace 6 días",
     "Último movimiento hoy", "Espera a «Traducir TPL» de @ana y 2 más", "Pide nivel persona habilitada",
   );
   const ctx = { owner: "pt-br_gl", repo: "pt-br_glt", filepath: "16-NEH.usfm", branch: "w/neh/1" };

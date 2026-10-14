@@ -215,6 +215,11 @@ Una propuesta de cambiar un versículo tiene su propia conversación. Mientras n
 - Con cada versión **los votos empiezan de nuevo** y el plazo vuelve a contar. Quien la escribió ya cuenta a favor.
 - Un **no** a una propuesta **dice por qué**, y se le avisa a quien propuso.
 
+Se cierra solo de dos maneras: antes del plazo (3 días), cuando reúne todas las aprobaciones que pide el paso;
+después del plazo, cuando reúne al menos dos aprobaciones de fuera (o las que pida el paso, si son menos) y nadie
+en contra. Sin eso sigue abierta: nadie la cierra en nombre del equipo, tampoco quien coordina. «Caducada» no es
+vencida por tiempo: quiere decir que el versículo cambió mientras se decidía y la propuesta ya no se aplica.
+
 Al borrador llega la versión de la tarjeta que se confirmó. Las tareas de «Revisar de nuevo» se piden una sola
 vez, entonces.
 

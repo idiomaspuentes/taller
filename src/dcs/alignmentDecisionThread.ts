@@ -6,7 +6,7 @@
 import type { GtSession } from "./auth";
 import { closeAlignmentDecision, postVote, readDecisionVotes, rewordProposal } from "./alignmentDecisionStore";
 import { loadPmConfig } from "./issues";
-import { decisionLevels, optionsFor, type DecisionOptionId } from "../domain/alignmentDecision";
+import { decisionLevels, optionsFor } from "../domain/alignmentDecision";
 import { issueTaskId } from "../domain/myTasks";
 import { loadAssignmentsFromDcs } from "./persist";
 import { getPmIssue } from "./portionPr";
@@ -141,15 +141,8 @@ registerChatEventType<DecisionPrepared>({
     const levels = await teamLevelsOf(env).catch(() => ({}));
     const tallyNow = (votes: typeof before.votes) => tallyOf(data, { votes, levels, since: before.since, now: new Date().toISOString() });
 
-    // Whoever coordinates may close it past the deadline.
-    if (optionId.startsWith("coord:")) {
-      if (!session.canManage) throw new Error("Solo quien coordina puede decidir por el equipo.");
-      const option = optionId.slice("coord:".length) as DecisionOptionId;
-      const closed = await closeAlignmentDecision({ session, pmOrg, threadIssue, data, option, how: "coordinacion" });
-      return [...closed.items, ...(await redoAfterAccepted(env, data, closed.outcome))];
-    }
-
-    // Closing is always a person's decision: they confirm that the consensus is real.
+    // Closing is always a person's decision: they confirm that the consensus is real. Nobody closes it for the
+    // team without it, not even past the deadline: then the approvals asked for are fewer, but they are still asked.
     if (optionId === "confirmar") {
       const winner = tallyNow(before.votes).winner;
       if (!winner) throw new Error("Ya no hay consenso: alguien cambió su voto. Mira los votos de nuevo.");

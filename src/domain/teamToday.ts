@@ -117,7 +117,7 @@ export function classifyToday(params: {
         ...base,
         group: "decisions",
         days,
-        reason: left > 0 ? `Se decide antes de ${left === 1 ? "mañana" : `${left} días`}` : left === 0 ? "El plazo vence hoy" : `El plazo venció ${daysText(-left)}: decide quien coordina`,
+        reason: left > 0 ? `Se decide antes de ${left === 1 ? "mañana" : `${left} días`}` : left === 0 ? "El plazo vence hoy" : `El plazo venció ${daysText(-left)}: bastan dos aprobaciones`,
       });
       continue;
     }

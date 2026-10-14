@@ -62,8 +62,8 @@ export function localizeToday(text: string, language: UiLanguage): string {
   m = /^Se decide antes de (mañana|\d+ días)$/.exec(text);
   if (m) return `Decide-se antes de ${m[1] === "mañana" ? "amanhã" : m[1]!.replace(" días", " dias")}`;
   if (text === "El plazo vence hoy") return "O prazo vence hoje";
-  m = new RegExp(`^El plazo venció ${days}: decide quien coordina$`).exec(text);
-  if (m) return `O prazo venceu ${daysPt(m[1]!)}: decide quem coordena`;
+  m = new RegExp(`^El plazo venció ${days}: bastan dos aprobaciones$`).exec(text);
+  if (m) return `O prazo venceu ${daysPt(m[1]!)}: bastam duas aprovações`;
   m = /^Nadie la ha tomado en (\d+) días$/.exec(text);
   if (m) return `Ninguém pegou há ${m[1]} dias`;
   if (text === "Libre para el equipo") return "Livre para a equipe";

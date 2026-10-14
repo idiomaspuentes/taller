@@ -504,7 +504,7 @@ export async function remindDecisionVoters(params: {
   const who = waiting.map((w) => `@${w}`).join(" ");
   const summary =
     due === "vencido"
-      ? `${who} el plazo para votar en ${what} venció. Con dos aprobaciones de fuera ya se puede aplicar, y quien coordina puede decidir; si aún quieren opinar, háganlo ahora.`
+      ? `${who} el plazo para votar en ${what} venció. Ahora basta con dos aprobaciones de fuera para cerrarla; sin ellas sigue abierta. Si aún quieren opinar, háganlo ahora.`
       : due === "cerca"
         ? `${who} mañana vence el plazo para votar en ${what}. Falta su voto.`
         : `${who} falta su voto en ${what}. Se decide antes del ${card.deadline.slice(0, 10)}.`;
