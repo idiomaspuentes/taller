@@ -36,6 +36,7 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 - Comentarios y commits en inglés; la interfaz y la documentación del producto, en español. Commits con título corto y un cuerpo que explique el porqué.
 - Estilo del código: el del entorno (comentarios que expliquen el porqué, pocos). Pruebas con salida legible y nombres que cuenten lo que se verifica.
 - Cada cambio visible se prueba en el navegador (móvil y escritorio) además de las pruebas automáticas.
+- **Diseño de pantallas**: el texto en el centro, lo demás en capas, una sola cosa obvia que hacer, pensado para el dedo a 375 px. Antes de dar por hecho un cambio visible, pasa la lista de comprobación de [`docs/FILOSOFIA_DE_DISENO.md`](docs/FILOSOFIA_DE_DISENO.md).
 
 ## Límites
 
@@ -57,3 +58,4 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 | Crear o cambiar un proyecto o una plantilla (pantallas, editor, borrador) | `docs/PROYECTOS.md` |
 | Definir o cambiar un proceso (plantillas, herramientas) | `docs/PROCESOS.md`, `processes/` |
 | El FCR tal como lo trabaja el equipo | `docs/PLANTILLA_FCR.md`, `docs/CORRIDA_EN_FRIO_FCR.md` |
+| Cómo se diseña una pantalla, y qué se tomó de translationCore 4 | `docs/FILOSOFIA_DE_DISENO.md`, `docs/ESTRUCTURA_TC4.md` |
