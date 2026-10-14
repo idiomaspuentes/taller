@@ -14,6 +14,7 @@ Cada puerto es un origen distinto, así que cada pestaña guarda su propia sesi�
 
 - El plan y las subtareas del proyecto NEH (`BSOJ/taller`) y el borrador en español (`es-419_gl/es-419_glt`, rama `neh`). Todo se escribe aquí, en memoria.
 - Los textos públicos de unfoldingWord (hebreo, notas, palabras, artículos) se leen de `qa.door43.org`, sin credenciales y solo lectura, y se guardan en caché.
+- Los léxicos del idioma (`es-419_uhl`, `es-419_ugl`) también, salvo que una prueba haya puesto el suyo: sin ellos ninguna palabra del original tenía entrada.
 - Personas de prueba: `ana` (coordina), `bea`, `carla`. Sus tokens son `token-ana`, `token-bea` y `token-carla`.
 
 ## Entrar como una persona

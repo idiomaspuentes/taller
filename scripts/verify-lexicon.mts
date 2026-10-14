@@ -182,4 +182,20 @@ test("el sentido de un versículo del hebreo se busca como lo numera la Biblia h
   assert.equal(glossOfWord(greek, { book: "JON", chapter: 2, verse: 5 }), "otro");
 });
 
+test("lo que el léxico no ha traducido todavía («[Glosses - es]», «NEW NOTE es») se toma como que no está", () => {
+  // H5971 as es-419_uhl has it (October 2026).
+  const file = normalizeLexiconFile({
+    brief: "[Glosses - es]",
+    long: "pueblo, nación; pariente: [Glosses - es]",
+    entries: [{ strong: "H5971", lemma: "עַם", pos: ["sust. m."], senses: [{ definition: "pueblo, nación; pariente", glosses: ["[Glosses - es]"], domain: "Grupos", domainCode: "001001003004" }], notes: ["NEW NOTE es", "NEW NOTE es"] }],
+  })!;
+  assert.equal(file.brief, "");
+  assert.equal(file.long, "pueblo, nación; pariente");
+  assert.equal(file.entries[0]!.senses[0]!.glosses, undefined);
+  assert.equal(file.entries[0]!.senses[0]!.definition, "pueblo, nación; pariente");
+  assert.equal(file.entries[0]!.notes, undefined);
+  const translated = normalizeLexiconFile({ brief: "terror", long: "", entries: [{ strong: "H0367", lemma: "אֵימָה", senses: [{ glosses: ["terror", "[sic]"] }] }] })!;
+  assert.deepEqual(translated.entries[0]!.senses[0]!.glosses, ["terror", "[sic]"], "unos corchetes que no son la marca quedan");
+});
+
 console.log(`\nverify-lexicon: ${passed} checks passed.`);

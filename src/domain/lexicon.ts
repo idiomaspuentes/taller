@@ -60,6 +60,22 @@ export function strongParts(strong: string | undefined): StrongPart[] {
 
 const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
 
+/**
+ * What a lexicon has not translated yet is marked in it with the placeholder its tool leaves, «[Glosses - es]» for
+ * the glosses and «NEW NOTE es» for a note: shown, the word read «[Glosses - es]» as its meaning. It is taken as not
+ * there.
+ */
+const PLACEHOLDER = /^\[[^\]]*-\s*[a-z]{2,3}(?:-\d{3})?\]$|^NEW NOTE\b/i;
+const filled = (value: unknown): string => {
+  const found = text(value);
+  return PLACEHOLDER.test(found) ? "" : found;
+};
+/** A text with the placeholders it ends or is made of taken out: «pueblo, nación: [Glosses - es]» is «pueblo, nación». */
+const withoutPlaceholders = (value: unknown): string =>
+  text(value)
+    .replace(/[:;,]?\s*\[[^\]]*-\s*[a-z]{2,3}(?:-\d{3})?\]/gi, "")
+    .trim();
+
 /** A lexicon file as read, made safe to show. A plain Door43 lexicon (only `brief` and `long`) has no entries. */
 export function normalizeLexiconFile(raw: unknown): LexiconFile | null {
   if (!raw || typeof raw !== "object") return null;
@@ -72,8 +88,8 @@ export function normalizeLexiconFile(raw: unknown): LexiconFile | null {
     for (const s of Array.isArray(e.senses) ? e.senses : []) {
       if (!s || typeof s !== "object") continue;
       const sense = s as Record<string, unknown>;
-      const glosses = Array.isArray(sense.glosses) ? sense.glosses.map(text).filter(Boolean) : [];
-      const definition = text(sense.definition);
+      const glosses = Array.isArray(sense.glosses) ? sense.glosses.map(filled).filter(Boolean) : [];
+      const definition = filled(sense.definition);
       if (!definition && !glosses.length) continue;
       const refs: Record<string, string> = {};
       if (sense.refs && typeof sense.refs === "object") for (const [book, packed] of Object.entries(sense.refs as Record<string, unknown>)) if (text(packed)) refs[book] = text(packed);
@@ -97,13 +113,13 @@ export function normalizeLexiconFile(raw: unknown): LexiconFile | null {
       ...(e.aramaic === true ? { aramaic: true } : {}),
       ...(Array.isArray(e.pos) && e.pos.map(text).filter(Boolean).length ? { pos: e.pos.map(text).filter(Boolean) } : {}),
       senses,
-      ...(Array.isArray(e.notes) && e.notes.map(text).filter(Boolean).length ? { notes: e.notes.map(text).filter(Boolean) } : {}),
+      ...(Array.isArray(e.notes) && e.notes.map(filled).filter(Boolean).length ? { notes: e.notes.map(filled).filter(Boolean) } : {}),
       ...(text(e.source) ? { source: text(e.source) } : {}),
       ...(text(e.review) ? { review: text(e.review) } : {}),
     });
   }
-  const brief = text(row.brief);
-  const long = text(row.long);
+  const brief = withoutPlaceholders(row.brief);
+  const long = withoutPlaceholders(row.long);
   return brief || long || entries.length ? { brief, long, entries } : null;
 }
 

@@ -456,6 +456,9 @@ async function handle(req, res) {
   // Public unfoldingWord texts: read from the real QA, read only.
   const repoMatch = /^\/repos\/([^/]+)\/([^/]+)(?:\/(.*))?$/.exec(api);
   if (repoMatch && decodeURIComponent(repoMatch[1]) === "unfoldingWord" && req.method === "GET") return proxyReal(req, res, url);
+  // The lexicons of a language (`es-419_uhl`, `es-419_ugl`) are published, never written by a team: read from the real
+  // QA too, unless a test put its own here. Without them every word of the original opened with no entry.
+  if (repoMatch && req.method === "GET" && /_(uhl|ugl)$/.test(decodeURIComponent(repoMatch[2])) && !repoOf(`${decodeURIComponent(repoMatch[1])}/${decodeURIComponent(repoMatch[2])}`)) return proxyReal(req, res, url);
 
   if (api === "/user") return user ? json(res, { ...user, avatar_url: "" }) : json(res, { message: "token is required" }, 401);
   if (ROSTER) {
