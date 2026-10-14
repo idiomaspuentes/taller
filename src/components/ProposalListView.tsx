@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { MoreMenu, type MoreItem } from "./MoreMenu";
@@ -267,6 +267,18 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   // Up to six proposals the strip stays in view; with more, the list opens from «3 de 9» (decided with Abel).
   const listInSheet = rows.length > 6;
   const [listOpen, setListOpen] = useState(false);
+  // Scrolled past where the line sits: only its arrows stay, in the margins; its middle would cover a line of the text.
+  const [stuck, setStuck] = useState(false);
+  const mark = useRef<HTMLDivElement>(null);
+  const shown = Boolean(data && current && !single);
+  useEffect(() => {
+    const node = mark.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    // Out of view upwards (the page scrolls inside its own box, which clips it), not below.
+    const watch = new IntersectionObserver(([entry]) => setStuck(Boolean(entry) && !entry!.isIntersecting && entry!.boundingClientRect.top < window.innerHeight / 2));
+    watch.observe(node);
+    return () => watch.disconnect();
+  }, [shown]);
   const pick = (at: number) => {
     setListOpen(false);
     go(at);
@@ -331,12 +343,12 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
             {single ? null : (
               // Where one is, and the way to the one before and after: the same line in every tool that goes through items.
               // It stays at the top while reading: whoever had scrolled past it did not know there was a next one.
-              <nav className="pl-pos" aria-label={t("pl.stripAria")}>
-                {/* Each arrow says where it goes: two bare grey circles were not seen as the way on. */}
+              <>
+              <div ref={mark} className="pl-pos-mark" aria-hidden />
+              <nav className="pl-pos" data-stuck={stuck ? "true" : undefined} aria-label={t("pl.stripAria")}>
                 {prevRef ? (
                   <Button type="button" variant="outline" className="pl-pos__step" aria-label={t("pl.prevTo").replace("{ref}", prevRef)} onClick={() => go(index - 1)}>
                     <ChevronLeft aria-hidden className="size-5" />
-                    {prevRef}
                   </Button>
                 ) : (
                   <span className="pl-pos__step" aria-hidden />
@@ -357,13 +369,13 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 {nextRef ? (
                   // Once this person voted, the way on is tinted stronger: a filled button looked like the thing to decide.
                   <Button type="button" variant="outline" className="pl-pos__step" data-go={waiting ? undefined : "true"} aria-label={t("pl.nextTo").replace("{ref}", nextRef)} onClick={() => go(index + 1)}>
-                    {nextRef}
                     <ChevronRight aria-hidden className="size-5" />
                   </Button>
                 ) : (
                   <span className="pl-pos__step" aria-hidden />
                 )}
               </nav>
+              </>
             )}
             {single || listInSheet ? null : (
               // Few proposals: each verse a touch away, and what is decided already.

@@ -236,11 +236,12 @@ aviso más entre el trabajo del equipo. Van en **una corrección por capítulo q
   del mismo versículo serían dos versiones del versículo entero, y al aceptarse la primera caducaría la otra.
 - Cada propuesta es una decisión como cualquier otra, con sus votos, su plazo y su conversación, pero **se lee en
   su lista**: en «Mis tareas» se ve la tarjeta del capítulo con cuántas faltan («9 propuestas por decidir»), y al
-  abrirla aparecen una a una: arriba la línea «‹ 3:4 · 3:7 3 de 9 · 3:8 ›», que se queda arriba al bajar (quien ya
-  había pasado de ella no sabía que había una siguiente); con más de seis, tocar «3 de 9» abre la lista en una hoja,
+  abrirla aparecen una a una: arriba «‹ · 3:7 3 de 9 · ›», tres pastillas sin barra detrás; al bajar, las flechas
+  se quedan flotando en los márgenes (quien ya había pasado de ellas no sabía que había una siguiente) y el centro
+  se esconde para no tapar el texto. Con más de seis, tocar «3 de 9» abre la lista en una hoja,
   y a 1280 px la lista es una columna. Luego el versículo con el cambio, el porqué en su caja y los botones de la
   decisión, en una caja sin color: el amarillo llamaba demasiado. El único botón lleno es votar; después de votar,
-  «3:8 ›» se tiñe más fuerte (`waitsOnVote`), sin parecer lo que hay que decidir, y la pantalla no avanza sola.
+  la flecha «›» se tiñe más fuerte (`waitsOnVote`), sin parecer lo que hay que decidir, y la pantalla no avanza sola.
   Cómo se ve el cambio (junto, uno bajo otro, lado a lado) se elige en «Más».
 - **La conversación de cada propuesta está en la misma pantalla**, bajo «Decidir»: los comentarios, los votos (el
   porqué de un voto se lee como algo dicho) y lo que le pasó; se ven los tres últimos y «Ver los anteriores».

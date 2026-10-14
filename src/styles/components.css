@@ -9430,17 +9430,24 @@ html[data-text] .rf-words.af-orig .rf-word { font-size: calc(1.25rem * var(--ts)
   .pl-side { border-left: 1px solid var(--border); padding-left: 1rem; }
 }
 /* Where one is in the list: «3:7 · 3 de 9», the one before and after. Nothing is fixed on a phone. */
-/* It stays at the top while one reads: whoever had scrolled past it did not know there was a next proposal. */
-.pl-pos { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: var(--space-8); margin: calc(-1 * var(--space-8)) -1rem 0; padding: var(--space-6) 1rem; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); }
-/* The arrows say where they go, on a tint: grey circles alone were not seen as the way on. */
-.pl-pos__step { flex: 0 0 auto; min-width: 4.75rem; }
-.pl-pos__step.btn { gap: var(--space-4); min-height: var(--space-44); padding: 0 var(--space-12) 0 var(--space-8); border-color: transparent; border-radius: var(--radius-full); background: var(--accent-100); color: var(--accent-800); font-size: 1rem; font-weight: 800; }
-.pl-pos__step.btn:last-child { padding: 0 var(--space-8) 0 var(--space-12); }
+/* It stays at the top while one reads: whoever had scrolled past it did not know there was a next proposal. Three
+   pills float over the text, with no bar behind them: a white band across the screen took the eye from the verse. */
+.pl-pos { position: sticky; top: var(--space-6); z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); pointer-events: none; }
+.pl-pos > * { pointer-events: auto; }
+.pl-pos-mark { height: 0; margin-bottom: -0.75rem; }
+/* Scrolled down, only the arrows stay, in the margins: the middle pill covered a line of the text being read. */
+.pl-pos__at { transition: opacity var(--dur) var(--ease); }
+.pl-pos[data-stuck] .pl-pos__at { opacity: 0; pointer-events: none; }
+/* The header goes up with the page here: the three pills are all that stays, so two fixed rows do not take the verse's room. */
+.pl > .chat-header { position: static; }
+/* The arrows on a tint, with a shadow to stand over the text they float on. */
+.pl-pos__step { flex: 0 0 auto; width: var(--space-44); }
+.pl-pos__step.btn { min-width: var(--space-44); min-height: var(--space-44); padding: 0; border-color: transparent; border-radius: var(--radius-full); background: var(--accent-100); color: var(--accent-800); box-shadow: var(--shadow-sm); }
 .pl-pos__step.btn:hover { background: var(--accent-200); color: var(--accent-900); }
 /* The same way on at the end of the screen, not fixed. */
 /* Once this person voted, the way on says so a little more, without looking like the thing to decide. */
 .pl-pos__step.btn[data-go] { background: var(--accent-200); color: var(--accent-900); box-shadow: inset 0 0 0 1.5px var(--accent-400); }
-.pl-pos__at { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--space-8); min-height: var(--space-44); margin: 0; padding: 0 var(--space-12); border: 0; border-radius: var(--radius-full); background: none; color: var(--text); font: inherit; }
+.pl-pos__at { flex: 0 1 auto; display: flex; align-items: center; justify-content: center; gap: var(--space-8); min-height: var(--space-44); margin: 0; padding: 0 var(--space-16); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); box-shadow: var(--shadow-sm); color: var(--text); font: inherit; }
 button.pl-pos__at { cursor: pointer; }
 button.pl-pos__at:hover, button.pl-pos__at:focus-visible { background: var(--surface-muted); }
 .pl-pos__at strong { font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: var(--text-heading); }
