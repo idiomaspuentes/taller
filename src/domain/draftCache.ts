@@ -36,18 +36,37 @@ export type DraftLaunch = {
   also?: string[];
 };
 
-export type KeptEntry = { savedAt: number; branch?: string; place?: DraftPlace };
+export type KeptEntry = {
+  savedAt: number;
+  branch?: string;
+  place?: DraftPlace;
+  /**
+   * Whether something in it did not reach Door43: every edit says so, and only a save that ended with nothing
+   * written since takes it back. A draft from before drafts said this has neither value.
+   */
+  unsaved?: boolean;
+  /**
+   * What Door43 had of the passage when this was typed, each text under the name it is kept by: what saving the
+   * draft would write over. After a save it is what that save wrote.
+   */
+  typedOver?: Record<string, string>;
+};
 
-/** A draft that is on this device and is not the one in the editor, under the name it can be discarded by. */
-export type KeptDraft<E> = { key: string; entry: E };
+/**
+ * A draft that is on this device and is not the one in the editor, under the name it can be discarded by, and why
+ * it was not put in: `changed`, it is of this passage and Door43 no longer has what it was typed over; `unsure`,
+ * nothing proves it is of this passage.
+ */
+export type KeptDraft<E> = { key: string; entry: E; why: "changed" | "unsure" };
 
 export type DraftLookup<E> = {
   /** The draft of this launch. Its branch is one of the launch's own, or none. */
   own: E | null;
   /**
    * Drafts that may be of this subtarea and are not used: another passage of the same text under the same number
-   * (a subtarea whose passage was changed, or the one that had its number before), and one from before that its
-   * branch does not prove to be this one's. They are shown, for the person to keep what is theirs, never brought in.
+   * (a subtarea whose passage was changed, or the one that had its number before), one from before that its
+   * branch does not prove to be this one's, and one of this passage that was set aside when Door43 had changed
+   * under it (see `keptStanding`). They are shown, for the person to keep what is theirs, never brought in.
    */
   aside: KeptDraft<E>[];
 };
@@ -120,6 +139,26 @@ function legacyKey(name: string, place: DraftPlace): string {
   return `${name}:${place.pmOrg}:${place.issueNumber}`;
 }
 
+/**
+ * Where a draft of this passage goes when it is set aside: a name of its own, that no launch writes to. A colon
+ * is never in a part of a name, so this is nobody's own name, and it begins as every passage of its text does.
+ */
+function asideKey(name: string, place: DraftPlace, savedAt: number): string {
+  return `${placeKey(name, place)}:aside:${savedAt}`;
+}
+
+function textsOf(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const texts: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) texts[k] = String(v ?? "");
+  return texts;
+}
+
+function sameTexts(a: Record<string, string>, b: Record<string, string>): boolean {
+  const names = Object.keys(a);
+  return names.length === Object.keys(b).length && names.every((name) => name in b && a[name] === b[name]);
+}
+
 function parsePlace(raw: unknown): DraftPlace | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const from = raw as Record<string, unknown>;
@@ -137,14 +176,49 @@ function parsePlace(raw: unknown): DraftPlace | undefined {
   };
 }
 
-/** What every kind of entry has: when it was kept, the branch it remembered and what it was typed for. */
+/** What every kind of entry has: when it was kept, the branch it remembered, what it was typed for and over. */
 export function parseKeptEntry(raw: unknown): KeptEntry {
   const from = (raw ?? {}) as Record<string, unknown>;
   return {
     savedAt: Number(from.savedAt) || 0,
     branch: String(from.branch ?? "").trim() || undefined,
     place: parsePlace(from.place),
+    unsaved: typeof from.unsaved === "boolean" ? from.unsaved : undefined,
+    typedOver: textsOf(from.typedOver),
   };
+}
+
+/**
+ * What a kept draft is to what Door43 has now:
+ *
+ * - `same`: it says what Door43 says. Nothing to bring back.
+ * - `saved`: it reached Door43, so what Door43 has is that or newer, and is what is shown.
+ * - `restore`: something in it did not reach Door43, and Door43 still has what it was typed over (or has nothing
+ *   written there, so there is nothing of anybody's to write over): the person goes on from it.
+ * - `aside`: something in it may not have reached Door43, and Door43 has changed under it, or the draft is from
+ *   before drafts said whether they were saved. Put in the editor it would be saved over what is there now;
+ *   dropped, unsaved work would be gone. It is shown apart (`setKeptAside`).
+ *
+ * A draft used to be put back whenever it said something else than Door43. One that had been saved said something
+ * else as soon as anybody changed the passage (a correction of the review, the group's draft going on), was put
+ * back as work still to be saved, and the editor saved it by itself over the newer text.
+ */
+export type KeptStanding = "same" | "saved" | "restore" | "aside";
+
+export type ReadNow = {
+  /** What Door43 has of the passage, each text under the name a draft keeps it by (see `KeptEntry.typedOver`). */
+  now: Record<string, string>;
+  /** Whether the draft says what that says, as the editor compares them. */
+  same: boolean;
+  /** Whether nothing is written there yet. */
+  blank: boolean;
+};
+
+export function keptStanding(entry: KeptEntry, read: ReadNow): KeptStanding {
+  if (read.same) return "same";
+  if (entry.unsaved === false) return "saved";
+  if (read.blank) return "restore";
+  return entry.unsaved && entry.typedOver && sameTexts(entry.typedOver, read.now) ? "restore" : "aside";
 }
 
 function storage(): Storage | null {
@@ -184,7 +258,7 @@ export function findKeptDraft<E extends KeptEntry>(kind: KeptKind<E>, launch: Dr
   if (before) {
     const verdict = legacyVerdict(kind, before, launch);
     if (verdict === "own" && !own) own = before;
-    if (verdict === "unsure" && kind.hasText(before)) aside.push({ key: legacyKey(kind.name, place), entry: before });
+    if (verdict === "unsure" && kind.hasText(before)) aside.push({ key: legacyKey(kind.name, place), entry: before, why: "unsure" });
   }
   const prefix = passagesPrefix(kind.name, place);
   try {
@@ -192,7 +266,8 @@ export function findKeptDraft<E extends KeptEntry>(kind: KeptKind<E>, launch: Dr
       const key = store.key(i);
       if (!key || key === ownKey || !key.startsWith(prefix)) continue;
       const entry = read(kind, key);
-      if (entry && kind.hasText(entry)) aside.push({ key, entry });
+      // Under another name and of this passage: one that was set aside here.
+      if (entry && kind.hasText(entry)) aside.push({ key, entry, why: entry.place?.passage === place.passage ? "changed" : "unsure" });
     }
   } catch {
     /* blocked storage */
@@ -218,6 +293,94 @@ export function keepDraft<E extends KeptEntry>(kind: KeptKind<E>, launch: DraftL
     /* quota / private mode */
     return false;
   }
+}
+
+/** Says something again about the draft kept for a launch, and leaves what it holds as it is. */
+function amendKept<E extends KeptEntry>(kind: KeptKind<E>, launch: DraftLaunch, amend: (kept: E) => Partial<KeptEntry>): boolean {
+  const store = storage();
+  const { place } = launch;
+  if (!store || !place.pmOrg || !place.issueNumber) return false;
+  const key = placeKey(kind.name, place);
+  const kept = read(kind, key);
+  if (!kept) return false;
+  try {
+    store.setItem(key, JSON.stringify({ ...kept, ...amend(kept), place }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * After a save that ended while the person kept writing: what is kept is newer than what that save wrote, and
+ * stays as it is. Only where the next save goes and what the draft is typed over now are said again. Kept again
+ * from the text the save began with, what was written meanwhile was gone from this device, though still on screen.
+ */
+export function rebaseKeptDraft<E extends KeptEntry>(
+  kind: KeptKind<E>,
+  launch: DraftLaunch,
+  saved: { branch?: string; typedOver: Record<string, string> },
+): boolean {
+  return amendKept(kind, launch, (kept) => ({ branch: saved.branch || kept.branch, typedOver: saved.typedOver }));
+}
+
+/**
+ * When the branch a draft was saved on is deleted (the person had their draft made again): what this device keeps
+ * of it is all there is of it again, and counts as work that did not reach Door43. Left as saved, it would be
+ * passed over at the next opening and written over by the first thing typed.
+ */
+export function keptDraftLostItsBranch<E extends KeptEntry>(kind: KeptKind<E>, launch: DraftLaunch): boolean {
+  return amendKept(kind, launch, (kept) => (kept.unsaved === false ? { unsaved: true } : {}));
+}
+
+/**
+ * Puts a draft of this launch under a name of its own, where what is written next is not kept over it, and takes
+ * it from where it was when it is still what is there. With a storage that refuses, it stays where it was.
+ */
+export function setKeptAside<E extends KeptEntry>(kind: KeptKind<E>, launch: DraftLaunch, entry: E): KeptDraft<E> | null {
+  const store = storage();
+  const { place } = launch;
+  if (!store || !place.pmOrg || !place.issueNumber) return null;
+  const key = asideKey(kind.name, place, entry.savedAt);
+  try {
+    store.setItem(key, JSON.stringify({ ...entry, place }));
+    for (const from of [placeKey(kind.name, place), legacyKey(kind.name, place)]) {
+      // What was written since is under the draft's own name already, and is not this.
+      if (read(kind, from)?.savedAt === entry.savedAt) store.removeItem(from);
+    }
+    return { key, entry: { ...entry, place }, why: "changed" };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One opening of an editor, as far as the draft kept for it goes. Door43 may answer more than once while it
+ * opens (the group's draft, then the person's own branch), and what the draft is to each answer may differ: it is
+ * set aside once, and taken back if a later answer has what it was typed over, or says what it says.
+ */
+export function keptDraftOpening<E extends KeptEntry>(kind: KeptKind<E>, launch: DraftLaunch, own: E | null) {
+  const ownKey = placeKey(kind.name, launch.place);
+  let aside: KeptDraft<E> | null = null;
+  return {
+    answered(now: ReadNow): { standing: KeptStanding | "none"; aside: KeptDraft<E> | null } {
+      // A draft with nothing written is neither put back (it would empty the passage) nor shown apart.
+      if (!own || !kind.hasText(own)) return { standing: "none", aside: null };
+      const standing = keptStanding(own, now);
+      if (standing === "aside") {
+        // A storage that refuses another name: it is shown from where it is.
+        aside ??= setKeptAside(kind, launch, own) ?? { key: ownKey, entry: own, why: "changed" };
+      } else if (aside) {
+        if (aside.key !== ownKey) {
+          // Back under its own name, unless something was written there since.
+          if (standing === "restore" && !read(kind, ownKey)) keepDraft(kind, launch, own);
+          discardKeptDraft(aside.key);
+        }
+        aside = null;
+      }
+      return { standing, aside };
+    },
+  };
 }
 
 /** Removes a draft that was set aside, when the person says they do not need it. */
@@ -272,4 +435,16 @@ export function loadDraftCache(launch: DraftLaunch): DraftLookup<DraftCacheEntry
 
 export function saveDraftCache(launch: DraftLaunch, entry: Omit<DraftCacheEntry, "place">): boolean {
   return keepDraft(SCRIPTURE_DRAFTS, launch, entry);
+}
+
+export function rebaseDraftCache(launch: DraftLaunch, saved: { branch?: string; typedOver: Record<string, string> }): boolean {
+  return rebaseKeptDraft(SCRIPTURE_DRAFTS, launch, saved);
+}
+
+export function draftCacheOpening(launch: DraftLaunch, own: DraftCacheEntry | null) {
+  return keptDraftOpening(SCRIPTURE_DRAFTS, launch, own);
+}
+
+export function draftCacheLostItsBranch(launch: DraftLaunch): boolean {
+  return keptDraftLostItsBranch(SCRIPTURE_DRAFTS, launch);
 }

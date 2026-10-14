@@ -1,7 +1,9 @@
 import {
   findKeptDraft,
   keepDraft,
+  keptDraftOpening,
   parseKeptEntry,
+  rebaseKeptDraft,
   type DraftLaunch,
   type DraftLookup,
   type KeptEntry,
@@ -45,4 +47,12 @@ export function loadHelpsDraftCache(launch: DraftLaunch): DraftLookup<HelpsDraft
 
 export function saveHelpsDraftCache(launch: DraftLaunch, entry: Omit<HelpsDraftCacheEntry, "place">): boolean {
   return keepDraft(HELPS_DRAFTS, launch, entry);
+}
+
+export function rebaseHelpsDraftCache(launch: DraftLaunch, saved: { branch?: string; typedOver: Record<string, string> }): boolean {
+  return rebaseKeptDraft(HELPS_DRAFTS, launch, saved);
+}
+
+export function helpsDraftCacheOpening(launch: DraftLaunch, own: HelpsDraftCacheEntry | null) {
+  return keptDraftOpening(HELPS_DRAFTS, launch, own);
 }
