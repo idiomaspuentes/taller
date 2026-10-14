@@ -21,7 +21,10 @@ export function markOnboardingDone(key: string, store?: Store): void {
   }
 }
 
-/** Show the first-steps card until the person hides it. */
+/**
+ * Show the first-steps card until the person hides it or opens their first task; after that it is in their menu
+ * («Cómo empezar»), and `show` brings it back above «Mis tareas» until it is hidden again.
+ */
 export function useOnboarding(session: { host: string; username: string } | null) {
   const key = session ? onboardingKey(session.host, session.username) : "";
   const [done, setDone] = useState(() => (key ? onboardingDone(key) : true));
@@ -35,5 +38,6 @@ export function useOnboarding(session: { host: string; username: string } | null
     if (key) markOnboardingDone(key);
     setDone(true);
   }, [key]);
-  return { visible: Boolean(session) && !done, hide };
+  const show = useCallback(() => setDone(false), []);
+  return { visible: Boolean(session) && !done, hide, show };
 }

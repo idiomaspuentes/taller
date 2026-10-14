@@ -3232,5 +3232,8 @@
   "mm.studyHint": "A passagem e suas ajudas, para estudá-la. Abre em outra aba.",
   "mm.notesHint": "O que você e a equipe anotaram desta passagem.",
   "mm.chapterHint": "O capítulo inteiro, para ler de seguida.",
-  "mm.recreateHint": "Se o seu rascunho se estragou, é criado de novo a partir do rascunho do grupo."
+  "mm.recreateHint": "Se o seu rascunho se estragou, é criado de novo a partir do rascunho do grupo.",
+  "menu.firstSteps": "Como começar",
+  "menu.firstStepsHint": "Instalar o app, receber avisos e encontrar suas tarefas.",
+  "mt.readAgo": "Lista atualizada {when}"
 }

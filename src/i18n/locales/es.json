@@ -3232,5 +3232,8 @@
   "mm.studyHint": "El pasaje y sus ayudas, para estudiarlo. Se abre en otra pestaña.",
   "mm.notesHint": "Lo que tú y el equipo anotaron de este pasaje.",
   "mm.chapterHint": "El capítulo entero, para leerlo seguido.",
-  "mm.recreateHint": "Si tu borrador se dañó, se crea de nuevo desde el borrador grupal."
+  "mm.recreateHint": "Si tu borrador se dañó, se crea de nuevo desde el borrador grupal.",
+  "menu.firstSteps": "Cómo empezar",
+  "menu.firstStepsHint": "Instalar la app, recibir avisos y encontrar tus tareas.",
+  "mt.readAgo": "Lista actualizada {when}"
 }

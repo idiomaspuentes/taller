@@ -6298,14 +6298,18 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
   font-size: 0.8125rem;
   color: var(--destructive);
 }
+/* 44 px to touch: it was a line of 19. */
 .onboarding__hide {
-  margin-top: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-44);
+  margin-top: var(--space-4);
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -6824,6 +6828,20 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
   font-size: 16px;
   color: var(--text-muted);
 }
+/* When the list was read, and the way to read it again: at its foot. */
+.task-home__fresh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 var(--space-8);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.task-home__fresh .btn { color: var(--primary); }
+.user-menu__two { display: grid; gap: 2px; }
+.user-menu__hint { font-size: 0.8125rem; font-weight: 400; line-height: 1.35; color: var(--text-muted); }
 .task-home__dev {
   font-size: 13px;
   color: var(--text-faint);

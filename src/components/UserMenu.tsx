@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Bell, Check, ChevronRight, FlaskConical, FolderOpen, Globe2, LogOut, Settings2, UserRound, Users, Wrench } from "lucide-react";
+import { Bell, Check, ChevronRight, Compass, FlaskConical, FolderOpen, Globe2, LogOut, Settings2, UserRound, Users, Wrench } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
 import { tallerConfig, type UiLanguage, type Workspace } from "../config";
 import { initialsOf } from "../domain/profile";
@@ -26,6 +26,8 @@ type Props = {
   onOpenProfile: () => void;
   onOpenOrganization: () => void;
   onOpenTemplates: () => void;
+  /** The first-steps card, put away once the person opened a task: brought back above «Mis tareas». */
+  onOpenFirstSteps?: () => void;
   /** Coordinators: open a project that already exists in Door43. */
   onOpenFromDoor43?: () => void;
   /** Without workspaces in taller.config.ts: the old session dialog (language and organizations by hand). */
@@ -168,6 +170,15 @@ export function UserMenu(props: Props) {
             <div className="user-menu__inset">
               <BrowserNotifyToggle />
             </div>
+          ) : null}
+
+          {props.onOpenFirstSteps ? (
+            <Item icon={<Compass />} onClick={run(props.onOpenFirstSteps)}>
+              <span className="user-menu__two">
+                {t("menu.firstSteps")}
+                <span className="user-menu__hint">{t("menu.firstStepsHint")}</span>
+              </span>
+            </Item>
           ) : null}
 
           <div className="user-menu__group" role="group" aria-label={t("menu.teamSettings")}>
