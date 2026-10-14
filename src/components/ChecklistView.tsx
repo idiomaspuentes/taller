@@ -265,7 +265,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       const [termKind, ...slug] = (row.supportRef ?? "").split("/");
       return termKind && slug.length ? [{ termKind: termKind as TermKind, termSlug: slug.join("/") }] : [];
     });
-    void loadTermTitles(sess, null, uses, ctx)
+    // Where the team has no article of its own yet, the source's title (in its language) beats the code it is filed under.
+    void loadTermTitles(sess, resolveSourcePackage(data.board?.settings), uses, ctx)
       .then((titles) => !cancelled && setTermTitles(titles))
       .catch(() => undefined)
       .then(() => !cancelled && setTitlesRead(true));
