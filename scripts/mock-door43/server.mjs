@@ -191,8 +191,9 @@ function workOrder(n, taskId, portion, assignee, created, updated, title) {
     body: `<!-- gateway-work-order ${marker} -->${doneSteps(taskId)}`,
     labels: [{ id: 0, name: "pm" }, { id: 1, name: `pm/tarea:${taskId}` }],
     milestone: { id: 1, title: "NEH", state: "open" },
-    assignee: assignee ? USERS[`token-${assignee}`] : null,
-    assignees: assignee ? [USERS[`token-${assignee}`]] : [],
+    // With a roster the sample people are not there, and their sample work is left with nobody.
+    assignee: (assignee && USERS[`token-${assignee}`]) || null,
+    assignees: assignee && USERS[`token-${assignee}`] ? [USERS[`token-${assignee}`]] : [],
     created_at: ago(created), updated_at: ago(updated), comments: 0,
   };
 }
