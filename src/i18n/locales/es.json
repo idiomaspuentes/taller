@@ -3226,5 +3226,11 @@
   "hm.attendedBy": "Evaluado por {who}",
   "hm.attendedText": "Evaluado por el equipo.",
   "hm.ledeLeaveArticle": "¿Ves algo que cambiar en este artículo? Déjalo dicho para quien lo armoniza.",
-  "hm.ledeReadArticle": "Lo que dijeron los equipos anteriores sobre este artículo:"
+  "hm.ledeReadArticle": "Lo que dijeron los equipos anteriores sobre este artículo:",
+  "mm.more": "Más",
+  "mm.glossaryHint": "Las decisiones de traducción del equipo. Se abre en otra pestaña.",
+  "mm.studyHint": "El pasaje y sus ayudas, para estudiarlo. Se abre en otra pestaña.",
+  "mm.notesHint": "Lo que tú y el equipo anotaron de este pasaje.",
+  "mm.chapterHint": "El capítulo entero, para leerlo seguido.",
+  "mm.recreateHint": "Si tu borrador se dañó, se crea de nuevo desde el borrador grupal."
 }

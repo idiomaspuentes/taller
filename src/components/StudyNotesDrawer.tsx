@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import { NotebookPen, X } from "lucide-react";
 import { loadSession } from "../dcs/auth";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
@@ -9,7 +8,7 @@ import { portionRange } from "../domain/usfmEdit";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { StudyNotesPanel } from "./StudyNotesPanel";
-import { useNotesSlot } from "./notesSlot";
+import { setNotesEntry, useNotesSlot } from "./notesSlot";
 
 /** What the notes need to know of the tool they are opened from: which passage, which resource, which task. */
 export function studyNotesProps(ctx: SolverLaunchContext, language: string) {
@@ -32,9 +31,9 @@ export function studyNotesProps(ctx: SolverLaunchContext, language: string) {
 }
 
 /**
- * The notes of the passage, reachable from any tool: a button that stays in a corner, with how many there are, and a
- * panel that opens over the tool. The tools of the later phases (reviews, refining, checks, endorsement) get the
- * notes this way without each one making room for them.
+ * The notes of the passage, reachable from any tool: a row of the header's «Más» menu, with how many there are (a
+ * button in a corner when the tool has no header), and a panel that opens over the tool. The tools of the later
+ * phases (reviews, refining, checks, endorsement) get the notes this way without each one making room for them.
  */
 export function StudyNotesDrawer({ ctxEncoded }: { ctxEncoded: string }) {
   const t = useT();
@@ -45,7 +44,13 @@ export function StudyNotesDrawer({ ctxEncoded }: { ctxEncoded: string }) {
   const session = useMemo(() => loadSession(), []);
   // In the header of the tool when it has one; in its corner of the screen otherwise.
   const slot = useNotesSlot();
-  if (!ctx?.projectId || !ctx.pmOrg || !ctx.book || !session?.token || ctx.lab) return null;
+  const usable = Boolean(ctx?.projectId && ctx.pmOrg && ctx.book && session?.token && !ctx.lab);
+  useEffect(() => {
+    if (!usable || !slot) return;
+    setNotesEntry({ count, open, toggle: () => setOpen((was) => !was) });
+    return () => setNotesEntry(null);
+  }, [usable, slot, count, open]);
+  if (!ctx || !session || !usable) return null;
   const button = (
     <button type="button" className="snd-button" aria-label={t("sn.tab")} title={t("sn.tab")} aria-expanded={open} onClick={() => setOpen(!open)}>
       <NotebookPen size={slot ? 20 : 16} aria-hidden /> <span className="snd-label">{t("sn.tab")}</span>
@@ -54,7 +59,7 @@ export function StudyNotesDrawer({ ctxEncoded }: { ctxEncoded: string }) {
   );
   return (
     <>
-      {slot ? createPortal(button, slot) : button}
+      {slot ? null : button}
       {/* Kept mounted, so that the count is known before it is opened. */}
       <aside className="snd-panel" hidden={!open} aria-label={t("sn.tab")}>
         <header className="snd-panel__head">

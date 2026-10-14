@@ -3226,5 +3226,11 @@
   "hm.attendedBy": "Avaliado por {who}",
   "hm.attendedText": "Avaliado pela equipe.",
   "hm.ledeLeaveArticle": "Vê algo a mudar neste artigo? Deixe dito para quem o harmoniza.",
-  "hm.ledeReadArticle": "O que as equipes anteriores disseram sobre este artigo:"
+  "hm.ledeReadArticle": "O que as equipes anteriores disseram sobre este artigo:",
+  "mm.more": "Mais",
+  "mm.glossaryHint": "As decisões de tradução da equipe. Abre em outra aba.",
+  "mm.studyHint": "A passagem e suas ajudas, para estudá-la. Abre em outra aba.",
+  "mm.notesHint": "O que você e a equipe anotaram desta passagem.",
+  "mm.chapterHint": "O capítulo inteiro, para ler de seguida.",
+  "mm.recreateHint": "Se o seu rascunho se estragou, é criado de novo a partir do rascunho do grupo."
 }

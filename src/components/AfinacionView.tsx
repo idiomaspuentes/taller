@@ -18,7 +18,7 @@ import { refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { BookA, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
@@ -849,13 +849,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         // From the helps or the chapter, back returns to what was being reviewed; from there it leaves.
         onBack={() => (pane === "review" ? onClose() : setPane("review"))}
         meta={[toolHeading(ctx, language, t(TITLE[stepProp])).where, summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
-        actions={
-          data ? (
-            <a className="th-icon" href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200`} target="_blank" rel="noreferrer" aria-label={t("gl.open")} title={t("gl.open")}>
-              <BookA size={18} aria-hidden />
-            </a>
-          ) : null
-        }
+        more={data ? [{ id: "glossary", label: t("gl.open"), hint: t("mm.glossaryHint"), href: `#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200` }] : []}
       />
       <div className="step-ask-bar">
         <StepAsk session={session} ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx} intro={false} />
