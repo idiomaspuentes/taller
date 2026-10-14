@@ -3192,6 +3192,7 @@
   "st.saving": "Salvando…",
   "st.restore": "Voltar ao diagrama do app",
   "st.teamMade": "Diagrama da equipe · deixado assim por {who}",
+  "st.underWords": "Embaixo de cada palavra: o seu significado e, em azul, como o {text} a diz neste versículo.",
   "st.viewTree": "Árvore",
   "st.viewBoxes": "Caixas",
   "st.treeAs": "{role} · oração",

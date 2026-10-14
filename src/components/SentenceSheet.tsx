@@ -7,6 +7,11 @@ import type { GtSession } from "../dcs/auth";
 import { loadDiagrams, saveDiagram } from "../dcs/diagramStore";
 import { lexiconRepos, loadLexiconEntry } from "../dcs/lexicon";
 import { loadOriginalWords, loadTrees } from "../dcs/syntaxTree";
+import { loadBookAlignments, type AlignedTextRef } from "../dcs/alignedWords";
+import { alignedWordsOfVerse, verseIsAligned } from "../domain/alignedWords";
+import { alignmentGroupsForVerse } from "../domain/helpQuoteMatch";
+import { DEFAULT_SOURCE_PACKAGE } from "../domain/sourcePackage";
+import { bookUsfmName } from "../prep/discover";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, moveBeside, moveOut, nodeAt, splitSentence, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
@@ -56,6 +61,8 @@ type Shared = {
   onWord: (word: OriginalWord, at: TreePlace) => void;
   /** Given while the diagram is being changed: a touch chooses instead of opening. */
   pick?: { picked: Picked | null; onPick: (path: TreePath) => void };
+  /** The words of a translation aligned with each word, by `"chapter:verse"` and the word's place: under its gloss. */
+  aligned?: Record<string, string[]>;
 };
 
 const isPicked = (shared: Shared, path: TreePath) => {
@@ -67,6 +74,7 @@ function Word({ leaf, role, path, shared }: { leaf: TreeLeaf; role: string; path
   const t = useT();
   const word = shared.words[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1];
   if (!word) return null;
+  const said = shared.aligned?.[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1];
   const here = shared.focus && shared.focus.chapter === leaf.chapter && shared.focus.verse === leaf.verse && shared.focus.word === leaf.word;
   return (
     <button
@@ -84,7 +92,10 @@ function Word({ leaf, role, path, shared }: { leaf: TreeLeaf; role: string; path
       {/* Of a word two parts share, the meaning is the verb's: under the «me» of «me rodearon» it would say
           «rodear». The «and» Hebrew joins to the next word is the one piece that is always the same word. */}
       {!leaf.piece || role === "v" ? (
-        <Gloss word={word} at={{ book: shared.book, chapter: leaf.chapter, verse: leaf.verse }} session={shared.session} workspace={shared.workspace} />
+        <>
+          <Gloss word={word} at={{ book: shared.book, chapter: leaf.chapter, verse: leaf.verse }} session={shared.session} workspace={shared.workspace} />
+          {said ? <span className="st-aligned" title={said}>{said}</span> : null}
+        </>
       ) : role === LINK && shared.rtl ? (
         <span className="st-gloss">{t("st.and")}</span>
       ) : null}
@@ -193,6 +204,10 @@ const STEP = 14;
 const SIDE_NODE = 30;
 const SIDE_LEAF = 54;
 const SIDE_WORDS = 124;
+/** A word with the translation's words under its gloss takes up to two more lines, in a wider column. */
+const ALIGNED_LINE = 28;
+const sideLeaf = (shared: Shared) => SIDE_LEAF + (shared.aligned ? ALIGNED_LINE : 0);
+const sideWords = (shared: Shared) => SIDE_WORDS + (shared.aligned ? 24 : 0);
 
 /**
  * The tree on its side, for a phone: the sentence at the top of the near edge, each part a step further in, and
@@ -213,16 +228,16 @@ function SideTree({ root, shared }: { root: TreeNode; shared: Shared }) {
     return () => watch.disconnect();
   }, []);
   const layout = useMemo(
-    () => layoutSideways(root, { node: SIDE_NODE, leaf: SIDE_LEAF, beside: (node, parent, depth) => depth * STEP + pillWidth(name(node, parent, 9)) + 8 <= width - SIDE_WORDS }),
+    () => layoutSideways(root, { node: SIDE_NODE, leaf: sideLeaf(shared), beside: (node, parent, depth) => depth * STEP + pillWidth(name(node, parent, 9)) + 8 <= width - sideWords(shared) }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [root, width],
+    [root, width, Boolean(shared.aligned)],
   );
   useEffect(() => {
     // On the word one came from.
     if (width) box.current?.querySelector<HTMLElement>(".st-word[data-here]")?.scrollIntoView({ block: "center" });
   }, [layout, width]);
   const trunk = (depth: number) => depth * STEP + 9;
-  const words = Math.max(0, width - SIDE_WORDS);
+  const words = Math.max(0, width - sideWords(shared));
   return (
     <div className="st-side" ref={box} dir={shared.rtl ? "rtl" : "ltr"} style={{ height: layout.height }}>
       {width ? (
@@ -246,7 +261,7 @@ function SideTree({ root, shared }: { root: TreeNode; shared: Shared }) {
             );
           })}
           {layout.leaves.map((placed) => (
-            <div key={placed.path.join(".")} className="st-leaf" style={{ insetInlineEnd: 0, top: placed.y - SIDE_LEAF / 2 + 2, width: SIDE_WORDS - 4, height: SIDE_LEAF - 4 }}>
+            <div key={placed.path.join(".")} className="st-leaf" style={{ insetInlineEnd: 0, top: placed.y - sideLeaf(shared) / 2 + 2, width: sideWords(shared) - 4, height: sideLeaf(shared) - 4 }}>
               <Word leaf={placed.leaf} role={placed.role} path={placed.path} shared={shared} />
             </div>
           ))}
@@ -278,16 +293,18 @@ function WideTree({ root, shared }: { root: TreeNode; shared: Shared }) {
         leafWidth: (leaf) => {
           const word = shared.words[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1];
           const letters = (leaf.piece ?? word?.surface ?? "").replace(/[^\p{L}]/gu, "").length;
-          return Math.min(120, Math.max(56, letters * 11 + 18));
+          // The translation's words go under it in two lines at most: as wide as half of them.
+          const said = shared.aligned?.[`${leaf.chapter}:${leaf.verse}`]?.[leaf.word - 1]?.length ?? 0;
+          return Math.max(Math.min(120, Math.max(56, letters * 11 + 18)), Math.min(150, Math.ceil(said / 2) * 7 + 14));
         },
         gap: 6,
         rtl: shared.rtl,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [root, shared.words, shared.rtl, t],
+    [root, shared.words, shared.rtl, shared.aligned, t],
   );
   const leavesTop = (layout.depth + 1) * ROW;
-  const height = leavesTop + LEAF;
+  const height = leavesTop + LEAF + (shared.aligned ? ALIGNED_LINE : 0);
   useEffect(() => {
     const box = scroller.current;
     if (!box) return;
@@ -343,6 +360,7 @@ export function SentenceSheet({
   session,
   workspace,
   teamOrg,
+  aligned,
   onWord,
   onClose,
 }: {
@@ -354,6 +372,12 @@ export function SentenceSheet({
   workspace: Workspace | undefined;
   /** The organization whose plan repository keeps the team's diagrams. Without it they are only read. */
   teamOrg?: string;
+  /**
+   * The texts whose words are shown under each word of the original, in the order they are tried: the team's
+   * first, the ULT where the team's is not aligned for the verses shown. The ULT of the default source package
+   * when not given.
+   */
+  aligned?: AlignedTextRef[];
   onWord: (word: OriginalWord, at: TreePlace) => void;
   onClose: () => void;
 }) {
@@ -435,8 +459,34 @@ export function SentenceSheet({
     return t("st.simple");
   };
 
+  // The words of a translation under each word: the first text aligned in every verse shown.
+  const versesShown = [...new Set([...around.before, ...shown, ...around.after].flatMap((sentence) => sentence.verses.map((verse) => `${verse.chapter}:${verse.verse}`)))].join(",");
+  const [under, setUnder] = useState<{ label: string; byVerse: Record<string, string[]> } | null>(null);
+  useEffect(() => {
+    setUnder(null);
+    if (!session || !at || !loaded || !versesShown) return;
+    const book = at.book.toUpperCase();
+    const refs = aligned ?? [{ owner: DEFAULT_SOURCE_PACKAGE.owner, repo: DEFAULT_SOURCE_PACKAGE.ult, filepath: bookUsfmName(book), label: "ULT" }];
+    const verses = versesShown.split(",").map((key) => key.split(":").map(Number) as [number, number]);
+    let alive = true;
+    void (async () => {
+      for (const ref of refs) {
+        const map = await loadBookAlignments(session, ref);
+        const groups = verses.map(([chapter, verse]) => alignmentGroupsForVerse(map ?? undefined, book, chapter, verse));
+        if (!groups.every(verseIsAligned)) continue;
+        const byVerse = Object.fromEntries(verses.map(([chapter, verse], i) => [`${chapter}:${verse}`, alignedWordsOfVerse(groups[i], loaded.words[`${chapter}:${verse}`] ?? [])]));
+        if (alive) setUnder({ label: ref.label, byVerse });
+        return;
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, at?.book, loaded, versesShown, (aligned ?? []).map((ref) => `${ref.owner}/${ref.repo}@${ref.branch ?? ""}`).join(",")]);
+
   const rtl = Boolean(loaded && Object.values(loaded.words).some((verse) => verse.some((word) => word.strong.includes("H"))));
-  const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick });
+  const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick, ...(under ? { aligned: under.byVerse } : {}) });
 
   // ---- changing a diagram
 
@@ -587,6 +637,7 @@ export function SentenceSheet({
                   ))}
                 </div>
               ) : null}
+              {shown.length && under ? <p className="st-under">{t("st.underWords").replace("{text}", under.label)}</p> : null}
               {loaded && !shown.length && teamOrg && wordsHere && at ? (
                 <Button type="button" variant="outline" onClick={() => {
                   const root = flatSentence([{ chapter: at.chapter, verse: at.verse, words: wordsHere }]);

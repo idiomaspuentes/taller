@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { BOOKS } from "../src/domain/books";
 import { hebrewToOurs } from "../src/domain/parallels";
 import { layoutSideways, layoutTree } from "../src/domain/treeLayout";
+import { alignedWordsOfVerse, verseIsAligned } from "../src/domain/alignedWords";
 import { clauseKind, encodeTree, fitWords, isLeaf, leavesOf, normalizeTreeFile, parseLowfat, reduceSentence, sentenceFits, sentencesAt, sentenceShape, wordsLeftOut, type TreeNode } from "../src/domain/syntaxTree";
 
 let passed = 0;
@@ -226,6 +227,23 @@ test("los archivos que la app sirve: los 66 libros, y Jonás 1:1 y Tito 1:5 como
   assert.equal(read("PSA").held.get("4:1")?.size, 10);
   // 1 Reyes 13:3: «aquel» (la tercera palabra) está en su oración.
   assert.equal(read("1KI").held.get("13:3")?.has(3), true);
+});
+
+test("bajo cada palabra del original, las palabras de la traducción alineadas con ella en ese versículo", () => {
+  const src = (content: string, occurrence = 1) => ({ content, occurrence, occurrences: 1, strong: "", lemma: "" });
+  const tgt = (word: string) => ({ word, occurrence: 1, occurrences: 1 });
+  // Esdras 3:10, abreviado: «y los constructores pusieron los cimientos del templo»; וְ sin alinear.
+  const groups = [
+    { sources: [src("יִסְּדוּ")], targets: [tgt("pusieron"), tgt("los"), tgt("cimientos")] },
+    { sources: [src("הַ⁠בֹּנִים")], targets: [tgt("los"), tgt("constructores")] },
+    { sources: [src("אֶת"), src("הֵיכַל")], targets: [tgt("del"), tgt("templo")] },
+    { sources: [src("יְהוָה", 2)], targets: [tgt("Jehová")] },
+  ];
+  const words = ["וְ", "יִסְּדוּ", "הַבֹּנִים", "אֶת", "הֵיכַל", "יְהוָה", "יְהוָה"].map((surface) => ({ surface }));
+  assert.deepEqual(alignedWordsOfVerse(groups as never, words), ["", "pusieron los cimientos", "los constructores", "del templo", "del templo", "", "Jehová"]);
+  assert.equal(verseIsAligned(groups as never), true);
+  assert.equal(verseIsAligned([{ sources: [src("וְ")], targets: [] }] as never), false, "sin palabras de la traducción no está alineado");
+  assert.deepEqual(alignedWordsOfVerse(undefined, words.slice(0, 2)), ["", ""]);
 });
 
 console.log(`\nverify-trees: ${passed} checks passed.`);

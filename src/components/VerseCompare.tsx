@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { GtSession } from "../dcs/auth";
 import { draftTaskId, groupDraftBranches, loadChapterTexts, type ChapterText, type OriginalWord } from "../dcs/afinacionLoad";
 import { tryReadExistingBookUsfm } from "../dcs/bookBootstrap";
+import type { AlignedTextRef } from "../dcs/alignedWords";
+import { bookUsfmName } from "../prep/discover";
 import { loadOriginalWords } from "../dcs/syntaxTree";
 import { tallerConfig, workspaceOfOrg } from "../config";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
@@ -33,6 +35,25 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
   const [sheet, setSheet] = useState<{ word: OriginalWord; chapter: number; verse: number } | null>(null);
   const [sentence, setSentence] = useState(false);
   const workspace = workspaceOfOrg(tallerConfig, ctx.pmOrg);
+  // Under each word of the diagram: how the text being decided says it, or its English where it is not aligned.
+  const [aligned, setAligned] = useState<AlignedTextRef[] | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    const pkg = resolveSourcePackage(board.settings);
+    const gateway: AlignedTextRef = { owner: pkg.owner, repo: proposed === "tps" ? pkg.ust : pkg.ult, filepath: bookUsfmName(book), label: proposed === "tps" ? "UST" : "ULT" };
+    setAligned([gateway]);
+    void (async () => {
+      const target = resolveScriptureTarget({ ...ctx, resource: proposed });
+      if ("error" in target) return;
+      const found = await tryReadExistingBookUsfm({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branches: [...groupDraftBranches(target.book, draftTaskId(board.teams, proposed) ?? ""), undefined] }).catch(() => null);
+      if (!found || !alive) return;
+      setAligned([{ owner: target.owner, repo: target.repo, filepath: target.filepath, ...(found.branch ? { branch: found.branch } : {}), label: proposed.toUpperCase() }, gateway]);
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.token, book, proposed]);
 
   // The texts of the whole book, read once for every proposal of the list.
   useEffect(() => {
@@ -99,6 +120,7 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
         at={sentence ? { book, chapter, verse } : null}
         session={session}
         workspace={workspace}
+        aligned={aligned}
         onWord={(word, place) => {
           setSentence(false);
           setSheet({ word, chapter: place.chapter, verse: place.verse });
