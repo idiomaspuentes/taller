@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
-import { finishProposalList, loadDecisionThread, loadProposalList, type ProposalListData } from "../dcs/proposalList";
+import { finishProposalList, loadBookNotes, loadDecisionThread, loadProposalList, type BookNote, type ProposalListData } from "../dcs/proposalList";
+import type { OriginalWord } from "../dcs/afinacionLoad";
+import { loadOriginalWords } from "../dcs/syntaxTree";
+import { tallerConfig, workspaceOfOrg } from "../config";
+import { resolveSourcePackage } from "../domain/sourcePackage";
+import { NoteSheet } from "./NoteSheet";
+import { WordSheet } from "./WordSheet";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import type { ChatEvent } from "../domain/chatEvent";
@@ -17,7 +23,7 @@ import { DecisionCard } from "./DecisionCard";
 import { TextChangeView } from "./TextChangeView";
 import { VerseCompare } from "./VerseCompare";
 import { buildSolverLaunchContext } from "../domain/solverLaunch";
-import { ChangeReasons } from "./ChangeReasons";
+import { ChangeReasons, type ReasonLinks } from "./ChangeReasons";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -116,6 +122,49 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   );
   const env = useMemo(() => ({ session, pmOrg, issueNumber: current?.number ?? 0, lang, projectId, contentOrg }), [session, pmOrg, current?.number, lang, projectId, contentOrg]);
   const viewer = useMemo(() => ({ username: session?.username ?? "", canManage, assignees: [] as string[] }), [session?.username, canManage]);
+
+  // What a reason opens: the words of the original of the chapter, and the notes of the book.
+  const bookCode = data ? (data.board.books?.[0] || data.board.book || projectId).toUpperCase() : "";
+  const here = current ? decisionPlace(current) : undefined;
+  const [words, setWords] = useState<{ chapter: number; byVerse: Record<string, OriginalWord[]> } | null>(null);
+  const [notes, setNotes] = useState<Map<string, BookNote>>(new Map());
+  const [sheet, setSheet] = useState<{ word: OriginalWord; chapter: number; verse: number } | null>(null);
+  const [openNote, setOpenNote] = useState<BookNote | null>(null);
+  useEffect(() => {
+    if (!session || !bookCode || !here || words?.chapter === here.chapter) return;
+    let alive = true;
+    void loadOriginalWords(session, bookCode, here.chapter)
+      .then((byVerse) => alive && setWords({ chapter: here.chapter, byVerse }))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, bookCode, here?.chapter]);
+  useEffect(() => {
+    if (!session || !launchCtx || !data) return;
+    let alive = true;
+    void loadBookNotes(session, launchCtx, data.board)
+      .then((found) => alive && setNotes(found))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token, launchCtx?.projectId]);
+  const links = useMemo<ReasonLinks | undefined>(() => {
+    if (!here || !words || words.chapter !== here.chapter) return undefined;
+    // The verse's own words first: a word quoted is most often of the verse the change is in.
+    const places = Object.entries(words.byVerse).map(([key, list]) => ({ verse: Number(key.split(":")[1]), list }));
+    const ordered = [...places.filter((row) => row.verse === here.verse), ...places.filter((row) => row.verse !== here.verse)];
+    const candidates = ordered.flatMap((row) => row.list.map((word) => ({ word, chapter: here.chapter, verse: row.verse })));
+    return {
+      among: candidates.map((row) => row.word.surface),
+      notes: new Set(notes.keys()),
+      onWord: (index) => setSheet(candidates[index] ?? null),
+      onNote: (id) => setOpenNote(notes.get(id) ?? null),
+    };
+  }, [here?.chapter, here?.verse, words, notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const run = useCallback(
     async (optionId: string, event: ChatEvent, input?: string) => {
@@ -236,7 +285,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 <div className="pl-side">
                   <h3 className="pl-why">{t("pl.whyTitle")}</h3>
                   <p className="pl-meta">{(deadline ? t("pl.byDeadline").replace("{date}", deadline) : t("pl.by")).replace("{who}", decision.data.by)}</p>
-                  <ChangeReasons note={decision.data.note} />
+                  <ChangeReasons note={decision.data.note} links={links} />
                   <DecisionCard
                     key={decision.item.key}
                     item={decision.item}
@@ -281,6 +330,10 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
           </>
         ) : null}
       </div>
+      {session ? (
+        <WordSheet word={sheet?.word ?? null} at={{ book: bookCode, chapter: sheet?.chapter ?? 0, verse: sheet?.verse ?? 0 }} session={session} workspace={workspaceOfOrg(tallerConfig, pmOrg)} onClose={() => setSheet(null)} readOnly />
+      ) : null}
+      {session && launchCtx && data ? <NoteSheet note={openNote} session={session} ctx={launchCtx} pkg={resolveSourcePackage(data.board.settings)} onClose={() => setOpenNote(null)} /> : null}
     </div>
   );
 }

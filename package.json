@@ -116,6 +116,7 @@
     "verify:extra-work": "tsx --tsconfig tsconfig.scripts.json scripts/verify-extra-work.mts",
     "verify:proposal-list": "tsx --tsconfig tsconfig.scripts.json scripts/verify-proposal-list.mts",
     "verify:outside-suggestions": "tsx --tsconfig tsconfig.scripts.json scripts/verify-outside-suggestions.mts",
+    "verify:reason-text": "tsx --tsconfig tsconfig.scripts.json scripts/verify-reason-text.mts",
     "verify:tc-import": "tsx --tsconfig tsconfig.scripts.json scripts/verify-tc-import.mts",
     "verify:redo-after-correction":"tsx --tsconfig tsconfig.scripts.json scripts/verify-redo-after-correction.mts",
     "verify:user-error": "tsx --tsconfig tsconfig.scripts.json scripts/verify-user-error.mts",

@@ -9343,7 +9343,7 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 .tc-layout { justify-self: start; }
 .tc-pair { display: grid; gap: 0.75rem; }
 .tc-pair[data-layout="sides"] { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
-.tc-side { margin: 0; padding: 0.5rem 0.625rem; border-radius: var(--radius-md, 8px); background: var(--surface-muted); }
+.tc-side { margin: 0; padding: 0.625rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md, 8px); background: var(--surface); }
 .tc-side[data-side="proposed"] { box-shadow: inset 3px 0 0 var(--success-500, #22c55e); }
 .tc-side[data-side="now"] { box-shadow: inset 3px 0 0 var(--border-strong); }
 .tc-side .af-lbl { margin: 0 0 0.25rem; }
@@ -9386,16 +9386,30 @@ html[data-text] .chat-origin__text { font-size: calc(1rem * var(--ts)); }
 .pl-foot__at { color: var(--text-muted); font-size: 0.875rem; font-weight: 600; }
 /* Each change of a verse apart: its words, its cause, why, its notes. */
 .cr { display: grid; gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
-.cr-item { display: grid; gap: 0.375rem; padding: 0.625rem 0.75rem; border-radius: var(--radius-md, 8px); background: var(--surface-muted); }
+.cr-item { display: grid; gap: 0.5rem; padding: 0.75rem 0.875rem; border: 1px solid var(--border); border-radius: var(--radius-md, 8px); background: var(--surface); }
 .cr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
 .cr-n { display: inline-grid; place-items: center; width: 1.375rem; height: 1.375rem; border-radius: 999px; background: var(--surface); color: var(--text-muted); font-size: 0.75rem; font-weight: 700; }
 .cr-cause { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--primary-100, #dbeafe); color: var(--primary-800, #1e40af); font-size: 0.75rem; font-weight: 700; }
 .cr-words { margin: 0; font-size: 0.9375rem; overflow-wrap: anywhere; }
-.cr-why { font-size: 0.875rem; line-height: 1.55; overflow-wrap: anywhere; }
-.cr-why p { margin: 0 0 0.25rem; }
-.cr-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; margin: 0; color: var(--text-muted); font-size: 0.75rem; }
-.cr-note { padding: 0 0.375rem; border-radius: 4px; background: var(--surface); font-size: 0.75rem; }
-.pl-note { font-size: 0.9375rem; line-height: 1.6; overflow-wrap: anywhere; }
+.cr-why, .pl-note { font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+.cr-why p, .rt-p { margin: 0 0 0.375rem; }
+.cr-why .rt-p:last-child { margin-bottom: 0; }
+/* What a reason opens: a word of the original, a note. */
+.rt-word, .rt-note { padding: 0 0.125rem; border: 0; border-bottom: 1.5px dotted var(--primary-600, #2563eb); border-radius: 2px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.rt-word { font-size: 1.15em; }
+.rt-word:hover, .rt-note:hover, .rt-word:focus-visible, .rt-note:focus-visible { background: var(--primary-100, #dbeafe); }
+.rt-note { color: var(--primary-700, #1d4ed8); font-weight: 600; }
+.cr-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin: 0; color: var(--text-muted); font-size: 0.8125rem; }
+.cr-note { padding: 0.125rem 0.5rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-family: ui-monospace, monospace; font-size: 0.8125rem; }
+button.cr-note { color: var(--primary-700, #1d4ed8); cursor: pointer; min-height: 1.75rem; }
+button.cr-note:hover { background: var(--primary-100, #dbeafe); }
+/* A note opened from a reason. */
+.note-sheet .ns-title { margin: 0; font-size: 1.125rem; font-weight: 700; }
+.ns-quote { margin: 0.5rem 0; font-size: 1.25rem; }
+.ns-body { font-size: 1rem; line-height: 1.6; }
+.ns-article { display: grid; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.ns-article__title { margin: 0; font-size: 1rem; font-weight: 700; }
+
 .pl-note p { margin: 0 0 0.375rem; }
 .pl-item .chat-decision { width: 100%; max-width: none; margin: 0.25rem 0 0; }
 .pl-thread { justify-self: start; min-height: 2.75rem; }

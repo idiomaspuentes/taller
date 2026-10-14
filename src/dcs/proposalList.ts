@@ -1,7 +1,15 @@
 import { editIssue, listIssueComments, listRepoIssues, type DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
-import { closeIssue, listProjectIssues } from "./issues";
+import { closeIssue, listProjectIssues, loadPmConfig } from "./issues";
+import { readRaw } from "./afinacionLoad";
+import { readTeamHelps } from "./teamHelps";
+import { helpsTsvFilename } from "../domain/helpsTarget";
+import { DEFAULT_PM_CONFIG } from "../domain/roles";
+import type { SolverLaunchContext } from "../domain/solverLaunch";
+import { resolveSourcePackage } from "../domain/sourcePackage";
+import { parseTsvTable } from "../prep/tsv";
+import { supportReferenceOf } from "../prep/inventory";
 import { loadAssignmentsFromDcs } from "./persist";
 import { getPmIssue } from "./portionPr";
 import { commentToItem, type ThreadItem } from "../domain/conversation";
@@ -75,4 +83,26 @@ export async function finishProposalList(params: { session: GtSession; pmOrg: st
   const body = upsertTaskProgressInBody(card.body ?? "", { ...had, doneStepIds: [...new Set([...had.doneStepIds, ...steps])] });
   await editIssue(dcsConfig(session.host), pmOrg, PM_REPO_NAME, card.number, { token: session.token, body });
   return closeIssue(session, pmOrg, card.number);
+}
+
+/** A note of the book, as one opened from a reason reads it. */
+export type BookNote = { id: string; ref: string; quote: string; note: string; supportRef: string };
+
+/**
+ * The notes of a book, by their id: the team's own when it has them (its draft, or what it published), else the
+ * source package's. A reason names a note by its id, and the id is the same in both.
+ */
+export async function loadBookNotes(session: GtSession, ctx: SolverLaunchContext, board: AssignmentsDoc): Promise<Map<string, BookNote>> {
+  const book = (ctx.book || ctx.projectId || "").toUpperCase();
+  const pmConfig = await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG);
+  const own = await readTeamHelps({ session, ctx, pmConfig, board, kind: "notas" }).catch(() => null);
+  const pkg = resolveSourcePackage(board.settings);
+  const text = own?.text ?? (await readRaw(session, pkg.owner, pkg.tn, helpsTsvFilename("notas", book)));
+  const out = new Map<string, BookNote>();
+  for (const row of text ? parseTsvTable(text).rows : []) {
+    const id = (row.ID ?? row.Id ?? row.id ?? "").trim();
+    if (!id) continue;
+    out.set(id, { id, ref: (row.Reference ?? row.reference ?? "").trim(), quote: (row.Quote ?? row.OrigQuote ?? "").trim(), note: (row.Note ?? row.OccurrenceNote ?? "").replace(/\\n/g, "\n").trim(), supportRef: supportReferenceOf(row) });
+  }
+  return out;
 }
