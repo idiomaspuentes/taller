@@ -11,12 +11,13 @@ import type { ThreadItem } from "../domain/conversation";
 import { issueProjectId } from "../domain/myTasks";
 import { ownTitleOf } from "../domain/myTasksBoard";
 import { decisionPlace, firstToRead } from "../domain/proposalList";
-import { wordDiff } from "../domain/verseEditView";
 import { routeToHash } from "../router";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { DecisionCard } from "./DecisionCard";
-import { DecisionCustomPanel } from "./DecisionCustomPanel";
+import { TextChangeView } from "./TextChangeView";
+import { VerseCompare } from "./VerseCompare";
+import { buildSolverLaunchContext } from "../domain/solverLaunch";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { Button } from "@/components/ui/button";
 
@@ -52,6 +53,8 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const [thread, setThread] = useState<{ issue: number; items: ThreadItem[] } | null>(null);
   const [threadError, setThreadError] = useState("");
   const [finishing, setFinishing] = useState(false);
+  // Open or not, as the person left it: whoever compares, compares every proposal.
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const loadList = useCallback(async () => {
     if (!session) return null;
@@ -108,6 +111,10 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   }, [thread, current?.number]);
 
   const projectId = data ? issueProjectId(data.card) : "";
+  const launchCtx = useMemo(
+    () => (data && session ? buildSolverLaunchContext({ username: session.username, lang, pmOrg, contentOrg, board: data.board, issue: data.card }) : null),
+    [data, session, lang, pmOrg, contentOrg],
+  );
   const env = useMemo(() => ({ session, pmOrg, issueNumber: current?.number ?? 0, lang, projectId, contentOrg }), [session, pmOrg, current?.number, lang, projectId, contentOrg]);
   const viewer = useMemo(() => ({ username: session?.username ?? "", canManage, assignees: [] as string[] }), [session?.username, canManage]);
 
@@ -189,8 +196,14 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                 <>
                   <p className="af-lbl">{t("pl.verse")}</p>
                   <div className="pl-verse">
-                    <DecisionCustomPanel custom={{ kind: "diff", data: { pieces: wordDiff(decision.data.oldText, decision.data.newText) } }} />
+                    <TextChangeView before={decision.data.oldText} after={decision.data.newText} />
                   </div>
+                  {session && launchCtx && place ? (
+                    <details className="pl-compare" open={compareOpen} onToggle={(event) => setCompareOpen(event.currentTarget.open)}>
+                      <summary>{t("vc.title")}</summary>
+                      {compareOpen ? <VerseCompare session={session} ctx={launchCtx} board={data.board} chapter={place.chapter} verse={place.verse} /> : null}
+                    </details>
+                  ) : null}
                   <p className="af-lbl">{t("pl.why").replace("{who}", decision.data.by)}</p>
                   <div className="pl-note">
                     {/* Each line of a proposal is its own: what changes, its cause, why. */}
