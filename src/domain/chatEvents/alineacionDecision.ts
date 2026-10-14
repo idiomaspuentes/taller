@@ -346,6 +346,17 @@ export function voteSummary(d: DecisionEventData, prepared: DecisionPrepared): s
   return `${line(yes)}. ${line(no)}.`;
 }
 
+/**
+ * Whether a person may edit a proposal in place: it is theirs (the wording in hand is), it changes the text, and
+ * nobody has voted on that wording, nor had a vote withdrawn. With a vote given, it is worded again instead.
+ */
+export function mayEdit(d: Pick<DecisionEventData, "by" | "kind" | "oldText" | "newText">, username: string, prepared: Pick<DecisionPrepared, "votes" | "since" | "closed">): boolean {
+  if (prepared.closed || d.kind !== "proposal" || !editsText(d)) return false;
+  if (d.by.trim().toLowerCase() !== username.trim().toLowerCase()) return false;
+  const since = prepared.since ? Date.parse(prepared.since) : NaN;
+  return !prepared.votes.some((vote) => !Number.isFinite(since) || Date.parse(vote.at) > since);
+}
+
 export function tallyOf(d: DecisionEventData, prepared: DecisionPrepared) {
   // A vote is for the wording it was given on: those from before this one was written do not count.
   const since = prepared.since ? Date.parse(prepared.since) : NaN;
@@ -483,6 +494,16 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
           confirm: `El voto en contra de @${vote.by} dejará de contar, y se le avisará. Hazlo solo si no está para retirarlo.`,
         });
       }
+    }
+    // Whoever made it puts it right while nobody has voted on it: the wording and the reason, in place.
+    if (prepared && !prepared.closed && mayEdit(d, ctx.viewer.username, prepared)) {
+      out.push({
+        id: "editar",
+        label: "Editar mi propuesta",
+        blockReason: null,
+        busyLabel: "Guardando la propuesta…",
+        input: { label: "El versículo como lo propones", initial: d.newText, verse: true, second: { label: "Por qué lo propones", initial: d.note } },
+      });
     }
     // A proposal that changes the text is talked over until it is decided: anybody of the two teams words it
     // again, and the team may go back to a wording it had.

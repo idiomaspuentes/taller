@@ -568,12 +568,12 @@ function ConversationThread({
   );
 
   const runDecision = useCallback(
-    async (item: ThreadItem, optionId: string, event: ChatEvent = item.event!, input?: string) => {
+    async (item: ThreadItem, optionId: string, event: ChatEvent = item.event!, input?: string, second?: string) => {
       const definition = resolveChatEvent(event).definition;
       const remainingDecisions = pendingDecisions.filter((id) => id !== event.decision?.id);
       const items = demo
         ? ((await demo.decide?.(optionId, item)) ?? [])
-        : await definition!.run!(optionId, event, { ...decisionEnv, remainingDecisions, ...(input !== undefined ? { input } : {}) });
+        : await definition!.run!(optionId, event, { ...decisionEnv, remainingDecisions, cardCommentId: item.id, ...(input !== undefined ? { input } : {}), ...(second !== undefined ? { input2: second } : {}) });
       let doc = readPending();
       for (const row of items) doc = pushLocal(doc, issueNumber, { ...row, key: `local:${row.key}`, reconcileKey: row.key });
       writePending(doc);
@@ -601,7 +601,7 @@ function ConversationThread({
           viewer={viewer}
           env={decisionEnv}
           demoPrepared={demo && item.event?.decision ? demo.prepared?.[item.event.decision.id] : undefined}
-          onRun={canRun ? (optionId, event, input) => runDecision(item, optionId, event, input) : undefined}
+          onRun={canRun ? (optionId, event, input, second) => runDecision(item, optionId, event, input, second) : undefined}
           onOpenEditor={openEditorAt}
         />
         </CiteScope.Provider>

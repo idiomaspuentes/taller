@@ -43,7 +43,14 @@ export type DecisionOption = {
    * The option is given with words of the person's own: another wording, the reason of a no. The card asks for
    * them before it runs, starting from `initial`, and `run` gets them as `env.input`.
    */
-  input?: { label: string; initial?: string };
+  input?: {
+    label: string;
+    initial?: string;
+    /** What is written is the verse, not a reason: it is not offered what a reason cites. */
+    verse?: true;
+    /** A second thing to write with it (the reason, beside the verse): `run` gets it as `env.input2`. */
+    second?: { label: string; initial?: string };
+  };
 };
 
 export type DecisionContext<P = unknown> = {

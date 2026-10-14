@@ -29,7 +29,7 @@ type Props = {
   /** Demo only: stands in for `prepare` (no DCS read). */
   demoPrepared?: unknown;
   /** Runs the option on `event` (the card's, or its decided form) and shows its items; `input` is what was written for it. */
-  onRun?: (optionId: string, event: ChatEvent, input?: string) => Promise<void>;
+  onRun?: (optionId: string, event: ChatEvent, input?: string, second?: string) => Promise<void>;
   /** Opens the editor on a range; offered next to a block reason that is fixed there. */
   onOpenEditor?: (range: { chapter: number; from: number; to: number }) => void;
   /** The screen shows what is decided its own way: the card is its votes and buttons. */
@@ -68,7 +68,7 @@ export function DecisionCard({
   const [prepareError, setPrepareError] = useState<string | undefined>();
   const [confirming, setConfirming] = useState<string | null>(null);
   /** The option that is being written for (another wording, the reason of a no), and what is written so far. */
-  const [writing, setWriting] = useState<{ id: string; text: string } | null>(null);
+  const [writing, setWriting] = useState<{ id: string; text: string; second?: string } | null>(null);
   const [busy, setBusy] = useState<DecisionOption | null>(null);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -103,7 +103,7 @@ export function DecisionCard({
   const reasons = [...new Set(options.map((o) => o.blockReason).filter((r): r is string => Boolean(r)))];
   const editorRange = options.find((o) => o.blockReason && o.openEditor)?.openEditor;
 
-  async function run(option: DecisionOption, input?: string) {
+  async function run(option: DecisionOption, input?: string, second?: string) {
     setConfirming(null);
     setWriting(null);
     setError("");
@@ -118,7 +118,7 @@ export function DecisionCard({
         setError(loc(again?.blockReason || "") || t("dc.unavailable"));
         return;
       }
-      await onRun!(option.id, target, input);
+      await onRun!(option.id, target, input, second);
       // What the card says is read again. A vote just given was not counted on it until the page was opened
       // again: the button went on reading «(1)», and when it made the consensus, nothing offered to confirm it.
       const after = await prepare().catch(() => null);
@@ -185,14 +185,26 @@ export function DecisionCard({
           <label className="chat-decision__confirm-text" htmlFor={`write-${item.key}`}>
             {loc(writeOption.input!.label)}
           </label>
-          {cite && writing.id !== "version" ? (
+          {cite && writing.id !== "version" && !writeOption.input!.verse ? (
             // A reason, said with what it cites: the words of the original, the texts, the notes.
-            <ReasonField id={`write-${item.key}`} rows={3} value={writing.text} autoFocus session={cite.session} ctx={cite.ctx} chapter={cite.chapter} verse={cite.verse} onChange={(text) => setWriting({ id: writing.id, text })} />
+            <ReasonField id={`write-${item.key}`} rows={3} value={writing.text} autoFocus session={cite.session} ctx={cite.ctx} chapter={cite.chapter} verse={cite.verse} onChange={(text) => setWriting({ ...writing, text })} />
           ) : (
-            <textarea id={`write-${item.key}`} className="af-textarea" rows={3} value={writing.text} autoFocus onChange={(e) => setWriting({ id: writing.id, text: e.target.value })} />
+            <textarea id={`write-${item.key}`} className="af-textarea" rows={3} value={writing.text} autoFocus onChange={(e) => setWriting({ ...writing, text: e.target.value })} />
           )}
+          {writeOption.input!.second ? (
+            <>
+              <label className="chat-decision__confirm-text" htmlFor={`write2-${item.key}`}>
+                {loc(writeOption.input!.second.label)}
+              </label>
+              {cite ? (
+                <ReasonField id={`write2-${item.key}`} rows={4} value={writing.second ?? ""} session={cite.session} ctx={cite.ctx} chapter={cite.chapter} verse={cite.verse} onChange={(second) => setWriting({ ...writing, second })} />
+              ) : (
+                <textarea id={`write2-${item.key}`} className="af-textarea" rows={4} value={writing.second ?? ""} onChange={(e) => setWriting({ ...writing, second: e.target.value })} />
+              )}
+            </>
+          ) : null}
           <div className="chat-decision__actions">
-            <Button type="button" disabled={!writing.text.trim()} onClick={() => void run(writeOption, writing.text.trim())}>
+            <Button type="button" disabled={!writing.text.trim() || (writeOption.input!.second ? !(writing.second ?? "").trim() : false)} onClick={() => void run(writeOption, writing.text.trim(), writing.second?.trim())}>
               {t("dc.send")}
             </Button>
             <Button type="button" variant="outline" onClick={() => setWriting(null)}>
@@ -208,7 +220,7 @@ export function DecisionCard({
               type="button"
               variant={option.primary ? "default" : "outline"}
               disabled={Boolean(option.blockReason)}
-              onClick={() => (option.input ? setWriting({ id: option.id, text: option.input.initial ?? "" }) : option.confirm ? setConfirming(option.id) : void run(option))}
+              onClick={() => (option.input ? setWriting({ id: option.id, text: option.input.initial ?? "", ...(option.input.second ? { second: option.input.second.initial ?? "" } : {}) }) : option.confirm ? setConfirming(option.id) : void run(option))}
             >
               {loc(option.label)}
             </Button>

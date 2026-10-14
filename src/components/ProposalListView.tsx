@@ -190,16 +190,16 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   }, [here?.chapter, here?.verse, words, notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const run = useCallback(
-    async (optionId: string, event: ChatEvent, input?: string) => {
+    async (optionId: string, event: ChatEvent, input?: string, second?: string) => {
       const definition = resolveChatEvent(event).definition;
       if (!definition?.run) return;
-      await definition.run(optionId, event, { ...env, remainingDecisions: [], ...(input !== undefined ? { input } : {}) });
+      await definition.run(optionId, event, { ...env, remainingDecisions: [], cardCommentId: decision?.item.id, ...(input !== undefined ? { input } : {}), ...(second !== undefined ? { input2: second } : {}) });
       await loadThread();
       // Closing it changes what is left of the list.
       if (optionId === "confirmar") await loadList().catch(() => undefined);
       announce(tNow("cv.decisionSaved"));
     },
-    [env, loadThread, loadList, announce],
+    [env, loadThread, loadList, announce, decision?.item.id],
   );
 
   async function finish() {

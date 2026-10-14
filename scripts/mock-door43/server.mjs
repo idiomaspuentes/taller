@@ -101,6 +101,12 @@ const json = (res, body, status = 200, headers = {}) => {
 let repos;
 let issues;
 let comments;
+// A comment's id is unique in the repository, as in Door43: a comment is edited by it alone.
+let commentCounter = 0;
+function renumberComments() {
+  commentCounter = 0;
+  for (const list of comments.values()) for (const c of list) c.id = ++commentCounter;
+}
 let labels;
 let milestones;
 /** Notification threads: a mention in a comment tells the person mentioned, as Door43 does. */
@@ -437,6 +443,7 @@ async function handle(req, res) {
     pulls = new Map(state.pulls.map(([key, list]) => [key, list.map((pull) => ({ ...pull, snapshot: new Map(pull.snapshot) }))]));
     issues = state.issues;
     comments = new Map(state.comments);
+    renumberComments();
     labels = state.labels;
     milestones = state.milestones;
     issueCounter = state.issueCounter;
@@ -736,6 +743,22 @@ async function handle(req, res) {
         milestones.push(m);
         return json(res, m, 201);
       }
+      const commentMatch = /^issues\/comments\/(\d+)$/.exec(rest);
+      if (commentMatch && req.method === "PATCH") {
+        if (!user) return json(res, { message: "token is required" }, 401);
+        const id = Number(commentMatch[1]);
+        for (const [number, list] of comments) {
+          const c = list.find((one) => one.id === id);
+          if (!c) continue;
+          if (c.user?.login !== user.login) return json(res, { message: "only the author edits a comment" }, 403);
+          const body = await readBody(req);
+          c.body = String(body.body ?? c.body);
+          c.updated_at = new Date().toISOString();
+          log.push({ at: c.updated_at, user: user.login, write: `comment #${number} edited` });
+          return json(res, c);
+        }
+        return json(res, { message: "comment not found" }, 404);
+      }
       const issueMatch = /^issues\/(\d+)(?:\/(comments|assignees|labels))?$/.exec(rest);
       if (issueMatch) {
         const number = Number(issueMatch[1]);
@@ -764,7 +787,7 @@ async function handle(req, res) {
           const list = comments.get(number) || [];
           if (req.method === "GET") return json(res, list);
           const body = await readBody(req);
-          const c = { id: list.length + 1, body: body.body, user, created_at: new Date().toISOString() };
+          const c = { id: ++commentCounter, body: body.body, user, created_at: new Date().toISOString() };
           comments.set(number, [...list, c]);
           for (const [, login] of String(body.body).matchAll(/@([a-z0-9_-]+)/gi)) {
             if (login === user.login || !Object.values(USERS).some((u) => u.login === login)) continue;

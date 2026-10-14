@@ -2,6 +2,7 @@ import {
   createIssueComment,
   createOrUpdateContents,
   editIssue,
+  editIssueComment,
   getContents,
   getRawContent,
   listIssueComments,
@@ -58,6 +59,7 @@ import { groupsAfterTextEdit, sameText, tokensFromText, viewFromTokens, type Dec
 import { originalTextRef } from "../domain/sourcePackage";
 import { commentToItem, type ThreadItem } from "../domain/conversation";
 import { PM_REPO_NAME } from "../domain/types";
+import { getPmIssue } from "./portionPr";
 import { decidedComment } from "../domain/outsideSuggestion";
 import { bookName } from "../domain/books";
 import { tryParseUsj } from "../domain/usfmAst";
@@ -333,6 +335,53 @@ export async function rewordProposal(params: { session: GtSession; pmOrg: string
   const event = buildDecisionEvent(next, params.threadIssue);
   const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, params.threadIssue, formatChatEvent(event, { visible: `${event.summary}\n\n> ${text}${named(event.mentions)}` }), session.token);
   return commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME });
+}
+
+/**
+ * Whoever made a proposal puts it right before anybody has voted on it: its wording and what it says, in the card
+ * itself, the file the proposal is applied from and the subtarea. Nothing is kept of what it said before, since
+ * nobody answered it; the team is told it changed. With a vote given it is worded again instead (`rewordProposal`),
+ * so that nobody's vote is counted for words they did not see. `commentId` is the card's comment.
+ */
+export async function editProposal(params: { session: GtSession; pmOrg: string; threadIssue: number; commentId: number; data: DecisionEventData; text: string; note: string }): Promise<ThreadItem[]> {
+  const { session, pmOrg, data } = params;
+  const text = params.text.replace(/\s+/g, " ").trim();
+  const note = params.note.trim();
+  if (data.kind !== "proposal" || !editsText(data)) throw new Error("Solo una propuesta que cambia el texto se puede editar.");
+  if (!text) throw new Error("Escribe cómo quedaría el versículo.");
+  if (sameText(text, data.oldText)) throw new Error("Eso es lo que el versículo dice ahora: no hay nada que proponer.");
+  if (!note) throw new Error("Di por qué se propone.");
+  const sid = verseKey(data.book, data.chapter, data.verse);
+  const groups = groupsAfterTextEdit(data.groupsBefore, data.oldText, text);
+  const next: DecisionEventData = {
+    ...data,
+    newText: text,
+    note,
+    groupsAfter: groups,
+    after: groupsToLines(groups),
+    view: { ...data.view, draftAfter: viewFromTokens({ rtl: data.view.rtl, original: [], gloss: [], draftBefore: [], draftAfter: tokensFromText(text, sid) }).draftAfter },
+  };
+  const config = dcsConfig(session.host);
+  const event = buildDecisionEvent(next, params.threadIssue);
+  // Nobody is named again: whoever was told of it reads it where they were told.
+  const card = await editIssueComment(config, pmOrg, PM_REPO_NAME, params.commentId, formatChatEvent(event, { visible: `${event.summary}\n\n> ${text}` }), session.token);
+  // The first wording is applied from its file: it says the wording edited.
+  if ((data.version ?? 1) === 1) {
+    const target: RepoTarget = { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch };
+    const saved = await readRepoFile(session, target, data.path);
+    if (saved) {
+      const file = { ...(JSON.parse(saved.text) as ProposalFile), proposed: groups, newText: text, note };
+      await createOrUpdateContents(config, target.owner, target.repo, data.path, { content: `${JSON.stringify(file, null, 2)}\n`, message: `TAS: propuesta editada ${data.book} ${data.chapter}:${data.verse} · ${data.id}`, branch: target.branch, sha: saved.sha, token: session.token });
+    }
+  }
+  // What the subtarea says above its marker, for whoever reads it on Door43.
+  const issue = await getPmIssue(session, pmOrg, params.threadIssue).catch(() => null);
+  const at = issue?.body?.indexOf("<!-- gateway-work-order") ?? -1;
+  if (issue && at >= 0) {
+    await editIssue(config, pmOrg, PM_REPO_NAME, params.threadIssue, { token: session.token, body: `${decisionTitle(next)}.\n\n> ${note.replace(/\n/g, "\n> ")}\n\nEl equipo decide aquí, con comentarios y un voto por persona.\n\n${issue.body!.slice(at)}` }).catch(() => undefined);
+  }
+  const told = await createIssueComment(config, pmOrg, PM_REPO_NAME, params.threadIssue, `@${session.username} editó su propuesta antes de que nadie votara.`, session.token);
+  return [commentToItem(card, "issue", { owner: pmOrg, repo: PM_REPO_NAME }), commentToItem(told, "issue", { owner: pmOrg, repo: PM_REPO_NAME })];
 }
 
 /**

@@ -211,6 +211,9 @@ Una propuesta de cambiar un versículo tiene su propia conversación. Mientras n
   que se propuso y el equipo que tiene el texto (el de la primera fase que lo revisa). Cuando un equipo propone
   sobre su propio texto son el mismo. También quien alineó el versículo y quien coordina. Cada versión es una tarjeta de la misma decisión en la misma conversación: las
   anteriores quedan a la vista, sin botones, y se vota la más nueva.
+- **Quien la propuso la edita** (el versículo y el porqué) **mientras nadie haya votado esa versión**: se corrige en
+  el mismo lugar, sin versión nueva, y la conversación dice que se editó. Con un voto dado ya no se edita: se propone
+  otra versión, para que ningún voto cuente por palabras que quien votó no vio.
 - Se puede **volver a una versión anterior**: se propone de nuevo como la versión siguiente.
 - Con cada versión **los votos empiezan de nuevo** y el plazo vuelve a contar. Quien la escribió ya cuenta a favor.
 - Un **no** a una propuesta **dice por qué**, y se le avisa a quien propuso.

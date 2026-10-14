@@ -111,6 +111,7 @@ export {
   removeIssueAssignees,
   listIssueComments,
   createIssueComment,
+  editIssueComment,
   addIssueLabels,
   replaceIssueLabels,
 } from "./issues.js";

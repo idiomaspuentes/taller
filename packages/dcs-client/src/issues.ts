@@ -314,6 +314,23 @@ export function createIssueComment(
   });
 }
 
+/** PATCH /repos/{owner}/{repo}/issues/comments/{id} — a comment's id is unique in the repository. */
+export function editIssueComment(
+  config: DcsClientConfig,
+  owner: string,
+  repo: string,
+  id: number,
+  body: string,
+  token: string,
+): Promise<DcsIssueComment> {
+  return request<DcsIssueComment>(config, {
+    method: "PATCH",
+    path: `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/comments/${id}`,
+    token,
+    body: { body },
+  });
+}
+
 /** POST /repos/{owner}/{repo}/issues/{index}/labels — body is label ids or names. */
 export function addIssueLabels(
   config: DcsClientConfig,

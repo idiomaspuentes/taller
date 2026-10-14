@@ -1,5 +1,5 @@
 /** A proposal or an objection as a decision of the team: who counts, when it is decided. */
-import { buildCloseEvent, buildDecisionEvent, toldOf, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
+import { buildCloseEvent, buildDecisionEvent, mayEdit, toldOf, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { PersonLevel } from "../src/domain/levels";
@@ -184,6 +184,18 @@ test("cuentan los niveles del equipo que tiene la tarea, no los generales de la 
   assert.equal(tally(book.levels).winner, undefined, "con los niveles generales nadie del equipo contaba");
   assert.deepEqual(decisionLevels(book, "Otro equipo"), book.levels, "un equipo sin niveles propios usa los generales");
   assert.deepEqual(decisionLevels(null, "Afinadores TPL"), {});
+});
+
+test("quien propone edita su propuesta mientras nadie ha votado esa versión; con un voto, ya no", () => {
+  const d = { by: "ana", kind: "proposal" as const, oldText: "tenían miedo", newText: "había terror" };
+  const none = { votes: [], closed: undefined };
+  assert.equal(mayEdit(d, "ana", none), true);
+  assert.equal(mayEdit(d, "Ana", none), true, "sin importar mayúsculas");
+  assert.equal(mayEdit(d, "bea", none), false, "solo quien la propuso");
+  assert.equal(mayEdit({ ...d, newText: d.oldText }, "ana", none), false, "una que no cambia el texto, no");
+  assert.equal(mayEdit(d, "ana", { votes: [{ by: "bea", option: "aceptar", at: "2026-10-14T10:00:00Z" }], closed: undefined }), false, "con un voto, se propone otra versión");
+  assert.equal(mayEdit(d, "ana", { votes: [{ by: "bea", option: "rechazar", at: "2026-10-14T10:00:00Z" }], since: "2026-10-14T11:00:00Z", closed: undefined }), true, "los votos de una versión anterior no cuentan");
+  assert.equal(mayEdit(d, "ana", { votes: [], closed: {} as never }), false, "cerrada, no");
 });
 
 console.log(`\nverify-alignment-decision: ${passed} checks passed.`);

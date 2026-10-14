@@ -4,7 +4,7 @@
  * and the closing if the team has now decided). `src/conversationTypes.ts` imports it.
  */
 import type { GtSession } from "./auth";
-import { closeAlignmentDecision, postVote, postWithdrawal, readDecisionVotes, rewordProposal } from "./alignmentDecisionStore";
+import { closeAlignmentDecision, editProposal, postVote, postWithdrawal, readDecisionVotes, rewordProposal } from "./alignmentDecisionStore";
 import { loadPmConfig } from "./issues";
 import { decisionLevels, latestVotes, optionsFor } from "../domain/alignmentDecision";
 import { issueTaskId } from "../domain/myTasks";
@@ -16,6 +16,7 @@ import {
   alineacionDecisionType,
   buildConsensusEvent,
   editsText,
+  mayEdit,
   mayReword,
   decisionId,
   tallyOf,
@@ -171,6 +172,15 @@ registerChatEventType<DecisionPrepared>({
       const notice = buildConsensusEvent({ issue: threadIssue, data, winner: tally.winner, people: tally.counts[tally.winner].people });
       const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(notice), session.token);
       return [withdrawn, commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME })];
+    }
+    // Its author puts it right before anybody votes; once somebody has, it is worded again instead.
+    if (optionId === "editar") {
+      if (!mayEdit(data, session.username, { votes: before.votes, since: before.since, closed: before.closed })) {
+        throw new Error("Ya hay votos sobre esta versión: para cambiarla, propón otra versión.");
+      }
+      const commentId = Number(env.cardCommentId) || 0;
+      if (!commentId) throw new Error("No se encontró la tarjeta de la propuesta.");
+      return editProposal({ session, pmOrg, threadIssue, commentId, data, text: said, note: typeof env.input2 === "string" ? env.input2 : data.note });
     }
     // Another wording, or one the proposal had before: the next version, in this same conversation.
     if (optionId === "version" || optionId.startsWith("volver:")) {

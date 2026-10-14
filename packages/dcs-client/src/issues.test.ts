@@ -9,6 +9,7 @@ import {
   removeIssueAssignees,
   listIssueComments,
   createIssueComment,
+  editIssueComment,
 } from "./issues.js";
 import type { DcsClientConfig } from "./config.js";
 
@@ -169,5 +170,15 @@ describe("assignees and comments", () => {
     await createIssueComment(config, "es-419_gl", "gateway-tasks", 3, "nuevo", "tok");
     expect(fetchMock.mock.calls[1][1].method).toBe("POST");
     expect(JSON.parse(fetchMock.mock.calls[1][1].body as string)).toEqual({ body: "nuevo" });
+  });
+
+  it("edits a comment by its id in the repository", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ id: 77, body: "otro" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const edited = await editIssueComment(config, "es-419_gl", "taller", 77, "otro", "tok");
+    expect(edited.body).toBe("otro");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/repos/es-419_gl/taller/issues/comments/77");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PATCH");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({ body: "otro" });
   });
 });
