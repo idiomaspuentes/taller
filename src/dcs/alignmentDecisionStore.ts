@@ -43,6 +43,7 @@ import {
   buildCloseEvent,
   buildDecisionEvent,
   buildVoteEvent,
+  buildWithdrawEvent,
   decisionId,
   decisionTitle,
   alineacionDecisionData,
@@ -282,6 +283,13 @@ export async function postVote(session: GtSession, pmOrg: string, threadIssue: n
   const event = buildVoteEvent({ issue: threadIssue, data, by: session.username, option, reason });
   // The reason of a no is said to whoever proposed, where Door43 reads it.
   const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(event, event.mentions?.length ? { visible: `${event.summary}${named(event.mentions)}` } : undefined), session.token);
+  return commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME });
+}
+
+/** Withdraws, for the team, the vote against of somebody who is not there to withdraw it; they are told. */
+export async function postWithdrawal(session: GtSession, pmOrg: string, threadIssue: number, data: DecisionEventData, of: string, reason: string): Promise<ThreadItem> {
+  const event = buildWithdrawEvent({ issue: threadIssue, data, of, by: session.username, reason });
+  const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(event, { visible: `${event.summary}${named(event.mentions ?? [])}` }), session.token);
   return commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME });
 }
 

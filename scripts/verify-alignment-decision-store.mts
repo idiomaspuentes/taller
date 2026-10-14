@@ -581,4 +581,42 @@ await test("pasado el plazo sin las aprobaciones, nadie la cierra en nombre del 
   assert.equal(issues.find((i) => i.number === n)!.state, "open", "sigue abierta hasta que tenga sus aprobaciones");
 });
 
+await test("cierra cualquier habilitada del equipo cuando los votos lo permiten; quien no es habilitada no", async () => {
+  actor = "bea";
+  const h = currentVerseHash(draftNow(), "NEH", 1, 1, source);
+  const opened = await openAlignmentDecision({ ...common, session: session("bea"), kind: "proposal", note: "habilitadas", baseHash: h, before: anas, proposed: beas, now: new Date("2026-10-13T10:00:00Z") });
+  const n = opened.issue.number;
+  const event = await cardOf(n);
+  actor = "carla";
+  await cardType().run!("aceptar", event, envFor("carla", n));
+  assert.ok(!(await optionsNow("zoe", n)).options.some((o) => o.id === "confirmar"), "a zoe no se le ofrece cerrar");
+  actor = "zoe";
+  await assert.rejects(() => cardType().run!("confirmar", event, envFor("zoe", n)), /habilitada/);
+  assert.equal((await optionsNow("carla", n)).options[0]!.id, "confirmar", "carla, habilitada, sí");
+});
+
+await test("una habilitada retira el voto en contra de quien no está para retirarlo, dice por qué, y se le avisa", async () => {
+  actor = "bea";
+  const h = currentVerseHash(draftNow(), "NEH", 1, 1, source);
+  const opened = await openAlignmentDecision({ ...common, session: session("bea"), kind: "proposal", note: "un voto en contra", baseHash: h, before: anas, proposed: beas, now: new Date("2026-10-13T11:00:00Z") });
+  const n = opened.issue.number;
+  const event = await cardOf(n);
+  actor = "carla";
+  await cardType().run!("rechazar", event, { ...envFor("carla", n), input: "No me convence" });
+  const offered = (await optionsNow("ana", n)).options.map((o) => o.id);
+  assert.ok(offered.includes("retirar:carla"), "a ana, habilitada, se le ofrece retirar el voto de carla");
+  assert.ok(!(await optionsNow("zoe", n)).options.some((o) => o.id.startsWith("retirar:")), "a zoe, no");
+  assert.ok(!(await optionsNow("carla", n)).options.some((o) => o.id === "retirar:carla"), "su propio voto se cambia votando");
+  actor = "ana";
+  await assert.rejects(() => cardType().run!("retirar:carla", event, { ...envFor("ana", n), input: "" }), /por qué/);
+  await cardType().run!("retirar:carla", event, { ...envFor("ana", n), input: "Carla está de viaje" });
+  const last = parseChatEvent((comments.get(n) ?? []).at(-1)!.body)!;
+  assert.match(last.summary, /@ana retiró el voto en contra de @carla/);
+  assert.deepEqual(last.mentions, ["carla"]);
+  const prepared = (await cardType().prepare!(event, envFor("ana", n))) as { votes: { by: string; option: string }[] };
+  const tally = tallyOf(alineacionDecisionData(event)!, { ...(prepared as never), now: new Date().toISOString() });
+  assert.equal(tally.counts.rechazar.people.length, 0, "el voto en contra ya no cuenta");
+  await assert.rejects(() => cardType().run!("retirar:carla", event, { ...envFor("ana", n), input: "otra vez" }), /ya no tiene un voto en contra/);
+});
+
 console.log(`\nverify-alignment-decision-store: ${passed} checks passed.`);

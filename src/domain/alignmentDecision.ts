@@ -110,7 +110,11 @@ export const OPTION_LABEL: Record<DecisionOptionId, string> = {
   mantener: "Mantener la alineación",
 };
 
-export type DecisionVote = { by: string; option: DecisionOptionId; at: string };
+/**
+ * One person's vote. `retirado` is a vote against withdrawn by somebody else of the team, when its owner was not
+ * there to withdraw it: it no longer counts, and the person is asked again like anyone who has not voted.
+ */
+export type DecisionVote = { by: string; option: DecisionOptionId | "retirado"; at: string; withdrawnBy?: string };
 
 /**
  * The levels that count in a decision: those of the team that has the task. A team that has levels of its own
@@ -221,7 +225,7 @@ export function deadlineFrom(createdAt: Date, days: number = DECISION_DAYS): str
 
 /** People left to ask: habilitadas of the team who have not voted and did not propose. */
 export function waitingOn(params: { team: string[]; levels: Record<string, PersonLevel>; votes: DecisionVote[]; proposer: string }): string[] {
-  const voted = new Set(latestVotes(params.votes).map((v) => v.by.trim().toLowerCase()));
+  const voted = new Set(latestVotes(params.votes).filter((v) => v.option !== "retirado").map((v) => v.by.trim().toLowerCase()));
   const proposer = params.proposer.trim().toLowerCase();
   return params.team.filter((login) => {
     const key = login.trim().toLowerCase();

@@ -7,6 +7,7 @@ import type { PersonLevel } from "../levels";
 import type { ChatEvent } from "../chatEvent";
 import {
   OPTION_LABEL,
+  latestVotes,
   optionsFor,
   tallyDecision,
   type DecisionKind,
@@ -23,6 +24,7 @@ export const DECISION_EVENT = "alineacion-decision";
 export const VOTE_EVENT = "alineacion-voto";
 export const CLOSE_EVENT = "alineacion-cierre";
 export const CONSENSUS_EVENT = "alineacion-consenso";
+export const WITHDRAW_EVENT = "alineacion-retiro";
 
 export type DecisionEventData = {
   id: string;
@@ -223,6 +225,28 @@ export function buildVoteEvent(params: { issue: number; data: DecisionEventData;
   };
 }
 
+/**
+ * A vote against withdrawn by another habilitada of the team, because whoever cast it is not there to withdraw it.
+ * It says why, and the person is told: the vote is theirs, and they may cast it again.
+ */
+export function buildWithdrawEvent(params: { issue: number; data: DecisionEventData; of: string; by: string; reason: string }): Omit<ChatEvent, "schema"> {
+  const reason = params.reason.replace(/\s+/g, " ").trim();
+  return {
+    type: WITHDRAW_EVENT,
+    emitter: "afinacion",
+    issue: params.issue,
+    summary: `@${params.by} retiró el voto en contra de @${params.of}. «${reason}»`,
+    mentions: [params.of],
+    data: { decisionId: decisionId(params.data), of: params.of, by: params.by, reason },
+  };
+}
+
+export function withdrawData(event: ChatEvent): { decisionId: string; of: string; by: string } | null {
+  const d = event.data as { decisionId?: string; of?: string; by?: string } | undefined;
+  if (event.type !== WITHDRAW_EVENT || !d?.decisionId || !d.of || !d.by) return null;
+  return { decisionId: d.decisionId, of: d.of, by: d.by };
+}
+
 /** Posted once when the votes reach consensus: nothing closes until a person confirms it. */
 export function buildConsensusEvent(params: { issue: number; data: DecisionEventData; winner: DecisionOptionId; people: string[] }): Omit<ChatEvent, "schema"> {
   const mentions = [params.data.by, ...params.data.aligners].filter((l, i, all) => all.findIndex((x) => x.toLowerCase() === l.toLowerCase()) === i);
@@ -301,6 +325,8 @@ export function readDecisionThread(events: Array<{ event: ChatEvent; at: string 
     if (card && decisionId(card) === id && versionOf(card) > 1) since = at;
     const v = voteData(event);
     if (v && v.decisionId === id) votes.push({ by: v.by, option: v.option, at });
+    const w = withdrawData(event);
+    if (w && w.decisionId === id) votes.push({ by: w.of, option: "retirado", at, withdrawnBy: w.by });
     const c = closeData(event);
     if (c && c.decisionId === id) closed = event;
   }
@@ -417,7 +443,9 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
       };
     };
     const out: DecisionOption[] = [];
-    if (winner && prepared) {
+    // Closing, and withdrawing a vote against for someone who is not there, are for the habilitadas of the team.
+    const enabled = prepared ? prepared.levels[me] === "habilitada" : false;
+    if (winner && prepared && enabled) {
       // Nothing is applied by the votes alone: a person confirms the consensus first, seeing who backs what.
       const applies = d.kind === "proposal" && winner === "aceptar" ? " Se aplicará la alineación propuesta." : d.kind === "objection" && winner === "cambiar" ? " Se le pedirá a quien alineó que la ajuste." : "";
       out.push({
@@ -430,6 +458,20 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
       });
     }
     out.push(make(yes), make(no));
+    if (prepared && !prepared.closed && enabled) {
+      const counted = Number.isFinite(since) ? prepared.votes.filter((v) => Date.parse(v.at) > since) : prepared.votes;
+      for (const vote of latestVotes(counted)) {
+        if (vote.option !== no || vote.by.trim().toLowerCase() === me) continue;
+        out.push({
+          id: `retirar:${vote.by}`,
+          label: `Retirar el voto en contra de @${vote.by}`,
+          blockReason: null,
+          busyLabel: "Retirando el voto…",
+          input: { label: `¿Por qué lo retiras? Por ejemplo, @${vote.by} no está disponible` },
+          confirm: `El voto en contra de @${vote.by} dejará de contar, y se le avisará. Hazlo solo si no está para retirarlo.`,
+        });
+      }
+    }
     // A proposal that changes the text is talked over until it is decided: anybody of the two teams words it
     // again, and the team may go back to a wording it had.
     if (prepared && !prepared.closed && editsText(d) && mayReword(d, ctx.viewer, prepared.owners)) {
@@ -458,5 +500,6 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
 
 registerChatEventType(alineacionDecisionType);
 registerChatEventType({ type: VOTE_EVENT, render: "system", valid: (e) => voteData(e) !== null, title: (e) => e.summary });
+registerChatEventType({ type: WITHDRAW_EVENT, render: "system", valid: (e) => withdrawData(e) !== null, title: (e) => e.summary });
 registerChatEventType({ type: CONSENSUS_EVENT, render: "system", valid: (e) => consensusData(e) !== null, title: (e) => e.summary });
 registerChatEventType({ type: CLOSE_EVENT, render: "system", valid: (e) => closeData(e) !== null, title: (e) => e.summary, resolves: (e) => closeData(e)?.decisionId ?? null });

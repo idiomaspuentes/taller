@@ -4,9 +4,9 @@
  * and the closing if the team has now decided). `src/conversationTypes.ts` imports it.
  */
 import type { GtSession } from "./auth";
-import { closeAlignmentDecision, postVote, readDecisionVotes, rewordProposal } from "./alignmentDecisionStore";
+import { closeAlignmentDecision, postVote, postWithdrawal, readDecisionVotes, rewordProposal } from "./alignmentDecisionStore";
 import { loadPmConfig } from "./issues";
-import { decisionLevels, optionsFor } from "../domain/alignmentDecision";
+import { decisionLevels, latestVotes, optionsFor } from "../domain/alignmentDecision";
 import { issueTaskId } from "../domain/myTasks";
 import { loadAssignmentsFromDcs } from "./persist";
 import { getPmIssue } from "./portionPr";
@@ -143,7 +143,9 @@ registerChatEventType<DecisionPrepared>({
 
     // Closing is always a person's decision: they confirm that the consensus is real. Nobody closes it for the
     // team without it, not even past the deadline: then the approvals asked for are fewer, but they are still asked.
+    const enabled = (levels as Record<string, string>)[session.username.trim().toLowerCase()] === "habilitada";
     if (optionId === "confirmar") {
+      if (!enabled) throw new Error("Solo una persona habilitada del equipo puede cerrar la decisión.");
       const winner = tallyNow(before.votes).winner;
       if (!winner) throw new Error("Ya no hay consenso: alguien cambió su voto. Mira los votos de nuevo.");
       const closed = await closeAlignmentDecision({ session, pmOrg, threadIssue, data, option: winner, how: "consenso" });
@@ -151,6 +153,25 @@ registerChatEventType<DecisionPrepared>({
     }
 
     const said = typeof env.input === "string" ? env.input.trim() : "";
+    // A vote against stays until whoever cast it withdraws it; when they are not there, a habilitada of the team may.
+    if (optionId.startsWith("retirar:")) {
+      const of = optionId.slice("retirar:".length);
+      if (!enabled) throw new Error("Solo una persona habilitada del equipo puede retirar el voto de otra.");
+      if (of.toLowerCase() === session.username.toLowerCase()) throw new Error("Es tu voto: vota de nuevo para cambiarlo.");
+      if (!said) throw new Error("Di por qué lo retiras.");
+      const { no } = optionsFor(data.kind);
+      const counted = before.since ? before.votes.filter((v) => Date.parse(v.at) > Date.parse(before.since!)) : before.votes;
+      const theirs = latestVotes(counted).find((v) => v.by.toLowerCase() === of.toLowerCase());
+      if (theirs?.option !== no) throw new Error(`@${of} ya no tiene un voto en contra.`);
+      const hadConsensus = Boolean(tallyNow(before.votes).winner);
+      const withdrawn = await postWithdrawal(session, pmOrg, threadIssue, data, of, said);
+      const after = await readDecisionVotes(session, pmOrg, threadIssue, id);
+      const tally = tallyNow(after.votes);
+      if (!tally.winner || hadConsensus) return [withdrawn];
+      const notice = buildConsensusEvent({ issue: threadIssue, data, winner: tally.winner, people: tally.counts[tally.winner].people });
+      const comment = await createIssueComment(dcsConfig(session.host), pmOrg, PM_REPO_NAME, threadIssue, formatChatEvent(notice), session.token);
+      return [withdrawn, commentToItem(comment, "issue", { owner: pmOrg, repo: PM_REPO_NAME })];
+    }
     // Another wording, or one the proposal had before: the next version, in this same conversation.
     if (optionId === "version" || optionId.startsWith("volver:")) {
       if (!mayReword(data, { username: session.username, canManage: Boolean(session.canManage) }, await textOwners(env, data))) throw new Error("Solo los dos equipos de esta propuesta pueden escribirla de otra forma.");
