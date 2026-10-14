@@ -27,3 +27,11 @@ export function useT(): (key: MessageKey) => string {
 }
 
 export const MESSAGE_KEYS_ES = Object.keys(es) as MessageKey[];
+
+/**
+ * A text in every language of the interface: what has to be recognized whatever language it was written in (the
+ * word a reason names a note by), and not only in the one the person reads the app in.
+ */
+export function inEveryLanguage(key: MessageKey): string[] {
+  return [...new Set(Object.values(TABLE).map((table) => table[key] || es[key]))];
+}

@@ -1,7 +1,7 @@
 import { readChangesNote } from "../domain/proposalList";
-import { reasonPieces } from "../domain/reasonText";
+import { reasonPieces, type NoteWords } from "../domain/reasonText";
 import { wordDiff } from "../domain/verseEditView";
-import { useT } from "../i18n/messages";
+import { inEveryLanguage, useT } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 
 /** What a reason can open: the words of the original it is read against, and the notes of the book. */
@@ -16,12 +16,18 @@ export type ReasonLinks = {
 
 const isHebrew = (text: string) => /[֐-׿]/.test(text);
 
+/** The words notes are named by in every language of the app: a reason is read whatever language it was written in. */
+const noteWords = (): NoteWords => ({
+  note: inEveryLanguage("rt.noteWords").flatMap((list) => list.split(",").map((word) => word.trim()).filter(Boolean)),
+  and: inEveryLanguage("rt.and").map((word) => word.trim()).filter(Boolean),
+});
+
 /** A reason, with the words of the original it quotes and the notes it names to tap. */
 export function ReasonText({ text, links }: { text: string; links: ReasonLinks }) {
   const t = useT();
   return (
     <>
-      {reasonPieces(text, links.among, links.notes).map((paragraph, at) => (
+      {reasonPieces(text, links.among, links.notes, noteWords()).map((paragraph, at) => (
         <p key={at} className="rt-p">
           {paragraph.map((piece, i) => {
             const inner =

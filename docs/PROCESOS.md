@@ -245,7 +245,10 @@ El porqué de una propuesta (al corregir en afinación o en la alineación, en l
 **cita con un toque**: bajo el campo, «Citar» ofrece las palabras del original, de la ULT y de la UST del versículo
 para tocarlas, sus notas y los artículos de Academia a los que remiten. Se escriben como se leen después
 (`reasonInsert.ts`), y quien lee la propuesta abre cada palabra del original, cada nota y cada artículo
-(`reasonText.ts`, `ReasonField.tsx`).
+(`reasonText.ts`, `ReasonField.tsx`). Se escribe en el idioma de quien escribe («la nota n3m4», «a nota n3m4»: las
+claves `rf.noteSnippet` y `rf.articleSnippet`) y se reconoce en cualquiera: las palabras con que se nombra una nota
+(`rt.noteWords`, `rt.and`) se leen de todos los idiomas de la app, y un artículo se reconoce por su ruta. Un idioma
+nuevo solo tiene que traducir esas claves.
 
 Esa misma pantalla abre **cualquier decisión del equipo sobre el texto** desde «Mis tareas»: el cambio se lee junto, uno
 bajo otro o lado a lado, y se compara con el original (cada palabra abre su significado y el diagrama de la oración),

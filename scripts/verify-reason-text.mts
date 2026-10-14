@@ -67,4 +67,16 @@ test("lo tocado se pone donde se escribía, con un espacio a cada lado si hace f
   assert.deepEqual(insertAt("cambia esto aquí", 7, 11, "X"), { text: "cambia X aquí", cursor: 8 }, "en lugar de lo elegido");
 });
 
+test("las notas se reconocen en cualquier idioma de la app, y lo que se inserta se escribe en el de quien escribe", () => {
+  const notes = new Set(["n3m4", "d9rn", "fr03", "vvzw"]);
+  const every = { note: ["nota", "notas", "note", "notes"], and: ["y", "e", "and"] };
+  const ids = (text: string) => reasonPieces(text, [], notes, every)[0]!.filter((piece) => piece.kind === "note").map((piece) => (piece.kind === "note" ? piece.id : ""));
+  assert.deepEqual(ids("Como diz a nota vvzw, e as notas d9rn, fr03 e n3m4."), ["vvzw", "d9rn", "fr03", "n3m4"], "en portugués");
+  assert.deepEqual(ids("As the notes d9rn and vvzw say."), ["d9rn", "vvzw"], "en inglés");
+  assert.deepEqual(ids("la nota vvzw y las notas d9rn y fr03"), ["vvzw", "d9rn", "fr03"], "en español, leído con las palabras de todos");
+  assert.equal(noteSnippet("n3m4", "a nota {id}"), "a nota n3m4");
+  assert.equal(articleSnippet("Metáfora", "translate/figs-metaphor", "o artigo «{title}» ({path})", "o artigo {path}"), "o artigo «Metáfora» (translate/figs-metaphor)");
+  assert.equal(articleSnippet("", "translate/figs-metaphor", "o artigo «{title}» ({path})", "o artigo {path}"), "o artigo translate/figs-metaphor");
+});
+
 console.log(`\n${passed} pruebas de las razones que se abren pasaron.`);

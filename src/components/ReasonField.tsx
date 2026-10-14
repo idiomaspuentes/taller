@@ -165,7 +165,7 @@ export function ReasonField({
               <ul className="rf-list">
                 {loaded.notes.map((note) => (
                   <li key={note.id}>
-                    <button type="button" className="rf-item" onMouseDown={(e) => e.preventDefault()} onClick={() => put(noteSnippet(note.id))}>
+                    <button type="button" className="rf-item" onMouseDown={(e) => e.preventDefault()} onClick={() => put(noteSnippet(note.id, t("rf.noteSnippet")))}>
                       <span className="rf-item__head">
                         <code>{note.id}</code>
                         {note.quote ? (
@@ -188,7 +188,7 @@ export function ReasonField({
               <ul className="rf-list">
                 {loaded.articles.map((article) => (
                   <li key={article.path}>
-                    <button type="button" className="rf-item" onMouseDown={(e) => e.preventDefault()} onClick={() => put(articleSnippet(article.title, article.path))}>
+                    <button type="button" className="rf-item" onMouseDown={(e) => e.preventDefault()} onClick={() => put(articleSnippet(article.title, article.path, t("rf.articleSnippet"), t("rf.articleSnippetBare")))}>
                       <span className="rf-item__head">{article.title}</span>
                       <span className="rf-item__text">{article.path}</span>
                     </button>

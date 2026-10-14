@@ -6,7 +6,7 @@
 
 /** Words of the original, without the cantillation and the joiners a person does not type. */
 export function originalSnippet(words: string[]): string {
-  return words.map((word) => word.replace(/[֑-ֽ֯⁠]/g, "")).join(" ");
+  return words.map((word) => word.replace(/[\u0591-\u05AF\u05BD\u2060]/g, "")).join(" ");
 }
 
 /** What a text says, in quotes and with its name: «made his heart firm» (ULT). */
@@ -14,12 +14,14 @@ export function textSnippet(label: string, words: string[]): string {
   return `«${words.join(" ").replace(/\s+([,.;:!?])/g, "$1").trim()}» (${label})`;
 }
 
-export function noteSnippet(id: string): string {
-  return `la nota ${id}`;
+/** A note by its id, in the words of the language the person writes in («la nota {id}», «a nota {id}»). */
+export function noteSnippet(id: string, template = "la nota {id}"): string {
+  return template.replace("{id}", id);
 }
 
-export function articleSnippet(title: string, path: string): string {
-  return title && title !== path ? `el artículo «${title}» (${path})` : `el artículo ${path}`;
+/** An article by its title and its path, which is what it is recognized by in any language. */
+export function articleSnippet(title: string, path: string, template = "el artículo «{title}» ({path})", bare = "el artículo {path}"): string {
+  return (title && title !== path ? template.replace("{title}", title) : bare).replace("{path}", path);
 }
 
 /**

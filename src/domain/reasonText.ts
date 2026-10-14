@@ -42,11 +42,29 @@ export function findOriginal(word: string, among: string[]): number {
 
 // A word of the original: Hebrew letters and points (not the maqaf, which joins two words), or Greek.
 const ORIGINAL = "[\\u0591-\\u05BD\\u05BF-\\u05F4\\uFB1D-\\uFB4F\\u2060\\u0370-\\u03FF\\u1F00-\\u1FFF]+";
-// «la nota n3m4», «notas d9rn, fr03 y vvzw»: the ids after the word; an Academy article by its path
-// («translate/figs-metaphor»); and a note's id that has a figure, alone.
-const PIECES = new RegExp(`(\\bnotas?\\s+)([a-z0-9]{4}(?:\\s*(?:,|y)\\s*[a-z0-9]{4})*)\\b|(${ORIGINAL})|\\b((?:translate|checking|intro|process)/[a-z0-9-]+[a-z0-9])|\\b([a-z0-9]*\\d[a-z0-9]*)\\b`, "giu");
+/**
+ * The words a reason names notes with («nota n3m4», «notas d9rn, fr03 y vvzw»), in every language the app has: a
+ * reason written in Portuguese is read in Spanish too.
+ */
+export type NoteWords = { note: string[]; and: string[] };
+const SPANISH: NoteWords = { note: ["nota", "notas"], and: ["y"] };
 
-function piecesOf(text: string, strong: boolean, among: string[], notes: Set<string>): ReasonPiece[] {
+const escape = (word: string) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const listJoin = (words: NoteWords) => [",", ...words.and.map(escape)].join("|");
+const patterns = new Map<string, RegExp>();
+
+// The ids after a word for notes; an Academy article by its path («translate/figs-metaphor»), the same in every
+// language; and a note's id that has a figure, alone.
+function piecesPattern(words: NoteWords): RegExp {
+  const key = JSON.stringify(words);
+  if (!patterns.has(key)) {
+    const note = words.note.map(escape).sort((a, b) => b.length - a.length).join("|");
+    patterns.set(key, new RegExp(`(\\b(?:${note})\\s+)([a-z0-9]{4}(?:\\s*(?:${listJoin(words)})\\s*[a-z0-9]{4})*)\\b|(${ORIGINAL})|\\b((?:translate|checking|intro|process)/[a-z0-9-]+[a-z0-9])|\\b([a-z0-9]*\\d[a-z0-9]*)\\b`, "giu"));
+  }
+  return new RegExp(patterns.get(key)!);
+}
+
+function piecesOf(text: string, strong: boolean, among: string[], notes: Set<string>, words: NoteWords): ReasonPiece[] {
   const out: ReasonPiece[] = [];
   const flag = strong ? { strong: true as const } : {};
   const plain = (value: string) => {
@@ -56,14 +74,15 @@ function piecesOf(text: string, strong: boolean, among: string[], notes: Set<str
     else out.push({ kind: "text", text: value, ...flag });
   };
   let from = 0;
-  for (const match of text.matchAll(PIECES)) {
+  const joiner = new RegExp(`(\\s*(?:${listJoin(words)})\\s*)`, "i");
+  for (const match of text.matchAll(piecesPattern(words))) {
     const at = match.index ?? 0;
     plain(text.slice(from, at));
     from = at + match[0].length;
     if (match[2] !== undefined) {
       // «nota » and then each id, the ones the book has a note for to open.
       plain(match[1]!);
-      for (const part of match[2].split(/(\s*(?:,|y)\s*)/)) {
+      for (const part of match[2].split(joiner)) {
         if (notes.has(part)) out.push({ kind: "note", text: part, id: part, ...flag });
         else plain(part);
       }
@@ -85,11 +104,11 @@ function piecesOf(text: string, strong: boolean, among: string[], notes: Set<str
  * A reason in paragraphs of pieces: what is written in bold (`**…**`) stays so, the words of the original are found
  * among `among` (the words of the verse, then of its chapter), and the ids of `notes` are notes to open.
  */
-export function reasonPieces(text: string, among: string[], notes: Set<string>): ReasonPiece[][] {
+export function reasonPieces(text: string, among: string[], notes: Set<string>, words: NoteWords = SPANISH): ReasonPiece[][] {
   return text
     .replace(/\r/g, "")
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.split(/\*\*(.+?)\*\*/).flatMap((part, index) => piecesOf(part, index % 2 === 1, among, notes)));
+    .map((line) => line.split(/\*\*(.+?)\*\*/).flatMap((part, index) => piecesOf(part, index % 2 === 1, among, notes, words)));
 }

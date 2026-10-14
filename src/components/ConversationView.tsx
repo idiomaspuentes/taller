@@ -76,6 +76,7 @@ import { PM_REPO_NAME } from "../domain/types";
 import { Button } from "@/components/ui/button";
 import { opensAsTeamDecision } from "../domain/decisionAccess";
 import { DecisionCard } from "./DecisionCard";
+import { CiteScope } from "./ReasonField";
 import { tNow, useT } from "../i18n/messages";
 import { getUiLanguage, useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
@@ -587,7 +588,10 @@ function ConversationThread({
       const status = statuses.get(item.key);
       const at = status?.resolution ? resolutionAt.get(status.resolution) : undefined;
       const canRun = demo ? Boolean(demo.decide) : Boolean(resolved.definition?.run && session);
+      // A reason written in a decision about a verse cites it as the reason of the proposal does.
+      const about = item.event ? alineacionDecisionData(item.event) : null;
       return (
+        <CiteScope.Provider value={about && !demo ? { session, ctx: launchCtx, chapter: about.chapter, verse: about.verse } : null}>
         <DecisionCard
           item={item}
           resolved={resolved}
@@ -600,9 +604,10 @@ function ConversationThread({
           onRun={canRun ? (optionId, event, input) => runDecision(item, optionId, event, input) : undefined}
           onOpenEditor={openEditorAt}
         />
+        </CiteScope.Provider>
       );
     },
-    [statuses, resolutionAt, demo, session, viewer, decisionEnv, runDecision, openEditorAt],
+    [statuses, resolutionAt, demo, session, viewer, decisionEnv, runDecision, openEditorAt, launchCtx],
   );
 
   const pmRepo = useMemo(() => ({ owner: pmOrg || "demo-pm-sandbox", repo: PM_REPO_NAME }), [pmOrg]);
