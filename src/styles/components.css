@@ -8599,7 +8599,9 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 :root[data-typing="true"] .fam__body,
 :root[data-typing="true"] .af { padding-bottom: calc(1.5rem + var(--keyboard, 0px)); }
 /* Refining, one item at a time: what is judged, what it is compared with (one at a time), the answer. */
-.af-focus { display: grid; gap: 0.75rem; padding: 0.875rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+/* One column the width of the card: without it the column grew to the widest thing that cannot wrap (the answer
+   buttons), and with the larger buttons of the tC4 style the card ran 30 px past a 375 px screen, cut on the right. */
+.af-focus { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding: 0.875rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
 .af-focus__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .af-pick { position: relative; display: inline-flex; align-items: center; min-width: 0; max-width: 75%; }
 .af-pick select { appearance: none; max-width: 100%; min-height: 32px; padding: 0 1.75rem 0 0.75rem; border: 1px solid var(--accent-200); border-radius: 999px; background: var(--accent-50); color: var(--accent-800); font-size: 0.8125rem; font-weight: 600; text-overflow: ellipsis; cursor: pointer; }
@@ -8675,7 +8677,9 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .af-draft .af-hint[data-needed="true"] { color: var(--accent-800); font-weight: 600; }
 /* Refining: the answer under the question; moving between items at the top of the card. */
 .af-decide { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
-.af-decide > button { min-height: 44px; }
+.af-decide > button, .af .af-decide > .btn[data-size="default"] { min-width: 0; height: auto; min-height: 44px; white-space: normal; text-align: center; line-height: 1.25; }
+/* On a phone the two answers share the width and their words wrap, instead of the longer one taking the row. */
+@media (max-width: 47.99rem) { .af-decide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* What a challenge is answered with stays in reach. On a phone the two buttons of its first step fell just under the
    screen (809 of 812 px), thirty times in a passage: they hold to the foot of the screen while the card is longer. */
 /* What to do with the words is said over them, not under: under them it was the last line of the screen. */
@@ -9230,7 +9234,7 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 .af-order button { min-height: 32px; padding: 0 0.625rem; border: 0; border-radius: 999px; background: none; color: var(--text-muted); font-size: 0.8125rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .af-order button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 .af-focus__top:has(.af-order) { flex-wrap: wrap; row-gap: 0.375rem; }
-.af-decide .af-alike { flex: 1 1 100%; }
+.af-decide .af-alike { grid-column: 1 / -1; }
 /* On a phone the picker takes its own row; the order and the counter share the next one. */
 @media (max-width: 639px) {
   .af-focus__top:has(.af-order) > .af-pick { flex: 1 1 100%; }
