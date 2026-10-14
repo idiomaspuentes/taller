@@ -7,11 +7,15 @@
  * - unfoldingWord's public repositories (original texts, notes, words) are read
  *   from qa.door43.org, anonymously and read only, and cached.
  * - People sign in with test tokens: `token-ana`, `token-bea`, `token-carla`, `token-dina`, `token-eva`.
+ * - MOCK_ROSTER=<file.json>: the people and the teams of an organization, to try who sees what:
+ *   `{ "owners": [login], "teams": [{ "name", "description", "members": [login] }] }`. Each login signs in with
+ *   `token-<login>`, and teams can then be created and their members changed, as in Door43.
  *
  * Debug: GET /__mock/files?repo=owner/name&branch=x, GET /__mock/log, POST /__mock/reset,
  * GET /__mock/dump (the whole state, to keep it across a restart) and POST /__mock/load (put it back).
  */
 import http from "node:http";
+import { readFileSync } from "node:fs";
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 
@@ -27,6 +31,64 @@ const USERS = {
   "token-dina": { id: 4, login: "dina", full_name: "Dina" },
   "token-eva": { id: 5, login: "eva", full_name: "Eva" },
 };
+
+/**
+ * With a roster, the people and teams are the ones it names instead of the five above and their one team. Teams
+ * are kept apart from the rest of the state: `/__mock/reset` and `/__mock/load` leave them as they are.
+ */
+const ROSTER = process.env.MOCK_ROSTER ? JSON.parse(readFileSync(process.env.MOCK_ROSTER, "utf8")) : null;
+let rosterTeams = [];
+if (ROSTER) {
+  for (const token of Object.keys(USERS)) delete USERS[token];
+  const logins = [...new Set([...(ROSTER.owners ?? []), ...ROSTER.teams.flatMap((team) => team.members)])];
+  logins.forEach((login, index) => (USERS[`token-${login}`] = { id: index + 1, login, full_name: login }));
+  rosterTeams = [
+    { id: 9, name: "Owners", description: "", permission: "owner", members: [...(ROSTER.owners ?? [])] },
+    ...ROSTER.teams.map((team, index) => ({ id: 100 + index, name: team.name, description: team.description ?? "", permission: "write", members: [...team.members] })),
+  ];
+}
+const teamView = ({ members, ...team }) => ({
+  ...team,
+  includes_all_repositories: true,
+  units_map: { "repo.code": team.permission === "owner" ? "owner" : "write", "repo.issues": "write" },
+  organization: { name: PM_ORG, username: PM_ORG },
+});
+const sameLogin = (a, b) => a.toLowerCase() === b.toLowerCase();
+
+/** The team endpoints of an organization with a roster; `undefined` when the path is not one of them. */
+async function rosterApi(api, req, res, user) {
+  if (api === "/user/teams") return user ? json(res, rosterTeams.filter((team) => team.members.some((login) => sameLogin(login, user.login))).map(teamView)) : json(res, [], 401);
+  if (/^\/orgs\/[^/]+\/teams$/.test(api)) {
+    if (req.method !== "POST") return json(res, rosterTeams.map(teamView));
+    const body = await readBody(req);
+    if (rosterTeams.some((team) => sameLogin(team.name, body.name))) return json(res, { message: "team already exists" }, 422);
+    const team = { id: Math.max(...rosterTeams.map((row) => row.id)) + 1, name: body.name, description: body.description ?? "", permission: body.permission ?? "read", members: [] };
+    rosterTeams.push(team);
+    log.push({ at: new Date().toISOString(), user: user?.login, write: `team ${team.name} created` });
+    return json(res, teamView(team), 201);
+  }
+  if (/^\/orgs\/[^/]+\/members$/.test(api)) return json(res, Object.values(USERS));
+  const match = /^\/teams\/(\d+)(?:\/members(?:\/([^/]+))?)?$/.exec(api);
+  if (!match) return undefined;
+  const team = rosterTeams.find((row) => row.id === Number(match[1]));
+  if (!team) return json(res, { message: "team not found" }, 404);
+  const login = match[2] && decodeURIComponent(match[2]);
+  if (!api.includes("/members")) {
+    if (req.method === "PATCH") {
+      const body = await readBody(req);
+      if (body.name) team.name = body.name;
+      if (body.description !== undefined) team.description = body.description;
+    }
+    return json(res, teamView(team));
+  }
+  if (!login) return json(res, team.members.map((member) => Object.values(USERS).find((row) => sameLogin(row.login, member)) ?? { id: 0, login: member, full_name: member }));
+  const has = team.members.some((member) => sameLogin(member, login));
+  if (req.method === "GET") return has ? json(res, { login }) : json(res, { message: "not a member" }, 404);
+  if (req.method === "PUT" && !has) team.members.push(login);
+  if (req.method === "DELETE") team.members = team.members.filter((member) => !sameLogin(member, login));
+  log.push({ at: new Date().toISOString(), user: user?.login, write: `team ${team.name}: ${req.method === "PUT" ? "+" : "-"}${login}` });
+  return json(res, {}, 204);
+}
 
 let counter = 0;
 const nextSha = () => `sha${String(++counter).padStart(6, "0")}`;
@@ -395,6 +457,10 @@ async function handle(req, res) {
   if (repoMatch && decodeURIComponent(repoMatch[1]) === "unfoldingWord" && req.method === "GET") return proxyReal(req, res, url);
 
   if (api === "/user") return user ? json(res, { ...user, avatar_url: "" }) : json(res, { message: "token is required" }, 401);
+  if (ROSTER) {
+    const answered = await rosterApi(api, req, res, user);
+    if (answered !== undefined) return answered;
+  }
   if (api === "/user/teams") {
     if (!user) return json(res, [], 401);
     // Only Ana coordinates; the others are plain members.

@@ -31,6 +31,11 @@ location.reload();
 
 ## Con un libro de verdad
 
+`MOCK_ROSTER=<archivo.json>` cambia las cinco personas de prueba y su único equipo por las personas y los equipos
+de una organización, para probar quién ve qué: `{ "owners": ["login"], "teams": [{ "name": "pm-afinadores-tpl",
+"description": "Afinadores TPL", "members": ["login"] }] }`. Cada persona entra con `token-<login>`, y los equipos se
+pueden crear y cambiar desde «Organización», como en Door43.
+
 `MOCK_PM_ORG=es-419_gl MOCK_SEED_BOOK=TIT npm run mock:door43` empieza con lo publicado de ese libro (los dos
 textos, las notas y las preguntas), leído una vez de Door43, sin credenciales. `MOCK_PORT=8797` lo pone en otro
 puerto cuando el 8787 está ocupado.
