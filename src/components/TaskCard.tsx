@@ -245,7 +245,8 @@ export function TaskCard(props: Props) {
         </p>
       ) : null}
 
-      {props.projectLabel ? <span className="task-card__project">{props.projectLabel}</span> : null}
+      {/* Not when the card already names the book («Desafíos TPL · Esdras 1:1»): it said Esdras twice. */}
+      {props.projectLabel && !`${card.ownTitle ?? ""} ${title}`.includes(props.projectLabel) ? <span className="task-card__project">{props.projectLabel}</span> : null}
 
       {/* How far it is, in one line; touching it unfolds its steps (who closed each, against what, how far the one
           in hand is). What comes next is not said apart: the button says it, and the steps show it. */}

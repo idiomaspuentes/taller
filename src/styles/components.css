@@ -7003,8 +7003,9 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 }
 .task-card__title {
   margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 800;
+  /* Read first, without shouting: at 17 px and 800 three lines of title weighed more than all the card. */
+  font-size: 1rem;
+  font-weight: 700;
   line-height: 1.35;
   color: var(--text-heading);
   overflow-wrap: anywhere;
@@ -7298,6 +7299,12 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
   min-height: 48px;
   font-size: 1rem;
   width: 100%;
+}
+/* Only what to do now is a full, filled bar; the way into the other cards is a button as wide as its words. */
+.task-card__action[data-variant="outline"] {
+  width: auto;
+  min-height: 44px;
+  align-self: flex-start;
 }
 @media (min-width: 640px) {
   .task-card__action {
