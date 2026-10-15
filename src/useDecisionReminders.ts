@@ -2,12 +2,13 @@ import { useEffect } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { GtSession } from "./dcs/auth";
 import { sweepDecisionReminders } from "./dcs/alignmentDecisionStore";
+import { loadPmConfig } from "./dcs/issues";
 import { isDecisionIssue } from "./domain/decisionAccess";
 import { inProposalList } from "./domain/proposalList";
 import { issueTaskId } from "./domain/myTasks";
 import type { AssignmentsDoc } from "./domain/types";
 
-type Project = { board: Pick<AssignmentsDoc, "teams">; issues: DcsIssue[] };
+type Project = { projectId?: string; board: Pick<AssignmentsDoc, "teams">; issues: DcsIssue[] };
 
 /**
  * When somebody of the team opens the app, the decisions that are near their deadline remind the
@@ -19,8 +20,11 @@ export function useDecisionReminders(session: GtSession | undefined, pmOrg: stri
     if (!session?.token || !pmOrg || !projects.length) return;
     let cancelled = false;
     void (async () => {
+      // A project set aside reminds nobody: its decisions wait as they are until it is resumed.
+      const paused = new Set((await loadPmConfig(session, pmOrg).catch(() => null))?.paused ?? []);
       for (const project of projects) {
         if (cancelled) return;
+        if (project.projectId && paused.has(project.projectId.toUpperCase())) continue;
         await sweepDecisionReminders({
           session,
           pmOrg,

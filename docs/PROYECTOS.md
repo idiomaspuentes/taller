@@ -79,6 +79,24 @@ quién tomó cada paso y la revisión a la que está unida quedan como estaban (
 No queda ningún editor antiguo: las pantallas de «Fases y tareas» por pasos, «Asignar personas» y «Crear subtareas»
 se retiraron el 2 de octubre de 2026 (sus direcciones llevan a «Subtareas»).
 
+## Prioridad y pausa (`ProjectsView`)
+
+Quien administra (Owners y `managers`) ordena los proyectos en «Proyectos» con «Subir» y «Bajar», y puede pausar
+uno para dar paso a otro (así se dejó Efesios por terminar Esdras).
+
+- **El orden** decide qué libro sale primero en «Mis tareas» de todo el equipo: sus tarjetas van antes, y lo libre
+  de una tarea en los libros siguientes espera en «Del siguiente libro». Sin orden guardado vale el de antes, el
+  proyecto empezado primero, y la pantalla lo numera así; el primer «Subir» o «Bajar» guarda el orden entero.
+- **Pausar** no toca el trabajo: sus subtareas, borradores y decisiones quedan como estaban. En «Mis tareas» sus
+  tareas se pliegan al final, en «En pausa» (se pueden abrir para terminar algo a medias), no cuentan en el número
+  de arriba y nunca son «lo que hay que hacer ahora»; sus decisiones no recuerdan a nadie. «Reanudar» lo pone al
+  final del orden.
+- Se guarda en la configuración del espacio (`config.json` del repositorio del plan: `projectOrder`, `paused`), que
+  se lee de nuevo justo antes de escribir para no deshacer lo que otro cambió (`updateProjectPriority`).
+
+Código: `src/domain/projectPriority.ts`, `projectRanks` en `src/domain/myTasksBoard.ts`; pruebas,
+`npm run verify:project-priority` y `verify:my-tasks-board`.
+
 ## Plantillas (`TemplatesView`)
 
 Tarjetas de las plantillas de la organización y de las incluidas en la aplicación. Las incluidas se leen y se copian

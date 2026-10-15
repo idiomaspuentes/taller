@@ -349,6 +349,22 @@ export async function savePmConfig(
 }
 
 /**
+ * Changes the order the projects are worked in, or sets one aside, on the config as it is now: it is read again
+ * right before writing, so that what another manager changed meanwhile (a level, a coordinator) is not undone.
+ */
+export async function updateProjectPriority(
+  session: GtSession,
+  org: string,
+  change: (now: Pick<PmConfig, "projectOrder" | "paused">) => Pick<PmConfig, "projectOrder" | "paused">,
+): Promise<PmConfig> {
+  forgetPmConfig();
+  const now = await loadPmConfig(session, org);
+  const next = { ...now, ...change({ projectOrder: now.projectOrder, paused: now.paused }) };
+  await savePmConfig(session, org, next);
+  return next;
+}
+
+/**
  * Link a project task to an existing DCS org team.
  * Does **not** create org teams. Optionally grants missing repos (admin)
  * and pulls org members into `task.memberIds` for local auto-assign.

@@ -201,6 +201,8 @@ export function MyTasksView({
   const [confirm, setConfirm] = useState<{ title: string; text: string; yes: string; run: () => void } | null>(null);
   // The organization's levels: my level depends on the team of each task.
   const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
+  // The order the projects are worked in and those set aside, as whoever manages left them.
+  const [priority, setPriority] = useState<{ projectOrder: string[]; paused: string[] } | undefined>(undefined);
   const [solversCatalog, setSolversCatalog] =
     useState<SolversCatalog>(DEFAULT_SOLVERS_CATALOG);
 
@@ -397,7 +399,9 @@ export function MyTasksView({
     if (!pmOrg) return;
     let cancelled = false;
     void loadPmConfig(session, pmOrg).then((config) => {
-      if (!cancelled) setMyLevel(config);
+      if (cancelled) return;
+      setMyLevel(config);
+      setPriority({ projectOrder: config.projectOrder, paused: config.paused });
     });
     return () => {
       cancelled = true;
@@ -806,8 +810,8 @@ export function MyTasksView({
   );
 
   const taskBoard = useMemo(
-    () => buildBoard({ session, pmOrg, projects, decisionIssues: conflictIssues, closedIssues, cursor, myLevel }),
-    [session, pmOrg, projects, conflictIssues, closedIssues, cursor, myLevel],
+    () => buildBoard({ session, pmOrg, projects, decisionIssues: conflictIssues, closedIssues, cursor, myLevel, priority }),
+    [session, pmOrg, projects, conflictIssues, closedIssues, cursor, myLevel, priority],
   );
 
   // Coming back from a tool, the list is shown at the card of the subtarea that was worked on, and the card stands

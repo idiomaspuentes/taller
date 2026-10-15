@@ -63,7 +63,7 @@ import {
   loadTeamsFromDcs,
   saveProjectsIndexToDcs,
 } from "./dcs/persist";
-import { loadPmConfig, pullIssues } from "./dcs/issues";
+import { loadPmConfig, pullIssues, updateProjectPriority } from "./dcs/issues";
 import { useConversationActivity } from "./useConversationActivity";
 import { generateInventory } from "./worker/client";
 import { draftBook, loadNextBookHint, loadTeamOptions, setTaskTeams, startBook, type StartStage, type StartedBook } from "./dcs/startBook";
@@ -196,6 +196,33 @@ export function App() {
   const [projects, setProjects] = useState<ProjectIndexEntry[]>(() =>
     loadLocalProjectsIndex(saved?.lang || "es-419"),
   );
+  // The order the projects are worked in, and those set aside, read when the projects are shown.
+  const [priority, setPriority] = useState<{ projectOrder: string[]; paused: string[] } | undefined>(undefined);
+  useEffect(() => {
+    if (route.name !== "proyectos" || !session || !pmOrg) return;
+    let alive = true;
+    void (async () => {
+      const config = await loadPmConfig(session, pmOrg).catch(() => null);
+      if (!config) return;
+      let projectOrder = config.projectOrder;
+      // With no order set yet, the one «Mis tareas» goes by: the project started first, first.
+      if (!projectOrder.length && projects.length > 1) {
+        const started = await Promise.all(
+          projects.map(async (project) => {
+            const board = await loadAssignmentsFromDcs(session, pmOrg, lang, project.projectId, contentOrg).catch(() => null);
+            const at = Date.parse(board?.workflowAppliedAt ?? board?.exported_at ?? "");
+            return { id: project.projectId.toUpperCase(), at: Number.isNaN(at) ? Number.MAX_SAFE_INTEGER : at };
+          }),
+        );
+        projectOrder = started.sort((a, b) => a.at - b.at).map((row) => row.id);
+      }
+      if (alive) setPriority({ projectOrder, paused: config.paused });
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.name, session, pmOrg, projects.length]);
   const [inventory, setInventory] = useState<InventoryDoc | null>(() => restoreSessionInventory());
   const [inventariarBook, setInventariarBook] = useState(
     () => saved?.book || "NEH",
@@ -1544,6 +1571,15 @@ export function App() {
             loadNextBookHint={
               session && pmOrg
                 ? () => loadNextBookHint({ session, pmOrg, lang, contentOrg, projects: projects.filter((project) => project.kind === "book").map((project) => project.projectId) })
+                : undefined
+            }
+            priority={priority}
+            onPriority={
+              session && pmOrg
+                ? async (change) => {
+                    const next = await updateProjectPriority(session, pmOrg, change);
+                    setPriority({ projectOrder: next.projectOrder, paused: next.paused });
+                  }
                 : undefined
             }
           />

@@ -1,5 +1,7 @@
 import { rememberTemplateUsed, usualTemplate } from "../lastTemplate";
 import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, Pause, Play } from "lucide-react";
+import { moveProject, orderedProjects, withPause } from "../domain/projectPriority";
 import type { NextBookHint } from "../domain/startBook";
 import { localizeName } from "../domain/templateNames";
 import { BOOKS, bookLabel, bookName, isBookProjectId, normalizeProjectId } from "../domain/books";
@@ -55,6 +57,10 @@ type Props = {
   onGoToTasks?: () => void;
   /** Whether it is time to start the next book (the first phase of the newest one is nearly done). */
   loadNextBookHint?: () => Promise<NextBookHint | null>;
+  /** The order the projects are worked in, and those set aside. */
+  priority?: { projectOrder: string[]; paused: string[] };
+  /** Whoever manages changes the order or sets a project aside; the change is applied to the config as it is then. */
+  onPriority?: (change: (now: { projectOrder: string[]; paused: string[] }) => { projectOrder: string[]; paused: string[] }) => Promise<void>;
 };
 
 function slugifyThematic(raw: string): string {
@@ -84,6 +90,8 @@ export function ProjectsView({
   onOpenStep,
   onGoToTasks,
   loadNextBookHint,
+  priority,
+  onPriority,
 }: Props) {
   const [hint, setHint] = useState<NextBookHint | null>(null);
   const projectCount = projects.length;
@@ -127,6 +135,87 @@ export function ProjectsView({
     }
     return [];
   }, [projects, currentProjectId]);
+
+  // The projects as they are worked, and those set aside, for everybody; changed here by whoever manages.
+  const ordered = useMemo(() => orderedProjects(list, priority?.projectOrder ?? [], priority?.paused ?? []), [list, priority]);
+  const [asking, setAsking] = useState<string | null>(null);
+  const [ordering, setOrdering] = useState(false);
+  const [orderError, setOrderError] = useState("");
+  const managesOrder = canManage && Boolean(onPriority);
+  async function change(next: Parameters<NonNullable<Props["onPriority"]>>[0]) {
+    if (!onPriority) return;
+    setOrdering(true);
+    setOrderError("");
+    try {
+      await onPriority(next);
+      setAsking(null);
+    } catch (err) {
+      setOrderError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setOrdering(false);
+    }
+  }
+  const nameOf = (project: ProjectIndexEntry) => (project.kind === "book" && isBookProjectId(project.projectId) ? bookLabel(project.projectId, language) : project.title);
+  const row = (project: ProjectIndexEntry, at: number, aside: boolean) => {
+    const isBook = project.kind === "book" && isBookProjectId(project.projectId);
+    const ids = ordered.active.map((one) => one.projectId);
+    return (
+      <li key={project.projectId} className="pj-row" data-paused={aside || undefined}>
+        <button type="button" className="tp-card pj-card" data-current={project.projectId === currentProjectId ? "true" : undefined} onClick={() => onOpenProject(project.projectId)} disabled={!canManage}>
+          <span className="tp-card__name">
+            {!aside && ordered.active.length > 1 ? <span className="pj-rank">{at + 1}</span> : null}
+            {isBook ? bookLabel(project.projectId, language) : project.title}
+            {aside ? <span className="pj-paused">{t("pj.paused")}</span> : null}
+          </span>
+          <span className="tp-card__meta">
+            {project.kind === "book" ? t("pj.kindBook") : `${t("pj.kindThematic")} · ${project.books.length ? project.books.join(", ") : t("pj.noBooks")}`}
+            {project.updated_at ? ` · ${t("pj.updated").replace("{date}", new Date(project.updated_at).toLocaleDateString(language))}` : ""}
+          </span>
+        </button>
+        {managesOrder && asking === project.projectId ? (
+          <div className="pj-ask" role="group" aria-label={t("pj.pauseAsk").replace("{name}", nameOf(project))}>
+            <p>{t("pj.pauseAsk").replace("{name}", nameOf(project))}</p>
+            <div className="pj-order">
+              <Button type="button" disabled={ordering} onClick={() => void change((now) => withPause({ projectOrder: now.projectOrder.length ? now.projectOrder : ids, paused: now.paused }, project.projectId, true))}>
+                {t("pj.pause")}
+              </Button>
+              <Button type="button" variant="outline" disabled={ordering} onClick={() => setAsking(null)}>
+                {t("pj.cancel")}
+              </Button>
+            </div>
+          </div>
+        ) : managesOrder ? (
+          <div className="pj-order">
+            {aside ? (
+              <Button type="button" variant="outline" size="sm" disabled={ordering} onClick={() => void change((now) => withPause({ projectOrder: now.projectOrder.length ? now.projectOrder : ids, paused: now.paused }, project.projectId, false))}>
+                <Play aria-hidden size={14} />
+                {t("pj.resume")}
+              </Button>
+            ) : (
+              <>
+                {ordered.active.length > 1 ? (
+                  <>
+                    <Button type="button" variant="outline" size="sm" disabled={ordering || at === 0} aria-label={t("pj.upAria").replace("{name}", nameOf(project))} onClick={() => void change(() => ({ projectOrder: moveProject(ids, project.projectId, -1), paused: priority?.paused ?? [] }))}>
+                      <ArrowUp aria-hidden size={14} />
+                      {t("pj.up")}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" disabled={ordering || at === ordered.active.length - 1} aria-label={t("pj.downAria").replace("{name}", nameOf(project))} onClick={() => void change(() => ({ projectOrder: moveProject(ids, project.projectId, 1), paused: priority?.paused ?? [] }))}>
+                      <ArrowDown aria-hidden size={14} />
+                      {t("pj.down")}
+                    </Button>
+                  </>
+                ) : null}
+                <Button type="button" variant="outline" size="sm" disabled={ordering} onClick={() => setAsking(project.projectId)}>
+                  <Pause aria-hidden size={14} />
+                  {t("pj.pause")}
+                </Button>
+              </>
+            )}
+          </div>
+        ) : null}
+      </li>
+    );
+  };
 
   function toggleBook(code: string) {
     setSelectedBooks((prev) =>
@@ -261,22 +350,23 @@ export function ProjectsView({
           {canManage ? t("pj.noneManage") : ""}
         </div>
       ) : (
-        <ul className="tp-list">
-          {list.map((project) => {
-            const isBook = project.kind === "book" && isBookProjectId(project.projectId);
-            return (
-              <li key={project.projectId}>
-                <button type="button" className="tp-card pj-card" data-current={project.projectId === currentProjectId ? "true" : undefined} onClick={() => onOpenProject(project.projectId)} disabled={!canManage}>
-                  <span className="tp-card__name">{isBook ? bookLabel(project.projectId, language) : project.title}</span>
-                  <span className="tp-card__meta">
-                    {project.kind === "book" ? t("pj.kindBook") : `${t("pj.kindThematic")} · ${project.books.length ? project.books.join(", ") : t("pj.noBooks")}`}
-                    {project.updated_at ? ` · ${t("pj.updated").replace("{date}", new Date(project.updated_at).toLocaleDateString(language))}` : ""}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {/* In the order they are worked: the first is the first in everybody's «Mis tareas». */}
+          {ordered.active.length > 1 ? <p className="hub-hint pj-order-hint">{t(managesOrder ? "pj.orderManage" : "pj.order")}</p> : null}
+          <ul className="tp-list">{ordered.active.map((project, at) => row(project, at, false))}</ul>
+          {ordered.paused.length ? (
+            <section className="pj-aside" aria-labelledby="pj-aside-title">
+              <h2 id="pj-aside-title" className="pj-aside__title">{t("pj.asideTitle")}</h2>
+              <p className="hub-hint">{t("pj.asideLede")}</p>
+              <ul className="tp-list">{ordered.paused.map((project, at) => row(project, at, true))}</ul>
+            </section>
+          ) : null}
+          {orderError ? (
+            <p className="pj-error" role="alert">
+              {orderError}
+            </p>
+          ) : null}
+        </>
       )}
 
       {canManage && createOpen ? (

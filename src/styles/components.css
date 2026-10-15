@@ -7906,6 +7906,20 @@ input.pf-name { font-size: 1.625rem; }
 .wp-order__open span, .wp-order__open small { display: inline; }
 .pj-card[data-current="true"] { border-color: var(--accent-400); box-shadow: inset 3px 0 0 var(--accent-500); }
 .pj-card:disabled { cursor: default; }
+/* The order the projects are worked in, and those set aside: under each card, what whoever manages can do with it. */
+.pj-row { display: grid; gap: var(--space-6); }
+.pj-rank { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5rem; height: 1.5rem; margin-inline-end: var(--space-8); border-radius: var(--radius-full); background: var(--accent-100); color: var(--accent-800); font-size: 0.8125rem; font-weight: 800; }
+.pj-paused { margin-inline-start: var(--space-8); padding: 0.0625rem var(--space-8); border-radius: var(--radius-full); background: var(--surface-muted); color: var(--text-muted); font-size: 0.75rem; font-weight: 700; }
+.pj-row[data-paused] .pj-card { background: var(--surface-muted); }
+.pj-order { display: flex; flex-wrap: wrap; gap: var(--space-6); }
+.pj-order .btn { min-height: 2.25rem; gap: var(--space-4); }
+.pj-ask { display: grid; gap: var(--space-8); padding: var(--space-12); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.pj-ask p { margin: 0; font-size: 0.9375rem; }
+.pj-order-hint { margin: 0 0 var(--space-4); }
+.pj-aside { display: grid; gap: var(--space-6); margin-top: var(--space-16); }
+.pj-aside__title { margin: 0; font-size: 1rem; font-weight: 800; color: var(--text-heading); }
+.pj-aside .hub-hint { margin: 0; }
+.pj-error { margin: var(--space-8) 0 0; color: var(--danger-700, #991b1b); }
 /* ---------- Estudiar: a guided reading before working on a passage ---------- */
 /* The tool fills the screen and the reading scrolls under its header: the shell around it does not scroll. */
 .fam { display: flex; flex-direction: column; width: 100%; max-width: 60rem; height: 100dvh; margin: 0 auto; }

@@ -341,6 +341,27 @@ await test("un libro a la vez por equipo: lo libre del libro siguiente espera ap
   assert.equal(where(undated, ruth[0]!.number)!.group, "free");
 });
 
+await test("quien administra ordena los proyectos y pone uno en pausa: el orden manda sobre la fecha, y lo pausado espera plegado", () => {
+  // Efesios se creó primero, pero se prioriza Ester y luego Esdras; Efesios queda en pausa con una tarea a medias.
+  const eph = [issue({ task: "simple", title: "EPH 1 · Traducir Notas" }), issue({ task: "simple", title: "EPH 2 · Traducir Notas", assignee: "carla", started: true })];
+  const est = [issue({ task: "simple", title: "EST 1 · Traducir Notas" })];
+  const ezr = [issue({ task: "simple", title: "EZR 1 · Traducir Notas" })];
+  const bucket = (projectId: string, at: string, issues: DcsIssue[]): MyTasksProjectBucket => ({ projectId, title: projectId, browseProject: true, board: { ...plan, projectId, workflowAppliedAt: at }, issues, openIssues: issues });
+  const projects = [bucket("EZR", "2026-10-02T00:00:00Z", ezr), bucket("EPH", "2026-03-01T00:00:00Z", eph), bucket("EST", "2026-10-01T00:00:00Z", est)];
+  const build = (priority?: { projectOrder: string[]; paused: string[] }) => buildBoard({ session: carla, pmOrg: PM, projects, decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada", ...(priority ? { priority } : {}) });
+
+  const before = build();
+  assert.equal(where(before, eph[0]!.number)!.group, "free", "sin orden, el que se creó primero es el que se trabaja");
+  assert.equal(where(before, est[0]!.number)!.group, "later");
+
+  const ordered = build({ projectOrder: ["EST", "EZR"], paused: ["EPH"] });
+  assert.equal(where(ordered, est[0]!.number)!.group, "free", "lo primero del orden se ofrece");
+  assert.equal(where(ordered, ezr[0]!.number)!.group, "later", "el siguiente del orden espera, aunque tenga fecha");
+  assert.deepEqual(ordered.paused.map((c) => c.issue.number).sort(), eph.map((i) => i.number).sort(), "lo de Efesios, también lo empezado, espera plegado en «En pausa»");
+  assert.equal(where(ordered, eph[1]!.number)!.group, "paused");
+  assert.notEqual(nextCard(ordered)?.issue.number, eph[1]!.number, "lo pausado nunca es lo que hay que hacer ahora");
+});
+
 await test("una tarea sin equipo que todavía espera a otra no se ofrece: aparece como en espera, con lo que espera", () => {
   // The task of the second phase has people in the plan but no team yet, and its first step is one people join.
   const noTeam = { ...plan, teams: plan.teams.map((task) => (task.id === "afinar" ? { ...task, orgTeamName: undefined } : task)) } as AssignmentsDoc;

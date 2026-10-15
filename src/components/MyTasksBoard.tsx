@@ -16,6 +16,7 @@ const GROUP_TITLE: Record<BoardGroup, MessageKey> = {
   free: "tb.group.free",
   later: "tb.group.later",
   waiting: "tb.group.waiting",
+  paused: "tb.group.paused",
   done: "tb.group.done",
 };
 

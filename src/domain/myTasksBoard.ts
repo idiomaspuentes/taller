@@ -24,10 +24,10 @@ import { parseWorkOrderMarker } from "./workOrder";
  * See docs/PLAN_MIS_TAREAS.md.
  */
 
-export type BoardGroup = "decide" | "doing" | "todo" | "reviews" | "free" | "later" | "waiting" | "done";
+export type BoardGroup = "decide" | "doing" | "todo" | "reviews" | "free" | "later" | "waiting" | "paused" | "done";
 
 /** The order the groups are shown in; the first ones are open, the rest folded. */
-export const GROUP_ORDER: BoardGroup[] = ["decide", "doing", "todo", "reviews", "free", "later", "waiting", "done"];
+export const GROUP_ORDER: BoardGroup[] = ["decide", "doing", "todo", "reviews", "free", "later", "waiting", "paused", "done"];
 export const OPEN_GROUPS: BoardGroup[] = ["decide", "doing", "todo", "reviews"];
 
 export type CardAction =
@@ -110,9 +110,28 @@ export type BoardInput = {
   closedIssues: DcsIssue[];
   cursor: ReadCursorDoc;
   myLevel?: LevelSource;
+  /** The order the projects are worked in, and those set aside (see `PmConfig.projectOrder`, `paused`). */
+  priority?: { projectOrder: string[]; paused: string[] };
 };
 
 export type Board = Record<BoardGroup, BoardCard[]>;
+
+/**
+ * The place of each project in the order they are worked: first those whoever manages put in order, as they put
+ * them; then the rest by when each was started (the first started, the first worked, as before there was an order).
+ */
+export function projectRanks(projects: MyTasksProjectBucket[], order: string[] = []): Map<MyTasksProjectBucket, number> {
+  const placed = (bucket: MyTasksProjectBucket) => {
+    const at = order.indexOf(bucket.projectId.toUpperCase());
+    return at < 0 ? Number.MAX_SAFE_INTEGER : at;
+  };
+  const started = (bucket: MyTasksProjectBucket) => {
+    const at = startedAt(bucket);
+    return Number.isNaN(at) ? Number.MAX_SAFE_INTEGER : at;
+  };
+  const sorted = [...projects].sort((a, b) => placed(a) - placed(b) || started(a) - started(b));
+  return new Map(sorted.map((bucket, i) => [bucket, i]));
+}
 
 function taskOf(issue: DcsIssue, bucket?: MyTasksProjectBucket): ProjectTask | undefined {
   const id = issueTaskId(issue);
@@ -206,7 +225,10 @@ export function correctionsFirst<T extends Pick<BoardCard, "askedBack" | "redoOf
 export function buildBoard(input: BoardInput): Board {
   const { session, pmOrg, projects, cursor, myLevel } = input;
   const login = session.username;
-  const board: Board = { decide: [], doing: [], todo: [], reviews: [], free: [], later: [], waiting: [], done: [] };
+  const board: Board = { decide: [], doing: [], todo: [], reviews: [], free: [], later: [], waiting: [], paused: [], done: [] };
+  const ranks = projectRanks(projects, input.priority?.projectOrder);
+  const rankOf = (bucket: MyTasksProjectBucket | undefined) => (bucket ? (ranks.get(bucket) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER);
+  const byPlace = byPlaceIn(rankOf);
   const seen = new Set<number>();
   const onceApplied = new Set<number>();
   // The items of every open subtarea of each project, read once: what tells a correction still worked on from one done.
@@ -361,13 +383,23 @@ export function buildBoard(input: BoardInput): Board {
     board.done.push(card(issue, bucket, "done", { kind: "none", why: "done" }));
   }
 
-  oneBookAtATime(board, projects);
+  oneBookAtATime(board, projects, rankOf);
+  // A project set aside: whatever of it is still to do waits folded at the end, as it was left, until it is resumed.
+  const paused = new Set((input.priority?.paused ?? []).map((id) => id.toUpperCase()));
+  const aside = (c: BoardCard) => Boolean(c.bucket && paused.has(c.bucket.projectId.toUpperCase()));
+  if (paused.size) {
+    for (const group of GROUP_ORDER) {
+      if (group === "done" || group === "paused") continue;
+      board.paused.push(...board[group].filter(aside).map((c) => ({ ...c, group: "paused" as const })));
+      board[group] = board[group].filter((c) => !aside(c));
+    }
+  }
 
   for (const group of GROUP_ORDER) {
     if (group === "done") board.done.sort((a, b) => Date.parse(b.issue.closed_at ?? b.issue.updated_at ?? "") - Date.parse(a.issue.closed_at ?? a.issue.updated_at ?? ""));
     // What somebody may join reads in the order of the book too: ten steps nobody had taken came 1:17–23, 1:12–16,
     // 1:5–11, 1:1–4…, by when each was last touched, and the first passage was nowhere near the top.
-    else if (group === "free" || group === "later" || group === "waiting" || group === "reviews") board[group].sort(byPlace);
+    else if (group === "free" || group === "later" || group === "waiting" || group === "reviews" || group === "paused") board[group].sort(byPlace);
     // Of what waits, first what the person already worked on (a round the others have yet to answer): it was found
     // under ten tasks that have not begun.
     if (group === "waiting") board.waiting = [...board.waiting.filter(joined), ...board.waiting.filter((c) => !joined(c))];
@@ -403,12 +435,15 @@ function listsInOrder(cards: BoardCard[]): BoardCard[] {
   return cards.map((card) => (card.action.kind === "proposals" ? lists[at++]! : card));
 }
 
-function byPlace(a: BoardCard, b: BoardCard): number {
+/** By the place of each card: its project in the order they are worked, then its book, passage and task. */
+const byPlaceIn = (rankOf: (bucket: MyTasksProjectBucket | undefined) => number) => (a: BoardCard, b: BoardCard): number => {
   if (a.activity.needsAttention !== b.activity.needsAttention) return a.activity.needsAttention ? -1 : 1;
   const bookAt = (card: BoardCard) => {
     const at = BOOKS.findIndex((row) => row.code === card.book.toUpperCase());
     return at < 0 ? BOOKS.length : at;
   };
+  const projectAt = rankOf(a.bucket) - rankOf(b.bucket);
+  if (projectAt) return projectAt;
   const taskAt = (card: BoardCard) => {
     const at = card.bucket && card.task ? card.bucket.board.teams.findIndex((task) => task.id === card.task!.id) : -1;
     return at < 0 ? Number.MAX_SAFE_INTEGER : at;
@@ -426,21 +461,21 @@ const startedAt = (bucket: MyTasksProjectBucket): number => Date.parse(bucket.bo
  * the one in hand. Free work of a task is offered for the earliest book that still has open work of that task; the
  * same task in later books waits under «Del siguiente libro», and moves up by itself when the earlier book is done.
  */
-function oneBookAtATime(board: Board, projects: MyTasksProjectBucket[]): void {
+function oneBookAtATime(board: Board, projects: MyTasksProjectBucket[], rankOf: (bucket: MyTasksProjectBucket | undefined) => number): void {
   const current = new Map<string, MyTasksProjectBucket>();
   for (const bucket of projects) {
-    const at = startedAt(bucket);
-    if (Number.isNaN(at)) continue;
+    const at = rankOf(bucket);
+    if (at === Number.MAX_SAFE_INTEGER) continue;
     const open = bucket.openIssues ?? bucket.issues;
     for (const taskId of new Set(open.map((issue) => issueTaskId(issue)).filter(Boolean))) {
       const before = current.get(taskId);
-      if (!before || at < startedAt(before)) current.set(taskId, bucket);
+      if (!before || at < rankOf(before)) current.set(taskId, bucket);
     }
   }
   const stay: BoardCard[] = [];
   for (const row of board.free) {
     const first = row.task && row.bucket ? current.get(row.task.id) : undefined;
-    const later = Boolean(first) && first !== row.bucket && !Number.isNaN(startedAt(row.bucket!)) && startedAt(row.bucket!) > startedAt(first!);
+    const later = Boolean(first) && first !== row.bucket && rankOf(row.bucket) > rankOf(first);
     if (later) board.later.push({ ...row, group: "later" });
     else stay.push(row);
   }
@@ -452,4 +487,4 @@ export function nextCard(board: Board): BoardCard | undefined {
   return board.decide[0] ?? board.doing.find((c) => c.action.kind !== "none") ?? board.todo[0] ?? board.reviews[0] ?? board.free[0];
 }
 
-export const boardCount = (board: Board): number => GROUP_ORDER.reduce((n, g) => n + (g === "done" ? 0 : board[g].length), 0);
+export const boardCount = (board: Board): number => GROUP_ORDER.reduce((n, g) => n + (g === "done" || g === "paused" ? 0 : board[g].length), 0);

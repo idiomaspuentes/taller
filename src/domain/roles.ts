@@ -36,6 +36,13 @@ export type PmConfig = {
   teamLevels: Record<string, Record<string, PersonLevel>>;
   /** Coordinators of each team (lowercase team name → logins). */
   coordinators: Record<string, string[]>;
+  /**
+   * The projects of this space in the order they are worked (project ids, the first first). Whoever manages sets it;
+   * a project left out goes after these, by when it was started. Before it, the first created was the first worked.
+   */
+  projectOrder: string[];
+  /** Projects set aside for another: their work stays as it is, folded at the end of «Mis tareas», and nobody is reminded of it. */
+  paused: string[];
 };
 
 export const DEFAULT_PM_CONFIG: PmConfig = {
@@ -46,7 +53,15 @@ export const DEFAULT_PM_CONFIG: PmConfig = {
   levels: {},
   teamLevels: {},
   coordinators: {},
+  projectOrder: [],
+  paused: [],
 };
+
+/** A list of project ids as it is kept: upper case, once each. */
+function projectIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.filter((id): id is string => typeof id === "string" && Boolean(id.trim())).map((id) => id.trim().toUpperCase()))];
+}
 
 export function normalizePmConfig(raw: unknown): PmConfig {
   const row = raw && typeof raw === "object" ? (raw as Partial<PmConfig>) : {};
@@ -79,6 +94,8 @@ export function normalizePmConfig(raw: unknown): PmConfig {
     levels: normalizeLevels(row.levels),
     teamLevels: normalizeTeamLevels(row.teamLevels),
     coordinators: normalizeCoordinators(row.coordinators),
+    projectOrder: projectIds(row.projectOrder),
+    paused: projectIds(row.paused),
   };
 }
 
