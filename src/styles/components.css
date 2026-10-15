@@ -5399,10 +5399,12 @@ button.chat-place:focus-visible {
   .chat-decision {
     width: 100%;
   }
+  /* Each as wide as its words, and a row of its own when two do not fit: shared out evenly, three to a row in the
+     side of a list of proposals, «Rechazar la propuesta» broke into three lines and its pill became a circle. */
   .chat-decision__actions > .btn,
   .chat-decision__actions > button {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 1 1 auto;
+    min-width: min(100%, 8rem);
     white-space: normal;
   }
 }
