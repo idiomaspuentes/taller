@@ -25,8 +25,12 @@ export async function closeDeliveredElsewhere(params: {
   org: string;
   board: AssignmentsDoc;
   inventory: InventoryDoc;
-  /** Whether the work of a task on a portion was done before coming here. A subtarea of several portions needs them all. */
-  delivered: (taskId: string, portion: Portion) => boolean;
+  /**
+   * Whether the work of a task on a portion was done before coming here. A subtarea of several portions needs them all.
+   * `itemIds` tells which of the work on that portion the subtarea is (an article is filed at the first passage that
+   * cites it, beside others).
+   */
+  delivered: (taskId: string, portion: Portion, itemIds: string[]) => boolean;
   /** Count only. */
   dryRun?: boolean;
   onProgress?: (done: number, total: number) => void;
@@ -44,7 +48,7 @@ export async function closeDeliveredElsewhere(params: {
     if (order.itemIds.some(isExtraItemId)) continue;
     const row = (out.byTask[task.id] ??= { closed: 0, left: 0 });
     const mine = order.portionIds.map((id) => portions.get(id));
-    const done = mine.length > 0 && mine.every((portion) => portion && params.delivered(task.id, portion));
+    const done = mine.length > 0 && mine.every((portion) => portion && params.delivered(task.id, portion, order.itemIds));
     if (!done) {
       if ((issue.state ?? "").toLowerCase() !== "closed") {
         row.left++;
