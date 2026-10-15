@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Columns2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { MoreMenu, type MoreItem } from "./MoreMenu";
 import type { GtSession } from "../dcs/auth";
 import { finishProposalList, loadAlignedText, loadBookNotes, loadDecisionThread, loadProposalList, quoteInText, type AlignedText, type BookNote, type ProposalListData } from "../dcs/proposalList";
 import type { OriginalWord } from "../dcs/afinacionLoad";
@@ -23,7 +22,7 @@ import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { DecisionCard } from "./DecisionCard";
 import { CiteScope } from "./ReasonField";
-import { LAYOUTS, TextChangeView, layoutLabelKey, saveLayout, savedLayout, type ChangeLayout } from "./TextChangeView";
+import { TextChangeView, saveLayout, savedLayout } from "./TextChangeView";
 import { VerseCompare } from "./VerseCompare";
 import { buildSolverLaunchContext } from "../domain/solverLaunch";
 import { ChangeReasons, type ReasonLinks } from "./ChangeReasons";
@@ -71,8 +70,8 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
   const [finishing, setFinishing] = useState(false);
   // Open or not, as the person left it: whoever compares, compares every proposal.
   const [compareOpen, setCompareOpen] = useState(false);
-  // How a change is read, chosen in «Más» and kept for every proposal.
-  const [layout, setLayout] = useState<ChangeLayout>(savedLayout);
+  // The change read in one text, or its two versions apart (side by side where there is room), kept for every proposal.
+  const [apart, setApart] = useState(() => savedLayout() !== "together");
 
   const loadList = useCallback(async () => {
     if (!session) return null;
@@ -289,18 +288,10 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
     const events = thread.items.flatMap((item) => (item.event ? [{ event: item.event, at: item.createdAt }] : []));
     return waitsOnVote(decision.data, session?.username ?? "", readDecisionThread(events, decisionId(decision.data)));
   }, [decision, thread, session?.username]);
-  const more: MoreItem[] = changesText
-    ? LAYOUTS.map((one) => ({
-        id: one,
-        label: t(layoutLabelKey(one)),
-        hint: t(`${layoutLabelKey(one)}Hint`),
-        pressed: layout === one,
-        onSelect: () => {
-          setLayout(one);
-          saveLayout(one);
-        },
-      }))
-    : [];
+  const toggleApart = () => {
+    setApart(!apart);
+    saveLayout(apart ? "together" : "sides");
+  };
   const list = (
     <ol className="pl-list">
       {rows.map((row, at) => (
@@ -327,7 +318,6 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
             <h1 className="chat-header__title">{single && place ? `${book} ${place.chapter}:${place.verse}` : [book, chapter].filter(Boolean).join(" ") || t("pl.title")}</h1>
             {data ? <p className="chat-header__sub">{single ? t("pl.subOne").replace("{text}", text) : `${t("pl.sub").replace("{text}", text)} · ${leftText}`}</p> : null}
           </div>
-          {more.length ? <MoreMenu items={more} /> : null}
         </div>
       </header>
       <div className="pl-body">
@@ -415,7 +405,17 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                   ) : null}
                   {decision && changesText ? (
                     <div className="pl-verse">
-                      <TextChangeView before={decision.data.oldText} after={decision.data.newText} layout={layout} />
+<TextChangeView
+                        before={decision.data.oldText}
+                        after={decision.data.newText}
+                        layout={apart ? "sides" : "together"}
+                        // One touch, in the corner of what it changes: the menu it was in had nothing else.
+                        corner={
+                          <button type="button" className="pl-apart" aria-pressed={apart} aria-label={t(apart ? "tc.joinedAria" : "tc.apartAria")} title={t(apart ? "tc.joinedAria" : "tc.apartAria")} onClick={toggleApart}>
+                            <Columns2 aria-hidden className="size-5" />
+                          </button>
+                        }
+                      />
                     </div>
                   ) : null}
                   {decision && session && launchCtx && place ? (

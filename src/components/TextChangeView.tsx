@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { wordDiff, type DiffPiece } from "../domain/verseEditView";
 import { useT } from "../i18n/messages";
 
@@ -28,9 +28,10 @@ export function saveLayout(next: ChangeLayout): void {
 /** The name of a way to read a change, as its button and the «Más» menu say it. */
 export const layoutLabelKey = (one: ChangeLayout) => (one === "together" ? "tc.together" : one === "stacked" ? "tc.stacked" : "tc.sides");
 
-function Pieces({ pieces }: { pieces: DiffPiece[] }) {
+function Pieces({ pieces, corner }: { pieces: DiffPiece[]; corner?: ReactNode }) {
   return (
     <p className="al-diff">
+      {corner}
       {pieces.map((piece, i) => {
         const space = i ? " " : "";
         if (piece.kind === "del") return <span key={i}>{space}<del>{piece.text}</del></span>;
@@ -42,10 +43,13 @@ function Pieces({ pieces }: { pieces: DiffPiece[] }) {
 }
 
 /** One version of the verse, with what the other one does not have marked. */
-function Side({ pieces, keep, label }: { pieces: DiffPiece[]; keep: "del" | "ins"; label: string }) {
+function Side({ pieces, keep, label, corner }: { pieces: DiffPiece[]; keep: "del" | "ins"; label: string; corner?: ReactNode }) {
   return (
     <figure className="tc-side" data-side={keep === "del" ? "now" : "proposed"}>
-      <figcaption className="af-lbl">{label}</figcaption>
+      <figcaption className="af-lbl">
+        {corner}
+        {label}
+      </figcaption>
       <Pieces pieces={pieces.filter((piece) => piece.kind === "same" || piece.kind === keep)} />
     </figure>
   );
@@ -56,7 +60,19 @@ function Side({ pieces, keep, label }: { pieces: DiffPiece[]; keep: "del" | "ins
  * verse as it is and as proposed, one under the other or side by side. A long change read in one text mixed the two
  * wordings word by word, and what the proposal says as a whole could not be read. The choice is kept per browser.
  */
-export function TextChangeView({ before, after, layout: chosen }: { before: string; after: string; /** Chosen by the screen (in its «Más»): no buttons here. */ layout?: ChangeLayout }) {
+export function TextChangeView({
+  before,
+  after,
+  layout: chosen,
+  corner,
+}: {
+  before: string;
+  after: string;
+  /** Chosen by the screen: no buttons here. */
+  layout?: ChangeLayout;
+  /** What the screen puts in the corner of the change (its way to read it apart), in the text and not over it. */
+  corner?: ReactNode;
+}) {
   const t = useT();
   const [own, setOwn] = useState<ChangeLayout>(savedLayout);
   const layout = chosen ?? own;
@@ -77,10 +93,10 @@ export function TextChangeView({ before, after, layout: chosen }: { before: stri
         </span>
       )}
       {layout === "together" ? (
-        <Pieces pieces={pieces} />
+        <Pieces pieces={pieces} corner={corner} />
       ) : (
         <div className="tc-pair" data-layout={layout}>
-          <Side pieces={pieces} keep="del" label={t("tc.now")} />
+          <Side pieces={pieces} keep="del" label={t("tc.now")} corner={corner} />
           <Side pieces={pieces} keep="ins" label={t("tc.proposed")} />
         </div>
       )}
