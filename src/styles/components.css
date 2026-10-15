@@ -8635,7 +8635,12 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .af-chapter__text.af-orig { font-size: 1.125rem; }
 /* In the sheet of a comparison the chapter is the sheet: no card inside a card. */
 .vc-chapter-sheet .af-chapter { padding: 0; border: 0; background: none; }
-.vc-chapter { justify-self: start; min-height: 2.75rem; }
+/* The ways to read a verse further: rounded buttons with their icon and word, side by side, 44 px to touch. */
+.vc-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.vc-action { position: relative; display: inline-flex; align-items: center; gap: var(--space-6); min-height: 2.25rem; padding: 0 var(--space-12); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); color: var(--text); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.vc-action::after { content: ""; position: absolute; inset: -0.25rem 0; }
+.vc-action svg { color: var(--accent-700); }
+.vc-action:hover, .vc-action:focus-visible { border-color: var(--border-strong); background: var(--surface-muted); }
 /* On a phone the arrows say enough: the middle of the bar is for which figure, and which one of how many. */
 @media (max-width: 40rem) {
   .af-nav__word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

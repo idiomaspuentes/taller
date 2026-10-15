@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BookOpen, ListTree } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
 import { chapterTextOf, draftTaskId, groupDraftBranches, loadChapterTexts, type ChapterText, type OriginalWord } from "../dcs/afinacionLoad";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -116,17 +117,25 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
             <OriginalWords text={shown.book[key] ?? ""} words={words[key]} onOpen={(word) => setSheet({ word, chapter, verse })} />
           </span>
           <p className="af-hint vc-hint">{t("vc.tapWord")}</p>
-          <button type="button" className="chat-link vc-tree" onClick={() => setSentence(true)}>
-            {t("st.open")}
-          </button>
         </>
       ) : (
         <p className="vc-verse">{shown.book[key] || t("af.noText")}</p>
       )}
-      {/* The verse in its chapter, in the text being read here: a proposal is weighed against what comes around it. */}
-      <button type="button" className="chat-link vc-chapter" onClick={() => setChapterOpen(true)}>
-        {t("vc.readChapter")}
-      </button>
+      {/* Two ways to read the verse further, side by side, each with its word: two bare links one under the other
+          looked like leftovers of another screen. */}
+      <div className="vc-actions">
+        {shown.id === "orig" ? (
+          <button type="button" className="vc-action" onClick={() => setSentence(true)}>
+            <ListTree aria-hidden size={16} />
+            {t("vc.sentence")}
+          </button>
+        ) : null}
+        {/* The verse in its chapter, in the text being read here: a proposal is weighed against what comes around it. */}
+        <button type="button" className="vc-action" onClick={() => setChapterOpen(true)}>
+          <BookOpen aria-hidden size={16} />
+          {t("vc.readChapter")}
+        </button>
+      </div>
       <ParallelLink book={book} chapter={chapter} from={verse} session={session} workspace={workspace} />
       <Dialog open={chapterOpen} onOpenChange={setChapterOpen}>
         <DialogContent className="word-sheet vc-chapter-sheet" aria-describedby={undefined}>
