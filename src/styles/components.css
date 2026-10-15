@@ -525,16 +525,15 @@ textarea.input { height: auto; padding: 0.375rem 0.625rem; }
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* As wide as the window, its content centered by the padding: centered with a max-width, the scroll bar sat at the
+     edge of the column, in the middle of a desktop screen, with empty space beyond it. */
   width: 100%;
-  max-width: 64rem;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 1.5rem 0.75rem;
+  padding: 1.5rem max(0.75rem, calc((100% - 62.5rem) / 2));
 }
 @media (min-width: 640px) {
   .app-main {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: max(1rem, calc((100% - 62rem) / 2));
+    padding-right: max(1rem, calc((100% - 62rem) / 2));
     padding-top: 2rem;
     padding-bottom: 2rem;
   }
