@@ -1,6 +1,17 @@
 /* Taller service worker: lets the app install and open offline (shell only).
  * Door43 requests are never cached: they are cross-origin and always live. */
-const CACHE = "taller-shell-v2";
+// v3: v2 could hold a page where a built file should be (see below); a new name clears it on every device.
+const CACHE = "taller-shell-v3";
+
+/**
+ * A built file as it should be: a good answer that is not a page. In the seconds after a publish the host can answer a
+ * new file with the app's page (HTML, status 200); kept as the file, the app opened blank on that device for good.
+ */
+function isBuiltFile(response) {
+  if (!response || !response.ok) return false;
+  const type = (response.headers.get("content-type") || "").toLowerCase();
+  return !type.startsWith("text/html");
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -38,18 +49,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Built files carry a hash in their name: safe to keep and reuse.
+  // Built files carry a hash in their name: safe to keep and reuse, once they are what they say they are.
   if (url.pathname.includes("/assets/")) {
     event.respondWith(
-      caches.match(request).then(
-        (hit) =>
-          hit ||
-          fetch(request).then((response) => {
+      caches.match(request).then((hit) => {
+        if (hit && isBuiltFile(hit)) return hit;
+        return fetch(request).then((response) => {
+          if (isBuiltFile(response)) {
             const copy = response.clone();
             caches.open(CACHE).then((cache) => cache.put(request, copy));
-            return response;
-          }),
-      ),
+          } else if (hit) {
+            caches.open(CACHE).then((cache) => cache.delete(request));
+          }
+          return response;
+        });
+      }),
     );
   }
 });
