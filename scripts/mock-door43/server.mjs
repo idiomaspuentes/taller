@@ -10,6 +10,8 @@
  * - MOCK_ROSTER=<file.json>: the people and the teams of an organization, to try who sees what:
  *   `{ "owners": [login], "teams": [{ "name", "description", "members": [login] }] }`. Each login signs in with
  *   `token-<login>`, and teams can then be created and their members changed, as in Door43.
+ * - MOCK_NO_SAMPLE=1: without the sample Nehemiah (its plan, its two subtareas and its draft), for a run that
+ *   creates that book itself, as the migration of Esther and Ezra does.
  *
  * Debug: GET /__mock/files?repo=owner/name&branch=x, GET /__mock/log, POST /__mock/reset,
  * GET /__mock/dump (the whole state, to keep it across a restart) and POST /__mock/load (put it back).
@@ -235,17 +237,17 @@ function reset() {
       },
     ],
   };
-  put(`${PM_ORG}/taller`, "main", "es-419/NEH/assignments.json", JSON.stringify(board, null, 2));
+  const sample = process.env.MOCK_NO_SAMPLE !== "1";
+  if (sample) put(`${PM_ORG}/taller`, "main", "es-419/NEH/assignments.json", JSON.stringify(board, null, 2));
   put(`${PM_ORG}/taller`, "main", "config.json", JSON.stringify({ levels: { ana: "habilitada", bea: "habilitada", carla: "habilitada", dina: "habilitada", eva: "habilitada" } }));
-  put(`${CONTENT_ORG}/es-419_glt`, "neh", "16-NEH.usfm", DRAFT);
-  issues = [
-    workOrder(1, "afinar-tpl-1", "c1", null, 6, 6, "NEH 1 · Afinar TPL 1"),
-    workOrder(2, "tpl-1", "c2", "carla", 12, 8, "NEH 2 · Traducir TPL 1"),
-  ];
-  issueCounter = 2;
+  if (sample) put(`${CONTENT_ORG}/es-419_glt`, "neh", "16-NEH.usfm", DRAFT);
+  issues = sample
+    ? [workOrder(1, "afinar-tpl-1", "c1", null, 6, 6, "NEH 1 · Afinar TPL 1"), workOrder(2, "tpl-1", "c2", "carla", 12, 8, "NEH 2 · Traducir TPL 1")]
+    : [];
+  issueCounter = issues.length;
   comments = new Map();
-  labels = [{ id: 1, name: "pm/tarea:tpl-1", color: "0075ca" }];
-  milestones = [{ id: 1, title: "NEH", state: "open" }];
+  labels = sample ? [{ id: 1, name: "pm/tarea:tpl-1", color: "0075ca" }] : [];
+  milestones = sample ? [{ id: 1, title: "NEH", state: "open" }] : [];
   log = [];
 }
 reset();
@@ -377,7 +379,9 @@ function handleContents(req, res, url, user, owner, name, path, body) {
       if (rest.includes("/")) children.set(first, { name: first, path: `${prefix}${first}`, sha: "dir", size: 0, type: "dir" });
       else children.set(first, contentEntry(p, f));
     }
-    return children.size ? json(res, [...children.values()]) : json(res, { message: "path not found" }, 404);
+    // The root of a branch that exists is there even with no files (a branch made from an empty repository): taken
+    // for a missing branch, the app tried to create it again and got «branch already exists».
+    return children.size || !path ? json(res, [...children.values()]) : json(res, { message: "path not found" }, 404);
   }
   if (!user) return json(res, { message: "token is required" }, 401);
   // `new_branch`: the commit goes to a new branch started from `branch` (or the default one), as in the real API.

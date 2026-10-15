@@ -47,9 +47,20 @@ export type WorkOrder = {
   listed?: true;
 };
 
-function resourceLabel(resource: ScopeKey | "bundle"): string {
-  if (resource === "bundle") return BUNDLE_LABEL;
+function resourceLabel(resource: ScopeKey | "bundle", team?: Team): string {
+  if (resource === "bundle") return bundleLabel(team);
   return SCOPE_LABEL[resource] ?? resource.toUpperCase();
+}
+
+/**
+ * What a subtarea over several resources is called: the ones its task works on («Notas y Academia»), or «Lote» when
+ * they are too many to read in a title.
+ */
+function bundleLabel(team: Team | undefined, nameOf: (resource: ScopeKey) => string = (resource) => SCOPE_LABEL[resource] ?? resource.toUpperCase()): string {
+  const resources = [...new Set((team?.rules ?? []).map((rule) => rule.resource))];
+  if (resources.length < 2 || resources.length > 3) return BUNDLE_LABEL;
+  const names = resources.map(nameOf);
+  return `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
 }
 
 function portionSortKey(
@@ -107,20 +118,25 @@ function itemsFromBundle(bundle: ScopeBundle): {
   itemTypes: ItemType[];
   portionIds: string[];
   resources: ScopeKey[];
+  /** Some item is a passage, which carries no resource of its own. */
+  passages: boolean;
 } {
   const itemIds: string[] = [];
   const itemTypes: ItemType[] = [];
   const resources = new Set<ScopeKey>();
+  let passages = false;
   for (const item of bundle.items) {
     itemIds.push(itemKey(item.type, item.id));
     itemTypes.push(item.type);
     if (item.resource) resources.add(item.resource);
+    else passages = true;
   }
   return {
     itemIds,
     itemTypes,
     portionIds: bundle.portionIds,
     resources: [...resources],
+    passages,
   };
 }
 
@@ -262,7 +278,7 @@ export function workOrdersFromAssignments(
     });
     const orderBook = bookForPortionIds(bucket.portionIds, inventory.portions, fallbackBook);
     const range = rangeLabelForPortions(orderBook, bucket.portionIds, inventory.portions);
-    const label = `${bucket.named || range} · ${resourceLabel(bucket.resource)}`;
+    const label = `${bucket.named || range} · ${resourceLabel(bucket.resource, bucket.team)}`;
     const key = workOrderKey({
       book: orderBook,
       teamId: bucket.team.id,
@@ -320,7 +336,7 @@ function buildWorkOrder(params: {
     itemIds: params.itemIds,
     itemTypes: params.itemTypes,
     assignee: params.assignee,
-    label: `${params.named?.trim() || range} · ${resourceLabel(params.resource)}`,
+    label: `${params.named?.trim() || range} · ${resourceLabel(params.resource, params.team)}`,
   };
 }
 
@@ -348,8 +364,16 @@ function workItemResource(item: WorkItem, team: Team): ScopeKey | "bundle" {
   return "bundle";
 }
 
-/** The resource of a packaged unit: the one its items share, or else what the task works on. */
-function packagedResource(resources: ScopeKey[], team: Team): ScopeKey | "bundle" {
+/**
+ * The resource of a packaged unit: the one its items share, or else what the task works on. A passage carries none
+ * of its own and stands for the whole task: a chapter of «Notas y Academia» that cites one article was filed as
+ * academia alone (and titled «· Academia»), while a chapter citing none was a bundle.
+ */
+function packagedResource(resources: ScopeKey[], team: Team, passages: boolean): ScopeKey | "bundle" {
+  if (passages) {
+    const own = taskResource(team);
+    return resources.every((resource) => resource === own) ? own : "bundle";
+  }
   if (resources.length === 1) return resources[0];
   return resources.length ? "bundle" : taskResource(team);
 }
@@ -386,7 +410,7 @@ export function planUnassignedLots(
     if (packaged) {
       const extracted = itemsFromBundle(bundle);
       if (!extracted.itemIds.length) continue;
-      const resource = packagedResource(extracted.resources, team);
+      const resource = packagedResource(extracted.resources, team, extracted.passages);
       orders.push(
         buildWorkOrder({
           team,
@@ -518,14 +542,15 @@ export function publishableWorkOrders(
     }
   }
 
-  return [...named([...assigned, ...open], board.settings?.resourceNames), ...extraWorkOrders(board, inventory)];
+  return [...named([...assigned, ...open], board.settings?.resourceNames, board.teams), ...extraWorkOrders(board, inventory)];
 }
 
 /** Subtareas titled with the name the project's process gives each resource («2:11–13 · Biblia»). */
-function named(orders: WorkOrder[], names: ResourceNames | undefined): WorkOrder[] {
+function named(orders: WorkOrder[], names: ResourceNames | undefined, teams: Team[]): WorkOrder[] {
   if (!names) return orders;
+  const nameOf = (resource: ScopeKey) => names[resource]?.name ?? SCOPE_LABEL[resource] ?? resource.toUpperCase();
   return orders.map((order) => {
-    const own = order.resource === "bundle" ? undefined : names[order.resource]?.name;
+    const own = order.resource === "bundle" ? bundleLabel(teams.find((team) => team.id === order.teamId), nameOf) : names[order.resource]?.name;
     const cut = order.label.lastIndexOf(" · ");
     return own && cut >= 0 ? { ...order, label: `${order.label.slice(0, cut)} · ${own}` } : order;
   });
@@ -567,7 +592,7 @@ export function planWorkOrders(
     for (const bundle of chunk) {
       const extracted = itemsFromBundle(bundle);
       if (!extracted.itemIds.length) continue;
-      const resource = packagedResource(extracted.resources, team);
+      const resource = packagedResource(extracted.resources, team, extracted.passages);
       orders.push(
         buildWorkOrder({
           team,

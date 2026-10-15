@@ -78,6 +78,24 @@ await test("una tarea que recorre cada unidad tiene una subtarea por capítulo, 
   assert.ok(everyUnit.every((order) => order.resource === "palabras" && order.itemIds.every((id) => id.startsWith("porcion:"))));
 });
 
+await test("una tarea de notas y artículos por capítulo es un lote en cada capítulo, cite o no un artículo", () => {
+  // Esther's chapters of «Armonizar Notas y Academia» came out as «EST 1:1–22 · Academia», filed as academia alone,
+  // because the one article each chapter cites was the only item that carried a resource.
+  const cited = { ...portion(2, "P1", 1, 8), academia: [{ id: "figs-metaphor" }] } as unknown as Portion;
+  const book = {
+    portions: [cited, portion(2, "P2", 9, 15), portion(3, "P3", 1, 15)],
+    articles: [{ id: "figs-metaphor", kind: "Translation Academy", path: "translate/figs-metaphor", status: "english", title: "Metáfora", portionId: "P1" }],
+  } as unknown as InventoryDoc;
+  const harmonize = task("armonizar-notas", ["notas", "academia"], { bundle: { enabled: true, grain: "chapter" }, distributeUnit: "chapter" } as Partial<ProjectTask>);
+  const orders = planUnassignedLots(harmonize, book, "TIT", {});
+  assert.deepEqual(orders.map((order) => order.chapter), [2, 3], "una por capítulo");
+  for (const order of orders) {
+    assert.equal(order.resource, "bundle", `capítulo ${order.chapter}: sale como ${order.resource}`);
+    assert.ok(order.label.endsWith(" · Notas y Academia"), `capítulo ${order.chapter}: «${order.label}»`);
+  }
+  assert.ok(planUnassignedLots(task("validar", ["tpl", "tps", "notas", "preguntas"], { bundle: { enabled: true, grain: "chapter" }, distributeUnit: "chapter" } as Partial<ProjectTask>), book, "TIT", {})[0]!.label.endsWith(" · Lote"), "con muchos recursos sigue siendo «Lote»");
+});
+
 await test("el mismo trabajo se reconoce aunque su clave esté escrita de otra forma: no se planifica dos veces", () => {
   // Planned without a person, the passage is named by its id; once somebody has it, by its reference.
   const free = { key: "TIT|tpl|tpl|TIT-02-05|porcion:TIT 2:11-13", teamId: "tpl", itemIds: ["porcion:TIT 2:11-13"] };
