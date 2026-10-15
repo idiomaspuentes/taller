@@ -174,7 +174,9 @@ export function App() {
   setActiveScope(workspace?.scope);
   setWorkspaceBranchNames(workspace?.branchNames);
   const { route, navigate } = useHashRoute();
-  const [host, setHost] = useState(forcedHost() ?? saved?.host ?? DEFAULT_HOST);
+  // The server of the session kept on this device (expired or not, it is signed into again there). With none, the
+  // default one: a device that once opened QA offered QA at the sign-in, and production people were sent to QA.
+  const [host, setHost] = useState(forcedHost() ?? (loadSession() ? saved?.host : undefined) ?? DEFAULT_HOST);
   const [lang, setLang] = useState(workspace?.lang ?? (saved?.lang || "es-419"));
   const [contentOrg, setContentOrg] = useState(workspace?.contentOrg ?? (saved?.contentOrg || defaultContentOrg("es-419")));
   const [pmOrg, setPmOrg] = useState(workspace?.pmOrg ?? (saved?.pmOrg || ""));
