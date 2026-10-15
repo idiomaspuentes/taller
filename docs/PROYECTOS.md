@@ -85,7 +85,10 @@ Quien administra (Owners y `managers`) ordena los proyectos en «Proyectos» con
 uno para dar paso a otro (así se dejó Efesios por terminar Esdras).
 
 - **El orden** decide qué libro sale primero en «Mis tareas» de todo el equipo: sus tarjetas van antes, y lo libre
-  de una tarea en los libros siguientes espera en «Del siguiente libro». Sin orden guardado vale el de antes, el
+  de una tarea en los libros siguientes espera en «Del siguiente libro» mientras el libro anterior tenga algo de esa
+  tarea que la persona pueda empezar. Si lo que queda allí ya lo tiene otra persona o espera otro trabajo (la
+  afinación de Nehemías mientras se traduce), el libro siguiente se ofrece en «Libres»: así un Efesios reanudado
+  detrás de Nehemías se trabaja sin cambiar el orden. Sin orden guardado vale el de antes, el
   proyecto empezado primero, y la pantalla lo numera así; el primer «Subir» o «Bajar» guarda el orden entero.
 - **Pausar** no toca el trabajo: sus subtareas, borradores y decisiones quedan como estaban. En «Mis tareas» sus
   tareas se pliegan al final, en «En pausa» (se pueden abrir para terminar algo a medias), no cuentan en el número

@@ -106,7 +106,7 @@ a la solicitud, no dar error.
 |---|-----|-----------|
 | 8.1 | Entregar hasta pasar el 70 % de Traducción | A quien coordina le llega un aviso (en «Avisos» y en el teléfono) |
 | 8.2 | Empezar otro libro corto (2 Juan) | Hereda los equipos de 3 Juan, sin preguntar |
-| 8.3 | «Mis tareas» de alguien de Traducción | 3 Juan arriba; 2 Juan en «Del siguiente libro» hasta terminar 3 Juan |
+| 8.3 | «Mis tareas» de alguien de Traducción | 3 Juan arriba; 2 Juan en «Del siguiente libro» mientras quede algo de 3 Juan que esa persona pueda empezar |
 
 ## Lo que conviene mirar con más cuidado
 
