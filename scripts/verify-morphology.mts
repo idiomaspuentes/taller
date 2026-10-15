@@ -1,7 +1,7 @@
 /** The grammar of a word of the original, read from the code the UGNT and the UHB tag it with. */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describeMorph, MORPH_KEYS, type MorphLabel } from "../src/domain/morphology";
+import { describeMorph, MORPH_KEYS, VERB_HINT_KEYS, verbHint, type MorphLabel } from "../src/domain/morphology";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -75,6 +75,23 @@ test("sin código no hay nada que decir, y un código desconocido se muestra tal
 test("todo nombre que el lector puede dar tiene su texto en español y en portugués", () => {
   assert.ok(MORPH_KEYS.length > 80);
   assert.deepEqual(MORPH_KEYS.filter((name) => !es[`mo.${name}`] || !pt[`mo.${name}`]), []);
+});
+
+test("bajo un verbo del diagrama, quién lo hace y cómo se ve la acción, en palabras de todos los días", () => {
+  // Esdras 3:10: וְיִסְּדוּ «y pusieron los cimientos» (piel, perfecto, 3.ª común plural), הַבֹּנִים «los que construyen».
+  assert.deepEqual(verbHint("He,C:Vpp3cp"), { who: "vh.they", how: "vh.done" });
+  assert.deepEqual(verbHint("He,Td:Vqrmpa"), { how: "vh.doersMany" });
+  // וַיַּעֲמִידוּ, wayyiqtol: una acción completa, como el perfecto.
+  assert.deepEqual(verbHint("He,C:Vhw3mp"), { who: "vh.they", how: "vh.done" });
+  assert.deepEqual(verbHint("He,Vqi3fs"), { who: "vh.she", how: "vh.undone" });
+  assert.deepEqual(verbHint("He,Vqv2ms"), { who: "vh.you", how: "vh.order" });
+  assert.deepEqual(verbHint("He,R:Vqc"), { how: "vh.inf" });
+  assert.equal(verbHint("He,Ncbdc"), null, "un sustantivo no lleva pista");
+  assert.deepEqual(verbHint("Gr,V,IAA3,,S,"), { who: "vh.he", how: "vh.past" });
+  assert.equal(verbHint(undefined), null);
+  const es = JSON.parse(readFileSync(new URL("../src/i18n/locales/es.json", import.meta.url), "utf8")) as Record<string, string>;
+  const pt = JSON.parse(readFileSync(new URL("../src/i18n/locales/pt.json", import.meta.url), "utf8")) as Record<string, string>;
+  assert.deepEqual(VERB_HINT_KEYS.filter((name) => !es[name] || !pt[name]), [], "cada pista tiene su texto en los dos idiomas");
 });
 
 console.log(`\nverify-morphology: ${passed} checks passed.`);

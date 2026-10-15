@@ -157,3 +157,52 @@ export const MORPH_KEYS: string[] = [
     "qal_passive",
   ]),
 ].filter(Boolean);
+
+/**
+ * What a verb says of who does it and how the action is seen, in two words a person who does not read grammar
+ * understands: «ellos · acción completa». It goes under the gloss in the sentence diagram, where the lexicon gives
+ * the dictionary form («cimentar») and not that it was «they» who «laid» them. `null` for a word that is not a verb.
+ * The names are message keys (`vh.*`).
+ */
+export type VerbHint = { who?: string; how?: string };
+
+const HEBREW_ASPECT: Record<string, string> = { p: "vh.done", w: "vh.done", i: "vh.undone", q: "vh.undone", h: "vh.wish", j: "vh.wish", v: "vh.order", a: "vh.inf", c: "vh.inf" };
+
+const whoOf = (person: string, gender: string, number: string): string | undefined => {
+  const many = number === "p" || number === "d";
+  if (person === "1") return many ? "vh.we" : "vh.i";
+  if (person === "2") return many ? "vh.youMany" : "vh.you";
+  if (person === "3") return gender === "f" || gender === "F" ? (many ? "vh.theyF" : "vh.she") : many ? "vh.they" : "vh.he";
+  return undefined;
+};
+
+export function verbHint(morph: string | undefined): VerbHint | null {
+  const code = String(morph ?? "").trim();
+  if (!code) return null;
+  const language = code.split(",")[0]!.toLowerCase();
+  if (language === "he" || language === "ar") {
+    const verb = code.slice(code.indexOf(",") + 1).split(":").find((part) => part.startsWith("V"));
+    if (!verb) return null;
+    const kind = verb[2] ?? "";
+    // A participle names whoever does it (or receives it): «los que construyen» is what הַבֹּנִים is in Ezra 3:10.
+    if (kind === "r" || kind === "s") {
+      const many = verb[4] === "p" || verb[4] === "d";
+      return { how: kind === "r" ? (many ? "vh.doersMany" : "vh.doer") : many ? "vh.doneToMany" : "vh.doneTo" };
+    }
+    const how = HEBREW_ASPECT[kind];
+    const who = kind === "a" || kind === "c" ? undefined : whoOf(verb[3] ?? "", verb[4] ?? "", verb[5] ?? "");
+    return how || who ? { ...(who ? { who } : {}), ...(how ? { how } : {}) } : null;
+  }
+  const codes = code.match(/[A-Z0-9,]/g) ?? [];
+  const at = (place: number) => (codes[place] && codes[place] !== "," ? codes[place]! : "");
+  if (at(2) !== "V") return null;
+  const mood = at(4);
+  if (mood === "N") return { how: "vh.inf" };
+  if (mood === "P") return { how: "vh.doer" };
+  const how = mood === "M" ? "vh.order" : mood === "S" || mood === "O" ? "vh.wish" : { P: "vh.present", I: "vh.past", A: "vh.past", E: "vh.done", L: "vh.past", F: "vh.future" }[at(5)];
+  const who = whoOf(at(7), "", at(10) === "P" ? "p" : "s");
+  return how || who ? { ...(who ? { who } : {}), ...(how ? { how } : {}) } : null;
+}
+
+/** Every key `verbHint` can give: each needs its text in every interface language. */
+export const VERB_HINT_KEYS = ["vh.done", "vh.undone", "vh.wish", "vh.order", "vh.inf", "vh.doer", "vh.doersMany", "vh.doneTo", "vh.doneToMany", "vh.present", "vh.past", "vh.future", "vh.i", "vh.we", "vh.you", "vh.youMany", "vh.he", "vh.she", "vh.they", "vh.theyF"];

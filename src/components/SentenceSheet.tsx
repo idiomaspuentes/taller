@@ -15,7 +15,8 @@ import { bookUsfmName } from "../prep/discover";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, moveBeside, moveOut, nodeAt, splitSentence, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
-import { glossOfWord, strongParts } from "../domain/lexicon";
+import { glossOfWord, strongCode, strongParts } from "../domain/lexicon";
+import { verbHint } from "../domain/morphology";
 import { referentKey } from "../domain/referents";
 import { clauseKind, isClause, isLeaf, joinedIn, leavesOf, LINK, sentenceFits, sentencesAt, sentenceShape, wordsLeftOut, type TreeLeaf, type TreeFile, type TreeNode, type TreePlace, type TreeSentence } from "../domain/syntaxTree";
 import { layoutSideways, layoutTree } from "../domain/treeLayout";
@@ -32,11 +33,14 @@ const OFFERED = ["v", "s", "o", "io", "p", "adv", "pp", LINK];
 
 /** What a word means in its verse, under it: the diagram is read by people who do not read the original. */
 function Gloss({ word, at, session, workspace }: { word: OriginalWord; at: { book: string } & TreePlace; session: GtSession | null; workspace: Workspace | undefined }) {
+  const t = useT();
   const [gloss, setGloss] = useState("");
+  // אֶת has no meaning of its own to gloss («-»): it marks the object, and saying so is what helps to read it.
+  const marker = strongParts(word.strong).some((part) => strongCode(part) === "H0853");
   useEffect(() => {
     setGloss("");
     const part = strongParts(word.strong)[0];
-    if (!part || !session) return;
+    if (!part || !session || marker) return;
     let alive = true;
     void loadLexiconEntry(session, lexiconRepos(workspace, part.kind), part.number).then((entry) => {
       if (alive && entry) setGloss(glossOfWord(entry.file, at, part.letter));
@@ -45,7 +49,17 @@ function Gloss({ word, at, session, workspace }: { word: OriginalWord; at: { boo
       alive = false;
     };
   }, [word.strong, at.book, at.chapter, at.verse, session, workspace]);
-  return gloss ? <span className="st-gloss">{gloss}</span> : null;
+  if (marker) return <span className="st-gloss">{t("st.objectMarker")}</span>;
+  return gloss && gloss !== "-" ? <span className="st-gloss">{gloss}</span> : null;
+}
+
+/** Who does a verb and how its action is seen, under its gloss: «ellos · acción completa». */
+function VerbLine({ word }: { word: OriginalWord }) {
+  const t = useT();
+  const hint = verbHint(word.morph);
+  if (!hint) return null;
+  const said = [hint.who, hint.how].filter(Boolean).map((key) => t(key as MessageKey)).join(" · ");
+  return <span className="st-morph">{said}</span>;
 }
 
 /** What is chosen while a diagram is changed: some children of one box, words or boxes, next to one another or not. */
@@ -94,6 +108,7 @@ function Word({ leaf, role, path, shared }: { leaf: TreeLeaf; role: string; path
       {!leaf.piece || role === "v" ? (
         <>
           <Gloss word={word} at={{ book: shared.book, chapter: leaf.chapter, verse: leaf.verse }} session={shared.session} workspace={shared.workspace} />
+          <VerbLine word={word} />
           {said ? <span className="st-aligned" title={said}>{said}</span> : null}
         </>
       ) : role === LINK && shared.rtl ? (
@@ -175,6 +190,8 @@ function Part({ node, parent, nth, path, shared }: { node: TreeNode; parent?: Tr
 const ROW = 46;
 const PILL = 22;
 const LEAF = 52;
+/** A verb says under its gloss who does it and how («ellos · acción completa»): one more short line for every word. */
+const VERB_LINE = 13;
 
 /**
  * The sentence as a syntax tree: the sentence at the top, branches down to its parts, and the words in a row at
@@ -190,7 +207,7 @@ function useNodeName() {
     const kind = clauseKind(node, parent);
     if (kind === "as") return t("st.treeAs").replace("{role}", role);
     if (kind === "describes") return t("st.treeSub");
-    return kind === "joined" && nth ? `${t("st.clause")} ${nth}` : t("st.clause");
+    return kind === "joined" && nth ? t("st.partN").replace("{n}", String(nth)) : t("st.clause");
   };
 }
 
@@ -206,7 +223,7 @@ const SIDE_LEAF = 54;
 const SIDE_WORDS = 124;
 /** A word with the translation's words under its gloss takes up to two more lines, in a wider column. */
 const ALIGNED_LINE = 28;
-const sideLeaf = (shared: Shared) => SIDE_LEAF + (shared.aligned ? ALIGNED_LINE : 0);
+const sideLeaf = (shared: Shared) => SIDE_LEAF + VERB_LINE + (shared.aligned ? ALIGNED_LINE : 0);
 const sideWords = (shared: Shared) => SIDE_WORDS + (shared.aligned ? 24 : 0);
 
 /**
@@ -304,7 +321,7 @@ function WideTree({ root, shared }: { root: TreeNode; shared: Shared }) {
     [root, shared.words, shared.rtl, shared.aligned, t],
   );
   const leavesTop = (layout.depth + 1) * ROW;
-  const height = leavesTop + LEAF + (shared.aligned ? ALIGNED_LINE : 0);
+  const height = leavesTop + LEAF + VERB_LINE + (shared.aligned ? ALIGNED_LINE : 0);
   useEffect(() => {
     const box = scroller.current;
     if (!box) return;
@@ -403,7 +420,8 @@ export function SentenceSheet({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   /** A tree, as grammars draw it, or boxes one inside another, which fit a phone and are what is changed. */
-  const [view, setView] = useState<"tree" | "boxes">("tree");
+  // On a phone the boxes come first: the tree on its side ran to more than a metre of screen for one verse.
+  const [view, setView] = useState<"tree" | "boxes">(() => (typeof window !== "undefined" && window.matchMedia(NARROW).matches ? "boxes" : "tree"));
 
   useEffect(() => {
     setLoaded(null);
@@ -453,8 +471,9 @@ export function SentenceSheet({
   const kindOf = (root: TreeNode) => {
     const shape = sentenceShape(root);
     const fill = (key: MessageKey) => t(key).replace("{n}", String(shape.clauses)).replace("{sub}", String(shape.subordinate)).replace("{joined}", String(shape.joined));
-    if (shape.subordinate && shape.joined > 1) return fill("st.both");
-    if (shape.subordinate) return fill("st.complex");
+    // «3 partes; una depende de otra»: the numbers of a grammar (compound, complex, subordinate) said in words.
+    if (shape.subordinate && shape.joined > 1) return fill(shape.subordinate === 1 ? "st.bothOne" : "st.both");
+    if (shape.subordinate) return fill(shape.subordinate === 1 ? "st.complexOne" : "st.complex");
     if (shape.joined > 1) return fill("st.compound");
     return t("st.simple");
   };
@@ -685,13 +704,14 @@ export function SentenceSheet({
           {shown.length && !editing ? (
             <>
               <ul className="st-legend" aria-label={t("st.legend")}>
-                {(["v", "s", "o", "adv"] as const).map((role) => (
+                {(["v", "s", "o", "adv", "pp"] as const).map((role) => (
                   <li key={role} data-role={role}>
-                    {t(ROLE[role]!)}
+                    {t(ROLE[role]!)} <span className="st-legend__term">{t(`st.term.${role}` as MessageKey)}</span>
                   </li>
                 ))}
                 <li data-clause>{t("st.clause")}</li>
               </ul>
+              {rtl ? <p className="af-hint">{t("st.andHint")}</p> : null}
               <p className="af-hint">{t("pp.touch")}</p>
             </>
           ) : null}
