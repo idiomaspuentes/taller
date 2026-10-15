@@ -333,12 +333,26 @@ await test("un libro a la vez por equipo: lo libre del libro siguiente espera ap
   // Titus has no open work of that task left: Ruth moves up by itself.
   const done = build([bucket("RUT", "2026-11-01T00:00:00Z", ruth), bucket("TIT", "2026-10-01T00:00:00Z", [])]);
   assert.equal(where(done, ruth[0]!.number)!.group, "free");
-  const stillOpen = build([bucket("RUT", "2026-11-01T00:00:00Z", ruth), bucket("TIT", "2026-10-01T00:00:00Z", [titus[1]!])]);
-  assert.equal(where(stillOpen, ruth[0]!.number)!.group, "later", "mientras alguien del equipo siga en el libro actual");
+  // What is left of Titus is taken by somebody else: nothing to start there, so Ruth is offered.
+  const taken = build([bucket("RUT", "2026-11-01T00:00:00Z", ruth), bucket("TIT", "2026-10-01T00:00:00Z", [titus[1]!])]);
+  assert.equal(where(taken, ruth[0]!.number)!.group, "free", "lo que queda del libro actual ya lo tiene otra persona");
 
   // Projects with no start date cannot be ordered: nothing is held back.
   const undated = build([bucket("RUT", "", ruth), bucket("TIT", "", titus)]);
   assert.equal(where(undated, ruth[0]!.number)!.group, "free");
+});
+
+await test("lo que espera a otro trabajo no retiene el libro siguiente: Efesios reanudado se afina mientras Nehemías se traduce", () => {
+  // Nehemiah's tuning waits on its translation (the second task here waits on the first, chapter by chapter);
+  // Ephesians, resumed behind it, has its translation done: its tuning is what whoever tunes can start.
+  const tuneBoard = { ...plan, teams: [{ ...plan.teams[0]!, id: "tpl", name: "Traducir TPL" }, { ...plan.teams[0]!, id: "simple", name: "Afinar", waitsFor: [{ taskId: "tpl", scope: "chapter" }] }] } as typeof plan;
+  const neh = [issue({ task: "tpl", title: "NEH 1 · Traducir TPL", assignee: "bea", started: true }), issue({ task: "simple", title: "NEH 1 · Afinar" })];
+  const eph = [issue({ task: "simple", title: "EPH 1 · Afinar" })];
+  const bucket = (projectId: string, at: string, issues: DcsIssue[]): MyTasksProjectBucket => ({ projectId, title: projectId, browseProject: true, board: { ...tuneBoard, projectId, workflowAppliedAt: at }, issues, openIssues: issues, sourceIssues: issues });
+  const board = buildBoard({ session: carla, pmOrg: PM, projects: [bucket("NEH", "2026-10-15T00:00:00Z", neh), bucket("EPH", "2026-03-01T00:00:00Z", eph)], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada", priority: { projectOrder: ["NEH", "EPH"], paused: [] } });
+  assert.equal(where(board, neh[1]!.number)!.group, "waiting", "la afinación de Nehemías espera a su traducción");
+  assert.equal(where(board, eph[0]!.number)!.group, "free", "la de Efesios se ofrece, aunque vaya detrás en el orden");
+  assert.equal(nextCard(board)?.issue.number, eph[0]!.number, "y es lo que hay que hacer ahora");
 });
 
 await test("quien administra ordena los proyectos y pone uno en pausa: el orden manda sobre la fecha, y lo pausado espera plegado", () => {

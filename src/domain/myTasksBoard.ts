@@ -383,7 +383,7 @@ export function buildBoard(input: BoardInput): Board {
     board.done.push(card(issue, bucket, "done", { kind: "none", why: "done" }));
   }
 
-  oneBookAtATime(board, projects, rankOf);
+  oneBookAtATime(board, rankOf);
   // A project set aside: whatever of it is still to do waits folded at the end, as it was left, until it is resumed.
   const paused = new Set((input.priority?.paused ?? []).map((id) => id.toUpperCase()));
   const aside = (c: BoardCard) => Boolean(c.bucket && paused.has(c.bucket.projectId.toUpperCase()));
@@ -458,25 +458,24 @@ const startedAt = (bucket: MyTasksProjectBucket): number => Date.parse(bucket.bo
 
 /**
  * A team works one book at a time, but the books overlap by phase: the next book exists before the team finishes
- * the one in hand. Free work of a task is offered for the earliest book that still has open work of that task; the
- * same task in later books waits under «Del siguiente libro», and moves up by itself when the earlier book is done.
+ * the one in hand. Free work of a task is offered for the earliest book where that task has something to start now;
+ * the same task in later books waits under «Del siguiente libro», and moves up by itself when the earlier book has
+ * nothing left to start: done, taken by others, or waiting on other work. Counting any open work held the tuning of
+ * a resumed Ephesians behind Nehemiah's, which waited for its translation: whoever tunes had nothing offered.
  */
-function oneBookAtATime(board: Board, projects: MyTasksProjectBucket[], rankOf: (bucket: MyTasksProjectBucket | undefined) => number): void {
-  const current = new Map<string, MyTasksProjectBucket>();
-  for (const bucket of projects) {
-    const at = rankOf(bucket);
+function oneBookAtATime(board: Board, rankOf: (bucket: MyTasksProjectBucket | undefined) => number): void {
+  const current = new Map<string, number>();
+  for (const row of board.free) {
+    if (!row.task || !row.bucket) continue;
+    const at = rankOf(row.bucket);
     if (at === Number.MAX_SAFE_INTEGER) continue;
-    const open = bucket.openIssues ?? bucket.issues;
-    for (const taskId of new Set(open.map((issue) => issueTaskId(issue)).filter(Boolean))) {
-      const before = current.get(taskId);
-      if (!before || at < rankOf(before)) current.set(taskId, bucket);
-    }
+    const before = current.get(row.task.id);
+    if (before === undefined || at < before) current.set(row.task.id, at);
   }
   const stay: BoardCard[] = [];
   for (const row of board.free) {
-    const first = row.task && row.bucket ? current.get(row.task.id) : undefined;
-    const later = Boolean(first) && first !== row.bucket && rankOf(row.bucket) > rankOf(first);
-    if (later) board.later.push({ ...row, group: "later" });
+    const first = row.task ? current.get(row.task.id) : undefined;
+    if (first !== undefined && rankOf(row.bucket) > first) board.later.push({ ...row, group: "later" });
     else stay.push(row);
   }
   board.free = stay;
