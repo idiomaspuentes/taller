@@ -47,6 +47,14 @@ export function correctionTitle(ask: CorrectionAsk): string {
   return `${head}${text.length > TITLE_MAX - head.length ? `${text.slice(0, TITLE_MAX - head.length - 1).trimEnd()}…` : text}`;
 }
 
+/**
+ * A correction's name as a card shows it, under a line that already says where: «Corrección 1:1: Correcciones al TPL
+ * del capítulo 1» read «correction» twice and the place twice. Only when what follows says it is a correction.
+ */
+export function correctionCardTitle(title: string): string {
+  return title.replace(/^Corrección\s+[\d:–-]+:\s+(?=Correcci)/, "");
+}
+
 /** The correction a plan already has for a concern: the same words, asked of the same task. */
 export function correctionAsked(board: Pick<AssignmentsDoc, "teams" | "phases" | "settings">, from: ProjectTask, ask: CorrectionAsk): ExtraWork | undefined {
   const owner = ownerTaskOf(ask.about, board as AssignmentsDoc, from);

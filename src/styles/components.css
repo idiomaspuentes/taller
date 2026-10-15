@@ -6934,7 +6934,7 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 .task-board__cards {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 /* The rest of a long group, on request. */
 .task-board__rest {
@@ -6959,6 +6959,7 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
     align-items: start;
+    gap: 1.25rem;
   }
   .task-board__rest { grid-column: 1 / -1; justify-self: start; }
 }
@@ -6967,7 +6968,7 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
   display: flex;
   flex-direction: column;
   gap: var(--space-10);
-  padding: var(--space-16);
+  padding: 1.125rem 1.25rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background: var(--surface);
@@ -7300,12 +7301,35 @@ a.step-ask__glossary { min-height: 40px; display: inline-flex; align-items: cent
   font-size: 1rem;
   width: 100%;
 }
-/* Only what to do now is a full, filled bar; the way into the other cards is a button as wide as its words. */
+/* A card with nothing to do here keeps a quiet button as wide as its words. */
 .task-card__action[data-variant="outline"] {
   width: auto;
   min-height: 44px;
   align-self: flex-start;
 }
+/* Ten cards alike, each with its shadow, border and button, were a wall: only what to do now stands out (its
+   shadow, a hint of colour on its border, the filled bar); the rest lie flat, with air, and are entered by a link. */
+.task-card:not([data-lead]):not([data-group="decide"]) { box-shadow: none; }
+.task-card[data-lead] { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
+.task-card__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  align-self: flex-start;
+  min-height: 44px;
+  margin: -0.5rem 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.task-card__go svg { width: 1.125rem; height: 1.125rem; }
+.task-card__go:hover { text-decoration: underline; }
+.task-card__go:disabled { color: var(--text-muted); cursor: default; }
 @media (min-width: 640px) {
   .task-card__action {
     width: auto;

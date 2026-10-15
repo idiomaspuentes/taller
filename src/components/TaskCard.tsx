@@ -1,7 +1,7 @@
 import { parsePortionPrMarker } from "../domain/portionPr";
 import { StepAskBody, TeamRuleChecks, stepAsks } from "./StepAsk";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { bookLabel } from "../domain/books";
 import { formatRelativeEs, previewLine } from "../domain/attention";
@@ -19,6 +19,7 @@ import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useSourcesNow } from "../useSourcesNow";
 import { ProgressBar } from "./ProgressBar";
+import { correctionCardTitle } from "../domain/corrections";
 
 type Props = {
   card: BoardCard;
@@ -198,7 +199,7 @@ export function TaskCard(props: Props) {
   if (props.onRelease) menuItems.push({ id: "release", label: t("tb.release"), run: props.onRelease, danger: true });
 
   return (
-    <article className="task-card" data-issue={card.issue.number} data-group={card.group} data-unread={card.activity.unread || undefined}>
+    <article className="task-card" data-issue={card.issue.number} data-group={card.group} data-unread={card.activity.unread || undefined} data-lead={props.lead || undefined}>
       <div className="task-card__top">
         <h3 className="task-card__title">
           {card.activity.unread ? <span className="task-card__dot" role="img" aria-label={t("mt.unread")} /> : null}
@@ -207,7 +208,7 @@ export function TaskCard(props: Props) {
           {card.activity.isNew && card.group !== "free" && card.group !== "waiting" ? <span className="task-card__new">{t("mt.tagNew")}</span> : null}
           {card.askedBack && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.correctionAsked")}</span> : null}
           {card.redoOf && card.group !== "done" ? <span className="task-card__new task-card__back">{t("tb.redoAsked")}</span> : null}
-          {card.ownTitle || title}
+          {card.ownTitle ? correctionCardTitle(card.ownTitle) : title}
         </h3>
         {menuItems.length ? (
           <div className="task-card__menu" ref={menuRef}>
@@ -356,9 +357,17 @@ export function TaskCard(props: Props) {
 
       {label ? (
         <div className="task-card__actions">
-          <Button type="button" size="lg" variant={action.kind === "none" || !props.lead ? "outline" : undefined} className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
-            {props.busy ? t("tb.working") : label}
-          </Button>
+          {props.lead || action.kind === "none" ? (
+            <Button type="button" size="lg" variant={action.kind === "none" ? "outline" : undefined} className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
+              {props.busy ? t("tb.working") : label}
+            </Button>
+          ) : (
+            // Every other card is a way in, not a second thing to do now: a link, its whole height to touch.
+            <button type="button" className="task-card__go" disabled={props.busy} onClick={props.onPrimary}>
+              {props.busy ? t("tb.working") : label}
+              <ChevronRight aria-hidden />
+            </button>
+          )}
           {action.kind === "approveStep" && action.step.solverAppId && props.onOpenStep ? (
             // The tool of a step that is all done can still be opened, beside what the card asks for.
             <Button type="button" size="lg" variant="outline" className="task-card__action" disabled={props.busy} onClick={() => props.onOpenStep!(action.step)}>
