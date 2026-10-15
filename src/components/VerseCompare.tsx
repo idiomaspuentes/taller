@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import type { GtSession } from "../dcs/auth";
-import { draftTaskId, groupDraftBranches, loadChapterTexts, type ChapterText, type OriginalWord } from "../dcs/afinacionLoad";
+import { chapterTextOf, draftTaskId, groupDraftBranches, loadChapterTexts, type ChapterText, type OriginalWord } from "../dcs/afinacionLoad";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ChapterReader } from "./ChapterReader";
+import { bookLabel } from "../domain/books";
+import { useUiLanguage } from "../i18n/language";
 import { tryReadExistingBookUsfm } from "../dcs/bookBootstrap";
 import type { AlignedTextRef } from "../dcs/alignedWords";
 import { bookUsfmName } from "../prep/discover";
@@ -37,6 +41,10 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
   const workspace = workspaceOfOrg(tallerConfig, ctx.pmOrg);
   // Under each word of the diagram: how the text being decided says it, or its English where it is not aligned.
   const [aligned, setAligned] = useState<AlignedTextRef[] | undefined>(undefined);
+  // The text being decided, whole, for the chapter: read once where the diagram looks for its words.
+  const [own, setOwn] = useState<ChapterText | null>(null);
+  const [chapterOpen, setChapterOpen] = useState(false);
+  const language = useUiLanguage();
   useEffect(() => {
     let alive = true;
     const pkg = resolveSourcePackage(board.settings);
@@ -47,6 +55,7 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
       if ("error" in target) return;
       const found = await tryReadExistingBookUsfm({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branches: [...groupDraftBranches(target.book, draftTaskId(board.teams, proposed) ?? ""), undefined] }).catch(() => null);
       if (!found || !alive) return;
+      setOwn(chapterTextOf("own", proposed.toUpperCase(), found.text));
       setAligned([{ owner: target.owner, repo: target.repo, filepath: target.filepath, ...(found.branch ? { branch: found.branch } : {}), label: proposed.toUpperCase() }, gateway]);
     })();
     return () => {
@@ -114,7 +123,17 @@ export function VerseCompare({ session, ctx, board, chapter, verse }: { session:
       ) : (
         <p className="vc-verse">{shown.book[key] || t("af.noText")}</p>
       )}
+      {/* The verse in its chapter, in the text being read here: a proposal is weighed against what comes around it. */}
+      <button type="button" className="chat-link vc-chapter" onClick={() => setChapterOpen(true)}>
+        {t("vc.readChapter")}
+      </button>
       <ParallelLink book={book} chapter={chapter} from={verse} session={session} workspace={workspace} />
+      <Dialog open={chapterOpen} onOpenChange={setChapterOpen}>
+        <DialogContent className="word-sheet vc-chapter-sheet" aria-describedby={undefined}>
+          <DialogTitle className="ns-title">{`${bookLabel(book, language)} ${chapter}`}</DialogTitle>
+          {chapterOpen ? <ChapterReader session={session} book={book} texts={[...texts.rows.filter((row) => row.id === "orig"), ...(own ? [own] : []), ...texts.rows.filter((row) => row.id !== "orig")]} initial={shown.id} chapter={chapter} from={verse} /> : null}
+        </DialogContent>
+      </Dialog>
       <WordSheet word={sheet?.word ?? null} at={{ book, chapter: sheet?.chapter ?? chapter, verse: sheet?.verse ?? verse }} session={session} workspace={workspace} onClose={() => setSheet(null)} readOnly inDiagram={sheet?.inDiagram} />
       <SentenceSheet
         at={sentence ? { book, chapter, verse } : null}

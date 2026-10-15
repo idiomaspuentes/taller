@@ -8517,7 +8517,7 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .hs-chapter { display: grid; gap: 0.625rem; }
 .hs-chapter__text { font-size: 1rem; line-height: 1.65; }
 .hs-v { margin: 0 0 0.375rem; }
-.hs-v[data-here="true"] { padding-left: 0.5rem; border-left: 2px solid var(--accent-400); }
+.hs-v[data-here="true"] { padding-inline-start: 0.5rem; border-inline-start: 2px solid var(--accent-400); }
 .hs-v { opacity: 0.6; }
 .hs-v[data-here="true"] { opacity: 1; }
 .hs-v sup { font-weight: 700; color: var(--accent-700); }
@@ -8633,6 +8633,9 @@ body:has(.af--round .af-nav) .snd-panel { bottom: 7.75rem; }
 .af-chapter { display: grid; gap: 0.75rem; padding: 0.875rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
 .af-chapter__text { font-size: 1rem; line-height: 1.65; }
 .af-chapter__text.af-orig { font-size: 1.125rem; }
+/* In the sheet of a comparison the chapter is the sheet: no card inside a card. */
+.vc-chapter-sheet .af-chapter { padding: 0; border: 0; background: none; }
+.vc-chapter { justify-self: start; min-height: 2.75rem; }
 /* On a phone the arrows say enough: the middle of the bar is for which figure, and which one of how many. */
 @media (max-width: 40rem) {
   .af-nav__word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

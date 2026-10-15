@@ -107,7 +107,12 @@ function bookVerses(usj: UsjDocument | null): BookVerseMap {
 
 const WHOLE_CHAPTER = (chapter: number) => ({ chapter, from: 1, to: 200 });
 
-export type ChapterText = { id: "orig" | "ult" | "ust" | "draft"; label: string; book: BookVerseMap };
+export type ChapterText = { id: "orig" | "ult" | "ust" | "draft" | "own"; label: string; book: BookVerseMap };
+
+/** A text of the whole book already read (the team's draft, from where it was found), to be read by chapters. */
+export function chapterTextOf(id: ChapterText["id"], label: string, usfm: string): ChapterText {
+  return { id, label, book: bookVerses(tryParseUsj(usfm)) };
+}
 
 /**
  * The texts a chapter is read in, whole book: the original, the literal and the simple English, and the group's
