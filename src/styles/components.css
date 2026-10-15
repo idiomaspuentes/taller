@@ -6481,6 +6481,12 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
 .signin__advanced {
   width: 100%;
 }
+/* As quiet as the links above it: in the colour of the text it stood out more than anything else under the button. */
+.signin__advanced > summary {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
 .signin__advanced[open] > summary {
   margin-bottom: 0.5rem;
 }
