@@ -310,9 +310,10 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
     <div className="chat-main pl">
       <header className="chat-header">
         <div className="chat-header__row">
-          <button type="button" className="chat-back" onClick={onBack} aria-label={t("cv.backToMy")}>
-            <ArrowLeft aria-hidden className="size-4" />
-            <span className="chat-back__label">{t("nav.myTasks")}</span>
+          {/* The arrow alone, round as the button in the corner of the change: «Mis tareas» beside the title read as a
+              second title on a wide screen, and the menu at the top already names it. */}
+          <button type="button" className="chat-back pl-back" onClick={onBack} aria-label={t("cv.backToMy")} title={t("cv.backToMy")}>
+            <ArrowLeft aria-hidden className="size-5" />
           </button>
           <div className="chat-header__name">
             <h1 className="chat-header__title">{single && place ? `${book} ${place.chapter}:${place.verse}` : [book, chapter].filter(Boolean).join(" ") || t("pl.title")}</h1>
