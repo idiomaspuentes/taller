@@ -33,6 +33,11 @@ export type DecisionOption = {
   primary?: boolean;
   /** `null` = enabled; otherwise the reason, shown as text inside the card. */
   blockReason: string | null;
+  /**
+   * Not offered as a button: only its reason is said. For a way the person can never take here (voting on their own
+   * proposal), where a greyed button took a row to say what the reason already says.
+   */
+  hidden?: true;
   /** Inline confirmation text before a write. */
   confirm?: string;
   /** Shown in the card while `run` works (e.g. "Guardando en el tronco…"). */

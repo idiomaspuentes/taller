@@ -33,6 +33,7 @@ const SENTENCES: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^Dejar la de (.+)$/, (m) => `Manter a de ${m[1]}`],
   [/^Usar la de (.+)$/, (m) => `Usar a de ${m[1]}`],
   [/^No se pudieron leer los votos: (.+)$/s, (m) => `Não foi possível ler os votos: ${m[1]}`],
+  [/^Es tuya: ya cuenta a favor\. Van (\d+) de (\d+) votos para aceptarla\.$/, (m) => `É sua: já conta a favor. São ${m[1]} de ${m[2]} votos para aceitá-la.`],
   [/^Solo (.+) o un gestor puede decidir\.$/, (m) => `Somente ${m[1].replace(/ o /g, " ou ")} ou um gestor pode decidir.`],
   [/^El versículo (.+?) cambió después del conflicto\. Ábrelo en el editor\.$/, (m) => `O versículo ${m[1]} mudou depois do conflito. Abra-o no editor.`],
   [/^La otra versión de (.+?) ya no está donde se guardó\. Ábrelo en el editor\.$/, (m) => `A outra versão de ${m[1]} não está mais onde foi salva. Abra-a no editor.`],

@@ -478,6 +478,12 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
             ? "Es tuya: ya cuenta a favor."
             : null;
     const winner = prepared && !prepared.closed ? tally?.winner : undefined;
+    // Whoever proposed it cannot vote on it: the two greyed buttons only repeated the reason, so the reason says the
+    // count and the buttons are not drawn.
+    const own = Boolean(prepared && !prepared.closed && !ctx.prepareError && me === d.by.trim().toLowerCase());
+    const ownReason = own && d.kind === "proposal" && tally
+      ? `Es tuya: ya cuenta a favor. Van ${tally.counts[yes].people.length} de ${Number(d.thresholds?.minAgree) || 2} votos para aceptarla.`
+      : reason;
     const make = (id: DecisionOptionId): DecisionOption => {
       const n = tally?.counts[id].people.length ?? 0;
       return {
@@ -485,7 +491,8 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
         label: `${OPTION_LABEL[id]}${n ? ` (${n})` : ""}${mine?.option === id ? " ✓" : ""}`,
         // One filled button: once this person voted, or when it is theirs, the screen's way on is the filled one.
         primary: id === yes && !winner && !mine && me !== d.by.trim().toLowerCase(),
-        blockReason: reason,
+        blockReason: ownReason,
+        ...(own ? { hidden: true as const } : {}),
         busyLabel: "Guardando tu voto…",
         // A no to a proposal says why, so that whoever proposed knows what to word again.
         ...(id === no && d.kind === "proposal" ? { input: { label: "¿Por qué no? Di qué cambiarías" } } : {}),

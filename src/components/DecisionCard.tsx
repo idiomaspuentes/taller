@@ -212,9 +212,9 @@ export function DecisionCard({
             </Button>
           </div>
         </div>
-      ) : options.length ? (
+      ) : options.some((option) => !option.hidden) ? (
         <div className="chat-decision__actions">
-          {options.map((option) => (
+          {options.filter((option) => !option.hidden).map((option) => (
             <Button
               key={option.id}
               type="button"

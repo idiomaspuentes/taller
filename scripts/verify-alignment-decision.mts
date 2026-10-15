@@ -1,5 +1,5 @@
 /** A proposal or an objection as a decision of the team: who counts, when it is decided. */
-import { buildCloseEvent, buildDecisionEvent, mayEdit, toldOf, waitsOnVote, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
+import { alineacionDecisionType, buildCloseEvent, buildDecisionEvent, mayEdit, toldOf, waitsOnVote, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { PersonLevel } from "../src/domain/levels";
@@ -207,6 +207,24 @@ test("una propuesta espera el voto de quien no la propuso y no votó esa versió
   assert.equal(waitsOnVote(d, "bea", { votes: [vote("bea", "2026-10-14T10:00:00Z")], since: "2026-10-14T11:00:00Z", closed: undefined }), true, "votó otra versión");
   assert.equal(waitsOnVote(d, "bea", { votes: [vote("bea", "2026-10-14T10:00:00Z"), vote("bea", "2026-10-14T12:00:00Z", "retirado")], closed: undefined }), true, "el equipo le retiró el voto");
   assert.equal(waitsOnVote(d, "bea", { votes: [], closed: {} as never }), false, "cerrada, nada espera");
+});
+
+test("quien propuso no ve botones para votar su propuesta: el aviso dice cuántos van; los demás sí los ven", () => {
+  const data = {
+    id: "x2", kind: "proposal", book: "EPH", chapter: 6, verse: 11, by: "bea", aligners: [], tell: [], deadline, oldText: "Póngase", newText: "Pónganse",
+    thresholds: { minAgree: 2, minIndependent: 1 }, baseHash: "h", path: "checkings/proposals/EPH.6-11.x2.proposal.json",
+    draft: { owner: "es-419_gl", repo: "es-419_glt", branch: "borrador/eph/tpl", filepath: "50-EPH.usfm" }, source: { id: "ugnt" },
+  } as unknown as DecisionEventData;
+  const event = { schema: "tas-chat-event-1", ...buildDecisionEvent(data, 9) } as never;
+  const prepared = { votes: [], levels, now: now.toISOString() };
+  const viewer = (username: string) => ({ username, canManage: false, assignees: [] });
+  const own = alineacionDecisionType.options!(event, { viewer: viewer("bea"), prepared });
+  assert.ok(own.length > 0, "la propuesta se lee y tiene opciones");
+  const shown = own.filter((option) => !option.hidden).map((option) => option.id);
+  assert.ok(!shown.includes("aceptar") && !shown.includes("rechazar"), `botones de quien propuso: ${shown.join(", ")}`);
+  assert.equal(own.find((option) => option.id === "aceptar")?.blockReason, "Es tuya: ya cuenta a favor. Van 1 de 2 votos para aceptarla.");
+  const other = alineacionDecisionType.options!(event, { viewer: viewer("carla"), prepared });
+  assert.deepEqual(other.filter((option) => !option.hidden && !option.blockReason).map((option) => option.id).slice(0, 2), ["aceptar", "rechazar"], "quien no la propuso vota");
 });
 
 console.log(`\nverify-alignment-decision: ${passed} checks passed.`);
