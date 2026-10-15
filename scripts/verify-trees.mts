@@ -48,6 +48,20 @@ test("de un árbol de MACULA queda lo que tiene función, y los grupos de en med
   assert.equal(line(reduceSentence(first!)!), "*[&[1:1.1«וַ»] *[v[1:1.1«יְהִי»] s[1:1.2 1:1.3] pp[v*[1:1.8]]]]", "el «y» pegado al verbo se muestra como lo que une; «para decir» es una parte con preposición, y dentro la oración de un solo verbo");
 });
 
+test("el «y» pegado a un sustantivo entre dos sustantivos es solo el «y»: el sustantivo sigue en su parte", () => {
+  // Esdras 3:2, cortado: «Jesúa… y sus hermanos», el וְ y אֶחָיו en la misma palabra, dentro del sujeto.
+  const COORD = `<chapter><sentence id="EZR 3:2"><wg class="cl">
+    <w role="v" class="verb" ref="EZR 3:2!1">יָּקָם</w>
+    <wg role="s" class="np">
+      <w class="noun" ref="EZR 3:2!2">יֵשׁ֨וּעַ</w>
+      <w class="cj" ref="EZR 3:2!5">וְ</w>
+      <w class="noun" ref="EZR 3:2!5">אֶחָ֣י</w>
+      <w class="suffix" ref="EZR 3:2!5">ו</w>
+    </wg>
+  </wg></sentence></chapter>`;
+  assert.equal(line(reduceSentence(parseLowfat(COORD)[0]!)!), "*[v[3:2.1] s[3:2.2 &[3:2.5«וְ»] 3:2.5«אֶחָיו»]]", "la conjunción con su pedazo, y «sus hermanos» en el sujeto");
+});
+
 test("las palabras de una parte van en el orden del texto, aunque el árbol las haya movido", () => {
   const tree = reduceSentence(parseLowfat(GREEK)[0]!)!;
   assert.equal(line(tree), "*[s[1:1.1 1:1.2 &[1:1.3]] adv[1:2.1 1:2.2]]", "el «δὲ» que el árbol pone antes de su palabra queda después, como en el texto");

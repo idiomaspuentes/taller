@@ -297,8 +297,18 @@ export function reduceSentence(raw: RawNode, toOurs: (book: string, place: TreeL
       return !known;
     });
     // A loose piece of a word that a part beside it holds (the «and» joined to a verb) is shown with that part.
-    const held = new Set(kids.filter((kid): kid is Part => !leafOf(kid)).flatMap(idsIn));
+    const held = new Set(kids.filter((kid): kid is Part => !leafOf(kid) && kid.role !== LINK).flatMap(idsIn));
     kids = kids.filter((kid) => !leafOf(kid) || !held.has(wordId(kid)));
+    // But the «and» joined to a noun between two nouns («Jesúa… y sus hermanos») is only the «and»: the noun stays in
+    // its part, and each says its piece. It went whole into the «and», drawn as a word that joins.
+    const linked = new Map<number, Leaf>();
+    for (const kid of kids) if (!leafOf(kid) && kid.role === LINK) for (const leaf of kid.kids) if (leafOf(leaf)) linked.set(wordId(leaf), leaf);
+    for (const kid of kids) {
+      const link = leafOf(kid) ? linked.get(wordId(kid)) : undefined;
+      if (!link || !leafOf(kid)) continue;
+      kid.piece = shown(kid.texts.join(""));
+      link.piece = shown(link.texts.join(""));
+    }
     // In the order of the text: the tree of the Greek moves a particle before the word it follows.
     kids.sort((a, b) => firstOf(a) - firstOf(b));
     let role = part.role;

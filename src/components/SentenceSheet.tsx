@@ -92,7 +92,29 @@ type Shared = {
   pick?: { picked: Picked | null; onPick: (path: TreePath) => void };
   /** The words of a translation aligned with each word, by `"chapter:verse"` and the word's place: under its gloss. */
   aligned?: Record<string, string[]>;
+  /** How many parts that are not the «and» hold a piece of each word (`"chapter:verse:word"`). */
+  pieces?: Map<string, number>;
 };
+
+/**
+ * How many parts other than the «and» hold a piece of each word. A word whose pieces are a verb and its object («me
+ * rodearon») is glossed once, under the verb; a noun that shares its word only with the «and» («y sus hermanos») is
+ * glossed as any word.
+ */
+function countPieces(roots: TreeNode[]): Map<string, number> {
+  const out = new Map<string, number>();
+  const walk = (node: TreeNode) => {
+    for (const kid of node.kids) {
+      if (!isLeaf(kid)) walk(kid);
+      else if (kid.piece && node.role !== LINK) {
+        const key = `${kid.chapter}:${kid.verse}:${kid.word}`;
+        out.set(key, (out.get(key) ?? 0) + 1);
+      }
+    }
+  };
+  roots.forEach(walk);
+  return out;
+}
 
 const isPicked = (shared: Shared, path: TreePath) => {
   const picked = shared.pick?.picked;
@@ -120,7 +142,7 @@ function Word({ leaf, role, path, shared }: { leaf: TreeLeaf; role: string; path
       </span>
       {/* Of a word two parts share, the meaning is the verb's: under the «me» of «me rodearon» it would say
           «rodear». The «and» Hebrew joins to the next word is the one piece that is always the same word. */}
-      {!leaf.piece || role === "v" ? (
+      {!leaf.piece || role === "v" || (role !== LINK && (shared.pieces?.get(`${leaf.chapter}:${leaf.verse}:${leaf.word}`) ?? 0) <= 1) ? (
         <>
           <Gloss word={word} at={{ book: shared.book, chapter: leaf.chapter, verse: leaf.verse }} session={shared.session} workspace={shared.workspace} />
           <VerbLine word={word} />
@@ -520,7 +542,7 @@ export function SentenceSheet({
   }, [session?.token, at?.book, loaded, versesShown, workspace?.contentOrg, (aligned ?? []).map((ref) => `${ref.owner}/${ref.repo}@${ref.branch ?? ""}`).join(",")]);
 
   const rtl = Boolean(loaded && Object.values(loaded.words).some((verse) => verse.some((word) => word.strong.includes("H"))));
-  const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick, ...(under ? { aligned: under.byVerse } : {}) });
+  const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick, pieces: countPieces([...around.before, ...shown, ...around.after].map((sentence) => sentence.root)), ...(under ? { aligned: under.byVerse } : {}) });
 
   // ---- changing a diagram
 
