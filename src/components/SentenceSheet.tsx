@@ -12,6 +12,8 @@ import { alignedWordsOfVerse, verseIsAligned } from "../domain/alignedWords";
 import { alignmentGroupsForVerse } from "../domain/helpQuoteMatch";
 import { DEFAULT_SOURCE_PACKAGE } from "../domain/sourcePackage";
 import { bookUsfmName } from "../prep/discover";
+import { defaultScriptureRepo } from "../domain/scriptureTarget";
+import { groupDraftBranches } from "../dcs/afinacionLoad";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, moveBeside, moveOut, nodeAt, splitSentence, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
@@ -24,6 +26,19 @@ import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 
 type Words = Record<string, OriginalWord[]>;
+
+/**
+ * The texts tried for the words under each word when the screen gives none (a word opened in any tool): the team's
+ * TPL, where its group works on it and then as published, and the ULT where the team's is not aligned.
+ */
+function defaultAligned(book: string, workspace: Workspace | undefined): AlignedTextRef[] {
+  const ult: AlignedTextRef = { owner: DEFAULT_SOURCE_PACKAGE.owner, repo: DEFAULT_SOURCE_PACKAGE.ult, filepath: bookUsfmName(book), label: "ULT" };
+  const repo = workspace ? defaultScriptureRepo("tpl", workspace.lang) : undefined;
+  if (!workspace || !repo) return [ult];
+  const branches = [...new Set(groupDraftBranches(book, "tpl"))];
+  const team = [...branches, undefined].map((branch): AlignedTextRef => ({ owner: workspace.contentOrg, repo, filepath: bookUsfmName(book), ...(branch ? { branch } : {}), label: "TPL" }));
+  return [...team, ult];
+}
 
 /** What each function of a part is called. One the app has no name for is shown without one. */
 const ROLE: Record<string, MessageKey> = { v: "st.v", s: "st.s", o: "st.o", o2: "st.o2", io: "st.io", p: "st.p", vc: "st.vc", adv: "st.adv", pp: "st.pp", aux: "st.aux", [LINK]: "st.link" };
@@ -485,7 +500,7 @@ export function SentenceSheet({
     setUnder(null);
     if (!session || !at || !loaded || !versesShown) return;
     const book = at.book.toUpperCase();
-    const refs = aligned ?? [{ owner: DEFAULT_SOURCE_PACKAGE.owner, repo: DEFAULT_SOURCE_PACKAGE.ult, filepath: bookUsfmName(book), label: "ULT" }];
+    const refs = aligned ?? defaultAligned(book, workspace);
     const verses = versesShown.split(",").map((key) => key.split(":").map(Number) as [number, number]);
     let alive = true;
     void (async () => {
@@ -502,7 +517,7 @@ export function SentenceSheet({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.token, at?.book, loaded, versesShown, (aligned ?? []).map((ref) => `${ref.owner}/${ref.repo}@${ref.branch ?? ""}`).join(",")]);
+  }, [session?.token, at?.book, loaded, versesShown, workspace?.contentOrg, (aligned ?? []).map((ref) => `${ref.owner}/${ref.repo}@${ref.branch ?? ""}`).join(",")]);
 
   const rtl = Boolean(loaded && Object.values(loaded.words).some((verse) => verse.some((word) => word.strong.includes("H"))));
   const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick, ...(under ? { aligned: under.byVerse } : {}) });

@@ -5954,6 +5954,8 @@ button.al-box--read { cursor: pointer; }
 /* Who does a verb and how: «ellos · acción completa», between the gloss and the translation. */
 .st-morph { max-width: 8rem; font-size: 0.625rem; font-style: italic; line-height: 1.2; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
 .st-leaf .st-morph { max-width: 100%; }
+/* In the boxes a word has the height it needs: at the larger text sizes the line wraps instead of being cut. */
+.st-flow .st-morph { white-space: normal; text-align: center; }
 .st-under { margin: 0; color: var(--text-muted); font-size: 0.875rem; }
 .st-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; margin: 0.25rem 0 0; padding: 0; font-size: 0.8125em; color: var(--text-muted); }
 .st-legend li { display: inline-flex; align-items: center; gap: 0.3125rem; }
