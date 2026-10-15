@@ -6951,6 +6951,18 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
   cursor: pointer;
 }
 .task-board__rest:hover { background: var(--surface-muted); }
+/* On a desktop the cards of a group sit two to a row: one column of 720 px left half the screen empty and the
+   list three times as long. The search is as wide as what is typed in it. */
+@media (min-width: 1024px) {
+  .task-home { max-width: none; }
+  .task-board__search { max-width: 26rem; }
+  .task-board__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+    align-items: start;
+  }
+  .task-board__rest { grid-column: 1 / -1; justify-self: start; }
+}
 
 .task-card {
   display: flex;
