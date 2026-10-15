@@ -9475,6 +9475,22 @@ button.pl-pos__at:hover, button.pl-pos__at:focus-visible { background: var(--sur
 .pl .chat-header .pl-back { flex: 0 0 auto; justify-content: center; width: var(--space-44); min-width: var(--space-44); height: var(--space-44); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); color: var(--text); }
 .pl .chat-header .pl-back:hover, .pl .chat-header .pl-back:focus-visible { border-color: var(--border-strong); background: var(--surface-muted); }
 .pl .chat-header__row { gap: var(--space-12); }
+/* The round buttons of the screen are seen small and touched big: 36 px on a phone and 32 on a desk, with the 44 px
+   a finger needs around them, unseen. At 44 px they looked bigger than what they do. */
+.pl .chat-header .pl-back, .pl-apart, .pl-pos__step.btn { position: relative; width: 2.25rem; min-width: 2.25rem; height: 2.25rem; min-height: 2.25rem; }
+.pl .chat-header .pl-back::after, .pl-apart::after, .pl-pos__step.btn::after { content: ""; position: absolute; inset: -0.25rem; border-radius: var(--radius-full); }
+.pl .chat-header .pl-back svg, .pl-apart svg, .pl-pos__step svg { width: 1.125rem; height: 1.125rem; }
+.pl-apart { margin: -0.125rem -0.125rem var(--space-4) var(--space-8); }
+.tc-side .af-lbl .pl-apart { margin-top: -0.375rem; }
+span.pl-pos__step { width: 2.25rem; min-width: 2.25rem; }
+.pl-pos__at { position: relative; min-height: 2.25rem; }
+button.pl-pos__at::after { content: ""; position: absolute; inset: -0.25rem 0; }
+@media (min-width: 1024px) {
+  .pl .chat-header .pl-back, .pl-apart, .pl-pos__step.btn, span.pl-pos__step { width: 2rem; min-width: 2rem; height: 2rem; min-height: 2rem; }
+  .pl .chat-header .pl-back::after, .pl-apart::after, .pl-pos__step.btn::after { inset: -0.375rem; }
+  .pl .chat-header .pl-back svg, .pl-apart svg, .pl-pos__step svg { width: 1rem; height: 1rem; }
+  .pl-pos__at { min-height: 2rem; }
+}
 .tc-side .af-lbl .pl-apart { margin-top: -0.625rem; }
 /* The header in line with the card under it: its edges were a few centimetres in from the card on a wide screen. */
 .pl > .chat-header .chat-header__row { max-width: 46rem; margin-inline: auto; }
