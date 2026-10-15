@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { GROUP_ORDER, OPEN_GROUPS, type Board, type BoardCard, type BoardGroup } from "../domain/myTasksBoard";
+import { GROUP_ORDER, OPEN_GROUPS, nextCard, type Board, type BoardCard, type BoardGroup } from "../domain/myTasksBoard";
 import { bookLabel } from "../domain/books";
 import { localizeName } from "../domain/templateNames";
 import { useUiLanguage } from "../i18n/language";
@@ -71,6 +71,9 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
   });
 
   const all = GROUP_ORDER.flatMap((g) => board[g]);
+  // One filled button on the screen: the card of what to do now. Two to a row on a desktop, four or more filled
+  // buttons stood side by side and none of them said which first.
+  const lead = nextCard(board)?.issue.number;
   const projects = new Set(all.map((c) => c.bucket?.projectId).filter(Boolean));
   const showSearch = all.length >= SEARCH_FROM;
   const needle = search.trim().toLowerCase();
@@ -122,6 +125,7 @@ export function MyTasksBoard({ board, login, now, acting, handlers }: Props) {
                     externalTool={handlers.isExternal(card)}
                     finishesInTool={(step) => handlers.finishesInTool(card, step)}
                     projectLabel={projects.size > 1 ? card.bucket?.title : undefined}
+                    lead={card.issue.number === lead}
                     onPrimary={() => handlers.onPrimary(card)}
                     onOpenThread={handlers.onOpenThread(card)}
                     onDeliver={card.canDeliver ? () => handlers.onDeliver(card) : undefined}

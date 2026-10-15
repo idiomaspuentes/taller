@@ -31,6 +31,8 @@ type Props = {
   finishesInTool: (step: TaskStep) => boolean;
   /** More than one project: the project's name goes on the card as a small label. */
   projectLabel?: string;
+  /** The card that is what to do now: its button is the one filled on the screen; the others have a border. */
+  lead?: boolean;
   onPrimary: () => void;
   onOpenThread?: () => void;
   onDeliver?: () => void;
@@ -353,7 +355,7 @@ export function TaskCard(props: Props) {
 
       {label ? (
         <div className="task-card__actions">
-          <Button type="button" size="lg" variant={action.kind === "none" ? "outline" : undefined} className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
+          <Button type="button" size="lg" variant={action.kind === "none" || !props.lead ? "outline" : undefined} className="task-card__action" disabled={props.busy} onClick={props.onPrimary}>
             {props.busy ? t("tb.working") : label}
           </Button>
           {action.kind === "approveStep" && action.step.solverAppId && props.onOpenStep ? (
