@@ -16,7 +16,7 @@ import { defaultScriptureRepo } from "../domain/scriptureTarget";
 import { groupDraftBranches } from "../dcs/afinacionLoad";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
-import { diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, moveBeside, moveOut, nodeAt, splitSentence, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
+import { diagramChapters, startKey, verseStarts, diagramSentences, dissolveBox, flatSentence, joinSentences, leafOrder, moveBeside, moveOut, nodeAt, splitSentence, sentenceKey, sentencesShown, setBoxKind, wrapKids, type DiagramDoc, type TreePath } from "../domain/diagrams";
 import { glossOfWord, strongCode, strongParts } from "../domain/lexicon";
 import { verbHint } from "../domain/morphology";
 import { referentKey } from "../domain/referents";
@@ -94,6 +94,10 @@ type Shared = {
   aligned?: Record<string, string[]>;
   /** How many parts that are not the «and» hold a piece of each word (`"chapter:verse:word"`). */
   pieces?: Map<string, number>;
+  /** The first word of each verse of a sentence of several (`"chapter:verse:word"`): it carries its verse number. */
+  starts?: Set<string>;
+  /** The chapter the sheet was opened in: a verse of another one says its chapter too. */
+  chapter?: number;
 };
 
 /**
@@ -137,6 +141,11 @@ function Word({ leaf, role, path, shared }: { leaf: TreeLeaf; role: string; path
       aria-pressed={shared.pick ? isPicked(shared, path) : undefined}
       onClick={() => (shared.pick ? shared.pick.onPick(path) : shared.onWord(word, leaf))}
     >
+      {shared.starts?.has(startKey(leaf)) ? (
+        <span className="st-vnum" aria-label={t("st.verseAria").replace("{ref}", leaf.chapter === shared.chapter ? String(leaf.verse) : `${leaf.chapter}:${leaf.verse}`)}>
+          {leaf.chapter === shared.chapter ? leaf.verse : `${leaf.chapter}:${leaf.verse}`}
+        </span>
+      ) : null}
       <span className="st-word__text" lang={shared.rtl ? "hbo" : "grc"}>
         {leaf.piece ?? word.surface}
       </span>
@@ -437,6 +446,8 @@ export function SentenceSheet({
 }) {
   const t = useT();
   const language = useUiLanguage();
+  // The team's diagrams are read wherever the sheet opens, also where it only reads: they are changed only with `teamOrg`.
+  const diagramsOrg = teamOrg ?? workspace?.pmOrg;
   const [loaded, setLoaded] = useState<{ file: TreeFile | null; shipped: TreeSentence[]; words: Words; docs: Record<number, DiagramDoc> } | null>(null);
   /**
    * The sentences before and after the ones of the verse, shown when asked for: a sentence that begins with «y» or
@@ -472,17 +483,21 @@ export function SentenceSheet({
       const found = sentencesAt(file, at);
       // A sentence may begin in the chapter before, or end in the next one.
       const chapters = [...new Set([at.chapter, ...found.flatMap((sentence) => sentence.verses.map((verse) => verse.chapter))])];
-      const [words, docs] = await Promise.all([
+      const [loadedWords, docs] = await Promise.all([
         Promise.all(chapters.map((chapter) => loadOriginalWords(session, at.book, chapter))).then((all): Words => Object.assign({}, ...all)),
-        teamOrg ? Promise.all(chapters.map((chapter) => loadDiagrams(session, teamOrg, at.book, chapter))) : Promise.resolve([] as DiagramDoc[]),
+        diagramsOrg ? Promise.all(diagramChapters(at, found).map((chapter) => loadDiagrams(session, diagramsOrg, at.book, chapter))) : Promise.resolve([] as DiagramDoc[]),
       ]);
+      // The words of a chapter a diagram of the team reaches this verse from (one joined over the end of a chapter).
+      const reaching = docs.flatMap(diagramSentences).filter((sentence) => sentence.verses.some((verse) => verse.chapter === at.chapter && verse.verse === at.verse));
+      const more = [...new Set(reaching.flatMap((sentence) => sentence.verses.map((verse) => verse.chapter)))].filter((chapter) => !chapters.includes(chapter));
+      const words: Words = more.length ? Object.assign({}, loadedWords, ...(await Promise.all(more.map((chapter) => loadOriginalWords(session, at.book, chapter))))) : loadedWords;
       const shipped = file ? found.filter((sentence) => sentenceFits(file, sentence, (verse) => words[`${verse.chapter}:${verse.verse}`]?.length)) : [];
       if (alive) setLoaded({ file, shipped, words, docs: Object.fromEntries(docs.map((doc) => [doc.chapter, doc])) });
     })();
     return () => {
       alive = false;
     };
-  }, [at?.book, at?.chapter, at?.verse, session, teamOrg]);
+  }, [at?.book, at?.chapter, at?.verse, session, diagramsOrg]);
 
   const team = loaded ? Object.values(loaded.docs).flatMap(diagramSentences) : [];
   // A diagram of the team whose words our text no longer has (the text changed under it) is not shown.
@@ -542,7 +557,7 @@ export function SentenceSheet({
   }, [session?.token, at?.book, loaded, versesShown, workspace?.contentOrg, (aligned ?? []).map((ref) => `${ref.owner}/${ref.repo}@${ref.branch ?? ""}`).join(",")]);
 
   const rtl = Boolean(loaded && Object.values(loaded.words).some((verse) => verse.some((word) => word.strong.includes("H"))));
-  const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick, pieces: countPieces([...around.before, ...shown, ...around.after].map((sentence) => sentence.root)), ...(under ? { aligned: under.byVerse } : {}) });
+  const shared = (pick?: Shared["pick"]): Shared => ({ book: at?.book ?? "", words: loaded?.words ?? {}, rtl, focus: focused, session, workspace, onWord, pick, pieces: countPieces([...around.before, ...shown, ...around.after].map((sentence) => sentence.root)), starts: new Set([...around.before, ...shown, ...around.after].flatMap((sentence) => [...verseStarts(sentence)])), chapter: at?.chapter, ...(under ? { aligned: under.byVerse } : {}) });
 
   // ---- changing a diagram
 
@@ -710,7 +725,8 @@ export function SentenceSheet({
               {around.before.map(beside)}
               {shown.map((sentence, i) => (
                 <section key={i} className="st-sentence">
-                  {shown.length > 1 ? <h3 className="pp-passage__ref">{span(sentence)}</h3> : null}
+                  {/* Its verses, whenever it runs over more than the one opened: «Esdras 2:70–3:1». */}
+                  {shown.length > 1 || sentence.verses.length > 1 ? <h3 className="pp-passage__ref">{span(sentence)}</h3> : null}
                   <p className="st-kind">{kindOf(sentence.root)}</p>
                   {view === "tree" ? <Tree root={sentence.root} shared={shared()} /> : <Part node={sentence.root} path={[]} shared={shared()} />}
                   {leftOut(sentence)}

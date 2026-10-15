@@ -1,6 +1,6 @@
 /** The diagrams a team makes its own: how boxes are moved, and how what the team leaves takes the place of the app's. */
 import assert from "node:assert/strict";
-import { diagramSentences, diagramsPath, dissolveBox, emptyDiagramDoc, flatSentence, joinSentences, moveBeside, moveOut, nodeAt, splitSentence, normalizeDiagramDoc, sentenceKey, sentencesShown, setBoxKind, withDiagram, wrapKids } from "../src/domain/diagrams";
+import { diagramChapters, verseStarts, diagramSentences, diagramsPath, dissolveBox, emptyDiagramDoc, flatSentence, joinSentences, moveBeside, moveOut, nodeAt, splitSentence, normalizeDiagramDoc, sentenceKey, sentencesShown, setBoxKind, withDiagram, wrapKids } from "../src/domain/diagrams";
 import { setActiveScope } from "../src/domain/scope";
 import { encodeTree, isLeaf, normalizeTreeFile, sentenceShape, type TreeNode } from "../src/domain/syntaxTree";
 
@@ -119,6 +119,19 @@ test("el archivo de un capítulo está en la carpeta del espacio del equipo", ()
   setActiveScope("espacio-b");
   assert.equal(diagramsPath("JON", 2), "espacio-b/diagramas/JON/2.json", "otro espacio de la misma organización tiene los suyos");
   setActiveScope(undefined);
+});
+
+test("una oración que el equipo unió sobre el fin de un capítulo se encuentra desde el versículo de después", () => {
+  // MACULA corta sus oraciones al final del capítulo; el equipo une 2:70 con 3:1, y el diagrama se guarda en el capítulo 2.
+  assert.deepEqual(diagramChapters({ chapter: 3, verse: 1 }, []), [2, 3], "se lee también el capítulo de antes");
+  assert.deepEqual(diagramChapters({ chapter: 1, verse: 1 }, []), [1], "no hay capítulo cero");
+  const joined = normalizeTreeFile({ sentences: [encodeTree(joinSentences(
+    { role: "", clause: true, kids: [{ chapter: 2, verse: 70, word: 1 }, { chapter: 2, verse: 70, word: 2 }] },
+    { role: "", clause: true, kids: [{ chapter: 3, verse: 1, word: 1 }, { chapter: 3, verse: 1, word: 2 }] },
+  ))] })!.sentences[0]!;
+  assert.deepEqual(joined.verses, [{ chapter: 2, verse: 70 }, { chapter: 3, verse: 1 }]);
+  assert.deepEqual([...verseStarts(joined)], ["2:70:1", "3:1:1"], "cada versículo dice dónde empieza");
+  assert.deepEqual([...verseStarts({ root: { role: "", clause: true, kids: [{ chapter: 3, verse: 2, word: 1 }] }, verses: [{ chapter: 3, verse: 2 }] })], [], "una oración de un solo versículo no lleva números");
 });
 
 console.log(`\nverify-diagrams: ${passed} checks passed.`);

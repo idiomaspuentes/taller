@@ -184,3 +184,29 @@ export function sentencesShown<T extends TreeSentence>(shipped: T[], team: (Tree
   const first = (sentence: TreeSentence) => Math.min(...leavesOf(sentence.root).map(idOf));
   return [...here, ...shipped.filter((sentence) => !leavesOf(sentence.root).some((leaf) => taken.has(idOf(leaf))))].sort((a, b) => first(a) - first(b));
 }
+
+/**
+ * The chapters whose team diagrams can reach a verse: its own, those its sentences run into, and the one before. A
+ * team's diagram is kept in the chapter of its first word, and MACULA cuts its sentences at the end of a chapter:
+ * a sentence the team joined over it begins in the chapter before, and was not found from the verse after.
+ */
+export function diagramChapters(at: TreePlace, sentences: TreeSentence[]): number[] {
+  return [...new Set([...(at.chapter > 1 ? [at.chapter - 1] : []), at.chapter, ...sentences.flatMap((sentence) => sentence.verses.map((verse) => verse.chapter))])].sort((a, b) => a - b);
+}
+
+/**
+ * The first word of each verse of a sentence that runs over more than one (`startKey`): there its
+ * verse number is shown, so that whoever reads the diagram knows where the verse they came from begins.
+ */
+export const startKey = (leaf: TreeLeaf): string => `${leaf.chapter}:${leaf.verse}:${leaf.word}${leaf.piece ? `:${leaf.piece}` : ""}`;
+
+export function verseStarts(sentence: TreeSentence): Set<string> {
+  if (sentence.verses.length < 2) return new Set();
+  const first = new Map<string, TreeLeaf>();
+  for (const leaf of [...leavesOf(sentence.root)].sort((a, b) => idOf(a) - idOf(b))) {
+    const verse = `${leaf.chapter}:${leaf.verse}`;
+    if (!first.has(verse)) first.set(verse, leaf);
+  }
+  // A word in pieces («וַ» and «יָּקָם») carries the number once, on its first piece.
+  return new Set([...first.values()].map(startKey));
+}

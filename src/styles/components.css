@@ -5943,6 +5943,9 @@ button.al-box--read { cursor: pointer; }
 .st-flow > .st-word { margin-top: 0.125rem; }
 .st-word { display: inline-grid; justify-items: center; min-height: 2.5rem; min-width: 1.75rem; padding: 0.125rem 0.3125rem; border: 1px solid transparent; border-radius: 6px; background: none; font: inherit; color: var(--text); cursor: pointer; }
 .st-word:hover, .st-word:focus-visible { border-color: var(--border-strong); }
+/* Where a verse begins in a sentence of several: its number, small, in the corner of its first word. */
+.st-word { position: relative; }
+.st-vnum { position: absolute; top: -0.375rem; inset-inline-start: -0.25rem; min-width: 1rem; padding: 0 0.1875rem; border-radius: var(--radius-full); background: var(--text-muted); color: var(--surface); font-family: var(--font-sans); font-size: 0.625rem; font-weight: 700; line-height: 1rem; text-align: center; direction: ltr; unicode-bidi: isolate; }
 .st-word[data-here] { border-color: var(--accent-500); background: var(--accent-100); }
 /* A word that joins: between two boxes, drawn as the link it is. */
 .st-word[data-link] { align-self: center; border: 1px dashed var(--border-strong); border-radius: var(--radius-full); background: var(--surface-muted); }
