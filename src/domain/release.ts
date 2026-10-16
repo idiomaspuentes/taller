@@ -27,6 +27,21 @@ import { teamRules, uid } from "./assignment";
 import { DEFAULT_PM_NAMESPACE } from "./roles";
 
 export const RELEASE_ACTION = "Publicar versión";
+
+/**
+ * The tag of the last published release of a repository: the newest by date, leaving out drafts, pre-releases and
+ * dates before 2000 (the team's Academy has a «v32» dated 1970, listed after «v4» of 2024). Null when there is none.
+ */
+export function latestReleaseTag(releases: { tag_name?: string; created_at?: string; published_at?: string; draft?: boolean; prerelease?: boolean }[]): string | null {
+  let best: { tag: string; at: number } | null = null;
+  for (const release of releases) {
+    const tag = release.tag_name?.trim();
+    const at = Date.parse(release.published_at || release.created_at || "");
+    if (!tag || release.draft || release.prerelease || !Number.isFinite(at) || at < Date.UTC(2000, 0, 1)) continue;
+    if (!best || at > best.at) best = { tag, at };
+  }
+  return best?.tag ?? null;
+}
 export const DEFAULT_RELEASE_PROFILE_NAME = "Traducción";
 
 export function defaultReleaseProfile(phases: Phase[]): ReleaseProfile {

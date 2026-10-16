@@ -1,4 +1,5 @@
-import { getRawContent } from "@ip-lms/dcs-client";
+import { getRawContent, listReleases } from "@ip-lms/dcs-client";
+import { latestReleaseTag } from "../domain/release";
 import { tokenizeOriginalDocument } from "@usfm-tools/editor-core";
 import { parseUsfmToUsj } from "@usfm-tools/usfm-readonly-react";
 import type { AlignmentMap } from "@usfm-tools/types";
@@ -181,17 +182,50 @@ export async function loadTermTitles(
  */
 export async function loadTermArticle(session: GtSession, pkg: Pick<SourcePackage, "owner" | "tw">, term: Pick<TermItem, "termSlug" | "termKind">, ctx: SolverLaunchContext, pmConfig: PmConfig = DEFAULT_PM_CONFIG, options: TeamFirst = {}): Promise<string | null> {
   const path = termArticlePath(term.termKind, term.termSlug);
-  if (options.teamFirst === false) return readRaw(session, pkg.owner, pkg.tw, path);
-  const own = resolveHelpsTarget({ ...ctx, resource: "palabras" }, pmConfig);
-  const mine = "error" in own ? null : await readRaw(session, own.owner, own.repo, path);
-  return mine?.trim() ? mine : await readRaw(session, pkg.owner, pkg.tw, path);
+  const own = options.teamFirst === false ? { error: "source only" } : resolveHelpsTarget({ ...ctx, resource: "palabras" }, pmConfig);
+  return teamOrSource(session, own, options.teamFirst ?? true, path, () => readRaw(session, pkg.owner, pkg.tw, path));
 }
 
 /**
- * Whether the team's own translation of an article is read before the source package's. Tuning reads the source:
- * the team's Academy has not been through Harmonization yet, and can be wrong.
+ * Whether the team's own translation of an article is read before the source package's. `"published"`: only as the
+ * team's last release has it. Tuning reads that: an article translated in a first pass and not yet harmonized and
+ * published (with this book or another) can be wrong, and is read in the source's language; one the team published
+ * is read in theirs.
  */
-export type TeamFirst = { teamFirst?: boolean };
+export type TeamFirst = { teamFirst?: boolean | "published" };
+
+const releaseTags = new Map<string, Promise<string | null>>();
+
+/** The tag of the last published release of a repository, once per visit. */
+function lastPublishedTag(session: GtSession, owner: string, repo: string): Promise<string | null> {
+  const key = `${session.host}|${owner}/${repo}`.toLowerCase();
+  let asked = releaseTags.get(key);
+  if (!asked) {
+    asked = listReleases(dcsConfig(session.host), owner, repo, { limit: 50, token: session.token })
+      .then((releases) => latestReleaseTag(releases as never))
+      .catch(() => null);
+    releaseTags.set(key, asked);
+  }
+  return asked;
+}
+
+/** A file of the team's repository as its last published release has it; null when it is not in one. */
+async function readPublished(session: GtSession, owner: string, repo: string, filepath: string): Promise<string | null> {
+  const tag = await lastPublishedTag(session, owner, repo);
+  if (!tag) return null;
+  try {
+    return await getRawContent(dcsConfig(session.host), owner, repo, filepath, { token: session.token, ref: tag });
+  } catch {
+    return null;
+  }
+}
+
+/** The team's file (now, or as published), or else the source's. */
+async function teamOrSource(session: GtSession, own: { owner: string; repo: string } | { error: string }, mode: TeamFirst["teamFirst"], filepath: string, source: () => Promise<string | null>): Promise<string | null> {
+  if (mode === false || "error" in own) return source();
+  const mine = mode === "published" ? await readPublished(session, own.owner, own.repo, filepath) : await readRaw(session, own.owner, own.repo, filepath);
+  return mine?.trim() ? mine : source();
+}
 
 const firstLine = (text: string | null) => (text ?? "").split(/\r?\n/).map((line) => line.replace(/^#+\s*/, "").trim()).find(Boolean) ?? "";
 
@@ -212,7 +246,9 @@ export async function loadArticleInfo(session: GtSession, ctx: SolverLaunchConte
     await Promise.all(
       todo.slice(i, i + 8).map(async (path) => {
         const read = (owner: string, repo: string) => Promise.all([readRaw(session, owner, repo, `${path}/title.md`), readRaw(session, owner, repo, `${path}/sub-title.md`)]);
-        const mine = "error" in own ? [null, null] : await read(own.owner, own.repo);
+        const readMine = (owner: string, repo: string) =>
+          options.teamFirst === "published" ? Promise.all([readPublished(session, owner, repo, `${path}/title.md`), readPublished(session, owner, repo, `${path}/sub-title.md`)]) : read(owner, repo);
+        const mine = "error" in own ? [null, null] : await readMine(own.owner, own.repo);
         if (firstLine(mine[0])) {
           out[path] = { title: firstLine(mine[0]), question: firstLine(mine[1]) || undefined, own: true };
           return;
@@ -227,11 +263,10 @@ export async function loadArticleInfo(session: GtSession, ctx: SolverLaunchConte
 
 /** The article itself, to read it in full: the team's translation when there is one, else the source package's. */
 export async function loadArticleBody(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, path: string, options: TeamFirst = {}): Promise<string | null> {
-  if (options.teamFirst === false) return readRaw(session, pkg.owner, pkg.ta, `${path}/01.md`);
+  const source = () => readRaw(session, pkg.owner, pkg.ta, `${path}/01.md`);
+  if (options.teamFirst === false) return source();
   const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
-  const own = resolveHelpsTarget({ ...ctx, resource: "academia" }, pmConfig);
-  const mine = "error" in own ? null : await readRaw(session, own.owner, own.repo, `${path}/01.md`);
-  return mine?.trim() ? mine : readRaw(session, pkg.owner, pkg.ta, `${path}/01.md`);
+  return teamOrSource(session, resolveHelpsTarget({ ...ctx, resource: "academia" }, pmConfig), options.teamFirst ?? true, `${path}/01.md`, source);
 }
 
 /** The verses a subtarea covers, from its place (`1:1–4`); a whole chapter (`1`) covers them all. */

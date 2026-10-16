@@ -4,6 +4,7 @@
  */
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import {
+  latestReleaseTag,
   nextReleaseIdentity,
   publishVersion,
   releaseGate,
@@ -928,6 +929,21 @@ const passedA = [passMark("tpl-a", [1, 2]), passMark("tps-a", [3])];
   );
   assert(twoFileWins.mark.serverAt === "2026-09-25T13:00:00Z", `two targets: newer file wins: ${twoFileWins.mark.serverAt}`);
   console.log("ok  no-write pass after a verse decision stores the newest decision time; newer decisions block; unreadable date → no mark");
+}
+
+{
+  // The last published release, by date: the Academy of es-419 lists «v4» (2024), «v31.1» (2022) and «v32» (1970).
+  const tag = latestReleaseTag([
+    { tag_name: "v31.1", created_at: "2022-08-18T00:00:00Z" },
+    { tag_name: "v32", created_at: "1970-01-01T00:00:00Z" },
+    { tag_name: "v4", created_at: "2024-07-17T00:00:00Z" },
+    { tag_name: "v5", created_at: "2025-01-01T00:00:00Z", draft: true },
+    { tag_name: "v6", created_at: "2025-02-01T00:00:00Z", prerelease: true },
+  ]);
+  assert(tag === "v4", `la última publicación: «${tag}»`);
+  assert(latestReleaseTag([]) === null, "sin publicaciones: ninguna");
+
+  console.log("ok  la última publicación es la más reciente por fecha, sin borradores ni fechas de 1970");
 }
 
 console.log("\nverify:release — all checks passed");

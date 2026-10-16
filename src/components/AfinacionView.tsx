@@ -82,6 +82,20 @@ const QUESTION: Record<AfinacionStep, Record<"tpl" | "tps", MessageKey>> = {
 
 const TITLE: Record<AfinacionStep, MessageKey> = { notas: "af.titleNotas", palabras: "af.titlePalabras" };
 
+/** Whether the point lays out in two columns: the width its styles turn at. */
+const WIDE = "(min-width: 1024px)";
+function useWide(): boolean {
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia(WIDE).matches);
+  useEffect(() => {
+    const media = window.matchMedia(WIDE);
+    const look = () => setWide(media.matches);
+    look();
+    media.addEventListener("change", look);
+    return () => media.removeEventListener("change", look);
+  }, []);
+  return wide;
+}
+
 
 function Words({ text, marked, onTap, selected }: { text: string; marked?: number[]; onTap?: (i: number) => void; selected?: number[] }) {
   const t = useT();
@@ -135,14 +149,19 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** A closed point opened again by this person, to object to it. */
   const [reopened, setReopened] = useState(false);
   /** The whole note, on a phone: a long one pushed the verse below the screen. */
+  /** Side by side: the width the styles of this screen turn at, where the note has a column of its own. */
+  const wide = useWide();
   /** The note or the definition shown on the point, as this person left it last (a per-device convenience). */
-  const [showReason, setShowReason] = useState(() => {
+  const [foldedPref, setShowReason] = useState(() => {
     try {
       return localStorage.getItem("taller-af-reason") === "1";
     } catch {
       return false;
     }
   });
+  // Folded only where it takes the place of the work (a phone); on a wide screen it has its column, which folded
+  // stood empty beside the work.
+  const showReason = wide || foldedPref;
   const toggleReason = (shown: boolean) => {
     setShowReason(shown);
     try {
@@ -296,7 +315,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   useEffect(() => {
     if (!session?.token || !ctx || !data || data.step !== "notas" || !data.items.length) return;
     let cancelled = false;
-    void loadArticleInfo(session, ctx, data.sourcePackage, data.items.map((note) => articlePathOf(note.supportRef)), { teamFirst: false })
+    void loadArticleInfo(session, ctx, data.sourcePackage, data.items.map((note) => articlePathOf(note.supportRef)), { teamFirst: "published" })
       .then((found) => !cancelled && setArticles(found))
       .catch(() => undefined);
     return () => {
@@ -311,7 +330,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     if (!session || !ctx || !data) return;
     if (reading?.path === path && reading.body !== undefined) return;
     setReading({ path });
-    const body = await loadArticleBody(session, ctx, data.sourcePackage, path, { teamFirst: false }).catch(() => null);
+    const body = await loadArticleBody(session, ctx, data.sourcePackage, path, { teamFirst: "published" }).catch(() => null);
     setReading((current) => (current?.path === path ? { path, body } : current));
   }
 
@@ -631,7 +650,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   useEffect(() => {
     if (!session || !ctx || !data || !termSlug || termSlug in termArticles) return;
     let cancelled = false;
-    void loadTermArticle(session, data.sourcePackage, item as TermItem, ctx, undefined, { teamFirst: false })
+    void loadTermArticle(session, data.sourcePackage, item as TermItem, ctx, undefined, { teamFirst: "published" })
       .catch(() => null)
       .then((text) => !cancelled && setTermArticles((had) => ({ ...had, [termSlug]: text ?? null })));
     return () => {
@@ -974,7 +993,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {item ? (stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : "") : ""}
             </DialogTitle>
           </header>
-          <div className="fx-body" lang={data ? sourcePackageLang(data.sourcePackage) : undefined}>
+          {/* No «lang» of the source: the article is the team's when they published it (see «teamFirst: "published"»). */}
+          <div className="fx-body af-article-read">
             {stepProp === "palabras" ? (
               termArticle ? <HelpMarkdownView content={articleBody(termArticle)} /> : <p className="af-hint">{t(termArticle === null ? "af.noArticle" : "af.loadingArticle")}</p>
             ) : reading?.body ? (
@@ -1288,9 +1308,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     {t("af.readArticle")}
                   </button>
                 ) : null}
-                <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
-                  {t("af.hideReason")}
-                </button>
+                {wide ? null : (
+                  <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
+                    {t("af.hideReason")}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="af-reason-bar">
@@ -1305,15 +1327,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             // What the term means, where it is reviewed, as the note is for a challenge: the team checked key words
             // without the screen saying what the word was (16 October). From the source package, like the notes.
             showReason ? (
-              <div className="af-reason" lang={sourcePackageLang(data.sourcePackage)} data-whole="true">
+              <div className="af-reason" data-whole="true">
                 <HelpMarkdownView className="af-note af-note--md" content={definition} />
                 <button type="button" className="af-link" lang={language} onClick={() => setArticleOpen(true)}>
                   {t("af.wholeArticle")}
                 </button>
                 {termGlossary}
-                <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
-                  {t("af.hideReason")}
-                </button>
+                {wide ? null : (
+                  <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
+                    {t("af.hideReason")}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="af-reason-bar">
