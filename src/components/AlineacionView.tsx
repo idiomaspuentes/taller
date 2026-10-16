@@ -62,6 +62,8 @@ import { DEFAULT_SOURCE_PACKAGE, resolveSourcePackage, type SourcePackage } from
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { stepPurpose } from "../domain/processes";
+import { localizeName } from "../domain/templateNames";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
@@ -520,6 +522,28 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
 
   const me = (session?.username ?? "").toLowerCase();
   const taskStep = task?.steps?.find((s) => s.id === ctx?.stepId);
+  /** What the step is for and how it is done, as the process says them; said once, then a touch away. */
+  const said = stepPurpose(task?.id ?? ctx?.taskId ?? "", taskStep, language);
+  const taskLabel = ctx?.taskName ? localizeName(ctx.taskName, language) : "";
+  const roundSteps = (said.description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const welcomeKey = `taller-af-welcome:${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`;
+  const [welcomed, setWelcomed] = useState(true);
+  useEffect(() => {
+    try {
+      setWelcomed(localStorage.getItem(welcomeKey) === "1");
+    } catch {
+      setWelcomed(false);
+    }
+  }, [welcomeKey]);
+  const dismissWelcome = () => {
+    setWelcomed(true);
+    try {
+      localStorage.setItem(welcomeKey, "1");
+    } catch {
+      /* private window: seen for this visit only */
+    }
+  };
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   // An open round: one step anybody of the team enters, that closes by agreement and leaves nobody out for having
@@ -1454,8 +1478,10 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         // With the chapter open over the tool, back closes the chapter: it left the tool, and what was being
         // aligned with it.
         onBack={() => (pane === "chapter" ? setPane("align") : void leave())}
+        // The passage, and under it the task with how far along: the line said the step and the task, «Alinear ·
+        // Alinear TPS», the same twice.
         meta={[
-          toolHeading(ctx, language, title).where,
+          taskLabel || toolHeading(ctx, language, title).where,
           data ? (mode === "alinear" ? t("al.metaDone").replace("{a}", String(doneCount)) : t("al.metaAgreed").replace("{a}", String(summary?.agreed ?? 0))).replace("{b}", String(data.verses.length)) : "",
           data && mode === "revisar" && toAnswer ? t("al.toAnswerShort").replace("{n}", String(toAnswer)) : "",
         ]
@@ -1466,6 +1492,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
             ? [{ id: "chapter", label: t("al.readChapter"), hint: t("mm.chapterHint"), pressed: pane === "chapter", onSelect: () => setPane(pane === "chapter" ? "align" : "chapter") }]
             : []
         }
+        info={said.purpose ? { label: t("af.aboutTask"), onOpen: () => setAboutOpen(true) } : undefined}
       >
         {shared ? (
           <div className="al-modes" role="tablist" aria-label={t("al.modesAria")}>
@@ -1479,8 +1506,38 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         ) : null}
       </ToolHeader>
       <div className="step-ask-bar">
-        <StepAsk session={session} ctx={ctx} />
+        {/* What the step is for, how it is done and the team's rules: a welcome the first time, then «ⓘ» in the header.
+            Folded over the work, it scrolled inside its own height and pushed the verse down. */}
+        <StepAsk
+          session={session}
+          ctx={ctx}
+          label={said.purpose ? t("af.aboutTask") : undefined}
+          open={said.purpose ? aboutOpen : undefined}
+          onOpenChange={said.purpose ? setAboutOpen : undefined}
+          trigger={!said.purpose}
+        />
       </div>
+      {data && said.purpose && !welcomed ? (
+        <section className="af-welcome" aria-label={t("af.welcomeTitle")}>
+          <p className="af-welcome__title">{t("af.welcomeTitle")}</p>
+          <p className="af-welcome__purpose">{said.purpose}</p>
+          {roundSteps.length > 1 ? (
+            <ol className="af-welcome__steps">
+              {roundSteps.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ol>
+          ) : null}
+          <div className="af-welcome__actions">
+            <Button type="button" variant="outline" onClick={dismissWelcome}>
+              {t("af.welcomeOk")}
+            </Button>
+            <button type="button" className="af-link" onClick={() => setAboutOpen(true)}>
+              {t("af.welcomeRules")}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {data && verse && session && pane === "chapter" ? (
         <ChapterReader session={session} book={data.book} pkg={pkg} draft={data.draft} draftLabel={t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")} chapter={data.chapter} from={verse.verse} />

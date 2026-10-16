@@ -9919,3 +9919,16 @@ button.cr-note:hover { background: var(--primary-100); }
 .af--round .af-intro h1, .af--round .af-help-pane h1 { font-size: 1.25em; }
 .af--round .af-intro h2, .af--round .af-help-pane h2 { font-size: 1.125em; }
 .af--round .af-intro :is(h3, h4), .af--round .af-help-pane :is(h3, h4) { font-size: 1.0625em; }
+
+/*
+ * The alignment tool, as the tuning one: the secondary text a step darker (8:1 and more) and the filled button too;
+ * its box takes the window and gives its width to what is in it, so the header reaches the edges instead of ending
+ * in gray bands at the width of the tool (16 October).
+ */
+.af.al { --text-muted: var(--gray-700); --text-faint: var(--gray-600); --primary: var(--accent-600); --primary-hover: var(--accent-700); --al-max: 52rem; --al-pad: 0.75rem; max-width: none; }
+@media (min-width: 768px) { .af.al { --al-max: 84rem; } }
+@media (min-width: 1024px) { .af.al { --al-pad: 1.5rem; } }
+.af.al > :where(:not(.th, dialog)) { width: 100%; max-width: var(--al-max); align-self: center; }
+.af.al > .th { margin-inline: calc(-1 * var(--al-pad)); padding-inline: max(0.5rem, calc((100% - var(--al-max)) / 2 + var(--al-pad))); }
+/* The small labels of the alignment («Faltan 58 palabras»): the faint gray at 11 px read under 6:1. */
+.af.al .af-lbl { color: var(--text-muted); font-size: 0.75rem; }

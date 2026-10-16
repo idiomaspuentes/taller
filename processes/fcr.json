@@ -1797,9 +1797,13 @@
               "actionLabels": {
                 "pt": "Alinhar"
               },
-              "description": "Une cada palabra del original con lo que la traduce en el texto de la porción.",
+              "description": "Toca una palabra del TPL.\nToca la caja de la palabra del original que traduce (o arrástrala hasta ella).\nSigue hasta que todas estén en su caja; luego toca «Terminé de alinear».",
               "descriptions": {
-                "pt": "Une cada palavra do original com o que a traduz no texto da porção."
+                "pt": "Toque uma palavra do TPL.\nToque a caixa da palavra do original que ela traduz (ou arraste-a até ela).\nContinue até que todas estejam na sua caixa; depois toque «Terminei de alinhar»."
+              },
+              "purpose": "Une cada palabra del TPL con la palabra del original que traduce.",
+              "purposes": {
+                "pt": "Una cada palavra do TPL com a palavra do original que ela traduz."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "self",
@@ -1815,9 +1819,13 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Otras dos personas revisan cada versículo alineado.",
+              "description": "Mira cada versículo alineado, caja por caja.\nDi si estás de acuerdo o qué cambiarías.\nCon dos personas de acuerdo, el versículo queda revisado.",
               "descriptions": {
-                "pt": "Outras duas pessoas revisam cada versículo alinhado."
+                "pt": "Olhe cada versículo alinhado, caixa por caixa.\nDiga se está de acordo ou o que mudaria.\nCom duas pessoas de acordo, o versículo fica revisado."
+              },
+              "purpose": "Comprueba que cada palabra del TPL esté en la caja de la palabra del original que de verdad traduce.",
+              "purposes": {
+                "pt": "Verifique se cada palavra do TPL está na caixa da palavra do original que ela realmente traduz."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "consensus",
@@ -1999,9 +2007,13 @@
               "actionLabels": {
                 "pt": "Alinhar"
               },
-              "description": "Une cada palabra del original con lo que la traduce en el texto de la porción.",
+              "description": "Toca una palabra del TPS.\nToca la caja de la palabra del original que traduce (o arrástrala hasta ella).\nSigue hasta que todas estén en su caja; luego toca «Terminé de alinear».",
               "descriptions": {
-                "pt": "Une cada palavra do original com o que a traduz no texto da porção."
+                "pt": "Toque uma palavra do TPS.\nToque a caixa da palavra do original que ela traduz (ou arraste-a até ela).\nContinue até que todas estejam na sua caixa; depois toque «Terminei de alinhar»."
+              },
+              "purpose": "Une cada palabra del TPS con la palabra del original que traduce.",
+              "purposes": {
+                "pt": "Una cada palavra do TPS com a palavra do original que ela traduz."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "self",
@@ -2017,9 +2029,13 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Otras dos personas revisan cada versículo alineado.",
+              "description": "Mira cada versículo alineado, caja por caja.\nDi si estás de acuerdo o qué cambiarías.\nCon dos personas de acuerdo, el versículo queda revisado.",
               "descriptions": {
-                "pt": "Outras duas pessoas revisam cada versículo alinhado."
+                "pt": "Olhe cada versículo alinhado, caixa por caixa.\nDiga se está de acordo ou o que mudaria.\nCom duas pessoas de acordo, o versículo fica revisado."
+              },
+              "purpose": "Comprueba que cada palabra del TPS esté en la caja de la palabra del original que de verdad traduce.",
+              "purposes": {
+                "pt": "Verifique se cada palavra do TPS está na caixa da palavra do original que ela realmente traduz."
               },
               "solverAppId": "afinar-alineacion",
               "closing": "consensus",
