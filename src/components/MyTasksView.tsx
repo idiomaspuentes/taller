@@ -98,6 +98,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { recordOwnAction, recordOwnClose } from "../domain/pendingEvents";
 import { explainError } from "../dcs/userError";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   session: GtSession;
@@ -923,7 +924,7 @@ export function MyTasksView({
             <p className="hub-empty-panel__body">{t("mt.chooseOrgBody")}</p>
           </div>
         ) : busy && !loaded ? (
-          <p className="hub-hint">{t("mt.loading")}</p>
+          <LoadingState shape="list" label={t("mt.loading")} />
         ) : loaded && count === 0 && taskBoard.done.length === 0 ? (
           <div className="hub-empty-panel">
             <h2 className="hub-empty-panel__title">{hadWork ? t("empty.upTitle") : t("empty.firstTitle")}</h2>
@@ -1070,7 +1071,7 @@ export function MyTasksView({
         </div>
       ) : null}
 
-      {busy && !loaded ? <p className="hub-hint">{t("mt.loading")}</p> : null}
+      {busy && !loaded ? <LoadingState shape="list" label={t("mt.loading")} /> : null}
 
 
       {pmOrg && mode === "avisos" && mentions.length ? (

@@ -25,6 +25,7 @@ import { useUiLanguage } from "../i18n/language";
 import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { PROBLEM_KEY } from "../unitProblemText";
 import { explainError } from "../dcs/userError";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -239,7 +240,7 @@ export function PublishUnitView({ ctxEncoded, mode, aligned, articles, needsEndo
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">{t("pu.loading")}</p> : null}
+      {busy ? <LoadingState shape="tool" label={t("pu.loading")} /> : null}
 
       {unit && problems ? (
         <section className="af-card" aria-label={t("pu.checks")}>

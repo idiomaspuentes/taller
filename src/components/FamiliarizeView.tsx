@@ -35,6 +35,7 @@ import { noteHeading, useHelpSources } from "./HelpSources";
 import { studyNotesProps } from "./StudyNotesDrawer";
 import { StudyNotesPanel } from "./StudyNotesPanel";
 import { UsfmReferencePane } from "./UsfmReferencePane";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -315,7 +316,7 @@ export function FamiliarizeView({ ctxEncoded, onClose }: Props) {
       ) : null}
 
       {busy ? (
-        <p className="scripture-editor__loading">{t("fa.loading")}</p>
+        <LoadingState shape="tool" label={t("fa.loading")} />
       ) : loggedIn && range ? (
         <>
         <div className="fam-tabs" role="tablist" aria-label={t("fa.partsAria")}>

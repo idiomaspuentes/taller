@@ -12,6 +12,7 @@ import { describeMorph, type MorphLabel } from "../domain/morphology";
 import { useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { SentenceSheet } from "./SentenceSheet";
+import { LoadingState } from "./LoadingState";
 
 /**
  * A word of the original as the text tags it. `occurrence` says which one it is among the words of its verse
@@ -325,7 +326,7 @@ export function WordSheet({
               </button>
             ) : null}
 
-            {found === null ? <p className="af-hint">{t("lx.loading")}</p> : null}
+            {found === null ? <LoadingState shape="text" label={t("lx.loading")} lines={4} /> : null}
             {found !== null && !found.some((row) => row.file) ? <p className="af-hint">{t("lx.none")}</p> : null}
 
             {(found ?? []).map(({ part, file, repo }) => {

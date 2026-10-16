@@ -29,6 +29,7 @@ import { useUiLanguage } from "../i18n/language";
 import { useT, type MessageKey } from "../i18n/messages";
 import { explainError } from "../dcs/userError";
 import { glossaryEntrySaved } from "../useGlossary";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   session: GtSession;
@@ -239,7 +240,7 @@ export function GlossaryView({ session, owner, lang, pmOrg, canManage, passage, 
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">{t("gl.loading")}</p> : null}
+      {busy ? <LoadingState shape="list" label={t("gl.loading")} /> : null}
       {glossary && !glossary.exists && !busy ? <p className="hub-hint">{t(canManage ? "gl.notYetOwner" : "gl.notYet")}</p> : null}
 
       {glossary && !draft ? (

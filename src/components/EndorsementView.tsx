@@ -42,6 +42,7 @@ import { tNow, useT } from "../i18n/messages";
 import { explainError } from "../dcs/userError";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { refComment } from "../domain/commentPlace";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -437,7 +438,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
+      {busy ? <LoadingState shape="tool" label={t("af.loading")} /> : null}
       {stepDone && mode === "decision" ? (
         // Decided: there is nothing left to do here, and the way out is said. It read «Aval concedido» over a screen
         // with no button at all.
@@ -504,7 +505,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
               ) : null}
             </>
           ) : (
-            <p className="af-hint" aria-busy="true">{t("en.changesLoading")}</p>
+            <LoadingState shape="text" label={t("en.changesLoading")} lines={3} />
           )}
         </details>
       ) : null}

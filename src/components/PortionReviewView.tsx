@@ -51,6 +51,7 @@ import { ArticleBlocks } from "./ArticleBlocks";
 import { usePieces } from "./usePieces";
 import { articleFilesOf, introPieceRef, pieceRef, rowsPossible, untranslated, vocabularyOf, type ArticleFile } from "../domain/articleBlocks";
 import { knownWords } from "../domain/helpTexts";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -905,7 +906,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       ) : null}
 
       {busy ? (
-        <p className="scripture-editor__loading">{t("pr.loading")}</p>
+        <LoadingState shape="tool" label={t("pr.loading")} />
       ) : issue && range ? (
         <>
         <div className="fam__body" ref={pieces.pane}>

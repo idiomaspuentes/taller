@@ -22,6 +22,7 @@ import { bookLabel } from "../domain/books";
 import { loadIntroNotes } from "../domain/referenceResources";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from "../useTeamRules";
+import { LoadingState } from "./LoadingState";
 
 /**
  * What a step asks of whoever does it: the process's description of the step, the things to keep in mind in it and
@@ -383,7 +384,7 @@ export function PassageIntroText({ session, ctx }: { session: GtSession | null |
   if (!ctx.book) return null;
   return (
     <>
-        {intro === undefined ? <p className="af-hint">{t("sa.introLoading")}</p> : null}
+        {intro === undefined ? <LoadingState shape="text" label={t("sa.introLoading")} lines={6} /> : null}
         {intro === null || (intro && !intro.book && !intro.chapter) ? <p className="af-hint">{t("sa.introNone")}</p> : null}
         {intro?.book ? (
           <section>

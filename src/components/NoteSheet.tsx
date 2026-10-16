@@ -9,6 +9,7 @@ import type { SolverLaunchContext } from "../domain/solverLaunch";
 import type { SourcePackage } from "../domain/sourcePackage";
 import { useT } from "../i18n/messages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
+import { LoadingState } from "./LoadingState";
 
 /**
  * A note named in a reason, opened over the proposal: where it is, the words of the original it is about, what it
@@ -70,7 +71,7 @@ export function NoteSheet({
         {alone ? (
           <>
             <DialogTitle className="ns-title">{title || path}</DialogTitle>
-            <section className="ns-article ns-article--alone">{article === undefined ? <p className="af-hint">{t("ns.loading")}</p> : article ? <HelpMarkdownView content={article} /> : <p className="af-hint">{t("ns.noArticle")}</p>}</section>
+            <section className="ns-article ns-article--alone">{article === undefined ? <LoadingState shape="text" label={t("ns.loading")} lines={6} /> : article ? <HelpMarkdownView content={article} /> : <p className="af-hint">{t("ns.noArticle")}</p>}</section>
           </>
         ) : null}
         {note ? (

@@ -31,7 +31,8 @@ import { tNow, useT } from "../i18n/messages";
 import { PROPOSAL_STATE_KEY, ProposalDiff, ProposalSheet, type ProposalDraft, type ProposalTarget } from "./ProposalSheet";
 import { StepAsk } from "./StepAsk";
 import { ToolHeader } from "./ToolHeader";
-import { toolHeading } from "./toolHeading";
+import { toolHeading } from "./toolHeading";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -332,7 +333,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">{t("ag.loading")}</p> : null}
+      {busy ? <LoadingState shape="tool" label={t("ag.loading")} /> : null}
       {trying ? (
         <p className="ck-trying" role="status">
           {t("ck.trying")}

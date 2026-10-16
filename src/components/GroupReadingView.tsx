@@ -28,6 +28,7 @@ import { localizeThread } from "../domain/threadNames";
 import { useUiLanguage } from "../i18n/language";
 import { tNow, useT } from "../i18n/messages";
 import { ReasonField } from "./ReasonField";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -370,7 +371,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
       ) : null}
 
       {busy ? (
-        <p className="scripture-editor__loading">{t("gr.loading")}</p>
+        <LoadingState shape="tool" label={t("gr.loading")} />
       ) : data && progress ? (
         <>
         <div className="fam__body">

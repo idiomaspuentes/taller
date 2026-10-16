@@ -4,6 +4,7 @@ import type { GtSession } from "../dcs/auth";
 import { loadChapterTexts, type ChapterText } from "../dcs/afinacionLoad";
 import type { SourcePackage } from "../domain/sourcePackage";
 import { useT } from "../i18n/messages";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   session: GtSession;
@@ -45,7 +46,7 @@ export function ChapterReader({ session, book, pkg, draft, draftLabel, texts: gi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.token, book, draft?.owner, draft?.repo, draft?.branch, Boolean(given)]);
 
-  if (!texts) return <p className="af-hint">{t("cr.loading")}</p>;
+  if (!texts) return <LoadingState shape="text" label={t("cr.loading")} lines={8} />;
   const text = texts.find((row) => row.id === shown) ?? texts[0];
   if (!text) return <p className="af-hint">{t("cr.none")}</p>;
   const chapters = [...new Set(Object.keys(text.book).map((key) => Number(key.split(":")[0])))].sort((a, b) => a - b);

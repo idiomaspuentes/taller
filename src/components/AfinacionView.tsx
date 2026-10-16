@@ -58,7 +58,8 @@ import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeAfinacion } from "../domain/afinacionNames";
-import { explainError } from "../dcs/userError";
+import { explainError } from "../dcs/userError";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -1021,11 +1022,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {/* No «lang» of the source: the article is the team's when they published it (see «teamFirst: "published"»). */}
           <div className="fx-body af-article-read">
             {stepProp === "palabras" ? (
-              termArticle ? <HelpMarkdownView content={articleBody(termArticle)} /> : <p className="af-hint">{t(termArticle === null ? "af.noArticle" : "af.loadingArticle")}</p>
+              termArticle ? <HelpMarkdownView content={articleBody(termArticle)} /> : termArticle === null ? <p className="af-hint">{t("af.noArticle")}</p> : <LoadingState shape="text" label={t("af.loadingArticle")} lines={8} />
             ) : reading?.body ? (
               <HelpMarkdownView content={reading.body} />
             ) : (
-              <p className="af-hint">{t(reading?.body === null ? "af.noArticle" : "af.loadingArticle")}</p>
+              reading?.body === null ? <p className="af-hint">{t("af.noArticle")}</p> : <LoadingState shape="text" label={t("af.loadingArticle")} lines={8} />
             )}
           </div>
         </DialogContent>
@@ -1060,7 +1061,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
+      {busy ? <LoadingState shape="tool" label={t("af.loading")} /> : null}
 
       {summary ? (
         <div ref={roundRef} className="af-round-top">
@@ -1158,7 +1159,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               <>
                 {articles[articlePathOf(item.supportRef)]?.question ? <p className="af-article-q">{articles[articlePathOf(item.supportRef)]!.question}</p> : null}
                 {reading?.path === articlePathOf(item.supportRef) ? (
-                  reading.body === undefined ? <p className="af-hint">{t("af.loadingArticle")}</p> : reading.body ? <HelpMarkdownView content={reading.body} /> : <p className="af-hint">{t("af.noArticle")}</p>
+                  reading.body === undefined ? <LoadingState shape="text" label={t("af.loadingArticle")} lines={8} /> : reading.body ? <HelpMarkdownView content={reading.body} /> : <p className="af-hint">{t("af.noArticle")}</p>
                 ) : null}
                 {session && ctx?.pmOrg && ctx.projectId && articlePathOf(item.supportRef) ? (
                   // The article is read here and maintained by whoever harmonizes: what is found in it is left for them.

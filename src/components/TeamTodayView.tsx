@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { explainError } from "../dcs/userError";
 import { ActivityCalendar, ActivityStrip, useWorkLine, WORK_WEEKS } from "./ActivityCalendar";
 import { WorkLine } from "./ProgressBar";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   session: GtSession;
@@ -213,7 +214,7 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
           </button>
         </p>
       ) : null}
-      {busy && !loaded ? <p className="hub-hint">{t("td.loading")}</p> : null}
+      {busy && !loaded ? <LoadingState shape="list" label={t("td.loading")} /> : null}
 
       {loaded && !projects.length && !error ? (
         <div className="hub-empty-panel">

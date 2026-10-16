@@ -125,7 +125,8 @@ import {
 } from "./viewMode";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { explainError } from "./dcs/userError";
+import { explainError } from "./dcs/userError";
+import { LoadingState } from "./components/LoadingState";
 
 /** Pages that keep the phone's bottom bar: the daily places and the personal ones. */
 const BOTTOM_NAV_ROUTES: string[] = ["avisos", "mis-tareas", "perfil", "hoy", "proyectos", "organizacion", "plantillas", "glosario"];
@@ -1375,9 +1376,7 @@ export function App() {
           <PushPrompt session={session} />
         ) : null}
         {hydrating && route.name === "proyecto" ? (
-          <Alert className="mb-3">
-            <AlertDescription>{t("app.loadingProject")}</AlertDescription>
-          </Alert>
+          <LoadingState shape="list" label={t("app.loadingProject")} />
         ) : null}
         {live ? (
           <Alert className="mb-3">

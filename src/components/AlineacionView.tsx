@@ -75,7 +75,8 @@ import { glossesInclude, strongParts, type LexiconFile } from "../domain/lexicon
 import { WordSheet } from "./WordSheet";
 import { referentKey } from "../domain/referents";
 import { CorrectionSheet } from "./CorrectionSheet";
-import { spanLabel } from "../domain/joinedVerses";
+import { spanLabel } from "../domain/joinedVerses";
+import { LoadingState } from "./LoadingState";
 
 export type AlineacionMode = "alinear" | "revisar";
 
@@ -1566,7 +1567,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">{t("al.loading")}</p> : null}
+      {busy ? <LoadingState shape="tool" label={t("al.loading")} /> : null}
 
       {(shared || mode === "revisar") && summary && data ? (
         <RoundPanel

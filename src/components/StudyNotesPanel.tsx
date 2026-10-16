@@ -8,6 +8,7 @@ import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
 import { notesByResource, studyNotesFor, type StudyNote } from "../domain/studyNotes";
 import { useT } from "../i18n/messages";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   session: GtSession;
@@ -188,7 +189,7 @@ export function StudyNotesPanel({ session, pmOrg, lang, projectId, book, chapter
       </div>
 
       {notes === null ? (
-        <p className="pe-hint">{t("sn.loading")}</p>
+        <LoadingState shape="text" label={t("sn.loading")} lines={3} />
       ) : own.length || others.length ? (
         <>
           {own.length ? <ul className="sn-list">{own.map(row)}</ul> : <p className="pe-hint">{t("sn.noneOfResource").replace("{res}", resourceName || "")}</p>}

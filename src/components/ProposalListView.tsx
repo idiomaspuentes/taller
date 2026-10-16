@@ -31,6 +31,7 @@ import { postThreadReply } from "../dcs/conversationPost";
 import { sanitizeMentions } from "../domain/conversation";
 import { hasUnread, type CommentSource, type ReadCursorDoc } from "../domain/readCursor";
 import { Button } from "@/components/ui/button";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   session: GtSession | null;
@@ -327,7 +328,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
             {error}
           </p>
         ) : null}
-        {!data && !error ? <p className="hub-hint">{t("pl.loading")}</p> : null}
+        {!data && !error ? <LoadingState shape="tool" label={t("pl.loading")} /> : null}
         {data && !rows.length ? <p className="hub-hint">{t("pl.none")}</p> : null}
         {data && current ? (
           <>
@@ -397,7 +398,7 @@ export function ProposalListView({ session, pmOrg, lang, contentOrg, issueNumber
                       {threadError}
                     </p>
                   ) : null}
-                  {!decision && !threadError && !thread ? <p className="hub-hint">{t("pl.loading")}</p> : null}
+                  {!decision && !threadError && !thread ? <LoadingState shape="text" label={t("pl.loading")} lines={2} /> : null}
                   {!decision && thread ? (
                     // Not a proposal this screen knows how to show: its conversation does.
                     <button type="button" className="chat-link pl-thread" onClick={() => onOpenThread(current.number)}>

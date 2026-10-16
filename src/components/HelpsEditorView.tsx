@@ -73,7 +73,8 @@ import { localizeName } from "../domain/templateNames";
 import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
-import { explainError } from "../dcs/userError";
+import { explainError } from "../dcs/userError";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -1025,7 +1026,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       ) : null}
 
       {busy ? (
-        <p className="scripture-editor__loading">{t("he.loading")}</p>
+        <LoadingState shape="tool" label={t("he.loading")} />
       ) : (
         // Kept mounted under the other tab, so that what is being written is not lost by going to read.
         <div className="fam__body" role="tabpanel" hidden={wantsSources && pane !== "edit"} ref={pieces.pane}>

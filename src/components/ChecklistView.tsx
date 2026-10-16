@@ -45,6 +45,7 @@ import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { verseFromSid } from "../domain/usfmAst";
 import { readTeamArticle, saveNoteQuote, type TeamArticle } from "../dcs/teamHelps";
 import { explainError } from "../dcs/userError";
+import { LoadingState } from "./LoadingState";
 
 type Props = {
   ctxEncoded: string;
@@ -688,7 +689,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {busy ? <p className="hub-hint">{t("af.loading")}</p> : null}
+      {busy ? <LoadingState shape="tool" label={t("af.loading")} /> : null}
       {trying ? (
         <p className="ck-trying" role="status">
           {t("ck.trying")}
