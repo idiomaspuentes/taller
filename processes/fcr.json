@@ -1817,9 +1817,9 @@
               "purposes": {
                 "pt": "Verifique se cada palavra-chave é traduzida sempre da mesma forma em todo o livro."
               },
-              "criterion": "En el TPL, donde significa lo mismo, se usa la misma palabra. Puede ser otra si aquí significa otra cosa, o si en español hay otra forma igual de literal.",
+              "criterion": "En el TPL, donde significa lo mismo, se usa la misma palabra. Puede ser otra solo si aquí significa otra cosa, o si en español hay otra forma igual de literal; nunca para quitar una figura, aunque sea una metáfora muerta (como «sobre»): el TPS y las notas la aclaran.",
               "criteria": {
-                "pt": "No TPL, onde significa o mesmo, usa-se a mesma palavra. Pode ser outra se aqui significa outra coisa, ou se em português há outra forma igualmente literal."
+                "pt": "No TPL, onde significa o mesmo, usa-se a mesma palavra. Pode ser outra só se aqui significa outra coisa, ou se em português há outra forma igualmente literal; nunca para tirar uma figura, mesmo que seja uma metáfora morta (como «sobre»): o TPS e as notas a esclarecem."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
