@@ -182,6 +182,7 @@ export function WordSheet({
   onSeparate,
   readOnly,
   inDiagram,
+  literal,
 }: {
   /** The word to show, or `null` while the sheet is closed. */
   word: SheetWord | null;
@@ -195,6 +196,8 @@ export function WordSheet({
   readOnly?: boolean;
   /** Opened over the diagram of its sentence: closing it goes back there, so it does not offer to open it again. */
   inDiagram?: boolean;
+  /** Read for a literal text (the TPL): the sense a lexicon gives is said not to be, always, the literal rendering. */
+  literal?: boolean;
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -326,6 +329,8 @@ export function WordSheet({
               </button>
             ) : null}
 
+            {/* Translators took the sense a lexicon gives for the literal way to say a word (16 October). */}
+            {literal && found !== null && found.some((row) => row.file) ? <p className="af-hint ws-literal">{t("lx.notLiteral")}</p> : null}
             {found === null ? <LoadingState shape="text" label={t("lx.loading")} lines={4} /> : null}
             {found !== null && !found.some((row) => row.file) ? <p className="af-hint">{t("lx.none")}</p> : null}
 

@@ -898,6 +898,7 @@
   "af.unmarkedMany": "Sin marcar: {n} usos.",
   "af.staleMine": "El versículo cambió después de tu respuesta. Vuelve a revisarlo.",
   "af.myAnswer": "Tu respuesta: {stance}",
+  "lx.notLiteral": "El sentido que da el léxico no siempre es la traducción literal.",
   "af.qPalabrasTpsFirst": "¿{words} es una buena forma de decir {orig} en el TPS?",
   "af.elsewhereTerm": "Así se tradujo «{term}» en otros lugares",
   "af.bridge": "Toca en el {res} las palabras que corresponden a lo resaltado en la referencia. Toca una palabra, o desliza el dedo sobre varias.",

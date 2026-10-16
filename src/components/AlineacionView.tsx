@@ -1474,6 +1474,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         at={{ book: data?.book ?? "", chapter: data?.chapter ?? 0, verse: verse?.verse ?? 0 }}
         session={session ?? null}
         workspace={workspace}
+        literal={data?.resource === "tpl"}
         onClose={() => setSheet(null)}
         onSeparate={sheet && editable && sheetBox && sheetBox.targetTokens.length > 1 && sheetBox.groupIndex !== null ? () => separateWord(sheet.boxId, sheet.refIndex) : undefined}
       />

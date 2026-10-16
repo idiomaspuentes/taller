@@ -1031,7 +1031,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           </div>
         </DialogContent>
       </Dialog>
-      <WordSheet word={sheetWord?.word ?? null} at={{ book: data?.book ?? "", chapter: sheetWord?.chapter ?? 0, verse: sheetWord?.verse ?? 0 }} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} onClose={() => setSheetWord(null)} />
+      <WordSheet word={sheetWord?.word ?? null} at={{ book: data?.book ?? "", chapter: sheetWord?.chapter ?? 0, verse: sheetWord?.verse ?? 0 }} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} literal={data?.resource === "tpl"} onClose={() => setSheetWord(null)} />
       <ToolHeader
         // The passage, and under it the task with how far along: «Palabras clave TPS · 0 de 74 acordadas». The line said
         // «Revisar palabras clave · Palabras clave TPS», the task twice; with both in the title, a phone cut the passage.
