@@ -1717,8 +1717,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   </ul>
                   {/* Asked, not warned: «salvación», «habiendo salvado» and «sálvenlos» are three forms and one translation. */}
                   {elsewhere.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(elsewhere.length))}</p> : null}
-                  {/* Said, not shouted: in the TPS another form may say the same. */}
-                  {chosenWords && !elsewhere.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-hint af-differs">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
                 </div>
               ) : null}
               {(() => {
