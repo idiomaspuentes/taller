@@ -223,10 +223,6 @@ export function hasWorkDone(issue: Pick<DcsIssue, "body">): boolean {
   return marker.doneStepIds.length > 0 || Object.values(marker.steps ?? {}).some((step) => (step.work?.done ?? 0) > 0);
 }
 
-/** Begun work first, in the order it had; then the rest, in theirs. */
-export function begunFirst<T extends Pick<BoardCard, "issue">>(cards: T[]): T[] {
-  return [...cards.filter((card) => hasWorkDone(card.issue)), ...cards.filter((card) => !hasWorkDone(card.issue))];
-}
 
 export function correctionsFirst<T extends Pick<BoardCard, "askedBack" | "redoOf">>(cards: T[]): T[] {
   const first = (card: T) => Boolean(card.askedBack || card.redoOf);
@@ -417,9 +413,6 @@ export function buildBoard(input: BoardInput): Board {
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
     // The lists of a book are gone through chapter by chapter: they came 10, 8, 9, 7… by when each was touched.
     if (group === "todo") board.todo = listsInOrder(board.todo);
-    // What has work done in it and nobody holds (begun before Taller, or given back) comes before what nobody
-    // began: the team goes on where it was.
-    if (group === "free" || group === "reviews") board[group] = begunFirst(board[group]);
     // A correction that was asked for holds up whoever asked: it comes before the work that is only waiting its turn.
     if (group !== "done") board[group] = correctionsFirst(board[group]);
   }
@@ -464,7 +457,12 @@ const byPlaceIn = (rankOf: (bucket: MyTasksProjectBucket | undefined) => number)
   };
   const [chapterA, verseA] = startOf(a.place);
   const [chapterB, verseB] = startOf(b.place);
-  return bookAt(a) - bookAt(b) || chapterA - chapterB || verseA - verseB || taskAt(a) - taskAt(b) || a.issue.number - b.issue.number;
+  // A team delivers one chapter at a time: all of a chapter's work, task by task in the order of the plan (the
+  // challenges, the key words and the alignment of the TPL, then those of the TPS), before the next chapter. By verse
+  // first, the tasks of a chapter were mixed, and Harmonization waited for chapters nobody was finishing (15 October).
+  // In a task, what has work done in it first (begun before Taller, or given back), then by verse.
+  const begun = Number(hasWorkDone(b.issue)) - Number(hasWorkDone(a.issue));
+  return bookAt(a) - bookAt(b) || chapterA - chapterB || taskAt(a) - taskAt(b) || begun || verseA - verseB || a.issue.number - b.issue.number;
 }
 
 /** When a project was started, to tell which of two books came first. Unknown = no order can be told. */

@@ -392,7 +392,7 @@ await test("una tarea sin equipo que todavía espera a otra no se ofrece: aparec
   assert.equal(free.reviews.some((c) => c.issue.number === waits.number), true);
 });
 
-await test("lo libre se ofrece desde el principio del libro: por pasaje, y en un pasaje por el orden de las tareas del plan", () => {
+await test("lo libre se ofrece un capítulo a la vez: en un capítulo, tarea por tarea en el orden del plan, y en cada tarea por versículo", () => {
   // Made in the order a plan makes them, which is not the order they are read in.
   const later = issue({ task: "tpl", title: "NEH 2:1–8 · Traducir TPL" });
   const notes = issue({ task: "simple", title: "NEH 1:1–8 · Traducir Notas" });
@@ -401,19 +401,33 @@ await test("lo libre se ofrece desde el principio del libro: por pasaje, y en un
   const tenth = issue({ task: "tpl", title: "NEH 10 · Traducir TPL" });
   const article = issue({ task: "simple", title: "NEH · Traducir Notas · gracia" });
   const free = boardFor([later, notes, second, first, tenth, article]).free.map((card) => card.issue.number);
-  // Chapter 2 before chapter 10; the article, which is of no passage, after the passages.
-  assert.deepEqual(free, [first, notes, second, later, tenth, article].map((row) => row.number));
+  // All of chapter 1's first task, then its second task; then chapter 2, and chapter 2 before chapter 10. The
+  // article, which is of no passage, after the passages.
+  assert.deepEqual(free, [first, second, notes, later, tenth, article].map((row) => row.number));
   assert.equal(nextCard(boardFor([later, notes, second, first, tenth, article]))?.issue.number, first.number, "lo primero que se ofrece es el principio del libro");
 });
 
-await test("lo que ya tiene trabajo hecho se ofrece antes que lo que nadie empezó, aunque vaya más adelante en el libro", () => {
-  // Ezra came from translationCore with the challenges of chapter 4 half done: they go on there, not at chapter 1.
-  const one = issue({ task: "tpl", title: "NEH 1:1–8 · Traducir TPL" });
-  const four = issue({ task: "tpl", title: "NEH 4:1–2 · Traducir TPL", progress: { done: [], seats: { revisar: [] }, work: { revisar: { done: 131, total: 138 } } } });
-  const five = issue({ task: "tpl", title: "NEH 5:1–3 · Traducir TPL" });
-  const free = boardFor([one, five, four]).free.map((card) => card.issue.number);
-  assert.deepEqual(free, [four, one, five].map((row) => row.number));
-  assert.equal(nextCard(boardFor([one, five, four]))?.issue.number, four.number, "y es lo que hay que hacer ahora");
+await test("un capítulo se entrega entero antes de empezar el siguiente: el TPL y luego el TPS del capítulo 1, después el capítulo 2", () => {
+  // Tuning had the challenges of the TPL and the TPS of chapter 1 mixed by verse with nothing finished (15 October).
+  const tps1a = issue({ task: "simple", title: "NEH 1:1–4 · Traducir Notas" });
+  const tpl2 = issue({ task: "tpl", title: "NEH 2:1–3 · Traducir TPL" });
+  const tpl1b = issue({ task: "tpl", title: "NEH 1:5–11 · Traducir TPL" });
+  const tps1b = issue({ task: "simple", title: "NEH 1:5–11 · Traducir Notas" });
+  const tpl1a = issue({ task: "tpl", title: "NEH 1:1–4 · Traducir TPL" });
+  const free = boardFor([tps1a, tpl2, tpl1b, tps1b, tpl1a]).free.map((card) => card.issue.number);
+  assert.deepEqual(free, [tpl1a, tpl1b, tps1a, tps1b, tpl2].map((row) => row.number));
+});
+
+await test("en una misma tarea de un capítulo, lo que ya tiene trabajo hecho va primero; pero no salta a otro capítulo", () => {
+  // Ezra came from translationCore with the challenges of chapter 4 half done.
+  const one = issue({ task: "tpl", title: "NEH 4:1–2 · Traducir TPL" });
+  const half = issue({ task: "tpl", title: "NEH 4:6–7 · Traducir TPL", progress: { done: [], seats: { revisar: [] }, work: { revisar: { done: 131, total: 138 } } } });
+  const three = issue({ task: "tpl", title: "NEH 4:3–5 · Traducir TPL" });
+  const notes = issue({ task: "simple", title: "NEH 4:1–2 · Traducir Notas", progress: { done: [], seats: { revisar: [] }, work: { revisar: { done: 3, total: 9 } } } });
+  const earlier = issue({ task: "tpl", title: "NEH 3:1–2 · Traducir TPL" });
+  const free = boardFor([one, notes, three, half, earlier]).free.map((card) => card.issue.number);
+  assert.deepEqual(free, [earlier, half, one, three, notes].map((row) => row.number));
+  assert.equal(nextCard(boardFor([one, notes, three, half]))?.issue.number, half.number, "en el capítulo 4, se sigue donde se iba");
 });
 
 await test("al terminar un paso se sigue con el siguiente si es de la misma persona; la revisión de otros no se abre", () => {
