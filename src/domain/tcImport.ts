@@ -145,6 +145,8 @@ export function decisionsFromTcChecks(params: {
   return { decisions, leftOut, withoutId };
 }
 
+export { tcCheckerOf } from "./reviewRound";
+
 /** How far each chapter is, as a team would say it: so many of so many checked. */
 export function tcProgressByChapter(result: TcImportResult): Record<number, { done: number; total: number }> {
   const out: Record<number, { done: number; total: number }> = {};

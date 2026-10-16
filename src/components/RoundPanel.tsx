@@ -101,7 +101,7 @@ export function FinalDecision(props: { tally: ItemTally; canConfirm: boolean; bu
   if (tally.decided) {
     return (
       <p className="round__decided">
-        {t("round.decidedBy").replace("{who}", tally.decided.by)}
+        {t(tally.decided.inTc ? "round.checkedInTc" : "round.decidedBy").replace("{who}", tally.decided.by)}
         {tally.decided.note ? ` ${tally.decided.note}` : ""}
       </p>
     );

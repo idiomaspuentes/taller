@@ -226,13 +226,22 @@ export function orderTermUses<T extends TermItem>(uses: T[], order: TermOrder): 
 }
 
 /** The first of these items the person has not answered on the text as it is now; -1 when none is left. */
-export function firstUnanswered(params: { items: { id: string }[]; decisions: ReviewDecision[]; me: string; hashOf: (id: string) => string; from?: number }): number {
+export function firstUnanswered(params: {
+  items: { id: string }[];
+  decisions: ReviewDecision[];
+  me: string;
+  hashOf: (id: string) => string;
+  from?: number;
+  /** Points already closed: there is nothing in them to answer. */
+  settled?: ReadonlySet<string>;
+}): number {
   const me = params.me.trim().toLowerCase();
-  const mine = new Set(
-    params.decisions
+  const mine = new Set([
+    ...(params.settled ?? []),
+    ...params.decisions
       .filter((d) => d.reviewer.trim().toLowerCase() === me && (d.textHash === undefined || d.textHash === params.hashOf(d.itemId)))
       .map((d) => d.itemId),
-  );
+  ]);
   for (let i = params.from ?? 0; i < params.items.length; i++) if (!mine.has(params.items[i]!.id)) return i;
   return -1;
 }

@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { wordsOfSelection } from "../src/domain/afinacionSelection";
 import { tallyItem, textFingerprint } from "../src/domain/reviewRound";
-import { decisionsFromTcChecks, itemIdOfTcCheck, tcProgressByChapter, wordsOfTcSelections, type TcCheck } from "../src/domain/tcImport";
+import { decisionsFromTcChecks, itemIdOfTcCheck, tcCheckerOf, tcProgressByChapter, wordsOfTcSelections, type TcCheck } from "../src/domain/tcImport";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -83,6 +83,12 @@ test("brought as the decision of the team, a check settles its item without aski
   assert.equal(tally([]).state, "pending");
   // And a verse corrected afterwards asks for it again.
   assert.equal(tallyItem({ itemId: "cz5n", decisions, currentHash: textFingerprint("otro texto"), levels: {}, authors: [], thresholds: { minAgree: 2, minIndependent: 1 }, confirmers: ["coordina"] }).state, "pending");
+});
+
+test("una respuesta traída de translationCore se atribuye a quien la comprobó allí, no a quien la importó", () => {
+  assert.equal(tcCheckerOf({ note: "Comprobación hecha en translationCore (Keneramk)" }), "Keneramk");
+  assert.equal(tcCheckerOf({ note: "No hay personificación." }), undefined);
+  assert.equal(tcCheckerOf({}), undefined);
 });
 
 console.log(`\n${passed} passed`);

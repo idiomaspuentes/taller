@@ -6,7 +6,6 @@ import type { GtSession } from "./auth";
 import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import { dcsConfig } from "./config";
 import { loadPmConfig } from "./issues";
-import { readTeamHelps } from "./teamHelps";
 import { parseTsvTable } from "../prep/tsv";
 import { attachPhrases, parseNoteRows, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { parseArticleTitle, parseTermRows, termArticlePath, type PreferredTerms, type TermItem } from "../domain/afinacionWords";
@@ -187,6 +186,12 @@ export async function loadTermArticle(session: GtSession, pkg: Pick<SourcePackag
   return mine?.trim() ? mine : await readRaw(session, pkg.owner, pkg.tw, path);
 }
 
+/**
+ * Whether the team's own translation of an article is read before the source package's. Tuning reads the source:
+ * the team's Academy has not been through Harmonization yet, and can be wrong.
+ */
+export type TeamFirst = { teamFirst?: boolean };
+
 const firstLine = (text: string | null) => (text ?? "").split(/\r?\n/).map((line) => line.replace(/^#+\s*/, "").trim()).find(Boolean) ?? "";
 
 /**
@@ -197,9 +202,9 @@ const firstLine = (text: string | null) => (text ?? "").split(/\r?\n/).map((line
  * (`status/emit.ts`): here the article is read to check a note, not translated, and a title left in English was
  * reported as a fault of this screen.
  */
-export async function loadArticleInfo(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, paths: string[]): Promise<Record<string, ArticleInfo>> {
+export async function loadArticleInfo(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, paths: string[], options: TeamFirst = {}): Promise<Record<string, ArticleInfo>> {
   const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
-  const own = resolveHelpsTarget({ ...ctx, resource: "academia" }, pmConfig);
+  const own = options.teamFirst === false ? { error: "source only" } : resolveHelpsTarget({ ...ctx, resource: "academia" }, pmConfig);
   const out: Record<string, ArticleInfo> = {};
   const todo = [...new Set(paths.filter(Boolean))];
   for (let i = 0; i < todo.length; i += 8) {
@@ -220,7 +225,8 @@ export async function loadArticleInfo(session: GtSession, ctx: SolverLaunchConte
 }
 
 /** The article itself, to read it in full: the team's translation when there is one, else the source package's. */
-export async function loadArticleBody(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, path: string): Promise<string | null> {
+export async function loadArticleBody(session: GtSession, ctx: SolverLaunchContext, pkg: SourcePackage, path: string, options: TeamFirst = {}): Promise<string | null> {
+  if (options.teamFirst === false) return readRaw(session, pkg.owner, pkg.ta, `${path}/01.md`);
   const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
   const own = resolveHelpsTarget({ ...ctx, resource: "academia" }, pmConfig);
   const mine = "error" in own ? null : await readRaw(session, own.owner, own.repo, `${path}/01.md`);
@@ -249,7 +255,10 @@ export async function loadAfinacionNotes(params: {
   sourceTaskId: string;
   pkg?: SourcePackage;
   pmConfig?: PmConfig;
-  /** The project's plan: with it, each note is shown as the team translated it, when it already has. */
+  /**
+   * The project's plan. The notes are read as the source package has them, not as the team translated them: what is
+   * tuned comes before Harmonization, and a note not yet harmonized can be wrong (16 October).
+   */
   board?: AssignmentsDoc | null;
 }): Promise<AfinacionNotesData> {
   const { session, ctx } = params;
@@ -304,15 +313,6 @@ export async function loadAfinacionNotes(params: {
   // What is checked is the text against the figure or topic an Academy article explains: a note that points to no
   // article names nothing to check, and is left out of the round.
   let rawItems = step === "palabras" ? termUses.filter((u) => u.chapter === chapter) : parseNoteRows(tsvRows, chapter).filter((note) => note.category);
-  if (step === "notas" && params.board) {
-    // Which notes there are, and what each points at, comes from the source package; the wording shown is the
-    // team's own translation of that note (same id) once it exists.
-    const own = await readTeamHelps({ session, ctx, pmConfig, board: params.board, kind: "notas" }).catch(() => null);
-    if (own) {
-      const worded = new Map(parseNoteRows(parseTsvTable(own.text).rows, chapter).map((note) => [note.id, note.note]));
-      rawItems = (rawItems as NoteItem[]).map((note) => (worded.get(note.id)?.trim() ? { ...note, note: worded.get(note.id)! } : note));
-    }
-  }
   // A subtarea of a passage reviews the items of its verses; the comparison across the book still sees them all.
   const covered = verseRangeOf(ctx);
   if (covered) rawItems = rawItems.filter((item) => item.verse >= covered.from && item.verse <= covered.to);

@@ -19,7 +19,7 @@ import { refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
@@ -35,9 +35,11 @@ import {
   summarizeRound,
   tallyItem,
   textFingerprint,
+  withAnswersGivenHere,
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
+import { tcCheckerOf } from "../domain/tcImport";
 import { canConfirmForTeam, confirmersOf, coordinatorsOf, countsForMinimum, levelLabel, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
@@ -45,7 +47,7 @@ import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { useStepWork } from "../dcs/stepWork";
 import { FinalDecision, RoundPanel } from "./RoundPanel";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
-import { resolveSourcePackage } from "../domain/sourcePackage";
+import { resolveSourcePackage, sourcePackageLang } from "../domain/sourcePackage";
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -124,6 +126,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [data, setData] = useState<AfinacionNotesData | null>(null);
   // What each person answered, as their files have it; `decisions` is how it stands over the text of today.
   const [given, setDecisions] = useState<ReviewDecision[]>([]);
+  /** Everyone's answers have been read once: until then a point looks unanswered, and must not be opened as such. */
+  const [answersRead, setAnswersRead] = useState(false);
+  /** The answer of this person is shown, not its buttons, until they choose to change it. */
+  const [changing, setChanging] = useState(false);
+  /** A closed point opened again by this person, to object to it. */
+  const [reopened, setReopened] = useState(false);
+  /** The whole note, on a phone: a long one pushed the verse below the screen. */
+  const [wholeNote, setWholeNote] = useState(false);
   const decisions = useMemo(
     () =>
       standingAnswers(given, (d) => {
@@ -209,6 +219,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       setPreferredTerms(loaded.preferredTerms);
       const files = await loadDecisionFiles(session, { owner: loaded.draft.owner, repo: loaded.draft.repo, branch: loaded.draft.branch }, loaded.book);
       setDecisions(mergeDecisionFiles(files));
+      setAnswersRead(true);
     } catch (err) {
       setError(err instanceof Error ? localizeThread(err.message, language) : String(err));
     } finally {
@@ -219,6 +230,33 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   useEffect(() => {
     void load();
   }, [load]);
+
+  // What the others answer while the screen is open: on coming back to it, and every so often while it is in sight.
+  // The files were read once, on opening, and two people answered the same point of Ezra 4:1 a quarter of an hour
+  // apart without seeing each other (16 October).
+  useEffect(() => {
+    if (!session || !data) return;
+    const target = { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch };
+    let reading = false;
+    const reread = () => {
+      if (reading || document.visibilityState !== "visible") return;
+      reading = true;
+      void loadDecisionFiles(session, target, data.book)
+        .then((files) => setDecisions((had) => withAnswersGivenHere(mergeDecisionFiles(files), had)))
+        .catch(() => undefined)
+        .finally(() => {
+          reading = false;
+        });
+    };
+    const timer = window.setInterval(reread, 45_000);
+    window.addEventListener("focus", reread);
+    document.addEventListener("visibilitychange", reread);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", reread);
+      document.removeEventListener("visibilitychange", reread);
+    };
+  }, [session, data]);
 
   // The article titles arrive after the screen is up. Until then a term showed its address spelled out («Know»),
   // and when the title came («Conocer, conocimiento, desconocido, distinguir») everything under it moved down a
@@ -239,7 +277,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   useEffect(() => {
     if (!session?.token || !ctx || !data || data.step !== "notas" || !data.items.length) return;
     let cancelled = false;
-    void loadArticleInfo(session, ctx, data.sourcePackage, data.items.map((note) => articlePathOf(note.supportRef)))
+    void loadArticleInfo(session, ctx, data.sourcePackage, data.items.map((note) => articlePathOf(note.supportRef)), { teamFirst: false })
       .then((found) => !cancelled && setArticles(found))
       .catch(() => undefined);
     return () => {
@@ -254,7 +292,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     if (!session || !ctx || !data) return;
     if (reading?.path === path && reading.body !== undefined) return;
     setReading({ path });
-    const body = await loadArticleBody(session, ctx, data.sourcePackage, path).catch(() => null);
+    const body = await loadArticleBody(session, ctx, data.sourcePackage, path, { teamFirst: false }).catch(() => null);
     setReading((current) => (current?.path === path ? { path, body } : current));
   }
 
@@ -291,6 +329,24 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const staleMine = tally?.stale.find((a) => a.reviewer.trim().toLowerCase() === me);
   /** What the others had answered before the verse was corrected. */
   const saidBefore = (tally?.stale ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
+  /**
+   * Everybody's answer on the point, this person's among them: Miguel agreed, went on, came back, and did not find
+   * his «De acuerdo» where the team's are listed, so it looked as if he had done nothing (16 October).
+   */
+  const listed = [...others, ...(mine && !(mine.final && tally?.decided) ? [mine] : [])]
+    .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+    // One check of translationCore brought over twice, by two people, is still one answer.
+    .filter((a, at, all) => !tcCheckerOf(a) || all.findIndex((b) => tcCheckerOf(b) === tcCheckerOf(a) && b.status === a.status) === at);
+  /** Who said it: «Tú»; whoever checked it in translationCore, for an answer brought from there; or the login. */
+  const whoSaid = (a: ReviewDecision) => {
+    if (a.reviewer.trim().toLowerCase() === me) return t("af.you");
+    const checker = tcCheckerOf(a);
+    return checker ? t("af.inTc").replace("{who}", `@${checker}`) : `@${a.reviewer}`;
+  };
+  /** The others who agree with the words on the point as it is now: this person is asked whether they do too. */
+  const agreeing = others.filter((a) => a.status === "approved").map((a) => tcCheckerOf(a) ?? a.reviewer);
+  /** The point is shown closed, with the one way to open it again; the team's box then only says who answered. */
+  const closedView = Boolean(tally?.decided) && !reopened && !fixing;
 
   const summary = useMemo(
     () =>
@@ -308,6 +364,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, decisions, thresholds.minAgree, thresholds.minIndependent, teamLevels, confirmers],
   );
+  /** The points closed already, by the team or in translationCore: nobody is taken to them to answer. */
+  const settled = useMemo(() => new Set((summary?.items ?? []).filter((point) => point.decided).map((point) => point.itemId)), [summary]);
 
   // Was this step already closed in the subtarea?
   useEffect(() => {
@@ -337,14 +395,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     if (place) {
       const there = visible.map((row, index) => ({ row, index })).filter(({ row }) => row.chapter === Number(place[1]) && row.verse === Number(place[2]));
       const disputed = there.find(({ row }) => summary?.meeting.some((point) => point.itemId === row.id));
-      const mine = firstUnanswered({ items: there.map(({ row }) => row), decisions, me, hashOf });
+      const mine = firstUnanswered({ items: there.map(({ row }) => row), decisions, me, hashOf, settled });
       const pick = disputed ?? there[mine > 0 ? mine : 0];
       if (pick) {
         setPosition(pick.index);
         return;
       }
     }
-    const at = firstUnanswered({ items: visible, decisions, me, hashOf });
+    const at = firstUnanswered({ items: visible, decisions, me, hashOf, settled });
     if (at > 0) {
       // Arriving where one left it, the page stays at its top: what the round says (a point without agreement,
       // everything agreed) is read there before the point.
@@ -496,6 +554,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     return `${found.chapter}:${found.verse}${what ? ` · ${what}` : ""}`;
   }
 
+  const mineHere = item ? decisions.filter((d) => d.itemId === item.id && d.reviewer.trim().toLowerCase() === me).map((d) => d.timestamp).join("|") : "";
   // Changing item: show what this person already answered (their words and their note).
   useEffect(() => {
     if (!item || !data) return;
@@ -521,10 +580,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     setNote(saved?.note ?? "");
     setPending(null);
     setChoosing(false);
-    setConfirmed(Boolean(saved) && !again);
-    // The person's own answers arrive after the item is shown: an item they answered opens at its second step.
+    setChanging(false);
+    setReopened(false);
+    setWholeNote(false);
+    // Somebody already chose the words: what is asked is whether one agrees with them, at the second step. It opened
+    // at the first, as if nothing had been done, and Miguel answered again a point Ramón had answered (16 October).
+    setConfirmed((Boolean(saved) && !again) || theirs.length > 0);
+    // The person's own answers arrive after the item is shown: an item they answered opens at its second step. The
+    // answers of the others, read again every so often, do not move what this person is doing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item?.id, verseText, decisions.length]);
+  }, [item?.id, verseText, answersRead, mineHere]);
 
 
   // Words step: how this term was rendered in every use across the book.
@@ -618,9 +683,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         }
       }
       setPending(null);
+      setChanging(false);
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
       // On to the next one this person has not answered; after the last, the next in the list.
-      const next = firstUnanswered({ items: visible, decisions: [...decisions, decision], me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1 });
+      const next = firstUnanswered({ items: visible, decisions: [...decisions, decision], me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1, settled });
       if (next >= 0) setPosition(next);
       else if (position < visible.length - 1) setPosition((p) => p + 1);
     } catch (err) {
@@ -673,7 +739,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       const all = [...decisions, ...batch];
       setDecisions((prev) => [...prev, ...batch]);
       announce(t("af.savedAlike").replace("{n}", String(batch.length)));
-      const next = firstUnanswered({ items: visible, decisions: all, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1 });
+      const next = firstUnanswered({ items: visible, decisions: all, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1, settled });
       if (next >= 0) setPosition(next);
     } catch (err) {
       setError(explainError(err));
@@ -1114,6 +1180,34 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           <p className="af-kind af-kind--top" ref={kindRef}>{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
           <h2 className={termSlug ? "af-category af-category--term" : "af-category"}>{stepProp === "notas" ? nameOf(item) : termSlug ? (titlesRead || termTitles[termSlug] ? termLabel(termSlug, termTitles) : "…") : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
 
+          {/* Why the point is a challenge and what the team said: beside the text on a wide screen, above it on a phone. */}
+          <div className="af-about">
+          {stepProp === "notas" && item.note ? (
+            // Why this is a challenge, where the point is read: the note was a tab away, in «Ayudas», and the team
+            // did not see why a phrase was one (16 October). As the source has it: the team's translation of the
+            // notes has not been through Harmonization yet.
+            <div className="af-reason" lang={sourcePackageLang(data.sourcePackage)} data-whole={wholeNote || item.note.length < 160 ? "true" : undefined}>
+              <HelpMarkdownView className="af-note af-note--md" content={item.note} />
+              {item.note.length >= 160 ? (
+                <button type="button" className="af-link af-reason__more" lang={language} aria-expanded={wholeNote} onClick={() => setWholeNote((open) => !open)}>
+                  {t(wholeNote ? "af.noteLess" : "af.noteMore")}
+                </button>
+              ) : null}
+              {articlePathOf(item.supportRef) ? (
+                <button
+                  type="button"
+                  className="af-link"
+                  lang={language}
+                  onClick={() => {
+                    setCompare("article");
+                    setPane("helps");
+                  }}
+                >
+                  {t("af.readArticle")}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}
           {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
           {reviewing ? (
@@ -1125,21 +1219,23 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               not agree it is found open: what they propose and why was folded under a line that did not look like
               something to touch, and the others read «no está de acuerdo» with no way to know about what. */}
           {tally && !reviewing && (tally.answers.length || tally.stale.length || tally.decided) ? (
-            <details key={item.id} className="af-team" data-state={tally.state} open={tally.open.length > 0 || Boolean(tally.decided)}>
+            <details key={item.id} className="af-team" data-state={closedView ? "pending" : tally.state} open>
               <summary>
-                {tally.decided
-                  ? t("af.teamDecided")
+                {closedView
+                  ? t("af.teamWho")
+                  : tally.decided
+                  ? t(tally.decided.inTc ? "af.closedInTc" : "af.teamDecided")
                   : tally.state === "agreed"
                   ? t("af.teamAgreed").replace("{n}", String(tally.agree))
                   : [t("af.teamCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree)), tally.open.length ? t(tally.open.length === 1 ? "af.teamOpenOne" : "af.teamOpenMany").replace("{who}", tally.open.map((who) => `@${who}`).join(", ")) : ""].filter(Boolean).join(" · ")}
               </summary>
-              {others.length ? (
+              {listed.length ? (
                 <ul className="af-others" aria-label={t("af.teamAria")}>
-                  {others.map((a) => (
-                    <li key={a.reviewer}>
-                      <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
-                      {a.note ? `: ${a.note}` : ""}
-                      {a.status !== "approved" && a.note && !stepDone && !tally.decided && mine?.status !== a.status && firstOf(a.status) === a ? (
+                  {listed.map((a) => (
+                    <li key={a.reviewer} data-mine={a === mine ? "true" : undefined}>
+                      <b>{whoSaid(a)}</b> · {stanceLabel(a.status)}
+                      {a.note && !tcCheckerOf(a) ? `: ${a.note}` : ""}
+                      {a !== mine && a.status !== "approved" && a.note && !stepDone && !tally.decided && mine?.status !== a.status && firstOf(a.status) === a ? (
                         <button
                           type="button"
                           className="af-second"
@@ -1164,8 +1260,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <ul className="af-others af-others--before">
                     {saidBefore.map((a) => (
                       <li key={a.reviewer}>
-                        <b>@{a.reviewer}</b> · {stanceLabel(a.status)}
-                        {a.note ? `: ${a.note}` : ""}
+                        <b>{whoSaid(a)}</b> · {stanceLabel(a.status)}
+                        {a.note && !tcCheckerOf(a) ? `: ${a.note}` : ""}
                       </li>
                     ))}
                   </ul>
@@ -1177,7 +1273,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {t("af.talk")}
                 </button>
               ) : null}
-              <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} />
+              {closedView ? null : <FinalDecision key={item.id} tally={tally} canConfirm={canConfirm} busy={saving} onDecide={(text) => void decide(text)} />}
               {tally.decided && canConfirm && !stepDone && !fixing ? (
                 // What was decided is often a change of the verse, and the way to it was «Cambiar», which is about
                 // the words chosen.
@@ -1196,8 +1292,40 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : null}
             </details>
           ) : null}
+          </div>
 
-          {!confirmed ? (
+          <div className="af-work">
+          {tally?.decided && closedView ? (
+            // Closed: it reads as closed, and opening it again is a deliberate act. A closed point looked like any
+            // other, its buttons waiting to be pressed (16 October).
+            <div className="af-closed">
+              <p className="af-closed__state">
+                <Lock size={16} aria-hidden /> {t(tally.decided.inTc ? "af.closedInTc" : "af.closed")}
+              </p>
+              {chosenWords ? (
+                <p className="af-closed__words">
+                  <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
+                    {markedWords || t("af.theMarked")}
+                  </span>
+                  <span aria-hidden> → </span>
+                  <span className="af-res">{data.resource === "tps" ? "TPS" : "TPL"}</span> <b>{chosenWords}</b>
+                </p>
+              ) : null}
+              <p className="af-hint">{t("af.closedHint")}</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setReopened(true);
+                  setConfirmed(true);
+                  setChanging(true);
+                  setChoosing(true);
+                }}
+              >
+                {t("af.reopen")}
+              </Button>
+            </div>
+          ) : !confirmed ? (
             // Step 1 of 2: which words of the translation render what is marked in the reference.
             <>
               <p className="af-stepname">{t("af.step1")}</p>
@@ -1354,14 +1482,25 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
                 </details>
               ) : null}
-              {mine ? <p className="af-saved">{t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
+              {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
+              {mine && !changing ? (
+                // Answered: what there is to do here is nothing, or change it. The same buttons as before answering
+                // were read as a point still to answer.
+                <div className="af-row-buttons">
+                  <Button type="button" variant="outline" onClick={() => setChanging(true)}>
+                    {t("af.changeMine")}
+                  </Button>
+                </div>
+              ) : !mine && agreeing.length && !choosing && !pending ? (
+                <p className="af-hint af-ask-agree">{t(agreeing.length === 1 ? "af.othersAgreeOne" : "af.othersAgreeMany").replace("{who}", agreeing.map((who) => `@${who}`).join(", "))}</p>
+              ) : null}
               {/* Somebody who is not yet «habilitada» agreed and read «0 de 3 de acuerdo» over their own answer. */}
               {mine?.status === "approved" && !reviewing && !countsForMinimum(levelOf(teamLevels, me)) ?<p className="af-hint">{t("af.notCounted").replace("{level}", levelLabel("habilitada", language))}</p> : null}
-              {!choosing && !pending ? (
+              {!choosing && !pending && (!mine || changing) ? (
                 // The decision sits under what is decided. Agreeing is about the words chosen: none chosen, nothing to agree with yet.
                 <div className="af-decide">
                   <Button type="button" disabled={saving || needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => void answer("approved")}>
-                    <Check size={16} aria-hidden /> {t("rv.approved")}
+                    <Check size={16} aria-hidden /> {t(agreeing.length && !mine ? "af.agreeToo" : "rv.approved")}
                   </Button>
                   <Button type="button" variant="outline" disabled={saving} onClick={() => setChoosing(true)}>
                     {t("af.otherAnswer")}
@@ -1374,7 +1513,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   ) : null}
                 </div>
               ) : null}
-              {choosing && !pending ? (
+              {choosing && !pending && (!mine || changing) ? (
                 <div className="af-row-buttons">
                   <Button type="button" variant="outline" onClick={() => setPending("revise")}>
                     {t("rv.revise")}
@@ -1382,7 +1521,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <Button type="button" variant="outline" onClick={() => setPending("rejected")}>
                     {t("rv.rejected")}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => setChoosing(false)}>
+                  <Button type="button" variant="ghost" onClick={() => {
+                      setChoosing(false);
+                      // A closed point opened by mistake closes again.
+                      if (reopened) {
+                        setReopened(false);
+                        setChanging(false);
+                      }
+                    }}>
                     {t("af.cancel")}
                   </Button>
                 </div>
@@ -1413,6 +1559,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             </div>
             </>
           )}
+          </div>
         </section>
       ) : null}
 

@@ -50,9 +50,28 @@ export type ItemTally = {
   agreeIndependent: number;
   /** Logins with an objection or a change proposal still open. */
   open: string[];
-  /** The final decision that settled the item, when there is one. */
-  decided?: { by: string; note?: string; at: string };
+  /**
+   * The final decision that settled the item, when there is one: the point is closed, and is opened again only by an
+   * objection. `inTc`: closed in translationCore before the work came to this app; `by` is who checked it there.
+   */
+  decided?: { by: string; note?: string; at: string; inTc?: boolean };
 };
+
+/**
+ * Who checked an answer brought from translationCore, as the import's note says it («Comprobación hecha en
+ * translationCore (Keneramk)»). The answer is written by whoever imported it, and the team read «@abelper8 · De
+ * acuerdo» where Ramón had checked the point. Undefined for an answer given in this app.
+ */
+export function tcCheckerOf(decision: { note?: string }): string | undefined {
+  return /translationCore\s*\(([^)]+)\)/.exec(decision.note ?? "")?.[1]?.trim() || undefined;
+}
+
+/**
+ * A check finished in translationCore closes its point, whoever brought it over: the work was done before it came
+ * to this app, and Ezra arrived with its points open to be answered again (16 October). Only a final answer: what
+ * was half done there is an ordinary answer.
+ */
+const closedInTc = (d: ReviewDecision) => d.final === true && d.status === "approved" && tcCheckerOf(d) !== undefined;
 
 /** Small stable fingerprint of a verse's plain text (whitespace and NFC normalised). */
 export function textFingerprint(text: string): string {
@@ -117,13 +136,14 @@ export function tallyItem(params: {
   // A final decision on the text as it is now settles the item, unless somebody objects after it.
   const confirmers = new Set((params.confirmers ?? []).map((c) => c.trim().toLowerCase()));
   const final = mine
-    .filter((d) => d.final === true && confirmers.has(d.reviewer.trim().toLowerCase()))
+    .filter((d) => d.final === true && (confirmers.has(d.reviewer.trim().toLowerCase()) || closedInTc(d)))
     .filter((d) => !(currentHash !== undefined && d.textHash !== undefined && d.textHash !== currentHash))
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
   if (final) {
     const after = answers.filter((d) => d.status !== "approved" && Date.parse(d.timestamp) > Date.parse(final.timestamp)).map((d) => d.reviewer);
     if (!after.length) {
-      return { itemId, state: "agreed", answers, stale, agree, agreeIndependent, open: [], decided: { by: final.reviewer, note: final.note, at: final.timestamp } };
+      const decided = closedInTc(final) ? { by: tcCheckerOf(final)!, at: final.timestamp, inTc: true } : { by: final.reviewer, note: final.note, at: final.timestamp };
+      return { itemId, state: "agreed", answers, stale, agree, agreeIndependent, open: [], decided };
     }
   }
 
@@ -157,13 +177,15 @@ function hasWords(text: string, words: string): boolean {
  * that verse stale, whatever it was about: an article taken out of Jude 1:3 sent seven challenges back to each
  * person who had answered them, six of them about words nobody had touched. An agreement is given about some words:
  * while a correction leaves those very words as they were, it holds. A proposal or an objection is looked at again
- * (the correction may be its answer), and so is the team's final decision, which is about the whole point.
+ * (the correction may be its answer), and so is the team's final decision, which is about the whole point. A check
+ * closed in translationCore is about its words, like an agreement: correcting «que» to «de que» in Ezra 4:1 reopened
+ * every point of the verse the team had already closed there.
  *
  * Nothing is written: each person's file keeps the fingerprint of the text they saw.
  */
 export function standingAnswers(decisions: ReviewDecision[], textNow: (decision: ReviewDecision) => string | undefined): ReviewDecision[] {
   return decisions.map((d) => {
-    if (d.status !== "approved" || d.final || d.textHash === undefined || !d.selectedText?.text) return d;
+    if (d.status !== "approved" || (d.final && !closedInTc(d)) || d.textHash === undefined || !d.selectedText?.text) return d;
     const text = textNow(d);
     if (text === undefined) return d;
     const hash = textFingerprint(text);
@@ -263,6 +285,17 @@ export function summarizeRound(params: {
 /** One file per person (`decisions/TIT.ana.decisions.json`) so two people never write the same file. */
 export function decisionsFilePath(book: string, login: string): string {
   return `checkings/decisions/${book.trim().toUpperCase()}.${login.trim().toLowerCase()}.decisions.json`;
+}
+
+/**
+ * The answers read again from everyone's files, with those given on this screen that the files do not show yet (a
+ * write a moment before the read). The files were read once, on opening: two people answered the same point of
+ * Ezra 4:1 a quarter of an hour apart, neither seeing the other (16 October).
+ */
+export function withAnswersGivenHere(read: ReviewDecision[], had: ReviewDecision[]): ReviewDecision[] {
+  const key = (d: ReviewDecision) => `${d.reviewer.trim().toLowerCase()}\u0000${d.itemId}\u0000${d.timestamp}`;
+  const there = new Set(read.map(key));
+  return [...read, ...had.filter((d) => !there.has(key(d)))].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
 }
 
 /** Everyone's files of a book read as one list. Answers are kept in time order. */

@@ -13,6 +13,7 @@ import {
   summarizeRound,
   tallyItem,
   textFingerprint,
+  withAnswersGivenHere,
   type ReviewDecision,
 } from "../src/domain/reviewRound";
 import type { PersonLevel } from "../src/domain/levels";
@@ -216,6 +217,38 @@ test("tras una corrección solo se avisa a quien respondió sobre palabras que c
 test("lo que cambió una corrección se dice en pocas palabras, con algo alrededor para encontrarlo", () => {
   assert.deepEqual(changedStretch(VERSE, FIXED), { before: "… común, tengo la necesidad de …", now: "… común, tengo necesidad de …" });
   assert.deepEqual(changedStretch("uno dos", "uno tres"), { before: "uno dos", now: "uno tres" });
+});
+
+test("lo comprobado en translationCore cierra el punto, aunque lo haya traído alguien que no coordina, y sigue cerrado tras corregir otras palabras", () => {
+  const tc = { ...about("dora", "necesidad", "approved", "tengo la necesidad de escribirles,", { note: "Comprobación hecha en translationCore (Keneramk)", final: true }) };
+  const fixedNow = (d: ReviewDecision) => (d.itemId === "necesidad" ? undefined : FIXED);
+  // Dora imported it; she is no confirmer, and no level of hers counts.
+  const closed = tallyItem({ itemId: "necesidad", decisions: [tc], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["carla"] });
+  assert.deepEqual(closed.decided, { by: "Keneramk", at: tc.timestamp, inTc: true });
+  // «salvación» was checked there too; a correction elsewhere in the verse leaves those words, and the point closed.
+  const other = about("dora", "salvacion", "approved", "sobre nuestra salvación común,", { note: "Comprobación hecha en translationCore (Keneramk)", final: true });
+  const standing = standingAnswers([other], fixedNow);
+  const after = tallyItem({ itemId: "salvacion", decisions: standing, levels, authors: [], thresholds, currentHash: textFingerprint(FIXED), confirmers: ["carla"] });
+  assert.equal(after.decided?.inTc, true, "sigue cerrado");
+  // An objection after it opens it again.
+  const objection = { ...answer("bea", "salvacion", "rejected", { hash: textFingerprint(FIXED), note: "No es común a todos." }) };
+  const reopened = tallyItem({ itemId: "salvacion", decisions: [...standing, objection], levels, authors: [], thresholds, currentHash: textFingerprint(FIXED), confirmers: ["carla"] });
+  assert.equal(reopened.decided, undefined);
+  assert.equal(reopened.state, "disputed");
+  // What was half done there, not final, is an ordinary answer.
+  const half = { ...tc, final: undefined };
+  assert.equal(tallyItem({ itemId: "necesidad", decisions: [half], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["carla"] }).decided, undefined);
+});
+
+test("al releer las respuestas se ven las de los demás, y no se pierde la que se acaba de dar aquí", () => {
+  const ana = answer("ana", "n1", "approved");
+  const mine = answer("bea", "n1", "approved");
+  const carla = answer("carla", "n2", "rejected", { note: "No hay personificación." });
+  // Bea's own answer is not in the files yet; Carla answered meanwhile somewhere else.
+  const now = withAnswersGivenHere([ana, carla], [ana, mine]);
+  assert.deepEqual(now.map((d) => `${d.reviewer}:${d.itemId}`), ["ana:n1", "bea:n1", "carla:n2"]);
+  // Once the files have it, it is not counted twice.
+  assert.equal(withAnswersGivenHere([ana, mine, carla], [ana, mine]).length, 3);
 });
 
 console.log(`\nverify-review-round: ${passed} checks passed.`);
