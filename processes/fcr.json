@@ -1817,9 +1817,9 @@
               "purposes": {
                 "pt": "Verifique se cada palavra-chave é traduzida sempre da mesma forma em todo o livro."
               },
-              "criterion": "En el TPL, por lo general, se mantiene la misma palabra. Cambia solo si el español necesita otra para decir lo mismo, nunca para explicar una figura.",
+              "criterion": "En el TPL, por lo general, se mantiene la misma palabra. Cambia solo si el español necesita otra para decir lo mismo, nunca para explicar o reemplazar una figura. Asegúrate de que la palabra traduce el significado literal y no el sentido.",
               "criteria": {
-                "pt": "No TPL, em geral, mantém-se a mesma palavra. Só muda se o português precisa de outra para dizer o mesmo, nunca para explicar uma figura."
+                "pt": "No TPL, em geral, mantém-se a mesma palavra. Só muda se o português precisa de outra para dizer o mesmo, nunca para explicar ou substituir uma figura. Verifique se a palavra traduz o significado literal e não o sentido."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
@@ -1827,16 +1827,7 @@
               "minAssignees": 2,
               "maxAssignees": 6,
               "minAgree": 3,
-              "minIndependent": 2,
-              "checks": [
-                {
-                  "id": "sentido-no-literal",
-                  "text": "El sentido que da un diccionario no siempre es la traducción literal.",
-                  "texts": {
-                    "pt": "O sentido que um dicionário dá nem sempre é a tradução literal."
-                  }
-                }
-              ]
+              "minIndependent": 2
             }
           ],
           "redoAfter": [
