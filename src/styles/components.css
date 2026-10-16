@@ -9877,3 +9877,12 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-category__chev { display: inline-block; margin-inline-start: 0.375rem; vertical-align: -0.125em; color: var(--text-muted); transition: transform 0.15s; }
 .af-category__chev[data-open] { transform: rotate(180deg); }
 .af-focus > .af-about:empty { display: none; }
+
+/*
+ * The header and the strip of tabs reach the edges of the window; what is read keeps its width. They ended where the
+ * tool ends (76rem), and on a desktop wider than that the page showed gray bands at their sides, as if the tool were
+ * a box inside the window (16 October). Their background and their line are painted out to the sides, without
+ * widening anything that scrolls.
+ */
+.af--round > .th { box-shadow: 0 0 0 100vmax var(--surface), 0 1px 0 100vmax var(--border); clip-path: inset(0 -100vmax -1px); }
+.af--round > .af-panes { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--border); clip-path: inset(0 -100vmax -1px); }
