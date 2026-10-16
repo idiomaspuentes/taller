@@ -9977,3 +9977,12 @@ button.cr-note:hover { background: var(--primary-100); }
 .scripture-editor--split:not(.fam) { --se-max: 84rem; }
 .scripture-editor:not(.fam) > .scripture-editor__head { padding-left: calc(0.5rem + var(--se-gutter)); padding-right: calc(1rem + var(--se-gutter)); }
 .scripture-editor:not(.fam) > :not(.scripture-editor__head):not(dialog) { margin-inline: var(--se-gutter); }
+
+/*
+ * What is highlighted in the reference and what the person selected in the translation, plainer (16 October): a ground
+ * a step deeper and a full outline drawn inside the word, so nothing grows wider and the letters stay dark. Amber is
+ * what the reference highlights; blue is what the person chose. The box of step 2 marks the chosen words the same way.
+ */
+.af-word[data-marked="true"] { background: var(--warning-200); box-shadow: inset 0 0 0 2px var(--warning-500); color: var(--text); border-radius: 4px; }
+.af-draft__words .af-word--tap[data-selected="true"] { background: var(--accent-100); border-color: transparent; box-shadow: inset 0 0 0 2px var(--accent-600); color: var(--text); border-radius: 4px; }
+.af-recap__chosen { background: var(--accent-100); box-shadow: inset 0 0 0 1.5px var(--accent-600); color: var(--text); }
