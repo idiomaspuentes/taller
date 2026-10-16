@@ -1817,9 +1817,9 @@
               "purposes": {
                 "pt": "Verifique se cada palavra-chave é traduzida sempre da mesma forma em todo o livro."
               },
-              "criterion": "En el TPL se mantiene la misma palabra, aunque aquí se use en sentido figurado. Solo cambia si aquí tiene otro sentido literal o si hay otra forma igual de literal.",
+              "criterion": "En el TPL se mantiene la misma palabra, incluso si aquí forma parte de una figura. Solo cambia si aquí tiene otro sentido literal o si hay otra forma igual de literal.",
               "criteria": {
-                "pt": "No TPL mantém-se a mesma palavra, mesmo que aqui seja usada em sentido figurado. Só muda se aqui tem outro sentido literal ou se há outra forma igualmente literal."
+                "pt": "No TPL mantém-se a mesma palavra, mesmo que aqui faça parte de uma figura. Só muda se aqui tem outro sentido literal ou se há outra forma igualmente literal."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
