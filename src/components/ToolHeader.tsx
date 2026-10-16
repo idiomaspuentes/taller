@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ChevronLeft, Info } from "lucide-react";
 import { useT } from "../i18n/messages";
 import { MoreMenu, type MoreItem } from "./MoreMenu";
+import { useAboutEntry } from "./introSlot";
 import { setNotesSlot, useNotesEntry } from "./notesSlot";
 
 type Props = {
@@ -24,8 +25,11 @@ type Props = {
  * there that says nothing to the team: what is not the work itself is a row of «Más», with a line that says what it
  * does (as in translationCore 4).
  */
-export function ToolHeader({ title, meta, onBack, more = [], children, info }: Props) {
+export function ToolHeader({ title, meta, onBack, more = [], children, info: given }: Props) {
   const t = useT();
+  // A step that says what it is for, in a tool that did not say it itself: the same «ⓘ».
+  const about = useAboutEntry();
+  const info = given ?? (about ? { label: t("af.aboutTask"), onOpen: about.open } : undefined);
   const notes = useNotesEntry();
   const items: MoreItem[] = [
     ...more,
@@ -49,7 +53,7 @@ export function ToolHeader({ title, meta, onBack, more = [], children, info }: P
               <Info size={20} aria-hidden />
             </button>
           ) : null}
-          <MoreMenu items={items} />
+          <MoreMenu items={items} hideAbout />
         </div>
       </div>
       {children ? <div className="th-below">{children}</div> : null}

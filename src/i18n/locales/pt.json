@@ -898,6 +898,8 @@
   "af.unmarkedMany": "Sem marcar: {n} usos.",
   "af.staleMine": "O versículo mudou depois da sua resposta. Revise de novo.",
   "af.myAnswer": "Sua resposta: {stance}",
+  "mm.aboutHint": "Para que serve este passo, como se faz e as regras da equipe.",
+  "sa.howDone": "Como se faz",
   "mm.introHint": "O que é o livro e do que trata o capítulo.",
   "sa.purpose": "Para quê",
   "af.welcomeRules": "Regras da equipe",

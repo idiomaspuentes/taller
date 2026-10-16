@@ -3,7 +3,7 @@ import { Check, MoreHorizontal } from "lucide-react";
 import { useT, type MessageKey } from "../i18n/messages";
 import { TEXT_SIZES, type TextSize } from "../domain/textSize";
 import { setTextSize, useTextSize } from "../textSize";
-import { useIntroEntry } from "./introSlot";
+import { useAboutEntry, useIntroEntry } from "./introSlot";
 
 const TEXT_SIZE_NAME: Record<TextSize, MessageKey> = { normal: "menu.textNormal", large: "menu.textLarge", larger: "menu.textLarger" };
 
@@ -29,12 +29,18 @@ export type MoreItem = {
  * details nobody needs every day (the task, the file) come last, in grey. The button says «Más» beside its dots: a
  * bare icon did not tell the team there was anything there.
  */
-export function MoreMenu({ items, details }: { items: MoreItem[]; details?: ReactNode }) {
+/** `hideAbout`: the header around it already shows «Sobre esta tarea» as an «ⓘ». */
+export function MoreMenu({ items, details, hideAbout }: { items: MoreItem[]; details?: ReactNode; hideAbout?: boolean }) {
   const t = useT();
   const textSize = useTextSize();
   const intro = useIntroEntry();
+  const about = useAboutEntry();
   // The introduction of the passage, where the tool has one to give (see `introSlot.ts`).
-  const all: MoreItem[] = intro && !items.some((item) => item.id === "intro") ? [...items, { id: "intro", label: t("af.paneIntro"), hint: t("mm.introHint"), onSelect: intro.open }] : items;
+  const all: MoreItem[] = [
+    ...(about && !hideAbout ? [{ id: "about", label: t("af.aboutTask"), hint: t("mm.aboutHint"), onSelect: about.open }] : []),
+    ...items,
+    ...(intro && !items.some((item) => item.id === "intro") ? [{ id: "intro", label: t("af.paneIntro"), hint: t("mm.introHint"), onSelect: intro.open }] : []),
+  ];
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const panelId = useId();

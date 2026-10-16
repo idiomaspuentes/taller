@@ -89,9 +89,13 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
-              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "description": "Lee la introducción al libro.\nLee la introducción al capítulo.\nLee el capítulo de tu porción; luego toca «Terminé de estudiar».",
               "descriptions": {
-                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+                "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
+              },
+              "purpose": "Conoce el libro y el capítulo antes de traducir: de qué tratan y qué hay que tener en cuenta.",
+              "purposes": {
+                "pt": "Conheça o livro e o capítulo antes de traduzir: do que tratam e o que é preciso ter em conta."
               },
               "solverAppId": "fcr-familiarize",
               "closing": "automatic",
@@ -107,12 +111,16 @@
               "actionLabels": {
                 "pt": "Traduzir"
               },
+              "description": "Lee el versículo en el ULT.\nEscribe tu traducción en su caja.\nAntes de entregar, repasa que no falte ni sobre nada.",
+              "descriptions": {
+                "pt": "Leia o versículo no ULT.\nEscreva a sua tradução na caixa.\nAntes de entregar, revise se não falta nem sobra nada."
+              },
+              "purpose": "Traduce tu porción para que diga lo mismo que el original, tan cerca de su forma como el ULT.",
+              "purposes": {
+                "pt": "Traduza a sua porção para que diga o mesmo que o original, tão perto da sua forma quanto o ULT."
+              },
               "solverAppId": "tpl-translate",
               "closing": "self",
-              "description": "Traduce la porción con el ULT a la vista. Lo importante es que diga lo mismo que la fuente.",
-              "descriptions": {
-                "pt": "Traduza a porção com o ULT à vista. O importante é que diga o mesmo que a fonte."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -265,6 +273,14 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "description": "Lee cada versículo (o ayuda) junto a la fuente.\nComenta o propón un cambio donde haga falta.\nSi está bien, toca «Aprobar».",
+              "descriptions": {
+                "pt": "Leia cada versículo (ou ajuda) junto à fonte.\nComente ou proponha uma mudança onde for preciso.\nSe estiver bem, toque em «Aprovar»."
+              },
+              "purpose": "Comprueba que la traducción de tu compañero diga lo mismo que la fuente, sin añadir ni quitar nada.",
+              "purposes": {
+                "pt": "Verifique se a tradução do seu colega diz o mesmo que a fonte, sem acrescentar nem tirar nada."
+              },
               "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
@@ -273,10 +289,6 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el ULT. Debe decir lo mismo, sin añadir ni quitar nada.",
-              "descriptions": {
-                "pt": "Compare com o ULT. Deve dizer o mesmo, sem acrescentar nem tirar nada."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -447,9 +459,13 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "El equipo del TPL lee junto lo traducido del capítulo, pasaje por pasaje a medida que llega, y se pone de acuerdo.",
+              "description": "Lean cada pasaje a medida que llega.\nPropongan los cambios que vean.\nCon el equipo de acuerdo, el pasaje queda listo.",
               "descriptions": {
-                "pt": "A equipe do TPL lê junto o que foi traduzido do capítulo, passagem por passagem conforme chega, e entra em acordo."
+                "pt": "Leiam cada passagem à medida que chega.\nProponham as mudanças que virem.\nCom a equipe de acordo, a passagem fica pronta."
+              },
+              "purpose": "Lean juntos lo traducido del capítulo y pónganse de acuerdo en cómo queda.",
+              "purposes": {
+                "pt": "Leiam juntos o que foi traduzido do capítulo e cheguem a um acordo sobre como fica."
               },
               "solverAppId": "fcr-group-reading",
               "closing": "consensus",
@@ -501,9 +517,13 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
-              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "description": "Lee la introducción al libro.\nLee la introducción al capítulo.\nLee el capítulo de tu porción; luego toca «Terminé de estudiar».",
               "descriptions": {
-                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+                "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
+              },
+              "purpose": "Conoce el libro y el capítulo antes de traducir: de qué tratan y qué hay que tener en cuenta.",
+              "purposes": {
+                "pt": "Conheça o livro e o capítulo antes de traduzir: do que tratam e o que é preciso ter em conta."
               },
               "solverAppId": "fcr-familiarize",
               "closing": "automatic",
@@ -519,12 +539,16 @@
               "actionLabels": {
                 "pt": "Traduzir"
               },
+              "description": "Lee el versículo en el UST.\nEscribe tu traducción en su caja.\nAntes de entregar, repasa que no falte ni sobre nada.",
+              "descriptions": {
+                "pt": "Leia o versículo no UST.\nEscreva a sua tradução na caixa.\nAntes de entregar, revise se não falta nem sobra nada."
+              },
+              "purpose": "Traduce tu porción para que diga lo mismo con palabras sencillas y claras, como el UST.",
+              "purposes": {
+                "pt": "Traduza a sua porção para que diga o mesmo com palavras simples e claras, como o UST."
+              },
               "solverAppId": "tps-translate",
               "closing": "self",
-              "description": "Traduce la porción con el UST a la vista. Lo importante es que diga lo mismo que la fuente.",
-              "descriptions": {
-                "pt": "Traduza a porção com o UST à vista. O importante é que diga o mesmo que a fonte."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -677,6 +701,14 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "description": "Lee cada versículo (o ayuda) junto a la fuente.\nComenta o propón un cambio donde haga falta.\nSi está bien, toca «Aprobar».",
+              "descriptions": {
+                "pt": "Leia cada versículo (ou ajuda) junto à fonte.\nComente ou proponha uma mudança onde for preciso.\nSe estiver bem, toque em «Aprovar»."
+              },
+              "purpose": "Comprueba que la traducción de tu compañero diga lo mismo que la fuente, sin añadir ni quitar nada.",
+              "purposes": {
+                "pt": "Verifique se a tradução do seu colega diz o mesmo que a fonte, sem acrescentar nem tirar nada."
+              },
               "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
@@ -685,10 +717,6 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el UST. Debe decir lo mismo, sin añadir ni quitar nada.",
-              "descriptions": {
-                "pt": "Compare com o UST. Deve dizer o mesmo, sem acrescentar nem tirar nada."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -859,9 +887,13 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "El equipo del TPS lee junto lo traducido del capítulo, pasaje por pasaje a medida que llega, y se pone de acuerdo.",
+              "description": "Lean cada pasaje a medida que llega.\nPropongan los cambios que vean.\nCon el equipo de acuerdo, el pasaje queda listo.",
               "descriptions": {
-                "pt": "A equipe do TPS lê junto o que foi traduzido do capítulo, passagem por passagem conforme chega, e entra em acordo."
+                "pt": "Leiam cada passagem à medida que chega.\nProponham as mudanças que virem.\nCom a equipe de acordo, a passagem fica pronta."
+              },
+              "purpose": "Lean juntos lo traducido del capítulo y pónganse de acuerdo en cómo queda.",
+              "purposes": {
+                "pt": "Leiam juntos o que foi traduzido do capítulo e cheguem a um acordo sobre como fica."
               },
               "solverAppId": "fcr-group-reading",
               "closing": "consensus",
@@ -913,9 +945,13 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
-              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "description": "Lee la introducción al libro.\nLee la introducción al capítulo.\nLee el capítulo de tu porción; luego toca «Terminé de estudiar».",
               "descriptions": {
-                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+                "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
+              },
+              "purpose": "Conoce el libro y el capítulo antes de traducir: de qué tratan y qué hay que tener en cuenta.",
+              "purposes": {
+                "pt": "Conheça o livro e o capítulo antes de traduzir: do que tratam e o que é preciso ter em conta."
               },
               "solverAppId": "fcr-familiarize",
               "closing": "automatic",
@@ -931,12 +967,16 @@
               "actionLabels": {
                 "pt": "Traduzir"
               },
+              "description": "Lee el versículo del que habla.\nEscribe la traducción en su caja.\nRepasa que no falte ni sobre nada; luego entrega.",
+              "descriptions": {
+                "pt": "Leia o versículo de que ela fala.\nEscreva a tradução na caixa.\nRevise se não falta nem sobra nada; depois entregue."
+              },
+              "purpose": "Traduce cada nota para que diga lo mismo que en inglés.",
+              "purposes": {
+                "pt": "Traduza cada nota para que diga o mesmo que em inglês."
+              },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada nota con la nota en inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
-              "descriptions": {
-                "pt": "Traduza cada nota com a nota em inglês à vista. O importante é que diga o mesmo que a fonte."
-              },
               "formerChecks": [
                 "versiculo-nota",
                 "completo",
@@ -1011,6 +1051,14 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "description": "Lee cada versículo (o ayuda) junto a la fuente.\nComenta o propón un cambio donde haga falta.\nSi está bien, toca «Aprobar».",
+              "descriptions": {
+                "pt": "Leia cada versículo (ou ajuda) junto à fonte.\nComente ou proponha uma mudança onde for preciso.\nSe estiver bem, toque em «Aprovar»."
+              },
+              "purpose": "Comprueba que la traducción de tu compañero diga lo mismo que la fuente, sin añadir ni quitar nada.",
+              "purposes": {
+                "pt": "Verifique se a tradução do seu colega diz o mesmo que a fonte, sem acrescentar nem tirar nada."
+              },
               "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
@@ -1019,10 +1067,6 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con la nota en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
-              "descriptions": {
-                "pt": "Compare com a nota em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
-              },
               "formerChecks": [
                 "versiculo-nota",
                 "completo",
@@ -1118,9 +1162,13 @@
               "actionLabels": {
                 "pt": "Estudar"
               },
-              "description": "Lee la nota de introducción al libro, la nota de introducción al capítulo y el capítulo de tu porción.",
+              "description": "Lee la introducción al libro.\nLee la introducción al capítulo.\nLee el capítulo de tu porción; luego toca «Terminé de estudiar».",
               "descriptions": {
-                "pt": "Leia a nota de introdução ao livro, a nota de introdução ao capítulo e o capítulo da sua porção."
+                "pt": "Leia a introdução ao livro.\nLeia a introdução ao capítulo.\nLeia o capítulo da sua porção; depois toque em «Terminei de estudar»."
+              },
+              "purpose": "Conoce el libro y el capítulo antes de traducir: de qué tratan y qué hay que tener en cuenta.",
+              "purposes": {
+                "pt": "Conheça o livro e o capítulo antes de traduzir: do que tratam e o que é preciso ter em conta."
               },
               "solverAppId": "fcr-familiarize",
               "closing": "automatic",
@@ -1136,12 +1184,16 @@
               "actionLabels": {
                 "pt": "Traduzir"
               },
+              "description": "Lee el versículo del que habla.\nEscribe la traducción en su caja.\nRepasa que no falte ni sobre nada; luego entrega.",
+              "descriptions": {
+                "pt": "Leia o versículo de que ela fala.\nEscreva a tradução na caixa.\nRevise se não falta nem sobra nada; depois entregue."
+              },
+              "purpose": "Traduce cada pregunta y su respuesta para que digan lo mismo que en inglés.",
+              "purposes": {
+                "pt": "Traduza cada pergunta e a sua resposta para que digam o mesmo que em inglês."
+              },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce cada pregunta y su respuesta con el inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
-              "descriptions": {
-                "pt": "Traduza cada pergunta e a sua resposta com o inglês à vista. O importante é que diga o mesmo que a fonte."
-              },
               "formerChecks": [
                 "versiculo-pregunta",
                 "completo",
@@ -1216,6 +1268,14 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "description": "Lee cada versículo (o ayuda) junto a la fuente.\nComenta o propón un cambio donde haga falta.\nSi está bien, toca «Aprobar».",
+              "descriptions": {
+                "pt": "Leia cada versículo (ou ajuda) junto à fonte.\nComente ou proponha uma mudança onde for preciso.\nSe estiver bem, toque em «Aprovar»."
+              },
+              "purpose": "Comprueba que la traducción de tu compañero diga lo mismo que la fuente, sin añadir ni quitar nada.",
+              "purposes": {
+                "pt": "Verifique se a tradução do seu colega diz o mesmo que a fonte, sem acrescentar nem tirar nada."
+              },
               "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
@@ -1224,10 +1284,6 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
-              "descriptions": {
-                "pt": "Compare com o inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
-              },
               "formerChecks": [
                 "versiculo-pregunta",
                 "completo",
@@ -1320,12 +1376,16 @@
               "actionLabels": {
                 "pt": "Traduzir"
               },
+              "description": "Lee el artículo en inglés.\nEscribe la traducción en su caja.\nRepasa que no falte ni sobre nada; luego entrega.",
+              "descriptions": {
+                "pt": "Leia o artigo em inglês.\nEscreva a tradução na caixa.\nRevise se não falta nem sobra nada; depois entregue."
+              },
+              "purpose": "Traduce el artículo para que diga lo mismo que en inglés.",
+              "purposes": {
+                "pt": "Traduza o artigo para que diga o mesmo que em inglês."
+              },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
-              "descriptions": {
-                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -1392,6 +1452,14 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "description": "Lee cada versículo (o ayuda) junto a la fuente.\nComenta o propón un cambio donde haga falta.\nSi está bien, toca «Aprobar».",
+              "descriptions": {
+                "pt": "Leia cada versículo (ou ajuda) junto à fonte.\nComente ou proponha uma mudança onde for preciso.\nSe estiver bem, toque em «Aprovar»."
+              },
+              "purpose": "Comprueba que la traducción de tu compañero diga lo mismo que la fuente, sin añadir ni quitar nada.",
+              "purposes": {
+                "pt": "Verifique se a tradução do seu colega diz o mesmo que a fonte, sem acrescentar nem tirar nada."
+              },
               "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
@@ -1400,10 +1468,6 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
-              "descriptions": {
-                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -1488,12 +1552,16 @@
               "actionLabels": {
                 "pt": "Traduzir"
               },
+              "description": "Lee el artículo en inglés.\nEscribe la traducción en su caja.\nRepasa que no falte ni sobre nada; luego entrega.",
+              "descriptions": {
+                "pt": "Leia o artigo em inglês.\nEscreva a tradução na caixa.\nRevise se não falta nem sobra nada; depois entregue."
+              },
+              "purpose": "Traduce el artículo para que diga lo mismo que en inglés.",
+              "purposes": {
+                "pt": "Traduza o artigo para que diga o mesmo que em inglês."
+              },
               "solverAppId": "helps-review",
               "closing": "self",
-              "description": "Traduce el artículo con el artículo en inglés a la vista. Lo importante es que diga lo mismo que la fuente.",
-              "descriptions": {
-                "pt": "Traduza o artigo com o artigo em inglês à vista. O importante é que diga o mesmo que a fonte."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -1560,6 +1628,14 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
+              "description": "Lee cada versículo (o ayuda) junto a la fuente.\nComenta o propón un cambio donde haga falta.\nSi está bien, toca «Aprobar».",
+              "descriptions": {
+                "pt": "Leia cada versículo (ou ajuda) junto à fonte.\nComente ou proponha uma mudança onde for preciso.\nSe estiver bem, toque em «Aprovar»."
+              },
+              "purpose": "Comprueba que la traducción de tu compañero diga lo mismo que la fuente, sin añadir ni quitar nada.",
+              "purposes": {
+                "pt": "Verifique se a tradução do seu colega diz o mesmo que a fonte, sem acrescentar nem tirar nada."
+              },
               "solverAppId": "fcr-pair-review",
               "closing": "approval",
               "claimMode": "exclusive",
@@ -1568,10 +1644,6 @@
               "excludePriorStepIds": [
                 "borrador"
               ],
-              "description": "Compara con el artículo en inglés. Debe decir lo mismo, sin añadir ni quitar nada.",
-              "descriptions": {
-                "pt": "Compare com o artigo em inglês. Deve dizer o mesmo, sem acrescentar nem tirar nada."
-              },
               "formerChecks": [
                 "completo",
                 "you",
@@ -2080,6 +2152,14 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
+              "description": "Lee la nota junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas.",
+              "descriptions": {
+                "pt": "Leia a nota junto ao TPL e ao TPS do seu versículo.\nMarque «Tudo certo» ou anote o que precisa mudar.\nContinue até revisar todas."
+              },
+              "purpose": "Comprueba que cada nota siga diciendo lo correcto ahora que el TPL y el TPS están afinados.",
+              "purposes": {
+                "pt": "Verifique se cada nota continua dizendo o correto agora que o TPL e o TPS estão afinados."
+              },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
@@ -2190,14 +2270,18 @@
               "actionLabels": {
                 "pt": "Acordar"
               },
-              "description": "Todo el equipo de la pista está de acuerdo en qué se deja y qué se modifica.",
-              "descriptions": {
-                "pt": "Toda a equipe da trilha concorda sobre o que fica e o que se modifica."
-              },
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
               "maxAssignees": 6,
+              "description": "Revisa cada cambio propuesto.\nDa tu acuerdo o di qué no compartes.\nCon todo el equipo de acuerdo, se aplica.",
+              "descriptions": {
+                "pt": "Revise cada mudança proposta.\nDê o seu acordo ou diga o que não compartilha.\nCom toda a equipe de acordo, ela é aplicada."
+              },
+              "purpose": "Pónganse de acuerdo en qué se deja y qué se cambia de lo que se encontró al armonizar.",
+              "purposes": {
+                "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
+              },
               "solverAppId": "fcr-acuerdo"
             }
           ],
@@ -2251,6 +2335,14 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
+              "description": "Lee el artículo junto al TPL y al TPS donde aparece la palabra.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlos todos.",
+              "descriptions": {
+                "pt": "Leia o artigo junto ao TPL e ao TPS onde a palavra aparece.\nMarque «Tudo certo» ou anote o que precisa mudar.\nContinue até revisar todos."
+              },
+              "purpose": "Comprueba que cada artículo de palabras clave cuadre con cómo las tradujeron el TPL y el TPS.",
+              "purposes": {
+                "pt": "Verifique se cada artigo de palavras-chave combina com a forma como o TPL e o TPS as traduziram."
+              },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
@@ -2296,14 +2388,18 @@
               "actionLabels": {
                 "pt": "Acordar"
               },
-              "description": "Todo el equipo de la pista está de acuerdo en qué se deja y qué se modifica.",
-              "descriptions": {
-                "pt": "Toda a equipe da trilha concorda sobre o que fica e o que se modifica."
-              },
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
               "maxAssignees": 6,
+              "description": "Revisa cada cambio propuesto.\nDa tu acuerdo o di qué no compartes.\nCon todo el equipo de acuerdo, se aplica.",
+              "descriptions": {
+                "pt": "Revise cada mudança proposta.\nDê o seu acordo ou diga o que não compartilha.\nCom toda a equipe de acordo, ela é aplicada."
+              },
+              "purpose": "Pónganse de acuerdo en qué se deja y qué se cambia de lo que se encontró al armonizar.",
+              "purposes": {
+                "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
+              },
               "solverAppId": "fcr-acuerdo"
             }
           ],
@@ -2354,6 +2450,14 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
+              "description": "Lee la pregunta junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas.",
+              "descriptions": {
+                "pt": "Leia a pergunta junto ao TPL e ao TPS do seu versículo.\nMarque «Tudo certo» ou anote o que precisa mudar.\nContinue até revisar todas."
+              },
+              "purpose": "Comprueba que cada pregunta y su respuesta sigan cuadrando con el TPL y el TPS.",
+              "purposes": {
+                "pt": "Verifique se cada pergunta e a sua resposta continuam combinando com o TPL e o TPS."
+              },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
@@ -2383,14 +2487,18 @@
               "actionLabels": {
                 "pt": "Acordar"
               },
-              "description": "Todo el equipo de la pista está de acuerdo en qué se deja y qué se modifica.",
-              "descriptions": {
-                "pt": "Toda a equipe da trilha concorda sobre o que fica e o que se modifica."
-              },
               "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 2,
               "maxAssignees": 6,
+              "description": "Revisa cada cambio propuesto.\nDa tu acuerdo o di qué no compartes.\nCon todo el equipo de acuerdo, se aplica.",
+              "descriptions": {
+                "pt": "Revise cada mudança proposta.\nDê o seu acordo ou diga o que não compartilha.\nCom toda a equipe de acordo, ela é aplicada."
+              },
+              "purpose": "Pónganse de acuerdo en qué se deja y qué se cambia de lo que se encontró al armonizar.",
+              "purposes": {
+                "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
+              },
               "solverAppId": "fcr-acuerdo"
             }
           ],
@@ -2444,16 +2552,20 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Cada pastor lee el paquete, registra sus inquietudes y entrega su reporte: fidelidad, claridad y utilidad.",
-              "descriptions": {
-                "pt": "Cada pastor lê o pacote, registra suas inquietações e entrega seu relatório: fidelidade, clareza e utilidade."
-              },
               "closing": "approval",
               "scope": "unit",
               "claimMode": "pool",
               "minAssignees": 2,
               "maxAssignees": 4,
               "minIndependent": 2,
+              "description": "Lee el pasaje con sus ayudas.\nAnota cada inquietud donde la veas.\nEntrega tu reporte.",
+              "descriptions": {
+                "pt": "Leia a passagem com as suas ajudas.\nAnote cada inquietação onde a vir.\nEntregue o seu relatório."
+              },
+              "purpose": "Lee el paquete como pastor y di si es fiel, claro y útil para tu gente.",
+              "purposes": {
+                "pt": "Leia o pacote como pastor e diga se é fiel, claro e útil para a sua gente."
+              },
               "solverAppId": "fcr-aval",
               "checklist": [
                 {
@@ -2489,13 +2601,17 @@
               "actionLabels": {
                 "pt": "Decidir"
               },
-              "description": "Con los reportes entregados, el comité decide el aval.",
-              "descriptions": {
-                "pt": "Com os relatórios entregues, o comitê decide o aval."
-              },
               "closing": "consensus",
               "scope": "unit",
               "claimMode": "exclusive",
+              "description": "Lee los reportes entregados.\nMira las inquietudes que dejaron.\nConcede el aval, o envía las inquietudes para corregir.",
+              "descriptions": {
+                "pt": "Leia os relatórios entregues.\nVeja as inquietações que deixaram.\nConceda o aval, ou envie as inquietações para corrigir."
+              },
+              "purpose": "Con los reportes de los pastores, decidan si el paquete recibe el aval.",
+              "purposes": {
+                "pt": "Com os relatórios dos pastores, decidam se o pacote recebe o aval."
+              },
               "solverAppId": "fcr-aval",
               "decisionRule": "majority"
             }
@@ -2554,12 +2670,16 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "description": "Formato, que no falte nada y que sea exactamente lo que avaló el comité. Se completa solo cuando todo pasa.",
-              "descriptions": {
-                "pt": "Formato, que não falte nada e que seja exatamente o que o comitê avalizou. Completa-se sozinho quando tudo passa."
-              },
               "closing": "automatic",
               "scope": "unit",
+              "description": "Mira cada comprobación.\nCorrige lo que falle.\nCuando todo pasa, el paso se completa solo.",
+              "descriptions": {
+                "pt": "Veja cada verificação.\nCorrija o que falhar.\nQuando tudo passa, o passo se completa sozinho."
+              },
+              "purpose": "Comprueba que lo que se va a publicar esté completo, bien formado y sea exactamente lo que avaló el comité.",
+              "purposes": {
+                "pt": "Verifique se o que vai ser publicado está completo, bem formado e é exatamente o que o comitê avalizou."
+              },
               "solverAppId": "fcr-publicar"
             },
             {
@@ -2572,12 +2692,16 @@
               "actionLabels": {
                 "pt": "Ver e publicar"
               },
-              "description": "La unidad avalada pasa a lo publicado de cada recurso y se crea su versión. No se edita contenido.",
-              "descriptions": {
-                "pt": "A unidade avalizada passa para o publicado de cada recurso e sua versão é criada. Não se edita conteúdo."
-              },
               "closing": "automatic",
               "scope": "unit",
+              "description": "Revisa qué se va a publicar.\nToca «Publicar esta unidad».\nEn este paso no se edita contenido.",
+              "descriptions": {
+                "pt": "Revise o que vai ser publicado.\nToque em «Publicar esta unidade».\nNeste passo não se edita conteúdo."
+              },
+              "purpose": "Publica la unidad avalada: pasa a lo publicado de cada recurso y se crea su versión.",
+              "purposes": {
+                "pt": "Publique a unidade avalizada: ela passa ao publicado de cada recurso e se cria a sua versão."
+              },
               "solverAppId": "fcr-publicar"
             }
           ],
