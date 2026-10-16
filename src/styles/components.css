@@ -9990,6 +9990,6 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-question__orig { font-size: 1.15em; font-weight: 600; }
 
 /* Between the reference and the translation: how to select, with an arrow from what is highlighted to the words. */
-.af-bridge { display: flex; align-items: flex-start; gap: 0.375rem; margin: -0.125rem 0.25rem; color: var(--text-muted); font-size: calc(0.875rem * var(--ts, 1)); line-height: 1.45; }
+.af-bridge { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0.5rem 0.375rem; color: var(--text-muted); font-size: calc(0.875rem * var(--ts, 1)); line-height: 1.45; }
 .af-bridge svg { flex: 0 0 auto; margin-top: 0.125rem; color: var(--accent-600); }
 .af-bridge[data-needed="true"] { color: var(--accent-800); font-weight: 600; }
