@@ -9738,9 +9738,7 @@ button.cr-note:hover { background: var(--primary-100); }
 @media (max-width: 1023.98px) {
   .af-reason:not([data-whole]) .af-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 }
-@media (min-width: 1024px) {
-  .af-reason__more { display: none; }
-}
+
 
 /*
  * What a tuning screen is for, under its header and always in sight: one sentence, the first thing read. Below it,
@@ -9751,3 +9749,31 @@ button.cr-note:hover { background: var(--primary-100); }
 
 /* What the simple text makes explicit, inside braces in the file: shown in italics, without them. */
 .af-word[data-implied] { font-style: italic; }
+
+/*
+ * One thing louder than the rest. The tuning point read as a dozen things asking for attention, most of them with
+ * the same weight: the purpose in bold, a blue picker the width of the screen, the step in blue, the rule boxed, who
+ * agreed in bold, a long definition in large print, a button the width of the column (16 October). Three levels now:
+ * what is decided (the question, the words, the button); what is reviewed (the term or figure, the text); and, quiet,
+ * the context (the purpose, the step, the rule, the note or the definition, the team).
+ */
+.af--round .af-mission { font-weight: 500; color: var(--text-muted); font-size: calc(0.9375rem * var(--ts, 1)); padding-top: 0; }
+.af--round .af-pick select { background: var(--surface); border-color: var(--border); color: var(--text); font-weight: 500; }
+.af--round .af-stepname { color: var(--text-muted); font-weight: 600; }
+.af--round .af-category { font-size: calc(1.25rem * var(--ts, 1)); }
+.af--round .af-criterion { border-left-color: var(--border); color: var(--text-muted); font-size: calc(0.875rem * var(--ts, 1)); }
+.af--round .af-ask-agree { font-weight: 400; color: var(--text-muted); }
+.af--round .af-reason { border-left-color: var(--border); background: transparent; padding-block: 0.125rem; }
+.af--round .af-reason .af-note { color: var(--text-muted); font-size: calc(0.9375rem * var(--ts, 1)); }
+.af--round .af-team:not([data-state="agreed"]):not([data-state="disputed"]) { background: transparent; border: 1px solid var(--border); }
+/* The note or the definition shows its first lines; the rest at a touch, on a desktop as on a phone. */
+@media (min-width: 1024px) {
+  .af-reason:not([data-whole]) .af-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; overflow: hidden; }
+  .af--round .af-focus__top .af-pick { flex: 0 1 24rem; }
+  .af--round .af-focus__top .af-step { margin-left: auto; }
+  .af--round .af-decide { grid-template-columns: auto auto; justify-content: start; }
+  .af--round .af-decide > .btn { min-width: 10rem; padding-inline: 1.25rem; }
+}
+/* The two ways into the note or the definition share a row: one under the other they took two rows of a phone. */
+.af--round .af-reason { grid-template-columns: repeat(2, auto); justify-content: start; column-gap: 1.25rem; }
+.af--round .af-reason > .af-note { grid-column: 1 / -1; }
