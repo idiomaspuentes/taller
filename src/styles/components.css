@@ -10004,3 +10004,8 @@ button.cr-note:hover { background: var(--primary-100); }
 .af--round .af-ask > .af-elsewhere ul { margin: 0; }
 .af--round .af-ask > .af-elsewhere .af-hint { margin: 0; }
 .af--round .af-ask > .af-elsewhere + .af-question { margin-top: 0.5rem; }
+
+/* Each other place of a key word with a few words of its verse, the rendering marked; and the link to its senses. */
+.af-elsewhere__ctx { display: block; margin-top: 0.125rem; color: var(--text-muted); font-size: calc(0.875rem * var(--ts, 1)); line-height: 1.45; }
+.af-elsewhere__ctx mark { background: var(--accent-100); color: var(--text); border-radius: 3px; padding: 0 0.125rem; }
+.af-criterion__link { display: inline; min-height: 0; padding: 0; font-size: inherit; }

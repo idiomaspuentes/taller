@@ -1817,9 +1817,9 @@
               "purposes": {
                 "pt": "Verifique se cada palavra-chave é traduzida sempre da mesma forma em todo o livro."
               },
-              "criterion": "En el TPL una palabra clave se traduce con la misma palabra en todo el libro, salvo que haya un motivo.",
+              "criterion": "En el TPL, donde significa lo mismo, se usa la misma palabra. Puede ser otra si aquí significa otra cosa, o si en español hay otra forma igual de literal.",
               "criteria": {
-                "pt": "No TPL uma palavra-chave é traduzida com a mesma palavra em todo o livro, a não ser que haja um motivo."
+                "pt": "No TPL, onde significa o mesmo, usa-se a mesma palavra. Pode ser outra se aqui significa outra coisa, ou se em português há outra forma igualmente literal."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
@@ -2027,9 +2027,9 @@
               "purposes": {
                 "pt": "Verifique se cada palavra-chave conserva o seu sentido em todo o livro. A forma pode variar."
               },
-              "criterion": "En el TPS puede decirse con otras palabras, pero con el mismo sentido en todo el libro.",
+              "criterion": "En el TPS es normal que cambien las palabras: donde significa lo mismo, debe conservar ese sentido. Si aquí significa otra cosa, puede decirse distinto.",
               "criteria": {
-                "pt": "No TPS pode ser dita com outras palavras, mas com o mesmo sentido em todo o livro."
+                "pt": "No TPS é normal que as palavras mudem: onde significa o mesmo, deve conservar esse sentido. Se aqui significa outra coisa, pode ser dita de outra forma."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",

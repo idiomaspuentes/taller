@@ -1,5 +1,5 @@
 /** The key terms of a chapter, and how each one was rendered across the book. */
-import { renderingsElsewhere, termAsk, termDefinition, termWord } from "../src/domain/afinacionWords";
+import { renderingsElsewhere, snippetAround, termAsk, termDefinition, termWord } from "../src/domain/afinacionWords";
 import assert from "node:assert/strict";
 import { articleBody,
   compareTermRenderings,
@@ -197,6 +197,15 @@ test("la definición de un término es el primer párrafo de su sección «Defin
 test("la pregunta nombra la palabra del término, sin su categoría", () => {
   assert.equal(termWord("Tiempo Biblico: año"), "año");
   assert.equal(termWord("Dios"), "Dios");
+});
+
+test("cada otro lugar se muestra con unas palabras de su versículo alrededor de lo elegido", () => {
+  const verse = "Después de que el pueblo israelita regresó y comenzó a vivir en sus ciudades, se reunieron todos.";
+  const s = snippetAround(verse, "israelita")!;
+  assert.deepEqual([s.before, s.match, s.after, s.cutBefore, s.cutAfter], ["de que el pueblo", "israelita", "regresó y comenzó a", true, true]);
+  assert.equal(snippetAround(verse, "Israelita,")?.match, "israelita", "sin mayúsculas ni signos");
+  assert.equal(snippetAround("Durante el primer año de Ciro", "Durante el … año")?.match, "Durante el", "por su primer trozo");
+  assert.equal(snippetAround(verse, "Jacob"), null);
 });
 
 console.log(`\nverify-afinacion-words: ${passed} checks passed.`);

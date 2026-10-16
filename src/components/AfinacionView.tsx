@@ -23,7 +23,7 @@ import { ArrowDown, Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
-import { articleBody, termWord, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
+import { articleBody, termWord, snippetAround, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, selectionWindow, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
@@ -1712,6 +1712,18 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     {elsewhere.map((r) => (
                       <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
                         <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
+                        {(() => {
+                          // Its verse, around the words, to tell whether the term means the same there.
+                          const use = r.uses[0];
+                          const around = use ? snippetAround(data.bookDraft[`${use.chapter}:${use.verse}`] ?? "", r.text) : null;
+                          return around ? (
+                            <span className="af-elsewhere__ctx">
+                              {around.cutBefore ? "… " : ""}
+                              {around.before} <mark>{around.match}</mark> {around.after}
+                              {around.cutAfter ? " …" : ""}
+                            </span>
+                          ) : null;
+                        })()}
                       </li>
                     ))}
                   </ul>
@@ -1762,7 +1774,18 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {stepProp === "notas" || said.criterion ? (
                 // The rule of the text, small under the question: the question asks about the words, this says what
                 // «well» means in this text.
-                <p className="af-criterion af-criterion--hint">{said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
+                <p className="af-criterion af-criterion--hint">
+                  {said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}
+                  {/* Whether the term means the same here as there: its article tells its senses. */}
+                  {stepProp === "palabras" && termSlug ? (
+                    <>
+                      {" "}
+                      <button type="button" className="af-link af-criterion__link" onClick={() => setArticleOpen(true)}>
+                        {t("af.showDefinition")}
+                      </button>
+                    </>
+                  ) : null}
+                </p>
               ) : null}
               {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {agreeCount}</span> : null}</p> : null}
               {mine && !changing ? (

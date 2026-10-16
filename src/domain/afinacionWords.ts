@@ -239,6 +239,32 @@ export function renderingsElsewhere(comparison: Pick<TermComparison, "renderings
     .filter((rendering) => rendering.uses.length > 0);
 }
 
+/**
+ * A few words of a verse around where a rendering of a term is said: «… el pueblo [israelita] regresó a …». The other
+ * places of a term were listed as «israelita 3:1», and whether the term means the same there, which is what decides
+ * whether it should read the same, could not be told without the verse (16 October). Matched without case or marks;
+ * a rendering in pieces («Durante el … año») is looked for by its first piece. Null when it is not found.
+ */
+export function snippetAround(verse: string, rendering: string, around = 4): { before: string; match: string; after: string; cutBefore: boolean; cutAfter: boolean } | null {
+  const bare = (word: string) => word.toLocaleLowerCase("es").replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  const tokens = verse.split(/\s+/).filter(Boolean);
+  const piece = rendering.split("…")[0]!.trim().split(/\s+/).filter(Boolean).map(bare).filter(Boolean);
+  if (!piece.length) return null;
+  for (let at = 0; at + piece.length <= tokens.length; at++) {
+    if (!piece.every((word, i) => bare(tokens[at + i]!) === word)) continue;
+    const from = Math.max(0, at - around);
+    const to = Math.min(tokens.length, at + piece.length + around);
+    return {
+      before: tokens.slice(from, at).join(" "),
+      match: tokens.slice(at, at + piece.length).join(" "),
+      after: tokens.slice(at + piece.length, to).join(" "),
+      cutBefore: from > 0,
+      cutAfter: to < tokens.length,
+    };
+  }
+  return null;
+}
+
 export type TermOrder = "term" | "text";
 
 /**
