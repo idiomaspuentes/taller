@@ -5,7 +5,8 @@ import { refComment } from "../domain/commentPlace";
 import { ChapterReader } from "./ChapterReader";
 import { Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
-import { StepAsk } from "./StepAsk";
+import { PassageIntroText, StepAsk } from "./StepAsk";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { canConfirmForTeam, levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
@@ -527,6 +528,8 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   const taskLabel = ctx?.taskName ? localizeName(ctx.taskName, language) : "";
   const roundSteps = (said.description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const [aboutOpen, setAboutOpen] = useState(false);
+  /** The introduction of the book and the chapter, in a sheet opened from «Más». */
+  const [introOpen, setIntroOpen] = useState(false);
   const welcomeKey = `taller-af-welcome:${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`;
   const [welcomed, setWelcomed] = useState(true);
   useEffect(() => {
@@ -1489,7 +1492,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           .join(" · ")}
         more={
           data && verse && session
-            ? [{ id: "chapter", label: t("al.readChapter"), hint: t("mm.chapterHint"), pressed: pane === "chapter", onSelect: () => setPane(pane === "chapter" ? "align" : "chapter") }]
+            ? [
+                { id: "chapter", label: t("al.readChapter"), hint: t("mm.chapterHint"), pressed: pane === "chapter", onSelect: () => setPane(pane === "chapter" ? "align" : "chapter") },
+                // Beside the chapter, as in the tuning tool (a tab there): it was a fold over the work.
+                { id: "intro", label: t("af.paneIntro"), hint: t("mm.introHint"), onSelect: () => setIntroOpen(true) },
+              ]
             : []
         }
         info={said.purpose ? { label: t("af.aboutTask"), onOpen: () => setAboutOpen(true) } : undefined}
@@ -1511,12 +1518,23 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         <StepAsk
           session={session}
           ctx={ctx}
+          intro={false}
           label={said.purpose ? t("af.aboutTask") : undefined}
           open={said.purpose ? aboutOpen : undefined}
           onOpenChange={said.purpose ? setAboutOpen : undefined}
           trigger={!said.purpose}
         />
       </div>
+      {ctx ? (
+        <Dialog open={introOpen} onOpenChange={setIntroOpen}>
+          <DialogContent className="fix-sheet hint-sheet af-article-sheet" aria-label={t("sa.intro")}>
+            <header className="fx-head">
+              <DialogTitle className="fx-title">{t("sa.intro")}</DialogTitle>
+            </header>
+            <div className="fx-body af-article-read">{introOpen ? <PassageIntroText session={session} ctx={ctx} /> : null}</div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
       {data && said.purpose && !welcomed ? (
         <section className="af-welcome" aria-label={t("af.welcomeTitle")}>
           <p className="af-welcome__title">{t("af.welcomeTitle")}</p>
