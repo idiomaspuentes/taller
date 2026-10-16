@@ -1725,7 +1725,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 // left the person to work out what it was about (16 October).
                 const ask = stepProp === "palabras" ? termAsk(data.termUses.filter((use) => use.termSlug === termSlug), comparison, item.id) : "compare";
                 const key: MessageKey =
-                  stepProp === "notas" ? QUESTION.notas[data.resource] : data.resource === "tps" ? QUESTION.palabras.tps : ask === "compare" ? QUESTION.palabras.tpl : "af.qPalabrasFirst";
+                  stepProp === "notas"
+                    ? QUESTION.notas[data.resource]
+                    : // A key word is checked for coherence with the rest of the book; the first time, it sets it.
+                      ask === "compare"
+                      ? QUESTION.palabras[data.resource]
+                      : data.resource === "tps"
+                        ? "af.qPalabrasTpsFirst"
+                        : "af.qPalabrasFirst";
                 const marked = (markedWords || "").split(/\s+/).filter(Boolean);
                 // A long highlight is shortened to its first words and its last; marks of words left out («…») are one.
                 const orig = (marked.length > 4 ? `${marked.slice(0, 2).join(" ")} … ${marked[marked.length - 1]}` : marked.join(" ")).replace(/…(\s*…)+/g, "…");
@@ -1748,7 +1755,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                         )}
                     </p>
                     {/* The first time a key word of the TPL is reviewed it sets the word for the rest of the book. */}
-                    {stepProp === "palabras" && data.resource !== "tps" && ask !== "compare" ? <p className="af-criterion af-criterion--hint">{t(ask === "only" ? "af.qOnlyNote" : "af.qFirstNote")}</p> : null}
+                    {stepProp === "palabras" && ask !== "compare" ? <p className="af-criterion af-criterion--hint">{t(ask === "only" ? "af.qOnlyNote" : "af.qFirstNote")}</p> : null}
                   </>
                 );
               })()}

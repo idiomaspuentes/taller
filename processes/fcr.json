@@ -2027,9 +2027,9 @@
               "purposes": {
                 "pt": "Verifique se cada palavra-chave conserva o seu sentido em todo o livro. A forma pode variar."
               },
-              "criterion": "En el TPS una palabra clave puede decirse de otra forma, pero sin cambiar su sentido.",
+              "criterion": "En el TPS puede decirse con otras palabras, pero con el mismo sentido en todo el libro.",
               "criteria": {
-                "pt": "No TPS uma palavra-chave pode ser dita de outra forma, mas sem mudar o seu sentido."
+                "pt": "No TPS pode ser dita com outras palavras, mas com o mesmo sentido em todo o livro."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
