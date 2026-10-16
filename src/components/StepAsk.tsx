@@ -13,6 +13,7 @@ import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
 import { stepPurpose } from "../domain/processes";
+import { setIntroEntry } from "./introSlot";
 import { portionRange } from "../domain/usfmEdit";
 import type { ProjectSettings, ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
@@ -355,13 +356,26 @@ export function glossaryHref(ctx: SolverLaunchContext): string {
  */
 function PassageIntro({ session, ctx }: { session: GtSession | null | undefined; ctx: SolverLaunchContext }) {
   const t = useT();
-  const [asked, setAsked] = useState(false);
+  const [open, setOpen] = useState(false);
+  // Not a fold over the work: a row of the tool's «Más» (`introSlot.ts`), and a sheet over the work when chosen.
+  // It was the one fold left at the top of every tool, pushing the work down (16 October).
+  useEffect(() => {
+    if (!ctx.book) return;
+    const entry = { open: () => setOpen(true) };
+    setIntroEntry(entry);
+    return () => setIntroEntry(null);
+  }, [ctx.book]);
   if (!ctx.book) return null;
+  const title = t(ctx.chapter ? "sa.intro" : "sa.introBook");
   return (
-    <details className="step-ask step-intro" onToggle={(event) => (event.currentTarget.open ? setAsked(true) : undefined)}>
-      <summary>{t(ctx.chapter ? "sa.intro" : "sa.introBook")}</summary>
-      <div className="step-intro__body">{asked ? <PassageIntroText session={session} ctx={ctx} /> : null}</div>
-    </details>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="fix-sheet hint-sheet af-article-sheet" aria-label={title}>
+        <header className="fx-head">
+          <DialogTitle className="fx-title">{title}</DialogTitle>
+        </header>
+        <div className="fx-body af-article-read">{open ? <PassageIntroText session={session} ctx={ctx} /> : null}</div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

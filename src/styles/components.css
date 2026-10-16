@@ -9950,3 +9950,30 @@ button.cr-note:hover { background: var(--primary-100); }
 .ld-slow { margin: 0; color: var(--text-muted); font-size: 0.875rem; }
 @keyframes ld-sheen { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .ld-line, .ld-pill { animation: none; } }
+
+/*
+ * Every other tool, as the tuning and the alignment ones (16 October). Contrast: the secondary text a step darker
+ * (8:1 and more on white and on the gray boxes) and the filled button too. Width: the tool's box takes the window;
+ * what is read keeps its width through a side margin worked out from the window, so a tool of one column and one of
+ * two (the checklist, the endorsement) are laid out as before; the header and the bars of tabs reach the edges,
+ * their contents lined up with the work.
+ */
+.af, .fam, .scripture-editor, .chat-main.pl { --text-muted: var(--gray-700); --text-faint: var(--gray-600); --primary: var(--accent-600); --primary-hover: var(--accent-700); }
+.af:not(.af--round):not(.al) { --af-max: 52rem; --af-gutter: max(0.75rem, calc((100vw - var(--af-max)) / 2)); max-width: none; padding-inline: var(--af-gutter); }
+@media (min-width: 1024px) { .af.ck:not(.ag), .af.en { --af-max: 76rem; } }
+.af:not(.af--round):not(.al) > .th { margin-inline: calc(-1 * var(--af-gutter)); padding-inline: max(0.5rem, var(--af-gutter)); }
+.fam { --fam-gutter: max(0rem, calc((100vw - 60rem) / 2)); max-width: none; }
+.fam > .th { padding-inline: calc(0.5rem + var(--fam-gutter)); }
+.fam > .fam-tabs { padding-inline: calc(0.75rem + var(--fam-gutter)); }
+.fam > .fam__body { padding-inline: calc(1rem + var(--fam-gutter)); }
+/* Anything else at the top (the step's bar, an alert) sits between the margins; an alert said `width: 100%` and its margin pushed it past the window. */
+.fam > .step-ask-bar { margin-inline: var(--fam-gutter); }
+.fam > :not(.th):not(.fam-tabs):not(.fam__body):not(.step-ask-bar):not(dialog) { width: auto; margin-inline: calc(var(--fam-gutter) + 1rem); }
+/* The faint hints (5.9:1) and the brown of the yellow notices on cream (5.5:1), a step darker in the tools: 8:1 and 7.5:1. */
+.af, .fam, .scripture-editor, .chat-main.pl { --text-faint: var(--gray-700); --warning-700: #66440a; }
+
+/* The writing editor, likewise: it takes the window, its header reaches the edges, its workspace keeps its width. */
+.scripture-editor:not(.fam) { --se-max: 52rem; --se-gutter: max(0rem, calc((100vw - var(--se-max)) / 2)); max-width: none; }
+.scripture-editor--split:not(.fam) { --se-max: 84rem; }
+.scripture-editor:not(.fam) > .scripture-editor__head { padding-left: calc(0.5rem + var(--se-gutter)); padding-right: calc(1rem + var(--se-gutter)); }
+.scripture-editor:not(.fam) > :not(.scripture-editor__head):not(dialog) { margin-inline: var(--se-gutter); }

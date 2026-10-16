@@ -3,6 +3,7 @@ import { Check, MoreHorizontal } from "lucide-react";
 import { useT, type MessageKey } from "../i18n/messages";
 import { TEXT_SIZES, type TextSize } from "../domain/textSize";
 import { setTextSize, useTextSize } from "../textSize";
+import { useIntroEntry } from "./introSlot";
 
 const TEXT_SIZE_NAME: Record<TextSize, MessageKey> = { normal: "menu.textNormal", large: "menu.textLarge", larger: "menu.textLarger" };
 
@@ -31,6 +32,9 @@ export type MoreItem = {
 export function MoreMenu({ items, details }: { items: MoreItem[]; details?: ReactNode }) {
   const t = useT();
   const textSize = useTextSize();
+  const intro = useIntroEntry();
+  // The introduction of the passage, where the tool has one to give (see `introSlot.ts`).
+  const all: MoreItem[] = intro && !items.some((item) => item.id === "intro") ? [...items, { id: "intro", label: t("af.paneIntro"), hint: t("mm.introHint"), onSelect: intro.open }] : items;
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -68,7 +72,7 @@ export function MoreMenu({ items, details }: { items: MoreItem[]; details?: Reac
         <span>{t("mm.more")}</span>
       </button>
       <div className="mm-panel" id={panelId} hidden={!open}>
-        {items.map((item) =>
+        {all.map((item) =>
           item.href ? (
             <a key={item.id} className="mm-row" href={item.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
               {row(item)}
