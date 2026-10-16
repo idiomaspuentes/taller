@@ -9828,10 +9828,6 @@ button.cr-note:hover { background: var(--primary-100); }
 /* Under a challenge's question, what keeping the rule looks like: small, no rule beside it. */
 .af--round .af-criterion--hint { border-left: 0; padding-left: 0; font-size: calc(0.8125rem * var(--ts, 1)); margin-top: -0.375rem; }
 
-/* The note or the definition, folded: one line to show it, beside the glossary of the verse. */
-.af-reason-bar { display: flex; flex-wrap: wrap; align-items: center; column-gap: 1.25rem; }
-.af-reason-bar > .af-link { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; }
-.af--round .af-reason > .af-reason__hide { margin-left: auto; color: var(--text-muted); font-weight: 500; }
 /*
  * The whole article of a note or a key word, in its sheet: the size of text the person chose, not the 13 px the helps
  * reader sets for itself, which read small over a whole screen (16 October).
@@ -9872,3 +9868,12 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-word__gap { color: var(--text-muted); }
 /* A word to touch takes a finger: 44 px of height around it, without moving the line it is on. */
 .af-recap__ref .af-word--open { padding-block: 0.625rem; margin-block: -0.625rem; }
+
+/*
+ * On a phone the name of the point is what opens its note or definition: a small chevron beside it, turning when
+ * open. Two loud links under it («Ver qué significa», «Ver en el glosario») belonged to neither the name nor the step.
+ */
+.af-category__toggle { display: inline; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.af-category__chev { display: inline-block; margin-inline-start: 0.375rem; vertical-align: -0.125em; color: var(--text-muted); transition: transform 0.15s; }
+.af-category__chev[data-open] { transform: rotate(180deg); }
+.af-focus > .af-about:empty { display: none; }

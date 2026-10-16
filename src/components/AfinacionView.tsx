@@ -1333,7 +1333,25 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             </span>
           </div>
           <p className="af-kind af-kind--top" ref={kindRef}>{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
-          <h2 className={termSlug ? "af-category af-category--term" : "af-category"}>{stepProp === "notas" ? nameOf(item) : termSlug ? (titlesRead || termTitles[termSlug] ? termLabel(termSlug, termTitles) : "…") : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
+          {(() => {
+            const name = stepProp === "notas" ? nameOf(item) : termSlug ? (titlesRead || termTitles[termSlug] ? termLabel(termSlug, termTitles) : "…") : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse");
+            // On a phone the name is what opens its note or definition: «Ver qué significa» and «Ver en el glosario»
+            // stood as two loud links between the name and the step, belonging to neither (16 October).
+            const foldable = !wide && ((stepProp === "notas" && Boolean(item.note)) || (stepProp === "palabras" && Boolean(definition)));
+            return (
+              <h2 className={termSlug ? "af-category af-category--term" : "af-category"}>
+                {foldable ? (
+                  <button type="button" className="af-category__toggle" aria-expanded={showReason} onClick={() => toggleReason(!showReason)}>
+                    {name}
+                    <ChevronDown size={18} className="af-category__chev" data-open={showReason ? "true" : undefined} aria-hidden />
+                    <span className="sr-only">{t(showReason ? "af.hideReason" : stepProp === "notas" ? "af.showNote" : "af.showDefinition")}</span>
+                  </button>
+                ) : (
+                  name
+                )}
+              </h2>
+            );
+          })()}
           {termSlug && !definition ? termGlossary : null}
 
           {/* Why the point is a challenge and what the team said: beside the text on a wide screen, above it on a phone. */}
@@ -1361,19 +1379,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     {t("af.readArticle")}
                   </button>
                 ) : null}
-                {wide ? null : (
-                  <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
-                    {t("af.hideReason")}
-                  </button>
-                )}
               </div>
             ) : (
-              <div className="af-reason-bar">
-                <button type="button" className="af-link" aria-expanded={false} onClick={() => toggleReason(true)}>
-                  {t("af.showNote")}
-                  <ChevronDown size={14} aria-hidden />
-                </button>
-              </div>
+              null
             )
           ) : null}
           {stepProp === "palabras" && definition ? (
@@ -1386,20 +1394,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {t("af.wholeArticle")}
                 </button>
                 {termGlossary}
-                {wide ? null : (
-                  <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
-                    {t("af.hideReason")}
-                  </button>
-                )}
               </div>
             ) : (
-              <div className="af-reason-bar">
-                <button type="button" className="af-link" aria-expanded={false} onClick={() => toggleReason(true)}>
-                  {t("af.showDefinition")}
-                  <ChevronDown size={14} aria-hidden />
-                </button>
-                {termGlossary}
-              </div>
+              null
             )
           ) : null}
           {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}
