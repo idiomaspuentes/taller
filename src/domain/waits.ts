@@ -31,6 +31,9 @@ export function pruneWaitRules(task: ProjectTask, board: Pick<AssignmentsDoc, "t
 
 /** Would adding `rule` to `task` make tasks wait on each other in a loop? */
 export function waitWouldLoop(board: Pick<AssignmentsDoc, "teams">, taskId: string, rule: WaitRule): boolean {
+  // What waits for earlier chapters only waits for work it is never itself part of: a phase may wait for its own
+  // earlier chapters.
+  if (rule.scope === "before") return false;
   const byId = new Map(board.teams.map((t) => [t.id, t]));
   const targets = (r: WaitRule): string[] =>
     r.source ? [] : r.taskId ? [r.taskId] : board.teams.filter((t) => t.phaseId === r.phaseId).map((t) => t.id);
@@ -54,6 +57,9 @@ function sameScope(scope: WaitScope, waiting: DcsIssue, blocker: DcsIssue, units
   if (scope === "all") return true;
   const chapterA = chapterFromIssue(waiting);
   const chapterB = chapterFromIssue(blocker);
+  // One chapter at a time: only what is left of an earlier chapter holds. Work of no chapter (an article) holds
+  // nothing, and is held by nothing.
+  if (scope === "before") return Boolean(chapterA && chapterB && chapterB < chapterA);
   // «El capítulo» is the unit of handoff: a chapter split into stretches waits stretch by stretch.
   if (scope === "chapter" && units?.length && chapterA && chapterA === chapterB) {
     const a = portionIdsOf(waiting);
@@ -161,6 +167,11 @@ export function waitReason(
     : board.phases.find((p) => p.id === first.rule.phaseId)?.name || "otra fase";
   const owner = first.issues.length === 1 ? first.issues[0]!.assignee?.login || first.issues[0]!.assignees?.[0]?.login : undefined;
   const more = blocks.length > 1 ? ` y ${blocks.length - 1} más` : "";
+  if (first.rule.scope === "before") {
+    // The chapter to finish first, not who is in it: «Espera al capítulo 1 de «Afinación»».
+    const chapter = Math.min(...first.issues.map((issue) => chapterFromIssue(issue)).filter((c) => c > 0));
+    if (Number.isFinite(chapter)) return `Espera al capítulo ${chapter} de «${name}»${more}`;
+  }
   return owner ? `Espera a «${name}» de @${owner}${more}` : `Espera a «${name}»${more}`;
 }
 

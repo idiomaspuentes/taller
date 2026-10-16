@@ -4,10 +4,11 @@ export const WAIT_SCOPE_LABEL: Record<WaitScope, string> = {
   portion: "la misma porción",
   chapter: "el mismo capítulo",
   all: "todo el trabajo",
+  before: "los capítulos anteriores",
 };
 
 export function isWaitScope(value: unknown): value is WaitScope {
-  return value === "portion" || value === "chapter" || value === "all";
+  return value === "portion" || value === "chapter" || value === "all" || value === "before";
 }
 
 /** Keep only well-formed rules; a rule needs exactly one target. */

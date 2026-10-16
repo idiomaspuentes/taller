@@ -157,6 +157,7 @@ Lo que sigue dentro del código, y en qué fase del plan sale
 | Tarea | `everyUnit: true` | La tarea recorre **cada unidad** de su alcance (cada capítulo o tramo), tenga o no artículos pendientes. Para revisiones de lo que ya existe. |
 | Tarea | `waitsFor[].source: true` | La tarea que se espera es del **proyecto fuente**: el mismo libro, en la organización del paquete de recursos de origen. Libre solo cuando ese proyecto la cerró para el mismo capítulo. |
 | Tarea | `waitsFor[].partial: true` | Basta **una parte** de lo esperado para empezar: la tarea queda libre cuando se cierra la primera porción de las que cubre, y sigue mientras llega el resto. Varias reglas parciales cuentan juntas (basta lo de cualquiera). Cuándo se puede terminar lo decide la herramienta. |
+| Tarea | `waitsFor[].scope: "before"` | Espera a lo que queda de **los capítulos anteriores**: un capítulo a la vez. Puede nombrar su propia fase. En el FCR, cada tarea de Afinación espera a que la fase esté cerrada en los capítulos de antes: el equipo termina el TPL y el TPS del capítulo 1 antes de ver el 2 (16 de octubre de 2026). Las tareas de un mismo capítulo no se esperan por esto. |
 | Paso | `closing: "automatic"` | Lo completa su herramienta, sin que nadie lo marque. Una tarea con todos sus pasos automáticos se entrega sola. |
 | Herramienta | `stepParams.<paso>.only: "linked"` | (Lista de comprobación) Recorre solo los ítems que enlazan un artículo. |
 | Herramienta | `stepParams.<paso>.aligned: "tpl,tps"` | (Publicación) Textos que deben estar alineados para publicarse. |

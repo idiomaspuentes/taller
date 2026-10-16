@@ -1654,6 +1654,10 @@
             {
               "taskId": "revision-grupal-tpl",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "before"
             }
           ],
           "steps": [
@@ -1702,6 +1706,10 @@
             {
               "taskId": "desafios-tpl",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "before"
             }
           ],
           "bundle": {
@@ -1756,6 +1764,10 @@
             {
               "taskId": "palabras-tpl",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "before"
             }
           ],
           "steps": [
@@ -1828,6 +1840,10 @@
             {
               "taskId": "revision-grupal-tps",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "before"
             }
           ],
           "steps": [
@@ -1876,6 +1892,10 @@
             {
               "taskId": "desafios-tps",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "before"
             }
           ],
           "bundle": {
@@ -1930,6 +1950,10 @@
             {
               "taskId": "palabras-tps",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-afinacion",
+              "scope": "before"
             }
           ],
           "steps": [

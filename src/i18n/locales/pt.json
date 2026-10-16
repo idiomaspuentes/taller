@@ -557,6 +557,7 @@
   "wa.addLink": "+ Aguardar outra tarefa",
   "wa.scopePortion": "a mesma porção",
   "wa.scopeChapter": "o mesmo capítulo",
+  "wa.scopeBefore": "os capítulos anteriores",
   "wa.scopeAll": "todo o trabalho",
   "sc.oneOfTeam": "Um da equipe",
   "sc.quota": "Vagas {min}–{max}",

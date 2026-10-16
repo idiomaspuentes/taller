@@ -410,8 +410,11 @@ export type TaskStep = {
  */
 export type Team = ProjectTask;
 
-/** How much of the awaited work must be closed: the same portion, the same chapter, or all of it. */
-export type WaitScope = "portion" | "chapter" | "all";
+/**
+ * How much of the awaited work must be closed: the same portion, the same chapter, all of it, or every chapter before
+ * this one (`before`: a team that delivers one chapter at a time does not start the next while one is left behind).
+ */
+export type WaitScope = "portion" | "chapter" | "all" | "before";
 
 /**
  * «Espera a»: the task cannot start until the awaited work is closed.

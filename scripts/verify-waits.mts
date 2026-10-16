@@ -218,4 +218,30 @@ test("una espera parcial deja empezar cuando llega el primer pasaje, y varias cu
   assert.deepEqual(normalizeWaitRules([{ taskId: "tpl", scope: "chapter", partial: true }]), [{ taskId: "tpl", scope: "chapter", partial: true }]);
 });
 
+test("un capítulo a la vez: lo de Afinación del capítulo 2 espera a que se cierre todo lo de Afinación del capítulo 1, del TPL y del TPS", () => {
+  const before = { phaseId: "p2", scope: "before" as const };
+  const tuning: Pick<AssignmentsDoc, "teams" | "phases"> = {
+    phases: board.phases,
+    teams: [task("afinar-tpl", "Afinar TPL", "p2", [before]), task("afinar-tps", "Afinar TPS", "p2", [before]), task("notas-ayuda", "Notas (Ayudas)", "p1")],
+  };
+  const tpl1 = issue("afinar-tpl", "NEH 1:1–3 · Afinar TPL", ["p-1-1"]);
+  const tps1 = issue("afinar-tps", "NEH 1:1–3 · Afinar TPS", ["p-1-1"]);
+  const tpl2 = issue("afinar-tpl", "NEH 2:1–4 · Afinar TPL", ["p-2-1"]);
+  const tps3 = issue("afinar-tps", "NEH 3:1–2 · Afinar TPS", ["p-3-1"]);
+  const notes1 = issue("notas-ayuda", "NEH 1:1–3 · Notas", ["p-1-1"]);
+  const open = [tpl1, tps1, tpl2, tps3, notes1];
+  // Chapter 1 holds nothing of its own: TPL and TPS of the same chapter go side by side.
+  assert.equal(waitBlocks(tpl1, tuning, open).length, 0);
+  assert.equal(waitBlocks(tps1, tuning, open).length, 0);
+  assert.deepEqual(waitBlocks(tpl2, tuning, open)[0]!.issues.map((i) => i.number), [tpl1.number, tps1.number], "ni el TPL ni el TPS del capítulo 1, no lo de otras fases");
+  assert.equal(waitReason(waitBlocks(tps3, tuning, open), tuning), "Espera al capítulo 1 de «Afinación»");
+  // With chapter 1 closed, chapter 2 is free, and chapter 3 waits for it.
+  const after = [tpl2, tps3, notes1];
+  assert.equal(waitBlocks(tpl2, tuning, after).length, 0);
+  assert.equal(waitReason(waitBlocks(tps3, tuning, after), tuning), "Espera al capítulo 2 de «Afinación»");
+  // A phase waiting for its own earlier chapters is no loop.
+  assert.equal(waitWouldLoop(tuning, "afinar-tpl", before), false);
+  assert.deepEqual(normalizeWaitRules([before]), [before]);
+});
+
 console.log(`\nverify-waits: ${passed} checks passed.`);

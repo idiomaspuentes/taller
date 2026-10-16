@@ -557,6 +557,7 @@
   "wa.addLink": "+ Esperar a otra tarea",
   "wa.scopePortion": "la misma porción",
   "wa.scopeChapter": "el mismo capítulo",
+  "wa.scopeBefore": "los capítulos anteriores",
   "wa.scopeAll": "todo el trabajo",
   "sc.oneOfTeam": "Uno del equipo",
   "sc.quota": "Cupo {min}–{max}",

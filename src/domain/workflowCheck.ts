@@ -89,8 +89,9 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
   for (const task of tasks) {
     const targets: string[] = [];
     for (const wait of list(task.waitsFor)) {
-      // A wait on the source project is about another project's task: it is not part of this one's order.
-      if (wait.source === true) continue;
+      // A wait on the source project is about another project's task: it is not part of this one's order. A wait for
+      // the earlier chapters is about other chapters: it never comes back to the same work.
+      if (wait.source === true || wait.scope === "before") continue;
       if (text(wait.taskId)) targets.push(text(wait.taskId));
       if (text(wait.phaseId)) targets.push(...[...taskPhase].filter(([, phase]) => phase === text(wait.phaseId)).map(([taskId]) => taskId));
     }
@@ -121,7 +122,8 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
       }
       if (taskId && !taskIds.has(taskId)) problems.push(`${where}: espera a la tarea «${taskId}», que no existe.`);
       if (phaseId && !phaseIds.has(phaseId)) problems.push(`${where}: espera a la fase «${phaseId}», que no existe.`);
-      if (phaseId && phaseId === text(task.phaseId)) problems.push(`${where}: espera a su propia fase.`);
+      // Its own phase in the earlier chapters is how a team takes one chapter at a time.
+      if (phaseId && phaseId === text(task.phaseId) && wait.scope !== "before") problems.push(`${where}: espera a su propia fase.`);
     }
     if (id && waitsLoop(id, waitsOf)) problems.push(`${where}: sus esperas dan la vuelta y vuelven a ella.`);
 

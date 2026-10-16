@@ -31,6 +31,11 @@ const LEVELS_PT: Record<string, string> = glossary.levels;
  */
 export function localizeHold(text: string, language: UiLanguage): string {
   if (language !== "pt" || !text) return text;
+  const chapter = /^Espera al capítulo (\d+) de «(.*?)»(?: y (\d+) más)?$/.exec(text);
+  if (chapter) {
+    const [, n, name, more] = chapter;
+    return `Aguarda o capítulo ${n} de «${localizeName(name ?? "", language)}»${more ? ` e mais ${more}` : ""}`;
+  }
   const wait = /^Espera a «(.*?)»(?: de (@\S+))?(?: y (\d+) más)?$/.exec(text);
   if (wait) {
     const [, name, owner, more] = wait;

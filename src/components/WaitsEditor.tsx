@@ -27,10 +27,11 @@ function targetName(rule: WaitRule, board: Props["board"]): string | null {
   return board.phases.find((p) => p.id === rule.phaseId)?.name ?? null;
 }
 
-const SCOPES: WaitScope[] = ["portion", "chapter", "all"];
+const SCOPES: WaitScope[] = ["portion", "chapter", "before", "all"];
 const SCOPE_KEY: Record<WaitScope, MessageKey> = {
   portion: "wa.scopePortion",
   chapter: "wa.scopeChapter",
+  before: "wa.scopeBefore",
   all: "wa.scopeAll",
 };
 
