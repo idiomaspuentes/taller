@@ -54,9 +54,10 @@ export function articleBody(markdown: string): string {
 }
 
 /**
- * What a term means, from its article: the part under its «Definition» heading (in any language the article has), or
- * else its first paragraph. Shown where the term is reviewed, as the note is for a challenge: the team checked key
- * words without the screen ever saying what the word was (16 October).
+ * What a term means, from its article: the first paragraph under its «Definition» heading (in any language the article
+ * has), or else its first paragraph. Shown where the term is reviewed, as the note is for a challenge: the team checked
+ * key words without the screen ever saying what the word was (16 October). One paragraph: the whole section filled the
+ * screen of a phone, and the whole article is a touch away.
  */
 export function termDefinition(markdown: string): string {
   const body = articleBody(markdown);
@@ -66,7 +67,8 @@ export function termDefinition(markdown: string): string {
     const rest = lines.slice(at + 1);
     const end = rest.findIndex((line) => /^#{1,6}\s/.test(line.trim()));
     const section = (end >= 0 ? rest.slice(0, end) : rest).join("\n").trim();
-    if (section) return section;
+    const first = section.split(/\r?\n\s*\r?\n/).map((part) => part.trim()).find(Boolean);
+    if (first) return first;
   }
   return body.split(/\r?\n\s*\r?\n/).map((part) => part.trim()).find((part) => part && !/^#/.test(part)) ?? "";
 }

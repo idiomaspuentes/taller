@@ -9832,3 +9832,9 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-recap--rows .af-recap__change { grid-column: 1 / -1; justify-self: end; min-height: 2.75rem; display: inline-flex; align-items: center; }
 /* Under a challenge's question, what keeping the rule looks like: small, no rule beside it. */
 .af--round .af-criterion--hint { border-left: 0; padding-left: 0; font-size: calc(0.8125rem * var(--ts, 1)); margin-top: -0.375rem; }
+
+/* The note or the definition, folded: one line to show it, beside the glossary of the verse. */
+.af-reason-bar { display: flex; flex-wrap: wrap; align-items: center; column-gap: 1.25rem; }
+.af-reason-bar > .af-link { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; }
+.af--round .af-reason > .af-reason__hide { margin-left: auto; color: var(--text-muted); font-weight: 500; }
+.af-article-sheet .fx-body { font-size: 0.9375rem; line-height: 1.6; }

@@ -187,9 +187,9 @@ test("lo que se tradujo en otros lugares no incluye el lugar que se está revisa
   assert.deepEqual(renderingsElsewhere(comparison, "y2").map((r) => [r.text, r.uses.length]), [["Durante el primer año", 1], ["el año", 1]]);
 });
 
-test("la definición de un término se toma de su sección «Definition», o de su primer párrafo", () => {
+test("la definición de un término es el primer párrafo de su sección «Definition», o el primero del artículo", () => {
   const article = "# elder\n\n## Definition:\n\nIn the Bible, the term **elder** refers to older men.\n\nThey led the people.\n\n## Translation Suggestions:\n\n* «anciano»\n";
-  assert.equal(termDefinition(article), "In the Bible, the term **elder** refers to older men.\n\nThey led the people.");
+  assert.equal(termDefinition(article), "In the Bible, the term **elder** refers to older men.");
   assert.equal(termDefinition("# year\n\nA year is the time the earth takes around the sun.\n\n## Bible References:\n"), "A year is the time the earth takes around the sun.");
   assert.equal(termDefinition("# anciano\n\n## Definición:\n\nPersona mayor.\n"), "Persona mayor.");
 });

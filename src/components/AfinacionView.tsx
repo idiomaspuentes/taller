@@ -20,6 +20,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { articleBody, termWord, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
@@ -134,7 +135,24 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** A closed point opened again by this person, to object to it. */
   const [reopened, setReopened] = useState(false);
   /** The whole note, on a phone: a long one pushed the verse below the screen. */
-  const [wholeNote, setWholeNote] = useState(false);
+  /** The note or the definition shown on the point, as this person left it last (a per-device convenience). */
+  const [showReason, setShowReason] = useState(() => {
+    try {
+      return localStorage.getItem("taller-af-reason") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleReason = (shown: boolean) => {
+    setShowReason(shown);
+    try {
+      localStorage.setItem("taller-af-reason", shown ? "1" : "0");
+    } catch {
+      /* private window: shown for this visit only */
+    }
+  };
+  /** The whole article of the note or the term, in a sheet over the point. */
+  const [articleOpen, setArticleOpen] = useState(false);
   const decisions = useMemo(
     () =>
       standingAnswers(given, (d) => {
@@ -595,7 +613,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     setChoosing(false);
     setChanging(false);
     setReopened(false);
-    setWholeNote(false);
+    setArticleOpen(false);
     // Somebody already chose the words: what is asked is whether one agrees with them, at the second step. It opened
     // at the first, as if nothing had been done, and Miguel answered again a point Ramón had answered (16 October).
     setConfirmed((Boolean(saved) && !again) || theirs.length > 0);
@@ -948,6 +966,25 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
   return (
     <div className="af af--round">
+      {/* The whole article of the point's note or term, over the point: it was laid out in the box, or a tab away. */}
+      <Dialog open={articleOpen && Boolean(item)} onOpenChange={setArticleOpen}>
+        <DialogContent className="fix-sheet hint-sheet af-article-sheet" aria-label={t(stepProp === "notas" ? "af.readArticle" : "af.wholeArticle")}>
+          <header className="fx-head">
+            <DialogTitle className="fx-title">
+              {item ? (stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : "") : ""}
+            </DialogTitle>
+          </header>
+          <div className="fx-body" lang={data ? sourcePackageLang(data.sourcePackage) : undefined}>
+            {stepProp === "palabras" ? (
+              termArticle ? <HelpMarkdownView content={articleBody(termArticle)} /> : <p className="af-hint">{t(termArticle === null ? "af.noArticle" : "af.loadingArticle")}</p>
+            ) : reading?.body ? (
+              <HelpMarkdownView content={reading.body} />
+            ) : (
+              <p className="af-hint">{t(reading?.body === null ? "af.noArticle" : "af.loadingArticle")}</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       <WordSheet word={sheetWord?.word ?? null} at={{ book: data?.book ?? "", chapter: sheetWord?.chapter ?? 0, verse: sheetWord?.verse ?? 0 }} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} onClose={() => setSheetWord(null)} />
       <ToolHeader
         title={toolHeading(ctx, language, t(TITLE[stepProp])).title}
@@ -1228,42 +1265,65 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
           {/* Why the point is a challenge and what the team said: beside the text on a wide screen, above it on a phone. */}
           <div className="af-about">
+          {/* The note of a challenge, or what a key word means, in two stages: a line to show it, then the whole article
+              in a sheet over the point. Laid out open on every point it took the first screen of a phone (16 October).
+              Shown or hidden, it stays so from point to point and visit to visit. */}
           {stepProp === "notas" && item.note ? (
             // Why this is a challenge, where the point is read: the note was a tab away, in «Ayudas», and the team
             // did not see why a phrase was one (16 October). As the source has it: the team's translation of the
             // notes has not been through Harmonization yet.
-            <div className="af-reason" lang={sourcePackageLang(data.sourcePackage)} data-whole={wholeNote || item.note.length < 160 ? "true" : undefined}>
-              <HelpMarkdownView className="af-note af-note--md" content={item.note} />
-              {item.note.length >= 160 ? (
-                <button type="button" className="af-link af-reason__more" lang={language} aria-expanded={wholeNote} onClick={() => setWholeNote((open) => !open)}>
-                  {t(wholeNote ? "af.noteLess" : "af.noteMore")}
+            showReason ? (
+              <div className="af-reason" lang={sourcePackageLang(data.sourcePackage)} data-whole="true">
+                <HelpMarkdownView className="af-note af-note--md" content={item.note} />
+                {articlePathOf(item.supportRef) ? (
+                  <button
+                    type="button"
+                    className="af-link"
+                    lang={language}
+                    onClick={() => {
+                      void readArticle(articlePathOf(item.supportRef));
+                      setArticleOpen(true);
+                    }}
+                  >
+                    {t("af.readArticle")}
+                  </button>
+                ) : null}
+                <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
+                  {t("af.hideReason")}
                 </button>
-              ) : null}
-              {articlePathOf(item.supportRef) ? (
-                <button
-                  type="button"
-                  className="af-link"
-                  lang={language}
-                  onClick={() => {
-                    setCompare("article");
-                    setPane("helps");
-                  }}
-                >
-                  {t("af.readArticle")}
+              </div>
+            ) : (
+              <div className="af-reason-bar">
+                <button type="button" className="af-link" aria-expanded={false} onClick={() => toggleReason(true)}>
+                  {t("af.showNote")}
+                  <ChevronDown size={14} aria-hidden />
                 </button>
-              ) : null}
-            </div>
+              </div>
+            )
           ) : null}
           {stepProp === "palabras" && definition ? (
             // What the term means, where it is reviewed, as the note is for a challenge: the team checked key words
             // without the screen saying what the word was (16 October). From the source package, like the notes.
-            <div className="af-reason" lang={sourcePackageLang(data.sourcePackage)} data-whole={wholeNote || definition.length < 160 ? "true" : undefined}>
-              <HelpMarkdownView className="af-note af-note--md" content={wholeNote && termArticle ? articleBody(termArticle) : definition} />
-              <button type="button" className="af-link" lang={language} aria-expanded={wholeNote} onClick={() => setWholeNote((open) => !open)}>
-                {t(wholeNote ? "af.noteLess" : "af.wholeArticle")}
-              </button>
-              {termGlossary}
-            </div>
+            showReason ? (
+              <div className="af-reason" lang={sourcePackageLang(data.sourcePackage)} data-whole="true">
+                <HelpMarkdownView className="af-note af-note--md" content={definition} />
+                <button type="button" className="af-link" lang={language} onClick={() => setArticleOpen(true)}>
+                  {t("af.wholeArticle")}
+                </button>
+                {termGlossary}
+                <button type="button" className="af-link af-reason__hide" lang={language} onClick={() => toggleReason(false)}>
+                  {t("af.hideReason")}
+                </button>
+              </div>
+            ) : (
+              <div className="af-reason-bar">
+                <button type="button" className="af-link" aria-expanded={false} onClick={() => toggleReason(true)}>
+                  {t("af.showDefinition")}
+                  <ChevronDown size={14} aria-hidden />
+                </button>
+                {termGlossary}
+              </div>
+            )
           ) : null}
           {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}
           {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
