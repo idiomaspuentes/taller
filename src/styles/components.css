@@ -10009,3 +10009,27 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-elsewhere__ctx { display: block; margin-top: 0.125rem; color: var(--text-muted); font-size: calc(0.875rem * var(--ts, 1)); line-height: 1.45; }
 .af-elsewhere__ctx mark { background: var(--accent-100); color: var(--text); border-radius: 3px; padding: 0 0.125rem; }
 .af-criterion__link { display: inline; min-height: 0; padding: 0; font-size: inherit; }
+
+/* «Acuerdo del equipo», one help at a time (16 October): which ones to go through, where one is, the verse with the
+   help's words marked, and its proposals together. A list of forty cards hid which help had two versions. */
+.ag-filters { margin-top: var(--space-4); }
+.ag-filters button:disabled { opacity: 0.5; cursor: default; }
+.ag-pos { margin-top: var(--space-12); }
+/* The verse scrolls with the help: two texts fixed over a note of eight lines left two lines of it in view. */
+.ag .ag-dock { position: static; margin-top: var(--space-12); }
+.ag-dock .ck-quote { font-size: 0.875rem; }
+.ag-help { display: grid; gap: var(--space-10); margin-top: var(--space-16); }
+.ag-help .af-card__top { margin: 0; }
+.ag-help .ag-shared { font-size: 0.875rem; }
+.ag-help .af-criterion { margin: 0; }
+.ag-help .ag-more > summary { display: flex; align-items: center; min-height: 2.75rem; color: var(--accent-700); font-size: 0.875rem; font-weight: 600; }
+.ag-lede { margin-top: var(--space-20); }
+.ag-sheet .pl-list__state { flex: 1 1 auto; }
+/* The three in one line on a phone: which ones to go through is a choice made once, not the thing to do. */
+.ag-filters { flex-wrap: nowrap; }
+.ag-filters button { position: relative; min-height: 2.25rem; padding: 0 0.75rem; font-size: 0.875rem; white-space: nowrap; }
+.ag-filters button::after { content: ""; position: absolute; inset: -0.25rem 0; }
+/* What changes is read with its paragraphs and list lines: an article read as one block of forty lines. */
+.ag-help .ag-diff, .ag-help .ag-whole { white-space: pre-line; }
+.ag-pos-mark { margin-top: var(--space-12); }
+.ag-pos-mark + .ag-pos { margin-top: 0; }

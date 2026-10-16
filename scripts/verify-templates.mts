@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { tallerConfig } from "../taller.config";
 import type { ProcessPackage } from "../src/config/types";
-import { localized, processGlossary, shippedWorkflows } from "../src/domain/processes";
+import { localized, processGlossary, shippedWorkflows, stepPurpose } from "../src/domain/processes";
 import { DEFAULT_SOLVERS_CATALOG, normalizeSolversCatalog, toolFinishesItsStep, upgradeShippedTools, withShippedTools } from "../src/domain/solvers";
 import { resolveSolverLaunchUrl, type SolverLaunchContext } from "../src/domain/solverLaunch";
 import { normalizeWorkflowTemplate } from "../src/domain/store";
@@ -391,6 +391,15 @@ test("un paso que se marca a mano se termina desde la tarjeta solo si su herrami
     }
   }
   assert.deepEqual(byHand, []);
+});
+
+test("una regla que el proceso da a un paso después de creado el plan llega también a ese plan", () => {
+  // Esther was made with what each step is for and no rule; the harmonization rules came after (16 October).
+  const step = { id: "notas-textos", purpose: "Comprueba que cada nota siga diciendo lo correcto." };
+  const said = stepPurpose("armonizar-notas", step, "es");
+  assert.equal(said.purpose, step.purpose, "lo que dice el plan sigue siendo suyo");
+  assert.match(said.criterion ?? "", /sin suavizarlo/, "y la regla viene del proceso");
+  assert.match(stepPurpose("armonizar-palabras", { id: "acuerdo" }, "pt").criterion ?? "", /todos os sentidos/);
 });
 
 console.log(`\nverify-templates: ${passed} checks passed.`);

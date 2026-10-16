@@ -2160,6 +2160,10 @@
               "purposes": {
                 "pt": "Verifique se cada nota continua dizendo o correto agora que o TPL e o TPS estão afinados."
               },
+              "criterion": "La nota explica lo que el texto dice sin suavizarlo: nunca dice menos que el TPS.",
+              "criteria": {
+                "pt": "A nota explica o que o texto diz sem suavizá-lo: nunca diz menos que o TPS."
+              },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
@@ -2282,6 +2286,10 @@
               "purposes": {
                 "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
               },
+              "criterion": "La nota explica lo que el texto dice sin suavizarlo: nunca dice menos que el TPS.",
+              "criteria": {
+                "pt": "A nota explica o que o texto diz sem suavizá-lo: nunca diz menos que o TPS."
+              },
               "solverAppId": "fcr-acuerdo"
             }
           ],
@@ -2343,6 +2351,10 @@
               "purposes": {
                 "pt": "Verifique se cada artigo de palavras-chave combina com a forma como o TPL e o TPS as traduziram."
               },
+              "criterion": "El artículo muestra todos los sentidos que la palabra tiene en el original, también los que pueden incomodar. Si algo puede confundir, se explica a quién o por qué; no se cambia la palabra ni se quita un sentido.",
+              "criteria": {
+                "pt": "O artigo mostra todos os sentidos que a palavra tem no original, também os que podem incomodar. Se algo pode confundir, explica-se a quem ou por quê; não se troca a palavra nem se tira um sentido."
+              },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
               "checklist": [
@@ -2399,6 +2411,10 @@
               "purpose": "Pónganse de acuerdo en qué se deja y qué se cambia de lo que se encontró al armonizar.",
               "purposes": {
                 "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
+              },
+              "criterion": "El artículo muestra todos los sentidos que la palabra tiene en el original, también los que pueden incomodar. Si algo puede confundir, se explica a quién o por qué; no se cambia la palabra ni se quita un sentido.",
+              "criteria": {
+                "pt": "O artigo mostra todos os sentidos que a palavra tem no original, também os que podem incomodar. Se algo pode confundir, explica-se a quem ou por quê; não se troca a palavra nem se tira um sentido."
               },
               "solverAppId": "fcr-acuerdo"
             }

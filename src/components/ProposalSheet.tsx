@@ -83,6 +83,8 @@ type Props = {
    * question is not a reason: «Motivo: ¿Tiene sentido con el texto?» is what the team then read on the proposal.
    */
   failed?: string;
+  /** The rule of the step, small under the question: what a change has to keep (the helps explain without softening). */
+  rule?: string;
   /** Why, to start with: what was said of the proposal this one answers. */
   reason: string;
   /** The book the helps are of, for the links to its verses. */
@@ -99,7 +101,7 @@ type Props = {
  * Proposing a change: what, how (the new version written over the words as they are, a note parted in two, or a
  * comment) and why. A sheet over the help, so the help stays where it was.
  */
-export function ProposalSheet({ open, onClose, targets, failed, reason: firstReason, book, startFrom, startSplit, saving, onSend }: Props) {
+export function ProposalSheet({ open, onClose, targets, failed, rule, reason: firstReason, book, startFrom, startSplit, saving, onSend }: Props) {
   const t = useT();
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [mode, setMode] = useState<"text" | "split" | "comment">("text");
@@ -194,6 +196,7 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
         </header>
         <div className="ur-sheet__body pr-body">
           {failed ? <p className="pr-failed">{t("pr.failed").replace("{q}", failed)}</p> : null}
+          {rule ? <p className="af-criterion af-criterion--hint pr-rule">{rule}</p> : null}
           {targets.length > 1 ? (
             <div className="pr-field">
               <p className="af-lbl">{t("pr.what")}</p>

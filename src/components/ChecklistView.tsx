@@ -33,7 +33,7 @@ import { dcsConfig } from "../dcs/config";
 import { PM_REPO_NAME } from "../domain/types";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { coordinatorsOf } from "../domain/levels";
-import { localized } from "../domain/processes";
+import { localized, stepPurpose } from "../domain/processes";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { textFingerprint } from "../domain/reviewRound";
 import { closesInItsTool, stepMinAssignees } from "../domain/stepClaim";
@@ -46,6 +46,7 @@ import { verseFromSid } from "../domain/usfmAst";
 import { readTeamArticle, saveNoteQuote, type TeamArticle } from "../dcs/teamHelps";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
+import { QuoteVerse as Verse } from "./QuoteVerse";
 
 type Props = {
   ctxEncoded: string;
@@ -69,68 +70,6 @@ type Mark = "none" | "yes" | "no" | "change";
 const markOf = (answer: CheckAnswer | undefined): Mark =>
   !answer ? "none" : answer.value === "yes" ? "yes" : answer.outcome === "proposal" || answer.outcome === "fixed" || answer.outcome === "created" || (answer.outcome === "consult" && answer.resolved) ? "change" : "no";
 const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.chapter}:${item.verse}`;
-
-/**
- * A verse with the words a quote points at marked. With `onToggle`, each word can be marked or unmarked. `target`:
- * the help a touch on a word leads to, when another help of the verse is about it (see `verseCoverage`); those
- * words are underlined. The words of the help in view are touched too when another help shares them.
- *
- * Words in a row that lead to the same help are one thing to touch, the phrase. Each was a button of its own, as
- * wide as its word: «de» was 20 px. The phrase is not made taller than its line (31 px): at 44 a verse of three
- * lines would take 132 px instead of 77, and the two texts are what a note is read under.
- */
-function Verse({ text, marked, onToggle, target, onOpen }: { text: string; marked: number[]; onToggle?: (index: number) => void; target?: (index: number) => string | undefined; onOpen?: (helpId: string) => void }) {
-  const tokens = tokenizeVersePlainText(text);
-  const on = new Set(marked);
-  if (onToggle) {
-    return (
-      <span className="ck-verse">
-        {tokens.map((token, index) => (
-          <button key={index} type="button" className="ck-word" aria-pressed={on.has(index)} onClick={() => onToggle(index)}>
-            {token}
-          </button>
-        ))}
-      </span>
-    );
-  }
-  const runs: { to?: string; here: boolean; words: string[]; at: number }[] = [];
-  tokens.forEach((token, index) => {
-    const to = onOpen ? target?.(index) : undefined;
-    const here = on.has(index);
-    const last = runs[runs.length - 1];
-    if (last && last.to === to && last.here === here) last.words.push(token);
-    else runs.push({ to, here, words: [token], at: index });
-  });
-  return (
-    <span className="ck-verse">
-      {runs.map((run) =>
-        run.to ? (
-          <span key={run.at}>
-            {/* Not a <button>: a phrase goes on to the next line, and a button does not break. */}
-            <span
-              role="button"
-              tabIndex={0}
-              className="ck-covered"
-              data-here={run.here || undefined}
-              onClick={() => onOpen!(run.to!)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                onOpen!(run.to!);
-              }}
-            >
-              {run.words.join(" ")}
-            </span>{" "}
-          </span>
-        ) : (
-          <span key={run.at}>
-            {run.here ? <mark>{run.words.join(" ")}</mark> : run.words.join(" ")}{" "}
-          </span>
-        ),
-      )}
-    </span>
-  );
-}
 
 /**
  * A step that closes by a checklist: every item of the passage, with the yes/no questions the process declares for
@@ -628,7 +567,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       const text = data.texts[resource];
       const verse = text?.verses[item.verse] ?? "";
       if (!verse || helps.length < 2) continue;
-      out[resource] = verseCoverage(helps.map((row) => ({ id: row.id, words: alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: row.quote!, occurrence: row.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: row.chapter, verse: row.verse }).tokenIndices })));
+      out[resource] = verseCoverage(helps.map((row) => ({ id: row.id, words: alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: row.quote!, occurrence: row.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: row.chapter, verse: row.verse, ...(data.original ? { original: originalTokens(data.original, row.chapter, row.verse) } : {}) }).tokenIndices })));
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -783,7 +722,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 ? Array.from({ length: item.verseTo - item.verse + 1 }, (_, i) => text?.verses[item.verse + i] ?? "").filter(Boolean).join(" ")
                 : (text?.verses[item.verse] ?? "");
               // The item's quote is in the original language: its words in this text come from the alignment.
-              const hit = item.quote && verse ? alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: item.chapter, verse: item.verse }) : null;
+              const hit = item.quote && verse ? alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: item.chapter, verse: item.verse, ...(data.original ? { original: originalTokens(data.original, item.chapter, item.verse) } : {}) }) : null;
               return (
                 <div key={resource} className="af-row">
                   <span className="af-lbl">{textLabel(resource)}</span>
@@ -1052,7 +991,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           )}
         </>
       ) : null}
-      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} failed={proposing?.reason || undefined} reason="" book={data?.book} saving={saving} onSend={(draft) => void sendProposal(draft)} />
+      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} failed={proposing?.reason || undefined} rule={data?.task ? stepPurpose(data.task.id, data.step ?? undefined, language).criterion : undefined} reason="" book={data?.book} saving={saving} onSend={(draft) => void sendProposal(draft)} />
     </div>
   );
 }

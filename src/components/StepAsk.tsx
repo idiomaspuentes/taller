@@ -505,7 +505,7 @@ export function StepAsk({
             <b>{t("sa.asked")}</b> {found.asked}
           </p>
         ) : null}
-        <AboutStep session={session} ctx={ctx} task={task} step={step} purpose={said.purpose} description={said.description} />
+        <AboutStep session={session} ctx={ctx} task={task} step={step} purpose={said.purpose} criterion={said.criterion} description={said.description} />
         {introductions}
       </>
     );
@@ -548,6 +548,7 @@ function AboutStep({
   task,
   step,
   purpose,
+  criterion,
   description,
 }: {
   session: GtSession | null | undefined;
@@ -555,6 +556,8 @@ function AboutStep({
   task: ProjectTask;
   step: TaskStep;
   purpose: string;
+  /** The rule of the step, as the process words it: what a change has to keep. */
+  criterion?: string;
   description?: string;
 }) {
   const t = useT();
@@ -615,6 +618,12 @@ function AboutStep({
               <p className="step-ask__title">{t("sa.purpose")}</p>
               <p className="step-sheet__purpose">{purpose}</p>
             </section>
+            {criterion ? (
+              <section>
+                <p className="step-ask__title">{t("sa.rule")}</p>
+                <p className="step-sheet__purpose">{criterion}</p>
+              </section>
+            ) : null}
             <section>
               <p className="step-ask__title">{t("sa.howDone")}</p>
               <StepAskBody step={step} description={description} />

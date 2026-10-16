@@ -64,10 +64,13 @@ export function stepPurpose(
   const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.id === taskId))[0]?.steps?.find((row) => row.id === step.id);
   const own = step.purpose || step.criterion ? step : shipped;
   if (!own) return {};
+  // A rule the process gave a step after a project was made (the harmonization rules, 16 October) reaches it too:
+  // a plan keeps the steps it was made with, and Esther's had what each step is for but no rule.
+  const ruled = own.criterion ? own : shipped?.criterion ? shipped : own;
   // How the step is done goes with what it is for: the same version of the process says both.
   return {
     ...(own.purpose ? { purpose: localized(own.purpose, own.purposes, language) } : {}),
-    ...(own.criterion ? { criterion: localized(own.criterion, own.criteria, language) } : {}),
+    ...(ruled.criterion ? { criterion: localized(ruled.criterion, ruled.criteria, language) } : {}),
     ...(own.description ? { description: localized(own.description, own.descriptions, language) } : {}),
   };
 }
