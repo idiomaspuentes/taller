@@ -9865,3 +9865,10 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-welcome__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; margin-top: 0.25rem; }
 .af-welcome__actions .af-link { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .step-sheet__purpose { margin: 0; font-weight: 600; line-height: 1.5; }
+
+/* The words of the original in the box of step 2: larger than the translation beside them, each one to touch. */
+.af--round .af-recap__ref.af-orig { font-size: calc(1.5rem * var(--ts, 1)); line-height: 1.6; }
+.af-recap__ref .af-words { display: inline; }
+.af-word__gap { color: var(--text-muted); }
+/* A word to touch takes a finger: 44 px of height around it, without moving the line it is on. */
+.af-recap__ref .af-word--open { padding-block: 0.625rem; margin-block: -0.625rem; }

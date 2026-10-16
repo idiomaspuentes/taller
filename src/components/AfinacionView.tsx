@@ -1634,7 +1634,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {/* «Hebreo», not «Hebreo (UHB)»: the edition is said where the reference is chosen. */}
                   <span className="af-recap__lbl">{reference?.label.replace(/\s*\(.*\)\s*$/, "") || t("af.refLabel")}</span>
                   <span className={reference?.id === "orig" ? "af-orig af-recap__ref" : "af-recap__ref"} lang={reference?.id === "orig" ? "grc" : undefined} dir="auto">
-                    {markedWords || t("af.theMarked")}
+                    {/* The words of the original open their sheet (lemma, meaning, form), as they do over the words to
+                        choose: here they were letters to look at, and the smallest on the box (16 October). */}
+                    {reference?.id === "orig" && refMarked.length ? (
+                      <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} only={refMarked} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
+                    ) : (
+                      markedWords || t("af.theMarked")
+                    )}
                   </span>
                 </p>
                 <p className="af-recap__row">

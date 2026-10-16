@@ -13,7 +13,8 @@ const bare = (word: string) => word.normalize("NFC").replace(/[^\p{L}\p{M}\p{N}]
  * aligning. The words are the ones the text is shown in (the marks of a note count them); each is matched with
  * the word the original tags by what it says and which time it says it.
  */
-export function OriginalWords({ text, words, marked, onOpen }: { text: string; words: OriginalWord[] | undefined; marked?: number[]; onOpen: (word: OriginalWord) => void }) {
+/** `only`: show just those words of the verse (with «…» where others are left out), each still opening its own. */
+export function OriginalWords({ text, words, marked, only, onOpen }: { text: string; words: OriginalWord[] | undefined; marked?: number[]; only?: number[]; onOpen: (word: OriginalWord) => void }) {
   const t = useT();
   const shown = wordSpans(text);
   if (!shown.length) return <span className="af-empty">{t("af.noText")}</span>;
@@ -36,21 +37,27 @@ export function OriginalWords({ text, words, marked, onOpen }: { text: string; w
   };
   return (
     <span className="af-words" dir={isRtl(text) ? "rtl" : undefined}>
-      {shown.map((w) => (
-        // Two words of Hebrew joined by a maqqef are shown as one and tagged as two: each opens its own.
-        <span key={w.index} className="af-word" data-marked={marked?.includes(w.index) ? "true" : undefined}>
-          {w.text.split(/(?<=־)/).map((piece, at) => {
-            const found = tagged(piece);
-            return found ? (
-              <button key={at} type="button" className="af-word--open" aria-label={t("lx.wordAria").replace("{word}", piece)} onClick={() => onOpen(found)}>
-                {piece}
-              </button>
-            ) : (
-              piece
-            );
-          })}
-        </span>
-      ))}
+      {shown.map((w, at) => {
+        // Every word is looked up, shown or not: which one a word is among those with the same letters counts them all.
+        const pieces = w.text.split(/(?<=־)/).map((piece) => ({ piece, found: tagged(piece) }));
+        if (only && !only.includes(w.index)) return null;
+        const gap = only && at > 0 && !only.includes(w.index - 1) && only.some((index) => index < w.index);
+        return (
+          <span key={w.index} className="af-word" data-marked={marked?.includes(w.index) ? "true" : undefined}>
+            {gap ? <span className="af-word__gap" aria-hidden>… </span> : null}
+            {/* Two words of Hebrew joined by a maqqef are shown as one and tagged as two: each opens its own. */}
+            {pieces.map(({ piece, found }, i) =>
+              found ? (
+                <button key={i} type="button" className="af-word--open" aria-label={t("lx.wordAria").replace("{word}", piece)} onClick={() => onOpen(found)}>
+                  {piece}
+                </button>
+              ) : (
+                piece
+              ),
+            )}
+          </span>
+        );
+      })}
     </span>
   );
 }
