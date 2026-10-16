@@ -9380,6 +9380,7 @@ html[data-text] .af-draft__words .af-word--tap { font-size: calc(1.0625rem * var
 html[data-text] .af-ref .af-word, html[data-text] .af-row--ref .af-word { font-size: calc(1.0625rem * var(--ts)); }
 html[data-text] .af-ref .af-orig .af-word, html[data-text] .af-row--ref .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
 html[data-text] .af-chapter__text { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af-chapter__text.af-orig { font-size: calc(1.3125rem * var(--ts)); }
 html[data-text] .fx-ref__text, html[data-text] .af-textarea { font-size: calc(1rem * var(--ts)); }
 html[data-text] .gr-text__body { font-size: calc(1.0625rem * var(--ts)); }
 html[data-text] dl.rv-sources { font-size: calc(1.0625rem * var(--ts)); }
@@ -9888,3 +9889,21 @@ button.cr-note:hover { background: var(--primary-100); }
 @media (min-width: 1024px) { .af--round { --af-max: 76rem; } }
 .af--round > :where(:not(.th, .af-panes, dialog)) { width: 100%; max-width: var(--af-max); justify-self: center; }
 .af--round > .th, .af--round > .af-panes { padding-inline: max(0.75rem, calc((100% - var(--af-max)) / 2 + 0.75rem)); }
+
+/* The size of the text in «Más»: a row with three letters, the one in use filled. */
+.mm-sizes { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; cursor: default; }
+.mm-sizes__options { display: inline-flex; gap: 0.25rem; padding: 0.15rem; border: 1px solid var(--border); border-radius: var(--radius-full); }
+.mm-sizes__options button { min-width: 2.75rem; min-height: 2.75rem; border: 0; border-radius: var(--radius-full); background: transparent; color: var(--text); font-weight: 700; line-height: 1; cursor: pointer; }
+.mm-sizes__options button[data-size="normal"] { font-size: 0.875rem; }
+.mm-sizes__options button[data-size="large"] { font-size: 1.0625rem; }
+.mm-sizes__options button[data-size="larger"] { font-size: 1.3125rem; }
+.mm-sizes__options button[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); }
+
+/*
+ * The chapter in a tool. The verses outside the passage were drawn at 60% opacity, which washed their gray out; they
+ * are in the secondary color now (8:1 and more), and the passage keeps its rule and its full color. Its words take
+ * the size of the chapter's text, which follows the size chosen: each word had 1rem of its own and did not grow.
+ */
+.hs-v:not([data-here="true"]) { opacity: 1; color: var(--text-muted); }
+.af-chapter__text .af-word { font-size: inherit; }
+.af-chapter__text.af-orig { font-size: 1.3125rem; line-height: 1.8; }

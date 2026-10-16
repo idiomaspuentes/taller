@@ -1,6 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Check, MoreHorizontal } from "lucide-react";
-import { useT } from "../i18n/messages";
+import { useT, type MessageKey } from "../i18n/messages";
+import { TEXT_SIZES, type TextSize } from "../domain/textSize";
+import { setTextSize, useTextSize } from "../textSize";
+
+const TEXT_SIZE_NAME: Record<TextSize, MessageKey> = { normal: "menu.textNormal", large: "menu.textLarge", larger: "menu.textLarger" };
 
 /** One thing a tool can do besides its work: what it is, and one line that says what it is for. */
 export type MoreItem = {
@@ -26,6 +30,7 @@ export type MoreItem = {
  */
 export function MoreMenu({ items, details }: { items: MoreItem[]; details?: ReactNode }) {
   const t = useT();
+  const textSize = useTextSize();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -46,7 +51,6 @@ export function MoreMenu({ items, details }: { items: MoreItem[]; details?: Reac
     };
   }, [open]);
 
-  if (!items.length && !details) return null;
   const row = (item: MoreItem) => (
     <>
       <span className="mm-row__label">
@@ -85,6 +89,18 @@ export function MoreMenu({ items, details }: { items: MoreItem[]; details?: Reac
             </button>
           ),
         )}
+        {/* The size of the text, in every tool: it was only in the person's menu, which a tool does not show, and
+            whoever found the text small had to leave the work to change it (16 October). It stays open, to see it. */}
+        <div className="mm-row mm-sizes">
+          <span className="mm-row__label">{t("menu.textSize")}</span>
+          <span className="mm-sizes__options" role="group" aria-label={t("menu.textSize")}>
+            {TEXT_SIZES.map((size) => (
+              <button key={size} type="button" data-size={size} aria-pressed={size === textSize} aria-label={t(TEXT_SIZE_NAME[size])} title={t(TEXT_SIZE_NAME[size])} onClick={() => setTextSize(size)}>
+                A
+              </button>
+            ))}
+          </span>
+        </div>
         {details ? <div className="mm-details">{details}</div> : null}
       </div>
     </div>
