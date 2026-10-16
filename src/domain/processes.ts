@@ -50,6 +50,27 @@ export function shippedStepTool(taskId: string, stepId: string, packages: Proces
 }
 
 /**
+ * What a step is for and what it is measured against (`purpose`, `criterion`), as the project has them or, for a
+ * project made before the process said them, as the process is shipped now: Ezra was created on 15 October and its
+ * tuning steps said neither.
+ */
+export function stepPurpose(
+  taskId: string,
+  step: Pick<TaskStep, "id" | "purpose" | "purposes" | "criterion" | "criteria"> | undefined,
+  language: string,
+  packages: ProcessPackage[] = tallerConfig.processes,
+): { purpose?: string; criterion?: string } {
+  if (!step) return {};
+  const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.id === taskId))[0]?.steps?.find((row) => row.id === step.id);
+  const own = step.purpose || step.criterion ? step : shipped;
+  if (!own) return {};
+  return {
+    ...(own.purpose ? { purpose: localized(own.purpose, own.purposes, language) } : {}),
+    ...(own.criterion ? { criterion: localized(own.criterion, own.criteria, language) } : {}),
+  };
+}
+
+/**
  * The steps the process gives a task now that a project's copy of the task does not have. A project keeps the steps
  * it was created with (its lists, one for each text, where the process now has one for both): trying the step as it
  * is now takes it from here.

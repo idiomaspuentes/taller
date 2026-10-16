@@ -374,6 +374,16 @@ export type TaskStep = {
   decisionRule?: "majority" | "unanimous";
   description?: string;
   descriptions?: Localized;
+  /**
+   * What the step is for, in one sentence, said at the top of its tool where it is always in sight («Comprueba que
+   * el TPS diga con claridad lo que el original expresa con una figura»). The description says how the work is
+   * done; this says why. The tuning team did not know what its screens were for (16 October).
+   */
+  purpose?: string;
+  purposes?: Localized;
+  /** The rule what is checked is measured against («El TPS aclara la figura…»): said where the answer is given. */
+  criterion?: string;
+  criteria?: Localized;
   solverAppId?: string;
   /** Default `none` — free checklist toggle. */
   claimMode?: StepClaimMode;

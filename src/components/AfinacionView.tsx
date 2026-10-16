@@ -48,6 +48,7 @@ import { useStepWork } from "../dcs/stepWork";
 import { FinalDecision, RoundPanel } from "./RoundPanel";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage, sourcePackageLang } from "../domain/sourcePackage";
+import { stepPurpose } from "../domain/processes";
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -304,6 +305,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const item: NoteItem | undefined = visible[Math.min(position, Math.max(visible.length - 1, 0))];
 
   const taskStep = task?.steps?.find((s) => s.id === (ctx?.stepId || stepProp));
+  /** What the step is for and the rule it measures against, as the process says them. */
+  const said = stepPurpose(task?.id ?? ctx?.taskId ?? "", taskStep, language);
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   const thresholds = { minAgree: taskStep?.minAgree ?? taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
@@ -918,8 +921,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         meta={[toolHeading(ctx, language, t(TITLE[stepProp])).where, summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
         more={data ? [{ id: "glossary", label: t("gl.open"), hint: t("mm.glossaryHint"), href: `#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200` }] : []}
       />
+      {said.purpose ? (
+        // What the screen is for, always in sight: the team saw how to answer and not why (16 October).
+        <p className="af-mission" data-res={data?.resource}>
+          {said.purpose}
+        </p>
+      ) : null}
       <div className="step-ask-bar">
-        <StepAsk session={session} ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx} intro={false} />
+        {/* With the purpose said above, what is folded here is how the round is answered, and the team's rules. */}
+        <StepAsk session={session} ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx} intro={false} label={said.purpose ? t("af.howRound") : undefined} />
       </div>
 
       {error ? (
@@ -1328,7 +1338,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           ) : !confirmed ? (
             // Step 1 of 2: which words of the translation render what is marked in the reference.
             <>
-              <p className="af-stepname">{t("af.step1")}</p>
+              <p className="af-stepname">{t("af.step1").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p>
           {/* 1. Where it is: marked in the text the draft is read against, the original unless another is chosen. */}
             <div className="af-ref">
               <div className="af-ref__bar">
@@ -1427,7 +1437,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           ) : (
             // Step 2 of 2: whether those words keep the rule of the TPL or the TPS.
             <>
-              <p className="af-stepname">{t("af.step2")}</p>
+              <p className="af-stepname">{t("af.step2").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p>
               <div className="af-recap">
                 <p>
                   <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
@@ -1476,11 +1486,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {chosenWords && !comparison.renderings.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-stale">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
                 </div>
               ) : null}
-              {stepProp === "notas" ? (
-                <details className="af-guide">
-                  <summary>{t(data.resource === "tps" ? "af.guideAskTps" : "af.guideAskTpl")}</summary>
-                  <p className="af-hint">{t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
-                </details>
+              {said.criterion || stepProp === "notas" ? (
+                // The rule the answer is measured against, open where the answer is given: folded under «¿Qué pide
+                // el TPS?», the question was read without it.
+                <p className="af-criterion">{said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
               ) : null}
               {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
               {mine && !changing ? (

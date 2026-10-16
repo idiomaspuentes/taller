@@ -9739,3 +9739,10 @@ button.cr-note:hover { background: var(--primary-100); }
 @media (min-width: 1024px) {
   .af-reason__more { display: none; }
 }
+
+/*
+ * What a tuning screen is for, under its header and always in sight: one sentence, the first thing read. Below it,
+ * folded, how the round is answered. The rule the answer is measured against sits open over the answer.
+ */
+.af-mission { margin: 0; padding: 0.25rem 0.125rem 0; color: var(--text-heading, var(--text)); font-size: calc(1.0625rem * var(--ts, 1)); font-weight: 700; line-height: 1.45; text-wrap: pretty; }
+.af-criterion { margin: 0; padding-left: 0.75rem; border-left: 3px solid var(--accent-300); color: var(--text); font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.5; }

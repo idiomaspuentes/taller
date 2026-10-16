@@ -1675,6 +1675,14 @@
               "descriptions": {
                 "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer figura ou tema da porção, na ordem que quiser. Quem chega primeiro marca quais palavras a traduzem e se cumprem a regra do texto; quem chega depois confirma ou diz o que não compartilha. Cada uma fica acordada com três pessoas de acordo."
               },
+              "purpose": "Comprueba que el TPL conserve cada desafío del original tal como está: la figura, la construcción, el orden.",
+              "purposes": {
+                "pt": "Verifique se o TPL conserva cada desafio do original tal como está: a figura, a construção, a ordem."
+              },
+              "criterion": "El TPL mantiene la figura o la construcción del original, aunque suene menos natural.",
+              "criteria": {
+                "pt": "O TPL mantém a figura ou a construção do original, mesmo que soe menos natural."
+              },
               "solverAppId": "afinar-notas",
               "closing": "consensus",
               "claimMode": "pool",
@@ -1732,6 +1740,14 @@
               "description": "Una ronda abierta: cualquiera del equipo contesta cualquier término, en el orden que quiera. Quien llega primero a un término marca qué lo traduce; quien llega después confirma o dice qué no comparte. Cada término queda acordado con tres personas de acuerdo.",
               "descriptions": {
                 "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer termo, na ordem que quiser. Quem chega primeiro a um termo marca o que o traduz; quem chega depois confirma ou diz o que não compartilha. Cada termo fica acordado com três pessoas de acordo."
+              },
+              "purpose": "Comprueba que cada palabra clave se traduzca siempre igual en todo el libro.",
+              "purposes": {
+                "pt": "Verifique se cada palavra-chave é traduzida sempre da mesma forma em todo o livro."
+              },
+              "criterion": "En el TPL una palabra clave se traduce con la misma palabra en todo el libro, salvo que haya un motivo.",
+              "criteria": {
+                "pt": "No TPL uma palavra-chave é traduzida com a mesma palavra em todo o livro, a não ser que haja um motivo."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",
@@ -1861,6 +1877,14 @@
               "descriptions": {
                 "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer figura ou tema da porção, na ordem que quiser. Quem chega primeiro marca quais palavras a traduzem e se cumprem a regra do texto; quem chega depois confirma ou diz o que não compartilha. Cada uma fica acordada com três pessoas de acordo."
               },
+              "purpose": "Comprueba que el TPS diga con claridad lo que el original expresa con cada figura o construcción difícil.",
+              "purposes": {
+                "pt": "Verifique se o TPS diz com clareza o que o original expressa com cada figura ou construção difícil."
+              },
+              "criterion": "El TPS la aclara: por ejemplo, una pasiva pasa a activa; una metáfora se explica o se vuelve símil.",
+              "criteria": {
+                "pt": "O TPS a esclarece: por exemplo, uma passiva passa a ativa; uma metáfora é explicada ou vira comparação."
+              },
               "solverAppId": "afinar-notas",
               "closing": "consensus",
               "claimMode": "pool",
@@ -1918,6 +1942,14 @@
               "description": "Una ronda abierta: cualquiera del equipo contesta cualquier término, en el orden que quiera. Quien llega primero a un término marca qué lo traduce; quien llega después confirma o dice qué no comparte. Cada término queda acordado con tres personas de acuerdo.",
               "descriptions": {
                 "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer termo, na ordem que quiser. Quem chega primeiro a um termo marca o que o traduz; quem chega depois confirma ou diz o que não compartilha. Cada termo fica acordado com três pessoas de acordo."
+              },
+              "purpose": "Comprueba que cada palabra clave conserve su sentido en todo el libro. La forma puede variar.",
+              "purposes": {
+                "pt": "Verifique se cada palavra-chave conserva o seu sentido em todo o livro. A forma pode variar."
+              },
+              "criterion": "En el TPS una palabra clave puede decirse de otra forma, pero sin cambiar su sentido.",
+              "criteria": {
+                "pt": "No TPS uma palavra-chave pode ser dita de outra forma, mas sem mudar o seu sentido."
               },
               "solverAppId": "afinar-palabras",
               "closing": "consensus",

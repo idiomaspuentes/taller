@@ -391,7 +391,7 @@ export function PassageIntroText({ session, ctx }: { session: GtSession | null |
  * Inside a tool: what the step it was opened for asks, and the introductions of its book, folded over the work.
  * `intro={false}` for a tool that shows the introductions in a tab of its own.
  */
-export function StepAsk({ session, ctx, intro = true }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined; intro?: boolean }) {
+export function StepAsk({ session, ctx, intro = true, label }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined; intro?: boolean; label?: string }) {
   const t = useT();
   const language = useUiLanguage();
   const found = useLaunchStep(session, ctx);
@@ -411,7 +411,7 @@ export function StepAsk({ session, ctx, intro = true }: { session: GtSession | n
         </p>
       ) : null}
       <details className="step-ask">
-      <summary>{t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
+      <summary>{label ?? t("tb.howStep").replace("{step}", step.names?.[language] ?? localizeName(step.name, language))}</summary>
       <StepAskBody step={step} />
       <TeamRuleChecks team={task.orgTeamName} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} />
       {ctx.lab ? null : (
