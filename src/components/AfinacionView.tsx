@@ -23,7 +23,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-reac
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
-import { articleBody, termWord, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
+import { articleBody, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, selectionWindow, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
@@ -1698,20 +1698,39 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               </div>
           {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
             <div className="af-ask">
-                            <p className="af-question">
-                {stepProp === "notas"
-                  ? t(QUESTION[stepProp][data.resource]).replace("{figure}", nameOf(item)).replace("{words}", chosenWords ? `«${chosenWords}»` : t("af.theWords"))
-                  : (() => {
-                      // The first time a term is met there is nothing to compare it with, and it is asked as what it is.
-                      const ask = termAsk(data.termUses.filter((use) => use.termSlug === termSlug), comparison, item.id);
-                      // The rule of the text is asked, not said beside the question: in the TPS the sense, whatever the
-                      // form; in the TPL the same words throughout, the first time setting them for the rest.
-                      // Its title is read after the point opens: until then «…», as over it, not the slug.
-                      const term = titlesRead || termTitles[termSlug] ? termWord(termLabel(termSlug, termTitles)) : "…";
-                      const key = data.resource === "tps" ? QUESTION[stepProp].tps : ask === "only" ? "af.qPalabrasOnly" : ask === "first" ? "af.qPalabrasFirst" : QUESTION[stepProp].tpl;
-                      return t(key).replace("{term}", term);
-                    })()}
-              </p>
+              {(() => {
+                // The question names what the box above shows: the words chosen in the translation and the words
+                // highlighted in the original. It named the term's title («Israel, israelitas»), which is neither, and
+                // left the person to work out what it was about (16 October).
+                const ask = stepProp === "palabras" ? termAsk(data.termUses.filter((use) => use.termSlug === termSlug), comparison, item.id) : "compare";
+                const key: MessageKey =
+                  stepProp === "notas" ? QUESTION.notas[data.resource] : data.resource === "tps" ? QUESTION.palabras.tps : ask === "compare" ? QUESTION.palabras.tpl : "af.qPalabrasFirst";
+                const marked = (markedWords || "").split(/\s+/).filter(Boolean);
+                // A long highlight is shortened to its first words and its last; marks of words left out («…») are one.
+                const orig = (marked.length > 4 ? `${marked.slice(0, 2).join(" ")} … ${marked[marked.length - 1]}` : marked.join(" ")).replace(/…(\s*…)+/g, "…");
+                const isOrig = reference?.id === "orig";
+                return (
+                  <>
+                    <p className="af-question">
+                      {t(key)
+                        .split(/(\{words\}|\{orig\})/)
+                        .map((piece, at) =>
+                          piece === "{words}" ? (
+                            <span key={at} className="af-question__words">«{chosenWords || t("af.theWords")}»</span>
+                          ) : piece === "{orig}" ? (
+                            <span key={at}>
+                              «<bdi className={isOrig ? "af-orig af-question__orig" : undefined} lang={isOrig ? "hbo" : undefined}>{orig || t("af.theMarked")}</bdi>»
+                            </span>
+                          ) : (
+                            piece
+                          ),
+                        )}
+                    </p>
+                    {/* The first time a key word of the TPL is reviewed it sets the word for the rest of the book. */}
+                    {stepProp === "palabras" && data.resource !== "tps" && ask !== "compare" ? <p className="af-criterion af-criterion--hint">{t(ask === "only" ? "af.qOnlyNote" : "af.qFirstNote")}</p> : null}
+                  </>
+                );
+              })()}
               {elsewhere.length ? (
                 // What the question is about, where it is asked: how this term reads in its other places. It was
                 // shown a step before, over the words to touch, and was out of sight when the answer was given.
@@ -1730,9 +1749,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {chosenWords && !elsewhere.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-hint af-differs">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
                 </div>
               ) : null}
-              {stepProp === "notas" ? (
-                // The question asks the rule; for a challenge, what keeping it looks like, small under it. A key word
-                // needs none, and the rule said again beside its question was the third time on the screen.
+              {stepProp === "notas" || said.criterion ? (
+                // The rule of the text, small under the question: the question asks about the words, this says what
+                // «well» means in this text.
                 <p className="af-criterion af-criterion--hint">{said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
               ) : null}
               {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {agreeCount}</span> : null}</p> : null}
@@ -1753,7 +1772,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 // The decision sits under what is decided. Agreeing is about the words chosen: none chosen, nothing to agree with yet.
                 <div className="af-decide">
                   <Button type="button" disabled={saving || needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => void answer("approved")}>
-                    <Check size={16} aria-hidden /> {t(agreeing.length && !mine ? "af.agreeToo" : "rv.approved")}
+                    <Check size={16} aria-hidden /> {t("af.yesFine")}
                   </Button>
                   <Button type="button" variant="outline" disabled={saving} onClick={() => setChoosing(true)}>
                     {t("af.otherAnswer")}
