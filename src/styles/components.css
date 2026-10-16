@@ -9301,6 +9301,8 @@ blockquote[data-depth="3"] { margin-left: 2.5rem; }
 @media (max-width: 639px) {
   .af-focus__top:has(.af-order) > .af-pick { flex: 1 1 100%; }
   .af-focus__top:has(.af-order) > .af-step { margin-left: auto; }
+  /* The order and the counter fit one row at 375 px: a third row pushed the verse further down. */
+  .af-focus__top:has(.af-order) .af-order button { padding: 0 0.5rem; }
 }
 
 /* A link of the source that the translation of its piece lacks: offered under the box, to be put by a touch. */
@@ -9746,3 +9748,6 @@ button.cr-note:hover { background: var(--primary-100); }
  */
 .af-mission { margin: 0; padding: 0.25rem 0.125rem 0; color: var(--text-heading, var(--text)); font-size: calc(1.0625rem * var(--ts, 1)); font-weight: 700; line-height: 1.45; text-wrap: pretty; }
 .af-criterion { margin: 0; padding-left: 0.75rem; border-left: 3px solid var(--accent-300); color: var(--text); font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.5; }
+
+/* What the simple text makes explicit, inside braces in the file: shown in italics, without them. */
+.af-word[data-implied] { font-style: italic; }

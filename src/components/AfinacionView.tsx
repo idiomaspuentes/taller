@@ -387,7 +387,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   // several people answer in turns, each one comes back to where they left it.
   useEffect(() => {
     if (!data || busy || !visible.length) return;
-    const key = `${data.book}|${data.chapter}|${stepProp}|${category}|${order}`;
+    const key = `${data.book}|${data.chapter}|${stepProp}|${ctx?.taskId ?? ""}|${ctx?.issueNumber ?? ""}|${category}|${order}`;
     if (openedAt === key) return;
     setOpenedAt(key);
     const hashOf = (id: string) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? "");
@@ -406,6 +406,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       }
     }
     const at = firstUnanswered({ items: visible, decisions, me, hashOf, settled });
+    // Nothing left to answer: from the first point, not from where another subtarea was left.
+    if (at < 0) setPosition(0);
     if (at > 0) {
       // Arriving where one left it, the page stays at its top: what the round says (a point without agreement,
       // everything agreed) is read there before the point.
@@ -1255,7 +1257,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {/* How the team stands on it, and what the others said: before answering, not after. Where somebody does
               not agree it is found open: what they propose and why was folded under a line that did not look like
               something to touch, and the others read «no está de acuerdo» with no way to know about what. */}
-          {tally && !reviewing && (tally.answers.length || tally.stale.length || tally.decided) ? (
+          {/* A point closed in translationCore with nothing else said: no box that says nothing. */}
+          {tally && !reviewing && (tally.answers.length || tally.stale.length || tally.decided) && !(closedView && !listed.length && !saidBefore.length) ? (
             <details key={item.id} className="af-team" data-state={closedView ? "pending" : tally.state} open>
               <summary>
                 {closedView

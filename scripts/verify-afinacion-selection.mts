@@ -1,7 +1,7 @@
 /** Marking the words of a verse, and finding them again after the text changed. */
 import assert from "node:assert/strict";
 import { resolveTextReference } from "@usfm-tools/checking";
-import { selectionFromWords, stretchesOf, toggleWord, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
+import { selectionFromWords, shownWords, stretchesOf, toggleWord, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -72,6 +72,14 @@ test("si la frase ya no está, no se marca nada y se sabe que quedó obsoleta", 
   assert.deepEqual(wordsOfSelection(changed, s), []);
   assert.equal(resolveTextReference(s, [{ chapter: 1, verse: 2, text: changed }]).status, "stale", "la palabra marcada ya no está: hay que volver a marcar");
   assert.equal(resolveTextReference(s, [{ chapter: 1, verse: 2, text: "otra cosa por completo distinta aquí" }]).status, "stale");
+});
+
+test("las llaves del texto simple no se muestran: lo que va dentro se ve como implícito, y el texto no cambia", () => {
+  const text = "la gente, {antes de que regresaran allí}, comenzó";
+  const shown = shownWords(wordSpans(text));
+  assert.deepEqual(shown.map((w) => w.text), ["la", "gente,", "antes", "de", "que", "regresaran", "allí,", "comenzó"]);
+  assert.deepEqual(shown.map((w) => w.implied), [false, false, true, true, true, true, true, false]);
+  assert.equal(wordSpans(text)[2]!.text, "{antes", "las posiciones y lo que se guarda conservan las llaves");
 });
 
 console.log(`\nverify-afinacion-selection: ${passed} checks passed.`);

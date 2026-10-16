@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { toggleWord, wordSpans } from "../domain/afinacionSelection";
+import { shownWords, toggleWord, wordSpans } from "../domain/afinacionSelection";
 import { useT } from "../i18n/messages";
 import { isRtl } from "./OriginalWords";
 
@@ -18,6 +18,7 @@ import { isRtl } from "./OriginalWords";
 export function WordPicker({ text, selected, onChange }: { text: string; selected: number[]; onChange: (selected: number[]) => void }) {
   const t = useT();
   const words = wordSpans(text);
+  const shown = shownWords(words);
   /** The stroke in hand: the word it began on, what was marked then, and whether it marks or takes off. */
   const stroke = useRef<{ from: number; base: number[]; marks: boolean; moved: boolean } | null>(null);
   /** A stroke that ends on the word it began on is followed by a click there, which is not a touch of its own. */
@@ -64,13 +65,14 @@ export function WordPicker({ text, selected, onChange }: { text: string; selecte
             className="af-word af-word--tap"
             data-word={word.index}
             data-selected={selected.includes(word.index) ? "true" : undefined}
+            data-implied={shown[word.index]?.implied ? "true" : undefined}
             aria-pressed={selected.includes(word.index)}
             onClick={() => {
               if (justStroked.current) justStroked.current = false;
               else onChange(toggleWord(selected, word.index));
             }}
           >
-            {word.text}
+            {shown[word.index]?.text ?? word.text}
           </button>
         ))}
       </span>

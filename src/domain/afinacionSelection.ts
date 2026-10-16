@@ -19,6 +19,23 @@ export function wordSpans(verseText: string): WordSpan[] {
   return spans;
 }
 
+/**
+ * How each word is shown: without the braces of the simple text, and whether it is inside them (what the text makes
+ * explicit that the original leaves implied). «{antes de que los israelitas regresaran allí},» was shown with its
+ * braces, which read as a fault of the text. Only the showing: the words, their positions and what is saved of a
+ * choice keep the braces, as the text has them.
+ */
+export function shownWords(words: WordSpan[]): { text: string; implied: boolean }[] {
+  let depth = 0;
+  return words.map((word) => {
+    const opens = (word.text.match(/\{/g) ?? []).length;
+    const closes = (word.text.match(/\}/g) ?? []).length;
+    const implied = depth > 0 || opens > 0;
+    depth = Math.max(0, depth + opens - closes);
+    return { text: word.text.replace(/[{}]/g, "") || word.text, implied };
+  });
+}
+
 /** Toggle a word: selections are kept as a set of positions, in verse order. */
 export function toggleWord(selected: number[], index: number): number[] {
   return selected.includes(index) ? selected.filter((i) => i !== index) : [...selected, index].sort((a, b) => a - b);
