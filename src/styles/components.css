@@ -9381,6 +9381,7 @@ html[data-text] .af-ref .af-word, html[data-text] .af-row--ref .af-word { font-s
 html[data-text] .af-ref .af-orig .af-word, html[data-text] .af-row--ref .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
 html[data-text] .af-chapter__text { font-size: calc(1.0625rem * var(--ts)); }
 html[data-text] .af-chapter__text.af-orig { font-size: calc(1.3125rem * var(--ts)); }
+html[data-text] .af--round .af-intro { font-size: calc(1rem * var(--ts)); }
 html[data-text] .fx-ref__text, html[data-text] .af-textarea { font-size: calc(1rem * var(--ts)); }
 html[data-text] .gr-text__body { font-size: calc(1.0625rem * var(--ts)); }
 html[data-text] dl.rv-sources { font-size: calc(1.0625rem * var(--ts)); }
@@ -9907,3 +9908,14 @@ button.cr-note:hover { background: var(--primary-100); }
 .hs-v:not([data-here="true"]) { opacity: 1; color: var(--text-muted); }
 .af-chapter__text .af-word { font-size: inherit; }
 .af-chapter__text.af-orig { font-size: 1.3125rem; line-height: 1.8; }
+
+/*
+ * The helps and the introduction of a tuning point follow the size of text chosen. The helps reader sets its own
+ * sizes (13 to 17 px) and some texts of the helps had theirs: at any size chosen they stayed the same (16 October).
+ * What is read inherits the pane's size; its headings are a step larger. Buttons and tabs keep theirs.
+ */
+.af--round .af-intro { font-size: 1rem; line-height: 1.6; }
+.af--round .af-intro :is(p, li, span, td, th, a, .scripture-editor__help-md), .af--round .af-help-pane :is(p, li, span, b, td, th, .scripture-editor__help-md) { font-size: inherit; line-height: 1.6; }
+.af--round .af-intro h1, .af--round .af-help-pane h1 { font-size: 1.25em; }
+.af--round .af-intro h2, .af--round .af-help-pane h2 { font-size: 1.125em; }
+.af--round .af-intro :is(h3, h4), .af--round .af-help-pane :is(h3, h4) { font-size: 1.0625em; }
