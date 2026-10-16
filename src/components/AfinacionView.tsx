@@ -23,7 +23,7 @@ import { ArrowDown, Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
-import { articleBody, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
+import { articleBody, termWord, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, selectionWindow, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
@@ -1701,6 +1701,26 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               </div>
           {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
             <div className="af-ask">
+              {/* How the term reads in its other places, before the question: what to look at, then what to answer, with the buttons right under it. */}
+              {elsewhere.length ? (
+                // What the question is about, where it is asked: how this term reads in its other places. It was
+                // shown a step before, over the words to touch, and was out of sight when the answer was given.
+                <div className="af-elsewhere">
+                  {/* Named by its article's title («Israel, israelitas»; «año», not «Tiempo Biblico: año»), once it is read. */}
+                  <p className="af-lbl">{titlesRead || termTitles[termSlug] ? t("af.elsewhereTerm").replace("{term}", termWord(termLabel(termSlug, termTitles))) : t("af.elsewhere")}</p>
+                  <ul>
+                    {elsewhere.map((r) => (
+                      <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
+                        <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Asked, not warned: «salvación», «habiendo salvado» and «sálvenlos» are three forms and one translation. */}
+                  {elsewhere.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(elsewhere.length))}</p> : null}
+                  {/* Said, not shouted: in the TPS another form may say the same. */}
+                  {chosenWords && !elsewhere.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-hint af-differs">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
+                </div>
+              ) : null}
               {(() => {
                 // The question names what the box above shows: the words chosen in the translation and the words
                 // highlighted in the original. It named the term's title («Israel, israelitas»), which is neither, and
@@ -1734,24 +1754,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   </>
                 );
               })()}
-              {elsewhere.length ? (
-                // What the question is about, where it is asked: how this term reads in its other places. It was
-                // shown a step before, over the words to touch, and was out of sight when the answer was given.
-                <div className="af-elsewhere">
-                  <p className="af-lbl">{t("af.elsewhere")}</p>
-                  <ul>
-                    {elsewhere.map((r) => (
-                      <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
-                        <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {/* Asked, not warned: «salvación», «habiendo salvado» and «sálvenlos» are three forms and one translation. */}
-                  {elsewhere.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(elsewhere.length))}</p> : null}
-                  {/* Said, not shouted: in the TPS another form may say the same. */}
-                  {chosenWords && !elsewhere.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-hint af-differs">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
-                </div>
-              ) : null}
               {stepProp === "notas" || said.criterion ? (
                 // The rule of the text, small under the question: the question asks about the words, this says what
                 // «well» means in this text.
