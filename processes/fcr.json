@@ -1706,9 +1706,9 @@
         },
         {
           "id": "desafios-tpl",
-          "name": "Desafíos TPL",
+          "name": "Frases con nota TPL",
           "names": {
-            "pt": "Desafios TPL"
+            "pt": "Frases com nota TPL"
           },
           "phaseId": "fcr-afinacion",
           "minLevel": "aprendiz",
@@ -1735,21 +1735,21 @@
           "steps": [
             {
               "id": "revisar",
-              "name": "Revisar desafíos",
+              "name": "Revisar frases con nota",
               "names": {
-                "pt": "Revisar desafios"
+                "pt": "Revisar frases com nota"
               },
               "actionLabel": "Revisar",
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "El primero que llega marca qué palabras traducen el punto y si cumplen la regla.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, el punto queda acordado. Cada uno responde en el orden que quiera.",
+              "description": "El primero que llega marca qué palabras traducen la frase y si cumplen la regla.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, la frase queda acordada. Cada uno responde en el orden que quiera.",
               "descriptions": {
-                "pt": "O primeiro que chega marca quais palavras traduzem o ponto e se cumprem a regra.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, o ponto fica acordado. Cada um responde na ordem que quiser."
+                "pt": "O primeiro que chega marca quais palavras traduzem a frase e se cumprem a regra.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, a frase fica acordada. Cada um responde na ordem que quiser."
               },
-              "purpose": "Comprueba que el TPL conserve cada desafío del original tal como está: la figura, la construcción, el orden.",
+              "purpose": "Comprueba que el TPL conserve tal como está cada frase con nota del original: la figura, la construcción, el orden.",
               "purposes": {
-                "pt": "Verifique se o TPL conserva cada desafio do original tal como está: a figura, a construção, a ordem."
+                "pt": "Verifique se o TPL conserva tal como está cada frase com nota do original: a figura, a construção, a ordem."
               },
               "criterion": "El TPL mantiene la figura o la construcción del original, aunque suene menos natural.",
               "criteria": {
@@ -1916,9 +1916,9 @@
         },
         {
           "id": "desafios-tps",
-          "name": "Desafíos TPS",
+          "name": "Frases con nota TPS",
           "names": {
-            "pt": "Desafios TPS"
+            "pt": "Frases com nota TPS"
           },
           "phaseId": "fcr-afinacion",
           "minLevel": "aprendiz",
@@ -1945,21 +1945,21 @@
           "steps": [
             {
               "id": "revisar",
-              "name": "Revisar desafíos",
+              "name": "Revisar frases con nota",
               "names": {
-                "pt": "Revisar desafios"
+                "pt": "Revisar frases com nota"
               },
               "actionLabel": "Revisar",
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "El primero que llega marca qué palabras traducen el punto y si cumplen la regla.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, el punto queda acordado. Cada uno responde en el orden que quiera.",
+              "description": "El primero que llega marca qué palabras traducen la frase y si cumplen la regla.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, la frase queda acordada. Cada uno responde en el orden que quiera.",
               "descriptions": {
-                "pt": "O primeiro que chega marca quais palavras traduzem o ponto e se cumprem a regra.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, o ponto fica acordado. Cada um responde na ordem que quiser."
+                "pt": "O primeiro que chega marca quais palavras traduzem a frase e se cumprem a regra.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, a frase fica acordada. Cada um responde na ordem que quiser."
               },
-              "purpose": "Comprueba que el TPS diga con claridad lo que el original expresa con cada figura o construcción difícil.",
+              "purpose": "Comprueba que el TPS diga con claridad lo que el original expresa en cada frase con nota.",
               "purposes": {
-                "pt": "Verifique se o TPS diz com clareza o que o original expressa com cada figura ou construção difícil."
+                "pt": "Verifique se o TPS diz com clareza o que o original expressa em cada frase com nota."
               },
               "criterion": "El TPS la aclara: por ejemplo, una pasiva pasa a activa; una metáfora se explica o se vuelve símil.",
               "criteria": {
@@ -2813,9 +2813,9 @@
       "walks": {
         "unit": "notes",
         "approx": true,
-        "label": "desafíos",
+        "label": "frases con nota",
         "labels": {
-          "pt": "desafios"
+          "pt": "frases com nota"
         }
       },
       "sources": [
@@ -3031,7 +3031,10 @@
       "Notas frente al TPL": "Notas diante do TPL",
       "Notas frente al TPS": "Notas diante do TPS",
       "Palabras frente al TPL": "Palavras diante do TPL",
-      "Sugerencias frente al TPS": "Sugestões diante do TPS"
+      "Sugerencias frente al TPS": "Sugestões diante do TPS",
+      "Frases con nota": "Frases com nota",
+      "Frases con nota ": "Frases com nota ",
+      "Revisar frases con nota": "Revisar frases com nota"
     }
   }
 }
