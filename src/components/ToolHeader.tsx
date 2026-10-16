@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 import { useT } from "../i18n/messages";
 import { MoreMenu, type MoreItem } from "./MoreMenu";
 import { setNotesSlot, useNotesEntry } from "./notesSlot";
@@ -14,6 +14,8 @@ type Props = {
   more?: MoreItem[];
   /** A second row under the name: a progress bar, the modes of the tool. */
   children?: ReactNode;
+  /** What the task is for and how it is done, opened over the work: an «ⓘ» beside «Más». */
+  info?: { label: string; onOpen: () => void };
 };
 
 /**
@@ -22,7 +24,7 @@ type Props = {
  * there that says nothing to the team: what is not the work itself is a row of «Más», with a line that says what it
  * does (as in translationCore 4).
  */
-export function ToolHeader({ title, meta, onBack, more = [], children }: Props) {
+export function ToolHeader({ title, meta, onBack, more = [], children, info }: Props) {
   const t = useT();
   const notes = useNotesEntry();
   const items: MoreItem[] = [
@@ -42,6 +44,11 @@ export function ToolHeader({ title, meta, onBack, more = [], children }: Props) 
         <div className="th-actions">
           {/* Says to the notes that this tool has a header: they become a row of «Más» instead of a corner button. */}
           <span className="th-notes" ref={setNotesSlot} />
+          {info ? (
+            <button type="button" className="th-info" aria-haspopup="dialog" aria-label={info.label} title={info.label} onClick={info.onOpen}>
+              <Info size={20} aria-hidden />
+            </button>
+          ) : null}
           <MoreMenu items={items} />
         </div>
       </div>

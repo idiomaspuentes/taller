@@ -406,11 +406,31 @@ export function PassageIntroText({ session, ctx }: { session: GtSession | null |
  * Inside a tool: what the step it was opened for asks, and the introductions of its book, folded over the work.
  * `intro={false}` for a tool that shows the introductions in a tab of its own.
  */
-export function StepAsk({ session, ctx, intro = true, label }: { session: GtSession | null | undefined; ctx: SolverLaunchContext | null | undefined; intro?: boolean; label?: string }) {
+export function StepAsk({
+  session,
+  ctx,
+  intro = true,
+  label,
+  open,
+  onOpenChange,
+  trigger = true,
+}: {
+  session: GtSession | null | undefined;
+  ctx: SolverLaunchContext | null | undefined;
+  intro?: boolean;
+  /** Names the sheet the step is explained in (a tool that says what it is for); without it, the fold of old. */
+  label?: string;
+  /** The sheet opened from elsewhere (the tool's header), and no line of its own to open it when `trigger` is false. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: boolean;
+}) {
   const t = useT();
   const language = useUiLanguage();
   const found = useLaunchStep(session, ctx);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const sheetOpen = open ?? ownOpen;
+  const setSheetOpen = onOpenChange ?? setOwnOpen;
   if (!ctx) return null;
   const introductions = intro ? <PassageIntro session={session} ctx={ctx} /> : null;
   // The introductions are there whatever the step asks, and when it asks nothing.
@@ -429,21 +449,30 @@ export function StepAsk({ session, ctx, intro = true, label }: { session: GtSess
             <b>{t("sa.asked")}</b> {found.asked}
           </p>
         ) : null}
-        <button type="button" className="step-ask__open" aria-haspopup="dialog" onClick={() => setSheetOpen(true)}>
-          {label}
-          <ChevronRight size={14} aria-hidden />
-        </button>
+        {trigger ? (
+          <button type="button" className="step-ask__open" aria-haspopup="dialog" onClick={() => setSheetOpen(true)}>
+            {label}
+            <ChevronRight size={14} aria-hidden />
+          </button>
+        ) : null}
         <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
           <DialogContent className="fix-sheet hint-sheet step-sheet" aria-label={label}>
             <header className="fx-head">
               <DialogTitle className="fx-title">{label}</DialogTitle>
             </header>
+            {/* What the task is for, how the round is answered, and the rules the team gave itself. */}
             <div className="fx-body step-sheet__body">
-              <TeamRuleChecks team={task.orgTeamName} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} inSheet />
+              {said.purpose ? (
+                <section>
+                  <p className="step-ask__title">{t("sa.purpose")}</p>
+                  <p className="step-sheet__purpose">{said.purpose}</p>
+                </section>
+              ) : null}
               <section>
                 <p className="step-ask__title">{t("sa.howRound")}</p>
                 <StepAskBody step={step} description={said.description} />
               </section>
+              <TeamRuleChecks team={task.orgTeamName} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} inSheet />
             </div>
           </DialogContent>
         </Dialog>

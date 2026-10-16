@@ -9856,3 +9856,17 @@ button.cr-note:hover { background: var(--primary-100); }
 .af--round .af-recap__lbl { font-size: 0.75rem; }
 /* The one filled button, white on blue: 4.7:1 on accent-500, about 6:1 a step darker. */
 .af--round { --primary: var(--accent-600); --primary-hover: var(--accent-700); }
+
+/*
+ * «Sobre esta tarea»: an «ⓘ» in a tool's header, beside «Más». And the welcome of a tuning task, said once per task
+ * and device over the first point: what it is for, how the round is answered, «Entendido».
+ */
+.th-info { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 999px; background: none; color: var(--text-muted); cursor: pointer; }
+.th-info:hover { background: var(--surface-muted); color: var(--text); }
+.af-welcome { display: grid; gap: 0.5rem; padding: 0.875rem 1rem; border: 1px solid var(--accent-200); border-radius: var(--radius-lg); background: var(--accent-50); }
+.af-welcome__title { margin: 0; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 700; color: var(--accent-800); }
+.af-welcome__purpose { margin: 0; font-size: calc(1rem * var(--ts, 1)); font-weight: 600; line-height: 1.45; color: var(--text); }
+.af-welcome__steps { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.25rem; font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.5; color: var(--gray-700); }
+.af-welcome__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; margin-top: 0.25rem; }
+.af-welcome__actions .af-link { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.step-sheet__purpose { margin: 0; font-weight: 600; line-height: 1.5; }

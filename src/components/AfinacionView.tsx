@@ -50,6 +50,7 @@ import { FinalDecision, RoundPanel } from "./RoundPanel";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage, sourcePackageLang } from "../domain/sourcePackage";
 import { stepPurpose } from "../domain/processes";
+import { localizeName } from "../domain/templateNames";
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -344,6 +345,30 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const taskStep = task?.steps?.find((s) => s.id === (ctx?.stepId || stepProp));
   /** What the step is for and the rule it measures against, as the process says them. */
   const said = stepPurpose(task?.id ?? ctx?.taskId ?? "", taskStep, language);
+  const heading = toolHeading(ctx, language, t(TITLE[stepProp]));
+  const taskLabel = ctx?.taskName ? localizeName(ctx.taskName, language) : "";
+  /** How the round is answered, line by line, for the welcome. */
+  const roundSteps = (said.description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  /** «Sobre esta tarea», opened from the header or the welcome. */
+  const [aboutOpen, setAboutOpen] = useState(false);
+  /** Whether this person has seen the welcome of this task on this device. */
+  const welcomeKey = `taller-af-welcome:${ctx?.taskId ?? ""}`;
+  const [welcomed, setWelcomed] = useState(true);
+  useEffect(() => {
+    try {
+      setWelcomed(localStorage.getItem(welcomeKey) === "1");
+    } catch {
+      setWelcomed(false);
+    }
+  }, [welcomeKey]);
+  const dismissWelcome = () => {
+    setWelcomed(true);
+    try {
+      localStorage.setItem(welcomeKey, "1");
+    } catch {
+      /* private window: seen for this visit only */
+    }
+  };
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   const thresholds = { minAgree: taskStep?.minAgree ?? taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
@@ -1007,21 +1032,27 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       </Dialog>
       <WordSheet word={sheetWord?.word ?? null} at={{ book: data?.book ?? "", chapter: sheetWord?.chapter ?? 0, verse: sheetWord?.verse ?? 0 }} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} onClose={() => setSheetWord(null)} />
       <ToolHeader
-        title={toolHeading(ctx, language, t(TITLE[stepProp])).title}
+        // The passage, and under it the task with how far along: «Palabras clave TPS · 0 de 74 acordadas». The line said
+        // «Revisar palabras clave · Palabras clave TPS», the task twice; with both in the title, a phone cut the passage.
+        title={heading.title}
         // From the helps or the chapter, back returns to what was being reviewed; from there it leaves.
         onBack={() => (pane === "review" ? onClose() : setPane("review"))}
-        meta={[toolHeading(ctx, language, t(TITLE[stepProp])).where, summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
+        meta={[taskLabel || heading.where, summary && data ? t("af.nAgreed").replace("{a}", String(summary.agreed)).replace("{n}", String(data.items.length)) : ""].filter(Boolean).join(" · ")}
         more={data ? [{ id: "glossary", label: t("gl.open"), hint: t("mm.glossaryHint"), href: `#/glosario?libro=${encodeURIComponent(data.book)}&c=${data.chapter}&de=1&a=200` }] : []}
+        info={said.purpose ? { label: t("af.aboutTask"), onOpen: () => setAboutOpen(true) } : undefined}
       />
-      {said.purpose ? (
-        // What the screen is for, always in sight: the team saw how to answer and not why (16 October).
-        <p className="af-mission" data-res={data?.resource}>
-          {said.purpose}
-        </p>
-      ) : null}
       <div className="step-ask-bar">
-        {/* With the purpose said above, what is folded here is how the round is answered, and the team's rules. */}
-        <StepAsk session={session} ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx} intro={false} label={said.purpose ? t("af.howRound") : undefined} />
+        {/* What the task is for, how the round goes and the team's rules: said once in a welcome, then a touch away
+            in the header («ⓘ»). Laid out over the tabs they took 130 px of every point (16 October). */}
+        <StepAsk
+          session={session}
+          ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx}
+          intro={false}
+          label={said.purpose ? t("af.aboutTask") : undefined}
+          open={said.purpose ? aboutOpen : undefined}
+          onOpenChange={said.purpose ? setAboutOpen : undefined}
+          trigger={!said.purpose}
+        />
       </div>
 
       {error ? (
@@ -1229,6 +1260,28 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
       {/* Not before the answers of everybody have been read: for some seconds the first point of the list was
           shown as if nobody had answered anything, to be touched, and then the screen went to another point. */}
+      {data && item && pane === "review" && !busy && said.purpose && !welcomed ? (
+        // The first time this person opens this task on this device: what it is for and how it is answered, once.
+        <section className="af-welcome" aria-label={t("af.welcomeTitle")}>
+          <p className="af-welcome__title">{t("af.welcomeTitle")}</p>
+          <p className="af-welcome__purpose">{said.purpose}</p>
+          {roundSteps.length > 1 ? (
+            <ol className="af-welcome__steps">
+              {roundSteps.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ol>
+          ) : null}
+          <div className="af-welcome__actions">
+            <Button type="button" variant="outline" onClick={dismissWelcome}>
+              {t("af.welcomeOk")}
+            </Button>
+            <button type="button" className="af-link" onClick={() => setAboutOpen(true)}>
+              {t("af.welcomeRules")}
+            </button>
+          </div>
+        </section>
+      ) : null}
       {data && item && pane === "review" && !busy ? (
         <section className="af-focus" aria-label={t("af.noteAria")}>
           {/* What this item is: the category of the note (or the key term). Everything below is about it. */}
