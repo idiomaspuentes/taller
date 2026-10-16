@@ -1,5 +1,5 @@
-import { getRawContent, listReleases } from "@ip-lms/dcs-client";
-import { latestReleaseTag } from "../domain/release";
+import { getRawContent } from "@ip-lms/dcs-client";
+import { readPublished } from "./published";
 import { tokenizeOriginalDocument } from "@usfm-tools/editor-core";
 import { parseUsfmToUsj } from "@usfm-tools/usfm-readonly-react";
 import type { AlignmentMap } from "@usfm-tools/types";
@@ -194,31 +194,6 @@ export async function loadTermArticle(session: GtSession, pkg: Pick<SourcePackag
  */
 export type TeamFirst = { teamFirst?: boolean | "published" };
 
-const releaseTags = new Map<string, Promise<string | null>>();
-
-/** The tag of the last published release of a repository, once per visit. */
-function lastPublishedTag(session: GtSession, owner: string, repo: string): Promise<string | null> {
-  const key = `${session.host}|${owner}/${repo}`.toLowerCase();
-  let asked = releaseTags.get(key);
-  if (!asked) {
-    asked = listReleases(dcsConfig(session.host), owner, repo, { limit: 50, token: session.token })
-      .then((releases) => latestReleaseTag(releases as never))
-      .catch(() => null);
-    releaseTags.set(key, asked);
-  }
-  return asked;
-}
-
-/** A file of the team's repository as its last published release has it; null when it is not in one. */
-async function readPublished(session: GtSession, owner: string, repo: string, filepath: string): Promise<string | null> {
-  const tag = await lastPublishedTag(session, owner, repo);
-  if (!tag) return null;
-  try {
-    return await getRawContent(dcsConfig(session.host), owner, repo, filepath, { token: session.token, ref: tag });
-  } catch {
-    return null;
-  }
-}
 
 /** The team's file (now, or as published), or else the source's. */
 async function teamOrSource(session: GtSession, own: { owner: string; repo: string } | { error: string }, mode: TeamFirst["teamFirst"], filepath: string, source: () => Promise<string | null>): Promise<string | null> {

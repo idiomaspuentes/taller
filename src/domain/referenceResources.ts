@@ -1,6 +1,7 @@
 import { getRawContent } from "@ip-lms/dcs-client";
 import type { GtSession } from "../dcs/auth";
 import { dcsConfig } from "../dcs/config";
+import { readPublished } from "../dcs/published";
 import { loadSourceChapter } from "../dcs/sourceTexts";
 import { bookUsfmName } from "../prep/discover";
 import { parseVerseRef, twPathFromRc } from "../prep/inventory";
@@ -446,7 +447,10 @@ export async function loadIntroNotes(
   session: GtSession,
   book: string,
   chapter: number,
-  /** The team's own notes, read first: an introduction already translated is the one to study from. */
+  /**
+   * The team's own notes, read first as their last published release has them: an introduction translated in a
+   * first pass and not yet published can be wrong, and is read in English until it is (16 October).
+   */
   own?: { contentOrg?: string; lang?: string; pmConfig?: PmConfig },
 ): Promise<{ book: string; chapter: string; translated: { book: boolean; chapter: boolean } }> {
   const code = (book || "").toUpperCase();
@@ -456,7 +460,7 @@ export async function loadIntroNotes(
   const glRepo = own?.lang ? resolveResourceRepo("notas", own.lang, own.pmConfig ?? DEFAULT_PM_CONFIG) : "";
   const skipGl = !glOwner || !glRepo || (glOwner.toLowerCase() === "unfoldingword" && glRepo === "en_tn");
   const [mine, english] = await Promise.all([
-    skipGl ? Promise.resolve([] as Record<string, string>[]) : loadTsvFromRepo(session, glOwner, glRepo, file).catch(() => [] as Record<string, string>[]),
+    skipGl ? Promise.resolve([] as Record<string, string>[]) : readPublished(session, glOwner, glRepo, file).then((text) => (text ? parseTsvTable(text).rows : [])).catch(() => [] as Record<string, string>[]),
     loadEnglishTsv(session, "en_tn", file).catch(() => [] as Record<string, string>[]),
   ]);
   const noteAt = (rows: Record<string, string>[], reference: string) => {
