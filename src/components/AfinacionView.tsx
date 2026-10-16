@@ -22,7 +22,7 @@ import { HelpMarkdownView } from "./HelpMarkdownView";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
-import { articleBody, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
+import { articleBody, termWord, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, selectionWindow, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
@@ -1563,7 +1563,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   : (() => {
                       // The first time a term is met there is nothing to compare it with, and it is asked as what it is.
                       const ask = termAsk(data.termUses.filter((use) => use.termSlug === termSlug), comparison, item.id);
-                      return ask === "only" ? t("af.qPalabrasOnly") : ask === "first" ? t("af.qPalabrasFirst") : t(QUESTION[stepProp][data.resource]);
+                      // The rule of the text is asked, not said beside the question: in the TPS the sense, whatever the
+                      // form; in the TPL the same words throughout, the first time setting them for the rest.
+                      // Its title is read after the point opens: until then «…», as over it, not the slug.
+                      const term = titlesRead || termTitles[termSlug] ? termWord(termLabel(termSlug, termTitles)) : "…";
+                      const key = data.resource === "tps" ? QUESTION[stepProp].tps : ask === "only" ? "af.qPalabrasOnly" : ask === "first" ? "af.qPalabrasFirst" : QUESTION[stepProp].tpl;
+                      return t(key).replace("{term}", term);
                     })()}
               </p>
               {elsewhere.length ? (
@@ -1584,10 +1589,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {chosenWords && !elsewhere.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-hint af-differs">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
                 </div>
               ) : null}
-              {said.criterion || stepProp === "notas" ? (
-                // The rule the answer is measured against, open where the answer is given: folded under «¿Qué pide
-                // el TPS?», the question was read without it.
-                <p className="af-criterion">{said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
+              {stepProp === "notas" ? (
+                // The question asks the rule; for a challenge, what keeping it looks like, small under it. A key word
+                // needs none, and the rule said again beside its question was the third time on the screen.
+                <p className="af-criterion af-criterion--hint">{said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
               ) : null}
               {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {agreeCount}</span> : null}</p> : null}
               {mine && !changing ? (

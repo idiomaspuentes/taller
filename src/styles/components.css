@@ -9830,3 +9830,5 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-recap__chosen { color: var(--text); font-weight: 600; background: var(--accent-100); border-radius: 4px; padding: 0.0625rem 0.1875rem; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .af-recap__verse [data-implied] { font-style: italic; }
 .af-recap--rows .af-recap__change { grid-column: 1 / -1; justify-self: end; min-height: 2.75rem; display: inline-flex; align-items: center; }
+/* Under a challenge's question, what keeping the rule looks like: small, no rule beside it. */
+.af--round .af-criterion--hint { border-left: 0; padding-left: 0; font-size: calc(0.8125rem * var(--ts, 1)); margin-top: -0.375rem; }

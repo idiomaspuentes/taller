@@ -1,5 +1,5 @@
 /** The key terms of a chapter, and how each one was rendered across the book. */
-import { renderingsElsewhere, termAsk, termDefinition } from "../src/domain/afinacionWords";
+import { renderingsElsewhere, termAsk, termDefinition, termWord } from "../src/domain/afinacionWords";
 import assert from "node:assert/strict";
 import { articleBody,
   compareTermRenderings,
@@ -192,6 +192,11 @@ test("la definición de un término se toma de su sección «Definition», o de 
   assert.equal(termDefinition(article), "In the Bible, the term **elder** refers to older men.\n\nThey led the people.");
   assert.equal(termDefinition("# year\n\nA year is the time the earth takes around the sun.\n\n## Bible References:\n"), "A year is the time the earth takes around the sun.");
   assert.equal(termDefinition("# anciano\n\n## Definición:\n\nPersona mayor.\n"), "Persona mayor.");
+});
+
+test("la pregunta nombra la palabra del término, sin su categoría", () => {
+  assert.equal(termWord("Tiempo Biblico: año"), "año");
+  assert.equal(termWord("Dios"), "Dios");
 });
 
 console.log(`\nverify-afinacion-words: ${passed} checks passed.`);

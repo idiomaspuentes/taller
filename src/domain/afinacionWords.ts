@@ -32,6 +32,11 @@ export function termLabel(slug: string, titles?: Record<string, string>): string
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** The word a term's title is about, to say it in a question: «Tiempo Biblico: año» is «año». */
+export function termWord(label: string): string {
+  return label.split(/:\s+/).pop()?.trim() || label;
+}
+
 /** Where the article of a term lives in the words repository. */
 export function termArticlePath(kind: TermKind, slug: string): string {
   return `bible/${kind}/${slug}.md`;
