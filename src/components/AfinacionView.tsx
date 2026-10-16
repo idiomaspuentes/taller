@@ -19,7 +19,7 @@ import { refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { ArrowDown, Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
@@ -1548,6 +1548,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             </div>
   
             {/* 2. The words of the translation that render it: tapped in the draft. */}
+            {fixing ? null : (
+              // Between the reference and the translation, from what is highlighted above to the words below: how to
+              // select them. Inside the translation's box, under its name, it read as part of the text (16 October);
+              // what to select is the step's line.
+              <p className="af-bridge" data-needed={needsWords ? "true" : undefined}>
+                <ArrowDown size={16} aria-hidden />
+                {t("af.bridge").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}
+              </p>
+            )}
             <div className="af-draft">
               <div className="af-draft__bar">
                 <span className="af-draft__name">
@@ -1589,12 +1598,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 <>
                   <WordPicker text={verseText} selected={selected} onChange={setSelected} />
                   <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
-                <p className="af-hint" data-needed={needsWords ? "true" : undefined}>
-                    {t("af.tapMarked")
-                      .replace("{res}", data.resource === "tps" ? "TPS" : "TPL")
-                      .replace("{marked}", markedWords ? `«${markedWords}»` : t(termSlug ? "af.theTerm" : "af.theMarked"))}{" "}
-                    {t("af.runHint")}
-                  </p>
                 </>
               )}
             </div>

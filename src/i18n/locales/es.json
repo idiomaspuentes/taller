@@ -898,6 +898,7 @@
   "af.unmarkedMany": "Sin marcar: {n} usos.",
   "af.staleMine": "El versículo cambió después de tu respuesta. Vuelve a revisarlo.",
   "af.myAnswer": "Tu respuesta: {stance}",
+  "af.bridge": "Toca en el {res} las palabras que le corresponden, o desliza el dedo sobre varias.",
   "af.yesFine": "Sí, está bien",
   "af.qOnlyNote": "Aparece una sola vez en el libro.",
   "af.qFirstNote": "Es la primera vez que se revisa en el libro: lo que se acuerde aquí será la forma para el resto.",
