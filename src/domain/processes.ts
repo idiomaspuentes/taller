@@ -56,17 +56,19 @@ export function shippedStepTool(taskId: string, stepId: string, packages: Proces
  */
 export function stepPurpose(
   taskId: string,
-  step: Pick<TaskStep, "id" | "purpose" | "purposes" | "criterion" | "criteria"> | undefined,
+  step: Pick<TaskStep, "id" | "purpose" | "purposes" | "criterion" | "criteria" | "description" | "descriptions"> | undefined,
   language: string,
   packages: ProcessPackage[] = tallerConfig.processes,
-): { purpose?: string; criterion?: string } {
+): { purpose?: string; criterion?: string; description?: string } {
   if (!step) return {};
   const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.id === taskId))[0]?.steps?.find((row) => row.id === step.id);
   const own = step.purpose || step.criterion ? step : shipped;
   if (!own) return {};
+  // How the step is done goes with what it is for: the same version of the process says both.
   return {
     ...(own.purpose ? { purpose: localized(own.purpose, own.purposes, language) } : {}),
     ...(own.criterion ? { criterion: localized(own.criterion, own.criteria, language) } : {}),
+    ...(own.description ? { description: localized(own.description, own.descriptions, language) } : {}),
   };
 }
 

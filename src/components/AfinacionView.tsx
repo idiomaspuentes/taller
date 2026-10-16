@@ -615,6 +615,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [session, ctx, data, termSlug]);
   const termArticle = termSlug ? termArticles[termSlug] : undefined;
   const definition = termArticle ? termDefinition(termArticle) : "";
+  // What the team decided about the words of this verse, beside the term: it was a link in the step's fold, far from
+  // the word it is about. In another tab, so the point in hand stays as it is.
+  const termGlossary =
+    termSlug && ctx && !ctx.lab && data && item ? (
+      <a className="af-link af-term-glossary" lang={language} href={`#/glosario?libro=${encodeURIComponent(data.book)}&c=${item.chapter}&de=${item.verse}&a=${item.verse}${data.resource === "tps" ? "&texto=tps" : ""}`} target="_blank" rel="noreferrer">
+        {t("af.termGlossary")}
+      </a>
+    ) : null;
   const comparison = useMemo(
     () =>
       data && termSlug
@@ -1208,6 +1216,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           </div>
           <p className="af-kind af-kind--top" ref={kindRef}>{stepProp === "notas" ? t("af.kindNote").replace("{ref}", `${item.chapter}:${item.verse}`) : t("af.kindTerm").replace("{ref}", `${item.chapter}:${item.verse}`)}</p>
           <h2 className={termSlug ? "af-category af-category--term" : "af-category"}>{stepProp === "notas" ? nameOf(item) : termSlug ? (titlesRead || termTitles[termSlug] ? termLabel(termSlug, termTitles) : "…") : item.phrase ? `«${item.phrase}»` : item.quote || t("af.wholeVerse")}</h2>
+          {termSlug && !definition ? termGlossary : null}
 
           {/* Why the point is a challenge and what the team said: beside the text on a wide screen, above it on a phone. */}
           <div className="af-about">
@@ -1245,6 +1254,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               <button type="button" className="af-link" lang={language} aria-expanded={wholeNote} onClick={() => setWholeNote((open) => !open)}>
                 {t(wholeNote ? "af.noteLess" : "af.wholeArticle")}
               </button>
+              {termGlossary}
             </div>
           ) : null}
           {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}

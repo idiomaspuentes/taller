@@ -9775,5 +9775,19 @@ button.cr-note:hover { background: var(--primary-100); }
   .af--round .af-decide > .btn { min-width: 10rem; padding-inline: 1.25rem; }
 }
 /* The two ways into the note or the definition share a row: one under the other they took two rows of a phone. */
-.af--round .af-reason { grid-template-columns: repeat(2, auto); justify-content: start; column-gap: 1.25rem; }
-.af--round .af-reason > .af-note { grid-column: 1 / -1; }
+.af--round .af-reason { display: flex; flex-wrap: wrap; align-items: center; column-gap: 1.25rem; }
+.af--round .af-reason > .af-note { flex: 1 1 100%; }
+
+/*
+ * How a tuning step is done, opened over the work in a sheet: a quiet line under the purpose, not a fold that pushed
+ * the work down and scrolled inside itself. In the sheet, the team's rules first, then the round as numbered steps.
+ */
+.step-ask__open { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; padding: 0; border: 0; background: none; color: var(--accent-700); font: inherit; font-size: calc(0.875rem * var(--ts, 1)); font-weight: 600; cursor: pointer; }
+.af > .step-ask-bar:has(.step-ask__open) { border-bottom: 1px solid var(--border); }
+.step-sheet__body { gap: 1.25rem; font-size: 0.9375rem; color: var(--text); }
+.step-sheet__body .step-ask__team { margin: 0; padding: 0; border: 0; }
+.step-sheet__body .step-ask__title { margin: 0 0 0.375rem; font-weight: 700; color: var(--text); }
+.step-ask__none { margin: 0; color: var(--text-muted); }
+.step-ask__steps { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.375rem; line-height: 1.5; }
+.step-sheet__body .step-ask__manage { text-decoration: none; font-weight: 600; font-size: 0.875rem; }
+.af-term-glossary { justify-self: start; text-decoration: none; }

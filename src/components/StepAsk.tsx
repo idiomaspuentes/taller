@@ -12,6 +12,7 @@ import { formatWhen, itemChecks, parseWhen, stepWideChecks } from "../domain/ste
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
+import { stepPurpose } from "../domain/processes";
 import { portionRange } from "../domain/usfmEdit";
 import type { ProjectSettings, ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
@@ -119,13 +120,25 @@ export function Hints({ lines, lead, context }: { lines: HintLine[]; lead?: stri
   );
 }
 
-/** The description of a step and what it asks to keep in mind through the whole of it. */
-export function StepAskBody({ step }: { step: TaskStep }) {
+/**
+ * The description of a step and what it asks to keep in mind through the whole of it. A description of several lines
+ * is a sequence (how a round is answered) and reads as numbered steps. `description` overrides the step's own.
+ */
+export function StepAskBody({ step, description: given }: { step: TaskStep; description?: string }) {
   const language = useUiLanguage();
-  const description = step.descriptions?.[language] ?? step.description;
+  const description = given ?? step.descriptions?.[language] ?? step.description;
+  const lines = (description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   return (
     <>
-      {description ? <p>{description}</p> : null}
+      {lines.length > 1 ? (
+        <ol className="step-ask__steps">
+          {lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ol>
+      ) : description ? (
+        <p>{description}</p>
+      ) : null}
       <Hints lines={stepWideChecks(step.checks ?? []).map((check) => ({ id: check.id, text: check.texts?.[language] ?? check.text }))} />
     </>
   );
@@ -140,7 +153,7 @@ export function stepAsks(step: TaskStep | undefined, language: string): boolean 
  * of the source call for it is said at the item that has them, with the step's (see `useItemHints`). `canAdd`: this
  * person is of the team, so they may add one; `issue` is the subtarea in hand, for the notice to whoever coordinates.
  */
-export function TeamRuleChecks({ team, canAdd, issue }: { team: string | undefined; canAdd?: boolean; issue?: number }) {
+export function TeamRuleChecks({ team, canAdd, issue, inSheet }: { team: string | undefined; canAdd?: boolean; issue?: number; inSheet?: boolean }) {
   const t = useT();
   const language = useUiLanguage();
   const doc = useTeamRules(team);
@@ -167,7 +180,8 @@ export function TeamRuleChecks({ team, canAdd, issue }: { team: string | undefin
   };
   return (
     <section className="step-ask__team" aria-label={t("sa.teamRules")}>
-      {rules.length ? <p className="step-ask__title">{t("sa.teamRules")}</p> : null}
+      {rules.length || inSheet ? <p className="step-ask__title">{t("sa.teamRules")}</p> : null}
+      {inSheet && !rules.length ? <p className="step-ask__none">{t("sa.noRulesYet")}</p> : null}
       <Hints lines={rules.map((rule) => ({ id: `team-${rule.id}`, text: ruleText(rule, language), by: rule.by }))} />
       {canAdd && adding ? (
         // Whoever finds something worth keeping in mind writes it where they found it: it counts for the team at
@@ -193,7 +207,8 @@ export function TeamRuleChecks({ team, canAdd, issue }: { team: string | undefin
       ) : null}
       {failed ? <p className="af-stale">{t("sa.ruleError")}</p> : null}
       {/* Whoever coordinates the team or runs the project corrects and removes them on the team's own screen. */}
-      {manages ? (
+      {/* Inside a tool's sheet only adding is offered: correcting the rules is done where the team is kept. */}
+      {manages && !inSheet ? (
         <a className="step-ask__manage" href="#/organizacion">
           {t("sa.manageRules")}
         </a>
@@ -395,12 +410,47 @@ export function StepAsk({ session, ctx, intro = true, label }: { session: GtSess
   const t = useT();
   const language = useUiLanguage();
   const found = useLaunchStep(session, ctx);
+  const [sheetOpen, setSheetOpen] = useState(false);
   if (!ctx) return null;
   const introductions = intro ? <PassageIntro session={session} ctx={ctx} /> : null;
   // The introductions are there whatever the step asks, and when it asks nothing.
   if (!found) return introductions;
   const { task, step } = found;
   if (!stepAsks(step, language) && !task.orgTeamName && !found.asked) return introductions;
+  if (label) {
+    // A tool that says what it is for above (`label` names how it is done) opens the rest over the work, in a sheet:
+    // folded open in place it pushed the work down a screen, and scrolled inside its own height (16 October). The
+    // team's rules come first, then how the round is answered; the glossary is in «Más».
+    const said = stepPurpose(task.id, step, language);
+    return (
+      <>
+        {found.asked ? (
+          <p className="step-ask__asked" role="note">
+            <b>{t("sa.asked")}</b> {found.asked}
+          </p>
+        ) : null}
+        <button type="button" className="step-ask__open" aria-haspopup="dialog" onClick={() => setSheetOpen(true)}>
+          {label}
+          <ChevronRight size={14} aria-hidden />
+        </button>
+        <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+          <DialogContent className="fix-sheet hint-sheet step-sheet" aria-label={label}>
+            <header className="fx-head">
+              <DialogTitle className="fx-title">{label}</DialogTitle>
+            </header>
+            <div className="fx-body step-sheet__body">
+              <TeamRuleChecks team={task.orgTeamName} canAdd={isOfTeam(session, task)} issue={ctx.issueNumber} inSheet />
+              <section>
+                <p className="step-ask__title">{t("sa.howRound")}</p>
+                <StepAskBody step={step} description={said.description} />
+              </section>
+            </div>
+          </DialogContent>
+        </Dialog>
+        {introductions}
+      </>
+    );
+  }
   return (
     <>
       {/* What a subtarea added by hand asks, in plain sight: the tool of its task opens as it does for the work that

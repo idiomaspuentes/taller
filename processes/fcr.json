@@ -1671,9 +1671,9 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Una ronda abierta: cualquiera del equipo contesta cualquier figura o tema de la porción, en el orden que quiera. Quien llega primero marca qué palabras la traducen y si cumplen la regla del texto; quien llega después confirma o dice qué no comparte. Cada una queda acordada con tres personas de acuerdo.",
+              "description": "El primero que llega marca qué palabras traducen el punto y si cumplen la regla.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, el punto queda acordado. Cada uno responde en el orden que quiera.",
               "descriptions": {
-                "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer figura ou tema da porção, na ordem que quiser. Quem chega primeiro marca quais palavras a traduzem e se cumprem a regra do texto; quem chega depois confirma ou diz o que não compartilha. Cada uma fica acordada com três pessoas de acordo."
+                "pt": "O primeiro que chega marca quais palavras traduzem o ponto e se cumprem a regra.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, o ponto fica acordado. Cada um responde na ordem que quiser."
               },
               "purpose": "Comprueba que el TPL conserve cada desafío del original tal como está: la figura, la construcción, el orden.",
               "purposes": {
@@ -1737,9 +1737,9 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Una ronda abierta: cualquiera del equipo contesta cualquier término, en el orden que quiera. Quien llega primero a un término marca qué lo traduce; quien llega después confirma o dice qué no comparte. Cada término queda acordado con tres personas de acuerdo.",
+              "description": "El primero que llega marca qué palabras traducen el término.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, el término queda acordado. Cada uno responde en el orden que quiera.",
               "descriptions": {
-                "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer termo, na ordem que quiser. Quem chega primeiro a um termo marca o que o traduz; quem chega depois confirma ou diz o que não compartilha. Cada termo fica acordado com três pessoas de acordo."
+                "pt": "O primeiro que chega marca quais palavras traduzem o termo.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, o termo fica acordado. Cada um responde na ordem que quiser."
               },
               "purpose": "Comprueba que cada palabra clave se traduzca siempre igual en todo el libro.",
               "purposes": {
@@ -1873,9 +1873,9 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Una ronda abierta: cualquiera del equipo contesta cualquier figura o tema de la porción, en el orden que quiera. Quien llega primero marca qué palabras la traducen y si cumplen la regla del texto; quien llega después confirma o dice qué no comparte. Cada una queda acordada con tres personas de acuerdo.",
+              "description": "El primero que llega marca qué palabras traducen el punto y si cumplen la regla.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, el punto queda acordado. Cada uno responde en el orden que quiera.",
               "descriptions": {
-                "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer figura ou tema da porção, na ordem que quiser. Quem chega primeiro marca quais palavras a traduzem e se cumprem a regra do texto; quem chega depois confirma ou diz o que não compartilha. Cada uma fica acordada com três pessoas de acordo."
+                "pt": "O primeiro que chega marca quais palavras traduzem o ponto e se cumprem a regra.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, o ponto fica acordado. Cada um responde na ordem que quiser."
               },
               "purpose": "Comprueba que el TPS diga con claridad lo que el original expresa con cada figura o construcción difícil.",
               "purposes": {
@@ -1939,9 +1939,9 @@
               "actionLabels": {
                 "pt": "Revisar"
               },
-              "description": "Una ronda abierta: cualquiera del equipo contesta cualquier término, en el orden que quiera. Quien llega primero a un término marca qué lo traduce; quien llega después confirma o dice qué no comparte. Cada término queda acordado con tres personas de acuerdo.",
+              "description": "El primero que llega marca qué palabras traducen el término.\nLos demás confirman o dicen qué no comparten.\nCon tres de acuerdo, el término queda acordado. Cada uno responde en el orden que quiera.",
               "descriptions": {
-                "pt": "Uma rodada aberta: qualquer pessoa da equipe responde a qualquer termo, na ordem que quiser. Quem chega primeiro a um termo marca o que o traduz; quem chega depois confirma ou diz o que não compartilha. Cada termo fica acordado com três pessoas de acordo."
+                "pt": "O primeiro que chega marca quais palavras traduzem o termo.\nOs demais confirmam ou dizem o que não compartilham.\nCom três de acordo, o termo fica acordado. Cada um responde na ordem que quiser."
               },
               "purpose": "Comprueba que cada palabra clave conserve su sentido en todo el libro. La forma puede variar.",
               "purposes": {
