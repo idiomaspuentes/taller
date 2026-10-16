@@ -406,6 +406,16 @@ await test("lo libre se ofrece desde el principio del libro: por pasaje, y en un
   assert.equal(nextCard(boardFor([later, notes, second, first, tenth, article]))?.issue.number, first.number, "lo primero que se ofrece es el principio del libro");
 });
 
+await test("lo que ya tiene trabajo hecho se ofrece antes que lo que nadie empezó, aunque vaya más adelante en el libro", () => {
+  // Ezra came from translationCore with the challenges of chapter 4 half done: they go on there, not at chapter 1.
+  const one = issue({ task: "tpl", title: "NEH 1:1–8 · Traducir TPL" });
+  const four = issue({ task: "tpl", title: "NEH 4:1–2 · Traducir TPL", progress: { done: [], seats: { revisar: [] }, work: { revisar: { done: 131, total: 138 } } } });
+  const five = issue({ task: "tpl", title: "NEH 5:1–3 · Traducir TPL" });
+  const free = boardFor([one, five, four]).free.map((card) => card.issue.number);
+  assert.deepEqual(free, [four, one, five].map((row) => row.number));
+  assert.equal(nextCard(boardFor([one, five, four]))?.issue.number, four.number, "y es lo que hay que hacer ahora");
+});
+
 await test("al terminar un paso se sigue con el siguiente si es de la misma persona; la revisión de otros no se abre", () => {
   // Studied, then drafted by whoever has the subtarea, then reviewed by somebody else and confirmed by the author.
   const steps = [

@@ -217,6 +217,17 @@ export function nextStepOfMine(login: string, steps: TaskStep[], issue: DcsIssue
  * The corrections that were asked for, first, in the order they had; then the rest, in theirs. What a correction
  * asks to review again goes with them: the text stands on reviews of another text until it is done.
  */
+/** Whether a subtarea has work done in it: a step closed, or some of what a step's tool counts. */
+export function hasWorkDone(issue: Pick<DcsIssue, "body">): boolean {
+  const marker = parseTaskProgressMarker(issue.body ?? undefined);
+  return marker.doneStepIds.length > 0 || Object.values(marker.steps ?? {}).some((step) => (step.work?.done ?? 0) > 0);
+}
+
+/** Begun work first, in the order it had; then the rest, in theirs. */
+export function begunFirst<T extends Pick<BoardCard, "issue">>(cards: T[]): T[] {
+  return [...cards.filter((card) => hasWorkDone(card.issue)), ...cards.filter((card) => !hasWorkDone(card.issue))];
+}
+
 export function correctionsFirst<T extends Pick<BoardCard, "askedBack" | "redoOf">>(cards: T[]): T[] {
   const first = (card: T) => Boolean(card.askedBack || card.redoOf);
   return [...cards.filter(first), ...cards.filter((card) => !first(card))];
@@ -406,6 +417,9 @@ export function buildBoard(input: BoardInput): Board {
     else board[group].sort((a, b) => attentionRank(a.activity, b.activity));
     // The lists of a book are gone through chapter by chapter: they came 10, 8, 9, 7… by when each was touched.
     if (group === "todo") board.todo = listsInOrder(board.todo);
+    // What has work done in it and nobody holds (begun before Taller, or given back) comes before what nobody
+    // began: the team goes on where it was.
+    if (group === "free" || group === "reviews") board[group] = begunFirst(board[group]);
     // A correction that was asked for holds up whoever asked: it comes before the work that is only waiting its turn.
     if (group !== "done") board[group] = correctionsFirst(board[group]);
   }
