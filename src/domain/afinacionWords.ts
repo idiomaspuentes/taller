@@ -48,6 +48,24 @@ export function articleBody(markdown: string): string {
   return markdown.replace(/^\uFEFF/, "").replace(/^\s*#[ \t]+.*(\r?\n)+/, "");
 }
 
+/**
+ * What a term means, from its article: the part under its «Definition» heading (in any language the article has), or
+ * else its first paragraph. Shown where the term is reviewed, as the note is for a challenge: the team checked key
+ * words without the screen ever saying what the word was (16 October).
+ */
+export function termDefinition(markdown: string): string {
+  const body = articleBody(markdown);
+  const lines = body.split(/\r?\n/);
+  const at = lines.findIndex((line) => /^#{1,6}\s*(definition|definici[oó]n|defini[cç][aã]o)\b/i.test(line.trim()));
+  if (at >= 0) {
+    const rest = lines.slice(at + 1);
+    const end = rest.findIndex((line) => /^#{1,6}\s/.test(line.trim()));
+    const section = (end >= 0 ? rest.slice(0, end) : rest).join("\n").trim();
+    if (section) return section;
+  }
+  return body.split(/\r?\n\s*\r?\n/).map((part) => part.trim()).find((part) => part && !/^#/.test(part)) ?? "";
+}
+
 /** The translation the team chose for each term, by slug. */
 export type PreferredTerm = { text: string; by: string; at: string };
 export type PreferredTerms = Record<string, PreferredTerm>;
@@ -201,6 +219,17 @@ export function compareTermRenderings(params: {
   const wanted = params.preferred?.trim() ? renderingKey(params.preferred) : "";
   const differing = wanted ? renderings.filter((r) => renderingKey(r.text) !== wanted).flatMap((r) => r.uses) : [];
   return { renderings, unmarked, consistent: renderings.length <= 1, differing };
+}
+
+/**
+ * How the term was rendered in its other places: the one being answered is not among them. It was, and the first use
+ * of «year» read «Es la primera vez que se revisa este término» over «Así se tradujo en otros lugares: 1:1», its own
+ * verse, and a warning that it did not match itself (16 October).
+ */
+export function renderingsElsewhere(comparison: Pick<TermComparison, "renderings"> | null | undefined, itemId: string): Rendering[] {
+  return (comparison?.renderings ?? [])
+    .map((rendering) => ({ ...rendering, uses: rendering.uses.filter((use) => use.id !== itemId) }))
+    .filter((rendering) => rendering.uses.length > 0);
 }
 
 export type TermOrder = "term" | "text";

@@ -179,8 +179,9 @@ export async function loadTermTitles(
  * The article of one term, to read: the team's own (their language) or, where the team has not translated it, the
  * source package's. Null when neither can be read.
  */
-export async function loadTermArticle(session: GtSession, pkg: Pick<SourcePackage, "owner" | "tw">, term: Pick<TermItem, "termSlug" | "termKind">, ctx: SolverLaunchContext, pmConfig: PmConfig = DEFAULT_PM_CONFIG): Promise<string | null> {
+export async function loadTermArticle(session: GtSession, pkg: Pick<SourcePackage, "owner" | "tw">, term: Pick<TermItem, "termSlug" | "termKind">, ctx: SolverLaunchContext, pmConfig: PmConfig = DEFAULT_PM_CONFIG, options: TeamFirst = {}): Promise<string | null> {
   const path = termArticlePath(term.termKind, term.termSlug);
+  if (options.teamFirst === false) return readRaw(session, pkg.owner, pkg.tw, path);
   const own = resolveHelpsTarget({ ...ctx, resource: "palabras" }, pmConfig);
   const mine = "error" in own ? null : await readRaw(session, own.owner, own.repo, path);
   return mine?.trim() ? mine : await readRaw(session, pkg.owner, pkg.tw, path);

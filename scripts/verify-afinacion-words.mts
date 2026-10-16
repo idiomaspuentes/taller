@@ -1,5 +1,5 @@
 /** The key terms of a chapter, and how each one was rendered across the book. */
-import { termAsk } from "../src/domain/afinacionWords";
+import { renderingsElsewhere, termAsk, termDefinition } from "../src/domain/afinacionWords";
 import assert from "node:assert/strict";
 import { articleBody,
   compareTermRenderings,
@@ -176,6 +176,22 @@ test("un artículo se muestra sin su primer título donde el título ya está di
   assert.equal(articleBody("﻿# fe\r\n\r\n## Definición\r\n"), "## Definición\r\n");
   assert.equal(articleBody("## Definición\n\n# no es el primero\n"), "## Definición\n\n# no es el primero\n", "solo el que abre el artículo");
   assert.equal(articleBody(""), "");
+});
+
+test("lo que se tradujo en otros lugares no incluye el lugar que se está revisando", () => {
+  const use = (id: string, verse: number) => ({ id, chapter: 1, verse }) as never;
+  const comparison = { renderings: [{ text: "Durante el primer año", uses: [use("y1", 1)] }, { text: "el año", uses: [use("y2", 3), use("y1b", 5)] }] };
+  // At its first use, «year» has no other place marked yet: nothing to compare with, and nothing that contradicts it.
+  assert.deepEqual(renderingsElsewhere({ renderings: [comparison.renderings[0]!] }, "y1"), []);
+  assert.deepEqual(renderingsElsewhere(comparison, "y1").map((r) => [r.text, r.uses.length]), [["el año", 2]]);
+  assert.deepEqual(renderingsElsewhere(comparison, "y2").map((r) => [r.text, r.uses.length]), [["Durante el primer año", 1], ["el año", 1]]);
+});
+
+test("la definición de un término se toma de su sección «Definition», o de su primer párrafo", () => {
+  const article = "# elder\n\n## Definition:\n\nIn the Bible, the term **elder** refers to older men.\n\nThey led the people.\n\n## Translation Suggestions:\n\n* «anciano»\n";
+  assert.equal(termDefinition(article), "In the Bible, the term **elder** refers to older men.\n\nThey led the people.");
+  assert.equal(termDefinition("# year\n\nA year is the time the earth takes around the sun.\n\n## Bible References:\n"), "A year is the time the earth takes around the sun.");
+  assert.equal(termDefinition("# anciano\n\n## Definición:\n\nPersona mayor.\n"), "Persona mayor.");
 });
 
 console.log(`\nverify-afinacion-words: ${passed} checks passed.`);

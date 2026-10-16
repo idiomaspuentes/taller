@@ -5,7 +5,7 @@ import { ToolHeader } from "./ToolHeader";
 import { PassageIntroText, StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type OriginalWord } from "../dcs/afinacionLoad";
+import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermArticle, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type OriginalWord } from "../dcs/afinacionLoad";
 import { tallerConfig, workspaceOfOrg } from "../config";
 import { isRtl, OriginalWords } from "./OriginalWords";
 import { ParallelLink } from "./ParallelSheet";
@@ -22,7 +22,7 @@ import { HelpMarkdownView } from "./HelpMarkdownView";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
-import { compareTermRenderings, firstUnanswered, orderTermUses, sameRenderingUses, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
+import { articleBody, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
@@ -598,6 +598,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   // Words step: how this term was rendered in every use across the book.
   const termSlug = item && "termSlug" in item ? (item as TermItem).termSlug : "";
   const termKey = termSlug ? termMessageKey((item as TermItem).termKind, termSlug) : "";
+  /** The article of the term in hand, as the source package has it (the team's has not been harmonized): by slug. */
+  const [termArticles, setTermArticles] = useState<Record<string, string | null>>({});
+  useEffect(() => {
+    if (!session || !ctx || !data || !termSlug || termSlug in termArticles) return;
+    let cancelled = false;
+    void loadTermArticle(session, data.sourcePackage, item as TermItem, ctx, undefined, { teamFirst: false })
+      .catch(() => null)
+      .then((text) => !cancelled && setTermArticles((had) => ({ ...had, [termSlug]: text ?? null })));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, ctx, data, termSlug]);
+  const termArticle = termSlug ? termArticles[termSlug] : undefined;
+  const definition = termArticle ? termDefinition(termArticle) : "";
   const comparison = useMemo(
     () =>
       data && termSlug
@@ -610,6 +625,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         : null,
     [data, termSlug, decisions, preferredTerms],
   );
+  /** The term's other places, without the one in hand. */
+  const elsewhere = useMemo(() => renderingsElsewhere(comparison, item?.id ?? ""), [comparison, item?.id]);
   const canChoosePreferred = Boolean(data) && meetsLevel(levelOf(teamLevels, me), "habilitada");
 
   async function choosePreferred(text: string) {
@@ -1218,6 +1235,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : null}
             </div>
           ) : null}
+          {stepProp === "palabras" && definition ? (
+            // What the term means, where it is reviewed, as the note is for a challenge: the team checked key words
+            // without the screen saying what the word was (16 October). From the source package, like the notes.
+            <div className="af-reason" lang={sourcePackageLang(data.sourcePackage)} data-whole={wholeNote || definition.length < 160 ? "true" : undefined}>
+              <HelpMarkdownView className="af-note af-note--md" content={wholeNote && termArticle ? articleBody(termArticle) : definition} />
+              <button type="button" className="af-link" lang={language} aria-expanded={wholeNote} onClick={() => setWholeNote((open) => !open)}>
+                {t(wholeNote ? "af.noteLess" : "af.wholeArticle")}
+              </button>
+            </div>
+          ) : null}
           {/* Why the point is back, said where it is read on arriving: under the answer it was below the screen. */}
           {staleMine ? <p className="af-stale">{t("af.staleMine")}</p> : null}
           {reviewing ? (
@@ -1469,21 +1496,22 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                       return ask === "only" ? t("af.qPalabrasOnly") : ask === "first" ? t("af.qPalabrasFirst") : t(QUESTION[stepProp][data.resource]);
                     })()}
               </p>
-              {comparison && comparison.renderings.length ? (
+              {elsewhere.length ? (
                 // What the question is about, where it is asked: how this term reads in its other places. It was
                 // shown a step before, over the words to touch, and was out of sight when the answer was given.
                 <div className="af-elsewhere">
                   <p className="af-lbl">{t("af.elsewhere")}</p>
                   <ul>
-                    {comparison.renderings.map((r) => (
+                    {elsewhere.map((r) => (
                       <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
                         <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
                       </li>
                     ))}
                   </ul>
                   {/* Asked, not warned: «salvación», «habiendo salvado» and «sálvenlos» are three forms and one translation. */}
-                  {comparison.renderings.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(comparison.renderings.length))}</p> : null}
-                  {chosenWords && !comparison.renderings.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-stale">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
+                  {elsewhere.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(elsewhere.length))}</p> : null}
+                  {/* Said, not shouted: in the TPS another form may say the same. */}
+                  {chosenWords && !elsewhere.some((r) => r.text.trim().toLowerCase() === chosenWords.trim().toLowerCase()) ? <p className="af-hint af-differs">{t("af.differsElsewhere").replace("{words}", chosenWords)}</p> : null}
                 </div>
               ) : null}
               {said.criterion || stepProp === "notas" ? (
