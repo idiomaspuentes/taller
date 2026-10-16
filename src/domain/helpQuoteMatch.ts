@@ -276,9 +276,12 @@ export function matchHelpEntryToTokenIndicesByAlignment(
  */
 function quoteInOriginal(original: OriginalToken[], quote: string, occurrence: number): number[] | null {
   const words = original.map((token) => normalizeHelpsText(token.content));
+  // Made plain before it is cut into words: a maqaf joins two words of the original («לֵב־הַמֶּלֶךְ» is two), and it
+  // becomes a space only then. Cut first, «לֵב־הַמֶּלֶךְ» was one word the verse never says, every Hebrew quote with a
+  // maqaf was «not in the verse», and its words were guessed from the alignment (16 October).
   const parts = quote
     .split("&")
-    .map((part) => part.split(/\s+/).map((word) => normalizeHelpsText(word)).filter(Boolean))
+    .map((part) => normalizeHelpsText(part).split(/\s+/).map((word) => normalizeHelpsText(word)).filter(Boolean))
     .filter((part) => part.length);
   if (!parts.length) return null;
   const found: number[] = [];
@@ -314,11 +317,19 @@ export function matchHelpQuoteThroughOriginal(tokens: string[], quote: string, o
   const at = quoteInOriginal(original, quote, occurrence);
   if (!at) return null;
   const key = (word: { content: string; occurrence: number }) => `${normalizeHelpsText(word.content)}\x00${word.occurrence}`;
+  // The occurrence of a word in the alignment is counted over its exact form, accents and all: «הַ⁠מֶּ֖לֶךְ» and
+  // «הַ⁠מֶּ֥לֶךְ» of Esther 1:10 are each the first of theirs. Without the accents both were «the first», and a quote
+  // about the one marked the words of the other too (16 October). The exact form is matched first, and the bare
+  // one only when nothing matches so.
+  const exact = (word: { content: string; occurrence: number }) => `${word.content.normalize("NFC")}\x00${word.occurrence}`;
+  const saidExact = new Set(at.map((index) => exact(original[index]!)));
   const said = new Set(at.map((index) => key(original[index]!)));
+  const byExact = groups.some((group) => group.sources.some((source) => saidExact.has(exact(source))));
+  const isSaid = (source: { content: string; occurrence: number }) => (byExact ? saidExact.has(exact(source)) : said.has(key(source)));
   const meta = buildGatewayTokenOccurrences(tokens);
   const out = new Set<number>();
   for (const group of groups) {
-    if (!group.sources.some((source) => said.has(key(source)))) continue;
+    if (!group.sources.some(isSaid)) continue;
     for (const target of group.targets) {
       const index = mapTargetToTokenIndex(meta, target);
       if (index >= 0) out.add(index);

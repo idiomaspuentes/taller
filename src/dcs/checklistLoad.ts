@@ -205,7 +205,9 @@ export async function loadChecklist(params: {
     }),
   );
 
-  const originalRef = kind === "notas" ? originalTextRef(book) : null;
+  // The quote of a note or a term is found in the original, word and occurrence, and not guessed from the
+  // alignment: guessed, «el rey» of a quote marked every «rey» of the verse (16 October).
+  const originalRef = kind !== "preguntas" ? originalTextRef(book) : null;
   const original = originalRef ? await readRaw(session, originalRef.owner, originalRef.repo, originalRef.filepath) : null;
   return { book, chapter, kind, items, fromSource, original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
 }

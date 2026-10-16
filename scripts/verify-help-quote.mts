@@ -166,4 +166,25 @@ test("de una palabra que el versículo dice dos veces se marca la de la cita, no
   assert.ok(matchHelpEntryToTokenIndicesByAlignment(four, quote, 1, fourGroups).includes(3), "sin el original, sigue tomando el primero");
 });
 
+test("una palabra que el versículo dice dos veces con acentos distintos se marca solo donde la cita la dice", () => {
+  // Esther 1:10: «הַ⁠מֶּ֖לֶךְ» of «the heart of the king» and «הַ⁠מֶּ֥לֶךְ» of «before the king», each the first of
+  // its exact form. The quote is about the first: «ante el rostro del rey» was marked too.
+  const ten = tokenizeVersePlainText("cuando el corazón del rey estaba alegre por el vino, los siete eunucos que servían ante el rostro del rey Asuero");
+  const first = "הַ⁠מֶּ֖לֶךְ";
+  const second = "הַ⁠מֶּ֥לֶךְ";
+  const tenGroups: AlignmentGroup[] = [
+    group(src("כְּ⁠ט֥וֹב"), tgt("cuando"), tgt("estaba"), tgt("alegre")),
+    group(src("לֵב"), tgt("el", 1, 4), tgt("corazón"), tgt("del", 1, 2)),
+    group(src(first), tgt("rey", 1, 2)),
+    group(src("בַּ⁠יָּ֑יִן"), tgt("por"), tgt("el", 2, 4), tgt("vino,")),
+    { sources: [src("פְּנֵ֖י"), src(second)], targets: [tgt("ante"), tgt("el", 4, 4), tgt("rostro"), tgt("del", 2, 2), tgt("rey", 2, 2)] },
+  ];
+  const tenOriginal = [first, second, "כְּ⁠ט֥וֹב", "לֵב", "בַּ⁠יָּ֑יִן", "פְּנֵ֖י"].map((content) => ({ content: content.normalize("NFC"), occurrence: 1 }));
+  const order = ["כְּ⁠ט֥וֹב", "לֵב", first, "בַּ⁠יָּ֑יִן", "פְּנֵ֖י", second].map((content) => ({ content: content.normalize("NFC"), occurrence: 1 }));
+  const marked = (matchHelpQuoteThroughOriginal(ten, `כְּ⁠ט֥וֹב לֵב־${first} בַּ⁠יָּ֑יִן`, 1, tenGroups, order) ?? []).map((i) => ten[i]);
+  assert.ok(marked.includes("corazón") && marked.includes("vino,"), "marca lo que la cita dice");
+  assert.ok(!marked.includes("rostro") && !marked.includes("ante"), `no marca «ante el rostro del rey»: ${marked.join(" ")}`);
+  assert.equal(tenOriginal.length, 6);
+});
+
 console.log(`\nverify-help-quote: ${passed} checks passed.`);
