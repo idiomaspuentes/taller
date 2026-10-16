@@ -9793,3 +9793,27 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-term-glossary { justify-self: start; text-decoration: none; }
 .af-saved__count { color: var(--text-muted); font-weight: 500; }
 .af-ask-agree b { color: var(--text); font-weight: 600; }
+
+/*
+ * Rhythm of a tuning point. Everything sat 8–12 px apart, the same everywhere, and read as one tight block (16
+ * October). Tight within a group, open between groups: what the term or figure is (kind, name, note); which words
+ * (the step and its recap); what is asked (the question and its rule); and answering (who agrees, the buttons).
+ */
+.af--round .af-focus { row-gap: 1rem; }
+.af--round .af-category { margin-top: -0.75rem; }
+.af--round .af-reason { row-gap: 0.5rem; padding-block: 0.25rem; }
+.af--round .af-work { gap: 0.5rem; }
+.af--round .af-recap { padding: 0.75rem 0.875rem; }
+.af--round .af-work > .af-ask { margin-top: 1.25rem; gap: 0.75rem; }
+.af--round .af-ask > .af-ask-agree,
+.af--round .af-ask > .af-saved { margin-top: 0.75rem; }
+.af--round .af-ask > .af-criterion + .af-decide,
+.af--round .af-ask > .af-elsewhere + .af-decide { margin-top: 0.75rem; }
+.af--round .af-ask .af-decide { gap: 0.75rem; }
+.af--round .af-work > .af-team { margin-bottom: 0.75rem; }
+/* The note or definition belongs to the name over it; the steps begin a group of their own. */
+.af--round .af-category + .af-about { margin-top: -0.25rem; }
+.af--round .af-about + .af-work { margin-top: 0.5rem; }
+/* One line reserved, not two: the loading «…» is one line too, and the second left a gap over the definition. */
+.af--round .af-category--term { min-height: 1.2em; }
+.af--round .af-reason > .af-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding-block: 0; }
