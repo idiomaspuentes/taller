@@ -9791,3 +9791,5 @@ button.cr-note:hover { background: var(--primary-100); }
 .step-ask__steps { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.375rem; line-height: 1.5; }
 .step-sheet__body .step-ask__manage { text-decoration: none; font-weight: 600; font-size: 0.875rem; }
 .af-term-glossary { justify-self: start; text-decoration: none; }
+.af-saved__count { color: var(--text-muted); font-weight: 500; }
+.af-ask-agree b { color: var(--text); font-weight: 600; }

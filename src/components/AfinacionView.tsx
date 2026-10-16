@@ -350,6 +350,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const agreeing = others.filter((a) => a.status === "approved").map((a) => tcCheckerOf(a) ?? a.reviewer);
   /** The point is shown closed, with the one way to open it again; the team's box then only says who answered. */
   const closedView = Boolean(tally?.decided) && !reopened && !fixing;
+  /**
+   * Everybody who answered agrees, with nothing more said: no objection, no other words, nobody asked to answer,
+   * nothing said before a correction. It is said in the line over the buttons, with how many agree.
+   */
+  const plainAgreement =
+    Boolean(tally) && !tally?.decided && !closedView && !saidBefore.length && !tally?.open.length && listed.every((a) => a.status === "approved" && (!a.note || Boolean(tcCheckerOf(a))));
+  /** «1 de 3 de acuerdo», or «Acordado · 3 de acuerdo». */
+  const agreeCount = tally ? (tally.state === "agreed" ? t("af.teamAgreed").replace("{n}", String(tally.agree)) : t("af.agreeCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree))) : "";
 
   const summary = useMemo(
     () =>
@@ -1264,11 +1272,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {stepDone ? t("af.reviewDoneShort") : t("af.reviewProgress").replace("{n}", String(answeredByMe)).replace("{of}", String(data.items.length))}
             </p>
           ) : null}
+          </div>
+
+          <div className="af-work">
           {/* How the team stands on it, and what the others said: before answering, not after. Where somebody does
               not agree it is found open: what they propose and why was folded under a line that did not look like
               something to touch, and the others read «no está de acuerdo» with no way to know about what. */}
-          {/* A point closed in translationCore with nothing else said: no box that says nothing. */}
-          {tally && !reviewing && (tally.answers.length || tally.stale.length || tally.decided) && !(closedView && !listed.length && !saidBefore.length) ? (
+          {/* A point closed in translationCore with nothing else said: no box that says nothing. Where everybody who
+              answered agrees, with nothing more said, it is one line over the buttons instead (see `plainAgreement`):
+              the box sat between the note and the question and said what that line says (16 October). It stands
+              in the work column, over the steps, where the answer is given. */}
+          {tally && !reviewing && !plainAgreement && (tally.answers.length || tally.stale.length || tally.decided) && !(closedView && !listed.length && !saidBefore.length) ? (
             <details key={item.id} className="af-team" data-state={closedView ? "pending" : tally.state} open>
               <summary>
                 {closedView
@@ -1342,9 +1356,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : null}
             </details>
           ) : null}
-          </div>
-
-          <div className="af-work">
           {tally?.decided && closedView ? (
             // Closed: it reads as closed, and opening it again is a deliberate act. A closed point looked like any
             // other, its buttons waiting to be pressed (16 October).
@@ -1532,7 +1543,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 // el TPS?», the question was read without it.
                 <p className="af-criterion">{said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p>
               ) : null}
-              {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}</p> : null}
+              {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {agreeCount}</span> : null}</p> : null}
               {mine && !changing ? (
                 // Answered: what there is to do here is nothing, or change it. The same buttons as before answering
                 // were read as a point still to answer.
@@ -1542,7 +1553,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   </Button>
                 </div>
               ) : !mine && agreeing.length && !choosing && !pending ? (
-                <p className="af-hint af-ask-agree">{t(agreeing.length === 1 ? "af.othersAgreeOne" : "af.othersAgreeMany").replace("{who}", agreeing.map((who) => `@${who}`).join(", "))}</p>
+                <p className="af-hint af-ask-agree">{plainAgreement ? <b>{agreeCount}</b> : null}{plainAgreement ? " · " : null}{t(agreeing.length === 1 ? "af.othersAgreeOne" : "af.othersAgreeMany").replace("{who}", agreeing.map((who) => `@${who}`).join(", "))}</p>
               ) : null}
               {/* Somebody who is not yet «habilitada» agreed and read «0 de 3 de acuerdo» over their own answer. */}
               {mine?.status === "approved" && !reviewing && !countsForMinimum(levelOf(teamLevels, me)) ?<p className="af-hint">{t("af.notCounted").replace("{level}", levelLabel("habilitada", language))}</p> : null}

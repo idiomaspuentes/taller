@@ -898,6 +898,7 @@
   "af.unmarkedMany": "Sem marcar: {n} usos.",
   "af.staleMine": "O versículo mudou depois da sua resposta. Revise de novo.",
   "af.myAnswer": "Sua resposta: {stance}",
+  "af.agreeCount": "{n} de {of} de acordo",
   "af.termGlossary": "Ver no glossário",
   "sa.howRound": "Como funciona a rodada",
   "sa.noRulesYet": "A equipe ainda não tem regras.",
