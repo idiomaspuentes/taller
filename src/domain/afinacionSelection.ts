@@ -36,6 +36,18 @@ export function shownWords(words: WordSpan[]): { text: string; implied: boolean 
   });
 }
 
+/**
+ * The stretch of a verse shown around the words chosen: `around` words before the first and after the last, or the
+ * whole verse when it is short. The chosen words were shown alone («Durante el … año»), and the question asks whether
+ * they are right *here*, in a verse that was not on the screen (16 October).
+ */
+export function selectionWindow(count: number, selected: number[], around = 8): { from: number; to: number } {
+  if (!selected.length || count <= around * 3) return { from: 0, to: count };
+  const first = Math.min(...selected);
+  const last = Math.max(...selected);
+  return { from: Math.max(0, first - around), to: Math.min(count, last + around + 1) };
+}
+
 /** Toggle a word: selections are kept as a set of positions, in verse order. */
 export function toggleWord(selected: number[], index: number): number[] {
   return selected.includes(index) ? selected.filter((i) => i !== index) : [...selected, index].sort((a, b) => a - b);

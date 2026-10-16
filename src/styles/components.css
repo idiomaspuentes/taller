@@ -9817,3 +9817,16 @@ button.cr-note:hover { background: var(--primary-100); }
 /* One line reserved, not two: the loading «…» is one line too, and the second left a gap over the definition. */
 .af--round .af-category--term { min-height: 1.2em; }
 .af--round .af-reason > .af-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding-block: 0; }
+
+/*
+ * What step 2 judges, in two labelled rows: the words marked in the reference, and the verse of the translation with
+ * the words chosen marked in it, in the colour they had when they were chosen. «Cambiar las palabras» under them.
+ */
+.af--round .af-recap--rows { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 0.75rem; row-gap: 0.5rem; align-items: baseline; padding: 0.75rem 0.875rem 0.25rem; }
+.af-recap--rows .af-recap__row { display: contents; }
+.af-recap__lbl { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.af-recap__ref { font-size: calc(1.25rem * var(--ts, 1)); line-height: 1.5; justify-self: start; }
+.af-recap__verse { font-size: calc(1rem * var(--ts, 1)); line-height: 1.7; color: var(--text-muted); }
+.af-recap__chosen { color: var(--text); font-weight: 600; background: var(--accent-100); border-radius: 4px; padding: 0.0625rem 0.1875rem; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.af-recap__verse [data-implied] { font-style: italic; }
+.af-recap--rows .af-recap__change { grid-column: 1 / -1; justify-self: end; min-height: 2.75rem; display: inline-flex; align-items: center; }

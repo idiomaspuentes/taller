@@ -1,7 +1,7 @@
 /** Marking the words of a verse, and finding them again after the text changed. */
 import assert from "node:assert/strict";
 import { resolveTextReference } from "@usfm-tools/checking";
-import { selectionFromWords, shownWords, stretchesOf, toggleWord, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
+import { selectionFromWords, selectionWindow, shownWords, stretchesOf, toggleWord, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -80,6 +80,14 @@ test("las llaves del texto simple no se muestran: lo que va dentro se ve como im
   assert.deepEqual(shown.map((w) => w.text), ["la", "gente,", "antes", "de", "que", "regresaran", "allí,", "comenzó"]);
   assert.deepEqual(shown.map((w) => w.implied), [false, false, true, true, true, true, true, false]);
   assert.equal(wordSpans(text)[2]!.text, "{antes", "las posiciones y lo que se guarda conservan las llaves");
+});
+
+test("el versículo se muestra entero si es corto, y si es largo, un tramo alrededor de lo elegido", () => {
+  assert.deepEqual(selectionWindow(20, [3, 5]), { from: 0, to: 20 }, "corto: entero");
+  assert.deepEqual(selectionWindow(60, [0, 2]), { from: 0, to: 11 }, "al principio: desde la primera palabra");
+  assert.deepEqual(selectionWindow(60, [30]), { from: 22, to: 39 });
+  assert.deepEqual(selectionWindow(60, [55, 58]), { from: 47, to: 60 }, "al final: hasta la última");
+  assert.deepEqual(selectionWindow(60, []), { from: 0, to: 60 });
 });
 
 console.log(`\nverify-afinacion-selection: ${passed} checks passed.`);

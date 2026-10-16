@@ -23,7 +23,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-reac
 import { HelpMessages } from "./HelpMessages";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { articleBody, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
-import { selectionFromWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
+import { selectionFromWords, selectionWindow, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
@@ -1489,17 +1489,63 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             // Step 2 of 2: whether those words keep the rule of the TPL or the TPS.
             <>
               <p className="af-stepname">{t("af.step2").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p>
-              <div className="af-recap">
-                <p>
-                  <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
+              {/* What is judged, in two labelled rows: what is marked in the reference, and the verse of the translation
+                  with the words chosen marked in it. One line «וּבִשְׁנַת → TPS Durante el … año» mixed two directions of
+                  writing and showed the words without the verse they are judged in (16 October). */}
+              <div className="af-recap af-recap--rows">
+                <p className="af-recap__row">
+                  {/* «Hebreo», not «Hebreo (UHB)»: the edition is said where the reference is chosen. */}
+                  <span className="af-recap__lbl">{reference?.label.replace(/\s*\(.*\)\s*$/, "") || t("af.refLabel")}</span>
+                  <span className={reference?.id === "orig" ? "af-orig af-recap__ref" : "af-recap__ref"} lang={reference?.id === "orig" ? "grc" : undefined} dir="auto">
                     {markedWords || t("af.theMarked")}
                   </span>
-                  <span aria-hidden> → </span>
-                  <span className="af-res">{data.resource === "tps" ? "TPS" : "TPL"}</span> <b>{chosenWords || t("af.nothingChosen")}</b>
+                </p>
+                <p className="af-recap__row">
+                  <span className="af-recap__lbl">{data.resource === "tps" ? "TPS" : "TPL"}</span>
+                  {selected.length ? (
+                    <span className="af-recap__verse">
+                      {(() => {
+                        const words = wordSpans(verseText);
+                        const shown = shownWords(words);
+                        const { from, to } = selectionWindow(words.length, selected);
+                        return (
+                          <>
+                            {from > 0 ? "… " : null}
+                            {/* Words chosen one after the other are one mark: «Durante el», not «Durante» and «el». */}
+                            {words
+                              .slice(from, to)
+                              .reduce<{ chosen: boolean; words: typeof words }[]>((runs, word) => {
+                                const chosen = selected.includes(word.index);
+                                const last = runs[runs.length - 1];
+                                if (last && last.chosen === chosen) last.words.push(word);
+                                else runs.push({ chosen, words: [word] });
+                                return runs;
+                              }, [])
+                              .map((run, at) => (
+                                <span key={run.words[0]!.index}>
+                                  {at ? " " : null}
+                                  <span className={run.chosen ? "af-recap__chosen" : undefined}>
+                                    {run.words.map((word, i) => (
+                                      <span key={word.index} data-implied={shown[word.index]?.implied ? "true" : undefined}>
+                                        {i ? " " : null}
+                                        {shown[word.index]?.text ?? word.text}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </span>
+                              ))}
+                            {to < words.length ? " …" : null}
+                          </>
+                        );
+                      })()}
+                    </span>
+                  ) : (
+                    <b>{t("af.nothingChosen")}</b>
+                  )}
                 </p>
                 <button
                   type="button"
-                  className="af-link"
+                  className="af-link af-recap__change"
                   onClick={() => {
                     setConfirmed(false);
                     // The words to choose again open under the screen (their box started at 752 px of 812).
