@@ -9714,7 +9714,6 @@ button.cr-note:hover { background: var(--primary-100); }
  */
 .af-about, .af-work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; align-content: start; min-width: 0; }
 @media (min-width: 1024px) {
-  .af--round { max-width: 76rem; }
   .af--round > .af-chapter { width: 100%; max-width: 52rem; justify-self: center; }
   .af-focus { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-areas: "top top" "kind kind" "name name" "work about"; column-gap: 1.5rem; align-items: start; padding: 1.25rem 1.5rem; }
   .af-focus > .af-focus__top { grid-area: top; }
@@ -9879,10 +9878,13 @@ button.cr-note:hover { background: var(--primary-100); }
 .af-focus > .af-about:empty { display: none; }
 
 /*
- * The header and the strip of tabs reach the edges of the window; what is read keeps its width. They ended where the
- * tool ends (76rem), and on a desktop wider than that the page showed gray bands at their sides, as if the tool were
- * a box inside the window (16 October). Their background and their line are painted out to the sides, without
- * widening anything that scrolls.
+ * The header and the strip of tabs reach the edges of the window; what is read keeps its width. The tool scrolls in
+ * its own box (`.af`), which had the width of what is read: on a desktop wider than that the page showed gray bands
+ * at the sides of the header, as if the tool were a box inside the window, and nothing painted past it showed (16
+ * October). The box takes the window now; its width is given to what is in it, and the header and the tabs line
+ * their contents up with it.
  */
-.af--round > .th { box-shadow: 0 0 0 100vmax var(--surface), 0 1px 0 100vmax var(--border); clip-path: inset(0 -100vmax -1px); }
-.af--round > .af-panes { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--border); clip-path: inset(0 -100vmax -1px); }
+.af--round { --af-max: 52rem; max-width: none; }
+@media (min-width: 1024px) { .af--round { --af-max: 76rem; } }
+.af--round > :where(:not(.th, .af-panes, dialog)) { width: 100%; max-width: var(--af-max); justify-self: center; }
+.af--round > .th, .af--round > .af-panes { padding-inline: max(0.75rem, calc((100% - var(--af-max)) / 2 + 0.75rem)); }
