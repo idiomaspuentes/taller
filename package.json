@@ -27,6 +27,7 @@
     "verify:usfm-chapters": "tsx scripts/verify-usfm-chapters.mts",
     "verify:help-quote": "tsx scripts/verify-help-quote.mts",
     "verify:pages": "tsx scripts/verify-pages.mts",
+    "verify:my-tasks-cache": "tsx scripts/verify-my-tasks-cache.mts",
     "verify:helps-table": "tsx scripts/verify-helps-table.mts",
     "verify:source-versions": "tsx --tsconfig tsconfig.scripts.json scripts/verify-source-versions.mts",
     "verify:work-progress": "tsx --tsconfig tsconfig.scripts.json scripts/verify-work-progress.mts",

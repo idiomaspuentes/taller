@@ -55,6 +55,7 @@ import {
   type MyTasksProjectBucket,
   type StepClaimOffer,
 } from "../domain/myTasks";
+import { keepTasks, keptTasks, keptTasksKey } from "../domain/myTasksCache";
 import {
   approveStep,
   canApproveStep,
@@ -227,6 +228,14 @@ export function MyTasksView({
   // Two readings can be on their way at once (the person's teams changed while the list was being read): the one
   // asked for last is the one shown, whichever answers first.
   const reading = useRef(0);
+  /** The list on screen is the one kept in this device, still being read again: nothing is done from it. */
+  const [stale, setStale] = useState(false);
+  /** Something was touched while the kept list was on screen: said, visibly, until the list read now is there. */
+  const [heldTap, setHeldTap] = useState(false);
+  useEffect(() => {
+    if (!stale) setHeldTap(false);
+  }, [stale]);
+  const shownOnce = useRef(false);
   const reload = useCallback(async () => {
     const mine = ++reading.current;
     refreshTeamRules();
@@ -236,6 +245,21 @@ export function MyTasksView({
       setLoaded(true);
       return;
     }
+    const keptKey = keptTasksKey({ host: session.host, username: session.username, pmOrg, lang, contentOrg, mode });
+    // Opening the screen: the list as it was last read, at once, while it is read again (seconds, with a big book).
+    if (!shownOnce.current) {
+      const kept = keptTasks(keptKey);
+      if (kept) {
+        setProjects(kept.projects);
+        setConflictIssues(kept.conflicted);
+        setClosedIssues(kept.closed);
+        setSolversCatalog(kept.catalog);
+        setReadAt(new Date(kept.at));
+        setStale(true);
+        setLoaded(true);
+      }
+    }
+    shownOnce.current = true;
     setBusy(true);
     setError("");
     try {
@@ -250,7 +274,10 @@ export function MyTasksView({
       setConflictIssues(conflicted);
       setClosedIssues(closed);
       setSolversCatalog(catalog);
-      setReadAt(new Date());
+      const at = new Date();
+      setReadAt(at);
+      setStale(false);
+      keepTasks(keptKey, { at: at.toISOString(), projects: nextProjects, catalog, conflicted, closed });
     } catch (err) {
       if (mine === reading.current) setError(explainError(err));
     } finally {
@@ -260,6 +287,10 @@ export function MyTasksView({
       }
     }
   }, [session, pmOrg, lang, contentOrg, mode]);
+  // Another person, organization or space: what is kept for it is shown once more on opening.
+  useEffect(() => {
+    shownOnce.current = false;
+  }, [session.username, session.host, pmOrg, lang, contentOrg, mode]);
 
   // Coming back to the app (from a tool, another app, the phone's home screen): show what changed.
   useEffect(() => {
@@ -898,6 +929,23 @@ export function MyTasksView({
         return board && review ? () => void correctDraft(card.issue, board, review) : undefined;
       },
     };
+    // While the list kept in this device is on screen nothing is done from it: it may be seconds old, and a subtarea
+    // that reads free may already be somebody's. Reading a conversation or a list of proposals does not wait.
+    const notYet = () => setHeldTap(true);
+    const shownHandlers: CardHandlers = stale
+      ? {
+          ...handlers,
+          onPrimary: (card) => (card.action.kind === "vote" || card.action.kind === "proposals" ? handlers.onPrimary(card) : notYet()),
+          onDeliver: notYet,
+          onRelease: notYet,
+          onOpenNewTab: notYet,
+          onClaimStep: notYet,
+          onApproveStep: notYet,
+          onOpenStep: notYet,
+          onToggleStep: notYet,
+          onCorrect: (card) => (handlers.onCorrect(card) ? notYet : undefined),
+        }
+      : handlers;
     const count = boardCount(taskBoard);
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);
     return (
@@ -918,6 +966,11 @@ export function MyTasksView({
             <AlertDescription>{t("mt.staging")}</AlertDescription>
           </Alert>
         ) : null}
+        {stale && heldTap ? (
+          <Alert role="status">
+            <AlertDescription>{t("mt.stillReading")}</AlertDescription>
+          </Alert>
+        ) : null}
         {!pmOrg ? (
           <div className="hub-empty-panel">
             <h2 className="hub-empty-panel__title">{t("mt.chooseOrgTitle")}</h2>
@@ -933,7 +986,7 @@ export function MyTasksView({
         ) : loaded ? (
           <>
             {count === 0 ? <p className="hub-hint">{t("empty.upBody")}</p> : null}
-            <MyTasksBoard board={taskBoard} login={session.username} now={now} acting={acting} handlers={handlers} />
+            <MyTasksBoard board={taskBoard} login={session.username} now={now} acting={acting} handlers={shownHandlers} />
           </>
         ) : null}
         {pmOrg && loaded ? (
