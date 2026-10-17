@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { wordDiff, type DiffPiece } from "../domain/verseEditView";
+import { wordDiff as wordDiffKeepingLines } from "../domain/checkProposal";
 import { useT } from "../i18n/messages";
 
 /** How a change to a verse is read: in one text with its marks, or the two versions apart. */
@@ -28,12 +29,21 @@ export function saveLayout(next: ChangeLayout): void {
 /** The name of a way to read a change, as its button and the «Más» menu say it. */
 export const layoutLabelKey = (one: ChangeLayout) => (one === "together" ? "tc.together" : one === "stacked" ? "tc.stacked" : "tc.sides");
 
-function Pieces({ pieces, corner }: { pieces: DiffPiece[]; corner?: ReactNode }) {
+/**
+ * A help's change as pieces that keep their own spaces and line ends: a note or an article is read in paragraphs and
+ * list lines, and the verse's pieces, joined by a space, made one block of them (16 October).
+ */
+function linePieces(before: string, after: string): DiffPiece[] {
+  return wordDiffKeepingLines(before, after).map((piece) => ({ kind: piece.kind === "gone" ? "del" : piece.kind === "new" ? "ins" : "same", text: piece.text }));
+}
+
+function Pieces({ pieces, corner, raw }: { pieces: DiffPiece[]; corner?: ReactNode; raw?: boolean }) {
   return (
     <p className="al-diff">
       {corner}
       {pieces.map((piece, i) => {
-        const space = i ? " " : "";
+        // Pieces that carry their own spaces are not given another.
+        const space = i && !raw ? " " : "";
         if (piece.kind === "del") return <span key={i}>{space}<del>{piece.text}</del></span>;
         if (piece.kind === "ins") return <span key={i}>{space}<ins>{piece.text}</ins></span>;
         return <span key={i}>{space}{piece.text}</span>;
@@ -43,14 +53,14 @@ function Pieces({ pieces, corner }: { pieces: DiffPiece[]; corner?: ReactNode })
 }
 
 /** One version of the verse, with what the other one does not have marked. */
-function Side({ pieces, keep, label, corner }: { pieces: DiffPiece[]; keep: "del" | "ins"; label: string; corner?: ReactNode }) {
+function Side({ pieces, keep, label, corner, raw }: { pieces: DiffPiece[]; keep: "del" | "ins"; label: string; corner?: ReactNode; raw?: boolean }) {
   return (
     <figure className="tc-side" data-side={keep === "del" ? "now" : "proposed"}>
       <figcaption className="af-lbl">
         {corner}
         {label}
       </figcaption>
-      <Pieces pieces={pieces.filter((piece) => piece.kind === "same" || piece.kind === keep)} />
+      <Pieces pieces={pieces.filter((piece) => piece.kind === "same" || piece.kind === keep)} raw={raw} />
     </figure>
   );
 }
@@ -65,9 +75,15 @@ export function TextChangeView({
   after,
   layout: chosen,
   corner,
+  lines,
+  labels,
 }: {
   before: string;
   after: string;
+  /** A help, read in its paragraphs and list lines (a note, an article), not a verse. */
+  lines?: boolean;
+  /** What each version is called («Hoy dice», «Propuesta»), when not a verse as it is and as proposed. */
+  labels?: { now: string; proposed: string };
   /** Chosen by the screen: no buttons here. */
   layout?: ChangeLayout;
   /** What the screen puts in the corner of the change (its way to read it apart), in the text and not over it. */
@@ -76,13 +92,13 @@ export function TextChangeView({
   const t = useT();
   const [own, setOwn] = useState<ChangeLayout>(savedLayout);
   const layout = chosen ?? own;
-  const pieces = wordDiff(before, after);
+  const pieces = lines ? linePieces(before, after) : wordDiff(before, after);
   const choose = (next: ChangeLayout) => {
     setOwn(next);
     saveLayout(next);
   };
   return (
-    <div className="tc">
+    <div className="tc" data-lines={lines ? "true" : undefined}>
       {chosen ? null : (
         <span className="af-order tc-layout" role="group" aria-label={t("tc.layoutAria")}>
           {LAYOUTS.map((one) => (
@@ -93,11 +109,11 @@ export function TextChangeView({
         </span>
       )}
       {layout === "together" ? (
-        <Pieces pieces={pieces} corner={corner} />
+        <Pieces pieces={pieces} corner={corner} raw={lines} />
       ) : (
         <div className="tc-pair" data-layout={layout}>
-          <Side pieces={pieces} keep="del" label={t("tc.now")} corner={corner} />
-          <Side pieces={pieces} keep="ins" label={t("tc.proposed")} />
+          <Side pieces={pieces} keep="del" label={labels?.now ?? t("tc.now")} corner={corner} raw={lines} />
+          <Side pieces={pieces} keep="ins" label={labels?.proposed ?? t("tc.proposed")} raw={lines} />
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Columns2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { bookLabel } from "../domain/books";
 import { alignedGatewayQuoteForHelpQuote } from "../domain/helpQuoteMatch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { QuoteVerse } from "./QuoteVerse";
+import { TextChangeView, saveLayout, savedLayout } from "./TextChangeView";
 import { originalTokens } from "../domain/quoteFromSelection";
 import { appendCheckAnswers } from "../dcs/checkStore";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
@@ -110,6 +111,11 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const [diffOpen, setDiffOpen] = useState<Record<string, boolean>>({});
   /** The reasons read whole: a long one shows its first lines. */
   const [whyOpen, setWhyOpen] = useState<Record<string, boolean>>({});
+  /**
+   * A change read in one text, or its two versions apart (side by side where there is room): the same choice as in
+   * the proposals of Afinación, kept for every proposal and every screen.
+   */
+  const [apart, setApart] = useState(() => savedLayout() !== "together");
   /** The text the verse is read in. */
   const [textTab, setTextTab] = useState<ChecklistText>("tpl");
   /** Writing another version beside the others, not in the place of one. */
@@ -561,9 +567,22 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           ) : null}
         </div>
         {open && view.proposal.after ? (
-          <p className="ag-diff ag-whole">
-            <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} whole plain />
-          </p>
+          // What goes in red and what comes in green, in one text or the two apart, as the proposals of Afinación.
+          <TextChangeView
+            before={readable(view.proposal.before ?? "")}
+            after={readable(view.proposal.after)}
+            lines
+            layout={apart ? "sides" : "together"}
+            labels={{ now: t("ag.today"), proposed: titleOf(view) }}
+            corner={
+              <button type="button" className="pl-apart" aria-pressed={apart} aria-label={t(apart ? "tc.joinedAria" : "tc.apartAria")} title={t(apart ? "tc.joinedAria" : "tc.apartAria")} onClick={() => {
+                saveLayout(apart ? "together" : "sides");
+                setApart(!apart);
+              }}>
+                <Columns2 aria-hidden className="size-5" />
+              </button>
+            }
+          />
         ) : null}
       </li>
     );

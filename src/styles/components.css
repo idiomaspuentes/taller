@@ -10085,3 +10085,22 @@ button.cr-note:hover { background: var(--primary-100); }
 .ag-decision .af-criterion { margin: calc(-1 * var(--space-4)) 0 var(--space-4); }
 .ag-decision .ag-decide { margin-top: var(--space-4); }
 .ag .ag-help .ag-settled { margin-top: calc(-1 * var(--space-8)); }
+
+/* What a proposal changes, in the colours of the proposals of Afinación: red what goes, green what comes. */
+.ag .ag-diff del, .ag .tc .al-diff del { background: var(--danger-100); color: var(--danger-700); text-decoration: line-through; padding: 0 0.125rem; border-radius: 3px; }
+.ag .ag-diff ins, .ag .tc .al-diff ins { background: var(--success-200); color: var(--success-700); font-weight: 700; text-decoration: none; padding: 0 0.125rem; border-radius: 3px; }
+/* A help's change is read in its paragraphs, in the letter of the help and not of the verse. */
+.tc[data-lines] .al-diff { font-family: inherit; font-size: 1rem; white-space: pre-line; }
+.ag .tc { margin-top: var(--space-4); }
+.ag-today__text { font-size: 1rem; }
+/* Every text of the agreement grows with the size the person chose («Tamaño de la letra»). */
+html[data-text] .ag-question { font-size: calc(1.125rem * var(--ts)); }
+html[data-text] .ag-today__text, html[data-text] .ag-opt__text, html[data-text] .ag-opt__head b, html[data-text] .ag-resolved, html[data-text] .tc[data-lines] .al-diff { font-size: calc(1rem * var(--ts)); }
+html[data-text] .ag-diff { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .ag-opt__why, html[data-text] .ck-quote { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .ag-opt__who, html[data-text] .ag-foot { font-size: calc(0.8125rem * var(--ts)); }
+html[data-text] .ck-verse { font-size: calc(1.0625rem * var(--ts)); }
+/* Inside an option the two versions are not boxes again (one layer of boxes, principle 12): a bar on their side,
+   grey for what it says today and green for the version, says which is which. */
+.ag-opt .tc-side { padding: var(--space-2, 2px) 0 var(--space-2, 2px) var(--space-12); border: 0; border-radius: 0; background: none; }
+.ag-opt .tc-side[data-side="proposed"] { background: none; }
