@@ -52,6 +52,7 @@ import {
   type SolversCatalog,
 } from "../domain/solvers";
 import { normalizeProjectId } from "../domain/books";
+import { allPages } from "../domain/pages";
 import {
   encodeWorkOrderMarker,
   indexWorkIssues,
@@ -192,27 +193,22 @@ function searchPmIssues(session: GtSession, org: string, opts: PmSearch): Promis
 async function searchPmIssuesNow(session: GtSession, org: string, opts: PmSearch): Promise<DcsIssue[]> {
   const config = dcsConfig(session.host);
   const namespaceId = opts.namespaceId ?? DEFAULT_PM_NAMESPACE;
-  const issues: DcsIssue[] = [];
-  const maxPages = opts.maxPages ?? 10;
-  let page = 1;
-  let more = true;
-  while (more && page <= maxPages) {
-    const batch = await searchIssues(config, {
-      token: session.token,
-      owner: org,
-      labels: [pmRootLabel(namespaceId)],
-      milestones: opts.milestones?.map((m) => scopedMilestone(m)),
-      team: opts.team,
-      assigned: opts.assigned,
-      type: "issues",
-      state: opts.state ?? "open",
-      page,
-      limit: 50,
-    });
-    issues.push(...batch);
-    more = batch.length === 50;
-    page += 1;
-  }
+  const issues = await allPages(
+    (page) =>
+      searchIssues(config, {
+        token: session.token,
+        owner: org,
+        labels: [pmRootLabel(namespaceId)],
+        milestones: opts.milestones?.map((m) => scopedMilestone(m)),
+        team: opts.team,
+        assigned: opts.assigned,
+        type: "issues",
+        state: opts.state ?? "open",
+        page,
+        limit: 50,
+      }),
+    { limit: 50, maxPages: opts.maxPages ?? 10 },
+  );
   return issuesOfMilestones(
     issues.filter((issue) => isPmNamespacedIssue(issue, namespaceId) && isGatewayTasksRepo(issue) && issueInScope(issue)),
     opts.milestones,

@@ -186,6 +186,10 @@ export async function loadMyTasksProjects(params: {
 
   // Every project at once: one after another, the wait grew with each book the team had open.
   const loadBucket = async (projectId: string): Promise<MyTasksProjectBucket | null> => {
+    // The open subtareas are asked for beside the plan, not after it: nearly every plan needs them (to browse a
+    // queue, or for what each subtarea waits on), and asked after it they were one more wait on top.
+    const open = listProjectOpenIssues(session, pmOrg, projectId);
+    open.catch(() => undefined);
     const fromDcs = await loadAssignmentsFromDcs(session, pmOrg, lang, projectId, contentOrg);
     const local = loadLocalAssignments(lang, projectId, contentOrg, pmOrg);
     const doc =
@@ -204,15 +208,13 @@ export async function loadMyTasksProjects(params: {
 
     if (!browseProject && !mineInProject.length) return null;
 
-    const issues = browseProject
-      ? await listProjectOpenIssues(session, pmOrg, projectId)
-      : mineInProject;
-    // Waiting only needs the other open subtareas of the project: fetched when the plan has rules.
+    const issues = browseProject ? await open : mineInProject;
+    // Waiting only needs the other open subtareas of the project: used when the plan has rules.
     const hasWaits = doc.teams.some((t) => t.waitsFor?.length);
     const openIssues = browseProject
       ? issues
       : hasWaits
-        ? await listProjectOpenIssues(session, pmOrg, projectId).catch(() => undefined)
+        ? await open.catch(() => undefined)
         : undefined;
 
     // A plan that waits on the source project needs that project's subtareas: the same book, in the organization
