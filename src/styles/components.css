@@ -10033,3 +10033,46 @@ button.cr-note:hover { background: var(--primary-100); }
 .ag-help .ag-diff, .ag-help .ag-whole { white-space: pre-line; }
 .ag-pos-mark { margin-top: var(--space-12); }
 .ag-pos-mark + .ag-pos { margin-top: 0; }
+
+/* A help as one question with its options (16 October): what it says today, how it could read, and one button.
+   Each version had its own buttons, and two versions of a note read as two things to do. */
+.ag-dock__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.ag-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-full); background: var(--surface-muted); }
+.ag-tabs button { position: relative; min-height: 2rem; padding: 0 0.75rem; border: 0; border-radius: var(--radius-full); background: none; color: var(--text-muted); font: inherit; font-size: 0.8125rem; font-weight: 700; cursor: pointer; }
+.ag-tabs button::after { content: ""; position: absolute; inset: -0.375rem 0; }
+.ag-tabs button[aria-selected="true"] { background: var(--surface); color: var(--text-heading); box-shadow: var(--shadow-sm); }
+.ag-today { display: grid; gap: var(--space-4); padding: var(--space-12) var(--space-14); border-radius: var(--radius-lg); background: var(--surface-muted); }
+.ag-today .af-lbl { margin: 0; }
+.ag-today__text { margin: 0; font-size: 0.9375rem; line-height: 1.6; color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
+.ag-question { margin: var(--space-8) 0 0; font-family: var(--font-display); font-size: 1.125rem; font-weight: 800; color: var(--text-heading); }
+.ag-opts { display: grid; gap: var(--space-10); margin: 0; padding: 0; list-style: none; }
+.ag-opt { display: grid; gap: var(--space-8); padding: var(--space-12) var(--space-14); border: 1.5px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface); }
+.ag-opt[data-picked] { border-color: var(--accent-600); background: var(--accent-50, var(--surface)); box-shadow: inset 0 0 0 1px var(--accent-600); }
+.ag-opt[data-state="applied"], .ag-opt[data-state="sent"], .ag-opt[data-state="withdrawn"], .ag-opt[data-state="replaced"], .ag-opt[data-state="rejected"] { border-color: var(--border); background: var(--surface-muted); }
+.ag-opt__pick { display: flex; align-items: flex-start; gap: var(--space-10); min-height: 2.75rem; cursor: pointer; }
+.ag-opt__pick input { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; margin: 0.125rem 0 0; accent-color: var(--accent-700); cursor: pointer; }
+.ag-opt__head { display: grid; gap: 2px; }
+.ag-opt__head b { font-size: 1rem; color: var(--text-heading); }
+.ag-opt__who { font-size: 0.8125rem; color: var(--text-muted); }
+.ag-opt__text { margin: 0; font-size: 1rem; line-height: 1.6; color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
+.ag-opt__text--new { padding-top: var(--space-8); border-top: 1px dashed var(--border); }
+.ag-opt__why { margin: 0; font-size: 0.875rem; line-height: 1.5; color: var(--text-muted); }
+.ag-opt__why b { color: var(--text); }
+.ag-opt__links { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-16); }
+.ag-opt__links:empty { display: none; }
+.ag-opt__links .af-link { min-height: 2.75rem; font-size: 0.875rem; }
+.ag-opt--keep .ag-opt__head b { font-weight: 700; }
+.ag-decide { display: grid; justify-items: center; gap: var(--space-4); margin-top: var(--space-4); }
+.ag-decide .btn { width: 100%; }
+.ag-write { min-height: 2.75rem; font-size: 0.9375rem; }
+.ag-settled > summary { min-height: 2.75rem; display: flex; align-items: center; color: var(--text-muted); font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.ag-settled .ag-opts { margin-top: var(--space-8); }
+/* The foot says how it goes, in one line: it is a state, not a thing to do. */
+.ag .ag-foot-bar .ag-foot { margin: 0; text-align: center; }
+.ag-opt__why[data-clamped] { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ag-why-more { justify-self: start; min-height: 2.75rem; margin-top: calc(-1 * var(--space-8)); font-size: 0.875rem; }
+.ag-resolved { margin: 0; padding: var(--space-12) var(--space-14); border-radius: var(--radius-lg); background: var(--success-100, var(--surface-muted)); color: var(--success-700); font-weight: 700; }
+@media (min-width: 1024px) {
+  .ag-decide { justify-items: start; }
+  .ag-decide .btn { width: auto; min-width: 16rem; }
+}

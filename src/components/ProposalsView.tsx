@@ -20,7 +20,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { appliedWords, byPlaceAndHelp, loadTrialChecks, othersNeeded, proposalAnswer, proposalDone, proposalFit, proposalHelp, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, readable, saveTrialChecks, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalHelp, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, readable, saveTrialChecks, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 
 import type { CheckAnswer } from "../domain/checklist";
 import { localized, stepPurpose } from "../domain/processes";
@@ -104,6 +104,16 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const [filter, setFilter] = useState<Filter | null>(null);
   const [at, setAt] = useState(0);
   const [listOpen, setListOpen] = useState(false);
+  /** The version chosen for each help, before saying so: one choice, one button. */
+  const [choice, setChoice] = useState<Record<string, string>>({});
+  /** The versions whose changes are open against what the help says today. */
+  const [diffOpen, setDiffOpen] = useState<Record<string, boolean>>({});
+  /** The reasons read whole: a long one shows its first lines. */
+  const [whyOpen, setWhyOpen] = useState<Record<string, boolean>>({});
+  /** The text the verse is read in. */
+  const [textTab, setTextTab] = useState<ChecklistText>("tpl");
+  /** Writing another version beside the others, not in the place of one. */
+  const [alongside, setAlongside] = useState(false);
   // Scrolled past where the line sits: only its arrows stay, in the margins, as in the proposals of Afinación.
   const [stuck, setStuck] = useState(false);
   const mark = useRef<HTMLDivElement>(null);
@@ -319,29 +329,6 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const voterFor = (view: Listed) => (trying && view.by.toLowerCase() === me.toLowerCase() ? t("ag.tryOther") : me);
   /** The same for leaving things as they are, which takes as many people: in a trial, each touch is one more of them. */
   const keeperFor = (view: Listed) => (trying && view.by.toLowerCase() === me.toLowerCase() ? `${t("ag.tryOther")}${view.against.length ? ` ${view.against.length + 1}` : ""}` : me);
-  const agree = (view: Listed) =>
-    act(async () => {
-      const voter = voterFor(view);
-      await add(view.stepKey, [proposalSaying(view.proposal.id, voter, new Date().toISOString(), true)]);
-      const inFavour = new Set([...view.inFavour.map((who) => who.toLowerCase()), voter.toLowerCase()]);
-      if (inFavour.size >= needed) await carryOut(view);
-      else announce(t("ag.saved"));
-    });
-  /** I would rather leave it as it is. With enough of the team saying so the proposal is not accepted, and no longer holds the step. */
-  const keepAsIs = (view: Listed) =>
-    act(async () => {
-      const keeper = keeperFor(view);
-      await add(view.stepKey, [proposalKeeping(view.proposal.id, keeper, new Date().toISOString(), true)]);
-      const against = new Set([...view.against.map((who) => who.toLowerCase()), keeper.toLowerCase()]);
-      announce(t(against.size >= othersNeeded(needed) ? "ag.rejected" : "ag.saved"));
-    });
-  /** One touch leaves a proposal aside: whoever gave it by mistake takes it back, and the proposal is to be resolved again. */
-  const keepNoMore = (view: Listed) =>
-    act(async () => {
-      const mine = view.against.filter((who) => isMe(who) || (trying && who.startsWith(t("ag.tryOther"))));
-      await add(view.stepKey, mine.map((who) => proposalKeeping(view.proposal.id, who, new Date().toISOString(), false)));
-      announce(t("ag.saved"));
-    });
   const withdraw = (view: Listed) => act(() => add(view.stepKey, [proposalSaying(view.proposal.id, me, new Date().toISOString(), false)]));
   const markDone = (view: Listed) => act(() => add(view.stepKey, [proposalDone(view.proposal.id, me, new Date().toISOString())]));
 
@@ -357,9 +344,12 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       if (!answering) return;
       const was = answering.proposal;
       // Answering one that parts a note in two: still in two, with its new note as rewritten, or in one again.
-      const proposal = { ...was, id: `pr-${uid()}`, replaces: was.id, ...(answerFrom !== undefined && !was.add ? { before: answerFrom } : {}), ...(draft.after ? { after: draft.after } : { after: undefined }), split: draft.split && was.split ? { ...was.split, after: draft.split.after } : undefined };
+      // Written beside the others («Escribir otra versión»), it is one more to choose from; in answer to one, it
+      // takes its place.
+      const proposal = { ...was, id: `pr-${uid()}`, ...(alongside ? { replaces: undefined } : { replaces: was.id }), ...(answerFrom !== undefined && !was.add ? { before: answerFrom } : {}), ...(draft.after ? { after: draft.after } : { after: undefined }), split: draft.split && was.split ? { ...was.split, after: draft.split.after } : undefined };
       await add(answering.stepKey, [proposalAnswer({ itemId: answering.itemId, questionId: answering.questionId, by: me, at: new Date().toISOString(), reason: draft.reason, proposal })]);
       setAnswering(null);
+      setAlongside(false);
       announce(t("ck.proposed"));
     });
   const answerTargets: ProposalTarget[] = answering
@@ -411,168 +401,294 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const rule = data?.task && data.step ? stepPurpose(data.task.id, data.step, language).criterion : undefined;
   const bookCode = (ctx?.book || ctx?.projectId || "").toUpperCase();
   const textOrder = (["tpl", "tps"] as ChecklistText[]).filter((resource) => unitTexts?.[resource]);
-  /** Whether a proposal still waits for what I say of it: once nothing does, the way on is tinted stronger. */
-  const waitsOnMe = (view: Listed) => unsettledState(view) && view.state === "open" && !isMe(view.by) && !view.inFavour.some(isMe) && !view.against.some(isMe);
+  const shownText = textOrder.includes(textTab) ? textTab : textOrder[0];
 
-  /** One proposal, with what it changes, why, how it stands and what can be done with it. */
-  const card = (view: Listed, n: number, total: number) => {
-    const mine = ours(view.proposal.resource);
-    const forIt = view.inFavour.some((who) => who.toLowerCase() === voterFor(view).toLowerCase());
-    const keeps = view.against.some(isMe);
-    // Its author is for it and takes it back; anybody else is for it or for leaving things as they are.
-    const mayKeep = view.state === "open" && !keeps && (trying || !isMe(view.by));
+  /**
+   * Where I stand on a help: the version I am for (mine while it stands, or one I said I agree with), «keep» when
+   * I would rather leave it as it is for every version, nothing when I have said nothing yet.
+   */
+  const standOf = (group: HelpGroup): string | undefined => {
+    const live = livePart(group);
+    const forOne = live.find((view) => (isMe(view.by) && !trying) || view.inFavour.some((who) => isMe(who) && !isMe(view.by)));
+    if (forOne) return forOne.proposal.id;
+    const others = live.filter((view) => !isMe(view.by));
+    if (others.length && others.every((view) => view.against.some(isMe))) return "keep";
+    return undefined;
+  };
+  /** Whether a help still waits for what I say of it: once nothing does, the way on is tinted stronger. */
+  const waitsOnMe = (group: HelpGroup) => livePart(group).some((view) => view.state === "open") && standOf(group) === undefined;
+  const leftToMe = groups.filter(waitsOnMe).length;
+  const settledGroups = groups.filter((group) => !livePart(group).length).length;
+
+  /**
+   * What I say of a help, as one choice among its versions and leaving it as it is: for the one chosen, for leaving
+   * the others as they are (so they are resolved too, and do not hold the step), my own taken back if I chose
+   * another. Each version had its buttons, and two versions of one note read as two things to do (16 October).
+   */
+  const decide = (group: HelpGroup, pick: string) =>
+    act(async () => {
+      const now = new Date().toISOString();
+      const byStep = new Map<string, CheckAnswer[]>();
+      const put = (view: Listed, row: CheckAnswer) => byStep.set(view.stepKey, [...(byStep.get(view.stepKey) ?? []), row]);
+      let chosen: Listed | undefined;
+      for (const view of livePart(group)) {
+        const author = isMe(view.by) && !trying;
+        const voter = voterFor(view);
+        const keeper = keeperFor(view);
+        const isFor = view.inFavour.some((who) => who.toLowerCase() === voter.toLowerCase());
+        const isAgainst = view.against.some((who) => who.toLowerCase() === keeper.toLowerCase());
+        if (view.proposal.id === pick) {
+          chosen = view;
+          if (isAgainst) put(view, proposalKeeping(view.proposal.id, keeper, now, false));
+          if (!isFor) put(view, proposalSaying(view.proposal.id, voter, now, true));
+        } else if (author) {
+          put(view, proposalSaying(view.proposal.id, me, now, false));
+        } else {
+          if (isFor) put(view, proposalSaying(view.proposal.id, voter, now, false));
+          if (!isAgainst) put(view, proposalKeeping(view.proposal.id, keeper, now, true));
+        }
+      }
+      for (const [stepKey, rows] of byStep) await add(stepKey, rows);
+      if (chosen && chosen.state === "open") {
+        const inFavour = new Set([...chosen.inFavour.map((who) => who.toLowerCase()), voterFor(chosen).toLowerCase()]);
+        if (inFavour.size >= needed) return carryOut(chosen);
+      }
+      announce(t("ag.saved"));
+    });
+
+  /** What a version is called: whose it is, and what kind of change. */
+  const titleOf = (view: Listed): string => {
+    const who = isMe(view.by) ? "" : view.by;
+    if (view.proposal.split) return who ? t("ag.optSplit").replace("{who}", who) : t("ag.optSplitMine");
+    if (view.proposal.add) return who ? t("ag.optNew").replace("{who}", who) : t("ag.optNewMine");
+    if (!view.proposal.after) return who ? t("ag.optComment").replace("{who}", who) : t("ag.optCommentMine");
+    return who ? t("ag.optBy").replace("{who}", who) : t("ag.optMine");
+  };
+  /** Who is for a version, and how many more it takes: «Apoyan: @ana · falta 1 persona». */
+  const backingOf = (view: Listed): string => {
+    const names = view.inFavour.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", ");
+    const missing = Math.max(0, needed - view.inFavour.length);
+    const more = view.state === "agreed" || !missing ? t("ag.ready") : t(missing === 1 ? "ag.missingOne" : "ag.missingMany").replace("{n}", String(missing));
+    return `${t("ag.backing").replace("{who}", names || "—")} · ${more}`;
+  };
+  /** The reason, without what the migration wrote of a review nobody signed: the team reads it as a verdict. */
+  const reasonOf = (view: Listed): string => view.reason.replace(/\s*Revisión previa \([^)]*\):[\s\S]*$/, "").trim();
+
+  /** A version as it would read, with what it changes a touch away. */
+  const versionText = (view: Listed) => {
+    const after = view.proposal.after ?? "";
+    if (view.proposal.split) {
+      return (
+        <>
+          <p className="ag-opt__text">{readable(after)}</p>
+          <p className="ag-opt__text ag-opt__text--new">
+            <span className="af-lbl">{t("pr.newNoteLbl")}</span> {readable(view.proposal.split.after)}
+          </p>
+        </>
+      );
+    }
+    if (!view.proposal.after) return <p className="ag-opt__text">{reasonOf(view)}</p>;
+    // An article is pages long: what changes in it is what is read; the whole of it a touch away.
+    if (view.proposal.path) {
+      return (
+        <p className="ag-opt__text ag-diff">
+          <ProposalDiff before={view.proposal.before ?? ""} after={after} plain />
+        </p>
+      );
+    }
+    return <p className="ag-opt__text">{readable(after.replace(/\\n/g, "\n"))}</p>;
+  };
+
+  /** One version of the help, to choose: as it would read, why, and who is for it. */
+  const option = (group: HelpGroup, view: Listed, picked: string | undefined) => {
     const live = unsettledState(view) && !stepDone;
     const changed = live ? changedTo(view) : undefined;
     const stale = changed !== undefined;
+    const mineToWrite = ours(view.proposal.resource);
+    const why = reasonOf(view);
+    const open = diffOpen[view.proposal.id] ?? false;
     return (
-      <li key={view.proposal.id} className="ag-card" data-state={view.state}>
-        <p className="ag-card__head">
-          {total > 1 ? <b>{t("ag.cardOf").replace("{n}", String(n)).replace("{total}", String(total))}</b> : null}
-          {total > 1 ? " · " : ""}
-          {view.proposal.add ? `${t("ag.newNote")} · ` : view.proposal.split ? `${t("ag.split")} · ` : ""}
-          {t("ag.by").replace("{who}", view.by)}
-        </p>
-        {view.proposal.split ? (
-          // Parted in two: each note as it would read.
-          <>
-            <p className="ag-whole">
-              <span className="af-lbl">{t("ag.splitKeeps")}</span> {readable(view.proposal.after ?? "")}
-            </p>
-            <p className="ag-whole ag-new">
-              <span className="af-lbl">{t("pr.newNoteLbl")}</span> {readable(view.proposal.split.after)}
-            </p>
-          </>
-        ) : view.proposal.after && view.proposal.path ? (
-          // An article is pages long: what changes, with the words around it; the whole of it a touch away.
-          <>
-            <p className="ag-diff">
-              <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} plain />
-            </p>
-            <details className="ag-more">
-              <summary>{t("ag.wholeArticle")}</summary>
-              <p className="ag-diff ag-whole">
-                <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} whole plain />
-              </p>
-            </details>
-          </>
-        ) : view.proposal.after ? (
-          // A note is read whole, what goes out struck and what comes in marked: it is what is agreed on.
-          <p className="ag-diff ag-whole">
-            <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} whole plain />
+      <li key={view.proposal.id} className="ag-opt" data-picked={picked === view.proposal.id || undefined} data-state={view.state}>
+        <label className="ag-opt__pick">
+          <input type="radio" name={`ag-${group.key}`} value={view.proposal.id} checked={picked === view.proposal.id} disabled={!live || stale || saving} onChange={() => setChoice((prev) => ({ ...prev, [group.key]: view.proposal.id }))} />
+          <span className="ag-opt__head">
+            <b>{titleOf(view)}</b>
+            <span className="ag-opt__who">{live ? backingOf(view) : t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</span>
+          </span>
+        </label>
+        {versionText(view)}
+        {view.proposal.after && why ? (
+          // Three lines of it, and the rest a touch away: a reason of five lines made its version twice as tall.
+          <p className="ag-opt__why" data-clamped={why.length > 180 && !whyOpen[view.proposal.id] ? "true" : undefined}>
+            <b>{t("ag.why")}</b> {why}
           </p>
-        ) : (
-          <p className="ag-comment">{view.reason}</p>
-        )}
-        {(view.proposal.about ?? view.proposal.split?.about) ? <p className="af-hint ag-reason">{t("ag.about").replace("{words}", view.proposal.about ?? view.proposal.split?.about ?? "")}</p> : null}
-        {failedOf(view) ? <p className="af-hint ag-reason">{failedOf(view)}</p> : null}
-        {view.proposal.after && view.reason && !failedOf(view).includes(view.reason) ? <p className="ag-reason ag-reason--said">{view.reason}</p> : null}
-        <p className="ag-card__state">
-          <b>{t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</b>
-          {view.sentAs ? ` · ${view.sentAs}` : ""}
-          {view.state === "open" ? ` · ${t("ag.inFavour").replace("{n}", String(view.inFavour.length)).replace("{of}", String(needed))}` : ""}
-        </p>
-        {(live || view.state === "rejected") && view.against.length ? (
-          <p className="ag-against">{t(view.against.length === 1 ? "ag.keepsWho" : "ag.keepsWhoMany").replace("{who}", view.against.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</p>
         ) : null}
-        {view.state === "agreed" && mine && !view.proposal.after ? <p className="af-hint">{t("ag.needsVersion")}</p> : null}
+        {view.proposal.after && why.length > 180 ? (
+          <button type="button" className="af-link ag-why-more" aria-expanded={Boolean(whyOpen[view.proposal.id])} onClick={() => setWhyOpen((prev) => ({ ...prev, [view.proposal.id]: !prev[view.proposal.id] }))}>
+            {t(whyOpen[view.proposal.id] ? "ag.whyLess" : "ag.whyMore")}
+          </button>
+        ) : null}
+        {failedOf(view) ? <p className="ag-opt__why">{failedOf(view)}</p> : null}
+        {live && view.against.length ? <p className="ag-against">{t("ag.keepers").replace("{who}", view.against.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</p> : null}
         {stale ? (
           <div className="ag-stale" role="status">
             <p>
               <b>{t("ag.staleTitle")}</b> {t("ag.staleNext")}
             </p>
-            {changed.trim() ? (
-              <p className="ag-diff">
-                <b>{t("ag.staleNow")}</b> <ProposalDiff before={view.proposal.before ?? ""} after={changed} plain />
-              </p>
-            ) : null}
           </div>
         ) : null}
-        {view.state === "rejected" && !stepDone && (view.against.some(isMe) || trying) ? (
-          <div className="ag-card__buttons">
-            <Button type="button" variant="ghost" disabled={saving} onClick={() => void keepNoMore(view)}>
-              {t("ag.keepUndo")}
-            </Button>
-          </div>
-        ) : null}
-        {live ? (
-          <div className="ag-card__buttons">
-            {view.state === "open" && !forIt && !stale ? (
-              <Button type="button" disabled={saving} onClick={() => void agree(view)}>
-                {t("ag.agree")}
-              </Button>
-            ) : null}
-            {mayKeep ? (
-              <Button type="button" variant="outline" disabled={saving} onClick={() => void keepAsIs(view)}>
-                {t("ag.keep")}
-              </Button>
-            ) : null}
-            {view.state === "agreed" && !stale && (view.proposal.after || !mine) ? (
-              // Agreed and not carried out: the write failed, or the last to agree could not make it.
-              <Button type="button" disabled={saving} onClick={() => void act(() => carryOut(view))}>
-                {mine ? t("ag.apply") : t("ag.send").replace("{team}", teamOf(view.proposal.resource))}
-              </Button>
-            ) : null}
-            {view.state === "agreed" && mine && !view.proposal.after ? (
-              <Button type="button" variant="outline" disabled={saving} onClick={() => void markDone(view)}>
-                {t("ag.done")}
-              </Button>
-            ) : null}
-            {/* Written from words that are no longer there, another proposal is the one thing left to do with it. */}
-            <Button type="button" variant={stale ? "default" : "ghost"} disabled={saving} onClick={() => setAnswering(view)}>
-              {t(view.state === "agreed" && mine && !view.proposal.after ? "pr.newVersion" : "ag.other")}
-            </Button>
-            {isMe(view.by) ? (
-              <Button type="button" variant="ghost" disabled={saving} onClick={() => void withdraw(view)}>
-                {t("ag.withdraw")}
-              </Button>
-            ) : null}
-            {view.state === "open" && forIt && !isMe(view.by) ? <span className="ag-mine">{t("ag.youAgree")}</span> : null}
-            {view.state === "open" && keeps ? <span className="ag-mine">{t("ag.youKeep")}</span> : null}
-          </div>
+        <div className="ag-opt__links">
+          {view.proposal.after && !view.proposal.split ? (
+            <button type="button" className="af-link" aria-expanded={open} onClick={() => setDiffOpen((prev) => ({ ...prev, [view.proposal.id]: !open }))}>
+              {t(view.proposal.path ? (open ? "ag.hideWhole" : "ag.wholeArticle") : open ? "ag.hideChange" : "ag.showChange")}
+            </button>
+          ) : null}
+          {view.state === "agreed" && !stale && (view.proposal.after || !mineToWrite) ? (
+            // Agreed and not carried out: the write failed, or the last to agree could not make it.
+            <button type="button" className="af-link" disabled={saving} onClick={() => void act(() => carryOut(view))}>
+              {mineToWrite ? t("ag.apply") : t("ag.send").replace("{team}", teamOf(view.proposal.resource))}
+            </button>
+          ) : null}
+          {view.state === "agreed" && mineToWrite && !view.proposal.after ? (
+            <button type="button" className="af-link" disabled={saving} onClick={() => void markDone(view)}>
+              {t("ag.done")}
+            </button>
+          ) : null}
+          {live && isMe(view.by) ? (
+            <button type="button" className="af-link" disabled={saving} onClick={() => void withdraw(view)}>
+              {t("ag.withdraw")}
+            </button>
+          ) : null}
+        </div>
+        {open && view.proposal.after ? (
+          <p className="ag-diff ag-whole">
+            <ProposalDiff before={view.proposal.before ?? ""} after={view.proposal.after} whole plain />
+          </p>
         ) : null}
       </li>
     );
   };
 
-  /** The verse the help in view is about, in each text, with the words of the help marked and its quote said. */
+  /** The help in view: what it says today, how it could read, and the one thing to do with it. */
+  const helpSection = (group: HelpGroup) => {
+    const live = livePart(group);
+    const settled = group.views.filter((view) => !unsettledState(view));
+    const first = live[0] ?? group.views[0]!;
+    const article = Boolean(first.proposal.path);
+    const today = first.proposal.add ? undefined : (wordsNow(first.proposal) ?? first.proposal.before);
+    const stand = standOf(group);
+    const picked = choice[group.key] ?? stand;
+    const keepers = [...new Set(live.flatMap((view) => view.against))];
+    const mineAmong = live.some((view) => isMe(view.by)) && !trying;
+    const canDecide = Boolean(picked) && picked !== stand && !stepDone && !saving;
+    return (
+      <section className="ag-help" aria-label={`${kindLabel(group)} · ${group.where}`}>
+        <div className="af-card__top">
+          <span className="af-chip">{kindLabel(group)}</span>
+        </div>
+        {live.length ? (
+          <>
+            {today !== undefined && !article ? (
+              <div className="ag-today">
+                <p className="af-lbl">{t("ag.today")}</p>
+                <p className="ag-today__text">{readable(today.replace(/\\n/g, "\n"))}</p>
+              </div>
+            ) : first.proposal.add ? (
+              <p className="af-hint">{t("ag.todayNew")}</p>
+            ) : null}
+            <h2 className="ag-question">{t(article ? "ag.questionArticle" : group.resource === "notas" ? "ag.questionNote" : "ag.questionOther")}</h2>
+            {rule ? <p className="af-criterion af-criterion--hint">{rule}</p> : null}
+            <ul className="ag-opts" role="radiogroup" aria-label={t(article ? "ag.questionArticle" : "ag.questionNote")}>
+              {live.map((view) => option(group, view, picked))}
+              <li className="ag-opt ag-opt--keep" data-picked={picked === "keep" || undefined}>
+                <label className="ag-opt__pick">
+                  <input type="radio" name={`ag-${group.key}`} value="keep" checked={picked === "keep"} disabled={stepDone || saving} onChange={() => setChoice((prev) => ({ ...prev, [group.key]: "keep" }))} />
+                  <span className="ag-opt__head">
+                    <b>{t(article ? "ag.optKeepArticle" : "ag.optKeep")}</b>
+                    {keepers.length ? <span className="ag-opt__who">{t("ag.keepers").replace("{who}", keepers.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</span> : null}
+                  </span>
+                </label>
+              </li>
+            </ul>
+            {mineAmong ? <p className="af-hint">{t("ag.choiceMine")}</p> : null}
+            {!stepDone ? (
+              <div className="ag-decide">
+                <Button type="button" size="lg" disabled={!canDecide} onClick={() => picked && void decide(group, picked)}>
+                  {!picked ? t("ag.pickFirst") : picked === stand ? t(picked === "keep" ? "ag.keptAlready" : "ag.supported") : picked === "keep" ? t("ag.supportKeep") : t("ag.support")}
+                </Button>
+                <button type="button" className="af-link ag-write" disabled={saving} onClick={() => {
+                  const from = live.find((view) => view.proposal.id === picked) ?? first;
+                  setAlongside(true);
+                  setAnswering(from);
+                }}>
+                  {t("ag.writeOther")}
+                </button>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          // What was agreed, said: «resolved» alone did not say which version it is now.
+          <p className="ag-resolved">
+            {(() => {
+              const won = settled.find((view) => view.state === "applied" || view.state === "sent");
+              return won ? t("ag.resolvedTo").replace("{what}", titleOf(won)) : t("ag.resolvedKept");
+            })()}
+          </p>
+        )}
+        {settled.length ? (
+          <details className="ag-settled">
+            <summary>{t("ag.settledTitle").replace("{n}", String(settled.length))}</summary>
+            <ul className="ag-opts">{settled.map((view) => option(group, view, undefined))}</ul>
+          </details>
+        ) : null}
+      </section>
+    );
+  };
+
+  /** The verse the help in view is about, in one text at a time, with the help's words marked and its quote said. */
   const verseDock = (group: HelpGroup) => {
     const [chapter, verse] = group.where.split(":").map(Number);
     const item = helpOf(group);
     const ofUnit = Boolean(verse) && chapter === ctx?.chapter;
+    const text = shownText ? unitTexts?.[shownText] : undefined;
+    const line = ofUnit && text ? (text.verses[verse!] ?? "") : "";
+    // The help's quote is in the original: its words in this text come from the alignment.
+    const hit = item?.quote && line ? alignedGatewayQuoteForHelpQuote({ verseText: line, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: bookCode, chapter: chapter!, verse: verse!, ...(original ? { original: originalTokens(original, chapter!, verse!) } : {}) }) : null;
     return (
       <section className="af-dock ag-dock" aria-label={t("ck.textsAria")}>
-        <div className="af-dock__bar">
+        <div className="af-dock__bar ag-dock__bar">
           <strong>
             {bookLabel(bookCode, language)} {group.where}
           </strong>
+          {textOrder.length > 1 ? (
+            // One text at a time: the two whole took a phone's first screen, and the help came under them.
+            <span className="ag-tabs" role="tablist" aria-label={t("ck.textsAria")}>
+              {textOrder.map((resource) => (
+                <button key={resource} type="button" role="tab" aria-selected={resource === shownText} onClick={() => setTextTab(resource)}>
+                  {nameOf(resource)}
+                </button>
+              ))}
+            </span>
+          ) : null}
         </div>
         {unitTexts === null ? <LoadingState shape="text" label={t("ag.readingTexts")} lines={2} /> : null}
-        {ofUnit
-          ? textOrder.map((resource) => {
-              const text = unitTexts?.[resource];
-              const line = text?.verses[verse!] ?? "";
-              if (!line) return null;
-              // The help's quote is in the original: its words in this text come from the alignment.
-              const hit = item?.quote ? alignedGatewayQuoteForHelpQuote({ verseText: line, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: bookCode, chapter: chapter!, verse: verse!, ...(original ? { original: originalTokens(original, chapter!, verse!) } : {}) }) : null;
-              return (
-                <div key={resource} className="af-row">
-                  <span className="af-lbl">{nameOf(resource)}</span>
-                  <QuoteVerse text={line} marked={hit?.tokenIndices ?? []} />
-                  {item?.quote ? (
-                    <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
-                      {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", nameOf(resource))}
-                    </span>
-                  ) : null}
-                </div>
-              );
-            })
-          : null}
+        {line ? (
+          <div className="af-row">
+            <QuoteVerse text={line} marked={hit?.tokenIndices ?? []} />
+            {item?.quote ? (
+              <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
+                {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", nameOf(shownText!))}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     );
   };
 
   const filters: Filter[] = ["pending", "shared", "all"];
   const filterLabel = (f: Filter) => t(f === "pending" ? "ag.filterPending" : f === "shared" ? "ag.filterShared" : "ag.filterAll").replace("{n}", String(counts[f]));
+  const filterShort = t(shownFilter === "pending" ? "ag.posPending" : shownFilter === "shared" ? "ag.posShared" : "ag.posAll");
 
   return (
     <div className="af ck ag">
@@ -594,56 +710,41 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       {data && !busy ? (
         <>
           {groups.length ? (
-            <>
-              {/* Which helps to go through: what is left, the ones with more than one version to choose between, or all. */}
-              <div className="pr-chips ag-filters" role="group" aria-label={t("ag.listTitle")}>
-                {filters.map((f) => (
-                  <button key={f} type="button" aria-pressed={shownFilter === f} disabled={!counts[f] && shownFilter !== f} onClick={() => pick(f)}>
-                    {filterLabel(f)}
+            current ? (
+              <>
+                {/* Where one is, and the way to the help before and after: the same line as the proposals of Afinación.
+                    Which helps are gone through is chosen in the list, behind the middle of it. */}
+                <div ref={mark} className="pl-pos-mark ag-pos-mark" aria-hidden />
+                <nav className="pl-pos ag-pos" data-stuck={stuck ? "true" : undefined} aria-label={t("ag.listTitle")}>
+                  {index > 0 ? (
+                    <Button type="button" variant="outline" className="pl-pos__step" aria-label={t("pl.prevTo").replace("{ref}", walk[index - 1]!.where)} onClick={() => go(index - 1)}>
+                      <ChevronLeft aria-hidden className="size-5" />
+                    </Button>
+                  ) : (
+                    <span className="pl-pos__step" aria-hidden />
+                  )}
+                  <button type="button" className="pl-pos__at" aria-haspopup="dialog" aria-label={t("ag.listOpen")} onClick={() => setListOpen(true)}>
+                    <strong>{current.where}</strong>
+                    <span>
+                      {t("pl.posShort").replace("{n}", String(index + 1)).replace("{total}", String(walk.length))} {filterShort}
+                    </span>
+                    <ChevronDown aria-hidden className="size-4" />
                   </button>
-                ))}
-              </div>
-              {current ? (
-                <>
-                  {/* Where one is, and the way to the help before and after: the same line as the proposals of Afinación. */}
-                  <div ref={mark} className="pl-pos-mark ag-pos-mark" aria-hidden />
-                  <nav className="pl-pos ag-pos" data-stuck={stuck ? "true" : undefined} aria-label={t("ag.listTitle")}>
-                    {index > 0 ? (
-                      <Button type="button" variant="outline" className="pl-pos__step" aria-label={t("pl.prevTo").replace("{ref}", walk[index - 1]!.where)} onClick={() => go(index - 1)}>
-                        <ChevronLeft aria-hidden className="size-5" />
-                      </Button>
-                    ) : (
-                      <span className="pl-pos__step" aria-hidden />
-                    )}
-                    <button type="button" className="pl-pos__at" aria-haspopup="dialog" aria-label={t("ag.listOpen")} onClick={() => setListOpen(true)}>
-                      <strong>{current.where}</strong>
-                      <span>{t("pl.posShort").replace("{n}", String(index + 1)).replace("{total}", String(walk.length))}</span>
-                      <ChevronDown aria-hidden className="size-4" />
-                    </button>
-                    {index + 1 < walk.length ? (
-                      // Once nothing here waits on me, the way on is tinted stronger, without looking like the thing to decide.
-                      <Button type="button" variant="outline" className="pl-pos__step" data-go={current.views.some(waitsOnMe) ? undefined : "true"} aria-label={t("pl.nextTo").replace("{ref}", walk[index + 1]!.where)} onClick={() => go(index + 1)}>
-                        <ChevronRight aria-hidden className="size-5" />
-                      </Button>
-                    ) : (
-                      <span className="pl-pos__step" aria-hidden />
-                    )}
-                  </nav>
-                  {verseDock(current)}
-                  <section className="ag-help" aria-label={`${kindLabel(current)} · ${current.where}`}>
-                    <div className="af-card__top">
-                      <span className="af-chip">{kindLabel(current)}</span>
-                    </div>
-                    {livePart(current).length > 1 ? <p className="ag-shared">{t("ag.manyHere").replace("{n}", String(livePart(current).length))}</p> : null}
-                    {/* The rule of the track, small, before what is agreed on: the helps explain without softening. */}
-                    {rule && livePart(current).length ? <p className="af-criterion af-criterion--hint">{rule}</p> : null}
-                    <ul className="ag-list">{current.views.map((view, n) => card(view, n + 1, current.views.length))}</ul>
-                  </section>
-                </>
-              ) : (
-                <p className="hub-hint">{t("ag.filterEmpty")}</p>
-              )}
-            </>
+                  {index + 1 < walk.length ? (
+                    // Once nothing here waits on me, the way on is tinted stronger, without looking like the thing to decide.
+                    <Button type="button" variant="outline" className="pl-pos__step" data-go={waitsOnMe(current) ? undefined : "true"} aria-label={t("pl.nextTo").replace("{ref}", walk[index + 1]!.where)} onClick={() => go(index + 1)}>
+                      <ChevronRight aria-hidden className="size-5" />
+                    </Button>
+                  ) : (
+                    <span className="pl-pos__step" aria-hidden />
+                  )}
+                </nav>
+                {verseDock(current)}
+                {helpSection(current)}
+              </>
+            ) : (
+              <p className="hub-hint">{t("ag.filterEmpty")}</p>
+            )
           ) : !byHand.length ? (
             <p className="hub-hint">{t("ag.none")}</p>
           ) : null}
@@ -657,18 +758,23 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
               ))}
             </ul>
           ) : null}
-          <p className="af-hint ag-lede">{t(othersNeeded(needed) === 1 ? "ag.ledeOne" : "ag.lede").replace("{n}", String(needed)).replace("{m}", String(othersNeeded(needed)))}</p>
-          <div className="ck-go" data-on>
+          {/* The foot says how it goes; agreeing to the step is offered once nothing is left to resolve. A filled button
+              that could not be touched until the last of 84 was the loudest thing on the screen. */}
+          <div className="ck-go ag-foot-bar" data-on>
             {stepDone ? (
               <Button type="button" size="lg" variant="outline" onClick={onClose}>
                 {t("fa.back")}
               </Button>
+            ) : unsettled.length ? (
+              <p className="ag-foot" role="status">
+                {t(leftToMe ? "ag.footLeft" : "ag.footLeftNone").replace("{n}", String(leftToMe)).replace("{m}", String(settledGroups)).replace("{t}", String(groups.length))}
+              </p>
             ) : (
               <>
                 <p className="ag-foot" role="status">
                   {footSays()}
                 </p>
-                <Button type="button" size="lg" disabled={saving || !proposalsSettled(listed) || approved || standing?.open === false} onClick={() => void agreeOnStep(true)}>
+                <Button type="button" size="lg" disabled={saving || approved || standing?.open === false} onClick={() => void agreeOnStep(true)}>
                   {t("ag.approve")}
                 </Button>
               </>
@@ -678,9 +784,15 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       ) : null}
       <Dialog open={listOpen} onOpenChange={setListOpen}>
         <DialogContent className="word-sheet pl-sheet ag-sheet" aria-describedby={undefined}>
-          <DialogTitle className="ns-title">
-            {t("ag.listTitle")} · {filterLabel(shownFilter)}
-          </DialogTitle>
+          <DialogTitle className="ns-title">{t("ag.listTitle")}</DialogTitle>
+          {/* Which helps to go through: what is left, the ones with more than one version to choose between, or all. */}
+          <div className="pr-chips ag-filters" role="group" aria-label={t("ag.listTitle")}>
+            {filters.map((f) => (
+              <button key={f} type="button" aria-pressed={shownFilter === f} disabled={!counts[f] && shownFilter !== f} onClick={() => pick(f)}>
+                {filterLabel(f)}
+              </button>
+            ))}
+          </div>
           {shown.length ? (
             <ol className="pl-list">
               {shown.map((group) => (
@@ -688,9 +800,9 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                   <button type="button" className="pl-list__row" aria-current={group.key === current?.key ? "step" : undefined} data-state={livePart(group).length ? "open" : "decided"} onClick={() => choose(group)}>
                     <span className="pl-list__ref">{group.where}</span>
                     <span className="pl-list__state">
-                      {kindLabel(group)} · {t(livePart(group).length ? "ag.rowPending" : "ag.rowSettled")}
+                      {kindLabel(group)} · {t(!livePart(group).length ? "ag.rowSettled" : waitsOnMe(group) ? "ag.rowYours" : "ag.rowPending")}
                     </span>
-                    {group.views.length > 1 ? <span className="pl-list__new">{t("ag.rowMany").replace("{n}", String(group.views.length))}</span> : null}
+                    {livePart(group).length > 1 ? <span className="pl-list__new">{t("ag.rowMany").replace("{n}", String(livePart(group).length))}</span> : null}
                   </button>
                 </li>
               ))}
@@ -700,7 +812,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           )}
         </DialogContent>
       </Dialog>
-      <ProposalSheet open={Boolean(answering)} onClose={() => setAnswering(null)} targets={answerTargets} book={ctx?.book} failed={answering ? askedOf(answering) || undefined : undefined} rule={rule} reason={answering?.reason ?? ""} startFrom={answerStart} startSplit={answering?.proposal.split?.after} saving={saving} onSend={(draft) => void answerWith(draft)} />
+      <ProposalSheet open={Boolean(answering)} onClose={() => { setAnswering(null); setAlongside(false); }} targets={answerTargets} book={ctx?.book} failed={answering && !alongside ? askedOf(answering) || undefined : undefined} rule={rule} reason={alongside ? "" : (answering?.reason ?? "")} startFrom={answerStart} startSplit={answering?.proposal.split?.after} saving={saving} onSend={(draft) => void answerWith(draft)} />
     </div>
   );
 }
