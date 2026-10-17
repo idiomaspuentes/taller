@@ -78,7 +78,8 @@ test("al cortar de nuevo las porciones de un proyecto en marcha, lo que alguien 
   const chapter = base.portions.find((portion) => base.portions.filter((p) => p.chapter === portion.chapter).length > 1)!.chapter;
   const own = base.portions.filter((portion) => portion.chapter === chapter);
   const elsewhere = base.portions.find((portion) => portion.chapter !== chapter)!;
-  const task = board.teams.find((team) => !team.waitsFor?.length && team.rules.some((rule) => rule.resource === "tpl"))!;
+  // The first work on the TPL: it waits for nothing but its own earlier chapters.
+  const task = board.teams.find((team) => !team.waitsFor?.some((w) => w.scope !== "before") && team.rules.some((rule) => rule.resource === "tpl"))!;
   const has = (ref: string, n: number) => ({ id: `a${n}`, person: "ana", personId: "ana", teamId: task.id, itemType: "porcion" as const, itemId: ref, note: "", state: "en curso" as const });
   // Ana has the first portion of the chapter and one of another chapter; the first is joined with the second.
   const planned: AssignmentsDoc = { ...board, people: [{ id: "ana", name: "Ana" }] as AssignmentsDoc["people"], assignments: [has(own[0]!.ref, 1), has(elsewhere.ref, 2)] };

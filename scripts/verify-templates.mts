@@ -268,7 +268,7 @@ if (fcr) {
       const reading = team(`revision-grupal-${res}`);
       assert.deepEqual(reading.rules.map((r) => r.resource), [res], "se lee un solo texto");
       assert.deepEqual(reading.steps!.map((s) => [s.id, s.closing, s.claimMode]), [["lectura", "consensus", "pool"]]);
-      assert.deepEqual(reading.waitsFor, [{ taskId: res, scope: "chapter", partial: true }], "empieza con el primer pasaje de su texto, sin esperar al otro");
+      assert.deepEqual(reading.waitsFor, [{ taskId: res, scope: "chapter", partial: true }, { taskId: `revision-grupal-${res}`, scope: "before" }], "empieza con el primer pasaje de su texto, sin esperar al otro, un capítulo a la vez");
       assert.equal(reading.bundle?.grain, "chapter", "una por capítulo");
     }
     assert.equal(board.teams.some((t) => t.id === "revision-grupal"), false, "ya no hay una revisión de los dos textos juntos");
@@ -334,7 +334,8 @@ if (fcr) {
     assert.equal(waiting(grupalTps1, all.filter((i) => i !== tpl1)), true, "la revisión grupal del TPS no depende del TPL: espera a su propio texto");
     assert.equal(waiting(grupal2, all.filter((i) => i !== tpl1)), true, "el capítulo 2 espera a lo suyo");
     assert.equal(waiting(afTpl1, all.filter((i) => i !== tpl1)), true, "Afinar TPL espera también a la revisión grupal");
-    assert.deepEqual(newlyEnabled(tpl1, board, all).map((i) => i.number), [grupal1.number]);
+    // Closing the only passage of chapter 1 lets its group reading start, and the TPL of chapter 2 (one chapter at a time).
+    assert.deepEqual(newlyEnabled(tpl1, board, all).map((i) => i.number), [tpl2.number, grupal1.number]);
     const afterTpl1 = all.filter((i) => i !== tpl1 && i !== grupal1);
     assert.equal(waiting(afTpl1, afterTpl1), false, "cerrados el TPL y la revisión grupal del capítulo 1 se habilita Afinar TPL");
     assert.equal(waiting(afTps1, afterTpl1), true, "Afinar TPS sigue esperando al TPS");
@@ -372,9 +373,29 @@ if (fcr) {
     const chapter1Done = wordsDone.filter((i) => i !== q1);
     assert.equal(waiting(n2, chapter1Done), false, "cerrado todo el capítulo 1, empiezan las notas del 2");
     assert.equal(waiting(w2, chapter1Done), true);
+    // Somebody already working on the notes of chapter 1, and the rest of it still waiting for them: whoever is free
+    // goes on with the notes of chapter 2 (Abel, 17 October).
+    const n1taken = { ...n1, assignee: { login: "noretsyc" }, assignees: [{ login: "noretsyc" }] } as unknown as DcsIssue;
+    const busy = [n1taken, w1, q1, n2, w2, q2];
+    assert.equal(waiting(n2, busy), false, "con las notas del 1 tomadas, las del 2 se pueden empezar");
+    assert.equal(waiting(w2, busy), true, "las palabras del 2 siguen esperando a sus notas");
     // The waits of the chapter itself stay: the tuned texts and the translated helps of the chapter.
     assert.equal(waiting(n1, [n1, issue("desafios-tps", 1)]), true, "sin el TPS afinado del capítulo, las notas esperan");
     assert.equal(waiting(n1, [n1, issue("notas-ayuda", 1)]), true, "sin sus ayudas traducidas, también");
+  });
+
+  test("FCR: cada tarea de la Traducción va un capítulo a la vez, sin frenar a las de otro equipo; la Validación también", () => {
+    for (const id of ["tpl", "tps", "notas-ayuda", "preguntas-ayuda", "palabras-ayuda", "academia-ayuda", "revision-grupal-tpl", "revision-grupal-tps"]) {
+      assert.ok(team(id).waitsFor?.some((w) => w.taskId === id && w.scope === "before"), `${id}: espera a sus capítulos anteriores`);
+    }
+    assert.ok(team("validar").waitsFor?.some((w) => w.phaseId === team("validar").phaseId && w.scope === "before"));
+    assert.equal(team("publicar").waitsFor?.some((w) => w.scope === "before") ?? false, false, "cada unidad se publica en cuanto tiene el aval");
+    const tpl1 = issue("tpl", 1), tpl2 = issue("tpl", 2), notes1 = issue("notas-ayuda", 1);
+    const waiting = (i: DcsIssue, open: DcsIssue[]) => waitBlocks(i, board, open).length > 0;
+    assert.equal(waiting(tpl2, [tpl1, tpl2]), true, "un pasaje libre del capítulo 1 frena el 2");
+    const tpl1taken = { ...tpl1, assignee: { login: "elisha" }, assignees: [{ login: "elisha" }] } as unknown as DcsIssue;
+    assert.equal(waiting(tpl2, [tpl1taken, tpl2]), false, "tomados los pasajes del 1, quien esté libre empieza el 2");
+    assert.equal(waiting(tpl2, [notes1, tpl2]), false, "las ayudas del capítulo 1 no frenan el TPL del 2: son de otro equipo");
   });
 
   test("FCR: quién puede tomar cada cosa", () => {

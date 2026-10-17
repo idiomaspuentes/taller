@@ -517,8 +517,8 @@ el TPL y el TPS.
 la misma unidad de traspaso. Sin los dos textos afinados y sus ayudas listas, la pista no avanza.
 **Un capítulo a la vez, y las pistas en orden** (Abel, 17 de octubre de 2026): del capítulo se armonizan
 primero las Notas y la Academia, después las Palabras, después las Preguntas, cada pista cuando la anterior
-cerró; y ningún capítulo empieza mientras quede algo abierto de uno anterior, en cualquiera de las tres
-pistas. Así el equipo ve una sola cosa que hacer, como en Afinación. Lo demás aparece «En espera», con lo
+cerró; y ningún capítulo empieza mientras quede algo abierto de uno anterior que alguien pueda tomar, en
+cualquiera de las tres pistas (ver «Un capítulo a la vez» en la sección 8). Lo demás aparece «En espera», con lo
 que espera: «Espera a «Armonizar Notas y Academia»», «Espera al capítulo 1 de «Armonización»».
 **Quién:** personas habilitadas en Armonización. Cada pista **cierra por consenso del equipo**:
 todos de acuerdo sobre qué se deja y qué se modifica. Normalmente en reunión, salvo que la
@@ -729,8 +729,21 @@ Traducir Preguntas ───────────────▶ Armonizar Pr
         (Afinar TPL y TPS también antes de Palabras y Preguntas)
 ```
 
-Todas las esperas se cuentan por **unidad de traspaso**. Afinación y Armonización van además **un capítulo a
-la vez**: el capítulo 2 de la fase espera a que se cierre todo el 1.
+Todas las esperas se cuentan por **unidad de traspaso**.
+
+**Un capítulo a la vez, en todos los equipos** (Abel, 17 de octubre de 2026). Cada equipo hace primero todo lo
+del capítulo 1 y después lo del 2, para que la lista de lo abierto sea corta pero alcance para que varias personas
+tomen cosas distintas o trabajen juntas en una:
+- En **Traducción**, cada tarea por su cuenta (Traducir TPL, Traducir TPS, cada ayuda, cada revisión grupal):
+  son equipos distintos y no se frenan entre ellos.
+- En **Afinación**, **Armonización** y **Validación**, la fase entera: el capítulo 2 de la fase espera a que no
+  quede nada del 1. Dentro del capítulo, lo que depende de otra cosa sigue esperando (las palabras clave a los
+  desafíos, las palabras de Armonización a sus notas).
+- **Publicación** no espera: cada unidad se publica en cuanto tiene el aval.
+
+**Nadie queda sin trabajo.** Lo de un capítulo anterior frena al siguiente solo si alguien podría tomarlo ahora: si
+lo tomó ya la única persona que lleva, si tiene ocupados todos sus lugares, o si todavía espera otra cosa, no frena
+a nadie, y quien está libre empieza el capítulo siguiente.
 
 ---
 

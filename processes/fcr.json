@@ -433,7 +433,13 @@
             }
           ],
           "minLevel": "practicante",
-          "solverAppId": "tpl-translate"
+          "solverAppId": "tpl-translate",
+          "waitsFor": [
+            {
+              "taskId": "tpl",
+              "scope": "before"
+            }
+          ]
         },
         {
           "id": "revision-grupal-tpl",
@@ -481,6 +487,10 @@
               "taskId": "tpl",
               "scope": "chapter",
               "partial": true
+            },
+            {
+              "taskId": "revision-grupal-tpl",
+              "scope": "before"
             }
           ],
           "bundle": {
@@ -861,7 +871,13 @@
             }
           ],
           "minLevel": "practicante",
-          "solverAppId": "tps-translate"
+          "solverAppId": "tps-translate",
+          "waitsFor": [
+            {
+              "taskId": "tps",
+              "scope": "before"
+            }
+          ]
         },
         {
           "id": "revision-grupal-tps",
@@ -909,6 +925,10 @@
               "taskId": "tps",
               "scope": "chapter",
               "partial": true
+            },
+            {
+              "taskId": "revision-grupal-tps",
+              "scope": "before"
             }
           ],
           "bundle": {
@@ -1133,7 +1153,13 @@
             }
           ],
           "minLevel": "practicante",
-          "solverAppId": "helps-review"
+          "solverAppId": "helps-review",
+          "waitsFor": [
+            {
+              "taskId": "notas-ayuda",
+              "scope": "before"
+            }
+          ]
         },
         {
           "id": "preguntas-ayuda",
@@ -1350,7 +1376,13 @@
             }
           ],
           "minLevel": "practicante",
-          "solverAppId": "helps-review"
+          "solverAppId": "helps-review",
+          "waitsFor": [
+            {
+              "taskId": "preguntas-ayuda",
+              "scope": "before"
+            }
+          ]
         },
         {
           "id": "palabras-ayuda",
@@ -1526,7 +1558,13 @@
             }
           ],
           "minLevel": "practicante",
-          "solverAppId": "helps-review"
+          "solverAppId": "helps-review",
+          "waitsFor": [
+            {
+              "taskId": "palabras-ayuda",
+              "scope": "before"
+            }
+          ]
         },
         {
           "id": "academia-ayuda",
@@ -1702,7 +1740,13 @@
             }
           ],
           "minLevel": "practicante",
-          "solverAppId": "helps-review"
+          "solverAppId": "helps-review",
+          "waitsFor": [
+            {
+              "taskId": "academia-ayuda",
+              "scope": "before"
+            }
+          ]
         },
         {
           "id": "desafios-tpl",
@@ -2657,6 +2701,10 @@
             {
               "phaseId": "fcr-armonizacion",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-validacion",
+              "scope": "before"
             }
           ],
           "bundle": {

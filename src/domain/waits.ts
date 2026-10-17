@@ -7,6 +7,8 @@ export { WAIT_SCOPE_LABEL, isWaitScope, normalizeWaitRules };
 import { chapterFromIssue } from "./solverLaunch";
 import { issueTaskId } from "./myTasks";
 import { parseWorkOrderMarker } from "./workOrder";
+import { getStepRuntime, isStepDone, parseTaskProgressMarker } from "./taskProgress";
+import { stepClaimMode, stepMaxAssignees } from "./stepClaim";
 
 /**
  * «Esperas»: a task that cannot start until other work is closed.
@@ -18,13 +20,16 @@ import { parseWorkOrderMarker } from "./workOrder";
  * is in this file.
  */
 
-/** Drop rules whose target no longer exists, or that point at the task itself. */
+/**
+ * Drop rules whose target no longer exists, or that point at the task itself. A task may wait for its own earlier
+ * chapters: that is how a team whose work is one task (Traducir TPL) takes one chapter at a time.
+ */
 export function pruneWaitRules(task: ProjectTask, board: Pick<AssignmentsDoc, "teams" | "phases">): WaitRule[] | undefined {
   const taskIds = new Set(board.teams.map((t) => t.id));
   const phaseIds = new Set(board.phases.map((p) => p.id));
   const kept = (task.waitsFor ?? []).filter((rule) =>
     // A wait on the source project names a task this project does not have: it always stays.
-    rule.source ? Boolean(rule.taskId) : rule.taskId ? taskIds.has(rule.taskId) && rule.taskId !== task.id : Boolean(rule.phaseId && phaseIds.has(rule.phaseId)),
+    rule.source ? Boolean(rule.taskId) : rule.taskId ? taskIds.has(rule.taskId) && (rule.taskId !== task.id || rule.scope === "before") : Boolean(rule.phaseId && phaseIds.has(rule.phaseId)),
   );
   return kept.length ? kept : undefined;
 }
@@ -101,16 +106,60 @@ function sourceHolds(rule: WaitRule, issue: DcsIssue, sourceIssues: DcsIssue[] |
 }
 
 /**
+ * Whether somebody could still join an open subtarea: its step in course has a place free (nobody took it, or it
+ * takes more people than it has). Without steps, whether nobody took it.
+ */
+export function hasPlaceFree(issue: DcsIssue, task: Pick<ProjectTask, "steps"> | undefined): boolean {
+  const progress = parseTaskProgressMarker(issue.body ?? "");
+  const taken = Boolean(issue.assignee?.login || issue.assignees?.some((a) => a?.login));
+  const step = (task?.steps ?? []).find((s) => !isStepDone(progress, s.id));
+  if (!step) return !taken;
+  const seated = getStepRuntime(progress, step.id).assignees.length;
+  const mode = stepClaimMode(step);
+  if (mode === "pool") return seated < stepMaxAssignees(step);
+  if (mode === "exclusive") return seated === 0;
+  return !taken;
+}
+
+type Board = Pick<AssignmentsDoc, "teams"> & Partial<Pick<AssignmentsDoc, "settings">>;
+/** Whether each open subtarea holds the later chapters, worked out once per list of open subtareas. */
+const holdsMemo = new WeakMap<object, WeakMap<DcsIssue[], Map<number, boolean>>>();
+
+/**
+ * Whether an open subtarea of an earlier chapter still holds the later ones back: it does while somebody could take
+ * it now, with nothing holding it and a place free. One that is full (taken by the one person it takes, or with all
+ * its places), or itself waiting, holds nobody: whoever is free goes on with the next chapter, and nobody is left
+ * without work (Abel, 17 October).
+ */
+function holdsLaterChapters(other: DcsIssue, board: Board, openIssues: DcsIssue[], sourceIssues: DcsIssue[] | undefined, seen: Set<number>): boolean {
+  let byList = holdsMemo.get(board);
+  if (!byList) holdsMemo.set(board, (byList = new WeakMap()));
+  let memo = byList.get(openIssues);
+  if (!memo) byList.set(openIssues, (memo = new Map()));
+  const known = memo.get(other.number);
+  if (known !== undefined) return known;
+  if (seen.has(other.number)) return true;
+  const task = board.teams.find((t) => t.id === issueTaskId(other));
+  const holds = hasPlaceFree(other, task) && waitBlocksIn(other, board, openIssues, sourceIssues, new Set([...seen, other.number])).length === 0;
+  memo.set(other.number, holds);
+  return holds;
+}
+
+/**
  * What holds `issue` back. `openIssues` are the OPEN subtareas of the project.
  * Empty when nothing is pending, or when the task has no rules.
  */
 export function waitBlocks(
   issue: DcsIssue,
-  board: Pick<AssignmentsDoc, "teams"> & Partial<Pick<AssignmentsDoc, "settings">>,
+  board: Board,
   openIssues: DcsIssue[],
   /** Every subtarea of the source project, for the rules that wait on it (see `WaitRule.source`). */
   sourceIssues?: DcsIssue[],
 ): WaitBlock[] {
+  return waitBlocksIn(issue, board, openIssues, sourceIssues, new Set([issue.number]));
+}
+
+function waitBlocksIn(issue: DcsIssue, board: Board, openIssues: DcsIssue[], sourceIssues: DcsIssue[] | undefined, seen: Set<number>): WaitBlock[] {
   const taskId = issueTaskId(issue);
   const task = taskId ? board.teams.find((t) => t.id === taskId) : undefined;
   if (!task?.waitsFor?.length) return [];
@@ -134,7 +183,9 @@ export function waitBlocks(
         other.number !== issue.number &&
         other.state !== "closed" &&
         targetIds.has(issueTaskId(other)) &&
-        sameScope(rule.scope, issue, other, board.settings?.handoffUnits),
+        sameScope(rule.scope, issue, other, board.settings?.handoffUnits) &&
+        // An earlier chapter holds only with work somebody could take now (see `holdsLaterChapters`).
+        (rule.scope !== "before" || holdsLaterChapters(other, board, openIssues, sourceIssues, seen)),
     );
     if (rule.partial) {
       // Only open subtareas are known here: a passage of this task that no open one covers is one that was closed.

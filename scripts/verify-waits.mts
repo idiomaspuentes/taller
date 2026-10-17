@@ -18,6 +18,8 @@ import {
 import { normalizeWaitRules } from "../src/domain/waitRules";
 import { issueTaskId as issueTaskIdOf } from "../src/domain/myTasks";
 import { encodeWorkOrderMarker } from "../src/domain/workOrder";
+import { emptyTaskProgress, upsertTaskProgressInBody } from "../src/domain/taskProgress";
+import { claimStep } from "../src/domain/stepClaim";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -242,6 +244,47 @@ test("un capítulo a la vez: lo de Afinación del capítulo 2 espera a que se ci
   // A phase waiting for its own earlier chapters is no loop.
   assert.equal(waitWouldLoop(tuning, "afinar-tpl", before), false);
   assert.deepEqual(normalizeWaitRules([before]), [before]);
+});
+
+test("lo de un capítulo anterior que ya está lleno, o que todavía espera, no frena al siguiente: nadie queda sin trabajo (Abel, 17 de octubre)", () => {
+  const self = { taskId: "tpl", scope: "before" as const };
+  const pool = { id: "acuerdo", name: "Acuerdo", claimMode: "pool" as const, closing: "consensus" as const, minAssignees: 2, maxAssignees: 3 };
+  const chapters: Pick<AssignmentsDoc, "teams" | "phases"> = {
+    phases: board.phases,
+    teams: [
+      task("tpl", "Traducir TPL", "p1", [self]),
+      task("notas-ayuda", "Notas (Ayudas)", "p1", [{ taskId: "notas-ayuda", scope: "before" }]),
+      { ...task("armonizar", "Armonizar", "p3", [{ phaseId: "p3", scope: "before" }]), steps: [pool] },
+      task("palabras", "Armonizar Palabras", "p3", [{ taskId: "armonizar", scope: "chapter" }, { phaseId: "p3", scope: "before" }]),
+    ],
+  };
+  // One person per passage (Traducir TPL): the free passage of chapter 1 holds chapter 2; once taken, it does not.
+  const free1 = issue("tpl", "NEH 1:1–3 · TPL", ["p-1-1"]);
+  const taken1 = issue("tpl", "NEH 1:1–3 · TPL", ["p-1-1"], "ana");
+  const tpl2 = issue("tpl", "NEH 2:1–3 · TPL", ["p-2-1"]);
+  assert.equal(waitBlocks(tpl2, chapters, [free1, tpl2]).length, 1, "un pasaje del capítulo 1 sin nadie frena el capítulo 2");
+  assert.equal(waitReason(waitBlocks(tpl2, chapters, [free1, tpl2]), chapters), "Espera al capítulo 1 de «Traducir TPL»");
+  assert.equal(waitBlocks(tpl2, chapters, [taken1, tpl2]).length, 0, "tomado el último pasaje libre del 1, quien está libre sigue con el 2");
+  // Each task goes by its own chapters: the helps of chapter 1 do not hold the TPL of chapter 2 (another team).
+  assert.equal(waitBlocks(tpl2, chapters, [issue("notas-ayuda", "NEH 1:1–3 · Notas", ["p-1-1"]), tpl2]).length, 0);
+  // A step for several people: it holds while it has a place free.
+  const seats = (n: number) => {
+    let progress = emptyTaskProgress();
+    for (const who of ["ana", "bea", "carla"].slice(0, n)) progress = claimStep(progress, pool, who);
+    const made = issue("armonizar", "NEH 1:1–22 · Armonizar", ["p-1-1"]);
+    return { ...made, body: upsertTaskProgressInBody(made.body, progress) } as DcsIssue;
+  };
+  const arm2 = issue("armonizar", "NEH 2:1–23 · Armonizar", ["p-2-1"]);
+  assert.equal(waitBlocks(arm2, chapters, [seats(2), arm2]).length, 1, "con un lugar libre en el capítulo 1, el 2 espera");
+  assert.equal(waitBlocks(arm2, chapters, [seats(3), arm2]).length, 0, "con todos sus lugares ocupados, el 2 se abre");
+  // What of chapter 1 is itself waiting can be taken by nobody: it holds nobody back either.
+  const words1 = issue("palabras", "NEH 1:1–22 · Palabras", ["p-1-1"]);
+  const words2 = issue("palabras", "NEH 2:1–23 · Palabras", ["p-2-1"]);
+  assert.equal(waitBlocks(words1, chapters, [seats(3), words1, arm2, words2]).length, 1, "las palabras del 1 esperan a su armonización");
+  assert.equal(waitBlocks(arm2, chapters, [seats(3), words1, arm2, words2]).length, 0, "y por eso no frenan la armonización del 2");
+  // A task may wait for its own earlier chapters: the rule is kept, and it is no loop.
+  assert.deepEqual(pruneWaitRules(chapters.teams[0]!, chapters), [self]);
+  assert.equal(waitWouldLoop(chapters, "tpl", self), false);
 });
 
 console.log(`\nverify-waits: ${passed} checks passed.`);
