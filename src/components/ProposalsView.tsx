@@ -581,11 +581,17 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     const keepers = [...new Set(live.flatMap((view) => view.against))];
     const mineAmong = live.some((view) => isMe(view.by)) && !trying;
     const canDecide = Boolean(picked) && picked !== stand && !stepDone && !saving;
+    const term = helpOf(group)?.title;
+    // What the help is, said in the question itself: «¿Cómo debe quedar el artículo «rey»?».
+    const question = article
+      ? term && (group.resource === "palabras" || helpOf(group)?.supportRef)
+        ? t("ag.questionTerm").replace("{term}", termLabel(term, termTitles))
+        : t("ag.questionArticle")
+      : group.resource === "notas"
+        ? t("ag.questionNote")
+        : t("ag.questionOther");
     return (
       <section className="ag-help" aria-label={`${kindLabel(group)} · ${group.where}`}>
-        <div className="af-card__top">
-          <span className="af-chip">{kindLabel(group)}</span>
-        </div>
         {live.length ? (
           <>
             {today !== undefined && !article ? (
@@ -596,9 +602,11 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             ) : first.proposal.add ? (
               <p className="af-hint">{t("ag.todayNew")}</p>
             ) : null}
-            <h2 className="ag-question">{t(article ? "ag.questionArticle" : group.resource === "notas" ? "ag.questionNote" : "ag.questionOther")}</h2>
+            {/* The decision, one group: the question, the rule it is decided by, the options and the button. */}
+            <div className="ag-decision">
+            <h2 className="ag-question">{question}</h2>
             {rule ? <p className="af-criterion af-criterion--hint">{rule}</p> : null}
-            <ul className="ag-opts" role="radiogroup" aria-label={t(article ? "ag.questionArticle" : "ag.questionNote")}>
+            <ul className="ag-opts" role="radiogroup" aria-label={question}>
               {live.map((view) => option(group, view, picked))}
               <li className="ag-opt ag-opt--keep" data-picked={picked === "keep" || undefined}>
                 <label className="ag-opt__pick">
@@ -625,6 +633,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                 </button>
               </div>
             ) : null}
+            </div>
           </>
         ) : (
           // What was agreed, said: «resolved» alone did not say which version it is now.

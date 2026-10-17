@@ -3111,6 +3111,7 @@
   "ag.todayNew": "Es una nota nueva: hoy no existe.",
   "ag.questionNote": "¿Cómo debe quedar esta nota?",
   "ag.questionArticle": "¿Cómo debe quedar este artículo?",
+  "ag.questionTerm": "¿Cómo debe quedar el artículo «{term}»?",
   "ag.questionOther": "¿Cómo debe quedar?",
   "ag.choiceMine": "Si eliges otra opción, tu versión se retira.",
   "ag.pickFirst": "Elige una opción",

@@ -36,7 +36,7 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 - Comentarios y commits en inglés; la interfaz y la documentación del producto, en español. Commits con título corto y un cuerpo que explique el porqué.
 - Estilo del código: el del entorno (comentarios que expliquen el porqué, pocos). Pruebas con salida legible y nombres que cuenten lo que se verifica.
 - Cada cambio visible se prueba en el navegador (móvil y escritorio) además de las pruebas automáticas.
-- **Diseño de pantallas**: el texto en el centro, lo demás en capas, una sola cosa obvia que hacer, pensado para el dedo a 375 px. Antes de dar por hecho un cambio visible, pasa la lista de comprobación de [`docs/FILOSOFIA_DE_DISENO.md`](docs/FILOSOFIA_DE_DISENO.md).
+- **Diseño de pantallas**: el texto en el centro, lo demás en capas, una sola cosa obvia que hacer, pensado para el dedo a 375 px, y **jerarquía y aire**: más espacio entre grupos (24–32 px) que dentro de ellos (8–12 px), ninguna etiqueta suelta entre grupos, la jerarquía por tamaño y peso, no por grises. Antes de dar por hecho un cambio visible, pasa la lista de comprobación de [`docs/FILOSOFIA_DE_DISENO.md`](docs/FILOSOFIA_DE_DISENO.md).
 
 ## Límites
 

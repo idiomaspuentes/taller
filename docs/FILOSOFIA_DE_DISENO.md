@@ -89,6 +89,21 @@ Esto es lo que tC4 no hace y Taller sí:
 - **Nada escondido sin que se note.** Una pestaña dice cuánto hay dentro («Notas 3»). Cuando algo cambia de lugar, una línea lo dice una sola vez.
 - **Portugués a 375 px.** Las palabras son más largas; cada pantalla se mide también en `pt`.
 
+### 12. Jerarquía y aire
+
+Abel lo ha pedido varias veces (la última, el 16 de octubre, en «Acuerdo del equipo»): una pantalla se lee por
+grupos, y cada grupo necesita espacio para respirar.
+
+- **Más aire entre grupos que dentro de ellos.** Las partes de un grupo van a 8–12 px; un grupo y el siguiente, a
+  24–32 px. Si las dos distancias son iguales, la pantalla se lee como una lista de cosas sueltas.
+- **Cada grupo, un título.** Una etiqueta va pegada a lo que nombra; ninguna queda suelta entre dos grupos (un chip
+  «Notas» entre el versículo y la nota no dice de cuál de los dos habla).
+- **La jerarquía, por tamaño y peso; no por grises claros.** El texto que se lee tiene contraste de 7:1 o más; lo
+  secundario es más pequeño, no más pálido.
+- **Una sola capa de caja.** No hay cajas dentro de cajas. Cosas parecidas tienen la misma caja; cosas distintas
+  (lo que dice hoy, lo que se propone) se ven distintas.
+- **Se mide, no se mira:** con un guion en la página se toma la distancia entre cada grupo y el siguiente.
+
 ## Cómo comprobarlo
 
 Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alguien poco hábil con la tecnología, y se anotan los números en el informe:
@@ -102,4 +117,6 @@ Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alg
 - [ ] ¿Hay algún icono sin palabra?
 - [ ] ¿Las ayudas que se ven son las del versículo en que se trabaja?
 - [ ] Al terminar, ¿a dónde lleva la app?
+- [ ] ¿Cada grupo tiene más aire alrededor (24–32 px) que entre sus partes (8–12 px)? Medido.
+- [ ] ¿Hay alguna etiqueta suelta entre dos grupos, o una caja dentro de otra?
 - [ ] ¿Se ve igual de bien en portugués y a 1280 px?
