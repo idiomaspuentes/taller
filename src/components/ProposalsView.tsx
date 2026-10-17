@@ -21,7 +21,7 @@ import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
-import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalHelp, proposalKeeping, proposalSaying, proposalWords, proposalsOf, proposalsSettled, readable, saveTrialChecks, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalHelp, proposalKeeping, proposalSaying, proposalWords, proposalsOf, readable, saveTrialChecks, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 
 import type { CheckAnswer } from "../domain/checklist";
 import { localized, stepPurpose } from "../domain/processes";
@@ -36,7 +36,7 @@ import { tNow, useT } from "../i18n/messages";
 import { PROPOSAL_STATE_KEY, ProposalDiff, ProposalSheet, type ProposalDraft, type ProposalTarget } from "./ProposalSheet";
 import { StepAsk } from "./StepAsk";
 import { ToolHeader } from "./ToolHeader";
-import { toolHeading } from "./toolHeading";
+import { toolHeading } from "./toolHeading";
 import { LoadingState } from "./LoadingState";
 
 type Props = {
@@ -58,8 +58,16 @@ const unsettledState = (view: ProposalView) => view.state === "open" || view.sta
  */
 type HelpGroup = { key: string; views: Listed[]; where: string; resource: string; itemId: string; rowId?: string };
 type Filter = "pending" | "shared" | "all";
-const livePart = (group: HelpGroup) => group.views.filter(unsettledState);
-const inFilter = (group: HelpGroup, filter: Filter) => (filter === "all" ? true : filter === "pending" ? livePart(group).length > 0 : livePart(group).length > 1);
+/**
+ * The versions still chosen among: until the team closes the step a vote can be changed, so one that has its
+ * agreement, or that enough people would rather leave aside, is still an option (16 October). A vote was final:
+ * the second «de acuerdo» wrote the version at once, and nobody could take it back.
+ */
+const candidateState = (view: ProposalView) => view.state === "open" || view.state === "agreed" || view.state === "rejected";
+const livePart = (group: HelpGroup) => group.views.filter(candidateState);
+/** A help is decided when none of its versions waits for more votes: one has its agreement, or all are left aside. */
+const decidedGroup = (group: HelpGroup) => !livePart(group).some((view) => view.state === "open");
+const inFilter = (group: HelpGroup, filter: Filter) => (filter === "all" ? true : filter === "pending" ? !decidedGroup(group) : livePart(group).length > 1);
 /** The kinds of help a list goes over and whose words (quote, occurrence) are read to mark them in the verse. */
 const ITEM_KINDS: ChecklistKind[] = ["notas", "palabras", "preguntas"];
 
@@ -223,7 +231,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     () => (data?.steps ?? []).flatMap((step) => (answers[step.key] ?? []).filter((row) => row.value === "no" && (row.outcome === "fixed" || row.outcome === "created") && row.note)),
     [answers, data],
   );
-  const unsettled = listed.filter(unsettledState);
+  /** What still waits for votes: the step can be closed once nothing does. */
+  const undecided = listed.filter((view) => view.state === "open");
 
   // What is gone through: what is left to resolve while there is something, then all of it.
   const counts = { pending: groups.filter((group) => inFilter(group, "pending")).length, shared: groups.filter((group) => inFilter(group, "shared")).length, all: groups.length };
@@ -370,9 +379,20 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     if (!session || !ctx || !data?.step) return;
     if (trying || !ctx.pmOrg || !ctx.issueNumber) return announce(t("ag.tryApprove"));
     await act(async () => {
-      const now = await agreeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, steps: data.task?.steps ?? [], step: data.step!, settled: proposalsSettled(listed), mine });
+      const now = await agreeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, steps: data.task?.steps ?? [], step: data.step!, settled: undecided.length === 0, mine });
       setStanding(now);
       if (now.done) {
+        // With the whole team's agreement, what was agreed is written, all of it at once: «Con todo el equipo de
+        // acuerdo, se aplica». A version the help no longer fits is left agreed, with its way to apply it again.
+        let failed = 0;
+        for (const view of listed.filter((row) => row.state === "agreed")) {
+          try {
+            await carryOut(view);
+          } catch {
+            failed++;
+          }
+        }
+        if (failed) announce(t("ag.applyFailed").replace("{n}", String(failed)));
         const delivered = data.board ? await deliverSharedSubtask({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, contentOrg: ctx.contentOrg, board: data.board, issueNumber: ctx.issueNumber }).catch(() => false) : false;
         return announce(t(delivered ? "ag.closedDelivered" : "ag.closed"));
       }
@@ -383,15 +403,15 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   // Everybody had agreed and something was still to be resolved: the step closes when the last of it is, once.
   const closedLate = useRef(false);
   useEffect(() => {
-    if (closedLate.current || trying || saving || !standing || standing.done || !standing.open || !standing.complete || unsettled.length) return;
+    if (closedLate.current || trying || saving || !standing || standing.done || !standing.open || !standing.complete || undecided.length) return;
     closedLate.current = true;
     void agreeOnStep(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [standing, unsettled.length, saving]);
+  }, [standing, undecided.length, saving]);
 
   /** What the foot says: what is left to resolve, or whose agreement is given and whose is missing. */
   const footSays = () => {
-    if (unsettled.length) return t(unsettled.length === 1 ? "ag.pendingOne" : "ag.pending").replace("{n}", String(unsettled.length));
+    if (undecided.length) return t(undecided.length === 1 ? "ag.pendingOne" : "ag.pending").replace("{n}", String(undecided.length));
     if (!standing) return t("ag.allSettled");
     if (!standing.open) return t("ag.locked");
     const names = (list: string[]) => list.map((who) => `@${who}`).join(", ");
@@ -420,9 +440,9 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     return undefined;
   };
   /** Whether a help still waits for what I say of it: once nothing does, the way on is tinted stronger. */
-  const waitsOnMe = (group: HelpGroup) => livePart(group).some((view) => view.state === "open") && standOf(group) === undefined;
+  const waitsOnMe = (group: HelpGroup) => !stepDone && !decidedGroup(group) && standOf(group) === undefined;
   const leftToMe = groups.filter(waitsOnMe).length;
-  const settledGroups = groups.filter((group) => !livePart(group).length).length;
+  const settledGroups = groups.filter(decidedGroup).length;
 
   /**
    * What I say of a help, as one choice among its versions and leaving it as it is: for the one chosen, for leaving
@@ -453,11 +473,10 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
         }
       }
       for (const [stepKey, rows] of byStep) await add(stepKey, rows);
-      if (chosen && chosen.state === "open") {
-        const inFavour = new Set([...chosen.inFavour.map((who) => who.toLowerCase()), voterFor(chosen).toLowerCase()]);
-        if (inFavour.size >= needed) return carryOut(chosen);
-      }
-      announce(t("ag.saved"));
+      // A vote writes nothing: with enough of the team for one version there is agreement, applied when the step
+      // closes, and until then any vote can change.
+      const reached = chosen ? new Set([...chosen.inFavour.map((who) => who.toLowerCase()), voterFor(chosen).toLowerCase()]).size >= needed : false;
+      announce(t(reached ? "ag.agreedNow" : "ag.saved"));
     });
 
   /** My vote on a help taken back: for the one I voted, and against the others, said no more. */
@@ -552,7 +571,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
 
   /** One version of the help, to choose: as it would read, why, and who is for it. */
   const option = (group: HelpGroup, view: Listed) => {
-    const live = unsettledState(view) && !stepDone;
+    const live = candidateState(view) && !stepDone;
     const changed = live ? changedTo(view) : undefined;
     const stale = changed !== undefined;
     const mineToWrite = ours(view.proposal.resource);
@@ -577,7 +596,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           </button>
         ) : null}
         {failedOf(view) ? <p className="ag-opt__why">{failedOf(view)}</p> : null}
-        {live && view.against.length ? <p className="ag-against">{t("ag.keepers").replace("{who}", view.against.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</p> : null}
+        {live && view.against.length ? <p className="ag-against">{t("ag.notBacking").replace("{who}", view.against.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</p> : null}
         {stale ? (
           <div className="ag-stale" role="status">
             <p>
@@ -591,13 +610,13 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
               {t(view.proposal.path ? (open ? "ag.hideWhole" : "ag.wholeArticle") : open ? "ag.hideChange" : "ag.showChange")}
             </button>
           ) : null}
-          {view.state === "agreed" && !stale && (view.proposal.after || !mineToWrite) ? (
-            // Agreed and not carried out: the write failed, or the last to agree could not make it.
+          {view.state === "agreed" && stepDone && !stale && (view.proposal.after || !mineToWrite) ? (
+            // Agreed and not carried out when the step closed: the write failed.
             <button type="button" className="af-link" disabled={saving} onClick={() => void act(() => carryOut(view))}>
               {mineToWrite ? t("ag.apply") : t("ag.send").replace("{team}", teamOf(view.proposal.resource))}
             </button>
           ) : null}
-          {view.state === "agreed" && mineToWrite && !view.proposal.after ? (
+          {view.state === "agreed" && stepDone && mineToWrite && !view.proposal.after ? (
             <button type="button" className="af-link" disabled={saving} onClick={() => void markDone(view)}>
               {t("ag.done")}
             </button>
@@ -626,20 +645,23 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             }
           />
         ) : null}
-        {live && !stale ? voteFor(group, view.proposal.id, isMe(view.by) && !trying, t("ag.vote")) : null}
+        {live && !stale ? voteFor(group, view.proposal.id, isMe(view.by) && !trying, t(view.proposal.after ? "ag.vote" : "ag.voteComment")) : null}
       </li>
     );
   };
 
   /** The help in view: what it says today, how it could read, and the one thing to do with it. */
   const helpSection = (group: HelpGroup) => {
-    const live = livePart(group);
-    const settled = group.views.filter((view) => !unsettledState(view));
+    const live = stepDone ? [] : livePart(group);
+    const settled = group.views.filter((view) => !live.includes(view));
+    const agreedOn = live.find((view) => view.state === "agreed");
+    const keptBy = live.length > 0 && live.every((view) => view.state === "rejected");
     const first = live[0] ?? group.views[0]!;
     const article = Boolean(first.proposal.path);
     const today = first.proposal.add ? undefined : (wordsNow(first.proposal) ?? first.proposal.before);
     const stand = standOf(group);
-    const keepers = [...new Set(live.flatMap((view) => view.against))];
+    // Who would rather leave it as it is: against every version, not only the ones they did not vote for.
+    const keepers = live.length ? [...new Set(live[0]!.against)].filter((who) => live.every((view) => view.against.some((other) => other.toLowerCase() === who.toLowerCase()))) : [];
     const mineAmong = live.some((view) => isMe(view.by)) && !trying;
     const term = helpOf(group)?.title;
     // What the help is, said in the question itself: «¿Cómo debe quedar el artículo «rey»?».
@@ -667,6 +689,13 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             <h2 className="ag-question">{question}</h2>
             {rule ? <p className="af-criterion af-criterion--hint">{rule}</p> : null}
             {mineAmong ? <p className="af-hint">{t("ag.choiceMine")}</p> : null}
+            {agreedOn || keptBy ? (
+              // Agreed is not yet written: said, with when it is and that votes can still change.
+              <div className="ag-agreement" role="status">
+                <p className="ag-agreement__what">{agreedOn ? t("ag.agreedOn").replace("{what}", titleOf(agreedOn)) : t(article ? "ag.agreedKeepArticle" : "ag.agreedKeep")}</p>
+                <p className="ag-agreement__when">{t("ag.agreedWhen")}</p>
+              </div>
+            ) : null}
             <ul className="ag-opts" aria-label={question}>
               {live.map((view) => option(group, view))}
               <li className="ag-opt ag-opt--keep" data-picked={stand === "keep" || undefined}>
@@ -695,7 +724,9 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           <p className="ag-resolved">
             {(() => {
               const won = settled.find((view) => view.state === "applied" || view.state === "sent");
-              return won ? t("ag.resolvedTo").replace("{what}", titleOf(won)) : t("ag.resolvedKept");
+              const pending = settled.find((view) => view.state === "agreed");
+              // A comment agreed on names no words to write: somebody writes the version and says it is done.
+              return won ? t("ag.resolvedTo").replace("{what}", titleOf(won)) : pending ? t(pending.proposal.after ? "ag.agreedNotApplied" : "ag.agreedNeedsVersion").replace("{what}", titleOf(pending)) : t("ag.resolvedKept");
             })()}
           </p>
         )}
@@ -829,7 +860,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
               <Button type="button" size="lg" variant="outline" onClick={onClose}>
                 {t("fa.back")}
               </Button>
-            ) : unsettled.length ? (
+            ) : undecided.length ? (
               <p className="ag-foot" role="status">
                 {t(leftToMe ? "ag.footLeft" : "ag.footLeftNone").replace("{n}", String(leftToMe)).replace("{m}", String(settledGroups)).replace("{t}", String(groups.length))}
               </p>

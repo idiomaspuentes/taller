@@ -10112,3 +10112,12 @@ html[data-text] .ck-verse { font-size: calc(1.0625rem * var(--ts)); }
 .ag-own { margin: var(--space-4) 0 0; color: var(--text-muted); font-size: 0.875rem; }
 .ag-opt[data-picked] { border-color: var(--success-500); background: var(--surface); box-shadow: inset 0 0 0 1px var(--success-500); }
 html[data-text] .ag-voted, html[data-text] .ag-own { font-size: calc(0.875rem * var(--ts)); }
+
+/* An agreement not yet written (16 October): what was agreed, and that it is applied when the step closes and
+   votes can change until then. */
+.ag-agreement { display: grid; gap: var(--space-4); padding: var(--space-12) var(--space-14); border-radius: var(--radius-lg); background: var(--success-100); }
+.ag-agreement p { margin: 0; }
+.ag-agreement__what { font-weight: 700; color: var(--success-700); }
+.ag-agreement__when { font-size: 0.875rem; color: var(--text); }
+html[data-text] .ag-agreement__what { font-size: calc(1rem * var(--ts)); }
+html[data-text] .ag-agreement__when { font-size: calc(0.875rem * var(--ts)); }
