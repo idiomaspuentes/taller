@@ -173,7 +173,12 @@ export function deleteUserToken(config: DcsClientConfig, username: string, token
 export interface PasswordSignInParams {
   username: string;
   password: string;
-  /** Prefix for the minted token's name — a random suffix is appended so repeated sign-ins (a second device, a cleared browser) never collide with a token from a previous one. */
+  /**
+   * Prefix for the minted token's name — a random suffix is appended so repeated sign-ins never collide with a token
+   * from a previous one. Every earlier token of the user whose name starts with `tokenNamePrefix + "-"` is deleted
+   * first, so the prefix should name the device (`app-{deviceId}`, hyphen-free id): with one prefix for the whole app,
+   * signing in on one device revokes the token of every other device of the same user.
+   */
   tokenNamePrefix: string;
   scopes: string[];
 }
@@ -193,12 +198,14 @@ export interface PasswordSignInResult {
  * minted token, identical in shape to a token the user pasted in by
  * hand (still offered as a secondary option in both apps' sign-in UI).
  *
- * Before minting, deletes any of *this app's own* previous tokens for
- * the same user (name starting with `tokenNamePrefix + "-"`) — every
- * sign-in on any device otherwise leaves its old token behind forever,
- * since nothing else in this codebase ever revokes one. This keeps it
- * to one live token per user for this app, not one per login, without
- * touching tokens any other app or script created for this user.
+ * Before minting, deletes the user's previous tokens whose name starts
+ * with `tokenNamePrefix + "-"` — every sign-in otherwise leaves its old
+ * token behind forever, since nothing else in this codebase ever revokes
+ * one. With a per-device prefix (see `PasswordSignInParams`) that keeps
+ * one live token per device, not one per login, without touching other
+ * devices' tokens or those any other app or script created for this user.
+ * A prefix shared by every device would keep one per *user*, signing the
+ * person out everywhere else (found in Servos on QA, 2026-10-16).
  */
 export async function signInWithPassword(config: DcsClientConfig, params: PasswordSignInParams): Promise<PasswordSignInResult> {
   let created: DcsToken;

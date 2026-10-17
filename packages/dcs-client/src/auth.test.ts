@@ -153,26 +153,27 @@ describe("signInWithPassword", () => {
     expect((confirmInit.headers as Record<string, string>).Authorization).toBe("token minted-token");
   });
 
-  it("deletes this app's own previous token(s) before minting a new one, leaving other apps' tokens alone", async () => {
+  it("deletes this device's previous token(s) before minting a new one, leaving other devices' and other apps' tokens alone", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
         jsonResponse([
-          { id: 1, name: "ip-lms-learner-oldone", scopes: ["write:repository"] },
-          { id: 2, name: "ip-lms-learner-fromanotherdevice", scopes: ["write:repository"] },
-          { id: 3, name: "some-other-app-token", scopes: ["read:user"] },
+          { id: 1, name: "ip-lms-learner-dev1-oldone", scopes: ["write:repository"] },
+          { id: 2, name: "ip-lms-learner-dev1-older", scopes: ["write:repository"] },
+          { id: 3, name: "ip-lms-learner-dev2-fromanotherdevice", scopes: ["write:repository"] },
+          { id: 4, name: "some-other-app-token", scopes: ["read:user"] },
         ]),
       )
       .mockResolvedValueOnce(new Response(null, { status: 204 })) // DELETE id 1
       .mockResolvedValueOnce(new Response(null, { status: 204 })) // DELETE id 2
-      .mockResolvedValueOnce(jsonResponse({ id: 4, name: "ip-lms-learner-fresh", sha1: "minted-token", scopes: ["write:repository"] }))
+      .mockResolvedValueOnce(jsonResponse({ id: 5, name: "ip-lms-learner-dev1-fresh", sha1: "minted-token", scopes: ["write:repository"] }))
       .mockResolvedValueOnce(jsonResponse({ id: 5, login: "abel" }));
     vi.stubGlobal("fetch", fetchMock);
 
     await signInWithPassword(config, {
       username: "abel",
       password: "hunter2",
-      tokenNamePrefix: "ip-lms-learner",
+      tokenNamePrefix: "ip-lms-learner-dev1",
       scopes: ["write:repository"],
     });
 
@@ -183,7 +184,7 @@ describe("signInWithPassword", () => {
     const [deleteTwoUrl, deleteTwoInit] = fetchMock.mock.calls[2];
     expect(deleteTwoUrl).toBe("https://qa.door43.org/api/v1/users/abel/tokens/2");
     expect(deleteTwoInit.method).toBe("DELETE");
-    // Token id 3 ("some-other-app-token") never gets its own DELETE call — only 5 calls total (list, 2 deletes, create, confirm).
+    // Neither id 3 (another device of the same user) nor id 4 (another app) gets a DELETE — only 5 calls total (list, 2 deletes, create, confirm).
   });
 
   it("turns a 401 into a friendly bad-credentials message", async () => {

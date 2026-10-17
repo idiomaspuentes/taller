@@ -95,6 +95,44 @@ function buildSession(
   };
 }
 
+const DEVICE_KEY = "gt-dcs-device";
+
+function newDeviceId(): string {
+  const bytes = new Uint8Array(6);
+  // getRandomValues, not randomUUID: the LAN dev server is plain http, where randomUUID does not exist.
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(bytes);
+  else bytes.forEach((_, i) => (bytes[i] = Math.floor(Math.random() * 256)));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * This browser's name for itself in its Door43 token names, made once and kept. Letters and digits only: with a
+ * hyphen, one device's prefix could match another's (`taller-ab-` and `taller-ab-cd-…`). Signing out keeps it, so
+ * the next sign-in here still replaces this device's earlier token.
+ */
+export function deviceId(): string {
+  try {
+    const kept = localStorage.getItem(DEVICE_KEY);
+    if (kept && /^[0-9a-z]{8,}$/.test(kept)) return kept;
+    const made = newDeviceId();
+    localStorage.setItem(DEVICE_KEY, made);
+    return made;
+  } catch {
+    // No storage: this sign-in replaces no earlier token, and certainly no other device's.
+    return newDeviceId();
+  }
+}
+
+/**
+ * The prefix of the tokens this device mints: before minting, the client deletes the user's tokens that start with
+ * it. It used to be `tas` on every device, so signing in on a phone signed the same person out on their computer.
+ * Not `tas-…` now: a device still on an older version deletes every `tas-` token when it signs in. A person's old
+ * `tas-xxxxxx` token (at most one, as the old code kept one) is left alone, since it may still be a device's live one.
+ */
+export function tokenNamePrefix(): string {
+  return `taller-${deviceId()}`;
+}
+
 export async function signInWithPassword(
   host: string,
   username: string,
@@ -105,7 +143,7 @@ export async function signInWithPassword(
   const { token, user } = await mintToken(config, {
     username,
     password,
-    tokenNamePrefix: "tas",
+    tokenNamePrefix: tokenNamePrefix(),
     scopes,
   });
   const session = buildSession(host, user, token, scopes);

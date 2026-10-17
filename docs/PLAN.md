@@ -70,7 +70,7 @@ Abel recorre la app en su teléfono contra QA (`?server=qa`) con los proyectos d
 - **Para después de producción**: las fases de recursos abiertos sin hacer, plantas y animales con imagen, rutas y dudas del texto hebreo ([#16](https://github.com/idiomaspuentes/taller/issues/16)).
 
 **Lo que conviene saber antes de tocar nada**
-- Entrar con la misma cuenta en dos dispositivos cierra una de las dos sesiones: para probar en el teléfono y en el escritorio a la vez hacen falta dos cuentas.
+- Desde el 17 de octubre, cada dispositivo tiene su propia llave de Door43 (`taller-{dispositivo}-…`), y entrar con la misma cuenta en el teléfono y en el escritorio ya no cierra la otra sesión. Antes sí: cada inicio de sesión borraba todas las llaves de Taller de esa cuenta, y algunas sesiones caídas que se atribuyeron a la copia de producción en QA pudieron ser esto. La llave antigua (`tas-…`, una por cuenta como mucho) no se borra sola, porque puede ser la de un dispositivo que sigue trabajando; se puede quitar a mano en Door43 (Configuración → Aplicaciones) cuando ya nadie la use. `npm run verify:sign-in` lo comprueba.
 - El despliegue a Cloudflare lo hace Abel, o se hace con su visto bueno cada vez; desde una sesión de Claude el comando puede quedar bloqueado.
 - Los datos de los recursos abiertos pesan unos 17 MB en `public/` y se rehacen con `npm run parallels:build`, `referents:build` y `trees:build`.
 

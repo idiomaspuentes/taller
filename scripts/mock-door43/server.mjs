@@ -6,7 +6,8 @@
  *   is written here. Nothing is sent to Door43.
  * - unfoldingWord's public repositories (original texts, notes, words) are read
  *   from qa.door43.org, anonymously and read only, and cached.
- * - People sign in with test tokens: `token-ana`, `token-bea`, `token-carla`, `token-dina`, `token-eva`.
+ * - People sign in with test tokens: `token-ana`, `token-bea`, `token-carla`, `token-dina`, `token-eva`, or on the
+ *   app's sign-in screen with the test password `clave-<login>`, which mints a token as Door43 does.
  * - MOCK_ROSTER=<file.json>: the people and the teams of an organization, to try who sees what:
  *   `{ "owners": [login], "teams": [{ "name", "description", "members": [login] }] }`. Each login signs in with
  *   `token-<login>`, and teams can then be created and their members changed, as in Door43.
@@ -413,6 +414,44 @@ function handleContents(req, res, url, user, owner, name, path, body) {
   return json(res, { content: contentEntry(path, file), commit: { sha: nextSha(), message: body.message || "" } }, method === "POST" ? 201 : 200);
 }
 
+/**
+ * Door43's token endpoints with Basic auth, so the app's password sign-in can be tried here, two devices of one
+ * person included. Each person's test password is `clave-<login>`; a minted token then works as that person's, like
+ * `token-<login>`. Kept across `/__mock/reset`, like the people.
+ */
+const minted = [];
+let mintedId = 1000;
+
+async function tokenApi(req, res, login, id) {
+  const basic = /^Basic (.+)$/.exec(req.headers.authorization || "")?.[1];
+  const [who = "", password] = basic ? Buffer.from(basic, "base64").toString("utf-8").split(/:(.*)/s) : [];
+  const person = Object.values(USERS).find((u) => sameLogin(u.login, who));
+  if (!person || password !== `clave-${person.login}` || !sameLogin(login, person.login)) return json(res, { message: "user does not exist or password is wrong" }, 401);
+  const listed = (t) => ({ id: t.id, name: t.name, scopes: t.scopes, token_last_eight: t.sha1.slice(-8) });
+  const at = new Date().toISOString();
+  if (req.method === "GET" && id === undefined) return json(res, minted.filter((t) => t.login === person.login).map(listed));
+  if (req.method === "POST" && id === undefined) {
+    const body = await readBody(req);
+    const name = String(body.name || "");
+    if (minted.some((t) => t.login === person.login && t.name === name)) return json(res, { message: "access token name has been used already" }, 400);
+    const sha1 = createHash("sha1").update(`${person.login}:${name}:${Date.now()}:${Math.random()}`).digest("hex");
+    const token = { id: mintedId++, name, sha1, scopes: body.scopes || [], login: person.login };
+    minted.push(token);
+    USERS[sha1] = person;
+    log.push({ at, user: person.login, write: `token ${name} created` });
+    return json(res, { ...listed(token), sha1 }, 201);
+  }
+  const index = minted.findIndex((t) => t.id === id && t.login === person.login);
+  if (req.method === "DELETE" && index >= 0) {
+    const [gone] = minted.splice(index, 1);
+    delete USERS[gone.sha1];
+    log.push({ at, user: person.login, write: `token ${gone.name} deleted` });
+    res.writeHead(204);
+    return res.end();
+  }
+  return json(res, { message: "mock: no such token" }, 404);
+}
+
 function issueView(issue) {
   return { ...issue, comments: (comments.get(issue.number) || []).length, html_url: `http://localhost:${PORT}/${PM_ORG}/taller/issues/${issue.number}` };
 }
@@ -471,6 +510,8 @@ async function handle(req, res) {
   // QA too, unless a test put its own here. Without them every word of the original opened with no entry.
   if (repoMatch && req.method === "GET" && /_(uhl|ugl)$/.test(decodeURIComponent(repoMatch[2])) && !repoOf(`${decodeURIComponent(repoMatch[1])}/${decodeURIComponent(repoMatch[2])}`)) return proxyReal(req, res, url);
 
+  const tokensMatch = /^\/users\/([^/]+)\/tokens(?:\/(\d+))?$/.exec(api);
+  if (tokensMatch) return tokenApi(req, res, decodeURIComponent(tokensMatch[1]), tokensMatch[2] === undefined ? undefined : Number(tokensMatch[2]));
   if (api === "/user") return user ? json(res, { ...user, avatar_url: "" }) : json(res, { message: "token is required" }, 401);
   if (ROSTER) {
     const answered = await rosterApi(api, req, res, user);

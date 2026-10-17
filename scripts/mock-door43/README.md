@@ -16,6 +16,7 @@ Cada puerto es un origen distinto, así que cada pestaña guarda su propia sesi�
 - Los textos públicos de unfoldingWord (hebreo, notas, palabras, artículos) se leen de `qa.door43.org`, sin credenciales y solo lectura, y se guardan en caché.
 - Los léxicos del idioma (`es-419_uhl`, `es-419_ugl`) también, salvo que una prueba haya puesto el suyo: sin ellos ninguna palabra del original tenía entrada.
 - Personas de prueba: `ana` (coordina), `bea`, `carla`. Sus tokens son `token-ana`, `token-bea` y `token-carla`.
+- También se entra por la pantalla de inicio de sesión, con la contraseña de prueba `clave-<usuario>` (`clave-ana`): como en Door43, cada inicio crea una llave, y la app borra antes la anterior de ese mismo dispositivo (`GET /__mock/log` lo muestra). Sirve para probar una misma persona en dos pestañas de puertos distintos. La pantalla usa el servidor de la sesión guardada, así que antes se pone una sesión con `host` del mock (la de abajo con cualquier token); al no valer, la app pide entrar.
 
 ## Entrar como una persona
 
