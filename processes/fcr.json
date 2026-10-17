@@ -2306,6 +2306,10 @@
             {
               "phaseId": "fcr-afinacion",
               "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-armonizacion",
+              "scope": "before"
             }
           ],
           "bundle": {
@@ -2428,6 +2432,14 @@
             {
               "phaseId": "fcr-afinacion",
               "scope": "chapter"
+            },
+            {
+              "taskId": "armonizar-notas",
+              "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-armonizacion",
+              "scope": "before"
             }
           ],
           "bundle": {
@@ -2527,6 +2539,14 @@
             {
               "phaseId": "fcr-afinacion",
               "scope": "chapter"
+            },
+            {
+              "taskId": "armonizar-palabras",
+              "scope": "chapter"
+            },
+            {
+              "phaseId": "fcr-armonizacion",
+              "scope": "before"
             }
           ],
           "bundle": {

@@ -352,6 +352,31 @@ if (fcr) {
     assert.equal(waiting(val, ready.filter((i) => i !== arm && i !== armQ)), false);
   });
 
+  test("FCR: la Armonización va un capítulo a la vez y en orden: notas, palabras, preguntas (Abel, 17 de octubre)", () => {
+    // Chapters 1 and 2 with everything before them closed: only the harmonization subtareas are open.
+    const n1 = issue("armonizar-notas", 1), w1 = issue("armonizar-palabras", 1), q1 = issue("armonizar-preguntas", 1);
+    const n2 = issue("armonizar-notas", 2), w2 = issue("armonizar-palabras", 2), q2 = issue("armonizar-preguntas", 2);
+    const open = [n1, w1, q1, n2, w2, q2];
+    const waiting = (i: DcsIssue, rest = open) => waitBlocks(i, board, rest).length > 0;
+    assert.equal(waiting(n1), false, "las notas del capítulo 1 son lo único que se puede hacer");
+    assert.equal(waiting(w1), true, "las palabras del capítulo esperan a sus notas");
+    assert.equal(waiting(q1), true, "las preguntas del capítulo esperan a sus palabras");
+    for (const i of [n2, w2, q2]) assert.equal(waiting(i), true, `${i.title}: el capítulo 2 espera al 1 entero`);
+    const notesDone = open.filter((i) => i !== n1);
+    assert.equal(waiting(w1, notesDone), false, "cerradas las notas, siguen las palabras");
+    assert.equal(waiting(q1, notesDone), true);
+    assert.equal(waiting(n2, notesDone), true, "el capítulo 2 sigue esperando mientras quede algo del 1");
+    const wordsDone = notesDone.filter((i) => i !== w1);
+    assert.equal(waiting(q1, wordsDone), false, "cerradas las palabras, siguen las preguntas");
+    assert.equal(waiting(n2, wordsDone), true);
+    const chapter1Done = wordsDone.filter((i) => i !== q1);
+    assert.equal(waiting(n2, chapter1Done), false, "cerrado todo el capítulo 1, empiezan las notas del 2");
+    assert.equal(waiting(w2, chapter1Done), true);
+    // The waits of the chapter itself stay: the tuned texts and the translated helps of the chapter.
+    assert.equal(waiting(n1, [n1, issue("desafios-tps", 1)]), true, "sin el TPS afinado del capítulo, las notas esperan");
+    assert.equal(waiting(n1, [n1, issue("notas-ayuda", 1)]), true, "sin sus ayudas traducidas, también");
+  });
+
   test("FCR: quién puede tomar cada cosa", () => {
     assert.equal(team("desafios-tpl").minLevel, "aprendiz");
     assert.equal(team("tpl").minLevel, "practicante");

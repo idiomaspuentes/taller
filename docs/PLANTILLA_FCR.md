@@ -515,6 +515,11 @@ el TPL y el TPS.
 **Tres pistas**, cada una con su equipo y su coordinador.
 **Espera a:** la Afinación del TPL **y** del TPS, y la Traducción de las ayudas de esa pista, todo de
 la misma unidad de traspaso. Sin los dos textos afinados y sus ayudas listas, la pista no avanza.
+**Un capítulo a la vez, y las pistas en orden** (Abel, 17 de octubre de 2026): del capítulo se armonizan
+primero las Notas y la Academia, después las Palabras, después las Preguntas, cada pista cuando la anterior
+cerró; y ningún capítulo empieza mientras quede algo abierto de uno anterior, en cualquiera de las tres
+pistas. Así el equipo ve una sola cosa que hacer, como en Afinación. Lo demás aparece «En espera», con lo
+que espera: «Espera a «Armonizar Notas y Academia»», «Espera al capítulo 1 de «Armonización»».
 **Quién:** personas habilitadas en Armonización. Cada pista **cierra por consenso del equipo**:
 todos de acuerdo sobre qué se deja y qué se modifica. Normalmente en reunión, salvo que la
 herramienta registre la discusión y el acuerdo. (La guía pública habla de un «cierre independiente»
@@ -715,14 +720,17 @@ herramienta, sin persona, cuando sus comprobaciones pasan).
 ```text
 Traducir TPL ─────▶ Afinar TPL ─┐
 Traducir TPS ─────▶ Afinar TPS ─┼─▶ Armonizar Notas y Academia ─┐
-Traducir Notas ─────────────────┤                               │
-Traducir Academia ──────────────┘                               │
+Traducir Notas ─────────────────┤              │                │
+Traducir Academia ──────────────┘              ▼                │
 Traducir Palabras ────────────────▶ Armonizar Palabras ─────────┼─▶ Validar ─▶ Publicar
+                                               │                │
+                                               ▼                │
 Traducir Preguntas ───────────────▶ Armonizar Preguntas ────────┘
         (Afinar TPL y TPS también antes de Palabras y Preguntas)
 ```
 
-Todas las esperas se cuentan por **unidad de traspaso**.
+Todas las esperas se cuentan por **unidad de traspaso**. Afinación y Armonización van además **un capítulo a
+la vez**: el capítulo 2 de la fase espera a que se cierre todo el 1.
 
 ---
 
