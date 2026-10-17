@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Columns2 } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Columns2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -105,8 +105,6 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const [filter, setFilter] = useState<Filter | null>(null);
   const [at, setAt] = useState(0);
   const [listOpen, setListOpen] = useState(false);
-  /** The version chosen for each help, before saying so: one choice, one button. */
-  const [choice, setChoice] = useState<Record<string, string>>({});
   /** The versions whose changes are open against what the help says today. */
   const [diffOpen, setDiffOpen] = useState<Record<string, boolean>>({});
   /** The reasons read whole: a long one shows its first lines. */
@@ -462,6 +460,53 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       announce(t("ag.saved"));
     });
 
+  /** My vote on a help taken back: for the one I voted, and against the others, said no more. */
+  const clearVote = (group: HelpGroup) =>
+    act(async () => {
+      const now = new Date().toISOString();
+      for (const view of livePart(group)) {
+        const voter = voterFor(view);
+        const keeper = keeperFor(view);
+        const rows: CheckAnswer[] = [];
+        if (!isMe(view.by) || trying) {
+          if (view.inFavour.some((who) => who.toLowerCase() === voter.toLowerCase())) rows.push(proposalSaying(view.proposal.id, voter, now, false));
+        }
+        if (view.against.some((who) => who.toLowerCase() === keeper.toLowerCase())) rows.push(proposalKeeping(view.proposal.id, keeper, now, false));
+        if (rows.length) await add(view.stepKey, rows);
+      }
+      announce(t("ag.saved"));
+    });
+
+  /**
+   * How an option is voted: a button of its own, as in the proposals of Afinación. A circle to mark and a button
+   * under all of them read as a form: once marked, it could not be seen that it was one option among others, nor
+   * how to take it back (16 October).
+   */
+  const voteFor = (group: HelpGroup, id: string, own: boolean, label: string) => {
+    if (stepDone) return null;
+    const stand = standOf(group);
+    if (own) return <p className="ag-own">{t("ag.ownVersion")}</p>;
+    if (stand === id) {
+      return (
+        <div className="ag-vote">
+          <span className="ag-voted">
+            <Check aria-hidden className="size-4" /> {t("ag.yourVote")}
+          </span>
+          <Button type="button" variant="ghost" disabled={saving} onClick={() => void clearVote(group)}>
+            {t("ag.unvote")}
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="ag-vote">
+        <Button type="button" variant="outline" disabled={saving} onClick={() => void decide(group, id)}>
+          {stand ? t("ag.voteChange") : label}
+        </Button>
+      </div>
+    );
+  };
+
   /** What a version is called: whose it is, and what kind of change. */
   const titleOf = (view: Listed): string => {
     const who = isMe(view.by) ? "" : view.by;
@@ -506,7 +551,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   };
 
   /** One version of the help, to choose: as it would read, why, and who is for it. */
-  const option = (group: HelpGroup, view: Listed, picked: string | undefined) => {
+  const option = (group: HelpGroup, view: Listed) => {
     const live = unsettledState(view) && !stepDone;
     const changed = live ? changedTo(view) : undefined;
     const stale = changed !== undefined;
@@ -514,14 +559,11 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     const why = reasonOf(view);
     const open = diffOpen[view.proposal.id] ?? false;
     return (
-      <li key={view.proposal.id} className="ag-opt" data-picked={picked === view.proposal.id || undefined} data-state={view.state}>
-        <label className="ag-opt__pick">
-          <input type="radio" name={`ag-${group.key}`} value={view.proposal.id} checked={picked === view.proposal.id} disabled={!live || stale || saving} onChange={() => setChoice((prev) => ({ ...prev, [group.key]: view.proposal.id }))} />
-          <span className="ag-opt__head">
-            <b>{titleOf(view)}</b>
-            <span className="ag-opt__who">{live ? backingOf(view) : t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</span>
-          </span>
-        </label>
+      <li key={view.proposal.id} className="ag-opt" data-picked={(live && standOf(group) === view.proposal.id && !isMe(view.by)) || undefined} data-state={view.state}>
+        <div className="ag-opt__head">
+          <b>{titleOf(view)}</b>
+          <span className="ag-opt__who">{live ? backingOf(view) : t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</span>
+        </div>
         {versionText(view)}
         {view.proposal.after && why ? (
           // Three lines of it, and the rest a touch away: a reason of five lines made its version twice as tall.
@@ -584,6 +626,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             }
           />
         ) : null}
+        {live && !stale ? voteFor(group, view.proposal.id, isMe(view.by) && !trying, t("ag.vote")) : null}
       </li>
     );
   };
@@ -596,10 +639,8 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     const article = Boolean(first.proposal.path);
     const today = first.proposal.add ? undefined : (wordsNow(first.proposal) ?? first.proposal.before);
     const stand = standOf(group);
-    const picked = choice[group.key] ?? stand;
     const keepers = [...new Set(live.flatMap((view) => view.against))];
     const mineAmong = live.some((view) => isMe(view.by)) && !trying;
-    const canDecide = Boolean(picked) && picked !== stand && !stepDone && !saving;
     const term = helpOf(group)?.title;
     // What the help is, said in the question itself: «¿Cómo debe quedar el artículo «rey»?».
     const question = article
@@ -625,26 +666,21 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             <div className="ag-decision">
             <h2 className="ag-question">{question}</h2>
             {rule ? <p className="af-criterion af-criterion--hint">{rule}</p> : null}
-            <ul className="ag-opts" role="radiogroup" aria-label={question}>
-              {live.map((view) => option(group, view, picked))}
-              <li className="ag-opt ag-opt--keep" data-picked={picked === "keep" || undefined}>
-                <label className="ag-opt__pick">
-                  <input type="radio" name={`ag-${group.key}`} value="keep" checked={picked === "keep"} disabled={stepDone || saving} onChange={() => setChoice((prev) => ({ ...prev, [group.key]: "keep" }))} />
-                  <span className="ag-opt__head">
-                    <b>{t(article ? "ag.optKeepArticle" : "ag.optKeep")}</b>
-                    {keepers.length ? <span className="ag-opt__who">{t("ag.keepers").replace("{who}", keepers.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</span> : null}
-                  </span>
-                </label>
+            {mineAmong ? <p className="af-hint">{t("ag.choiceMine")}</p> : null}
+            <ul className="ag-opts" aria-label={question}>
+              {live.map((view) => option(group, view))}
+              <li className="ag-opt ag-opt--keep" data-picked={stand === "keep" || undefined}>
+                <div className="ag-opt__head">
+                  <b>{t(article ? "ag.optKeepArticle" : "ag.optKeep")}</b>
+                  {keepers.length ? <span className="ag-opt__who">{t("ag.keepers").replace("{who}", keepers.map((who) => (who.includes(" ") ? who : `@${who}`)).join(", "))}</span> : null}
+                </div>
+                {voteFor(group, "keep", false, t(article ? "ag.voteKeepArticle" : "ag.voteKeep"))}
               </li>
             </ul>
-            {mineAmong ? <p className="af-hint">{t("ag.choiceMine")}</p> : null}
             {!stepDone ? (
               <div className="ag-decide">
-                <Button type="button" size="lg" disabled={!canDecide} onClick={() => picked && void decide(group, picked)}>
-                  {!picked ? t("ag.pickFirst") : picked === stand ? t(picked === "keep" ? "ag.keptAlready" : "ag.supported") : picked === "keep" ? t("ag.supportKeep") : t("ag.support")}
-                </Button>
                 <button type="button" className="af-link ag-write" disabled={saving} onClick={() => {
-                  const from = live.find((view) => view.proposal.id === picked) ?? first;
+                  const from = live.find((view) => view.proposal.id === stand) ?? first;
                   setAlongside(true);
                   setAnswering(from);
                 }}>
@@ -666,7 +702,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
         {settled.length ? (
           <details className="ag-settled">
             <summary>{t("ag.settledTitle").replace("{n}", String(settled.length))}</summary>
-            <ul className="ag-opts">{settled.map((view) => option(group, view, undefined))}</ul>
+            <ul className="ag-opts">{settled.map((view) => option(group, view))}</ul>
           </details>
         ) : null}
       </section>
