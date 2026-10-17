@@ -11,6 +11,7 @@ import { displayName, initialsOf, levelName, memberSince, publicProfileUrl, safe
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
 import { ActivityCalendar } from "./ActivityCalendar";
+import { usePersonPhoto } from "./PersonPhoto";
 
 type Props = {
   session: GtSession;
@@ -83,7 +84,9 @@ export function ProfileView({ session, pmOrg, workspaceName, onSignOut }: Props)
   }, [session, pmOrg]);
 
   const name = displayName(user, session.username);
-  const picture = user?.avatar_url || session.avatarUrl || "";
+  // The photo the organization keeps of this person comes first: most never uploaded one to Door43.
+  const kept = usePersonPhoto(session.username);
+  const picture = kept || user?.avatar_url || session.avatarUrl || "";
   const since = memberSince(user?.created, language);
   const website = safeLink(user?.website);
   const teams = (session.teams ?? []).map((team) => team.name).filter(Boolean);

@@ -61,6 +61,7 @@ import { localizeThread } from "../domain/threadNames";
 import { localizeAfinacion } from "../domain/afinacionNames";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
+import { PersonPhoto } from "./PersonPhoto";
 
 type Props = {
   ctxEncoded: string;
@@ -1434,6 +1435,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 <ul className="af-others" aria-label={t("af.teamAria")}>
                   {listed.map((a) => (
                     <li key={a.reviewer} data-mine={a === mine ? "true" : undefined}>
+                      <PersonPhoto login={tcCheckerOf(a) ?? a.reviewer} size="sm" />
                       <b>{whoSaid(a)}</b> · {stanceLabel(a.status)}
                       {a.note && !tcCheckerOf(a) ? `: ${a.note}` : ""}
                       {a !== mine && a.status !== "approved" && a.note && !stepDone && !tally.decided && mine?.status !== a.status && firstOf(a.status) === a ? (
@@ -1461,7 +1463,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <ul className="af-others af-others--before">
                     {saidBefore.map((a) => (
                       <li key={a.reviewer}>
-                        <b>{whoSaid(a)}</b> · {stanceLabel(a.status)}
+                        <PersonPhoto login={tcCheckerOf(a) ?? a.reviewer} size="sm" />
+                      <b>{whoSaid(a)}</b> · {stanceLabel(a.status)}
                         {a.note && !tcCheckerOf(a) ? `: ${a.note}` : ""}
                       </li>
                     ))}

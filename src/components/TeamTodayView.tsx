@@ -22,6 +22,7 @@ import { explainError } from "../dcs/userError";
 import { ActivityCalendar, ActivityStrip, useWorkLine, WORK_WEEKS } from "./ActivityCalendar";
 import { WorkLine } from "./ProgressBar";
 import { LoadingState } from "./LoadingState";
+import { PersonPhoto } from "./PersonPhoto";
 
 type Props = {
   session: GtSession;
@@ -50,6 +51,7 @@ function PersonRow({ login, slots, plan, open, onToggle }: { login: string; slot
     <li className="today-person">
       <button type="button" className="today-person__head" aria-expanded={open} onClick={onToggle}>
         <span className="today-person__name">
+          <PersonPhoto login={login} size="sm" />
           @{login}
           <ChevronRight aria-hidden />
         </span>

@@ -9,6 +9,7 @@ import { BrowserNotifyToggle } from "./BrowserNotifyToggle";
 import { TEXT_SIZES, type TextSize } from "../domain/textSize";
 import { setTextSize, useTextSize } from "../textSize";
 import type { MessageKey } from "../i18n/messages";
+import { usePersonPhoto } from "./PersonPhoto";
 
 const TEXT_SIZE_NAME: Record<TextSize, MessageKey> = { normal: "menu.textNormal", large: "menu.textLarge", larger: "menu.textLarger" };
 
@@ -86,6 +87,8 @@ export function UserMenu(props: Props) {
     fn();
   };
   const name = props.displayName?.trim() || session.username;
+  // The photo the organization keeps of this person comes first.
+  const kept = usePersonPhoto(session.username);
 
   return (
     <div className="user-menu" ref={rootRef}>
@@ -98,7 +101,7 @@ export function UserMenu(props: Props) {
         title={t("menu.open")}
         onClick={() => setOpen((v) => !v)}
       >
-        {session.avatarUrl ? <img src={session.avatarUrl} alt="" width={30} height={30} /> : <span aria-hidden>{initialsOf(name)}</span>}
+        {kept || session.avatarUrl ? <img src={kept || session.avatarUrl} alt="" width={30} height={30} /> : <span aria-hidden>{initialsOf(name)}</span>}
       </button>
 
       {open ? (

@@ -1102,5 +1102,7 @@ export function assignableCountLabel(
 
 /** The Door43 repository that holds the plan and the subtareas: `pmRepo` in taller.config.ts. */
 export const PM_REPO_NAME: string = tallerConfig.pmRepo;
+/** The private repository with the photos of the people: `photoRepo` in taller.config.ts; empty = none. */
+export const PHOTO_REPO_NAME: string = tallerConfig.photoRepo ?? "";
 export const ASSIGNMENTS_SCHEMA = "gateway-assignments-2" as const;
 export const ASSIGNMENTS_SCHEMA_LEGACY = "gateway-assignments-1" as const;

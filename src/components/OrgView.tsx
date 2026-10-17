@@ -35,6 +35,9 @@ import { cn } from "@/lib/utils";
 import { useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { explainError } from "../dcs/userError";
+import { canSetPhoto } from "../domain/photos";
+import { PersonPhoto } from "./PersonPhoto";
+import { PhotoSheet } from "./PhotoSheet";
 
 type Props = {
   session: GtSession;
@@ -334,6 +337,8 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
   // «Quitar» sits beside the level and «Hacer coordinador», and one touch took somebody out of the team: it is
   // asked first, by name.
   const [removing, setRemoving] = useState<{ id: string; team: string } | null>(null);
+  /** The person whose photo is being put or taken away. */
+  const [photoOf, setPhotoOf] = useState<Person | null>(null);
 
   async function removeMember(username: string) {
     if (selectedTeamId == null || !username) return;
@@ -596,6 +601,14 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
                         <ul className="hub-team__people">
                           {teamMembers.map((m) => (
                             <li key={m.id} className="hub-team__person">
+                              {/* The face: touched, by whoever coordinates the team or manages, to put the photo. */}
+                              {canSetPhoto({ me: session.username, canManage, levelBook: pmConfig ?? undefined, teamsOfPerson: [team.name] }) ? (
+                                <button type="button" className="hub-team__face" aria-label={t("photo.of").replace("{who}", m.id)} onClick={() => setPhotoOf(m)}>
+                                  <PersonPhoto login={m.id} name={m.name} />
+                                </button>
+                              ) : (
+                                <PersonPhoto login={m.id} name={m.name} />
+                              )}
                               <span className="hub-team__person-main">
                                 <span className="hub-team__person-name">{m.name}</span>
                                 <span className="hub-team__person-id">@{m.id}</span>
@@ -709,6 +722,7 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
                                         disabled={actingUser === m.id}
                                         onClick={() => void addMember(m.id)}
                                       >
+                                        <PersonPhoto login={m.id} name={m.name} size="sm" />
                                         <span className="hub-team__person-main">
                                           <span className="hub-team__person-name">{m.name}</span>
                                           <span className="hub-team__person-id">@{m.id}</span>
@@ -739,6 +753,7 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
           </div>
         </div>
       )}
+      <PhotoSheet person={photoOf} onClose={() => setPhotoOf(null)} announce={announce} />
       <ConfirmDialog
         open={Boolean(removing)}
         safe

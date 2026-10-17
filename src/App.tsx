@@ -52,6 +52,7 @@ import {
   type GtSession,
 } from "./dcs/auth";
 import { DEFAULT_HOST } from "./dcs/config";
+import { setPhotoSource } from "./dcs/photos";
 import { installSessionExpiryGuard } from "./dcs/sessionExpiry";
 import {
   fetchOrg,
@@ -125,7 +126,7 @@ import {
 } from "./viewMode";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { explainError } from "./dcs/userError";
+import { explainError } from "./dcs/userError";
 import { LoadingState } from "./components/LoadingState";
 
 /** Pages that keep the phone's bottom bar: the daily places and the personal ones. */
@@ -387,6 +388,11 @@ export function App() {
   useEffect(() => {
     saveContext({ lang, contentOrg, pmOrg, book, host });
   }, [lang, contentOrg, pmOrg, book, host]);
+
+  // The faces of the people, from the organization's private repository, read with the session of whoever looks.
+  useEffect(() => {
+    setPhotoSource(session?.token && pmOrg ? { session, org: pmOrg } : null);
+  }, [session, pmOrg]);
 
   useEffect(() => {
     window.scrollTo(0, 0);

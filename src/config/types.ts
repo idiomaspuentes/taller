@@ -101,6 +101,11 @@ export type TallerConfig = {
    * team settings. Existing deployments that still use `gateway-tasks` keep that name here.
    */
   pmRepo: string;
+  /**
+   * Name of a PRIVATE Door43 repository, in each workspace's organization, with a photo of each person
+   * (`avatares/<login>.jpg`), seen only by the organization's teams. Leave it out to show only Door43's avatars.
+   */
+  photoRepo?: string;
   uiLanguages: UiLanguage[];
   defaultUiLanguage: UiLanguage;
   /**

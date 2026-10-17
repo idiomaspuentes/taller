@@ -18,6 +18,9 @@ export const tallerConfig: TallerConfig = {
   // The Door43 repository (in each workspace's organization) where Taller keeps the plan, the subtareas and the
   // team settings. It is created on first sign-in if it does not exist.
   pmRepo: "taller",
+  // A PRIVATE repository, in the same organization, with the photos of the people who work: the plan repository is
+  // public, and faces are seen only by the teams. Coordinators and managers put them there from «Organización».
+  photoRepo: "taller-equipo",
 
   uiLanguages: ["es", "pt"],
   defaultUiLanguage: "es",

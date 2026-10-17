@@ -12,6 +12,8 @@ export function configProblems(config: TallerConfig): string[] {
   if (config.uiLanguages.length === 0) problems.push("uiLanguages está vacío.");
   if (!config.uiLanguages.includes(config.defaultUiLanguage)) problems.push("defaultUiLanguage no está en uiLanguages.");
   if (!/^[A-Za-z0-9._-]+$/.test(config.pmRepo)) problems.push(`pmRepo "${config.pmRepo}" no es un nombre de repositorio válido (letras, números, punto, guion y guion bajo).`);
+  if (config.photoRepo !== undefined && !/^[A-Za-z0-9._-]+$/.test(config.photoRepo)) problems.push(`photoRepo "${config.photoRepo}" no es un nombre de repositorio válido (letras, números, punto, guion y guion bajo).`);
+  if (config.photoRepo !== undefined && config.photoRepo.toLowerCase() === config.pmRepo.toLowerCase()) problems.push("photoRepo no puede ser el repositorio del plan: ese es público, y las fotos solo las ven los equipos.");
   if (config.workspaces.length === 0) problems.push("Hace falta al menos un espacio de trabajo en workspaces.");
   const ids = new Set<string>();
   for (const w of config.workspaces) {

@@ -19,7 +19,6 @@ import {
   canOpenConversation,
   commentToItem,
   groupSaves,
-  initials,
   insertQuote,
   mentionCandidates,
   mergeTimeline,
@@ -86,6 +85,7 @@ import { loadPlaceTexts } from "../dcs/placeTexts";
 import { placedMessage } from "../domain/commentPlace";
 import { placeName } from "../commentPlaceText";
 import { localized } from "../domain/processes";
+import { PersonPhoto } from "./PersonPhoto";
 
 export type ConversationDemo = {
   issue: DcsIssue;
@@ -1258,8 +1258,9 @@ function TimelineRow({
         data-group={sameAuthor ? "cont" : "first"}
       >
         {!mine ? (
-          <span className="chat-avatar" aria-hidden data-hidden={sameAuthor ? "true" : "false"}>
-            {initials(item.author)}
+          // The face of whoever wrote, when the organization keeps their photo; their initials otherwise.
+          <span className="chat-avatar chat-avatar--face" aria-hidden data-hidden={sameAuthor ? "true" : "false"}>
+            <PersonPhoto login={item.author} size="sm" />
           </span>
         ) : null}
         <div className="chat-msg__col">
