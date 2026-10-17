@@ -236,7 +236,10 @@ export function MyTasksView({
     if (!stale) setHeldTap(false);
   }, [stale]);
   const shownOnce = useRef(false);
-  const reload = useCallback(async () => {
+  /** The last list read and when it was asked for: the next reading asks only for what changed since. */
+  const lastRead = useRef<{ at: string; projects: MyTasksProjectBucket[] } | null>(null);
+  /** `whole`: everything read again («Actualizar» by hand), not only what changed. */
+  const reload = useCallback(async (opts: { whole?: boolean } = {}) => {
     const mine = ++reading.current;
     refreshTeamRules();
     if (!pmOrg) {
@@ -257,14 +260,21 @@ export function MyTasksView({
         setReadAt(new Date(kept.at));
         setStale(true);
         setLoaded(true);
+        lastRead.current = { at: kept.at, projects: kept.projects };
       }
     }
     shownOnce.current = true;
+    // The open subtareas of each project, to bring up to date with what changed since they were read.
+    const before = opts.whole ? null : lastRead.current;
+    const known = before
+      ? Object.fromEntries(before.projects.flatMap((bucket) => (bucket.openIssues ? [[bucket.projectId.toUpperCase(), { at: before.at, issues: bucket.openIssues }]] : [])))
+      : undefined;
+    const startedAt = new Date();
     setBusy(true);
     setError("");
     try {
       const [nextProjects, catalog, conflicted, closed] = await Promise.all([
-        loadMyTasksProjects({ session, pmOrg, lang, contentOrg }),
+        loadMyTasksProjects({ session, pmOrg, lang, contentOrg, known }),
         loadSolversCatalog(session, pmOrg),
         listMyConflictIssues(session, pmOrg).catch(() => [] as DcsIssue[]),
         mode === "lista" ? listMyClosedIssues(session, pmOrg).catch(() => [] as DcsIssue[]) : Promise.resolve([] as DcsIssue[]),
@@ -274,10 +284,12 @@ export function MyTasksView({
       setConflictIssues(conflicted);
       setClosedIssues(closed);
       setSolversCatalog(catalog);
-      const at = new Date();
-      setReadAt(at);
+      // When it was asked for, not when it arrived: what changed while it was on its way is asked for next time.
+      const at = startedAt.toISOString();
+      setReadAt(startedAt);
       setStale(false);
-      keepTasks(keptKey, { at: at.toISOString(), projects: nextProjects, catalog, conflicted, closed });
+      lastRead.current = { at, projects: nextProjects };
+      keepTasks(keptKey, { at, projects: nextProjects, catalog, conflicted, closed });
     } catch (err) {
       if (mine === reading.current) setError(explainError(err));
     } finally {
@@ -290,6 +302,7 @@ export function MyTasksView({
   // Another person, organization or space: what is kept for it is shown once more on opening.
   useEffect(() => {
     shownOnce.current = false;
+    lastRead.current = null;
   }, [session.username, session.host, pmOrg, lang, contentOrg, mode]);
 
   // Coming back to the app (from a tool, another app, the phone's home screen): show what changed.
@@ -994,7 +1007,7 @@ export function MyTasksView({
           // the foot, not a button beside the title that looked like part of it.
           <p className="task-home__fresh">
             <span>{readAt ? t("mt.readAgo").replace("{when}", formatRelativeEs(readAt, now, language)) : ""}</span>
-            <Button type="button" variant="ghost" disabled={busy} onClick={() => { void reload(); onRefreshActivity?.(); }}>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => { void reload({ whole: true }); onRefreshActivity?.(); }}>
               {busy ? t("mt.refreshing") : t("mt.refresh")}
             </Button>
           </p>

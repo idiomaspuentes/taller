@@ -7,6 +7,7 @@ import {
   listMyIssues,
   listProjectIssues,
   listProjectOpenIssues,
+  syncProjectOpenIssues,
 } from "../dcs/issues";
 import { loadAssignmentsFromDcs, listPmProjects } from "../dcs/persist";
 import { parsePmFacetValue } from "./roles";
@@ -169,8 +170,13 @@ export async function loadMyTasksProjects(params: {
   pmOrg: string;
   lang: string;
   contentOrg: string;
+  /**
+   * The open subtareas of each project as read before (by project id, in capitals) and when: brought up to date
+   * with what changed since, instead of read whole. Absent, or too old, the project is read whole.
+   */
+  known?: Record<string, { at: string; issues: DcsIssue[] }>;
 }): Promise<MyTasksProjectBucket[]> {
-  const { session, pmOrg, lang, contentOrg } = params;
+  const { session, pmOrg, lang, contentOrg, known } = params;
   const [mine, index] = await Promise.all([
     listMyIssues(session, pmOrg),
     listPmProjects(session, pmOrg, lang).catch(() => [] as Awaited<ReturnType<typeof listPmProjects>>),
@@ -188,7 +194,10 @@ export async function loadMyTasksProjects(params: {
   const loadBucket = async (projectId: string): Promise<MyTasksProjectBucket | null> => {
     // The open subtareas are asked for beside the plan, not after it: nearly every plan needs them (to browse a
     // queue, or for what each subtarea waits on), and asked after it they were one more wait on top.
-    const open = listProjectOpenIssues(session, pmOrg, projectId);
+    const prior = known?.[projectId.toUpperCase()];
+    const open = prior
+      ? syncProjectOpenIssues(session, pmOrg, projectId, prior).catch(() => listProjectOpenIssues(session, pmOrg, projectId))
+      : listProjectOpenIssues(session, pmOrg, projectId);
     open.catch(() => undefined);
     const fromDcs = await loadAssignmentsFromDcs(session, pmOrg, lang, projectId, contentOrg);
     const local = loadLocalAssignments(lang, projectId, contentOrg, pmOrg);

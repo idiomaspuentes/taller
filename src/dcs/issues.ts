@@ -53,6 +53,7 @@ import {
 } from "../domain/solvers";
 import { normalizeProjectId } from "../domain/books";
 import { allPages } from "../domain/pages";
+import { canSyncFrom, changesSince, mergeChanged } from "../domain/issueSync";
 import {
   encodeWorkOrderMarker,
   indexWorkIssues,
@@ -170,6 +171,8 @@ type PmSearch = {
   milestones?: string[];
   team?: string;
   assigned?: boolean;
+  /** Only what changed after this moment (RFC 3339). */
+  since?: string;
   maxPages?: number;
   namespaceId?: string;
 };
@@ -202,6 +205,7 @@ async function searchPmIssuesNow(session: GtSession, org: string, opts: PmSearch
         milestones: opts.milestones?.map((m) => scopedMilestone(m)),
         team: opts.team,
         assigned: opts.assigned,
+        since: opts.since,
         type: "issues",
         state: opts.state ?? "open",
         page,
@@ -1094,6 +1098,28 @@ export async function listProjectOpenIssues(
     maxPages: 20,
     namespaceId: pmConfig.namespaceId,
   });
+}
+
+/**
+ * The open subtareas of a project, from a list read at `known.at` and what changed since (see `issueSync.ts`): one
+ * page instead of the whole book. A list too old to be brought up to date is read whole.
+ */
+export async function syncProjectOpenIssues(
+  session: GtSession,
+  org: string,
+  projectId: string,
+  known: { at: string; issues: DcsIssue[] },
+): Promise<DcsIssue[]> {
+  if (!canSyncFrom(known.at)) return listProjectOpenIssues(session, org, projectId);
+  const pmConfig = await loadPmConfig(session, org);
+  const changed = await searchPmIssues(session, org, {
+    state: "all",
+    milestones: [normalizeProjectId(projectId)],
+    since: changesSince(known.at),
+    maxPages: 20,
+    namespaceId: pmConfig.namespaceId,
+  });
+  return mergeChanged(known.issues, changed);
 }
 
 /** Every PM issue (open and closed) of a project milestone. */
