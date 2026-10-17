@@ -23,7 +23,7 @@ import { teamKey } from "../domain/levels";
 import { parseWorkOrderMarker } from "../domain/workOrder";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
-import { loadUnitToPublish, recordEndorsement, stageUnit, unitChanges, unitProblems, type UnitToPublish } from "../dcs/unitPublish";
+import { endorsementStore, loadUnitToPublish, recordEndorsement, reportsKey, stageUnit, unitChanges, unitProblems, type UnitToPublish } from "../dcs/unitPublish";
 import { stagingTasks } from "../domain/unitStage";
 import { createCorrections } from "../dcs/corrections";
 import type { ResourceChanges } from "../dcs/changesSince";
@@ -135,7 +135,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
   const [openItems, setOpenItems] = useState<string[]>([]);
 
   const me = (session?.username ?? "").toLowerCase();
-  const keyOf = (c: SolverLaunchContext) => `${(c.book || c.projectId).toUpperCase()}.${c.issueNumber || c.taskId}.aval`;
+  const keyOf = (c: SolverLaunchContext) => reportsKey(c);
 
   const load = useCallback(async () => {
     const decoded = decodeSolverLaunchContext(ctxEncoded);
@@ -174,7 +174,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
           .then((open) => setOpenItems(open.flatMap((issue) => parseWorkOrderMarker(issue.body ?? "")?.itemIds ?? [])))
           .catch(() => undefined);
       }
-      const docs = await loadPersonDocs<EndorsementReport>(session, loaded.target, keyOf(decoded));
+      const docs = await loadPersonDocs<EndorsementReport>(session, endorsementStore(decoded.pmOrg), keyOf(decoded));
       const list = docs.map((row) => ({ ...row.doc, by: row.doc.by || row.login }));
       setReports(list);
       setMine(list.find((report) => report.by.toLowerCase() === session.username.toLowerCase()) ?? blank(session.username));
@@ -210,7 +210,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
     setError("");
     try {
       const stamped = { ...next, by: session.username, at: new Date().toISOString() };
-      await savePersonDoc(session, data.target, keyOf(ctx), stamped);
+      await savePersonDoc(session, endorsementStore(ctx.pmOrg), keyOf(ctx), stamped);
       setMine(stamped);
       setReports((prev) => [...prev.filter((report) => report.by.toLowerCase() !== me), stamped]);
       if (stamped.delivered && ctx.pmOrg && ctx.issueNumber && data.step) {

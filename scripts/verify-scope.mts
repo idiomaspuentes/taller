@@ -6,6 +6,7 @@ import { listMyIssues, listPmTouchedSince, listProjectOpenIssues, pmIssueLabelNa
 import { assignmentsPath, projectsIndexPath, teamsPath, workflowsPath, inventoryPath } from "../src/domain/store";
 import { issueInScope, projectFromMilestone, scopeKey, scopeLabelName, scopedMilestone, setActiveScope } from "../src/domain/scope";
 import { issueProjectId } from "../src/domain/myTasks";
+import { endorsementKey, endorsementStore, reportsKey } from "../src/dcs/unitPublish";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -64,6 +65,17 @@ await test("los archivos del plan y las copias del navegador se separan por scop
   assert.equal(diagramsPath("jon", 2), "pt/diagramas/JON/2.json", "los diagramas que un equipo corrige son de su espacio");
   assert.equal(workflowsPath(), "pt/workflows.json");
   assert.equal(scopeKey(), "pt:");
+});
+
+await test("los reportes y el aval de una validación van al repositorio del plan, en la carpeta del espacio", () => {
+  // The committee writes there and nowhere in the texts (Abel, 17 October): it only comments and asks for changes.
+  assert.deepEqual(endorsementStore("es-419_gl"), { owner: "es-419_gl", repo: "taller" });
+  const ctx = { book: "ezr", projectId: "EZR", issueNumber: 640, taskId: "validar" };
+  assert.equal(reportsKey(ctx), "EZR.640.aval");
+  assert.equal(endorsementKey({ book: "EZR", range: { chapter: 1, from: 1, to: 11 } }).startsWith("EZR.aval-unidad."), true);
+  setActiveScope("pt");
+  assert.equal(reportsKey(ctx), "pt/EZR.640.aval", "la misma subtarea en otro espacio no choca");
+  assert.equal(endorsementKey({ book: "EZR", range: { chapter: 1, from: 1, to: 11 } }).startsWith("pt/EZR.aval-unidad."), true);
 });
 
 // A Door43 whose search returns issues of every workspace, as it does: it cannot tell them apart.

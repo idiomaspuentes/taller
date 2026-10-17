@@ -17,6 +17,8 @@ import { bookUsfmName } from "../prep/discover";
 import { resolveHelpsTarget } from "../domain/helpsTarget";
 import type { LevelBook } from "../domain/levels";
 import { DEFAULT_PM_CONFIG, resolveResourceRepo } from "../domain/roles";
+import { scopeFolder } from "../domain/scope";
+import { PM_REPO_NAME } from "../domain/types";
 import { resolveScriptureTarget } from "../domain/scriptureTarget";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage } from "../domain/sourcePackage";
@@ -82,7 +84,7 @@ export type UnitToPublish = {
   chapter: number;
   range: RefRange;
   resources: UnitResource[];
-  /** Where review documents are kept (the endorsement record among them). */
+  /** Where the validation keeps its documents (the reports and the endorsement): see `endorsementStore`. */
   store: CheckTarget;
   levelBook: LevelBook;
   board: AssignmentsDoc | null;
@@ -131,7 +133,6 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
   const config = dcsConfig(session.host);
 
   const resources: UnitResource[] = [];
-  let store: CheckTarget | null = null;
   // Which articles the unit links to is read once: from the team's notes and from the list of key terms.
   let linked: ReturnType<typeof articlesOfUnit> | null = null;
   const linkedArticles = async () => {
@@ -200,7 +201,6 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
       draft = found ? { text: found.text, branch: found.branch } : null;
       const source = spec.source ? await readRaw(session, pkg.owner, pkg[spec.source], bookUsfmName(book)) : null;
       expectedVerses = source ? [...new Set(listVerseSpans(source).filter((span) => span.chapter === range.chapter).flatMap((span) => Array.from({ length: span.verseTo - span.verse + 1 }, (_, i) => span.verse + i)))] : [];
-      store ??= { owner, repo };
     } else {
       const target = resolveHelpsTarget({ ...ctx, resource }, pmConfig);
       if ("error" in target || !target.filepath) continue;
@@ -214,12 +214,7 @@ export async function loadUnitToPublish(params: { session: GtSession; ctx: Solve
     const published = await readRepoFile(session, { owner, repo, branch: defaultBranch }, filepath).catch(() => null);
     resources.push({ resource, kind: spec.kind, owner, repo, filepath, draft, defaultBranch, published, expectedVerses });
   }
-  if (!store) {
-    const home = resolveScriptureTarget({ ...ctx, resource: "tpl" }, pmConfig);
-    if ("error" in home) throw new Error(home.error);
-    store = { owner: home.owner, repo: home.repo };
-  }
-  return { book, chapter: ctx.chapter, range, resources, store, levelBook: pmConfig, board, task, step };
+  return { book, chapter: ctx.chapter, range, resources, store: endorsementStore(ctx.pmOrg), levelBook: pmConfig, board, task, step };
 }
 
 /** What each resource of the unit holds now, piece by piece. */
@@ -231,8 +226,18 @@ export function unitFingerprints(unit: UnitToPublish): UnitFingerprints {
   return out;
 }
 
+/**
+ * Where a validation keeps the reports of the committee and its endorsement: the plan repository, which the committee
+ * may write to. They were kept on a branch of the TPL's repository, so the committee had to be able to write the text
+ * it only comments on (Abel, 17 October): what it asks to change goes to the tuners as subtareas.
+ */
+export const endorsementStore = (pmOrg: string): CheckTarget => ({ owner: pmOrg, repo: PM_REPO_NAME });
+/** The reports of the committee on one validation subtarea, under the folder of the space. */
+export const reportsKey = (ctx: Pick<SolverLaunchContext, "book" | "projectId" | "issueNumber" | "taskId">): string =>
+  `${scopeFolder()}${(ctx.book || ctx.projectId).toUpperCase()}.${ctx.issueNumber || ctx.taskId}.aval`;
+
 type EndorsementRecord = { by: string; at: string; issue?: number; fingerprints: UnitFingerprints };
-const endorsementKey = (unit: Pick<UnitToPublish, "book" | "range">) => `${unit.book}.aval-unidad.${unitSlug(unit.range)}`;
+export const endorsementKey = (unit: Pick<UnitToPublish, "book" | "range">) => `${scopeFolder()}${unit.book}.aval-unidad.${unitSlug(unit.range)}`;
 
 /** A committee endorsed the unit as it is now: keep what it was, so publishing can tell if it changed afterwards. */
 export async function recordEndorsement(session: GtSession, unit: UnitToPublish, issue?: number): Promise<void> {
