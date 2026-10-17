@@ -23,6 +23,7 @@ import {
   deliverableFromTool,
   agreeInTool,
   agreementStanding,
+  withdrawInTool,
 } from "../src/domain/stepClaim.ts";
 import {
   parseTaskProgressMarker,
@@ -245,6 +246,13 @@ assert(
   const closedLate = say(unsettled, "dani", { mine: false });
   assert(done(closedLate) && !agreementStanding(closedLate, agreement).seated.includes("dani"), "once it is resolved the step closes, without seating whoever resolved it");
   assert(say(one, "dani", { mine: false }) === one, "and looking whether it can close gives nobody's agreement");
+
+  const regretted = withdrawInTool(waitsForCarla, agreement, "Bea");
+  assert(agreementStanding(regretted, agreement).agreed.join() === "ana" && agreementStanding(regretted, agreement).seated.includes("bea"), "an agreement taken back before the step closes is no longer counted, and its person stays seated");
+  assert(!done(say(regretted, "carla")), "so the step waits for them again");
+  assert(withdrawInTool(regretted, agreement, "bea") === regretted, "taking it back twice changes nothing");
+  const closed = say(one, "bea");
+  assert(withdrawInTool(closed, agreement, "bea") === closed, "once the step is closed, what was agreed is written and nothing is taken back");
 }
 
 console.log("verify-step-claim: ok");

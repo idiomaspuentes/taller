@@ -9,16 +9,19 @@ import { loadUnitItems, loadUnitTexts, type ChecklistItem, type ChecklistKind, t
 import { loadTermTitles } from "../dcs/afinacionLoad";
 import { termLabel } from "../domain/afinacionWords";
 import { bookLabel } from "../domain/books";
-import { alignedGatewayQuoteForHelpQuote } from "../domain/helpQuoteMatch";
+import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
+import { verseIsAligned } from "../domain/checklistReady";
+import { freshRowId } from "../domain/helpsDraft";
+import { verseFromSid } from "../domain/usfmAst";
 import { resolveSourcePackage } from "../domain/sourcePackage";
 import { QuoteVerse } from "./QuoteVerse";
 import { TextChangeView, saveLayout, savedLayout } from "./TextChangeView";
-import { originalTokens } from "../domain/quoteFromSelection";
+import { originalTokens, quoteFromSelection } from "../domain/quoteFromSelection";
 import { appendCheckAnswers } from "../dcs/checkStore";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { loadPmConfig } from "../dcs/issues";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
-import { agreeStepFromTool, stepAgreement, type StepAgreement } from "../dcs/roundClose";
+import { agreeStepFromTool, stepAgreement, withdrawStepAgreementFromTool, type StepAgreement } from "../dcs/roundClose";
 import { explainError } from "../dcs/userError";
 import { uid } from "../domain/assignment";
 import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalHelp, proposalKeeping, proposalSaying, proposalWords, proposalsOf, readable, saveTrialChecks, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
@@ -197,17 +200,35 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   };
   const failedOf = (view: Listed): string => (askedOf(view) ? t("pr.failed").replace("{q}", askedOf(view)) : "");
 
+  /**
+   * A comment on a help of the team's own names no words to write: as it is it cannot be agreed on, only written
+   * out (or left as it is). Agreed on, the step closed with nothing written and a message nobody understood.
+   */
+  const asksWords = (view: ProposalView) => ours(view.proposal.resource) && !view.proposal.after && !view.proposal.split;
   const listed = useMemo<Listed[]>(
-    () => byPlaceAndHelp((data?.steps ?? []).flatMap((step) => proposalsOf(answers[step.key] ?? [], needed, ours).map((view) => ({ ...view, stepKey: step.key })))),
+    () =>
+      byPlaceAndHelp(
+        (data?.steps ?? []).flatMap((step) =>
+          proposalsOf(answers[step.key] ?? [], needed, ours).map((view) => ({ ...view, stepKey: step.key, ...(!stepDone && view.state === "agreed" && asksWords(view) ? { state: "open" as const } : {}) })),
+        ),
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [answers, data, needed],
+    [answers, data, needed, stepDone],
   );
   /** The proposals by the help they are about, in the order they are read. */
   const groups = useMemo<HelpGroup[]>(() => {
     const out: HelpGroup[] = [];
     const byKey = new Map<string, HelpGroup>();
+    // A version written in answer to another stays with it, though it is about another row: a comment written
+    // out as a new note went off to a help of its own, and the comment's said «se acordó dejarla como está».
+    const byId = new Map(listed.map((view) => [view.proposal.id, view]));
+    const keyOf = (view: Listed, seen = new Set<string>()): string => {
+      const was = view.proposal.replaces ? byId.get(view.proposal.replaces) : undefined;
+      if (was && !seen.has(was.proposal.id)) return keyOf(was, seen.add(view.proposal.id));
+      return proposalHelp(view.proposal) || view.proposal.id;
+    };
     for (const view of listed) {
-      const key = proposalHelp(view.proposal) || view.proposal.id;
+      const key = keyOf(view);
       const group = byKey.get(key);
       if (group) group.views.push(view);
       else {
@@ -352,10 +373,41 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
    */
   // A help proposed as new has no words yet but the ones proposed: another version of it starts from nothing too.
   const answerFrom = answering ? (answering.proposal.add ? "" : (wordsNow(answering.proposal) ?? answering.proposal.before)) : undefined;
+  /**
+   * A comment of the team's own about a note nobody could tell (the sheet did not say which, or it is a new one):
+   * written out it is a new note of its verse, with the words it is about marked as in the list. Written as a
+   * version of the comment, it was one more comment.
+   */
+  const asNewNote = answering && asksWords(answering) && answering.proposal.resource === "notas" && !answering.proposal.rowId ? answering : null;
+  const newNoteId = useMemo(() => freshRowId(Object.keys(helpItems)), [helpItems, asNewNote?.proposal.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const noteVerse = (() => {
+    if (!asNewNote || !ctx) return null;
+    const [chapter, verse] = asNewNote.proposal.where.split(":").map(Number);
+    const text = (["tpl", "tps"] as ChecklistText[]).map((resource) => unitTexts?.[resource]).find(Boolean);
+    if (!verse || chapter !== ctx.chapter || !text || !original || !verseIsAligned(text.alignments, chapter, verse)) return null;
+    const sid = Object.keys(text.alignments ?? {}).find((key) => verseFromSid(key, chapter) === verse);
+    return { words: tokenizeVersePlainText(text.verses[verse] ?? ""), groups: sid ? text.alignments![sid]! : [], original: originalTokens(original, chapter, verse) };
+  })();
+  /** The words of the original under the words marked, and how those read: what the new note quotes. */
+  const quotedBy = (marked: number[] | undefined): Pick<ProposalPayload, "fields" | "about"> => {
+    if (!noteVerse || !marked?.length) return {};
+    const found = quoteFromSelection({ verseTokens: noteVerse.words, selected: marked, groups: noteVerse.groups, original: noteVerse.original });
+    const about = marked.map((index) => noteVerse.words[index]).join(" ");
+    return found ? { fields: { Quote: found.quote, Occurrence: String(found.occurrence) }, about } : { about };
+  };
+  // The words a comment moved in from the sheet proposes, to start from: «… Propone: «…»».
+  const proposedInComment = asNewNote ? /Propone: «([\s\S]*)»\s*$/.exec(asNewNote.reason)?.[1] : undefined;
+
   const answerWith = (draft: ProposalDraft) =>
     act(async () => {
       if (!answering) return;
       const was = answering.proposal;
+      if (asNewNote && draft.after) {
+        const proposal: ProposalPayload = { ...was, id: `pr-${uid()}`, replaces: was.id, add: true, rowId: newNoteId, field: "Note", after: draft.after, ...quotedBy(draft.marked) };
+        await add(answering.stepKey, [proposalAnswer({ itemId: answering.itemId, questionId: answering.questionId, by: me, at: new Date().toISOString(), reason: draft.reason, proposal })]);
+        setAnswering(null);
+        return announce(t("ck.proposed"));
+      }
       // Answering one that parts a note in two: still in two, with its new note as rewritten, or in one again.
       // Written beside the others («Escribir otra versión»), it is one more to choose from; in answer to one, it
       // takes its place.
@@ -365,11 +417,13 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       setAlongside(false);
       announce(t("ck.proposed"));
     });
-  const answerTargets: ProposalTarget[] = answering
+  const answerTargets: ProposalTarget[] = asNewNote
+    ? [{ id: "same", label: t("pr.targetNewNote").replace("{ref}", asNewNote.proposal.where), resource: "notas", rowId: newNoteId, field: "Note", text: "", format: "note", add: true, ...(noteVerse?.words.length ? { words: noteVerse.words } : {}) }]
+    : answering
     ? [{ id: "same", label: `${answering.proposal.where} · ${nameOf(answering.proposal.resource)}`, resource: answering.proposal.resource, text: answerFrom, commentOnly: answerFrom === undefined, ...(answering.proposal.add ? { add: true } : {}), ...(answering.proposal.split ? { split: { rowId: answering.proposal.split.rowId } } : {}), ...(answering.proposal.path ? { format: "markdown" as const } : answering.proposal.rowId && (answering.proposal.field ?? "Note") === "Note" ? { format: "note" as const } : {}), ...(ours(answering.proposal.resource) ? {} : { team: teamOf(answering.proposal.resource) }) }]
     : [];
   // A version the help no longer fits is not what the next one starts from: that one starts from the help.
-  const answerStart = answering && changedTo(answering) === undefined ? answering.proposal.after : undefined;
+  const answerStart = asNewNote ? proposedInComment : answering && changedTo(answering) === undefined ? answering.proposal.after : undefined;
 
   /**
    * My agreement on the step, and with it the step itself when it is everybody's. Closing the last step of a
@@ -400,6 +454,15 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       announce(t(!now.open ? "ag.locked" : now.agreed.some((who) => who.toLowerCase() === me.toLowerCase()) ? "ag.approved" : "ag.cannot"));
     });
   }
+  /** My agreement on the step taken back, while it is open: as a vote can be (16 October). */
+  async function takeBackAgreement() {
+    if (!session || !ctx || !data?.step || trying || !ctx.pmOrg || !ctx.issueNumber) return;
+    await act(async () => {
+      const now = await withdrawStepAgreementFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, steps: data.task?.steps ?? [], step: data.step! });
+      setStanding(now);
+      announce(t(now.done ? "ag.unapproveLate" : "ag.unapproved"));
+    });
+  }
   // Everybody had agreed and something was still to be resolved: the step closes when the last of it is, once.
   const closedLate = useRef(false);
   useEffect(() => {
@@ -415,7 +478,13 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
     if (!standing) return t("ag.allSettled");
     if (!standing.open) return t("ag.locked");
     const names = (list: string[]) => list.map((who) => `@${who}`).join(", ");
-    if (approved) return `${t("ag.youAgreed")} ${standing.missing.length ? t("ag.missingWho").replace("{who}", names(standing.missing)) : t("ag.missingOther")}`;
+    // Nobody seated is missing, and the step takes more people than have sat down: how many more.
+    const more = Math.max(1, standing.needed - standing.agreed.length);
+    if (approved) return `${t("ag.youAgreed")} ${standing.missing.length ? t("ag.missingWho").replace("{who}", names(standing.missing)) : more > 1 ? t("ag.missingOthers").replace("{n}", String(more)) : t("ag.missingOther")}`;
+    // The last agreement writes what was agreed, and there is no taking it back: said before it is given.
+    const seatedMe = standing.seated.some(isMe);
+    const others = standing.missing.filter((who) => !isMe(who));
+    if (!others.length && standing.seated.length + (seatedMe ? 0 : 1) >= standing.needed) return t("ag.lastOne");
     return standing.agreed.length ? `${t("ag.allSettled")} ${t("ag.agreedBy").replace("{who}", names(standing.agreed))}` : t("ag.allSettled");
   };
 
@@ -581,7 +650,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
       <li key={view.proposal.id} className="ag-opt" data-picked={(live && standOf(group) === view.proposal.id && !isMe(view.by)) || undefined} data-state={view.state}>
         <div className="ag-opt__head">
           <b>{titleOf(view)}</b>
-          <span className="ag-opt__who">{live ? backingOf(view) : t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</span>
+          {live && asksWords(view) ? null : <span className="ag-opt__who">{live ? backingOf(view) : t(PROPOSAL_STATE_KEY[view.state]).replace("{team}", teamOf(view.proposal.resource))}</span>}
         </div>
         {versionText(view)}
         {view.proposal.after && why ? (
@@ -645,7 +714,20 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             }
           />
         ) : null}
-        {live && !stale ? voteFor(group, view.proposal.id, isMe(view.by) && !trying, t(view.proposal.after ? "ag.vote" : "ag.voteComment")) : null}
+        {live && asksWords(view) ? (
+          // Written out, the version takes the comment's place and is the one voted on.
+          <div className="ag-vote ag-vote--words">
+            <p className="af-hint">{t("ag.commentNeedsWords")}</p>
+            <Button type="button" variant="outline" disabled={saving} onClick={() => {
+              setAlongside(false);
+              setAnswering(view);
+            }}>
+              {t("ag.writeFromComment")}
+            </Button>
+          </div>
+        ) : live && !stale ? (
+          voteFor(group, view.proposal.id, isMe(view.by) && !trying, t(view.proposal.after ? "ag.vote" : "ag.voteComment"))
+        ) : null}
       </li>
     );
   };
@@ -857,9 +939,14 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
               that could not be touched until the last of 84 was the loudest thing on the screen. */}
           <div className="ck-go ag-foot-bar" data-on>
             {stepDone ? (
-              <Button type="button" size="lg" variant="outline" onClick={onClose}>
-                {t("fa.back")}
-              </Button>
+              <>
+                <p className="ag-foot" role="status">
+                  {t("ag.closedFinal")}
+                </p>
+                <Button type="button" size="lg" variant="outline" onClick={onClose}>
+                  {t("fa.back")}
+                </Button>
+              </>
             ) : undecided.length ? (
               <p className="ag-foot" role="status">
                 {t(leftToMe ? "ag.footLeft" : "ag.footLeftNone").replace("{n}", String(leftToMe)).replace("{m}", String(settledGroups)).replace("{t}", String(groups.length))}
@@ -869,9 +956,15 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
                 <p className="ag-foot" role="status">
                   {footSays()}
                 </p>
-                <Button type="button" size="lg" disabled={saving || approved || standing?.open === false} onClick={() => void agreeOnStep(true)}>
-                  {t("ag.approve")}
-                </Button>
+                {approved ? (
+                  <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void takeBackAgreement()}>
+                    {t("ag.unapprove")}
+                  </Button>
+                ) : (
+                  <Button type="button" size="lg" disabled={saving || standing?.open === false} onClick={() => void agreeOnStep(true)}>
+                    {t("ag.approve")}
+                  </Button>
+                )}
               </>
             )}
           </div>

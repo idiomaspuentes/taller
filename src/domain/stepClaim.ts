@@ -352,6 +352,18 @@ export function agreeInTool(params: { progress: TaskProgressMarker; steps: TaskS
   return next;
 }
 
+/**
+ * An agreement on a step taken back, while the step is open: the person stays seated and the step waits for them
+ * again. Once the step is closed what was agreed is written, and nothing is taken back here.
+ */
+export function withdrawInTool(progress: TaskProgressMarker, step: TaskStep, login: string): TaskProgressMarker {
+  const user = login.trim().toLowerCase();
+  if (!user || isStepDone(progress, step.id)) return progress;
+  const runtime = getStepRuntime(progress, step.id);
+  const approvals = runtime.approvals.filter((a) => a.toLowerCase() !== user);
+  return approvals.length === runtime.approvals.length ? progress : withStepRuntime(progress, step.id, { ...runtime, approvals });
+}
+
 /** The step whose work a review looks at (the draft): the first step it excludes, else the one right before it. */
 export function reviewedStepId(steps: TaskStep[], step: TaskStep): string | undefined {
   const named = step.excludePriorStepIds?.[0];

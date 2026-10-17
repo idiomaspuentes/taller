@@ -1,7 +1,7 @@
 import type { GtSession } from "./auth";
 import { setIssueTaskProgress } from "./issues";
 import { getPmIssue } from "./portionPr";
-import { agreeInTool, agreementStanding, approveStep, isStepUnlocked, type AgreementStanding } from "../domain/stepClaim";
+import { agreeInTool, agreementStanding, approveStep, isStepUnlocked, withdrawInTool, type AgreementStanding } from "../domain/stepClaim";
 import { isStepDone, markStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import type { TaskStep } from "../domain/types";
 
@@ -56,6 +56,16 @@ export async function agreeStepFromTool(params: { session: GtSession; pmOrg: str
   const progress = parseTaskProgressMarker(issue.body);
   const author = issue.assignee?.login || issue.assignees?.[0]?.login || undefined;
   const next = agreeInTool({ progress, steps, step, login: session.username, settled: params.settled, mine: params.mine, author });
+  if (next !== progress) await setIssueTaskProgress(session, pmOrg, issue, next);
+  return agreementOf(next, steps, step);
+}
+
+/** The signed-in person's agreement on a step taken back (see `withdrawInTool`), from the subtarea read again. */
+export async function withdrawStepAgreementFromTool(params: { session: GtSession; pmOrg: string; issueNumber: number; steps: TaskStep[]; step: TaskStep }): Promise<StepAgreement> {
+  const { session, pmOrg, issueNumber, steps, step } = params;
+  const issue = await getPmIssue(session, pmOrg, issueNumber);
+  const progress = parseTaskProgressMarker(issue.body);
+  const next = withdrawInTool(progress, step, session.username);
   if (next !== progress) await setIssueTaskProgress(session, pmOrg, issue, next);
   return agreementOf(next, steps, step);
 }
