@@ -1,5 +1,5 @@
 import { selectionFromWords, wordSpans } from "./afinacionSelection";
-import { textFingerprint, type ReviewDecision } from "./reviewRound";
+import { tcCheckerOf, textFingerprint, type ReviewDecision } from "./reviewRound";
 
 /**
  * What a team already checked in a translationCore project, read as the answers this app keeps.
@@ -91,6 +91,8 @@ export function decisionsFromTcChecks(params: {
   stageId: string;
   /** What is written with each answer, so that it is known where it came from. */
   note?: string;
+  /** Who did the checks in translationCore, kept with each answer (see `ReviewDecision.checkedBy`). */
+  checkedBy?: string;
   /** Record each as the decision of the team (it is one: the team checked it together), not as one person's answer. */
   final?: boolean;
 }): TcImportResult {
@@ -138,6 +140,9 @@ export function decisionsFromTcChecks(params: {
       reviewer: params.reviewer,
       timestamp: params.timestamp,
       note: params.note || undefined,
+      // A check of translationCore, not an answer given here: it is nobody's vote while the step is open.
+      source: "translationCore",
+      ...(params.checkedBy || tcCheckerOf({ note: params.note }) ? { checkedBy: params.checkedBy || tcCheckerOf({ note: params.note }) } : {}),
       textHash: textFingerprint(text),
       ...(params.final ? { final: true } : {}),
     });

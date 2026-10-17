@@ -74,15 +74,22 @@ test("an older project, whose checks have no id, is counted and not guessed", ()
   assert.equal(result.decisions.length, 0);
 });
 
-test("brought as the decision of the team, a check settles its item without asking each person again", () => {
-  const { decisions } = decisionsFromTcChecks({ ...base, final: true, note: "Traído de translationCore", checks: [check("cz5n", 1, { selections: [{ text: "motivó a Ciro", occurrence: 1 }] })] });
-  const tally = (confirmers: string[]) => tallyItem({ itemId: "cz5n", decisions, currentHash: textFingerprint(verse), levels: {}, authors: [], thresholds: { minAgree: 2, minIndependent: 1 }, confirmers });
-  assert.equal(tally(["coordina"]).state, "agreed");
-  assert.equal(tally(["coordina"]).decided?.note, "Traído de translationCore");
-  // Recorded by somebody who may not decide for the team, it is one answer more.
-  assert.equal(tally([]).state, "pending");
-  // And a verse corrected afterwards asks for it again.
-  assert.equal(tallyItem({ itemId: "cz5n", decisions, currentHash: textFingerprint("otro texto"), levels: {}, authors: [], thresholds: { minAgree: 2, minIndependent: 1 }, confirmers: ["coordina"] }).state, "pending");
+test("cada comprobación traída queda marcada como de translationCore, con quien la hizo allí", () => {
+  const { decisions } = decisionsFromTcChecks({ ...base, final: true, note: "Comprobación hecha en translationCore (Keneramk)", checks: [check("cz5n", 1, { selections: [{ text: "motivó a Ciro", occurrence: 1 }] })] });
+  assert.equal(decisions[0]!.source, "translationCore");
+  assert.equal(decisions[0]!.checkedBy, "Keneramk");
+});
+
+test("con el paso abierto, lo traído de translationCore no cierra el punto ni es voto, aunque lo traiga quien coordina; con el paso cerrado, sí lo muestra cerrado", () => {
+  const { decisions } = decisionsFromTcChecks({ ...base, reviewer: "coordina", final: true, note: "Comprobación hecha en translationCore (Keneramk)", checks: [check("cz5n", 1, { selections: [{ text: "motivó a Ciro", occurrence: 1 }] })] });
+  const tally = (tcCloses: boolean, hash = textFingerprint(verse)) => tallyItem({ itemId: "cz5n", decisions, currentHash: hash, levels: { coordina: "habilitada" }, authors: [], thresholds: { minAgree: 2, minIndependent: 1 }, confirmers: ["coordina"], tcCloses });
+  assert.equal(tally(false).state, "pending");
+  assert.equal(tally(false).agree, 0);
+  assert.equal(tally(false).decided, undefined);
+  assert.equal(tally(true).state, "agreed");
+  assert.deepEqual(tally(true).decided?.by, "Keneramk");
+  // A verse corrected afterwards asks for it again, even on a closed step.
+  assert.equal(tally(true, textFingerprint("otro texto")).state, "pending");
 });
 
 test("una respuesta traída de translationCore se atribuye a quien la comprobó allí, no a quien la importó", () => {

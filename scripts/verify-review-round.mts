@@ -12,6 +12,7 @@ import {
   standingAnswers,
   summarizeRound,
   tallyItem,
+  tcCheckerOf,
   textFingerprint,
   withAnswersGivenHere,
   type ReviewDecision,
@@ -32,6 +33,7 @@ const levels: Record<string, PersonLevel> = {
   dora: "practicante",
   eva: "aprendiz",
 };
+const LEVELS = levels;
 const thresholds = { minAgree: 3, minIndependent: 2 };
 const authors = ["ana"]; // Ana wrote the draft
 
@@ -219,25 +221,43 @@ test("lo que cambió una corrección se dice en pocas palabras, con algo alreded
   assert.deepEqual(changedStretch("uno dos", "uno tres"), { before: "uno dos", now: "uno tres" });
 });
 
-test("lo comprobado en translationCore cierra el punto, aunque lo haya traído alguien que no coordina, y sigue cerrado tras corregir otras palabras", () => {
+test("con el paso cerrado, lo comprobado en translationCore muestra el punto cerrado, aunque lo haya traído alguien que no coordina, y sigue cerrado tras corregir otras palabras", () => {
   const tc = { ...about("dora", "necesidad", "approved", "tengo la necesidad de escribirles,", { note: "Comprobación hecha en translationCore (Keneramk)", final: true }) };
   const fixedNow = (d: ReviewDecision) => (d.itemId === "necesidad" ? undefined : FIXED);
   // Dora imported it; she is no confirmer, and no level of hers counts.
-  const closed = tallyItem({ itemId: "necesidad", decisions: [tc], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["carla"] });
+  const closed = tallyItem({ itemId: "necesidad", decisions: [tc], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["carla"], tcCloses: true });
   assert.deepEqual(closed.decided, { by: "Keneramk", at: tc.timestamp, inTc: true });
   // «salvación» was checked there too; a correction elsewhere in the verse leaves those words, and the point closed.
   const other = about("dora", "salvacion", "approved", "sobre nuestra salvación común,", { note: "Comprobación hecha en translationCore (Keneramk)", final: true });
   const standing = standingAnswers([other], fixedNow);
-  const after = tallyItem({ itemId: "salvacion", decisions: standing, levels, authors: [], thresholds, currentHash: textFingerprint(FIXED), confirmers: ["carla"] });
+  const after = tallyItem({ itemId: "salvacion", decisions: standing, levels, authors: [], thresholds, currentHash: textFingerprint(FIXED), confirmers: ["carla"], tcCloses: true });
   assert.equal(after.decided?.inTc, true, "sigue cerrado");
   // An objection after it opens it again.
   const objection = { ...answer("bea", "salvacion", "rejected", { hash: textFingerprint(FIXED), note: "No es común a todos." }) };
-  const reopened = tallyItem({ itemId: "salvacion", decisions: [...standing, objection], levels, authors: [], thresholds, currentHash: textFingerprint(FIXED), confirmers: ["carla"] });
+  const reopened = tallyItem({ itemId: "salvacion", decisions: [...standing, objection], levels, authors: [], thresholds, currentHash: textFingerprint(FIXED), confirmers: ["carla"], tcCloses: true });
   assert.equal(reopened.decided, undefined);
   assert.equal(reopened.state, "disputed");
   // What was half done there, not final, is an ordinary answer.
   const half = { ...tc, final: undefined };
-  assert.equal(tallyItem({ itemId: "necesidad", decisions: [half], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["carla"] }).decided, undefined);
+  assert.equal(tallyItem({ itemId: "necesidad", decisions: [half], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["carla"], tcCloses: true }).decided, undefined);
+});
+
+test("con el paso abierto, lo comprobado en translationCore no es voto de nadie ni cierra el punto: todos lo responden de nuevo", () => {
+  // Brought over by abelper8, who coordinates: under his name, and it counted as his vote and closed the point.
+  const levels = { ...LEVELS, abelper8: "habilitada" as const };
+  const tc ={ ...about("abelper8", "necesidad", "approved", "tengo la necesidad de escribirles,", { note: "Comprobación hecha en translationCore (Keneramk)", final: true }) };
+  const open = tallyItem({ itemId: "necesidad", decisions: [tc], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["abelper8"] });
+  assert.equal(open.decided, undefined, "no lo cierra");
+  assert.equal(open.state, "pending");
+  assert.equal(open.agree, 0, "no cuenta como voto");
+  assert.deepEqual(open.answers, [], "ni como respuesta de quien lo trajo");
+  // Marked as brought from translationCore, without the note, the same.
+  const marked = { ...tc, note: undefined, source: "translationCore" as const, checkedBy: "Keneramk" };
+  assert.equal(tallyItem({ itemId: "necesidad", decisions: [marked], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["abelper8"] }).agree, 0);
+  assert.equal(tcCheckerOf(marked), "Keneramk");
+  // The answers given here count as always, beside it.
+  const ana = answer("ana", "necesidad", "approved", { hash: textFingerprint(VERSE) });
+  assert.equal(tallyItem({ itemId: "necesidad", decisions: [tc, ana], levels, authors: [], thresholds, currentHash: textFingerprint(VERSE), confirmers: ["abelper8"] }).agree, 1);
 });
 
 test("al releer las respuestas se ven las de los demás, y no se pierde la que se acaba de dar aquí", () => {

@@ -1,7 +1,7 @@
 import { isIntroRef, parseVerseRef } from "../prep/inventory";
 import type { NoteItem } from "./afinacionNotes";
 import { normalizeHelpsText } from "./helpQuoteMatch";
-import { textFingerprint, type ReviewDecision } from "./reviewRound";
+import { fromTc, textFingerprint, type ReviewDecision } from "./reviewRound";
 
 /**
  * The «Revisar palabras clave» step of a Afinación: one item per use of a key
@@ -300,8 +300,9 @@ export function firstUnanswered(params: {
   const me = params.me.trim().toLowerCase();
   const mine = new Set([
     ...(params.settled ?? []),
+    // What was checked in translationCore is nobody's answer here, whoever brought it over.
     ...params.decisions
-      .filter((d) => d.reviewer.trim().toLowerCase() === me && (d.textHash === undefined || d.textHash === params.hashOf(d.itemId)))
+      .filter((d) => d.reviewer.trim().toLowerCase() === me && !fromTc(d) && (d.textHash === undefined || d.textHash === params.hashOf(d.itemId)))
       .map((d) => d.itemId),
   ]);
   for (let i = params.from ?? 0; i < params.items.length; i++) if (!mine.has(params.items[i]!.id)) return i;

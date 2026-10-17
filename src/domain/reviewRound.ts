@@ -23,6 +23,10 @@ export type ReviewDecision = CheckingDecision & {
   textHash?: string;
   /** The proposal or objection this answer was made with (see alignmentDecision.ts). */
   proposalId?: string;
+  /** Brought from a translationCore project: a check done there, not an answer given here. */
+  source?: "translationCore";
+  /** Who did that check in translationCore; the answer is written under whoever brought it over. */
+  checkedBy?: string;
   /**
    * The team's final decision on this item, after talking it over: recorded by the team's coordinator or a persona
    * habilitada of the team, with what was agreed in `note`. It settles the item for everybody.
@@ -62,16 +66,19 @@ export type ItemTally = {
  * translationCore (Keneramk)»). The answer is written by whoever imported it, and the team read «@abelper8 · De
  * acuerdo» where Ramón had checked the point. Undefined for an answer given in this app.
  */
-export function tcCheckerOf(decision: { note?: string }): string | undefined {
-  return /translationCore\s*\(([^)]+)\)/.exec(decision.note ?? "")?.[1]?.trim() || undefined;
+export function tcCheckerOf(decision: { note?: string; checkedBy?: string }): string | undefined {
+  return decision.checkedBy?.trim() || /translationCore\s*\(([^)]+)\)/.exec(decision.note ?? "")?.[1]?.trim() || undefined;
 }
 
+/** An answer brought from translationCore: marked so by the import, or, before it was marked, said so in its note. */
+export const fromTc = (d: { note?: string; source?: string; checkedBy?: string }): boolean => d.source === "translationCore" || tcCheckerOf(d) !== undefined;
+
 /**
- * A check finished in translationCore closes its point, whoever brought it over: the work was done before it came
- * to this app, and Ezra arrived with its points open to be answered again (16 October). Only a final answer: what
- * was half done there is an ordinary answer.
+ * A check finished in translationCore, on a step that is closed: it shows the point as closed there. On a step still
+ * open it is nobody's vote and closes nothing: everybody answers it again (Abel, 17 October). It closed every point
+ * that way, and counted as the vote of whoever ran the migration, under whose name it was written.
  */
-const closedInTc = (d: ReviewDecision) => d.final === true && d.status === "approved" && tcCheckerOf(d) !== undefined;
+const closedInTc = (d: ReviewDecision) => d.final === true && d.status === "approved" && fromTc(d);
 
 /** Small stable fingerprint of a verse's plain text (whitespace and NFC normalised). */
 export function textFingerprint(text: string): string {
@@ -110,10 +117,12 @@ export function tallyItem(params: {
   thresholds: ReviewThresholds;
   /** Logins who may record the team's final decision. A `final` answer of anybody else is an ordinary answer. */
   confirmers?: string[];
+  /** The step is closed: what was checked in translationCore shows the point closed. Otherwise it counts for nothing. */
+  tcCloses?: boolean;
 }): ItemTally {
   const { itemId, currentHash, levels, thresholds } = params;
   const authors = new Set(params.authors.map((a) => a.trim().toLowerCase()));
-  const mine = params.decisions.filter((d) => d.itemId === itemId && isStance(d.status));
+  const mine = params.decisions.filter((d) => d.itemId === itemId && isStance(d.status) && (params.tcCloses || !fromTc(d)));
   const latest = latestPerReviewer(mine);
   const stale = latest.filter((d) => currentHash !== undefined && d.textHash !== undefined && d.textHash !== currentHash);
   const staleSet = new Set(stale);
@@ -255,6 +264,8 @@ export function summarizeRound(params: {
   reviewers?: string[];
   /** Logins who may record the team's final decision. */
   confirmers?: string[];
+  /** See `tallyItem`. */
+  tcCloses?: boolean;
 }): RoundSummary {
   const items = params.itemIds.map((itemId) =>
     tallyItem({
@@ -265,6 +276,7 @@ export function summarizeRound(params: {
       authors: [...params.authors, ...(params.authorsByItem?.[itemId] ?? [])],
       thresholds: params.thresholds,
       confirmers: params.confirmers,
+      tcCloses: params.tcCloses,
     }),
   );
   const agreed = items.filter((i) => i.state === "agreed").length;

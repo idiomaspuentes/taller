@@ -75,7 +75,7 @@ import { glossesInclude, strongParts, type LexiconFile } from "../domain/lexicon
 import { WordSheet } from "./WordSheet";
 import { referentKey } from "../domain/referents";
 import { CorrectionSheet } from "./CorrectionSheet";
-import { spanLabel } from "../domain/joinedVerses";
+import { spanLabel } from "../domain/joinedVerses";
 import { LoadingState } from "./LoadingState";
 
 export type AlineacionMode = "alinear" | "revisar";
@@ -627,7 +627,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   }, [shared, data, effective, groups]);
   const tally =
     verse && data
-      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds })
+      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds, tcCloses: stepDone })
       : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -642,10 +642,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
             authors: [],
             authorsByItem: Object.fromEntries(data.verses.map((v) => [itemId(data.chapter, v.verse), authorsOf(v)])),
             thresholds,
+            tcCloses: stepDone,
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, counted, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels],
+    [data, counted, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels, stepDone],
   );
 
   // The review of the alignment closes here, by consensus, when the step says so (objections are settled as team

@@ -37,6 +37,7 @@ import {
   tallyItem,
   textFingerprint,
   withAnswersGivenHere,
+  fromTc,
   type ReviewDecision,
   type ReviewStance,
 } from "../domain/reviewRound";
@@ -58,7 +59,7 @@ import { tNow, useT, type MessageKey } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeAfinacion } from "../domain/afinacionNames";
-import { explainError } from "../dcs/userError";
+import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
 
 type Props = {
@@ -384,7 +385,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const hash = textFingerprint(verseText);
 
   const tally = item && data
-    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers })
+    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers, tcCloses: stepDone })
     : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   // The decision of the team is said once, as such, and not also as the answer of whoever registered it.
@@ -433,10 +434,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             authors: [],
             thresholds,
             confirmers,
+            tcCloses: stepDone,
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, decisions, thresholds.minAgree, thresholds.minIndependent, teamLevels, confirmers],
+    [data, decisions, thresholds.minAgree, thresholds.minIndependent, teamLevels, confirmers, stepDone],
   );
   /** The points closed already, by the team or in translationCore: nobody is taken to them to answer. */
   const settled = useMemo(() => new Set((summary?.items ?? []).filter((point) => point.decided).map((point) => point.itemId)), [summary]);
@@ -492,7 +494,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     if (!data) return 0;
     return data.items.filter((row) => {
       const hash = textFingerprint(data.draftVerses[row.verse] ?? "");
-      return decisions.some((d) => d.itemId === row.id && d.reviewer.trim().toLowerCase() === me && (d.textHash === undefined || d.textHash === hash));
+      return decisions.some((d) => d.itemId === row.id && d.reviewer.trim().toLowerCase() === me && !fromTc(d) && (d.textHash === undefined || d.textHash === hash));
     }).length;
   }, [data, decisions, me]);
   // The first pass is one person's: it goes by what they answered. A round goes by the answers that count, of
