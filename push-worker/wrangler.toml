@@ -15,9 +15,10 @@ ALLOWED_ORIGINS = "https://taller-b2h.pages.dev,https://taller.idiomaspuentes.or
 # Contact for the push services, as a mailto: or https: address.
 VAPID_SUBJECT = "https://qa.door43.org"
 
-# Every hour, on the hour: the daily reminders of those whose hour it is (see src/reminders.ts).
+# Every two minutes: three notices of daily reminders at most each time, of those whose hour it is (see src/reminders.ts).
+# One run in the free plan has 10 ms of processor and 50 calls; the whole team at 19:00 in one run would be cut off.
 [triggers]
-crons = ["0 * * * *"]
+crons = ["*/2 * * * *"]
 
 [[kv_namespaces]]
 binding = "SUBSCRIPTIONS"

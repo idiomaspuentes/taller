@@ -3,7 +3,7 @@ import { list, type Env, type FetchFn } from "./env";
 import { sendPush, type Vapid } from "./send";
 import { listDevices, removeSubscription, saveSubscription, validSubscription } from "./store";
 import { askedNotices, hostOf, isAskedKind, noticesFor, validSignature, type GiteaPayload, type Notice } from "./webhook";
-import { remindDue, reportSeen } from "./reminders";
+import { remindDue, reportSeen, type RoundResult } from "./reminders";
 import { cleanReport } from "../../src/domain/reminder";
 
 type Deps = { fetch: FetchFn; now: () => number };
@@ -125,15 +125,28 @@ export function createHandler(deps: Deps) {
   };
 }
 
-/** The hourly round of daily reminders (the cron in wrangler.toml). */
-export function runReminders(env: Env, deps: Deps): Promise<{ looked: number; reminded: number }> {
-  return remindDue(
-    env.SUBSCRIPTIONS,
-    deps.now(),
-    env.APP_URL,
-    (notice, host) => deliver([notice], host, env, deps),
-    async (host, login) => (await listDevices(env.SUBSCRIPTIONS, host, login)).length > 0,
-  );
+/** One run of the round of daily reminders (the cron in wrangler.toml, every two minutes). */
+export function runReminders(env: Env, deps: Deps): Promise<RoundResult> {
+  const vapid: Vapid = { subject: env.VAPID_SUBJECT, publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY };
+  return remindDue(env.SUBSCRIPTIONS, deps.now(), env.APP_URL, async (host, login) => {
+    // The same as `deliver`, counting what it costs: the round keeps within what the free plan allows a run.
+    const devices = await listDevices(env.SUBSCRIPTIONS, host, login);
+    return {
+      devices: devices.length,
+      send: async (notice) => {
+        let sent = 0, calls = 0;
+        for (const device of devices) {
+          const result = await sendPush(deps.fetch, device.sub, notice, vapid, device.lang);
+          if (result === "sent") sent++;
+          if (result === "gone") {
+            await removeSubscription(env.SUBSCRIPTIONS, host, login, device.sub.endpoint);
+            calls += 2;
+          }
+        }
+        return { sent, calls };
+      },
+    };
+  });
 }
 
 const deps: Deps = { fetch: (input, init) => fetch(input, init), now: () => Date.now() };

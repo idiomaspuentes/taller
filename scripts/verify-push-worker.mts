@@ -21,19 +21,29 @@ async function test(name: string, fn: () => Promise<void>) {
 // ---- a tiny KV ----
 class FakeKV {
   data = new Map<string, string>();
+  meta = new Map<string, unknown>();
   lists = 0;
+  /** Every call to the store, as the free plan counts them in one run. */
+  calls = 0;
   async get(key: string) {
+    this.calls++;
     return this.data.get(key) ?? null;
   }
-  async put(key: string, value: string) {
+  async put(key: string, value: string, opts?: { metadata?: unknown }) {
+    this.calls++;
     this.data.set(key, value);
+    if (opts?.metadata !== undefined) this.meta.set(key, JSON.parse(JSON.stringify(opts.metadata)));
+    else this.meta.delete(key);
   }
   async delete(key: string) {
+    this.calls++;
     this.data.delete(key);
+    this.meta.delete(key);
   }
   async list(opts: { prefix?: string } = {}) {
     this.lists++;
-    return { keys: [...this.data.keys()].filter((k) => k.startsWith(opts.prefix ?? "")).sort().map((name) => ({ name })), list_complete: true };
+    this.calls++;
+    return { keys: [...this.data.keys()].filter((k) => k.startsWith(opts.prefix ?? "")).sort().map((name) => ({ name, metadata: this.meta.get(name) })), list_complete: true };
   }
 }
 
@@ -363,15 +373,18 @@ await test("a su hora, un día que no entró, le llega un recordatorio a cada di
   assert.ok(devices > 0);
   pushes = [];
   clock = at(19, 18);
-  assert.deepEqual(await runReminders(env, { fetch: fakeFetch, now: () => clock }), { looked: 1, reminded: 0 }, "a las 18 todavía no");
+  assert.equal((await runReminders(env, { fetch: fakeFetch, now: () => clock })).reminded, 0, "a las 18 todavía no");
   clock = at(19, 19);
   const lists = kv.lists;
-  assert.deepEqual(await runReminders(env, { fetch: fakeFetch, now: () => clock }), { looked: 1, reminded: 1 });
+  const reads = kv.calls;
+  const round = await runReminders(env, { fetch: fakeFetch, now: () => clock });
+  assert.equal(round.reminded, 1);
   assert.equal(kv.lists - lists, 1, "una sola lista de claves por ronda");
+  assert.equal(kv.calls - reads, 3, "la lista, los dispositivos de bea y marcar que ya se le avisó: a nadie se lo lee para saber si le toca");
   assert.equal(pushes.length, devices, "uno por dispositivo");
   assert.ok(pushes.every((p) => p.headers.Topic === "recordatorio" || p.headers.topic === "recordatorio"), "el de hoy reemplaza al de ayer en el teléfono");
   pushes = [];
-  assert.deepEqual(await runReminders(env, { fetch: fakeFetch, now: () => clock }), { looked: 1, reminded: 0 }, "nunca dos el mismo día");
+  assert.equal((await runReminders(env, { fetch: fakeFetch, now: () => clock })).reminded, 0, "nunca dos el mismo día");
   assert.equal(pushes.length, 0);
 });
 
@@ -399,10 +412,43 @@ await test("no recuerda a quien ya entró hoy, a quien lo apagó, ni a quien no 
 });
 
 await test("a quien ya no tiene ningún dispositivo se le olvida", async () => {
+  // Kept as an older Worker kept it, without metadata: it is read once to know.
   kv.data.set("r:https://qa.door43.org:nadie", JSON.stringify({ mine: 2, free: 0, ...BOGOTA, seenDay: "2026-10-22", at: at(22), host: "https://qa.door43.org", login: "nadie" }));
   clock = at(23, 19);
-  await runReminders(env, { fetch: fakeFetch, now: () => clock });
+  const round = await runReminders(env, { fetch: fakeFetch, now: () => clock });
+  assert.equal(round.forgotten, 1);
   assert.equal(kv.data.has("r:https://qa.door43.org:nadie"), false);
+});
+
+await test("con todo el equipo a la misma hora, cada ejecución envía tres avisos como mucho y pocas llamadas, y nadie se queda sin aviso", async () => {
+  // Twelve people with two devices each, all at 19:00 in Bogotá, none came in on the 24th.
+  for (let i = 1; i <= 12; i++) {
+    const login = `p${String(i).padStart(2, "0")}`;
+    const kept = { mine: 1, free: 0, ...BOGOTA, seenDay: "2026-10-23", at: at(23), host: "https://qa.door43.org", login };
+    await kv.put(`r:https://qa.door43.org:${login}`, JSON.stringify(kept), { metadata: kept });
+    kv.data.set(`u:https://qa.door43.org:${login}`, JSON.stringify({ devices: [await deviceSubscription(`https://push.example/${login}-a`), await deviceSubscription(`https://push.example/${login}-b`)].map((sub) => ({ sub, at: 1 })) }));
+  }
+  const runs: { reminded: number; left: number; calls: number }[] = [];
+  for (const minute of [0, 2, 4, 6, 8, 10, 12, 14]) {
+    clock = at(24, 19) + minute * 60_000;
+    pushes = [];
+    const before = kv.calls;
+    const round = await runReminders(env, { fetch: fakeFetch, now: () => clock });
+    const calls = kv.calls - before + pushes.length;
+    assert.ok(calls <= 50, `una ejecución hizo ${calls} llamadas`);
+    runs.push({ reminded: round.reminded, left: round.left, calls });
+  }
+  // Two devices each, three notices a run: one person a run, the twelve by 19:22, within their hour.
+  assert.deepEqual(runs.map((r) => r.reminded), [1, 1, 1, 1, 1, 1, 1, 1]);
+  assert.ok(runs.every((r) => r.calls <= 50));
+  for (const minute of [16, 18, 20, 22]) {
+    clock = at(24, 19) + minute * 60_000;
+    await runReminders(env, { fetch: fakeFetch, now: () => clock });
+  }
+  for (let i = 1; i <= 12; i++) assert.equal(JSON.parse(kv.data.get(`r:https://qa.door43.org:p${String(i).padStart(2, "0")}`)!).sentDay, "2026-10-24", `p${i} quedó sin aviso`);
+  pushes = [];
+  clock = at(24, 19) + 24 * 60_000;
+  assert.equal((await runReminders(env, { fetch: fakeFetch, now: () => clock })).due, 0, "nadie queda pendiente");
 });
 
 console.log(`\nverify-push-worker: ${passed} checks passed.`);
