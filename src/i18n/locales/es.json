@@ -2907,6 +2907,8 @@
   "rv.agreeOwnApproved": "{who} ya aprobó. Si para ti también está bien, dilo y la revisión termina. Para cambiar el texto, pulsa «Corregir mi borrador».",
   "ab.linkMissingOne": "Falta un enlace del original. Tócalo para ponerlo:",
   "ab.linkMissingMany": "Faltan enlaces del original. Toca cada uno para ponerlo:",
+  "addr.informal": "Aquí se le habla al traductor de «tú», y las ayudas lo tratan de «usted»:",
+  "addr.fix": "Cambiar a «usted»",
   "rv.seeMissingOne": "Ver la que falta",
   "rv.seeMissingMany": "Ver las {n} que faltan",
   "rv.nextMissing": "Ver la siguiente que falta",

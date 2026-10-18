@@ -61,6 +61,11 @@ export function workspaceOfOrg(config: TallerConfig, pmOrg: string): Workspace |
   return config.workspaces.find((w) => w.pmOrg.toLowerCase() === pmOrg.toLowerCase());
 }
 
+/** How the helps of the team working in `pmOrg` speak to the translator (see `Workspace.helpsAddress`). */
+export function helpsAddressOf(pmOrg: string | undefined): Workspace["helpsAddress"] {
+  return pmOrg ? workspaceOfOrg(tallerConfig, pmOrg)?.helpsAddress : undefined;
+}
+
 if (import.meta.env?.DEV) {
   const problems = configProblems(tallerConfig);
   if (problems.length) console.error(`taller.config.ts tiene problemas:\n- ${problems.join("\n- ")}`);

@@ -13,6 +13,8 @@ import { ToolHeader } from "./ToolHeader";
 import { portionRange } from "../domain/usfmEdit";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { ArticleBlocks } from "./ArticleBlocks";
+import { FormalAddressHint } from "./FormalAddressHint";
+import { helpsAddressOf } from "../config";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StoryExample } from "./StoryExample";
 import { usePieces, type ActivePiece } from "./usePieces";
@@ -73,7 +75,7 @@ import { localizeName } from "../domain/templateNames";
 import { tNow, useT } from "../i18n/messages";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
-import { explainError } from "../dcs/userError";
+import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
 
 type Props = {
@@ -904,6 +906,8 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
   const sources = useHelpSources(session, (ctx?.book || "").toUpperCase(), range?.chapter ?? 0, Boolean(wantsSources));
   // What the piece in hand calls for by its own words, among what the step and the team ask: said under its source.
   const hintsFor = useItemHints(session, ctx);
+  // How the team's helps speak to the translator: a help that says otherwise is pointed out while it is written.
+  const address = helpsAddressOf(ctx?.pmOrg);
   const decisionsIn = useTextDecisions(session, ctx);
 
   /** A text worked by pieces, tied to the piece that is open on the screen, the way on from it and what is left. */
@@ -927,6 +931,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       known={known}
       // First what the glossary decided about the words this piece says: it answers before the reminders ask.
       hints={(row) => <Hints lead={t("sa.mind")} lines={[...decisionsIn(row.source), ...hintsFor(row.source)]} />}
+      address={address}
       {...extra}
     />
   );
@@ -936,6 +941,7 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
       <label className="grid gap-1">
         <span className="text-xs text-muted-foreground">{loc(item.secondaryLabel)}</span>
         <textarea className="scripture-editor__input" rows={3} value={item.secondary ?? ""} onChange={(e) => updateItem(item.id, { secondary: e.target.value })} placeholder={loc(item.secondaryLabel)} />
+        <FormalAddressHint text={item.secondary ?? ""} address={address} onFix={(secondary) => updateItem(item.id, { secondary })} />
       </label>
     ) : null;
 
@@ -1166,25 +1172,35 @@ export function HelpsEditorView({ ctxEncoded, onClose, announce }: Props) {
                 </details>
               ) : null}
               {item.secondaryLabel ? (
-                // A question and its answer are plain sentences.
-                <textarea
-                  id={`help-${item.id}`}
-                  className="scripture-editor__input"
-                  rows={4}
-                  value={item.text}
-                  onChange={(e) => updateItem(item.id, { text: e.target.value })}
-                  placeholder={t("he.textPlaceholder")}
-                />
+                <>
+                  {/* A question and its answer are plain sentences. */}
+                  <textarea
+                    id={`help-${item.id}`}
+                    className="scripture-editor__input"
+                    rows={4}
+                    value={item.text}
+                    onChange={(e) => updateItem(item.id, { text: e.target.value })}
+                    placeholder={t("he.textPlaceholder")}
+                  />
+                  <FormalAddressHint text={item.text} address={address} onFix={(text) => updateItem(item.id, { text })} />
+                </>
               ) : (
-                <MarkdownEditor
-                  id={`help-${item.id}`}
-                  rows={item.kind === "markdown" ? 8 : 4}
-                  book={ctx?.book}
-                  // A note keeps its line breaks written out in its table file; an article is markdown as it is.
-                  value={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
-                  onChange={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
-                  placeholder={t("he.textPlaceholder")}
-                />
+                <>
+                  <MarkdownEditor
+                    id={`help-${item.id}`}
+                    rows={item.kind === "markdown" ? 8 : 4}
+                    book={ctx?.book}
+                    // A note keeps its line breaks written out in its table file; an article is markdown as it is.
+                    value={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
+                    onChange={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
+                    placeholder={t("he.textPlaceholder")}
+                  />
+                  <FormalAddressHint
+                    text={item.kind === "tsv" ? noteFromTsv(item.text) : item.text}
+                    address={address}
+                    onFix={(text) => updateItem(item.id, { text: item.kind === "tsv" ? noteToTsv(text) : text })}
+                  />
+                </>
               )}
               {answerBox(item)}
             </div>

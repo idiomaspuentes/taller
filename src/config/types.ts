@@ -1,4 +1,5 @@
 /** The shape of `taller.config.ts` (repo root). Everything an organization adapts lives there. */
+import type { HelpsAddress } from "../domain/formalAddress";
 
 /** Languages the interface speaks. Add a code here and a column in `src/i18n/messages.ts` to support another. */
 export type UiLanguage = "es" | "pt";
@@ -40,6 +41,11 @@ export type Workspace = {
   scope?: string;
   /** This space's own words for its branches (see `TallerConfig.branchNames`); what it leaves out is the organization's. */
   branchNames?: Partial<BranchNames>;
+  /**
+   * How this team's helps (notes, questions, articles) speak to the translator. With `"usted"`, the editors point
+   * out the words that say «tú» while a help is written, and offer to change them. Left out, nothing is checked.
+   */
+  helpsAddress?: HelpsAddress;
   /** The interface language this team starts in. */
   uiLanguage: UiLanguage;
   /** How the team is named on the welcome screen, in each interface language. */

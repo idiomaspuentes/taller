@@ -3,8 +3,10 @@ import { Check, ChevronDown, MessageSquare, Link2 } from "lucide-react";
 import { articleProgress, articleRows, rowPending, rowsMarkdown, translatedWords, vocabularyOf, type ArticleRow } from "../domain/articleBlocks";
 import { addSourceLink, linkName, withSourceLinks } from "../domain/passageLinks";
 import { normalizeMarkdown } from "../domain/helpMarkup";
+import type { HelpsAddress } from "../domain/formalAddress";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
+import { FormalAddressHint } from "./FormalAddressHint";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -59,6 +61,8 @@ type Props = {
    * word both languages write alike («altar») from one left as the source has it.
    */
   known?: ReadonlySet<string>;
+  /** How the team's helps speak to the translator: what is written that says otherwise is pointed out under the box. */
+  address?: HelpsAddress;
 };
 
 /** What a piece gives to what is shown beside its source (see `beside`). */
@@ -112,7 +116,7 @@ const Piece = memo(function Piece({ id, index, content, pending, marks, onOpen }
  * keeps what it had; «Copiar el original» puts the source in the box for whoever prefers to write over it (it keeps
  * its links and its bold).
  */
-export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain, known, hints }: Props) {
+export function ArticleBlocks({ id, source, value, onChange, readOnly, book, open, onOpen, onProgress, make, hasNext, onNext, onDone, part, below, marksOf, above, beside, plain, known, hints, address }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const vocabulary = useMemo(() => vocabularyOf(source), [source]);
@@ -319,6 +323,7 @@ export function ArticleBlocks({ id, source, value, onChange, readOnly, book, ope
                 </p>
               ) : null;
             })()}
+            {shown.trim() ? <FormalAddressHint text={shown} address={address} onFix={(markdown) => put(index, markdown)} /> : null}
             {under ? <div className="ab-under">{under}</div> : null}
           </div>
         );

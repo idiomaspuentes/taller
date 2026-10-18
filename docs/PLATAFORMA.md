@@ -632,8 +632,21 @@ como estaba, byte por byte, y lo que se tocó, en el formato en que el recurso e
   (`MarkdownEditor`, solo en las piezas de un artículo). El navegador hacía otra cita, que se
   guardaba aparte con una línea vacía delante, y un teléfono no tiene otra tecla para un renglón.
   Dos veces Intro deja una línea vacía: otro párrafo de la cita (`>`).
+- **Las ayudas tratan al traductor de «usted»** (`helpsAddress` del espacio,
+  `src/domain/formalAddress.ts`). Mientras se escribe una nota, una pregunta o un artículo (el
+  editor de la fase 1, por piezas o entero, y la hoja de «Proponer un cambio»), debajo de la caja
+  aparecen las palabras que tutean, cómo quedarían («Puedes» → «Puede», «tu idioma» → «su
+  idioma») y un botón que las cambia todas; el cursor no sale de la caja. No cuenta lo que está
+  entre comillas (una traducción alternativa, lo que dice un personaje), en negritas (las
+  palabras del texto) ni en un enlace. «Revisa», «Utiliza», «Decide» tutean solo al empezar una
+  frase que habla de la traducción o que tutea de otra manera: «El rey usa la repetición» o
+  «Utiliza una forma interrogativa para enfatizar…» (dicho del rey) no avisan. En el versículo de
+  un texto no se mira: ahí «tú» es de la gente que habla. Comprobado con las notas de Ester:
+  encuentra las mismas 176 que se corrigieron a mano el 18 de octubre, ninguna de más; en las
+  notas publicadas de Rut, Jonás y Tito encuentra 26 que tutean.
 
-**Pruebas.** `npm run verify:helps-table` (leer, guardar una fila, una fila nueva, la entrega; con
+**Pruebas.** `npm run verify:formal-address` (las notas de Ester que tuteaban, lo citado y en
+negritas, las órdenes al empezar la frase). `npm run verify:helps-table` (leer, guardar una fila, una fila nueva, la entrega; con
 fin de línea de Windows, sin fin de línea al final, con una línea vacía en medio) y
 `npm run verify:help-markup` (un artículo sin cambios, una palabra corregida, un párrafo que entra
 o sale, un renglón cortado). Comprobado además, solo leyendo, con lo publicado en `es-419_gl`: 18

@@ -35,6 +35,8 @@ export const tallerConfig: TallerConfig = {
       lang: "es-419",
       contentOrg: "es-419_gl",
       pmOrg: "es-419_gl",
+      // The helps speak to the translator as «usted»: the editors point out what says «tú».
+      helpsAddress: "usted",
       uiLanguage: "es",
       name: { es: "Español (América Latina)", pt: "Espanhol (América Latina)" },
       lexicons: {

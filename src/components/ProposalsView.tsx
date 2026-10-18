@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { helpsAddressOf } from "../config";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Columns2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -1000,7 +1001,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
           )}
         </DialogContent>
       </Dialog>
-      <ProposalSheet open={Boolean(answering)} onClose={() => { setAnswering(null); setAlongside(false); }} targets={answerTargets} book={ctx?.book} failed={answering && !alongside ? askedOf(answering) || undefined : undefined} rule={rule} reason={alongside ? "" : (answering?.reason ?? "")} startFrom={answerStart} startSplit={answering?.proposal.split?.after} saving={saving} onSend={(draft) => void answerWith(draft)} />
+      <ProposalSheet open={Boolean(answering)} onClose={() => { setAnswering(null); setAlongside(false); }} targets={answerTargets} book={ctx?.book} failed={answering && !alongside ? askedOf(answering) || undefined : undefined} rule={rule} reason={alongside ? "" : (answering?.reason ?? "")} startFrom={answerStart} startSplit={answering?.proposal.split?.after} saving={saving} address={helpsAddressOf(ctx?.pmOrg)} onSend={(draft) => void answerWith(draft)} />
     </div>
   );
 }

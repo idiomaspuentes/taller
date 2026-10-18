@@ -1,4 +1,5 @@
 import { toolHeading } from "./toolHeading";
+import { helpsAddressOf } from "../config";
 import { ToolHeader } from "./ToolHeader";
 import { StepAsk } from "./StepAsk";
 import { HelpMessages } from "./HelpMessages";
@@ -991,7 +992,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           )}
         </>
       ) : null}
-      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} failed={proposing?.reason || undefined} rule={data?.task ? stepPurpose(data.task.id, data.step ?? undefined, language).criterion : undefined} reason="" book={data?.book} saving={saving} onSend={(draft) => void sendProposal(draft)} />
+      <ProposalSheet open={Boolean(proposing)} onClose={() => setProposing(null)} targets={targets} failed={proposing?.reason || undefined} rule={data?.task ? stepPurpose(data.task.id, data.step ?? undefined, language).criterion : undefined} reason="" book={data?.book} saving={saving} address={helpsAddressOf(ctx?.pmOrg)} onSend={(draft) => void sendProposal(draft)} />
     </div>
   );
 }

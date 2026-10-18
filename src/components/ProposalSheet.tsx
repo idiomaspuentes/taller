@@ -3,6 +3,9 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { diffExcerpt, movePiece, notePieces, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { FormalAddressHint } from "./FormalAddressHint";
+import type { HelpsAddress } from "../domain/formalAddress";
+import { isScriptureResource, type ScopeKey } from "../domain/types";
 import { useT, type MessageKey } from "../i18n/messages";
 
 /** How a proposal stands, said to the person. `{team}`: who maintains what it would change, when it went to them. */
@@ -94,6 +97,8 @@ type Props = {
   /** The new note to start from, answering a proposal that parts a note in two: the sheet opens on its two halves. */
   startSplit?: string;
   saving?: boolean;
+  /** How the team's helps speak to the translator: a new version of a help that says otherwise is pointed out. */
+  address?: HelpsAddress;
   onSend: (draft: ProposalDraft) => void;
 };
 
@@ -101,7 +106,7 @@ type Props = {
  * Proposing a change: what, how (the new version written over the words as they are, a note parted in two, or a
  * comment) and why. A sheet over the help, so the help stays where it was.
  */
-export function ProposalSheet({ open, onClose, targets, failed, rule, reason: firstReason, book, startFrom, startSplit, saving, onSend }: Props) {
+export function ProposalSheet({ open, onClose, targets, failed, rule, reason: firstReason, book, startFrom, startSplit, saving, address, onSend }: Props) {
   const t = useT();
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [mode, setMode] = useState<"text" | "split" | "comment">("text");
@@ -117,6 +122,8 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
   const current = target?.text ?? "";
   const canWrite = Boolean(target && !target.commentOnly && target.text !== undefined);
   const canSplit = canWrite && Boolean(target?.split) && !target?.add;
+  // A verse is what its people say, «tú» included: only a help speaks to the translator.
+  const helpAddress = target && !isScriptureResource(target.resource as ScopeKey) ? address : undefined;
   /** What is written starts from: the version this one answers, the one already proposed, or the words as they are. */
   const base = startFrom ?? target?.start ?? current;
 
@@ -247,6 +254,11 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
               ) : (
                 <textarea id="pr-text" ref={textRef} className="af-textarea pr-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
               )}
+              <FormalAddressHint
+                text={target?.format === "note" ? noteFromTsv(text) : text}
+                address={helpAddress}
+                onFix={(fixed) => setText(target?.format === "note" ? noteToTsv(fixed) : fixed)}
+              />
               {!changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : null}
             </div>
           ) : null}
@@ -275,12 +287,14 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
                   {t("pr.splitKeeps")}
                 </label>
                 <MarkdownEditor key={`${opening}|${targetId}|keeps|${turn}`} id="pr-text" compact book={book} value={noteFromTsv(text)} onChange={(written) => setText(noteToTsv(written))} />
+                <FormalAddressHint text={noteFromTsv(text)} address={helpAddress} onFix={(fixed) => setText(noteToTsv(fixed))} />
               </div>
               <div className="pr-field">
                 <label className="af-lbl" htmlFor="pr-other">
                   {t("pr.newNoteLbl")}
                 </label>
                 <MarkdownEditor key={`${opening}|${targetId}|new|${turn}`} id="pr-other" compact book={book} value={noteFromTsv(other)} onChange={(written) => setOther(noteToTsv(written))} />
+                <FormalAddressHint text={noteFromTsv(other)} address={helpAddress} onFix={(fixed) => setOther(noteToTsv(fixed))} />
                 {!parted ? <p className="af-hint">{t("pr.splitNeeds")}</p> : null}
               </div>
             </>

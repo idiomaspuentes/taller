@@ -33,6 +33,8 @@ Cada espacio es un equipo con su propio trabajo. Pueden estar en **organizacione
 }
 ```
 
+`helpsAddress: "usted"` (opcional) dice cómo tratan las ayudas del equipo al traductor: los editores señalan, mientras se escribe, las palabras de una nota, una pregunta o un artículo que lo tratan de «tú», y ofrecen cambiarlas. Hoy solo se conoce «usted», para el español; sin la clave no se revisa nada.
+
 ### Cuándo hace falta `scope`
 
 - **Un espacio solo en su organización** (cada uno en la suya): no hace falta. Se queda con los nombres de siempre.
