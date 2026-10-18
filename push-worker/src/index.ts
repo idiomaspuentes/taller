@@ -3,8 +3,10 @@ import { list, type Env, type FetchFn } from "./env";
 import { sendPush, type Vapid } from "./send";
 import { listDevices, removeSubscription, saveSubscription, validSubscription } from "./store";
 import { askedNotices, hostOf, isAskedKind, noticesFor, validSignature, type GiteaPayload, type Notice } from "./webhook";
+import { remindDue, reportSeen } from "./reminders";
+import { cleanReport } from "../../src/domain/reminder";
 
-type Deps = { fetch: FetchFn };
+type Deps = { fetch: FetchFn; now: () => number };
 
 function cors(request: Request, env: Env): Record<string, string> {
   const origin = request.headers.get("origin") ?? "";
@@ -71,6 +73,17 @@ export function createHandler(deps: Deps) {
       return new Response(null, { status: 204, headers });
     }
 
+    // The app tells what it saw in «Mis tareas» (how many tasks wait, the device's zone, the reminder hour): the person
+    // came in today, and the daily reminder knows what to say. Only about the person who asks.
+    if (url.pathname === "/remind" && request.method === "POST") {
+      const who = await caller(request, env, deps);
+      if (!who) return json({ error: "No se pudo comprobar quién eres en Door43." }, 401, headers);
+      const report = cleanReport(await request.json().catch(() => null));
+      if (!report) return json({ error: "Recordatorio no válido." }, 400, headers);
+      await reportSeen(env.SUBSCRIPTIONS, who.host, who.login, report, deps.now());
+      return new Response(null, { status: 204, headers });
+    }
+
     // The app asks to tell people what Door43 does not announce by itself (a subtarea became free for a team, it is
     // somebody's turn, a decision waits). Whoever asks is a person signed in to Door43 who can read that subtarea;
     // they choose who is told, never what is said.
@@ -112,8 +125,21 @@ export function createHandler(deps: Deps) {
   };
 }
 
-const handle = createHandler({ fetch: (input, init) => fetch(input, init) });
+/** The hourly round of daily reminders (the cron in wrangler.toml). */
+export function runReminders(env: Env, deps: Deps): Promise<{ looked: number; reminded: number }> {
+  return remindDue(
+    env.SUBSCRIPTIONS,
+    deps.now(),
+    env.APP_URL,
+    (notice, host) => deliver([notice], host, env, deps),
+    async (host, login) => (await listDevices(env.SUBSCRIPTIONS, host, login)).length > 0,
+  );
+}
+
+const deps: Deps = { fetch: (input, init) => fetch(input, init), now: () => Date.now() };
+const handle = createHandler(deps);
 
 export default {
   fetch: handle,
+  scheduled: (_event, env, ctx) => ctx.waitUntil(runReminders(env, deps)),
 } satisfies ExportedHandler<Env>;

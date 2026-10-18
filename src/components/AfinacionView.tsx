@@ -5,7 +5,10 @@ import { ToolHeader } from "./ToolHeader";
 import { PassageIntroText, StepAsk } from "./StepAsk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
-import { draftTaskId, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermArticle, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type OriginalWord } from "../dcs/afinacionLoad";
+import { chapterTextOf, draftTaskId, groupDraftBranches, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermArticle, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type ChapterText, type OriginalWord } from "../dcs/afinacionLoad";
+import { ChapterReader } from "./ChapterReader";
+import { tryReadExistingBookUsfm } from "../dcs/bookBootstrap";
+import { resolveScriptureTarget } from "../domain/scriptureTarget";
 import { tallerConfig, workspaceOfOrg } from "../config";
 import { isRtl, OriginalWords } from "./OriginalWords";
 import { ParallelLink } from "./ParallelSheet";
@@ -222,9 +225,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [refText, setRefText] = useState<"orig" | "ult" | "ust">("orig");
   /** «Revisar» (the item in hand) or «Capítulo» (whole chapters of a text, to read around it). */
   const [pane, setPane] = useState<"review" | "helps" | "chapter" | "intro">("review");
-  const [readChapter, setReadChapter] = useState(0);
+  // The team's other text (the TPS beside a TPL being tuned), read once the chapter is opened.
+  const [otherText, setOtherText] = useState<ChapterText | null>(null);
   /** The text read in «Leer el capítulo»: the original, an English text, or what the team's draft has so far. */
-  const [chapterText, setChapterText] = useState<"orig" | "ult" | "ust" | "draft">("orig");
   /** The article open to be read in full: its path, and its text once it arrives (`null` = it could not be read). */
   const [reading, setReading] = useState<{ path: string; body?: string | null } | null>(null);
   const [stepDone, setStepDone] = useState(false);
@@ -997,13 +1000,34 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [item?.id, reference?.id, refVerse]);
   /** What is marked in the reference, to say in the draft which words to look for. */
   const markedWords = useMemo(() => wordsAt(refVerse, refMarked), [refVerse, refMarked]);
-  const chapterTexts = useMemo(
-    () => (data ? [...data.references, { id: "draft" as const, label: t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL"), book: data.bookDraft }] : []),
+  const chapterTexts = useMemo<ChapterText[]>(
+    () =>
+      data
+        ? [
+            ...data.references.map((row) => (row.id === "orig" ? { ...row, label: t("af.tabOriginal") } : row)),
+            { id: "draft" as const, label: t("af.draftLabel").replace("{res}", data.resource === "tps" ? "TPS" : "TPL"), book: data.bookDraft, joined: data.draftJoined },
+            ...(otherText ? [otherText] : []),
+          ]
+        : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data],
+    [data, otherText],
   );
-  const chapterSource = chapterTexts.find((row) => row.id === chapterText) ?? chapterTexts[0];
-  const lastChapter = useMemo(() => Math.max(0, ...Object.keys(reference?.book ?? {}).map((key) => Number(key.split(":")[0]))), [reference]);
+  // The other text of the team, to compare: its group draft, or what is published.
+  useEffect(() => {
+    if (pane !== "chapter" || otherText || !data || !ctx || !session) return;
+    let alive = true;
+    const other = data.resource === "tps" ? "tpl" : "tps";
+    void (async () => {
+      const target = resolveScriptureTarget({ ...ctx, resource: other });
+      if ("error" in target) return;
+      const found = await tryReadExistingBookUsfm({ session, owner: target.owner, repo: target.repo, filepath: target.filepath, branches: [...groupDraftBranches(target.book, (plan && draftTaskId(plan.teams, other)) || ""), undefined] }).catch(() => null);
+      if (found && alive) setOtherText(chapterTextOf("other", other.toUpperCase(), found.text));
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pane, data, session?.token]);
   // The article is read when its tab is opened, and again for each new figure while it stays open.
   useEffect(() => {
     if (helpsTab !== "article" || !item) return;
@@ -1086,10 +1110,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             role="tab"
             className="fam-tab"
             aria-selected={pane === "chapter"}
-            onClick={() => {
-              setReadChapter(item.chapter);
-              setPane("chapter");
-            }}
+            onClick={() => setPane("chapter")}
           >
             {t("af.paneChapter")}
           </button>
@@ -1106,44 +1127,20 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         </section>
       ) : null}
 
-      {data && item && pane === "chapter" ? (
-        // Whole chapters of the text chosen, to read the item in its place: the original unless another is chosen.
-        <section className="af-chapter">
-          <div className="af-ref__bar">
-            <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
-              {chapterTexts.map((row) => (
-                <button key={row.id} type="button" role="tab" aria-selected={chapterSource?.id === row.id} onClick={() => setChapterText(row.id)}>
-                  {row.id === "orig" ? t("af.tabOriginal") : row.label}
-                </button>
-              ))}
-            </div>
-            <label className="af-pick">
-              <span className="sr-only">{t("af.chapterPick")}</span>
-              <select value={readChapter || item.chapter} onChange={(e) => setReadChapter(Number(e.target.value))}>
-                {Array.from({ length: Math.max(lastChapter, item.chapter) }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {t("af.chapterN").replace("{n}", String(n))}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} aria-hidden />
-            </label>
-          </div>
-          {chapterSource?.id === "draft" ? <p className="af-hint">{t("af.draftSoFar")}</p> : null}
-          <div className={chapterSource?.id === "orig" ? "af-chapter__text af-orig" : "af-chapter__text"} lang={chapterSource?.id === "orig" ? "grc" : undefined}>
-            {Object.entries(chapterSource?.book ?? {})
-              .filter(([key]) => Number(key.split(":")[0]) === (readChapter || item.chapter))
-              .sort(([a], [b]) => Number(a.split(":")[1]) - Number(b.split(":")[1]))
-              .map(([key, text]) => {
-                const verse = Number(key.split(":")[1]);
-                return (
-                  <p key={key} className="hs-v" data-here={(readChapter || item.chapter) === item.chapter && verse === item.verse ? "true" : undefined}>
-                    <sup>{verse}</sup> {chapterSource?.id === "orig" ? <OriginalWords text={text} words={data.originalWords[key]} onOpen={(word) => setSheetWord({ word, chapter: readChapter || item.chapter, verse })} /> : text}
-                  </p>
-                );
-              })}
-          </div>
-        </section>
+      {data && item && session && pane === "chapter" ? (
+        // Whole chapters, to read the item in its place: the original unless another is chosen, and on a computer
+        // several texts side by side. Made anew for each item, so it opens at that item's chapter.
+        <ChapterReader
+          key={`${item.chapter}`}
+          session={session}
+          book={data.book}
+          texts={chapterTexts}
+          chapter={item.chapter}
+          from={item.verse}
+          renderVerse={(text, key, body) =>
+            text.id === "orig" ? <OriginalWords text={body} words={data.originalWords[key]} onOpen={(word) => setSheetWord({ word, chapter: Number(key.split(":")[0]), verse: Number(key.split(":")[1]) })} /> : body
+          }
+        />
       ) : null}
 
       {data && item && pane === "helps" ? (

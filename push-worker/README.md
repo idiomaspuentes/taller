@@ -41,9 +41,23 @@ libro en palabras, el pasaje, la tarea y la fase). Cada dispositivo dice su idio
 persona lo cambia) y recibe los avisos en él. Las frases son las de la interfaz (`nt.*` en `src/i18n/locales/`) y
 el código que las arma es el mismo de la app (`src/domain/noticeText.ts`): el Worker lo importa tal cual.
 
+**El recordatorio diario** (`src/reminders.ts`, `src/domain/reminder.ts`): un día que la persona no entra a Taller,
+a la hora que eligió (las 19:00 si no eligió), le llega un aviso con cuántas tareas la esperan («Tienes 3 tareas
+esperando en Taller») y para quién es el trabajo («Hay pueblos que esperan estos recursos para traducir la Biblia a
+su idioma.»). No cuenta días seguidos ni compara a nadie: el motivo no es una racha. Uno por día como mucho; nada si
+no tiene tareas, si ya entró ese día o si lo apagó (menú → Notificaciones → Recordatorio diario). Viene encendido.
+- El Worker no lee las tareas de nadie (no tiene cuenta de Door43). Cada vez que «Mis tareas» se lee, la app le dice
+  (`POST /remind`, con el token de la persona) cuántas tareas son suyas y cuántas están libres para su equipo, la
+  zona horaria del dispositivo y la hora elegida. Solo lo dice si hay algo nuevo (otro día, otras cuentas, otra
+  hora): cada vez es una escritura.
+- Un cron (`[triggers]` en `wrangler.toml`, cada hora en punto) recorre a quienes dejaron esos datos y avisa a los
+  que les toca. Una lista de claves por hora (24 de las 1 000 al día) y una lectura por persona.
+- Lo que dice es lo último que vio la app. Una tarea asignada después ya llegó con su propio aviso; datos de hace más
+  de dos semanas no se usan.
+
 No avisa todavía de:
-- el recordatorio de plazo **cuando nadie abre la app** (hoy lo hace la app misma; con el Worker se podría hacer con
-  un cron y una cuenta de servicio de Door43).
+- el recordatorio de plazo de una decisión **cuando nadie abre la app** (hoy lo hace la app misma; con el Worker se
+  podría hacer con una cuenta de servicio de Door43).
 
 ## Poner en marcha (una vez)
 
@@ -99,4 +113,4 @@ Cloudflare Workers gratis: 100 000 peticiones al día; KV: 100 000 lecturas y 1 
 
 ## Pruebas
 
-Desde la raíz del proyecto: `npm run verify:push-worker` (el Worker: suscripción, firma del webhook, a quién se avisa, cifrado y firma reales) y `npm run verify:push-client` (la app).
+Desde la raíz del proyecto: `npm run verify:push-worker` (el Worker: suscripción, firma del webhook, a quién se avisa, cifrado y firma reales, y el recordatorio diario: la hora de cada zona, uno por día) y `npm run verify:push-client` (la app, también qué le dice al recordatorio y cuándo).

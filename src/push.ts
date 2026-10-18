@@ -2,6 +2,7 @@ import type { GtSession } from "./dcs/auth";
 import type { Ask } from "./domain/askNotices";
 import { getUiLanguage, onUiLanguageChange } from "./i18n/language";
 import { tNow } from "./i18n/messages";
+import { dayIn, DEFAULT_REMINDER, type ReminderReport } from "./domain/reminder";
 
 /**
  * Notices with the app closed (Web Push). The device subscribes with the browser's push service and
@@ -90,6 +91,65 @@ export function keepPushLanguage(session: Pick<GtSession, "token" | "host">): ()
   const deps = browserPushDeps();
   void syncPushLanguage(deps, session);
   return onUiLanguageChange(() => void syncPushLanguage(deps, session));
+}
+
+// ---- the daily reminder (see domain/reminder.ts) ----
+
+/** Whether this person wants the daily reminder, and at what hour: chosen on the device, told to the Worker. */
+export type ReminderPrefs = { on: boolean; hour: number };
+const PREFS_KEY = "taller-reminder";
+const SENT_KEY = "taller-reminder-sent";
+
+function readLocal<T>(key: string): T | null {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "null") as T | null;
+  } catch {
+    return null;
+  }
+}
+function writeLocal(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* a private window: the reminder keeps the hour it had, and the report goes again next time */
+  }
+}
+
+export function reminderPrefs(): ReminderPrefs {
+  const kept = readLocal<Partial<ReminderPrefs>>(PREFS_KEY);
+  const hour = Number(kept?.hour);
+  return { on: kept?.on !== false, hour: Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : DEFAULT_REMINDER.hour };
+}
+
+/** The device's time zone, as the clock names it. */
+export const deviceZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+/**
+ * Tell the Worker what «Mis tareas» shows now: how many tasks are the person's and how many are free, with the
+ * device's zone and the reminder hour. Only from a device that receives notices, and only when something is new
+ * (another day, other counts, another hour): each report is a write, and the free plan allows a thousand a day.
+ * `counts` left out: the last ones told, with new preferences.
+ */
+export async function reportReminder(deps: PushDeps, session: Pick<GtSession, "token" | "host" | "username">, counts?: { mine: number; free: number }, now = Date.now()): Promise<void> {
+  if (!deps.url || deps.permission() !== "granted") return;
+  const reg = await deps.registration().catch(() => null);
+  if (!(await reg?.pushManager.getSubscription().catch(() => null))) return;
+  const who = `${session.username.toLowerCase()}@${session.host}`;
+  const last = readLocal<{ who: string; day: string; report: ReminderReport }>(SENT_KEY);
+  const known = last?.who === who ? last.report : null;
+  const base = counts ?? (known ? { mine: known.mine, free: known.free } : null);
+  if (!base) return;
+  const report: ReminderReport = { ...base, tz: deviceZone(), ...reminderPrefs() };
+  const day = dayIn(now, report.tz);
+  if (known && last?.day === day && JSON.stringify(known) === JSON.stringify(report)) return;
+  const res = await deps.fetch(`${deps.url}/remind`, { method: "POST", headers: headers(session), body: JSON.stringify(report) }).catch(() => null);
+  if (res?.ok) writeLocal(SENT_KEY, { who, day, report });
+}
+
+/** Keep the new preferences and tell the Worker at once. */
+export async function setReminderPrefs(prefs: ReminderPrefs, session: Pick<GtSession, "token" | "host" | "username">, deps: PushDeps = browserPushDeps()): Promise<void> {
+  writeLocal(PREFS_KEY, prefs);
+  await reportReminder(deps, session);
 }
 
 /** The most notices one action asks for: closing a subtarea frees a few, not a book. */

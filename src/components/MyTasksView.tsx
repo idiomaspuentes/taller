@@ -9,7 +9,8 @@ import { waitBlocks, waitReason } from "../domain/waits";
 import { audienceOf, type AudienceHold } from "../domain/audience";
 import type { LevelBook } from "../domain/levels";
 import { listMyClosedIssues, loadPmConfig } from "../dcs/issues";
-import { boardCount, buildBoard, type BoardCard } from "../domain/myTasksBoard";
+import { boardCount, buildBoard, OPEN_GROUPS, type BoardCard } from "../domain/myTasksBoard";
+import { browserPushDeps, reportReminder } from "../push";
 import { takeReturnTo } from "../domain/returnTo";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MyTasksBoard, type CardHandlers } from "./MyTasksBoard";
@@ -858,6 +859,14 @@ export function MyTasksView({
     () => buildBoard({ session, pmOrg, projects, decisionIssues: conflictIssues, closedIssues, cursor, myLevel, priority }),
     [session, pmOrg, projects, conflictIssues, closedIssues, cursor, myLevel, priority],
   );
+
+  // The daily reminder learns what waits here, once the list is the one read now (not the one kept on the device):
+  // what is the person's to do, and what is free for their team.
+  useEffect(() => {
+    if (!loaded || busy || stale) return;
+    const mine = OPEN_GROUPS.reduce((n, group) => n + taskBoard[group].length, 0);
+    void reportReminder(browserPushDeps(), session, { mine, free: taskBoard.free.length }).catch(() => undefined);
+  }, [loaded, busy, stale, taskBoard, session]);
 
   // Coming back from a tool, the list is shown at the card of the subtarea that was worked on, and the card stands
   // out for a moment: the list used to come back at its top, with that card more than a screen down.

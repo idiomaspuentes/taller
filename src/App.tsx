@@ -1378,9 +1378,8 @@ export function App() {
         {route.name === "mis-tareas" && session && onboarding.visible ? (
           <Onboarding session={session} onHide={onboarding.hide} />
         ) : null}
-        {route.name !== "conversacion" && route.name !== "propuestas" && route.name !== "conflicto-prueba" && !(route.name === "mis-tareas" && onboarding.visible) ? (
-          <PushPrompt session={session} />
-        ) : null}
+        {/* A window that asks for the notices: on «Mis tareas» only, never over a tool in the middle of work. */}
+        {route.name === "mis-tareas" && !onboarding.visible ? <PushPrompt session={session} /> : null}
         {hydrating && route.name === "proyecto" ? (
           <LoadingState shape="list" label={t("app.loadingProject")} />
         ) : null}

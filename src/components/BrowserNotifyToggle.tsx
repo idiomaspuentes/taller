@@ -4,8 +4,44 @@ import { Button } from "@/components/ui/button";
 import { useNotificationPermission } from "../browserNotifications";
 import { useT } from "../i18n/messages";
 import { loadSession } from "../dcs/auth";
-import { browserPushDeps, disablePush, enablePush, pushState, type PushState } from "../push";
+import { browserPushDeps, disablePush, enablePush, pushState, reminderPrefs, setReminderPrefs, type PushState, type ReminderPrefs } from "../push";
 import { explainError } from "../dcs/userError";
+
+/**
+ * The daily reminder (see domain/reminder.ts): on or off, and the hour, kept on the device and told to the Worker
+ * at once. Only where the device receives notices with the app closed: that is how the reminder arrives.
+ */
+export function ReminderSettings() {
+  const t = useT();
+  const [prefs, setPrefs] = useState<ReminderPrefs>(reminderPrefs);
+  const change = (next: ReminderPrefs) => {
+    setPrefs(next);
+    const session = loadSession();
+    if (session) void setReminderPrefs(next, session).catch(() => undefined);
+  };
+  return (
+    <div className="browser-notify__remind">
+      <p className="role-mode-toggle__hint">{t("bn.remindTitle")}</p>
+      <label className="browser-notify__check">
+        <input type="checkbox" checked={prefs.on} onChange={(e) => change({ ...prefs, on: e.target.checked })} />
+        {t("bn.remindOn")}
+      </label>
+      {prefs.on ? (
+        <label className="browser-notify__hour">
+          <span>{t("bn.remindHour")}</span>
+          <select value={prefs.hour} onChange={(e) => change({ ...prefs, hour: Number(e.target.value) })}>
+            {Array.from({ length: 24 }, (_, hour) => (
+              <option key={hour} value={hour}>
+                {`${hour}:00`}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      <p className="browser-notify__note">{t("bn.remindNote")}</p>
+    </div>
+  );
+}
 
 /**
  * "Avisos del navegador": asks Notification permission only on click.
@@ -104,6 +140,7 @@ export function BrowserNotifyToggle() {
               <Button type="button" size="sm" variant="ghost" disabled={pushBusy} onClick={() => void togglePush(false)}>
                 {t("bn.disable")}
               </Button>
+              <ReminderSettings />
             </>
           ) : null}
           {push === "denied" ? (

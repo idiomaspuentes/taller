@@ -1,6 +1,6 @@
 /** The app side of push notices: subscribing the device, registering it in the Worker, turning it off. */
 import assert from "node:assert/strict";
-import { disablePush, enablePush, pushState, urlBase64ToUint8Array, type PushDeps } from "../src/push";
+import { disablePush, enablePush, pushState, reminderPrefs, reportReminder, setReminderPrefs, urlBase64ToUint8Array, type PushDeps } from "../src/push";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void>) {
@@ -94,6 +94,35 @@ await test("sin dirección del Worker, o sin soporte, la función está apagada 
   assert.equal(await enablePush(off.deps, session), "unsupported");
   assert.equal(off.calls.length, 0);
   assert.equal(await pushState(setup({ permission: "unsupported" }).deps), "unsupported");
+});
+
+// The device's storage, as a browser has it.
+const stored = new Map<string, string>();
+(globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => stored.get(k) ?? null, setItem: (k: string, v: string) => void stored.set(k, v), removeItem: (k: string) => void stored.delete(k) };
+
+await test("el recordatorio diario se entera de lo que espera solo cuando hay algo nuevo, y solo desde un dispositivo que recibe avisos", async () => {
+  const who = { ...session, username: "Bea" };
+  const day = (d: number, h: number) => Date.UTC(2026, 9, d, h + 5);
+  const off = setup({ permission: "granted", subscribed: false });
+  await reportReminder(off.deps, who, { mine: 2, free: 0 }, day(18, 9));
+  assert.equal(off.calls.length, 0, "sin suscripción no hay recordatorio que preparar");
+  const t = setup({ permission: "granted", subscribed: true });
+  await reportReminder(t.deps, who, { mine: 2, free: 1 }, day(18, 9));
+  const first = t.calls.filter((c) => c.url.endsWith("/remind"));
+  assert.equal(first.length, 1);
+  const body = JSON.parse(first[0]!.body!) as Record<string, unknown>;
+  assert.deepEqual({ mine: body.mine, free: body.free, hour: body.hour, on: body.on }, { mine: 2, free: 1, hour: 19, on: true });
+  assert.equal(typeof body.tz, "string");
+  await reportReminder(t.deps, who, { mine: 2, free: 1 }, day(18, 15));
+  assert.equal(t.calls.filter((c) => c.url.endsWith("/remind")).length, 1, "lo mismo el mismo día no se vuelve a escribir");
+  await reportReminder(t.deps, who, { mine: 1, free: 1 }, day(18, 16));
+  assert.equal(t.calls.filter((c) => c.url.endsWith("/remind")).length, 2, "otra cuenta sí");
+  await reportReminder(t.deps, who, { mine: 1, free: 1 }, day(19, 8));
+  assert.equal(t.calls.filter((c) => c.url.endsWith("/remind")).length, 3, "otro día también: es el día en que entró");
+  await setReminderPrefs({ on: true, hour: 7 }, who, t.deps);
+  const last = JSON.parse(t.calls.filter((c) => c.url.endsWith("/remind")).at(-1)!.body!) as Record<string, unknown>;
+  assert.deepEqual({ mine: last.mine, hour: last.hour }, { mine: 1, hour: 7 }, "cambiar la hora la dice al momento, con lo último que se contó");
+  assert.deepEqual(reminderPrefs(), { on: true, hour: 7 });
 });
 
 console.log(`\nverify-push-client: ${passed} checks passed.`);

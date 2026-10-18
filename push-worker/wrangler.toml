@@ -15,6 +15,10 @@ ALLOWED_ORIGINS = "https://taller-b2h.pages.dev,https://taller.idiomaspuentes.or
 # Contact for the push services, as a mailto: or https: address.
 VAPID_SUBJECT = "https://qa.door43.org"
 
+# Every hour, on the hour: the daily reminders of those whose hour it is (see src/reminders.ts).
+[triggers]
+crons = ["0 * * * *"]
+
 [[kv_namespaces]]
 binding = "SUBSCRIPTIONS"
 id = "9c62045505e448afbba28a88d1e98e77"

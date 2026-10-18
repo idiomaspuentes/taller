@@ -130,6 +130,18 @@ export function placedLine(text: string, lang: NoticeLang): string {
 export type NoticeWords = { title: string; body: string; grouped?: string };
 
 /**
+ * The daily reminder (see `domain/reminder.ts`): what waits for the person, and who it is for: the peoples waiting
+ * for these resources to translate the Bible. Never a streak or a count to beat.
+ */
+export function reminderNotice(params: { mine: number; free: number }, lang: NoticeLang): NoticeWords {
+  const title =
+    params.mine > 0
+      ? say(lang, params.mine === 1 ? "nt.remindMineOne" : "nt.remindMine", { n: params.mine })
+      : say(lang, params.free === 1 ? "nt.remindFreeOne" : "nt.remindFree", { n: params.free });
+  return { title, body: say(lang, "nt.remindBody") };
+}
+
+/**
  * A comment on a subtarea, as a notice. What a person wrote is told as theirs («ana: …»). What the app wrote for
  * somebody (a delivery, a closing, a step) is news about the subtarea, in the reader's language and without a name
  * in front, since nobody «said» it. A card that asks for a decision says so.

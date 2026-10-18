@@ -112,7 +112,7 @@ Orden acordado para lo que sigue; Abel prueba la app y va diciendo qué cambiar,
 
 ### 3. Avisos
 1. Urgencia alta para menciones y asignaciones (hoy pueden tardar minutos con el teléfono en reposo).
-2. Subtareas **libres para un equipo** (hoy no avisan) y recordatorios de plazo sin que nadie abra la app (necesita un cron y una cuenta de servicio de Door43).
+2. Subtareas **libres para un equipo** (hoy no avisan) y recordatorios de plazo sin que nadie abra la app (necesita una cuenta de servicio de Door43). Hecho el 18 de octubre: el **recordatorio diario**, a la hora que cada persona elige, con un cron del Worker y lo que la app le cuenta al leer «Mis tareas», sin cuenta de servicio (`push-worker/README.md`).
 3. Borrar el Worker sobrante `taller` en Cloudflare (se creó por error).
 
 ### 4. Alineación y revisión

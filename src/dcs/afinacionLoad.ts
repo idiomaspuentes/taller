@@ -74,6 +74,8 @@ export type AfinacionNotesData = {
   preferredTerms: PreferredTerms;
   /** The draft and the aligned English text of the whole book, to show the other uses of a term. */
   bookDraft: BookVerseMap;
+  /** The draft's verses written as one («1:4» → 5), for the chapter read beside other texts. */
+  draftJoined: Record<string, number>;
   bookGateway: BookVerseMap;
   /**
    * The texts the draft is read against, whole book: the original first, then the literal and the simple English.
@@ -90,28 +92,46 @@ export type AfinacionNotesData = {
   sourcePackage: SourcePackage;
 };
 
-function bookVerses(usj: UsjDocument | null): BookVerseMap {
-  const out: BookVerseMap = {};
-  if (!usj) return out;
+/**
+ * The verses of a book, and those written as one (`\v 4-5`): such a verse is kept under its first number, as it is
+ * known everywhere (see `joinedVerses.ts`), and `joined` says up to which verse it goes («1:4» → 5). It was left
+ * out: its name («EST 1:4-5») did not end in a verse number, and a chapter read in Taller lost it.
+ */
+export function bookParts(usj: UsjDocument | null): { verses: BookVerseMap; joined: Record<string, number> } {
+  const verses: BookVerseMap = {};
+  const joined: Record<string, number> = {};
+  if (!usj) return { verses, joined };
   try {
     for (const [sid, text] of Object.entries(collectVerseTextsFromContent(usj.content))) {
-      const m = /(\d+):(\d+)\s*$/.exec(sid);
+      const m = /(\d+):(\d+)(?:\s*[-–]\s*(\d+))?\s*$/.exec(sid);
       // Verse 0 is what a chapter says before its first verse (the title of a psalm): no screen shows it yet.
-      if (m && Number(m[2]) > 0) out[`${m[1]}:${m[2]}`] = text;
+      if (!m || !(Number(m[2]) > 0)) continue;
+      const key = `${m[1]}:${m[2]}`;
+      verses[key] = text;
+      if (m[3] && Number(m[3]) > Number(m[2])) joined[key] = Number(m[3]);
     }
   } catch {
     /* an unreadable book just has no other uses to compare */
   }
-  return out;
+  return { verses, joined };
+}
+
+function bookVerses(usj: UsjDocument | null): BookVerseMap {
+  return bookParts(usj).verses;
 }
 
 const WHOLE_CHAPTER = (chapter: number) => ({ chapter, from: 1, to: 200 });
 
-export type ChapterText = { id: "orig" | "ult" | "ust" | "draft" | "own"; label: string; book: BookVerseMap };
+/**
+ * A text of a whole book, to be read by chapters. `other`: the team's other text (the TPS beside a TPL being worked
+ * on). `joined`: its verses written as one (see `bookParts`).
+ */
+export type ChapterText = { id: "orig" | "ult" | "ust" | "draft" | "own" | "other"; label: string; book: BookVerseMap; joined?: Record<string, number> };
 
 /** A text of the whole book already read (the team's draft, from where it was found), to be read by chapters. */
 export function chapterTextOf(id: ChapterText["id"], label: string, usfm: string): ChapterText {
-  return { id, label, book: bookVerses(tryParseUsj(usfm)) };
+  const { verses, joined } = bookParts(tryParseUsj(usfm));
+  return { id, label, book: verses, ...(Object.keys(joined).length ? { joined } : {}) };
 }
 
 /**
@@ -129,8 +149,8 @@ export async function loadChapterTexts(params: { session: GtSession; book: strin
   ]);
   const rows: [ChapterText["id"], string, string | null][] = [["orig", "Original", orig], ["ult", "ULT", ult], ["ust", "UST", ust], ["draft", params.draftLabel, own]];
   return rows.flatMap(([id, label, raw]) => {
-    const verses = raw ? bookVerses(tryParseUsj(raw)) : {};
-    return Object.keys(verses).length ? [{ id, label, book: verses }] : [];
+    const text = raw ? chapterTextOf(id, label, raw) : null;
+    return text && Object.keys(text.book).length ? [text] : [];
   });
 }
 
@@ -351,7 +371,10 @@ export async function loadAfinacionNotes(params: {
     items,
     termUses,
     preferredTerms,
-    bookDraft: bookVerses(draftUsj),
+    ...(() => {
+      const { verses, joined } = bookParts(draftUsj);
+      return { bookDraft: verses, draftJoined: joined };
+    })(),
     bookGateway: bookVerses(gateway?.usj ?? null),
     references: (() => {
       const other = otherUsfm ? tryParseUsjWithAlignments(otherUsfm) : null;

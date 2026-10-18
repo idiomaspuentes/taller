@@ -3,7 +3,8 @@
  * and what is said, the push itself (really encrypted and signed) and forgetting dead devices.
  */
 import assert from "node:assert/strict";
-import { createHandler } from "../push-worker/src/index";
+import { createHandler, runReminders } from "../push-worker/src/index";
+import { reminderOf } from "../push-worker/src/reminders";
 import { MAX_DEVICES } from "../push-worker/src/store";
 import { payloadOf } from "../push-worker/src/send";
 import { askedNotices, mentionsIn, noticesFor, readableLine, subtarea } from "../push-worker/src/webhook";
@@ -98,7 +99,8 @@ const fakeFetch = async (input: string, init?: RequestInit): Promise<Response> =
   }
   return new Response("no", { status: 500 });
 };
-const handle = createHandler({ fetch: fakeFetch });
+let clock = Date.now();
+const handle = createHandler({ fetch: fakeFetch, now: () => clock });
 
 const subscribe = async (token: string, subscription: unknown, extra: Record<string, string> = {}, method = "POST") =>
   handle(
@@ -327,6 +329,80 @@ await test("pedir un aviso exige una sesión de Door43 que pueda leer la subtare
   assert.equal((await notify("tok-ana", { ...ok, kind: "lo-que-sea" })).status, 400);
   assert.equal((await notify("tok-ana", { ...ok, org: "../otro" })).status, 400);
   assert.deepEqual(await (await notify("tok-ana", { ...ok, to: [] })).json(), { notices: 0, sent: 0 });
+});
+
+// ---- the daily reminder ----
+const remind = (token: string, body: unknown) =>
+  handle(
+    new Request("https://tas-push.example/remind", {
+      method: "POST",
+      headers: { authorization: `token ${token}`, "x-door43-host": "https://qa.door43.org", "content-type": "application/json", origin: "https://app.example.org" },
+      body: JSON.stringify(body),
+    }),
+    env,
+  );
+const BOGOTA = { tz: "America/Bogota", hour: 19, on: true };
+/** 19:00 in Bogotá (UTC−5) on a day of October 2026. */
+const at = (day: number, hour = 19) => Date.UTC(2026, 9, day, hour + 5, 0, 0);
+
+await test("la app cuenta lo que espera a la persona y el día en que entró, en su zona", async () => {
+  assert.equal((await remind("tok-malo", { mine: 3, free: 0, ...BOGOTA })).status, 401);
+  assert.equal((await remind("tok-bea", { mine: 3, free: 0, ...BOGOTA, tz: "Marte/Olimpo" })).status, 400, "una zona que el reloj no conoce");
+  assert.equal((await remind("tok-bea", { mine: 3, free: 0, ...BOGOTA, hour: 24 })).status, 400);
+  clock = at(17, 10);
+  assert.equal((await remind("tok-bea", { mine: 3, free: 1, ...BOGOTA })).status, 204);
+  clock = at(18, 21);
+  assert.equal((await remind("tok-bea", { mine: 3, free: 1, ...BOGOTA })).status, 204);
+  const kept = JSON.parse(kv.data.get("r:https://qa.door43.org:bea")!) as Record<string, unknown>;
+  assert.equal(kept.seenDay, "2026-10-18", "a las 21 de Bogotá ya es el 19 en Londres, y el día es el de la persona");
+  assert.equal("streak" in kept, false, "no se cuentan días seguidos: el motivo no es una racha");
+});
+
+await test("a su hora, un día que no entró, le llega un recordatorio a cada dispositivo, y uno solo", async () => {
+  const devices = devicesOf("bea").length;
+  assert.ok(devices > 0);
+  pushes = [];
+  clock = at(19, 18);
+  assert.deepEqual(await runReminders(env, { fetch: fakeFetch, now: () => clock }), { looked: 1, reminded: 0 }, "a las 18 todavía no");
+  clock = at(19, 19);
+  const lists = kv.lists;
+  assert.deepEqual(await runReminders(env, { fetch: fakeFetch, now: () => clock }), { looked: 1, reminded: 1 });
+  assert.equal(kv.lists - lists, 1, "una sola lista de claves por ronda");
+  assert.equal(pushes.length, devices, "uno por dispositivo");
+  assert.ok(pushes.every((p) => p.headers.Topic === "recordatorio" || p.headers.topic === "recordatorio"), "el de hoy reemplaza al de ayer en el teléfono");
+  pushes = [];
+  assert.deepEqual(await runReminders(env, { fetch: fakeFetch, now: () => clock }), { looked: 1, reminded: 0 }, "nunca dos el mismo día");
+  assert.equal(pushes.length, 0);
+});
+
+await test("lo que dice: cuántas tareas esperan, y para quién es el trabajo", async () => {
+  const kept = { ...(JSON.parse(kv.data.get("r:https://qa.door43.org:bea")!) as Parameters<typeof reminderOf>[0]) };
+  assert.deepEqual(reminderOf(kept, env.APP_URL).words("es"), { title: "Tienes 3 tareas esperando en Taller", body: "Hay pueblos que esperan estos recursos para traducir la Biblia a su idioma." });
+  assert.equal(reminderOf(kept, env.APP_URL).url, "https://app.example.org/#/mis-tareas");
+  assert.deepEqual(reminderOf({ ...kept, mine: 0, free: 1 }, env.APP_URL).words("pt"), { title: "Há 1 tarefa livre para a sua equipe", body: "Há povos que esperam estes recursos para traduzir a Bíblia para a sua língua." });
+});
+
+await test("no recuerda a quien ya entró hoy, a quien lo apagó, ni a quien no tiene nada que hacer", async () => {
+  const run = () => runReminders(env, { fetch: fakeFetch, now: () => clock });
+  clock = at(20, 8);
+  await remind("tok-bea", { mine: 3, free: 0, ...BOGOTA });
+  clock = at(20, 19);
+  assert.equal((await run()).reminded, 0, "entró esta mañana");
+  clock = at(21, 8);
+  await remind("tok-bea", { mine: 3, free: 0, ...BOGOTA, on: false });
+  clock = at(22, 19);
+  assert.equal((await run()).reminded, 0, "lo apagó");
+  clock = at(22, 20);
+  await remind("tok-bea", { mine: 0, free: 0, ...BOGOTA });
+  clock = at(23, 19);
+  assert.equal((await run()).reminded, 0, "no tiene tareas");
+});
+
+await test("a quien ya no tiene ningún dispositivo se le olvida", async () => {
+  kv.data.set("r:https://qa.door43.org:nadie", JSON.stringify({ mine: 2, free: 0, ...BOGOTA, seenDay: "2026-10-22", at: at(22), host: "https://qa.door43.org", login: "nadie" }));
+  clock = at(23, 19);
+  await runReminders(env, { fetch: fakeFetch, now: () => clock });
+  assert.equal(kv.data.has("r:https://qa.door43.org:nadie"), false);
 });
 
 console.log(`\nverify-push-worker: ${passed} checks passed.`);
