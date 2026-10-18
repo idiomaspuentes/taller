@@ -31,6 +31,8 @@ export async function closeDeliveredElsewhere(params: {
    * cites it, beside others).
    */
   delivered: (taskId: string, portion: Portion, itemIds: string[]) => boolean;
+  /** Where the work was done («translationCore», «hoja de cálculo»): kept in each subtarea it closes. */
+  from: string;
   /** Count only. */
   dryRun?: boolean;
   onProgress?: (done: number, total: number) => void;
@@ -39,6 +41,7 @@ export async function closeDeliveredElsewhere(params: {
   const portions = new Map(inventory.portions.map((portion) => [portion.id, portion]));
   const { issues } = await listProjectIssues(session, org, board.projectId);
   const out: DeliveredElsewhere = { closed: 0, alreadyClosed: 0, left: 0, byTask: {} };
+  const broughtAt = new Date().toISOString();
   const todo: { number: number; body: string }[] = [];
   for (const issue of issues) {
     const order = parseWorkOrderMarker(issue.body ?? "");
@@ -65,7 +68,8 @@ export async function closeDeliveredElsewhere(params: {
     // Every step done: a subtarea closed with steps left is read as withdrawn from the plan, not as delivered.
     const steps = (task.steps ?? []).map((step) => step.id);
     const had = parseTaskProgressMarker(issue.body ?? "");
-    todo.push({ number: issue.number, body: upsertTaskProgressInBody(issue.body ?? "", { ...had, doneStepIds: [...new Set([...had.doneStepIds, ...steps])] }) });
+    // Marked as brought: it counts for how far the book is, not for the pace of the team (see `Brought`).
+    todo.push({ number: issue.number, body: upsertTaskProgressInBody(issue.body ?? "", { ...had, doneStepIds: [...new Set([...had.doneStepIds, ...steps])], brought: { from: params.from, at: broughtAt } }) });
   }
   if (params.dryRun) return out;
   const config = dcsConfig(session.host);

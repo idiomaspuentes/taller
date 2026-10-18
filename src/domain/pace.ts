@@ -1,11 +1,13 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { AssignmentsDoc } from "./types";
+import { parseTaskProgressMarker } from "./taskProgress";
 import { issueFraction } from "./workProgress";
 
 /**
  * The pace of a project: how many subtareas are finished per week, and when it would end going on like that.
  * Read from when each subtarea was closed, which Door43 has kept from the start, so it also speaks of work done
- * before anything else was measured.
+ * before anything else was measured. A subtarea brought from elsewhere by a migration (see `Brought`) was closed
+ * the day the book was brought, not when its work was done: it counts for what is left, not for the pace.
  */
 
 const WEEK_MS = 7 * 86_400_000;
@@ -22,11 +24,14 @@ export type Pace = {
   left: number;
   /** When it would end at this pace. Absent with nothing left, or nothing finished in the weeks measured. */
   endsAt?: string;
+  /** Subtareas whose work was brought from elsewhere: done, and out of the pace. */
+  brought: number;
 };
 
 export function paceOf(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams">, now: Date, shown = 8): Pace {
   const weeks = Array.from({ length: shown }, () => 0);
   let left = 0;
+  let brought = 0;
   let first = Number.POSITIVE_INFINITY;
   for (const issue of issues) {
     const fraction = issueFraction(issue, board);
@@ -34,6 +39,10 @@ export function paceOf(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams">,
     const created = Date.parse(issue.created_at ?? "");
     if (Number.isFinite(created)) first = Math.min(first, created);
     left += 1 - fraction;
+    if (parseTaskProgressMarker(issue.body ?? "").brought) {
+      brought++;
+      continue;
+    }
     const closed = issue.state === "closed" ? Date.parse(issue.closed_at ?? "") : Number.NaN;
     if (!Number.isFinite(closed) || closed > now.getTime()) continue;
     const ago = Math.floor((now.getTime() - closed) / WEEK_MS);
@@ -45,7 +54,7 @@ export function paceOf(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams">,
   const span = Math.min(PACE_WEEKS, shown, Math.max(1, age));
   const perWeek = weeks.slice(-span).reduce((sum, count) => sum + count, 0) / span;
   const endsAt = left > 0 && perWeek > 0 ? new Date(now.getTime() + (left / perWeek) * WEEK_MS).toISOString() : undefined;
-  return { weeks, perWeek, left, ...(endsAt ? { endsAt } : {}) };
+  return { weeks, perWeek, left, brought, ...(endsAt ? { endsAt } : {}) };
 }
 
 /**

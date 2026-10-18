@@ -2878,6 +2878,7 @@
   "pc.thisWeek": "esta semana",
   "pc.pace": "Ritmo das últimas {weeks} semanas: {n} por semana.",
   "pc.none": "Nenhuma subtarefa foi terminada nas últimas {weeks} semanas.",
+  "pc.noneYet": "Ainda não há ritmo: o que foi trazido de outro lugar conta para o avanço, não para o ritmo, e ainda nenhuma subtarefa foi terminada aqui.",
   "pc.ends": "Neste ritmo, termina por volta de {date}.",
   "pc.allDone": "Tudo está terminado.",
   "td.projects": "Projetos",

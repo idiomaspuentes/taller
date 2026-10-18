@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { calendarWeeks, dayOf, lastDays, mergePeople, peopleWork, recentDays, workDays, workLevel, workSummary, type HeatSlot } from "../src/domain/activity";
 import { paceNumber, paceOf } from "../src/domain/pace";
-import { emptyTaskProgress, encodeTaskProgressMarker, markStepDone, stampDoneSteps, withStepRuntime, withStepWork, type TaskProgressMarker } from "../src/domain/taskProgress";
+import { emptyTaskProgress, encodeTaskProgressMarker, markStepDone, parseTaskProgressMarker, stampDoneSteps, upsertTaskProgressInBody, withStepRuntime, withStepWork, type TaskProgressMarker } from "../src/domain/taskProgress";
 import type { AssignmentsDoc, ProjectTask } from "../src/domain/types";
 
 let passed = 0;
@@ -71,6 +71,30 @@ test("un proyecto joven se mide por las semanas que tiene; sin nada terminado no
   const dropped = paceOf([issue({ closed: 2, marker: emptyTaskProgress() }), issue({ closed: 2, key: "tpl|decision:1" })], board, now);
   assert.deepEqual(dropped.weeks.reduce((a, b) => a + b, 0), 0);
   assert.deepEqual([paceNumber(2, "es"), paceNumber(2.54, "es"), paceNumber(0.04, "es"), paceNumber(0, "es"), paceNumber(12.4, "es")], ["2", "2,5", "0,1", "0", "12"]);
+});
+
+test("lo traído de otro lado por una migración cuenta para lo que falta, no para el ritmo", () => {
+  // A book brought on Thursday: 590 subtareas closed that day, done before in translationCore; three done here since.
+  const done = STEPS.reduce((m, id) => markStepDone(m, id), emptyTaskProgress());
+  const brought = (closed: number) => issue({ created: closed, closed, marker: { ...done, brought: { from: "translationCore", at: ago(closed) } } });
+  const issues = [...Array.from({ length: 590 }, () => brought(5)), issue({ created: 5, closed: 3 }), issue({ created: 5, closed: 1 }), issue({ created: 5, closed: 0 }), issue({ created: 5 }), issue({ created: 5 })];
+  const pace = paceOf(issues, board, now);
+  assert.equal(pace.brought, 590);
+  assert.equal(pace.perWeek, 3, "las tres terminadas aquí en la primera semana, no 593");
+  assert.equal(pace.left, 2, "lo traído está hecho");
+  // Nothing finished here yet: no pace, and no date promised.
+  const only = paceOf([...Array.from({ length: 10 }, () => brought(2)), issue({ created: 2 })], board, now);
+  assert.deepEqual([only.perWeek, only.endsAt, only.brought], [0, undefined, 10]);
+});
+
+test("la marca de lo traído sobrevive a quien guarda el progreso sin conocerla", () => {
+  const body = upsertTaskProgressInBody("Subtarea", { ...emptyTaskProgress(), doneStepIds: ["borrador"], brought: { from: "translationCore", at: "2026-10-15T20:00:00Z" } });
+  assert.deepEqual(parseTaskProgressMarker(body).brought, { from: "translationCore", at: "2026-10-15T20:00:00Z" });
+  // Reopened and a step written again by a tool that knows nothing of it.
+  const again = upsertTaskProgressInBody(body, ["borrador", "pares"]);
+  assert.deepEqual(parseTaskProgressMarker(again).doneStepIds, ["borrador", "pares"]);
+  assert.equal(parseTaskProgressMarker(again).brought?.from, "translationCore");
+  assert.equal(parseTaskProgressMarker(upsertTaskProgressInBody("Otra", ["borrador"])).brought, undefined, "una subtarea hecha aquí no tiene la marca");
 });
 
 const slot = (iso: string, contributions = 1): HeatSlot => ({ timestamp: Date.parse(iso) / 1000, contributions });

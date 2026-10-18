@@ -28,6 +28,13 @@ export type StepRuntime = {
 };
 
 export type StepDone = { by: string; at: string };
+
+/**
+ * A subtarea whose work was done before the team came to this app (in translationCore, in a spreadsheet), closed by
+ * a migration: where it was done, and when it was brought. It counts for how far a book is, never for its pace: a
+ * book brought in a day read as nearly six hundred subtareas finished that week (Ezra and Esther, October 2026).
+ */
+export type Brought = { from: string; at: string };
 export type StepWork = { done: number; total: number };
 
 export type TaskProgressMarker = {
@@ -35,7 +42,15 @@ export type TaskProgressMarker = {
   doneStepIds: string[];
   /** Per-step seating and approvals (v2). */
   steps?: Record<string, StepRuntime>;
+  /** The work was done elsewhere and brought here (see `Brought`). */
+  brought?: Brought;
 };
+
+function normalizeBrought(raw: unknown): Brought | undefined {
+  const row = raw as Partial<Brought> | null;
+  if (!row || typeof row !== "object" || typeof row.at !== "string" || !row.at.trim()) return undefined;
+  return { from: typeof row.from === "string" ? row.from.trim() : "", at: row.at.trim() };
+}
 
 const MARKER_RE = /<!--\s*gateway-task-progress\s+(\{[\s\S]*?\})\s*-->/;
 
@@ -119,10 +134,12 @@ export function parseTaskProgressMarker(body: string | undefined): TaskProgressM
     };
     const ids = normalizeLoginList(parsed.doneStepIds);
     const steps = normalizeStepRuntimes(parsed.steps);
+    const brought = normalizeBrought(parsed.brought);
     return {
       schema: TASK_PROGRESS_SCHEMA,
       doneStepIds: ids,
       steps,
+      ...(brought ? { brought } : {}),
     };
   } catch {
     return emptyTaskProgress();
@@ -131,10 +148,12 @@ export function parseTaskProgressMarker(body: string | undefined): TaskProgressM
 
 export function encodeTaskProgressMarker(marker: TaskProgressMarker): string {
   const steps = normalizeStepRuntimes(marker.steps);
+  const brought = normalizeBrought(marker.brought);
   const body: TaskProgressMarker = {
     schema: TASK_PROGRESS_SCHEMA,
     doneStepIds: [...new Set(marker.doneStepIds.filter(Boolean))],
     ...(steps ? { steps } : {}),
+    ...(brought ? { brought } : {}),
   };
   return `<!-- gateway-task-progress ${JSON.stringify(body)} -->`;
 }
@@ -151,8 +170,10 @@ export function upsertTaskProgressInBody(
         steps: undefined as TaskProgressMarker["steps"],
       }
     : markerOrIds;
-  const encoded = encodeTaskProgressMarker(marker);
   const current = body ?? "";
+  // Whoever writes the progress may not know the work was brought from elsewhere: that is kept, whatever they say.
+  const before = marker.brought ? undefined : parseTaskProgressMarker(current).brought;
+  const encoded = encodeTaskProgressMarker(before ? { ...marker, brought: before } : marker);
   if (MARKER_RE.test(current)) {
     return current.replace(MARKER_RE, encoded);
   }

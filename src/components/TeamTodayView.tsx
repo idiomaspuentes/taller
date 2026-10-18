@@ -256,7 +256,9 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
                       ? t("pc.allDone")
                       : row.pace.perWeek > 0
                         ? t("pc.pace").replace("{weeks}", String(PACE_WEEKS)).replace("{n}", paceNumber(row.pace.perWeek, language))
-                        : t("pc.none").replace("{weeks}", String(PACE_WEEKS))}
+                        : row.pace.brought > 0
+                          ? t("pc.noneYet")
+                          : t("pc.none").replace("{weeks}", String(PACE_WEEKS))}
                     {row.pace.endsAt ? ` ${t("pc.ends").replace("{date}", endDateText(row.pace.endsAt, language))}` : ""}
                   </p>
                 </li>
