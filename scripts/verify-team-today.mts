@@ -73,6 +73,16 @@ test("una subtarea que el plan retiró no cuenta como terminada", () => {
   assert.deepEqual(g.done.map((r) => r.issue.number), [delivered.number], "ni la que quedó a medias ni la que nadie tocó");
 });
 
+test("lo traído de otro lado por una migración no cuenta como terminado esta semana", () => {
+  const stepped: Pick<AssignmentsDoc, "teams" | "phases"> = { ...board, teams: [task("tpl", "Traducir TPL", { steps: [{ id: "borrador", name: "Borrador" }] as ProjectTask["steps"] })] };
+  const here = issue("tpl", { assignee: "ana", created: 9, closed: 1 });
+  (here as { body: string }).body += '\n<!-- gateway-task-progress {"doneStepIds":["borrador"]} -->';
+  const brought = issue("tpl", { created: 2, closed: 2, portion: "p2" });
+  (brought as { body: string }).body += '\n<!-- gateway-task-progress {"doneStepIds":["borrador"],"brought":{"from":"translationCore","at":"2026-10-15T23:35:00Z"}} -->';
+  const g = classifyToday({ issues: [here, brought], board: stepped, now });
+  assert.deepEqual(g.done.map((r) => r.issue.number), [here.number], "solo la entregada aquí");
+});
+
 test("terminadas: solo las cerradas dentro de la última semana", () => {
   const recent = issue("tpl", { assignee: "ana", created: 20, closed: 2 });
   const old = issue("tpl", { assignee: "ana", created: 30, closed: 20, portion: "p2" });

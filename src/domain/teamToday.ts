@@ -105,7 +105,9 @@ export function classifyToday(params: {
       // portions were cut anew said «90 terminadas esta semana» with one subtarea delivered.
       const marker = parseTaskProgressMarker(issue.body ?? undefined);
       const withdrawn = (task?.steps ?? []).some((step) => !marker.doneStepIds.includes(step.id));
-      if (issue.closed_at && days <= limits.doneDays && !withdrawn) {
+      // Brought from elsewhere by a migration (see `Brought`): closed the day the book came, finished long before.
+      // Counted, the week of Ezra and Esther read «1195 terminadas esta semana».
+      if (issue.closed_at && days <= limits.doneDays && !withdrawn && !marker.brought) {
         out.done.push({ ...base, group: "done", days, reason: `Cerrada ${daysText(days)}` });
       }
       continue;
