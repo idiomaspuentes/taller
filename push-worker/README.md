@@ -44,7 +44,8 @@ el código que las arma es el mismo de la app (`src/domain/noticeText.ts`): el W
 **El recordatorio diario** (`src/reminders.ts`, `src/domain/reminder.ts`): un día que la persona no entra a Taller,
 a la hora que eligió (las 19:00 si no eligió), le llega un aviso con cuántas tareas la esperan («Tienes 3 tareas
 esperando en Taller») y para quién es el trabajo («Hay pueblos que esperan estos recursos para traducir la Biblia a
-su idioma.»). No cuenta días seguidos ni compara a nadie: el motivo no es una racha. Uno por día como mucho; nada si
+su idioma.»). No cuenta días seguidos ni compara a nadie: el motivo no es una racha. Solo de lunes a viernes: el
+sábado y el domingo, en la zona de cada persona, no hay recordatorio. Uno por día como mucho; nada si
 no tiene tareas, si ya entró ese día o si lo apagó (menú → Notificaciones → Recordatorio diario). Viene encendido.
 - El Worker no lee las tareas de nadie (no tiene cuenta de Door43). Cada vez que «Mis tareas» se lee, la app le dice
   (`POST /remind`, con el token de la persona) cuántas tareas son suyas y cuántas están libres para su equipo, la

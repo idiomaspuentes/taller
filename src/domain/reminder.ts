@@ -48,15 +48,18 @@ export function validZone(tz: unknown): tz is string {
   }
 }
 
-function parts(now: number, tz: string): { day: string; hour: number } {
+function parts(now: number, tz: string): { day: string; hour: number; weekend: boolean } {
   const zone = validZone(tz) ? tz : "UTC";
   const got = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
+    new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23", weekday: "short" })
       .formatToParts(new Date(now))
       .map((p) => [p.type, p.value]),
   );
-  return { day: `${got.year}-${got.month}-${got.day}`, hour: Number(got.hour) % 24 };
+  return { day: `${got.year}-${got.month}-${got.day}`, hour: Number(got.hour) % 24, weekend: got.weekday === "Sat" || got.weekday === "Sun" };
 }
+
+/** Whether it is Saturday or Sunday for the person, in their zone. */
+export const weekendIn = (now: number, tz: string): boolean => parts(now, tz).weekend;
 
 /** The day it is for the person (`2026-10-18`), in their zone. */
 export const dayIn = (now: number, tz: string): string => parts(now, tz).day;
@@ -79,12 +82,14 @@ export function seen(prev: ReminderState | null, report: ReminderReport, now: nu
 }
 
 /**
- * Whether to remind the person now: they want it, it is their hour, they have not come in today nor been reminded
- * today, and something waits for them. A report older than two weeks is not trusted: the counts may be long gone.
+ * Whether to remind the person now: they want it, it is a weekday and their hour, they have not come in today nor
+ * been reminded today, and something waits for them. Saturday and Sunday are theirs (Abel, 18 October 2026): no
+ * reminder then, whatever waits. A report older than two weeks is not trusted: the counts may be long gone.
  */
 export function reminderDue(state: ReminderState, now: number): boolean {
   if (!state.on || state.mine + state.free === 0) return false;
   if (now - state.at > 14 * 24 * 3600 * 1000) return false;
-  const { day, hour } = parts(now, state.tz);
+  const { day, hour, weekend } = parts(now, state.tz);
+  if (weekend) return false;
   return hour === state.hour && state.seenDay !== day && state.sentDay !== day;
 }

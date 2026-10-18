@@ -421,16 +421,16 @@ await test("a quien ya no tiene ningún dispositivo se le olvida", async () => {
 });
 
 await test("con todo el equipo a la misma hora, cada ejecución envía tres avisos como mucho y pocas llamadas, y nadie se queda sin aviso", async () => {
-  // Twelve people with two devices each, all at 19:00 in Bogotá, none came in on the 24th.
+  // Twelve people with two devices each, all at 19:00 in Bogotá, none came in on Monday the 26th.
   for (let i = 1; i <= 12; i++) {
     const login = `p${String(i).padStart(2, "0")}`;
-    const kept = { mine: 1, free: 0, ...BOGOTA, seenDay: "2026-10-23", at: at(23), host: "https://qa.door43.org", login };
+    const kept = { mine: 1, free: 0, ...BOGOTA, seenDay: "2026-10-23", at: at(25), host: "https://qa.door43.org", login };
     await kv.put(`r:https://qa.door43.org:${login}`, JSON.stringify(kept), { metadata: kept });
     kv.data.set(`u:https://qa.door43.org:${login}`, JSON.stringify({ devices: [await deviceSubscription(`https://push.example/${login}-a`), await deviceSubscription(`https://push.example/${login}-b`)].map((sub) => ({ sub, at: 1 })) }));
   }
   const runs: { reminded: number; left: number; calls: number }[] = [];
   for (const minute of [0, 2, 4, 6, 8, 10, 12, 14]) {
-    clock = at(24, 19) + minute * 60_000;
+    clock = at(26, 19) + minute * 60_000;
     pushes = [];
     const before = kv.calls;
     const round = await runReminders(env, { fetch: fakeFetch, now: () => clock });
@@ -442,13 +442,31 @@ await test("con todo el equipo a la misma hora, cada ejecución envía tres avis
   assert.deepEqual(runs.map((r) => r.reminded), [1, 1, 1, 1, 1, 1, 1, 1]);
   assert.ok(runs.every((r) => r.calls <= 50));
   for (const minute of [16, 18, 20, 22]) {
-    clock = at(24, 19) + minute * 60_000;
+    clock = at(26, 19) + minute * 60_000;
     await runReminders(env, { fetch: fakeFetch, now: () => clock });
   }
-  for (let i = 1; i <= 12; i++) assert.equal(JSON.parse(kv.data.get(`r:https://qa.door43.org:p${String(i).padStart(2, "0")}`)!).sentDay, "2026-10-24", `p${i} quedó sin aviso`);
+  for (let i = 1; i <= 12; i++) assert.equal(JSON.parse(kv.data.get(`r:https://qa.door43.org:p${String(i).padStart(2, "0")}`)!).sentDay, "2026-10-26", `p${i} quedó sin aviso`);
   pushes = [];
-  clock = at(24, 19) + 24 * 60_000;
+  clock = at(26, 19) + 24 * 60_000;
   assert.equal((await runReminders(env, { fetch: fakeFetch, now: () => clock })).due, 0, "nadie queda pendiente");
+});
+
+await test("el sábado y el domingo no hay recordatorio, y el lunes vuelve", async () => {
+  // Bea has tasks and did not come in on Friday the 23rd: Saturday 24 and Sunday 25 are hers.
+  const kept = { mine: 2, free: 0, ...BOGOTA, seenDay: "2026-10-23", at: at(23), host: "https://qa.door43.org", login: "bea" };
+  await kv.put("r:https://qa.door43.org:bea", JSON.stringify(kept), { metadata: kept });
+  const run = async (day: number) => {
+    clock = at(day, 19);
+    return (await runReminders(env, { fetch: fakeFetch, now: () => clock })).due;
+  };
+  assert.equal(await run(24), 0, "sábado");
+  assert.equal(await run(25), 0, "domingo");
+  assert.equal(await run(26), 1, "lunes");
+  // The weekend is the person's: 19:00 on Friday in Bogotá is already Saturday in Manila, and the other way round.
+  const manila = { ...kept, tz: "Asia/Manila", hour: 8, seenDay: "2026-10-22", sentDay: undefined };
+  await kv.put("r:https://qa.door43.org:bea", JSON.stringify(manila), { metadata: manila });
+  clock = Date.UTC(2026, 9, 24, 0, 0); // Saturday 08:00 in Manila, Friday 19:00 in Bogotá
+  assert.equal((await runReminders(env, { fetch: fakeFetch, now: () => clock })).due, 0, "en Manila ya es sábado");
 });
 
 console.log(`\nverify-push-worker: ${passed} checks passed.`);
