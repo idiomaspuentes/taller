@@ -7,7 +7,10 @@ import { ensureBranchFrom, getDefaultBranch } from "./pulls";
 import { withQuote } from "../domain/quoteFromSelection";
 import { bookBranchName, bookOnlyBranchName, groupDraftBranchNames } from "../domain/portionPr";
 import { draftReadOrder } from "../domain/branchNames";
-import { applyHelpsTsvEdits, type HelpsRowEdit } from "../domain/helpsDraft";
+import { applyHelpsTsvEdits, tsvRowId, type HelpsRowEdit } from "../domain/helpsDraft";
+import { normalizeHelpText } from "../domain/referenceResources";
+import { parseTsvTable } from "../prep/tsv";
+import { readPublished } from "./published";
 import { resolveHelpsTarget, type HelpsResource } from "../domain/helpsTarget";
 import type { PmConfig } from "../domain/roles";
 import type { SolverLaunchContext } from "../domain/solverLaunch";
@@ -128,6 +131,36 @@ export async function readTeamHelps(params: {
     }
   }
   return null;
+}
+
+/** A note of the team as it reads now, and whether it is still a draft: not as the team's last release has it. */
+export type TeamNote = { id: string; text: string; draft: boolean };
+
+/**
+ * The team's notes of a book as they stand now (see `readTeamHelps`), by id and by reference (`front:intro`,
+ * `3:intro`, the first note of a verse), each said to be a draft or not. Whoever refines the text reads the note
+ * the team translated, said to be a draft, and leaves for whoever harmonizes it what to improve (18 October).
+ * `null` when the team has no notes of the book.
+ */
+export async function readTeamNotes(params: { session: GtSession; ctx: SolverLaunchContext; pmConfig: PmConfig; board: AssignmentsDoc | null }): Promise<{ byId: Record<string, TeamNote>; byRef: Record<string, TeamNote> } | null> {
+  const now = await readTeamHelps({ ...params, kind: "notas" });
+  if (!now) return null;
+  const helps = resolveHelpsTarget({ ...params.ctx, resource: "notas" }, params.pmConfig);
+  const published = "error" in helps || !helps.filepath ? null : await readPublished(params.session, helps.owner, helps.repo, helps.filepath).catch(() => null);
+  const noteOf = (row: Record<string, string>) => normalizeHelpText(row.Note || row.note || row.OccurrenceNote || "").trim();
+  const before = new Map((published ? parseTsvTable(published).rows : []).map((row) => [tsvRowId(row), noteOf(row)] as const));
+  const byId: Record<string, TeamNote> = {};
+  const byRef: Record<string, TeamNote> = {};
+  for (const row of parseTsvTable(now.text).rows) {
+    const id = tsvRowId(row);
+    const text = noteOf(row);
+    if (!id || !text) continue;
+    const note = { id, text, draft: before.get(id) !== text };
+    byId[id] = note;
+    const ref = (row.Reference || row.reference || "").trim().toLowerCase();
+    if (ref && !byRef[ref]) byRef[ref] = note;
+  }
+  return { byId, byRef };
 }
 
 /**

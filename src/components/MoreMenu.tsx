@@ -29,17 +29,20 @@ export type MoreItem = {
  * details nobody needs every day (the task, the file) come last, in grey. The button says «Más» beside its dots: a
  * bare icon did not tell the team there was anything there.
  */
-/** `hideAbout`: the header around it already shows «Sobre esta tarea» as an «ⓘ». */
-export function MoreMenu({ items, details, hideAbout }: { items: MoreItem[]; details?: ReactNode; hideAbout?: boolean }) {
+/**
+ * `hideAbout`: the header around it already shows «Sobre esta tarea» as an «ⓘ». `bare`: only the items given and the
+ * size of the text, for a sheet over the tool, where what the tool opens would open under it.
+ */
+export function MoreMenu({ items, details, hideAbout, bare }: { items: MoreItem[]; details?: ReactNode; hideAbout?: boolean; bare?: boolean }) {
   const t = useT();
   const textSize = useTextSize();
   const intro = useIntroEntry();
   const about = useAboutEntry();
   // The introduction of the passage, where the tool has one to give (see `introSlot.ts`).
   const all: MoreItem[] = [
-    ...(about && !hideAbout ? [{ id: "about", label: t("af.aboutTask"), hint: t("mm.aboutHint"), onSelect: about.open }] : []),
+    ...(about && !hideAbout && !bare ? [{ id: "about", label: t("af.aboutTask"), hint: t("mm.aboutHint"), onSelect: about.open }] : []),
     ...items,
-    ...(intro && !items.some((item) => item.id === "intro") ? [{ id: "intro", label: t("af.paneIntro"), hint: t("mm.introHint"), onSelect: intro.open }] : []),
+    ...(intro && !bare && !items.some((item) => item.id === "intro") ? [{ id: "intro", label: t("af.paneIntro"), hint: t("mm.introHint"), onSelect: intro.open }] : []),
   ];
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);

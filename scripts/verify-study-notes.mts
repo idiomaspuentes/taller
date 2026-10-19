@@ -4,7 +4,7 @@
  *   npm run verify:study-notes
  */
 import assert from "node:assert/strict";
-import { articleMessageKey, attendedMessages, messageRef, messagesAbout, normalizeStudyNotes, notesByResource, type StudyNote, studyNotesFor, studyNotesPath, termMessageKey, visibleStudyNotes } from "../src/domain/studyNotes";
+import { articleMessageKey, attendedMessages, canEditMessage, editStudyNote, messageRef, messagesAbout, normalizeStudyNotes, notesByResource, type StudyNote, studyNotesFor, studyNotesPath, termMessageKey, visibleStudyNotes } from "../src/domain/studyNotes";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -77,6 +77,20 @@ test("un mensaje para otro equipo se da por evaluado con una nota de quien lo ev
   assert.deepEqual(studyNotesFor(all, { book: "JON", chapter: 2, from: 2, to: 2 }).map((note) => note.id), ["n-1", "n-2"], "y no sale entre los apuntes del pasaje");
   // What is written to a file is read back with what it attends to.
   assert.equal(normalizeStudyNotes({ notes: [mark] }, "carla")[0]!.attends, "ana/n-1");
+});
+
+test("quien dejó un mensaje puede corregirlo mientras nadie lo haya evaluado, y se sabe que lo corrigió", () => {
+  const mine: StudyNote = { id: "m-1", by: "ana", book: "EST", chapter: 1, verse: 1, kind: "remember", resource: "notas", about: "jdr1", text: "habitual suena mjor", shared: true, at: "2026-10-18T10:00:00Z" };
+  const changed = editStudyNote([mine], "m-1", " «habitual» suena mejor como «común» ", "2026-10-18T10:05:00Z");
+  assert.equal(changed[0]!.text, "«habitual» suena mejor como «común»");
+  assert.equal(changed[0]!.edited, "2026-10-18T10:05:00Z");
+  assert.equal(changed[0]!.at, mine.at, "conserva cuándo se escribió");
+  assert.deepEqual(editStudyNote([mine], "m-1", "   ", "x"), [mine], "un texto vacío no borra el mensaje");
+  assert.deepEqual(editStudyNote([mine], "otro", "algo", "x"), [mine]);
+  assert.equal(normalizeStudyNotes({ notes: changed }, "ana")[0]!.edited, "2026-10-18T10:05:00Z", "se lee de vuelta del archivo");
+  assert.equal(canEditMessage(mine, "Ana", new Map()), true);
+  assert.equal(canEditMessage(mine, "bea", new Map()), false, "el de otra persona no");
+  assert.equal(canEditMessage(mine, "ana", new Map([["ana/m-1", {}]])), false, "evaluado ya no: lo evaluado dejaría de ser lo que dice");
 });
 
 console.log(`\nverify-study-notes: ${passed} checks passed.`);

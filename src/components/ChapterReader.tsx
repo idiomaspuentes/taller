@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import type { GtSession } from "../dcs/auth";
 import { loadChapterTexts, type ChapterText } from "../dcs/afinacionLoad";
@@ -150,14 +150,37 @@ function OneText({ text, reading, here, renderVerse }: { text: ChapterText; read
   );
 }
 
-/** Several texts in columns, a row for each verse: the row is as tall as the longest of them. */
-function SideBySide({ texts, reading, here, renderVerse }: { texts: ChapterText[]; reading: number; here: (verse: number) => boolean; renderVerse?: Props["renderVerse"] }) {
+/**
+ * The chapter around a point, in the reference and the translation (18 October): side by side on a computer; on a
+ * phone one over the other, verse by verse, since two columns there are a few words wide. It opens at the point's
+ * verse, which stands out.
+ */
+export function ChapterPair({ texts, chapter, verse, renderVerse }: { texts: ChapterText[]; chapter: number; verse: number; renderVerse?: Props["renderVerse"] }) {
+  const wide = useWide();
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // After the sheet is laid out: at once, the verse was measured in a sheet still opening.
+    const at = window.setTimeout(() => box.current?.querySelector('[data-here="true"]')?.scrollIntoView({ block: "center" }), 60);
+    return () => window.clearTimeout(at);
+  }, [wide, chapter, verse]);
+  return (
+    <div ref={box}>
+      <SideBySide texts={texts} reading={chapter} here={(v) => v === verse} renderVerse={renderVerse} stacked={!wide} />
+    </div>
+  );
+}
+
+/**
+ * Several texts in columns, a row for each verse: the row is as tall as the longest of them. Stacked, each verse
+ * holds its texts one under the other, each with its name.
+ */
+function SideBySide({ texts, reading, here, renderVerse, stacked }: { texts: ChapterText[]; reading: number; here: (verse: number) => boolean; renderVerse?: Props["renderVerse"]; stacked?: boolean }) {
   const t = useT();
   const rows = chapterRows(texts, reading);
   const hebrew = texts.map(isHebrew);
   const cellOf = (text: ChapterText, index: number, verse: number, cell: ParallelCell) => {
     const orig = text.id === "orig";
-    const attrs = { role: "cell", className: "crp__cell", "data-orig": orig ? "true" : undefined, lang: orig ? (hebrew[index] ? "hbo" : "grc") : undefined, dir: hebrew[index] ? ("rtl" as const) : undefined };
+    const attrs = { role: "cell", className: "crp__cell", "data-text": text.id, "data-orig": orig ? "true" : undefined, lang: orig ? (hebrew[index] ? "hbo" : "grc") : undefined, dir: hebrew[index] ? ("rtl" as const) : undefined };
     if (cell.kind === "joined") return <div key={text.id} {...attrs} data-empty="true">{t("cr.joinedWith").replace("{n}", String(cell.from))}</div>;
     if (cell.kind === "missing") return (
       <div key={text.id} {...attrs} data-empty="true">
@@ -168,19 +191,24 @@ function SideBySide({ texts, reading, here, renderVerse }: { texts: ChapterText[
     const key = `${reading}:${verse}`;
     return (
       <div key={text.id} {...attrs}>
+        {stacked ? (
+          <span className="crp__lbl" data-text={text.id} dir="ltr">
+            {text.label}
+          </span>
+        ) : null}
         {cell.to ? <span className="crp__span">{`${verse}–${cell.to}`}</span> : null}
         {renderVerse ? renderVerse(text, key, cell.text) : cell.text}
       </div>
     );
   };
   return (
-    <div className="crp" role="table" aria-label={t("cr.sideLabel")} style={{ ["--crp-n" as string]: texts.length }}>
+    <div className={stacked ? "crp crp--stack" : "crp"} role="table" aria-label={t("cr.sideLabel")} style={{ ["--crp-n" as string]: texts.length }}>
       <div className="crp__row crp__row--head" role="row">
         <span className="crp__num" role="columnheader">
           <span className="sr-only">{t("cr.verse")}</span>
         </span>
         {texts.map((text) => (
-          <span key={text.id} className="crp__head" role="columnheader">
+          <span key={text.id} className="crp__head" role="columnheader" data-text={text.id}>
             {text.label}
           </span>
         ))}

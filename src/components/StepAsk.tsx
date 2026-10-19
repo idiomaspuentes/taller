@@ -25,6 +25,13 @@ import { loadIntroNotes } from "../domain/referenceResources";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { addRuleToTeam, answerTeamRule, useManagesTeamRules, useTeamRules } from "../useTeamRules";
 import { LoadingState } from "./LoadingState";
+import { draftLabelOf, HelpVersions } from "./HelpVersions";
+import { HelpMessages } from "./HelpMessages";
+import { readTeamNotes, type TeamNote } from "../dcs/teamHelps";
+import { loadPmConfig } from "../dcs/issues";
+import { DEFAULT_PM_CONFIG } from "../domain/roles";
+import { sourcePackageLang, resolveSourcePackage } from "../domain/sourcePackage";
+import type { AssignmentsDoc } from "../domain/types";
 
 /**
  * What a step asks of whoever does it: the process's description of the step, the things to keep in mind in it and
@@ -380,22 +387,60 @@ function PassageIntro({ session, ctx }: { session: GtSession | null | undefined;
   );
 }
 
-/** The introductions themselves, read when this is shown. */
-export function PassageIntroText({ session, ctx }: { session: GtSession | null | undefined; ctx: SolverLaunchContext }) {
+/**
+ * The introductions themselves, read when this is shown. With `drafts`, the team's translation is read too, its
+ * draft said to be one, beside the source's, and what to improve in it can be left for whoever harmonizes it
+ * (18 October); without, the team's when published, else the source's.
+ */
+export function PassageIntroText({ session, ctx, drafts, board }: { session: GtSession | null | undefined; ctx: SolverLaunchContext; drafts?: boolean; board?: AssignmentsDoc | null }) {
   const t = useT();
   const language = useUiLanguage();
   const [intro, setIntro] = useState<{ book: string; chapter: string } | null | undefined>(undefined);
+  const [team, setTeam] = useState<{ book?: TeamNote; chapter?: TeamNote } | null>(null);
   useEffect(() => {
     if (!session || !ctx.book) return;
     let alive = true;
     setIntro(undefined);
-    void loadIntroNotes(session, ctx.book, ctx.chapter, { contentOrg: ctx.contentOrg, lang: ctx.lang })
+    // Beside the team's draft the source is read as it is; alone, the team's published text comes first.
+    void loadIntroNotes(session, ctx.book, ctx.chapter, drafts ? undefined : { contentOrg: ctx.contentOrg, lang: ctx.lang })
       .then((found) => alive && setIntro(found))
       .catch(() => alive && setIntro(null));
     return () => {
       alive = false;
     };
-  }, [session?.token, ctx.book, ctx.chapter, ctx.contentOrg, ctx.lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session?.token, ctx.book, ctx.chapter, ctx.contentOrg, ctx.lang, drafts]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!drafts || !session || !ctx.book) return;
+    let alive = true;
+    void (async () => {
+      const pmConfig = ctx.pmOrg ? await loadPmConfig(session, ctx.pmOrg).catch(() => DEFAULT_PM_CONFIG) : DEFAULT_PM_CONFIG;
+      const notes = await readTeamNotes({ session, ctx, pmConfig, board: board ?? null }).catch(() => null);
+      if (alive) setTeam(notes ? { book: notes.byRef["front:intro"], chapter: notes.byRef[`${ctx.chapter}:intro`] } : null);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [session?.token, ctx.book, ctx.chapter, drafts, board]); // eslint-disable-line react-hooks/exhaustive-deps
+  const draftLabel = draftLabelOf(board, "notas", t, language);
+  const sourceLang = sourcePackageLang(resolveSourcePackage(board?.settings));
+  /** An introduction, as the team has it beside the source's, with what to improve in it left for the next team. */
+  const versions = (source: string, own: TeamNote | undefined, verse: number) =>
+    drafts ? (
+      <>
+        <HelpVersions team={own ?? null} source={source} teamLang={ctx.lang} sourceLang={sourceLang} draftLabel={draftLabel}>
+          {(text, lang) => (
+            <div lang={lang}>
+              <HelpMarkdownView content={text} />
+            </div>
+          )}
+        </HelpVersions>
+        {own && session && ctx.pmOrg && ctx.projectId ? (
+          <HelpMessages session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={ctx.chapter} verse={verse} about={own.id} resource="notas" taskName={ctx.taskName} lede={t("hm.ledeImproveIntro")} folded />
+        ) : null}
+      </>
+    ) : (
+      <HelpMarkdownView content={source} />
+    );
   if (!ctx.book) return null;
   return (
     <>
@@ -405,13 +450,13 @@ export function PassageIntroText({ session, ctx }: { session: GtSession | null |
           <section>
             {/* An introduction that names itself is not named twice. */}
             {/^\s*#/.test(intro.book) ? null : <p className="step-ask__title">{t("sa.introOfBook").replace("{book}", bookLabel(ctx.book.toUpperCase(), language))}</p>}
-            <HelpMarkdownView content={intro.book} />
+            {versions(intro.book, team?.book, 0)}
           </section>
         ) : null}
         {intro?.chapter ? (
           <section>
             {/^\s*#/.test(intro.chapter) ? null : <p className="step-ask__title">{t("sa.introOfChapter").replace("{n}", String(ctx.chapter))}</p>}
-            <HelpMarkdownView content={intro.chapter} />
+            {versions(intro.chapter, team?.chapter, 0)}
           </section>
         ) : null}
     </>

@@ -100,4 +100,12 @@ test("orden por versículo y grupos por categoría en orden de aparición", () =
   console.log("ok  cada nota lleva al artículo de la Academia que nombra su figura");
 }
 
+test("por desafío, los puntos de una figura van juntos; por versículo, vuelven al orden del texto", () => {
+  const point = (id: string, verse: number, category: string, at: number) => ({ id, chapter: 1, verse, verseTo: verse, category, categoryLabel: category, supportRef: "", quote: "", occurrence: 1, note: "", phraseTokens: [at] });
+  const items = [point("m1", 1, "figs-metaphor", 3), point("a1", 1, "figs-abstractnouns", 1), point("m2", 2, "figs-metaphor", 0), point("a2", 3, "figs-abstractnouns", 2)];
+  const byChallenge = groupByCategory(items).flatMap((group) => group.items);
+  assert.deepEqual(byChallenge.map((item) => item.id), ["a1", "a2", "m1", "m2"], "la figura que aparece primero, con todos sus puntos");
+  assert.deepEqual(sortByVerse(byChallenge).map((item) => item.id), ["a1", "m1", "m2", "a2"], "versículo a versículo, y en un versículo como vienen las palabras");
+});
+
 console.log(`\nverify-afinacion-notes: ${passed} checks passed.`);

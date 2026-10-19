@@ -157,7 +157,8 @@ async function loadEnglishTsv(
   return loadTsvFromRepo(session, "unfoldingWord", repo, filepath);
 }
 
-function normalizeHelpText(text: string): string {
+/** A help as it is written in its file (`\n` for a new line) made readable. */
+export function normalizeHelpText(text: string): string {
   return text
     .replace(/\\n/g, "\n")
     .replace(/\\t/g, "  ")

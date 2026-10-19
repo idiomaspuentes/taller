@@ -43,6 +43,8 @@ export type StudyNote = {
   shared: boolean;
   /** ISO time it was written. */
   at: string;
+  /** ISO time its author last changed what it says. */
+  edited?: string;
 };
 
 export const STUDY_NOTES_SCHEMA = "taller-study-notes-1";
@@ -86,9 +88,29 @@ export function normalizeStudyNotes(raw: unknown, owner: string): StudyNote[] {
       text,
       shared: row.shared === true,
       at: String(row.at ?? ""),
+      ...(String(row.edited ?? "").trim() ? { edited: String(row.edited).trim() } : {}),
     });
   }
   return out;
+}
+
+/**
+ * A note of one's own said again: what it says now, and when it was changed. Asked for by the teams, who wrote a
+ * message in a hurry or wrong and could not correct it (18 October). Nothing else of it changes; an unknown id or an
+ * empty text changes nothing.
+ */
+export function editStudyNote(mine: StudyNote[], id: string, text: string, at: string): StudyNote[] {
+  const said = text.trim();
+  if (!said) return mine;
+  return mine.map((note) => (note.id === id && note.text !== said ? { ...note, text: said, edited: at } : note));
+}
+
+/**
+ * Whether a message can still be changed by whoever reads it: only by its author, and only until the team it was
+ * left for says it was attended to; what they evaluated would no longer be what it says.
+ */
+export function canEditMessage(note: Pick<StudyNote, "by" | "id">, me: string, attended: Map<string, unknown>): boolean {
+  return note.by.toLowerCase() === me.trim().toLowerCase() && !attended.has(messageRef(note));
 }
 
 /** The notes a person may see: all of their own, and the shared ones of everybody else. */
