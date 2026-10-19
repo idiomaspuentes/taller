@@ -5,12 +5,11 @@ import { StepAsk } from "./StepAsk";
 import { HelpMessages } from "./HelpMessages";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { articlePathOf, categoryFromSupportRef, categoryLabel } from "../domain/afinacionNotes";
-import { bookLabel } from "../domain/books";
 import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Circle, Pencil, Plus, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Circle, Pencil, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -97,6 +96,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
    * reason it starts with. `onlyVerse`: the question is about the verse as a whole, not about the help in view.
    */
   const [proposing, setProposing] = useState<{ answerItemId: string; questionId: string; reason: string; onlyVerse?: boolean; /** Opened to propose a note that is missing. */ newNote?: boolean } | null>(null);
+  /** «Hay algo que cambiar» was touched: what is wrong is chosen among the questions of the step in view. */
+  const [choosing, setChoosing] = useState(false);
   /** Fixing the quote of the note in view: the words marked in the text so far. */
   const [picking, setPicking] = useState<number[] | null>(null);
 
@@ -603,6 +604,60 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   };
 
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ck.title");
+  useEffect(() => setChoosing(false), [item?.id, group?.about]);
+  /**
+   * What the step in view asks, said once as its heading and once as the question over the answer: «Comprueba la
+   * nota frente al TPL», «¿Está bien la nota frente al TPL?». The screen said «Ester 1:1» and a list of questions,
+   * each to be ticked or refused, and what was being checked against what was left to work out (19 October).
+   */
+  const what = t(kind === "notas" ? "ck.whatNote" : kind === "preguntas" ? "ck.whatQuestion" : "ck.whatTerm");
+  const against = grouped && !aboutArticle && group?.about ? textLabel(group.about as ChecklistText) : "";
+  const stepWords = (plain: MessageKey, withText: MessageKey, ofArticle: MessageKey) => {
+    const said = (aboutArticle ? t(ofArticle) : against ? t(withText).replace("{text}", against) : t(plain)).replace("{what}", what);
+    // «A nota está bem…?»: a sentence that starts with what is checked takes its capital, after any «¿».
+    return said.replace(/^(¿?)(\p{Ll})/u, (_, mark: string, first: string) => mark + first.toUpperCase());
+  };
+  const heading = stepWords("ck.head", "ck.headAgainst", "ck.headArticle");
+  const asking = stepWords("ck.ask", "ck.askAgainst", "ck.askArticle");
+
+  /** The help in view as it reads (or as a change proposed for it would make it read). */
+  const helpRead = item ? (
+    <>
+    {item.title ? (
+      // The code of a term («Jesus») was shown until its name came, and then changed under the eyes.
+      <h2 className="af-phrase" aria-busy={kind === "palabras" && !titlesRead ? true : undefined}>
+        {kind !== "palabras" ? item.title : titlesRead ? termLabel(item.title, termTitles) : "\u00a0"}
+      </h2>
+    ) : null}
+    {proposedHelp ? (
+      // With a change proposed for it, the help is read as it would be, what goes out struck and what comes
+      // in marked: the steps that follow check that version. It was shown under the help as well, a third
+      // time counting the one under its question, and the help no longer fitted over its questions.
+      <p className="af-note ck-proposed">
+        <b className="ck-proposed__label">{t("ck.proposedHere")}</b>{" "}
+        {proposedHelp.proposal.split ? (
+          // Parted in two, each note is read as it would be. Struck out in the first, what goes to the
+          // second was read twice, and a note of five lines took fourteen over its questions.
+          <>
+            {readable(proposedHelp.proposal.after ?? "")}
+            <span className="ck-proposed__split">
+              <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(proposedHelp.proposal.split.after)}
+            </span>
+          </>
+        ) : (
+          <span className="ag-diff">
+            <ProposalDiff before={proposedHelp.proposal.before ?? item.body} after={proposedHelp.proposal.after ?? ""} whole plain />
+          </span>
+        )}
+      </p>
+    ) : item.body ? (
+      <>
+        {kind === "preguntas" ? <p className="af-lbl">{t("ck.answerLbl")}</p> : null}
+        <HelpMarkdownView className={kind === "preguntas" ? "af-note af-note--md ck-answer" : "af-note af-note--md"} content={item.body} />
+      </>
+    ) : null}
+    </>
+  ) : null;
 
   return (
     <div className="af ck">
@@ -706,15 +761,61 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
       {data && item ? (
         <>
+          {/* The point's row, as in afinación (19 October): what it is, where, and the way to the next. The count
+              was at the foot, in a second bar over the answers. */}
+          <div className="af-head ck-head">
+            <p className="af-kind af-kind--top">
+              {/* The book is in the header: said here too, it pushed the kind and the verse out of a phone's row. */}
+              {t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm")} · {item.chapter}:{item.verse}
+              {item.verseTo ? `–${item.verseTo}` : ""}
+            </p>
+            {tally ? <span className="af-state" data-state={tally.state === "ok" ? "agreed" : tally.state === "pending" ? "pending" : "disputed"}>{t(`ck.state.${tally.state}` as MessageKey)}</span> : null}
+            <span className="af-step">
+              <button type="button" className="th-icon" aria-label={t("af.prev")} title={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
+                <ChevronLeft size={18} aria-hidden />
+              </button>
+              <span className="af-count">{t("af.countOf").replace("{a}", String(position + 1)).replace("{b}", String(data.items.length))}</span>
+              <button type="button" className="th-icon" aria-label={t("af.next")} title={t("af.next")} disabled={position >= data.items.length - 1} onClick={() => setPosition((p) => p + 1)}>
+                <ChevronRight size={18} aria-hidden />
+              </button>
+            </span>
+          </div>
+          {grouped ? (
+            // The steps of the help, before what each puts on screen: under the note and its messages they were
+            // found after the texts they choose (19 October). Numbered and joined by a line; each says how it stands.
+            <ol className="ck-steps ck-steps--top" aria-label={t("ck.stepsAria")}>
+              {groups.map((row, index) => {
+                const said = row.rows.map(({ question }) => markOf(tally?.answers[question.id]));
+                // A «no» with nothing done about it shows at once; a step is ticked, or marked as bringing a
+                // change, once all of it is answered.
+                const state: Mark = said.includes("no") ? "no" : said.includes("none") ? "none" : said.includes("change") ? "change" : "yes";
+                return (
+                  <li key={row.about} data-state={state}>
+                    <button type="button" aria-current={row === group ? "step" : undefined} onClick={() => setAsked({ itemId: item.id, about: row.about })}>
+                      <span className="ck-steps__n">{state === "yes" ? <Check size={14} aria-hidden /> : state === "no" ? <X size={14} aria-hidden /> : state === "change" ? <Pencil size={13} aria-hidden /> : index + 1}</span>
+                      <span className="ck-steps__name">{scopeLabel(row.about, data.board?.settings?.resourceNames, language)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : null}
+          <h2 className="af-heading ck-heading">{heading}</h2>
+
+          {kind === "preguntas" ? (
+            // A question and its answer first, under the heading: what is checked. The two verses filled a phone
+            // and the question was below them (19 October); they are what the answer is checked against.
+            <section className="af-card ck-first" aria-label={t("ck.itemAria")}>
+              {helpRead}
+            </section>
+          ) : null}
           <section className="af-dock" data-aside={aboutArticle || undefined} aria-label={t("ck.textsAria")}>
-            <div className="af-dock__bar">
-              <strong>
-                {bookLabel(data.book, language)} {item.chapter}:{item.verse}
-                {item.verseTo ? `–${item.verseTo}` : ""}
-              </strong>
-              {/* Beside the verse's name, not as one more line under two texts that already take half a phone. */}
-              {anyCovered && !picking ? <span className="af-hint ck-covered-hint">{t(kind === "palabras" ? "ck.coveredTerms" : "ck.coveredNotes")}</span> : null}
-            </div>
+            {/* Beside the texts, not as one more line under two texts that already take half a phone. */}
+            {anyCovered && !picking ? (
+              <div className="af-dock__bar">
+                <span className="af-hint ck-covered-hint">{t(kind === "palabras" ? "ck.coveredTerms" : "ck.coveredNotes")}</span>
+              </div>
+            ) : null}
             {textsShown.map((resource) => {
               const text = data.texts[resource];
               // A question about verses 22 and 23 is checked against both: with the first alone, «¿se puede
@@ -757,9 +858,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                         </Button>
                       </span>
                     ) : (
-                      <Button type="button" size="sm" variant="ghost" onClick={() => setPicking(hit?.tokenIndices ?? [])}>
+                      // A quiet link at the foot of the text: as a button it read as one of the answers.
+                      <button type="button" className="af-link ck-quote-fix" onClick={() => setPicking(hit?.tokenIndices ?? [])}>
                         {t("ck.quoteFix")}
-                      </Button>
+                      </button>
                     )
                   ) : null}
                 </div>
@@ -768,43 +870,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           </section>
 
           <section className="af-card" aria-label={t("ck.itemAria")}>
-            <div className="af-card__top">
-              <span className="af-chip">{t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm")}</span>
-              {tally ? <span className="af-state" data-state={tally.state === "ok" ? "agreed" : tally.state === "pending" ? "pending" : "disputed"}>{t(`ck.state.${tally.state}` as MessageKey)}</span> : null}
-            </div>
-            {item.title ? (
-              // The code of a term («Jesus») was shown until its name came, and then changed under the eyes.
-              <h2 className="af-phrase" aria-busy={kind === "palabras" && !titlesRead ? true : undefined}>
-                {kind !== "palabras" ? item.title : titlesRead ? termLabel(item.title, termTitles) : "\u00a0"}
-              </h2>
-            ) : null}
-            {proposedHelp ? (
-              // With a change proposed for it, the help is read as it would be, what goes out struck and what comes
-              // in marked: the steps that follow check that version. It was shown under the help as well, a third
-              // time counting the one under its question, and the help no longer fitted over its questions.
-              <p className="af-note ck-proposed">
-                <b className="ck-proposed__label">{t("ck.proposedHere")}</b>{" "}
-                {proposedHelp.proposal.split ? (
-                  // Parted in two, each note is read as it would be. Struck out in the first, what goes to the
-                  // second was read twice, and a note of five lines took fourteen over its questions.
-                  <>
-                    {readable(proposedHelp.proposal.after ?? "")}
-                    <span className="ck-proposed__split">
-                      <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(proposedHelp.proposal.split.after)}
-                    </span>
-                  </>
-                ) : (
-                  <span className="ag-diff">
-                    <ProposalDiff before={proposedHelp.proposal.before ?? item.body} after={proposedHelp.proposal.after ?? ""} whole plain />
-                  </span>
-                )}
-              </p>
-            ) : item.body ? (
-              <>
-                {kind === "preguntas" ? <p className="af-lbl">{t("ck.answerLbl")}</p> : null}
-                <HelpMarkdownView className={kind === "preguntas" ? "af-note af-note--md ck-answer" : "af-note af-note--md"} content={item.body} />
-              </>
-            ) : null}
+            {kind === "preguntas" ? null : helpRead}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
             {grouped && !aboutArticle ? null : articlePath ? (
@@ -828,86 +894,36 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               </p>
             ) : null}
             {session && ctx?.pmOrg && ctx.projectId && data ? (
-              // What the teams before this one said about this very help (those who refined the text, say): read
-              // before answering. With nothing said, «Mensajes de equipos anteriores… Puedes responder» stood over
-              // an empty box, and with the link to the editor it pushed the questions under the first screen of
-              // a phone (the first one at 863 px of 812).
-              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend />
+              // What the teams before this one said about this very help: folded under one line with how many, so
+              // the help and what is checked of it keep the attention (19 October). Nothing said, no line.
+              <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
             ) : null}
             {session && ctx?.pmOrg && ctx.projectId && data && articlePath ? (
               // And what they said about the article this note links to, which this team maintains too.
-              <HelpMessages key={`ta:${item.id}`} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={articleMessageKey(articlePath)} resource="academia" taskName={ctx.taskName} lede={t("hm.ledeReadArticle")} onlyIfAny canAttend />
+              <HelpMessages key={`ta:${item.id}`} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={articleMessageKey(articlePath)} resource="academia" taskName={ctx.taskName} lede={t("hm.ledeReadArticle")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFoldArticle")} />
             ) : null}
 
-            {/* What is checked of this help, in a line each: a touch on one says it is not right, and opens the
-                proposal. Each was a block of its own with two buttons, 440 px of them under a note. */}
-            <p className="af-lbl">{grouped ? t("ck.inSteps").replace("{n}", String(groups.length)) : t("ck.checks")}</p>
-            {grouped ? (
-              // Numbered and joined by a line, one after the other: side by side as two buttons they read as a
-              // choice between two texts, and nothing said the second came after the first.
-              <ol className="ck-steps">
-                {groups.map((row, index) => {
-                  const said = row.rows.map(({ question }) => markOf(tally?.answers[question.id]));
-                  // A «no» with nothing done about it shows at once; a step is ticked, or marked as bringing a
-                  // change, once all of it is answered.
-                  const state: Mark = said.includes("no") ? "no" : said.includes("none") ? "none" : said.includes("change") ? "change" : "yes";
-                  return (
-                    <li key={row.about} data-state={state}>
-                      <button type="button" aria-current={row === group ? "step" : undefined} onClick={() => setAsked({ itemId: item.id, about: row.about })}>
-                        <span className="ck-steps__n">{state === "yes" ? <Check size={14} aria-hidden /> : state === "no" ? <X size={14} aria-hidden /> : state === "change" ? <Pencil size={13} aria-hidden /> : index + 1}</span>
-                        <span className="ck-steps__name">{scopeLabel(row.about, data.board?.settings?.resourceNames, language)}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : null}
-            <ul className="ck-checks" ref={checksRef}>
-              {rowsShown.map(({ question, answerItemId }) => {
+            {/* What to look at in this step, a quiet list to read by: each line was a box to tick with a «No» of its
+                own, four to ten touches a help, and three ways to say something was wrong (19 October). It is
+                answered once, under it; what was said of a line is shown on it. */}
+            <p className="ck-guide__lead">{t("ck.lookAt")}</p>
+            <ul className="ck-checks ck-checks--guide" ref={checksRef}>
+              {rowsShown.map(({ question }) => {
                 const answer = tally?.answers[question.id];
                 const proposal = answer?.outcome === "proposal" ? proposals.find((view) => view.proposal.id === answer.proposal?.id) : undefined;
                 const name = localized(question.text, question.texts, language);
                 return (
                   <li key={question.id} data-state={markOf(answer)}>
-                    {/* A line with a circle before it is ticked by touching it, and touched again is unticked: the
-                        touch opened the sheet to propose a change, as if every line were wrong. A «no» has its own
-                        button; one settled by a proposal is undone by taking the proposal back. */}
-                    <button
-                      type="button"
-                      className="ck-check"
-                      role="checkbox"
-                      aria-checked={answer?.value === "yes"}
-                      disabled={closing || stepDone || answer?.value === "no"}
-                      onClick={() => {
-                        // The step stays in view: ticking its last line showed another step at once, and the
-                        // last line of the last step, the first one again.
-                        if (grouped) setAsked({ itemId: item.id, about: group?.about ?? "" });
-                        void save([stamp(answerItemId, question.id, "yes", answer?.value === "yes" ? { cleared: true } : {})], t("ck.saved"));
-                      }}
-                    >
+                    <span className="ck-check ck-check--read">
                       <span className="ck-check__mark" aria-hidden="true">
-                        {markOf(answer) === "yes" ? <Check size={18} /> : markOf(answer) === "no" ? <X size={18} /> : markOf(answer) === "change" ? <Pencil size={15} /> : <Circle size={12} />}
+                        {markOf(answer) === "yes" ? <Check size={16} /> : markOf(answer) === "no" ? <X size={16} /> : markOf(answer) === "change" ? <Pencil size={14} /> : <Circle size={6} />}
                       </span>
                       <span className="ck-check__text">
                         {name}
                         {question.per === "verse" ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
                       </span>
                       <span className="sr-only">{t(markOf(answer) === "yes" ? "ck.yes" : markOf(answer) === "change" ? "ck.withChange" : markOf(answer) === "no" ? "ck.no" : "ck.notYet")}</span>
-                    </button>
-                    {answer?.value === "no" || stepDone ? null : (
-                      <button
-                        type="button"
-                        className="ck-no"
-                        disabled={closing}
-                        aria-label={`${t("ck.no")}: ${name}`}
-                        onClick={() => {
-                          if (grouped) setAsked({ itemId: item.id, about: group?.about ?? "" });
-                          setProposing({ answerItemId, questionId: question.id, reason: name, onlyVerse: question.per === "verse" });
-                        }}
-                      >
-                        {t("ck.no")}
-                      </button>
-                    )}
+                    </span>
                     {answer?.value === "no" ? (
                       <div className="ck-question__outcome" data-outcome={answer.outcome ?? "none"}>
                         {proposal ? (
@@ -947,47 +963,69 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 );
               })}
             </ul>
-            {stepDone ? null : <p className="af-hint">{t("ck.howToAnswer")}</p>}
-            {/* No way from here to the editor of the helps: it changed a note at once, with nobody agreeing, and
-                the one thing its link promised (adding a help that is missing) it could not do. A note that is
-                missing is proposed from here, in sight: it was only behind «No» and «Proponer un cambio». */}
-            {!stepDone && kind === "notas" && ours(kind) ? (
-              <Button type="button" variant="ghost" className="ck-add" disabled={saving} onClick={() => setProposing({ answerItemId: item.id, questionId: PROPOSAL_FREE, reason: "", newNote: true })}>
-                <Plus size={16} aria-hidden /> {t("ck.newNote").replace("{ref}", `${item.chapter}:${item.verse}`)}
-              </Button>
-            ) : null}
           </section>
 
-          <nav className="af-nav" aria-label={t("ck.navAria")}>
-            <Button type="button" variant="secondary" disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
-              {t("af.prev")}
-            </Button>
-            <span className="af-count">{t("af.countOf").replace("{a}", String(position + 1)).replace("{b}", String(data.items.length))}</span>
-            <Button type="button" variant="secondary" disabled={position >= data.items.length - 1} onClick={() => setPosition((p) => p + 1)}>
-              {t("af.next")}
-            </Button>
-          </nav>
-          {/* What to do next stays in reach, at the foot of the screen. After the last answer of a help the button
-              to go on was under the fold (at 878 px of 812), and after the last help of all, «Cerrar este paso» was
-              at the top of a list the person was at the bottom of. */}
+          {/* One question and its answer, at the foot of the screen: «Sí, seguir» says every line of the step is
+              right; «Hay algo que cambiar» asks which, and opens the proposal for it. A note that is missing, or
+              something else, is one of the choices: they were a button and a «Proponer un cambio» of their own. */}
           {stepDone ? null : (
-            <div className="ck-go" data-on>
-              <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setProposing({ answerItemId: item.id, questionId: PROPOSAL_FREE, reason: "" })}>
-                {t("ck.propose")}
-              </Button>
-              {pendingHere.length ? (
-                <Button type="button" size="lg" disabled={saving} onClick={allGood}>
-                  {t(pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.allGood")}
-                </Button>
-              ) : !summary.complete ? (
-                <Button type="button" size="lg" onClick={nextPending}>
-                  {t("ck.nextPending")}
-                </Button>
-              ) : closesHere ? (
-                <Button type="button" size="lg" disabled={saving} onClick={() => void closeStep()}>
-                  {t("ck.closeStep")}
-                </Button>
-              ) : null}
+            <div className="ck-go" data-on data-choosing={choosing || undefined}>
+              {choosing ? (
+                <div className="ck-choose" role="group" aria-labelledby="ck-choose-q">
+                  <p id="ck-choose-q" className="ck-ask">{t("ck.whatWrong")}</p>
+                  {rowsShown.map(({ question, answerItemId }) => {
+                    const name = localized(question.text, question.texts, language);
+                    return (
+                      <button
+                        key={question.id}
+                        type="button"
+                        className="ck-choose__one"
+                        disabled={saving}
+                        onClick={() => {
+                          if (grouped) setAsked({ itemId: item.id, about: group?.about ?? "" });
+                          setChoosing(false);
+                          setProposing({ answerItemId, questionId: question.id, reason: name, onlyVerse: question.per === "verse" });
+                        }}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                  {kind === "notas" && ours(kind) ? (
+                    <button type="button" className="ck-choose__one" disabled={saving} onClick={() => { setChoosing(false); setProposing({ answerItemId: item.id, questionId: PROPOSAL_FREE, reason: "", newNote: true }); }}>
+                      <Plus size={16} aria-hidden /> {t("ck.missingNote").replace("{ref}", `${item.chapter}:${item.verse}`)}
+                    </button>
+                  ) : null}
+                  <button type="button" className="ck-choose__one" disabled={saving} onClick={() => { setChoosing(false); setProposing({ answerItemId: item.id, questionId: PROPOSAL_FREE, reason: "" }); }}>
+                    {t("ck.otherThing")}
+                  </button>
+                  <Button type="button" variant="ghost" onClick={() => setChoosing(false)}>
+                    {t("af.cancel")}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {pendingHere.length ? <p className="ck-ask">{asking}</p> : null}
+                  <div className="ck-go__buttons">
+                    {pendingHere.length ? (
+                      <Button type="button" size="lg" disabled={saving} onClick={allGood}>
+                        <Check size={16} aria-hidden /> {t(pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.yesGo")}
+                      </Button>
+                    ) : !summary.complete ? (
+                      <Button type="button" size="lg" onClick={nextPending}>
+                        {t("ck.nextPending")}
+                      </Button>
+                    ) : closesHere ? (
+                      <Button type="button" size="lg" disabled={saving} onClick={() => void closeStep()}>
+                        {t("ck.closeStep")}
+                      </Button>
+                    ) : null}
+                    <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setChoosing(true)}>
+                      {t("ck.somethingWrong")}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </>
