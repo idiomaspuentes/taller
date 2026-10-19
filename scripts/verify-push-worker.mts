@@ -94,6 +94,9 @@ type Sent = { endpoint: string; headers: Record<string, string>; bytes: number }
 let pushes: Sent[] = [];
 let pushStatus: Record<string, number> = {};
 const fakeFetch = async (input: string, init?: RequestInit): Promise<Response> => {
+  // What a person may do in an organization: Ana owns BSOJ; Bea is only a member.
+  const rights = /^https:\/\/qa\.door43\.org\/api\/v1\/users\/([^/]+)\/orgs\/([^/]+)\/permissions$/.exec(input);
+  if (rights) return new Response(JSON.stringify({ is_owner: rights[1] === "ana" && rights[2] === "BSOJ", is_admin: false }), { status: 200 });
   if (input.startsWith("https://qa.door43.org/api/v1/user")) {
     const token = /^token (.+)$/.exec(String((init?.headers as Record<string, string>)?.Authorization ?? ""))?.[1] ?? "";
     return TOKENS[token] ? new Response(JSON.stringify({ login: TOKENS[token] }), { status: 200 }) : new Response("{}", { status: 401 });
@@ -339,6 +342,30 @@ await test("pedir un aviso exige una sesión de Door43 que pueda leer la subtare
   assert.equal((await notify("tok-ana", { ...ok, kind: "lo-que-sea" })).status, 400);
   assert.equal((await notify("tok-ana", { ...ok, org: "../otro" })).status, 400);
   assert.deepEqual(await (await notify("tok-ana", { ...ok, to: [] })).json(), { notices: 0, sent: 0 });
+});
+
+await test("quien administra la organización envía un aviso con sus palabras a las personas que elige; nadie más puede", async () => {
+  const announce = (token: string, body: unknown) =>
+    handle(
+      new Request("https://tas-push.example/announce", {
+        method: "POST",
+        headers: { authorization: `token ${token}`, "x-door43-host": "https://qa.door43.org", "content-type": "application/json", origin: "https://app.example.org" },
+        body: JSON.stringify(body),
+      }),
+      env,
+    );
+  const ok = { org: "BSOJ", to: ["Bea", "bea", "carla"], text: "  Ya está abierta la armonización de Ester 1.  " };
+  pushes = [];
+  const res = await announce("tok-ana", ok);
+  assert.equal(res.status, 200);
+  const answer = (await res.json()) as { sent: number; reached: string[]; unreached: string[] };
+  assert.deepEqual([answer.reached, answer.unreached], [["bea"], ["carla"]], "una vez a cada quien; quien no tiene avisos activados se dice aparte");
+  assert.ok(answer.sent >= 1 && pushes.every((p) => p.endpoint.includes("bea")));
+  assert.equal((await announce("tok-bea", ok)).status, 403, "un miembro que no administra no puede");
+  assert.equal((await announce("tok-ana", { ...ok, org: "OTRA" })).status, 403, "ni en otra organización");
+  assert.equal((await announce("tok-malo", ok)).status, 401);
+  assert.equal((await announce("tok-ana", { ...ok, text: "   " })).status, 400, "sin mensaje no hay aviso");
+  assert.equal((await announce("tok-ana", { ...ok, to: Array.from({ length: 11 }, (_, i) => `p${i}`) })).status, 400, "pocas personas por envío: la app manda el resto en tandas");
 });
 
 // ---- the daily reminder ----

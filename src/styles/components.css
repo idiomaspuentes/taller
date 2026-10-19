@@ -10677,3 +10677,29 @@ html[data-text] .ck-ask { font-size: calc(1.0625rem * var(--ts)); }
 html[data-text] .ck .af-card > .af-note, html[data-text] .ck .af-card > .af-note--md { font-size: calc(1rem * var(--ts)); }
 /* With the question first, its verses are read after it, in their place: held at the top they covered it. */
 .ck:has(> .ck-first) > .af-dock { position: static; max-height: none; overflow: visible; box-shadow: none; }
+
+/* A message to people or teams (19 October): what to say, then to whom, then one button. */
+.org-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.ann { gap: 1.5rem; }
+.ann-group { display: grid; gap: 0.5rem; }
+.ann-label { margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+.ann-text { width: 100%; font-size: calc(1rem * var(--ts, 1)); }
+.ann-hint { margin: 0; font-size: calc(0.8125rem * var(--ts, 1)); color: var(--text-muted); }
+.ann-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.ann-chip { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 40px; padding: 0 0.875rem; border: 1px solid var(--border-strong, var(--border)); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: calc(0.875rem * var(--ts, 1)); cursor: pointer; }
+.ann-chip[aria-pressed="true"] { border-color: var(--accent-700); background: var(--accent-50); color: var(--accent-700); font-weight: 600; }
+.ann-chip:disabled { opacity: 0.5; cursor: default; }
+.ann-chip__n { font-size: calc(0.75rem * var(--ts, 1)); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.ann-people { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.ann-person { display: flex; align-items: center; gap: 0.625rem; min-height: 44px; font-size: calc(0.9375rem * var(--ts, 1)); color: var(--text); cursor: pointer; }
+.ann-person input { width: 1.125rem; height: 1.125rem; accent-color: var(--accent-700); }
+.ann-person__login { font-size: calc(0.8125rem * var(--ts, 1)); color: var(--text-muted); }
+.ann-error { margin: 0; color: var(--danger, #b3261e); font-size: calc(0.875rem * var(--ts, 1)); }
+.ann-foot { grid-template-columns: 1fr; }
+.ann-result { display: grid; gap: 0.75rem; justify-items: start; }
+.ann-result__lead { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: calc(1rem * var(--ts, 1)); font-weight: 700; color: var(--success-700); }
+html[data-text] .ann-label, html[data-text] .ann-person { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .ann-text, html[data-text] .ann-result__lead { font-size: calc(1rem * var(--ts)); }
+html[data-text] .ann-hint, html[data-text] .ann-person__login { font-size: calc(0.8125rem * var(--ts)); }
+html[data-text] .ann-chip, html[data-text] .ann-error { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .ann-chip__n { font-size: calc(0.75rem * var(--ts)); }

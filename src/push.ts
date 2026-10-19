@@ -167,6 +167,39 @@ export function askNotices(session: Pick<GtSession, "token" | "host">, where: { 
   }
 }
 
+/** The longest message an announcement may carry (the Worker cuts it there too). */
+export const ANNOUNCE_TEXT = 400;
+/** People per request to the Worker: it tells few at a time, and the rest go in turns. */
+const ANNOUNCE_TURN = 10;
+export type AnnounceResult = { sent: number; reached: string[]; unreached: string[] };
+
+/**
+ * A message of whoever administers the organization to the people chosen, as a notice on their devices. The Worker
+ * checks with Door43 that the sender administers it. Who has no device with the notices on comes back apart.
+ */
+export async function announceTo(
+  session: Pick<GtSession, "token" | "host">,
+  org: string,
+  to: string[],
+  text: string,
+  deps: { url?: string; fetch?: (input: string, init?: RequestInit) => Promise<Response> } = {},
+): Promise<AnnounceResult> {
+  const url = String(deps.url ?? import.meta.env?.VITE_PUSH_URL ?? "").replace(/\/$/, "");
+  const fetchFn = deps.fetch ?? ((input: string, init?: RequestInit) => fetch(input, init));
+  if (!url) throw new Error(tNow("ann.off"));
+  const out: AnnounceResult = { sent: 0, reached: [], unreached: [] };
+  const people = [...new Set(to.map((login) => login.toLowerCase()))];
+  for (let at = 0; at < people.length; at += ANNOUNCE_TURN) {
+    const res = await fetchFn(`${url}/announce`, { method: "POST", headers: headers(session), body: JSON.stringify({ org, to: people.slice(at, at + ANNOUNCE_TURN), text }) });
+    const said = (await res.json().catch(() => ({}))) as Partial<AnnounceResult> & { error?: string };
+    if (!res.ok) throw new Error(said.error || tNow("ann.failed"));
+    out.sent += said.sent ?? 0;
+    out.reached.push(...(said.reached ?? []));
+    out.unreached.push(...(said.unreached ?? []));
+  }
+  return out;
+}
+
 /** The browser's real pieces, for the app. */
 export function browserPushDeps(): PushDeps {
   const url = String(import.meta.env.VITE_PUSH_URL ?? "").replace(/\/$/, "");

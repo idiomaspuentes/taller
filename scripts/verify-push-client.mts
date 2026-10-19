@@ -1,6 +1,6 @@
 /** The app side of push notices: subscribing the device, registering it in the Worker, turning it off. */
 import assert from "node:assert/strict";
-import { disablePush, enablePush, pushState, reminderPrefs, reportReminder, setReminderPrefs, urlBase64ToUint8Array, type PushDeps } from "../src/push";
+import { announceTo, disablePush, enablePush, pushState, reminderPrefs, reportReminder, setReminderPrefs, urlBase64ToUint8Array, type PushDeps } from "../src/push";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void>) {
@@ -43,6 +43,23 @@ function setup(opts: { permission?: NotificationPermission | "unsupported"; ask?
   return { deps, calls, asked: () => asked, subscribed: () => subscription !== null };
 }
 const session = { token: "tok-bea", host: "https://qa.door43.org/" };
+
+await test("un aviso de quien administra va en tandas de diez personas, cada una una vez, y junta lo que contestó el Worker", async () => {
+  const sent: { to: string[]; text: string; org: string }[] = [];
+  const fetch = async (_url: string, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as { to: string[]; text: string; org: string };
+    sent.push(body);
+    return new Response(JSON.stringify({ sent: body.to.length, reached: body.to.slice(1), unreached: body.to.slice(0, 1) }), { status: 200 });
+  };
+  const people = [...Array.from({ length: 23 }, (_, i) => `p${i}`), "P0"];
+  const done = await announceTo({ token: "t", host: "https://qa.door43.org" }, "BSOJ", people, "Hola", { url: "https://tas-push.example/", fetch });
+  assert.deepEqual(sent.map((row) => row.to.length), [10, 10, 3], "23 personas, «P0» y «p0» son la misma");
+  assert.equal(done.sent, 23);
+  assert.deepEqual(done.unreached, ["p0", "p10", "p20"]);
+  // What the Worker says when it refuses is what the person reads.
+  const refused = async () => new Response(JSON.stringify({ error: "Solo quien administra la organización puede enviar un aviso." }), { status: 403 });
+  await assert.rejects(announceTo({ token: "t", host: "h" }, "BSOJ", ["bea"], "Hola", { url: "https://x", fetch: refused }), /Solo quien administra/);
+});
 
 await test("la clave pública del Worker viene en base64url y el navegador la quiere en bytes", async () => {
   const bytes = urlBase64ToUint8Array("AQID_w");

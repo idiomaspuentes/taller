@@ -38,6 +38,7 @@ import { explainError } from "../dcs/userError";
 import { canSetPhoto } from "../domain/photos";
 import { PersonPhoto } from "./PersonPhoto";
 import { PhotoSheet } from "./PhotoSheet";
+import { AnnounceSheet } from "./AnnounceSheet";
 
 type Props = {
   session: GtSession;
@@ -88,6 +89,8 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
   const [showAllOrgTeams, setShowAllOrgTeams] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  /** Sending a message to people or teams, as a notice on their devices. */
+  const [announceOpen, setAnnounceOpen] = useState(false);
 
   const friendlyName = useCallback(
     (name: string) => displayOrgTeamName(name, teamPrefix),
@@ -445,11 +448,18 @@ export function OrgView({ session, pmOrg, lang, contentOrg, canManage, announce,
       ) : null}
 
       {canManage && tasTeams.length > 0 && !createOpen ? (
-        <div>
+        <div className="org-actions">
           <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
             {t("org.newTeamPlus")}
           </Button>
+          {/* A message to people or teams, as a notice on their devices (19 October). */}
+          <Button type="button" variant="outline" disabled={!members.length} onClick={() => setAnnounceOpen(true)}>
+            {t("ann.open")}
+          </Button>
         </div>
+      ) : null}
+      {canManage ? (
+        <AnnounceSheet open={announceOpen} onClose={() => setAnnounceOpen(false)} session={session} pmOrg={pmOrg} teams={tasTeams} teamName={friendlyName} people={members} announce={announce} />
       ) : null}
 
       {createOpen ? createForm : null}
