@@ -70,7 +70,21 @@ export type ItemTally = {
   doubted: { by: string; note?: string }[];
   /** As many of those who count as the team needs to agree: the team says the point does not apply here. */
   notApplicable: boolean;
+  /**
+   * The words each group agreed on, when people agreed on different words: then the point has no agreement until
+   * the team chooses. Absent when every agreement is about the same words.
+   */
+  selections?: { words: string; by: string[] }[];
 };
+
+/**
+ * The words an answer is about, to tell whether two agreements are about the same thing: the words chosen, without
+ * the marks at their edges, in one spacing and one case. `undefined` for an answer that chose no words.
+ */
+export function selectionKey(decision: { selectedText?: { text?: string } }): string | undefined {
+  const text = decision.selectedText?.text?.normalize("NFC").replace(/^[\s.,;:!?¡¿«»“”"'()]+|[\s.,;:!?¡¿«»“”"'()]+$/g, "").replace(/\s+/g, " ").toLowerCase();
+  return text || undefined;
+}
 
 /**
  * Who checked an answer brought from translationCore, as the import's note says it («Comprobación hecha en
@@ -139,12 +153,29 @@ export function tallyItem(params: {
   const staleSet = new Set(stale);
   const answers = latest.filter((d) => !staleSet.has(d));
 
+  // An agreement is about some words. Ana agreed on «En el año», Bea changed the words to «En el primer año» and
+  // agreed too, and the app counted two agreements on one point (19 October). The agreements add up only on the
+  // same words: those most agreed on (the first chosen, when as many agreed on each); agreements on other words
+  // leave the point without agreement until the team chooses. An answer that chose no words goes with the most.
+  const byWords = new Map<string, ReviewDecision[]>();
+  for (const d of answers) {
+    const key = d.status === "approved" ? selectionKey(d) : undefined;
+    if (key !== undefined) byWords.set(key, [...(byWords.get(key) ?? []), d]);
+  }
+  const weight = (group: ReviewDecision[]) => group.filter((d) => countsForMinimum(levels[d.reviewer.trim().toLowerCase()])).length;
+  const first = (group: ReviewDecision[]) => Math.min(...group.map((d) => Date.parse(d.timestamp)));
+  const groups = [...byWords.entries()].sort((a, b) => weight(b[1]) - weight(a[1]) || first(a[1]) - first(b[1]));
+  const leading = groups[0]?.[0];
+  const selections = groups.length > 1 ? groups.map(([, group]) => ({ words: group[0]!.selectedText!.text!.trim(), by: group.map((d) => d.reviewer) })) : undefined;
+
   let agree = 0;
   let agreeIndependent = 0;
   const open: string[] = [];
   for (const d of answers) {
     const who = d.reviewer.trim().toLowerCase();
     if (d.status === "approved") {
+      const key = selectionKey(d);
+      if (key !== undefined && key !== leading) continue;
       if (countsForMinimum(levels[who])) {
         agree++;
         if (!authors.has(who)) agreeIndependent++;
@@ -171,9 +202,9 @@ export function tallyItem(params: {
     }
   }
 
-  const agreed = agree >= thresholds.minAgree && agreeIndependent >= thresholds.minIndependent && open.length === 0;
-  const state: ItemState = agreed ? "agreed" : open.length > 0 ? "disputed" : "pending";
-  return { itemId, state, answers, stale, agree, agreeIndependent, open, doubted, notApplicable };
+  const agreed = agree >= thresholds.minAgree && agreeIndependent >= thresholds.minIndependent && open.length === 0 && !selections;
+  const state: ItemState = agreed ? "agreed" : open.length > 0 || selections ? "disputed" : "pending";
+  return { itemId, state, answers, stale, agree, agreeIndependent, open, doubted, notApplicable, ...(selections ? { selections } : {}) };
 }
 
 const MARKS = ".,;:!?¡¿«»“”\"'()";

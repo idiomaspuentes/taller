@@ -10605,3 +10605,33 @@ html[data-text] .af--round .af-work > .af-elsewhere .af-elsewhere__ctx { font-si
 /* «Ampliar» at the foot of the reference in step 1, where it is at the foot of the draft in step 2. */
 .af-ref__acts { display: flex; justify-content: flex-end; margin-top: 0.25rem; }
 .af--round .af-ref__acts .af-link { min-height: 44px; }
+
+.af-other-words { margin: 0; }
+
+/*
+ * The team's answers at the decision, neutral (19 October): the state is said in the words of its title, not in the
+ * colour of a warning; agreements on different words are grouped by them, each with what can be done.
+ */
+.af--round .af-team[data-state] { border: 1px solid var(--border); background: var(--surface); }
+.af--round .af-ask > .af-team { margin: 0 0 0.75rem; padding: 0.625rem 0.875rem; }
+.af--round .af-team[data-state="disputed"] summary { color: var(--warning-700); }
+.af--round .af-team[data-state="agreed"] summary { color: var(--success-700); }
+.af-others__group { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.125rem 0.75rem; padding: 0.375rem 0; list-style: none; }
+.af-others__words { font-size: calc(1rem * var(--ts, 1)); font-weight: 600; color: var(--text); }
+.af-others__who { grid-column: 1; font-size: calc(0.875rem * var(--ts, 1)); color: var(--text-muted); }
+.af-others__acts { grid-column: 2; grid-row: 1 / span 2; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+.af-others__group + .af-others__group { border-top: 1px solid var(--border); }
+html[data-text] .af-others__words { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af-others__who { font-size: calc(0.875rem * var(--ts)); }
+/* The points without agreement, a small mark in the point's row that opens their list under it. */
+.round-chip { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 32px; padding: 0 0.625rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--warning-700); font: inherit; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.round-chip::after { content: "▾"; font-size: 0.6875rem; }
+.round-chip[aria-expanded="true"]::after { content: "▴"; }
+.round-chip:focus-visible { outline: 2px solid var(--accent-700); outline-offset: 2px; }
+.round-chip__list { flex: 1 1 100%; order: 10; padding: 0.625rem 0.875rem; border: 1px solid var(--border); border-radius: var(--radius-md, 10px); background: var(--surface); }
+.round-chip__list .round__hint { margin: 0 0 0.375rem; }
+html[data-text] .round-chip { font-size: calc(0.8125rem * var(--ts)); }
+/* The mark goes before the count; on a phone, with the mark, the point's name takes a row of its own: squeezed beside both it read «Pala…». */
+.af--round .af-head > .round-chip { order: 1; }
+.af--round .af-head > .af-step { order: 2; }
+@media (max-width: 40rem) { .af--round .af-head:has(> .round-chip) > .af-kind--top { flex-basis: 100%; } }

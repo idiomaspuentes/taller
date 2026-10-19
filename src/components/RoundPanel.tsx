@@ -23,6 +23,8 @@ export function RoundPanel(props: {
   onClose: () => void;
   /** Where to go once the review is closed: there is nothing left to do here. */
   onLeave?: () => void;
+  /** The points without agreement are said elsewhere (see `MeetingChip`): only closing is shown here. */
+  meetingElsewhere?: boolean;
 }) {
   const t = useT();
   const { summary } = props;
@@ -31,7 +33,8 @@ export function RoundPanel(props: {
   const [open, setOpen] = useState(false);
   if (!summary.items.length) return null;
   // Nothing to say yet (no meeting needed, nothing to close): no empty box taking room.
-  if (!props.stepDone && !(summary.complete && props.closesHere) && !summary.meeting.length) return null;
+  const meeting = props.meetingElsewhere ? [] : summary.meeting;
+  if (!props.stepDone && !(summary.complete && props.closesHere) && !meeting.length) return null;
 
   return (
     <section className="round" aria-label={t("round.aria")}>
@@ -62,7 +65,7 @@ export function RoundPanel(props: {
         )
       ) : null}
 
-      {summary.meeting.length ? (
+      {meeting.length ? (
         <div className="round__meeting">
           <button type="button" className="round__toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
             {t(summary.meeting.length === 1 ? "round.disputedOne" : "round.disputedMany").replace("{n}", String(summary.meeting.length))}
@@ -85,6 +88,48 @@ export function RoundPanel(props: {
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * The points still without agreement, as a small mark in the row of the point, that opens their list: a band the
+ * width of the screen, in the colour of a warning, stood over every point of everybody, about the whole chapter
+ * (19 October). The list opens under the row, each point a way to it.
+ */
+export function MeetingChip(props: { summary: RoundSummary; labelOf: (itemId: string) => string; onJump: (itemId: string) => void }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const { meeting } = props.summary;
+  if (!meeting.length) return null;
+  return (
+    <>
+      <button type="button" className="round-chip" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {t(meeting.length === 1 ? "round.chipOne" : "round.chipMany").replace("{n}", String(meeting.length))}
+      </button>
+      {open ? (
+        <div className="round-chip__list">
+          <p className="round__hint">{t("round.meetingHint")}</p>
+          <ul className="round__list">
+            {meeting.map((item) => (
+              <li key={item.itemId}>
+                <button
+                  type="button"
+                  className="round__item"
+                  onClick={() => {
+                    setOpen(false);
+                    props.onJump(item.itemId);
+                  }}
+                >
+                  <span>{props.labelOf(item.itemId)}</span>
+                  {/* Who disagrees: an objection, or agreements on different words. */}
+                  <span className="round__who">{(item.open.length ? item.open : (item.selections ?? []).flatMap((group) => group.by)).map((who) => `@${who}`).join(", ")}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </>
   );
 }
 

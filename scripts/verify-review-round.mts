@@ -181,6 +181,49 @@ const FIXED = VERSE.replace("tengo la necesidad", "tengo necesidad");
 const about = (reviewer: string, itemId: string, status: string, words: string, o: { note?: string; final?: boolean } = {}): ReviewDecision =>
   ({ ...answer(reviewer, itemId, status, { hash: textFingerprint(VERSE), note: o.note }), ...(words ? { selectedText: { text: words } } : {}), ...(o.final ? { final: true } : {}) }) as ReviewDecision;
 
+test("solo suman los acuerdos sobre las mismas palabras", () => {
+  const same = tally([
+    about("ana", "n1", "approved", "En el año"),
+    about("bea", "n1", "approved", "en el año,"),
+    about("carla", "n1", "approved", "En el año"),
+  ]);
+  assert.equal(same.state, "agreed", "las mismas palabras, con otra mayúscula o una coma, son el mismo acuerdo");
+  assert.equal(same.selections, undefined);
+});
+
+test("acuerdos sobre palabras distintas dejan el punto sin acuerdo, con lo que eligió cada grupo", () => {
+  const r = tally([
+    about("ana", "n1", "approved", "En el año"),
+    about("bea", "n1", "approved", "En el primer año"),
+    about("carla", "n1", "approved", "En el primer año"),
+  ]);
+  assert.equal(r.state, "disputed", "tres «de acuerdo» sobre dos selecciones no son un acuerdo");
+  assert.equal(r.agree, 2, "cuentan los de la selección con más apoyo");
+  assert.deepEqual(r.selections, [
+    { words: "En el primer año", by: ["bea", "carla"] },
+    { words: "En el año", by: ["ana"] },
+  ]);
+});
+
+test("un acuerdo sin palabras elegidas va con la selección que más apoyo tiene", () => {
+  const r = tally([about("ana", "n1", "approved", "En el año"), answer("bea", "n1", "approved"), about("carla", "n1", "approved", "En el año")]);
+  assert.equal(r.state, "agreed");
+  assert.equal(r.selections, undefined);
+});
+
+test("la decisión final del equipo cierra el punto aunque se hayan elegido palabras distintas", () => {
+  const r = tallyItem({
+    itemId: "n1",
+    decisions: [about("ana", "n1", "approved", "En el año"), about("bea", "n1", "approved", "En el primer año"), { ...about("carla", "n1", "approved", "En el primer año", { final: true }) }],
+    levels,
+    authors,
+    thresholds,
+    confirmers: ["carla"],
+  });
+  assert.equal(r.state, "agreed");
+  assert.equal(r.decided?.by, "carla");
+});
+
 test("corregir una palabra no hace caducar el acuerdo sobre otras palabras del versículo", () => {
   const given = [
     about("ana", "salvacion", "approved", "sobre nuestra salvación común,"),
