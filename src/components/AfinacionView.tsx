@@ -765,7 +765,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    * The article of the term in hand, by slug: as the team has it (a draft too, said to be one) and as the source has
    * it, to read one or the other as the notes are read (18 October). `null` when neither can be read.
    */
-  const [termArticles, setTermArticles] = useState<Record<string, { team: { text: string; draft: boolean } | null; source: string | null } | null>>({});
+  const [termArticles, setTermArticles] = useState<Record<string, { team: { text: string; draft: boolean; title: string } | null; source: string | null } | null>>({});
   useEffect(() => {
     if (!session || !ctx || !data || !termSlug || termSlug in termArticles) return;
     let cancelled = false;
@@ -776,7 +776,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         readTeamArticle({ session, ctx, pmConfig: config, board: plan, pkg: data.sourcePackage, resource: "palabras", path: termArticlePath(term.termKind, term.termSlug) }).catch(() => null),
         loadTermArticle(session, data.sourcePackage, term, ctx, config, { teamFirst: false }).catch(() => null),
       ]);
-      const team = own?.text && (own.where === "draft" || own.where === "published") ? { text: own.text, draft: own.where === "draft" } : null;
+      const team = own?.text && (own.where === "draft" || own.where === "published") ? { text: own.text, draft: own.where === "draft", title: own.title } : null;
       if (!cancelled) setTermArticles((had) => ({ ...had, [termSlug]: team || source ? { team, source } : null }));
     })();
     return () => {
@@ -788,6 +788,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** What is read first of the term's article: the team's when it has one. */
   const termArticle = termRead === undefined ? undefined : termRead ? (termRead.team?.text ?? termRead.source) : null;
   const definition = termArticle ? termDefinition(termArticle) : "";
+  /**
+   * The term's name as the team's article has it, a draft too: the definition read in Spanish under «Qué significa
+   * «day»», the title of the published articles only (18 October).
+   */
+  const teamTermTitle = termRead?.team?.title?.trim() ?? "";
   // What the team decided about the words of this verse, beside the term: it was a link in the step's fold, far from
   // the word it is about. In another tab, so the point in hand stays as it is.
   const termGlossary =
@@ -1231,15 +1236,27 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [helpsTab, item?.id]);
 
   useEffect(() => setSheetOpen(false), [item?.id]);
+  // From one step of a point to the other, the screen goes back to what the step asks: on a phone it stayed where the
+  // button was, under the words, and the question of step 2 was above the screen (18 October).
+  const stepShown = useRef(confirmed);
+  useEffect(() => {
+    if (stepShown.current === confirmed) return;
+    stepShown.current = confirmed;
+    const top = kindRef.current;
+    if (top && top.getBoundingClientRect().top < 64) top.scrollIntoView({ block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmed]);
   /** What the point is called where it is reviewed: the challenge («Metáfora») or the key word («año»). */
   const pointName = !item
     ? ""
     : stepProp === "notas"
       ? nameOf(item)
       : termSlug
-        ? titlesRead || termTitles[termSlug]
-          ? termWord(termLabel(termSlug, termTitles))
-          : "…"
+        ? teamTermTitle
+          ? termWord(teamTermTitle)
+          : titlesRead || termTitles[termSlug]
+            ? termWord(termLabel(termSlug, termTitles))
+            : "…"
         : item.phrase
           ? `«${item.phrase}»`
           : item.quote || t("af.wholeVerse");
@@ -1304,9 +1321,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             {(text, lang) => (
               <>
                 {/* How to read the note: it is not written for whoever refines the text, but for whoever will
-                    translate the TPL or the TPS into another language and needs to know more about what is
-                    highlighted (18 October). Over the note, as its caption. */}
-                <p className="af-note-reader">{t("af.noteReader").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p>
+                    translate the TPL into another language, whichever text is refined here; its advice is often
+                    what the TPS does (18 October). Over the note, as its caption. */}
+                <p className="af-note-reader">{t("af.noteReader")}</p>
                 <div className="af-reason" lang={lang} data-whole="true">
                   <HelpMarkdownView className="af-note af-note--md" content={text} />
                 </div>
@@ -1316,6 +1333,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         ) : null}
         {stepProp === "palabras" && definition && termRead ? (
           // What the term means: the team's article first, said to be a draft until harmonized, or the source's.
+          // Said whom it is written for, as the note of a challenge is.
           <HelpVersions
             team={termRead.team ? { text: termDefinition(termRead.team.text), draft: termRead.team.draft } : null}
             source={termRead.source ? termDefinition(termRead.source) : ""}
@@ -1324,9 +1342,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             draftLabel={t("hv.draft")}
           >
             {(text, lang) => (
-              <div className="af-reason" lang={lang} data-whole="true">
-                <HelpMarkdownView className="af-note af-note--md" content={text} />
-              </div>
+              <>
+                <p className="af-note-reader">{t("af.termReader")}</p>
+                <div className="af-reason" lang={lang} data-whole="true">
+                  <HelpMarkdownView className="af-note af-note--md" content={text} />
+                </div>
+              </>
             )}
           </HelpVersions>
         ) : null}
@@ -1426,7 +1447,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         <DialogContent className="fix-sheet hint-sheet af-article-sheet" aria-label={t(stepProp === "notas" ? "af.readArticle" : "af.wholeArticle")}>
           <header className="fx-head">
             <DialogTitle className="fx-title">
-              {item ? (stepProp === "notas" ? nameOf(item) : termSlug ? termLabel(termSlug, termTitles) : "") : ""}
+              {item ? (stepProp === "notas" ? nameOf(item) : termSlug ? teamTermTitle || termLabel(termSlug, termTitles) : "") : ""}
             </DialogTitle>
           </header>
           {/* No «lang» of the source: the article is the team's when they published it (see «teamFirst: "published"»). */}
@@ -2078,9 +2099,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {/* How to choose, in the box where it is done: under the heading it was read before the reference,
                       far from the words it speaks of (18 October). In the grey of the reference's line: the two say how
                       a box is used, and blue made one of them read as a link. */}
-                  <p className="af-subhead af-subhead--in">
-                    {t("af.bridgeShort")}
-                  </p>
+                  {/* A verse with no text has nothing to touch: the line said to touch a word over «Sin texto». */}
+                  {verseText.trim() ? <p className="af-subhead af-subhead--in">{t("af.bridgeShort")}</p> : null}
                   <WordPicker text={verseText} selected={selected} onChange={setSelected} />
                   <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
                   {/* What else can be done with the verse, at the foot of the box, after it is read: beside the name
