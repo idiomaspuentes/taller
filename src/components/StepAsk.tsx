@@ -435,7 +435,7 @@ export function PassageIntroText({ session, ctx, drafts, board }: { session: GtS
           )}
         </HelpVersions>
         {own && session && ctx.pmOrg && ctx.projectId ? (
-          <HelpMessages session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={ctx.chapter} verse={verse} about={own.id} resource="notas" taskName={ctx.taskName} lede={t("hm.ledeImproveIntro")} folded />
+          <HelpMessages session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={ctx.book} chapter={ctx.chapter} verse={verse} about={own.id} resource="notas" taskName={ctx.taskName} lede={t("hm.ledeImproveIntro")} folded foldLabel={t("hm.toggleIntro")} />
         ) : null}
       </>
     ) : (

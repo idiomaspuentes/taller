@@ -39,6 +39,11 @@ type Props = {
    * attention from it (18 October). The line says how many messages there are.
    */
   folded?: boolean;
+  /**
+   * What the folded line calls it: «Algo que mejorar en la nota». Said what about, it was taken for a way to change
+   * the translation (18 October).
+   */
+  foldLabel?: string;
 };
 
 /**
@@ -46,7 +51,7 @@ type Props = {
  * that will work on it: whoever refines the text and disagrees with a note says what they would change, and
  * whoever harmonizes that note later finds it there. They are shared study notes that name the help.
  */
-export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, verse, about, resource, resourceName, taskName, lede, onCount, onlyIfAny, canAttend, folded }: Props) {
+export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, verse, about, resource, resourceName, taskName, lede, onCount, onlyIfAny, canAttend, folded, foldLabel }: Props) {
   const t = useT();
   const [notes, setNotes] = useState<StudyNote[] | null>(null);
   const [text, setText] = useState("");
@@ -139,7 +144,7 @@ export function HelpMessages({ session, pmOrg, lang, projectId, book, chapter, v
     <button type="button" className="hm-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
       <MessageSquarePlus size={16} aria-hidden />
       <span>
-        {t("hm.toggle")}
+        {foldLabel ?? t("hm.toggle")}
         {here.length ? ` · ${t(here.length === 1 ? "hm.countOne" : "hm.countMany").replace("{n}", String(here.length))}` : ""}
       </span>
       <ChevronDown size={16} aria-hidden className="hm-toggle__chev" />
