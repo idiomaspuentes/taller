@@ -544,12 +544,17 @@ async function buildTarget(target, dictionaries, original) {
     }
   }
 
+  // What the source lacks and the text uses, translated by hand (scripts/lexicon-additions/), read before any
+  // guess below: a word written for its number wins over one borrowed for it.
+  const additions = await loadJson(path.join(ADDITIONS_DIR, `${target.id}.json`));
+
   // Strong numbered some inflected forms apart (σοῦ is G4675, σύ is G4771), and the source tags a few entries with
   // the number of a form. The text tags the lemma: an entry whose lemma the text files under a number that has
-  // nothing yet is filed there too.
+  // nothing yet is filed there too. Not where an addition is: the UHB writes the preposition «to» (H413) with the
+  // lemma of «god» (אֵל, H410), and the preposition was given the entry of «god» in every verse it is in.
   for (const entry of dictionaries[target.source]) {
     for (const number of original.byLemma.get(String(entry.Lemma ?? "").normalize("NFC")) ?? []) {
-      if (files.has(number)) continue;
+      if (files.has(number) || additions[String(number)]?.[target.ui]) continue;
       const strong = target.kind === "greek" ? `G${number}` : `H${String(number).padStart(4, "0")}`;
       const built = buildEntry(entry, { number, strong, aramaic: false }, target, english, report);
       if (!built) continue;
@@ -559,9 +564,8 @@ async function buildTarget(target, dictionaries, original) {
     }
   }
 
-  // What the source lacks and the text uses, from the translated additions. Only where there is nothing:
+  // What the source lacks and the text uses, from the translated additions. Only where the source has nothing:
   // the day the source gains the entry, the source wins.
-  const additions = await loadJson(path.join(ADDITIONS_DIR, `${target.id}.json`));
   for (const [key, added] of Object.entries(additions)) {
     const number = Number(key);
     const text = added?.[target.ui];
