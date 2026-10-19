@@ -2005,9 +2005,9 @@
               "purposes": {
                 "pt": "Verifique se o TPS diz com clareza o que o original expressa em cada frase com nota."
               },
-              "criterion": "El TPS la aclara: por ejemplo, una pasiva pasa a activa; una metáfora se explica o se vuelve símil.",
+              "criterion": "El TPS transforma la frase para que exprese su significado con claridad: por ejemplo, una pasiva pasa a activa; una metáfora se vuelve símil o se dice sin la figura.",
               "criteria": {
-                "pt": "O TPS a esclarece: por exemplo, uma passiva passa a ativa; uma metáfora é explicada ou vira comparação."
+                "pt": "O TPS transforma a frase para que expresse o seu significado com clareza: por exemplo, uma passiva passa a ativa; uma metáfora vira comparação ou se diz sem a figura."
               },
               "solverAppId": "afinar-notas",
               "closing": "consensus",

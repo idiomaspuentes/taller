@@ -32,7 +32,9 @@ import { HelpMarkdownView } from "./HelpMarkdownView";
 import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Lock, Maximize2, Pencil, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
-import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
+import { changeMyStudyNotes } from "../dcs/studyNotes";
+import { uid } from "../domain/assignment";
+import { articleMessageKey, termMessageKey, type StudyNote } from "../domain/studyNotes";
 import { articleBody, termArticlePath, termWord, snippetAround, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
 import { selectionFromWords, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
@@ -257,6 +259,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [choosing, setChoosing] = useState(false);
   /** Step 2: the words of the translation are confirmed; what is asked now is whether they keep the rule. */
   const [confirmed, setConfirmed] = useState(false);
+  /**
+   * Step 1 of 3 done for the point in hand: the reviewer said whether its challenge is there (or whether the key term
+   * has that sense here), after reading the original and, when needed, the note. The team of Esdras fought the tool
+   * over a «personificación» that for them was a sinécdoque: it only asked whether the TPL kept it (18 October).
+   */
+  const [studied, setStudied] = useState(false);
+  /** What they said of it, kept with their answer; `null` until said. */
+  const [study, setStudy] = useState<{ applies: boolean; note?: string } | null>(null);
+  /** Saying what they see instead: its box is open. */
+  const [doubting, setDoubting] = useState(false);
+  const [doubtText, setDoubtText] = useState("");
+  /** Somebody else already chose the words of this point: after step 1 the person goes to whether they are right. */
+  const othersChose = useRef(false);
+  /** Remounts the messages of the point after one was left from step 1, so it is read there. */
+  const [messagesSeen, setMessagesSeen] = useState(0);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -763,9 +780,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     setChanging(false);
     setReopened(false);
     setArticleOpen(false);
-    // Somebody already chose the words: what is asked is whether one agrees with them, at the second step. It opened
-    // at the first, as if nothing had been done, and Miguel answered again a point Ramón had answered (16 October).
-    setConfirmed((Boolean(saved) && !again) || theirs.length > 0);
+    // Somebody already chose the words: what is asked is whether one agrees with them, at the last step. It opened
+    // at the marking, as if nothing had been done, and Miguel answered again a point Ramón had answered (16 October).
+    // Each person studies the point first all the same: that is what the first step is for.
+    othersChose.current = theirs.length > 0;
+    setConfirmed(Boolean(saved) && !again);
+    setStudied(Boolean(saved));
+    setStudy(saved?.challenge ?? null);
+    setDoubting(false);
+    setDoubtText("");
     // The person's own answers arrive after the item is shown: an item they answered opens at its second step. The
     // answers of the others, read again every so often, do not move what this person is doing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -883,6 +906,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         timestamp: new Date().toISOString(),
         note: words || undefined,
         textHash: hash,
+        ...(study ? { challenge: study } : {}),
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
@@ -1184,6 +1208,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [item?.id, reference?.id, refVerse]);
   /** What is marked in the reference, to say in the draft which words to look for. */
   const markedWords = useMemo(() => wordsAt(refVerse, refMarked), [refVerse, refMarked]);
+  /** What is highlighted, short enough to name the point: its first words and its last when it is long. */
+  const pointWords = useMemo(() => {
+    const words = markedWords.split(/\s+/).filter(Boolean);
+    return (words.length > 4 ? `${words.slice(0, 2).join(" ")} … ${words[words.length - 1]}` : words.join(" ")).replace(/…(\s*…)+/g, "…");
+  }, [markedWords]);
   /** The texts read beside the draft in the chapter sheet. */
   const pairShown = pairTexts ?? [refText];
   /** The words of a reference that render what the point is about, in the point's verse. */
@@ -1214,14 +1243,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   useEffect(() => setSheetOpen(false), [item?.id]);
   // From one step of a point to the other, the screen goes back to what the step asks: on a phone it stayed where the
   // button was, under the words, and the question of step 2 was above the screen (18 October).
-  const stepShown = useRef(confirmed);
+  const stepNow = `${studied}|${confirmed}`;
+  const stepShown = useRef(stepNow);
   useEffect(() => {
-    if (stepShown.current === confirmed) return;
-    stepShown.current = confirmed;
+    if (stepShown.current === stepNow) return;
+    stepShown.current = stepNow;
     const top = kindRef.current;
     if (top && top.getBoundingClientRect().top < 64) top.scrollIntoView({ block: "start" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmed]);
+  }, [stepNow]);
   /** What the point is called where it is reviewed: the challenge («Metáfora») or the key word («año»). */
   const pointName = !item
     ? ""
@@ -1239,7 +1269,28 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** Whether there is a help to open: the note of the challenge, or the article of the key word. */
   const hasHelp = Boolean(item) && (stepProp === "notas" ? Boolean(item?.note) : Boolean(definition || termSlug));
   // Both name the point: «Por qué es un desafío» did not say which challenge, nor that it is one in this verse (18 October).
-  const sideTitle = t(stepProp === "notas" ? "af.sideNote" : "af.sideTerm").replace("{name}", pointName.replace(/^«|»$/g, ""));
+  /**
+   * What step 1 asks about: a challenge by its name; a key word by what is highlighted, as in the heading. By the
+   * title of its article the question read «…traducir «rule, reign, ruler, prefect, official, leader» con especial
+   * cuidado?», and it could not be told whether that article was about the word at all (19 October).
+   */
+  const askName = stepProp === "palabras" ? pointWords || pointName.replace(/^«|»$/g, "") : pointName.replace(/^«|»$/g, "");
+  const askInOrig = stepProp === "palabras" && reference?.id === "orig" && Boolean(markedWords);
+  const askNamed = (key: MessageKey) =>
+    t(key)
+      .split(/(\{name\})/)
+      .map((piece, at) =>
+        piece !== "{name}" ? (
+          piece
+        ) : stepProp === "palabras" ? (
+          <bdi key={at} className={askInOrig ? "af-orig af-tag af-tag--marked" : "af-tag af-tag--marked"} lang={askInOrig ? "hbo" : undefined}>
+            {askName}
+          </bdi>
+        ) : (
+          askName
+        ),
+      );
+  const sideTitle = t(stepProp === "notas" ? "af.sideNote" : "af.sideTerm").replace("{name}", askName);
   /**
    * The help, with its title and a way to close it: beside the work on a computer, under the name of the point on a
    * phone. What «well» means in this text (the step's criterion) is read here too: the question and its evidence
@@ -1275,12 +1326,88 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         foldLabel={t("hm.toggleArticle")}
       />
     ) : null;
+  /** The note or the article of the point, with its version and its links: read in step 1, and in the side panel. */
+  const noteGroup =
+    data && item && hasHelp ? (
+      <>
+      {/* The note and what goes with it are one group: which version, who it is written for, the note, its
+          article. The help read as a column of paragraphs of one weight, each as far from the next (18 October). */}
+      <div className="af-about__note">
+      {stepProp === "notas" && item.note ? (
+        // Why this is a challenge: the team's note first, said to be a draft until harmonized, or the source's.
+        <HelpVersions team={teamNotes?.byId[item.id] ?? null} source={item.note} teamLang={ctx?.lang ?? ""} sourceLang={sourcePackageLang(data.sourcePackage)} draftLabel={notesDraftLabel}>
+          {(text, lang) => (
+            <>
+              {/* How to read the note: it is not written for whoever refines the text, but for whoever will
+                  translate the TPL into another language, whichever text is refined here; its advice is often
+                  what the TPS does (18 October). Over the note, as its caption. */}
+              <p className="af-note-reader">{t("af.noteReader")}</p>
+              <div className="af-reason" lang={lang} data-whole="true">
+                <HelpMarkdownView className="af-note af-note--md" content={text} />
+              </div>
+            </>
+          )}
+        </HelpVersions>
+      ) : null}
+      {stepProp === "palabras" && definition && termRead ? (
+        // What the term means: the team's article first, said to be a draft until harmonized, or the source's.
+        // Said whom it is written for, as the note of a challenge is.
+        <HelpVersions
+          team={termRead.team ? { text: termDefinition(termRead.team.text), draft: termRead.team.draft } : null}
+          source={termRead.source ? termDefinition(termRead.source) : ""}
+          teamLang={ctx?.lang ?? ""}
+          sourceLang={sourcePackageLang(data.sourcePackage)}
+          draftLabel={t("hv.draft")}
+        >
+          {(text, lang) => (
+            <>
+              <p className="af-note-reader">{t("af.termReader")}</p>
+              <div className="af-reason" lang={lang} data-whole="true">
+                <HelpMarkdownView className="af-note af-note--md" content={text} />
+              </div>
+            </>
+          )}
+        </HelpVersions>
+      ) : null}
+      <p className="af-about__links">
+        {stepProp === "notas" && articlePathOf(item.supportRef) ? (
+          <button
+            type="button"
+            className="af-link"
+            lang={language}
+            onClick={() => {
+              void readArticle(articlePathOf(item.supportRef));
+              setArticleOpen(true);
+            }}
+          >
+            {/* Which article: «Leer el artículo» alone did not say what would open (18 October). */}
+            {t("af.readArticleNamed").replace("{name}", nameOf(item))}
+          </button>
+        ) : null}
+        {/* Under the article of a key word its links do not name it again: «Leer el artículo «rule, reign, ruler,
+            prefect, official, leader»» under that very article said its title twice (19 October). */}
+        {stepProp === "palabras" && definition ? (
+          <button type="button" className="af-link" lang={language} onClick={() => setArticleOpen(true)}>
+            {t("af.wholeArticle")}
+          </button>
+        ) : null}
+        {stepProp === "palabras" && comparison ? (
+          <button type="button" className="af-link" lang={language} onClick={() => setBookOpen(true)}>
+            {t("af.inBookLink")}
+          </button>
+        ) : null}
+        {stepProp === "palabras" ? termGlossary : null}
+      </p>
+      </div>
+      </>
+    ) : null;
   const sideContent =
     data && item && hasHelp ? (
       <>
         {/* What the note is about, first, in the text chosen as reference (the original, the ULT or the UST): the
             note spoke of «this» without saying of what (18 October). */}
-        {markedWords ? (
+        {/* A key word's is named by the title over it, «Qué significa «הַמֶּלֶךְ»»: said again here, it was twice. */}
+        {markedWords && stepProp === "notas" ? (
           <p className="af-about__quote">
             «
             <bdi className={reference?.id === "orig" ? "af-orig af-about__quote-words" : "af-about__quote-words"} lang={reference?.id === "orig" ? "hbo" : undefined}>
@@ -1289,79 +1416,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             »
           </p>
         ) : null}
-        {/* The note and what goes with it are one group: which version, who it is written for, the note, its
-            article. The help read as a column of paragraphs of one weight, each as far from the next (18 October). */}
-        <div className="af-about__note">
-        {stepProp === "notas" && item.note ? (
-          // Why this is a challenge: the team's note first, said to be a draft until harmonized, or the source's.
-          <HelpVersions team={teamNotes?.byId[item.id] ?? null} source={item.note} teamLang={ctx?.lang ?? ""} sourceLang={sourcePackageLang(data.sourcePackage)} draftLabel={notesDraftLabel}>
-            {(text, lang) => (
-              <>
-                {/* How to read the note: it is not written for whoever refines the text, but for whoever will
-                    translate the TPL into another language, whichever text is refined here; its advice is often
-                    what the TPS does (18 October). Over the note, as its caption. */}
-                <p className="af-note-reader">{t("af.noteReader")}</p>
-                <div className="af-reason" lang={lang} data-whole="true">
-                  <HelpMarkdownView className="af-note af-note--md" content={text} />
-                </div>
-              </>
-            )}
-          </HelpVersions>
-        ) : null}
-        {stepProp === "palabras" && definition && termRead ? (
-          // What the term means: the team's article first, said to be a draft until harmonized, or the source's.
-          // Said whom it is written for, as the note of a challenge is.
-          <HelpVersions
-            team={termRead.team ? { text: termDefinition(termRead.team.text), draft: termRead.team.draft } : null}
-            source={termRead.source ? termDefinition(termRead.source) : ""}
-            teamLang={ctx?.lang ?? ""}
-            sourceLang={sourcePackageLang(data.sourcePackage)}
-            draftLabel={t("hv.draft")}
-          >
-            {(text, lang) => (
-              <>
-                <p className="af-note-reader">{t("af.termReader")}</p>
-                <div className="af-reason" lang={lang} data-whole="true">
-                  <HelpMarkdownView className="af-note af-note--md" content={text} />
-                </div>
-              </>
-            )}
-          </HelpVersions>
-        ) : null}
-        <p className="af-about__links">
-          {stepProp === "notas" && articlePathOf(item.supportRef) ? (
-            <button
-              type="button"
-              className="af-link"
-              lang={language}
-              onClick={() => {
-                void readArticle(articlePathOf(item.supportRef));
-                setArticleOpen(true);
-              }}
-            >
-              {/* Which article: «Leer el artículo» alone did not say what would open (18 October). */}
-              {t("af.readArticleNamed").replace("{name}", nameOf(item))}
-            </button>
-          ) : null}
-          {stepProp === "palabras" && definition ? (
-            <button type="button" className="af-link" lang={language} onClick={() => setArticleOpen(true)}>
-              {t("af.readArticleNamed").replace("{name}", pointName.replace(/^«|»$/g, ""))}
-            </button>
-          ) : null}
-          {stepProp === "palabras" && comparison ? (
-            <button type="button" className="af-link" lang={language} onClick={() => setBookOpen(true)}>
-              {t("af.inBookLink").replace("{name}", pointName.replace(/^«|»$/g, ""))}
-            </button>
-          ) : null}
-          {stepProp === "palabras" ? termGlossary : null}
-        </p>
-        </div>
+        {noteGroup}
         {/* What «well» means in this text, apart from the note: the rule of the TPL or the TPS. */}
         {stepProp === "notas" || said.criterion ? <p className="af-about__rule">{said.criterion ?? t(data.resource === "tps" ? "af.guideTps" : "af.guideTpl")}</p> : null}
         {/* What to improve in the note, left for whoever harmonizes it, right where the note is read. */}
         {(stepProp === "notas" || termKey) && session && ctx?.pmOrg && ctx.projectId ? (
           <HelpMessages
-            key={`side-${stepProp === "notas" ? item.id : termKey}`}
+            key={`side-${stepProp === "notas" ? item.id : termKey}-${messagesSeen}`}
             session={session}
             pmOrg={ctx.pmOrg}
             lang={ctx.lang}
@@ -1382,7 +1443,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** Opens the note or the article. Under what the step asks, where the doubt comes up: beside the small name at the
    *  top it was a big button read before the question (18 October). */
   const helpButton = (closed: boolean) =>
-    hasHelp ? (
+    // With the panel open beside the work the link said the same as its title; its own «Cerrar» closes it.
+    hasHelp && !(wide && showReason) ? (
       <button
         type="button"
         className={closed ? "af-side-toggle" : "af-side-toggle af-side-toggle--under"}
@@ -1408,6 +1470,142 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         {sideContent}
       </aside>
     ) : null;
+
+  /**
+   * Step 1's heading says what to do, like the other two: «Estudia «X» con su nota». «Afinación de «בִּימֵי» en el TPL»
+   * named the tool and a text not yet touched (19 October). The point is named by what is highlighted in the text
+   * chosen as reference, in its yellow, for a key word too: the name of its article is already over the question.
+   */
+  const pointTitle =
+    data && item ? (
+        <h2 className="af-heading af-point-title">
+          {t(!hasHelp ? "af.studyHeading" : stepProp === "notas" ? "af.studyHeadingNote" : "af.studyHeadingTerm")
+            .split(/(\{x\})/)
+            .map((piece, at) =>
+              piece !== "{x}" ? (
+                piece
+              ) : (
+                <span key={at}>
+                  «<bdi className={reference?.id === "orig" && markedWords ? "af-orig af-tag af-tag--marked" : "af-tag af-tag--marked"} lang={reference?.id === "orig" && markedWords ? "hbo" : undefined}>{pointWords || pointName.replace(/^«|»$/g, "")}</bdi>»
+                </span>
+              ),
+            )}
+        </h2>
+    ) : null;
+  /** Where the point is: marked in the text the draft is read against, the original unless another is chosen. */
+  const referenceBox =
+    data && item ? (
+        <div className="af-ref">
+          <div className="af-ref__bar">
+            <span className="af-lbl af-lbl--ref">{t("af.refLabel")}</span>
+            <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
+              {(data.references ?? []).map((row) => (
+                <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
+                  {row.id === "orig" ? t("af.tabOriginal") : row.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* No line saying that the words of the original open their meaning: their dotted underline says it, and the
+              line was one more thing to read before the verse (19 October). */}
+          <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
+            {reference?.id === "orig" ? (
+              <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
+            ) : (
+              <Words text={refVerse} marked={refMarked} />
+            )}
+          </span>
+          <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
+          {/* In step 1 the chapter around the point opens from the reference, as it does from the draft in step 2:
+              the case is studied in its place too (19 October). In step 2 the draft's box has it. */}
+          {!studied ? (
+            <div className="af-ref__acts">
+              <span className="af-draft__acts">
+                <button type="button" className="af-link" aria-label={t("af.expandAria")} onClick={() => setChapterOpen(true)}>
+                  <Maximize2 size={14} aria-hidden /> {t("af.expand")}
+                </button>
+              </span>
+            </div>
+          ) : null}
+        </div>
+    ) : null;
+  /** «Paso 2 de 3 · Marcar en el borrador»: where the person is, in a quiet line over each step. */
+  const stepper = (n: 1 | 2 | 3) => (
+    // The three steps, the one in hand marked; one done is touched to go back to it. A line «Paso 2 de 3 · …» was
+    // read as one more line of text, and nothing took the person back (18 October).
+    <ol className="af-steps" aria-label={t("af.stepsAria")}>
+      {([1, 2, 3] as const).map((k) => {
+        const name = t(k === 1 ? "af.stepShortStudy" : k === 2 ? "af.stepShortMark" : "af.stepShortJudge");
+        return (
+          <li key={k} aria-current={k === n ? "step" : undefined} data-done={k < n ? "true" : undefined}>
+            {k < n ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (k === 1) setStudied(false);
+                  setConfirmed(false);
+                }}
+              >
+                <span className="af-steps__n">{k}</span>
+                {name}
+              </button>
+            ) : (
+              <span>
+                <span className="af-steps__n">{k}</span>
+                {name}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+  /** Step 1 said: on to marking, or, when somebody already chose the words, to whether they are right. */
+  const studyDone = (said: { applies: boolean; note?: string }) => {
+    setStudy(said);
+    setStudied(true);
+    setDoubting(false);
+    if (othersChose.current) setConfirmed(true);
+  };
+  /**
+   * The challenge is not what the note says (or the term has not that sense here): said once, for whoever harmonizes
+   * the note or the article, as a message about it; then the person goes on, judging by what they see.
+   */
+  async function sayDoubt() {
+    const text = doubtText.trim();
+    if (!text || !data || !item) return;
+    const said = text;
+    if (!session || !ctx?.pmOrg || !ctx.projectId) return studyDone({ applies: false, note: said });
+    setSaving(true);
+    setError("");
+    try {
+      const name = pointName.replace(/^«|»$/g, "");
+      const message: StudyNote = {
+        id: `n-${uid().slice(0, 8)}`,
+        by: session.username.toLowerCase(),
+        book: data.book.toUpperCase(),
+        chapter: item.chapter,
+        verse: item.verse,
+        kind: "remember",
+        resource: stepProp === "notas" ? "notas" : "palabras",
+        ...(ctx.taskName ? { task: ctx.taskName } : {}),
+        about: stepProp === "notas" ? item.id : termKey,
+        text:
+          stepProp === "notas"
+            ? t("af.doubtMsgNote").replace("{name}", name).replace("{text}", text)
+            : t("af.doubtMsgTerm").replace("{article}", name).replace("{name}", askName).replace("{text}", text),
+        shared: true,
+        at: new Date().toISOString(),
+      };
+      await changeMyStudyNotes({ session, pmOrg: ctx.pmOrg, lang: ctx.lang, projectId: ctx.projectId }, (mine) => [...mine, message]);
+      setMessagesSeen((n) => n + 1);
+      studyDone({ applies: false, note: said });
+    } catch (err) {
+      setError(explainError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="af af--round">
@@ -1962,58 +2160,101 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 {t("af.reopen")}
               </Button>
             </div>
-          ) : !confirmed ? (
-            // Step 1 of 2: which words of the translation render what is marked in the reference.
+          ) : !studied ? (
+            // Step 1 of 3: the point itself, before the translation: is the challenge there, does the term mean that.
             <>
-              {/* What to do is the heading of the step: «Paso 1 de 2 · …» was a small grey line under a bigger name. */}
-              {/* The two boxes are named in the heading in the colors of their labels: the translation in blue, the
-                  reference in green, and what is highlighted in the yellow of its highlight, so the heading points at
-                  what to read and where to touch (18 October). */}
-              <h2 className="af-heading">
-                {t("af.step1Title")
-                  .split(/(\{res\}|\{ref\}|\{marked\})/)
+              {stepper(1)}
+              {pointTitle}
+              {referenceBox}
+              {/* The note in sight: studying it is what this step is for. Behind a link it was read by whoever
+                  already doubted; the others answered without it (18 October). */}
+              {/* A key word's article folded under a link, as before: open, it was most of the screen and pushed the
+                  verse away; the question is about the verse (19 October). */}
+              {stepProp === "palabras" ? (
+                helpButton(false)
+              ) : noteGroup ? (
+                <section className="af-study-help">
+                  <p className="af-section-label">{t("af.studyNoteLabel")}</p>
+                  {noteGroup}
+                </section>
+              ) : null}
+              {/* What the others said of it, before answering: why they do not see it, in their words. */}
+              {tally && tally.doubted.some((d) => d.by.trim().toLowerCase() !== me) ? (
+                <div className="af-doubts">
+                  <p className="af-doubts__lead">{t(stepProp === "notas" ? "af.doubtsLeadNote" : "af.doubtsLeadTerm").replace("{name}", askName)}</p>
+                  <ul>
+                    {tally.doubted
+                      .filter((d) => d.by.trim().toLowerCase() !== me)
+                      .map((d) => (
+                        <li key={d.by}>
+                          <b>@{d.by}</b>
+                          {d.note ? `: ${d.note}` : ` ${t("af.doubtNoReason")}`}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ) : null}
+              {doubting ? (
+                <div className="af-why">
+                  <h3 className="af-study-q">{askNamed(stepProp === "notas" ? "af.studyQNote" : "af.studyQTerm")}</h3>
+                  <label htmlFor="af-doubt" className="af-lbl">
+                    {t(stepProp === "notas" ? "af.doubtWhatNote" : "af.doubtWhatTerm")}
+                  </label>
+                  <p className="af-subhead">{t(stepProp === "notas" ? "af.doubtGoesToNote" : "af.doubtGoesToTerm")}</p>
+                  <textarea id="af-doubt" className="af-textarea" rows={3} autoFocus value={doubtText} placeholder={t(stepProp === "notas" ? "af.doubtPlaceholderNote" : "af.doubtPlaceholderTerm")} onChange={(e) => setDoubtText(e.target.value)} />
+                  <div className="af-row-buttons">
+                    <Button type="button" disabled={saving || !doubtText.trim()} onClick={() => void sayDoubt()}>
+                      {saving ? t("af.saving") : t("af.doubtContinue")}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => setDoubting(false)}>
+                      {t("af.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // The question with its answers, at the foot of a phone: under the note it was hidden by them. A key
+                // word asks whether the person sees why it is translated with special care, and its «no» is an error
+                // to report: an article that does not match the word marked (19 October).
+                <div className="af-decide af-decide--ask">
+                  <h3 className="af-study-q">{askNamed(stepProp === "notas" ? "af.studyQNote" : "af.studyQTerm")}</h3>
+                  <Button type="button" onClick={() => studyDone({ applies: true })}>
+                    <Check size={16} aria-hidden /> {t(stepProp === "notas" ? "af.studyYesNote" : "af.studyYesTerm").replace("{name}", pointName.replace(/^«|»$/g, ""))}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setDoubtText(study?.applies === false ? (study.note ?? "") : "");
+                      setDoubting(true);
+                    }}
+                  >
+                    {t(stepProp === "notas" ? "af.studyNoNote" : "af.studyNoTerm")}
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : !confirmed ? (
+            // Step 2 of 3: which words of the translation render what is marked in the reference.
+            <>
+              {stepper(2)}
+              {/* One heading, what to do with this point: the point studied, what is left is to touch its words. The
+                  name of the point, a link to the note and a line of instruction said three times the same. */}
+              <h2 className="af-heading af-point-title">
+                {t("af.markHeading")
+                  .split(/(\{x\}|\{res\})/)
                   .map((piece, at) =>
-                    piece === "{res}" ? (
-                      <span key={at} className="af-tag af-tag--res">
-                        {data.resource === "tps" ? "TPS" : "TPL"}
+                    piece === "{x}" ? (
+                      <span key={at}>
+                        «<bdi className={reference?.id === "orig" && markedWords ? "af-orig af-tag af-tag--marked" : "af-tag af-tag--marked"} lang={reference?.id === "orig" && markedWords ? "hbo" : undefined}>{pointWords || pointName.replace(/^«|»$/g, "")}</bdi>»
                       </span>
-                    ) : piece === "{marked}" ? (
-                      <span key={at} className="af-tag af-tag--marked">
-                        {t("af.step1Marked")}
-                      </span>
-                    ) : piece === "{ref}" ? (
-                      <span key={at} className="af-tag af-tag--ref">
-                        {t("af.refLabel").toLocaleLowerCase()}
-                      </span>
+                    ) : piece === "{res}" ? (
+                      data.resource === "tps" ? "TPS" : "TPL"
                     ) : (
                       piece
                     ),
                   )}
               </h2>
-              {helpButton(false)}
-          {/* 1. Where it is: marked in the text the draft is read against, the original unless another is chosen. */}
-            <div className="af-ref">
-              <div className="af-ref__bar">
-                <span className="af-lbl af-lbl--ref">{t("af.refLabel")}</span>
-                <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
-                  {(data.references ?? []).map((row) => (
-                    <button key={row.id} type="button" role="tab" aria-selected={reference?.id === row.id} onClick={() => setRefText(row.id)}>
-                      {row.id === "orig" ? t("af.tabOriginal") : row.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* The words of the original open their meaning; nothing on them said so (18 October). */}
-              {reference?.id === "orig" ? <p className="af-subhead af-subhead--in">{t("af.origHint")}</p> : null}
-              <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
-                {reference?.id === "orig" ? (
-                  <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
-                ) : (
-                  <Words text={refVerse} marked={refMarked} />
-                )}
-              </span>
-              <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
-            </div>
+            {referenceBox}
   
             {/* 2. The words of the translation that render it: tapped in the draft. */}
             <div className="af-draft">
@@ -2094,8 +2335,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               )}
             </>
           ) : (
-            // Step 2 of 2: whether those words keep the rule of the TPL or the TPS.
+            // Step 3 of 3: whether those words keep the rule of the TPL or the TPS.
             <>
+              {stepper(3)}
               {/* The question is the heading: what the screen asks, read first, and what is judged right under it.
                   It came after the box and a line «Paso 2 de 2 · Decide…» under the name of the point (18 October). */}
               <div className="af-question-group">
@@ -2127,7 +2369,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 const refName = isOrig ? t("af.qOriginal") : (reference?.label.replace(/\s*\(.*\)\s*$/, "") ?? "");
                 // A challenge is named at the end, «… como «Eventos nuevos»?»: without it the question did not say what
                 // the form was kept as (18 October). Without a name, the words that would introduce it go too.
-                const challenge = stepProp === "notas" ? pointName.replace(/^«|»$/g, "").trim() : "";
+                const challenge = stepProp === "notas" && study?.applies !== false ? pointName.replace(/^«|»$/g, "").trim() : "";
                 const pieces = (challenge ? t(key) : t(key).replace(/\s*\S+\s*\{name\}/, "")).split(/(\{words\}|\{orig\}|\{name\})/);
                 // The plain phrase opening the question takes its capital («¿Lo marcado…», «O marcado…»).
                 const capital = (text: string, at: number) => (pieces.slice(0, at).join("").replace(/[¿\s]/g, "") ? text : text.charAt(0).toUpperCase() + text.slice(1));
@@ -2185,10 +2427,46 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 );
               })()}
               {helpButton(false)}
+              {tally?.notApplicable ? <p className="af-stale">{t(stepProp === "notas" ? "af.notApplicableNote" : "af.notApplicableTerm").replace("{name}", askName)}</p> : null}
               </div>
+              {/* How the term reads in its other places, right under the question and the link to its meaning: the
+                  question says «en otros lugares», and the list came after the box, far from it (19 October). */}
+              {elsewhere.length ? (
+                // What the question is about, where it is asked: how this term reads in its other places. It was
+                // shown a step before, over the words to touch, and was out of sight when the answer was given.
+                <div className="af-elsewhere">
+                  {/* Named by its article's title («Israel, israelitas»; «año», not «Tiempo Biblico: año»), once it is read. */}
+                  <p className="af-lbl">{titlesRead || termTitles[termSlug] ? t("af.elsewhereTerm").replace("{term}", termWord(termLabel(termSlug, termTitles))) : t("af.elsewhere")}</p>
+                  <ul>
+                    {elsewhere.map((r) => (
+                      <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
+                        <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
+                        {(() => {
+                          // Its verse, around the words, to tell whether the term means the same there.
+                          const use = r.uses[0];
+                          const around = use ? snippetAround(data.bookDraft[`${use.chapter}:${use.verse}`] ?? "", r.text) : null;
+                          return around ? (
+                            <span className="af-elsewhere__ctx">
+                              {around.cutBefore ? "… " : ""}
+                              {around.before} <mark>{around.match}</mark> {around.after}
+                              {around.cutAfter ? " …" : ""}
+                            </span>
+                          ) : null;
+                        })()}
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Asked, not warned: «salvación», «habiendo salvado» and «sálvenlos» are three forms and one translation. */}
+                  {elsewhere.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(elsewhere.length))}</p> : null}
+                </div>
+              ) : null}
               {/* What is judged, in two labelled rows: what is marked in the reference, and the verse of the translation
                   with the words chosen marked in it. One line «וּבִשְׁנַת → TPS Durante el … año» mixed two directions of
                   writing and showed the words without the verse they are judged in (16 October). */}
+              {/* A key word's question names both the words chosen and the original, and the list under it is what it
+                  is weighed against: the box with the two verses said it a third time (19 October). Kept when nothing
+                  was marked, to see the verse that lacks it. */}
+              {stepProp === "palabras" && !needsWords ? null : (
               <div className="af-recap af-recap--rows">
                 <p className="af-recap__row">
                   {/* «Hebreo», not «Hebreo (UHB)»: the edition is said where the reference is chosen. */}
@@ -2275,38 +2553,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   )}
                 </span>
               </div>
+              )}
           {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
             <div className="af-ask">
-              {/* How the term reads in its other places, before the question: what to look at, then what to answer, with the buttons right under it. */}
-              {elsewhere.length ? (
-                // What the question is about, where it is asked: how this term reads in its other places. It was
-                // shown a step before, over the words to touch, and was out of sight when the answer was given.
-                <div className="af-elsewhere">
-                  {/* Named by its article's title («Israel, israelitas»; «año», not «Tiempo Biblico: año»), once it is read. */}
-                  <p className="af-lbl">{titlesRead || termTitles[termSlug] ? t("af.elsewhereTerm").replace("{term}", termWord(termLabel(termSlug, termTitles))) : t("af.elsewhere")}</p>
-                  <ul>
-                    {elsewhere.map((r) => (
-                      <li key={r.text} data-preferred={preferredTerms[termSlug]?.text.trim().toLowerCase() === r.text.trim().toLowerCase() ? "true" : undefined}>
-                        <b>«{r.text}»</b> <span>{r.uses.map((u) => `${u.chapter}:${u.verse}`).join(", ")}</span>
-                        {(() => {
-                          // Its verse, around the words, to tell whether the term means the same there.
-                          const use = r.uses[0];
-                          const around = use ? snippetAround(data.bookDraft[`${use.chapter}:${use.verse}`] ?? "", r.text) : null;
-                          return around ? (
-                            <span className="af-elsewhere__ctx">
-                              {around.cutBefore ? "… " : ""}
-                              {around.before} <mark>{around.match}</mark> {around.after}
-                              {around.cutAfter ? " …" : ""}
-                            </span>
-                          ) : null;
-                        })()}
-                      </li>
-                    ))}
-                  </ul>
-                  {/* Asked, not warned: «salvación», «habiendo salvado» and «sálvenlos» are three forms and one translation. */}
-                  {elsewhere.length > 1 ? <p className="af-hint">{t("af.manyForms").replace("{n}", String(elsewhere.length))}</p> : null}
-                </div>
-              ) : null}
               {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {agreeCount}</span> : null}</p> : null}
               {mine && !changing ? (
                 // Answered: what there is to do here is nothing, or change it. The same buttons as before answering
@@ -2450,7 +2699,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           )}
           </div>
           {/* After the work in the page, so that it is read after it: on a computer, its column at the right. */}
-          {wide && showReason ? sidePanel(() => toggleReason(false)) : null}
+          {wide && showReason && (closedView || (studied && confirmed) || (stepProp === "palabras" && !studied)) ? sidePanel(() => toggleReason(false)) : null}
         </section>
       ) : null}
 

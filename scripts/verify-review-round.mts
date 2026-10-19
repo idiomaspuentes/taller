@@ -90,6 +90,21 @@ test("una objeción o un cambio propuesto abiertos impiden el acuerdo y pasan a 
   assert.deepEqual(r.open, ["dora"], "también objeta quien aún no cuenta para el mínimo");
 });
 
+test("quien dice que el desafío no aplica queda dicho, y con las que el equipo necesita el equipo lo dice", () => {
+  const doubt = (who: string, note?: string) => ({ ...answer(who, "n1", "approved"), challenge: { applies: false, ...(note ? { note } : {}) } }) as ReviewDecision;
+  const sure = (who: string) => ({ ...answer(who, "n1", "approved"), challenge: { applies: true } }) as ReviewDecision;
+  const two = tally([doubt("bea", "es una sinécdoque"), doubt("carla"), sure("ana")]);
+  assert.deepEqual(two.doubted, [{ by: "bea", note: "es una sinécdoque" }, { by: "carla" }]);
+  assert.equal(two.notApplicable, false, "dos de tres no bastan");
+  assert.equal(two.state, "agreed", "lo que cada una juzgó de la traducción cuenta como siempre");
+  const three = tally([doubt("ana"), doubt("bea"), doubt("carla")]);
+  assert.equal(three.notApplicable, true);
+  const learners = tally([doubt("ana"), doubt("bea"), doubt("dora"), doubt("eva")]);
+  assert.equal(learners.notApplicable, false, "quien aún no cuenta para el mínimo lo dice, pero no suma");
+  assert.equal(learners.doubted.length, 4);
+  assert.deepEqual(tally([answer("ana", "n1", "approved")]).doubted, [], "una respuesta sin ese paso no dice nada del desafío");
+});
+
 test("cuenta la última respuesta de cada persona: quien cambia de parecer resuelve su objeción", () => {
   const r = tally([
     answer("ana", "n1", "approved"),

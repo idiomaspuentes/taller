@@ -10478,7 +10478,7 @@ html[data-text] .af-note-reader { font-size: calc(0.8125rem * var(--ts)); }
 @media (max-width: 63.99rem) {
   .af--round .af-work > .af-decide, .af--round .af-ask > .af-decide--answer {
     position: sticky; bottom: 0; z-index: 5; margin-inline: -0.25rem; padding: 0.75rem 0.25rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, var(--bg) 78%, transparent);
+    background: var(--bg); box-shadow: 0 -1px 0 var(--border);
   }
 }
 /* The answer of step 2 sticks to the foot as that of step 1 does: inside its own box it only stuck while the box was in sight. */
@@ -10510,7 +10510,8 @@ html[data-text] .af-note-reader { font-size: calc(0.8125rem * var(--ts)); }
  * «Más», said here while it is on.
  */
 .af--round .af-head { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.5rem; row-gap: 0.25rem; }
-.af--round .af-head > .af-kind--top { flex: 1 1 auto; min-width: 0; margin: 0; }
+/* A long name is cut, not left to push the pager under it (19 October). */
+.af--round .af-head > .af-kind--top { flex: 1 1 0; min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .af--round .af-head > .af-step { margin-left: auto; }
 .af--round .af-head .af-count { font-size: calc(0.8125rem * var(--ts, 1)); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .af-filter-on { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 32px; padding: 0 0.625rem; border: 1px solid var(--accent-200); border-radius: 999px; background: var(--accent-50); font: inherit; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 600; color: var(--accent-800); cursor: pointer; }
@@ -10524,3 +10525,83 @@ html[data-text] .af-note-reader { font-size: calc(0.8125rem * var(--ts)); }
 /* A finger's height for the small chip, without making it bigger to the eye. */
 .af-filter-on { position: relative; }
 .af-filter-on::after { content: ""; position: absolute; inset: -6px 0; }
+
+/*
+ * Step 1 names the point first, then says what to do (18 October): the name changes from one point to the next; the
+ * instruction, the same each time, is read as a line under it.
+ */
+.af--round .af-point-title { text-wrap: pretty; }
+.af--round .af-point-title .af-orig { font-size: 1.2em; line-height: 1.2; }
+
+/*
+ * Calm (18 October): one heading per step, its link in the same group; the helps of the two boxes are their small
+ * print.
+ */
+.af--round .af-work > .af-point-title + .af-side-toggle--under { margin-top: -0.375rem; }
+.af--round .af-ref .af-subhead--in, .af--round .af-draft .af-subhead--in { font-size: calc(0.8125rem * var(--ts, 1)); }
+html[data-text] .af--round .af-ref .af-subhead--in, html[data-text] .af--round .af-draft .af-subhead--in { font-size: calc(0.8125rem * var(--ts)); }
+
+/*
+ * Three steps (18 October): the question of step 1, after the reference and the note it is about; what others said of
+ * the point, in their words.
+ */
+.af-study-q { margin: 0.5rem 0 0; font-size: calc(1.125rem * var(--ts, 1)); font-weight: 700; line-height: 1.35; color: var(--text); text-wrap: pretty; }
+.af-doubts { display: grid; gap: 0.375rem; padding: 0.75rem 0.875rem; border-radius: var(--radius-md, 10px); background: var(--warning-50, var(--surface-muted)); }
+.af-doubts__lead { margin: 0; font-size: calc(0.875rem * var(--ts, 1)); font-weight: 600; color: var(--text); }
+.af-doubts ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; font-size: calc(0.875rem * var(--ts, 1)); color: var(--text); }
+html[data-text] .af-study-q { font-size: calc(1.125rem * var(--ts)); }
+
+/*
+ * Three steps, each with only what it is for (18 October): the stepper over them; in step 1 the note in sight, under
+ * a quiet name of its own.
+ */
+/* The line runs from one step to the next: a short dash beside each number left wide gaps after the names (19 October). */
+.af-steps { display: flex; align-items: center; width: 100%; max-width: 30rem; margin: 0 auto; padding: 0; list-style: none; counter-reset: none; }
+.af-steps li { display: flex; align-items: center; flex: 0 0 auto; min-width: 0; }
+.af-steps li + li { flex: 1 1 auto; }
+.af-steps li + li::before { content: ""; flex: 1 1 auto; min-width: 0.75rem; height: 1px; margin: 0 0.625rem; background: var(--border-strong, var(--border)); }
+.af-steps li > span, .af-steps li > button { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 44px; min-width: 0; padding: 0; border: 0; background: none; font: inherit; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.af-steps li > button { cursor: pointer; color: var(--accent-700); }
+.af-steps li > button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.af-steps li > button:focus-visible { outline: 2px solid var(--accent-600, var(--accent-700)); outline-offset: 2px; border-radius: 6px; }
+.af-steps li > button:active { transform: translateY(1px); }
+.af-steps__n { display: inline-grid; place-items: center; flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border: 1.5px solid currentColor; border-radius: 999px; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.af-steps li[aria-current="step"] > span { color: var(--text); }
+.af-steps li[aria-current="step"] .af-steps__n { border-color: var(--accent-700); background: var(--accent-700); color: #fff; }
+.af-steps li[data-done="true"] .af-steps__n { border-color: var(--accent-200); background: var(--accent-50); }
+.af--round .af-work > .af-steps { margin-bottom: -0.25rem; }
+.af-study-help { display: grid; gap: 0.5rem; padding-top: 0.25rem; }
+/* The note is a group of its own, not the end of the reference: 8 px under the Hebrew it read as its last line. */
+.af--round .af-work > .af-study-help { margin-top: 1rem; }
+.af-section-label { margin: 0; font-size: calc(0.875rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+.af-study-help .af-reason { padding: 0; border: 0; background: none; }
+.af-study-help .af-about__links { margin-top: -0.25rem; }
+html[data-text] .af-steps li > span, html[data-text] .af-steps li > button { font-size: calc(0.8125rem * var(--ts)); }
+html[data-text] .af-section-label { font-size: calc(0.875rem * var(--ts)); }
+/* Step 1's question over its two answers, one block at the foot. */
+.af--round .af-decide--ask { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.af--round .af-decide--ask > .af-study-q { grid-column: 1 / -1; margin: 0 0 0.25rem; }
+@media (min-width: 48rem) { .af--round .af-decide--ask { display: grid; grid-template-columns: auto auto 1fr; justify-content: start; gap: 0.75rem; } }
+/* The pinned answers are set apart from the text that scrolls under them: room and a soft edge. */
+@media (max-width: 63.99rem) { .af--round .af-work > .af-decide, .af--round .af-ask > .af-decide--answer { padding-top: 1rem; box-shadow: 0 -1px 0 var(--border), 0 -10px 16px -14px rgb(11 23 48 / 0.35); } }
+
+/*
+ * A key word's step 3 (19 October): the question and its link one group; how the word reads in its other places a
+ * group of its own under it, named like the note of step 1, not in capitals in a card; each place its words and verse.
+ */
+.af--round .af-work > .af-elsewhere { gap: 0.75rem; padding: 0; border: 0; border-radius: 0; background: none; }
+.af--round .af-work > .af-elsewhere .af-lbl { margin: 0; text-transform: none; letter-spacing: 0; font-size: calc(0.875rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+.af--round .af-work > .af-elsewhere ul { gap: 0.75rem; font-size: calc(1rem * var(--ts, 1)); }
+.af--round .af-work > .af-elsewhere li b { font-weight: 600; }
+.af--round .af-work > .af-elsewhere li > span:not(.af-elsewhere__ctx) { margin-left: 0.25rem; font-size: calc(0.8125rem * var(--ts, 1)); }
+.af--round .af-work > .af-elsewhere .af-elsewhere__ctx { font-size: calc(0.9375rem * var(--ts, 1)); }
+.af--round .af-work > .af-elsewhere .af-hint { margin: 0; }
+html[data-text] .af--round .af-work > .af-elsewhere .af-lbl { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .af--round .af-work > .af-elsewhere ul { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af--round .af-work > .af-elsewhere li > span:not(.af-elsewhere__ctx) { font-size: calc(0.8125rem * var(--ts)); }
+html[data-text] .af--round .af-work > .af-elsewhere .af-elsewhere__ctx { font-size: calc(0.9375rem * var(--ts)); }
+/* The question over the doubt box is its heading; what is asked under it, a group of its own (19 October). */
+.af--round .af-why > .af-study-q + label.af-lbl { margin-top: 0.75rem; }
+/* «Ampliar» at the foot of the reference in step 1, where it is at the foot of the draft in step 2. */
+.af-ref__acts { display: flex; justify-content: flex-end; margin-top: 0.25rem; }
+.af--round .af-ref__acts .af-link { min-height: 44px; }

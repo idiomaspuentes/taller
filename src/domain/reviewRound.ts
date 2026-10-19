@@ -32,6 +32,13 @@ export type ReviewDecision = CheckingDecision & {
    * habilitada of the team, with what was agreed in `note`. It settles the item for everybody.
    */
   final?: boolean;
+  /**
+   * What the reviewer said of the point itself before judging the translation: whether the challenge the note names
+   * is there (a personificación, say), or whether the key term has that sense here. `note`: what they see instead.
+   * The team of Esdras fought the tool over a «personificación» that for them was a sinécdoque: it only asked whether
+   * the TPL kept a figure they did not see (18 October).
+   */
+  challenge?: { applies: boolean; note?: string };
 };
 
 export type ReviewThresholds = {
@@ -59,6 +66,10 @@ export type ItemTally = {
    * objection. `inTc`: closed in translationCore before the work came to this app; `by` is who checked it there.
    */
   decided?: { by: string; note?: string; at: string; inTc?: boolean };
+  /** Who said, on the text as it is now, that the challenge or the sense of the term does not apply here, and why. */
+  doubted: { by: string; note?: string }[];
+  /** As many of those who count as the team needs to agree: the team says the point does not apply here. */
+  notApplicable: boolean;
 };
 
 /**
@@ -142,6 +153,10 @@ export function tallyItem(params: {
       open.push(d.reviewer);
     }
   }
+  // Whether the challenge applies is a question of its own: as many saying it does not as the team needs to agree
+  // say so for the team, whatever each then judged of the translation.
+  const doubted = answers.filter((d) => d.challenge?.applies === false).map((d) => ({ by: d.reviewer, ...(d.challenge?.note ? { note: d.challenge.note } : {}) }));
+  const notApplicable = answers.filter((d) => d.challenge?.applies === false && countsForMinimum(levels[d.reviewer.trim().toLowerCase()])).length >= thresholds.minAgree;
   // A final decision on the text as it is now settles the item, unless somebody objects after it.
   const confirmers = new Set((params.confirmers ?? []).map((c) => c.trim().toLowerCase()));
   const final = mine
@@ -152,13 +167,13 @@ export function tallyItem(params: {
     const after = answers.filter((d) => d.status !== "approved" && Date.parse(d.timestamp) > Date.parse(final.timestamp)).map((d) => d.reviewer);
     if (!after.length) {
       const decided = closedInTc(final) ? { by: tcCheckerOf(final)!, at: final.timestamp, inTc: true } : { by: final.reviewer, note: final.note, at: final.timestamp };
-      return { itemId, state: "agreed", answers, stale, agree, agreeIndependent, open: [], decided };
+      return { itemId, state: "agreed", answers, stale, agree, agreeIndependent, open: [], decided, doubted, notApplicable };
     }
   }
 
   const agreed = agree >= thresholds.minAgree && agreeIndependent >= thresholds.minIndependent && open.length === 0;
   const state: ItemState = agreed ? "agreed" : open.length > 0 ? "disputed" : "pending";
-  return { itemId, state, answers, stale, agree, agreeIndependent, open };
+  return { itemId, state, answers, stale, agree, agreeIndependent, open, doubted, notApplicable };
 }
 
 const MARKS = ".,;:!?¡¿«»“”\"'()";
