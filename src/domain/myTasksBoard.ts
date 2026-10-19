@@ -307,7 +307,14 @@ export function buildBoard(input: BoardInput): Board {
       const once = isIssueAssignedTo(raw, login) || isIssueUnassigned(raw) ? withOnceSteps(login, raw, steps, bucket.issues, (other) => taskOf(other, bucket)) : { issue: raw, changed: false };
       const issue = once.issue;
       if (once.changed) onceApplied.add(issue.number);
-      const audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
+      let audience = audienceOf({ issue, project: bucket, session, pmOrg, myLevel });
+      // Whoever manages sees the free subtareas of every task, with a team or not, as the team does: they reached
+      // them only as steps to join, and a task whose first step is not one (the lists of Armonización) was nowhere
+      // on their board while its team had it (19 October). On the board only: nothing is announced to them for it.
+      if (audience.relation === "other" && session.canManage && isIssueUnassigned(issue) && !inProposalList(issue) && !isDecisionIssue(issue) && task) {
+        const blocks = bucket.openIssues ? waitBlocks(issue, bucket.board, bucket.openIssues, bucket.sourceIssues) : [];
+        audience = { relation: "free", notify: false, ...(blocks.length ? { hold: { kind: "espera" as const, text: waitReason(blocks, bucket.board) } } : {}) };
+      }
       const seated = steps.some((s) => (s.claimMode === "exclusive" || s.claimMode === "pool") && isStepActor(login, parseTaskProgressMarker(issue.body ?? ""), s, assigneeOf(issue)));
       const mine = audience.relation === "mine";
       if (audience.relation === "other" && !seated) continue;

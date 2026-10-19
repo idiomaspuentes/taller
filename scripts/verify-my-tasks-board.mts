@@ -392,6 +392,20 @@ await test("una tarea sin equipo que todavía espera a otra no se ofrece: aparec
   assert.equal(free.reviews.some((c) => c.issue.number === waits.number), true);
 });
 
+await test("quien gestiona ve lo libre de una tarea de otro equipo aunque su primer paso no sea de sumarse (las listas de Armonización)", () => {
+  // A task of a team the manager is not on, whose first step is a checklist: nobody joins it, it is begun whole.
+  const listTask = { id: "armonizar", name: "Armonizar Notas", phaseId: "p2", memberIds: ["bea"], orgTeamName: "Armonización", rules: [], steps: [{ id: "lista", name: "Notas frente a los textos", solverAppId: "fcr-checklist", closing: "checklist" }, { id: "acuerdo", name: "Acuerdo", closing: "consensus", claimMode: "pool", minAssignees: 2 }] };
+  const withList = { ...plan, teams: [...plan.teams, listTask] } as unknown as AssignmentsDoc;
+  const list = issue({ task: "armonizar", title: "NEH 1 · Armonizar Notas" });
+  const manager = { username: "abel", canManage: true, teams: [] } as never;
+  const board = buildBoard({ session: manager, pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: withList, issues: [list], openIssues: [list] }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  assert.deepEqual(board.free.map((c) => c.issue.number), [list.number], "está entre lo libre, como para su equipo");
+  assert.equal(board.free[0]!.action.kind, "begin", "y se puede empezar");
+  // Somebody who is not on that team and does not manage still does not see it.
+  const outsider = buildBoard({ session: { username: "eva", teams: [] } as never, pmOrg: PM, projects: [{ projectId: "NEH", title: "Nehemías", browseProject: true, board: withList, issues: [list], openIssues: [list] }], decisionIssues: [], closedIssues: [], cursor: emptyCursor(), myLevel: "habilitada" });
+  assert.equal([...outsider.free, ...outsider.reviews, ...outsider.todo].some((c) => c.issue.number === list.number), false);
+});
+
 await test("lo libre se ofrece un capítulo a la vez: en un capítulo, tarea por tarea en el orden del plan, y en cada tarea por versículo", () => {
   // Made in the order a plan makes them, which is not the order they are read in.
   const later = issue({ task: "tpl", title: "NEH 2:1–8 · Traducir TPL" });
