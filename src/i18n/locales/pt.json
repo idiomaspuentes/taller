@@ -2382,7 +2382,7 @@
   "af.studyNoteLabel": "A nota de tradução",
   "af.markHeading": "Marque no {res} o que traduz {x}",
   "af.studyQNote": "O destacado é um caso de «{name}»?",
-  "af.studyQTerm": "Você entende por que o tradutor deve traduzir «{name}» com cuidado especial?",
+  "af.studyQTerm": "Você entende o significado de «{name}» neste contexto e a sua forma literal?",
   "af.studyYesTerm": "Sim, continuar",
   "af.studyNoTerm": "Há um erro",
   "af.doubtWhatTerm": "Que erro você vê?",

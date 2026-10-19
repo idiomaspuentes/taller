@@ -2299,8 +2299,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </div>
               ) : (
                 // The question with its answers, at the foot of a phone: under the note it was hidden by them. A key
-                // word asks whether the person sees why it is translated with special care, and its «no» is an error
-                // to report: an article that does not match the word marked (19 October).
+                // word asks whether the person understands what it means here and its literal form: both texts need
+                // to know both, whatever each then does with them by its rules (literal, simple). Its «no» is an
+                // error to report: an article that does not match the word marked (19 October).
                 <div className="af-decide af-decide--ask">
                   <h3 className="af-study-q">{askNamed(stepProp === "notas" ? "af.studyQNote" : "af.studyQTerm")}</h3>
                   <Button type="button" onClick={() => studyDone({ applies: true })}>
