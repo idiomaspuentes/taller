@@ -29,7 +29,7 @@ import { refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, sortByVerse, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Lock, Maximize2, Pencil, X } from "lucide-react";
+import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Info, Lock, Maximize2, Pencil, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { changeMyStudyNotes } from "../dcs/studyNotes";
@@ -1416,13 +1416,18 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       <div className="af-about__note">
       {stepProp === "notas" && item.note ? (
         // Why this is a challenge: the team's note first, said to be a draft until harmonized, or the source's.
-        <HelpVersions team={teamNotes?.byId[item.id] ?? null} source={item.note} teamLang={ctx?.lang ?? ""} sourceLang={sourcePackageLang(data.sourcePackage)} draftLabel={notesDraftLabel}>
+        // In step 1, named as the reference is («Nota»), its draft said in a word beside it: «Borrador de la fase 1:
+        // Traducción» took a line of its own over the note (19 October).
+        <HelpVersions label={label} team={teamNotes?.byId[item.id] ?? null} source={item.note} teamLang={ctx?.lang ?? ""} sourceLang={sourcePackageLang(data.sourcePackage)} draftLabel={label ? t("hv.draft") : notesDraftLabel}>
           {(text, lang) => (
             <>
               {/* How to read the note: it is not written for whoever refines the text, but for whoever will
                   translate the TPL into another language, whichever text is refined here; its advice is often
                   what the TPS does (18 October). Over the note, as its caption. */}
-              <p className="af-note-reader">{t("af.noteReader")}</p>
+              {/* An aside about the note, not its first line: an icon, in italics, apart from it (19 October). */}
+              <p className="af-note-reader">
+                <Info size={14} aria-hidden /> <span>{t("af.noteReader")}</span>
+              </p>
               <div className="af-reason" lang={lang} data-whole="true">
                 <HelpMarkdownView className="af-note af-note--md" content={text} />
               </div>
@@ -1444,7 +1449,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {(text, lang) => (
             <>
               {/* Not in step 1, where the article is read whole: grey over its first line, it read as part of it. */}
-              {whole ? null : <p className="af-note-reader">{t("af.termReader")}</p>}
+              {whole ? null : (
+                <p className="af-note-reader">
+                  <Info size={14} aria-hidden /> <span>{t("af.termReader")}</span>
+                </p>
+              )}
               {whole ? (
                 // The article whole, under its title: without it the definition began with nothing to say whose.
                 <div className="af-reason af-article" lang={lang} data-whole="true">
@@ -2306,10 +2315,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : stepProp === "palabras" ? (
                 helpButton(false)
               ) : noteGroup ? (
-                <section className="af-study-help">
-                  <p className="af-section-label">{t("af.studyNoteLabel")}</p>
-                  {noteGroup}
-                </section>
+                <section className="af-study-help af-study-help--named">{noteGroupWith(<span className="af-lbl af-lbl--ref">{t("af.noteLabel")}</span>)}</section>
               ) : null}
               {/* What the others said of it, before answering: why they do not see it, in their words. */}
               {tally && tally.doubted.some((d) => d.by.trim().toLowerCase() !== me) ? (
@@ -2532,7 +2538,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     <h2 className="af-heading af-question">
                       {pieces.map((piece, at) =>
                           !questionNames.words && piece === "{words}" ? (
-                            <span key={at}>{capital(t("af.qMarkedWords").replace("{res}", res), at)}</span>
+                            // «Lo marcado en el TPS», unless the question names the text itself («… en el TPS?»).
+                            <span key={at}>{capital(t(key).includes(` ${res}`) ? t("af.qMarkedWordsPlain") : t("af.qMarkedWords").replace("{res}", res), at)}</span>
                           ) : !questionNames.orig && piece === "{orig}" ? (
                             <span key={at}>{t("af.qMarkedOrig").replace("{ref}", refName)}</span>
                           ) : piece === "{words}" ? (

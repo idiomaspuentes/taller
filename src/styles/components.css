@@ -10452,7 +10452,8 @@ html[data-text] .hm-toggle { font-size: calc(0.875rem * var(--ts)); }
 .af-about__note { display: grid; gap: 0.625rem; min-width: 0; }
 .af-about__note > .hv { gap: 0.5rem; }
 .af-about__note .hv__bar { justify-content: space-between; }
-.af-note-reader { margin: 0; font-size: calc(0.8125rem * var(--ts, 1)); line-height: 1.45; color: var(--text-muted); }
+.af-note-reader { display: flex; align-items: flex-start; gap: 0.375rem; margin: 0 0 0.5rem; font-size: calc(0.8125rem * var(--ts, 1)); font-style: italic; line-height: 1.45; color: var(--text-muted); }
+.af-note-reader > svg { flex: 0 0 auto; margin-top: 0.15em; }
 .af-about__note .af-reason .af-note { color: var(--text); }
 .af-about__note > .af-about__links { margin-top: -0.25rem; }
 .af-about__quote { font-size: calc(1.125rem * var(--ts, 1)); }
@@ -10726,3 +10727,15 @@ html[data-text] .af-ref__whole { font-size: calc(0.875rem * var(--ts)); }
 .af-recap-fold[open] > summary::after { content: "▴"; }
 .af-recap-fold[open] > .af-recap { margin-top: 0.5rem; }
 html[data-text] .af-recap-fold > summary { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * Highlighted words in a row are one highlight (19 October): each in a box of its own, fifteen words of the ULT
+ * read as fifteen things. The box closes at the run's ends only, and the gap between its words is filled. Its
+ * start is on the left of a text read from left to right, on the right of Hebrew.
+ */
+.af-word[data-marked="true"]:has(+ .af-word[data-marked="true"]) { border-start-end-radius: 0; border-end-end-radius: 0; box-shadow: inset 0 2px 0 var(--warning-500), inset 0 -2px 0 var(--warning-500), inset 2px 0 0 var(--warning-500); }
+.af-word[data-marked="true"] + .af-word[data-marked="true"] { border-start-start-radius: 0; border-end-start-radius: 0; margin-inline-start: -0.125rem; padding-inline-start: 0.25rem; box-shadow: inset 0 2px 0 var(--warning-500), inset 0 -2px 0 var(--warning-500), inset -2px 0 0 var(--warning-500); }
+.af-word[data-marked="true"] + .af-word[data-marked="true"]:has(+ .af-word[data-marked="true"]) { box-shadow: inset 0 2px 0 var(--warning-500), inset 0 -2px 0 var(--warning-500); }
+.af-words[dir="rtl"] .af-word[data-marked="true"]:has(+ .af-word[data-marked="true"]) { box-shadow: inset 0 2px 0 var(--warning-500), inset 0 -2px 0 var(--warning-500), inset -2px 0 0 var(--warning-500); }
+.af-words[dir="rtl"] .af-word[data-marked="true"] + .af-word[data-marked="true"] { box-shadow: inset 0 2px 0 var(--warning-500), inset 0 -2px 0 var(--warning-500), inset 2px 0 0 var(--warning-500); }
+.af-words[dir="rtl"] .af-word[data-marked="true"] + .af-word[data-marked="true"]:has(+ .af-word[data-marked="true"]) { box-shadow: inset 0 2px 0 var(--warning-500), inset 0 -2px 0 var(--warning-500); }
