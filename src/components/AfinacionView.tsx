@@ -1208,6 +1208,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [item?.id, reference?.id, refVerse]);
   /** What is marked in the reference, to say in the draft which words to look for. */
   const markedWords = useMemo(() => wordsAt(refVerse, refMarked), [refVerse, refMarked]);
+  /**
+   * What step 3's question can quote, each on its own: the words chosen when unbroken and up to eight («Y sucedió en
+   * los días de»), the original when unbroken and up to five. Both had to be short, four words at most, or neither
+   * was quoted, and the question read «¿Lo marcado es una buena forma de decir lo resaltado en el original en el
+   * TPS?» over a one-word original (19 October). What is not quoted is pointed at in the box under the question.
+   */
+  const questionNames = useMemo(() => {
+    const quotable = (text: string, most: number) => Boolean(text) && !text.includes("…") && text.split(/\s+/).length <= most;
+    return { words: quotable((chosenWords || "").trim(), 8), orig: quotable((markedWords || "").trim(), 5) };
+  }, [markedWords, chosenWords]);
+  const questionNamesBoth = questionNames.words && questionNames.orig;
   /** What is highlighted, short enough to name the point: its first words and its last when it is long. */
   const pointWords = useMemo(() => {
     const words = markedWords.split(/\s+/).filter(Boolean);
@@ -2357,14 +2368,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                         : "af.qPalabrasFirst";
                 const marked = (markedWords || "").split(/\s+/).filter(Boolean);
                 // A long highlight is shortened to its first words and its last; marks of words left out («…») are one.
+                // Only where nothing is asked about it (nothing in the translation renders it).
                 const orig = (marked.length > 4 ? `${marked.slice(0, 2).join(" ")} … ${marked[marked.length - 1]}` : marked.join(" ")).replace(/…(\s*…)+/g, "…");
                 const isOrig = reference?.id === "orig";
                 // Quoted, a long or broken selection made the question unreadable: «¿«en los … de Asuero … Asuero»
                 // conserva la forma de «in the … Ahasuerus»?» (18 October). Then the question names what is marked,
                 // and the box right under it shows the words.
-                const words = (chosenWords || "").trim();
-                const tooLong = (text: string) => !text || text.includes("…") || text.split(/\s+/).length > 4;
-                const named = !tooLong(words) && !tooLong(orig);
                 const res = data.resource === "tps" ? "TPS" : "TPL";
                 const refName = isOrig ? t("af.qOriginal") : (reference?.label.replace(/\s*\(.*\)\s*$/, "") ?? "");
                 // A challenge is named at the end, «… como «Eventos nuevos»?»: without it the question did not say what
@@ -2399,9 +2408,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <>
                     <h2 className="af-heading af-question">
                       {pieces.map((piece, at) =>
-                          !named && piece === "{words}" ? (
+                          !questionNames.words && piece === "{words}" ? (
                             <span key={at}>{capital(t("af.qMarkedWords").replace("{res}", res), at)}</span>
-                          ) : !named && piece === "{orig}" ? (
+                          ) : !questionNames.orig && piece === "{orig}" ? (
                             <span key={at}>{t("af.qMarkedOrig").replace("{ref}", refName)}</span>
                           ) : piece === "{words}" ? (
                             // The words are marked as in the box, the quotes left outside the mark.
@@ -2410,7 +2419,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                             </span>
                           ) : piece === "{orig}" ? (
                             <span key={at}>
-                              «<bdi className={isOrig ? "af-orig af-question__orig" : "af-question__src"} lang={isOrig ? "hbo" : undefined}>{orig || t("af.theMarked")}</bdi>»
+                              «<bdi className={isOrig ? "af-orig af-question__orig" : "af-question__src"} lang={isOrig ? "hbo" : undefined}>{markedWords.trim() || t("af.theMarked")}</bdi>»
                             </span>
                           ) : piece === "{name}" ? (
                             <span key={at}>
@@ -2465,8 +2474,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   writing and showed the words without the verse they are judged in (16 October). */}
               {/* A key word's question names both the words chosen and the original, and the list under it is what it
                   is weighed against: the box with the two verses said it a third time (19 October). Kept when nothing
-                  was marked, to see the verse that lacks it. */}
-              {stepProp === "palabras" && !needsWords ? null : (
+                  was marked, to see the verse that lacks it, and when the question cannot name them (more than four
+                  words, as the TPS often has): then it says «lo marcado» and the box is what shows it. */}
+              {stepProp === "palabras" && !needsWords && questionNamesBoth ? null : (
               <div className="af-recap af-recap--rows">
                 <p className="af-recap__row">
                   {/* «Hebreo», not «Hebreo (UHB)»: the edition is said where the reference is chosen. */}
