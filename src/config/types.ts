@@ -91,6 +91,12 @@ export type ProcessPackage = {
   tools?: unknown[];
   /** Names that older plans stored as plain text, by interface language: `{ pt: { "Borrador": "Rascunho" } }`. */
   glossary?: Record<string, Record<string, string>>;
+  /**
+   * Titles of the sections of an article (Translation Words, Translation Academy) left out where it is read to
+   * understand a point, not to translate it: the translation suggestions and strategies, in every language the
+   * articles come in. See `src/domain/articleSections.ts`.
+   */
+  readingOmits?: string[];
 };
 
 export type TallerConfig = {

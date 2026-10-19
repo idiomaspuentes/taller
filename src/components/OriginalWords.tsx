@@ -13,7 +13,7 @@ const bare = (word: string) => word.normalize("NFC").replace(/[^\p{L}\p{M}\p{N}]
  * aligning. The words are the ones the text is shown in (the marks of a note count them); each is matched with
  * the word the original tags by what it says and which time it says it.
  */
-/** `only`: show just those words of the verse (with «…» where others are left out), each still opening its own. */
+/** `only`: show just those words of the verse (with «…» where others are left out, at its ends too), each still opening its own. */
 export function OriginalWords({ text, words, marked, only, onOpen }: { text: string; words: OriginalWord[] | undefined; marked?: number[]; only?: number[]; onOpen: (word: OriginalWord) => void }) {
   const t = useT();
   const shown = wordSpans(text);
@@ -41,7 +41,7 @@ export function OriginalWords({ text, words, marked, only, onOpen }: { text: str
         // Every word is looked up, shown or not: which one a word is among those with the same letters counts them all.
         const pieces = w.text.split(/(?<=־)/).map((piece) => ({ piece, found: tagged(piece) }));
         if (only && !only.includes(w.index)) return null;
-        const gap = only && at > 0 && !only.includes(w.index - 1) && only.some((index) => index < w.index);
+        const gap = only && at > 0 && !only.includes(w.index - 1);
         return (
           <span key={w.index} className="af-word" data-marked={marked?.includes(w.index) ? "true" : undefined}>
             {gap ? <span className="af-word__gap" aria-hidden>… </span> : null}
@@ -58,6 +58,7 @@ export function OriginalWords({ text, words, marked, only, onOpen }: { text: str
           </span>
         );
       })}
+      {only && only.length && Math.max(...only) < shown[shown.length - 1]!.index ? <span className="af-word__gap" aria-hidden> …</span> : null}
     </span>
   );
 }

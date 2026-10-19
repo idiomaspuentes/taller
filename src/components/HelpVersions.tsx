@@ -16,6 +16,13 @@ export function draftLabelOf(board: AssignmentsDoc | null | undefined, resource:
   return phase ? t("hv.draftOfPhase").replace("{n}", String(at + 1)).replace("{phase}", localized(phase.name, phase.names, language)) : t("hv.draft");
 }
 
+/** The team's version is the one on screen, and it is a draft. */
+function showTeamDraft(team: Props["team"], source: string, choice: "team" | "source", twoLanguages: boolean): boolean {
+  const usable = Boolean(team?.text.trim()) && team!.text.trim() !== source.trim();
+  const showTeam = !twoLanguages ? usable : (usable && choice === "team") || !source.trim();
+  return showTeam && usable && Boolean(team?.draft);
+}
+
 /** The name of a language in the interface's language («Español», «Inglés»), or its code when it has none. */
 function languageName(code: string, ui: string): string {
   try {
@@ -37,6 +44,8 @@ type Props = {
   draftLabel: string;
   /** How the text reads, in its language. */
   children: (text: string, lang: string) => ReactNode;
+  /** A name for the help at the start of its row, as «Referencia» names the text over it («Artículo»). */
+  label?: ReactNode;
 };
 
 /**
@@ -46,7 +55,7 @@ type Props = {
  * the team has no version yet: hidden then, the help seemed to have none in Spanish by design (19 October). It
  * opens in the team's language every time, not in the one chosen last.
  */
-export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, children }: Props) {
+export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, children, label }: Props) {
   const t = useT();
   const ui = useUiLanguage();
   const [choice, setChoice] = useState<"team" | "source">("team");
@@ -54,10 +63,26 @@ export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, c
   const usable = Boolean(team?.text.trim()) && team!.text.trim() !== source.trim();
   const twoLanguages = teamLang.split("-")[0]!.toLowerCase() !== sourceLang.split("-")[0]!.toLowerCase();
   const showTeam = (usable && choice === "team") || !source.trim();
-  if (!twoLanguages) return <div className="hv">{usable ? children(team!.text, teamLang) : children(source, sourceLang)}</div>;
+  const draft = showTeamDraft(team, source, choice, twoLanguages) ? <span className="hv__draft">{draftLabel}</span> : null;
+  // «Borrador» beside the name it qualifies, «Artículo · Borrador»: at the end of the row, after the versions, it
+  // read as one more thing to choose (19 October).
+  const named = label ? (
+    <span className="hv__named">
+      <span className="hv__label">{label}</span>
+      {draft}
+    </span>
+  ) : null;
+  if (!twoLanguages)
+    return (
+      <div className="hv">
+        {named ? <div className="hv__bar">{named}</div> : null}
+        {usable ? children(team!.text, teamLang) : children(source, sourceLang)}
+      </div>
+    );
   return (
     <div className="hv">
       <div className="hv__bar">
+        {named}
         {source.trim() ? (
           <div className="af-ref__texts" role="tablist" aria-label={t("hv.versions")}>
             <button type="button" role="tab" aria-selected={choice === "team"} onClick={() => setChoice("team")}>
@@ -68,7 +93,7 @@ export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, c
             </button>
           </div>
         ) : null}
-        {showTeam && usable && team!.draft ? <span className="hv__draft">{draftLabel}</span> : null}
+        {label ? null : draft}
       </div>
       {choice === "team" && !usable && source.trim() ? (
         <p className="af-subhead hv__none">{t("hv.noneYet").replace("{lang}", languageName(teamLang, ui).toLocaleLowerCase(ui))}</p>

@@ -48,6 +48,20 @@ export function selectionWindow(count: number, selected: number[], around = 8): 
   return { from: Math.max(0, first - around), to: Math.min(count, last + around + 1) };
 }
 
+/**
+ * The words of the reference shown in steps 2 and 3: what is highlighted with `around` words before and after, so
+ * that the translation under it is in sight; the whole verse took a phone's screen to say three words (19 October).
+ * `null` when there is nothing highlighted or too little would be left out (fewer than `least` words): then the
+ * whole verse is shown.
+ */
+export function referenceExcerpt(count: number, marked: number[], around = 3, least = 4): number[] | null {
+  if (!marked.length || !count) return null;
+  const from = Math.max(0, Math.min(...marked) - around);
+  const to = Math.min(count - 1, Math.max(...marked) + around);
+  if (count - (to - from + 1) < least) return null;
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i);
+}
+
 /** Toggle a word: selections are kept as a set of positions, in verse order. */
 export function toggleWord(selected: number[], index: number): number[] {
   return selected.includes(index) ? selected.filter((i) => i !== index) : [...selected, index].sort((a, b) => a - b);

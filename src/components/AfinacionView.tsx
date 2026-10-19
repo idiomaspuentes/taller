@@ -3,7 +3,7 @@ import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
 import { PassageIntroText, StepAsk } from "./StepAsk";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { chapterTextOf, draftTaskId, groupDraftBranches, loadAfinacionNotes, loadArticleBody, loadArticleInfo, loadTermArticle, loadTermTitles, type AfinacionNotesData, type AfinacionStep, type ChapterText, type OriginalWord } from "../dcs/afinacionLoad";
 import { ChapterPair } from "./ChapterReader";
@@ -35,8 +35,8 @@ import { HelpMessages } from "./HelpMessages";
 import { changeMyStudyNotes } from "../dcs/studyNotes";
 import { uid } from "../domain/assignment";
 import { articleMessageKey, termMessageKey, type StudyNote } from "../domain/studyNotes";
-import { articleBody, termArticlePath, termWord, snippetAround, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
-import { selectionFromWords, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
+import { articleBody, parseArticleTitle, termArticlePath, termWord, snippetAround, compareTermRenderings, firstUnanswered, orderTermUses, renderingsElsewhere, sameRenderingUses, termDefinition, termLabel, type PreferredTerms, type TermItem, type TermOrder } from "../domain/afinacionWords";
+import { referenceExcerpt, selectionFromWords, shownWords, wordSpans, wordsOfSelection } from "../domain/afinacionSelection";
 import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
@@ -63,7 +63,8 @@ import { useStepWork } from "../dcs/stepWork";
 import { FinalDecision, MeetingChip, RoundPanel } from "./RoundPanel";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { resolveSourcePackage, sourcePackageLang } from "../domain/sourcePackage";
-import { stepPurpose } from "../domain/processes";
+import { readingOmits, stepPurpose } from "../domain/processes";
+import { withoutSections } from "../domain/articleSections";
 import { localizeName } from "../domain/templateNames";
 import type { ProjectTask } from "../domain/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -115,12 +116,17 @@ function useWide(): boolean {
 }
 
 
-function Words({ text, marked, onTap, selected }: { text: string; marked?: number[]; onTap?: (i: number) => void; selected?: number[] }) {
+/** `only`: just those words of the verse, with «…» where others are left out (see `referenceExcerpt`). */
+function Words({ text, marked, onTap, selected, only }: { text: string; marked?: number[]; onTap?: (i: number) => void; selected?: number[]; only?: number[] }) {
   const t = useT();
-  const words = wordSpans(text);
-  if (!words.length) return <span className="af-empty">{t("af.noText")}</span>;
+  const all = wordSpans(text);
+  if (!all.length) return <span className="af-empty">{t("af.noText")}</span>;
+  const words = only ? all.filter((w) => only.includes(w.index)) : all;
+  const cutBefore = Boolean(only && words.length && words[0]!.index > 0);
+  const cutAfter = Boolean(only && words.length && words[words.length - 1]!.index < all[all.length - 1]!.index);
   return (
     <span className="af-words" dir={isRtl(text) ? "rtl" : undefined}>
+      {cutBefore ? <span className="af-word__gap" aria-hidden>… </span> : null}
       {words.map((w) =>
         onTap ? (
           <button
@@ -139,6 +145,7 @@ function Words({ text, marked, onTap, selected }: { text: string; marked?: numbe
           </span>
         ),
       )}
+      {cutAfter ? <span className="af-word__gap" aria-hidden> …</span> : null}
     </span>
   );
 }
@@ -1264,6 +1271,22 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [markedWords]);
   /** The texts read beside the draft in the chapter sheet. */
   const pairShown = pairTexts ?? [refText];
+  /** The reference shown whole in steps 2 and 3, when asked for: a new point starts with its excerpt again. */
+  const [refWhole, setRefWhole] = useState(false);
+  useEffect(() => setRefWhole(false), [item?.id]);
+  /** Steps 2 and 3: the words of the reference around what is highlighted, so the translation is in sight. */
+  const refExcerpt = studied && !refWhole ? referenceExcerpt(wordSpans(refVerse).length, refMarked) : null;
+  const refCut = studied && (refWhole || Boolean(refExcerpt));
+  const refToggle = refCut ? (
+    <button type="button" className={isRtl(refVerse) ? "af-link af-ref__whole af-ref__whole--rtl" : "af-link af-ref__whole"} onClick={() => setRefWhole(!refWhole)}>
+      {t(refWhole ? "af.refLess" : "af.refWhole")}
+    </button>
+  ) : null;
+  /**
+   * The chapter opened in step 1 shows the references alone: that step studies them, and the team's texts are for
+   * marking and deciding (steps 2 and 3). It showed the TPL beside them (19 October).
+   */
+  const refsOnly = !studied;
   /** The words of a reference that render what the point is about, in the point's verse. */
   const markedIn = (id: string, text: string): number[] => {
     if (!item || !data || !text) return [];
@@ -1345,14 +1368,19 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    * phone. What «well» means in this text (the step's criterion) is read here too: the question and its evidence
    * are what the screen is for, and the rule is what one reads when they are not enough.
    */
+  /**
+   * An article as it is read here, to understand a point: without its translation suggestions and strategies, which
+   * are for whoever translates into another language and not the rules of the TPL or the TPS (19 October). Nothing
+   * says they were left out: a line saying so was one more thing to read. A suggestion inside the definition, as a
+   * bullet, stays.
+   */
+  const readArticleText = (markdown: string, className?: string) => (
+    <HelpMarkdownView className={className} content={withoutSections(markdown, readingOmits()).text} />
+  );
   /** The article being read, as the team has it (said to be a draft while it is one) and as the source has it. */
   const articleVersions = reading ? (
     <HelpVersions team={reading.team} source={reading.source ?? ""} teamLang={ctx?.lang ?? ""} sourceLang={data ? sourcePackageLang(data.sourcePackage) : "en"} draftLabel={t("hv.draft")}>
-      {(text, lang) => (
-        <div lang={lang}>
-          <HelpMarkdownView content={text} />
-        </div>
-      )}
+      {(text, lang) => <div lang={lang}>{readArticleText(text)}</div>}
     </HelpVersions>
   ) : null;
   /** What to improve in an article, left for whoever harmonizes it, where the article is read. */
@@ -1375,8 +1403,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         foldLabel={t("hm.toggleArticle")}
       />
     ) : null;
-  /** The note or the article of the point, with its version and its links: read in step 1, and in the side panel. */
-  const noteGroup =
+  /**
+   * The note or the article of the point, with its version and its links: read in step 1, and in the side panel.
+   * `label`: a name at the start of the row of its versions, as «Referencia» names the text over it. `whole`: a key
+   * word's article read whole, with nothing to open: what step 1 studies (19 October).
+   */
+  const noteGroupWith = (label?: ReactNode, whole = false) =>
     data && item && hasHelp ? (
       <>
       {/* The note and what goes with it are one group: which version, who it is written for, the note, its
@@ -1402,22 +1434,33 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         // What the term means: the team's article first, said to be a draft until harmonized, or the source's.
         // Said whom it is written for, as the note of a challenge is.
         <HelpVersions
-          team={termRead.team ? { text: termDefinition(termRead.team.text), draft: termRead.team.draft } : null}
-          source={termRead.source ? termDefinition(termRead.source) : ""}
+          label={label}
+          team={termRead.team ? { text: whole ? termRead.team.text : termDefinition(termRead.team.text), draft: termRead.team.draft } : null}
+          source={termRead.source ? (whole ? termRead.source : termDefinition(termRead.source)) : ""}
           teamLang={ctx?.lang ?? ""}
           sourceLang={sourcePackageLang(data.sourcePackage)}
           draftLabel={t("hv.draft")}
         >
           {(text, lang) => (
             <>
-              <p className="af-note-reader">{t("af.termReader")}</p>
-              <div className="af-reason" lang={lang} data-whole="true">
-                <HelpMarkdownView className="af-note af-note--md" content={text} />
-              </div>
+              {/* Not in step 1, where the article is read whole: grey over its first line, it read as part of it. */}
+              {whole ? null : <p className="af-note-reader">{t("af.termReader")}</p>}
+              {whole ? (
+                // The article whole, under its title: without it the definition began with nothing to say whose.
+                <div className="af-reason af-article" lang={lang} data-whole="true">
+                  {parseArticleTitle(text) ? <h3 className="af-article__title">{parseArticleTitle(text)}</h3> : null}
+                  {readArticleText(articleBody(text), "af-note af-note--md")}
+                </div>
+              ) : (
+                <div className="af-reason" lang={lang} data-whole="true">
+                  <HelpMarkdownView className="af-note af-note--md" content={text} />
+                </div>
+              )}
             </>
           )}
         </HelpVersions>
       ) : null}
+      {whole ? null : (
       <p className="af-about__links">
         {stepProp === "notas" && articlePathOf(item.supportRef) ? (
           <button
@@ -1447,9 +1490,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         ) : null}
         {stepProp === "palabras" ? termGlossary : null}
       </p>
+      )}
       </div>
       </>
     ) : null;
+  const noteGroup = noteGroupWith();
   const sideContent =
     data && item && hasHelp ? (
       <>
@@ -1559,18 +1604,19 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               line was one more thing to read before the verse (19 October). */}
           <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
             {reference?.id === "orig" ? (
-              <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
+              <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} only={refExcerpt ?? undefined} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
             ) : (
-              <Words text={refVerse} marked={refMarked} />
+              <Words text={refVerse} marked={refMarked} only={refExcerpt ?? undefined} />
             )}
           </span>
+          {refToggle}
           <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
           {/* In step 1 the chapter around the point opens from the reference, as it does from the draft in step 2:
               the case is studied in its place too (19 October). In step 2 the draft's box has it. */}
           {!studied ? (
             <div className="af-ref__acts">
               <span className="af-draft__acts">
-                <button type="button" className="af-link" aria-label={t("af.expandAria")} onClick={() => setChapterOpen(true)}>
+                <button type="button" className="af-link" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
                   <Maximize2 size={14} aria-hidden /> {t("af.expand")}
                 </button>
               </span>
@@ -1803,11 +1849,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   sourceLang={data ? sourcePackageLang(data.sourcePackage) : "en"}
                   draftLabel={t("hv.draft")}
                 >
-                  {(text, lang) => (
-                    <div lang={lang}>
-                      <HelpMarkdownView content={text} />
-                    </div>
-                  )}
+                  {(text, lang) => <div lang={lang}>{readArticleText(text)}</div>}
                 </HelpVersions>
               ) : termRead === null ? (
                 <p className="af-hint">{t("af.noArticle")}</p>
@@ -1863,14 +1905,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               <div className="af-ref__bar af-pair-bar">
                 {/* Each text is touched to add it or take it away; the draft is always read, and is not offered. */}
                 <div className="af-ref__texts" role="group" aria-label={t("cr.sideLabel")}>
-                  {[...(data.references ?? []).map((row) => ({ id: row.id as string, label: row.id === "orig" ? t("af.tabOriginal") : row.label.replace(/\s*\(.*\)\s*$/, "") })), { id: "other", label: data.resource === "tps" ? "TPL" : "TPS" }].map((row) => {
+                  {[...(data.references ?? []).map((row) => ({ id: row.id as string, label: row.id === "orig" ? t("af.tabOriginal") : row.label.replace(/\s*\(.*\)\s*$/, "") })), ...(refsOnly ? [] : [{ id: "other", label: data.resource === "tps" ? "TPL" : "TPS" }])].map((row) => {
                     const shown = pairShown.includes(row.id);
+                    // Without the draft beside them, the last reference is not taken away: the chapter would be empty.
+                    const last = refsOnly && shown && pairShown.filter((id) => id !== "other").length <= 1;
                     return (
                       <button
                         key={row.id}
                         type="button"
                         aria-pressed={shown}
-                        disabled={!shown && pairShown.length >= 3}
+                        disabled={last || (!shown && pairShown.length >= 3)}
                         onClick={() => {
                           setPairFix(null);
                           setPairTexts(shown ? pairShown.filter((id) => id !== row.id) : [...pairShown, row.id]);
@@ -1913,7 +1957,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </label>
               </div>
             ) : null}
-            {chapterOpen && data ? <p className="af-subhead af-pair-hint">{t("af.pairHint").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p> : null}
+            {chapterOpen && data && !refsOnly ? <p className="af-subhead af-pair-hint">{t("af.pairHint").replace("{res}", data.resource === "tps" ? "TPS" : "TPL")}</p> : null}
             {chapterOpen && data && item ? (
               <ChapterPair
                 chapter={pairChapter ?? item.chapter}
@@ -1921,8 +1965,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 texts={[
                   // The references chosen, in the order the header lists them; the draft; the team's other text.
                   ...data.references.filter((row) => pairShown.includes(row.id)).map((row) => ({ ...row, label: row.id === "orig" ? t("af.tabOriginal") : row.label.replace(/\s*\(.*\)\s*$/, "") })),
-                  { id: "draft", label: data.resource === "tps" ? "TPS" : "TPL", book: data.bookDraft, joined: data.draftJoined },
-                  ...(pairShown.includes("other") && otherText ? [otherText] : []),
+                  ...(refsOnly ? [] : [{ id: "draft" as const, label: data.resource === "tps" ? "TPS" : "TPL", book: data.bookDraft, joined: data.draftJoined }]),
+                  ...(!refsOnly && pairShown.includes("other") && otherText ? [otherText] : []),
                 ]}
                 renderVerse={(text, key, body) => {
                   const here = key === `${item.chapter}:${item.verse}`;
@@ -2254,9 +2298,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {referenceBox}
               {/* The note in sight: studying it is what this step is for. Behind a link it was read by whoever
                   already doubted; the others answered without it (18 October). */}
-              {/* A key word's article folded under a link, as before: open, it was most of the screen and pushed the
-                  verse away; the question is about the verse (19 October). */}
-              {stepProp === "palabras" ? (
+              {/* A key word's article in sight again, whole, named as the reference is, «Artículo», with its versions in
+                  the same row: the step studies the reference and the article of its general sense, to tell what it
+                  means here. Behind a link, and with links of its own, it was one more thing to open (19 October). */}
+              {stepProp === "palabras" && noteGroup ? (
+                <section className="af-study-help af-study-help--named">{noteGroupWith(<span className="af-lbl af-lbl--ref">{t("af.articleLabel")}</span>, true)}</section>
+              ) : stepProp === "palabras" ? (
                 helpButton(false)
               ) : noteGroup ? (
                 <section className="af-study-help">
@@ -2552,7 +2599,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   is weighed against: the box with the two verses said it a third time (19 October). Kept when nothing
                   was marked, to see the verse that lacks it, and when the question cannot name them (more than four
                   words, as the TPS often has): then it says «lo marcado» and the box is what shows it. */}
-              {stepProp === "palabras" && !needsWords && questionNamesBoth ? null : (
+              {/* Folded rather than gone: whoever needs to read the reference and the translation again opens them
+                  here, with the chapter a touch away (19 October). */}
+              {(() => {
+                const recap = (
               <div className="af-recap af-recap--rows">
                 <p className="af-recap__row">
                   {/* «Hebreo», not «Hebreo (UHB)»: the edition is said where the reference is chosen. */}
@@ -2563,9 +2613,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     {/* The whole verse with what is highlighted marked, as in step 1: the question speaks of «lo resaltado»,
                         and the word alone, unmarked, showed nothing highlighted (18 October). */}
                     {reference?.id === "orig" ? (
-                      <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
+                      <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} only={refExcerpt ?? undefined} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
                     ) : refVerse ? (
-                      <Words text={refVerse} marked={refMarked} />
+                      <Words text={refVerse} marked={refMarked} only={refExcerpt ?? undefined} />
                     ) : (
                       markedWords || t("af.theMarked")
                     )}
@@ -2639,7 +2689,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   )}
                 </span>
               </div>
-              )}
+                );
+                return stepProp === "palabras" && !needsWords && questionNamesBoth ? (
+                  <details key={item.id} className="af-recap-fold">
+                    <summary>{t("af.seeTextAgain")}</summary>
+                    {recap}
+                  </details>
+                ) : (
+                  recap
+                );
+              })()}
           {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
             <div className="af-ask">
               {teamBox()}
@@ -2793,7 +2852,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           )}
           </div>
           {/* After the work in the page, so that it is read after it: on a computer, its column at the right. */}
-          {wide && showReason && (closedView || (studied && confirmed) || (stepProp === "palabras" && !studied)) ? sidePanel(() => toggleReason(false)) : null}
+          {wide && showReason && (closedView || (studied && confirmed)) ? sidePanel(() => toggleReason(false)) : null}
         </section>
       ) : null}
 

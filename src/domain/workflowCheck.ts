@@ -210,6 +210,8 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
 export function processProblems(pack: ProcessPackage, opts: { tools: SolverApp[]; languages: string[] }): string[] {
   const problems: string[] = [];
   if (!text(pack.id)) problems.push("El paquete no tiene id.");
+  if (pack.readingOmits !== undefined && (!Array.isArray(pack.readingOmits) || pack.readingOmits.some((x) => typeof x !== "string" || !x.trim())))
+    problems.push("«readingOmits» debe ser una lista de títulos de sección.");
   const toolIds = new Set<string>();
   for (const tool of list(pack.tools)) {
     const id = text(tool.id);

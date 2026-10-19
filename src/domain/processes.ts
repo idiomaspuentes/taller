@@ -97,6 +97,11 @@ export function tasksToRedoAfter(resource: string, packages: ProcessPackage[] = 
 }
 
 /** `names[language]`, or the stored name. */
+/** The titles of the sections left out of an article read to understand a point, of every package (see `readingOmits`). */
+export function readingOmits(packages: ProcessPackage[] = tallerConfig.processes): string[] {
+  return [...new Set(packages.flatMap((pack) => (Array.isArray(pack.readingOmits) ? pack.readingOmits.filter((x): x is string => typeof x === "string" && Boolean(x.trim())) : [])))];
+}
+
 export function localized(name: string, names: Localized | undefined, language: string): string {
   return names?.[language]?.trim() || name;
 }

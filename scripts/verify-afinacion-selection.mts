@@ -1,7 +1,7 @@
 /** Marking the words of a verse, and finding them again after the text changed. */
 import assert from "node:assert/strict";
 import { resolveTextReference } from "@usfm-tools/checking";
-import { selectionFromWords, selectionWindow, shownWords, stretchesOf, toggleWord, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
+import { referenceExcerpt, selectionFromWords, selectionWindow, shownWords, stretchesOf, toggleWord, wordSpans, wordsOfSelection } from "../src/domain/afinacionSelection";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -88,6 +88,14 @@ test("el versículo se muestra entero si es corto, y si es largo, un tramo alred
   assert.deepEqual(selectionWindow(60, [30]), { from: 22, to: 39 });
   assert.deepEqual(selectionWindow(60, [55, 58]), { from: 47, to: 60 }, "al final: hasta la última");
   assert.deepEqual(selectionWindow(60, []), { from: 0, to: 60 });
+});
+
+test("la referencia de los pasos 2 y 3 muestra lo resaltado con tres palabras a cada lado, y entera si se ahorraría poco", () => {
+  assert.deepEqual(referenceExcerpt(20, [10]), [7, 8, 9, 10, 11, 12, 13]);
+  assert.deepEqual(referenceExcerpt(20, [1, 2]), [0, 1, 2, 3, 4, 5], "al principio, desde la primera palabra");
+  assert.deepEqual(referenceExcerpt(20, [6, 12]), [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], "lo resaltado en dos partes va con lo que hay entre ellas");
+  assert.equal(referenceExcerpt(10, [5]), null, "se quitarían tres palabras: el versículo entero");
+  assert.equal(referenceExcerpt(20, []), null, "nada resaltado: entero");
 });
 
 console.log(`\nverify-afinacion-selection: ${passed} checks passed.`);

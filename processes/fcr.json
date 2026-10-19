@@ -3081,6 +3081,36 @@
       }
     }
   ],
+  "readingOmits": [
+    "Translation Suggestions",
+    "Translation Suggestion",
+    "Translation Strategies",
+    "Translation Strategy",
+    "General Translation Strategies",
+    "Translation Strategies Applied",
+    "Examples of Translation Strategies Applied",
+    "Examples of Translation Strategy Applied",
+    "Examples of These Translation Strategies Applied",
+    "Examples of Quote Marking Strategies Applied",
+    "Sugerencias de traducción",
+    "Sugerencia de traducción",
+    "Estrategias de traducción",
+    "Estrategia de traducción",
+    "Estrategias generales de traducción",
+    "Estrategias de traducción aplicadas",
+    "Ejemplos de estrategias de traducción aplicadas",
+    "Ejemplos de estrategias aplicadas",
+    "Ejemplos de las estrategias de traducción aplicadas",
+    "Ejemplos de la estrategia de traducción aplicada",
+    "Ejemplos de estrategia de traducción aplicada",
+    "Ejemplos de estrategias para marcar las citas aplicadas",
+    "Sugestões de tradução",
+    "Sugestão de tradução",
+    "Estratégias de tradução",
+    "Estratégia de tradução",
+    "Estratégias de tradução aplicadas",
+    "Exemplos de estratégias de tradução aplicadas"
+  ],
   "glossary": {
     "pt": {
       "Flujo de Creación de Recursos": "Fluxo de Criação de Recursos",
