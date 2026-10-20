@@ -175,6 +175,15 @@ test("una pregunta del proceso gana lo que el proceso dice ahora de ella; la que
   const after = upgradeBoardToWorkflow(mine, fcr).board;
   assert.equal(listOf(after).find((q) => q.id === "publicado")!.per, "article");
   assert.equal(listOf(after).find((q) => q.id === "sentido")!.text, "¿Tiene sentido?", "lo que el proyecto escribió se queda");
+  // How the step is done, said as the process said it before: it says it as the process does now.
+  const stepOf = (doc: AssignmentsDoc) => doc.teams.find((t) => t.id === "armonizar-notas")!.steps!.find((s) => s.id === "notas-textos")!;
+  const old = "Lee la nota junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas.";
+  const said = { ...mine, teams: mine.teams.map((t) => (t.id === "armonizar-notas" ? { ...t, steps: t.steps!.map((s) => (s.id === "notas-textos" ? { ...s, description: old } : s)) } : t)) };
+  assert.match(stepOf(upgradeBoardToWorkflow(said, fcr).board).description!, /un texto a la vez/);
+  assert.equal("formerDescriptions" in stepOf(upgradeBoardToWorkflow(said, fcr).board), false, "lo que el proceso recuerda de sí mismo no se guarda en el proyecto");
+  // One the project wrote itself stays.
+  const own = { ...mine, teams: mine.teams.map((t) => (t.id === "armonizar-notas" ? { ...t, steps: t.steps!.map((s) => (s.id === "notas-textos" ? { ...s, description: "Nuestra forma." } : s)) } : t)) };
+  assert.equal(stepOf(upgradeBoardToWorkflow(own, fcr).board).description, "Nuestra forma.");
 });
 
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);

@@ -349,6 +349,12 @@ export type TaskStep = {
    */
   formerNames?: string[];
   /**
+   * How the process said before how the step is done (`description`). A project that still says it so did not
+   * write it: brought up to a newer version, the step says it as the process does now, in every language. «Marca
+   * «Todo bien»» stayed in the projects after the button was called otherwise (20 October).
+   */
+  formerDescriptions?: string[];
+  /**
    * The ids of the checks the process gave this step before it rewrote the list. A project brought up to the newer
    * version follows the process in what was the process's: the new wording, the new words, and none of the checks it
    * dropped. A check the project removed is not brought back, and one it added stays (see `upgradeBoardToWorkflow`).

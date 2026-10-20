@@ -40,7 +40,7 @@ export function applyWorkflowToBoard(
 
 /** What a process says a step of its own used to be is for bringing projects up to date: a project does not keep it. */
 function planStep(step: TaskStep): TaskStep {
-  const { formerNames: _names, formerChecks: _checks, ...rest } = step;
+  const { formerNames: _names, formerChecks: _checks, formerDescriptions: _descriptions, ...rest } = step;
   return rest;
 }
 
@@ -232,6 +232,7 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
         // What is replaced is what the process itself gave and has changed since, and the project did not choose:
         // the name of the step (one the project wrote itself stays), and the checks that were the process's.
         const renamed = mine.name !== step.name && Boolean(now.formerNames?.includes(mine.name));
+        const redescribed = Boolean(mine.description) && mine.description !== step.description && Boolean(now.formerDescriptions?.includes(mine.description!.trim()));
         const checks = now.formerChecks?.length ? followChecks(mine.checks, now) : mine.checks;
         const rechecked = JSON.stringify(checks ?? []) !== JSON.stringify(mine.checks ?? []);
         // A question of its list that is the process's gains what the process says of it now and it did not have:
@@ -241,8 +242,8 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
           return theirs ? fillMissing(question, theirs) : { next: question, filled: false };
         });
         const reasked = Boolean(asked?.some((row) => row.filled));
-        const merged = fillMissing({ ...mine, ...(renamed ? { name: step.name, names: step.names } : {}), ...(rechecked ? { checks } : {}), ...(reasked ? { checklist: asked!.map((row) => row.next) } : {}) }, step);
-        if (merged.filled || renamed || rechecked || reasked) {
+        const merged = fillMissing({ ...mine, ...(renamed ? { name: step.name, names: step.names } : {}), ...(redescribed ? { description: step.description, descriptions: step.descriptions } : {}), ...(rechecked ? { checks } : {}), ...(reasked ? { checklist: asked!.map((row) => row.next) } : {}) }, step);
+        if (merged.filled || renamed || redescribed || rechecked || reasked) {
           steps![have] = merged.next;
           changed = true;
         }

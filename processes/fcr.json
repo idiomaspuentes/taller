@@ -2196,6 +2196,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
+              "formerDescriptions": ["Lee la nota junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas."],
               "description": "Lee la nota y compárala con un texto a la vez: el TPL, el TPS y, si enlaza un artículo, el artículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar las notas de un versículo, revisa que no le falte ninguna.",
               "descriptions": {
                 "pt": "Leia a nota e compare-a com um texto de cada vez: o TPL, o TPS e, se tiver um artigo, o artigo.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nAo terminar as notas de um versículo, verifique se não falta nenhuma."
@@ -2392,6 +2393,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
+              "formerDescriptions": ["Lee el artículo junto al TPL y al TPS donde aparece la palabra.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlos todos."],
               "description": "Lee el artículo y compáralo con un texto a la vez: el TPL y luego el TPS, donde aparece la palabra.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar un versículo, revisa que no le falte ninguna palabra.",
               "descriptions": {
                 "pt": "Leia o artigo e compare-o com um texto de cada vez: o TPL e depois o TPS, onde a palavra aparece.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nAo terminar um versículo, verifique se não falta nenhuma palavra."
@@ -2523,6 +2525,7 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
+              "formerDescriptions": ["Lee la pregunta junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas."],
               "description": "Lee la pregunta y su respuesta junto al TPL y al TPS de su versículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nSigue hasta revisarlas todas.",
               "descriptions": {
                 "pt": "Leia a pergunta e a resposta junto ao TPL e ao TPS do seu versículo.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nContinue até revisar todas."

@@ -45,6 +45,8 @@ export type ProposalTarget = {
   text?: string;
   /** The new version already proposed for it and still to be settled: another one starts from it, and takes its place. */
   start?: string;
+  /** Whose that version is, when it is not this person's: another starts from it and goes beside it. */
+  startBy?: string;
   /**
    * How its words are kept: a `note` in a table file (its line ends written out), an article in `markdown`. Those
    * are written as they look (bold is bold, a link to an article is a piece that names it), not as they are kept:
@@ -295,7 +297,7 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
                 address={helpAddress}
                 onFix={(fixed) => setText(target?.format === "note" ? noteToTsv(fixed) : fixed)}
               />
-              {target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : !changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : null}
+              {target?.start ? <p className="af-hint">{target.startBy ? t("pr.fromOther").replace("{who}", target.startBy) : t("pr.fromPrior")}</p> : !changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : null}
             </div>
           ) : null}
           {splitting ? (

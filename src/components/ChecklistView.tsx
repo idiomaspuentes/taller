@@ -499,17 +499,31 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const proposals = useMemo(() => proposalsOf(answers, needed, ours), [answers, needed, data?.task]);
 
+  const isMine = (by: string) => by.toLowerCase() === (session?.username ?? "").toLowerCase();
+  /** The new versions still to be settled of something, oldest first. */
+  const versionsOf = (target: Pick<ProposalTarget, "resource" | "rowId" | "path" | "field">, where: string) =>
+    proposals.filter((view) => (view.state === "open" || view.state === "agreed") && Boolean(view.proposal.after) && view.proposal.resource === target.resource && view.proposal.rowId === target.rowId && view.proposal.path === target.path && view.proposal.field === target.field && (Boolean(target.rowId || target.path) || view.proposal.where === where));
   /**
-   * The new version still to be settled of something, the latest: another one about the same thing starts from it
-   * and takes its place. Two answers of the same note could each rewrite it from the words as they are, and of two
-   * versions agreed on, the second written wiped what the first had changed.
+   * The new version still to be settled of something that another starts from: this person's own, the latest, or
+   * else the latest of anybody. Over one's own it takes its place: two versions of one note cannot both be written,
+   * the second would undo the first. Over somebody else's it goes beside it, and the team chooses: it took its
+   * place, and a counterproposal answered with «Hacer otro cambio» hid the version it answered (20 October).
    */
-  const priorOf = (target: Pick<ProposalTarget, "resource" | "rowId" | "path" | "field">, where: string) =>
-    [...proposals]
-      .reverse()
-      .find((view) => (view.state === "open" || view.state === "agreed") && Boolean(view.proposal.after) && view.proposal.resource === target.resource && view.proposal.rowId === target.rowId && view.proposal.path === target.path && view.proposal.field === target.field && (Boolean(target.rowId || target.path) || view.proposal.where === where));
+  const priorOf = (target: Pick<ProposalTarget, "resource" | "rowId" | "path" | "field">, where: string) => {
+    const all = versionsOf(target, where);
+    return [...all].reverse().find((view) => isMine(view.by)) ?? all[all.length - 1];
+  };
+  const helpKey = item && kind !== "palabras" ? { resource: kind, rowId: item.id, field: kind === "notas" ? "Note" : "Response" } : undefined;
   /** What is proposed for the help in view itself: read with it, since the next group checks the help as it would be. */
-  const proposedHelp = item && kind !== "palabras" ? priorOf({ resource: kind, rowId: item.id, field: kind === "notas" ? "Note" : "Response" }, "") : undefined;
+  const proposedHelp = helpKey ? priorOf(helpKey, "") : undefined;
+  /** Every version proposed for it, when there is more than one: all of them are read, each with whose it is. */
+  const helpVersions = helpKey ? versionsOf(helpKey, "") : [];
+  /**
+   * The versions proposed for the article of the term in view, each with whose it is. None was shown in this
+   * step: the team's proposals for the articles and the answers to them were seen only in «Acuerdo del equipo»
+   * (20 October).
+   */
+  const termVersions = kind === "palabras" && slug && termKind ? versionsOf({ resource: "palabras", path: termArticlePath(termKind as TermKind, slug) }, "") : [];
 
   /** The id a note proposed as new would have, the same while its sheet is open: none of the notes of the unit has it. */
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -564,7 +578,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     const offered = [...(onlyLinked || aboutArticle ? [...article, ...help] : [...help, ...article]), ...read];
     return (proposing?.newNote ? [...also, ...offered] : [...offered, ...also]).map((target) => {
       const prior = target.commentOnly ? undefined : priorOf(target, where);
-      return prior ? { ...target, start: prior.proposal.after } : target;
+      return prior ? { ...target, start: prior.proposal.after, ...(isMine(prior.by) ? {} : { startBy: prior.by }) } : target;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item, data, proposing?.onlyVerse, proposing?.newNote, newRowId, academy, articles, articlePath, slug, textsKey, language, proposals, aboutArticle, proposedHelp]);
@@ -600,7 +614,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       ...(draft.split && draft.target.split ? { split: { rowId: draft.target.split.rowId, after: draft.split.after, ...quotedBy(draft.target.split.words, draft.split.marked) } } : {}),
       // The note that stays may be about other words than before, once part of what it said went to the other.
       ...(draft.split && draft.target.split && draft.keepMarked ? keptQuote(quotedBy(draft.target.split.words, draft.keepMarked)) : {}),
-      ...(draft.after && draft.target.start ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
+      // It takes the place only of one's own version: written over somebody else's, it goes beside it.
+      ...(draft.after && draft.target.start && !draft.target.startBy ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
     };
     // The proposal answers each question marked as failing: the first carries it, the others the same one.
     const answered = [{ answerItemId: proposing.answerItemId, questionId: proposing.questionId }, ...(proposing.others ?? [])].map((row) => {
@@ -779,12 +794,56 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         {kind !== "palabras" ? item.title : titlesRead ? termLabel(item.title, termTitles) : "\u00a0"}
       </h2>
     ) : null}
-    {proposedHelp ? (
+    {termVersions.length ? (
+      <section className="ck-versions" aria-label={t(termVersions.length > 1 ? "ck.versionsLead" : "ck.versionOne").replace("{n}", String(termVersions.length))}>
+        <p className="ck-versions__lead">{t(termVersions.length > 1 ? "ck.versionsLead" : "ck.versionOne").replace("{n}", String(termVersions.length))}</p>
+        {termVersions.map((view) => (
+          <div key={view.proposal.id} className="ck-version">
+            <b className="ck-proposed__label">{isMine(view.by) ? t("ag.optMine") : t("ag.optBy").replace("{who}", view.by)}</b>
+            {/* An article is pages long: what each version changes in it, a touch away, a few words around each change. */}
+            <details className="ck-version__fold">
+              <summary>{t("ag.showChange")}</summary>
+              <span className="ag-diff ck-version__text">
+                <ProposalDiff before={view.proposal.before ?? articles[slug] ?? ""} after={view.proposal.after ?? ""} plain />
+              </span>
+            </details>
+          </div>
+        ))}
+      </section>
+    ) : null}
+    {helpVersions.length > 1 ? (
+      // Two people proposed a version of it (a counterproposal answers a proposal): the help as it is, and each
+      // version with whose it is, to be chosen in «Acuerdo del equipo». Only the latest was read here, as «Con el
+      // cambio propuesto» and with no name, and the version it answered was nowhere on this screen (20 October).
+      <>
+        <HelpMarkdownView className="af-note af-note--md" content={item.body} />
+        <section className="ck-versions" aria-label={t("ck.versionsLead").replace("{n}", String(helpVersions.length))}>
+          <p className="ck-versions__lead">{t("ck.versionsLead").replace("{n}", String(helpVersions.length))}</p>
+          {helpVersions.map((view) => (
+            <div key={view.proposal.id} className="ck-version">
+              <b className="ck-proposed__label">{isMine(view.by) ? t("ag.optMine") : t("ag.optBy").replace("{who}", view.by)}</b>
+              {view.proposal.split ? (
+                <span className="ck-version__text">
+                  {readable(view.proposal.after ?? "")}
+                  <span className="ck-proposed__split">
+                    <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(view.proposal.split.after)}
+                  </span>
+                </span>
+              ) : (
+                <span className="ag-diff ck-version__text">
+                  <ProposalDiff before={item.body} after={view.proposal.after ?? ""} whole plain />
+                </span>
+              )}
+            </div>
+          ))}
+        </section>
+      </>
+    ) : proposedHelp ? (
       // With a change proposed for it, the help is read as it would be, what goes out struck and what comes
       // in marked: the steps that follow check that version. It was shown under the help as well, a third
       // time counting the one under its question, and the help no longer fitted over its questions.
       <p className="af-note ck-proposed">
-        <b className="ck-proposed__label">{t("ck.proposedHere")}</b>{" "}
+        <b className="ck-proposed__label">{isMine(proposedHelp.by) ? t("ck.proposedHere") : t("ck.proposedBy").replace("{who}", proposedHelp.by)}</b>{" "}
         {proposedHelp.proposal.split ? (
           // Parted in two, each note is read as it would be. Struck out in the first, what goes to the
           // second was read twice, and a note of five lines took fourteen over its questions.
@@ -806,7 +865,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       // question failed, and nobody looked for it there (20 October). It is made over the change proposed, and
       // takes its place: two versions of one note cannot both be written, the second would undo the first.
       <button type="button" className="af-link ck-proposed__more" disabled={saving} onClick={() => setProposing({ answerItemId: item.id, questionId: PROPOSAL_FREE, reason: "" })}>
-        <Pencil size={16} aria-hidden /> {t("ck.changeMore")}
+        <Pencil size={16} aria-hidden /> {t(isMine(proposedHelp.by) ? "ck.changeMore" : "ck.otherVersion")}
       </button>
     ) : null}
     {!proposedHelp && item.body ? (

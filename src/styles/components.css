@@ -10904,3 +10904,11 @@ html[data-text] .pr-sheet .pr-rule { font-size: calc(0.9375rem * var(--ts)); }
 /* The rest of what can be changed, and where a change goes, under the things offered first (20 October). */
 .pr-what-more { justify-self: start; min-height: 44px; font-size: 0.9375rem; }
 .pr-goes { margin: 0; }
+
+/* Several versions proposed for a help, each read with whose it is, under the help as it is (20 October). */
+.ck-versions { display: grid; gap: 0.75rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.ck-versions__lead { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--text-muted); }
+.ck-version { display: grid; gap: 0.25rem; padding-left: 0.625rem; border-left: 3px solid var(--accent-700); }
+.af.ck .ck-version__text { font-size: calc(1rem * var(--ts, 1)); line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+html[data-text] .af.ck .ck-version__text { font-size: calc(1rem * var(--ts)); }
+.ck-version__fold > summary { min-height: 44px; display: flex; align-items: center; color: var(--primary); font-size: 0.9375rem; font-weight: 600; cursor: pointer; }

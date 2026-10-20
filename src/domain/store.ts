@@ -541,6 +541,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
     const closing = STEP_CLOSINGS.includes(item.closing as StepClosing) ? (item.closing as StepClosing) : undefined;
     const formerNames = Array.isArray(item.formerNames) ? [...new Set(item.formerNames.map((old) => String(old).trim()).filter((old) => old && old !== name))] : [];
     const formerChecks = Array.isArray(item.formerChecks) ? [...new Set(item.formerChecks.map((old) => String(old).trim()).filter(Boolean))] : [];
+    const formerDescriptions = Array.isArray(item.formerDescriptions) ? [...new Set(item.formerDescriptions.map((old) => String(old).trim()).filter(Boolean))] : [];
     const scope = STEP_SCOPES.includes(item.scope as StepScope) && item.scope !== "subtask" ? (item.scope as StepScope) : undefined;
 
     steps.push({
@@ -549,6 +550,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       names: normalizeLocalized(item.names),
       ...(formerNames.length ? { formerNames } : {}),
       ...(formerChecks.length ? { formerChecks } : {}),
+      ...(formerDescriptions.length ? { formerDescriptions } : {}),
       actionLabel: String(item.actionLabel ?? "").trim() || undefined,
       actionLabels: normalizeLocalized(item.actionLabels),
       closing,
