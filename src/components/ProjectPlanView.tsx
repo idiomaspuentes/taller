@@ -136,7 +136,8 @@ export function ProjectPlanView({ session, pmOrg, board, inventory, onSaved, ann
     <div className="pf">
       <div className="hub-header">
         <div>
-          <h1 className="hub-title">{t("pp.title")}</h1>
+          {/* Its own name: «pp.title» became the parallel passages' sheet, and this page was called that (20 October). */}
+          <h1 className="hub-title">{t("pp.planTitle")}</h1>
           <p className="hub-lede">{process ? t("pp.ledeFrom").replace("{process}", localized(process.name, process.names, language)) : t("pp.lede")}</p>
         </div>
         <Button type="button" size="sm" variant="ghost" disabled={Boolean(busy) || !edited.teams.length} onClick={() => setNaming(naming === null ? edited.title || edited.projectId : null)}>

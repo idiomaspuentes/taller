@@ -2070,6 +2070,7 @@
   "pn.sync": "Escrever as subtarefas",
   "pn.syncHint": "Escrever de novo no Door43 o plano inteiro",
   "pp.title": "Passagens paralelas",
+  "pp.planTitle": "Processo",
   "pp.lede": "As fases, as tarefas e os passos deste projeto.",
   "pp.ledeFrom": "Começou de «{process}». O que você mudar aqui vale só para este projeto.",
   "pp.bringUpdate": "Trazer o que há de novo",
