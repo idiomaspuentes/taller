@@ -184,7 +184,8 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
         if (questionIds.has(questionId)) problems.push(`${at}: la pregunta «${questionId}» está repetida.`);
         questionIds.add(questionId);
         checkLocalized(question.texts, `${at}, pregunta «${questionId}»`, languages, problems);
-        if (question.per !== undefined && !["item", "verse"].includes(text(question.per))) problems.push(`${at}, pregunta «${questionId}»: «per» es "item" o "verse".`);
+        if (question.per !== undefined && !["item", "verse", "article"].includes(text(question.per))) problems.push(`${at}, pregunta «${questionId}»: «per» es "item", "verse" o "article".`);
+        if (question.per === "article" && question.linked !== true) problems.push(`${at}, pregunta «${questionId}»: una pregunta de cada artículo («per»: "article») lleva «linked»: true.`);
         if (question.when !== undefined && !(Array.isArray(question.when) && question.when.length && question.when.every((word) => typeof word === "string" && word.trim()))) problems.push(`${at}, pregunta «${questionId}»: «when» es una lista de textos que el ítem debe traer.`);
         if (question.when !== undefined && question.per === "verse") problems.push(`${at}, pregunta «${questionId}»: «when» es para preguntas de cada ítem, no de cada versículo.`);
         if (question.about !== undefined && !text(question.about)) problems.push(`${at}, pregunta «${questionId}»: «about» es el recurso frente al que se lee la pregunta.`);

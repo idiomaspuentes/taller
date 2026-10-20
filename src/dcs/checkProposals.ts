@@ -157,7 +157,8 @@ export async function applyProposal(params: ProposalPlace & { proposal: Proposal
       if (now === undefined) throw new Error(tNow("ag.helpGone"));
       const fit = proposalFit(proposal, now);
       if (fit === "changed") throw new HelpChangedError(now);
-      const own: HelpsRowEdit[] = fit === "done" ? [] : [{ id: rowId, fields: { [column]: after } }];
+      // A note parted in two may be about other words now: its quote is written with it.
+      const own: HelpsRowEdit[] = fit === "done" ? [] : [{ id: rowId, fields: { ...(proposal.split ? proposal.fields : {}), [column]: after } }];
       // A note parted in two: what was taken out of it is a new row beside it, written with it or not at all.
       // There already (the two were written, and saying so failed), it is not added again; with other words,
       // another row has taken its id, and nothing is written rather than lose that half.

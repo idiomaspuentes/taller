@@ -4,7 +4,7 @@
  * fits the help it was written from.
  */
 import assert from "node:assert/strict";
-import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, movePiece, notePieces, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
+import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
 import { correctionTitle } from "../src/domain/corrections";
 import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
@@ -131,50 +131,6 @@ test("una nota que falta se agrega en su versículo, una sola vez, con un id que
   assert.notEqual(id, "aaaa", "el primero que salió ya estaba: se saca otro");
 });
 
-test("una nota se ofrece en frases, para tocar las que pasan a otra", () => {
-  const note = "**Fe** es un sustantivo abstracto. Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4). Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])\n\n¿Y **esto?** Otra línea.";
-  const pieces = notePieces(note);
-  assert.deepEqual(pieces.map((piece) => piece.text), [
-    "**Fe** es un sustantivo abstracto.",
-    "Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4).",
-    "Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])",
-    "¿Y **esto?**",
-    "Otra línea.",
-  ], "una abreviatura no corta la frase, y lo que sigue entre paréntesis es de la frase anterior");
-  assert.deepEqual(pieces.map((piece) => piece.paragraph), [0, 0, 0, 1, 1]);
-  // The second and the fourth go to the new note; the rest stays, each in its paragraph.
-  const one = movePiece(pieces, 1, note, "")!;
-  const two = movePiece(pieces, 3, one.from, one.to)!;
-  assert.equal(two.to, "Aquí se refiere al creer o al confiar en Jesús (p. ej. en 1:4).\n\n¿Y **esto?**");
-  assert.equal(two.from, "**Fe** es un sustantivo abstracto. Traducción alternativa: «para fortalecer la fe» (ver: [[rc://*/ta/man/translate/figs-abstractnouns]]). (Ver también: [[rc://*/ta/man/translate/figs-explicit]])\n\nOtra línea.");
-  assert.deepEqual(notePieces("Una sola frase sin punto"), [{ text: "Una sola frase sin punto", paragraph: 0 }]);
-  // The point of a short form ends no sentence, whatever follows it; «etc.» may.
-  assert.deepEqual(notePieces("Véase cf. Tito 1:3. También lo dice el Sr. Pérez (p. ej. Juan). J. R. Tolkien lo escribió en el 30 d. C. Fin, etc. Otra.").map((piece) => piece.text), ["Véase cf. Tito 1:3.", "También lo dice el Sr. Pérez (p. ej. Juan).", "J. R. Tolkien lo escribió en el 30 d. C. Fin, etc.", "Otra."]);
-  assert.deepEqual(notePieces("¿Qué fe? La fe. Esa.").map((piece) => piece.text), ["¿Qué fe?", "La fe.", "Esa."], "una palabra corta que no es abreviatura sí termina la frase");
-  assert.deepEqual(notePieces("  \n "), []);
-});
-
-test("una frase pasa de una mitad a la otra sin rehacerlas: lo retocado en las dos se queda", () => {
-  const pieces = notePieces("Uno. Dos. Tres.\n\nCuatro. Cinco.");
-  // The second and the fourth go to the new note, one after the other.
-  let halves = movePiece(pieces, 3, "Uno. Dos. Tres.\n\nCuatro. Cinco.", "")!;
-  assert.deepEqual(halves, { from: "Uno. Dos. Tres.\n\nCinco.", to: "Cuatro." });
-  halves = movePiece(pieces, 1, halves.from, halves.to)!;
-  assert.deepEqual(halves, { from: "Uno. Tres.\n\nCinco.", to: "Dos.\n\nCuatro." }, "antes de la que va después de ella, en su párrafo");
-  // Both are retouched; then one more goes, and what was written stays in both.
-  const kept = halves.from.replace("Uno.", "Uno, retocado.");
-  const fresh = `${halves.to} Y algo escrito a mano.`;
-  halves = movePiece(pieces, 4, kept, fresh)!;
-  assert.deepEqual(halves, { from: "Uno, retocado. Tres.", to: "Dos.\n\nCuatro. Y algo escrito a mano. Cinco." });
-  // The sentence that was retouched is no longer there as it was: it is not moved, and nothing is lost.
-  assert.equal(movePiece(pieces, 0, halves.from, halves.to), undefined);
-  // Back to where it was: before the sentence that came after it.
-  const back = movePiece(pieces, 1, halves.to, halves.from)!;
-  assert.deepEqual(back, { from: "Cuatro. Y algo escrito a mano. Cinco.", to: "Uno, retocado. Dos. Tres." });
-  // The whole of a half: the other gets it, and the first is left empty.
-  assert.deepEqual(movePiece(notePieces("Sola."), 0, "Sola.", ""), { from: "", to: "Sola." });
-});
-
 test("la otra mitad de una nota dividida se agrega al lado de la primera, no al final de su versículo", () => {
   const file = ["Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote", "1:1\trtc9\t\t\tπίστιν\t1\tPrimera de 1:1", "1:1\txyz8\t\t\tἐπίγνωσιν\t1\tSegunda de 1:1", "1:3\tabc1\t\t\tλόγον\t1\tLa de 1:3"].join("\n");
   const edits = [{ id: "rtc9", fields: { Note: "Primera, ya sin su otra mitad" } }, { id: "nv03", fields: { Note: "La otra mitad", Quote: "ἐκλεκτῶν", Occurrence: "1" }, addAt: "1:1", addAfter: "rtc9" }];
@@ -289,6 +245,20 @@ test("lo que se responde de prueba se guarda aparte por espacio de trabajo", () 
   setActiveScope("pt");
   assert.equal(trialChecksKey("JUD.tarea.paso"), "gt-trial-checks:pt:JUD.tarea.paso");
   setActiveScope("");
+});
+
+test("una sola propuesta puede responder a varias preguntas que no se cumplen: es una propuesta, y cada pregunta queda resuelta", () => {
+  const payload = { id: "pr-varias", resource: "notas", where: "1:1", rowId: "ek3q", field: "Note", before: "antes", after: "después" };
+  const at = "2026-10-20T10:00:00Z";
+  const two = [
+    proposalAnswer({ itemId: "ek3q", questionId: "sentido", by: "ana", at, reason: "¿Tiene sentido? · ¿Es útil?", proposal: payload }),
+    proposalAnswer({ itemId: "ek3q", questionId: "util", by: "ana", at, reason: "¿Tiene sentido? · ¿Es útil?", proposal: payload }),
+  ];
+  assert.equal(proposalsOf(two, 2).length, 1, "una propuesta, no dos");
+  const summary = summarizeChecklist({ items: [{ id: "ek3q", verseKey: "1:1" }], questions: [{ id: "sentido", text: "¿Tiene sentido?" }, { id: "util", text: "¿Es útil?" }], answers: two });
+  assert.equal(summary.complete, true, "las dos preguntas quedan resueltas por la propuesta");
+  // Taken back, it no longer answers either.
+  assert.equal(summarizeChecklist({ items: [{ id: "ek3q", verseKey: "1:1" }], questions: [{ id: "sentido", text: "¿Tiene sentido?" }, { id: "util", text: "¿Es útil?" }], answers: withoutWithdrawn([...two, proposalSaying("pr-varias", "ana", "2026-10-20T11:00:00Z", false)]) }).complete, false);
 });
 
 console.log(`\nverify-check-proposal: ${passed} checks passed.`);

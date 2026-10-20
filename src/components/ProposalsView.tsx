@@ -618,11 +618,17 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   const versionText = (view: Listed) => {
     const after = view.proposal.after ?? "";
     if (view.proposal.split) {
+      // Each note with the words it is about, when they were said: the half that stays may quote other words now.
+      const about = (words?: string) => (words ? <span className="ag-opt__about">{t("ag.about").replace("{words}", words)}</span> : null);
       return (
         <>
-          <p className="ag-opt__text">{readable(after)}</p>
+          <p className="ag-opt__text">
+            {about(view.proposal.about)}
+            {readable(after)}
+          </p>
           <p className="ag-opt__text ag-opt__text--new">
-            <span className="af-lbl">{t("pr.newNoteLbl")}</span> {readable(view.proposal.split.after)}
+            <span className="af-lbl">{t("pr.newNoteLbl")}</span> {about(view.proposal.split.about)}
+            {readable(view.proposal.split.after)}
           </p>
         </>
       );
@@ -754,7 +760,13 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
         : t("ag.questionArticle")
       : group.resource === "notas"
         ? t("ag.questionNote")
-        : t("ag.questionOther");
+        : !ours(group.resource)
+          ? t("ag.questionText").replace("{name}", nameOf(group.resource)).replace("{ref}", group.where)
+          : t("ag.questionOther");
+    // What another team keeps (the TPL, for the team of afinación) is not decided by the rule of these helps, and
+    // is not written here: what is agreed is asked of that team (20 October). The rule of the notes was said over
+    // a change to the TPL, and nothing said where it would go.
+    const elsewhere = !ours(group.resource) ? teamOf(group.resource) : "";
     return (
       <section className="ag-help" aria-label={`${kindLabel(group)} · ${group.where}`}>
         {live.length ? (
@@ -770,7 +782,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             {/* The decision, one group: the question, the rule it is decided by, the options and the button. */}
             <div className="ag-decision">
             <h2 className="ag-question">{question}</h2>
-            {rule ? <p className="af-criterion af-criterion--hint">{rule}</p> : null}
+            {elsewhere ? <p className="af-criterion af-criterion--hint">{t("ag.otherTeam").replace("{team}", elsewhere)}</p> : rule ? <p className="af-criterion af-criterion--hint">{rule}</p> : null}
             {mineAmong ? <p className="af-hint">{t("ag.choiceMine")}</p> : null}
             {agreedOn || keptBy ? (
               // Agreed is not yet written: said, with when it is and that votes can still change.

@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 37,
+      "version": 38,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -2196,9 +2196,9 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "description": "Lee la nota junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas.",
+              "description": "Lee la nota y compárala con un texto a la vez: el TPL, el TPS y, si enlaza un artículo, el artículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar las notas de un versículo, revisa que no le falte ninguna.",
               "descriptions": {
-                "pt": "Leia a nota junto ao TPL e ao TPS do seu versículo.\nMarque «Tudo certo» ou anote o que precisa mudar.\nContinue até revisar todas."
+                "pt": "Leia a nota e compare-a com um texto de cada vez: o TPL, o TPS e, se tiver um artigo, o artigo.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nAo terminar as notas de um versículo, verifique se não falta nenhuma."
               },
               "purpose": "Comprueba que cada nota siga diciendo lo correcto ahora que el TPL y el TPS están afinados.",
               "purposes": {
@@ -2304,7 +2304,8 @@
                     "pt": "O artigo está publicado neste idioma?"
                   },
                   "about": "academia",
-                  "linked": true
+                  "linked": true,
+                  "per": "article"
                 }
               ]
             },
@@ -2391,9 +2392,9 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "description": "Lee el artículo junto al TPL y al TPS donde aparece la palabra.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlos todos.",
+              "description": "Lee el artículo y compáralo con un texto a la vez: el TPL y luego el TPS, donde aparece la palabra.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar un versículo, revisa que no le falte ninguna palabra.",
               "descriptions": {
-                "pt": "Leia o artigo junto ao TPL e ao TPS onde a palavra aparece.\nMarque «Tudo certo» ou anote o que precisa mudar.\nContinue até revisar todos."
+                "pt": "Leia o artigo e compare-o com um texto de cada vez: o TPL e depois o TPS, onde a palavra aparece.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nAo terminar um versículo, verifique se não falta nenhuma palavra."
               },
               "purpose": "Comprueba que cada artículo de palabras clave cuadre con cómo las tradujeron el TPL y el TPS.",
               "purposes": {
@@ -2522,9 +2523,9 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "description": "Lee la pregunta junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas.",
+              "description": "Lee la pregunta y su respuesta junto al TPL y al TPS de su versículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nSigue hasta revisarlas todas.",
               "descriptions": {
-                "pt": "Leia a pergunta junto ao TPL e ao TPS do seu versículo.\nMarque «Tudo certo» ou anote o que precisa mudar.\nContinue até revisar todas."
+                "pt": "Leia a pergunta e a resposta junto ao TPL e ao TPS do seu versículo.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nContinue até revisar todas."
               },
               "purpose": "Comprueba que cada pregunta y su respuesta sigan cuadrando con el TPL y el TPS.",
               "purposes": {

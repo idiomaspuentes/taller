@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
-import { originalTokens, quoteFromSelection, withQuote } from "../src/domain/quoteFromSelection";
+import { originalTokens, quoteFromSelection, quoteUnits, toggleQuoteWord, wholeQuoteWords, withQuote } from "../src/domain/quoteFromSelection";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -68,6 +68,66 @@ test("la cita se cambia en su fila y nada más", () => {
   assert.equal(next.split("\r\n")[1], "2:1\tgp2z\t\t\tσὺ δὲ\t1\tNota");
   assert.equal(next.split("\r\n")[2], "2:2\tabcd\t\t\tq\t1\tOtra");
   assert.equal(withQuote(tsv, "zzzz", "x", 1), null);
+});
+
+test("las palabras atadas a las mismas del original se marcan y se desmarcan juntas", () => {
+  const units = quoteUnits(verseTokens, groups);
+  // «lo que» ← ἃ: tocar «que» marca las dos; tocar «lo» las desmarca a las dos.
+  assert.deepEqual(units[4], [3, 4]);
+  const on = toggleQuoteWord([], 4, units);
+  assert.deepEqual(on, [3, 4]);
+  assert.deepEqual(toggleQuoteWord(on, 3, units), []);
+  // Lo demás marcado se queda.
+  assert.deepEqual(toggleQuoteWord([0, 3, 4], 4, units), [0]);
+  // Una palabra sola en su grupo va sola.
+  assert.deepEqual(toggleQuoteWord([], 2, units), [2]);
+});
+
+test("un grupo con palabras separadas en el español va junto, y uno de varias palabras del original también", () => {
+  // «mientras el rey se sentaba»: «mientras … se sentaba» ← כְּשֶׁבֶת; «el rey» ← הַמֶּלֶךְ
+  const sitting = ["mientras", "el", "rey", "se", "sentaba"];
+  const g: AlignmentGroup[] = [
+    { sources: [src("כְּשֶׁבֶת")], targets: [tgt("mientras"), tgt("se"), tgt("sentaba")] },
+    { sources: [src("הַמֶּלֶךְ")], targets: [tgt("el"), tgt("rey")] },
+  ];
+  assert.deepEqual(toggleQuoteWord([], 0, quoteUnits(sitting, g)), [0, 3, 4]);
+  // «127» ← שֶׁבַע וּמֵאָה וְעֶשְׂרִים: una palabra, tres del original.
+  const n = ["127", "provincias"];
+  const g2: AlignmentGroup[] = [
+    { sources: [src("שֶׁבַע"), src("וּמֵאָה"), src("וְעֶשְׂרִים")], targets: [tgt("127")] },
+    { sources: [src("מְדִינָה")], targets: [tgt("provincias")] },
+  ];
+  assert.deepEqual(quoteUnits(n, g2), [[0], [1]]);
+});
+
+test("lo que no está alineado no se marca, y lo marcado de antes se completa", () => {
+  const loose = ["Pero", "(él)", "tú"];
+  const g: AlignmentGroup[] = [
+    { sources: [src("δὲ")], targets: [tgt("Pero")] },
+    { sources: [src("σὺ")], targets: [tgt("tú")] },
+  ];
+  const units = quoteUnits(loose, g);
+  assert.equal(units[1], null);
+  assert.deepEqual(toggleQuoteWord([0], 1, units), [0], "tocar una palabra suelta no cambia nada");
+  // Una cita marcada a medias (de un grupo, una palabra) se completa; la suelta se suelta.
+  assert.deepEqual(wholeQuoteWords([3, 9], quoteUnits(verseTokens, groups)), [3, 4, 9]);
+  assert.deepEqual(wholeQuoteWords([0, 1], units), [0]);
+  // Sin alineación, lo marcado se deja como está.
+  assert.deepEqual(wholeQuoteWords([0, 1], quoteUnits(loose, [])), [0, 1]);
+});
+
+test("«Y» y «y» se cuentan aparte, como los cuenta la alineación", () => {
+  // «Y el rey y la reina»: la alineación tiene «Y» 1 y «y» 1; la segunda «y» no es la segunda «y».
+  const words = ["Y", "el", "rey", "y", "la", "reina"];
+  const v3 = originalTokens(["\\id EST", "\\c 1", "\\p", `\\v 1 ${w("וַ")} ${w("הַמֶּלֶךְ")} ${w("וְ")} ${w("הַמַּלְכָּה")}`, ""].join("\n"), 1, 1);
+  const g: AlignmentGroup[] = [
+    { sources: [src("וַ")], targets: [tgt("Y")] },
+    { sources: [src("הַמֶּלֶךְ")], targets: [tgt("el"), tgt("rey")] },
+    { sources: [src("וְ")], targets: [tgt("y")] },
+    { sources: [src("הַמַּלְכָּה")], targets: [tgt("la"), tgt("reina")] },
+  ];
+  assert.deepEqual(quoteFromSelection({ verseTokens: words, selected: [3], groups: g, original: v3 }), { quote: "וְ", occurrence: 1 });
+  assert.deepEqual(quoteUnits(words, g)[3], [3]);
 });
 
 console.log(`\nverify-quote-selection: ${passed} checks passed.`);

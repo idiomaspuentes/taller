@@ -1,6 +1,6 @@
 /** A checklist step: every item answered yes, or its «no» settled (fixed, created, or answered by the owner). */
 import assert from "node:assert/strict";
-import { asksOf, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
+import { articleItemId, asksOf, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, withVerseStops, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
 import { shippedWorkflow } from "../src/domain/processes";
 import { canApproveStep, closesInItsTool } from "../src/domain/stepClaim";
 import type { ChecklistQuestion, TaskStep } from "../src/domain/types";
@@ -216,6 +216,46 @@ test("FCR: cada nota y cada término se recorre una sola vez, frente a los dos t
   assert.equal(words.length, 1, "eran dos sobre los mismos términos");
   assert.deepEqual(words[0]!.checklist!.map((q) => [q.id, q.about]), [["definicion", "tpl"], ["cobertura", "tpl"], ["sugerencia", "tps"]]);
   assert.ok(words[0]!.checklist!.find((q) => q.id === "sugerencia")!.articleFocus?.length, "las sugerencias se leen en su sección del artículo");
+});
+
+test("lo que se pregunta una vez por versículo tiene su parada propia, después de su última nota, y cuenta para el avance", () => {
+  const walk = withVerseStops(items, questions);
+  assert.deepEqual(walk.map((row) => row.id), [...items.filter((row) => row.verseKey === "2:11").map((row) => row.id), "verse:2:11", ...items.filter((row) => row.verseKey === "2:13").map((row) => row.id), "verse:2:13"]);
+  assert.deepEqual(questionsFor(walk[0]!, walk, questions).map((q) => q.question.id), ["sentido", "util"], "la primera nota ya no pregunta por el versículo");
+  const stop = walk.find((row) => row.stop)!;
+  assert.deepEqual(questionsFor(stop, walk, questions).map((q) => [q.question.id, q.answerItemId]), [["cobertura", "verse:2:11"]]);
+  const notesOnly = items.flatMap((n) => [say(n.id, "sentido", "yes"), say(n.id, "util", "yes")]);
+  const pending = summarizeChecklist({ items: walk, questions, answers: notesOnly });
+  assert.equal(pending.complete, false, "falta la parada de cada versículo");
+  assert.equal(pending.items.find((row) => row.itemId === "verse:2:11")?.state, "pending");
+  const all = summarizeChecklist({ items: walk, questions, answers: [...notesOnly, say(verseItemId("2:11"), "cobertura", "yes"), say(verseItemId("2:13"), "cobertura", "yes")] });
+  assert.equal(all.complete, true);
+  assert.equal(all.done, walk.length);
+  assert.equal(withVerseStops(items, questions.filter((q) => q.per !== "verse")), items, "una lista sin esas preguntas no tiene paradas");
+});
+
+test("una pregunta de cada artículo se responde una vez y vale para todas las notas que lo enlazan", () => {
+  const qs = [
+    { id: "pertinente", text: "¿El artículo enseña la dificultad de la nota?", about: "academia", linked: true as const },
+    { id: "publicado", text: "¿El artículo está publicado?", about: "academia", linked: true as const, per: "article" as const },
+  ];
+  const items: CheckItem[] = [
+    { id: "a1", verseKey: "1:1", linked: true, article: "translate/figs-explicit" },
+    { id: "a2", verseKey: "1:3", linked: true, article: "translate/figs-explicit" },
+    { id: "a3", verseKey: "1:4", linked: false },
+  ];
+  // The second note answers «publicado» where the first did.
+  assert.deepEqual(questionsFor(items[1]!, items, qs).map((row) => row.answerItemId), ["a2", articleItemId("translate/figs-explicit")]);
+  assert.deepEqual(questionsFor(items[2]!, items, qs), [], "una nota sin artículo no tiene esas preguntas");
+  const answers = [say("a1", "pertinente", "yes"), say(articleItemId("translate/figs-explicit"), "publicado", "yes"), say("a2", "pertinente", "yes")];
+  const summary = summarizeChecklist({ items, questions: qs, answers });
+  assert.equal(summary.items.find((row) => row.itemId === "a2")!.state, "ok", "la segunda nota no vuelve a preguntar si está publicado");
+  assert.equal(summary.complete, true);
+  // Said on a note before it was asked once per article: it counts for that note and for the others.
+  const before = summarizeChecklist({ items, questions: qs, answers: [say("a1", "pertinente", "yes"), say("a1", "publicado", "yes"), say("a2", "pertinente", "yes")] });
+  assert.equal(before.complete, true, "lo respondido nota por nota antes sigue contando");
+  // Without the note's own question answered, it is still pending.
+  assert.equal(summarizeChecklist({ items, questions: qs, answers: answers.slice(0, 2) }).items.find((row) => row.itemId === "a2")!.state, "pending");
 });
 
 console.log(`\nverify-checklist: ${passed} checks passed.`);

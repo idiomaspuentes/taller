@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { diffExcerpt, movePiece, notePieces, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
+import { diffExcerpt, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
+import { toggleQuoteWord, wholeQuoteWords } from "../domain/quoteFromSelection";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { HelpMarkdownView } from "./HelpMarkdownView";
 import { FormalAddressHint } from "./FormalAddressHint";
 import type { HelpsAddress } from "../domain/formalAddress";
 import { isScriptureResource, type ScopeKey } from "../domain/types";
@@ -56,11 +58,13 @@ export type ProposalTarget = {
    * when its list is already closed has no other moment to be tied to its words.
    */
   words?: string[];
+  /** For each of `words`, those that go with it in a quote (tied to the same words of the original); `null`: none. */
+  units?: (number[] | null)[];
   /**
-   * A note that can be parted in two: the id its other half would have and, to say what that half is about, the
-   * words of the verse.
+   * A note that can be parted in two: the id its other half would have and, to say what each half is about, the
+   * words of the verse and those the note quotes now (where both halves start from).
    */
-  split?: { rowId: string; words?: string[] };
+  split?: { rowId: string; words?: string[]; units?: (number[] | null)[]; marked?: number[]; /** What the new note quotes, when it is not that: a note already parted. */ newMarked?: number[] };
   /** There is nothing to rewrite (what is missing has no words yet): only a comment. */
   commentOnly?: boolean;
   /** Who maintains it, when it is not this team: the proposal is asked of them once the team agrees on it. */
@@ -75,6 +79,8 @@ export type ProposalDraft = {
   marked?: number[];
   /** A note parted in two: what the new note says, and which of `target.split.words` it is about. */
   split?: { after: string; marked?: number[] };
+  /** A note parted in two, the words of `target.split.words` the note that stays is about, when they changed. */
+  keepMarked?: number[];
 };
 
 type Props = {
@@ -99,6 +105,12 @@ type Props = {
   saving?: boolean;
   /** How the team's helps speak to the translator: a new version of a help that says otherwise is pointed out. */
   address?: HelpsAddress;
+  /**
+   * The things to change offered first, by id: what the step reads the help against and the help itself («Esta
+   * nota», «El TPL»). The others are a touch away. Folded behind one «Cambiar», a change to the TPL for the team of
+   * afinación was three touches deep, and nobody found it (20 October).
+   */
+  primary?: string[];
   onSend: (draft: ProposalDraft) => void;
 };
 
@@ -106,19 +118,26 @@ type Props = {
  * Proposing a change: what, how (the new version written over the words as they are, a note parted in two, or a
  * comment) and why. A sheet over the help, so the help stays where it was.
  */
-export function ProposalSheet({ open, onClose, targets, failed, rule, reason: firstReason, book, startFrom, startSplit, saving, address, onSend }: Props) {
+export function ProposalSheet({ open, onClose, targets, failed, rule, reason: firstReason, book, startFrom, startSplit, saving, address, primary, onSend }: Props) {
   const t = useT();
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [mode, setMode] = useState<"text" | "split" | "comment">("text");
   const [text, setText] = useState("");
-  // A note parted in two: what the new note says, which sentences went to it, and how many times they were moved
-  // (the boxes are made anew each time, since they keep what they last said the text was).
+  // A note parted in two, in two steps: the new note first, written with the note as it is in sight; then the note
+  // that stays, with the new one in sight to take out of it what went there. Each with the words it quotes.
   const [other, setOther] = useState("");
-  const [moved, setMoved] = useState<number[]>([]);
+  const [part, setPart] = useState<1 | 2>(1);
+  const [keepMarked, setKeepMarked] = useState<number[]>([]);
+  // The boxes are made anew when they start again, since they keep what they last said the text was.
   const [turn, setTurn] = useState(0);
   const [reason, setReason] = useState(firstReason);
   const [marked, setMarked] = useState<number[]>([]);
+  // What is changed, said in a line until asked to change: five things to change and three ways to, ten choices
+  // before the box, when what failed already says it is the note (20 October). How stays in sight: it is one row.
+  const [askHow, setAskHow] = useState(false);
   const target = targets.find((row) => row.id === targetId) ?? targets[0];
+  /** The things to change in sight: those offered first, the one chosen, or all of them once asked for. */
+  const offered = askHow || !primary?.length ? targets : targets.filter((row) => primary.includes(row.id) || row.id === target?.id).sort((a, b) => primary.indexOf(a.id) - primary.indexOf(b.id));
   const current = target?.text ?? "";
   const canWrite = Boolean(target && !target.commentOnly && target.text !== undefined);
   const canSplit = canWrite && Boolean(target?.split) && !target?.add;
@@ -133,6 +152,7 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
     if (!opening) return;
     setTargetId(targets[0]?.id ?? "");
     setReason(firstReason);
+    setAskHow(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opening]);
   // What is written starts from the words of what was chosen; a long article starts as a comment.
@@ -140,42 +160,35 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
     if (!open || !target) return;
     setText(base);
     setOther(startSplit ?? "");
-    setMoved([]);
-    setMarked([]);
+    setPart(1);
+    setMarked(wholeQuoteWords(target.split?.newMarked ?? target.split?.marked ?? [], target.split?.units ?? []));
+    setKeepMarked(wholeQuoteWords(target.split?.marked ?? [], target.split?.units ?? []));
     setMode(canSplit && startSplit !== undefined ? "split" : canWrite && (target.add || current.length <= 1200) ? "text" : "comment");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opening, targetId, current, canWrite]);
 
   const writing = mode === "text" && canWrite;
   const splitting = mode === "split" && canSplit;
-  // The sentences of the note, to say by touch which of them go to the new one: on a phone, parting a note was
-  // cutting from one box and pasting in another. Answering a proposal that already parted it, there are no
-  // sentences to move: its two halves are what there is to start from.
-  const pieces = useMemo(() => (canSplit && startSplit === undefined ? notePieces(noteFromTsv(base)) : []), [canSplit, startSplit, base]);
 
   function choose(next: "text" | "split" | "comment") {
     // Into parting the note or out of it, the boxes start again from the note: half a note is no new version of it.
     if ((next === "split") !== (mode === "split")) {
       setText(base);
       setOther(startSplit ?? "");
-      setMoved([]);
-      setMarked([]);
+      setPart(1);
+      setMarked(next === "split" ? wholeQuoteWords(target?.split?.newMarked ?? target?.split?.marked ?? [], target?.split?.units ?? []) : []);
+      setKeepMarked(wholeQuoteWords(target?.split?.marked ?? [], target?.split?.units ?? []));
       setTurn((n) => n + 1);
     }
     setMode(next);
   }
-  /** The half a sentence is in, as it reads now. */
-  const halfOf = (index: number) => noteFromTsv(moved.includes(index) ? other : text);
-  function move(index: number) {
-    const back = moved.includes(index);
-    // From one half to the other as they read now: what was retouched in either stays.
-    const done = movePiece(pieces, index, halfOf(index), noteFromTsv(back ? text : other));
-    if (!done) return;
-    setMoved(back ? moved.filter((i) => i !== index) : [...moved, index].sort((a, b) => a - b));
-    setText(noteToTsv(back ? done.to : done.from));
-    setOther(noteToTsv(back ? done.from : done.to));
-    setTurn((n) => n + 1);
-  }
+  const bodyRef = useRef<HTMLDivElement>(null);
+  /** On to a step of parting a note, read from its heading: the other note is right under it. */
+  const goTo = (next: 1 | 2) => {
+    setPart(next);
+    requestAnimationFrame(() => bodyRef.current?.querySelector(".pr-step")?.scrollIntoView({ block: "start" }));
+  };
+  const toggle = (list: number[], index: number) => (list.includes(index) ? list.filter((i) => i !== index) : [...list, index].sort((a, b) => a - b));
 
   // The box is as tall as what is in it, up to half the screen: at six lines the end of a note of seven, where its
   // alternate translation usually is, was out of sight, with room to spare under the box.
@@ -188,9 +201,25 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
   }, [text, writing, open]);
   const changed = text.trim() !== current.trim() && Boolean(text.trim());
   const parted = changed && Boolean(other.trim());
-  const ready = Boolean(target) && (splitting ? parted : writing ? changed : Boolean(reason.trim()));
-  // What a new note is about is said by touching the words of the verse: the one proposed, or the half parted off.
-  const words = splitting ? target?.split?.words : writing && target?.add ? target.words : undefined;
+  const ready = Boolean(target) && (splitting ? part === 2 && parted : writing ? changed : Boolean(reason.trim()));
+  // What a new note is about is said by touching the words of the verse; parting a note, what each half is about.
+  const words = writing && target?.add ? target.words : undefined;
+  const splitWords = splitting ? (target?.split?.words ?? []) : [];
+  /** The words of the verse to touch for what a note is about: one row of them, under the box of that note. */
+  // A word goes with those tied to the same words of the original: marked and unmarked together.
+  const wordsField = (list: string[], picked: number[], onPick: Dispatch<SetStateAction<number[]>>, units: (number[] | null)[] = []) => (
+    <div className="pr-field">
+      <p className="af-lbl">{t("pr.aboutWords")}</p>
+      <div className="pr-words" role="group" aria-label={t("pr.aboutWords")}>
+        {list.map((word, index) => (
+          <button key={index} type="button" className="ck-word" aria-pressed={picked.includes(index)} disabled={units.some(Boolean) && !units[index]} onClick={() => onPick((prev) => (units.some(Boolean) ? toggleQuoteWord(prev, index, units) : toggle(prev, index)))}>
+            {word}
+          </button>
+        ))}
+      </div>
+      <p className="af-hint">{t("pr.aboutWordsHint")}</p>
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -201,24 +230,31 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
             {t("ur.close")}
           </button>
         </header>
-        <div className="ur-sheet__body pr-body">
+        <div ref={bodyRef} className="ur-sheet__body pr-body">
           {failed ? <p className="pr-failed">{t("pr.failed").replace("{q}", failed)}</p> : null}
           {rule ? <p className="af-criterion af-criterion--hint pr-rule">{rule}</p> : null}
-          {targets.length > 1 ? (
+          {targets.length > 1 && !(splitting && part === 2) ? (
             <div className="pr-field">
               <p className="af-lbl">{t("pr.what")}</p>
               <div className="pr-chips" role="group" aria-label={t("pr.what")}>
-                {targets.map((row) => (
+                {offered.map((row) => (
                   <button key={row.id} type="button" aria-pressed={row.id === target?.id} onClick={() => setTargetId(row.id)}>
                     {row.label}
                   </button>
                 ))}
               </div>
+              {offered.length < targets.length ? (
+                <button type="button" className="af-link pr-what-more" onClick={() => setAskHow(true)}>
+                  {t("pr.whatMore")}
+                </button>
+              ) : null}
+              {/* Where it goes, said where it is chosen: a change to the TPL is asked of the team that keeps it. */}
+              {target?.team ? <p className="af-hint pr-goes">{t("pr.goesToOther").replace("{team}", target.team)}</p> : null}
             </div>
           ) : target ? (
             <p className="pr-about">{target.label}</p>
           ) : null}
-          {canWrite && !target?.add ? (
+          {canWrite && !target?.add && !(splitting && part === 2) ? (
             <div className="pr-field">
               <p className="af-lbl">{t("pr.how")}</p>
               <div className="pr-chips" role="group" aria-label={t("pr.how")}>
@@ -259,90 +295,83 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
                 address={helpAddress}
                 onFix={(fixed) => setText(target?.format === "note" ? noteToTsv(fixed) : fixed)}
               />
-              {!changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : null}
+              {target?.start ? <p className="af-hint">{t("pr.fromPrior")}</p> : !changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : null}
             </div>
           ) : null}
           {splitting ? (
+            // Two steps, one box at a time, with the other note in sight (20 October). The sentences of the note
+            // were offered to touch, to say which went to the new one, and the boxes of both notes were under them:
+            // three versions of the same words at once, and the touching said little that the boxes did not.
             <>
-              {pieces.length > 1 ? (
+              <p className="pr-step">{t(part === 1 ? "pr.splitStep1" : "pr.splitStep2")}</p>
+              {/* Over a change already proposed for the note, it is that version that is parted. */}
+              <section className="pr-ref" aria-label={t(part === 2 ? "pr.newNoteLbl" : base !== current ? "pr.splitProposed" : "pr.splitNow")}>
+                <p className="pr-ref__lbl">{t(part === 2 ? "pr.newNoteLbl" : base !== current ? "pr.splitProposed" : "pr.splitNow")}</p>
+                <HelpMarkdownView className="af-note af-note--md pr-ref__text" content={noteFromTsv(part === 1 ? base : other)} />
+              </section>
+              {part === 1 ? (
                 <div className="pr-field">
-                  <p className="af-lbl">{t("pr.splitWhich")}</p>
-                  <div className="pr-pieces" role="group" aria-label={t("pr.splitWhich")}>
-                    {pieces.map((piece, index) => {
-                      // A sentence that was retouched in its box is no longer the one this line can move.
-                      const loose = halfOf(index).includes(piece.text);
-                      return (
-                        <button key={index} type="button" aria-pressed={moved.includes(index)} disabled={!loose} onClick={() => move(index)}>
-                          <span>{readable(piece.text) || piece.text}</span>
-                          {!loose ? <span className="pr-pieces__to">{t("pr.splitEdited")}</span> : moved.includes(index) ? <span className="pr-pieces__to">{t("pr.splitTo")}</span> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="af-hint">{t("pr.splitHint")}</p>
+                  <label className="af-lbl" htmlFor="pr-other">
+                    {t("pr.newNoteLbl")}
+                  </label>
+                  <MarkdownEditor key={`${opening}|${targetId}|new|${turn}`} id="pr-other" compact book={book} value={noteFromTsv(other)} onChange={(written) => setOther(noteToTsv(written))} />
+                  <FormalAddressHint text={noteFromTsv(other)} address={helpAddress} onFix={(fixed) => setOther(noteToTsv(fixed))} />
                 </div>
-              ) : null}
-              <div className="pr-field">
-                <label className="af-lbl" htmlFor="pr-text">
-                  {t("pr.splitKeeps")}
-                </label>
-                <MarkdownEditor key={`${opening}|${targetId}|keeps|${turn}`} id="pr-text" compact book={book} value={noteFromTsv(text)} onChange={(written) => setText(noteToTsv(written))} />
-                <FormalAddressHint text={noteFromTsv(text)} address={helpAddress} onFix={(fixed) => setText(noteToTsv(fixed))} />
-              </div>
-              <div className="pr-field">
-                <label className="af-lbl" htmlFor="pr-other">
-                  {t("pr.newNoteLbl")}
-                </label>
-                <MarkdownEditor key={`${opening}|${targetId}|new|${turn}`} id="pr-other" compact book={book} value={noteFromTsv(other)} onChange={(written) => setOther(noteToTsv(written))} />
-                <FormalAddressHint text={noteFromTsv(other)} address={helpAddress} onFix={(fixed) => setOther(noteToTsv(fixed))} />
-                {!parted ? <p className="af-hint">{t("pr.splitNeeds")}</p> : null}
-              </div>
+              ) : (
+                <div className="pr-field">
+                  <label className="af-lbl" htmlFor="pr-text">
+                    {t("pr.splitKeeps")}
+                  </label>
+                  <MarkdownEditor key={`${opening}|${targetId}|keeps|${turn}`} id="pr-text" compact book={book} value={noteFromTsv(text)} onChange={(written) => setText(noteToTsv(written))} />
+                  <FormalAddressHint text={noteFromTsv(text)} address={helpAddress} onFix={(fixed) => setText(noteToTsv(fixed))} />
+                  <p className="af-hint">{t(changed ? "pr.splitKeepsHint" : "pr.splitTakeOut")}</p>
+                </div>
+              )}
+              {splitWords.length ? (part === 1 ? wordsField(splitWords, marked, setMarked, target?.split?.units) : wordsField(splitWords, keepMarked, setKeepMarked, target?.split?.units)) : null}
             </>
           ) : null}
-          {words?.length ? (
+          {words?.length ? wordsField(words, marked, setMarked, target?.units) : null}
+          {splitting && part === 1 ? null : (
             <div className="pr-field">
-              <p className="af-lbl">{t("pr.aboutWords")}</p>
-              <div className="pr-words" role="group" aria-label={t("pr.aboutWords")}>
-                {words.map((word, index) => (
-                  <button key={index} type="button" className="ck-word" aria-pressed={marked.includes(index)} onClick={() => setMarked(marked.includes(index) ? marked.filter((i) => i !== index) : [...marked, index].sort((a, b) => a - b))}>
-                    {word}
-                  </button>
-                ))}
-              </div>
-              <p className="af-hint">{t("pr.aboutWordsHint")}</p>
+              <label className="af-lbl" htmlFor="pr-reason">
+                {t(writing || splitting ? "pr.reasonOptional" : "pr.commentLbl")}
+              </label>
+              <textarea id="pr-reason" className="af-textarea" rows={writing || splitting ? 2 : 4} value={reason} onChange={(e) => setReason(e.target.value)} />
             </div>
-          ) : null}
-          <div className="pr-field">
-            <label className="af-lbl" htmlFor="pr-reason">
-              {t(writing || splitting ? "pr.reasonOptional" : "pr.commentLbl")}
-            </label>
-            <textarea id="pr-reason" className="af-textarea" rows={writing || splitting ? 2 : 4} value={reason} onChange={(e) => setReason(e.target.value)} />
-          </div>
-          <p className="af-hint">{target?.team ? t("pr.goesToOther").replace("{team}", target.team) : t("pr.goesToTeam")}</p>
+          )}
+          {/* Where a change to what another team keeps goes is said where it is chosen, above. */}
+          {target?.team ? null : <p className="af-hint">{t("pr.goesToTeam")}</p>}
         </div>
         <footer className="pr-foot">
-          <button type="button" className="btn" data-variant="ghost" data-size="default" onClick={onClose}>
-            {t("af.cancel")}
+          <button type="button" className="btn" data-variant="ghost" data-size="default" onClick={() => (splitting && part === 2 ? goTo(1) : onClose())}>
+            {t(splitting && part === 2 ? "pr.back" : "af.cancel")}
           </button>
-          <button
-            type="button"
-            className="btn"
-            data-variant="default"
-            data-size="default"
-            disabled={saving || !ready}
-            onClick={() =>
-              target &&
-              onSend({
-                target,
-                reason: reason.trim(),
-                ...(writing || splitting ? { after: text.trim() } : {}),
-                ...(splitting ? { split: { after: other.trim(), ...(marked.length ? { marked } : {}) } } : {}),
-                ...(writing && target.add && marked.length ? { marked } : {}),
-              })
-            }
-          >
-            {t("pr.send")}
-          </button>
+          {splitting && part === 1 ? (
+            <button type="button" className="btn" data-variant="default" data-size="default" disabled={!other.trim()} onClick={() => goTo(2)}>
+              {t("pr.next")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn"
+              data-variant="default"
+              data-size="default"
+              disabled={saving || !ready}
+              onClick={() =>
+                target &&
+                onSend({
+                  target,
+                  reason: reason.trim(),
+                  ...(writing || splitting ? { after: text.trim() } : {}),
+                  ...(splitting ? { split: { after: other.trim(), ...(marked.length ? { marked } : {}) } } : {}),
+                  ...(splitting && keepMarked.length ? { keepMarked } : {}),
+                  ...(writing && target.add && marked.length ? { marked } : {}),
+                })
+              }
+            >
+              {t("pr.send")}
+            </button>
+          )}
         </footer>
       </DialogContent>
     </Dialog>

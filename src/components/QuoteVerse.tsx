@@ -9,14 +9,14 @@ import { tokenizeVersePlainText } from "../domain/helpQuoteMatch";
  * wide as its word: «de» was 20 px. The phrase is not made taller than its line (31 px): at 44 a verse of three
  * lines would take 132 px instead of 77, and the two texts are what a note is read under.
  */
-export function QuoteVerse({ text, marked, onToggle, target, onOpen }: { text: string; marked: number[]; onToggle?: (index: number) => void; target?: (index: number) => string | undefined; onOpen?: (helpId: string) => void }) {
+export function QuoteVerse({ text, marked, onToggle, target, onOpen, loose }: { text: string; marked: number[]; onToggle?: (index: number) => void; target?: (index: number) => string | undefined; onOpen?: (helpId: string) => void; /** While marking: a word tied to nothing in the original, which no quote can have. */ loose?: (index: number) => boolean }) {
   const tokens = tokenizeVersePlainText(text);
   const on = new Set(marked);
   if (onToggle) {
     return (
       <span className="ck-verse">
         {tokens.map((token, index) => (
-          <button key={index} type="button" className="ck-word" aria-pressed={on.has(index)} onClick={() => onToggle(index)}>
+          <button key={index} type="button" className="ck-word" aria-pressed={on.has(index)} disabled={loose?.(index)} onClick={() => onToggle(index)}>
             {token}
           </button>
         ))}

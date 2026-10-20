@@ -121,7 +121,8 @@ function verseHasAlignmentTargets(groups: AlignmentGroup[] | undefined): boolean
   return Boolean(groups?.some((g) => g.targets.length > 0));
 }
 
-function buildGatewayTokenOccurrences(tokens: string[]): Array<{ norm: string; occurrence: number }> {
+/** Each word of a verse as an alignment names it: bare of the marks around it, and which time that word is. */
+export function buildGatewayTokenOccurrences(tokens: string[]): Array<{ norm: string; occurrence: number }> {
   const counts = new Map<string, number>();
   return tokens.map((t) => {
     const norm = normalizeHelpsText(t);
@@ -202,7 +203,7 @@ function enumerateMultisetMatches(flat: FlatSource[], partWords: string[], minFl
   return hits;
 }
 
-function mapTargetToTokenIndex(
+export function mapTargetToTokenIndex(
   meta: Array<{ norm: string; occurrence: number }>,
   target: { word: string; occurrence: number },
 ): number {

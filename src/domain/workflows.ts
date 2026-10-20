@@ -234,8 +234,15 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
         const renamed = mine.name !== step.name && Boolean(now.formerNames?.includes(mine.name));
         const checks = now.formerChecks?.length ? followChecks(mine.checks, now) : mine.checks;
         const rechecked = JSON.stringify(checks ?? []) !== JSON.stringify(mine.checks ?? []);
-        const merged = fillMissing({ ...mine, ...(renamed ? { name: step.name, names: step.names } : {}), ...(rechecked ? { checks } : {}) }, step);
-        if (merged.filled || renamed || rechecked) {
+        // A question of its list that is the process's gains what the process says of it now and it did not have:
+        // that it is asked once per article (20 October). The project's own questions, and what it set, stay.
+        const asked = mine.checklist?.map((question) => {
+          const theirs = step.checklist?.find((other) => other.id === question.id);
+          return theirs ? fillMissing(question, theirs) : { next: question, filled: false };
+        });
+        const reasked = Boolean(asked?.some((row) => row.filled));
+        const merged = fillMissing({ ...mine, ...(renamed ? { name: step.name, names: step.names } : {}), ...(rechecked ? { checks } : {}), ...(reasked ? { checklist: asked!.map((row) => row.next) } : {}) }, step);
+        if (merged.filled || renamed || rechecked || reasked) {
           steps![have] = merged.next;
           changed = true;
         }

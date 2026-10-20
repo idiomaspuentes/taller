@@ -163,4 +163,18 @@ test("la lista de un paso que el proceso reescribió sigue al proceso en lo que 
   assert.deepEqual(upgradeBoardToWorkflow(own, fcr).board.teams.find((t) => t.id === "tpl")!.steps!.find((s) => s.id === "borrador")!.checks, [ours]);
 });
 
+test("una pregunta del proceso gana lo que el proceso dice ahora de ella; la que el proyecto cambió conserva lo suyo", () => {
+  // The process before «publicado» was asked once per article, and a project that wrote its own wording of it.
+  const strip = (task: WorkflowTemplate["tasks"][number]) =>
+    task.id === "armonizar-notas" ? { ...task, steps: task.steps?.map((step) => (step.checklist ? { ...step, checklist: step.checklist.map(({ per, ...question }) => (question.id === "publicado" ? question : { ...question, ...(per ? { per } : {}) })) } : step)) } : task;
+  const before: WorkflowTemplate = { ...fcr, version: fcr.version - 1, tasks: fcr.tasks.map(strip) };
+  const board = applyWorkflowToBoard(empty, before);
+  const listOf = (doc: AssignmentsDoc) => doc.teams.find((t) => t.id === "armonizar-notas")!.steps!.find((s) => s.id === "notas-textos")!.checklist!;
+  assert.equal(listOf(board).find((q) => q.id === "publicado")!.per, undefined);
+  const mine: AssignmentsDoc = { ...board, workflowVersion: fcr.version - 1, teams: board.teams.map((t) => (t.id === "armonizar-notas" ? { ...t, steps: t.steps!.map((s) => (s.id === "notas-textos" ? { ...s, checklist: s.checklist!.map((q) => (q.id === "sentido" ? { ...q, text: "¿Tiene sentido?" } : q)) } : s)) } : t)) };
+  const after = upgradeBoardToWorkflow(mine, fcr).board;
+  assert.equal(listOf(after).find((q) => q.id === "publicado")!.per, "article");
+  assert.equal(listOf(after).find((q) => q.id === "sentido")!.text, "¿Tiene sentido?", "lo que el proyecto escribió se queda");
+});
+
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);

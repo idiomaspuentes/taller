@@ -470,7 +470,7 @@ function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
       id,
       text,
       ...(texts ? { texts } : {}),
-      ...(item.per === "verse" ? { per: "verse" as const } : {}),
+      ...(item.per === "verse" || item.per === "article" ? { per: item.per } : {}),
       ...(when.length ? { when } : {}),
       ...(about ? { about } : {}),
       ...(item.linked === true ? { linked: true as const } : {}),

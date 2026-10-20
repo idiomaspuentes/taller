@@ -42,6 +42,13 @@ export type CheckItem = {
   text?: string;
   /** Whether the item links a support article, when known: some questions are about that article. */
   linked?: boolean;
+  /** Which article it links: the questions asked once per article (`per: "article"`) are answered for it once. */
+  article?: string;
+  /**
+   * A stop of its own for a verse, after its last help (see `withVerseStops`): the questions asked once per verse
+   * are answered there, with every help of the verse read.
+   */
+  stop?: true;
 };
 
 export type CheckItemTally = {
@@ -67,6 +74,29 @@ export type ChecklistSummary = {
 
 /** The id under which the once-per-verse questions of a verse are answered. */
 export const verseItemId = (verseKey: string): string => `verse:${verseKey}`;
+/** The id under which the once-per-article questions of an article are answered. */
+export const articleItemId = (article: string): string => `article:${article}`;
+/** Where an item answers a question: its own id, its verse's or its article's. */
+function answeredAt(question: ChecklistQuestion, item: CheckItem): string {
+  return question.per === "verse" ? verseItemId(item.verseKey) : question.per === "article" && item.article ? articleItemId(item.article) : item.id;
+}
+
+/**
+ * The walk of a list with a stop for each verse after its last help, where the questions asked once per verse
+ * (`per: "verse"`) are answered: whether every difficulty of the verse has its help. They were asked on its first
+ * help, before the others had been read, and what was underlined (the words each help quotes) did not say what each
+ * resolves: a long quote resolves one of its words, and one word may need two notes (20 October). A list with no such
+ * question has no stops.
+ */
+export function withVerseStops(items: CheckItem[], questions: ChecklistQuestion[]): CheckItem[] {
+  if (!questions.some((q) => q.per === "verse")) return items;
+  const out: CheckItem[] = [];
+  items.forEach((item, at) => {
+    out.push(item);
+    if (items[at + 1]?.verseKey !== item.verseKey && !item.stop) out.push({ id: verseItemId(item.verseKey), verseKey: item.verseKey, stop: true });
+  });
+  return out;
+}
 
 /** The latest answer for each item and question, whoever gave it. */
 export function latestAnswers(answers: CheckAnswer[]): Map<string, CheckAnswer> {
@@ -120,17 +150,32 @@ export function summarizeChecklist(params: {
   const latest = latestAnswers(params.answers.filter(current));
   const perItem = params.questions.filter((q) => q.per !== "verse");
   const perVerse = params.questions.filter((q) => q.per === "verse");
+  // With stops for the verses (see `withVerseStops`), each verse's questions are its stop's; else its first help's.
+  const stops = params.items.some((item) => item.stop);
   const firstOfVerse = new Set<string>();
   const seenVerse = new Set<string>();
   for (const item of params.items) {
-    if (!seenVerse.has(item.verseKey)) {
+    if (!stops && !seenVerse.has(item.verseKey)) {
       seenVerse.add(item.verseKey);
       firstOfVerse.add(item.id);
     }
   }
+  // What was said of an article's question on one of the notes that link it, before it was asked once per article:
+  // it still counts, for that note and for the others, so a list half done does not open again (20 October).
+  const saidOfArticle = new Map<string, CheckAnswer>();
+  for (const item of params.items) {
+    if (!item.article) continue;
+    for (const q of perItem) {
+      if (q.per !== "article") continue;
+      const own = latest.get(`${item.id}\u0000${q.id}`);
+      const key = `${articleItemId(item.article)}\u0000${q.id}`;
+      if (own && (!saidOfArticle.has(key) || Date.parse(own.at) > Date.parse(saidOfArticle.get(key)!.at))) saidOfArticle.set(key, own);
+    }
+  }
   const items: CheckItemTally[] = params.items.map((item) => {
     const answers: Record<string, CheckAnswer | undefined> = {};
-    for (const q of perItem) if (asksOf(q, item)) answers[q.id] = latest.get(`${item.id}\u0000${q.id}`);
+    if (item.stop) for (const q of perVerse) answers[q.id] = latest.get(`${item.id}\u0000${q.id}`);
+    else for (const q of perItem) if (asksOf(q, item)) answers[q.id] = latest.get(`${answeredAt(q, item)}\u0000${q.id}`) ?? (q.per === "article" && item.article ? saidOfArticle.get(`${articleItemId(item.article)}\u0000${q.id}`) : undefined);
     if (firstOfVerse.has(item.id)) for (const q of perVerse) answers[q.id] = latest.get(`${verseItemId(item.verseKey)}\u0000${q.id}`);
     const states = Object.values(answers).map(stateOf);
     const state = states.reduce<CheckItemState>((worst, s) => (RANK[s] > RANK[worst] ? s : worst), "ok");
@@ -175,10 +220,11 @@ export function consultReply(asked: Pick<CheckAnswer, "by" | "at">, thread: Thre
 
 /** The questions that apply to an item, and under which id each is answered. */
 export function questionsFor(item: CheckItem, items: CheckItem[], questions: ChecklistQuestion[]): { question: ChecklistQuestion; answerItemId: string }[] {
-  const first = items.find((other) => other.verseKey === item.verseKey)?.id === item.id;
+  if (item.stop) return questions.filter((q) => q.per === "verse").map((question) => ({ question, answerItemId: item.id }));
+  const first = !items.some((other) => other.stop) && items.find((other) => other.verseKey === item.verseKey)?.id === item.id;
   return questions
     .filter((q) => (q.per === "verse" ? first : asksOf(q, item)))
-    .map((question) => ({ question, answerItemId: question.per === "verse" ? verseItemId(item.verseKey) : item.id }));
+    .map((question) => ({ question, answerItemId: answeredAt(question, item) }));
 }
 
 // ---------------------------------------------------------------- a list asked in groups

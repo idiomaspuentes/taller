@@ -1,4 +1,5 @@
 import type { AlignmentGroup } from "@usfm-tools/types";
+import { buildGatewayTokenOccurrences, mapTargetToTokenIndex } from "./helpQuoteMatch";
 import { listVerseSpans } from "./usfmEdit";
 
 /**
@@ -23,7 +24,38 @@ export function originalTokens(originalUsfm: string, chapter: number, verse: num
   return out;
 }
 
-const plain = (word: string) => word.replace(/[^\p{L}\p{N}\p{M}]/gu, "").toLowerCase();
+/** Where the words of each group of the alignment are in the verse. */
+function groupTokens(verseTokens: string[], groups: AlignmentGroup[]): number[][] {
+  const meta = buildGatewayTokenOccurrences(verseTokens);
+  return groups.map((group) => group.targets.map((target) => mapTargetToTokenIndex(meta, target)).filter((index) => index >= 0));
+}
+
+/**
+ * The words of a verse that go together in a quote, for each of its words: those tied to the same words of the
+ * original. A quote is in the original, so marking «los» of «en los días de» (one Hebrew word) marks all four, and
+ * unmarking one unmarks them all; «mientras … se sentaba» (one Hebrew word too, «el rey Asuero» between) goes
+ * together though apart. `null`: a word tied to none, which no quote can have.
+ */
+export function quoteUnits(verseTokens: string[], groups: AlignmentGroup[]): (number[] | null)[] {
+  const units: (number[] | null)[] = verseTokens.map(() => null);
+  for (const indices of groupTokens(verseTokens, groups)) {
+    for (const index of indices) units[index] = [...new Set([...(units[index] ?? []), ...indices])].sort((a, b) => a - b);
+  }
+  return units;
+}
+
+/** A word touched while marking a quote: it and every word that goes with it, marked or unmarked together. */
+export function toggleQuoteWord(selected: number[], index: number, units: (number[] | null)[]): number[] {
+  const unit = units[index];
+  if (!unit) return selected;
+  return selected.includes(index) ? selected.filter((at) => !unit.includes(at)) : [...new Set([...selected, ...unit])].sort((a, b) => a - b);
+}
+
+/** Marked words made whole: a word marked brings the words that go with it. Those tied to nothing are let go. */
+export function wholeQuoteWords(selected: number[], units: (number[] | null)[]): number[] {
+  if (!units.some(Boolean)) return selected;
+  return [...new Set(selected.flatMap((index) => units[index] ?? []))].sort((a, b) => a - b);
+}
 
 /**
  * The quote for the words marked in a verse of the aligned text: the words of the original those words stand on,
@@ -32,19 +64,13 @@ const plain = (word: string) => word.replace(/[^\p{L}\p{N}\p{M}]/gu, "").toLower
  */
 export function quoteFromSelection(params: { verseTokens: string[]; selected: number[]; groups: AlignmentGroup[]; original: OriginalToken[] }): { quote: string; occurrence: number } | null {
   const { verseTokens, groups, original } = params;
-  // Each marked token as the alignment names it: the word and which occurrence in the verse.
-  const counts = new Map<string, number>();
-  const occurrenceAt = verseTokens.map((token) => {
-    const key = plain(token);
-    const n = (counts.get(key) ?? 0) + 1;
-    counts.set(key, n);
-    return n;
-  });
+  // Each marked word as the alignment names it, as the words of a quote are found to be marked. Counted without
+  // capitals, «Y» and the «y» after it were the first and the second «y», and the alignment counts «Y» and «y»
+  // apart: the second «y» marked took the words of another one (20 October).
+  const where = groupTokens(verseTokens, groups);
   const positions = new Set<number>();
   for (const index of params.selected) {
-    const word = plain(verseTokens[index] ?? "");
-    if (!word) continue;
-    const group = groups.find((g) => g.targets.some((t) => plain(t.word) === word && t.occurrence === occurrenceAt[index]));
+    const group = groups.find((_, at) => where[at]!.includes(index));
     if (!group) continue;
     for (const source of group.sources) {
       const at = original.findIndex((token) => token.content === source.content.normalize("NFC") && token.occurrence === source.occurrence);

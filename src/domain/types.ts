@@ -314,8 +314,12 @@ export type ChecklistQuestion = {
   id: string;
   text: string;
   texts?: Localized;
-  /** `item` (default): asked for each item. `verse`: asked once for each verse. */
-  per?: "item" | "verse";
+  /**
+   * `item` (default): asked for each item. `verse`: asked once for each verse. `article`: asked once for each
+   * support article, whichever item links it first: whether the article is published is not asked again of the
+   * sixteen notes that link the same one (20 October).
+   */
+  per?: "item" | "verse" | "article";
   /**
    * Asked only of an item whose text has one of these («Traducción alternativa»): whether the alternate
    * translation fits was asked of every note, most of which bring none.
