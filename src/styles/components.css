@@ -10912,3 +10912,23 @@ html[data-text] .pr-sheet .pr-rule { font-size: calc(0.9375rem * var(--ts)); }
 .af.ck .ck-version__text { font-size: calc(1rem * var(--ts, 1)); line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
 html[data-text] .af.ck .ck-version__text { font-size: calc(1rem * var(--ts)); }
 .ck-version__fold > summary { min-height: 44px; display: flex; align-items: center; color: var(--primary); font-size: 0.9375rem; font-weight: 600; cursor: pointer; }
+@media (min-width: 1024px) {
+  /*
+   * The checklist on a computer (21 October): the texts at the left, from the questions down, beside what is checked
+   * at the right: what to check, the help, the rest of it and the answer. Since the help and «Qué comprobar» went over
+   * the texts (20 October) they fell in other cells, the help at the right over the answer and the texts at the foot,
+   * and a team saw it so the first time. Dense: the texts take the first free cell at the left.
+   */
+  .af.ck:not(.ag) { grid-auto-flow: row dense; }
+  .af.ck:not(.ag) > .ck-guide, .af.ck:not(.ag) > .ck-first { grid-column: 2; }
+  .af.ck:not(.ag) > .af-dock { grid-row: span 5; align-self: start; }
+}
+@media (min-width: 1024px) {
+  /* With no texts at its side (the article's step), one column of a length to read: it stayed in the right one, 480 px
+     wide, beside an empty half (21 October). */
+  .af.ck:not(.ag):not(:has(> .af-dock)) { max-width: 52rem; grid-template-columns: minmax(0, 1fr); }
+  .af.ck:not(.ag):not(:has(> .af-dock)) > * { grid-column: 1 / -1; }
+}
+@media (min-width: 1024px) {
+  .af.ck:not(.ag):not(:has(> .af-dock)) > .ck-go[data-on] { grid-column: 1 / -1; }
+}
