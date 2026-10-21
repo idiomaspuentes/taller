@@ -10932,3 +10932,38 @@ html[data-text] .af.ck .ck-version__text { font-size: calc(1rem * var(--ts)); }
 @media (min-width: 1024px) {
   .af.ck:not(.ag):not(:has(> .af-dock)) > .ck-go[data-on] { grid-column: 1 / -1; }
 }
+@media (min-width: 1024px) {
+  /*
+   * The checklist on a computer, one column to read, as on a phone but wider (21 October): heading, what to check, the
+   * help, the verse it is checked against and the answer, in that order and centred. In two columns the verse (one
+   * line) stood at the left over an empty half, and the answer bar, held at the foot of the right column, covered
+   * the note. Only the agreement keeps its own width.
+   */
+  .af.ck:not(.ag) { max-width: 52rem; grid-template-columns: minmax(0, 1fr); grid-auto-flow: row; }
+  .af.ck:not(.ag) > *, .af.ck:not(.ag) > .af-dock, .af.ck:not(.ag) > .af-card, .af.ck:not(.ag) > .ck-guide, .af.ck:not(.ag) > .ck-first, .af.ck:not(.ag) > .ck-talk, .af.ck:not(.ag) > .ck-go[data-on] { grid-column: 1 / -1; grid-row: auto; }
+  .af.ck:not(.ag) > .af-dock { position: static; }
+  .af.ck:not(.ag) > .ck-go[data-on] { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .af.ck .ck-steps--top { justify-self: stretch; }
+}
+@media (min-width: 1024px) {
+  /* The steps of the help start where the rest does: centred, they stood apart from the heading under them. */
+  .af.ck .ck-steps--top { margin-inline: 0; }
+}
+@media (min-width: 1024px) {
+  /*
+   * The window is the screen, not a box in it (21 October): the header, the background and the answer bar run the
+   * whole width, and what is read stays in a centred column. The whole tool was a box 820 px wide with its own
+   * scroll bar in the middle of the window.
+   */
+  .af.ck:not(.ag) { max-width: none; grid-template-columns: minmax(0.75rem, 1fr) minmax(0, 46rem) minmax(0.75rem, 1fr); padding-inline: 0; }
+  .af.ck:not(.ag) > *, .af.ck:not(.ag) > .af-dock, .af.ck:not(.ag) > .af-card, .af.ck:not(.ag) > .ck-guide, .af.ck:not(.ag) > .ck-first, .af.ck:not(.ag) > .ck-talk, .af.ck:not(.ag) > .ck-go[data-on] { grid-column: 2; }
+  .af.ck:not(.ag) > .th { grid-column: 1 / -1; margin-inline: 0; padding-inline: max(0.5rem, calc((100% - 46rem) / 2)); }
+  .af.ck:not(.ag) > .ck-go[data-on] { grid-column: 1 / -1; margin-inline: 0; border: 0; border-top: 1px solid var(--border-strong); border-radius: 0; padding-inline: max(0.75rem, calc((100% - 46rem) / 2)); }
+}
+/* The words the note is about, over it in its card, marked as in the verse (21 October). */
+.ck-note-quote { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.375rem; margin: 0 0 0.5rem; font-size: calc(1.0625rem * var(--ts, 1)); font-weight: 600; color: var(--text); }
+.ck-note-quote mark { background: var(--warning-200); box-shadow: inset 0 0 0 2px var(--warning-500); color: var(--text); border-radius: 4px; padding: 0 0.1875rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+html[data-text] .ck-note-quote { font-size: calc(1.0625rem * var(--ts)); }
+/* Named «Nota» as in afinación, and the words it is about in bold, not marked: marked, with «TPL» beside them, the
+   card read as the box of the verse under it (21 October). */
+.ck-note-quote__words { font-weight: 700; }

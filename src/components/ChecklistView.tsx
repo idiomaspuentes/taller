@@ -782,6 +782,16 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterOpen, data, textsKey, language]);
 
+  /** The words of the first text the note in view quotes, when they are found there through the alignment. */
+  const noteQuote = useMemo(() => {
+    if (kind !== "notas" || !item?.quote || verseStop || !data) return "";
+    const first = data.texts[texts[0]!];
+    const verse = first?.verses[item.verse] ?? "";
+    if (!verse) return "";
+    return alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: first?.alignments, book: data.book, chapter: item.chapter, verse: item.verse, ...(data.original ? { original: originalTokens(data.original, item.chapter, item.verse) } : {}) }).gatewayText ?? "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, item?.id, item?.quote, item?.occurrence, verseStop, data, textsKey]);
+
   /** The helps of the verse whose stop is in view, in their order. */
   const verseHelps = verseStop && data ? data.items.filter((row) => verseKeyOf(row) === verseStop.verseKey) : [];
 
@@ -1099,6 +1109,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             // The help first, under the heading: what is checked, and then what it is checked against. A question and
             // its answer were (19 October); a note was under its texts, and on a phone under the bar (20 October).
             <section className="af-card ck-first" aria-label={t("ck.itemAria")}>
+              {/* What the note is about, as the first text says it, over the note in its card (Abel, 21 October): read
+                  first, it says what the note explains before the note is read. */}
+              {noteQuote ? (
+                <p className="ck-note-quote">
+                  <span className="ck-chip">{t("ck.noteChip")} · {bookLabel(data.book, language)} {item.chapter}:{item.verse}</span> <span className="ck-note-quote__words">«{noteQuote}»</span>
+                </p>
+              ) : null}
               {helpRead}
             </section>
           ) : null}
@@ -1117,7 +1134,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               return (
                 <div key={resource} className="af-row">
                   {/* Named as the draft is in afinación, «TPL» in its tag. */}
-                  <span className="af-res ck-res">{textLabel(resource)}</span>
+                  {/* The verse it is, in its label: with the note's, which verse each card is of is read at once. */}
+                  <span className="af-res ck-res">
+                    {textLabel(resource)} · {bookLabel(data.book, language)} {item.chapter}:{item.verse}
+                    {item.verseTo ? `–${item.verseTo}` : ""}
+                  </span>
                   {verse ? (
                     <Verse
                       text={verse}
