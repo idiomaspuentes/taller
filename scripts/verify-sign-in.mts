@@ -135,4 +135,32 @@ await test("sin almacenamiento se entra igual, y no se borra la llave de ningún
   assert.equal(server.names().length, 2);
 });
 
+await test("hasta tres sesiones a la vez: la cuarta cierra la más antigua, y volver a entrar en el mismo navegador no ocupa otra", async () => {
+  // A session of the versions before, and other apps' tokens, which are not Taller's sessions.
+  const server = door43(["tas-k3j9x1", "servos-tel1-x9y8z7", "otra-app"]);
+  const computer = device();
+  const phone = device();
+  const laptop = device();
+  on(computer);
+  const one = await signIn();
+  on(phone);
+  const two = await signIn();
+  assert.ok(server.names().includes("tas-k3j9x1"), "con la de antes son tres: caben");
+  assert.ok(server.live(one.token) && server.live(two.token));
+  // In the same browser again: it replaces its own session, and closes nobody else's.
+  on(computer);
+  const oneAgain = await signIn();
+  assert.ok(!server.live(one.token) && server.live(oneAgain.token) && server.live(two.token));
+  on(laptop);
+  const three = await signIn();
+  assert.ok(!server.names().includes("tas-k3j9x1"), "la cuarta cierra la más antigua: la de antes");
+  assert.ok(server.live(oneAgain.token) && server.live(two.token) && server.live(three.token));
+  on(device());
+  const four = await signIn();
+  assert.ok(!server.live(two.token), "y otra más cierra la siguiente: la del teléfono, creada antes que las otras");
+  assert.ok(server.live(oneAgain.token) && server.live(three.token) && server.live(four.token));
+  assert.equal(server.names().filter((name) => name.startsWith("taller-")).length, 3);
+  assert.deepEqual(server.names().filter((name) => !name.startsWith("taller-")), ["servos-tel1-x9y8z7", "otra-app"], "las de otras aplicaciones no se tocan");
+});
+
 console.log(`\nverify-sign-in: ${passed} checks passed.`);

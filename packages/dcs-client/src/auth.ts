@@ -181,6 +181,12 @@ export interface PasswordSignInParams {
    */
   tokenNamePrefix: string;
   scopes: string[];
+  /**
+   * How many sessions of this app a person may have open at once: their tokens whose names start with one of
+   * `prefixes` (each followed by `-`). Opening one more closes the oldest, the one created first: Door43 does not
+   * say when a token was last used. Without it, any number.
+   */
+  sessions?: { prefixes: string[]; max: number };
 }
 
 export interface PasswordSignInResult {
@@ -214,6 +220,16 @@ export async function signInWithPassword(config: DcsClientConfig, params: Passwo
     const stalePrefix = `${params.tokenNamePrefix}-`;
     for (const staleToken of existing.filter((t) => t.name.startsWith(stalePrefix))) {
       await deleteUserTokenBasicAuth(config, params.username, params.password, staleToken.id);
+    }
+    // The other sessions still open, oldest first: room is made for this one by closing the oldest.
+    if (params.sessions) {
+      const { prefixes, max } = params.sessions;
+      const open = existing
+        .filter((t) => !t.name.startsWith(stalePrefix) && prefixes.some((prefix) => t.name.startsWith(`${prefix}-`)))
+        .sort((a, b) => a.id - b.id);
+      for (const oldest of open.slice(0, Math.max(0, open.length - Math.max(0, max - 1)))) {
+        await deleteUserTokenBasicAuth(config, params.username, params.password, oldest.id);
+      }
     }
 
     const suffix = Math.random().toString(36).slice(2, 8);
