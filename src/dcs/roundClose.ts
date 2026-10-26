@@ -1,7 +1,7 @@
 import type { GtSession } from "./auth";
 import { setIssueTaskProgress } from "./issues";
 import { getPmIssue } from "./portionPr";
-import { agreeInTool, agreementStanding, approveStep, isStepUnlocked, withdrawInTool, type AgreementStanding } from "../domain/stepClaim";
+import { agreeInTool, agreementStanding, approveStep, isStepUnlocked, reopenTurns, waitInTool, withdrawInTool, type AgreementStanding } from "../domain/stepClaim";
 import { isStepDone, markStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import type { TaskStep } from "../domain/types";
 
@@ -68,6 +68,20 @@ export async function withdrawStepAgreementFromTool(params: { session: GtSession
   const next = withdrawInTool(progress, step, session.username);
   if (next !== progress) await setIssueTaskProgress(session, pmOrg, issue, next);
   return agreementOf(next, steps, step);
+}
+
+/**
+ * In a list the team decides together: whether the signed-in person waits for the others now (`waiting`), and,
+ * when they proposed a change, that everybody else has something to say again (`reopen`). Read again first.
+ */
+export async function shareTurnFromTool(params: { session: GtSession; pmOrg: string; issueNumber: number; steps: TaskStep[]; step: TaskStep; waiting?: boolean; reopen?: boolean }): Promise<void> {
+  const { session, pmOrg, issueNumber, steps, step } = params;
+  const issue = await getPmIssue(session, pmOrg, issueNumber);
+  const progress = parseTaskProgressMarker(issue.body);
+  const author = issue.assignee?.login || issue.assignees?.[0]?.login || undefined;
+  let next = params.reopen ? reopenTurns(progress, step, session.username) : progress;
+  if (params.waiting !== undefined) next = waitInTool({ progress: next, steps, step, login: session.username, waiting: params.waiting, author });
+  if (next !== progress) await setIssueTaskProgress(session, pmOrg, issue, next);
 }
 
 /** Is the step already completed in the subtarea? */

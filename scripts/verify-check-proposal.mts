@@ -4,7 +4,7 @@
  * fits the help it was written from.
  */
 import assert from "node:assert/strict";
-import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
+import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, versionsOf, proposalDecided, disputeStalled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
 import { correctionTitle } from "../src/domain/corrections";
 import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
@@ -259,6 +259,98 @@ test("una sola propuesta puede responder a varias preguntas que no se cumplen: e
   assert.equal(summary.complete, true, "las dos preguntas quedan resueltas por la propuesta");
   // Taken back, it no longer answers either.
   assert.equal(summarizeChecklist({ items: [{ id: "ek3q", verseKey: "1:1" }], questions: [{ id: "sentido", text: "¿Tiene sentido?" }, { id: "util", text: "¿Es útil?" }], answers: withoutWithdrawn([...two, proposalSaying("pr-varias", "ana", "2026-10-20T11:00:00Z", false)]) }).complete, false);
+});
+
+test("una propuesta que el equipo ajusta es una sola, en versiones: cada ajuste reemplaza al anterior, sea de quien sea", () => {
+  const p = (id: string, after: string, replaces?: string) => ({ id, resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after, ...(replaces ? { replaces } : {}) });
+  const v1 = proposalAnswer({ itemId: "n1", questionId: "sentido", by: "carla", at: "2026-10-21T10:00:00Z", reason: "", proposal: p("pr-1", "b") });
+  const v2 = proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-21T10:10:00Z", reason: "mejor así", proposal: p("pr-2", "c", "pr-1") });
+  const views = proposalsOf([v1, v2, proposalSaying("pr-1", "bea", "2026-10-21T10:05:00Z", true)], 3);
+  assert.equal(views.find((view) => view.proposal.id === "pr-1")!.state, "replaced");
+  assert.equal(views.find((view) => view.proposal.id === "pr-2")!.state, "open");
+  assert.deepEqual(views.find((view) => view.proposal.id === "pr-2")!.inFavour, ["ana"], "quien apoyó la versión 1 confirma la 2");
+  assert.deepEqual(versionsOf(views, "pr-2").map((view) => view.proposal.id), ["pr-1", "pr-2"]);
+  // Its author takes the adjustment back: the version before is the proposal again.
+  const back = proposalsOf([v1, v2, proposalSaying("pr-2", "ana", "2026-10-21T10:20:00Z", false)], 3);
+  assert.equal(back.find((view) => view.proposal.id === "pr-1")!.state, "open");
+  assert.equal(back.find((view) => view.proposal.id === "pr-2")!.state, "withdrawn");
+});
+
+test("por acuerdo de todos: no gana quien tiene más a favor; con alguien en contra la propuesta sigue en conversación", () => {
+  const p = { id: "pr-c", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+  const made = proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-21T10:00:00Z", reason: "", proposal: p });
+  const rule = { consensus: true };
+  const one = (rows: CheckAnswer[]) => proposalsOf([made, ...rows], 3, () => true, rule)[0]!;
+  // Two for it and one against: by majority it would be agreed; by agreement of all it is not.
+  const split = one([proposalSaying("pr-c", "bea", "2026-10-21T10:05:00Z", true), proposalKeeping("pr-c", "carla", "2026-10-21T10:06:00Z", true)]);
+  assert.equal(split.state, "open");
+  assert.equal(split.disputedSince, "2026-10-21T10:06:00Z", "el desacuerdo empieza cuando hay alguien de cada lado");
+  assert.equal(proposalsOf([made, proposalSaying("pr-c", "bea", "2026-10-21T10:05:00Z", true), proposalKeeping("pr-c", "carla", "2026-10-21T10:06:00Z", true)], 3)[0]!.state, "open", "sin la regla, con 2 de 3 tampoco basta");
+  // Carla comes round: everybody agrees.
+  const agreed = one([proposalSaying("pr-c", "bea", "2026-10-21T10:05:00Z", true), proposalKeeping("pr-c", "carla", "2026-10-21T10:06:00Z", true), proposalSaying("pr-c", "carla", "2026-10-21T11:00:00Z", true)]);
+  assert.equal(agreed.state, "agreed");
+  assert.equal(agreed.disputedSince, undefined);
+  // Two would rather leave it as it is, its author still for it: not left aside until the author comes round too.
+  const two = [proposalKeeping("pr-c", "bea", "2026-10-21T10:05:00Z", true), proposalKeeping("pr-c", "carla", "2026-10-21T10:06:00Z", true)];
+  assert.equal(one(two).state, "open");
+  assert.equal(proposalsOf([made, ...two], 3)[0]!.state, "rejected", "por mayoría sí se dejaba");
+  const yielded = one([...two, proposalKeeping("pr-c", "ana", "2026-10-21T12:00:00Z", true)]);
+  assert.equal(yielded.state, "rejected");
+  assert.deepEqual(yielded.inFavour, []);
+});
+
+test("si el equipo no se pone de acuerdo en días, decide quien coordina el equipo, y nadie más", () => {
+  const p = { id: "pr-d", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+  const rows = [
+    proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-17T10:00:00Z", reason: "", proposal: p }),
+    proposalSaying("pr-d", "bea", "2026-10-17T10:05:00Z", true),
+    proposalKeeping("pr-d", "carla", "2026-10-17T10:06:00Z", true),
+  ];
+  const rule = { consensus: true, decides: (login: string) => login === "tito" };
+  const open = proposalsOf(rows, 3, () => true, rule)[0]!;
+  assert.equal(disputeStalled(open, Date.parse("2026-10-19T10:00:00Z")), false, "dos días: todavía conversan");
+  assert.equal(disputeStalled(open, Date.parse("2026-10-21T10:00:00Z")), true, "más de tres días");
+  assert.equal(proposalsOf([...rows, proposalDecided("pr-d", "bea", "2026-10-21T10:00:00Z", true)], 3, () => true, rule)[0]!.state, "open", "quien no coordina no decide");
+  const decided = proposalsOf([...rows, proposalDecided("pr-d", "tito", "2026-10-21T10:00:00Z", false)], 3, () => true, rule)[0]!;
+  assert.equal(decided.state, "rejected");
+  assert.equal(decided.decidedBy, "tito");
+  assert.equal(proposalsOf([...rows, proposalDecided("pr-d", "tito", "2026-10-21T10:00:00Z", true)], 3, () => true, rule)[0]!.state, "agreed");
+});
+
+test("por acuerdo de todos, cada propuesta es una opción: otra puede partir de la nota como está, y gana la que eligen todos", () => {
+  const p = (id: string, after: string, replaces?: string) => ({ id, resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after, ...(replaces ? { replaces } : {}) });
+  const rule = { consensus: true };
+  const rows = [
+    proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-21T10:00:00Z", reason: "", proposal: p("pr-a", "un cambio grande") }),
+    proposalAnswer({ itemId: "n1", questionId: "sentido", by: "carla", at: "2026-10-21T10:10:00Z", reason: "más sencillo", proposal: p("pr-b", "un cambio chico") }),
+    proposalKeeping("pr-a", "bea", "2026-10-21T10:20:00Z", true),
+  ];
+  const three = proposalsOf(rows, 3, () => true, rule);
+  const a = three.find((view) => view.proposal.id === "pr-a")!;
+  assert.equal(a.state, "open");
+  assert.deepEqual(a.choices, { ana: "pr-a", carla: "pr-b", bea: "keep" });
+  assert.equal(a.disputedSince, "2026-10-21T10:10:00Z", "dos opciones elegidas desde que carla propuso la suya");
+  // Bea and Ana come to Carla's: it is agreed, and Ana's is left aside.
+  const met = proposalsOf([...rows, proposalSaying("pr-b", "bea", "2026-10-21T11:00:00Z", true), proposalSaying("pr-b", "ana", "2026-10-21T11:05:00Z", true)], 3, () => true, rule);
+  assert.equal(met.find((view) => view.proposal.id === "pr-b")!.state, "agreed");
+  assert.equal(met.find((view) => view.proposal.id === "pr-a")!.state, "rejected");
+  assert.deepEqual(met.find((view) => view.proposal.id === "pr-b")!.inFavour.sort(), ["ana", "bea", "carla"]);
+});
+
+test("editar una opción la mejora sin quitarle quien la eligió, que ve que cambió", () => {
+  const p = (id: string, after: string, replaces?: string) => ({ id, resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after, ...(replaces ? { replaces } : {}) });
+  const rows = [
+    proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-21T10:00:00Z", reason: "", proposal: p("pr-a", "b") }),
+    proposalSaying("pr-a", "bea", "2026-10-21T10:05:00Z", true),
+    proposalAnswer({ itemId: "n1", questionId: "sentido", by: "carla", at: "2026-10-21T10:10:00Z", reason: "mejor así", proposal: p("pr-a2", "c", "pr-a") }),
+  ];
+  const head = proposalsOf(rows, 3, () => true, { consensus: true }).find((view) => view.proposal.id === "pr-a2")!;
+  assert.equal(head.option, "pr-a", "la opción conserva su id");
+  assert.equal(head.state, "open", "ana y bea la eligieron antes de la edición: tienen que verla de nuevo");
+  assert.deepEqual(head.staleFor?.sort(), ["ana", "bea"]);
+  assert.deepEqual(head.choices, { ana: "pr-a", bea: "pr-a", carla: "pr-a" }, "siguen eligiéndola");
+  const seen = proposalsOf([...rows, proposalSaying("pr-a2", "ana", "2026-10-21T11:00:00Z", true), proposalSaying("pr-a2", "bea", "2026-10-21T11:01:00Z", true)], 3, () => true, { consensus: true });
+  assert.equal(seen.find((view) => view.proposal.id === "pr-a2")!.state, "agreed");
 });
 
 console.log(`\nverify-check-proposal: ${passed} checks passed.`);

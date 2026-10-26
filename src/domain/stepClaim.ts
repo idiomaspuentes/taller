@@ -234,7 +234,7 @@ export function deliverableFromTool(params: { teams: ProjectTask[]; taskId: stri
  */
 export function answeredRound(login: string, progress: TaskProgressMarker, step: TaskStep): boolean {
   const user = login.trim().toLowerCase();
-  if (!user || step.closing !== "consensus" || isStepDone(progress, step.id)) return false;
+  if (!user || (step.closing !== "consensus" && !sharedChecklist(step)) || isStepDone(progress, step.id)) return false;
   return getStepRuntime(progress, step.id).approvals.some((a) => a.toLowerCase() === user);
 }
 
@@ -316,6 +316,41 @@ export function approveStep(
     next = markStepDone(next, step.id);
   }
   return next;
+}
+
+/**
+ * A list the team decides together in its tool, item by item (21 October): a shared step that closes by its
+ * checklist. Whoever has said everything there is for them to say waits for the others (see `waitInTool`).
+ */
+export function sharedChecklist(step: TaskStep): boolean {
+  return step.closing === "checklist" && stepClaimMode(step) === "pool";
+}
+
+/**
+ * Whether a person has nothing left to say in a shared list for now, kept in the subtarea: their card then waits
+ * for the others instead of asking them to go on. They are seated in the step if they may be and were not.
+ * `waiting: false` takes it back: something came up for them (a proposal, a note somebody else reviewed).
+ */
+export function waitInTool(params: { progress: TaskProgressMarker; steps: TaskStep[]; step: TaskStep; login: string; waiting: boolean; author?: string }): TaskProgressMarker {
+  const { step } = params;
+  const user = params.login.trim();
+  let next = params.progress;
+  if (!user || !sharedChecklist(step) || isStepDone(next, step.id)) return next;
+  if (canClaimStep(user, params.steps, next, step, undefined, params.author)) next = claimStep(next, step, user);
+  const runtime = getStepRuntime(next, step.id);
+  const lower = user.toLowerCase();
+  const has = runtime.approvals.some((a) => a.toLowerCase() === lower);
+  if (params.waiting === has) return next;
+  return withStepRuntime(next, step.id, { ...runtime, approvals: params.waiting ? [...runtime.approvals, user] : runtime.approvals.filter((a) => a.toLowerCase() !== lower) });
+}
+
+/** Somebody proposed a change in a shared list: everybody who was waiting has something to say again. */
+export function reopenTurns(progress: TaskProgressMarker, step: TaskStep, login: string): TaskProgressMarker {
+  if (!sharedChecklist(step) || isStepDone(progress, step.id)) return progress;
+  const runtime = getStepRuntime(progress, step.id);
+  const lower = login.trim().toLowerCase();
+  const approvals = runtime.approvals.filter((a) => a.toLowerCase() === lower);
+  return approvals.length === runtime.approvals.length ? progress : withStepRuntime(progress, step.id, { ...runtime, approvals });
 }
 
 /** How the agreement on a step stands: who sat down for it, who of them agreed, and whether that is everybody. */

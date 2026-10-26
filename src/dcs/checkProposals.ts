@@ -163,11 +163,18 @@ export async function applyProposal(params: ProposalPlace & { proposal: Proposal
       // There already (the two were written, and saying so failed), it is not added again; with other words,
       // another row has taken its id, and nothing is written rather than lose that half.
       const half = proposal.split;
-      const there = half ? helpsRowField(text, half.rowId, column) : undefined;
       if (!half) return own;
-      if (there === undefined) return [...own, { id: half.rowId, fields: { ...half.fields, [column]: half.after }, addAt: proposal.where, addAfter: rowId }];
-      if (!sameWording(there, half.after)) throw new Error(tNow("ag.splitTaken"));
-      return own;
+      // Parted in more than two, each new note goes after the one before it.
+      const parts = [half, ...(half.more ?? [])];
+      const added: HelpsRowEdit[] = [];
+      let prev = rowId;
+      for (const part of parts) {
+        const there = helpsRowField(text, part.rowId, column);
+        if (there === undefined) added.push({ id: part.rowId, fields: { ...part.fields, [column]: part.after }, addAt: proposal.where, addAfter: prev });
+        else if (!sameWording(there, part.after)) throw new Error(tNow("ag.splitTaken"));
+        prev = part.rowId;
+      }
+      return [...own, ...added];
     };
     const own = await readTeamHelps({ session, ctx, pmConfig: params.pmConfig, board, kind: proposal.resource as HelpsResource });
     // Refused before a draft is started for it.

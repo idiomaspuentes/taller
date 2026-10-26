@@ -48,8 +48,29 @@ export type ProposalPayload = {
    * beside it. One proposal and not two, so the team agrees on both or on neither: the note cut short without
    * the new one would lose what was taken out of it.
    */
-  split?: { rowId: string; after: string; fields?: Record<string, string>; about?: string };
+  split?: {
+    rowId: string;
+    after: string;
+    fields?: Record<string, string>;
+    about?: string;
+    /** The other new notes, when the note is parted in more than two (26 October), each after the one before. */
+    more?: { rowId: string; after: string; fields?: Record<string, string>; about?: string }[];
+  };
 };
+
+/**
+ * Something somebody writes in the conversation of an item (21 October): `itemId` is the item, `note` what they
+ * wrote. It answers no question: it is read with the rest of what the team said of the item.
+ */
+export const ITEM_SAYS = "@conversacion";
+
+/** What somebody writes in the conversation of an item: of one of its options (`about`), when it has them. */
+export function itemSaying(itemId: string, by: string, at: string, text: string, about?: string): CheckAnswer {
+  return { itemId, questionId: ITEM_SAYS, value: "yes", note: text.trim(), by, at, ...(about ? { about } : {}) };
+}
+
+/** The option of leaving an item as it is, among the proposals made for it. */
+export const KEEP_OPTION = "keep";
 
 /** A row somebody adds about a proposal: `itemId` is the id of the proposal. */
 export const PROPOSAL_SAYS = "@acuerdo";
@@ -63,6 +84,14 @@ export const PROPOSAL_FREE = "@propuesta";
  * to be resolved, with the step it kept open, until its author took it back.
  */
 export const PROPOSAL_KEEPS = "@dejar";
+/**
+ * The row by which whoever coordinates the team settles a proposal the team could not agree on (21 October): «yes»
+ * carries it out, «no» leaves things as they are. It counts only where the team decides by agreement of all, and only
+ * from somebody `decides` lets decide.
+ */
+export const PROPOSAL_DECIDED = "@decide";
+/** How long a team may go on disagreeing about a proposal before whoever coordinates it can settle it. */
+export const DISPUTE_DAYS = 3;
 
 export type ProposalState = "open" | "agreed" | "applied" | "sent" | "withdrawn" | "replaced" | "rejected";
 
@@ -81,7 +110,38 @@ export type ProposalView = {
   state: ProposalState;
   /** The subtarea it became, when it was sent to another team. */
   sentAs?: string;
+  /** Since when some are for it and some would rather leave things as they are, while that lasts. */
+  disputedSince?: string;
+  /** Who settled it for the team, when the team could not agree on it. */
+  decidedBy?: string;
+  /**
+   * Decided by agreement of all, each proposal of an item is one of its options (21 October): the id of its first
+   * version, which stays its id as it is edited; what each person chose for the item, by their name in lower case
+   * (`KEEP_OPTION`, or the id of an option); and who chose this one before its last version, to look at it again.
+   */
+  option?: string;
+  choices?: Record<string, string>;
+  staleFor?: string[];
 };
+
+/**
+ * How a team decides on proposals. By default, as many as `needed` decide: that many for it, or all but one against.
+ * By agreement of all (`consensus`, 21 October: «no se siente bien que gane el que tenga más votos sin que haya un
+ * acuerdo final»), a proposal is agreed when `needed` are for it and nobody against, and left aside only when all who
+ * spoke, its author too, would rather leave things as they are; meanwhile it stays open, and the team talks it over,
+ * adjusts it or proposes something else. If that goes on, whoever `decides` may settle it.
+ */
+export type ProposalRule = { consensus?: boolean; decides?: (login: string) => boolean };
+
+/** The proposal is in dispute long enough for whoever coordinates the team to settle it. */
+export function disputeStalled(view: Pick<ProposalView, "disputedSince" | "state">, now: number = Date.now()): boolean {
+  return view.state === "open" && Boolean(view.disputedSince) && now - Date.parse(view.disputedSince!) >= DISPUTE_DAYS * 86_400_000;
+}
+
+/** The row by which whoever coordinates the team settles a proposal: carried out (`apply`) or left aside. */
+export function proposalDecided(proposalId: string, by: string, at: string, apply: boolean): CheckAnswer {
+  return { itemId: proposalId, questionId: PROPOSAL_DECIDED, value: apply ? "yes" : "no", by, at };
+}
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -117,32 +177,42 @@ export const othersNeeded = (needed: number): number => Math.max(1, needed - 1);
  * `ours`: whether the team maintains what a proposal would change; one it does not is «sent» once carried out,
  * not «applied».
  */
-export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resource: string) => boolean = () => true): ProposalView[] {
+export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resource: string) => boolean = () => true, rule: ProposalRule = {}): ProposalView[] {
   const byTime = [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   // One proposal may answer several questions that failed (it makes sense with the TPL, and it is useful, say): it is
   // one proposal, the first answer that carries it (20 October).
   const seen = new Set<string>();
   const made = byTime.filter((row) => row.outcome === "proposal" && row.proposal?.id && !seen.has(row.proposal.id) && Boolean(seen.add(row.proposal.id)));
-  const replaced = new Set(made.flatMap((row) => (row.proposal!.replaces ? [row.proposal!.replaces] : [])));
-  return made.map((row) => {
+  // A version its author took back replaces nothing: the one it adjusted is the proposal again (21 October).
+  const takenBack = new Set(made.filter((row) => byTime.filter((other) => other.itemId === row.proposal!.id && other.questionId === PROPOSAL_SAYS && same(other.by, row.by)).pop()?.value === "no").map((row) => row.proposal!.id));
+  const replaced = new Set(made.flatMap((row) => (row.proposal!.replaces && !takenBack.has(row.proposal!.id) ? [row.proposal!.replaces] : [])));
+  const views: ProposalView[] = made.map((row) => {
     const proposal = row.proposal!;
     // The last thing each person said of it: for it, for leaving things as they are, or neither any more.
-    const said = new Map<string, { by: string; stand: "for" | "against" | "none" }>();
+    const said = new Map<string, { by: string; at: string; stand: "for" | "against" | "none" }>();
     let withdrawn = false;
+    // By agreement of all its author may come round to leaving things as they are, and say so.
+    let authorKeeps: string | undefined;
     for (const other of byTime) {
       if (other.itemId !== proposal.id || (other.questionId !== PROPOSAL_SAYS && other.questionId !== PROPOSAL_KEEPS)) continue;
       const yes = other.value === "yes";
       // Its author is for it while it stands: what they can say is that they take it back.
       if (same(other.by, row.by)) {
         if (other.questionId === PROPOSAL_SAYS) withdrawn = !yes;
+        else if (rule.consensus) authorKeeps = yes ? other.at : undefined;
         continue;
       }
-      said.set(other.by.trim().toLowerCase(), { by: other.by, stand: !yes ? "none" : other.questionId === PROPOSAL_SAYS ? "for" : "against" });
+      const stand = !yes ? "none" : other.questionId === PROPOSAL_SAYS ? "for" : "against";
+      const was = said.get(other.by.trim().toLowerCase());
+      said.set(other.by.trim().toLowerCase(), { by: other.by, at: was?.stand === stand ? was.at : other.at, stand });
     }
-    const standing = (stand: "for" | "against") => [...said.values()].filter((line) => line.stand === stand).map((line) => line.by);
-    const inFavour = [row.by, ...standing("for")];
-    const against = standing("against");
+    const standing = (stand: "for" | "against") => [...said.values()].filter((line) => line.stand === stand);
+    const inFavour = [...(authorKeeps ? [] : [row.by]), ...standing("for").map((line) => line.by)];
+    const against = [...(authorKeeps ? [row.by] : []), ...standing("against").map((line) => line.by)];
     const done = byTime.filter((other) => other.questionId === PROPOSAL_DONE && other.itemId === proposal.id).pop();
+    const decision = rule.consensus && rule.decides ? byTime.filter((other) => other.questionId === PROPOSAL_DECIDED && other.itemId === proposal.id && rule.decides!(other.by)).pop() : undefined;
+    const agreed = rule.consensus ? inFavour.length >= Math.max(1, needed) && !against.length : inFavour.length >= Math.max(1, needed);
+    const left = rule.consensus ? !inFavour.length && against.length >= Math.max(1, needed) : against.length >= othersNeeded(needed);
     const state: ProposalState = withdrawn
       ? "withdrawn"
       : replaced.has(proposal.id)
@@ -151,13 +221,125 @@ export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resou
           ? ours(proposal.resource)
             ? "applied"
             : "sent"
-          : against.length >= othersNeeded(needed)
-            ? "rejected"
-            : inFavour.length >= Math.max(1, needed)
+          : decision
+            ? decision.value === "yes"
               ? "agreed"
-              : "open";
-    return { proposal, itemId: row.itemId, questionId: row.questionId, by: row.by, at: row.at, reason: row.note ?? "", inFavour: withdrawn ? [] : inFavour, against: withdrawn ? [] : against, state, ...(done?.note ? { sentAs: done.note } : {}) };
+              : "rejected"
+            : left
+              ? "rejected"
+              : agreed
+                ? "agreed"
+                : "open";
+    // The dispute began when both sides stood: the later of the first «for» (the proposal itself, while its author
+    // stands by it) and the first «against».
+    const firstAt = (lines: { at: string }[]) => lines.map((line) => line.at).sort()[0];
+    const forSince = authorKeeps ? firstAt(standing("for")) : row.at;
+    const againstSince = firstAt([...(authorKeeps ? [{ at: authorKeeps }] : []), ...standing("against")]);
+    const disputedSince = rule.consensus && state === "open" && inFavour.length && against.length && forSince && againstSince ? [forSince, againstSince].sort()[1] : undefined;
+    return {
+      proposal,
+      itemId: row.itemId,
+      questionId: row.questionId,
+      by: row.by,
+      at: row.at,
+      reason: row.note ?? "",
+      inFavour: withdrawn ? [] : inFavour,
+      against: withdrawn ? [] : against,
+      state,
+      ...(done?.note ? { sentAs: done.note } : {}),
+      ...(disputedSince ? { disputedSince } : {}),
+      ...(decision && !done && !withdrawn && !replaced.has(proposal.id) ? { decidedBy: decision.by } : {}),
+    };
   });
+  return rule.consensus ? byChoice(views, byTime, needed, rule) : views;
+}
+
+/**
+ * Decided by agreement of all, the proposals for an item are options, with leaving it as it is (Abel, 21 October:
+ * somebody may think a simpler change than the one proposed solves it, and propose it from the note as it is). Each
+ * person chooses one: by proposing it or editing it, by being for it, or by saying the item is right or would rather
+ * leave it as it is; what they said last is their choice. The item is settled when at least `needed` chose and all of
+ * them chose the same; or when whoever coordinates the team decides, once the team could not agree.
+ */
+function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, rule: ProposalRule): ProposalView[] {
+  const byId = new Map(views.map((view) => [view.proposal.id, view]));
+  const rootOf = (id: string): string => {
+    const seen = new Set<string>();
+    let at = byId.get(id);
+    while (at?.proposal.replaces && byId.has(at.proposal.replaces) && !seen.has(at.proposal.id)) {
+      seen.add(at.proposal.id);
+      at = byId.get(at.proposal.replaces);
+    }
+    return at?.proposal.id ?? id;
+  };
+  const heads = views.filter((view) => view.state !== "replaced" && view.state !== "withdrawn");
+  const out = new Map<string, ProposalView>(views.map((view) => [view.proposal.id, { ...view, option: rootOf(view.proposal.id) }]));
+  for (const itemId of new Set(views.map((view) => view.itemId))) {
+    const group = views.filter((view) => view.itemId === itemId);
+    const ids = new Set(group.map((view) => view.proposal.id));
+    const live = new Map(heads.filter((view) => view.itemId === itemId).map((view) => [rootOf(view.proposal.id), view]));
+    // The questions the proposals answer: saying one of them is right is choosing to leave the item as it is.
+    const asked = new Set(byTime.filter((row) => row.outcome === "proposal" && row.proposal && ids.has(row.proposal.id)).map((row) => `${row.itemId}\u0000${row.questionId}`));
+    const choice = new Map<string, { option: string; version?: string }>();
+    let since: string | undefined;
+    const distinct = () => new Set([...choice.values()].map((one) => one.option).filter((option) => option === KEEP_OPTION || live.has(option))).size;
+    let decision: CheckAnswer | undefined;
+    for (const row of byTime) {
+      const who = row.by.trim().toLowerCase();
+      if (row.outcome === "proposal" && row.proposal && ids.has(row.proposal.id) && row.itemId === itemId) choice.set(who, { option: rootOf(row.proposal.id), version: row.proposal.id });
+      else if (ids.has(row.itemId) && row.questionId === PROPOSAL_SAYS) {
+        const view = byId.get(row.itemId)!;
+        if (row.value === "yes") choice.set(who, { option: rootOf(row.itemId), version: row.itemId });
+        else if (!same(view.by, row.by) && choice.get(who)?.option === rootOf(row.itemId)) choice.delete(who);
+      } else if (ids.has(row.itemId) && row.questionId === PROPOSAL_KEEPS) {
+        if (row.value === "yes") choice.set(who, { option: KEEP_OPTION });
+        else if (choice.get(who)?.option === KEEP_OPTION) choice.delete(who);
+      } else if (ids.has(row.itemId) && row.questionId === PROPOSAL_DECIDED && rule.decides?.(row.by)) decision = row;
+      else if (row.value === "yes" && !row.questionId.startsWith("@") && asked.has(`${row.itemId}\u0000${row.questionId}`) && !row.cleared) choice.set(who, { option: KEEP_OPTION });
+      else continue;
+      // When the disagreement began: the moment two choices first stood side by side, until they meet again.
+      if (distinct() > 1) since ??= row.at;
+      else since = undefined;
+    }
+    // A choice of an option taken back by its author is no choice.
+    for (const [who, one] of choice) if (one.option !== KEEP_OPTION && !live.has(one.option)) choice.delete(who);
+    const choices = Object.fromEntries([...choice].map(([who, one]) => [who, one.option]));
+    const named = (option: string) => [...choice].filter(([, one]) => one.option === option).map(([who]) => group.concat(views).find((view) => same(view.by, who))?.by ?? byTime.find((row) => same(row.by, who))?.by ?? who);
+    const all = new Set(Object.values(choices));
+    const decided = decision ? (decision.value === "yes" ? rootOf(decision.itemId) : KEEP_OPTION) : undefined;
+    // A choice of a version since edited is to be looked at again: it does not settle the item until then.
+    const current = (one: { option: string; version?: string }) => one.option === KEEP_OPTION || one.version === live.get(one.option)?.proposal.id;
+    const winner = decided ?? (choice.size >= Math.max(1, needed) && all.size === 1 && [...choice.values()].every(current) ? [...all][0] : undefined);
+    for (const [option, head] of live) {
+      const view = out.get(head.proposal.id)!;
+      const done = view.state === "applied" || view.state === "sent";
+      const state = done ? view.state : winner === option ? "agreed" : winner ? "rejected" : "open";
+      const stale = [...choice].filter(([, one]) => one.option === option && one.version !== head.proposal.id).map(([who]) => who);
+      const next: ProposalView = { ...view, inFavour: named(option), against: named(KEEP_OPTION), state, choices, ...(stale.length ? { staleFor: stale } : {}) };
+      delete next.disputedSince;
+      delete next.decidedBy;
+      if (!winner && since && all.size > 1) next.disputedSince = since;
+      if (decision && decided && !done) next.decidedBy = decision.by;
+      out.set(head.proposal.id, next);
+    }
+  }
+  return views.map((view) => out.get(view.proposal.id)!);
+}
+
+/**
+ * The versions of a proposal, oldest first, ending at `id` (21 October): a proposal the team goes on adjusting is
+ * one proposal, each adjustment replacing the version before it (`replaces`), whoever makes it. Read as a chain, what
+ * each version changed of the one before is what the conversation shows.
+ */
+export function versionsOf(views: ProposalView[], id: string): ProposalView[] {
+  const byId = new Map(views.map((view) => [view.proposal.id, view]));
+  const out: ProposalView[] = [];
+  const seen = new Set<string>();
+  for (let view = byId.get(id); view && !seen.has(view.proposal.id); view = view.proposal.replaces ? byId.get(view.proposal.replaces) : undefined) {
+    seen.add(view.proposal.id);
+    out.unshift(view);
+  }
+  return out;
 }
 
 /**

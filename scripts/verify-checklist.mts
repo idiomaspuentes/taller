@@ -1,7 +1,8 @@
 /** A checklist step: every item answered yes, or its «no» settled (fixed, created, or answered by the owner). */
 import assert from "node:assert/strict";
+import { itemSaying, proposalAnswer, proposalKeeping, proposalSaying, proposalsOf } from "../src/domain/checkProposal";
 import { articleItemId, asksOf, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, withVerseStops, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
-import { shippedWorkflow } from "../src/domain/processes";
+import { questionText, shippedWorkflow } from "../src/domain/processes";
 import { canApproveStep, closesInItsTool } from "../src/domain/stepClaim";
 import type { ChecklistQuestion, TaskStep } from "../src/domain/types";
 
@@ -206,12 +207,13 @@ test("FCR: cada nota y cada término se recorre una sola vez, frente a los dos t
   const list = lists("armonizar-notas")[0]!.checklist!;
   assert.deepEqual([...new Set(list.map((q) => q.about))], ["tpl", "tps", "academia"]);
   // The note that asks the most: the first of its verse, with an alternate translation, naming the other text, and an article.
-  const most: CheckItem = { id: "m", verseKey: "1:14", text: "Traducción alternativa, como en el TPS: [x]", linked: true };
+  const most: CheckItem = { id: "m", verseKey: "1:14", text: "Es una metáfora. Traducción alternativa, como en el TPS: [x]", linked: true };
   const plain: CheckItem = { id: "p", verseKey: "1:14", text: "Solo explica. Traducción alternativa: [x]", linked: true };
   const sizes = (item: CheckItem) => groupsOf(questionsFor(item, [most, plain], list)).map((group) => group.rows.length);
-  assert.deepEqual(sizes(most), [4, 4, 2], "nunca más de cuatro a la vez");
-  assert.deepEqual(sizes(plain), [3, 2, 2], "la de casi siempre");
-  assert.deepEqual(sizes({ ...plain, id: "s", text: "Solo explica.", linked: false }), [2, 2], "sin artículo no se pregunta por él");
+  // A figure that the note explains is looked for in the TPL, and what the TPS adds between { } in the notes (26 October).
+  assert.deepEqual(sizes(most), [5, 4, 2], "nunca más de cinco a la vez");
+  assert.deepEqual(sizes(plain), [3, 1, 2], "la de casi siempre");
+  assert.deepEqual(sizes({ ...plain, id: "s", text: "Solo explica.", linked: false }), [2, 1], "sin artículo no se pregunta por él");
   const words = lists("armonizar-palabras");
   assert.equal(words.length, 1, "eran dos sobre los mismos términos");
   assert.deepEqual(words[0]!.checklist!.map((q) => [q.id, q.about]), [["definicion", "tpl"], ["cobertura", "tpl"], ["sugerencia", "tps"]]);
@@ -256,6 +258,88 @@ test("una pregunta de cada artículo se responde una vez y vale para todas las n
   assert.equal(before.complete, true, "lo respondido nota por nota antes sigue contando");
   // Without the note's own question answered, it is still pending.
   assert.equal(summarizeChecklist({ items, questions: qs, answers: answers.slice(0, 2) }).items.find((row) => row.itemId === "a2")!.state, "pending");
+});
+
+test("decidida entre tres: una nota queda resuelta cuando tres personas dicen que está bien, no una", () => {
+  const qs = [{ id: "sentido", text: "¿Tiene sentido?" }];
+  const items: CheckItem[] = [{ id: "n1", verseKey: "1:1" }];
+  const yes = (by: string, at: string): CheckAnswer => ({ itemId: "n1", questionId: "sentido", value: "yes", by, at });
+  const run = (answers: CheckAnswer[], me: string) => summarizeChecklist({ items, questions: qs, answers, agreement: { people: 3, proposals: proposalsOf(answers, 3), me } }).items[0]!;
+  assert.equal(run([], "ana").turn, "new", "nadie la revisó: está por revisar");
+  const one = [yes("ana", "2026-10-21T10:00:00Z")];
+  assert.equal(run(one, "ana").state, "pending", "la palabra de una persona no la cierra");
+  assert.equal(run(one, "ana").turn, "waiting", "quien ya opinó espera a los demás");
+  assert.equal(run(one, "bea").turn, "mine", "a quien no opinó le toca");
+  const two = [...one, yes("bea", "2026-10-21T10:05:00Z")];
+  assert.equal(run(two, "carla").turn, "mine");
+  assert.deepEqual(run(two, "carla").slots!.sentido!.yesBy, ["ana", "bea"]);
+  const three = [...two, yes("carla", "2026-10-21T10:10:00Z")];
+  assert.equal(run(three, "dina").state, "ok");
+  assert.equal(run(three, "dina").turn, "done");
+  // The same person twice is one.
+  assert.equal(run([...two, yes("ana", "2026-10-21T10:20:00Z")], "carla").state, "pending");
+});
+
+test("decidida entre tres: una propuesta abierta la deja en conversación hasta que se decide", () => {
+  const qs = [{ id: "sentido", text: "¿Tiene sentido?" }];
+  const items: CheckItem[] = [{ id: "n1", verseKey: "1:1" }];
+  const p = { id: "pr-1", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+  const proposal = proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-21T10:00:00Z", reason: "", proposal: p });
+  const run = (answers: CheckAnswer[], me: string) => summarizeChecklist({ items, questions: qs, answers, agreement: { people: 3, proposals: proposalsOf(answers, 3), me } }).items[0]!;
+  // Two more said it is right as it is: the proposal is still to be decided.
+  const others = [proposal, { itemId: "n1", questionId: "sentido", value: "yes" as const, by: "bea", at: "2026-10-21T10:05:00Z" }, { itemId: "n1", questionId: "sentido", value: "yes" as const, by: "carla", at: "2026-10-21T10:06:00Z" }];
+  assert.equal(run(others, "dina").state, "pending");
+  assert.equal(run([proposal], "bea").turn, "mine", "a quien no opinó sobre la propuesta le toca");
+  // Two more for it: agreed, and settled.
+  const agreed = [proposal, proposalSaying("pr-1", "bea", "2026-10-21T10:05:00Z", true), proposalSaying("pr-1", "carla", "2026-10-21T10:06:00Z", true)];
+  assert.equal(run(agreed, "dina").state, "ok");
+  // Or two would rather leave it as it is: left aside, and settled too.
+  const kept = [proposal, proposalKeeping("pr-1", "bea", "2026-10-21T10:05:00Z", true), proposalKeeping("pr-1", "carla", "2026-10-21T10:06:00Z", true)];
+  assert.equal(run(kept, "dina").state, "ok");
+  assert.equal(run([proposal, proposalKeeping("pr-1", "bea", "2026-10-21T10:05:00Z", true)], "bea").turn, "waiting");
+});
+
+test("en un desacuerdo, cada lado responde al otro: le toca a quien no tuvo la última palabra", () => {
+  const qs = [{ id: "sentido", text: "¿Tiene sentido?" }];
+  const items: CheckItem[] = [{ id: "n1", verseKey: "1:1" }];
+  const p = { id: "pr-2", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+  const rows: CheckAnswer[] = [
+    proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-21T10:00:00Z", reason: "", proposal: p }),
+    proposalSaying("pr-2", "bea", "2026-10-21T10:05:00Z", true),
+    proposalKeeping("pr-2", "carla", "2026-10-21T10:06:00Z", true),
+  ];
+  const run = (answers: CheckAnswer[], me: string) =>
+    summarizeChecklist({ items, questions: qs, answers, agreement: { people: 3, proposals: proposalsOf(answers, 3, () => true, { consensus: true }), me } }).items[0]!;
+  assert.equal(run(rows, "dina").state, "pending", "dos de tres no la resuelven");
+  assert.equal(run(rows, "dina").slots!.sentido!.disputed.length, 1);
+  assert.equal(run(rows, "carla").turn, "waiting", "carla dijo lo último");
+  assert.equal(run(rows, "ana").turn, "mine");
+  assert.equal(run(rows, "bea").turn, "mine");
+  // Ana answers Carla: now it is Carla's turn, not Bea's (who is on Ana's side).
+  const answered = [...rows, itemSaying("n1", "ana", "2026-10-21T10:20:00Z", "Porque el hebreo dice «mano».")];
+  assert.equal(run(answered, "carla").turn, "mine");
+  assert.equal(run(answered, "bea").turn, "waiting");
+  // Carla comes round: settled.
+  assert.equal(run([...answered, proposalSaying("pr-2", "carla", "2026-10-21T10:30:00Z", true)], "dina").state, "ok");
+});
+
+test("una pregunta dice el idioma del proyecto por su nombre, en el idioma de la interfaz", () => {
+  const list = shippedWorkflow("fcr-base")!.tasks.find((t) => t.id === "armonizar-notas")!.steps!.find((s) => s.id === "notas-textos")!.checklist!;
+  const published = list.find((q) => q.id === "publicado")!;
+  assert.equal(questionText(published, "es", "es-419"), "¿El artículo ya está publicado en español?");
+  assert.equal(questionText(published, "pt", "es-419"), "O artigo já está publicado em espanhol?");
+  assert.equal(questionText(list.find((q) => q.id === "util")!, "es", "es-419"), "¿La nota le sugiere al traductor qué hacer?");
+  // Every question of the process is said of what is checked, and none of them is left with a mark unsaid.
+  for (const q of list) assert.ok(!/{[a-z]+}/.test(questionText(q, "es", "es-419")), q.id);
+});
+
+test("la pregunta del versículo enlazado se hace solo a una nota que remite a otro versículo", () => {
+  const list = shippedWorkflow("fcr-base")!.tasks.find((t) => t.id === "armonizar-notas")!.steps!.find((s) => s.id === "notas-textos")!.checklist!;
+  const linked = list.find((q) => q.id === "remite")!;
+  assert.equal(asksOf(linked, { text: "Vea cómo tradujo esta expresión en [1:10](../01/10.md)." }), true, "otro capítulo");
+  assert.equal(asksOf(linked, { text: "Es la misma palabra que en [el versículo 3](./03.md)." }), true, "el mismo capítulo");
+  assert.equal(asksOf(linked, { text: "Vea [Metonimia](rc://*/ta/man/translate/figs-metonymy)." }), false, "un artículo no es un versículo");
+  assert.equal(asksOf(linked, { text: "Traducción alternativa: “su trono real”." }), false);
 });
 
 console.log(`\nverify-checklist: ${passed} checks passed.`);

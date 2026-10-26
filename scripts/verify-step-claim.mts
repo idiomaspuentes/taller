@@ -24,6 +24,10 @@ import {
   agreeInTool,
   agreementStanding,
   withdrawInTool,
+  waitInTool,
+  reopenTurns,
+  answeredRound,
+  sharedChecklist,
 } from "../src/domain/stepClaim.ts";
 import {
   parseTaskProgressMarker,
@@ -253,6 +257,24 @@ assert(
   assert(withdrawInTool(regretted, agreement, "bea") === regretted, "taking it back twice changes nothing");
   const closed = say(one, "bea");
   assert(withdrawInTool(closed, agreement, "bea") === closed, "once the step is closed, what was agreed is written and nothing is taken back");
+}
+
+// A list the team decides together: whoever said everything waits for the others, until something comes up for them.
+{
+  const [shared] = normalizeTaskSteps([{ id: "notas-textos", name: "Notas frente a los textos", closing: "checklist", claimMode: "pool", minAssignees: 3, maxAssignees: 6, solverAppId: "fcr-checklist" }]);
+  assert(shared && sharedChecklist(shared), "a shared step that closes by its checklist is decided together");
+  const steps = [shared!];
+  const start = emptyTaskProgress();
+  const ana = waitInTool({ progress: start, steps, step: shared!, login: "ana", waiting: true });
+  assert(answeredRound("ana", ana, shared!), "ana said everything: she waits for the others");
+  assert(!answeredRound("bea", ana, shared!), "bea did not");
+  const both = waitInTool({ progress: ana, steps, step: shared!, login: "bea", waiting: true });
+  assert(answeredRound("bea", both, shared!), "bea waits too");
+  // carla proposes a change: ana and bea have something to say again.
+  const reopened = reopenTurns(both, shared!, "carla");
+  assert(!answeredRound("ana", reopened, shared!) && !answeredRound("bea", reopened, shared!), "a proposal gives the others their turn again");
+  const again = waitInTool({ progress: both, steps, step: shared!, login: "ana", waiting: false });
+  assert(!answeredRound("ana", again, shared!) && answeredRound("bea", again, shared!), "taken back for one person only");
 }
 
 console.log("verify-step-claim: ok");

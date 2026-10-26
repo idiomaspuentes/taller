@@ -1,4 +1,5 @@
-import type { ProposalPayload } from "./checkProposal";
+import type { ProposalPayload, ProposalView } from "./checkProposal";
+import { ITEM_SAYS } from "./checkProposal";
 import type { ChecklistQuestion } from "./types";
 
 /**
@@ -30,6 +31,11 @@ export type CheckAnswer = {
   at: string;
   /** Fingerprint of the text the item was checked against. If the text changes later, the answer no longer counts. */
   textHash?: string;
+  /**
+   * What a message of the conversation of an item is said of: one of the options for it, by the id of the first
+   * version of its proposal, or `KEEP_OPTION` (21 October: a conversation of its own for each option).
+   */
+  about?: string;
 };
 
 export type CheckItemState = "ok" | "pending" | "open" | "consult";
@@ -51,11 +57,35 @@ export type CheckItem = {
   stop?: true;
 };
 
+/**
+ * What a team said of one question of an item, when the list is decided by several people (see `agreement` in
+ * `summarizeChecklist`): who said it is right, the proposals still to be decided, and whether it is settled.
+ */
+export type CheckSlot = {
+  /** Who said it is right, each once, in the order they said it. */
+  yesBy: string[];
+  /** The proposals made on it that are still to be decided. */
+  open: ProposalView[];
+  /** Those of them some are for and some against: the team has to come to an agreement on them (21 October). */
+  disputed: ProposalView[];
+  /** A proposal made on it was decided: agreed, carried out, or left aside by the team. */
+  decided: boolean;
+  /** Everybody who said something of it: that it is right, a proposal, or for or against one. */
+  voices: string[];
+  settled: boolean;
+};
+
+/** Whose turn an item is, for the person looking: theirs to give an opinion, nobody's yet, or the others'. */
+export type CheckTurn = "mine" | "new" | "waiting" | "done";
+
 export type CheckItemTally = {
   itemId: string;
   state: CheckItemState;
   /** The answer that counts for each question that applies to the item. */
   answers: Record<string, CheckAnswer | undefined>;
+  /** Decided by several people: what each of them said of each question, and whose turn it is. */
+  slots?: Record<string, CheckSlot>;
+  turn?: CheckTurn;
   /** Something was fixed or created for this item: it goes in the summary the team agrees on. */
   changed: boolean;
 };
@@ -137,6 +167,13 @@ export function summarizeChecklist(params: {
   answers: CheckAnswer[];
   /** The text of each verse now (by `verseKey`): an answer given on another text is set aside, so the item is checked again. */
   currentHashes?: Record<string, string>;
+  /**
+   * The list is decided by several people (21 October): each question of an item is settled when `people` of them
+   * said it is right, or when a proposal made on it was decided (`proposals`, as `proposalsOf` reads them); a
+   * proposal still to be decided keeps it open. One person who found nothing to change was the whole decision, and
+   * the team never saw it. `me`: whose turn each item is, said for this person.
+   */
+  agreement?: { people: number; proposals: ProposalView[]; me?: string };
 }): ChecklistSummary {
   const verseOf = new Map<string, string>();
   for (const item of params.items) {
@@ -148,6 +185,7 @@ export function summarizeChecklist(params: {
     return !now || !answer.textHash || answer.textHash === now;
   };
   const latest = latestAnswers(params.answers.filter(current));
+  const slotOf = params.agreement ? slotsOf(params.answers.filter(current), params.agreement) : undefined;
   const perItem = params.questions.filter((q) => q.per !== "verse");
   const perVerse = params.questions.filter((q) => q.per === "verse");
   // With stops for the verses (see `withVerseStops`), each verse's questions are its stop's; else its first help's.
@@ -177,9 +215,37 @@ export function summarizeChecklist(params: {
     if (item.stop) for (const q of perVerse) answers[q.id] = latest.get(`${item.id}\u0000${q.id}`);
     else for (const q of perItem) if (asksOf(q, item)) answers[q.id] = latest.get(`${answeredAt(q, item)}\u0000${q.id}`) ?? (q.per === "article" && item.article ? saidOfArticle.get(`${articleItemId(item.article)}\u0000${q.id}`) : undefined);
     if (firstOfVerse.has(item.id)) for (const q of perVerse) answers[q.id] = latest.get(`${verseItemId(item.verseKey)}\u0000${q.id}`);
+    const changed = Object.values(answers).some((a) => a?.value === "no" && (a.outcome === "fixed" || a.outcome === "created" || a.outcome === "proposal"));
+    if (slotOf) {
+      // Each question by what everybody said of it, where it is answered (the item's own id, its verse's or its article's).
+      const slots: Record<string, CheckSlot> = {};
+      for (const qid of Object.keys(answers)) {
+        const q = params.questions.find((one) => one.id === qid)!;
+        slots[qid] = slotOf(item.stop ? item.id : answeredAt(q, item), qid);
+      }
+      const all = Object.values(slots);
+      const waiting = Object.values(answers).some((a) => a?.outcome === "consult" && !a.resolved);
+      const state: CheckItemState = waiting ? "consult" : all.every((slot) => slot.settled) ? "ok" : "pending";
+      const me = (params.agreement!.me ?? "").trim().toLowerCase();
+      const unsettled = all.filter((slot) => !slot.settled);
+      // In a disagreement each side answers the other: it is one's turn while the last word is not of one's side.
+      const disputed = unsettled.flatMap((slot) => slot.disputed).filter((view) => [...view.inFavour, ...view.against].some((who) => who.toLowerCase() === me));
+      const lastBy = disputed.length ? lastWordOn(params.answers, item.id, disputed)?.trim().toLowerCase() : undefined;
+      const sideOf = (who: string) => disputed.find((view) => view.choices)?.choices?.[who] ?? (disputed.find((view) => view.against.some((one) => one.toLowerCase() === who)) ? "against" : disputed.find((view) => view.inFavour.some((one) => one.toLowerCase() === who)) ? "for" : "");
+      // One whose option changed since they chose it has to look at it again.
+      const stale = unsettled.some((slot) => slot.open.some((view) => view.staleFor?.includes(me)));
+      const lastWord = lastBy !== undefined && sideOf(lastBy) !== sideOf(me) ? lastBy : undefined;
+      const turn: CheckTurn = !unsettled.length
+        ? "done"
+        : unsettled.some((slot) => slot.voices.length && !slot.voices.some((who) => who.toLowerCase() === me)) || lastWord !== undefined || stale
+          ? "mine"
+          : unsettled.some((slot) => !slot.voices.length)
+            ? "new"
+            : "waiting";
+      return { itemId: item.id, state, answers, changed, slots, turn };
+    }
     const states = Object.values(answers).map(stateOf);
     const state = states.reduce<CheckItemState>((worst, s) => (RANK[s] > RANK[worst] ? s : worst), "ok");
-    const changed = Object.values(answers).some((a) => a?.value === "no" && (a.outcome === "fixed" || a.outcome === "created" || a.outcome === "proposal"));
     return { itemId: item.id, state, answers, changed };
   });
   const done = items.filter((i) => i.state === "ok").length;
@@ -191,6 +257,66 @@ export function summarizeChecklist(params: {
     consulting: items.filter((i) => i.state === "consult"),
     changed: items.filter((i) => i.changed),
   };
+}
+
+/**
+ * What everybody said of each question, read once for a whole list: the last answer of each person to it, the
+ * proposals made on it, and whether it is settled (see `agreement` in `summarizeChecklist`).
+ */
+function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals: ProposalView[] }): (answerItemId: string, questionId: string) => CheckSlot {
+  // Each person's last answer to each question; one taken back is no answer.
+  const mine = new Map<string, CheckAnswer>();
+  for (const answer of [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) {
+    const key = `${answer.itemId}\u0000${answer.questionId}\u0000${answer.by.trim().toLowerCase()}`;
+    if (answer.cleared) mine.delete(key);
+    else mine.set(key, answer);
+  }
+  const bySlot = new Map<string, CheckAnswer[]>();
+  for (const [key, answer] of mine) {
+    const slot = key.slice(0, key.lastIndexOf("\u0000"));
+    bySlot.set(slot, [...(bySlot.get(slot) ?? []), answer]);
+  }
+  const views = new Map(agreement.proposals.map((view) => [view.proposal.id, view]));
+  // A proposal belongs to every question its author answered with it (one proposal may answer several).
+  const proposalsAt = new Map<string, ProposalView[]>();
+  for (const answer of answers) {
+    const view = answer.outcome === "proposal" && answer.proposal?.id ? views.get(answer.proposal.id) : undefined;
+    if (!view || view.state === "withdrawn" || view.state === "replaced") continue;
+    const slot = `${answer.itemId}\u0000${answer.questionId}`;
+    const there = proposalsAt.get(slot) ?? [];
+    if (!there.includes(view)) proposalsAt.set(slot, [...there, view]);
+  }
+  return (answerItemId, questionId) => {
+    const slot = `${answerItemId}\u0000${questionId}`;
+    const rows = (bySlot.get(slot) ?? []).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+    // Something done about a «no» before lists were decided by several (fixed, created, a consultation answered)
+    // is what that person said: that it is right now.
+    const yesBy = rows.filter((row) => row.value === "yes" || row.outcome === "fixed" || row.outcome === "created" || (row.outcome === "consult" && row.resolved)).map((row) => row.by);
+    const made = proposalsAt.get(slot) ?? [];
+    const open = made.filter((view) => view.state === "open");
+    const decided = made.some((view) => view.state === "agreed" || view.state === "applied" || view.state === "sent" || view.state === "rejected");
+    const voices: string[] = [];
+    for (const who of [...yesBy, ...made.flatMap((view) => [...view.inFavour, ...view.against])]) {
+      if (!voices.some((one) => one.toLowerCase() === who.toLowerCase())) voices.push(who);
+    }
+    const waiting = rows.some((row) => row.outcome === "consult" && !row.resolved);
+    const settled = !waiting && !open.length && (decided || yesBy.length >= agreement.people);
+    // Some for it and some against it; or, decided by agreement of all, more than one option chosen.
+    const disputed = open.filter((view) => (view.choices ? Boolean(view.disputedSince) : view.inFavour.length > 0 && view.against.length > 0));
+    return { yesBy, open, disputed, decided, voices, settled };
+  };
+}
+
+/** Who said something last of an item's disagreement: wrote in its conversation, adjusted a proposal, or took a side. */
+function lastWordOn(answers: CheckAnswer[], itemId: string, disputed: ProposalView[]): string | undefined {
+  const ids = new Set(disputed.map((view) => view.proposal.id));
+  const at = Math.max(...disputed.map((view) => Date.parse(view.at)));
+  let last: CheckAnswer | undefined;
+  for (const row of answers) {
+    const about = (row.itemId === itemId && row.questionId === ITEM_SAYS) || ids.has(row.itemId) || (row.outcome === "proposal" && row.proposal && ids.has(row.proposal.id));
+    if (about && Date.parse(row.at) >= at && (!last || Date.parse(row.at) >= Date.parse(last.at))) last = row;
+  }
+  return last?.by;
 }
 
 export type ThreadLine = { by: string; at: string; body: string };
