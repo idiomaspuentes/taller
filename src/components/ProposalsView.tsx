@@ -28,7 +28,7 @@ import { uid } from "../domain/assignment";
 import { appliedWords, byPlaceAndHelp, loadTrialChecks, proposalAnswer, proposalDone, proposalFit, proposalHelp, proposalKeeping, proposalSaying, proposalWords, proposalsOf, readable, saveTrialChecks, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 
 import type { CheckAnswer } from "../domain/checklist";
-import { localized, stepPurpose } from "../domain/processes";
+import { localized, questionText, stepPurpose } from "../domain/processes";
 import { ownerLabel } from "../domain/resourceOwner";
 import { scopeLabel } from "../domain/resourceNames";
 import { DEFAULT_PM_CONFIG, type PmConfig } from "../domain/roles";
@@ -197,7 +197,7 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
   /** The question a proposal answered «no» to, as its list asks it; and that said as what it is («No se cumple: …»). */
   const askedOf = (view: Listed): string => {
     const question = data?.steps.find((step) => step.key === view.stepKey)?.questions.find((row) => row.id === view.questionId);
-    return question ? localized(question.text, question.texts, language) : "";
+    return question ? questionText(question, language, ctx?.lang) : "";
   };
   const failedOf = (view: Listed): string => (askedOf(view) ? t("pr.failed").replace("{q}", askedOf(view)) : "");
 
@@ -630,6 +630,12 @@ export function ProposalsView({ ctxEncoded, onClose, announce }: Props) {
             <span className="af-lbl">{t("pr.newNoteLbl")}</span> {about(view.proposal.split.about)}
             {readable(view.proposal.split.after)}
           </p>
+          {view.proposal.split.more?.map((one, index) => (
+            <p key={index} className="ag-opt__text ag-opt__text--new">
+              <span className="af-lbl">{t("pr.newNoteLbl")}</span> {about(one.about)}
+              {readable(one.after)}
+            </p>
+          ))}
         </>
       );
     }

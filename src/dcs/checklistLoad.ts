@@ -41,7 +41,13 @@ export type ChecklistItem = {
   supportRef?: string;
 };
 
-export type ChecklistTextData = { verses: VerseTextMap; alignments?: AlignmentMap; branch?: string };
+export type ChecklistTextData = {
+  verses: VerseTextMap;
+  alignments?: AlignmentMap;
+  branch?: string;
+  /** The verses of any chapter of the book: a note may send to a verse of another one («Vea cómo tradujo … en 1:10»). */
+  chapterVerses?: (chapter: number) => VerseTextMap;
+};
 
 export type ChecklistData = {
   book: string;
@@ -55,6 +61,8 @@ export type ChecklistData = {
   /** The organization's settings as loaded, for writing back to the team's helps. */
   pmConfig?: PmConfig;
   texts: Partial<Record<ChecklistText, ChecklistTextData>>;
+  /** Every note of the book, when the items are notes: what a verse a note sends to says of the same words. */
+  bookNotes?: ChecklistItem[];
   /** Where the answers are kept. */
   target: CheckTarget;
   levelBook: LevelBook;
@@ -75,7 +83,12 @@ async function loadText(session: GtSession, ctx: SolverLaunchContext, resource: 
   if (!found) return undefined;
   const parsed = tryParseUsjWithAlignments(found.text);
   if (!parsed) return undefined;
-  return { verses: verseTextsFromUsj(parsed.usj, WHOLE_CHAPTER(ctx.chapter)) ?? {}, alignments: parsed.alignments, branch: found.branch };
+  const chapters = new Map<number, VerseTextMap>();
+  const chapterVerses = (chapter: number) => {
+    if (!chapters.has(chapter)) chapters.set(chapter, verseTextsFromUsj(parsed.usj, WHOLE_CHAPTER(chapter)) ?? {});
+    return chapters.get(chapter)!;
+  };
+  return { verses: chapterVerses(ctx.chapter), alignments: parsed.alignments, branch: found.branch, chapterVerses };
 }
 
 /** The texts of a unit, and where its review documents are kept: what a screen needs to show a unit to its reviewers. */
@@ -123,7 +136,7 @@ export async function loadUnitItems(params: {
   board: AssignmentsDoc | null;
   /** Only the items that link to a support article (a step that checks those articles). */
   onlyLinked?: boolean;
-}): Promise<{ items: ChecklistItem[]; fromSource: boolean } | null> {
+}): Promise<{ items: ChecklistItem[]; fromSource: boolean; bookNotes?: ChecklistItem[] } | null> {
   const { session, ctx, kind, pmConfig, board } = params;
   const book = (ctx.book || ctx.projectId || "").toUpperCase();
   const chapter = ctx.chapter;
@@ -154,8 +167,12 @@ export async function loadUnitItems(params: {
   const inRange = (verse: number) => whole || !range || (verse >= range.from && verse <= range.to);
 
   let items: ChecklistItem[] = [];
+  let bookNotes: ChecklistItem[] | undefined;
   if (kind === "notas") {
-    items = parseNoteRows(rows, chapter).map((note) => ({ id: note.id, chapter: note.chapter, verse: note.verse, title: "", body: note.note, quote: note.quote, occurrence: note.occurrence, supportRef: note.supportRef }));
+    const noteItems = (inChapter: number) => parseNoteRows(rows, inChapter).map((note) => ({ id: note.id, chapter: note.chapter, verse: note.verse, title: "", body: note.note, quote: note.quote, occurrence: note.occurrence, supportRef: note.supportRef }));
+    items = noteItems(chapter);
+    const chapters = new Set(rows.map((row) => parseInt((row.Reference ?? row.reference ?? "").split(":")[0] ?? "", 10)).filter((n) => n > 0));
+    bookNotes = [...chapters].sort((a, b) => a - b).flatMap(noteItems);
   } else if (kind === "palabras") {
     items = parseTermRows(rows, chapter).map((term) => ({ id: term.id, chapter: term.chapter, verse: term.verse, title: term.termSlug, body: "", quote: term.quote, occurrence: term.occurrence, supportRef: `${term.termKind}/${term.termSlug}` }));
   } else {
@@ -167,7 +184,7 @@ export async function loadUnitItems(params: {
       items.push({ id, chapter, verse: Number(match[2]), ...(to > Number(match[2]) ? { verseTo: to } : {}), title: (row.Question ?? row.question ?? "").trim(), body: (row.Response ?? row.response ?? "").trim() });
     }
   }
-  return { items: items.filter((item) => inRange(item.verse) && (!params.onlyLinked || Boolean(item.supportRef))).sort((a, b) => a.verse - b.verse), fromSource };
+  return { items: items.filter((item) => inRange(item.verse) && (!params.onlyLinked || Boolean(item.supportRef))).sort((a, b) => a.verse - b.verse), fromSource, ...(bookNotes ? { bookNotes } : {}) };
 }
 
 export async function loadChecklist(params: {
@@ -195,7 +212,7 @@ export async function loadChecklist(params: {
   if ("error" in helps) throw new Error(helps.error);
   const read = await loadUnitItems({ session, ctx, kind, pmConfig, board, onlyLinked: params.onlyLinked });
   if (!read) throw new Error(`No se pudo leer ${kind === "palabras" ? "la lista de palabras clave" : kind === "notas" ? "las notas" : "las preguntas"} de este libro.`);
-  const { items, fromSource } = read;
+  const { items, fromSource, bookNotes } = read;
 
   const texts: ChecklistData["texts"] = {};
   await Promise.all(
@@ -209,5 +226,5 @@ export async function loadChecklist(params: {
   // alignment: guessed, «el rey» of a quote marked every «rey» of the verse (16 October).
   const originalRef = kind !== "preguntas" ? originalTextRef(book) : null;
   const original = originalRef ? await readRaw(session, originalRef.owner, originalRef.repo, originalRef.filepath) : null;
-  return { book, chapter, kind, items, fromSource, original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
+  return { book, chapter, kind, items, fromSource, ...(bookNotes ? { bookNotes } : {}), original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
 }

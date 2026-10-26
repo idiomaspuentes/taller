@@ -10932,6 +10932,36 @@ html[data-text] .af.ck .ck-version__text { font-size: calc(1rem * var(--ts)); }
 @media (min-width: 1024px) {
   .af.ck:not(.ag):not(:has(> .af-dock)) > .ck-go[data-on] { grid-column: 1 / -1; }
 }
+
+/*
+ * A help talked over by the team (21 October): who said it is right in which steps, what each proposed and why,
+ * who is for it, and how it stands. Messages in a column, the person's name first; one's own a shade apart.
+ */
+.ck-talk { display: grid; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: var(--surface); }
+.ck-talk__title { margin: 0; font-size: 1rem; font-weight: 700; color: var(--text); }
+.ck-talk__list { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.ck-msg { display: grid; gap: 0.375rem; padding: 0.625rem 0.75rem; border-radius: var(--radius-md); background: var(--surface-muted); }
+.ck-msg[data-mine] { background: var(--accent-50, var(--surface-muted)); }
+.ck-msg__who { margin: 0; font-size: 0.875rem; font-weight: 700; color: var(--text); }
+.ck-msg__verb { font-weight: 500; color: var(--text-muted); }
+.ck-msg__what { display: flex; align-items: flex-start; gap: 0.375rem; margin: 0; font-size: calc(1rem * var(--ts, 1)); color: var(--text); }
+.ck-msg__ok { flex: 0 0 auto; margin-top: 0.2em; color: var(--success-700); }
+.ck-msg__text p { margin: 0 0 0.375rem; font-size: calc(1rem * var(--ts, 1)); }
+.ck-msg__why { margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); font-style: italic; color: var(--text); }
+.ck-msg__backing, .ck-msg__state { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
+.ck-msg__acts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.ck-msg__acts .btn { min-height: 44px; }
+.ck-talk__status { display: flex; align-items: center; gap: 0.375rem; margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--text-muted); }
+.ck-talk__status[data-kind="settled"] { color: var(--success-700); }
+.ck-said { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.125rem; font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); }
+.ck-ask--wait { font-weight: 600; color: var(--text-muted); }
+.ck-guide li[data-state="wait"] .ck-check__mark svg { fill: none; }
+html[data-text] .ck-msg__what, html[data-text] .ck-msg__text p { font-size: calc(1rem * var(--ts)); }
+html[data-text] .ck-msg__why { font-size: calc(0.9375rem * var(--ts)); }
+@media (min-width: 1024px) {
+  .af.ck:not(.ag) > .ck-talk { grid-column: 2; }
+  .af.ck:not(.ag):not(:has(> .af-dock)) > .ck-talk { grid-column: 1 / -1; }
+}
 @media (min-width: 1024px) {
   /*
    * The checklist on a computer, one column to read, as on a phone but wider (21 October): heading, what to check, the
@@ -10967,3 +10997,297 @@ html[data-text] .ck-note-quote { font-size: calc(1.0625rem * var(--ts)); }
 /* Named «Nota» as in afinación, and the words it is about in bold, not marked: marked, with «TPL» beside them, the
    card read as the box of the verse under it (21 October). */
 .ck-note-quote__words { font-weight: 700; }
+/*
+ * Sizes of a checklist, checked again with the conversation and the card of the note (21 October): the label of the
+ * note is a label like the text's (it grew to 18 px while «TPL · Ester 1:1» stayed at 13); «Conversación del
+ * equipo» heads its section as «Qué comprobar» heads its own, and grows as it does; an article read in a fold (one
+ * already checked, the source's of one untranslated) grows with the size chosen, its headings with it.
+ */
+.af.ck .ck-chip { font-size: 0.8125rem; }
+.af.ck .ck-talk__title { font-size: calc(1rem * var(--ts, 1)); }
+.af.ck .ck-read .ur-md { font-size: calc(1rem * var(--ts, 1)); }
+html[data-text] .af.ck .ck-talk__title { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af.ck .ck-read .ur-md { font-size: calc(1rem * var(--ts)); }
+
+/*
+ * The article of a note once checked (21 October): a card like the note's, never a fold, with what it teaches, the
+ * whole of it a button away, and who checked it. And a box to write in the conversation, for anybody, any time.
+ */
+.ck-article-card { display: grid; gap: 0.625rem; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: var(--surface); }
+.ck-article-card__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.375rem; margin: 0; font-size: calc(1.0625rem * var(--ts, 1)); color: var(--text); }
+.af.ck .ck-article-card__lead { font-size: calc(1rem * var(--ts, 1)); line-height: 1.55; color: var(--text); }
+.ck-article-card__open { justify-self: start; }
+.ck-article-card__who { display: flex; align-items: center; gap: 0.25rem; margin: 0; font-size: 0.8125rem; font-weight: 600; color: var(--success-700); }
+.ck-talk__write { display: grid; gap: 0.5rem; }
+.ck-talk__write .btn { justify-self: end; min-height: 44px; }
+.af.ck .ck-talk__box { font-size: calc(1rem * var(--ts, 1)); resize: vertical; }
+.ck-msg__said { margin: 0; font-size: calc(1rem * var(--ts, 1)); white-space: pre-line; color: var(--text); }
+html[data-text] .ck-article-card__head { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af.ck .ck-article-card__lead, html[data-text] .af.ck .ck-talk__box, html[data-text] .ck-msg__said { font-size: calc(1rem * var(--ts)); }
+/* The conversation inside the card of what it is about, under it after a line: one card, not two (21 October). */
+.af-card .ck-talk { margin-top: 1rem; padding: 1rem 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+.af.ck .af-dock + .ck-first { margin-top: 0.75rem; }
+/* What to do in the step, under its heading: one line, a step under it (21 October). */
+.af.ck .ck-howto { margin: -0.375rem 0 0; font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.45; color: var(--text-muted); }
+html[data-text] .af.ck .ck-howto { font-size: calc(0.9375rem * var(--ts)); }
+/* A card with nothing left in it (what other teams said went into the conversation): not shown (21 October). */
+.af.ck > .af-card:empty { display: none; }
+/*
+ * The same order in every step (21 October): what is read (the text, the note, the article, a verse's helps), then
+ * what to check, then what the team said, then the answer. In the article's step the article came after what to
+ * check, because its card is the last of the page.
+ */
+.af.ck:not(.ag) > .ck-guide { order: 1; }
+.af.ck:not(.ag) > .ck-talk { order: 2; }
+.af.ck:not(.ag) > .ck-go { order: 3; }
+/*
+ * Over the work, one quiet strip (21 October): the trial line, the lists of what is pending or changed as small
+ * pills, then where the help is and its steps close together. Each was a block of its own, in its own style, and
+ * the text to read started 300 px down a phone.
+ */
+.af.ck > .ck-trying { margin: 0; font-size: 0.8125rem; }
+.af.ck > .round { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.375rem; margin: -0.375rem 0 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.af.ck > .round .ck-list[data-kind] { padding: 0; border-radius: 0; background: none; }
+.af.ck > .round .ck-list > summary { display: inline-flex; align-items: center; min-height: 32px; padding: 0 0.75rem; border-radius: 999px; background: var(--surface-muted); font-size: 0.8125rem; font-weight: 600; list-style: none; }
+.af.ck > .round .ck-list > summary::-webkit-details-marker { display: none; }
+.af.ck > .round .ck-list[open] { flex-basis: 100%%; }
+.af.ck .ck-head { margin-top: 0.25rem; }
+.af.ck .ck-steps--top { margin-top: -0.75rem; }
+/* A proposal in versions (21 October): the version replaced, quieter; the note as the version in play leaves it; adjust, or seldom something else. */
+.ck-msg--proposal[data-state="replaced"] { opacity: 0.8; }
+.ck-talk__now { display: grid; gap: 0.375rem; padding: 0.75rem; border: 1px solid var(--accent-200, var(--border)); border-radius: var(--radius-md); background: var(--surface); }
+.ck-go__more { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; }
+.ck-go__other { min-height: 44px; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.pr-lead { margin: 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--accent-50, var(--surface-muted)); color: var(--text); font-size: 0.9375rem; }
+/* The conversation in three layers (21 October): where it stands, the proposal in play, what was said. */
+.ck-talk__status { order: 0; }
+.ck-talk__status[data-kind="disputed"] { align-items: flex-start; color: var(--warning-800, var(--text)); }
+.ck-talk__status[data-kind="disputed"] svg { flex: 0 0 auto; margin-top: 0.15em; }
+.ck-play { display: grid; gap: 0.5rem; padding: 0.75rem; border: 1px solid var(--accent-200, var(--border)); border-radius: var(--radius-md); background: var(--surface); }
+.ck-play__label { margin: 0; font-size: 0.875rem; font-weight: 700; color: var(--text); }
+.ck-play__sides { display: grid; gap: 0.25rem; }
+.ck-play__side { display: flex; align-items: flex-start; gap: 0.375rem; margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); color: var(--text); }
+.ck-play__side svg { flex: 0 0 auto; margin-top: 0.2em; }
+.ck-play__side[data-side="for"] svg { color: var(--success-700); }
+.ck-play__side[data-side="against"] svg { color: var(--warning-700, var(--text-muted)); }
+.ck-play__count { color: var(--text-muted); }
+.ck-talk__said { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+.ck-talk__sub { margin: 0; font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); }
+.ck-talk__older { justify-self: start; min-height: 44px; }
+.ck-talk__list { gap: 0.5rem; }
+.ck-msg--line { padding: 0.25rem 0.75rem; background: none; }
+.ck-msg--line[data-mine] { background: none; }
+.ck-msg__no { flex: 0 0 auto; margin-top: 0.2em; color: var(--warning-700, var(--text-muted)); }
+.ck-msg__change { justify-self: start; min-height: 44px; }
+html[data-text] .ck-play__side { font-size: calc(0.9375rem * var(--ts)); }
+/* The proposal as one document, its versions a pair of arrows apart (21 October). */
+.ck-play__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.ck-play__nav { display: inline-flex; align-items: center; gap: 0.25rem; }
+.ck-play__arrow { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); color: var(--text); cursor: pointer; }
+.ck-play__arrow:disabled { opacity: 0.35; cursor: default; }
+.ck-play__arrow:not(:disabled):hover, .ck-play__arrow:focus-visible { border-color: var(--border-strong); }
+.ck-play__which { min-width: 6.5rem; text-align: center; font-size: 0.875rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.ck-play__by { margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); color: var(--text); }
+.ck-play__why { font-style: italic; }
+.ck-play__old { margin: 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--surface-muted); font-size: 0.875rem; color: var(--text); }
+.ck-play[data-state="old"] { border-style: dashed; }
+.ck-play__side[data-side="was"] { color: var(--text-muted); }
+.ck-play__edit { justify-self: start; min-height: 44px; display: inline-flex; align-items: center; }
+html[data-text] .ck-play__by { font-size: calc(0.9375rem * var(--ts)); }
+.ck-play__old .af-link { display: inline; min-height: 0; padding: 0.25rem 0; }
+/* The conversation closed: the last thing said and the way in (21 October). */
+.ck-talk__peek { display: grid; gap: 0.5rem; margin-top: 0.25rem; }
+.ck-talk__last { margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.45; color: var(--text); }
+.ck-talk__peek .btn { justify-self: start; min-height: 44px; }
+.ck-talk__close { justify-self: start; min-height: 44px; }
+html[data-text] .ck-talk__last { font-size: calc(0.9375rem * var(--ts)); }
+/* The bar at the foot, smaller: the question in a line of body text, buttons of a finger's height (21 October). */
+.af.ck .ck-go[data-on] { gap: 0.375rem; }
+.af.ck .ck-ask { font-size: calc(1rem * var(--ts, 1)); font-weight: 600; line-height: 1.3; }
+html[data-text] .af.ck .ck-ask { font-size: calc(1rem * var(--ts)); }
+.af.ck .ck-go .btn { min-height: 2.75rem; }
+.af.ck .ck-go__more .af-link { min-height: 2.25rem; }
+@media (min-width: 48rem) {
+  /* On a computer the buttons and the link to edit in one row under the question. */
+  .af.ck .ck-go[data-on]:has(> .ck-go__more) { grid-template-columns: auto 1fr; align-items: center; column-gap: 1rem; }
+  .af.ck .ck-go[data-on]:has(> .ck-go__more) > .ck-ask { grid-column: 1 / -1; }
+  .af.ck .ck-go[data-on]:has(> .ck-go__more) > .ck-go__buttons { grid-template-columns: repeat(2, minmax(11rem, auto)); }
+}
+/* The proposal answered from the conversation (21 October): the message opens it, in a sheet. */
+.ck-msg__open { justify-self: start; min-height: 44px; }
+.ck-turn { display: grid; gap: 0.5rem; margin-top: 0.25rem; padding: 0.75rem; border: 1px solid var(--accent-200, var(--border)); border-radius: var(--radius-md); background: var(--accent-50, var(--surface)); }
+.ck-turn__ask { margin: 0; font-size: calc(1rem * var(--ts, 1)); font-weight: 600; line-height: 1.35; color: var(--text); }
+.ck-turn .btn { justify-self: start; min-height: 44px; }
+html[data-text] .ck-turn__ask { font-size: calc(1rem * var(--ts)); }
+.ck-prop-sheet .fx-body { grid-template-columns: minmax(0, 1fr); }
+.ck-prop-sheet .ck-play { border: 0; padding: 0; background: none; }
+.ck-prop-sheet__foot { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+.ck-prop-sheet__ask { margin: 0; font-size: calc(1rem * var(--ts, 1)); font-weight: 600; line-height: 1.35; color: var(--text); }
+.ck-prop-sheet__ask--done { font-weight: 500; color: var(--text-muted); }
+html[data-text] .ck-prop-sheet__ask { font-size: calc(1rem * var(--ts)); }
+.ck-prop-sheet__buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.5rem; }
+.ck-prop-sheet__buttons:empty { display: none; }
+.ck-prop-sheet__buttons .btn { min-height: 2.75rem; }
+/* One button alone takes the row; where it fits, the question at the left and the buttons at the right (21 October). */
+.ck-go__buttons[data-one] { grid-template-columns: minmax(0, 1fr); }
+/* The proposal as one card (21 October): the chip, who and why, the text; at its foot how it goes and the conversation. */
+.ck-talk:has(> .ck-talk__foot) > .ck-play { padding: 0; border: 0; background: none; }
+.ck-play__head { margin: 0; }
+.ck-play__earlier { justify-self: start; min-height: 2.25rem; }
+.ck-talk__foot { display: grid; gap: 0.5rem; margin-top: 0.25rem; }
+.ck-talk__progress { display: flex; align-items: flex-start; gap: 0.375rem; margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 600; color: var(--text); }
+.ck-talk__progress svg { flex: 0 0 auto; margin-top: 0.15em; color: var(--success-700); }
+.ck-talk__progress[data-kind="disputed"] svg { color: var(--warning-700, var(--text-muted)); }
+html[data-text] .ck-talk__progress { font-size: calc(0.9375rem * var(--ts)); }
+.ck-talk__row { display: flex; align-items: center; gap: 0.625rem; width: 100%; min-height: 3rem; margin: 0; padding: 0.625rem 0 0; border: 0; border-top: 1px solid var(--border); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ck-talk__row:hover .ck-talk__row-text b, .ck-talk__row:focus-visible .ck-talk__row-text b { color: var(--accent-700, var(--text)); }
+.ck-talk__row-icon { flex: 0 0 auto; color: var(--accent-700, var(--text-muted)); }
+.ck-talk__row-text { flex: 1 1 auto; min-width: 0; font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.4; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ck-talk__row-text b { color: var(--text); }
+html[data-text] .ck-talk__row-text { font-size: calc(0.9375rem * var(--ts)); }
+.ck-talk__row-go { flex: 0 0 auto; color: var(--text-muted); }
+/* The options for a help, chosen as in a poll (21 October). */
+.ck-opts { display: grid; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: var(--surface); }
+.af.ck:not(.ag) > .ck-opts { order: 2; }
+.ck-opts__title { margin: 0; font-size: calc(1.0625rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+html[data-text] .ck-opts__title { font-size: calc(1.0625rem * var(--ts)); }
+.ck-opts__status { margin: -0.25rem 0 0; font-size: calc(0.9375rem * var(--ts, 1)); color: var(--text-muted); }
+.ck-opts__status[data-kind="settled"] { color: var(--success-700); font-weight: 600; }
+.ck-opts__status[data-kind="split"] { color: var(--warning-800, var(--text)); }
+html[data-text] .ck-opts__status { font-size: calc(0.9375rem * var(--ts)); }
+.ck-opts__list { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.ck-opt { display: grid; gap: 0.5rem; padding: 0.25rem 0.75rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.ck-opt[data-chosen] { border-color: var(--accent-500, var(--border-strong)); background: var(--accent-50, var(--surface)); }
+.ck-opt[data-won] { border-color: var(--success-600, var(--border-strong)); }
+.ck-opt__pick { display: flex; align-items: center; gap: 0.625rem; width: 100%; min-height: 3rem; margin: 0; padding: 0.25rem 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ck-opt__pick:disabled { cursor: default; }
+.ck-opt__dot { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 1.375rem; height: 1.375rem; border: 2px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--on-accent, #fff); }
+.ck-opt[data-chosen] .ck-opt__dot { border-color: var(--accent-600, var(--text)); background: var(--accent-600, var(--text)); }
+.ck-opt__name { flex: 1 1 auto; min-width: 0; font-size: calc(1rem * var(--ts, 1)); font-weight: 600; }
+.ck-opt__who { flex: 0 1 auto; font-size: 0.8125rem; color: var(--text-muted); text-align: right; }
+html[data-text] .ck-opt__name { font-size: calc(1rem * var(--ts)); }
+.ck-opt__body { display: grid; gap: 0.5rem; }
+.ck-opt__why { margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); color: var(--text); }
+html[data-text] .ck-opt__why { font-size: calc(0.9375rem * var(--ts)); }
+.ck-opt__stale { margin: 0; padding: 0.375rem 0.625rem; border-radius: var(--radius-md); background: var(--surface-muted); font-size: 0.875rem; color: var(--text); }
+.ck-opt__show { justify-self: start; min-height: 2.25rem; }
+.ck-opt__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; }
+.ck-opt__acts .af-link { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.75rem; }
+.ck-opt__history { display: grid; gap: 0.75rem; margin: 0; padding: 0.5rem 0 0; border-top: 1px solid var(--border); list-style: none; }
+.ck-opt__talk { display: grid; gap: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+.ck-opts__new { justify-self: start; min-height: 44px; }
+.ck-opt__stale { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.ck-opt__stale p { flex: 1 0 100%; margin: 0; }
+.ck-opt__stale .btn { min-height: 44px; }
+.ck-opt { gap: 0.25rem; padding-bottom: 0.25rem; }
+.ck-opt__body { padding-bottom: 0.25rem; }
+/* A label longer than half the phone wraps in its button instead of leaving it (21 October). */
+.af.ck .ck-go__buttons .btn { white-space: normal; line-height: 1.2; text-wrap: balance; }
+/* The text and the help checked against it, one card read together, each part with its chip (Abel, 26 October):
+   two boxes read as two things to look at. */
+.af.ck > .af-dock:has(+ .ck-first) { margin-bottom: 0; padding: 1rem 1rem 0.875rem; border-color: var(--border); border-bottom: 0; border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0; }
+.af.ck > .af-dock + .ck-first { margin-top: -0.75rem; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
+.af.ck > .af-dock + .ck-first::before { content: none; }
+/* The note's chip on its line, the words it is about on the next, over the note (Abel, 26 October). */
+.ck-note-quote { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+/* The labels of the text and the note a step larger, with room under them before what they name (Abel, 26 October). */
+.af.ck .af-dock .af-row > .ck-res, html[data-text] .af.ck .af-dock .af-row > .ck-res, .af.ck .ck-first .ck-chip, html[data-text] .af.ck .ck-first .ck-chip { padding: 0.125rem 0.5rem; font-size: 0.875rem; }
+.af.ck .af-dock .af-row > .ck-res { margin-bottom: 0.375rem; }
+.af.ck .ck-first .ck-note-quote { gap: 0.5rem; }
+/* What to check, ticked one point at a time before «Sí, cumple» (26 October): each line a box, all of it to touch. */
+.ck-guide .ck-check--tick { position: relative; align-items: flex-start; min-height: 2.75rem; padding: 0.375rem 0; cursor: pointer; }
+.ck-tick { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.ck-guide .ck-check--tick .ck-check__mark { border-radius: 6px; border-width: 2px; color: var(--on-accent, #fff); }
+.ck-guide li[data-ticked] .ck-check--tick .ck-check__mark { border-color: var(--accent-600, var(--text)); background: var(--accent-600, var(--text)); }
+.ck-tick:focus-visible + .ck-check__mark { outline: 2px solid var(--accent-600, var(--text)); outline-offset: 2px; }
+.ck-ask[data-wait] { font-weight: 500; color: var(--text-muted); }
+.ck-guide li[data-ticked] .ck-check--tick .ck-check__mark, .ck-guide li[data-ticked] .ck-check--tick .ck-check__mark svg { color: #fff; }
+/* The list of what to check, never folded: its title a plain heading, and each point an empty box until ticked. */
+.af.ck .ck-guide > .ck-guide__lead { margin: 0; }
+.ck-guide li[data-state] .ck-check--tick .ck-check__mark { border: 2px solid var(--border-strong, #94a3b8); border-radius: 6px; background: var(--surface); }
+.ck-guide li[data-state][data-ticked] .ck-check--tick .ck-check__mark { border-color: var(--accent-600, var(--text)); background: var(--accent-600, var(--text)); color: #fff; }
+.ck-guide .ck-check--tick:hover .ck-check__mark { border-color: var(--accent-600, var(--text)); }
+/* TPL, the note, TPS: one card in three parts, the note in the middle (26 October). */
+.af.ck > .ck-first:has(+ .ck-dock-after) { margin-bottom: 0; border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.af.ck > .ck-first + .ck-dock-after { margin-top: -0.75rem; padding: 1rem 1rem 0.875rem; border-color: var(--border); border-top: 1px solid var(--border); border-radius: 0 0 var(--radius-lg, 12px) var(--radius-lg, 12px); }
+/* No bar at the foot (Abel, 26 October): what is answered is a card right under «Qué comprobar», and the
+   conversation after it. The bar said again what the card said, and was read before the list was. */
+html .af.ck:not(.ag) > .ck-go[data-on] { position: static; z-index: auto; order: 2; margin: 0; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: var(--surface); }
+.af.ck:not(.ag) > .ck-talk, .af.ck:not(.ag) > .ck-opts { order: 3; }
+html .af.ck:not(.ag) > .ck-go[data-on] > .ck-ask { font-size: calc(1.0625rem * var(--ts, 1)); font-weight: 700; }
+html[data-text] .af.ck:not(.ag) > .ck-go[data-on] > .ck-ask { font-size: calc(1.0625rem * var(--ts)); }
+html .af.ck:not(.ag) > .ck-go[data-on] > .ck-ask[data-wait] { font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 500; }
+html[data-text] .af.ck:not(.ag) > .ck-go[data-on] > .ck-ask[data-wait] { font-size: calc(0.9375rem * var(--ts)); }
+@media (min-width: 1024px) {
+  html .af.ck:not(.ag) > .ck-go[data-on] { grid-column: 2; padding-inline: 1rem; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); }
+}
+/* The answer is given in the conversation of the team (Abel, 26 October): what the others said, then this
+   person's answer, in one card. Two cards, the answer over the conversation, read as two ways on. */
+.af.ck:not(.ag) > .ck-talk, .af.ck:not(.ag) > .ck-opts { order: 2; }
+html .af.ck:not(.ag) > .ck-go[data-on] { order: 3; }
+.af.ck:not(.ag):has(> .ck-go[data-on]) > .ck-talk, .af.ck:not(.ag):has(> .ck-go[data-on]) > .ck-opts { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+html .af.ck:not(.ag):has(> .ck-talk, > .ck-opts) > .ck-go[data-on] { margin-top: -0.75rem; border-top: 1px solid var(--border); border-top-left-radius: 0; border-top-right-radius: 0; }
+/* The answer as this person's turn in the conversation: named so, on the tint of their own messages. */
+html .af.ck:not(.ag) > .ck-go[data-on][data-reply] { background: var(--accent-50, var(--surface)); }
+.ck-go__lead { margin: 0; font-size: 0.8125rem; font-weight: 700; color: var(--accent-800, var(--text)); }
+/* Each point answered «Sí» or «No» where it is read (26 October). */
+.ck-guide .ck-check--tick { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.625rem; cursor: default; }
+.ck-yn { display: inline-flex; gap: 0.25rem; }
+.ck-yn__b { min-width: 3rem; min-height: 2.75rem; padding: 0 0.625rem; border: 1px solid var(--border-strong, var(--border)); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; }
+.ck-yn__b:hover { border-color: var(--accent-600, var(--text)); }
+.ck-yn__b[data-v="yes"][aria-pressed="true"] { border-color: var(--accent-600, var(--text)); background: var(--accent-600, var(--text)); color: #fff; }
+.ck-yn__b[data-v="no"][aria-pressed="true"] { border-color: var(--warning-700, var(--text)); background: var(--warning-100, var(--surface)); color: var(--warning-800, var(--text)); }
+.ck-guide li[data-state] .ck-check--tick[data-mark="yes"] .ck-check__mark { border-color: var(--accent-600, var(--text)); background: var(--accent-600, var(--text)); color: #fff; }
+.ck-guide li[data-state] .ck-check--tick[data-mark="no"] .ck-check__mark { border-color: var(--warning-700, var(--text)); background: var(--warning-100, var(--surface)); color: var(--warning-800, var(--text)); }
+/* The «Sí» / «No» say the answer: no box beside the question saying it again. */
+.ck-guide .ck-check--tick { grid-template-columns: minmax(0, 1fr) auto; }
+.ck-guide .ck-check--tick .ck-check__mark { display: none; }
+.ck-go__buttons:has(> .btn:only-child) { grid-template-columns: minmax(0, 1fr); }
+/* The sheet to propose a change (26 October): what failed in a line, the box first, labels by weight not by
+   capitals and grey, what changes in sight, and the other ways at the foot. */
+.pr-sheet .pr-failed { padding: 0; background: none; color: var(--text); font-weight: 600; }
+.pr-sheet .af-lbl { font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text); }
+html[data-text] .pr-sheet .af-lbl { font-size: calc(0.9375rem * var(--ts)); }
+.pr-change { display: grid; gap: 0.25rem; margin-top: 0.5rem; padding: 0.75rem; border-radius: var(--radius-md); background: var(--surface-muted); }
+.pr-change__lbl { margin: 0; font-size: 0.8125rem; font-weight: 700; color: var(--text); }
+.pr-change .ag-diff { font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.55; }
+html[data-text] .pr-change .ag-diff { font-size: calc(0.9375rem * var(--ts)); }
+.pr-ways { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.875rem; margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-muted); }
+.pr-ways .af-link { min-height: 2.75rem; font-size: 0.875rem; }
+/* A note parted in more than two: each new note after the first, with a way to take it out again. */
+.pr-extra { display: grid; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.pr-extra__drop { justify-self: start; min-height: 2.75rem; }
+.pr-extra__add { justify-self: start; display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.75rem; }
+/* Writing to the team from the answer: a box, and on to the next help. */
+.ck-say { display: grid; gap: 0.5rem; }
+.af.ck .ck-say__box { font-size: calc(1rem * var(--ts, 1)); resize: vertical; }
+html[data-text] .af.ck .ck-say__box { font-size: calc(1rem * var(--ts)); }
+/* Another note of the verse about the same words, a touch away; and what is marked in the TPS, only a guide. */
+.ck-cross { justify-self: start; min-height: 2.75rem; text-align: left; }
+.ck-mark-hint { font-size: 0.8125rem; }
+/* Another note of the verse, read over the one being checked: the same card, texts and note, and the way back. */
+.ck-peek { display: grid; gap: 1.5rem; }
+.ck-peek__card { display: grid; gap: 1.25rem; }
+.ck-peek__note { display: grid; gap: 0.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.ck-peek__card > .af-row + .af-row, .ck-peek__note + .af-row { padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.ck-peek .af-note, .ck-peek .af-note--md { font-size: calc(1.0625rem * var(--ts, 1)); line-height: 1.6; }
+html[data-text] .ck-peek .af-note, html[data-text] .ck-peek .af-note--md { font-size: calc(1.0625rem * var(--ts)); }
+.ck-peek .af-row > .ck-res { margin-bottom: 0.375rem; }
+
+/* A verse a note sends to («en 1:10»): at the size of the note, and with room for a finger. */
+.ck .af-note--md button, .ck-peek .af-note--md button { font-size: inherit; padding: 0.5rem 0 0.5rem 0.125rem; margin: -0.5rem 0; vertical-align: baseline; }
+/* Several notes in the sheet: which one is read, and the arrows to the others. */
+.ck-peek__pager { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: -0.75rem; }
+.ck-peek__pager .af-kind { margin: 0; }
+/* Which note, and the way to the others (Abel, 26 October): no empty boxes above it adding their gaps, the place
+   read in the color of the text, and arrows that look like buttons. */
+.af.ck > .round:empty { display: none; }
+.af.ck > .step-ask-bar:not(:has(.step-ask)) { display: contents; }
+.af.ck .ck-head { margin-top: 0.5rem; }
+.af.ck .ck-head > .af-kind--top { font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 600; color: var(--text); }
+html[data-text] .af.ck .ck-head > .af-kind--top { font-size: calc(0.9375rem * var(--ts)); }
+.af.ck .ck-arrows { gap: 0.5rem; }
+.af.ck .ck-arrows .th-icon { border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.af.ck .ck-arrows .th-icon:hover:not(:disabled) { background: var(--surface-muted); }
+.af.ck .ck-arrows .th-icon:disabled { border-color: transparent; background: none; opacity: 0.35; }
+.af.ck .ck-steps--top { margin-top: -0.25rem; }

@@ -10,7 +10,8 @@ import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock3, Info, Maximize2, Pencil, Plus, X } from "lucide-react";
+import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, Info, Maximize2, MessageCircle, Pencil, Plus, X } from "lucide-react";
+import { articleLead } from "../domain/articleSections";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ChapterPair } from "./ChapterReader";
 import { bookLabel } from "../domain/books";
@@ -29,7 +30,11 @@ import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
 import { freshRowId } from "../domain/helpsDraft";
 import { consultReply, groupInView, groupsOf, questionsFor, summarizeChecklist, withVerseStops, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
-import { PROPOSAL_FREE, loadTrialChecks, proposalAnswer, proposalSaying, proposalsOf, readable, saveTrialChecks, withoutWithdrawn, type ProposalPayload } from "../domain/checkProposal";
+import { DISPUTE_DAYS, disputeStalled, ITEM_SAYS, KEEP_OPTION, itemSaying, versionsOf as chainOf, PROPOSAL_DECIDED, PROPOSAL_FREE, PROPOSAL_KEEPS, PROPOSAL_SAYS, proposalDecided, loadTrialChecks, proposalAnswer, proposalDone, proposalKeeping, proposalSaying, proposalsOf, readable, saveTrialChecks, withoutWithdrawn, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
+import { NoteConversation, OPEN_TALK, type TalkLine, type TalkStatus } from "./NoteConversation";
+import { NoteOptions, type HelpOption, type OptionMessage } from "./NoteOptions";
+import { applyProposal, sendProposal as askOwnersFor } from "../dcs/checkProposals";
+import { shareTurnFromTool } from "../dcs/roundClose";
 import { uid } from "../domain/assignment";
 import { ownerLabel } from "../domain/resourceOwner";
 import { PROPOSAL_STATE_KEY, ProposalDiff, ProposalSheet, type ProposalDraft, type ProposalTarget } from "./ProposalSheet";
@@ -37,8 +42,8 @@ import { listIssueComments } from "@ip-lms/dcs-client";
 import { dcsConfig } from "../dcs/config";
 import { PM_REPO_NAME } from "../domain/types";
 import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
-import { coordinatorsOf } from "../domain/levels";
-import { localized, stepPurpose } from "../domain/processes";
+import { coordinatorsOf, isCoordinatorOf } from "../domain/levels";
+import { localized, questionText, stepPurpose } from "../domain/processes";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { textFingerprint } from "../domain/reviewRound";
 import { closesInItsTool, stepMinAssignees } from "../domain/stepClaim";
@@ -113,9 +118,17 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     newNote?: boolean;
     /** The other questions that failed, which the same proposal answers. */
     others?: { answerItemId: string; questionId: string }[];
+    /** Opened to adjust a proposal: the version adjusted, which the new one replaces, whoever made it (21 October). */
+    adjust?: ProposalView;
   } | null>(null);
   /** «Hay algo que cambiar» was touched: what is wrong is chosen among the questions of the step in view. */
   const [choosing, setChoosing] = useState(false);
+  /**
+   * Writing to the team instead of answering (Abel, 26 October): a doubt about a point, or a «no» with no change in
+   * mind yet. Answering was only «it is right» or a proposal, and a proposal had to be thought up to go on.
+   */
+  const [commenting, setCommenting] = useState(false);
+  const [commentDraft, setCommentDraft] = useState("");
   /**
    * The chapter around the help, opened from a text's box as in afinación (20 October): the texts of the step side
    * by side, the original a touch away, with the verse in view standing out and what the help quotes marked.
@@ -179,7 +192,57 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, textsKey]);
-  const summary = useMemo(() => summarizeChecklist({ items: checkItems, questions, answers: withoutWithdrawn(answers), currentHashes: hashes }), [checkItems, questions, answers, hashes]);
+  /**
+   * A list the team decides together (21 October): its step is shared, and each question of an item is settled when
+   * `people` of them say it is right, or when what one proposed is decided by as many. It was one person's word.
+   */
+  const people = data?.step?.claimMode === "pool" && data.step.closing === "checklist" ? stepMinAssignees(data.step) : 0;
+  const me = session?.username ?? "";
+  const isMe = (by: string) => by.trim().toLowerCase() === me.trim().toLowerCase();
+  /**
+   * How many of the team have to be for a proposal, its author among them: as many as decide the list, when the
+   * team decides it together; else what the step where the team agrees asks for. And whether the team maintains a
+   * resource; what it does not is asked of whoever does.
+   */
+  const agreement = data?.task?.steps?.find((step) => step.closing === "consensus");
+  const needed = people || (agreement ? stepMinAssignees(agreement) : 2);
+  const ours = (resource: string) => Boolean(data?.task?.rules.some((rule) => rule.resource === resource));
+  const teamOf = (resource: string) => ownerLabel(resource, data?.board, data?.task, language);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /**
+   * Decided together, a proposal takes everybody's agreement (21 October): nobody wins by having more for it. Whoever
+   * coordinates the team settles one the team could not agree on in some days.
+   */
+  const decides = (login: string) => Boolean(data?.task && isCoordinatorOf(data.levelBook, data.task.orgTeamName, login));
+  const proposals = useMemo(() => proposalsOf(answers, needed, ours, people ? { consensus: true, decides } : {}), [answers, needed, data?.task, people, data?.levelBook]);
+  const summary = useMemo(
+    () => summarizeChecklist({ items: checkItems, questions, answers: withoutWithdrawn(answers), currentHashes: hashes, ...(people ? { agreement: { people, proposals, me } } : {}) }),
+    [checkItems, questions, answers, hashes, people, proposals, me],
+  );
+  const tallyOf = (id: string) => summary.items.find((row) => row.itemId === id);
+  /** Decided together: what this person said gives the others something to say again (a first review, a proposal). */
+  const reopenOthers = () => {
+    if (!people || trying || !session || !ctx?.pmOrg || !ctx.issueNumber || !data?.step || !data.task) return;
+    void shareTurnFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, steps: data.task.steps ?? [], step: data.step, reopen: true }).catch(() => undefined);
+  };
+  /**
+   * Decided together: whether this person has nothing left to say for now, kept in the subtarea so that «Mis
+   * tareas» shows their card waiting for the others, and asking them again once something comes up for them.
+   */
+  const nothingForMe = Boolean(people) && !summary.complete && !summary.items.some((row) => row.turn === "mine" || row.turn === "new");
+  const keptTurn = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!people || trying || !session || !ctx?.pmOrg || !ctx.issueNumber || !data?.step || !data.task || stepDone) return;
+    if (keptTurn.current === nothingForMe) return;
+    keptTurn.current = nothingForMe;
+    void shareTurnFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, steps: data.task.steps ?? [], step: data.step, waiting: nothingForMe }).catch(() => {
+      keptTurn.current = null;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nothingForMe, people, trying, ctx?.issueNumber, stepDone]);
+  /** The next item to go to: decided together, the next one where this person's opinion is awaited, else one nobody saw. */
+  const nextOf = (order: CheckItem[]) =>
+    people ? (order.find((row) => tallyOf(row.id)?.turn === "mine") ?? order.find((row) => tallyOf(row.id)?.turn === "new")) : order.find((row) => tallyOf(row.id)?.state !== "ok");
   useStepWork(session, ctx, summary.done, checkItems.length, { on: !stepDone && !closing });
   // What was said in the conversation of the subtarea, read while a consultation waits: its answer is shown here.
   const [thread, setThread] = useState<ThreadLine[]>([]);
@@ -209,16 +272,46 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
    * and the next group follows. They were a list for each, and every note of a unit was read three times.
    */
   const rowsHere = entry ? questionsFor(entry, checkItems, questions) : [];
+  /**
+   * Whether a question needs nothing more of this person: decided together, they said something of it or it is
+   * settled; else anybody answered it.
+   */
+  const said = (questionId: string) => {
+    if (!people) return Boolean(tally?.answers[questionId]);
+    const slot = tally?.slots?.[questionId];
+    return Boolean(slot?.settled || slot?.voices.some(isMe));
+  };
+  /** How a question is marked: decided together, settled, in a conversation, waiting for others after this person spoke, or new. */
+  const markHere = (questionId: string): Mark => {
+    if (!people) return markOf(tally?.answers[questionId]);
+    const slot = tally?.slots?.[questionId];
+    const answer = tally?.answers[questionId];
+    if (answer?.outcome === "consult" && !answer.resolved) return "wait";
+    return !slot ? "none" : slot.settled ? "yes" : slot.open.length ? "change" : slot.voices.some(isMe) ? "wait" : "none";
+  };
   const groups = groupsOf(rowsHere);
   // A verse's stop asks its questions together, against both texts.
   const grouped = !verseStop && groups.length > 1;
   /** The group somebody asked for, of the help it was asked for: another help starts at what it has left. */
   const [asked, setAsked] = useState<{ itemId: string; about: string } | null>(null);
-  const group = groupInView(groups, (id) => Boolean(tally?.answers[id]), asked && asked.itemId === item?.id ? asked.about : undefined);
+  const group = groupInView(groups, said, asked && asked.itemId === item?.id ? asked.about : undefined);
   const rowsShown = grouped ? (group?.rows ?? []) : rowsHere;
-  const pendingHere = rowsShown.filter(({ question }) => !tally?.answers[question.id]);
+  const pendingHere = rowsShown.filter(({ question }) => !said(question.id));
+  /** Who already said that what is on screen is right: what this person is asked to agree with. */
+  const othersSaid = people ? [...new Set(rowsShown.flatMap(({ question }) => tally?.slots?.[question.id]?.yesBy ?? []).filter((who) => !isMe(who)))] : [];
+  /** The proposals on what is on screen still to be decided, of which this person has not said anything yet. */
+  const openHere = people ? [...new Map(rowsShown.flatMap(({ question }) => tally?.slots?.[question.id]?.open ?? []).filter((view) => !isMe(view.by) && !view.inFavour.some(isMe) && !view.against.some(isMe) && !view.choices?.[me.trim().toLowerCase()]).map((view) => [view.proposal.id, view])).values()] : [];
+  /**
+   * The one proposal in play on what is on screen, when some are for it and some would rather leave things as they
+   * are: what this person is asked then depends on which side they are on, or whether they coordinate the team.
+   */
+  const inPlay = people ? [...new Map(rowsShown.flatMap(({ question }) => tally?.slots?.[question.id]?.open ?? []).map((view) => [view.proposal.id, view])).values()] : [];
+  // Decided as options (`choices`), a disagreement is read in the options themselves.
+  const disputeHere = inPlay.length === 1 && !inPlay[0]!.choices && inPlay[0]!.inFavour.length && inPlay[0]!.against.length ? inPlay[0]! : undefined;
+  const myStand = !disputeHere ? "none" : disputeHere.against.some(isMe) ? "against" : disputeHere.inFavour.some(isMe) ? "for" : "none";
+  const decideHere = disputeHere && !stepDone && decides(me) && disputeStalled(disputeHere) ? disputeHere : undefined;
   /** Another group of this help has something left to answer. */
-  const pendingElsewhere = grouped && groups.some((other) => other !== group && other.rows.some((row) => !tally?.answers[row.question.id]));
+  const pendingElsewhere = grouped && groups.some((other) => other !== group && other.rows.some((row) => !said(row.question.id)));
   /** The texts on screen: up to the one the group is read against; all of them when the list is not asked in groups. */
   const aboutText = texts.indexOf((group?.about ?? "") as ChecklistText);
   const textsShown = !grouped ? texts : aboutText >= 0 ? texts.slice(0, aboutText + 1) : texts.slice(0, 1);
@@ -377,12 +470,47 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
    */
   /** The helps of the verse in view, in their order: which of them this is, of how many. */
   const helpsOfVerse = useMemo(() => (item && !verseStop ? checkItems.filter((row) => !row.stop && row.verseKey === verseKeyOf(item)).map((row) => row.id) : []), [checkItems, item, verseStop]);
-  /** The questions of the step are known once answered for a few other helps: then they are one folded line. */
-  // Counted by the answers given, not by the helps they count for: one said of an article counts for sixteen notes.
-  const guideKnown = Boolean(item) && new Set(summary.items.flatMap((row) => (row.itemId === item?.id ? [] : rowsShown.map(({ question }) => row.answers[question.id]).filter(Boolean)))).size >= 3 * Math.max(1, rowsShown.length);
-  const guideOpen = !guideKnown || rowsShown.some(({ question }) => tally?.answers[question.id]);
+  /**
+   * What to check is ticked, one point at a time, before «Sí, cumple» can be said (Abel, 26 October): the list was
+   * read, or not, and the answer given for all of it at once. The ticks are this person's way through the list,
+   * kept on this device only for the help in view; what is saved is still the answer.
+   */
+  const [marks, setMarks] = useState<Map<string, "yes" | "no">>(() => new Map());
+  const tickKey = (questionId: string) => `${item?.id ?? ""}\u0000${questionId}`;
+  const pointMark = (questionId: string) => marks.get(tickKey(questionId));
+  const isTicked = (questionId: string) => marks.has(tickKey(questionId));
+  /** «Sí» or «No» for a point; the same touched again takes it back. */
+  const setMark = (questionId: string, value: "yes" | "no") =>
+    setMarks((now) => {
+      const next = new Map(now);
+      const key = tickKey(questionId);
+      if (next.get(key) === value) next.delete(key);
+      else next.set(key, value);
+      return next;
+    });
+  /** Every point still to be answered on screen was answered «sí» or «no». */
+  const allTicked = pendingHere.every(({ question }) => isTicked(question.id));
+  /** The points answered «no»: what the proposal is for. */
+  const failingHere = pendingHere.filter(({ question }) => pointMark(question.id) === "no").map(({ question }) => question.id);
+  // The last point ticked, the answer comes into view: it is the card under the list, not a bar at the foot.
+  const tickedAll = pendingHere.length > 0 && allTicked;
+  useEffect(() => {
+    if (tickedAll) window.setTimeout(() => document.querySelector(".ck-go")?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 50);
+  }, [tickedAll]);
   /** The article in view was checked already in this task: what is asked once per article is answered. */
-  const articleSeen = rowsShown.some(({ question }) => question.per === "article") && rowsShown.filter(({ question }) => question.per === "article").every(({ question }) => tally?.answers[question.id]);
+  const articleRows = rowsShown.filter(({ question }) => question.per === "article");
+  /**
+   * Who already said the article is right, asked once per article: then it is a card with what it teaches and the
+   * whole of it a touch away. Said by somebody else, it was told as «Ya revisaste» (21 October).
+   */
+  const articleBy = people ? [...new Set(articleRows.flatMap(({ question }) => tally?.slots?.[question.id]?.yesBy ?? []))] : articleRows.every(({ question }) => tally?.answers[question.id]) ? articleRows.flatMap(({ question }) => (tally?.answers[question.id]?.by ? [tally.answers[question.id]!.by] : [])) : [];
+  const articleSeen = articleRows.length > 0 && articleBy.length > 0;
+  const [articleOpen, setArticleOpen] = useState(false);
+  /**
+   * Another note of the verse, read in a sheet over this one (Abel, 26 October): going to its task to see what it
+   * says and marks lost the thread of the note being checked.
+   */
+  const [peek, setPeek] = useState<{ chapter: number; verse: number; notes: string[]; linked?: boolean; at?: number } | null>(null);
   const articleInSource = Boolean(!verseStop && aboutArticle && articlePath && academy[articlePath]?.where === "source");
   const articleTitle = articlePath ? academy[articlePath]?.title || localizeAfinacion(categoryLabel(categoryFromSupportRef(item?.supportRef ?? "")), language) : "";
   const articleTask = awaitedFor("academia")[0];
@@ -488,16 +616,6 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     ...extra,
   });
 
-  /**
-   * How many of the team have to be for a proposal, its author among them: what the step where the team agrees
-   * asks for. And whether the team maintains a resource; what it does not is asked of whoever does.
-   */
-  const agreement = data?.task?.steps?.find((step) => step.closing === "consensus");
-  const needed = agreement ? stepMinAssignees(agreement) : 2;
-  const ours = (resource: string) => Boolean(data?.task?.rules.some((rule) => rule.resource === resource));
-  const teamOf = (resource: string) => ownerLabel(resource, data?.board, data?.task, language);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const proposals = useMemo(() => proposalsOf(answers, needed, ours), [answers, needed, data?.task]);
 
   const isMine = (by: string) => by.toLowerCase() === (session?.username ?? "").toLowerCase();
   /** The new versions still to be settled of something, oldest first. */
@@ -577,7 +695,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     const also = proposing?.onlyVerse ? [] : fresh;
     const offered = [...(onlyLinked || aboutArticle ? [...article, ...help] : [...help, ...article]), ...read];
     return (proposing?.newNote ? [...also, ...offered] : [...offered, ...also]).map((target) => {
-      const prior = target.commentOnly ? undefined : priorOf(target, where);
+      // Decided together, a new proposal is another option: from the help as it is (21 October).
+      const prior = target.commentOnly || people ? undefined : priorOf(target, where);
       return prior ? { ...target, start: prior.proposal.after, ...(isMine(prior.by) ? {} : { startBy: prior.by }) } : target;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -594,6 +713,15 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   }
 
   /** The quote of the half of a note that stays, when it is not the one the note has: only then is it written. */
+  /** The new notes after the first, each with an id no note of the book has, and the words it is about. */
+  function moreParts(more: { after: string; marked?: number[] }[], first: string, words: string[] | undefined) {
+    const taken = [...(data?.items ?? []).map((row) => row.id), first];
+    return more.map((one) => {
+      const rowId = freshRowId(taken);
+      taken.push(rowId);
+      return { rowId, after: one.after, ...quotedBy(words, one.marked) };
+    });
+  }
   function keptQuote(found: Pick<ProposalPayload, "fields" | "about">): Pick<ProposalPayload, "fields" | "about"> {
     const same = found.fields?.Quote === item?.quote && Number(found.fields?.Occurrence ?? 1) === (item?.occurrence ?? 1);
     return found.fields && !same ? found : {};
@@ -611,11 +739,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       ...(draft.target.text !== undefined && !draft.target.add ? { before: draft.target.text } : {}),
       ...(draft.after ? { after: draft.after } : {}),
       ...(draft.target.add ? { add: true as const, ...quotedBy(draft.target.words, draft.marked) } : {}),
-      ...(draft.split && draft.target.split ? { split: { rowId: draft.target.split.rowId, after: draft.split.after, ...quotedBy(draft.target.split.words, draft.split.marked) } } : {}),
+      ...(draft.split && draft.target.split ? { split: { rowId: draft.target.split.rowId, after: draft.split.after, ...quotedBy(draft.target.split.words, draft.split.marked), ...(draft.split.more?.length ? { more: moreParts(draft.split.more, draft.target.split.rowId, draft.target.split.words) } : {}) } } : {}),
       // The note that stays may be about other words than before, once part of what it said went to the other.
       ...(draft.split && draft.target.split && draft.keepMarked ? keptQuote(quotedBy(draft.target.split.words, draft.keepMarked)) : {}),
       // It takes the place only of one's own version: written over somebody else's, it goes beside it.
-      ...(draft.after && draft.target.start && !draft.target.startBy ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
+      // An adjustment replaces the version it adjusts, whoever made it: the proposal is one, in versions. Else a new
+      // version takes the place only of one's own.
+      ...(proposing.adjust ? { replaces: proposing.adjust.proposal.id } : draft.after && draft.target.start && !draft.target.startBy ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
     };
     // The proposal answers each question marked as failing: the first carries it, the others the same one.
     const answered = [{ answerItemId: proposing.answerItemId, questionId: proposing.questionId }, ...(proposing.others ?? [])].map((row) => {
@@ -623,11 +753,59 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       return proposalAnswer({ itemId: base.itemId, questionId: base.questionId, by: base.by, at: base.at, reason: draft.reason, proposal: payload, textHash: base.textHash });
     });
     await save(answered, draft.target.team ? t("ck.proposedOther").replace("{team}", draft.target.team) : t("ck.proposed"));
+    reopenOthers();
     setProposing(null);
   }
 
   /** Whoever made a proposal takes it back: its «no» is unanswered again. */
+  /**
+   * Adjusting a proposal: a new version of it, from its words, answering the questions it answered (21 October). The
+   * team goes on adjusting one proposal until three agree on a version, instead of piling up proposals that compete.
+   */
+  const adjustProposal = (view: ProposalView, more: { answerItemId: string; questionId: string }[] = []) => {
+    const rows = answers.filter((row) => row.outcome === "proposal" && row.proposal?.id === view.proposal.id);
+    const [first, ...rest] = rows.length ? rows : [{ itemId: view.itemId, questionId: view.questionId }];
+    const others = rest.map((row) => ({ answerItemId: row.itemId, questionId: row.questionId }));
+    for (const one of more) if (!(one.answerItemId === first!.itemId && one.questionId === first!.questionId) && !others.some((o) => o.answerItemId === one.answerItemId && o.questionId === one.questionId)) others.push(one);
+    setProposing({ answerItemId: first!.itemId, questionId: first!.questionId, reason: "", others, adjust: view });
+  };
+  /** What this person says of a proposal of somebody else: for it, or that they would rather leave things as they are. */
+  const voteFor = (proposalId: string) => save([proposalSaying(proposalId, me, new Date().toISOString(), true)], t("ck.saved"));
+  const voteKeep = (proposalId: string) => save([proposalKeeping(proposalId, me, new Date().toISOString(), true)], t("ck.saved"));
+  /**
+   * What the team agreed on, written when the list closes: into the team's help, or asked of the team that keeps it
+   * (the TPL, of afinación). Decided together there is no step after this one where it was done.
+   */
+  async function carryOut(view: ProposalView) {
+    if (!session || !ctx || !data) return;
+    const mine = ours(view.proposal.resource);
+    if (mine && !view.proposal.after) return;
+    const now = new Date().toISOString();
+    if (trying) return save([proposalDone(view.proposal.id, me, now)], t("ck.tryKept"));
+    if (mine) {
+      await applyProposal({ session, ctx, pmConfig: data.pmConfig ?? DEFAULT_PM_CONFIG, board: data.board, proposal: view.proposal });
+      return save([proposalDone(view.proposal.id, me, now)], t("ag.applied"));
+    }
+    if (!data.board || !data.task) return;
+    const sentAs = await askOwnersFor({ session, ctx, board: data.board, task: data.task, view });
+    return save([proposalDone(view.proposal.id, me, now, sentAs)], t("ag.sent").replace("{team}", teamOf(view.proposal.resource)));
+  }
   const withdraw = (proposalId: string) => save([proposalSaying(proposalId, session?.username ?? "", new Date().toISOString(), false)], t("ck.withdrawn"));
+  /** The conversation is open: what to answer of the proposal is in it, and the bar at the foot steps aside. */
+  const [talkOpen, setTalkOpen] = useState(false);
+  /** This person was for a version before this one: the proposal changed since they agreed. */
+  const agreedBefore = (view: ProposalView) => chainOf(proposals, view.proposal.id).slice(0, -1).some((one) => one.inFavour.some(isMe));
+  /** Whoever coordinates the team settles a proposal the team could not agree on. */
+  const decide = (proposalId: string, apply: boolean) => save([proposalDecided(proposalId, me, new Date().toISOString(), apply)], t("ck.saved"));
+  /** The box of the conversation, to answer whoever disagrees: in view, the keyboard up. */
+  const answerInTalk = () => {
+    window.dispatchEvent(new Event(OPEN_TALK));
+    window.setTimeout(() => {
+      const box = document.getElementById("ck-talk-box") as HTMLTextAreaElement | null;
+      box?.scrollIntoView({ block: "center" });
+      box?.focus();
+    }, 50);
+  };
 
   /** The verse of the text a quote is marked in, in words, and the groups of its alignment. */
   const pickVerse = useMemo(() => {
@@ -678,6 +856,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     if (!session || !ctx?.pmOrg || !ctx.issueNumber || !ctx.stepId) return;
     setSaving(true);
     try {
+      if (people) for (const view of proposals.filter((row) => row.state === "agreed")) await carryOut(view);
       await completeStepFromTool({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: ctx.stepId });
       setStepDone(true);
       announce(t("ck.stepClosed"));
@@ -701,7 +880,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     // What this help has left, in another group, comes before the next help.
     if (pendingElsewhere) return setAsked(null);
     const order = [...checkItems.slice(position + 1), ...checkItems.slice(0, position + 1)];
-    const found = order.find((row) => summary.items.find((s) => s.itemId === row.id)?.state !== "ok");
+    const found = nextOf(order);
     if (found) jump(found.id);
   };
   /**
@@ -711,11 +890,18 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
    */
   const allGood = () => {
     if (!data || !item) return;
-    if (pendingHere.length) void save(pendingHere.map(({ question, answerItemId }) => stamp(answerItemId, question.id, "yes")), t("ck.saved"));
+    // Not before every point was ticked: the list is brought into view instead.
+    if (!allTicked) {
+      document.querySelector(".ck-guide")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    // The first to look at something gives the others their turn on it.
+    const first = people && pendingHere.some(({ question }) => !tally?.slots?.[question.id]?.voices.length);
+    if (pendingHere.length) void save(pendingHere.map(({ question, answerItemId }) => stamp(answerItemId, question.id, "yes")), t("ck.saved")).then(() => first && reopenOthers());
     setAsked(null);
     if (pendingElsewhere) return;
     const order = [...checkItems.slice(position + 1), ...checkItems.slice(0, position)];
-    const found = order.find((row) => summary.items.find((s) => s.itemId === row.id)?.state !== "ok");
+    const found = nextOf(order);
     if (found) jump(found.id);
   };
   const labelOf = (itemId: string) => {
@@ -727,14 +913,15 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
 
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ck.title");
   useEffect(() => setChoosing(false), [item?.id, group?.about]);
+  useEffect(() => setCommenting(false), [item?.id, group?.about]);
   useEffect(() => setFailing([]), [choosing, item?.id, group?.about]);
   /**
    * The proposal for what was marked as failing: one, answering every question marked (20 October). It was one
    * question at a time, chosen from a list of buttons, when a note can fail two or three of them at once.
    */
-  const proposeFailing = () => {
+  const proposeFailing = (ids: string[] = failing) => {
     if (!item) return;
-    const rows = rowsShown.filter(({ question }) => failing.includes(question.id));
+    const rows = rowsShown.filter(({ question }) => ids.includes(question.id));
     setChoosing(false);
     if (!rows.length) return setProposing({ answerItemId: verseStop?.id ?? item.id, questionId: PROPOSAL_FREE, reason: "" });
     if (grouped) setAsked({ itemId: item.id, about: group?.about ?? "" });
@@ -742,7 +929,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     setProposing({
       answerItemId: first!.answerItemId,
       questionId: first!.question.id,
-      reason: rows.map(({ question }) => localized(question.text, question.texts, language)).join(" · "),
+      reason: rows.map(({ question }) => questionText(question, language, ctx?.lang)).join(" · "),
       onlyVerse: rows.every(({ question }) => question.per === "verse"),
       others: rest.map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })),
     });
@@ -763,6 +950,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const whats = t(kind === "notas" ? "ck.whatsNote" : kind === "preguntas" ? "ck.whatsQuestion" : "ck.whatsTerm");
   const heading = verseStop ? t("ck.verseHead").replace("{whats}", whats) : stepWords("ck.head", "ck.headAgainst", "ck.headArticle");
   const asking = verseStop ? t("ck.verseAsk") : stepWords("ck.ask", "ck.askAgainst", "ck.askArticle");
+  /** What to do in the step, in a line under its heading (Abel, 21 October): compare, then go over what to check. */
+  const howTo = verseStop ? t("ck.verseHint").replace("{whats}", whats) : stepWords("ck.hint", "ck.hintAgainst", "ck.hintArticle");
   /** The texts the chapter is read in: those of the step, as loaded, and the original when there is one. */
   const chapterTexts = useMemo<{ key: string; text: ChapterText }[]>(() => {
     if (!chapterOpen || !data) return [];
@@ -782,6 +971,74 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterOpen, data, textsKey, language]);
 
+  /** The conversation of the help in view, decided together (see `NoteConversation`). */
+  const talk = useMemo((): { lines: TalkLine[]; status: TalkStatus } | null => {
+    if (!people || !item || verseStop || !tally?.slots) return null;
+    const label = (about: string) => (about ? scopeLabel(about, data?.board?.settings?.resourceNames, language) : t("ck.talkAll"));
+    const slotIds = new Set(rowsHere.map((row) => `${row.answerItemId}\u0000${row.question.id}`));
+    // Each person's last answer to each question of the help.
+    const last = new Map<string, CheckAnswer>();
+    for (const answer of [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) {
+      if (!slotIds.has(`${answer.itemId}\u0000${answer.questionId}`)) continue;
+      // An answer given on a text that changed since does not count, here as in the list.
+      const now = hashes?.[verseKeyOf(item)];
+      if (now && answer.textHash && answer.textHash !== now) continue;
+      const key = `${answer.itemId}\u0000${answer.questionId}\u0000${answer.by.trim().toLowerCase()}`;
+      if (answer.cleared) last.delete(key);
+      else last.set(key, answer);
+    }
+    const byPerson = new Map<string, { by: string; at: string; yes: Set<string> }>();
+    for (const answer of last.values()) {
+      if (answer.value !== "yes") continue;
+      const one = byPerson.get(answer.by.trim().toLowerCase()) ?? { by: answer.by, at: answer.at, yes: new Set<string>() };
+      one.yes.add(answer.questionId);
+      if (answer.at > one.at) one.at = answer.at;
+      byPerson.set(answer.by.trim().toLowerCase(), one);
+    }
+    const lines: TalkLine[] = [];
+    for (const one of byPerson.values()) {
+      const steps = groups.filter((row) => row.rows.every((r) => one.yes.has(r.question.id))).map((row) => label(row.about));
+      if (steps.length) lines.push({ kind: "fine", by: one.by, at: one.at, steps });
+    }
+    // What each person wrote of the help, in its conversation.
+    for (const answer of answers) if (answer.questionId === ITEM_SAYS && answer.itemId === item.id && answer.note) lines.push({ kind: "comment", by: answer.by, at: answer.at, text: answer.note });
+    // Every version of a proposal is said in it, the replaced ones too: what each adjustment changed is the conversation.
+    const made = proposals.filter((view) => view.state !== "withdrawn" && (slotIds.has(`${view.itemId}\u0000${view.questionId}`) || view.proposal.rowId === item.id));
+    for (const view of made) {
+      const chain = chainOf(proposals, view.proposal.id);
+      lines.push({ kind: "proposal", at: view.at, view, version: chain.length, ...(chain.length > 1 ? { previous: chain[chain.length - 2] } : {}) });
+    }
+    // Who came to be for a version or to rather leave things as they are, when they said it: the last of each person.
+    const madeIds = new Map(made.map((view) => [view.proposal.id, view]));
+    const sides = new Map<string, { by: string; at: string; stand: "for" | "against"; id: string } | null>();
+    for (const row of [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) {
+      const view = madeIds.get(row.itemId);
+      if (!view || (row.questionId !== PROPOSAL_SAYS && row.questionId !== PROPOSAL_KEEPS)) continue;
+      if (row.questionId === PROPOSAL_SAYS && row.by.trim().toLowerCase() === view.by.trim().toLowerCase()) continue;
+      const key = `${row.itemId}\u0000${row.by.trim().toLowerCase()}`;
+      sides.set(key, row.value === "yes" ? { by: row.by, at: row.at, stand: row.questionId === PROPOSAL_SAYS ? "for" : "against", id: row.itemId } : null);
+    }
+    for (const side of sides.values()) if (side) lines.push({ kind: "stand", by: side.by, at: side.at, stand: side.stand, version: chainOf(proposals, side.id).length });
+    for (const view of made) {
+      if (!view.decidedBy) continue;
+      const row = answers.filter((one) => one.itemId === view.proposal.id && one.questionId === PROPOSAL_DECIDED && one.by === view.decidedBy).pop();
+      if (row) lines.push({ kind: "decided", by: row.by, at: row.at, apply: row.value === "yes" });
+    }
+    lines.sort((a, b) => a.at.localeCompare(b.at));
+    const open = made.filter((view) => view.state === "open").length;
+    const change = made.find((view) => view.state === "agreed" || view.state === "applied" || view.state === "sent");
+    const settledBy = made.find((view) => view.decidedBy)?.decidedBy;
+    const disputed = made.filter((view) => view.state === "open" && view.inFavour.length && view.against.length);
+    const status: TalkStatus =
+      tally.state === "ok"
+        ? { kind: "settled", ...(change ? { change: change.by } : {}), ...(settledBy ? { decidedBy: settledBy } : {}) }
+        : disputed.length
+          ? { kind: "disputed", against: [...new Set(disputed.flatMap((view) => view.against))], inFavour: [...new Set(disputed.flatMap((view) => view.inFavour))], stalled: disputed.some((view) => disputeStalled(view)) }
+          : open ? { kind: "open", proposals: open } : { kind: "counting", steps: groups.map((row) => ({ label: label(row.about), agree: Math.min(...row.rows.map((r) => tally.slots?.[r.question.id]?.yesBy.length ?? 0)) })), people };
+    return { lines, status };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people, item?.id, verseStop, tally, answers, proposals, rowsHere.length, groups.length, language]);
+
   /** The words of the first text the note in view quotes, when they are found there through the alignment. */
   const noteQuote = useMemo(() => {
     if (kind !== "notas" || !item?.quote || verseStop || !data) return "";
@@ -791,6 +1048,213 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     return alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: first?.alignments, book: data.book, chapter: item.chapter, verse: item.verse, ...(data.original ? { original: originalTokens(data.original, item.chapter, item.verse) } : {}) }).gatewayText ?? "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, item?.id, item?.quote, item?.occurrence, verseStop, data, textsKey]);
+
+  /**
+   * The other notes of the verse whose quote shares words of the original with this one, with those words as the
+   * first text says them (Abel, 26 October): read one at a time, a note about «realeza» seemed to leave «se sentaba
+   * sobre el trono» unexplained, when the note before it explains it.
+   */
+  const crossNotes = useMemo(() => {
+    if (kind !== "notas" || !item?.quote || verseStop || !data) return [];
+    const wordsOf = (quote: string) => new Set(quote.split(/[\s&]+/).map((word) => word.replace(/[\u0591-\u05AF\u05BD\u05C0\u05C3\u2060]/g, "")).filter(Boolean));
+    const mine = wordsOf(item.quote);
+    const first = data.texts[texts[0]!];
+    const verse = first?.verses[item.verse] ?? "";
+    return data.items
+      .filter((other) => other.id !== item.id && other.chapter === item.chapter && other.verse === item.verse && other.quote && [...wordsOf(other.quote)].some((word) => mine.has(word)))
+      .map((other) => ({
+        id: other.id,
+        words: verse ? (alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: other.quote!, occurrence: other.occurrence ?? 1, alignments: first?.alignments, book: data.book, chapter: other.chapter, verse: other.verse, ...(data.original ? { original: originalTokens(data.original, other.chapter, other.verse) } : {}) }).gatewayText ?? "") : "",
+      }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, item?.id, verseStop, data, textsKey]);
+
+  /**
+   * A verse the note sends to («Vea cómo tradujo este término en [1:10](../01/10.md)»), read in a sheet over it with
+   * the notes there about the same words of the original: whether the TPL says it the same way is asked of it.
+   */
+  const openLinkedVerse = useCallback(
+    (href: string, linkKind: "rc" | "relative" | "unknown") => {
+      if (linkKind !== "relative" || !item || !data) return;
+      const match = /^(?:\.\.\/0*(\d+)|\.)\/0*(\d+)\.md$/.exec(href.trim());
+      if (!match) return;
+      const chapter = match[1] ? Number(match[1]) : item.chapter;
+      const verse = Number(match[2]);
+      const wordsOf = (quote: string) => new Set(quote.split(/[\s&]+/).map((word) => word.replace(/[\u0591-\u05AF\u05BD\u05C0\u05C3\u2060]/g, "")).filter(Boolean));
+      const mine = wordsOf(item.quote ?? "");
+      const notes = (data.bookNotes ?? data.items).filter((other) => other.chapter === chapter && other.verse === verse && other.quote && [...wordsOf(other.quote)].some((word) => mine.has(word)));
+      setPeek({ chapter, verse, notes: notes.map((other) => other.id), linked: true });
+    },
+    [item, data],
+  );
+
+  /** What this person is asked of the proposal in play: in the bar, or at the end of the open conversation. */
+  const turnAsk =
+    disputeHere && myStand !== "none" && !decideHere
+      ? myStand === "against"
+        ? t("ck.disputeAgainst")
+        : t(disputeHere.against.length > 1 ? "ck.disputeForMany" : "ck.disputeFor").replace("{who}", disputeHere.against.map((who) => `@${who}`).join(", "))
+      : openHere.length === 1 && !decideHere
+        ? agreedBefore(openHere[0]!)
+          ? t("ck.staleAsk").replace("{n}", String(chainOf(proposals, openHere[0]!.proposal.id).length))
+          : t("ck.proposalAsk").replace("{who}", `@${openHere[0]!.by}`)
+        : undefined;
+  /**
+   * The options for the help in view, decided together: each proposal made for it, with its versions, and what each
+   * person chose; the messages said of each option (an old one, of none, goes to the option in play when it was said).
+   */
+  const optionsHere = useMemo(() => {
+    if (!people || !item || verseStop) return null;
+    const slotIds = new Set(rowsHere.map((row) => `${row.answerItemId}\u0000${row.question.id}`));
+    const here = proposals.filter((view) => view.state !== "withdrawn" && (slotIds.has(`${view.itemId}\u0000${view.questionId}`) || view.proposal.rowId === item.id));
+    const heads = here.filter((view) => view.state !== "replaced");
+    if (!heads.length) return null;
+    const options: HelpOption[] = heads.map((head) => ({ id: head.option ?? head.proposal.id, versions: chainOf(proposals, head.proposal.id).filter((view) => view.state !== "withdrawn") }));
+    const won = heads.find((view) => view.state === "agreed" || view.state === "applied" || view.state === "sent");
+    const winner = won ? (won.option ?? won.proposal.id) : heads.every((view) => view.state === "rejected") ? KEEP_OPTION : undefined;
+    const firsts = options.map((option) => ({ id: option.id, at: option.versions[0]?.at ?? "" }));
+    const messages: OptionMessage[] = answers
+      .filter((row) => row.questionId === ITEM_SAYS && row.itemId === item.id && row.note)
+      .map((row) => ({ by: row.by, at: row.at, text: row.note!, about: row.about ?? ([...firsts].filter((one) => one.at <= row.at).sort((a, b) => b.at.localeCompare(a.at))[0]?.id ?? KEEP_OPTION) }));
+    return { heads, options, choices: heads.find((view) => view.choices)?.choices ?? {}, winner, decidedBy: heads.find((view) => view.decidedBy)?.decidedBy, stalled: heads.some((view) => disputeStalled(view)), messages };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people, item?.id, verseStop, proposals, answers, rowsHere.length]);
+  /** This person's choice among the options, and whether the one they chose was edited since. */
+  const myChoice = optionsHere?.choices[me.trim().toLowerCase()];
+  const myStale = Boolean(optionsHere?.heads.some((view) => view.staleFor?.includes(me.trim().toLowerCase())));
+  /**
+   * In a disagreement, whether the last thing said of the options (a choice, a version, a message) was said by
+   * somebody who chose another one: then this person has something to answer.
+   */
+  const lastWordOther = (() => {
+    if (!optionsHere || !item) return false;
+    const ids = new Set(optionsHere.options.flatMap((option) => option.versions.map((view) => view.proposal.id)));
+    const last = answers
+      .filter((row) => ids.has(row.itemId) || (row.proposal && ids.has(row.proposal.id)) || (row.itemId === item.id && row.questionId === ITEM_SAYS))
+      .reduce<CheckAnswer | undefined>((late, row) => (!late || Date.parse(row.at) >= Date.parse(late.at) ? row : late), undefined);
+    const theirs = last ? optionsHere.choices[last.by.trim().toLowerCase()] : undefined;
+    return Boolean(last && !isMe(last.by) && theirs !== myChoice);
+  })();
+  /** Chooses an option for the help in view: one of the proposals, or leaving it as it is. */
+  const chooseOption = (option: string) => {
+    if (!optionsHere) return;
+    const now = new Date().toISOString();
+    if (option === KEEP_OPTION) return save([proposalKeeping(optionsHere.heads[0]!.proposal.id, me, now, true)], t("ck.saved"));
+    const head = optionsHere.heads.find((view) => (view.option ?? view.proposal.id) === option);
+    if (head) return save([proposalSaying(head.proposal.id, me, now, true)], t("ck.saved"));
+  };
+  /** Another option, from the help as it is, answering what the others answer. */
+  const proposeOption = () => {
+    const head = optionsHere?.heads[0];
+    if (!head) return;
+    const rows = answers.filter((row) => row.outcome === "proposal" && row.proposal?.id === head.proposal.id);
+    const [first, ...rest] = rows.length ? rows : [{ itemId: head.itemId, questionId: head.questionId }];
+    setProposing({ answerItemId: first!.itemId, questionId: first!.questionId, reason: "", others: rest.map((row) => ({ answerItemId: row.itemId, questionId: row.questionId })) });
+  };
+  /** Whoever coordinates the team settles it: for an option, or for leaving the help as it is. */
+  const decideOption = (option: string) => {
+    const head = optionsHere?.heads.find((view) => (view.option ?? view.proposal.id) === option) ?? optionsHere?.heads[0];
+    if (head) void decide(head.proposal.id, option !== KEEP_OPTION);
+  };
+  /** Somebody started the conversation of the help in view: said a step is right, or proposed a change. */
+  // A comment starts it too: writing to the team is a way to take part (26 October).
+  const talkStarted = Boolean(talk?.lines.length);
+  /**
+   * A proposal in conversation on what is on screen, with nothing else on it to answer first: the bar says whether
+   * there is something new for this person in the conversation, and goes on to the next help.
+   */
+  /** Something was said that this person has not answered: a proposal, a version of it, or the other side of a dispute. */
+  const news = optionsHere
+    ? !optionsHere.winner && (!myChoice || myStale || (optionsHere.heads.some((view) => view.disputedSince) && lastWordOther))
+    : openHere.length > 0 || Boolean(disputeHere && myStand !== "none" && tally?.turn === "mine");
+  // With nothing new, what else is left on screen to answer (a question no proposal is about) is asked first.
+  const convoHere = Boolean(people && (talkStarted || optionsHere) && (inPlay.length || (optionsHere && !optionsHere.winner)) && !decideHere && !choosing && (news || pendingHere.every(({ question }) => (tally?.slots?.[question.id]?.open.length ?? 0) > 0)));
+  const restOfList = [...checkItems.slice(position + 1), ...checkItems.slice(0, position)];
+  const canGoOn = Boolean(nextOf(restOfList));
+  const goOn = () => {
+    setAsked(null);
+    const found = nextOf(restOfList);
+    if (found) jump(found.id);
+  };
+  /**
+   * What the bar says there is, said as if it were heard for the first time: the person may not know there is a
+   * proposal, even having taken part in it before (Abel, 21 October). What is asked is read in the conversation.
+   */
+  const barNews =
+    optionsHere && !myChoice
+      ? optionsHere.options.length > 1
+        ? t("ck.barOptions").replace("{n}", String(optionsHere.options.length)).replace("{what}", what)
+        : t("ck.barProposal").replace("{who}", `@${optionsHere.options[0]!.versions[0]!.by}`).replace("{what}", what)
+      : optionsHere && myStale
+        ? t("ck.barStale").replace("{what}", what)
+        : optionsHere
+          ? t("ck.barNews").replace("{what}", what)
+          : openHere.length === 1 && !agreedBefore(openHere[0]!)
+      ? t("ck.barProposal").replace("{who}", `@${openHere[0]!.by}`).replace("{what}", what)
+      : openHere.length === 1
+        ? t("ck.barStale").replace("{what}", what)
+        : t("ck.barNews").replace("{what}", what);
+  /** Into the conversation, at what is asked of this person in it. */
+  const joinTalk = () => {
+    window.dispatchEvent(new Event(OPEN_TALK));
+    window.setTimeout(() => (document.getElementById("ck-opts") ?? document.querySelector(".ck-turn") ?? document.getElementById("ck-talk-box"))?.scrollIntoView({ block: "start" }), 60);
+  };
+  /**
+   * Only once somebody started it: it is the continuation of what they began (21 October). The other teams' messages
+   * about the help are read in it, at its end: two places that looked like a conversation were one too many.
+   */
+  const talkView =
+    optionsHere && item ? (
+      <NoteOptions
+        key={item.id}
+        title={t("ck.optsTitle").replace("{what}", what)}
+        options={optionsHere.options}
+        choices={optionsHere.choices}
+        messages={optionsHere.messages}
+        me={me}
+        people={people}
+        original={item.body}
+        saving={saving}
+        closed={stepDone}
+        winner={optionsHere.winner}
+        decidedBy={optionsHere.decidedBy}
+        stalled={optionsHere.stalled}
+        canDecide={optionsHere.stalled && decides(me)}
+        onChoose={(option) => void chooseOption(option)}
+        onPropose={proposeOption}
+        onEdit={adjustProposal}
+        onWithdraw={(id) => void withdraw(id)}
+        onSay={(text, about) => save([itemSaying(item.id, me, new Date().toISOString(), text, about)], t("ck.talkSent"))}
+        onDecide={decideOption}
+      >
+        {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
+          <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
+        ) : null}
+      </NoteOptions>
+    ) : talk && talkStarted && item ? (
+      <NoteConversation
+        key={item.id}
+        lines={talk.lines}
+        status={talk.status}
+        me={me}
+        people={people}
+        original={item.body}
+        saving={saving}
+        onFor={(id) => void voteFor(id)}
+        onKeep={(id) => void voteKeep(id)}
+        onWithdraw={(id) => void withdraw(id)}
+        onAdjust={stepDone ? undefined : adjustProposal}
+        ask={!convoHere && openHere.length !== 1 && !disputeHere}
+        title={t("ck.playTitle").replace("{what}", what)}
+        turnAsk={turnAsk}
+        onOpenChange={setTalkOpen}
+        onSay={stepDone ? undefined : (text) => save([itemSaying(item.id, me, new Date().toISOString(), text)], t("ck.talkSent"))}
+      >
+        {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
+          <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
+        ) : null}
+      </NoteConversation>
+    ) : null;
 
   /** The helps of the verse whose stop is in view, in their order. */
   const verseHelps = verseStop && data ? data.items.filter((row) => verseKeyOf(row) === verseStop.verseKey) : [];
@@ -804,7 +1268,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         {kind !== "palabras" ? item.title : titlesRead ? termLabel(item.title, termTitles) : "\u00a0"}
       </h2>
     ) : null}
-    {termVersions.length ? (
+    {!people && termVersions.length ? (
       <section className="ck-versions" aria-label={t(termVersions.length > 1 ? "ck.versionsLead" : "ck.versionOne").replace("{n}", String(termVersions.length))}>
         <p className="ck-versions__lead">{t(termVersions.length > 1 ? "ck.versionsLead" : "ck.versionOne").replace("{n}", String(termVersions.length))}</p>
         {termVersions.map((view) => (
@@ -821,12 +1285,12 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         ))}
       </section>
     ) : null}
-    {helpVersions.length > 1 ? (
+    {!people && helpVersions.length > 1 ? (
       // Two people proposed a version of it (a counterproposal answers a proposal): the help as it is, and each
       // version with whose it is, to be chosen in «Acuerdo del equipo». Only the latest was read here, as «Con el
       // cambio propuesto» and with no name, and the version it answered was nowhere on this screen (20 October).
       <>
-        <HelpMarkdownView className="af-note af-note--md" content={item.body} />
+        <HelpMarkdownView className="af-note af-note--md" content={item.body} onLink={openLinkedVerse} />
         <section className="ck-versions" aria-label={t("ck.versionsLead").replace("{n}", String(helpVersions.length))}>
           <p className="ck-versions__lead">{t("ck.versionsLead").replace("{n}", String(helpVersions.length))}</p>
           {helpVersions.map((view) => (
@@ -836,7 +1300,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 <span className="ck-version__text">
                   {readable(view.proposal.after ?? "")}
                   <span className="ck-proposed__split">
-                    <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(view.proposal.split.after)}
+                    <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(view.proposal.split.after)}{view.proposal.split.more?.map((one, index) => (<span key={index}> <b className="ck-proposed__label">{t("ag.splitMoreNew")}</b> {readable(one.after)}</span>))}
                   </span>
                 </span>
               ) : (
@@ -848,7 +1312,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           ))}
         </section>
       </>
-    ) : proposedHelp ? (
+    ) : !people && proposedHelp ? (
       // With a change proposed for it, the help is read as it would be, what goes out struck and what comes
       // in marked: the steps that follow check that version. It was shown under the help as well, a third
       // time counting the one under its question, and the help no longer fitted over its questions.
@@ -860,7 +1324,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           <>
             {readable(proposedHelp.proposal.after ?? "")}
             <span className="ck-proposed__split">
-              <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(proposedHelp.proposal.split.after)}
+              <b className="ck-proposed__label">{t("ag.splitNew")}</b> {readable(proposedHelp.proposal.split.after)}{proposedHelp.proposal.split.more?.map((one, index) => (<span key={index}> <b className="ck-proposed__label">{t("ag.splitMoreNew")}</b> {readable(one.after)}</span>))}
             </span>
           </>
         ) : (
@@ -870,7 +1334,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         )}
       </p>
     ) : null}
-    {proposedHelp && !stepDone ? (
+    {!people && proposedHelp && !stepDone ? (
       // Another change once one is proposed: it was there only as «Hay algo que cambiar», asking again which
       // question failed, and nobody looked for it there (20 October). It is made over the change proposed, and
       // takes its place: two versions of one note cannot both be written, the second would undo the first.
@@ -878,14 +1342,107 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         <Pencil size={16} aria-hidden /> {t(isMine(proposedHelp.by) ? "ck.changeMore" : "ck.otherVersion")}
       </button>
     ) : null}
-    {!proposedHelp && item.body ? (
+    {/* Decided together, the help is always read as it is, untouched: what is proposed is read against it below. */}
+    {(people || !proposedHelp) && item.body ? (
       <>
         {kind === "preguntas" ? <p className="af-lbl">{t("ck.answerLbl")}</p> : null}
-        <HelpMarkdownView className={kind === "preguntas" ? "af-note af-note--md ck-answer" : "af-note af-note--md"} content={item.body} />
+        <HelpMarkdownView className={kind === "preguntas" ? "af-note af-note--md ck-answer" : "af-note af-note--md"} content={item.body} onLink={openLinkedVerse} />
       </>
     ) : null}
     </>
   ) : null;
+
+  /** The texts after the first one are read under the note, when there is a note: TPL, the note, TPS. */
+  const textsAfter = Boolean(item) && !verseStop && !aboutArticle && textsShown.length > 1;
+  /** One text of the passage, its quote marked, and what can be done with it. */
+  const textRow = (resource: ChecklistText) => {
+    if (!data || !item) return null;
+              const text = data.texts[resource];
+              // A question about verses 22 and 23 is checked against both: with the first alone, «¿se puede
+              // responder con los textos?» had no honest answer.
+              const verse = item.verseTo
+                ? Array.from({ length: item.verseTo - item.verse + 1 }, (_, i) => text?.verses[item.verse + i] ?? "").filter(Boolean).join(" ")
+                : (text?.verses[item.verse] ?? "");
+              // The item's quote is in the original language: its words in this text come from the alignment.
+              const hit = item.quote && verse ? alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: item.chapter, verse: item.verse, ...(data.original ? { original: originalTokens(data.original, item.chapter, item.verse) } : {}) }) : null;
+              return (
+                <div key={resource} className="af-row">
+                  {/* Named as the draft is in afinación, «TPL» in its tag. */}
+                  {/* The verse it is, in its label: with the note's, which verse each card is of is read at once. */}
+                  <span className="af-res ck-res">
+                    {textLabel(resource)} · {bookLabel(data.book, language)} {item.chapter}:{item.verse}
+                    {item.verseTo ? `–${item.verseTo}` : ""}
+                  </span>
+                  {verse ? (
+                    <Verse
+                      text={verse}
+                      marked={verseStop ? [] : canPick(resource) && picking ? picking : hit?.tokenIndices ?? []}
+                      // A word goes with every word tied to the same words of the original: a quote is in the
+                      // original, and «los» of «en los días de» alone is no quote (20 October).
+                      onToggle={!verseStop && canPick(resource) && picking ? (index) => setPicking(toggleQuoteWord(picking, index, pickVerse?.units ?? [])) : undefined}
+                      loose={!verseStop && canPick(resource) && picking && pickVerse?.units.some(Boolean) ? (index) => !pickVerse.units[index] : undefined}
+                    />
+                  ) : (
+                    <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>
+                  )}
+                  {/* In a text that says the meaning in other words (the TPS), what is marked comes from the alignment and
+                      may be a part of what changed (26 October: «gobernando» was aligned to «se sentaba»). */}
+                  {!verseStop && verse && hit?.tokenIndices?.length && texts.indexOf(resource) > 0 ? <span className="af-hint ck-mark-hint">{t("ck.markHint")}</span> : null}
+                  {/* What the note quotes is seen highlighted: said in words only when it is not found in the text. */}
+                  {!verseStop && item.quote && verse && !hit?.gatewayText ? (
+                    <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
+                      {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", textLabel(resource))}
+                    </span>
+                  ) : null}
+                  {verse && !picking ? (
+                    // What else can be done with the text, in one row at its foot, as in afinación.
+                    <span className="af-draft__acts ck-expand">
+                      {canPick(resource) && !stepDone && !verseStop && verseIsAligned(data.texts[resource]?.alignments, item.chapter, item.verse) ? (
+                        // A quiet link at the foot of the text: as a button it read as one of the answers.
+                        <button type="button" className="af-link ck-quote-fix" onClick={() => setPicking(wholeQuoteWords(hit?.tokenIndices ?? [], pickVerse?.units ?? []))}>
+                          {t("ck.quoteFix")}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="af-link"
+                        aria-label={t("ck.expandAria")}
+                        onClick={() => {
+                          setPairShown(textsShown.filter((id) => data.texts[id]));
+                          setChapterOpen(true);
+                        }}
+                      >
+                        <Maximize2 size={14} aria-hidden /> {t("af.expand")}
+                      </button>
+                    </span>
+                  ) : null}
+                  {verseStop ? null : canPick(resource) && verse && !stepDone && !verseIsAligned(data.texts[resource]?.alignments, item.chapter, item.verse) ? (
+                    <span className="af-hint">{t("ck.quoteNeedsAlignment")}</span>
+                  ) : canPick(resource) && verse && !stepDone ? (
+                    picking ? (
+                      <span className="af-buttons">
+                        <span className="af-hint">{t("ck.quotePickHint")}</span>
+                        {/* What would be saved, in the original, as it is marked. */}
+                        {pickedQuote ? (
+                          <span className="ck-quote-preview">
+                            {t("ck.quotePreview")}{" "}
+                            <span className="ck-quote-preview__orig" lang={/[\u0590-\u05FF]/.test(pickedQuote.quote) ? "hbo" : "grc"} dir="auto">
+                              {pickedQuote.quote}
+                            </span>
+                          </span>
+                        ) : null}
+                        <Button type="button" size="sm" disabled={closing || !picking.length} onClick={() => void saveQuote(resource)}>
+                          {t("ck.quoteSave")}
+                        </Button>
+                        <Button type="button" size="sm" variant="secondary" disabled={closing} onClick={() => setPicking(null)}>
+                          {t("af.cancel")}
+                        </Button>
+                      </span>
+                    ) : null
+                  ) : null}
+                </div>
+              );
+  };
 
   return (
     <div className="af ck">
@@ -1017,7 +1574,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             // found after the texts they choose (19 October). Numbered and joined by a line; each says how it stands.
             <ol className="ck-steps ck-steps--top" aria-label={t("ck.stepsAria")}>
               {groups.map((row, index) => {
-                const said = row.rows.map(({ question }) => markOf(tally?.answers[question.id]));
+                const said = row.rows.map(({ question }) => markHere(question.id));
                 // A «no» with nothing done about it shows at once; a step is ticked, or marked as bringing a
                 // change, once all of it is answered.
                 const state: Mark = said.includes("no") ? "no" : said.includes("wait") ? "wait" : said.includes("none") ? "none" : said.includes("change") ? "change" : "yes";
@@ -1034,36 +1591,104 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             </ol>
           ) : null}
           <h2 className="af-heading ck-heading">{heading}</h2>
+          <p className="ck-howto">{howTo}</p>
           {/* What is checked in this step, under its heading and before what it is checked on: it is what the step is
               for, and at the foot of the card, in small grey lines, it read as something secondary (20 October). It
               is answered once, at the foot of the screen; what was said of a line is shown on it. */}
-          {/* Open while its questions are new (the first notes of a step), and whenever something was said of one of
+          {/* The text first, its quote marked; in the article's step none: the box stayed, empty, over the note (20 October). */}
+          {aboutArticle ? null : (
+          <section className="af-dock" aria-label={t("ck.textsAria")}>
+            {(textsAfter ? textsShown.slice(0, 1) : textsShown).map(textRow)}
+          </section>
+          )}
+          {!verseStop && !aboutArticle ? (
+            // The help, under the text it is checked against (Abel, 21 October: the text first, then the note and what
+            // the team said of it, then what to check, over the answer).
+            <section className="af-card ck-first" aria-label={t("ck.itemAria")}>
+              {/* What the note is about, as the first text says it, over the note in its card (Abel, 21 October): read
+                  first, it says what the note explains before the note is read. */}
+              {noteQuote ? (
+                <p className="ck-note-quote">
+                  <span className="ck-chip">{t("ck.noteChip")} · {bookLabel(data.book, language)} {item.chapter}:{item.verse}</span> <span className="ck-note-quote__words">«{noteQuote}»</span>
+                </p>
+              ) : null}
+              {helpRead}
+              {/* Several notes may share words of the quote (Abel, 26 October): one line for them all, read one at a time. */}
+              {crossNotes.length ? (
+                <button type="button" className="af-link ck-cross" onClick={() => setPeek({ chapter: item.chapter, verse: item.verse, notes: crossNotes.map((other) => other.id) })}>
+                  {crossNotes.length === 1 ? t("ck.crossNote").replace("{words}", crossNotes[0]!.words || "…") : t("ck.crossNotes").replace("{n}", String(crossNotes.length))}
+                </button>
+              ) : null}
+            </section>
+          ) : null}
+          {/* The TPS after the note (Abel, 26 October): the note is what leads from the TPL to the TPS, so it is read
+              between them. */}
+          {textsAfter ? (
+            <section className="af-dock ck-dock-after" aria-label={t("ck.textsAria")}>
+              {textsShown.slice(1).map(textRow)}
+            </section>
+          ) : null}
+          {/* Under the note and over the answer: what is answered at the foot, read just before it (21 October).
+              Open while its questions are new (the first notes of a step), and whenever something was said of one of
               them here; folded to one line after: the same three questions for 141 notes pushed the note under the
               bar of a phone, and «Sí, seguir» could be touched without the note seen (20 October). */}
-          <details key={`${item.id}|${group?.about ?? ""}`} className="ck-guide" open={guideOpen}>
-            <summary className="ck-guide__lead" id="ck-guide-title">
-              <span>{t("ck.lookAt")}</span>
-              <span className="ck-guide__n">{t("ck.lookAtN").replace("{n}", String(rowsShown.length))}</span>
-              <ChevronDown size={18} aria-hidden className="ck-guide__chev" />
-            </summary>
+          {/* Always open (Abel, 26 October): it is ticked point by point before «Sí, cumple», not read if wanted. */}
+          <section key={`${item.id}|${group?.about ?? ""}`} className="ck-guide" aria-labelledby="ck-guide-title">
+            <h3 className="ck-guide__lead" id="ck-guide-title">
+              {t("ck.lookAt")}
+            </h3>
         <ul className="ck-checks ck-checks--guide" ref={checksRef}>
           {rowsShown.map(({ question }) => {
             const answer = tally?.answers[question.id];
             const proposal = answer?.outcome === "proposal" ? proposals.find((view) => view.proposal.id === answer.proposal?.id) : undefined;
-            const name = localized(question.text, question.texts, language);
+            const name = questionText(question, language, ctx?.lang);
             return (
-              <li key={question.id} data-state={markOf(answer)}>
+              <li key={question.id} data-state={markHere(question.id)}>
+                {pendingHere.some((row) => row.question.id === question.id) && !stepDone ? (
+                  // Still to be answered: «sí» or «no» beside it (26 October). A list of the same questions to say
+                  // which failed came after it, and read as the same thing twice.
+                  <div className="ck-check ck-check--read ck-check--tick" data-mark={pointMark(question.id)}>
+                    <span className="ck-check__mark" aria-hidden="true">
+                      {pointMark(question.id) === "yes" ? <Check size={16} /> : pointMark(question.id) === "no" ? <X size={16} /> : null}
+                    </span>
+                    <span className="ck-check__text">
+                      {name}
+                      {question.per === "verse" && !verseStop ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
+                      {people && tally?.slots?.[question.id]?.yesBy.length ? (
+                        <span className="ck-said">
+                          <Check size={13} aria-hidden /> {tally.slots[question.id]!.yesBy.map((who) => (isMe(who) ? t("ck.talkYou") : `@${who}`)).join(", ")} · {Math.min(tally.slots[question.id]!.yesBy.length, people)}/{people}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="ck-yn" role="group" aria-label={name}>
+                      <button type="button" className="ck-yn__b" data-v="yes" aria-pressed={pointMark(question.id) === "yes"} onClick={() => setMark(question.id, "yes")}>
+                        {t("ck.markYes")}
+                      </button>
+                      <button type="button" className="ck-yn__b" data-v="no" aria-pressed={pointMark(question.id) === "no"} onClick={() => setMark(question.id, "no")}>
+                        {t("ck.markNo")}
+                      </button>
+                    </span>
+                  </div>
+                ) : (
                 <span className="ck-check ck-check--read">
                   <span className="ck-check__mark" aria-hidden="true">
-                    {markOf(answer) === "yes" ? <Check size={16} /> : markOf(answer) === "no" ? <X size={16} /> : markOf(answer) === "change" ? <Pencil size={14} /> : <Circle size={6} />}
+                    {markHere(question.id) === "yes" ? <Check size={16} /> : markHere(question.id) === "no" ? <X size={16} /> : markHere(question.id) === "change" ? <Pencil size={14} /> : markHere(question.id) === "wait" ? <Clock3 size={14} /> : <Circle size={6} />}
                   </span>
                   <span className="ck-check__text">
                     {name}
                     {question.per === "verse" && !verseStop ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
+                    {/* Who already said it is right, decided together: the line is theirs too. */}
+                    {people && tally?.slots?.[question.id]?.yesBy.length ? (
+                      <span className="ck-said">
+                        <Check size={13} aria-hidden /> {tally.slots[question.id]!.yesBy.map((who) => (isMe(who) ? t("ck.talkYou") : `@${who}`)).join(", ")} · {Math.min(tally.slots[question.id]!.yesBy.length, people)}/{people}
+                      </span>
+                    ) : null}
                   </span>
-                  <span className="sr-only">{t(markOf(answer) === "yes" ? "ck.yes" : markOf(answer) === "change" ? "ck.withChange" : markOf(answer) === "no" ? "ck.no" : "ck.notYet")}</span>
+                  <span className="sr-only">{t(markHere(question.id) === "yes" ? "ck.yes" : markHere(question.id) === "change" ? "ck.withChange" : markHere(question.id) === "no" ? "ck.no" : markHere(question.id) === "wait" ? "ck.waitingShort" : "ck.notYet")}</span>
                 </span>
-                {answer?.value === "no" ? (
+                )}
+                {/* Decided together, what was proposed is read in the conversation: here only what waits for somebody. */}
+                {answer?.value === "no" && (!people || answer.outcome === "consult") ? (
                   <div className="ck-question__outcome" data-outcome={answer.outcome ?? "none"}>
                     {proposal ? (
                       <>
@@ -1103,111 +1728,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             );
           })}
         </ul>
-          </details>
-
-          {!verseStop && !aboutArticle ? (
-            // The help first, under the heading: what is checked, and then what it is checked against. A question and
-            // its answer were (19 October); a note was under its texts, and on a phone under the bar (20 October).
-            <section className="af-card ck-first" aria-label={t("ck.itemAria")}>
-              {/* What the note is about, as the first text says it, over the note in its card (Abel, 21 October): read
-                  first, it says what the note explains before the note is read. */}
-              {noteQuote ? (
-                <p className="ck-note-quote">
-                  <span className="ck-chip">{t("ck.noteChip")} · {bookLabel(data.book, language)} {item.chapter}:{item.verse}</span> <span className="ck-note-quote__words">«{noteQuote}»</span>
-                </p>
-              ) : null}
-              {helpRead}
-            </section>
-          ) : null}
-          {/* In the article's step its texts are hidden: the box stayed, empty, over the note (20 October). */}
-          {aboutArticle ? null : (
-          <section className="af-dock" aria-label={t("ck.textsAria")}>
-            {textsShown.map((resource) => {
-              const text = data.texts[resource];
-              // A question about verses 22 and 23 is checked against both: with the first alone, «¿se puede
-              // responder con los textos?» had no honest answer.
-              const verse = item.verseTo
-                ? Array.from({ length: item.verseTo - item.verse + 1 }, (_, i) => text?.verses[item.verse + i] ?? "").filter(Boolean).join(" ")
-                : (text?.verses[item.verse] ?? "");
-              // The item's quote is in the original language: its words in this text come from the alignment.
-              const hit = item.quote && verse ? alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: item.quote, occurrence: item.occurrence ?? 1, alignments: text?.alignments, book: data.book, chapter: item.chapter, verse: item.verse, ...(data.original ? { original: originalTokens(data.original, item.chapter, item.verse) } : {}) }) : null;
-              return (
-                <div key={resource} className="af-row">
-                  {/* Named as the draft is in afinación, «TPL» in its tag. */}
-                  {/* The verse it is, in its label: with the note's, which verse each card is of is read at once. */}
-                  <span className="af-res ck-res">
-                    {textLabel(resource)} · {bookLabel(data.book, language)} {item.chapter}:{item.verse}
-                    {item.verseTo ? `–${item.verseTo}` : ""}
-                  </span>
-                  {verse ? (
-                    <Verse
-                      text={verse}
-                      marked={verseStop ? [] : canPick(resource) && picking ? picking : hit?.tokenIndices ?? []}
-                      // A word goes with every word tied to the same words of the original: a quote is in the
-                      // original, and «los» of «en los días de» alone is no quote (20 October).
-                      onToggle={!verseStop && canPick(resource) && picking ? (index) => setPicking(toggleQuoteWord(picking, index, pickVerse?.units ?? [])) : undefined}
-                      loose={!verseStop && canPick(resource) && picking && pickVerse?.units.some(Boolean) ? (index) => !pickVerse.units[index] : undefined}
-                    />
-                  ) : (
-                    <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>
-                  )}
-                  {/* What the note quotes is seen highlighted: said in words only when it is not found in the text. */}
-                  {!verseStop && item.quote && verse && !hit?.gatewayText ? (
-                    <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
-                      {hit?.gatewayText ? t("ck.quoteIs").replace("{quote}", hit.gatewayText) : t("ck.quoteMissing").replace("{text}", textLabel(resource))}
-                    </span>
-                  ) : null}
-                  {verse && !picking ? (
-                    // What else can be done with the text, in one row at its foot, as in afinación.
-                    <span className="af-draft__acts ck-expand">
-                      {canPick(resource) && !stepDone && !verseStop && verseIsAligned(data.texts[resource]?.alignments, item.chapter, item.verse) ? (
-                        // A quiet link at the foot of the text: as a button it read as one of the answers.
-                        <button type="button" className="af-link ck-quote-fix" onClick={() => setPicking(wholeQuoteWords(hit?.tokenIndices ?? [], pickVerse?.units ?? []))}>
-                          {t("ck.quoteFix")}
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="af-link"
-                        aria-label={t("ck.expandAria")}
-                        onClick={() => {
-                          setPairShown(textsShown.filter((id) => data.texts[id]));
-                          setChapterOpen(true);
-                        }}
-                      >
-                        <Maximize2 size={14} aria-hidden /> {t("af.expand")}
-                      </button>
-                    </span>
-                  ) : null}
-                  {verseStop ? null : canPick(resource) && verse && !stepDone && !verseIsAligned(data.texts[resource]?.alignments, item.chapter, item.verse) ? (
-                    <span className="af-hint">{t("ck.quoteNeedsAlignment")}</span>
-                  ) : canPick(resource) && verse && !stepDone ? (
-                    picking ? (
-                      <span className="af-buttons">
-                        <span className="af-hint">{t("ck.quotePickHint")}</span>
-                        {/* What would be saved, in the original, as it is marked. */}
-                        {pickedQuote ? (
-                          <span className="ck-quote-preview">
-                            {t("ck.quotePreview")}{" "}
-                            <span className="ck-quote-preview__orig" lang={/[\u0590-\u05FF]/.test(pickedQuote.quote) ? "hbo" : "grc"} dir="auto">
-                              {pickedQuote.quote}
-                            </span>
-                          </span>
-                        ) : null}
-                        <Button type="button" size="sm" disabled={closing || !picking.length} onClick={() => void saveQuote(resource)}>
-                          {t("ck.quoteSave")}
-                        </Button>
-                        <Button type="button" size="sm" variant="secondary" disabled={closing} onClick={() => setPicking(null)}>
-                          {t("af.cancel")}
-                        </Button>
-                      </span>
-                    ) : null
-                  ) : null}
-                </div>
-              );
-            })}
           </section>
-          )}
+          {/* What the team said, its own card after what to check (Abel, 21 October): the text, the note, what is
+              checked of it, and then what the others answered, over the answer this person gives. */}
+          {!verseStop && !aboutArticle ? talkView : null}
+
 
           <section className="af-card" aria-label={t("ck.itemAria")}>
             {verseStop ? (
@@ -1248,10 +1773,20 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             {aboutArticle && !articleInSource && articlePath && articleSeen && academy[articlePath]?.text ? (
               // Read and checked already in this task (whether it is published is asked once per article): a line, and
               // the article a touch away. It was read whole again for each of the sixteen notes that link it.
-              <details className="ck-read ck-article-seen">
-                <summary>{t("ck.articleSeen").replace("{title}", articleTitle)}</summary>
-                <HelpMarkdownView className="ur-md ur-article ck-article" content={academy[articlePath]!.text!} />
-              </details>
+              <section className="ck-article-card" aria-label={articleTitle}>
+                <p className="ck-article-card__head">
+                  <span className="ck-chip">{t("ck.articleChip")}</span> <b>{articleTitle}</b>
+                </p>
+                <HelpMarkdownView className="ur-md ck-article-card__lead" content={articleLead(academy[articlePath]!.text!)} />
+                <Button type="button" variant="outline" size="lg" className="ck-article-card__open" onClick={() => setArticleOpen(true)}>
+                  <BookOpen size={16} aria-hidden /> {t("ck.articleReadAll")}
+                </Button>
+                <p className="ck-article-card__who">
+                  <Check size={14} aria-hidden />{" "}
+                  {articleBy.some(isMe) ? t("ck.articleYouChecked") : t("ck.articleOthersChecked").replace("{who}", articleBy.map((one) => `@${one}`).join(", "))}
+                  {people ? ` · ${Math.min(articleBy.length, people)}/${people}` : ""}
+                </p>
+              </section>
             ) : aboutArticle && !articleInSource && articlePath ? (
               // What is checked in this step, read as in afinación (20 October): named «Artículo», «Borrador» while it
               // is one, the source's beside it to compare, its title, and all of it at the size of reading. It was a
@@ -1300,7 +1835,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                 {t(`ck.article.${academy[articlePath]!.where}` as MessageKey)}
               </p>
             ) : null}
-            {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
+            {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle && !talkStarted ? (
               // What the teams before this one said about this very help: folded under one line with how many, so
               // the help and what is checked of it keep the attention (19 October). Nothing said, no line.
               <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
@@ -1314,16 +1849,21 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             )}
           </section>
 
+          {/* The conversation of the article's step, after the article it is about. */}
+          {aboutArticle ? talkView : null}
+
           {/* One question and its answer, at the foot of the screen: «Sí, seguir» says every line of the step is
               right; «Hay algo que cambiar» asks which, and opens the proposal for it. A note that is missing, or
               something else, is one of the choices: they were a button and a «Proponer un cambio» of their own. */}
           {stepDone ? null : (
-            <div className="ck-go" data-on data-choosing={choosing || undefined}>
+            <div className="ck-go" data-on data-choosing={choosing || undefined} data-reply={people ? "true" : undefined}>
+              {/* Decided together, the answer is this person's turn in the conversation of the team (26 October). */}
+              {people && !choosing ? <p className="ck-go__lead">{t("ck.yourReply")}</p> : null}
               {choosing ? (
                 <div className="ck-choose" role="group" aria-labelledby="ck-choose-q">
                   <p id="ck-choose-q" className="ck-ask">{t("ck.whatFails")}</p>
                   <p className="ck-choose__hint">{t("ck.markAll")}</p>
-                  {[...rowsShown.map(({ question }) => ({ id: question.id, name: localized(question.text, question.texts, language) })), { id: PROPOSAL_FREE, name: t("ck.otherThing") }].map((row) => (
+                  {[...rowsShown.map(({ question }) => ({ id: question.id, name: questionText(question, language, ctx?.lang) })), { id: PROPOSAL_FREE, name: t("ck.otherThing") }].map((row) => (
                     <label key={row.id} className="ck-choose__one ck-choose__mark">
                       <input
                         type="checkbox"
@@ -1334,7 +1874,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                     </label>
                   ))}
                   <div className="ck-choose__go">
-                    <Button type="button" size="lg" disabled={saving || !failing.length} onClick={proposeFailing}>
+                    <Button type="button" size="lg" disabled={saving || !failing.length} onClick={() => proposeFailing()}>
                       {t("ck.proposeChange")}
                     </Button>
                     <Button type="button" size="lg" variant="ghost" onClick={() => setChoosing(false)}>
@@ -1362,33 +1902,286 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                   </div>
                 </>
                 ) : (
+                decideHere ? (
+                  // Days without an agreement: whoever coordinates the team settles it, having read the conversation.
+                  <>
+                    <p className="ck-ask">{t("ck.decideAsk").replace("{n}", String(DISPUTE_DAYS))}</p>
+                    <div className="ck-go__buttons">
+                      <Button type="button" size="lg" disabled={saving} onClick={() => void decide(decideHere.proposal.id, true)}>
+                        <Check size={16} aria-hidden /> {t("ck.decideApply")}
+                      </Button>
+                      <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void decide(decideHere.proposal.id, false)}>
+                        {t("ck.decideKeep")}
+                      </Button>
+                    </div>
+                  </>
+                ) : convoHere ? (
+                  // A proposal in conversation: what there is to do about it is done in the conversation. Two
+                  // buttons, to take part or to go on; only the second once nothing new was said since (Abel, 21 October).
+                  <>
+                    <p className={news && !talkOpen ? "ck-ask" : "ck-ask ck-ask--wait"}>{news ? (talkOpen ? t("ck.talkAnswerAbove") : barNews) : t("ck.talkNothingNew").replace("{what}", what)}</p>
+                    <div className="ck-go__buttons" data-one={!(news && !talkOpen) || !canGoOn || undefined}>
+                      {news && !talkOpen ? (
+                        <Button type="button" size="lg" onClick={joinTalk}>
+                          <MessageCircle size={16} aria-hidden /> {t("ck.joinTalk")}
+                        </Button>
+                      ) : null}
+                      {canGoOn ? (
+                        <Button type="button" size="lg" variant={news && !talkOpen ? "outline" : "default"} onClick={goOn}>
+                          {t("ck.goOn")} <ChevronRight size={16} aria-hidden />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </>
+                ) : disputeHere && myStand !== "none" ? (
+                  // Some are for it and some are not: nobody wins by having more, the two sides talk until they agree.
+                  <>
+                    <p className="ck-ask">
+                      {myStand === "against"
+                        ? t("ck.disputeAgainst")
+                        : t(disputeHere.against.length > 1 ? "ck.disputeForMany" : "ck.disputeFor").replace("{who}", disputeHere.against.map((who) => `@${who}`).join(", "))}
+                    </p>
+                    <div className="ck-go__buttons">
+                      <Button type="button" size="lg" disabled={saving || stepDone} onClick={answerInTalk}>
+                        <MessageCircle size={16} aria-hidden /> {t(myStand === "against" ? "ck.disputeSay" : "ck.disputeAnswer")}
+                      </Button>
+                      {myStand === "against" ? (
+                        <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void voteFor(disputeHere.proposal.id)}>
+                          <Check size={16} aria-hidden /> {t("ck.disputeNowYes")}
+                        </Button>
+                      ) : (
+                        <Button type="button" size="lg" variant="outline" disabled={saving || stepDone} onClick={() => adjustProposal(disputeHere)}>
+                          <Pencil size={16} aria-hidden /> {t("ck.adjustShort")}
+                        </Button>
+                      )}
+                    </div>
+                    <span className="ck-go__more">
+                      {myStand === "against" ? (
+                        <button type="button" className="af-link ck-choose__new" disabled={saving || stepDone} onClick={() => adjustProposal(disputeHere)}>
+                          <Pencil size={16} aria-hidden /> {t("ck.adjust")}
+                        </button>
+                      ) : (
+                        // Persuaded: its author, or one who was for it, comes round to leaving it as it is.
+                        <button type="button" className="af-link ck-go__other" disabled={saving} onClick={() => void voteKeep(disputeHere.proposal.id)}>
+                          {t("ck.disputeYield")}
+                        </button>
+                      )}
+                    </span>
+                  </>
+                ) : (
                 <>
-                  {pendingHere.length ? <p className="ck-ask">{asking}</p> : null}
+                  {openHere.length ? (
+                    // Somebody proposed a change of what is on screen: what this person thinks of it is what is asked.
+                    <p className="ck-ask">
+                      {openHere.length > 1
+                        ? t("ck.proposalsAsk").replace("{n}", String(openHere.length))
+                        : agreedBefore(openHere[0]!)
+                          ? t("ck.staleAsk").replace("{n}", String(chainOf(proposals, openHere[0]!.proposal.id).length))
+                          : t("ck.proposalAsk").replace("{who}", `@${openHere[0]!.by}`)}
+                    </p>
+                  ) : pendingHere.length ? (
+                    <p className="ck-ask" data-wait={(!allTicked && !commenting) || undefined}>{commenting
+                        ? t("ck.sayLead")
+                        : !allTicked
+                        ? t("ck.tickFirst")
+                        : failingHere.length
+                          ? t(failingHere.length > 1 ? "ck.failsMany" : "ck.failsOne").replace("{n}", String(failingHere.length))
+                        : optionsHere
+                          ? t("ck.restAsk")
+                          : othersSaid.length
+                            ? t(people ? "ck.agreeWithSaid" : "ck.agreeWith").replace("{who}", othersSaid.map((who) => `@${who}`).join(", "))
+                            : people && !rowsShown.some(({ question }) => tally?.slots?.[question.id]?.voices.length)
+                              ? `${t("ck.firstToReview")} ${asking}`
+                              : asking}</p>
+                  ) : people && !summary.complete ? (
+                    <p className="ck-ask ck-ask--wait">{t("ck.youSaid")}</p>
+                  ) : null}
+                  {commenting && item ? (
+                    // What is written goes to the conversation of the help, and this person goes on to the next one;
+                    // the help stays theirs to answer when the team replies or the doubt is cleared.
+                    <form
+                      className="ck-say"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const text = commentDraft.trim();
+                        if (!text) return;
+                        void save([itemSaying(item.id, me, new Date().toISOString(), text)], t("ck.talkSent")).then(() => {
+                          setCommenting(false);
+                          setCommentDraft("");
+                          goOn();
+                        });
+                      }}
+                    >
+                      <label className="sr-only" htmlFor="ck-say-box">
+                        {t("ck.sayToTeam")}
+                      </label>
+                      <textarea id="ck-say-box" className="af-textarea ck-say__box" rows={3} autoFocus placeholder={t("ck.sayToTeam")} value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} />
+                      <div className="ck-go__buttons">
+                        <Button type="submit" size="lg" disabled={saving || !commentDraft.trim()}>
+                          <MessageCircle size={16} aria-hidden /> {t("ck.sayAndGoOn")}
+                        </Button>
+                        <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setCommenting(false)}>
+                          {t("af.cancel")}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
                   <div className="ck-go__buttons">
-                    {pendingHere.length ? (
-                      <Button type="button" size="lg" disabled={saving} onClick={allGood}>
-                        <Check size={16} aria-hidden /> {t(verseStop ? "ck.verseYes" : pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.yesGo")}
+                    {openHere.length === 1 ? (
+                      <>
+                        <Button type="button" size="lg" disabled={saving} onClick={() => void voteFor(openHere[0]!.proposal.id)}>
+                          <Check size={16} aria-hidden /> {t(agreedBefore(openHere[0]!) ? "ck.staleYes" : "ck.voteFor")}
+                        </Button>
+                        <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => void voteKeep(openHere[0]!.proposal.id)}>
+                          {t("ck.voteKeep")}
+                        </Button>
+                      </>
+                    ) : pendingHere.length && allTicked && failingHere.length ? (
+                      <Button type="button" size="lg" disabled={saving} onClick={() => proposeFailing(failingHere)}>
+                        <Pencil size={16} aria-hidden /> {t("ck.proposeChange")}
+                      </Button>
+                    ) : pendingHere.length ? (
+                      <Button type="button" size="lg" disabled={saving || !allTicked} onClick={allGood}>
+                        <Check size={16} aria-hidden /> {t(optionsHere ? "ck.restYes" : othersSaid.length ? "ck.agreeYes" : verseStop ? "ck.verseYes" : pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.yesGo")}
                       </Button>
                     ) : !summary.complete ? (
                       <Button type="button" size="lg" onClick={nextPending}>
-                        {t("ck.nextPending")}
+                        {t(people ? "ck.nextMine" : "ck.nextPending")}
                       </Button>
                     ) : closesHere ? (
                       <Button type="button" size="lg" disabled={saving} onClick={() => void closeStep()}>
                         {t("ck.closeStep")}
                       </Button>
                     ) : null}
-                    <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setChoosing(true)}>
-                      {t(verseStop ? "ck.verseMissing" : "ck.somethingWrong")}
-                    </Button>
+                    {openHere.length === 1 || pendingHere.length ? null : (
+                      <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setChoosing(true)}>
+                        {t(verseStop ? "ck.verseMissing" : "ck.somethingWrong")}
+                      </Button>
+                    )}
+                    {people && pendingHere.length && openHere.length !== 1 ? (
+                      // A doubt, or a «no» with no change in mind: said to the team, and on to the next help.
+                      <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setCommenting(true)}>
+                        <MessageCircle size={16} aria-hidden /> {t("ck.sayButton")}
+                      </Button>
+                    ) : null}
                   </div>
+                  )}
+                  {pendingHere.length && openHere.length !== 1 && item && !commenting ? (
+                    // What the list does not ask: something else, or a note that is missing.
+                    <span className="ck-go__more">
+                      <button type="button" className="af-link" disabled={saving} onClick={() => setProposing({ answerItemId: verseStop?.id ?? item.id, questionId: PROPOSAL_FREE, reason: "" })}>
+                        {t("ck.otherToChange")}
+                      </button>
+                      <button type="button" className="af-link" disabled={saving} onClick={() => setProposing({ answerItemId: verseStop?.id ?? item.id, questionId: PROPOSAL_FREE, reason: "", newNote: true })}>
+                        <Plus size={16} aria-hidden /> {t("ck.noteMissing").replace("{ref}", `${item.chapter}:${item.verse}`)}
+                      </button>
+                    </span>
+                  ) : null}
+                  {openHere.length === 1 ? (
+                    // Edit it, which is what a conversation does: another proposal beside it was another document to
+                    // compare, written differently each time (21 October).
+                    <span className="ck-go__more">
+                      <button type="button" className="af-link ck-choose__new" disabled={saving} onClick={() => adjustProposal(openHere[0]!)}>
+                        <Pencil size={16} aria-hidden /> {t("ck.adjust")}
+                      </button>
+                    </span>
+                  ) : null}
                 </>
+                )
                 )
               )}
             </div>
           )}
         </>
       ) : null}
+      {/* The whole article, from its card (21 October): read in a sheet, at the size of reading. */}
+      <Dialog open={articleOpen && Boolean(articlePath && academy[articlePath]?.text)} onOpenChange={setArticleOpen}>
+        <DialogContent className="fix-sheet help-sheet ck-article-sheet" aria-describedby={undefined}>
+          <header className="fx-head">
+            <DialogTitle className="fx-title">{articleTitle}</DialogTitle>
+          </header>
+          <div className="fx-body">
+            {articlePath && academy[articlePath]?.text ? <HelpMarkdownView className="ur-md ck-article-read__body" content={academy[articlePath]!.text!} /> : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Another note of the verse, or a verse the note sends to, read as the note in view is: each text with what
+          the note there quotes marked, and the note between them; and back to the note being checked. */}
+      {(() => {
+        if (!peek || !data || !item) return null;
+        const pool = data.bookNotes ?? data.items;
+        const notes = peek.notes.map((id) => pool.find((row) => row.id === id) ?? data.items.find((row) => row.id === id)).filter((row): row is NonNullable<typeof row> => Boolean(row));
+        const ref = `${bookLabel(data.book, language)} ${peek.chapter}:${peek.verse}`;
+        // One note at a time, and the marks are the ones of the note read.
+        const at = Math.max(0, Math.min(peek.at ?? 0, notes.length - 1));
+        const shown = notes[at];
+        const verseOf = (resource: ChecklistText) => {
+          const text = data.texts[resource];
+          return (peek.chapter === data.chapter ? text?.verses : text?.chapterVerses?.(peek.chapter))?.[peek.verse] ?? "";
+        };
+        // What is marked: what the note there quotes; with none, the words of the note in view, if they are there.
+        const markedIn = (resource: ChecklistText, verse: string) => {
+          const by = shown ?? { quote: item.quote, occurrence: 1 };
+          if (!by.quote || !verse) return { tokenIndices: [] as number[], gatewayText: "" };
+          const hit = alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: by.quote, occurrence: by.occurrence ?? 1, alignments: data.texts[resource]?.alignments, book: data.book, chapter: peek.chapter, verse: peek.verse, ...(data.original ? { original: originalTokens(data.original, peek.chapter, peek.verse) } : {}) });
+          return { tokenIndices: hit.tokenIndices ?? [], gatewayText: hit.gatewayText ?? "" };
+        };
+        const row = (resource: ChecklistText) => {
+          const verse = verseOf(resource);
+          return (
+            <div key={resource} className="af-row">
+              <span className="af-res ck-res">
+                {textLabel(resource)} · {ref}
+              </span>
+              {verse ? <Verse text={verse} marked={markedIn(resource, verse).tokenIndices} /> : <span className="af-hint">{t("ck.noText").replace("{text}", textLabel(resource))}</span>}
+            </div>
+          );
+        };
+        const firstVerse = verseOf(texts[0]!);
+        return (
+          <Dialog open onOpenChange={(open) => (open ? null : setPeek(null))}>
+            <DialogContent className="fix-sheet help-sheet ck-peek-sheet" aria-describedby={undefined}>
+              <header className="fx-head">
+                <DialogTitle className="fx-title">{peek.linked ? t("ck.peekLinkedTitle").replace("{ref}", ref) : t(notes.length > 1 ? "ck.peekTitleMany" : "ck.peekTitle")}</DialogTitle>
+              </header>
+              <div className="fx-body ck-peek">
+                {notes.length > 1 ? (
+                  <div className="ck-peek__pager">
+                    <p className="af-kind">{t("ck.whereOf").replace("{kind}", t("ck.kindNote")).replace("{a}", String(at + 1)).replace("{b}", String(notes.length))}</p>
+                    <span className="af-step ck-arrows">
+                      <button type="button" className="th-icon" aria-label={t("af.prev")} title={t("af.prev")} disabled={at <= 0} onClick={() => setPeek({ ...peek, at: at - 1 })}>
+                        <ChevronLeft size={20} aria-hidden />
+                      </button>
+                      <button type="button" className="th-icon" aria-label={t("af.next")} title={t("af.next")} disabled={at >= notes.length - 1} onClick={() => setPeek({ ...peek, at: at + 1 })}>
+                        <ChevronRight size={20} aria-hidden />
+                      </button>
+                    </span>
+                  </div>
+                ) : null}
+                <div className="ck-peek__card">
+                  {row(texts[0]!)}
+                  {(shown ? [shown] : []).map((other) => {
+                    const words = firstVerse && other.quote ? alignedGatewayQuoteForHelpQuote({ verseText: firstVerse, quote: other.quote, occurrence: other.occurrence ?? 1, alignments: data.texts[texts[0]!]?.alignments, book: data.book, chapter: other.chapter, verse: other.verse, ...(data.original ? { original: originalTokens(data.original, other.chapter, other.verse) } : {}) }).gatewayText ?? "" : "";
+                    return (
+                      <section key={other.id} className="ck-peek__note">
+                        <p className="ck-note-quote">
+                          <span className="ck-chip">{t("ck.noteChip")} · {ref}</span>
+                          {words ? <span className="ck-note-quote__words">«{words}»</span> : null}
+                        </p>
+                        <HelpMarkdownView className="af-note af-note--md" content={other.body} onLink={openLinkedVerse} />
+                      </section>
+                    );
+                  })}
+                  {texts.slice(1).map(row)}
+                </div>
+                <Button type="button" size="lg" variant="outline" onClick={() => setPeek(null)}>
+                  {t("ck.peekBack")}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
       <Dialog open={chapterOpen && Boolean(item && data)} onOpenChange={setChapterOpen}>
         <DialogContent className="fix-sheet af-pair-sheet" aria-describedby={undefined}>
           <header className="fx-head">
@@ -1432,11 +2225,13 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
       <ProposalSheet
         open={Boolean(proposing)}
         onClose={() => setProposing(null)}
-        targets={targets}
+        targets={proposing?.adjust ? targets.filter((target) => target.resource === proposing.adjust!.proposal.resource && (target.rowId ?? "") === (proposing.adjust!.proposal.rowId ?? "") && (target.path ?? "") === (proposing.adjust!.proposal.path ?? "")).concat(targets).slice(0, 1) : targets}
+        startFrom={proposing?.adjust?.proposal.after}
+        lead={proposing?.adjust ? t("pr.adjusting").replace("{n}", String(chainOf(proposals, proposing.adjust.proposal.id).length)).replace("{who}", isMe(proposing.adjust.by) ? t("ck.talkYou") : `@${proposing.adjust.by}`) : undefined}
         // What the step reads the help against, beside the help: in the TPL's step the note, or the TPL itself, may be
         // what needs the change.
         primary={aboutArticle ? ["article", "help"] : group?.about && texts.includes(group.about as ChecklistText) ? ["help", group.about] : undefined}
-        startSplit={proposedHelp?.proposal.split?.after} failed={proposing?.reason || undefined} rule={data?.task ? stepPurpose(data.task.id, data.step ?? undefined, language).criterion : undefined} reason="" book={data?.book} saving={saving} address={helpsAddressOf(ctx?.pmOrg)} onSend={(draft) => void sendProposal(draft)} />
+        startSplit={proposing?.adjust ? proposing.adjust.proposal.split?.after : proposedHelp?.proposal.split?.after} failed={proposing?.reason || undefined} rule={data?.task ? stepPurpose(data.task.id, data.step ?? undefined, language).criterion : undefined} reason="" book={data?.book} saving={saving} address={helpsAddressOf(ctx?.pmOrg)} onSend={(draft) => void sendProposal(draft)} />
     </div>
   );
 }

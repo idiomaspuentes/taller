@@ -44,3 +44,23 @@ export function withoutSections(markdown: string, omit: readonly string[]): { te
   }
   return { text: kept.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd(), omitted };
 }
+
+/**
+ * What an article teaches, from its start: its first section after the title (the description of a translation
+ * article, the definition of a word), at most a few paragraphs. Read in a card when the article was already checked:
+ * enough to see whether it teaches what a note points at, with the whole of it a touch away (21 October).
+ */
+export function articleLead(markdown: string, most = 600): string {
+  const lines = markdown.replace(/\r/g, "").split("\n");
+  const title = lines.findIndex((line) => /^#\s/.test(line));
+  let body = (title >= 0 ? lines.slice(title + 1) : lines).join("\n").trim().split("\n");
+  if (/^#{2,6}\s/.test(body[0] ?? "")) body = body.slice(1);
+  const end = body.findIndex((line) => /^#{1,6}\s/.test(line));
+  const section = (end >= 0 ? body.slice(0, end) : body).join("\n").trim();
+  let out = "";
+  for (const paragraph of section.split(/\n\s*\n/)) {
+    if (out && out.length + paragraph.length > most) break;
+    out += (out ? "\n\n" : "") + paragraph.trim();
+  }
+  return out;
+}

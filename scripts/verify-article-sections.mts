@@ -3,7 +3,7 @@
  * of Translation Words and the strategies of Translation Academy, by their titles in the process package.
  */
 import assert from "node:assert/strict";
-import { headingKey, withoutSections } from "../src/domain/articleSections";
+import { headingKey, withoutSections, articleLead } from "../src/domain/articleSections";
 import { readingOmits } from "../src/domain/processes";
 
 let passed = 0;
@@ -61,6 +61,15 @@ test("el título se reconoce con dos puntos, mayúsculas o espacios de más; un 
   assert.equal(headingKey("  Sugerencias de Traducción: "), headingKey("sugerencias de traducción"));
   const code = ["## Definición", "```", "## Sugerencias de traducción", "```", "fin"].join("\n");
   assert.equal(withoutSections(code, omit).omitted, false);
+});
+
+test("lo que enseña un artículo es su primera sección, sin el título, y unos pocos párrafos", () => {
+  const ta = "### Descripción\n\nUn evento nuevo empieza un relato.\n\nOtra línea.\n\n### Ejemplos\n\nNo.";
+  assert.equal(articleLead(ta), "Un evento nuevo empieza un relato.\n\nOtra línea.");
+  const tw = "# Ira, furia\n\n## Definición\n\nLa ira es una emoción.\n\n## Sugerencias\n\nNo.";
+  assert.equal(articleLead(tw), "La ira es una emoción.");
+  const long = "Primero.\n\n" + "x".repeat(700);
+  assert.equal(articleLead(long), "Primero.", "no más de unos párrafos");
 });
 
 console.log(`\nverify-article-sections: ${passed} checks passed.`);

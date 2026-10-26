@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
 import { diffExcerpt, readable, wordDiff, type ProposalState } from "../domain/checkProposal";
 import { toggleQuoteWord, wholeQuoteWords } from "../domain/quoteFromSelection";
 import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
@@ -80,7 +81,7 @@ export type ProposalDraft = {
   /** Which of `target.words` were marked. */
   marked?: number[];
   /** A note parted in two: what the new note says, and which of `target.split.words` it is about. */
-  split?: { after: string; marked?: number[] };
+  split?: { after: string; marked?: number[]; /** The other new notes, parted in more than two. */ more?: { after: string; marked?: number[] }[] };
   /** A note parted in two, the words of `target.split.words` the note that stays is about, when they changed. */
   keepMarked?: number[];
 };
@@ -113,6 +114,8 @@ type Props = {
    * afinación was three touches deep, and nobody found it (20 October).
    */
   primary?: string[];
+  /** What the sheet is for, over everything: adjusting the version of somebody («Ajustas la versión 2 de @carla…»). */
+  lead?: string;
   onSend: (draft: ProposalDraft) => void;
 };
 
@@ -120,7 +123,7 @@ type Props = {
  * Proposing a change: what, how (the new version written over the words as they are, a note parted in two, or a
  * comment) and why. A sheet over the help, so the help stays where it was.
  */
-export function ProposalSheet({ open, onClose, targets, failed, rule, reason: firstReason, book, startFrom, startSplit, saving, address, primary, onSend }: Props) {
+export function ProposalSheet({ open, onClose, targets, failed, reason: firstReason, book, startFrom, startSplit, saving, address, primary, lead, onSend }: Props) {
   const t = useT();
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
   const [mode, setMode] = useState<"text" | "split" | "comment">("text");
@@ -128,6 +131,8 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
   // A note parted in two, in two steps: the new note first, written with the note as it is in sight; then the note
   // that stays, with the new one in sight to take out of it what went there. Each with the words it quotes.
   const [other, setOther] = useState("");
+  /** The new notes after the first, when the note is parted in more than two: what each says and is about. */
+  const [extra, setExtra] = useState<{ text: string; marked: number[] }[]>([]);
   const [part, setPart] = useState<1 | 2>(1);
   const [keepMarked, setKeepMarked] = useState<number[]>([]);
   // The boxes are made anew when they start again, since they keep what they last said the text was.
@@ -162,6 +167,7 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
     if (!open || !target) return;
     setText(base);
     setOther(startSplit ?? "");
+    setExtra([]);
     setPart(1);
     setMarked(wholeQuoteWords(target.split?.newMarked ?? target.split?.marked ?? [], target.split?.units ?? []));
     setKeepMarked(wholeQuoteWords(target.split?.marked ?? [], target.split?.units ?? []));
@@ -177,6 +183,7 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
     if ((next === "split") !== (mode === "split")) {
       setText(base);
       setOther(startSplit ?? "");
+      setExtra([]);
       setPart(1);
       setMarked(next === "split" ? wholeQuoteWords(target?.split?.newMarked ?? target?.split?.marked ?? [], target?.split?.units ?? []) : []);
       setKeepMarked(wholeQuoteWords(target?.split?.marked ?? [], target?.split?.units ?? []));
@@ -233,9 +240,11 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
           </button>
         </header>
         <div ref={bodyRef} className="ur-sheet__body pr-body">
+          {lead ? <p className="pr-lead">{lead}</p> : null}
           {failed ? <p className="pr-failed">{t("pr.failed").replace("{q}", failed)}</p> : null}
-          {rule ? <p className="af-criterion af-criterion--hint pr-rule">{rule}</p> : null}
-          {targets.length > 1 && !(splitting && part === 2) ? (
+          {/* What to change and how, asked only when asked for (26 October): the box to write the new version comes
+              first, since what failed already says it is this help; the rest are the «Otras formas» at the foot. */}
+          {askHow && targets.length > 1 && !(splitting && part === 2) ? (
             <div className="pr-field">
               <p className="af-lbl">{t("pr.what")}</p>
               <div className="pr-chips" role="group" aria-label={t("pr.what")}>
@@ -253,10 +262,9 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
               {/* Where it goes, said where it is chosen: a change to the TPL is asked of the team that keeps it. */}
               {target?.team ? <p className="af-hint pr-goes">{t("pr.goesToOther").replace("{team}", target.team)}</p> : null}
             </div>
-          ) : target ? (
-            <p className="pr-about">{target.label}</p>
           ) : null}
-          {canWrite && !target?.add && !(splitting && part === 2) ? (
+          {target?.team && !askHow ? <p className="af-hint pr-goes">{t("pr.goesToOther").replace("{team}", target.team)}</p> : null}
+          {askHow && canWrite && !target?.add && !(splitting && part === 2) ? (
             <div className="pr-field">
               <p className="af-lbl">{t("pr.how")}</p>
               <div className="pr-chips" role="group" aria-label={t("pr.how")}>
@@ -277,7 +285,7 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
           {writing ? (
             <div className="pr-field">
               <label className="af-lbl" htmlFor="pr-text">
-                {t(target?.add ? "pr.newNoteLbl" : "pr.versionLbl")}
+                {target?.add ? t("pr.newNoteLbl") : t("pr.writeAs").replace("{what}", (target?.label ?? "").replace(/^./, (first) => first.toLocaleLowerCase()))}
               </label>
               {target?.format ? (
                 <MarkdownEditor
@@ -298,6 +306,15 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
                 onFix={(fixed) => setText(target?.format === "note" ? noteToTsv(fixed) : fixed)}
               />
               {target?.start ? <p className="af-hint">{target.startBy ? t("pr.fromOther").replace("{who}", target.startBy) : t("pr.fromPrior")}</p> : !changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : null}
+              {/* What the new version changes, as it is written: what is crossed out and what is new. */}
+              {changed && !target?.add ? (
+                <div className="pr-change">
+                  <p className="pr-change__lbl">{t("pr.changesLbl")}</p>
+                  <span className="ag-diff">
+                    <ProposalDiff before={current} after={text} plain />
+                  </span>
+                </div>
+              ) : null}
             </div>
           ) : null}
           {splitting ? (
@@ -307,14 +324,24 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
             <>
               <p className="pr-step">{t(part === 1 ? "pr.splitStep1" : "pr.splitStep2")}</p>
               {/* Over a change already proposed for the note, it is that version that is parted. */}
-              <section className="pr-ref" aria-label={t(part === 2 ? "pr.newNoteLbl" : base !== current ? "pr.splitProposed" : "pr.splitNow")}>
-                <p className="pr-ref__lbl">{t(part === 2 ? "pr.newNoteLbl" : base !== current ? "pr.splitProposed" : "pr.splitNow")}</p>
-                <HelpMarkdownView className="af-note af-note--md pr-ref__text" content={noteFromTsv(part === 1 ? base : other)} />
-              </section>
+              {part === 1 ? (
+                <section className="pr-ref" aria-label={t(base !== current ? "pr.splitProposed" : "pr.splitNow")}>
+                  <p className="pr-ref__lbl">{t(base !== current ? "pr.splitProposed" : "pr.splitNow")}</p>
+                  <HelpMarkdownView className="af-note af-note--md pr-ref__text" content={noteFromTsv(base)} />
+                </section>
+              ) : (
+                // Every new note in sight, to take out of this one what went to each.
+                [other, ...extra.map((one) => one.text)].filter((one) => one.trim()).map((one, index) => (
+                  <section key={index} className="pr-ref" aria-label={t("pr.newNoteN").replace("{n}", String(index + 1))}>
+                    <p className="pr-ref__lbl">{t("pr.newNoteN").replace("{n}", String(index + 1))}</p>
+                    <HelpMarkdownView className="af-note af-note--md pr-ref__text" content={noteFromTsv(one)} />
+                  </section>
+                ))
+              )}
               {part === 1 ? (
                 <div className="pr-field">
                   <label className="af-lbl" htmlFor="pr-other">
-                    {t("pr.newNoteLbl")}
+                    {t(extra.length ? "pr.newNoteN" : "pr.newNoteLbl").replace("{n}", "1")}
                   </label>
                   <MarkdownEditor key={`${opening}|${targetId}|new|${turn}`} id="pr-other" compact book={book} value={noteFromTsv(other)} onChange={(written) => setOther(noteToTsv(written))} />
                   <FormalAddressHint text={noteFromTsv(other)} address={helpAddress} onFix={(fixed) => setOther(noteToTsv(fixed))} />
@@ -330,17 +357,67 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
                 </div>
               )}
               {splitWords.length ? (part === 1 ? wordsField(splitWords, marked, setMarked, target?.split?.units) : wordsField(splitWords, keepMarked, setKeepMarked, target?.split?.units)) : null}
+              {/* Parted in more than two: another new note, each with what it says and the words it is about. */}
+              {part === 1
+                ? extra.map((one, index) => (
+                    <div key={index} className="pr-extra">
+                      <div className="pr-field">
+                        <label className="af-lbl" htmlFor={`pr-other-${index}`}>
+                          {t("pr.newNoteN").replace("{n}", String(index + 2))}
+                        </label>
+                        <MarkdownEditor key={`${opening}|${targetId}|new${index}|${turn}`} id={`pr-other-${index}`} compact book={book} value={noteFromTsv(one.text)} onChange={(written) => setExtra((now) => now.map((row, at) => (at === index ? { ...row, text: noteToTsv(written) } : row)))} />
+                      </div>
+                      {splitWords.length
+                        ? wordsField(splitWords, one.marked, (next) => setExtra((now) => now.map((row, at) => (at === index ? { ...row, marked: typeof next === "function" ? next(row.marked) : next } : row))), target?.split?.units)
+                        : null}
+                      <button type="button" className="af-link pr-extra__drop" onClick={() => setExtra((now) => now.filter((_, at) => at !== index))}>
+                        {t("pr.dropNote")}
+                      </button>
+                    </div>
+                  ))
+                : null}
+              {part === 1 ? (
+                <button type="button" className="af-link pr-extra__add" disabled={!other.trim() || extra.some((one) => !one.text.trim())} onClick={() => setExtra((now) => [...now, { text: "", marked: [] }])}>
+                  <Plus size={16} aria-hidden /> {t("pr.addNote")}
+                </button>
+              ) : null}
             </>
           ) : null}
           {words?.length ? wordsField(words, marked, setMarked, target?.units) : null}
           {splitting && part === 1 ? null : (
             <div className="pr-field">
               <label className="af-lbl" htmlFor="pr-reason">
-                {t(writing || splitting ? "pr.reasonOptional" : "pr.commentLbl")}
+                {t(writing || splitting ? "pr.whyTeam" : "pr.commentLbl")}
               </label>
               <textarea id="pr-reason" className="af-textarea" rows={writing || splitting ? 2 : 4} value={reason} onChange={(e) => setReason(e.target.value)} />
             </div>
           )}
+          {/* The other ways, quiet, at the foot: another thing to change, parting the note, only a comment. */}
+          {!askHow && !(splitting && part === 2) ? (
+            <p className="pr-ways">
+              <span>{t("pr.otherWays")}</span>
+              {canWrite && !writing && !target?.add ? (
+                <button type="button" className="af-link" onClick={() => choose("text")}>
+                  {t("pr.newVersion")}
+                </button>
+              ) : null}
+              {targets.length > 1 ? (
+                <button type="button" className="af-link" onClick={() => setAskHow(true)}>
+                  {t("pr.changeOther")}
+                </button>
+              ) : null}
+              {canSplit && !splitting ? (
+                <button type="button" className="af-link" onClick={() => choose("split")}>
+                  {t("pr.split")}
+                </button>
+              ) : null}
+              {!(mode === "comment") ? (
+                <button type="button" className="af-link" onClick={() => choose("comment")}>
+                  {t("pr.onlyComment")}
+                </button>
+              ) : null}
+            </p>
+          ) : null}
           {/* Where a change to what another team keeps goes is said where it is chosen, above. */}
           {target?.team ? null : <p className="af-hint">{t("pr.goesToTeam")}</p>}
         </div>
@@ -365,13 +442,21 @@ export function ProposalSheet({ open, onClose, targets, failed, rule, reason: fi
                   target,
                   reason: reason.trim(),
                   ...(writing || splitting ? { after: text.trim() } : {}),
-                  ...(splitting ? { split: { after: other.trim(), ...(marked.length ? { marked } : {}) } } : {}),
+                  ...(splitting
+                    ? {
+                        split: {
+                          after: other.trim(),
+                          ...(marked.length ? { marked } : {}),
+                          ...(extra.some((one) => one.text.trim()) ? { more: extra.filter((one) => one.text.trim()).map((one) => ({ after: one.text.trim(), ...(one.marked.length ? { marked: one.marked } : {}) })) } : {}),
+                        },
+                      }
+                    : {}),
                   ...(splitting && keepMarked.length ? { keepMarked } : {}),
                   ...(writing && target.add && marked.length ? { marked } : {}),
                 })
               }
             >
-              {t("pr.send")}
+              {t(writing ? "pr.sendVersion" : "pr.send")}
             </button>
           )}
         </footer>
