@@ -92,6 +92,10 @@ Orden acordado para lo que sigue; Abel prueba la app y va diciendo qué cambiar,
 - **«Mis tareas» para personas no técnicas** (2 de octubre): plan escrito en [PLAN_MIS_TAREAS.md](PLAN_MIS_TAREAS.md) (lista plana de tarjetas por lo que toca hacer, un botón por tarjeta, «Entregar» con confirmación, herramientas en la misma pestaña, sin jerga, «Ahora» dentro de «Mis tareas»). Pendiente de visto bueno antes de tocar código.
 - **Fallo corregido** (2 de octubre): «Mis tareas» y «Ahora» se caían con una subtarea en espera (se usaba el idioma antes de declararlo). Venía del commit que tradujo las razones de espera y estaba publicado.
 
+## Armonización por capítulo (26 de octubre)
+
+Plan y estado: [`PLAN_ARMONIZACION_POR_CAPITULO.md`](PLAN_ARMONIZACION_POR_CAPITULO.md). Hecho en la rama `armonizacion-por-capitulo` y probado en el mock con dos personas: una subtarea por capítulo para cada tipo de armonización (los proyectos que ya existen se cambian a mano en su plan), la lista del capítulo por secciones, la presencia en vivo y «Seguir donde hace falta». El servidor de presencia mejorado está en `usfm-ast`, rama `relay/door43-presence`. **Falta publicar** (lo hace Abel): el servidor de presencia en Cloudflare y `VITE_PRESENCE_URL` en la versión publicada; sin esa variable Taller funciona como antes.
+
 ## Qué sigue (por prioridad)
 
 ### 1. Terminar la experiencia en portugués
