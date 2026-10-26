@@ -13,18 +13,26 @@ export type RosterRow = { itemId: string; chapter: number; verse: number; verseT
 
 const WHOLE_CHAPTER_TO = 200;
 
-/** The sections of a subtask from its portions; ids that are not references are left out, and none is the chapter. */
-export function sectionsOf(portionIds: string[], chapter: number): RosterSection[] {
+/**
+ * The sections of a subtask from its portions: an id is looked up in the book's portions (`EST-01-01` → `1:1-4`), or
+ * read as a reference itself. What is neither is left out, and with nothing left the section is the whole chapter.
+ */
+export function sectionsOf(portionIds: string[], chapter: number, portions: { id: string; ref: string }[] = []): RosterSection[] {
+  const refOf = new Map(portions.map((portion) => [portion.id, portion.ref]));
   const sections = portionIds
-    .map((id) => ({ id, range: parseRefRange(id) }))
-    .filter((row): row is { id: string; range: NonNullable<typeof row.range> } => Boolean(row.range && row.range.chapter === chapter))
-    .map(({ id, range }) => ({ ref: id, from: range.from, to: range.to }));
+    .map((id) => refOf.get(id) ?? id)
+    // The book's own references carry its code («EST 1:1-4»): the section is named by its verses alone.
+    .map((ref) => parseRefRange(ref.replace(/^\s*[1-3]?[A-Z]{2,3}\s+/, "")))
+    .filter((range): range is NonNullable<typeof range> => Boolean(range && range.chapter === chapter))
+    .map((range) => ({ ref: range.from === range.to ? `${chapter}:${range.from}` : `${chapter}:${range.from}-${range.to}`, from: range.from, to: range.to }));
   return sections.length ? sections : [{ ref: String(chapter), from: 1, to: WHOLE_CHAPTER_TO }];
 }
 
-function statusOf(tally: CheckItemTally | undefined, voices: string[]): RosterStatus {
+function statusOf(tally: CheckItemTally | undefined, voices: string[], me: string): RosterStatus {
   if (tally?.state === "ok") return "ready";
   if (tally?.turn === "mine") return "mine";
+  // Begun and not finished by this person: some of its questions nobody answered yet, theirs to go on with.
+  if (tally?.turn === "new" && me && voices.includes(me)) return "mine";
   if (tally?.turn === "waiting") return "waiting";
   if (tally?.turn === "new" || !voices.length) return "unread";
   return "waiting";
@@ -38,7 +46,8 @@ function voicesOf(tally: CheckItemTally | undefined): string[] {
 }
 
 /** Each item in reading order, in the section of its verse; an item outside every section is not this subtask's. */
-export function rosterOf(p: { items: CheckItem[]; summary: ChecklistSummary; sections: RosterSection[] }): RosterRow[] {
+export function rosterOf(p: { items: CheckItem[]; summary: ChecklistSummary; sections: RosterSection[]; me?: string }): RosterRow[] {
+  const me = (p.me ?? "").trim().toLowerCase();
   const tallies = new Map(p.summary.items.map((tally) => [tally.itemId, tally]));
   const rows: RosterRow[] = [];
   for (const item of p.items) {
@@ -48,7 +57,7 @@ export function rosterOf(p: { items: CheckItem[]; summary: ChecklistSummary; sec
     if (!section) continue;
     const tally = tallies.get(item.id);
     const voices = voicesOf(tally);
-    rows.push({ itemId: item.id, chapter, verse, section: section.ref, status: statusOf(tally, voices), voices });
+    rows.push({ itemId: item.id, chapter, verse, section: section.ref, status: statusOf(tally, voices, me), voices });
   }
   return rows;
 }

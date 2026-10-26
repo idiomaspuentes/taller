@@ -5,7 +5,7 @@ import { tryReadExistingBookUsfm } from "./bookBootstrap";
 import type { CheckTarget } from "./checkStore";
 import { loadPmConfig } from "./issues";
 import { readTeamHelps } from "./teamHelps";
-import { loadAssignmentsFromDcs } from "./persist";
+import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "./persist";
 import { parseNoteRows } from "../domain/afinacionNotes";
 import { parseTermRows } from "../domain/afinacionWords";
 import { helpsTsvFilename, resolveHelpsTarget } from "../domain/helpsTarget";
@@ -63,6 +63,8 @@ export type ChecklistData = {
   texts: Partial<Record<ChecklistText, ChecklistTextData>>;
   /** Every note of the book, when the items are notes: what a verse a note sends to says of the same words. */
   bookNotes?: ChecklistItem[];
+  /** The book's portions, by id and reference: the sections of a subtask that covers a whole chapter. */
+  portions?: { id: string; ref: string }[];
   /** Where the answers are kept. */
   target: CheckTarget;
   levelBook: LevelBook;
@@ -225,6 +227,10 @@ export async function loadChecklist(params: {
   // The quote of a note or a term is found in the original, word and occurrence, and not guessed from the
   // alignment: guessed, «el rey» of a quote marked every «rey» of the verse (16 October).
   const originalRef = kind !== "preguntas" ? originalTextRef(book) : null;
-  const original = originalRef ? await readRaw(session, originalRef.owner, originalRef.repo, originalRef.filepath) : null;
-  return { book, chapter, kind, items, fromSource, ...(bookNotes ? { bookNotes } : {}), original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
+  const [original, inventory] = await Promise.all([
+    originalRef ? readRaw(session, originalRef.owner, originalRef.repo, originalRef.filepath) : Promise.resolve(null),
+    ctx.pmOrg ? loadInventoryFromDcs(session, ctx.pmOrg, ctx.lang, book).catch(() => null) : Promise.resolve(null),
+  ]);
+  const portions = inventory?.portions.map((portion) => ({ id: portion.id, ref: portion.ref }));
+  return { book, chapter, kind, items, fromSource, ...(bookNotes ? { bookNotes } : {}), ...(portions ? { portions } : {}), original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
 }

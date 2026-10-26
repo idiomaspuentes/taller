@@ -44,12 +44,28 @@ test("las secciones salen de las porciones de la subtarea", () => {
   assert.deepEqual(sectionsOf(["EST-x"], 1), [{ ref: "1", from: 1, to: 200 }], "sin referencias, el capítulo entero");
 });
 
+test("una porción dada por su id se busca en el inventario", () => {
+  const portions = [{ id: "EST-01-01", ref: "EST 1:1-4" }, { id: "EST-01-02", ref: "EST 1:5-6" }];
+  assert.deepEqual(sectionsOf(["EST-01-01", "EST-01-02"], 1, portions), [
+    { ref: "1:1-4", from: 1, to: 4 },
+    { ref: "1:5-6", from: 5, to: 6 },
+  ]);
+  assert.deepEqual(sectionsOf(["EST-01-09"], 1, portions), [{ ref: "1", from: 1, to: 200 }], "un id que no está en el inventario no da sección");
+});
+
 test("cada ítem dice dónde está para quien mira: lista, te toca, esperando a otros, sin revisar", () => {
   const rows = rosterOf({ items, summary, sections });
   assert.deepEqual(rows.map((r) => r.status), ["ready", "mine", "waiting", "unread"]);
   assert.deepEqual(rows.map((r) => r.section), ["1:1-4", "1:1-4", "1:5-6", "1:5-6"]);
   assert.deepEqual(rows.map((r) => [r.chapter, r.verse]), [[1, 2], [1, 3], [1, 5], [1, 6]]);
   assert.deepEqual(rows[0]!.voices, ["ana", "bea", "carla"]);
+});
+
+test("lo que alguien empezó y no terminó le toca a esa persona", () => {
+  const started = summaryOf([tally("n2", "pending", "new", ["ana"])]);
+  const rows = rosterOf({ items: [items[0]!], summary: started, sections, me: "Ana" });
+  assert.equal(rows[0]!.status, "mine");
+  assert.equal(rosterOf({ items: [items[0]!], summary: started, sections, me: "bea" })[0]!.status, "unread");
 });
 
 test("una sección sin ítems no aparece, y un tramo deja fuera lo que no es suyo", () => {

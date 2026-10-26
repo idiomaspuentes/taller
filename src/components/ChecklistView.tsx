@@ -10,7 +10,7 @@ import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, Info, Maximize2, MessageCircle, Pencil, Plus, X } from "lucide-react";
+import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, Info, List, Maximize2, MessageCircle, Pencil, Plus, X } from "lucide-react";
 import { articleLead } from "../domain/articleSections";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ChapterPair } from "./ChapterReader";
@@ -56,6 +56,8 @@ import { verseFromSid } from "../domain/usfmAst";
 import { readTeamArticle, saveNoteQuote, type TeamArticle } from "../dcs/teamHelps";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
+import { ChapterHelpsList } from "./ChapterHelpsList";
+import { nextNeeding, rosterOf, sectionsOf } from "../domain/chapterRoster";
 import { QuoteVerse as Verse } from "./QuoteVerse";
 
 type Props = {
@@ -911,6 +913,48 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     return found ? `${found.chapter}:${found.verse}${found.title ? ` · ${found.title}` : ""}` : itemId;
   };
 
+  /**
+   * The list of the chapter's helps (26 October): a subtask that covers a whole chapter opens on it, with its
+   * sections, and it is a touch away from any help.
+   */
+  const [listOpen, setListOpen] = useState(false);
+  const [nothingLeft, setNothingLeft] = useState(false);
+  const sections = useMemo(() => (data ? sectionsOf(ctx?.portionIds ?? [], data.chapter, data.portions) : []), [data, ctx?.portionIds]);
+  const roster = useMemo(() => rosterOf({ items: checkItems, summary, sections, me }), [checkItems, summary, sections, me]);
+  const openedList = useRef(false);
+  useEffect(() => {
+    if (!data || openedList.current) return;
+    openedList.current = true;
+    if (sections.length > 1) setListOpen(true);
+  }, [data, sections.length]);
+  /** What each help is about, as the list shows it: the words a note quotes in the first text, a term, a question. */
+  const rosterWords = useMemo(() => {
+    const out = new Map<string, string>();
+    if (!listOpen || !data) return out;
+    const first = data.texts[texts[0]!];
+    for (const row of data.items) {
+      if (kind === "notas") {
+        const verse = first?.verses[row.verse] ?? "";
+        out.set(row.id, row.quote && verse ? (alignedGatewayQuoteForHelpQuote({ verseText: verse, quote: row.quote, occurrence: row.occurrence ?? 1, alignments: first?.alignments, book: data.book, chapter: row.chapter, verse: row.verse, ...(data.original ? { original: originalTokens(data.original, row.chapter, row.verse) } : {}) }).gatewayText ?? "") : "");
+      } else out.set(row.id, kind === "palabras" ? (titlesRead ? termLabel(row.title, termTitles) : "") : row.title);
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listOpen, data, textsKey, titlesRead, termTitles]);
+  const rosterLabel = (itemId: string) => (checkItems.find((row) => row.id === itemId)?.stop ? t("ck.listWholeVerse") : rosterWords.get(itemId) || "…");
+  const openFromList = (itemId: string) => {
+    setNothingLeft(false);
+    setListOpen(false);
+    jump(itemId);
+  };
+  /** «Seguir donde hace falta»: what is this person's turn, then where people are still missing (see `nextNeeding`). */
+  const goWhereNeeded = () => {
+    const found = nextNeeding(roster, { me, needed: people || 1 });
+    if (found) return openFromList(found);
+    setNothingLeft(true);
+    setListOpen(true);
+  };
+
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ck.title");
   useEffect(() => setChoosing(false), [item?.id, group?.about]);
   useEffect(() => setCommenting(false), [item?.id, group?.about]);
@@ -1544,7 +1588,17 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         </section>
       ) : null}
 
-      {data && item ? (
+      {data && listOpen ? (
+        <ChapterHelpsList
+          title={t(kind === "notas" ? "ck.listTitleNotes" : kind === "palabras" ? "ck.listTitleTerms" : "ck.listTitleQuestions")}
+          rows={roster}
+          sections={sections}
+          labelOf={rosterLabel}
+          onOpen={openFromList}
+          onNext={goWhereNeeded}
+          nothingLeft={nothingLeft}
+        />
+      ) : data && item ? (
         <>
           {/* The point's row, as in afinación (19 October): what it is, where, and the way to the next. The count
               was at the foot, in a second bar over the answers. */}
@@ -1552,14 +1606,16 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
             {/* Which help of its verse, of how many: going on to the next note of a verse of eight, the screen was
                 the same and only the words of the note changed (20 October). The state chip and a second count
                 («1 de 162», beside «0 de 162 comprobados» over it) are gone: three counters, and none of them this. */}
-            <p className="af-kind af-kind--top ck-where">
+            {/* A touch on where the help is opens the list of the chapter's helps (26 October). */}
+            <button type="button" className="af-kind af-kind--top ck-where" onClick={() => setListOpen(true)} aria-label={t("ck.listOpen")}>
+              <List size={16} aria-hidden />
               {/* The book is in the header: said here too, it pushed the kind and the verse out of a phone's row. */}
               {verseStop
                 ? `${t("ck.kindVerse")} · ${item.chapter}:${item.verse}`
                 : (helpsOfVerse.length > 1 ? t("ck.whereOf").replace("{a}", String(helpsOfVerse.indexOf(item.id) + 1)).replace("{b}", String(helpsOfVerse.length)) : "{kind}")
                     .replace("{kind}", t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm"))
                     .concat(` · ${item.chapter}:${item.verse}${item.verseTo ? `–${item.verseTo}` : ""}`)}
-            </p>
+            </button>
             <span className="af-step ck-arrows">
               <button type="button" className="th-icon" aria-label={t("af.prev")} title={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
                 <ChevronLeft size={20} aria-hidden />
