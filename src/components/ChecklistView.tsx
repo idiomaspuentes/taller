@@ -244,9 +244,17 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nothingForMe, people, trying, ctx?.issueNumber, stepDone]);
-  /** The next item to go to: decided together, the next one where this person's opinion is awaited, else one nobody saw. */
-  const nextOf = (order: CheckItem[]) =>
-    people ? (order.find((row) => tallyOf(row.id)?.turn === "mine") ?? order.find((row) => tallyOf(row.id)?.turn === "new")) : order.find((row) => tallyOf(row.id)?.state !== "ok");
+  /**
+   * The next item to go to: decided together, what is this person's turn, then where people are still missing,
+   * counting who is on each item now (see `nextNeeding`); else the next one not done.
+   */
+  const nextOf = (order: CheckItem[]) => {
+    if (!people) return order.find((row) => tallyOf(row.id)?.state !== "ok");
+    const byId = new Map(roster.map((row) => [row.itemId, row]));
+    const rows = order.map((row) => byId.get(row.id)).filter((row): row is NonNullable<typeof row> => Boolean(row));
+    const found = nextNeeding(rows, { me, needed: people, present: presentOn });
+    return found ? order.find((row) => row.id === found) : undefined;
+  };
   useStepWork(session, ctx, summary.done, checkItems.length, { on: !stepDone && !closing });
   // What was said in the conversation of the subtarea, read while a consultation waits: its answer is shown here.
   const [thread, setThread] = useState<ThreadLine[]>([]);
@@ -952,7 +960,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   };
   /** «Seguir donde hace falta»: what is this person's turn, then where people are still missing (see `nextNeeding`). */
   const goWhereNeeded = () => {
-    const found = nextNeeding(roster, { me, needed: people || 1 });
+    const found = nextNeeding(roster, { me, needed: people || 1, present: presentOn });
     if (found) return openFromList(found);
     setNothingLeft(true);
     setListOpen(true);
@@ -994,6 +1002,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   };
   const kindWord = t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm").toLowerCase();
   const onThis = entry && !listOpen ? peersOn(peers, entry.id) : [];
+  /** Who is on each item now, by login: «Seguir» counts them among the people an item has. */
+  const presentOn: Record<string, string[]> = {};
+  for (const peer of peers) if (peer.focus) (presentOn[peer.focus.item] ??= []).push(peer.login);
   const writingHere = onThis.filter((peer) => peer.focus?.doing === "writing");
 
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ck.title");

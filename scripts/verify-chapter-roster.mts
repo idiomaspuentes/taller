@@ -98,6 +98,12 @@ test("Seguir salta lo que ya tiene a las personas que hacen falta, contando a qu
   assert.equal(nextNeeding(rows, { me: "ana", needed: 3, present: { a: ["ana"] } }), "a", "la propia persona no cuenta");
 });
 
+test("con dos personas ya en una nota que nadie revisó, Seguir lleva a la siguiente", () => {
+  const rows = [row("a", 1, "unread", ["bea"]), row("b", 2, "unread")];
+  assert.equal(nextNeeding(rows, { me: "ana", needed: 3, present: { a: ["carla", "dina"] } }), "b");
+  assert.equal(nextNeeding(rows, { me: "ana", needed: 3, present: { a: ["carla"] } }), "a", "con una sola presente todavía falta gente");
+});
+
 test("si todo está cubierto, Seguir lleva a lo que no revisaste; si revisaste todo, a nada", () => {
   const covered = [row("a", 1, "waiting", ["bea", "carla", "dina"]), row("b", 2, "ready", ["bea", "carla", "dina"])];
   assert.equal(nextNeeding(covered, { me: "ana", needed: 3 }), "a");
