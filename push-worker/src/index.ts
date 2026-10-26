@@ -169,7 +169,7 @@ export function createHandler(deps: Deps) {
   };
 }
 
-/** One run of the round of daily reminders (the cron in wrangler.toml, every two minutes). */
+/** One run of the round of daily reminders (the cron in wrangler.toml, every half hour). */
 export function runReminders(env: Env, deps: Deps): Promise<RoundResult> {
   const vapid: Vapid = { subject: env.VAPID_SUBJECT, publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY };
   return remindDue(env.SUBSCRIPTIONS, deps.now(), env.APP_URL, async (host, login) => {

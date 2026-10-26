@@ -51,12 +51,13 @@ no tiene tareas, si ya entró ese día o si lo apagó (menú → Notificaciones 
   (`POST /remind`, con el token de la persona) cuántas tareas son suyas y cuántas están libres para su equipo, la
   zona horaria del dispositivo y la hora elegida. Solo lo dice si hay algo nuevo (otro día, otras cuentas, otra
   hora): cada vez es una escritura.
-- Un cron (`[triggers]` en `wrangler.toml`, cada dos minutos) recorre a quienes dejaron esos datos y avisa a los
+- Un cron (`[triggers]` en `wrangler.toml`, cada media hora) recorre a quienes dejaron esos datos y avisa a los
   que les toca, tres avisos por vez como mucho (uno por dispositivo). Lo que hace falta saber de cada persona va como
   metadatos de su clave, así que la lista sola dice a quién le toca. El plan gratuito le da a una ejecución 50
   llamadas y 10 ms de procesador, y cifrar un aviso gasta unos 3 ms: así cada ejecución queda dentro, y los que no
-  entran esperan la siguiente, dentro de su hora: a la misma hora, 30 personas con dos dispositivos o 90 con uno. 720
-  listas de claves al día (de 1 000) y, por recordatorio, una lectura, una escritura y un aviso por dispositivo.
+  entran esperan la siguiente, aunque ya haya pasado su hora, el mismo día: de las 19:00 a la medianoche, unos 30
+  dispositivos a la misma hora. 48 listas de claves al día (de 1 000; cada dos minutos eran 720, y Cloudflare avisaba
+  todas las tardes de la mitad del límite) y, por recordatorio, una lectura, una escritura y un aviso por dispositivo.
 - Lo que dice es lo último que vio la app. Una tarea asignada después ya llegó con su propio aviso; datos de hace más
   de dos semanas no se usan.
 

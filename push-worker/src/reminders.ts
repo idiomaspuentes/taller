@@ -9,11 +9,12 @@
  *   is due: nobody is read to find out;
  * - each notice is encrypted and signed, about 3 ms of processor (measured on 18 October 2026): a run sends three at
  *   most, counted by device, not by person;
- * - the round runs every two minutes (wrangler.toml), thirty runs an hour: thirty people with two devices each (one a
- *   run), ninety with one, at the same hour. Those left wait for the next run, still within their hour.
+ * - the round runs every half hour (wrangler.toml): six notices an hour. Those left wait for the next run, after
+ *   their hour if need be, the same day: from 19:00 to midnight, thirty devices at the same hour.
  *
  * Costs on the free plan: one write each time the app reports something new (a new day, other counts, another
- * hour); 720 lists of the keys a day (of 1 000); per reminder, one read and one write, and one notice per device.
+ * hour); 48 lists of the keys a day (of 1 000: every two minutes they were 720, and Cloudflare warned of half the
+ * limit every day); per reminder, one read and one write, and one notice per device.
  */
 import { reminderNotice } from "../../src/domain/noticeText";
 import { dayIn, reminderDue, seen, type ReminderReport, type ReminderState } from "../../src/domain/reminder";

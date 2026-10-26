@@ -448,15 +448,16 @@ await test("a quien ya no tiene ningún dispositivo se le olvida", async () => {
 });
 
 await test("con todo el equipo a la misma hora, cada ejecución envía tres avisos como mucho y pocas llamadas, y nadie se queda sin aviso", async () => {
-  // Twelve people with two devices each, all at 19:00 in Bogotá, none came in on Monday the 26th.
-  for (let i = 1; i <= 12; i++) {
+  // Eight people with two devices each, all at 19:00 in Bogotá, none came in on Monday the 26th.
+  for (let i = 1; i <= 8; i++) {
     const login = `p${String(i).padStart(2, "0")}`;
     const kept = { mine: 1, free: 0, ...BOGOTA, seenDay: "2026-10-23", at: at(25), host: "https://qa.door43.org", login };
     await kv.put(`r:https://qa.door43.org:${login}`, JSON.stringify(kept), { metadata: kept });
     kv.data.set(`u:https://qa.door43.org:${login}`, JSON.stringify({ devices: [await deviceSubscription(`https://push.example/${login}-a`), await deviceSubscription(`https://push.example/${login}-b`)].map((sub) => ({ sub, at: 1 })) }));
   }
   const runs: { reminded: number; left: number; calls: number }[] = [];
-  for (const minute of [0, 2, 4, 6, 8, 10, 12, 14]) {
+  // A run every half hour: one person a run, those who do not fit in their hour reminded after it, the same day.
+  for (const minute of [0, 30, 60, 90, 120, 150, 180, 210]) {
     clock = at(26, 19) + minute * 60_000;
     pushes = [];
     const before = kv.calls;
@@ -465,16 +466,12 @@ await test("con todo el equipo a la misma hora, cada ejecución envía tres avis
     assert.ok(calls <= 50, `una ejecución hizo ${calls} llamadas`);
     runs.push({ reminded: round.reminded, left: round.left, calls });
   }
-  // Two devices each, three notices a run: one person a run, the twelve by 19:22, within their hour.
+  // Two devices each, three notices a run: one person a run, the eight by 22:30.
   assert.deepEqual(runs.map((r) => r.reminded), [1, 1, 1, 1, 1, 1, 1, 1]);
   assert.ok(runs.every((r) => r.calls <= 50));
-  for (const minute of [16, 18, 20, 22]) {
-    clock = at(26, 19) + minute * 60_000;
-    await runReminders(env, { fetch: fakeFetch, now: () => clock });
-  }
-  for (let i = 1; i <= 12; i++) assert.equal(JSON.parse(kv.data.get(`r:https://qa.door43.org:p${String(i).padStart(2, "0")}`)!).sentDay, "2026-10-26", `p${i} quedó sin aviso`);
+  for (let i = 1; i <= 8; i++) assert.equal(JSON.parse(kv.data.get(`r:https://qa.door43.org:p${String(i).padStart(2, "0")}`)!).sentDay, "2026-10-26", `p${i} quedó sin aviso`);
   pushes = [];
-  clock = at(26, 19) + 24 * 60_000;
+  clock = at(26, 19) + 240 * 60_000;
   assert.equal((await runReminders(env, { fetch: fakeFetch, now: () => clock })).due, 0, "nadie queda pendiente");
 });
 

@@ -82,14 +82,15 @@ export function seen(prev: ReminderState | null, report: ReminderReport, now: nu
 }
 
 /**
- * Whether to remind the person now: they want it, it is a weekday and their hour, they have not come in today nor
- * been reminded today, and something waits for them. Saturday and Sunday are theirs (Abel, 18 October 2026): no
- * reminder then, whatever waits. A report older than two weeks is not trusted: the counts may be long gone.
+ * Whether to remind the person now: they want it, it is a weekday and their hour or later that day, they have not
+ * come in today nor been reminded today, and something waits for them. Later that day: the round runs every half
+ * hour and sends a few notices a run, so whoever did not fit in their hour is reminded in the runs after it.
+ * Saturday and Sunday are theirs (Abel, 18 October 2026): no reminder then, whatever waits. A report older than two weeks is not trusted: the counts may be long gone.
  */
 export function reminderDue(state: ReminderState, now: number): boolean {
   if (!state.on || state.mine + state.free === 0) return false;
   if (now - state.at > 14 * 24 * 3600 * 1000) return false;
   const { day, hour, weekend } = parts(now, state.tz);
   if (weekend) return false;
-  return hour === state.hour && state.seenDay !== day && state.sentDay !== day;
+  return hour >= state.hour && state.seenDay !== day && state.sentDay !== day;
 }

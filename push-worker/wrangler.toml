@@ -15,10 +15,12 @@ ALLOWED_ORIGINS = "https://taller-b2h.pages.dev,https://taller.idiomaspuentes.or
 # Contact for the push services, as a mailto: or https: address.
 VAPID_SUBJECT = "https://qa.door43.org"
 
-# Every two minutes: three notices of daily reminders at most each time, of those whose hour it is (see src/reminders.ts).
-# One run in the free plan has 10 ms of processor and 50 calls; the whole team at 19:00 in one run would be cut off.
+# Every half hour: three notices of daily reminders at most each time, of those whose hour it is or has passed that
+# day (see src/reminders.ts). One run in the free plan has 10 ms of processor and 50 calls; the whole team at 19:00 in
+# one run would be cut off. Every two minutes was 720 lists of the keys a day, of the 1 000 writes, deletes and lists
+# the free plan allows: Cloudflare warned of half the limit every afternoon (22–25 October 2026).
 [triggers]
-crons = ["*/2 * * * *"]
+crons = ["*/30 * * * *"]
 
 [[kv_namespaces]]
 binding = "SUBSCRIPTIONS"
