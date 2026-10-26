@@ -303,7 +303,7 @@ if (fcr) {
     }
   });
 
-  test("FCR: la Armonización tiene tres pistas, por porción, cada una una lista que el equipo decide entre tres", () => {
+  test("FCR: la Armonización tiene tres pistas, una subtarea por capítulo, cada una una lista que el equipo decide entre tres", () => {
     const tracks = board.teams.filter((t) => t.phaseId === team("armonizar-notas").phaseId);
     assert.deepEqual(tracks.map((t) => t.id), ["armonizar-notas", "armonizar-palabras", "armonizar-preguntas"]);
     for (const track of tracks) {
@@ -315,7 +315,8 @@ if (fcr) {
         assert.equal(step.claimMode, "pool", `${track.id}: compartida`);
         assert.equal(step.minAssignees, 3, `${track.id}: tres personas deciden cada ítem`);
       }
-      assert.equal(track.bundle, undefined, `${track.id}: por porción, no el capítulo entero`);
+      // One subtask per chapter, its sections inside it (26 October); it was one per portion (21 October).
+      assert.deepEqual(track.bundle, { enabled: true, grain: "chapter" }, `${track.id}: el capítulo entero`);
     }
     assert.deepEqual(team("armonizar-notas").rules.map((r) => r.resource), ["notas", "academia"]);
   });

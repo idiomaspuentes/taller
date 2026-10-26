@@ -242,7 +242,10 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
       return;
     }
     const current = teams[at]!;
-    const { steps: freshSteps, memberIds: _nobody, ...settings } = fresh;
+    // How a task is cut into subtareas is not taken from a newer process (26 October): a task that was cut by
+    // portion and gained `bundle` would be planned again by chapter, its subtareas closed as no longer planned and
+    // their answers left behind. A project changes it by hand, in its plan.
+    const { steps: freshSteps, memberIds: _nobody, bundle: _cut, distributeUnit: _unit, distributePolicy: _policy, ...settings } = fresh;
     const base = fillMissing(current, settings as Partial<ProjectTask>);
     let changed = base.filled;
     let steps = current.steps ? [...current.steps] : undefined;

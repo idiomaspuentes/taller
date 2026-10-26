@@ -229,4 +229,34 @@ test("una pregunta nueva del proceso llega a los proyectos hechos antes de ella,
   assert.equal(listOf(upgradeBoardToWorkflow(dropped, fcr).board).some((q) => q.id === "figura"), false);
 });
 
+const HARMONIZE = ["armonizar-notas", "armonizar-palabras", "armonizar-preguntas"];
+
+test("un proyecto nuevo arma la armonización con una subtarea por capítulo, de 3 a 12 personas", () => {
+  const board = applyWorkflowToBoard(empty, fcr);
+  for (const id of HARMONIZE) {
+    const task = board.teams.find((t) => t.id === id)!;
+    assert.deepEqual(task.bundle, { enabled: true, grain: "chapter" }, id);
+    assert.equal(task.distributeUnit, "chapter", id);
+    const shared = task.steps!.filter((s) => s.claimMode === "pool");
+    assert.ok(shared.length, `${id} tiene un paso compartido`);
+    for (const step of shared) assert.deepEqual([step.minAssignees, step.maxAssignees], [3, 12], `${id}/${step.id}`);
+  }
+});
+
+test("un proyecto que ya armonizaba por secciones las conserva al actualizar: sus subtareas no se rehacen", () => {
+  const bySections: WorkflowTemplate = {
+    ...fcr,
+    version: fcr.version - 1,
+    tasks: fcr.tasks.map((task) => (HARMONIZE.includes(task.id) ? { ...task, bundle: undefined, distributeUnit: undefined, distributePolicy: undefined } : task)),
+  };
+  const before = applyWorkflowToBoard(empty, bySections);
+  const after = upgradeBoardToWorkflow(before, fcr).board;
+  for (const id of HARMONIZE) {
+    const task = after.teams.find((t) => t.id === id)!;
+    assert.equal(task.bundle, undefined, id);
+    assert.equal(task.distributeUnit, undefined, id);
+    assert.equal(task.distributePolicy, undefined, id);
+  }
+});
+
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);

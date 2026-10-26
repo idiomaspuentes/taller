@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 52,
+      "version": 53,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -2185,6 +2185,12 @@
               "articleFilter": "pending"
             }
           ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual",
           "steps": [
             {
               "id": "notas-textos",
@@ -2216,7 +2222,7 @@
               "closing": "checklist",
               "claimMode": "pool",
               "minAssignees": 3,
-              "maxAssignees": 6,
+              "maxAssignees": 12,
               "checklist": [
                 {
                   "id": "sentido",
@@ -2457,6 +2463,12 @@
               "articleFilter": "pending"
             }
           ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual",
           "steps": [
             {
               "id": "palabras-textos",
@@ -2488,7 +2500,7 @@
               "closing": "checklist",
               "claimMode": "pool",
               "minAssignees": 3,
-              "maxAssignees": 6,
+              "maxAssignees": 12,
               "checklist": [
                 {
                   "id": "definicion",
@@ -2573,6 +2585,12 @@
               "articleFilter": "pending"
             }
           ],
+          "bundle": {
+            "enabled": true,
+            "grain": "chapter"
+          },
+          "distributeUnit": "chapter",
+          "distributePolicy": "manual",
           "steps": [
             {
               "id": "preguntas-textos",
@@ -2600,7 +2618,7 @@
               "closing": "checklist",
               "claimMode": "pool",
               "minAssignees": 3,
-              "maxAssignees": 6,
+              "maxAssignees": 12,
               "checklist": [
                 {
                   "id": "responde",
