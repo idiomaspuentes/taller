@@ -57,6 +57,8 @@ import { readTeamArticle, saveNoteQuote, type TeamArticle } from "../dcs/teamHel
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
 import { ChapterHelpsList } from "./ChapterHelpsList";
+import { usePresence } from "./usePresence";
+import { peersOn, presenceRoom, type Peer } from "../domain/presence";
 import { nextNeeding, rosterOf, sectionsOf } from "../domain/chapterRoster";
 import { QuoteVerse as Verse } from "./QuoteVerse";
 
@@ -600,6 +602,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     try {
       await appendCheckAnswers(session, data.target, storeKey, next);
       announce(said);
+      for (const itemId of new Set(next.map((row) => row.itemId))) tellOthers({ type: "taller:answered", item: itemId });
     } catch (err) {
       setAnswers((prev) => prev.filter((row) => !next.includes(row)));
       setError(explainError(err));
@@ -954,6 +957,44 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
     setNothingLeft(true);
     setListOpen(true);
   };
+
+  /**
+   * Who else is in this subtask now, and on which help (26 October): the room is the one its answers are kept under.
+   * Where this person is, and whether they are writing to the team, is said to the others; when one of them
+   * answers, the answers are read again, so the list and the help change without reloading.
+   */
+  const room = data && session && storeKey && !trying ? presenceRoom({ host: session.host, owner: data.target.owner, repo: data.target.repo, key: storeKey }) : null;
+  const focusHere = !listOpen && entry ? { item: entry.id, doing: proposing || commenting ? ("writing" as const) : ("viewing" as const) } : null;
+  const reread = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { peers, announce: tellOthers } = usePresence({
+    room,
+    session: session ?? null,
+    focus: focusHere,
+    onEvent: () => {
+      if (!session || !data || reread.current) return;
+      // Several answers in a row are read once.
+      reread.current = setTimeout(() => {
+        reread.current = null;
+        void loadCheckAnswers(session, data.target, storeKey)
+          .then((loaded) =>
+            setAnswers((prev) => {
+              const keyOf = (row: CheckAnswer) => `${row.itemId}|${row.questionId}|${row.by}|${row.at}`;
+              const known = new Set(loaded.map(keyOf));
+              // What this person wrote and the read did not bring yet stays.
+              return [...loaded, ...prev.filter((row) => !known.has(keyOf(row)))];
+            }),
+          )
+          .catch(() => undefined);
+      }, 1000);
+    },
+  });
+  const namesOf = (rows: Peer[]) => {
+    const names = rows.map((peer) => peer.name || peer.login);
+    return names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} ${t("ck.andMore").replace("{n}", String(names.length - 2))}`;
+  };
+  const kindWord = t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm").toLowerCase();
+  const onThis = entry && !listOpen ? peersOn(peers, entry.id) : [];
+  const writingHere = onThis.filter((peer) => peer.focus?.doing === "writing");
 
   const stepName = data?.step ? localized(data.step.name, data.step.names, language) : t("ck.title");
   useEffect(() => setChoosing(false), [item?.id, group?.about]);
@@ -1588,6 +1629,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
         </section>
       ) : null}
 
+      {/* Who else is in the subtask now: a line, only when somebody is. */}
+      {data && peers.length ? <p className="ck-here">{t("ck.hereNow").replace("{who}", namesOf(peers))}</p> : null}
       {data && listOpen ? (
         <ChapterHelpsList
           title={t(kind === "notas" ? "ck.listTitleNotes" : kind === "palabras" ? "ck.listTitleTerms" : "ck.listTitleQuestions")}
@@ -1597,6 +1640,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           onOpen={openFromList}
           onNext={goWhereNeeded}
           nothingLeft={nothingLeft}
+          presentOn={(itemId) => peersOn(peers, itemId).map((peer) => ({ login: peer.login, name: peer.name, writing: peer.focus?.doing === "writing" }))}
         />
       ) : data && item ? (
         <>
@@ -1689,6 +1733,14 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
               them here; folded to one line after: the same three questions for 141 notes pushed the note under the
               bar of a phone, and «Sí, seguir» could be touched without the note seen (20 October). */}
           {/* Always open (Abel, 26 October): it is ticked point by point before «Sí, cumple», not read if wanted. */}
+          {/* Somebody else on this help now: before answering, so two do not write the same proposal unseen. */}
+          {onThis.length ? (
+            <p className="ck-on-this" data-writing={writingHere.length ? true : undefined}>
+              {writingHere.length
+                ? t("ck.writingNow").replace("{who}", namesOf(writingHere)).replace("{kind}", kindWord)
+                : t("ck.onThisNow").replace("{who}", namesOf(onThis)).replace("{kind}", kindWord)}
+            </p>
+          ) : null}
           <section key={`${item.id}|${group?.about ?? ""}`} className="ck-guide" aria-labelledby="ck-guide-title">
             <h3 className="ck-guide__lead" id="ck-guide-title">
               {t("ck.lookAt")}
