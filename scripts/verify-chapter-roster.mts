@@ -1,6 +1,6 @@
 /** The list of a chapter's helps: where each stands for the person looking, by section, and where help is needed. */
 import assert from "node:assert/strict";
-import { nextNeeding, rosterCounts, rosterOf, sectionsOf, type RosterRow } from "../src/domain/chapterRoster";
+import { inSections, nextNeeding, rosterCounts, rosterOf, sectionsOf, type RosterRow } from "../src/domain/chapterRoster";
 import type { CheckItem, CheckItemTally, CheckSlot, ChecklistSummary, CheckTurn } from "../src/domain/checklist";
 
 let passed = 0;
@@ -75,6 +75,14 @@ test("una sección sin ítems no aparece, y un tramo deja fuera lo que no es suy
   assert.deepEqual(stretch.map((r) => r.itemId), ["n5", "n6"]);
 });
 
+test("la subtarea de un tramo carga solo los ítems de su tramo; la del capítulo entero, todos", () => {
+  const portions = [{ id: "EST-01-01", ref: "EST 1:1-4" }, { id: "EST-01-02", ref: "EST 1:5-6" }];
+  const all = [{ id: "a", verse: 2 }, { id: "b", verse: 5 }, { id: "c", verse: 6 }];
+  assert.deepEqual(inSections(all, sectionsOf(["EST-01-02"], 1, portions)).map((i) => i.id), ["b", "c"]);
+  assert.deepEqual(inSections(all, sectionsOf(["EST-01-01", "EST-01-02"], 1, portions)).map((i) => i.id), ["a", "b", "c"]);
+  assert.deepEqual(inSections(all, sectionsOf([], 1, portions)).map((i) => i.id), ["a", "b", "c"], "sin secciones, todo el capítulo");
+});
+
 test("un ítem de todo el versículo va en la sección de su versículo", () => {
   const rows = rosterOf({ items: [...items, { id: "verse:1:3", verseKey: "1:3", stop: true }], summary: summaryOf([...summary.items, tally("verse:1:3", "pending", "new")]), sections });
   assert.equal(rows.find((r) => r.itemId === "verse:1:3")!.section, "1:1-4");
@@ -102,6 +110,11 @@ test("con dos personas ya en una nota que nadie revisó, Seguir lleva a la sigui
   const rows = [row("a", 1, "unread", ["bea"]), row("b", 2, "unread")];
   assert.equal(nextNeeding(rows, { me: "ana", needed: 3, present: { a: ["carla", "dina"] } }), "b");
   assert.equal(nextNeeding(rows, { me: "ana", needed: 3, present: { a: ["carla"] } }), "a", "con una sola presente todavía falta gente");
+});
+
+test("quien ya respondió y sigue en la nota cuenta una sola vez", () => {
+  const rows = [row("a", 1, "waiting", ["bea", "carla"]), row("b", 2, "unread")];
+  assert.equal(nextNeeding(rows, { me: "ana", needed: 3, present: { a: ["Bea"] } }), "a");
 });
 
 test("si todo está cubierto, Seguir lleva a lo que no revisaste; si revisaste todo, a nada", () => {

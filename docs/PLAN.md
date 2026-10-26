@@ -94,7 +94,7 @@ Orden acordado para lo que sigue; Abel prueba la app y va diciendo qué cambiar,
 
 ## Armonización por capítulo (26 de octubre)
 
-Plan y estado: [`PLAN_ARMONIZACION_POR_CAPITULO.md`](PLAN_ARMONIZACION_POR_CAPITULO.md). Hecho en la rama `armonizacion-por-capitulo` y probado en el mock con dos personas: una subtarea por capítulo para cada tipo de armonización (los proyectos que ya existen se cambian a mano en su plan), la lista del capítulo por secciones, la presencia en vivo y «Seguir donde hace falta». El servidor de presencia mejorado está en `usfm-ast`, rama `relay/door43-presence`. **Falta publicar** (lo hace Abel): el servidor de presencia en Cloudflare y `VITE_PRESENCE_URL` en la versión publicada; sin esa variable Taller funciona como antes.
+Plan y estado: [`PLAN_ARMONIZACION_POR_CAPITULO.md`](PLAN_ARMONIZACION_POR_CAPITULO.md). Hecho en la rama `armonizacion-por-capitulo` y probado en el mock con dos personas: una subtarea por capítulo para cada tipo de armonización (un proyecto que ya existe conserva sus subtareas por sección: **no lo cambies a «por capítulo» en su plan si ya tiene subtareas de armonización**, porque al publicar el plan se cerrarían con sus respuestas; está por decidir cómo pasar Ester y Esdras), la lista del capítulo por secciones, la presencia en vivo y «Seguir donde hace falta». El servidor de presencia mejorado está en `usfm-ast`, rama `relay/door43-presence`. **Falta publicar** (lo hace Abel): el servidor de presencia en Cloudflare y `VITE_PRESENCE_URL` en la versión publicada; sin esa variable Taller funciona como antes.
 
 ## Qué sigue (por prioridad)
 

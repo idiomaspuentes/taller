@@ -7,6 +7,7 @@ import { loadPmConfig } from "./issues";
 import { readTeamHelps } from "./teamHelps";
 import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "./persist";
 import { parseNoteRows } from "../domain/afinacionNotes";
+import { inSections, sectionsOf } from "../domain/chapterRoster";
 import { parseTermRows } from "../domain/afinacionWords";
 import { helpsTsvFilename, resolveHelpsTarget } from "../domain/helpsTarget";
 import { shippedStepsMissing } from "../domain/processes";
@@ -232,5 +233,7 @@ export async function loadChecklist(params: {
     ctx.pmOrg ? loadInventoryFromDcs(session, ctx.pmOrg, ctx.lang, book).catch(() => null) : Promise.resolve(null),
   ]);
   const portions = inventory?.portions.map((portion) => ({ id: portion.id, ref: portion.ref }));
-  return { book, chapter, kind, items, fromSource, ...(bookNotes ? { bookNotes } : {}), ...(portions ? { portions } : {}), original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
+  // Only the items of the subtask's own sections: a stretch of a split chapter carries no verses in its title.
+  const own = portions ? inSections(items, sectionsOf(ctx.portionIds ?? [], chapter, portions)) : items;
+  return { book, chapter, kind, items: own, fromSource, ...(bookNotes ? { bookNotes } : {}), ...(portions ? { portions } : {}), original, pmConfig, texts, target: { owner: helps.owner, repo: helps.repo }, levelBook: pmConfig, board, task, step };
 }

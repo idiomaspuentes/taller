@@ -974,12 +974,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   const room = data && session && storeKey && !trying ? presenceRoom({ host: session.host, owner: data.target.owner, repo: data.target.repo, key: storeKey }) : null;
   const focusHere = !listOpen && entry ? { item: entry.id, doing: proposing || commenting ? ("writing" as const) : ("viewing" as const) } : null;
   const reread = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { peers, announce: tellOthers } = usePresence({
-    room,
-    session: session ?? null,
-    focus: focusHere,
-    onEvent: () => {
-      if (!session || !data || reread.current) return;
+  const readAgain = () => {
+    if (!session || !data || reread.current) return;
       // Several answers in a row are read once.
       reread.current = setTimeout(() => {
         reread.current = null;
@@ -994,8 +990,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           )
           .catch(() => undefined);
       }, 1000);
-    },
-  });
+  };
+  const { peers, announce: tellOthers } = usePresence({ room, session: session ?? null, focus: focusHere, onEvent: readAgain, onRejoin: readAgain });
   const namesOf = (rows: Peer[]) => {
     const names = rows.map((peer) => peer.name || peer.login);
     return names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} ${t("ck.andMore").replace("{n}", String(names.length - 2))}`;

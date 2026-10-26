@@ -27,7 +27,7 @@ await test("quien entra se agrega, quien cambia se actualiza, quien sale se quit
   assert.equal(applyServerMessage(peers, { type: "peer-leave", userId: "BEA" }, 3000).size, 0);
 });
 
-await test("los vivos no incluyen a quien mira ni a quien lleva más de 75 s sin señal", () => {
+await test("los vivos no incluyen a quien mira ni a quien lleva más de 50 s sin señal", () => {
   let peers = applyServerMessage(new Map(), join("ana", "Ana"), 0);
   peers = applyServerMessage(peers, join("bea", "Bea"), 10_000);
   peers = applyServerMessage(peers, join("carla", "Carla"), 0);
@@ -112,7 +112,7 @@ function harness() {
 
 const session = { host: "http://localhost:8798", username: "Ana", token: "token-ana" } as never;
 
-await test("al conectar se une con su sesión y repite su presencia cada 30 s", () => {
+await test("al conectar se une con su sesión y repite su presencia cada 20 s", () => {
   const h = harness();
   const seen: Peer[][] = [];
   const conn = connectPresence({ url: "ws://relay.test", room: "r|o/x|k", session, onPeers: (p) => seen.push(p), onEvent: () => undefined, socket: h.socket, now: h.now, timers: h.fakeTimers });
@@ -175,6 +175,86 @@ await test("anunciar una respuesta llega a los demás con quién la dio", () => 
   assert.ok(h.sockets[0]!.closed);
   h.advance(60_000);
   assert.equal(h.sockets.length, 1, "cerrar a propósito no reconecta");
+});
+
+await test("quien pierde la señal desaparece a los 55 s como mucho de su última señal", () => {
+  const h = harness();
+  let last: Peer[] = [];
+  connectPresence({ url: "ws://relay.test", room: "r|o/x|k", session, onPeers: (p) => (last = p), onEvent: () => undefined, socket: h.socket, now: h.now, timers: h.fakeTimers });
+  h.sockets[0]!.open();
+  h.sockets[0]!.receive(join("bea", "Bea"));
+  h.advance(45_000);
+  assert.deepEqual(last.map((p) => p.login), ["bea"], "todavía cuenta");
+  h.advance(10_000);
+  assert.deepEqual(last, [], "a los 55 s ya no");
+});
+
+await test("al volver a unirse tras un corte avisa para leer otra vez las respuestas", () => {
+  const h = harness();
+  let rejoined = 0;
+  connectPresence({ url: "ws://relay.test", room: "r|o/x|k", session, onPeers: () => undefined, onEvent: () => undefined, onRejoin: () => rejoined++, socket: h.socket, now: h.now, timers: h.fakeTimers });
+  h.sockets[0]!.open();
+  h.sockets[0]!.receive({ type: "joined", userId: "ana" });
+  assert.equal(rejoined, 0, "la primera vez no");
+  h.sockets[0]!.drop();
+  h.advance(1000);
+  h.sockets[1]!.open();
+  h.sockets[1]!.receive({ type: "joined", userId: "ana" });
+  assert.equal(rejoined, 1);
+});
+
+await test("si el servidor nunca acepta la unión, deja de intentar tras 8 cortes", () => {
+  const h = harness();
+  connectPresence({ url: "ws://relay.test", room: "r|o/x|k", session, onPeers: () => undefined, onEvent: () => undefined, socket: h.socket, now: h.now, timers: h.fakeTimers });
+  for (let i = 0; i < 20; i++) {
+    const socket = h.sockets.at(-1)!;
+    socket.open();
+    socket.drop();
+    h.advance(60_000);
+  }
+  assert.equal(h.sockets.length, 8);
+});
+
+await test("una unión aceptada vuelve a empezar la cuenta y la espera", () => {
+  const h = harness();
+  connectPresence({ url: "ws://relay.test", room: "r|o/x|k", session, onPeers: () => undefined, onEvent: () => undefined, socket: h.socket, now: h.now, timers: h.fakeTimers });
+  for (let i = 0; i < 5; i++) {
+    h.sockets.at(-1)!.open();
+    h.sockets.at(-1)!.drop();
+    h.advance(60_000);
+  }
+  h.sockets.at(-1)!.open();
+  h.sockets.at(-1)!.receive({ type: "joined", userId: "ana" });
+  h.sockets.at(-1)!.drop();
+  const count = h.sockets.length;
+  h.advance(1000);
+  assert.equal(h.sockets.length, count + 1, "a 1 s otra vez");
+  for (let i = 0; i < 6; i++) {
+    h.sockets.at(-1)!.open();
+    h.sockets.at(-1)!.drop();
+    h.advance(60_000);
+  }
+  assert.ok(h.sockets.length > count + 5, "la cuenta empezó de nuevo");
+});
+
+await test("al volver a la pestaña reconecta enseguida; tras un acceso negado, no", () => {
+  const h = harness();
+  const conn = connectPresence({ url: "ws://relay.test", room: "r|o/x|k", session, onPeers: () => undefined, onEvent: () => undefined, socket: h.socket, now: h.now, timers: h.fakeTimers });
+  for (let i = 0; i < 10; i++) {
+    h.sockets.at(-1)!.open();
+    h.sockets.at(-1)!.drop();
+    h.advance(60_000);
+  }
+  const stopped = h.sockets.length;
+  conn.refresh();
+  h.advance(0);
+  assert.equal(h.sockets.length, stopped + 1, "un intento nuevo");
+  h.sockets.at(-1)!.open();
+  h.sockets.at(-1)!.receive({ type: "denied", reason: "auth" });
+  h.sockets.at(-1)!.drop();
+  conn.refresh();
+  h.advance(60_000);
+  assert.equal(h.sockets.length, stopped + 1, "negado, no insiste");
 });
 
 console.log(`\nverify-presence: ${passed} checks passed.`);

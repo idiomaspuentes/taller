@@ -6,10 +6,16 @@
 export type PresenceFocus = { item: string; doing: "viewing" | "writing" };
 export type Peer = { login: string; name: string; focus?: PresenceFocus; lastSeen: number };
 
-/** A person with no sign for this long is taken as gone (a phone that lost its signal does not say goodbye). */
-export const PEER_STALE_MS = 75_000;
+/**
+ * A person with no sign for this long is taken as gone (a phone that lost its signal does not say goodbye). With a
+ * check every few seconds, they are gone at most 55 s after their last sign. The relay server is deployed with the
+ * same limit (PRESENCE_STALE_MS), so that it does not hand a newcomer somebody who left.
+ */
+export const PEER_STALE_MS = 50_000;
 /** How often each person says again where they are. */
-export const PRESENCE_BEAT_MS = 30_000;
+export const PRESENCE_BEAT_MS = 20_000;
+/** How often whoever stopped giving signs is let go. */
+export const PRESENCE_PRUNE_MS = 5_000;
 
 /** The room of a subtask: the Door43 host, the repository its answers are kept in, and the key of its answers. */
 export function presenceRoom(p: { host: string; owner: string; repo: string; key: string }): string {

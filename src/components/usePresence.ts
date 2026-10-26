@@ -15,11 +15,15 @@ export function usePresence(p: {
   session: GtSession | null;
   focus: PresenceFocus | null;
   onEvent?: (event: PresenceEvent & { by: string }) => void;
+  /** Joined again after a cut: what the others said meanwhile was not heard. */
+  onRejoin?: () => void;
 }): { peers: Peer[]; announce(event: PresenceEvent): void } {
   const [peers, setPeers] = useState<Peer[]>([]);
   const connection = useRef<PresenceConnection | null>(null);
   const onEvent = useRef(p.onEvent);
   onEvent.current = p.onEvent;
+  const onRejoin = useRef(p.onRejoin);
+  onRejoin.current = p.onRejoin;
   const focus = useRef(p.focus);
   focus.current = p.focus;
 
@@ -32,10 +36,17 @@ export function usePresence(p: {
       session: p.session,
       onPeers: setPeers,
       onEvent: (event) => onEvent.current?.(event),
+      onRejoin: () => onRejoin.current?.(),
     });
     connection.current = conn;
     if (focus.current) conn.setFocus(focus.current);
+    // Back to the page (a phone unlocked): a connection that died unseen is made again, and what was said is read.
+    const back = () => {
+      if (document.visibilityState === "visible") conn.refresh();
+    };
+    document.addEventListener("visibilitychange", back);
     return () => {
+      document.removeEventListener("visibilitychange", back);
       conn.close();
       connection.current = null;
       setPeers([]);

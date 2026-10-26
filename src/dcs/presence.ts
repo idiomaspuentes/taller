@@ -1,15 +1,22 @@
 import type { GtSession } from "./auth";
-import { applyServerMessage, livePeers, PRESENCE_BEAT_MS, type Peer, type PresenceFocus } from "../domain/presence";
+import { applyServerMessage, livePeers, PRESENCE_BEAT_MS, PRESENCE_PRUNE_MS, type Peer, type PresenceFocus } from "../domain/presence";
 
 /**
  * The connection to the relay server that says who is in a subtask (see `usfm-relay-server`): joined with the
- * person's Door43 session, saying again where they are every half minute, and back after a cut, waiting longer each
- * time. Refused (no access, an expired session), it stays off: Taller works the same without it.
+ * person's Door43 session, saying again where they are every 20 s, and back after a cut, waiting longer each time.
+ * Refused (no access, an expired session), it stays off; after 8 tries the server never accepted, it rests until
+ * the person comes back to the page (`refresh`). Taller works the same without it.
  */
 
 /** What one person tells the others: they answered something, so the others read the answers again. */
 export type PresenceEvent = { type: "taller:answered"; item: string };
-export type PresenceConnection = { setFocus(focus: PresenceFocus | null): void; announce(event: PresenceEvent): void; close(): void };
+export type PresenceConnection = {
+  setFocus(focus: PresenceFocus | null): void;
+  announce(event: PresenceEvent): void;
+  /** Coming back to the page: a connection that died unseen (a locked phone) is made again at once. */
+  refresh(): void;
+  close(): void;
+};
 
 /** What is used of a WebSocket, so that a test can stand in for it. */
 export type SocketLike = {
@@ -32,6 +39,8 @@ const realTimers: PresenceTimers = {
 
 const BACKOFF_FIRST_MS = 1000;
 const BACKOFF_MOST_MS = 30_000;
+/** Tries in a row the server did not accept before resting. */
+const MOST_FAILED = 8;
 
 export function connectPresence(p: {
   url: string;
@@ -39,6 +48,8 @@ export function connectPresence(p: {
   session: GtSession;
   onPeers(peers: Peer[]): void;
   onEvent(e: PresenceEvent & { by: string }): void;
+  /** Joined again after a cut: what was said meanwhile was not heard, so the answers are read again. */
+  onRejoin?(): void;
   socket?: (url: string) => SocketLike;
   now?: () => number;
   timers?: PresenceTimers;
@@ -51,8 +62,12 @@ export function connectPresence(p: {
 
   let ws: SocketLike | null = null;
   let connected = false;
-  let stopped = false;
+  /** Why it is not trying: closed by the page, refused by the server, or resting after too many failed tries. */
+  let stopped: null | "closed" | "denied" | "resting" = null;
   let wait = BACKOFF_FIRST_MS;
+  let failed = 0;
+  let everJoined = false;
+  let joinedNow = false;
   let beat: unknown = null;
   let retry: unknown = null;
   let focus: PresenceFocus | null = null;
@@ -63,20 +78,21 @@ export function connectPresence(p: {
     if (ws && connected) ws.send(JSON.stringify(data));
   };
   const tell = () => p.onPeers(livePeers(peers, now(), me));
+  // Whoever stopped giving signs is let go every few seconds, even when nothing else comes.
+  const prune = timers.every(PRESENCE_PRUNE_MS, () => {
+    if (peers.size) tell();
+  });
 
   const connect = () => {
     if (stopped) return;
+    retry = null;
+    joinedNow = false;
     const socket = open(address);
     ws = socket;
     socket.onopen = () => {
       connected = true;
-      wait = BACKOFF_FIRST_MS;
       socket.send(JSON.stringify({ type: "join", roomId: p.room, userId: me, presence: presence(), auth: { token: p.session.token } }));
-      beat = timers.every(PRESENCE_BEAT_MS, () => {
-        send({ type: "presence", presence: presence() });
-        // Whoever stopped giving signs is let go even when nothing else comes.
-        tell();
-      });
+      beat = timers.every(PRESENCE_BEAT_MS, () => send({ type: "presence", presence: presence() }));
     };
     socket.onmessage = (ev) => {
       let msg: { type?: string; message?: { type?: string; senderId?: string; payload?: unknown } };
@@ -86,7 +102,16 @@ export function connectPresence(p: {
         return;
       }
       if (msg.type === "denied") {
-        stopped = true;
+        stopped = "denied";
+        return;
+      }
+      if (msg.type === "joined") {
+        // Accepted: the count of failed tries and the wait start again.
+        joinedNow = true;
+        failed = 0;
+        wait = BACKOFF_FIRST_MS;
+        if (everJoined) p.onRejoin?.();
+        everJoined = true;
         return;
       }
       if (msg.type === "relay") {
@@ -105,8 +130,13 @@ export function connectPresence(p: {
       peers = new Map();
       tell();
       if (stopped) return;
+      if (!joinedNow) failed += 1;
+      if (failed >= MOST_FAILED) {
+        stopped = "resting";
+        return;
+      }
       retry = timers.after(wait, connect);
-      wait = Math.min(wait * 2, BACKOFF_MOST_MS);
+      wait = Math.min(Math.max(wait * 2, BACKOFF_FIRST_MS), BACKOFF_MOST_MS);
     };
   };
   connect();
@@ -119,8 +149,35 @@ export function connectPresence(p: {
     announce(event) {
       send({ type: "relay", message: { type: event.type, senderId: me, payload: event } });
     },
+    refresh() {
+      if (stopped === "closed" || stopped === "denied") return;
+      if (stopped === "resting") {
+        stopped = null;
+        failed = 0;
+      }
+      wait = BACKOFF_FIRST_MS;
+      if (retry !== null) {
+        timers.clear(retry);
+        retry = timers.after(0, connect);
+        return;
+      }
+      if (!ws) {
+        retry = timers.after(0, connect);
+        return;
+      }
+      // A socket that looks open may be dead (a locked phone): made again, it says where the person is.
+      const old = ws;
+      old.onclose = null;
+      old.close();
+      connected = false;
+      if (beat !== null) timers.clear(beat);
+      beat = null;
+      ws = null;
+      retry = timers.after(0, connect);
+    },
     close() {
-      stopped = true;
+      stopped = "closed";
+      timers.clear(prune);
       if (retry !== null) timers.clear(retry);
       if (beat !== null) timers.clear(beat);
       ws?.close();

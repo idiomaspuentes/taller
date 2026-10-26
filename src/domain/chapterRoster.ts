@@ -28,6 +28,14 @@ export function sectionsOf(portionIds: string[], chapter: number, portions: { id
   return sections.length ? sections : [{ ref: String(chapter), from: 1, to: WHOLE_CHAPTER_TO }];
 }
 
+/**
+ * The items of a subtask: those of its sections. A stretch of a split chapter is titled «Capítulo 1 · parte 1», with
+ * no verses in it, and loaded the whole chapter: it never closed, and the other stretch's items were counted in it.
+ */
+export function inSections<T extends { verse: number }>(items: T[], sections: RosterSection[]): T[] {
+  return items.filter((item) => sections.some((section) => item.verse >= section.from && item.verse <= section.to));
+}
+
 function statusOf(tally: CheckItemTally | undefined, voices: string[], me: string): RosterStatus {
   if (tally?.state === "ok") return "ready";
   if (tally?.turn === "mine") return "mine";
@@ -77,7 +85,8 @@ export function nextNeeding(rows: RosterRow[], p: { me: string; needed: number; 
   const start = p.after ? rows.findIndex((row) => row.itemId === p.after) + 1 : 0;
   const order = [...rows.slice(start), ...rows.slice(0, start)];
   const open = order.filter((row) => row.status !== "ready" && !row.voices.includes(me));
-  const people = (row: RosterRow) => row.voices.length + (p.present?.[row.itemId] ?? []).filter((who) => who.toLowerCase() !== me).length;
+  // Who answered and who is on it now, each once: somebody still reading what they answered is one person.
+  const people = (row: RosterRow) => new Set([...row.voices, ...(p.present?.[row.itemId] ?? []).map((who) => who.toLowerCase())].filter((who) => who !== me)).size;
   return (
     order.find((row) => row.status === "mine")?.itemId ??
     open.find((row) => people(row) < p.needed)?.itemId ??
