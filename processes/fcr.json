@@ -9,7 +9,7 @@
       "names": {
         "pt": "FCR: Fluxo de Criação de Recursos"
       },
-      "version": 38,
+      "version": 52,
       "description": "Traducción, Afinación, Armonización y Validación, capítulo por capítulo.",
       "descriptions": {
         "pt": "Tradução, Afinação, Harmonização e Validação, capítulo por capítulo."
@@ -2196,10 +2196,13 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "formerDescriptions": ["Lee la nota junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas."],
-              "description": "Lee la nota y compárala con un texto a la vez: el TPL, el TPS y, si enlaza un artículo, el artículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar las notas de un versículo, revisa que no le falte ninguna.",
+              "formerDescriptions": [
+                "Lee la nota junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas.",
+                "Lee la nota y compárala con un texto a la vez: el TPL, el TPS y, si enlaza un artículo, el artículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar las notas de un versículo, revisa que no le falte ninguna."
+              ],
+              "description": "Lee la nota y compárala con un texto a la vez: el TPL, el TPS y, si enlaza un artículo, el artículo.\nSi otros ya la revisaron, di si estás de acuerdo con ellos o propón otra cosa.\nCada nota queda resuelta cuando tres personas del equipo están de acuerdo.",
               "descriptions": {
-                "pt": "Leia a nota e compare-a com um texto de cada vez: o TPL, o TPS e, se tiver um artigo, o artigo.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nAo terminar as notas de um versículo, verifique se não falta nenhuma."
+                "pt": "Leia a nota e compare-a com um texto de cada vez: o TPL, o TPS e, se tiver um artigo, o artigo.\nSe outros já a revisaram, diga se concorda com eles ou proponha outra coisa.\nCada nota fica resolvida quando três pessoas da equipe estão de acordo."
               },
               "purpose": "Comprueba que cada nota siga diciendo lo correcto ahora que el TPL y el TPS están afinados.",
               "purposes": {
@@ -2211,29 +2214,84 @@
               },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
               "checklist": [
                 {
                   "id": "sentido",
-                  "text": "¿Tiene sentido con el texto del TPL?",
+                  "text": "¿La nota explica las palabras marcadas en el TPL?",
                   "texts": {
-                    "pt": "Faz sentido com o texto do TPL?"
+                    "pt": "A nota explica as palavras marcadas no TPL?"
                   },
+                  "formerTexts": [
+                    "¿Tiene sentido con el texto del TPL?",
+                    "¿La nota habla de lo que dice el TPL en esas palabras?",
+                    "¿La nota habla de lo que dicen las palabras marcadas en el TPL?"
+                  ],
                   "about": "tpl"
                 },
                 {
-                  "id": "util",
-                  "text": "¿Es útil: el traductor sabe qué hacer con la dificultad?",
+                  "id": "figura",
+                  "text": "¿La figura de la que habla la nota sigue en el TPL?",
                   "texts": {
-                    "pt": "É útil: o tradutor sabe o que fazer com a dificuldade?"
+                    "pt": "A figura de que a nota fala continua no TPL?"
                   },
+                  "when": [
+                    "metáfora",
+                    "metonimia",
+                    "metonímia",
+                    "personificación",
+                    "personificação",
+                    "sinécdoque",
+                    "sinédoque",
+                    "símil",
+                    "símile",
+                    "modismo",
+                    "expresión idiomática",
+                    "expressão idiomática",
+                    "hipérbole",
+                    "eufemismo",
+                    "ironía",
+                    "ironia",
+                    "pregunta retórica",
+                    "pergunta retórica",
+                    "merismo",
+                    "doblete",
+                    "dublete",
+                    "figura"
+                  ],
+                  "about": "tpl",
+                  "since": 47,
+                  "formerTexts": [
+                    "¿La figura que explica la nota está en el TPL?"
+                  ]
+                },
+                {
+                  "id": "util",
+                  "text": "¿La nota le sugiere al traductor qué hacer?",
+                  "texts": {
+                    "pt": "A nota sugere ao tradutor o que fazer?"
+                  },
+                  "formerTexts": [
+                    "¿Es útil: el traductor sabe qué hacer con la dificultad?",
+                    "¿La nota le dice al traductor qué hacer con esa dificultad?",
+                    "¿La nota le dice al traductor qué hacer?"
+                  ],
                   "about": "tpl"
                 },
                 {
                   "id": "alternativa",
-                  "text": "¿La traducción alternativa encaja exactamente en la frase que reemplaza?",
+                  "text": "¿La traducción alternativa de la nota encaja en lugar de las palabras marcadas?",
                   "texts": {
-                    "pt": "A tradução alternativa encaixa exatamente na frase que substitui?"
+                    "pt": "A tradução alternativa da nota encaixa no lugar das palavras marcadas?"
                   },
+                  "formerTexts": [
+                    "¿La traducción alternativa encaja exactamente en la frase que reemplaza?",
+                    "¿La traducción alternativa puede ponerse en lugar de las palabras citadas sin cambiar nada más de la frase?",
+                    "¿La traducción alternativa puede ponerse en lugar de las palabras marcadas sin cambiar nada más de la frase?",
+                    "¿Se puede cambiar lo marcado por la traducción alternativa sin tocar el resto de la frase?"
+                  ],
                   "when": [
                     "Traducción alternativa",
                     "Tradução alternativa",
@@ -2242,36 +2300,59 @@
                   "about": "tpl"
                 },
                 {
-                  "id": "cobertura",
-                  "text": "¿Cada dificultad del TPL tiene una nota que la explique?",
+                  "id": "remite",
+                  "text": "¿En el versículo al que remite la nota, el TPL lo dice igual?",
                   "texts": {
-                    "pt": "Cada dificuldade do TPL tem uma nota que a explique?"
+                    "pt": "No versículo a que a nota remete, o TPL diz igual?"
                   },
+                  "when": [
+                    "](../",
+                    "](./"
+                  ],
+                  "about": "tpl",
+                  "since": 52
+                },
+                {
+                  "id": "cobertura",
+                  "text": "¿Cada dificultad del TPL en este versículo tiene una nota?",
+                  "texts": {
+                    "pt": "Cada dificuldade do TPL neste versículo tem uma nota?"
+                  },
+                  "formerTexts": [
+                    "¿Cada dificultad del TPL tiene una nota que la explique?",
+                    "En este versículo, ¿cada dificultad del TPL tiene su nota?"
+                  ],
                   "per": "verse",
                   "about": "tpl"
                 },
                 {
                   "id": "explica",
-                  "text": "¿Explica bien el texto del TPS?",
+                  "text": "En el TPS, ¿se ve el cambio que sugiere la nota, o uno parecido?",
                   "texts": {
-                    "pt": "Explica bem o texto do TPS?"
+                    "pt": "No TPS, dá para ver a mudança que a nota sugere, ou uma parecida?"
                   },
-                  "about": "tps"
-                },
-                {
-                  "id": "camino",
-                  "text": "¿Ayuda a ver cómo el TPS llegó ahí desde el TPL?",
-                  "texts": {
-                    "pt": "Ajuda a ver como o TPS chegou ali a partir do TPL?"
-                  },
+                  "formerTexts": [
+                    "¿Explica bien el texto del TPS?",
+                    "¿La nota explica bien al traductor el texto del TPS?",
+                    "¿Lo que explica la nota coincide con el sentido que expresa el TPS?",
+                    "¿El TPS expresa el mismo sentido que la nota explica de las palabras marcadas?",
+                    "¿El TPS dice lo mismo que la nota?",
+                    "¿El TPS hace el cambio que sugiere la nota, o uno parecido?",
+                    "¿La nota sugiere el cambio que hace el TPS, o uno parecido?",
+                    "¿La nota sugiere el cambio que hizo el TPS, o uno parecido?"
+                  ],
                   "about": "tps"
                 },
                 {
                   "id": "coincide",
-                  "text": "Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?",
+                  "text": "Si la nota cita el TPS, ¿lo cita tal como dice ahora?",
                   "texts": {
-                    "pt": "Quando a nota menciona o TPS, coincide com o que o TPS diz?"
+                    "pt": "Se a nota cita o TPS, cita-o como ele diz agora?"
                   },
+                  "formerTexts": [
+                    "Cuando la nota menciona el TPS, ¿coincide con lo que el TPS dice?",
+                    "¿Lo que la nota cita del TPS es lo que el TPS dice hoy?"
+                  ],
                   "about": "tps",
                   "when": [
                     "el TPS",
@@ -2282,61 +2363,61 @@
                 },
                 {
                   "id": "diferencias",
-                  "text": "¿Cada diferencia importante entre el TPL y el TPS tiene una nota?",
+                  "text": "¿Cada diferencia importante entre el TPL y el TPS en este versículo tiene una nota?",
                   "texts": {
-                    "pt": "Cada diferença importante entre o TPL e o TPS tem uma nota?"
+                    "pt": "Cada diferença importante entre o TPL e o TPS neste versículo tem uma nota?"
                   },
+                  "formerTexts": [
+                    "¿Cada diferencia importante entre el TPL y el TPS tiene una nota?",
+                    "En este versículo, ¿cada diferencia importante entre el TPL y el TPS tiene su nota?"
+                  ],
                   "per": "verse",
                   "about": "tps"
                 },
                 {
-                  "id": "pertinente",
-                  "text": "¿El artículo enlazado enseña el tipo de dificultad que señala la nota?",
+                  "id": "llaves",
+                  "text": "¿Alguna nota explica lo que el TPS agrega entre { } en este versículo?",
                   "texts": {
-                    "pt": "O artigo vinculado ensina o tipo de dificuldade que a nota aponta?"
+                    "pt": "Alguma nota explica o que o TPS acrescenta entre { } neste versículo?"
                   },
+                  "per": "verse",
+                  "about": "tps",
+                  "since": 47,
+                  "formerTexts": [
+                    "En este versículo, ¿las notas explican lo que el TPS agrega entre { }?"
+                  ]
+                },
+                {
+                  "id": "pertinente",
+                  "text": "¿El artículo que enlaza la nota trata de esta dificultad?",
+                  "texts": {
+                    "pt": "O artigo que a nota liga trata desta dificuldade?"
+                  },
+                  "formerTexts": [
+                    "¿El artículo enlazado enseña el tipo de dificultad que señala la nota?",
+                    "¿El artículo que enlaza la nota enseña sobre esta dificultad?"
+                  ],
                   "about": "academia",
                   "linked": true
                 },
                 {
                   "id": "publicado",
-                  "text": "¿El artículo está publicado en este idioma?",
+                  "text": "¿El artículo ya está publicado en {idioma}?",
                   "texts": {
-                    "pt": "O artigo está publicado neste idioma?"
+                    "pt": "O artigo já está publicado em {idioma}?"
                   },
+                  "formerTexts": [
+                    "¿El artículo está publicado en este idioma?",
+                    "¿El artículo ya está traducido y publicado en {idioma}?"
+                  ],
                   "about": "academia",
                   "linked": true,
                   "per": "article"
                 }
+              ],
+              "formerQuestions": [
+                "camino"
               ]
-            },
-            {
-              "id": "acuerdo",
-              "name": "Acuerdo del equipo",
-              "names": {
-                "pt": "Acordo da equipe"
-              },
-              "actionLabel": "Acordar",
-              "actionLabels": {
-                "pt": "Acordar"
-              },
-              "closing": "consensus",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "description": "Revisa cada cambio propuesto.\nDa tu acuerdo o di qué no compartes.\nCon todo el equipo de acuerdo, se aplica.",
-              "descriptions": {
-                "pt": "Revise cada mudança proposta.\nDê o seu acordo ou diga o que não compartilha.\nCom toda a equipe de acordo, ela é aplicada."
-              },
-              "purpose": "Pónganse de acuerdo en qué se deja y qué se cambia de lo que se encontró al armonizar.",
-              "purposes": {
-                "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
-              },
-              "criterion": "La nota explica lo que el texto dice sin suavizarlo: nunca dice menos que el TPS.",
-              "criteria": {
-                "pt": "A nota explica o que o texto diz sem suavizá-lo: nunca diz menos que o TPS."
-              },
-              "solverAppId": "fcr-acuerdo"
             }
           ],
           "minLevel": "habilitada",
@@ -2358,12 +2439,6 @@
               "scope": "before"
             }
           ],
-          "bundle": {
-            "enabled": true,
-            "grain": "chapter"
-          },
-          "distributeUnit": "chapter",
-          "distributePolicy": "manual",
           "redoAfter": [
             "tpl",
             "tps"
@@ -2393,10 +2468,13 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "formerDescriptions": ["Lee el artículo junto al TPL y al TPS donde aparece la palabra.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlos todos."],
-              "description": "Lee el artículo y compáralo con un texto a la vez: el TPL y luego el TPS, donde aparece la palabra.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar un versículo, revisa que no le falte ninguna palabra.",
+              "formerDescriptions": [
+                "Lee el artículo junto al TPL y al TPS donde aparece la palabra.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlos todos.",
+                "Lee el artículo y compáralo con un texto a la vez: el TPL y luego el TPS, donde aparece la palabra.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nAl terminar un versículo, revisa que no le falte ninguna palabra."
+              ],
+              "description": "Lee el artículo y compáralo con un texto a la vez: el TPL y luego el TPS, donde aparece la palabra.\nSi otros ya lo revisaron, di si estás de acuerdo con ellos o propón otra cosa.\nCada palabra queda resuelta cuando tres personas del equipo están de acuerdo.",
               "descriptions": {
-                "pt": "Leia o artigo e compare-o com um texto de cada vez: o TPL e depois o TPS, onde a palavra aparece.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nAo terminar um versículo, verifique se não falta nenhuma palavra."
+                "pt": "Leia o artigo e compare-o com um texto de cada vez: o TPL e depois o TPS, onde a palavra aparece.\nSe outros já o revisaram, diga se concorda com eles ou proponha outra coisa.\nCada palavra fica resolvida quando três pessoas da equipe estão de acordo."
               },
               "purpose": "Comprueba que cada artículo de palabras clave cuadre con cómo las tradujeron el TPL y el TPS.",
               "purposes": {
@@ -2408,30 +2486,45 @@
               },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
+              "claimMode": "pool",
+              "minAssignees": 3,
+              "maxAssignees": 6,
               "checklist": [
                 {
                   "id": "definicion",
-                  "text": "¿La definición del artículo es correcta para este contexto?",
+                  "text": "¿La definición del artículo es la que la palabra tiene en este versículo?",
                   "texts": {
-                    "pt": "A definição do artigo está correta para este contexto?"
+                    "pt": "A definição do artigo é a que a palavra tem neste versículo?"
                   },
+                  "formerTexts": [
+                    "¿La definición del artículo es correcta para este contexto?",
+                    "¿La definición del artículo corresponde al sentido que tiene la palabra en este versículo?"
+                  ],
                   "about": "tpl"
                 },
                 {
                   "id": "cobertura",
-                  "text": "¿Cada palabra difícil del TPL tiene su artículo?",
+                  "text": "¿Cada palabra clave del TPL en este versículo tiene su artículo?",
                   "texts": {
-                    "pt": "Cada palavra difícil do TPL tem seu artigo?"
+                    "pt": "Cada palavra-chave do TPL neste versículo tem o seu artigo?"
                   },
+                  "formerTexts": [
+                    "¿Cada palabra difícil del TPL tiene su artículo?",
+                    "En este versículo, ¿cada palabra clave del TPL tiene su artículo?"
+                  ],
                   "per": "verse",
                   "about": "tpl"
                 },
                 {
                   "id": "sugerencia",
-                  "text": "¿La forma en que el TPS dice el término aparece en las sugerencias de traducción del artículo?",
+                  "text": "¿El artículo sugiere la forma en que lo dice el TPS?",
                   "texts": {
-                    "pt": "A forma como o TPS diz o termo aparece nas sugestões de tradução do artigo?"
+                    "pt": "O artigo sugere a forma como o TPS o diz?"
                   },
+                  "formerTexts": [
+                    "¿La forma en que el TPS dice el término aparece en las sugerencias de traducción del artículo?",
+                    "¿Las sugerencias de traducción del artículo incluyen cómo lo dice el TPS?"
+                  ],
                   "about": "tps",
                   "articleFocus": [
                     "Sugerencias de traducción",
@@ -2440,34 +2533,6 @@
                   ]
                 }
               ]
-            },
-            {
-              "id": "acuerdo",
-              "name": "Acuerdo del equipo",
-              "names": {
-                "pt": "Acordo da equipe"
-              },
-              "actionLabel": "Acordar",
-              "actionLabels": {
-                "pt": "Acordar"
-              },
-              "closing": "consensus",
-              "claimMode": "pool",
-              "minAssignees": 3,
-              "maxAssignees": 6,
-              "description": "Revisa cada cambio propuesto.\nDa tu acuerdo o di qué no compartes.\nCon todo el equipo de acuerdo, se aplica.",
-              "descriptions": {
-                "pt": "Revise cada mudança proposta.\nDê o seu acordo ou diga o que não compartilha.\nCom toda a equipe de acordo, ela é aplicada."
-              },
-              "purpose": "Pónganse de acuerdo en qué se deja y qué se cambia de lo que se encontró al armonizar.",
-              "purposes": {
-                "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
-              },
-              "criterion": "El artículo muestra todos los sentidos que la palabra tiene en el original, también los que pueden incomodar. Si algo puede confundir, se explica a quién o por qué; no se cambia la palabra ni se quita un sentido.",
-              "criteria": {
-                "pt": "O artigo mostra todos os sentidos que a palavra tem no original, também os que podem incomodar. Se algo pode confundir, explica-se a quem ou por quê; não se troca a palavra nem se tira um sentido."
-              },
-              "solverAppId": "fcr-acuerdo"
             }
           ],
           "minLevel": "habilitada",
@@ -2489,12 +2554,6 @@
               "scope": "before"
             }
           ],
-          "bundle": {
-            "enabled": true,
-            "grain": "chapter"
-          },
-          "distributeUnit": "chapter",
-          "distributePolicy": "manual",
           "everyUnit": true,
           "redoAfter": [
             "tpl",
@@ -2525,10 +2584,13 @@
               "actionLabels": {
                 "pt": "Verificar"
               },
-              "formerDescriptions": ["Lee la pregunta junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas."],
-              "description": "Lee la pregunta y su respuesta junto al TPL y al TPS de su versículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nSigue hasta revisarlas todas.",
+              "formerDescriptions": [
+                "Lee la pregunta junto al TPL y al TPS de su versículo.\nMarca «Todo bien» o anota qué hay que cambiar.\nSigue hasta revisarlas todas.",
+                "Lee la pregunta y su respuesta junto al TPL y al TPS de su versículo.\nResponde «Sí, seguir», o «Hay algo que cambiar» y propón el cambio.\nSigue hasta revisarlas todas."
+              ],
+              "description": "Lee la pregunta y su respuesta junto al TPL y al TPS de su versículo.\nSi otros ya la revisaron, di si estás de acuerdo con ellos o propón otra cosa.\nCada pregunta queda resuelta cuando tres personas del equipo están de acuerdo.",
               "descriptions": {
-                "pt": "Leia a pergunta e a resposta junto ao TPL e ao TPS do seu versículo.\nResponda «Sim, seguir», ou «Há algo a mudar» e proponha a mudança.\nContinue até revisar todas."
+                "pt": "Leia a pergunta e a resposta junto ao TPL e ao TPS do seu versículo.\nSe outros já a revisaram, diga se concorda com eles ou proponha outra coisa.\nCada pergunta fica resolvida quando três pessoas da equipe estão de acordo."
               },
               "purpose": "Comprueba que cada pregunta y su respuesta sigan cuadrando con el TPL y el TPS.",
               "purposes": {
@@ -2536,46 +2598,32 @@
               },
               "solverAppId": "fcr-checklist",
               "closing": "checklist",
-              "checklist": [
-                {
-                  "id": "responde",
-                  "text": "¿Se puede responder con el TPL y el TPS afinados?",
-                  "texts": {
-                    "pt": "Pode ser respondida com o TPL e o TPS afinados?"
-                  }
-                },
-                {
-                  "id": "coincide",
-                  "text": "¿La respuesta sugerida coincide con lo que dicen los textos?",
-                  "texts": {
-                    "pt": "A resposta sugerida coincide com o que os textos dizem?"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "acuerdo",
-              "name": "Acuerdo del equipo",
-              "names": {
-                "pt": "Acordo da equipe"
-              },
-              "actionLabel": "Acordar",
-              "actionLabels": {
-                "pt": "Acordar"
-              },
-              "closing": "consensus",
               "claimMode": "pool",
               "minAssignees": 3,
               "maxAssignees": 6,
-              "description": "Revisa cada cambio propuesto.\nDa tu acuerdo o di qué no compartes.\nCon todo el equipo de acuerdo, se aplica.",
-              "descriptions": {
-                "pt": "Revise cada mudança proposta.\nDê o seu acordo ou diga o que não compartilha.\nCom toda a equipe de acordo, ela é aplicada."
-              },
-              "purpose": "Pónganse de acuerdo en qué se deja y qué se cambia de lo que se encontró al armonizar.",
-              "purposes": {
-                "pt": "Cheguem a um acordo sobre o que fica e o que muda do que se encontrou ao harmonizar."
-              },
-              "solverAppId": "fcr-acuerdo"
+              "checklist": [
+                {
+                  "id": "responde",
+                  "text": "¿Se puede responder la pregunta leyendo el TPL y el TPS?",
+                  "texts": {
+                    "pt": "Dá para responder a pergunta lendo o TPL e o TPS?"
+                  },
+                  "formerTexts": [
+                    "¿Se puede responder con el TPL y el TPS afinados?",
+                    "¿La pregunta se puede responder leyendo el TPL y el TPS?"
+                  ]
+                },
+                {
+                  "id": "coincide",
+                  "text": "¿La respuesta sugerida dice lo mismo que el TPL y el TPS?",
+                  "texts": {
+                    "pt": "A resposta sugerida diz o mesmo que o TPL e o TPS?"
+                  },
+                  "formerTexts": [
+                    "¿La respuesta sugerida coincide con lo que dicen los textos?"
+                  ]
+                }
+              ]
             }
           ],
           "minLevel": "habilitada",
@@ -2597,12 +2645,6 @@
               "scope": "before"
             }
           ],
-          "bundle": {
-            "enabled": true,
-            "grain": "chapter"
-          },
-          "distributeUnit": "chapter",
-          "distributePolicy": "manual",
           "redoAfter": [
             "tpl",
             "tps"

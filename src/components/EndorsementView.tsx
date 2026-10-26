@@ -32,7 +32,7 @@ import { ChangeGroups } from "./ChangesView";
 import { ownerTaskOf } from "../domain/resourceOwner";
 import { tallyEndorsement, visibleReports, type Concern, type EndorsementReport } from "../domain/endorsement";
 import { canConfirmForTeam, coordinatorsOf } from "../domain/levels";
-import { localized } from "../domain/processes";
+import { localized, questionText } from "../domain/processes";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
 import { stepMinAssignees } from "../domain/stepClaim";
 import type { ChecklistQuestion, ProjectSettings } from "../domain/types";
@@ -525,7 +525,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
           <ul className="ck-questions">
             {questions.map((question) => (
               <li key={question.id} className="ck-question">
-                <p className="ck-question__text">{localized(question.text, question.texts, language)}</p>
+                <p className="ck-question__text">{questionText(question, language, ctx?.lang)}</p>
                 <div className="ck-question__buttons">
                   {[true, false].map((value) => (
                     <Button key={String(value)} type="button" variant={mine.answers[question.id] === value ? "default" : "outline"} aria-pressed={mine.answers[question.id] === value} disabled={saving} onClick={() => setMine({ ...mine, answers: { ...mine.answers, [question.id]: value } })}>
@@ -630,7 +630,7 @@ export function EndorsementView({ ctxEncoded, mode, onClose, announce }: Props) 
             <div key={report.by} className="en-report">
               <b>@{report.by}</b>
               <span>
-                {questions.map((q) => `${localized(q.text, q.texts, language)} ${report.answers[q.id] ? t("ck.yes") : t("ck.no")}`).join(" · ")}
+                {questions.map((q) => `${questionText(q, language, ctx?.lang)} ${report.answers[q.id] ? t("ck.yes") : t("ck.no")}`).join(" · ")}
               </span>
               {report.concerns.filter((c) => !c.withdrawn).map((c) => (
                 <p key={c.id} data-kind={c.kind}>

@@ -466,6 +466,7 @@ function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
     const when = Array.isArray(item.when) ? item.when.map((word) => String(word ?? "").trim()).filter(Boolean) : [];
     const about = String(item.about ?? "").trim();
     const focus = Array.isArray(item.articleFocus) ? item.articleFocus.map((head) => String(head ?? "").trim()).filter(Boolean) : [];
+    const former = Array.isArray(item.formerTexts) ? [...new Set(item.formerTexts.map((old) => String(old ?? "").trim()).filter((old) => old && old !== text))] : [];
     out.push({
       id,
       text,
@@ -475,6 +476,8 @@ function normalizeChecklist(raw: unknown): ChecklistQuestion[] | undefined {
       ...(about ? { about } : {}),
       ...(item.linked === true ? { linked: true as const } : {}),
       ...(focus.length ? { articleFocus: focus } : {}),
+      ...(former.length ? { formerTexts: former } : {}),
+      ...(Number.isInteger(item.since) && Number(item.since) > 0 ? { since: Number(item.since) } : {}),
     });
   }
   return out.length ? out : undefined;
@@ -541,6 +544,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
     const closing = STEP_CLOSINGS.includes(item.closing as StepClosing) ? (item.closing as StepClosing) : undefined;
     const formerNames = Array.isArray(item.formerNames) ? [...new Set(item.formerNames.map((old) => String(old).trim()).filter((old) => old && old !== name))] : [];
     const formerChecks = Array.isArray(item.formerChecks) ? [...new Set(item.formerChecks.map((old) => String(old).trim()).filter(Boolean))] : [];
+    const formerQuestions = Array.isArray(item.formerQuestions) ? [...new Set(item.formerQuestions.map((old) => String(old).trim()).filter(Boolean))] : [];
     const formerDescriptions = Array.isArray(item.formerDescriptions) ? [...new Set(item.formerDescriptions.map((old) => String(old).trim()).filter(Boolean))] : [];
     const scope = STEP_SCOPES.includes(item.scope as StepScope) && item.scope !== "subtask" ? (item.scope as StepScope) : undefined;
 
@@ -550,6 +554,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       names: normalizeLocalized(item.names),
       ...(formerNames.length ? { formerNames } : {}),
       ...(formerChecks.length ? { formerChecks } : {}),
+      ...(formerQuestions.length ? { formerQuestions } : {}),
       ...(formerDescriptions.length ? { formerDescriptions } : {}),
       actionLabel: String(item.actionLabel ?? "").trim() || undefined,
       actionLabels: normalizeLocalized(item.actionLabels),

@@ -303,16 +303,19 @@ if (fcr) {
     }
   });
 
-  test("FCR: la Armonización tiene tres pistas, con sus listas de comprobación y el acuerdo del equipo", () => {
+  test("FCR: la Armonización tiene tres pistas, por porción, cada una una lista que el equipo decide entre tres", () => {
     const tracks = board.teams.filter((t) => t.phaseId === team("armonizar-notas").phaseId);
     assert.deepEqual(tracks.map((t) => t.id), ["armonizar-notas", "armonizar-palabras", "armonizar-preguntas"]);
     for (const track of tracks) {
       const steps = track.steps!;
-      assert.equal(steps.at(-1)!.closing, "consensus", `${track.id}: se cierra por acuerdo`);
-      for (const step of steps.slice(0, -1)) {
-        assert.equal(step.closing, "checklist");
+      // The agreement is in each item's conversation: no step of agreement after the list (21 October).
+      assert.ok(steps.every((step) => step.closing === "checklist"), `${track.id}: sin paso de acuerdo aparte`);
+      for (const step of steps) {
         assert.ok(step.checklist!.length > 0);
+        assert.equal(step.claimMode, "pool", `${track.id}: compartida`);
+        assert.equal(step.minAssignees, 3, `${track.id}: tres personas deciden cada ítem`);
       }
+      assert.equal(track.bundle, undefined, `${track.id}: por porción, no el capítulo entero`);
     }
     assert.deepEqual(team("armonizar-notas").rules.map((r) => r.resource), ["notas", "academia"]);
   });
@@ -373,11 +376,11 @@ if (fcr) {
     const chapter1Done = wordsDone.filter((i) => i !== q1);
     assert.equal(waiting(n2, chapter1Done), false, "cerrado todo el capítulo 1, empiezan las notas del 2");
     assert.equal(waiting(w2, chapter1Done), true);
-    // Somebody already working on the notes of chapter 1, and the rest of it still waiting for them: whoever is free
-    // goes on with the notes of chapter 2 (Abel, 17 October).
+    // Somebody already working on the notes of chapter 1: they are shared now (21 October), so whoever is free joins
+    // them instead of going on to chapter 2 (it was so while one person took them whole, 17 October).
     const n1taken = { ...n1, assignee: { login: "noretsyc" }, assignees: [{ login: "noretsyc" }] } as unknown as DcsIssue;
     const busy = [n1taken, w1, q1, n2, w2, q2];
-    assert.equal(waiting(n2, busy), false, "con las notas del 1 tomadas, las del 2 se pueden empezar");
+    assert.equal(waiting(n2, busy), true, "con las notas del 1 empezadas, el capítulo 2 sigue esperando: se trabaja en las del 1");
     assert.equal(waiting(w2, busy), true, "las palabras del 2 siguen esperando a sus notas");
     // The waits of the chapter itself stay: the tuned texts and the translated helps of the chapter.
     assert.equal(waiting(n1, [n1, issue("desafios-tps", 1)]), true, "sin el TPS afinado del capítulo, las notas esperan");
@@ -445,7 +448,7 @@ test("una regla que el proceso da a un paso después de creado el plan llega tam
   const said = stepPurpose("armonizar-notas", step, "es");
   assert.equal(said.purpose, step.purpose, "lo que dice el plan sigue siendo suyo");
   assert.match(said.criterion ?? "", /sin suavizarlo/, "y la regla viene del proceso");
-  assert.match(stepPurpose("armonizar-palabras", { id: "acuerdo" }, "pt").criterion ?? "", /todos os sentidos/);
+  assert.match(stepPurpose("armonizar-palabras", { id: "palabras-textos" }, "pt").criterion ?? "", /todos os sentidos/);
 });
 
 console.log(`\nverify-templates: ${passed} checks passed.`);

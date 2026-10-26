@@ -333,8 +333,18 @@ export type ChecklistQuestion = {
   about?: string;
   /** Asked only of an item that links a support article. */
   linked?: true;
+  /**
+   * What the process asked before, in Spanish: a project whose question still says one of these is given the new
+   * wording when it is brought up to date (one the team wrote itself stays). Not kept in the project.
+   */
+  formerTexts?: string[];
   /** The section of the item's article the question is about: the article opens there while its group is in view. */
   articleFocus?: string[];
+  /**
+   * The version of the process that first asked it: a project made from an older version gains it when brought up
+   * to date, where the process asks it. One the project dropped before that version is not brought back.
+   */
+  since?: number;
 };
 
 export type TaskStep = {
@@ -360,6 +370,11 @@ export type TaskStep = {
    * dropped. A check the project removed is not brought back, and one it added stays (see `upgradeBoardToWorkflow`).
    */
   formerChecks?: string[];
+  /**
+   * The ids of the questions of its list the process asked before and no longer asks: a project brought up to date
+   * drops them (two that asked nearly the same became one, 26 October). One the project added stays.
+   */
+  formerQuestions?: string[];
   /** What the big button says («Revisar», «Votar»). Without it the engine words the mechanics. */
   actionLabel?: string;
   actionLabels?: Localized;

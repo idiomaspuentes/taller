@@ -1,5 +1,6 @@
 import type {
   AssignmentsDoc,
+  ChecklistQuestion,
   Phase,
   ProjectTask,
   StepCheck,
@@ -40,7 +41,28 @@ export function applyWorkflowToBoard(
 
 /** What a process says a step of its own used to be is for bringing projects up to date: a project does not keep it. */
 function planStep(step: TaskStep): TaskStep {
-  const { formerNames: _names, formerChecks: _checks, formerDescriptions: _descriptions, ...rest } = step;
+  const { formerNames: _names, formerChecks: _checks, formerDescriptions: _descriptions, formerQuestions: _questions, ...rest } = step;
+  return rest.checklist ? { ...rest, checklist: rest.checklist.map(planQuestion) } : rest;
+}
+
+/**
+ * Adds to a project's list (in place) the questions of the process newer than `version`, each after the question of
+ * the process that comes before it. Returns whether it added any.
+ */
+function addNewQuestions(list: { next: ChecklistQuestion; filled: boolean }[], process: ChecklistQuestion[], version: number): boolean {
+  let added = false;
+  process.forEach((question, index) => {
+    if (!question.since || question.since <= version || list.some((row) => row.next.id === question.id)) return;
+    const before = process.slice(0, index).reverse().map((prior) => list.findIndex((row) => row.next.id === prior.id)).find((at) => at >= 0);
+    list.splice(before === undefined ? list.length : before + 1, 0, { next: planQuestion(question), filled: true });
+    added = true;
+  });
+  return added;
+}
+
+/** Nor what a question of the process used to ask. */
+function planQuestion(question: ChecklistQuestion): ChecklistQuestion {
+  const { formerTexts: _texts, since: _since, ...rest } = question;
   return rest;
 }
 
@@ -237,12 +259,22 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
         const rechecked = JSON.stringify(checks ?? []) !== JSON.stringify(mine.checks ?? []);
         // A question of its list that is the process's gains what the process says of it now and it did not have:
         // that it is asked once per article (20 October). The project's own questions, and what it set, stay.
+        // And its new wording, when it still asks what the process asked before (26 October: «La nota…»).
         const asked = mine.checklist?.map((question) => {
-          const theirs = step.checklist?.find((other) => other.id === question.id);
-          return theirs ? fillMissing(question, theirs) : { next: question, filled: false };
+          // From the process as it was told (`now`): the steps laid out for a project no longer say what it asked before.
+          const theirs = now.checklist?.find((other) => other.id === question.id);
+          if (!theirs) return { next: question, filled: false };
+          const reworded = question.text !== theirs.text && Boolean(theirs.formerTexts?.includes(question.text.trim()));
+          const filled = fillMissing(reworded ? { ...question, text: theirs.text, ...(theirs.texts ? { texts: theirs.texts } : {}) } : question, planQuestion(theirs));
+          return { next: filled.next, filled: filled.filled || reworded };
         });
-        const reasked = Boolean(asked?.some((row) => row.filled));
-        const merged = fillMissing({ ...mine, ...(renamed ? { name: step.name, names: step.names } : {}), ...(redescribed ? { description: step.description, descriptions: step.descriptions } : {}), ...(rechecked ? { checks } : {}), ...(reasked ? { checklist: asked!.map((row) => row.next) } : {}) }, step);
+        // A question the process stopped asking is dropped; one the project added itself stays.
+        const gone = new Set((now.formerQuestions ?? []).filter((id) => !now.checklist?.some((question) => question.id === id)));
+        const kept = asked?.filter((row) => !gone.has(row.next.id));
+        // And one the process began asking after the version the project was made from, where the process asks it.
+        const added = Boolean(kept) && addNewQuestions(kept!, now.checklist ?? [], board.workflowVersion ?? 0);
+        const reasked = Boolean(asked?.some((row) => row.filled)) || (kept?.length ?? 0) !== (asked?.length ?? 0) || added;
+        const merged = fillMissing({ ...mine, ...(renamed ? { name: step.name, names: step.names } : {}), ...(redescribed ? { description: step.description, descriptions: step.descriptions } : {}), ...(rechecked ? { checks } : {}), ...(reasked ? { checklist: kept!.map((row) => row.next) } : {}) }, step);
         if (merged.filled || renamed || redescribed || rechecked || reasked) {
           steps![have] = merged.next;
           changed = true;
@@ -253,7 +285,9 @@ export function upgradeBoardToWorkflow(board: AssignmentsDoc, template: Workflow
       // The project may already have this step under another id: a step it edited by hand into what the process
       // now says (same tool, same way of closing, same way of taking it). Adding it again would ask for the same
       // work twice, so it counts as there.
-      if (steps?.some((mine) => Boolean(step.solverAppId) && mine.solverAppId === step.solverAppId && mine.closing === step.closing && (mine.claimMode ?? "") === (step.claimMode ?? "") && !(freshSteps ?? []).some((other) => other.id === mine.id))) continue;
+      // A step of the project's own that the process now shares among the team (a list of one person that became the
+      // team's, 21 October) is still the same step: the claim it did not say is what it gains, not a step of more.
+      if (steps?.some((mine) => Boolean(step.solverAppId) && mine.solverAppId === step.solverAppId && mine.closing === step.closing && (!mine.claimMode || (mine.claimMode ?? "") === (step.claimMode ?? "")) && !(freshSteps ?? []).some((other) => other.id === mine.id))) continue;
       steps ??= [];
       const before = (freshSteps ?? []).slice(0, stepIndex).reverse().map((s) => steps!.findIndex((mine) => mine.id === s.id)).find((i) => i >= 0);
       steps.splice(before === undefined ? (stepIndex === 0 ? 0 : steps.length) : before + 1, 0, step);

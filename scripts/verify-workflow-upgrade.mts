@@ -40,21 +40,25 @@ test("se avisa solo cuando el proceso del proyecto tiene una versión más nueva
   assert.equal(workflowUpdateFor({ ...board, workflowId: undefined }, [fcr]), undefined, "un proyecto sin proceso no se toca");
 });
 
-test("un proyecto anterior recibe la pantalla de su paso de acuerdo, sin pasos nuevos ni tareas de más", () => {
-  // The process as it was while the team's agreement was given from the card of the task: the step had no tool.
+test("un proyecto de antes conserva lo suyo al actualizar: su lista pasa a ser del equipo, y nada se quita", () => {
+  // The process as it was before the agreement went into each item (21 October): a list of one person, then a
+  // step where the team agreed.
+  const agreement = { id: "acuerdo", name: "Acuerdo del equipo", closing: "consensus" as const, claimMode: "pool" as const, minAssignees: 3, maxAssignees: 6, solverAppId: "fcr-acuerdo" };
   const before: WorkflowTemplate = {
     ...fcr,
     version: fcr.version - 1,
-    tasks: fcr.tasks.map((task) => ({ ...task, steps: task.steps?.map((step) => (step.id === "acuerdo" ? { ...step, solverAppId: undefined } : step)) })),
+    tasks: fcr.tasks.map((task) =>
+      task.id.startsWith("armonizar-") ? { ...task, steps: [...(task.steps ?? []).map(({ claimMode: _c, minAssignees: _min, maxAssignees: _max, ...step }) => step), agreement] } : task,
+    ),
   };
   const agreements = (doc: AssignmentsDoc) => doc.teams.flatMap((task) => task.steps ?? []).filter((step) => step.id === "acuerdo");
   const board = applyWorkflowToBoard(empty, before);
   assert.equal(agreements(board).length, 3);
-  assert.ok(agreements(board).every((step) => !step.solverAppId), "antes no abría nada");
   assert.equal(workflowUpdateFor(board, [fcr])?.version, fcr.version, "se le ofrece traer lo nuevo");
   const result = upgradeBoardToWorkflow(board, fcr);
-  assert.ok(agreements(result.board).every((step) => step.solverAppId && step.closing === "consensus"), "ahora abre su herramienta");
-  assert.equal(new Set(agreements(result.board).map((step) => step.solverAppId)).size, 1);
+  assert.equal(agreements(result.board).length, 3, "un paso que el proyecto tiene no se quita");
+  const list = result.board.teams.find((task) => task.id === "armonizar-notas")!.steps!.find((step) => step.closing === "checklist")!;
+  assert.deepEqual([list.claimMode, list.minAssignees], ["pool", 3], "la lista gana lo que no tenía: es del equipo, entre tres");
   assert.deepEqual([result.phases, result.tasks, result.steps], [[], [], []]);
   assert.equal(result.board.teams.length, board.teams.length);
 });
@@ -65,7 +69,11 @@ test("un proyecto con una lista por texto sigue con las suyas: no recibe además
   const before: WorkflowTemplate = {
     ...fcr,
     version: fcr.version - 1,
-    tasks: fcr.tasks.map((task) => (task.id === "armonizar-notas" ? { ...task, steps: [list("notas-tpl", "Notas frente al TPL"), list("notas-tps", "Notas frente al TPS"), list("academia", "Academia"), task.steps!.at(-1)!] } : task)),
+    tasks: fcr.tasks.map((task) =>
+      task.id === "armonizar-notas"
+        ? { ...task, steps: [list("notas-tpl", "Notas frente al TPL"), list("notas-tps", "Notas frente al TPS"), list("academia", "Academia"), { id: "acuerdo", name: "Acuerdo del equipo", closing: "consensus" as const, claimMode: "pool" as const, minAssignees: 3, solverAppId: "fcr-acuerdo" }] }
+        : task,
+    ),
   };
   const result = upgradeBoardToWorkflow(applyWorkflowToBoard(empty, before), fcr);
   assert.deepEqual(result.board.teams.find((task) => task.id === "armonizar-notas")!.steps!.map((step) => step.id), ["notas-tpl", "notas-tps", "academia", "acuerdo"]);
@@ -184,6 +192,41 @@ test("una pregunta del proceso gana lo que el proceso dice ahora de ella; la que
   // One the project wrote itself stays.
   const own = { ...mine, teams: mine.teams.map((t) => (t.id === "armonizar-notas" ? { ...t, steps: t.steps!.map((s) => (s.id === "notas-textos" ? { ...s, description: "Nuestra forma." } : s)) } : t)) };
   assert.equal(stepOf(upgradeBoardToWorkflow(own, fcr).board).description, "Nuestra forma.");
+});
+
+test("una pregunta que el proceso reformuló llega reformulada; la que el equipo reescribió se queda, y lo viejo no se guarda", () => {
+  // The project as it was made before the questions of the TPS were said of the note (26 October).
+  const listOf = (doc: AssignmentsDoc) => doc.teams.find((t) => t.id === "armonizar-notas")!.steps!.find((s) => s.id === "notas-textos")!.checklist!;
+  const board = applyWorkflowToBoard(empty, fcr);
+  assert.equal(listOf(board).some((q) => "formerTexts" in q), false, "un proyecto nuevo no guarda lo que el proceso preguntaba antes");
+  const was = (text: string, id: string) => (q: ReturnType<typeof listOf>[number]) => (q.id === id ? { ...q, text, texts: { pt: "antes" } } : q);
+  const old: AssignmentsDoc = {
+    ...board,
+    workflowVersion: fcr.version - 1,
+    teams: board.teams.map((t) => (t.id === "armonizar-notas" ? { ...t, steps: t.steps!.map((s) => (s.id === "notas-textos" ? { ...s, checklist: s.checklist!.map(was("¿Explica bien el texto del TPS?", "explica")).map(was("¿Nuestra pregunta?", "camino")) } : s)) } : t)),
+  };
+  const after = listOf(upgradeBoardToWorkflow(old, fcr).board);
+  assert.equal(after.find((q) => q.id === "explica")!.text, "En el TPS, ¿se ve el cambio que sugiere la nota, o uno parecido?");
+  assert.equal(after.find((q) => q.id === "explica")!.texts?.pt, "No TPS, dá para ver a mudança que a nota sugere, ou uma parecida?", "y en portugués");
+  assert.equal(after.some((q) => q.id === "camino"), false, "la que el proceso dejó de hacer se quita, aunque el equipo la hubiera reescrito");
+  // One the team added itself stays.
+  const added = { ...old, teams: old.teams.map((t) => (t.id === "armonizar-notas" ? { ...t, steps: t.steps!.map((s) => (s.id === "notas-textos" ? { ...s, checklist: [...s.checklist!, { id: "nuestra", text: "¿Nuestra pregunta?" }] } : s)) } : t)) };
+  assert.equal(listOf(upgradeBoardToWorkflow(added, fcr).board).find((q) => q.id === "nuestra")?.text, "¿Nuestra pregunta?");
+  assert.equal(after.some((q) => "formerTexts" in q), false);
+});
+
+test("una pregunta nueva del proceso llega a los proyectos hechos antes de ella, en su lugar, y solo a esos", () => {
+  const listOf = (doc: AssignmentsDoc) => doc.teams.find((t) => t.id === "armonizar-notas")!.steps!.find((s) => s.id === "notas-textos")!.checklist!;
+  const board = applyWorkflowToBoard(empty, fcr);
+  // As a project made before «figura» and «llaves» was.
+  const older: AssignmentsDoc = { ...board, workflowVersion: 46, teams: board.teams.map((t) => (t.id === "armonizar-notas" ? { ...t, steps: t.steps!.map((s) => (s.id === "notas-textos" ? { ...s, checklist: s.checklist!.filter((q) => q.id !== "figura" && q.id !== "llaves") } : s)) } : t)) };
+  const ids = listOf(upgradeBoardToWorkflow(older, fcr).board).map((q) => q.id);
+  assert.equal(ids[ids.indexOf("sentido") + 1], "figura", "después de la pregunta que la precede en el proceso");
+  assert.equal(ids[ids.indexOf("diferencias") + 1], "llaves");
+  assert.equal(listOf(upgradeBoardToWorkflow(older, fcr).board).some((q) => "since" in q), false, "lo que el proceso sabe de sí mismo no se guarda");
+  // A project already on that version that dropped one keeps it dropped.
+  const dropped: AssignmentsDoc = { ...older, workflowVersion: 47 };
+  assert.equal(listOf(upgradeBoardToWorkflow(dropped, fcr).board).some((q) => q.id === "figura"), false);
 });
 
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);

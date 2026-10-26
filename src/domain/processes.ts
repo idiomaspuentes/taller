@@ -107,6 +107,22 @@ export function localized(name: string, names: Localized | undefined, language: 
 }
 
 /**
+ * A question of a list as it is read: in the interface's language, and `{idioma}` said as the name of the language
+ * of the project («¿El artículo ya está traducido y publicado en español?»), which a process cannot know.
+ */
+export function questionText(question: { text: string; texts?: Localized }, language: string, projectLang?: string): string {
+  const text = localized(question.text, question.texts, language);
+  if (!text.includes("{idioma}")) return text;
+  let name = projectLang ?? "";
+  try {
+    name = (projectLang && new Intl.DisplayNames([language], { type: "language" }).of(projectLang.split("-")[0]!)) || name;
+  } catch {
+    /* an unknown code is said as it is */
+  }
+  return text.replace(/\{idioma\}/g, name);
+}
+
+/**
  * Stored name → name in `language`, for everything the packages define: the names of phases, tasks and steps (plans
  * and issue titles repeat them as plain text) and each package's own glossary of older names.
  */
