@@ -12,7 +12,7 @@ import type { ProposalView } from "./checkProposal";
  * From when a proposal written beside another one is read as an adjustment to it. Notes that had two or more
  * proposals before keep them as options until they are resolved: the team may already have chosen among them.
  */
-export const SINGLE_PROPOSAL_FROM = "2026-10-28T00:00:00Z";
+export const SINGLE_PROPOSAL_FROM = "2026-10-27T21:05:00Z";
 
 /** The row by which the author of a proposal (or whoever coordinates the team) does not accept an adjustment. */
 export const ADJUSTMENT_SAYS = "@ajuste";
