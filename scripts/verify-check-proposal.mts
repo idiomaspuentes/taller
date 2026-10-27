@@ -480,6 +480,11 @@ test("al aceptar un ajuste, se piden de nuevo las marcas de todos, salvo la preg
   assert.equal(head([...rows, ...marksBy("ana", "pr-a2", 30, ["tps", "acad"])], "pr-a2").choices?.ana, "pr-a");
 });
 
+test("quien propone un cambio deja de elegir dejarla como está, aunque antes dijera que la nota estaba bien", () => {
+  const before = { itemId: "n1", questionId: "tpl", value: "yes" as const, by: "ana", at: T("09:00") };
+  assert.equal(head([before, proposed()]).choices?.ana, undefined);
+});
+
 test("un «de acuerdo» antiguo cuenta como «Sí» en todas las preguntas", () => {
   assert.equal(head([proposed(), proposalSaying("pr-a", "bea", T("10:30"), true)]).choices?.bea, "pr-a");
 });

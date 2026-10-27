@@ -361,7 +361,8 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
     const weigh = (who: string, version: string, wrote = false) => {
       const option = rootOf(version);
       if (complete(who, version)) choice.set(who, { option, version });
-      else if (choice.get(who)?.version === version || (wrote && choice.get(who)?.option === option)) choice.delete(who);
+      // Whoever writes a version is no longer for leaving the help as it is, nor for an older version of it.
+      else if (wrote || choice.get(who)?.version === version) choice.delete(who);
       if (saysNo(who, version)) noOn.set(who, version);
       else if (noOn.get(who) === version) noOn.delete(who);
     };
