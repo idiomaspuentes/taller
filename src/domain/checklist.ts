@@ -37,6 +37,8 @@ export type CheckAnswer = {
    * version of its proposal, or `KEEP_OPTION` (21 October: a conversation of its own for each option).
    */
   about?: string;
+  /** The step a message of the conversation of an item is about (27 October): the `about` of its questions. */
+  step?: string;
 };
 
 export type CheckItemState = "ok" | "pending" | "open" | "consult";

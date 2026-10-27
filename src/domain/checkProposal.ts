@@ -71,8 +71,8 @@ export type ProposalPayload = {
 export const ITEM_SAYS = "@conversacion";
 
 /** What somebody writes in the conversation of an item: of one of its options (`about`), when it has them. */
-export function itemSaying(itemId: string, by: string, at: string, text: string, about?: string): CheckAnswer {
-  return { itemId, questionId: ITEM_SAYS, value: "yes", note: text.trim(), by, at, ...(about ? { about } : {}) };
+export function itemSaying(itemId: string, by: string, at: string, text: string, about?: string, step?: string): CheckAnswer {
+  return { itemId, questionId: ITEM_SAYS, value: "yes", note: text.trim(), by, at, ...(about ? { about } : {}), ...(step ? { step } : {}) };
 }
 
 /** The option of leaving an item as it is, among the proposals made for it. */
@@ -144,6 +144,9 @@ export type ProposalView = {
   marks?: Record<string, Record<string, "yes" | "no">>;
   noBy?: string[];
   origin?: string[];
+  /** Who began the option this version belongs to, and when: its first version (27 October). */
+  optionBy?: string;
+  optionAt?: string;
 };
 
 /**
@@ -438,7 +441,8 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       const noBy = noByOf(option);
       // Only a version checked with questions carries its marks: one with none (a change of a text) is chosen as before.
       const checks = asks && asks(head).length ? { marks: Object.fromEntries(people.map((who) => [who, Object.fromEntries(effective(who, head.proposal.id))] as const).filter(([, marks]) => Object.keys(marks).length)), noBy, origin: originOf(head.proposal.id) } : {};
-      const next: ProposalView = { ...view, inFavour: named(option), against: named(KEEP_OPTION), state, choices, ...(stale.length ? { staleFor: stale } : {}), ...checks };
+      const first = byId.get(option);
+      const next: ProposalView = { ...view, inFavour: named(option), against: named(KEEP_OPTION), state, choices, ...(stale.length ? { staleFor: stale } : {}), ...checks, ...(first ? { optionBy: first.by, optionAt: first.at } : {}) };
       delete next.disputedSince;
       delete next.decidedBy;
       if (!winner && since && (all.size > 1 || noBy.length)) next.disputedSince = since;
