@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, versionsOf, proposalDecided, disputeStalled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
+import { adjustmentDeclined } from "../src/domain/singleProposal";
 import { correctionTitle } from "../src/domain/corrections";
 import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
 import { setActiveScope } from "../src/domain/scope";
@@ -351,6 +352,86 @@ test("editar una opción la mejora sin quitarle quien la eligió, que ve que cam
   assert.deepEqual(head.choices, { ana: "pr-a", bea: "pr-a", carla: "pr-a" }, "siguen eligiéndola");
   const seen = proposalsOf([...rows, proposalSaying("pr-a2", "ana", "2026-10-21T11:00:00Z", true), proposalSaying("pr-a2", "bea", "2026-10-21T11:01:00Z", true)], 3, () => true, { consensus: true });
   assert.equal(seen.find((view) => view.proposal.id === "pr-a2")!.state, "agreed");
+});
+
+// ---------------------------------------------------------------- one proposal per note, with adjustments (27 October)
+
+const P = (id: string, after: string, extra: Partial<ProposalPayload> = {}): ProposalPayload => ({ id, resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after, ...extra });
+const wrote = (who: string, time: string, proposal: ProposalPayload, questionId = "sentido") => proposalAnswer({ itemId: "n1", questionId, by: who, at: time, reason: "", proposal });
+const T = (hhmm: string, day = "28") => `2026-10-${day}T${hhmm}:00Z`;
+const single = { consensus: true, decides: (login: string) => login === "tito" };
+const pick = (views: ReturnType<typeof proposalsOf>, id: string) => views.find((one) => one.proposal.id === id)!;
+const adjusting = (who: string, time: string, id: string, after: string, of = "pr-a") => wrote(who, time, P(id, after, { suggests: of }));
+
+test("una propuesta nueva sobre una nota que ya tiene propuesta se lee como ajuste a ella", () => {
+  const views = proposalsOf([wrote("ana", T("10:00"), P("pr-a", "b")), wrote("carla", T("10:10"), P("pr-b", "c"))], 3, () => true, single);
+  assert.equal(pick(views, "pr-b").adjusts, "pr-a");
+  assert.equal(pick(views, "pr-b").adjustment, "pending");
+  assert.deepEqual(pick(views, "pr-a").choices, { ana: "pr-a" }, "quien sugiere un ajuste no elige nada con él");
+  assert.equal(pick(views, "pr-a").adjusts, undefined);
+});
+
+test("dos propuestas de antes de SINGLE_PROPOSAL_FROM siguen siendo dos opciones", () => {
+  const views = proposalsOf([wrote("ana", T("10:00", "21"), P("pr-a", "b")), wrote("carla", T("10:10", "21"), P("pr-b", "c"))], 3, () => true, single);
+  assert.equal(pick(views, "pr-b").adjusts, undefined);
+  assert.equal(pick(views, "pr-a").choices?.carla, "pr-b");
+});
+
+test("un ajuste aceptado: la propuesta toma su texto, «ajustada por», y el ajuste ya no espera", () => {
+  const rows = [wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c"), wrote("ana", T("10:20"), P("pr-a2", "c", { replaces: "pr-a", accepts: "aj-1", adjustedBy: "bea" }))];
+  const views = proposalsOf(rows, 3, () => true, single);
+  assert.equal(pick(views, "pr-a2").option, "pr-a");
+  assert.equal(pick(views, "pr-a2").state, "open");
+  assert.equal(pick(views, "aj-1").adjustment, "accepted");
+  assert.equal(pick(views, "aj-1").state, "replaced");
+});
+
+test("un ajuste no aceptado por la autora queda a la vista y la propuesta no cambia", () => {
+  const rows = [wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c")];
+  const declined = proposalsOf([...rows, adjustmentDeclined("aj-1", "ana", T("10:20"), "prefiero la mía")], 3, () => true, single);
+  assert.equal(pick(declined, "aj-1").adjustment, "declined");
+  assert.equal(pick(declined, "aj-1").declinedBy, "ana");
+  assert.equal(pick(declined, "pr-a").state, "open");
+  const notHers = proposalsOf([...rows, adjustmentDeclined("aj-1", "carla", T("10:20"))], 3, () => true, single);
+  assert.equal(pick(notHers, "aj-1").adjustment, "pending", "solo la autora (o quien coordina) lo acepta o no");
+});
+
+test("quien coordina puede aceptar o no un ajuste por la autora", () => {
+  const rows = [wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c")];
+  assert.equal(pick(proposalsOf([...rows, adjustmentDeclined("aj-1", "tito", T("10:20"))], 3, () => true, single), "aj-1").adjustment, "declined");
+  const accepted = proposalsOf([...rows, wrote("tito", T("10:20"), P("pr-a2", "c", { replaces: "pr-a", accepts: "aj-1", adjustedBy: "bea" }))], 3, () => true, single);
+  assert.equal(pick(accepted, "aj-1").adjustment, "accepted");
+});
+
+test("dos ajustes sobre la misma versión: al aceptar uno, el otro queda escrito sobre otra versión", () => {
+  const base = [wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c")];
+  const accept = wrote("ana", T("10:20"), P("pr-a2", "c", { replaces: "pr-a", accepts: "aj-1", adjustedBy: "bea" }));
+  assert.equal(pick(proposalsOf([...base, adjusting("carla", T("10:15"), "aj-2", "d"), accept], 3, () => true, single), "aj-2").adjustment, "stale");
+  assert.equal(pick(proposalsOf([...base, adjusting("carla", T("10:15"), "aj-2", "c"), accept], 3, () => true, single), "aj-2").adjustment, "accepted", "si ya dice lo mismo, no hay nada que escribir de nuevo");
+});
+
+test("la autora retira su propuesta: el primer ajuste pendiente pasa a ser la propuesta", () => {
+  const views = proposalsOf([wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c"), adjusting("carla", T("10:20"), "aj-2", "d"), proposalSaying("pr-a", "ana", T("10:30"), false)], 3, () => true, single);
+  assert.equal(pick(views, "aj-1").adjusts, undefined);
+  assert.equal(pick(views, "aj-1").adjustment, undefined);
+  assert.equal(pick(views, "aj-2").adjusts, "aj-1");
+});
+
+test("cuando la nota se acuerda, los ajustes que esperaban dejan de esperar", () => {
+  const views = proposalsOf([wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c"), proposalSaying("pr-a", "bea", T("10:20"), true), proposalSaying("pr-a", "carla", T("10:30"), true)], 3, () => true, single);
+  assert.equal(pick(views, "pr-a").state, "agreed");
+  assert.equal(pick(views, "aj-1").state, "rejected");
+});
+
+test("un ajuste no es otra opción de la pregunta de la nota, ni la deja abierta cuando la nota se acuerda", () => {
+  const items = [{ id: "n1", verseKey: "1:1" }];
+  const questions = [{ id: "sentido", text: "¿Tiene sentido?" }];
+  const slot = (answers: CheckAnswer[]) => summarizeChecklist({ items, questions, answers, agreement: { people: 3, proposals: proposalsOf(answers, 3, () => true, single) } }).items[0]!.slots!.sentido!;
+  const waiting = [wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c")];
+  assert.deepEqual(slot(waiting).open.map((view) => view.proposal.id), ["pr-a"]);
+  const agreed = slot([...waiting, proposalSaying("pr-a", "bea", T("10:20"), true), proposalSaying("pr-a", "carla", T("10:30"), true)]);
+  assert.equal(agreed.settled, true);
+  assert.equal(agreed.open.length, 0);
 });
 
 console.log(`\nverify-check-proposal: ${passed} checks passed.`);

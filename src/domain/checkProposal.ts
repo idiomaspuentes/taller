@@ -1,6 +1,7 @@
 import type { CheckAnswer } from "./checklist";
 import type { CorrectionAsk } from "./corrections";
 import { scopeKey } from "./scope";
+import { ADJUSTMENT_SAYS, optionsAndAdjustments } from "./singleProposal";
 
 /**
  * A change proposed while checking: a «no» is settled by saying what should change, with the new version written
@@ -34,6 +35,11 @@ export type ProposalPayload = {
   after?: string;
   /** The proposal this one answers with another version. */
   replaces?: string;
+  /** An adjustment to somebody else's proposal (see `singleProposal`): the version of it it was written over. */
+  suggests?: string;
+  /** A version that takes an adjustment: the adjustment, and who suggested it. */
+  accepts?: string;
+  adjustedBy?: string;
   /** The help does not exist yet: `after` is a new row of that file, with `rowId` for its id, at `where`. */
   add?: true;
   /**
@@ -122,6 +128,14 @@ export type ProposalView = {
   option?: string;
   choices?: Record<string, string>;
   staleFor?: string[];
+  /**
+   * An adjustment to one option of the item, by that option's id (27 October): not an option itself, and nobody
+   * chooses it. How it stands: waiting for the option's author, taken into the option, not accepted (and by whom), or
+   * written over a version the option no longer is.
+   */
+  adjusts?: string;
+  adjustment?: "pending" | "accepted" | "declined" | "stale";
+  declinedBy?: string;
 };
 
 /**
@@ -276,8 +290,20 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
   const out = new Map<string, ProposalView>(views.map((view) => [view.proposal.id, { ...view, option: rootOf(view.proposal.id) }]));
   for (const itemId of new Set(views.map((view) => view.itemId))) {
     const group = views.filter((view) => view.itemId === itemId);
-    const ids = new Set(group.map((view) => view.proposal.id));
-    const live = new Map(heads.filter((view) => view.itemId === itemId).map((view) => [rootOf(view.proposal.id), view]));
+    const headOf = (root: string) => heads.find((view) => view.itemId === itemId && rootOf(view.proposal.id) === root);
+    const chainOf = (root: string) => group.filter((view) => rootOf(view.proposal.id) === root);
+    // Who did not accept an adjustment, when it was the author of the option it adjusts or whoever coordinates.
+    const declinedBy = (root: string, option: string): string | undefined => {
+      const versions = new Set(chainOf(root).map((view) => view.proposal.id));
+      const last = byTime.filter((row) => row.questionId === ADJUSTMENT_SAYS && versions.has(row.itemId)).pop();
+      return last?.value === "no" && (same(last.by, byId.get(option)?.by ?? "") || rule.decides?.(last.by)) ? last.by : undefined;
+    };
+    // One proposal per item (27 October): what else is written about it adjusts it (see `singleProposal`).
+    const roots = group.filter((view) => !view.proposal.replaces || !byId.has(view.proposal.replaces)).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+    const { options, adjusts } = optionsAndAdjustments(roots, (root) => Boolean(headOf(root)), rootOf, (root) => Boolean(declinedBy(root, rootOf(byId.get(root)!.proposal.suggests ?? root))));
+    const adjusting = new Set(group.filter((view) => adjusts.has(rootOf(view.proposal.id))).map((view) => view.proposal.id));
+    const ids = new Set(group.map((view) => view.proposal.id).filter((id) => !adjusting.has(id)));
+    const live = new Map(options.map((root) => [root, headOf(root)!]));
     // The questions the proposals answer: saying one of them is right is choosing to leave the item as it is.
     const asked = new Set(byTime.filter((row) => row.outcome === "proposal" && row.proposal && ids.has(row.proposal.id)).map((row) => `${row.itemId}\u0000${row.questionId}`));
     const choice = new Map<string, { option: string; version?: string }>();
@@ -286,6 +312,8 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
     let decision: CheckAnswer | undefined;
     for (const row of byTime) {
       const who = row.by.trim().toLowerCase();
+      // An adjustment, and what is said of it, chooses nothing.
+      if (adjusting.has(row.outcome === "proposal" && row.proposal ? row.proposal.id : row.itemId)) continue;
       if (row.outcome === "proposal" && row.proposal && ids.has(row.proposal.id) && row.itemId === itemId) choice.set(who, { option: rootOf(row.proposal.id), version: row.proposal.id });
       else if (ids.has(row.itemId) && row.questionId === PROPOSAL_SAYS) {
         const view = byId.get(row.itemId)!;
@@ -320,6 +348,32 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       delete next.decidedBy;
       if (!winner && since && all.size > 1) next.disputedSince = since;
       if (decision && decided && !done) next.decidedBy = decision.by;
+      out.set(head.proposal.id, next);
+    }
+    for (const [root, option] of adjusts) {
+      for (const view of chainOf(root)) out.set(view.proposal.id, { ...out.get(view.proposal.id)!, adjusts: option });
+      const head = headOf(root);
+      const optionHead = live.get(option);
+      if (!head || !optionHead) continue;
+      const versions = new Set(chainOf(root).map((view) => view.proposal.id));
+      const declined = declinedBy(root, option);
+      // Written over another version than the option's now: it cannot be taken without taking out what changed since.
+      const writtenOn = head.proposal.suggests ?? option;
+      const adjustment: ProposalView["adjustment"] = chainOf(option).some((view) => view.proposal.accepts && versions.has(view.proposal.accepts))
+        ? "accepted"
+        : declined
+          ? "declined"
+          : optionHead.proposal.id === writtenOn
+            ? "pending"
+            : sameWording(optionHead.proposal.after ?? "", head.proposal.after ?? "")
+              ? "accepted"
+              : "stale";
+      const state: ProposalState = adjustment === "accepted" ? "replaced" : adjustment === "declined" || winner ? "rejected" : "open";
+      const next: ProposalView = { ...out.get(head.proposal.id)!, adjusts: option, adjustment, state, inFavour: [head.by], against: [], ...(adjustment === "declined" ? { declinedBy: declined } : {}) };
+      delete next.choices;
+      delete next.staleFor;
+      delete next.disputedSince;
+      delete next.decidedBy;
       out.set(head.proposal.id, next);
     }
   }

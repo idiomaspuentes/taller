@@ -300,7 +300,8 @@ function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals:
   const proposalsAt = new Map<string, ProposalView[]>();
   for (const answer of answers) {
     const view = answer.outcome === "proposal" && answer.proposal?.id ? views.get(answer.proposal.id) : undefined;
-    if (!view || view.state === "withdrawn" || view.state === "replaced") continue;
+    // An adjustment is not another option of the question: it waits for the author of the one it adjusts.
+    if (!view || view.state === "withdrawn" || view.state === "replaced" || view.adjusts) continue;
     const slot = `${answer.itemId}\u0000${answer.questionId}`;
     const there = proposalsAt.get(slot) ?? [];
     if (!there.includes(view)) proposalsAt.set(slot, [...there, view]);
