@@ -35,7 +35,8 @@ import { NoteConversation, OPEN_TALK, type TalkLine, type TalkStatus } from "./N
 import { NoteOptions, type HelpOption, type OptionMessage } from "./NoteOptions";
 import type { ProposalCheckGroup } from "./ProposalCheck";
 import { adjustmentDeclined, proposalMark } from "../domain/singleProposal";
-import { noteSituation } from "../domain/noteSituation";
+import { agreementRows, noteSituation, type NoteSituation } from "../domain/noteSituation";
+import { NoteAnswer } from "./NoteAnswer";
 import { SituationLine } from "./SituationLine";
 import { ProposalCard } from "./ProposalCard";
 import { AdjustmentList } from "./AdjustmentList";
@@ -1414,6 +1415,91 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
       </>
     );
   })();
+  /**
+   * How this person answers the step, collaborating (Abel, 27 October): agreeing with somebody's review or proposal,
+   * or «No del todo…», which opens the points to mark what fails. Asked something, the answer comes first; checking the
+   * points then is checking the proposal, when there is one, or opening the note.
+   */
+  const [doubting, setDoubting] = useState(false);
+  useEffect(() => setDoubting(false), [item?.id, group?.about]);
+  const meKey = me.trim().toLowerCase();
+  const answerMode: "first" | "confirm" | "proposal" | "ownProposal" | "asked" | null = !collab ? null : collab.kind === "asked" ? (doubting ? (collab.head ? "proposal" : "first") : "asked") : collab.kind;
+  const reviewHead = collab && (collab.kind === "proposal" || collab.kind === "ownProposal") ? collab.head : collab?.kind === "asked" ? collab.head : undefined;
+  const reviewQuestions = reviewHead ? questionsOfProposal(reviewHead) : [];
+  const reviewOption = reviewHead ? (reviewHead.option ?? reviewHead.proposal.id) : "";
+  const reviewing = answerMode === "proposal" || answerMode === "ownProposal";
+  /** The questions of the step this person still has to check of the proposal (its author, less those it began from). */
+  const reviewLeft = reviewHead && reviewing
+    ? rowsShown.filter(({ question }) => reviewQuestions.includes(question.id) && !(answerMode === "ownProposal" && reviewHead.origin?.includes(question.id)) && reviewHead.marks?.[meKey]?.[question.id] !== "yes" && reviewHead.choices?.[meKey] !== reviewOption)
+    : [];
+  const tickRows = reviewing ? reviewLeft : pendingHere;
+  const tickAll = tickRows.every(({ question }) => isTicked(question.id));
+  const tickFailing = tickRows.filter(({ question }) => pointMark(question.id) === "no").map(({ question }) => question.id);
+  const agreedAlready = reviewing ? (reviewQuestions.length ? reviewLeft.length === 0 : reviewHead?.choices?.[meKey] === reviewOption) : answerMode === "confirm" ? pendingHere.length === 0 : false;
+  /** The points of the step are marked one by one: opening the note, or once «No del todo…» opened them. */
+  const showTicks = (questionId: string) => !stepDone && (answerMode && answerMode !== "first" ? doubting && tickRows.some(({ question }) => question.id === questionId) : pendingHere.some(({ question }) => question.id === questionId));
+  const summaryRef = useRef(summary);
+  summaryRef.current = summary;
+  /** On to the next step of the note, or from its last to the next note where somebody is needed. */
+  const nextStep = () => {
+    const at = group ? groups.indexOf(group) : -1;
+    if (item && grouped && at >= 0 && at < groups.length - 1) return setAsked({ itemId: item.id, about: groups[at + 1]!.about });
+    goOn();
+  };
+  /** «Estoy de acuerdo»: what agreeing writes (see `agreementRows`), and, when that settles the note, saying so once. */
+  const agree = async () => {
+    if (!item || !collab) return;
+    const now = new Date().toISOString();
+    const situationNow: NoteSituation = collab.kind === "asked" && collab.head ? { kind: "proposal", head: collab.head, author: collab.author ?? collab.head.by, since: collab.head.optionAt ?? collab.head.at, agreed: collab.head.inFavour, doubts: collab.head.noBy ?? [] } : collab;
+    const versions = new Set(proposals.map((view) => view.proposal.id));
+    const rows = agreementRows({ me, at: now, situation: situationNow, stepRows: (answerMode === "confirm" ? pendingHere : rowsShown).map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })), proposalQuestions: reviewQuestions })
+      .map((row) => (row.questionId.startsWith("@") || versions.has(row.itemId) ? row : stamp(row.itemId, row.questionId, "yes")));
+    if (!rows.length) return;
+    setDoubting(false);
+    await save(rows, t("ck.saved"));
+    reopenOthers();
+    const settled = summaryRef.current.items.find((row) => row.itemId === item.id);
+    if (settled?.state === "ok") {
+      const voices = [...new Set(Object.values(settled.slots ?? {}).flatMap((slot) => slot.voices.map((who) => who.toLowerCase())))];
+      announce(t("ck.ansSettled").replace("{names}", peopleNames(voices)));
+      return goOn();
+    }
+    nextStep();
+  };
+  const stays = Boolean(collab && answerMode !== "first");
+  const commentForm = item ? (
+                <form
+                  className="ck-say"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const text = commentDraft.trim();
+                    if (!text) return;
+                    const now = new Date().toISOString();
+                    // Said of the step in view; with a proposal, the points marked «no» are its «no», with this reason.
+                    const rows = [itemSaying(item.id, me, now, text, undefined, group?.about || undefined), ...(reviewHead && tickFailing.length ? tickFailing.map((questionId) => proposalMark(reviewHead.proposal.id, questionId, me, now, "no", text)) : [])];
+                    void save(rows, t("ck.talkSent")).then(() => {
+                      setCommenting(false);
+                      setCommentDraft("");
+                      setDoubting(false);
+                      // Collaborating, the conversation goes on here; opening a note, a doubt said goes on to the next.
+                      if (!stays) goOn();
+                    });
+                  }}
+                >
+                  <label className="sr-only" htmlFor="ck-say-box">
+                    {t("ck.sayToTeam")}
+                  </label>
+                  <textarea id="ck-say-box" className="af-textarea ck-say__box" rows={3} autoFocus placeholder={t("ck.sayToTeam")} value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} />
+                  <div className="ck-go__buttons">
+                    <Button type="submit" size="lg" disabled={saving || !commentDraft.trim()}>
+                      <MessageCircle size={16} aria-hidden /> {t(stays ? "ck.talkSend" : "ck.sayAndGoOn")}
+                    </Button>
+                    <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setCommenting(false)}>
+                      {t("af.cancel")}
+                    </Button>
+                  </div>
+                </form>
+  ) : null;
   /** This person's choice among the options, and whether the one they chose was edited since. */
   const myChoice = optionsHere?.choices[me.trim().toLowerCase()];
   const myStale = Boolean(optionsHere?.heads.some((view) => view.staleFor?.includes(me.trim().toLowerCase())));
@@ -2054,7 +2140,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
             const name = questionText(question, language, ctx?.lang);
             return (
               <li key={question.id} data-state={markHere(question.id)}>
-                {pendingHere.some((row) => row.question.id === question.id) && !stepDone ? (
+                {showTicks(question.id) ? (
                   // Still to be answered: «sí» or «no» beside it (26 October). A list of the same questions to say
                   // which failed came after it, and read as the same thing twice.
                   <div className="ck-check ck-check--read ck-check--tick" data-mark={pointMark(question.id)}>
@@ -2282,7 +2368,32 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                   </div>
                 </>
                 ) : (
-                decideHere ? (
+                collab && answerMode !== "first" && commenting ? (
+                  commentForm
+                ) : collab && answerMode && answerMode !== "first" && !decideHere ? (
+                  <NoteAnswer
+                    mode={answerMode}
+                    situation={collab}
+                    doubting={doubting}
+                    allTicked={tickAll}
+                    failing={tickFailing}
+                    agreedAlready={agreedAlready}
+                    askedBy={collab.kind === "asked" ? personName(collab.by) : undefined}
+                    saving={saving}
+                    canGoOn={canGoOn}
+                    onAgree={() => void agree()}
+                    onDoubt={() => setDoubting(true)}
+                    onPropose={() => proposeFailing(tickFailing)}
+                    onAdjust={() => reviewHead && adjustProposal(reviewHead)}
+                    onSayWhat={() => setCommenting(true)}
+                    onComment={() => setCommenting(true)}
+                    onReply={() => setCommenting(true)}
+                    onCheckToo={() => setDoubting(true)}
+                    onChangeMine={() => reviewHead && adjustProposal(reviewHead)}
+                    onWithdrawMine={() => reviewHead && void withdrawWhole(reviewHead.proposal.id)}
+                    onGoOn={nextStep}
+                  />
+                ) : decideHere ? (
                   // Days without an agreement: whoever coordinates the team settles it, having read the conversation.
                   <>
                     <p className="ck-ask">{t("ck.decideAsk").replace("{n}", String(DISPUTE_DAYS))}</p>
@@ -2382,32 +2493,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                   {commenting && item ? (
                     // What is written goes to the conversation of the help, and this person goes on to the next one;
                     // the help stays theirs to answer when the team replies or the doubt is cleared.
-                    <form
-                      className="ck-say"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        const text = commentDraft.trim();
-                        if (!text) return;
-                        void save([itemSaying(item.id, me, new Date().toISOString(), text)], t("ck.talkSent")).then(() => {
-                          setCommenting(false);
-                          setCommentDraft("");
-                          goOn();
-                        });
-                      }}
-                    >
-                      <label className="sr-only" htmlFor="ck-say-box">
-                        {t("ck.sayToTeam")}
-                      </label>
-                      <textarea id="ck-say-box" className="af-textarea ck-say__box" rows={3} autoFocus placeholder={t("ck.sayToTeam")} value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} />
-                      <div className="ck-go__buttons">
-                        <Button type="submit" size="lg" disabled={saving || !commentDraft.trim()}>
-                          <MessageCircle size={16} aria-hidden /> {t("ck.sayAndGoOn")}
-                        </Button>
-                        <Button type="button" size="lg" variant="outline" disabled={saving} onClick={() => setCommenting(false)}>
-                          {t("af.cancel")}
-                        </Button>
-                      </div>
-                    </form>
+                    commentForm
                   ) : (
                   <div className="ck-go__buttons">
                     {openHere.length === 1 ? (
@@ -2425,7 +2511,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                       </Button>
                     ) : pendingHere.length ? (
                       <Button type="button" size="lg" disabled={saving || !allTicked} onClick={allGood}>
-                        <Check size={16} aria-hidden /> {t(optionsHere ? "ck.restYes" : othersSaid.length ? "ck.agreeYes" : verseStop ? "ck.verseYes" : pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.yesGo")}
+                        <Check size={16} aria-hidden /> {t(collab?.kind === "first" ? "ck.ansAllGood" : optionsHere ? "ck.restYes" : othersSaid.length ? "ck.agreeYes" : verseStop ? "ck.verseYes" : pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.yesGo")}
                       </Button>
                     ) : !summary.complete ? (
                       <Button type="button" size="lg" onClick={nextPending}>
