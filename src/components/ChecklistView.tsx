@@ -619,8 +619,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * An answer shows at once and is written behind: the person goes on to the next question without waiting for
    * Door43. If the write fails the answer is taken back and the error is said.
    */
-  async function save(next: CheckAnswer[], said: string) {
-    if (!session || !data) return;
+  /** Whether it was kept: a message written is left in its box when it was not (27 October). */
+  async function save(next: CheckAnswer[], said: string): Promise<boolean> {
+    if (!session || !data) return false;
     if (trying) {
       setAnswers((prev) => {
         const all = [...prev, ...next];
@@ -628,7 +629,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         return all;
       });
       announce(t("ck.tryKept"));
-      return;
+      return true;
     }
     setAnswers((prev) => [...prev, ...next]);
     setWriting((n) => n + 1);
@@ -637,9 +638,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
       await appendCheckAnswers(session, data.target, storeKey, next);
       announce(said);
       for (const itemId of new Set(next.map((row) => row.itemId))) tellOthers({ type: "taller:answered", item: itemId });
+      return true;
     } catch (err) {
       setAnswers((prev) => prev.filter((row) => !next.includes(row)));
       setError(explainError(err));
+      return false;
     } finally {
       setWriting((n) => n - 1);
     }
@@ -1470,7 +1473,12 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   const reviewing = answerMode === "proposal" || answerMode === "ownProposal";
   /** The questions of the step this person still has to check of the proposal (its author, less those it began from). */
   const reviewLeft = reviewHead && reviewing
-    ? rowsShown.filter(({ question }) => reviewQuestions.includes(question.id) && !(answerMode === "ownProposal" && reviewHead.origin?.includes(question.id)) && reviewHead.marks?.[meKey]?.[question.id] !== "yes" && reviewHead.choices?.[meKey] !== reviewOption)
+    ? rowsShown.filter(({ question }) =>
+        reviewQuestions.includes(question.id)
+          ? !(answerMode === "ownProposal" && reviewHead.origin?.includes(question.id)) && reviewHead.marks?.[meKey]?.[question.id] !== "yes" && reviewHead.choices?.[meKey] !== reviewOption
+          : // A question the proposal is not checked with (once per article or per verse) is still answered of the note.
+            pendingHere.some((row) => row.question.id === question.id),
+      )
     : [];
   const tickRows = reviewing ? reviewLeft : pendingHere;
   const tickAll = tickRows.every(({ question }) => isTicked(question.id));
@@ -1492,7 +1500,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     const now = new Date().toISOString();
     const situationNow: NoteSituation = collab.kind === "asked" && collab.head ? { kind: "proposal", head: collab.head, author: collab.author ?? collab.head.by, since: collab.head.optionAt ?? collab.head.at, agreed: collab.head.inFavour, doubts: collab.head.noBy ?? [] } : collab;
     const versions = new Set(proposals.map((view) => view.proposal.id));
-    const rows = agreementRows({ me, at: now, situation: situationNow, stepRows: (answerMode === "confirm" ? pendingHere : rowsShown).map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })), proposalQuestions: reviewQuestions })
+    const rows = agreementRows({ me, at: now, situation: situationNow, stepRows: (answerMode === "confirm" ? pendingHere : rowsShown.filter(({ question }) => reviewQuestions.includes(question.id) || pendingHere.some((row) => row.question.id === question.id))).map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })), proposalQuestions: reviewQuestions })
       .map((row) => (row.questionId.startsWith("@") || versions.has(row.itemId) ? row : stamp(row.itemId, row.questionId, "yes")));
     if (!rows.length) return;
     setDoubting(false);
@@ -1681,11 +1689,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         step={group?.about ?? ""}
         saving={saving}
         onSay={(text, step) => save([itemSaying(item.id, me, new Date().toISOString(), text, undefined, step || undefined)], t("ck.talkSent"))}
-      >
-        {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
-          <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
-        ) : null}
-      </NoteThread>
+      />
     ) : collab ? null : optionsHere && item ? (
       <NoteOptions
         key={item.id}
@@ -1706,7 +1710,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         onPropose={proposeOption}
         onEdit={adjustProposal}
         onWithdraw={(id) => void withdrawWhole(id)}
-        onSay={(text, about) => save([itemSaying(item.id, me, new Date().toISOString(), text, about)], t("ck.talkSent"))}
+        onSay={async (text, about) => {
+          await save([itemSaying(item.id, me, new Date().toISOString(), text, about)], t("ck.talkSent"));
+        }}
         onDecide={decideOption}
         checkGroupsOf={proposalGroups}
         onMark={markProposal}
@@ -1736,7 +1742,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         title={t("ck.playTitle").replace("{what}", what)}
         turnAsk={turnAsk}
         onOpenChange={setTalkOpen}
-        onSay={stepDone ? undefined : (text) => save([itemSaying(item.id, me, new Date().toISOString(), text)], t("ck.talkSent"))}
+        onSay={stepDone ? undefined : async (text) => {
+          await save([itemSaying(item.id, me, new Date().toISOString(), text)], t("ck.talkSent"));
+        }}
       >
         {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
           <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
@@ -2377,7 +2385,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                 {t(`ck.article.${academy[articlePath]!.where}` as MessageKey)}
               </p>
             ) : null}
-            {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle && !talkStarted ? (
+            {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle && (!talkStarted || Boolean(collab)) ? (
               // What the teams before this one said about this very help: folded under one line with how many, so
               // the help and what is checked of it keep the attention (19 October). Nothing said, no line.
               <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />

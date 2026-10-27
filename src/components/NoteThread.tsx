@@ -26,7 +26,8 @@ export function NoteThread({ entries, newFrom, me, nameOf, stepLabel, step, savi
   /** The step in view: what is written is said of it. */
   step: string;
   saving?: boolean;
-  onSay: (text: string, step: string) => Promise<void> | void;
+  /** Saves a message; `false` when it could not be kept, and the box keeps what was written. */
+  onSay: (text: string, step: string) => Promise<boolean | void> | boolean | void;
   /** What other teams said of the note, at the end of the sheet. */
   children?: ReactNode;
 }) {
@@ -43,8 +44,8 @@ export function NoteThread({ entries, newFrom, me, nameOf, stepLabel, step, savi
     if (!text.trim()) return;
     setSending(true);
     try {
-      await onSay(text.trim(), step);
-      clear();
+      const kept = await onSay(text.trim(), step);
+      if (kept !== false) clear();
     } finally {
       setSending(false);
     }

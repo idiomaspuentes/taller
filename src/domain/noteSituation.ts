@@ -36,9 +36,10 @@ export function noteSituation(p: { me: string; itemId: string; stepRows: StepRow
   const aboutNote = (row: CheckAnswer) => row.itemId === p.itemId || versions.has(row.itemId) || row.proposal?.rowId === p.itemId || p.stepRows.some((step) => step.answerItemId === row.itemId);
   const myLast = rows.filter((row) => same(row.by, p.me) && aboutNote(row)).pop();
   const said = rows.filter((row) => row.questionId === ITEM_SAYS && row.itemId === p.itemId && row.note).pop();
-  const head = p.options.length === 1 ? p.options[0] : undefined;
-  if (said && !same(said.by, p.me) && (!myLast || Date.parse(said.at) > Date.parse(myLast.at))) return { kind: "asked", by: said.by, at: said.at, text: said.note!, ...(head ? { head, author: head.optionBy ?? head.by } : {}) };
+  // Notes with two or more proposals from before stay as they were, a list of options, whatever is said of them.
   if (p.options.length > 1) return { kind: "options" };
+  const head = p.options[0];
+  if (said && !same(said.by, p.me) && (!myLast || Date.parse(said.at) > Date.parse(myLast.at))) return { kind: "asked", by: said.by, at: said.at, text: said.note!, ...(head ? { head, author: head.optionBy ?? head.by } : {}) };
   if (head) {
     const author = head.optionBy ?? head.by;
     const since = head.optionAt ?? head.at;
@@ -75,6 +76,11 @@ export function agreementRows(p: { me: string; at: string; situation: NoteSituat
   const marks = p.stepRows
     .filter((step) => p.proposalQuestions.includes(step.questionId) && !(s.kind === "ownProposal" && origin.includes(step.questionId)))
     .map((step) => proposalMark(s.head.proposal.id, step.questionId, p.me, p.at, "yes"));
-  const old = s.since < SINGLE_PROPOSAL_FROM ? p.stepRows.filter((step) => !origin.includes(step.questionId)).map((step) => ({ itemId: step.answerItemId, questionId: step.questionId, value: "yes" as const, by: p.me, at: p.at })) : [];
-  return [...marks, ...old];
+  // Said «yes» of the note: what the proposal is not checked with (a question asked once per article or per verse),
+  // and, of an option from before, what it does not answer.
+  const old = s.since < SINGLE_PROPOSAL_FROM;
+  const ofNote = p.stepRows
+    .filter((step) => !p.proposalQuestions.includes(step.questionId) || (old && !origin.includes(step.questionId)))
+    .map((step) => ({ itemId: step.answerItemId, questionId: step.questionId, value: "yes" as const, by: p.me, at: p.at }));
+  return [...marks, ...ofNote];
 }

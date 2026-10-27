@@ -75,6 +75,18 @@ test("dos propuestas de antes son opciones, como hoy", () => {
   assert.equal(situation("bea", answers).kind, "options");
 });
 
+test("dos propuestas de antes y un mensaje: siguen siendo opciones, como hoy", () => {
+  const answers = [proposed("ana", T("10:00", "21"), P("pr-a", "b")), proposed("carla", T("10:10", "21"), P("pr-b", "c")), itemSaying("n1", "ana", T("10:20", "21"), "Prefiero la mía", "pr-a")];
+  assert.equal(situation("bea", answers).kind, "options");
+});
+
+test("las preguntas del paso que la propuesta no revisa se responden de la nota", () => {
+  const answers = [proposed("ana", T("10:00"), P("pr-a", "b"), "tpl1")];
+  const withArticle: StepRow[] = [...tpl, { answerItemId: "article:figs-idiom", questionId: "acad1" }];
+  const rows = agreementRows({ me: "bea", at: T("11:00"), situation: situation("bea", answers, withArticle), stepRows: withArticle, proposalQuestions: ["tpl1", "tpl2", "tps1"] });
+  assert.deepEqual(rows.map((row) => [row.itemId, row.questionId]), [["pr-a", "tpl1"], ["pr-a", "tpl2"], ["article:figs-idiom", "acad1"]]);
+});
+
 test("estar de acuerdo con Ana escribe sí en cada punto del paso", () => {
   const answers = [yes("ana", "tpl1", T("10:00")), yes("ana", "tpl2", T("10:01"))];
   const rows = agreementRows({ me: "bea", at: T("11:00"), situation: situation("bea", answers), stepRows: tpl, proposalQuestions: [] });
