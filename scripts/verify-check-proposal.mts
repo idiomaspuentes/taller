@@ -434,6 +434,35 @@ test("un ajuste no es otra opción de la pregunta de la nota, ni la deja abierta
   assert.equal(agreed.open.length, 0);
 });
 
+test("una propuesta nueva en una nota cuya propuesta ya se aplicó es otra propuesta, no un ajuste perdido", () => {
+  const views = proposalsOf([wrote("ana", T("10:00"), P("pr-a", "b")), proposalSaying("pr-a", "bea", T("10:05"), true), proposalSaying("pr-a", "carla", T("10:06"), true), proposalDone("pr-a", "ana", T("10:10")), wrote("carla", T("11:00"), P("pr-n", "c"))], 3, () => true, single);
+  assert.equal(pick(views, "pr-a").state, "applied");
+  assert.equal(pick(views, "pr-n").adjusts, undefined);
+  assert.equal(pick(views, "pr-n").state, "open");
+});
+
+test("una propuesta del TPL y otra de la nota en el mismo ítem no se juntan", () => {
+  const tpl = P("pr-t", "nuevo verso", { resource: "tpl", rowId: undefined, field: undefined });
+  const views = proposalsOf([wrote("ana", T("10:00"), tpl), wrote("bea", T("10:10"), P("pr-n", "c"))], 3, () => true, single);
+  assert.equal(pick(views, "pr-n").adjusts, undefined);
+});
+
+test("la autora retira entera una propuesta con un ajuste aceptado: el ajuste pasa a ser la propuesta", () => {
+  const rows = [wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c"), wrote("ana", T("10:20"), P("pr-a2", "c", { replaces: "pr-a", accepts: "aj-1", adjustedBy: "bea" }))];
+  const views = proposalsOf([...rows, proposalSaying("pr-a2", "ana", T("10:30"), false), proposalSaying("pr-a", "ana", T("10:30"), false)], 3, () => true, single);
+  assert.equal(pick(views, "aj-1").adjusts, undefined);
+  assert.equal(pick(views, "aj-1").state, "open");
+  // Taking back only the version that took it, the adjustment waits again instead of vanishing.
+  const undone = proposalsOf([...rows, proposalSaying("pr-a2", "ana", T("10:30"), false)], 3, () => true, single);
+  assert.equal(pick(undone, "aj-1").adjustment, "pending");
+});
+
+test("un ajuste no aceptado no deja la nota trabada cuando la autora retira su propuesta", () => {
+  const views = proposalsOf([wrote("ana", T("10:00"), P("pr-a", "b")), adjusting("bea", T("10:10"), "aj-1", "c"), adjustmentDeclined("aj-1", "ana", T("10:20")), proposalSaying("pr-a", "ana", T("10:30"), false)], 3, () => true, single);
+  assert.equal(pick(views, "aj-1").state, "rejected");
+  assert.equal(pick(views, "aj-1").adjustment, "declined");
+});
+
 // ---------------------------------------------------------------- a proposal checked with the step's questions (27 October)
 
 const checked = { ...single, questionsOf: () => ["tpl", "tps", "acad"] };

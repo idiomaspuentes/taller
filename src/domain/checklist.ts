@@ -248,9 +248,11 @@ export function summarizeChecklist(params: {
       const me = (params.agreement!.me ?? "").trim().toLowerCase();
       const unsettled = all.filter((slot) => !slot.settled);
       // In a disagreement each side answers the other: it is one's turn while the last word is not of one's side.
-      const disputed = unsettled.flatMap((slot) => slot.disputed).filter((view) => [...view.inFavour, ...view.against].some((who) => who.toLowerCase() === me));
+      // Whoever said «no» to a proposal is a side of its dispute too (27 October), the side that wants it changed.
+      const disputed = unsettled.flatMap((slot) => slot.disputed).filter((view) => [...view.inFavour, ...view.against, ...(view.noBy ?? [])].some((who) => who.toLowerCase() === me));
       const lastBy = disputed.length ? lastWordOn(params.answers, item.id, disputed)?.trim().toLowerCase() : undefined;
-      const sideOf = (who: string) => disputed.find((view) => view.choices)?.choices?.[who] ?? (disputed.find((view) => view.against.some((one) => one.toLowerCase() === who)) ? "against" : disputed.find((view) => view.inFavour.some((one) => one.toLowerCase() === who)) ? "for" : "");
+      const saysNo = (who: string) => disputed.some((view) => view.noBy?.some((one) => one.toLowerCase() === who));
+      const sideOf = (who: string) => disputed.find((view) => view.choices)?.choices?.[who] ?? (saysNo(who) ? "no" : disputed.find((view) => view.against.some((one) => one.toLowerCase() === who)) ? "against" : disputed.find((view) => view.inFavour.some((one) => one.toLowerCase() === who)) ? "for" : "");
       // One whose option changed since they chose it has to look at it again.
       const stale = unsettled.some((slot) => slot.open.some((view) => view.staleFor?.includes(me)));
       const lastWord = lastBy !== undefined && sideOf(lastBy) !== sideOf(me) ? lastBy : undefined;

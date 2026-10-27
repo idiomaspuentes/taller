@@ -826,6 +826,15 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     await save(decide ? [...rows, proposalDecided(payload.id, me, now, true)] : rows, t("ck.saved"));
     reopenOthers();
   };
+  /**
+   * Taking back a proposal (or an adjustment) from its list of options takes back every version of it its writer made:
+   * the last one alone gave back the one before, and with it an adjustment it had taken disappeared.
+   */
+  const withdrawWhole = (id: string) => {
+    const now = new Date().toISOString();
+    const mine = chainOf(proposals, id).filter((view) => isMe(view.by) && view.state !== "withdrawn");
+    return save((mine.length ? mine.map((view) => view.proposal.id) : [id]).map((one) => proposalSaying(one, me, now, false)), t("ck.withdrawn"));
+  };
   const declineAdjustment = (adjustment: ProposalView) => save([adjustmentDeclined(adjustment.proposal.id, me, new Date().toISOString())], t("ck.saved"));
   /** What this person says of a proposal of somebody else: for it, or that they would rather leave things as they are. */
   const voteFor = (proposalId: string) => save([proposalSaying(proposalId, me, new Date().toISOString(), true)], t("ck.saved"));
@@ -1429,7 +1438,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         onChoose={(option) => void chooseOption(option)}
         onPropose={proposeOption}
         onEdit={adjustProposal}
-        onWithdraw={(id) => void withdraw(id)}
+        onWithdraw={(id) => void withdrawWhole(id)}
         onSay={(text, about) => save([itemSaying(item.id, me, new Date().toISOString(), text, about)], t("ck.talkSent"))}
         onDecide={decideOption}
         checkGroupsOf={proposalGroups}

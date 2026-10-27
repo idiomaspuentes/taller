@@ -385,6 +385,10 @@ test("la pregunta del versículo enlazado se hace solo a una nota que remite a o
     const rows = [made, ...marks("ana", 1, ["tps", "acad"]), proposalMark("pr-a", "tps", "bea", at(10), "no", "no explica la figura")];
     assert.equal(turnOf(rows, "bea"), "waiting");
     assert.equal(turnOf(rows, "ana"), "mine");
+    // Ana answers her in the conversation: now it is Bea's turn, and Ana waits.
+    const answered = [...rows, itemSaying("n1", "ana", at(20), "La alternativa sí dice lo mismo que el TPS")];
+    assert.equal(turnOf(answered, "bea"), "mine");
+    assert.equal(turnOf(answered, "ana"), "waiting");
   });
 
   test("la autora tiene un ajuste por responder: le toca", () => {

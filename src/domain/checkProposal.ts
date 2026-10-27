@@ -316,7 +316,22 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
     };
     // One proposal per item (27 October): what else is written about it adjusts it (see `singleProposal`).
     const roots = group.filter((view) => !view.proposal.replaces || !byId.has(view.proposal.replaces)).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-    const { options, adjusts } = optionsAndAdjustments(roots, (root) => Boolean(headOf(root)), rootOf, (root) => Boolean(declinedBy(root, rootOf(byId.get(root)!.proposal.suggests ?? root))));
+    // A proposal stands while it is neither taken back nor carried out, nor left aside by whoever coordinates: one
+    // written after it was applied is another proposal, not an adjustment to what is done.
+    const standing = (root: string) => {
+      const head = headOf(root);
+      return Boolean(head) && head!.state !== "applied" && head!.state !== "sent" && !(head!.state === "rejected" && head!.decidedBy);
+    };
+    const declinedRoot = (root: string) => Boolean(declinedBy(root, rootOf(byId.get(root)!.proposal.suggests ?? root)));
+    // Only proposals about the same words are one proposal: a change of the text and one of the note are two.
+    const about = (view: ProposalView) => `${view.proposal.resource}\u0000${proposalWords(view.proposal)}`;
+    const options: string[] = [];
+    const adjusts = new Map<string, string>();
+    for (const key of new Set(roots.map(about))) {
+      const found = optionsAndAdjustments(roots.filter((root) => about(root) === key), standing, rootOf, declinedRoot);
+      options.push(...found.options);
+      for (const [root, option] of found.adjusts) adjusts.set(root, option);
+    }
     const adjusting = new Set(group.filter((view) => adjusts.has(rootOf(view.proposal.id))).map((view) => view.proposal.id));
     const ids = new Set(group.map((view) => view.proposal.id).filter((id) => !adjusting.has(id)));
     const live = new Map(options.map((root) => [root, headOf(root)!]));
@@ -430,6 +445,16 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       if (decision && decided && !done) next.decidedBy = decision.by;
       out.set(head.proposal.id, next);
     }
+    // An adjustment its author did not accept, left alone when that proposal was taken back, is not accepted: it
+    // neither waits nor keeps the item open.
+    for (const root of roots.map((view) => view.proposal.id)) {
+      const head = headOf(root);
+      if (!head || !standing(root) || options.includes(root) || adjusts.has(root)) continue;
+      const next: ProposalView = { ...out.get(head.proposal.id)!, state: "rejected", adjustment: "declined", inFavour: [head.by], against: [], declinedBy: declinedBy(root, rootOf(head.proposal.suggests ?? root)) ?? "" };
+      delete next.choices;
+      delete next.disputedSince;
+      out.set(head.proposal.id, next);
+    }
     for (const [root, option] of adjusts) {
       for (const view of chainOf(root)) out.set(view.proposal.id, { ...out.get(view.proposal.id)!, adjusts: option });
       const head = headOf(root);
@@ -439,7 +464,8 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       const declined = declinedBy(root, option);
       // Written over another version than the option's now: it cannot be taken without taking out what changed since.
       const writtenOn = head.proposal.suggests ?? option;
-      const adjustment: ProposalView["adjustment"] = chainOf(option).some((view) => view.proposal.accepts && versions.has(view.proposal.accepts))
+      // Taken by a version its author has not taken back: one taken back took nothing, and the adjustment waits again.
+      const adjustment: ProposalView["adjustment"] = chainOf(option).some((view) => view.state !== "withdrawn" && view.proposal.accepts && versions.has(view.proposal.accepts))
         ? "accepted"
         : declined
           ? "declined"
