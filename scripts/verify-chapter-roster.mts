@@ -152,4 +152,11 @@ test("el buscador encuentra por id, por versículo o por las palabras, sin impor
   assert.deepEqual(ids("zzz"), []);
 });
 
+test("te toca dice por qué", () => {
+  const rows = rosterOf({ items, summary, sections, reasons: new Map([["n3", "Ana propone un cambio"], ["n5", "no se dice"]]) });
+  assert.equal(rows.find((row) => row.itemId === "n3")!.reason, "Ana propone un cambio");
+  assert.equal(rows.find((row) => row.itemId === "n5")!.reason, undefined, "solo cuando te toca");
+  assert.equal(rosterOf({ items, summary, sections })[1]!.reason, undefined);
+});
+
 console.log(`\nverify-chapter-roster: ${passed} checks passed.`);

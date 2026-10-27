@@ -135,7 +135,11 @@ export function ChapterHelpsList(props: {
                         {/* The id the team names it by; a verse's own stop is named by its verse. */}
                         {row.itemId.startsWith("verse:") ? null : <small className="ck-roster__id">{row.itemId}</small>}
                       </span>
-                      <span className="ck-roster__words">{props.labelOf(row.itemId)}</span>
+                      <span className="ck-roster__words">
+                        {props.labelOf(row.itemId)}
+                        {/* Why it is this person's turn: what somebody did that waits for them. */}
+                        {row.reason ? <small className="ck-roster__why">{row.reason}</small> : null}
+                      </span>
                       <span className="ck-roster__chip" data-status={row.status}>
                         {t(CHIP[row.status])}
                       </span>

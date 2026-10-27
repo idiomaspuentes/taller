@@ -9,7 +9,8 @@ import { parseRefRange } from "./usfmEdit";
 /** Ready: decided by the people needed. Mine: their opinion is missing, or somebody answered them. */
 export type RosterStatus = "ready" | "mine" | "waiting" | "unread";
 export type RosterSection = { ref: string; from: number; to: number };
-export type RosterRow = { itemId: string; chapter: number; verse: number; verseTo?: number; section: string; status: RosterStatus; voices: string[] };
+/** `reason`: why it is this person's turn, in a line under it (27 October), when it is. */
+export type RosterRow = { itemId: string; chapter: number; verse: number; verseTo?: number; section: string; status: RosterStatus; voices: string[]; reason?: string };
 
 const WHOLE_CHAPTER_TO = 200;
 
@@ -54,7 +55,7 @@ function voicesOf(tally: CheckItemTally | undefined): string[] {
 }
 
 /** Each item in reading order, in the section of its verse; an item outside every section is not this subtask's. */
-export function rosterOf(p: { items: CheckItem[]; summary: ChecklistSummary; sections: RosterSection[]; me?: string }): RosterRow[] {
+export function rosterOf(p: { items: CheckItem[]; summary: ChecklistSummary; sections: RosterSection[]; me?: string; reasons?: Map<string, string> }): RosterRow[] {
   const me = (p.me ?? "").trim().toLowerCase();
   const tallies = new Map(p.summary.items.map((tally) => [tally.itemId, tally]));
   const rows: RosterRow[] = [];
@@ -65,7 +66,9 @@ export function rosterOf(p: { items: CheckItem[]; summary: ChecklistSummary; sec
     if (!section) continue;
     const tally = tallies.get(item.id);
     const voices = voicesOf(tally);
-    rows.push({ itemId: item.id, chapter, verse, section: section.ref, status: statusOf(tally, voices, me), voices });
+    const status = statusOf(tally, voices, me);
+    const reason = status === "mine" ? p.reasons?.get(item.id) : undefined;
+    rows.push({ itemId: item.id, chapter, verse, section: section.ref, status, voices, ...(reason ? { reason } : {}) });
   }
   return rows;
 }

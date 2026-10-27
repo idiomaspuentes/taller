@@ -992,7 +992,43 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   const [listOpen, setListOpen] = useState(false);
   const [nothingLeft, setNothingLeft] = useState(false);
   const sections = useMemo(() => (data ? sectionsOf(ctx?.portionIds ?? [], data.chapter, data.portions) : []), [data, ctx?.portionIds]);
-  const roster = useMemo(() => rosterOf({ items: checkItems, summary, sections, me }), [checkItems, summary, sections, me]);
+  /**
+   * Why each help is this person's turn, in a line under it in the list (27 October): what somebody did that waits for
+   * them, read from the situation of the help (see `noteSituation`) over all its questions.
+   */
+  const reasons = useMemo(() => {
+    const out = new Map<string, string>();
+    if (!people) return out;
+    const name = (login: string) => data?.board?.people?.find((person) => person.id.toLowerCase() === login.toLowerCase())?.name ?? login;
+    for (const row of summary.items) {
+      if (row.turn !== "mine") continue;
+      const help = checkItems.find((one) => one.id === row.itemId);
+      if (!help || help.stop) continue;
+      const options = proposals.filter((view) => !view.adjusts && (view.state === "open" || view.state === "agreed") && (view.proposal.rowId === help.id || view.itemId === help.id));
+      const stepRows = questionsFor(help, checkItems, questions).map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id }));
+      const s = noteSituation({ me, itemId: help.id, stepRows, answers, options });
+      const wrote = answers.some((one) => one.questionId === ITEM_SAYS && one.itemId === help.id && isMe(one.by));
+      const pending = s.kind === "ownProposal" ? proposals.find((view) => view.adjusts === (s.head.option ?? s.head.proposal.id) && view.adjustment === "pending") : undefined;
+      const text =
+        s.kind === "asked"
+          ? t(wrote ? "ck.whyAnswered" : "ck.whyAsked").replace("{who}", name(s.by))
+          : s.kind === "proposal"
+            ? t("ck.whyProposal").replace("{who}", name(s.author))
+            : s.kind === "ownProposal"
+              ? pending
+                ? t("ck.whyAdjustment").replace("{who}", name(pending.by))
+                : s.doubts.length
+                  ? t("ck.whyDoubt").replace("{who}", name(s.doubts[0]!))
+                  : ""
+              : s.kind === "confirm"
+                ? t("ck.whyReviewed").replace("{who}", name(s.by[0]!))
+                : "";
+      if (text) out.set(help.id, text);
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people, summary, checkItems, proposals, answers, questions, me, language]);
+  const roster = useMemo(() => rosterOf({ items: checkItems, summary, sections, me, reasons }), [checkItems, summary, sections, me, reasons]);
   const openedList = useRef(false);
   useEffect(() => {
     if (!data || openedList.current) return;

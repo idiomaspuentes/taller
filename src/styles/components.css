@@ -11261,6 +11261,9 @@ html[data-text] .ck-thread__new { font-size: calc(0.8125rem * var(--ts)); }
 .ck-thread__send { flex: 0 0 auto; min-height: 44px; }
 .ck-thread-sheet .fx-body { display: grid; gap: 1rem; }
 .ck-thread-sheet > .ck-thread__write { padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: var(--surface); }
+/* Why a help is this person's turn, under its words in the chapter's list. */
+.ck-roster__why { display: block; margin-top: 0.125rem; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 600; color: var(--accent-800, var(--text)); }
+html[data-text] .ck-roster__why { font-size: calc(0.8125rem * var(--ts)); }
 .ck-pcheck__nav { display: grid; }
 .ck-pcheck__nav .btn { min-height: 48px; }
 /* A label longer than half the phone wraps in its button instead of leaving it (21 October). */
