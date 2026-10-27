@@ -22,6 +22,19 @@ export function displayName(user: NamedUser, fallbackLogin: string): string {
   return full || (user?.login ?? fallbackLogin);
 }
 
+/**
+ * The photo a person put in Door43, or nothing. Door43 serves those under `/avatars/`; for whoever put none it makes
+ * up a picture under `/avatar/` (or Gravatar's), and their initials say more than that.
+ */
+export function uploadedAvatar(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).pathname.startsWith("/avatars/") ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Up to two letters for a picture-less avatar. */
 export function initialsOf(name: string): string {
   const parts = name

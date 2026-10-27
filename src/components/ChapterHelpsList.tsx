@@ -1,19 +1,36 @@
-import { useMemo, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { rosterCounts, type RosterRow, type RosterSection, type RosterStatus } from "../domain/chapterRoster";
+import { rosterCounts, rosterFilters, searchRoster, type RosterFilter, type RosterRow, type RosterSection, type RosterStatus } from "../domain/chapterRoster";
 import { useT, type MessageKey } from "../i18n/messages";
+import { door43Person, type Door43Person } from "../dcs/door43People";
+import { PersonPhoto } from "./PersonPhoto";
 
 /** Somebody on a help right now, and whether they are writing to the team. */
 export type PresentPerson = { login: string; name: string; writing: boolean };
-
-type Filter = "all" | "mine" | "unread";
 
 const ORDER: RosterStatus[] = ["ready", "mine", "waiting", "unread"];
 const LEGEND: Record<RosterStatus, MessageKey> = { ready: "ck.listReady", mine: "ck.listMine", waiting: "ck.listWaiting", unread: "ck.listUnread" };
 const CHIP: Record<RosterStatus, MessageKey> = { ready: "ck.rowReady", mine: "ck.rowMine", waiting: "ck.rowWaiting", unread: "ck.rowUnread" };
 
-const initial = (login: string) => (login.trim()[0] ?? "?").toUpperCase();
+/** A face of the list: the person's photo, else their initials, and their name under the pointer. */
+function RosterFace(props: { login: string; name: string; now: boolean }) {
+  const [person, setPerson] = useState<Door43Person | null>(null);
+  useEffect(() => {
+    let live = true;
+    void door43Person(props.login).then((found) => live && setPerson(found));
+    return () => {
+      live = false;
+    };
+  }, [props.login]);
+  // The name the project knows is kept over a bare login from Door43.
+  const name = person && person.name !== props.login ? person.name : props.name;
+  return (
+    <span className="ck-roster__face" data-now={props.now || undefined} title={name}>
+      <PersonPhoto login={props.login} name={name} avatarUrl={person?.avatarUrl} size="sm" />
+    </span>
+  );
+}
 
 /**
  * Every help of a chapter in one list (26 October), as the team's spreadsheet of the migration had them: by section,
@@ -29,12 +46,27 @@ export function ChapterHelpsList(props: {
   /** Nothing is left for this person: «Seguir» found nothing to take them to. */
   nothingLeft?: boolean;
   presentOn?: (itemId: string) => PresentPerson[];
+  /** A person's name, by their login: shown when the pointer is on their face. */
+  nameOf?: (login: string) => string;
 }) {
   const t = useT();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [chosen, setChosen] = useState<RosterFilter>("all");
+  const [query, setQuery] = useState("");
   const counts = useMemo(() => rosterCounts(props.rows), [props.rows]);
-  const shown = props.rows.filter((row) => filter === "all" || row.status === filter);
+  const filters = rosterFilters(counts);
+  // A filter that emptied (the last note of the person's turn answered) goes back to all of them.
+  const filter = filters.includes(chosen) ? chosen : "all";
+  const shown = searchRoster(
+    props.rows.filter((row) => filter === "all" || row.status === filter),
+    query,
+    props.labelOf,
+  );
   const share = Math.round(counts.readyShare * 100);
+  const named = (login: string) => props.nameOf?.(login) || login;
+  const faces = (voices: string[], present: PresentPerson[]) => [
+    ...present.map((person) => ({ login: person.login, name: person.name || named(person.login), now: true })),
+    ...voices.filter((login) => !present.some((person) => person.login.toLowerCase() === login)).map((login) => ({ login, name: named(login), now: false })),
+  ];
 
   return (
     <section className="ck-roster" aria-labelledby="ck-roster-title">
@@ -60,14 +92,25 @@ export function ChapterHelpsList(props: {
         {props.nothingLeft ? <p className="af-hint ck-roster__nothing">{t("ck.listNothing")}</p> : null}
       </header>
 
-      <div className="ck-roster__filters" role="group" aria-label={t("ck.listFilterAria")}>
-        {(["all", "mine", "unread"] as const).map((key) => (
-          <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)}>
-            {t(key === "all" ? "ck.listAll" : key === "mine" ? "ck.listFilterMine" : "ck.listFilterUnread")}
-            {key === "all" ? null : <b>{counts[key]}</b>}
-          </button>
-        ))}
+      <div className="ck-roster__find">
+        {/* The team names a help by its id (27 October): «la jd31». A verse or a few of its words find it too. */}
+        <label className="ck-roster__search">
+          <Search size={18} aria-hidden />
+          <span className="sr-only">{t("ck.listSearchAria")}</span>
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("ck.listSearch")} autoComplete="off" autoCapitalize="none" spellCheck={false} enterKeyHint="search" />
+        </label>
+        {filters.length ? (
+          <div className="ck-roster__filters" role="group" aria-label={t("ck.listFilterAria")}>
+            {filters.map((key) => (
+              <button key={key} type="button" aria-pressed={filter === key} onClick={() => setChosen(key)}>
+                {t(key === "all" ? "ck.listAll" : key === "mine" ? "ck.listFilterMine" : "ck.listFilterUnread")}
+                {key === "all" ? null : <b>{counts[key]}</b>}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
+      {query.trim() && !shown.length ? <p className="af-hint ck-roster__none">{t("ck.listSearchNone").replace("{q}", query.trim())}</p> : null}
 
       {props.sections.map((section) => {
         const all = props.rows.filter((row) => row.section === section.ref);
@@ -89,25 +132,20 @@ export function ChapterHelpsList(props: {
                     <button type="button" className="ck-roster__row" data-status={row.status} onClick={() => props.onOpen(row.itemId)}>
                       <span className="ck-roster__ref">
                         {row.chapter}:{row.verse}
+                        {/* The id the team names it by; a verse's own stop is named by its verse. */}
+                        {row.itemId.startsWith("verse:") ? null : <small className="ck-roster__id">{row.itemId}</small>}
                       </span>
                       <span className="ck-roster__words">{props.labelOf(row.itemId)}</span>
                       <span className="ck-roster__chip" data-status={row.status}>
                         {t(CHIP[row.status])}
                       </span>
                       {row.voices.length || present.length ? (
-                        <span className="ck-roster__people" aria-label={[...row.voices, ...present.map((p) => p.login)].join(", ")}>
-                          {present.map((person) => (
-                            <span key={`now-${person.login}`} className="ck-roster__face" data-now>
-                              {initial(person.name || person.login)}
-                            </span>
+                        // Who is on it now first, ringed; then who answered. Each face is their photo, or their initials,
+                        // with their name under the pointer (27 October).
+                        <span className="ck-roster__people" aria-label={faces(row.voices, present).map((face) => face.name).join(", ")}>
+                          {faces(row.voices, present).map((face) => (
+                            <RosterFace key={face.login} {...face} />
                           ))}
-                          {row.voices
-                            .filter((login) => !present.some((person) => person.login === login))
-                            .map((login) => (
-                              <span key={login} className="ck-roster__face">
-                                {initial(login)}
-                              </span>
-                            ))}
                         </span>
                       ) : null}
                     </button>

@@ -10,7 +10,7 @@ import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, Info, List, Maximize2, MessageCircle, Pencil, Plus, X } from "lucide-react";
+import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, Info, List, Maximize2, MessageCircle, Pencil, Plus, Share2, X } from "lucide-react";
 import { articleLead } from "../domain/articleSections";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ChapterPair } from "./ChapterReader";
@@ -60,6 +60,7 @@ import { ChapterHelpsList } from "./ChapterHelpsList";
 import { usePresence } from "./usePresence";
 import { peersOn, presenceRoom, type Peer } from "../domain/presence";
 import { nextNeeding, rosterOf, sectionsOf } from "../domain/chapterRoster";
+import { helpLinkHash } from "../domain/helpLink";
 import { QuoteVerse as Verse } from "./QuoteVerse";
 
 type Props = {
@@ -69,6 +70,8 @@ type Props = {
   texts: ChecklistText[];
   /** Go over only the items that link to a support article. */
   onlyLinked?: boolean;
+  /** The help to open on, instead of the list: a link sent by the team (see `helpLink.ts`). */
+  openItem?: string;
   onClose: () => void;
   announce: (msg: string) => void;
 };
@@ -94,7 +97,7 @@ const verseKeyOf = (item: Pick<ChecklistItem, "chapter" | "verse">) => `${item.c
  * the step. The screen knows how to show notes, questions and terms beside a text; which questions are asked, and of
  * what, comes from the template.
  */
-export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, announce }: Props) {
+export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, onClose, announce }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [session] = useState<GtSession | undefined>(() => loadSession());
@@ -936,8 +939,39 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
   useEffect(() => {
     if (!data || openedList.current) return;
     openedList.current = true;
+    // A link to one help opens on it; one that is not in this list any more opens on the list, as any other.
+    if (openItem && checkItems.some((row) => row.id === openItem)) return jump(openItem);
     if (sections.length > 1) setListOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, sections.length]);
+
+  /**
+   * The help in view, to send to the team (27 October): a short link that opens on it for whoever opens it. On a
+   * phone, the share sheet (WhatsApp and the rest); elsewhere it is copied.
+   */
+  const [linkCopied, setLinkCopied] = useState(false);
+  const canShare = Boolean(ctx?.pmOrg && ctx.issueNumber && ctx.stepId && !trying);
+  const shareHelp = async () => {
+    if (!ctx || !data || !entry || !item) return;
+    const url = `${window.location.origin}${window.location.pathname}${helpLinkHash({ org: ctx.pmOrg, project: ctx.projectId || ctx.book, issue: ctx.issueNumber, step: ctx.stepId ?? "", item: entry.id })}`;
+    const where = `${bookLabel(data.book, language)} ${item.chapter}:${item.verse}`;
+    const title = verseStop ? where : `${where} · ${entry.id}`;
+    const text = noteQuote ? `${title} · «${noteQuote}»` : title;
+    const phone = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+    if (phone && typeof navigator.share === "function") {
+      // Closing the sheet without choosing is not an error to show.
+      await navigator.share({ title, text, url }).catch(() => undefined);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setLinkCopied(true);
+      announce(t("ck.linkCopied"));
+      window.setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      window.prompt(t("ck.linkCopyBy"), url);
+    }
+  };
   /** What each help is about, as the list shows it: the words a note quotes in the first text, a term, a question. */
   const rosterWords = useMemo(() => {
     const out = new Map<string, string>();
@@ -1648,6 +1682,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
           onNext={goWhereNeeded}
           nothingLeft={nothingLeft}
           presentOn={(itemId) => peersOn(peers, itemId).map((peer) => ({ login: peer.login, name: peer.name, writing: peer.focus?.doing === "writing" }))}
+          nameOf={(login) => data.board?.people?.find((person) => person.id.toLowerCase() === login.toLowerCase())?.name ?? login}
         />
       ) : data && item ? (
         <>
@@ -1668,6 +1703,16 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                     .concat(` · ${item.chapter}:${item.verse}${item.verseTo ? `–${item.verseTo}` : ""}`)}
             </button>
             <span className="af-step ck-arrows">
+              {canShare ? (
+                <button type="button" className="th-icon ck-share" aria-label={t("ck.shareHelp").replace("{kind}", kindWord)} title={t("ck.shareHelp").replace("{kind}", kindWord)} onClick={() => void shareHelp()}>
+                  {linkCopied ? <Check size={20} aria-hidden /> : <Share2 size={20} aria-hidden />}
+                </button>
+              ) : null}
+              {linkCopied ? (
+                <span className="ck-share__done" role="status">
+                  {t("ck.linkCopied")}
+                </span>
+              ) : null}
               <button type="button" className="th-icon" aria-label={t("af.prev")} title={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
                 <ChevronLeft size={20} aria-hidden />
               </button>
@@ -1716,7 +1761,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                   first, it says what the note explains before the note is read. */}
               {noteQuote ? (
                 <p className="ck-note-quote">
-                  <span className="ck-chip">{t("ck.noteChip")} · {bookLabel(data.book, language)} {item.chapter}:{item.verse}</span> <span className="ck-note-quote__words">«{noteQuote}»</span>
+                  <span className="ck-chip">{t("ck.noteChip")} · {bookLabel(data.book, language)} {item.chapter}:{item.verse} · <span className="ck-id">{item.id}</span></span> <span className="ck-note-quote__words">«{noteQuote}»</span>
                 </p>
               ) : null}
               {helpRead}

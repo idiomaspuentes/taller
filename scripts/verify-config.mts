@@ -7,7 +7,7 @@ import { detectUiLanguage } from "../src/i18n/language";
 import { translate, MESSAGE_KEYS_ES } from "../src/i18n/messages";
 import { appTitle } from "../src/brand";
 import { buildManifest } from "../src/manifest";
-import { displayName, initialsOf, levelName, memberSince, publicProfileUrl, safeLink, settingsUrl } from "../src/domain/profile";
+import { displayName, initialsOf, uploadedAvatar, levelName, memberSince, publicProfileUrl, safeLink, settingsUrl } from "../src/domain/profile";
 import { parseServerParam, readServerFromUrl, serverChoiceVisible } from "../src/serverChoice";
 import { localizeHold, localizeName, localizeToday } from "../src/domain/templateNames";
 import { localizeScope } from "../src/domain/scopeNames";
@@ -241,6 +241,11 @@ await test("el perfil: lo que se muestra viene de Door43 y para cambiarlo se env
   assert.equal(initialsOf("abelperez"), "AB");
   assert.equal(initialsOf("ana.maria_lopez"), "AL");
   assert.equal(initialsOf("  "), "?");
+  // A photo the person put in Door43 is shown; the picture Door43 makes up for whoever put none is not (27 October).
+  assert.equal(uploadedAvatar("https://git.door43.org/avatars/795de7e90c5c552422f4a05b860eb2a5"), "https://git.door43.org/avatars/795de7e90c5c552422f4a05b860eb2a5");
+  assert.equal(uploadedAvatar("https://git.door43.org/avatar/23b427ae90912ea8fa825b636c9ecedf79302db4a6dc0fdaf0ede4a50863dc4e"), undefined, "la imagen inventada da las iniciales");
+  assert.equal(uploadedAvatar("https://secure.gravatar.com/avatar/abc?d=identicon"), undefined);
+  assert.equal(uploadedAvatar(undefined), undefined);
   assert.match(memberSince("2024-03-05T10:00:00Z", "es"), /marzo.*2024/i);
   assert.match(memberSince("2024-03-05T10:00:00Z", "pt"), /março.*2024/i);
   assert.equal(memberSince("no es fecha", "es"), "");

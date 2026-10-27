@@ -1,6 +1,6 @@
 /** The list of a chapter's helps: where each stands for the person looking, by section, and where help is needed. */
 import assert from "node:assert/strict";
-import { inSections, nextNeeding, rosterCounts, rosterOf, sectionsOf, type RosterRow } from "../src/domain/chapterRoster";
+import { inSections, nextNeeding, rosterCounts, rosterFilters, rosterOf, searchRoster, sectionsOf, type RosterRow } from "../src/domain/chapterRoster";
 import type { CheckItem, CheckItemTally, CheckSlot, ChecklistSummary, CheckTurn } from "../src/domain/checklist";
 
 let passed = 0;
@@ -128,6 +128,28 @@ test("Seguir empieza después del ítem en que se está, y da la vuelta", () => 
   const rows = [row("a", 1, "unread"), row("b", 2, "unread"), row("c", 3, "unread")];
   assert.equal(nextNeeding(rows, { me: "ana", needed: 3, after: "a" }), "b");
   assert.equal(nextNeeding(rows, { me: "ana", needed: 3, after: "c" }), "a");
+});
+
+test("un filtro aparece solo si tiene algo; con solo «Todas» no hay fila de filtros", () => {
+  const counts = (mine: number, unread: number) => rosterCounts([...Array.from({ length: mine }, (_, i) => row(`m${i}`, 1, "mine")), ...Array.from({ length: unread }, (_, i) => row(`u${i}`, 2, "unread")), row("w", 3, "waiting")]);
+  assert.deepEqual(rosterFilters(counts(1, 8)), ["all", "mine", "unread"]);
+  assert.deepEqual(rosterFilters(counts(0, 8)), ["all", "unread"]);
+  assert.deepEqual(rosterFilters(counts(2, 0)), ["all", "mine"]);
+  assert.deepEqual(rosterFilters(counts(0, 0)), [], "«Esperando a otros» nunca es filtro");
+});
+
+test("el buscador encuentra por id, por versículo o por las palabras, sin importar mayúsculas ni tildes", () => {
+  const rows = [row("jd31", 19, "mine"), row("asf1", 10, "unread"), row("qey5", 1, "ready"), row("b7k2", 12, "unread")];
+  const words: Record<string, string> = { jd31: "Memucán se dirige al rey", asf1: "cuando el corazón del rey", qey5: "Y sucedió", b7k2: "Pero la reina Vasti se negó a ir" };
+  const ids = (query: string) => searchRoster(rows, query, (id) => words[id] ?? "").map((r) => r.itemId);
+  assert.deepEqual(ids("JD31"), ["jd31"]);
+  assert.deepEqual(ids(" jd3"), ["jd31"], "un id a medio escribir ya filtra");
+  assert.deepEqual(ids("1:1"), ["qey5"], "un versículo es ese versículo, no 1:10 ni 1:19");
+  assert.deepEqual(ids("corazon"), ["asf1"]);
+  assert.deepEqual(ids("negó"), ["b7k2"]);
+  assert.deepEqual(ids("rey"), ["jd31", "asf1"]);
+  assert.deepEqual(ids(""), ["jd31", "asf1", "qey5", "b7k2"], "sin nada escrito, todas");
+  assert.deepEqual(ids("zzz"), []);
 });
 
 console.log(`\nverify-chapter-roster: ${passed} checks passed.`);

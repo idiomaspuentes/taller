@@ -24,6 +24,7 @@ import { loadLocalWorkflows } from "./domain/store";
 import type { WorkflowTemplate } from "./domain/types";
 import { HandoffUnitsPanel } from "./components/HandoffUnitsPanel";
 import { ChecklistView } from "./components/ChecklistView";
+import { HelpLinkView } from "./components/HelpLinkView";
 import { EndorsementView } from "./components/EndorsementView";
 import { PublishUnitView } from "./components/PublishUnitView";
 import { GlossaryView } from "./components/GlossaryView";
@@ -1140,6 +1141,7 @@ export function App() {
             onlyLinked={route.only === "linked"}
             kind={route.items === "preguntas" || route.items === "palabras" ? route.items : "notas"}
             texts={route.text.split(",").filter((x): x is "tpl" | "tps" => x === "tpl" || x === "tps")}
+            openItem={route.item}
             announce={announce}
             onClose={onSolverClose}
           />
@@ -1240,6 +1242,15 @@ export function App() {
           />
         </main>
         {signInModal}
+      </div>
+    );
+  }
+
+  // A link to one help, sent by the team: after the sign-in and the team space, it opens the tool on that help.
+  if (route.name === "nota" && session) {
+    return (
+      <div className="app-shell app-shell--solver">
+        <HelpLinkView link={route} session={session} space={{ pmOrg, lang, contentOrg }} onTasks={() => navigate({ name: "mis-tareas" })} />
       </div>
     );
   }

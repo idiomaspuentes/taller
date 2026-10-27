@@ -95,6 +95,7 @@
     "verify:endorsement": "tsx --tsconfig tsconfig.scripts.json scripts/verify-endorsement.mts",
     "verify:checklist": "tsx --tsconfig tsconfig.scripts.json scripts/verify-checklist.mts",
     "verify:chapter-roster": "tsx --tsconfig tsconfig.scripts.json scripts/verify-chapter-roster.mts",
+    "verify:help-link": "tsx --tsconfig tsconfig.scripts.json scripts/verify-help-link.mts",
     "verify:presence": "tsx --tsconfig tsconfig.scripts.json scripts/verify-presence.mts",
     "verify:trial-launch": "tsx --tsconfig tsconfig.scripts.json scripts/verify-trial-launch.mts",
     "verify:check-proposal": "tsx --tsconfig tsconfig.scripts.json scripts/verify-check-proposal.mts",

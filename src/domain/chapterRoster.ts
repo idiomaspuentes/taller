@@ -76,6 +76,31 @@ export function rosterCounts(rows: RosterRow[]): { ready: number; mine: number; 
   return { ready, mine: count("mine"), waiting: count("waiting"), unread: count("unread"), total: rows.length, readyShare: rows.length ? ready / rows.length : 0 };
 }
 
+export type RosterFilter = "all" | "mine" | "unread";
+
+/**
+ * The filters worth showing (27 October): one that would show nothing is left out, and «Esperando a otros» is never
+ * one, since there is nothing to do there. With «Todas» alone nothing would filter, so there is no row at all.
+ */
+export function rosterFilters(counts: { mine: number; unread: number }): RosterFilter[] {
+  const some = (["mine", "unread"] as const).filter((key) => counts[key] > 0);
+  return some.length ? ["all", ...some] : [];
+}
+
+const plain = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
+
+/**
+ * The rows a search finds (27 October): by the id the team uses to name a help, by its verse, or by the words it is
+ * about. A verse is that verse: «1:1» is not 1:10.
+ */
+export function searchRoster(rows: RosterRow[], query: string, labelOf: (itemId: string) => string): RosterRow[] {
+  const wanted = plain(query);
+  if (!wanted) return rows;
+  const verse = wanted.match(/^(\d+):(\d+)$/);
+  if (verse) return rows.filter((row) => row.chapter === Number(verse[1]) && row.verse === Number(verse[2]));
+  return rows.filter((row) => plain(row.itemId).includes(wanted) || plain(labelOf(row.itemId)).includes(wanted));
+}
+
 /**
  * Where to go on to: what is the person's turn first; then what they have not reviewed and still lacks people (those
  * who answered plus those on it now); then anything they have not reviewed. It never blocks: covered is not closed.
