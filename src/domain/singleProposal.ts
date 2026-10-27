@@ -22,6 +22,14 @@ export function adjustmentDeclined(adjustmentId: string, by: string, at: string,
 }
 
 /**
+ * What a person says of one question of a proposal (27 October): a proposal is checked as the note is, with the
+ * step's questions, instead of being chosen with a touch. `versionId` is the version they read.
+ */
+export function proposalMark(versionId: string, questionId: string, by: string, at: string, value: "yes" | "no", note?: string): CheckAnswer {
+  return { itemId: versionId, questionId, value, by, at, ...(note?.trim() ? { note: note.trim() } : {}) };
+}
+
+/**
  * Which of the proposals of one item are its options and which adjust one of them. `roots`: the first version of
  * each chain of versions, oldest first. `live`: whether a chain still stands (not taken back, not carried out).
  * `rootOf`: the chain a version belongs to. `declined`: an adjustment its option's author did not accept, which is

@@ -253,9 +253,14 @@ export function summarizeChecklist(params: {
       // One whose option changed since they chose it has to look at it again.
       const stale = unsettled.some((slot) => slot.open.some((view) => view.staleFor?.includes(me)));
       const lastWord = lastBy !== undefined && sideOf(lastBy) !== sideOf(me) ? lastBy : undefined;
+      // An adjustment to answer (27 October): for the author of the proposal it adjusts; for whoever wrote it, when it
+      // was written over a version the proposal no longer is.
+      const optionIds = new Set(unsettled.flatMap((slot) => slot.open.map((view) => view.option ?? view.proposal.id)));
+      const authorOf = (option: string) => (params.agreement!.proposals.find((view) => view.proposal.id === option)?.by ?? "").trim().toLowerCase();
+      const toAnswer = params.agreement!.proposals.some((view) => view.adjusts && optionIds.has(view.adjusts) && ((view.adjustment === "pending" && authorOf(view.adjusts) === me) || (view.adjustment === "stale" && view.by.trim().toLowerCase() === me)));
       const turn: CheckTurn = !unsettled.length
         ? "done"
-        : unsettled.some((slot) => slot.voices.length && !slot.voices.some((who) => who.toLowerCase() === me)) || lastWord !== undefined || stale
+        : unsettled.some((slot) => slot.voices.length && !slot.voices.some((who) => who.toLowerCase() === me)) || lastWord !== undefined || stale || toAnswer
           ? "mine"
           : unsettled.some((slot) => !slot.voices.length)
             ? "new"
@@ -306,17 +311,25 @@ function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals:
     const there = proposalsAt.get(slot) ?? [];
     if (!there.includes(view)) proposalsAt.set(slot, [...there, view]);
   }
+  // Checked whole with the step's questions (27 October), a proposal is about every question of its item: choosing it
+  // answers them all, and while it is open none of them is settled by «yes» to the note as it is.
+  const wholeAt = new Map<string, ProposalView[]>();
+  for (const view of agreement.proposals) {
+    if (!view.marks || view.adjusts || view.state === "withdrawn" || view.state === "replaced") continue;
+    wholeAt.set(view.itemId, [...(wholeAt.get(view.itemId) ?? []), view]);
+  }
   return (answerItemId, questionId) => {
     const slot = `${answerItemId}\u0000${questionId}`;
     const rows = (bySlot.get(slot) ?? []).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
     // Something done about a «no» before lists were decided by several (fixed, created, a consultation answered)
     // is what that person said: that it is right now.
     const yesBy = rows.filter((row) => row.value === "yes" || row.outcome === "fixed" || row.outcome === "created" || (row.outcome === "consult" && row.resolved)).map((row) => row.by);
-    const made = proposalsAt.get(slot) ?? [];
+    const made = [...new Set([...(proposalsAt.get(slot) ?? []), ...(wholeAt.get(answerItemId) ?? [])])];
     const open = made.filter((view) => view.state === "open");
     const decided = made.some((view) => view.state === "agreed" || view.state === "applied" || view.state === "sent" || view.state === "rejected");
     const voices: string[] = [];
-    for (const who of [...yesBy, ...made.flatMap((view) => [...view.inFavour, ...view.against])]) {
+    // Whoever says «no» to a proposal said something of it too: they wait for the other side to answer.
+    for (const who of [...yesBy, ...made.flatMap((view) => [...view.inFavour, ...view.against, ...(view.noBy ?? [])])]) {
       if (!voices.some((one) => one.toLowerCase() === who.toLowerCase())) voices.push(who);
     }
     const waiting = rows.some((row) => row.outcome === "consult" && !row.resolved);

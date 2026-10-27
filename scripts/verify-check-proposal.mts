@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { PROPOSAL_FREE, appliedWords, byPlaceAndHelp, diffExcerpt, othersNeeded, proposalAnswer, proposalAsk, proposalDone, proposalFit, proposalHelp, proposalKeeping, readable, proposalSaying, proposalWords, proposalsOf, proposalsSettled, versionsOf, proposalDecided, disputeStalled, sameWording, sharedHelp, trialChecksKey, withoutWithdrawn, wordDiff, type ProposalPayload } from "../src/domain/checkProposal";
 import { summarizeChecklist, type CheckAnswer } from "../src/domain/checklist";
-import { adjustmentDeclined } from "../src/domain/singleProposal";
+import { adjustmentDeclined, proposalMark } from "../src/domain/singleProposal";
 import { correctionTitle } from "../src/domain/corrections";
 import { applyHelpsTsvEdits, freshRowId } from "../src/domain/helpsDraft";
 import { setActiveScope } from "../src/domain/scope";
@@ -432,6 +432,62 @@ test("un ajuste no es otra opción de la pregunta de la nota, ni la deja abierta
   const agreed = slot([...waiting, proposalSaying("pr-a", "bea", T("10:20"), true), proposalSaying("pr-a", "carla", T("10:30"), true)]);
   assert.equal(agreed.settled, true);
   assert.equal(agreed.open.length, 0);
+});
+
+// ---------------------------------------------------------------- a proposal checked with the step's questions (27 October)
+
+const checked = { ...single, questionsOf: () => ["tpl", "tps", "acad"] };
+const proposed = (after = "b") => wrote("ana", T("10:00"), P("pr-a", after), "tpl");
+const marksBy = (who: string, version: string, minute: number, questionIds = ["tpl", "tps", "acad"]) => questionIds.map((qid, i) => proposalMark(version, qid, who, T(`11:${String(minute + i).padStart(2, "0")}`), "yes"));
+const head = (rows: CheckAnswer[], id = "pr-a", rule: Parameters<typeof proposalsOf>[3] = checked) => pick(proposalsOf(rows, 3, () => true, rule), id);
+
+test("con «Sí» en todas las preguntas de la propuesta, la persona la elige; con una sin marcar, no", () => {
+  assert.equal(head([proposed(), ...marksBy("bea", "pr-a", 0, ["tpl", "tps"])]).choices?.bea, undefined);
+  assert.equal(head([proposed(), ...marksBy("bea", "pr-a", 0)]).choices?.bea, "pr-a");
+});
+
+test("quien propone: la pregunta donde nació cuenta como «Sí» suyo y las demás las tiene que marcar", () => {
+  assert.equal(head([proposed()]).choices?.ana, undefined);
+  assert.deepEqual(head([proposed()]).origin, ["tpl"]);
+  assert.equal(head([proposed(), ...marksBy("ana", "pr-a", 0, ["tps", "acad"])]).choices?.ana, "pr-a");
+});
+
+test("un «No» sin resolver impide que la propuesta se acuerde aunque tres la elijan", () => {
+  const all = [proposed(), ...marksBy("ana", "pr-a", 0, ["tps", "acad"]), ...marksBy("bea", "pr-a", 10), ...marksBy("carla", "pr-a", 20)];
+  assert.equal(head(all).state, "agreed");
+  const no = [...all, proposalMark("pr-a", "tps", "bea", T("11:30"), "no", "la nota ya no explica la figura")];
+  assert.equal(head(no).state, "open");
+  assert.deepEqual(head(no).noBy, ["bea"]);
+  assert.ok(head(no).disputedSince, "un «No» es un desacuerdo: corre el plazo para quien coordina");
+  assert.equal(head(no).marks?.bea?.tps, "no");
+  assert.equal(head([...no, proposalMark("pr-a", "tps", "bea", T("11:40"), "yes")]).state, "agreed");
+});
+
+test("al cambiar el texto, las marcas de los demás quedan viejas; las de la autora en su propia edición, no", () => {
+  const rows = [proposed(), ...marksBy("ana", "pr-a", 0, ["tps", "acad"]), ...marksBy("bea", "pr-a", 10), wrote("ana", T("12:00"), P("pr-a2", "c", { replaces: "pr-a" }), "tpl")];
+  const now = head(rows, "pr-a2");
+  assert.ok(now.staleFor?.includes("bea"));
+  assert.equal(now.marks?.bea, undefined);
+  assert.equal(now.choices?.ana, "pr-a");
+  assert.ok(!now.staleFor?.includes("ana"));
+});
+
+test("al aceptar un ajuste, se piden de nuevo las marcas de todos, salvo la pregunta donde nació", () => {
+  const rows = [proposed(), ...marksBy("ana", "pr-a", 0, ["tps", "acad"]), adjusting("bea", T("11:10"), "aj-1", "c"), wrote("ana", T("12:00"), P("pr-a2", "c", { replaces: "pr-a", accepts: "aj-1", adjustedBy: "bea" }), "tpl")];
+  const now = head(rows, "pr-a2");
+  assert.equal(now.marks?.ana, undefined);
+  assert.equal(now.choices?.ana, undefined);
+  assert.equal(head([...rows, ...marksBy("ana", "pr-a2", 30, ["tps", "acad"])], "pr-a2").choices?.ana, "pr-a");
+});
+
+test("un «de acuerdo» antiguo cuenta como «Sí» en todas las preguntas", () => {
+  assert.equal(head([proposed(), proposalSaying("pr-a", "bea", T("10:30"), true)]).choices?.bea, "pr-a");
+});
+
+test("una pregunta que no aplica al texto de la propuesta no se pide", () => {
+  const rule = { ...single, questionsOf: (view: { proposal: ProposalPayload }) => (view.proposal.after?.includes("[[") ? ["tpl", "acad"] : ["tpl"]) };
+  assert.equal(head([proposed(), ...marksBy("bea", "pr-a", 0, ["tpl"])], "pr-a", rule).choices?.bea, "pr-a");
+  assert.equal(head([proposed("ver [[rc://x]]"), ...marksBy("bea", "pr-a", 0, ["tpl"])], "pr-a", rule).choices?.bea, undefined);
 });
 
 console.log(`\nverify-check-proposal: ${passed} checks passed.`);

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { itemSaying, proposalAnswer, proposalKeeping, proposalSaying, proposalsOf } from "../src/domain/checkProposal";
 import { articleItemId, asksOf, itemAgreed, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, withVerseStops, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
 import { questionText, shippedWorkflow } from "../src/domain/processes";
+import { proposalMark } from "../src/domain/singleProposal";
 import { canApproveStep, closesInItsTool } from "../src/domain/stepClaim";
 import type { ChecklistQuestion, TaskStep } from "../src/domain/types";
 
@@ -369,5 +370,35 @@ test("la pregunta del versículo enlazado se hace solo a una nota que remite a o
   assert.equal(asksOf(linked, { text: "Vea [Metonimia](rc://*/ta/man/translate/figs-metonymy)." }), false, "un artículo no es un versículo");
   assert.equal(asksOf(linked, { text: "Traducción alternativa: “su trono real”." }), false);
 });
+
+// ---------------------------------------------------------------- a proposal checked with the step's questions (27 October)
+{
+  const three: ChecklistQuestion[] = [{ id: "tpl", text: "TPL" }, { id: "tps", text: "TPS" }, { id: "acad", text: "Academia" }];
+  const rule = { consensus: true, questionsOf: () => ["tpl", "tps", "acad"] };
+  const at = (minute: number) => `2026-10-28T10:${String(minute).padStart(2, "0")}:00Z`;
+  const p = (id: string, after: string, extra: object = {}) => ({ id, resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after, ...extra });
+  const made = proposalAnswer({ itemId: "n1", questionId: "tpl", by: "ana", at: at(0), reason: "", proposal: p("pr-a", "b") });
+  const marks = (who: string, from: number, ids = ["tpl", "tps", "acad"]) => ids.map((qid, i) => proposalMark("pr-a", qid, who, at(from + i), "yes"));
+  const turnOf = (answers: CheckAnswer[], me: string) => summarizeChecklist({ items: [{ id: "n1", verseKey: "1:1" }], questions: three, answers, agreement: { people: 3, proposals: proposalsOf(answers, 3, () => true, rule), me } }).items[0]!.turn;
+
+  test("quien dijo «No» a la propuesta espera a que el otro lado responda", () => {
+    const rows = [made, ...marks("ana", 1, ["tps", "acad"]), proposalMark("pr-a", "tps", "bea", at(10), "no", "no explica la figura")];
+    assert.equal(turnOf(rows, "bea"), "waiting");
+    assert.equal(turnOf(rows, "ana"), "mine");
+  });
+
+  test("la autora tiene un ajuste por responder: le toca", () => {
+    const rows = [made, ...marks("ana", 1, ["tps", "acad"])];
+    assert.equal(turnOf(rows, "ana"), "waiting", "sin ajuste, espera a las demás");
+    const adjustment = proposalAnswer({ itemId: "n1", questionId: "tpl", by: "bea", at: at(10), reason: "más claro", proposal: p("aj-1", "c", { suggests: "pr-a" }) });
+    assert.equal(turnOf([...rows, adjustment], "ana"), "mine");
+  });
+
+  test("con la propuesta elegida por todas, las demás preguntas de la nota quedan resueltas con ella", () => {
+    const rows = [made, ...marks("ana", 1, ["tps", "acad"]), ...marks("bea", 10), ...marks("carla", 20)];
+    const summary = summarizeChecklist({ items: [{ id: "n1", verseKey: "1:1" }], questions: three, answers: rows, agreement: { people: 3, proposals: proposalsOf(rows, 3, () => true, rule), me: "ana" } });
+    assert.equal(summary.items[0]!.state, "ok");
+  });
+}
 
 console.log(`\nverify-checklist: ${passed} checks passed.`);

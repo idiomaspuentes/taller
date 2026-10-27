@@ -1,7 +1,7 @@
 import type { CheckAnswer } from "./checklist";
 import type { CorrectionAsk } from "./corrections";
 import { scopeKey } from "./scope";
-import { ADJUSTMENT_SAYS, optionsAndAdjustments } from "./singleProposal";
+import { ADJUSTMENT_SAYS, SINGLE_PROPOSAL_FROM, optionsAndAdjustments } from "./singleProposal";
 
 /**
  * A change proposed while checking: a «no» is settled by saying what should change, with the new version written
@@ -136,6 +136,14 @@ export type ProposalView = {
   adjusts?: string;
   adjustment?: "pending" | "accepted" | "declined" | "stale";
   declinedBy?: string;
+  /**
+   * Checked with the step's questions (see `ProposalRule.questionsOf`): what each person (in lower case) marked of
+   * this version, who says «no» to it (as they write their name), and the questions its author proposed it from,
+   * which count as their «yes».
+   */
+  marks?: Record<string, Record<string, "yes" | "no">>;
+  noBy?: string[];
+  origin?: string[];
 };
 
 /**
@@ -145,7 +153,15 @@ export type ProposalView = {
  * spoke, its author too, would rather leave things as they are; meanwhile it stays open, and the team talks it over,
  * adjusts it or proposes something else. If that goes on, whoever `decides` may settle it.
  */
-export type ProposalRule = { consensus?: boolean; decides?: (login: string) => boolean };
+export type ProposalRule = {
+  consensus?: boolean;
+  decides?: (login: string) => boolean;
+  /**
+   * The questions a version is checked with (27 October): choosing it is marking «yes» on all of them. Without it a
+   * proposal is chosen by proposing it or by being for it, as before.
+   */
+  questionsOf?: (view: ProposalView) => string[];
+};
 
 /** The proposal is in dispute long enough for whoever coordinates the team to settle it. */
 export function disputeStalled(view: Pick<ProposalView, "disputedSince" | "state">, now: number = Date.now()): boolean {
@@ -310,12 +326,64 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
     let since: string | undefined;
     const distinct = () => new Set([...choice.values()].map((one) => one.option).filter((option) => option === KEEP_OPTION || live.has(option))).size;
     let decision: CheckAnswer | undefined;
+    // Checked with the step's questions (27 October): each person's marks, by version and question, as the reading goes.
+    const asks = rule.questionsOf;
+    const marked = new Map<string, Map<string, Map<string, "yes" | "no">>>();
+    const authorOf = (version: string) => byId.get(rootOf(version))?.by ?? "";
+    const originOf = (version: string) => [...new Set(byTime.filter((row) => row.outcome === "proposal" && row.proposal && rootOf(row.proposal.id) === rootOf(version) && same(row.by, authorOf(version)) && !row.questionId.startsWith("@")).map((row) => row.questionId))];
+    /**
+     * What counts of what somebody marked, for a version: what they marked of it; and, for its author, what they
+     * marked of the versions before it that they changed themselves. Another person's change (an adjustment they
+     * took) asks everybody again.
+     */
+    const effective = (who: string, version: string): Map<string, "yes" | "no"> => {
+      const out = new Map<string, "yes" | "no">();
+      const versions = versionsOf(views, version);
+      const author = same(authorOf(version), who);
+      for (let i = versions.length - 1; i >= 0; i--) {
+        const view = versions[i]!;
+        for (const [qid, value] of marked.get(who)?.get(view.proposal.id) ?? []) if (!out.has(qid)) out.set(qid, value);
+        if (!author || !same(view.by, who) || view.proposal.accepts) break;
+      }
+      return out;
+    };
+    const complete = (who: string, version: string) => {
+      const view = byId.get(version);
+      if (!asks || !view) return false;
+      const marks = effective(who, version);
+      const own = same(authorOf(version), who) ? originOf(version) : [];
+      return asks(view).every((qid) => marks.get(qid) === "yes" || own.includes(qid));
+    };
+    const saysNo = (who: string, version: string) => [...effective(who, version).values()].includes("no");
+    // The version of each option in force at this point of the reading, and who says «no» to which version.
+    const inForce = new Map<string, string>();
+    const noOn = new Map<string, string>();
+    const weigh = (who: string, version: string, wrote = false) => {
+      const option = rootOf(version);
+      if (complete(who, version)) choice.set(who, { option, version });
+      else if (choice.get(who)?.version === version || (wrote && choice.get(who)?.option === option)) choice.delete(who);
+      if (saysNo(who, version)) noOn.set(who, version);
+      else if (noOn.get(who) === version) noOn.delete(who);
+    };
+    const anyNo = () => [...noOn.values()].some((version) => inForce.get(rootOf(version)) === version && live.has(rootOf(version)));
     for (const row of byTime) {
       const who = row.by.trim().toLowerCase();
       // An adjustment, and what is said of it, chooses nothing.
       if (adjusting.has(row.outcome === "proposal" && row.proposal ? row.proposal.id : row.itemId)) continue;
-      if (row.outcome === "proposal" && row.proposal && ids.has(row.proposal.id) && row.itemId === itemId) choice.set(who, { option: rootOf(row.proposal.id), version: row.proposal.id });
-      else if (ids.has(row.itemId) && row.questionId === PROPOSAL_SAYS) {
+      if (row.outcome === "proposal" && row.proposal && ids.has(row.proposal.id) && row.itemId === itemId) {
+        inForce.set(rootOf(row.proposal.id), row.proposal.id);
+        // Written since proposals are checked, a version is chosen by its writer once they checked it all.
+        if (asks && row.at >= SINGLE_PROPOSAL_FROM) weigh(who, row.proposal.id, true);
+        else choice.set(who, { option: rootOf(row.proposal.id), version: row.proposal.id });
+      } else if (asks && ids.has(row.itemId) && !row.questionId.startsWith("@")) {
+        const mine = marked.get(who) ?? new Map<string, Map<string, "yes" | "no">>();
+        const on = mine.get(row.itemId) ?? new Map<string, "yes" | "no">();
+        if (row.cleared) on.delete(row.questionId);
+        else on.set(row.questionId, row.value);
+        mine.set(row.itemId, on);
+        marked.set(who, mine);
+        weigh(who, row.itemId);
+      } else if (ids.has(row.itemId) && row.questionId === PROPOSAL_SAYS) {
         const view = byId.get(row.itemId)!;
         if (row.value === "yes") choice.set(who, { option: rootOf(row.itemId), version: row.itemId });
         else if (!same(view.by, row.by) && choice.get(who)?.option === rootOf(row.itemId)) choice.delete(who);
@@ -325,8 +393,9 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       } else if (ids.has(row.itemId) && row.questionId === PROPOSAL_DECIDED && rule.decides?.(row.by)) decision = row;
       else if (row.value === "yes" && !row.questionId.startsWith("@") && asked.has(`${row.itemId}\u0000${row.questionId}`) && !row.cleared) choice.set(who, { option: KEEP_OPTION });
       else continue;
-      // When the disagreement began: the moment two choices first stood side by side, until they meet again.
-      if (distinct() > 1) since ??= row.at;
+      // When the disagreement began: the moment two choices first stood side by side, or somebody said «no» to the
+      // proposal, until they meet again.
+      if (distinct() > 1 || anyNo()) since ??= row.at;
       else since = undefined;
     }
     // A choice of an option taken back by its author is no choice.
@@ -337,16 +406,25 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
     const decided = decision ? (decision.value === "yes" ? rootOf(decision.itemId) : KEEP_OPTION) : undefined;
     // A choice of a version since edited is to be looked at again: it does not settle the item until then.
     const current = (one: { option: string; version?: string }) => one.option === KEEP_OPTION || one.version === live.get(one.option)?.proposal.id;
-    const winner = decided ?? (choice.size >= Math.max(1, needed) && all.size === 1 && [...choice.values()].every(current) ? [...all][0] : undefined);
+    // Who says «no» to the version of an option in force: while somebody does, it is not agreed (27 October).
+    const people = [...marked.keys()];
+    const noByOf = (option: string) => {
+      const head = live.get(option);
+      return head ? people.filter((who) => saysNo(who, head.proposal.id)).map((who) => byTime.find((row) => same(row.by, who))?.by ?? who) : [];
+    };
+    const unanimous = choice.size >= Math.max(1, needed) && all.size === 1 && [...choice.values()].every(current) ? [...all][0] : undefined;
+    const winner = decided ?? (unanimous && (unanimous === KEEP_OPTION || !noByOf(unanimous).length) ? unanimous : undefined);
     for (const [option, head] of live) {
       const view = out.get(head.proposal.id)!;
       const done = view.state === "applied" || view.state === "sent";
       const state = done ? view.state : winner === option ? "agreed" : winner ? "rejected" : "open";
       const stale = [...choice].filter(([, one]) => one.option === option && one.version !== head.proposal.id).map(([who]) => who);
-      const next: ProposalView = { ...view, inFavour: named(option), against: named(KEEP_OPTION), state, choices, ...(stale.length ? { staleFor: stale } : {}) };
+      const noBy = noByOf(option);
+      const checks = asks ? { marks: Object.fromEntries(people.map((who) => [who, Object.fromEntries(effective(who, head.proposal.id))] as const).filter(([, marks]) => Object.keys(marks).length)), noBy, origin: originOf(head.proposal.id) } : {};
+      const next: ProposalView = { ...view, inFavour: named(option), against: named(KEEP_OPTION), state, choices, ...(stale.length ? { staleFor: stale } : {}), ...checks };
       delete next.disputedSince;
       delete next.decidedBy;
-      if (!winner && since && all.size > 1) next.disputedSince = since;
+      if (!winner && since && (all.size > 1 || noBy.length)) next.disputedSince = since;
       if (decision && decided && !done) next.decidedBy = decision.by;
       out.set(head.proposal.id, next);
     }
