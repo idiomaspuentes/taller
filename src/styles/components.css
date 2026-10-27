@@ -11233,6 +11233,34 @@ html[data-text] .ck-said--who { font-size: calc(0.875rem * var(--ts)); }
 .ck-said--who > span { display: inline-flex; align-items: center; gap: 0.25rem; }
 .ck-said--who > span[data-v="yes"] svg { color: var(--success-700, currentColor); }
 .ck-said--who > span[data-v="no"] svg { color: var(--danger-700, currentColor); }
+/* The conversation of a note (27 October): its last two messages and a box on the note, the rest in a sheet. */
+.ck-thread { display: grid; gap: 0.75rem; margin: 1.5rem 0 0; }
+.ck-thread__title { display: flex; align-items: center; gap: 0.375rem; margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+html[data-text] .ck-thread__title { font-size: calc(0.9375rem * var(--ts)); }
+.ck-thread__count { font-weight: 400; }
+.ck-thread__list { display: grid; gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
+.ck-thread__msg { display: flex; align-items: flex-start; gap: 0.5rem; }
+.ck-thread__bubble { flex: 1 1 auto; min-width: 0; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--surface-muted); }
+.ck-thread__msg[data-mine] .ck-thread__bubble { background: var(--accent-50, var(--surface-muted)); }
+.ck-thread__who { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin: 0 0 0.125rem; font-size: calc(0.875rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+html[data-text] .ck-thread__who { font-size: calc(0.875rem * var(--ts)); }
+.ck-thread__text { margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.45; color: var(--text); overflow-wrap: anywhere; white-space: pre-wrap; }
+html[data-text] .ck-thread__text { font-size: calc(0.9375rem * var(--ts)); }
+.ck-thread__tag { display: inline-flex; padding: 0 0.375rem; border: 1px solid var(--border); border-radius: 999px; font-size: calc(0.75rem * var(--ts, 1)); font-weight: 600; color: var(--text); }
+html[data-text] .ck-thread__tag { font-size: calc(0.75rem * var(--ts)); }
+.ck-thread__line { display: grid; gap: 0.5rem; padding-left: 2.25rem; font-size: calc(0.875rem * var(--ts, 1)); color: var(--text); }
+html[data-text] .ck-thread__line { font-size: calc(0.875rem * var(--ts)); }
+.ck-thread__line .ck-thread__tag { margin-left: 0.375rem; }
+.ck-thread__see { min-height: 0; }
+.ck-thread__all { justify-self: start; min-height: 44px; }
+.ck-thread__new { display: flex; align-items: center; gap: 0.5rem; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 600; color: var(--accent-700, var(--text)); }
+html[data-text] .ck-thread__new { font-size: calc(0.8125rem * var(--ts)); }
+.ck-thread__new::before, .ck-thread__new::after { content: ""; flex: 1; border-top: 1px solid var(--accent-500, var(--border)); }
+.ck-thread__write { display: flex; align-items: flex-end; gap: 0.5rem; }
+.ck-thread__box { flex: 1 1 auto; min-width: 0; font-size: max(16px, calc(1rem * var(--ts, 1))); }
+.ck-thread__send { flex: 0 0 auto; min-height: 44px; }
+.ck-thread-sheet .fx-body { display: grid; gap: 1rem; }
+.ck-thread-sheet > .ck-thread__write { padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: var(--surface); }
 .ck-pcheck__nav { display: grid; }
 .ck-pcheck__nav .btn { min-height: 48px; }
 /* A label longer than half the phone wraps in its button instead of leaving it (21 October). */

@@ -37,6 +37,8 @@ import type { ProposalCheckGroup } from "./ProposalCheck";
 import { adjustmentDeclined, proposalMark } from "../domain/singleProposal";
 import { agreementRows, noteSituation, type NoteSituation } from "../domain/noteSituation";
 import { NoteAnswer } from "./NoteAnswer";
+import { NoteThread, THREAD_BOX } from "./NoteThread";
+import { noteTimeline } from "../domain/noteTimeline";
 import { SituationLine } from "./SituationLine";
 import { ProposalCard } from "./ProposalCard";
 import { AdjustmentList } from "./AdjustmentList";
@@ -1467,6 +1469,19 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     nextStep();
   };
   const stays = Boolean(collab && answerMode !== "first");
+  /** The conversation of the note in view (see `noteTimeline`), with what each person did in it. */
+  const timeline = useMemo(() => {
+    if (!collab || !item) return null;
+    return noteTimeline({ me, itemId: item.id, answers, proposals, steps: groups.map((one) => ({ about: one.about, rows: one.rows.map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })) })) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(collab), item?.id, answers, proposals, groups.length, me]);
+  /** Into the box of the conversation, the keyboard up: what «Responder» and «Comentar» do, collaborating. */
+  const toThreadBox = () =>
+    window.setTimeout(() => {
+      const box = document.getElementById(THREAD_BOX) as HTMLTextAreaElement | null;
+      box?.scrollIntoView({ block: "center" });
+      box?.focus();
+    }, 30);
   const commentForm = item ? (
                 <form
                   className="ck-say"
@@ -1617,7 +1632,23 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * about the help are read in it, at its end: two places that looked like a conversation were one too many.
    */
   const talkView =
-    collab ? null : optionsHere && item ? (
+    collab && item && timeline ? (
+      <NoteThread
+        key={item.id}
+        entries={timeline.entries}
+        newFrom={timeline.newFrom}
+        me={me}
+        nameOf={personName}
+        stepLabel={(about) => (about ? scopeLabel(about, data?.board?.settings?.resourceNames, language) : t("ck.talkAll"))}
+        step={group?.about ?? ""}
+        saving={saving}
+        onSay={(text, step) => save([itemSaying(item.id, me, new Date().toISOString(), text, undefined, step || undefined)], t("ck.talkSent"))}
+      >
+        {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
+          <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
+        ) : null}
+      </NoteThread>
+    ) : collab ? null : optionsHere && item ? (
       <NoteOptions
         key={item.id}
         title={t("ck.optsTitle").replace("{what}", what)}
@@ -2386,8 +2417,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                     onPropose={() => proposeFailing(tickFailing)}
                     onAdjust={() => reviewHead && adjustProposal(reviewHead)}
                     onSayWhat={() => setCommenting(true)}
-                    onComment={() => setCommenting(true)}
-                    onReply={() => setCommenting(true)}
+                    onComment={toThreadBox}
+                    onReply={toThreadBox}
                     onCheckToo={() => setDoubting(true)}
                     onChangeMine={() => reviewHead && adjustProposal(reviewHead)}
                     onWithdrawMine={() => reviewHead && void withdrawWhole(reviewHead.proposal.id)}
