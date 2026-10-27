@@ -43,7 +43,7 @@ export function SituationLine({ situation, people, me, nameOf, answered }: {
       break;
     case "confirm":
       faces = situation.by;
-      parts = [t("ck.sitConfirm").replace("{who}", names(situation.by)), missing(situation.by)];
+      parts = [t(situation.by.length > 1 ? "ck.sitConfirmMany" : "ck.sitConfirm").replace("{who}", names(situation.by)), missing(situation.by)];
       break;
     case "proposal": {
       const agreed = situation.agreed.filter((who) => !same(who, me));

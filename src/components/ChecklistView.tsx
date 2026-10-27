@@ -1385,10 +1385,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   /** What the others said of a question, beside it (27 October): «✓ Ana: sí». It was «@ana · 1/3». */
   const othersOn = (questionId: string): { by: string; value: "yes" | "no" }[] => {
     if (!collab) return [];
-    if (collab.kind === "proposal" || collab.kind === "ownProposal") {
-      const head = collab.head;
+    // With a proposal on the note (asked something about it too), what is said of the proposal.
+    const head = collab.kind === "proposal" || collab.kind === "ownProposal" || collab.kind === "asked" ? collab.head : undefined;
+    if (head) {
       const option = head.option ?? head.proposal.id;
-      const author = collab.kind === "proposal" ? collab.author : me;
+      const author = collab.kind === "proposal" ? collab.author : collab.kind === "asked" ? (collab.author ?? head.by) : me;
       const out = new Map<string, "yes" | "no">();
       for (const [who, marks] of Object.entries(head.marks ?? {})) if (marks[questionId]) out.set(who, marks[questionId]!);
       // A choice from before checking by questions (or the question the author proposed it from) says «yes» to it.
@@ -1400,7 +1401,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   };
   const saidLine = (questionId: string): ReactNode => {
     if (!people || tally?.agreedApart) return null;
-    if (collab && collab.kind !== "first" && collab.kind !== "asked") {
+    // Decided together, what each person said is said by name, in every situation; the count is in the line above.
+    if (collab) {
       const said = othersOn(questionId);
       return said.length ? (
         <span className="ck-said ck-said--who">
@@ -2113,7 +2115,14 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
             </ol>
           ) : null}
           {collab ? <SituationLine situation={collab} people={people} me={me} nameOf={personName} answered={wroteHere} /> : null}
-          {collabHeading === null ? null : <h2 className="af-heading ck-heading">{collabHeading ?? heading}</h2>}
+          {collabHeading === null ? (
+            // Asked something, the question comes first; once the points are opened, the proposal is asked about.
+            doubting && collab?.kind === "asked" && collab.head ? (
+              <h2 className="af-heading ck-heading">{aboutArticle ? t("ck.headProposalArticle").replace("{who}", personName(collab.author ?? collab.head.by)) : t("ck.headProposal").replace("{who}", personName(collab.author ?? collab.head.by)).replace("{text}", against || textLabel(texts[0]!))}</h2>
+            ) : null
+          ) : (
+            <h2 className="af-heading ck-heading">{collabHeading ?? heading}</h2>
+          )}
           {!collab || collab.kind === "first" ? <p className="ck-howto">{howTo}</p> : null}
           {/* What is checked in this step, under its heading and before what it is checked on: it is what the step is
               for, and at the foot of the card, in small grey lines, it read as something secondary (20 October). It

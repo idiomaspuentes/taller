@@ -3357,6 +3357,7 @@
   "ck.checkNo": "Não",
   "ck.sitFirst": "Você é a primeira pessoa a revisar esta nota. Sua revisão abre a conversa.",
   "ck.sitConfirm": "{who} já revisou esta nota.",
+  "ck.sitConfirmMany": "{who} já revisaram esta nota.",
   "ck.sitProposal": "{who} propõe uma mudança.",
   "ck.sitAgreed": "{who} concordam com a proposta.",
   "ck.sitAgreedOne": "{who} concorda com a proposta.",

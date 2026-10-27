@@ -131,7 +131,8 @@ export function NoteThread({ entries, newFrom, me, nameOf, stepLabel, step, savi
   );
 
   return (
-    <section className="ck-thread" aria-labelledby="ck-thread-title">
+    // The conversation's card, in the place of the step's order where what the team said is read (`.ck-talk`).
+    <section className="ck-talk ck-thread" aria-labelledby="ck-thread-title">
       <p className="ck-thread__title" id="ck-thread-title">
         <MessageCircle size={16} aria-hidden /> {t("ck.threadTitle")}
         {messages.length ? <span className="ck-thread__count"> · {t(messages.length === 1 ? "ck.threadCountOne" : "ck.threadCount").replace("{n}", String(messages.length))}</span> : null}
