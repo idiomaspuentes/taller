@@ -1388,7 +1388,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
       : optionsHere && !myChoice
       ? optionsHere.options.length > 1
         ? t("ck.barOptions").replace("{n}", String(optionsHere.options.length)).replace("{what}", what)
-        : t("ck.barProposal").replace("{who}", `@${optionsHere.options[0]!.versions[0]!.by}`).replace("{what}", what)
+        : isMe(optionsHere.options[0]!.versions[0]!.by)
+          ? t("ck.barOwnCheck").replace("{what}", what)
+          : t("ck.barProposal").replace("{who}", `@${optionsHere.options[0]!.versions[0]!.by}`).replace("{what}", what)
       : optionsHere && myStale
         ? t("ck.barStale").replace("{what}", what)
         : optionsHere

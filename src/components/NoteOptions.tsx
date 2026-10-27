@@ -126,6 +126,8 @@ export function NoteOptions({
     return adjusted ? t("ck.optByAdjusted").replace("{who}", `@${first?.by ?? ""}`).replace("{names}", adjusted) : t("ck.optBy").replace("{who}", `@${first?.by ?? ""}`);
   };
   const voices = Object.keys(choices).length;
+  // Whoever said «no» to a proposal has spoken: it is the others' turn to answer them.
+  const saidNo = options.some((option) => option.versions[option.versions.length - 1]?.noBy?.some((name) => same(name, me)));
   const split = new Set(Object.values(choices)).size > 1;
   const status = winner
     ? (decidedBy ? t("ck.optDecided").replace("{who}", who(decidedBy)) : t("ck.optSettled")).replace("{option}", nameOf(winner))
@@ -135,7 +137,7 @@ export function NoteOptions({
           .filter((row) => row.n)
           .map((row) => t("ck.optCount").replace("{n}", String(row.n)).replace("{option}", nameOf(row.option)))
           .join(" · ")}.${stalled ? ` ${t("ck.talkStalled")}` : ""}`
-      : `${t("ck.optChose").replace("{n}", String(Math.min(voices, people))).replace("{people}", String(people))} · ${t(mine ? "ck.talkOthersTurn" : "ck.optYourTurn")}`;
+      : `${t("ck.optChose").replace("{n}", String(Math.min(voices, people))).replace("{people}", String(people))} · ${t(mine || saidNo ? "ck.talkOthersTurn" : "ck.optYourTurn")}`;
 
   const send = async (about: string) => {
     const text = draft.trim();
@@ -244,7 +246,7 @@ export function NoteOptions({
                       const why = [...said].reverse().find((m) => same(m.by, name));
                       return (
                         <p key={name} className="ck-opt__no">
-                          <b>{t("ck.optSaysNo").replace("{who}", who(name))}</b>
+                          <b>{same(name, me) ? t("ck.optSaysNoMine") : t("ck.optSaysNo").replace("{who}", who(name))}</b>
                           {why ? `: «${why.text}»` : ""}
                         </p>
                       );
@@ -264,7 +266,7 @@ export function NoteOptions({
                       </div>
                     ) : null}
                     {changeOf(head, option.id)}
-                    {checkable(head) && !chosen && !stale && !closed && !winner ? (
+                    {checkable(head) && !chosen && !stale && !closed && !winner && !head.noBy?.some((name) => same(name, me)) ? (
                       // What is asked of this person: to check it, the one obvious thing on it.
                       <button type="button" className="btn ck-opt__check" data-variant="default" data-size="lg" disabled={saving} onClick={() => setInCheck(option.id)}>
                         {t("ck.optCheck")}
@@ -279,9 +281,9 @@ export function NoteOptions({
                           const writer = same(adjustment.by, me);
                           return (
                             <li key={adjustment.proposal.id} className="ck-adj__one" data-state={adjustment.adjustment}>
-                              <p className="ck-adj__who">{t("ck.adjSuggests").replace("{who}", who(adjustment.by))}</p>
+                              <p className="ck-adj__who">{writer ? t("ck.adjSuggestsMine") : t("ck.adjSuggests").replace("{who}", who(adjustment.by))}</p>
                               {adjustment.reason ? <p className="ck-opt__why">«{adjustment.reason}»</p> : null}
-                              {adjustment.adjustment === "declined" ? <p className="ck-adj__state">{t("ck.adjDeclined").replace("{who}", who(adjustment.declinedBy ?? option.versions[0]!.by))}</p> : null}
+                              {adjustment.adjustment === "declined" ? <p className="ck-adj__state">{same(adjustment.declinedBy ?? option.versions[0]!.by, me) ? t("ck.adjDeclinedMine") : t("ck.adjDeclined").replace("{who}", who(adjustment.declinedBy ?? option.versions[0]!.by))}</p> : null}
                               {adjustment.adjustment === "stale" ? <p className="ck-adj__state">{t("ck.adjStale")}</p> : null}
                               <TextChangeView before={readable(head.proposal.after ?? "")} after={readable(adjustment.proposal.after ?? "")} lines layout="together" labels={{ now: nameOf(option.id), proposed: t("ck.adjLabel") }} />
                               {answers || (writer && !closed && !winner && adjustment.adjustment !== "declined") || (canDecide && !winner) ? (
