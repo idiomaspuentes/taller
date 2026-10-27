@@ -9,7 +9,7 @@ import { articlePathOf, categoryFromSupportRef, categoryLabel } from "../domain/
 import { localizeAfinacion } from "../domain/afinacionNames";
 import { missingWork, verseIsAligned, verseList, type MissingWork } from "../domain/checklistReady";
 import { articleMessageKey, termMessageKey } from "../domain/studyNotes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, Info, List, Maximize2, MessageCircle, Pencil, Plus, Share2, X } from "lucide-react";
 import { articleLead } from "../domain/articleSections";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -35,6 +35,10 @@ import { NoteConversation, OPEN_TALK, type TalkLine, type TalkStatus } from "./N
 import { NoteOptions, type HelpOption, type OptionMessage } from "./NoteOptions";
 import type { ProposalCheckGroup } from "./ProposalCheck";
 import { adjustmentDeclined, proposalMark } from "../domain/singleProposal";
+import { noteSituation } from "../domain/noteSituation";
+import { SituationLine } from "./SituationLine";
+import { ProposalCard } from "./ProposalCard";
+import { AdjustmentList } from "./AdjustmentList";
 import { applyProposal, sendProposal as askOwnersFor } from "../dcs/checkProposals";
 import { shareTurnFromTool } from "../dcs/roundClose";
 import { uid } from "../domain/assignment";
@@ -1302,6 +1306,114 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     return { heads, options, choices: heads.find((view) => view.choices)?.choices ?? {}, winner, decidedBy: heads.find((view) => view.decidedBy)?.decidedBy, stalled: heads.some((view) => disputeStalled(view)), messages };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people, item?.id, verseStop, proposals, answers, rowsHere.length]);
+  /**
+   * Where the step in view stands for this person, decided together (Abel, 27 October; see `noteSituation`): whether
+   * they open it, or collaborate on a review, a proposal or a question somebody left. Two or more proposals from
+   * before one proposal per note are chosen among as before (`options`).
+   */
+  const stepKey = rowsShown.map(({ question, answerItemId }) => `${answerItemId}:${question.id}`).join("|");
+  const situation = useMemo(() => {
+    if (!people || !item || verseStop) return null;
+    const live = (optionsHere?.heads ?? []).filter((view) => view.state === "open" || view.state === "agreed");
+    return noteSituation({ me, itemId: item.id, stepRows: rowsShown.map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })), answers, options: live });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people, item?.id, verseStop, answers, optionsHere, stepKey, me]);
+  const collab = situation && situation.kind !== "options" ? situation : null;
+  /** A person by the name the project knows them by. */
+  const personName = (login: string) => data?.board?.people?.find((person) => person.id.toLowerCase() === login.toLowerCase())?.name ?? login;
+  const peopleNames = (list: string[]) => {
+    const all = list.map(personName);
+    return all.length < 2 ? (all[0] ?? "") : t("ck.sitAnd").replace("{a}", all.slice(0, -1).join(", ")).replace("{b}", all[all.length - 1]!);
+  };
+  /** This person wrote on the note before: what somebody asked now answers them. */
+  const wroteHere = Boolean(item && answers.some((row) => row.questionId === ITEM_SAYS && row.itemId === item.id && isMe(row.by)));
+  /** The title of the step, said to a person: undefined keeps the step's own, null leaves it out (a question comes first). */
+  const collabHeading: string | null | undefined = !collab
+    ? undefined
+    : collab.kind === "confirm"
+      ? t("ck.headConfirm").replace("{who}", peopleNames(collab.by))
+      : collab.kind === "proposal"
+        ? aboutArticle
+          ? t("ck.headProposalArticle").replace("{who}", personName(collab.author))
+          : t("ck.headProposal").replace("{who}", personName(collab.author)).replace("{text}", against || textLabel(texts[0]!))
+        : collab.kind === "ownProposal"
+          ? aboutArticle
+            ? t("ck.headOwnArticle")
+            : t("ck.headOwn").replace("{text}", against || textLabel(texts[0]!))
+          : collab.kind === "asked"
+            ? null
+            : undefined;
+  /** What the others said of a question, beside it (27 October): «✓ Ana: sí». It was «@ana · 1/3». */
+  const othersOn = (questionId: string): { by: string; value: "yes" | "no" }[] => {
+    if (!collab) return [];
+    if (collab.kind === "proposal" || collab.kind === "ownProposal") {
+      const head = collab.head;
+      const option = head.option ?? head.proposal.id;
+      const author = collab.kind === "proposal" ? collab.author : me;
+      const out = new Map<string, "yes" | "no">();
+      for (const [who, marks] of Object.entries(head.marks ?? {})) if (marks[questionId]) out.set(who, marks[questionId]!);
+      // A choice from before checking by questions (or the question the author proposed it from) says «yes» to it.
+      for (const [who, chose] of Object.entries(head.choices ?? {})) if (chose === option && !out.has(who)) out.set(who, "yes");
+      if (head.origin?.includes(questionId) && !out.has(author.toLowerCase())) out.set(author.toLowerCase(), "yes");
+      return [...out].filter(([who]) => !isMe(who)).map(([by, value]) => ({ by, value }));
+    }
+    return (tally?.slots?.[questionId]?.yesBy ?? []).filter((who) => !isMe(who)).map((by) => ({ by, value: "yes" as const }));
+  };
+  const saidLine = (questionId: string): ReactNode => {
+    if (!people || tally?.agreedApart) return null;
+    if (collab && collab.kind !== "first" && collab.kind !== "asked") {
+      const said = othersOn(questionId);
+      return said.length ? (
+        <span className="ck-said ck-said--who">
+          {said.map((one) => (
+            <span key={one.by} data-v={one.value}>
+              {one.value === "yes" ? <Check size={14} aria-hidden /> : <X size={14} aria-hidden />} {t(one.value === "yes" ? "ck.saidBy" : "ck.saidNoBy").replace("{who}", personName(one.by))}
+            </span>
+          ))}
+        </span>
+      ) : null;
+    }
+    const yesBy = tally?.slots?.[questionId]?.yesBy ?? [];
+    return yesBy.length ? (
+      <span className="ck-said">
+        <Check size={13} aria-hidden /> {yesBy.map((who) => (isMe(who) ? t("ck.talkYou") : `@${who}`)).join(", ")} · {Math.min(yesBy.length, people)}/{people}
+      </span>
+    ) : null;
+  };
+  /** With a proposal, the note is read as it would leave it, with what others suggest changing of it under it. */
+  const proposalShown = (() => {
+    // Asked something about a note with a proposal, what is read is still the proposal.
+    const reviewed = collab && (collab.kind === "proposal" || collab.kind === "ownProposal") ? { head: collab.head, author: collab.kind === "proposal" ? collab.author : me } : collab?.kind === "asked" && collab.head ? { head: collab.head, author: collab.author ?? collab.head.by } : null;
+    if (!item || !reviewed) return null;
+    const head = reviewed.head;
+    const option = optionsHere?.options.find((one) => one.id === (head.option ?? head.proposal.id));
+    const author = reviewed.author;
+    const adjusted = [...new Set((option?.versions ?? []).map((view) => view.proposal.adjustedBy).filter((by): by is string => Boolean(by)))];
+    const title = isMe(author) ? t("ck.cardProposalMine") : adjusted.length ? t("ck.cardProposalAdjusted").replace("{who}", personName(author)).replace("{names}", peopleNames(adjusted)) : t("ck.cardProposal").replace("{who}", personName(author));
+    const reason = head.reason || option?.versions[0]?.reason || "";
+    const who = (by: string) => (isMe(by) ? t("ck.talkYou") : `@${by}`);
+    return (
+      <>
+        <ProposalCard head={head} original={item.body} title={title} reason={reason} reasonBy={who(author)} />
+        <AdjustmentList
+          adjustments={option?.adjustments ?? []}
+          head={head}
+          author={author}
+          me={me}
+          who={who}
+          currentLabel={title}
+          closed={stepDone}
+          canAnswerFor={(adjustment) => !stepDone && decides(me) && Date.now() - Date.parse(adjustment.at) >= DISPUTE_DAYS * 86_400_000}
+          canDecide={Boolean(optionsHere?.stalled && decides(me))}
+          saving={saving}
+          onAccept={(adjustment, version, decide) => void acceptAdjustment(adjustment, version, decide)}
+          onDecline={(adjustment) => void declineAdjustment(adjustment)}
+          onRewrite={(adjustment, version) => adjustProposal(version, [], adjustment.proposal.id)}
+          onWithdraw={(id) => void withdrawWhole(id)}
+        />
+      </>
+    );
+  })();
   /** This person's choice among the options, and whether the one they chose was edited since. */
   const myChoice = optionsHere?.choices[me.trim().toLowerCase()];
   const myStale = Boolean(optionsHere?.heads.some((view) => view.staleFor?.includes(me.trim().toLowerCase())));
@@ -1419,7 +1531,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * about the help are read in it, at its end: two places that looked like a conversation were one too many.
    */
   const talkView =
-    optionsHere && item ? (
+    collab ? null : optionsHere && item ? (
       <NoteOptions
         key={item.id}
         title={t("ck.optsTitle").replace("{what}", what)}
@@ -1847,8 +1959,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
               })}
             </ol>
           ) : null}
-          <h2 className="af-heading ck-heading">{heading}</h2>
-          <p className="ck-howto">{howTo}</p>
+          {collab ? <SituationLine situation={collab} people={people} me={me} nameOf={personName} answered={wroteHere} /> : null}
+          {collabHeading === null ? null : <h2 className="af-heading ck-heading">{collabHeading ?? heading}</h2>}
+          {!collab || collab.kind === "first" ? <p className="ck-howto">{howTo}</p> : null}
           {/* What is checked in this step, under its heading and before what it is checked on: it is what the step is
               for, and at the foot of the card, in small grey lines, it read as something secondary (20 October). It
               is answered once, at the foot of the screen; what was said of a line is shown on it. */}
@@ -1901,7 +2014,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                   <span className="ck-chip">{t("ck.noteChip")} · {bookLabel(data.book, language)} {item.chapter}:{item.verse} · <span className="ck-id">{item.id}</span></span> <span className="ck-note-quote__words">«{noteQuote}»</span>
                 </p>
               ) : null}
-              {helpRead}
+              {proposalShown ?? helpRead}
               {/* Several notes may share words of the quote (Abel, 26 October): one line for them all, read one at a time. */}
               {crossNotes.length ? (
                 <button type="button" className="af-link ck-cross" onClick={() => setPeek({ chapter: item.chapter, verse: item.verse, notes: crossNotes.map((other) => other.id) })}>
@@ -1951,11 +2064,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                     <span className="ck-check__text">
                       {name}
                       {question.per === "verse" && !verseStop ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
-                      {people && !tally?.agreedApart && tally?.slots?.[question.id]?.yesBy.length ? (
-                        <span className="ck-said">
-                          <Check size={13} aria-hidden /> {tally.slots[question.id]!.yesBy.map((who) => (isMe(who) ? t("ck.talkYou") : `@${who}`)).join(", ")} · {Math.min(tally.slots[question.id]!.yesBy.length, people)}/{people}
-                        </span>
-                      ) : null}
+                      {saidLine(question.id)}
                     </span>
                     <span className="ck-yn" role="group" aria-label={name}>
                       <button type="button" className="ck-yn__b" data-v="yes" aria-pressed={pointMark(question.id) === "yes"} onClick={() => setMark(question.id, "yes")}>
@@ -1975,11 +2084,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                     {name}
                     {question.per === "verse" && !verseStop ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
                     {/* Who already said it is right, decided together: the line is theirs too. */}
-                    {people && !tally?.agreedApart && tally?.slots?.[question.id]?.yesBy.length ? (
-                      <span className="ck-said">
-                        <Check size={13} aria-hidden /> {tally.slots[question.id]!.yesBy.map((who) => (isMe(who) ? t("ck.talkYou") : `@${who}`)).join(", ")} · {Math.min(tally.slots[question.id]!.yesBy.length, people)}/{people}
-                      </span>
-                    ) : null}
+                    {saidLine(question.id)}
                   </span>
                   <span className="sr-only">{t(markHere(question.id) === "yes" ? "ck.yes" : markHere(question.id) === "change" ? "ck.withChange" : markHere(question.id) === "no" ? "ck.no" : markHere(question.id) === "wait" ? "ck.waitingShort" : "ck.notYet")}</span>
                 </span>
@@ -2036,7 +2141,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
               <>
             {/* In the article's step the note is what the article is checked for: named, as context. */}
             {aboutArticle && !articleInSource ? <span className="ck-chip">{t("ck.noteChip")}</span> : null}
-            {aboutArticle ? helpRead : null}
+            {aboutArticle ? (proposalShown ?? helpRead) : null}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
             {articleInSource ? (

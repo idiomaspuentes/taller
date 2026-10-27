@@ -62,6 +62,14 @@ test("un mensaje de Ana sin respuesta: a Bea le preguntan", () => {
   assert.equal(situation("ana", asked).kind, "first", "lo que uno escribió no le pregunta a uno mismo");
 });
 
+test("con una propuesta y una pregunta, lo primero es responder, y lo que se revisa sigue siendo la propuesta", () => {
+  const answers = [proposed("ana", T("10:00"), P("pr-a", "b")), itemSaying("n1", "ana", T("10:05"), "¿Se entiende?")];
+  const forBea = situation("bea", answers);
+  assert.equal(forBea.kind, "asked");
+  assert.equal(forBea.kind === "asked" ? forBea.head?.proposal.id : "", "pr-a");
+  assert.equal(forBea.kind === "asked" ? forBea.author : "", "ana");
+});
+
 test("dos propuestas de antes son opciones, como hoy", () => {
   const answers = [proposed("ana", T("10:00", "21"), P("pr-a", "b")), proposed("carla", T("10:10", "21"), P("pr-b", "c"))];
   assert.equal(situation("bea", answers).kind, "options");

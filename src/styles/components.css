@@ -11214,6 +11214,25 @@ html[data-text] .ck-adj__who { font-size: calc(1rem * var(--ts)); }
 html[data-text] .ck-adj__state { font-size: calc(0.9375rem * var(--ts)); }
 .ck-adj__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-top: 0.25rem; }
 .ck-adj__acts .btn, .ck-adj__acts .af-link { min-height: 44px; }
+/* Where the step stands for the person looking, under its steps (27 October): the faces of who did something, and a
+   sentence. A plain line, not a box: it says the situation, the text and the note are what is read. */
+.ck-sit { display: flex; align-items: center; gap: 0.625rem; margin: 0.25rem 0 0; color: var(--text); font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.4; }
+html[data-text] .ck-sit { font-size: calc(0.9375rem * var(--ts)); }
+.ck-sit__faces { display: inline-flex; flex: 0 0 auto; align-items: center; color: var(--accent-700, var(--text)); }
+.ck-sit__faces > * + * { margin-left: -0.375rem; }
+.ck-sit__text { flex: 1 1 auto; min-width: 0; }
+/* The note as the proposal would leave it, in the note's card. */
+.ck-pcard { display: grid; gap: 0.625rem; }
+.ck-pcard__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.25rem 0.75rem; }
+.ck-pcard__title { margin: 0; font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+html[data-text] .ck-pcard__title { font-size: calc(0.9375rem * var(--ts)); }
+.ck-pcard__toggle { min-height: 44px; }
+/* What the others said of a question, in letters that are read: «✓ Ana: sí». */
+.ck-said--who { display: flex; flex-wrap: wrap; gap: 0.125rem 0.75rem; margin-top: 0.25rem; font-size: calc(0.875rem * var(--ts, 1)); color: var(--text); }
+html[data-text] .ck-said--who { font-size: calc(0.875rem * var(--ts)); }
+.ck-said--who > span { display: inline-flex; align-items: center; gap: 0.25rem; }
+.ck-said--who > span[data-v="yes"] svg { color: var(--success-700, currentColor); }
+.ck-said--who > span[data-v="no"] svg { color: var(--danger-700, currentColor); }
 .ck-pcheck__nav { display: grid; }
 .ck-pcheck__nav .btn { min-height: 48px; }
 /* A label longer than half the phone wraps in its button instead of leaving it (21 October). */

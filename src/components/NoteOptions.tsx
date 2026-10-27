@@ -4,6 +4,7 @@ import { KEEP_OPTION, readable, type ProposalView } from "../domain/checkProposa
 import { useT } from "../i18n/messages";
 import { TextChangeView, saveLayout, savedLayout } from "./TextChangeView";
 import { ProposalCheck, type ProposalCheckGroup } from "./ProposalCheck";
+import { AdjustmentList } from "./AdjustmentList";
 
 /** One proposal for a help as an option: its versions, oldest first, the last one what is chosen. */
 export type HelpOption = {
@@ -274,51 +275,7 @@ export function NoteOptions({
                     ) : null}
                     {option.adjustments?.length ? (
                       // What others suggest changing of it, each for its author to accept or not (27 October).
-                      <ul className="ck-adj">
-                        {option.adjustments.map((adjustment) => {
-                          const author = same(option.versions[0]!.by, me);
-                          const answers = !closed && !winner && adjustment.adjustment === "pending" && (author || Boolean(answersFor?.(adjustment)));
-                          const writer = same(adjustment.by, me);
-                          return (
-                            <li key={adjustment.proposal.id} className="ck-adj__one" data-state={adjustment.adjustment}>
-                              <p className="ck-adj__who">{writer ? t("ck.adjSuggestsMine") : t("ck.adjSuggests").replace("{who}", who(adjustment.by))}</p>
-                              {adjustment.reason ? <p className="ck-opt__why">«{adjustment.reason}»</p> : null}
-                              {adjustment.adjustment === "declined" ? <p className="ck-adj__state">{same(adjustment.declinedBy ?? option.versions[0]!.by, me) ? t("ck.adjDeclinedMine") : t("ck.adjDeclined").replace("{who}", who(adjustment.declinedBy ?? option.versions[0]!.by))}</p> : null}
-                              {adjustment.adjustment === "stale" ? <p className="ck-adj__state">{t("ck.adjStale")}</p> : null}
-                              <TextChangeView before={readable(head.proposal.after ?? "")} after={readable(adjustment.proposal.after ?? "")} lines layout="together" labels={{ now: nameOf(option.id), proposed: t("ck.adjLabel") }} />
-                              {answers || (writer && !closed && !winner && adjustment.adjustment !== "declined") || (canDecide && !winner) ? (
-                                <div className="ck-adj__acts">
-                                  {answers ? (
-                                    <>
-                                      <button type="button" className="btn" data-variant="default" data-size="default" disabled={saving} onClick={() => onAccept?.(adjustment, head)}>
-                                        <Check size={16} aria-hidden /> {t("ck.adjAccept")}
-                                      </button>
-                                      <button type="button" className="btn" data-variant="outline" data-size="default" disabled={saving} onClick={() => onDecline?.(adjustment)}>
-                                        {t("ck.adjDecline")}
-                                      </button>
-                                    </>
-                                  ) : null}
-                                  {writer && adjustment.adjustment === "stale" && !closed && !winner ? (
-                                    <button type="button" className="btn" data-variant="default" data-size="default" disabled={saving} onClick={() => onRewrite?.(adjustment, head)}>
-                                      <Pencil size={16} aria-hidden /> {t("ck.adjRewrite")}
-                                    </button>
-                                  ) : null}
-                                  {writer && adjustment.adjustment !== "declined" && !closed && !winner ? (
-                                    <button type="button" className="af-link" disabled={saving} onClick={() => onWithdraw(adjustment.proposal.id)}>
-                                      {t("ck.withdraw")}
-                                    </button>
-                                  ) : null}
-                                  {canDecide && !winner ? (
-                                    <button type="button" className="af-link ck-opt__decide" disabled={saving} onClick={() => onAccept?.(adjustment, head, true)}>
-                                      {t("ck.adjDecide")}
-                                    </button>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </li>
-                          );
-                        })}
-                      </ul>
+                      <AdjustmentList adjustments={option.adjustments} head={head} author={option.versions[0]!.by} me={me} who={who} currentLabel={nameOf(option.id)} closed={closed || Boolean(winner)} canAnswerFor={answersFor} canDecide={canDecide} saving={saving} onAccept={onAccept} onDecline={onDecline} onRewrite={onRewrite} onWithdraw={onWithdraw} />
                     ) : null}
                   </div>
                 ) : null

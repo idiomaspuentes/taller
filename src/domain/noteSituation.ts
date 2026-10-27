@@ -17,7 +17,8 @@ export type NoteSituation =
   | { kind: "confirm"; by: string[] }
   | { kind: "proposal"; head: ProposalView; author: string; since: string; agreed: string[]; doubts: string[] }
   | { kind: "ownProposal"; head: ProposalView; since: string; agreed: string[]; doubts: string[] }
-  | { kind: "asked"; by: string; at: string; text: string }
+  /** Somebody wrote and waits for an answer; with a proposal on the note, it is still what is reviewed. */
+  | { kind: "asked"; by: string; at: string; text: string; head?: ProposalView; author?: string }
   /** Two or more proposals from before one proposal per note: chosen among, as before. */
   | { kind: "options" };
 
@@ -35,9 +36,9 @@ export function noteSituation(p: { me: string; itemId: string; stepRows: StepRow
   const aboutNote = (row: CheckAnswer) => row.itemId === p.itemId || versions.has(row.itemId) || row.proposal?.rowId === p.itemId || p.stepRows.some((step) => step.answerItemId === row.itemId);
   const myLast = rows.filter((row) => same(row.by, p.me) && aboutNote(row)).pop();
   const said = rows.filter((row) => row.questionId === ITEM_SAYS && row.itemId === p.itemId && row.note).pop();
-  if (said && !same(said.by, p.me) && (!myLast || Date.parse(said.at) > Date.parse(myLast.at))) return { kind: "asked", by: said.by, at: said.at, text: said.note! };
+  const head = p.options.length === 1 ? p.options[0] : undefined;
+  if (said && !same(said.by, p.me) && (!myLast || Date.parse(said.at) > Date.parse(myLast.at))) return { kind: "asked", by: said.by, at: said.at, text: said.note!, ...(head ? { head, author: head.optionBy ?? head.by } : {}) };
   if (p.options.length > 1) return { kind: "options" };
-  const head = p.options[0];
   if (head) {
     const author = head.optionBy ?? head.by;
     const since = head.optionAt ?? head.at;

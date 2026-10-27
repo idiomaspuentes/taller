@@ -14,7 +14,7 @@ const LEGEND: Record<RosterStatus, MessageKey> = { ready: "ck.listReady", mine: 
 const CHIP: Record<RosterStatus, MessageKey> = { ready: "ck.rowReady", mine: "ck.rowMine", waiting: "ck.rowWaiting", unread: "ck.rowUnread" };
 
 /** A face of the list: the person's photo, else their initials, and their name under the pointer. */
-function RosterFace(props: { login: string; name: string; now: boolean }) {
+export function RosterFace(props: { login: string; name: string; now: boolean }) {
   const [person, setPerson] = useState<Door43Person | null>(null);
   useEffect(() => {
     let live = true;
