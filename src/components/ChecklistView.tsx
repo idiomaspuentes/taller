@@ -41,7 +41,7 @@ import { PROPOSAL_STATE_KEY, ProposalDiff, ProposalSheet, type ProposalDraft, ty
 import { listIssueComments } from "@ip-lms/dcs-client";
 import { dcsConfig } from "../dcs/config";
 import { PM_REPO_NAME } from "../domain/types";
-import { alignedGatewayQuoteForHelpQuote, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
+import { alignedGatewayQuoteForHelpQuote, helpQuoteInTexts, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import { coordinatorsOf, isCoordinatorOf } from "../domain/levels";
 import { localized, questionText, stepPurpose } from "../domain/processes";
 import { decodeSolverLaunchContext, type SolverLaunchContext } from "../domain/solverLaunch";
@@ -141,6 +141,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * by side, the original a touch away, with the verse in view standing out and what the help quotes marked.
    */
   const [chapterOpen, setChapterOpen] = useState(false);
+  /** Which help of the verse is in view at its stop, going over them one at a time (27 October). */
+  const [verseNoteAt, setVerseNoteAt] = useState(0);
   const [pairShown, setPairShown] = useState<string[]>([]);
   /** What was marked as failing, while choosing: one or several questions of the step, or something else. */
   const [failing, setFailing] = useState<string[]>([]);
@@ -1384,6 +1386,14 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
 
   /** The helps of the verse whose stop is in view, in their order. */
   const verseHelps = verseStop && data ? data.items.filter((row) => verseKeyOf(row) === verseStop.verseKey) : [];
+  // Another verse begins at its first help.
+  useEffect(() => setVerseNoteAt(0), [verseStop?.verseKey]);
+  /**
+   * The help of the verse in view at its stop, and the words its quote points at in each text (27 October): going
+   * over them one at a time, what each covers is seen marked in the TPL and the TPS, and what none covers is left.
+   */
+  const verseNote = verseHelps[Math.min(verseNoteAt, verseHelps.length - 1)];
+  const verseMarks = verseNote && data ? helpQuoteInTexts({ texts: Object.fromEntries(textsShown.map((id) => [id, data.texts[id]])), help: verseNote, book: data.book, ...(data.original ? { original: originalTokens(data.original, verseNote.chapter, verseNote.verse) } : {}) }) : {};
 
   /** The help in view as it reads (or as a change proposed for it would make it read). */
   const helpRead = item ? (
@@ -1502,7 +1512,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                   {verse ? (
                     <Verse
                       text={verse}
-                      marked={verseStop ? [] : canPick(resource) && picking ? picking : hit?.tokenIndices ?? []}
+                      marked={verseStop ? verseMarks[resource]?.tokenIndices ?? [] : canPick(resource) && picking ? picking : hit?.tokenIndices ?? []}
                       // A word goes with every word tied to the same words of the original: a quote is in the
                       // original, and «los» of «en los días de» alone is no quote (20 October).
                       onToggle={!verseStop && canPick(resource) && picking ? (index) => setPicking(toggleQuoteWord(picking, index, pickVerse?.units ?? [])) : undefined}
@@ -1514,6 +1524,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                   {/* In a text that says the meaning in other words (the TPS), what is marked comes from the alignment and
                       may be a part of what changed (26 October: «gobernando» was aligned to «se sentaba»). */}
                   {!verseStop && verse && hit?.tokenIndices?.length && texts.indexOf(resource) > 0 ? <span className="af-hint ck-mark-hint">{t("ck.markHint")}</span> : null}
+                  {/* At the verse's stop, a text that does not say what the help in view quotes says so. */}
+                  {verseStop && verseNote?.quote && verse && !verseMarks[resource]?.tokenIndices.length ? <span className="ck-quote" data-found="false">{t("ck.verseNoteMissing").replace("{text}", textLabel(resource)).replace("{kind}", kindWord)}</span> : null}
                   {/* What the note quotes is seen highlighted: said in words only when it is not found in the text. */}
                   {!verseStop && item.quote && verse && !hit?.gatewayText ? (
                     <span className="ck-quote" data-found={hit?.gatewayText ? "true" : "false"}>
@@ -1753,6 +1765,38 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
             {(textsAfter ? textsShown.slice(0, 1) : textsShown).map(textRow)}
           </section>
           )}
+          {verseStop && verseNote ? (
+            // The helps of the verse one at a time under its texts (Abel, 27 October), each one's quote marked in
+            // them: whether a difficulty of the TPL or the TPS is left without a help is seen going over them. They
+            // were a list of their quotes under what was checked.
+            <section className="af-card ck-vcar" aria-label={t("ck.verseNotesAria")}>
+              <div className="ck-vcar__head">
+                <p className="ck-vcar__where">
+                  {t("ck.whereOf").replace("{kind}", t(kind === "notas" ? "ck.kindNote" : kind === "preguntas" ? "ck.kindQuestion" : "ck.kindTerm")).replace("{a}", String(verseHelps.indexOf(verseNote) + 1)).replace("{b}", String(verseHelps.length))}
+                  {kind === "notas" ? <span className="ck-vcar__what"> · {localizeAfinacion(categoryLabel(categoryFromSupportRef(verseNote.supportRef ?? "")), language)}</span> : null}
+                </p>
+                <span className="ck-arrows">
+                  <button type="button" className="th-icon" aria-label={t("ck.verseNotePrev")} title={t("ck.verseNotePrev")} disabled={verseHelps.indexOf(verseNote) <= 0} onClick={() => setVerseNoteAt(verseHelps.indexOf(verseNote) - 1)}>
+                    <ChevronLeft size={20} aria-hidden />
+                  </button>
+                  <button type="button" className="th-icon" aria-label={t("ck.verseNoteNext")} title={t("ck.verseNoteNext")} disabled={verseHelps.indexOf(verseNote) >= verseHelps.length - 1} onClick={() => setVerseNoteAt(verseHelps.indexOf(verseNote) + 1)}>
+                    <ChevronRight size={20} aria-hidden />
+                  </button>
+                </span>
+              </div>
+              {kind === "palabras" ? (
+                <h3 className="af-phrase ck-vcar__title">{titlesRead ? termLabel(verseNote.title, termTitles) : "\u00a0"}</h3>
+              ) : kind === "preguntas" ? (
+                <h3 className="af-phrase ck-vcar__title">{verseNote.title}</h3>
+              ) : verseMarks[texts[0]!]?.gatewayText ? (
+                <p className="ck-note-quote__words ck-vcar__quote">«{verseMarks[texts[0]!]!.gatewayText}»</p>
+              ) : null}
+              {verseNote.body ? <HelpMarkdownView className={kind === "preguntas" ? "af-note af-note--md ck-answer" : "af-note af-note--md"} content={verseNote.body} onLink={openLinkedVerse} /> : null}
+              <button type="button" className="af-link ck-vcar__open" onClick={() => jump(verseNote.id)}>
+                {t("ck.verseNoteOpen").replace("{kind}", kindWord)}
+              </button>
+            </section>
+          ) : null}
           {!verseStop && !aboutArticle ? (
             // The help, under the text it is checked against (Abel, 21 October: the text first, then the note and what
             // the team said of it, then what to check, over the answer).
@@ -1894,30 +1938,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
           {!verseStop && !aboutArticle ? talkView : null}
 
 
+          {verseStop ? null : (
           <section className="af-card" aria-label={t("ck.itemAria")}>
-            {verseStop ? (
-              // Every help of the verse, each with what it resolves (its kind of difficulty) and not only the words
-              // it quotes, and a touch away: whether a difficulty is left without one is read here (20 October).
-              <div className="ck-vh">
-                <p className="ck-guide__lead">{t("ck.verseHelps").replace("{whats}", whats).replace("{n}", String(verseHelps.length))}</p>
-                <ul className="ck-vh__list">
-                  {verseHelps.map((row) => {
-                    const first = data.texts[texts[0]!];
-                    const words = row.quote && first?.verses[row.verse] ? alignedGatewayQuoteForHelpQuote({ verseText: first.verses[row.verse]!, quote: row.quote, occurrence: row.occurrence ?? 1, alignments: first.alignments, book: data.book, chapter: row.chapter, verse: row.verse, ...(data.original ? { original: originalTokens(data.original, row.chapter, row.verse) } : {}) }).gatewayText : "";
-                    const what = kind === "notas" ? localizeAfinacion(categoryLabel(categoryFromSupportRef(row.supportRef ?? "")), language) : kind === "palabras" ? (titlesRead ? termLabel(row.title, termTitles) : "") : "";
-                    const state = summary.items.find((one) => one.itemId === row.id)?.state;
-                    return (
-                      <li key={row.id}>
-                        <button type="button" className="ck-vh__one" data-state={state} onClick={() => jump(row.id)}>
-                          <span className="ck-vh__words">{kind === "preguntas" ? row.title : words ? `«${words}»` : row.title || row.quote}</span>
-                          {what ? <span className="ck-vh__what">{what}</span> : null}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : (
               <>
             {/* In the article's step the note is what the article is checked for: named, as context. */}
             {aboutArticle && !articleInSource ? <span className="ck-chip">{t("ck.noteChip")}</span> : null}
@@ -2006,8 +2028,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
             ) : null}
 
               </>
-            )}
           </section>
+          )}
 
           {/* The conversation of the article's step, after the article it is about. */}
           {aboutArticle ? talkView : null}

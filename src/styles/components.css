@@ -11358,6 +11358,15 @@ html[data-text] .ck-roster__id { font-size: calc(0.75rem * var(--ts)); }
 .ck-share__done { font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 600; white-space: nowrap; color: var(--success-700); }
 html[data-text] .ck-share__done { font-size: calc(0.8125rem * var(--ts)); }
 .hl-error { display: grid; gap: 1.5rem; padding: 1.5rem 1rem; }
+/* The helps of a verse at its stop, one at a time under its texts, with the arrows to go over them. */
+.ck-vcar { display: grid; gap: 0.75rem; }
+.ck-vcar__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.ck-vcar__where { margin: 0; min-width: 0; font-size: calc(0.9375rem * var(--ts, 1)); font-weight: 700; color: var(--text); }
+.ck-vcar__what { font-weight: 500; }
+.ck-vcar__head .ck-arrows { display: inline-flex; flex: none; gap: 0.125rem; }
+.ck-vcar__quote, .ck-vcar__title { margin: 0; }
+.ck-vcar__open { justify-self: start; min-height: 44px; }
+html[data-text] .ck-vcar__where { font-size: calc(0.9375rem * var(--ts)); }
 /* Where a help is, a touch from the list. */
 .af.ck .ck-head > .ck-where { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0; background: none; text-align: left; cursor: pointer; }
 .af.ck .ck-head > .ck-where:hover { text-decoration: underline; text-underline-offset: 3px; }

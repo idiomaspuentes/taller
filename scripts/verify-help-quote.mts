@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
-import { alignedGatewayQuoteForHelpQuote, matchHelpEntryToTokenIndicesByAlignment, matchHelpQuoteThroughOriginal, matchHelpQuoteToTokenIndices, tokenizeVersePlainText, tokensSayingTheSame } from "../src/domain/helpQuoteMatch";
+import { alignedGatewayQuoteForHelpQuote, helpQuoteInTexts, matchHelpEntryToTokenIndicesByAlignment, matchHelpQuoteThroughOriginal, matchHelpQuoteToTokenIndices, tokenizeVersePlainText, tokensSayingTheSame } from "../src/domain/helpQuoteMatch";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -185,6 +185,19 @@ test("una palabra que el versículo dice dos veces con acentos distintos se marc
   assert.ok(marked.includes("corazón") && marked.includes("vino,"), "marca lo que la cita dice");
   assert.ok(!marked.includes("rostro") && !marked.includes("ante"), `no marca «ante el rostro del rey»: ${marked.join(" ")}`);
   assert.equal(tenOriginal.length, 6);
+});
+
+test("en la revisión del versículo, la cita de cada nota se marca en el TPL y en el TPS, cada uno por su alineación", () => {
+  // The TPS says it in other words, and is aligned on its own: «Θεοῦ» is «Dios» there, without the «de».
+  const tps = "Pablo sirve a Dios y es apóstol de Jesucristo";
+  const tpsGroups: AlignmentGroup[] = [group(src("Παῦλος"), tgt("Pablo")), group(src("δοῦλος"), tgt("sirve"), tgt("a")), group(src("Θεοῦ", 1, 2), tgt("Dios")), group(src("ἀπόστολος"), tgt("es"), tgt("apóstol")), group(src("Ἰησοῦ"), tgt("de"), tgt("Jesucristo"))];
+  const texts = { tpl: { verses: { 1: verse }, alignments: { "TIT 1:1": groups } }, tps: { verses: { 1: tps }, alignments: { "TIT 1:1": tpsGroups } } };
+  const marks = (quote: string, occurrence = 1) => helpQuoteInTexts({ texts, help: { quote, occurrence, chapter: 1, verse: 1 }, book: "TIT" });
+  assert.deepEqual(marks("δοῦλος Θεοῦ"), { tpl: { gatewayText: "siervo de Dios", tokenIndices: [1, 2, 3] }, tps: { gatewayText: "sirve a Dios", tokenIndices: [1, 2, 3] } });
+  // The second «Θεοῦ» the TPS does not say: marked in the TPL alone, so it is seen that the TPS leaves it out.
+  assert.deepEqual(marks("Θεοῦ", 2), { tpl: { gatewayText: "de Dios", tokenIndices: [15, 16] }, tps: { gatewayText: null, tokenIndices: [] } });
+  assert.deepEqual(helpQuoteInTexts({ texts: { ...texts, tps: { verses: { 1: tps } } }, help: { quote: "δοῦλος", occurrence: 1, chapter: 1, verse: 1 }, book: "TIT" }).tps, { gatewayText: null, tokenIndices: [] }, "un texto sin alinear no marca nada");
+  assert.deepEqual(helpQuoteInTexts({ texts, help: { chapter: 1, verse: 1 }, book: "TIT" }), { tpl: { gatewayText: null, tokenIndices: [] }, tps: { gatewayText: null, tokenIndices: [] } }, "una ayuda sin cita no marca nada");
 });
 
 console.log(`\nverify-help-quote: ${passed} checks passed.`);

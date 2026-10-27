@@ -582,3 +582,25 @@ export function compareHelpQuoteScriptureOrder(
     a.occurrence - b.occurrence
   );
 }
+
+/**
+ * The words a help's quote points at in each text of a verse, each found through that text's own alignment (27
+ * October): going over the helps of a verse one at a time, what each covers is seen marked in the TPL and the TPS at
+ * once. A text that does not say those words (or is not aligned) marks none, and that is what is to be seen.
+ */
+export function helpQuoteInTexts(p: {
+  texts: Record<string, { verses: Record<number, string>; alignments?: AlignmentMap } | undefined>;
+  help: { quote?: string; occurrence?: number; chapter: number; verse: number };
+  book: string;
+  original?: OriginalToken[];
+}): Record<string, GatewayQuoteMatch> {
+  const out: Record<string, GatewayQuoteMatch> = {};
+  for (const [id, text] of Object.entries(p.texts)) {
+    const verseText = text?.verses[p.help.verse] ?? "";
+    out[id] =
+      p.help.quote && verseText
+        ? alignedGatewayQuoteForHelpQuote({ verseText, quote: p.help.quote, occurrence: p.help.occurrence ?? 1, alignments: text?.alignments, book: p.book, chapter: p.help.chapter, verse: p.help.verse, ...(p.original ? { original: p.original } : {}) })
+        : { gatewayText: null, tokenIndices: [] };
+  }
+  return out;
+}
