@@ -6,7 +6,12 @@ import { TextChangeView, saveLayout, savedLayout } from "./TextChangeView";
 import { ProposalCheck, type ProposalCheckGroup } from "./ProposalCheck";
 
 /** One proposal for a help as an option: its versions, oldest first, the last one what is chosen. */
-export type HelpOption = { id: string; versions: ProposalView[] };
+export type HelpOption = {
+  id: string;
+  versions: ProposalView[];
+  /** What others suggest changing of it, for its author to accept or not (27 October). */
+  adjustments?: ProposalView[];
+};
 /** A message of the conversation of one option. */
 export type OptionMessage = { by: string; at: string; text: string; about: string };
 
@@ -41,6 +46,10 @@ export function NoteOptions({
   onDecide,
   checkGroupsOf,
   onMark,
+  onAccept,
+  onDecline,
+  onRewrite,
+  answersFor,
   children,
 }: {
   /** «¿Cómo debe quedar la nota?» */
@@ -75,6 +84,13 @@ export function NoteOptions({
    */
   checkGroupsOf?: (view: ProposalView) => ProposalCheckGroup[];
   onMark?: (view: ProposalView, questionId: string, value: "yes" | "no", note?: string) => Promise<void> | void;
+  /** The author takes an adjustment into their proposal (`decide`: whoever coordinates settles the dispute with it). */
+  onAccept?: (adjustment: ProposalView, head: ProposalView, decide?: boolean) => void;
+  onDecline?: (adjustment: ProposalView) => void;
+  /** Its writer writes an adjustment again over the version in force. */
+  onRewrite?: (adjustment: ProposalView, head: ProposalView) => void;
+  /** Whoever coordinates may answer this adjustment for its author, who has not in days. */
+  answersFor?: (adjustment: ProposalView) => boolean;
   /** What other teams said of the help, at the end. */
   children?: ReactNode;
 }) {
@@ -102,8 +118,12 @@ export function NoteOptions({
       });
   const nameOf = (option: string) => {
     if (option === KEEP_OPTION) return t("ck.optKeep");
-    const first = options.find((one) => one.id === option)?.versions[0];
-    return first && same(first.by, me) ? t("ck.optMine") : t("ck.optBy").replace("{who}", `@${first?.by ?? ""}`);
+    const versions = options.find((one) => one.id === option)?.versions ?? [];
+    const first = versions[0];
+    // Whose adjustments it took: «de María, ajustado por Ana».
+    const adjusted = [...new Set(versions.map((view) => view.proposal.adjustedBy).filter((by): by is string => Boolean(by)))].map((by) => who(by)).join(", ");
+    if (first && same(first.by, me)) return adjusted ? t("ck.optMineAdjusted").replace("{names}", adjusted) : t("ck.optMine");
+    return adjusted ? t("ck.optByAdjusted").replace("{who}", `@${first?.by ?? ""}`).replace("{names}", adjusted) : t("ck.optBy").replace("{who}", `@${first?.by ?? ""}`);
   };
   const voices = Object.keys(choices).length;
   const split = new Set(Object.values(choices)).size > 1;
@@ -250,6 +270,54 @@ export function NoteOptions({
                         {t("ck.optCheck")}
                       </button>
                     ) : null}
+                    {option.adjustments?.length ? (
+                      // What others suggest changing of it, each for its author to accept or not (27 October).
+                      <ul className="ck-adj">
+                        {option.adjustments.map((adjustment) => {
+                          const author = same(option.versions[0]!.by, me);
+                          const answers = !closed && !winner && adjustment.adjustment === "pending" && (author || Boolean(answersFor?.(adjustment)));
+                          const writer = same(adjustment.by, me);
+                          return (
+                            <li key={adjustment.proposal.id} className="ck-adj__one" data-state={adjustment.adjustment}>
+                              <p className="ck-adj__who">{t("ck.adjSuggests").replace("{who}", who(adjustment.by))}</p>
+                              {adjustment.reason ? <p className="ck-opt__why">«{adjustment.reason}»</p> : null}
+                              {adjustment.adjustment === "declined" ? <p className="ck-adj__state">{t("ck.adjDeclined").replace("{who}", who(adjustment.declinedBy ?? option.versions[0]!.by))}</p> : null}
+                              {adjustment.adjustment === "stale" ? <p className="ck-adj__state">{t("ck.adjStale")}</p> : null}
+                              <TextChangeView before={readable(head.proposal.after ?? "")} after={readable(adjustment.proposal.after ?? "")} lines layout="together" labels={{ now: nameOf(option.id), proposed: t("ck.adjLabel") }} />
+                              {answers || (writer && !closed && !winner && adjustment.adjustment !== "declined") || (canDecide && !winner) ? (
+                                <div className="ck-adj__acts">
+                                  {answers ? (
+                                    <>
+                                      <button type="button" className="btn" data-variant="default" data-size="default" disabled={saving} onClick={() => onAccept?.(adjustment, head)}>
+                                        <Check size={16} aria-hidden /> {t("ck.adjAccept")}
+                                      </button>
+                                      <button type="button" className="btn" data-variant="outline" data-size="default" disabled={saving} onClick={() => onDecline?.(adjustment)}>
+                                        {t("ck.adjDecline")}
+                                      </button>
+                                    </>
+                                  ) : null}
+                                  {writer && adjustment.adjustment === "stale" && !closed && !winner ? (
+                                    <button type="button" className="btn" data-variant="default" data-size="default" disabled={saving} onClick={() => onRewrite?.(adjustment, head)}>
+                                      <Pencil size={16} aria-hidden /> {t("ck.adjRewrite")}
+                                    </button>
+                                  ) : null}
+                                  {writer && adjustment.adjustment !== "declined" && !closed && !winner ? (
+                                    <button type="button" className="af-link" disabled={saving} onClick={() => onWithdraw(adjustment.proposal.id)}>
+                                      {t("ck.withdraw")}
+                                    </button>
+                                  ) : null}
+                                  {canDecide && !winner ? (
+                                    <button type="button" className="af-link ck-opt__decide" disabled={saving} onClick={() => onAccept?.(adjustment, head, true)}>
+                                      {t("ck.adjDecide")}
+                                    </button>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
                   </div>
                 ) : null
               ) : null}
@@ -265,7 +333,7 @@ export function NoteOptions({
                 </button>
                 {head && !closed && !winner ? (
                   <button type="button" className="af-link" disabled={saving} onClick={() => onEdit(head)}>
-                    <Pencil size={16} aria-hidden /> {t("ck.optEdit")}
+                    <Pencil size={16} aria-hidden /> {checks ? t(same(option.versions[0]!.by, me) ? "ck.adjEditMine" : "ck.adjSuggest") : t("ck.optEdit")}
                   </button>
                 ) : null}
                 {head && option.versions.length > 1 ? (
@@ -341,7 +409,8 @@ export function NoteOptions({
           );
         })}
       </ul>
-      {closed || winner ? null : (
+      {closed || winner || checks ? null : (
+        // One proposal per note (27 October): with proposals checked, what else somebody would change is an adjustment.
         <button type="button" className="btn ck-opts__new" data-variant="outline" data-size="default" disabled={saving} onClick={onPropose}>
           <Plus size={16} aria-hidden /> {t("ck.optPropose")}
         </button>

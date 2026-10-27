@@ -34,7 +34,7 @@ import { DISPUTE_DAYS, disputeStalled, ITEM_SAYS, KEEP_OPTION, itemSaying, versi
 import { NoteConversation, OPEN_TALK, type TalkLine, type TalkStatus } from "./NoteConversation";
 import { NoteOptions, type HelpOption, type OptionMessage } from "./NoteOptions";
 import type { ProposalCheckGroup } from "./ProposalCheck";
-import { proposalMark } from "../domain/singleProposal";
+import { adjustmentDeclined, proposalMark } from "../domain/singleProposal";
 import { applyProposal, sendProposal as askOwnersFor } from "../dcs/checkProposals";
 import { shareTurnFromTool } from "../dcs/roundClose";
 import { uid } from "../domain/assignment";
@@ -129,6 +129,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     others?: { answerItemId: string; questionId: string }[];
     /** Opened to adjust a proposal: the version adjusted, which the new one replaces, whoever made it (21 October). */
     adjust?: ProposalView;
+    /** An adjustment written over another version, written again over the one in force: the one it takes the place of. */
+    rewrites?: string;
   } | null>(null);
   /** «Hay algo que cambiar» was touched: what is wrong is chosen among the questions of the step in view. */
   const [choosing, setChoosing] = useState(false);
@@ -775,7 +777,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
       // It takes the place only of one's own version: written over somebody else's, it goes beside it.
       // An adjustment replaces the version it adjusts, whoever made it: the proposal is one, in versions. Else a new
       // version takes the place only of one's own.
-      ...(proposing.adjust ? { replaces: proposing.adjust.proposal.id } : draft.after && draft.target.start && !draft.target.startBy ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
+      // Decided together, one proposal per note (27 October): what somebody else writes over it is an adjustment its
+      // author accepts or not, not another version of it.
+      ...(proposing.adjust && people && !isMe(authorOfOption(proposing.adjust))
+        ? { suggests: proposing.adjust.proposal.id, ...(proposing.rewrites ? { replaces: proposing.rewrites } : {}) }
+        : proposing.adjust ? { replaces: proposing.adjust.proposal.id } : draft.after && draft.target.start && !draft.target.startBy ? { replaces: priorOf(draft.target, `${item.chapter}:${item.verse}`)?.proposal.id } : {}),
     };
     // The proposal answers each question marked as failing: the first carries it, the others the same one.
     const answered = [{ answerItemId: proposing.answerItemId, questionId: proposing.questionId }, ...(proposing.others ?? [])].map((row) => {
@@ -792,13 +798,35 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * Adjusting a proposal: a new version of it, from its words, answering the questions it answered (21 October). The
    * team goes on adjusting one proposal until three agree on a version, instead of piling up proposals that compete.
    */
-  const adjustProposal = (view: ProposalView, more: { answerItemId: string; questionId: string }[] = []) => {
-    const rows = answers.filter((row) => row.outcome === "proposal" && row.proposal?.id === view.proposal.id);
-    const [first, ...rest] = rows.length ? rows : [{ itemId: view.itemId, questionId: view.questionId }];
-    const others = rest.map((row) => ({ answerItemId: row.itemId, questionId: row.questionId }));
-    for (const one of more) if (!(one.answerItemId === first!.itemId && one.questionId === first!.questionId) && !others.some((o) => o.answerItemId === one.answerItemId && o.questionId === one.questionId)) others.push(one);
-    setProposing({ answerItemId: first!.itemId, questionId: first!.questionId, reason: "", others, adjust: view });
+  const adjustProposal = (view: ProposalView, more: { answerItemId: string; questionId: string }[] = [], rewrites?: string) => {
+    const [first, ...others] = slotsOfProposal(view);
+    for (const one of more) if (!(one.answerItemId === first!.answerItemId && one.questionId === first!.questionId) && !others.some((o) => o.answerItemId === one.answerItemId && o.questionId === one.questionId)) others.push(one);
+    setProposing({ answerItemId: first!.answerItemId, questionId: first!.questionId, reason: "", others, adjust: view, ...(rewrites ? { rewrites } : {}) });
   };
+  /** The questions a version answers, the first one first: a new version of it answers the same. */
+  const slotsOfProposal = (view: ProposalView) => {
+    const rows = answers.filter((row) => row.outcome === "proposal" && row.proposal?.id === view.proposal.id);
+    return (rows.length ? rows : [{ itemId: view.itemId, questionId: view.questionId }]).map((row) => ({ answerItemId: row.itemId, questionId: row.questionId }));
+  };
+  /** Who made the proposal a version belongs to: its first version's author. */
+  const authorOfOption = (view: ProposalView) => chainOf(proposals, view.proposal.id)[0]?.by ?? view.by;
+  /**
+   * The author of a proposal takes an adjustment (27 October): a version of theirs with its words, which says whose
+   * it was. Whoever coordinates may take it for them once the author has not answered in days, or settle a dispute
+   * with it (`decide`).
+   */
+  const acceptAdjustment = async (adjustment: ProposalView, head: ProposalView, decide = false) => {
+    const now = new Date().toISOString();
+    const { suggests: _written, replaces: _rewritten, ...words } = adjustment.proposal;
+    const payload: ProposalPayload = { ...words, id: `pr-${uid()}`, replaces: head.proposal.id, accepts: adjustment.proposal.id, adjustedBy: adjustment.by, ...(head.proposal.before !== undefined ? { before: head.proposal.before } : {}) };
+    const rows = slotsOfProposal(head).map((slot) => {
+      const base = stamp(slot.answerItemId, slot.questionId, "no");
+      return proposalAnswer({ itemId: base.itemId, questionId: base.questionId, by: base.by, at: now, reason: adjustment.reason, proposal: payload, ...(base.textHash ? { textHash: base.textHash } : {}) });
+    });
+    await save(decide ? [...rows, proposalDecided(payload.id, me, now, true)] : rows, t("ck.saved"));
+    reopenOthers();
+  };
+  const declineAdjustment = (adjustment: ProposalView) => save([adjustmentDeclined(adjustment.proposal.id, me, new Date().toISOString())], t("ck.saved"));
   /** What this person says of a proposal of somebody else: for it, or that they would rather leave things as they are. */
   const voteFor = (proposalId: string) => save([proposalSaying(proposalId, me, new Date().toISOString(), true)], t("ck.saved"));
   const voteKeep = (proposalId: string) => save([proposalKeeping(proposalId, me, new Date().toISOString(), true)], t("ck.saved"));
@@ -1247,9 +1275,15 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     if (!people || !item || verseStop) return null;
     const slotIds = new Set(rowsHere.map((row) => `${row.answerItemId}\u0000${row.question.id}`));
     const here = proposals.filter((view) => view.state !== "withdrawn" && (slotIds.has(`${view.itemId}\u0000${view.questionId}`) || view.proposal.rowId === item.id));
-    const heads = here.filter((view) => view.state !== "replaced");
+    const heads = here.filter((view) => view.state !== "replaced" && !view.adjusts);
     if (!heads.length) return null;
-    const options: HelpOption[] = heads.map((head) => ({ id: head.option ?? head.proposal.id, versions: chainOf(proposals, head.proposal.id).filter((view) => view.state !== "withdrawn") }));
+    // The adjustments of each option still to answer, and those its author did not accept, under it (27 October).
+    const adjustments = here.filter((view) => view.adjusts && (view.adjustment === "declined" || (view.state === "open" && (view.adjustment === "pending" || view.adjustment === "stale"))));
+    const options: HelpOption[] = heads.map((head) => {
+      const id = head.option ?? head.proposal.id;
+      const under = adjustments.filter((view) => view.adjusts === id);
+      return { id, versions: chainOf(proposals, head.proposal.id).filter((view) => view.state !== "withdrawn"), ...(under.length ? { adjustments: under } : {}) };
+    });
     const won = heads.find((view) => view.state === "agreed" || view.state === "applied" || view.state === "sent");
     const winner = won ? (won.option ?? won.proposal.id) : heads.every((view) => view.state === "rejected") ? KEEP_OPTION : undefined;
     const firsts = options.map((option) => ({ id: option.id, at: option.versions[0]?.at ?? "" }));
@@ -1262,6 +1296,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   /** This person's choice among the options, and whether the one they chose was edited since. */
   const myChoice = optionsHere?.choices[me.trim().toLowerCase()];
   const myStale = Boolean(optionsHere?.heads.some((view) => view.staleFor?.includes(me.trim().toLowerCase())));
+  /** An adjustment this person has to answer: to their proposal, or theirs written over another version of one. */
+  const adjustmentForMe = optionsHere?.options.flatMap((option) => (option.adjustments ?? []).filter((view) => (view.adjustment === "pending" && isMe(option.versions[0]!.by)) || (view.adjustment === "stale" && isMe(view.by))))[0];
   /**
    * In a disagreement, whether the last thing said of the options (a choice, a version, a message) was said by
    * somebody who chose another one: then this person has something to answer.
@@ -1331,7 +1367,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    */
   /** Something was said that this person has not answered: a proposal, a version of it, or the other side of a dispute. */
   const news = optionsHere
-    ? !optionsHere.winner && (!myChoice || myStale || (optionsHere.heads.some((view) => view.disputedSince) && lastWordOther))
+    ? !optionsHere.winner && ((!myChoice && !optionsHere.heads.some((view) => view.noBy?.some(isMe))) || myStale || Boolean(adjustmentForMe) || (optionsHere.heads.some((view) => view.disputedSince) && lastWordOther))
     : openHere.length > 0 || Boolean(disputeHere && myStand !== "none" && tally?.turn === "mine");
   // With nothing new, what else is left on screen to answer (a question no proposal is about) is asked first.
   const convoHere = Boolean(people && (talkStarted || optionsHere) && (inPlay.length || (optionsHere && !optionsHere.winner)) && !decideHere && !choosing && (news || pendingHere.every(({ question }) => (tally?.slots?.[question.id]?.open.length ?? 0) > 0)));
@@ -1347,7 +1383,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * proposal, even having taken part in it before (Abel, 21 October). What is asked is read in the conversation.
    */
   const barNews =
-    optionsHere && !myChoice
+    optionsHere && adjustmentForMe?.adjustment === "pending"
+      ? t("ck.barAdjustment").replace("{who}", `@${adjustmentForMe.by}`)
+      : optionsHere && !myChoice
       ? optionsHere.options.length > 1
         ? t("ck.barOptions").replace("{n}", String(optionsHere.options.length)).replace("{what}", what)
         : t("ck.barProposal").replace("{who}", `@${optionsHere.options[0]!.versions[0]!.by}`).replace("{what}", what)
@@ -1394,6 +1432,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         onDecide={decideOption}
         checkGroupsOf={proposalGroups}
         onMark={markProposal}
+        onAccept={(adjustment, head, decide) => void acceptAdjustment(adjustment, head, decide)}
+        onDecline={(adjustment) => void declineAdjustment(adjustment)}
+        onRewrite={(adjustment, head) => adjustProposal(head, [], adjustment.proposal.id)}
+        answersFor={(adjustment) => !stepDone && decides(me) && Date.now() - Date.parse(adjustment.at) >= DISPUTE_DAYS * 86_400_000}
       >
         {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
           <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
@@ -2452,7 +2494,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         onClose={() => setProposing(null)}
         targets={proposing?.adjust ? targets.filter((target) => target.resource === proposing.adjust!.proposal.resource && (target.rowId ?? "") === (proposing.adjust!.proposal.rowId ?? "") && (target.path ?? "") === (proposing.adjust!.proposal.path ?? "")).concat(targets).slice(0, 1) : targets}
         startFrom={proposing?.adjust?.proposal.after}
-        lead={proposing?.adjust ? t("pr.adjusting").replace("{n}", String(chainOf(proposals, proposing.adjust.proposal.id).length)).replace("{who}", isMe(proposing.adjust.by) ? t("ck.talkYou") : `@${proposing.adjust.by}`) : undefined}
+        lead={proposing?.adjust && people && !isMe(authorOfOption(proposing.adjust)) ? t("pr.adjustingOf").replaceAll("{who}", `@${authorOfOption(proposing.adjust)}`) : proposing?.adjust ? t("pr.adjusting").replace("{n}", String(chainOf(proposals, proposing.adjust.proposal.id).length)).replace("{who}", isMe(proposing.adjust.by) ? t("ck.talkYou") : `@${proposing.adjust.by}`) : undefined}
         // What the step reads the help against, beside the help: in the TPL's step the note, or the TPL itself, may be
         // what needs the change.
         primary={aboutArticle ? ["article", "help"] : group?.about && texts.includes(group.about as ChecklistText) ? ["help", group.about] : undefined}
