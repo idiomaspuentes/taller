@@ -11262,6 +11262,11 @@ html[data-text] .ck-thread__new { font-size: calc(0.8125rem * var(--ts)); }
 .ck-thread__send { flex: 0 0 auto; min-height: 44px; }
 .ck-thread-sheet .fx-body { display: grid; gap: 1rem; }
 .ck-thread-sheet > .ck-thread__write { padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: var(--surface); }
+/* Collaborating, the answer goes right under «Qué comprobar» (Abel, 27 October): a «No» just marked is answered
+   where it was marked, with what fails or a change. The conversation follows, its own card: with only its last two
+   messages on the note, it no longer pushes the answer away. */
+html .af.ck:not(.ag):has(> .ck-thread) > .ck-go[data-on] { order: 2; margin: 0 0 0.75rem; border-top: 1px solid var(--border); border-radius: var(--radius-lg, 12px); }
+.af.ck:not(.ag):has(> .ck-go[data-on]) > .ck-talk.ck-thread { order: 3; margin-bottom: 0.75rem; border-bottom-left-radius: var(--radius-lg, 12px); border-bottom-right-radius: var(--radius-lg, 12px); }
 /* Why a help is this person's turn, under its words in the chapter's list. */
 .ck-roster__why { display: block; margin-top: 0.125rem; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 600; color: var(--accent-800, var(--text)); }
 html[data-text] .ck-roster__why { font-size: calc(0.8125rem * var(--ts)); }
