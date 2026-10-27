@@ -1769,7 +1769,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                     <span className="ck-check__text">
                       {name}
                       {question.per === "verse" && !verseStop ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
-                      {people && tally?.slots?.[question.id]?.yesBy.length ? (
+                      {people && !tally?.agreedApart && tally?.slots?.[question.id]?.yesBy.length ? (
                         <span className="ck-said">
                           <Check size={13} aria-hidden /> {tally.slots[question.id]!.yesBy.map((who) => (isMe(who) ? t("ck.talkYou") : `@${who}`)).join(", ")} · {Math.min(tally.slots[question.id]!.yesBy.length, people)}/{people}
                         </span>
@@ -1793,7 +1793,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                     {name}
                     {question.per === "verse" && !verseStop ? <span className="ck-question__scope"> {t("ck.perVerse")}</span> : null}
                     {/* Who already said it is right, decided together: the line is theirs too. */}
-                    {people && tally?.slots?.[question.id]?.yesBy.length ? (
+                    {people && !tally?.agreedApart && tally?.slots?.[question.id]?.yesBy.length ? (
                       <span className="ck-said">
                         <Check size={13} aria-hidden /> {tally.slots[question.id]!.yesBy.map((who) => (isMe(who) ? t("ck.talkYou") : `@${who}`)).join(", ")} · {Math.min(tally.slots[question.id]!.yesBy.length, people)}/{people}
                       </span>
@@ -2108,6 +2108,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, onClose, an
                             : people && !rowsShown.some(({ question }) => tally?.slots?.[question.id]?.voices.length)
                               ? `${t("ck.firstToReview")} ${asking}`
                               : asking}</p>
+                  ) : tally?.agreedApart ? (
+                    // Agreed by the team before Taller (see `ITEM_AGREED`): nobody's turn, and nobody is waited for.
+                    <p className="ck-ask ck-ask--wait">{t("ck.agreedApart")}</p>
                   ) : people && !summary.complete ? (
                     <p className="ck-ask ck-ask--wait">{t("ck.youSaid")}</p>
                   ) : null}

@@ -86,6 +86,8 @@ export type CheckItemTally = {
   /** Decided by several people: what each of them said of each question, and whose turn it is. */
   slots?: Record<string, CheckSlot>;
   turn?: CheckTurn;
+  /** The team agreed on the whole item outside Taller (see `ITEM_AGREED`): said instead of who answered each question. */
+  agreedApart?: CheckAnswer;
   /** Something was fixed or created for this item: it goes in the summary the team agrees on. */
   changed: boolean;
 };
@@ -101,6 +103,19 @@ export type ChecklistSummary = {
   /** What was fixed or created: the list the team goes over to agree. */
   changed: CheckItemTally[];
 };
+
+/**
+ * The row that says the team agreed on a whole item together outside Taller (26 October: Esther's chapter 1, gone
+ * over by the team in a spreadsheet). Brought in as one person's answers, a step later decided by three, with
+ * questions added since, showed it all to do. Every question of the item counts as settled, until somebody proposes
+ * something about it. Only a migration writes it; taken back (`cleared`), the item is as it was.
+ */
+export const ITEM_AGREED = "@acordado";
+
+/** The row that says the team agreed on an item outside Taller, and where (`note`). */
+export function itemAgreed(itemId: string, by: string, at: string, note: string): CheckAnswer {
+  return { itemId, questionId: ITEM_AGREED, value: "yes", by, at, ...(note.trim() ? { note: note.trim() } : {}) };
+}
 
 /** The id under which the once-per-verse questions of a verse are answered. */
 export const verseItemId = (verseKey: string): string => `verse:${verseKey}`;
@@ -216,12 +231,15 @@ export function summarizeChecklist(params: {
     else for (const q of perItem) if (asksOf(q, item)) answers[q.id] = latest.get(`${answeredAt(q, item)}\u0000${q.id}`) ?? (q.per === "article" && item.article ? saidOfArticle.get(`${articleItemId(item.article)}\u0000${q.id}`) : undefined);
     if (firstOfVerse.has(item.id)) for (const q of perVerse) answers[q.id] = latest.get(`${verseItemId(item.verseKey)}\u0000${q.id}`);
     const changed = Object.values(answers).some((a) => a?.value === "no" && (a.outcome === "fixed" || a.outcome === "created" || a.outcome === "proposal"));
+    const mark = latest.get(`${item.id}\u0000${ITEM_AGREED}`);
+    const agreedApart = mark?.value === "yes" ? mark : undefined;
     if (slotOf) {
       // Each question by what everybody said of it, where it is answered (the item's own id, its verse's or its article's).
       const slots: Record<string, CheckSlot> = {};
       for (const qid of Object.keys(answers)) {
         const q = params.questions.find((one) => one.id === qid)!;
-        slots[qid] = slotOf(item.stop ? item.id : answeredAt(q, item), qid);
+        const slot = slotOf(item.stop ? item.id : answeredAt(q, item), qid);
+        slots[qid] = agreedApart && !slot.open.length ? { ...slot, settled: true } : slot;
       }
       const all = Object.values(slots);
       const waiting = Object.values(answers).some((a) => a?.outcome === "consult" && !a.resolved);
@@ -242,8 +260,9 @@ export function summarizeChecklist(params: {
           : unsettled.some((slot) => !slot.voices.length)
             ? "new"
             : "waiting";
-      return { itemId: item.id, state, answers, changed, slots, turn };
+      return { itemId: item.id, state, answers, changed, slots, turn, ...(agreedApart && state === "ok" ? { agreedApart } : {}) };
     }
+    if (agreedApart) return { itemId: item.id, state: "ok", answers, changed, agreedApart };
     const states = Object.values(answers).map(stateOf);
     const state = states.reduce<CheckItemState>((worst, s) => (RANK[s] > RANK[worst] ? s : worst), "ok");
     return { itemId: item.id, state, answers, changed };

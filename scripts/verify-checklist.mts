@@ -1,7 +1,7 @@
 /** A checklist step: every item answered yes, or its «no» settled (fixed, created, or answered by the owner). */
 import assert from "node:assert/strict";
 import { itemSaying, proposalAnswer, proposalKeeping, proposalSaying, proposalsOf } from "../src/domain/checkProposal";
-import { articleItemId, asksOf, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, withVerseStops, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
+import { articleItemId, asksOf, itemAgreed, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, withVerseStops, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
 import { questionText, shippedWorkflow } from "../src/domain/processes";
 import { canApproveStep, closesInItsTool } from "../src/domain/stepClaim";
 import type { ChecklistQuestion, TaskStep } from "../src/domain/types";
@@ -321,6 +321,34 @@ test("en un desacuerdo, cada lado responde al otro: le toca a quien no tuvo la �
   assert.equal(run(answered, "bea").turn, "waiting");
   // Carla comes round: settled.
   assert.equal(run([...answered, proposalSaying("pr-2", "carla", "2026-10-21T10:30:00Z", true)], "dina").state, "ok");
+});
+
+test("acordada en equipo fuera de Taller: la nota queda resuelta sin tres personas ni las preguntas nuevas", () => {
+  // Ester (26 October): the team went over chapter 1 together in a spreadsheet; brought in as one person's answers,
+  // the step then decided by three, with questions added since, showed the chapter at 0%.
+  const qs = [{ id: "sentido", text: "¿Tiene sentido?" }, { id: "figura", text: "¿Explica la figura?" }, { id: "cobertura", text: "¿Cada dificultad tiene su nota?", per: "verse" as const }];
+  const items = withVerseStops([{ id: "n1", verseKey: "1:1" }, { id: "n2", verseKey: "1:1" }], qs);
+  const migrated: CheckAnswer = { itemId: "n1", questionId: "sentido", value: "yes", by: "abelper8", at: "2026-10-17T10:00:00Z" };
+  const agreed = [migrated, itemAgreed("n1", "abelper8", "2026-10-26T10:00:00Z", "Revisada en equipo en la hoja"), itemAgreed(verseItemId("1:1"), "abelper8", "2026-10-26T10:00:00Z", "Revisada en equipo en la hoja")];
+  const run = (answers: CheckAnswer[], me = "dina") => summarizeChecklist({ items, questions: qs, answers, agreement: { people: 3, proposals: proposalsOf(answers, 3, () => true, { consensus: true }), me } });
+  const tally = (answers: CheckAnswer[], id: string) => run(answers).items.find((row) => row.itemId === id)!;
+  assert.equal(tally([migrated], "n1").state, "pending", "sin la marca, la palabra de una persona no la cierra");
+  assert.equal(tally(agreed, "n1").state, "ok");
+  assert.equal(tally(agreed, "n1").turn, "done", "a nadie le toca");
+  assert.equal(tally(agreed, "n1").agreedApart?.note, "Revisada en equipo en la hoja", "la pantalla dice dónde se acordó, no «1/3»");
+  assert.equal(tally([migrated], "n1").agreedApart, undefined);
+  assert.equal(tally(agreed, verseItemId("1:1")).state, "ok", "la parada del versículo, marcada, también");
+  assert.equal(tally(agreed, "n2").state, "pending", "solo la nota marcada");
+  assert.equal(run(agreed).done, 2);
+  // Somebody proposes something about it afterwards: it is to be decided again.
+  const p = { id: "pr-9", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+  const reopened = [...agreed, proposalAnswer({ itemId: "n1", questionId: "figura", by: "bea", at: "2026-10-27T10:00:00Z", reason: "", proposal: p })];
+  assert.equal(tally(reopened, "n1").state, "pending", "una propuesta abierta la vuelve a abrir");
+  // The mark taken back: as before.
+  const back = [...agreed, { ...itemAgreed("n1", "abelper8", "2026-10-27T10:00:00Z", ""), cleared: true as const }];
+  assert.equal(tally(back, "n1").state, "pending");
+  // Decided by one person, it counts too.
+  assert.equal(summarizeChecklist({ items, questions: qs, answers: agreed }).items.find((row) => row.itemId === "n1")!.state, "ok");
 });
 
 test("una pregunta dice el idioma del proyecto por su nombre, en el idioma de la interfaz", () => {

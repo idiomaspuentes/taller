@@ -3238,6 +3238,7 @@
   "ck.agreeWith": "¿Estás de acuerdo con {who}?",
   "ck.agreeYes": "Sí, de acuerdo",
   "ck.youSaid": "Ya diste tu opinión aquí. Esperamos a otras personas del equipo.",
+  "ck.agreedApart": "El equipo ya lo revisó y lo acordó junto, antes de usar Taller.",
   "ck.nextMine": "Siguiente donde opinas",
   "ck.waitingShort": "esperando a otras personas",
   "ck.proposalAsk": "¿Estás de acuerdo con la propuesta de {who}?",
