@@ -1,5 +1,6 @@
 import type { ProposalPayload, ProposalView } from "./checkProposal";
 import { ITEM_SAYS } from "./checkProposal";
+import { SINGLE_PROPOSAL_FROM } from "./singleProposal";
 import type { ChecklistQuestion } from "./types";
 
 /**
@@ -313,9 +314,11 @@ function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals:
   }
   // Checked whole with the step's questions (27 October), a proposal is about every question of its item: choosing it
   // answers them all, and while it is open none of them is settled by «yes» to the note as it is.
+  // One made before that answered only its question, and the note's other questions were answered on their own.
+  const firstAt = (view: ProposalView) => agreement.proposals.find((one) => one.proposal.id === (view.option ?? view.proposal.id))?.at ?? view.at;
   const wholeAt = new Map<string, ProposalView[]>();
   for (const view of agreement.proposals) {
-    if (!view.marks || view.adjusts || view.state === "withdrawn" || view.state === "replaced") continue;
+    if (!view.marks || view.adjusts || view.state === "withdrawn" || view.state === "replaced" || firstAt(view) < SINGLE_PROPOSAL_FROM) continue;
     wholeAt.set(view.itemId, [...(wholeAt.get(view.itemId) ?? []), view]);
   }
   return (answerItemId, questionId) => {

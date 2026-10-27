@@ -3,6 +3,7 @@ import { Check, Columns2, MessageCircle, Pencil, Plus, Send } from "lucide-react
 import { KEEP_OPTION, readable, type ProposalView } from "../domain/checkProposal";
 import { useT } from "../i18n/messages";
 import { TextChangeView, saveLayout, savedLayout } from "./TextChangeView";
+import { ProposalCheck, type ProposalCheckGroup } from "./ProposalCheck";
 
 /** One proposal for a help as an option: its versions, oldest first, the last one what is chosen. */
 export type HelpOption = { id: string; versions: ProposalView[] };
@@ -38,6 +39,8 @@ export function NoteOptions({
   onWithdraw,
   onSay,
   onDecide,
+  checkGroupsOf,
+  onMark,
   children,
 }: {
   /** «¿Cómo debe quedar la nota?» */
@@ -66,6 +69,12 @@ export function NoteOptions({
   onWithdraw: (proposalId: string) => void;
   onSay: (text: string, about: string) => Promise<void> | void;
   onDecide: (option: string) => void;
+  /**
+   * A proposal is checked with the note's questions instead of chosen with a touch (27 October): the steps and
+   * questions to check a version with, and what saves a mark. Without them, it is chosen with a touch.
+   */
+  checkGroupsOf?: (view: ProposalView) => ProposalCheckGroup[];
+  onMark?: (view: ProposalView, questionId: string, value: "yes" | "no", note?: string) => Promise<void> | void;
   /** What other teams said of the help, at the end. */
   children?: ReactNode;
 }) {
@@ -78,6 +87,11 @@ export function NoteOptions({
   const [history, setHistory] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  // The proposal being checked, question by question.
+  const checks = Boolean(checkGroupsOf && onMark);
+  // A version with no question to check it with (a change of a text) is chosen with a touch.
+  const checkable = (head: ProposalView | undefined) => Boolean(checks && head && checkGroupsOf!(head).length);
+  const [inCheck, setInCheck] = useState<string | null>(null);
   const who = (by: string) => (same(by, me) ? t("ck.talkYou") : `@${by}`);
   const chosers = (option: string) =>
     Object.entries(choices)
@@ -130,6 +144,24 @@ export function NoteOptions({
     </button>
   );
 
+  /** A version against the note as it is: what the list shows of an option, and what is read while checking it. */
+  const changeOf = (head: ProposalView, option: string) =>
+    head.proposal.split ? (
+      <div className="ck-msg__text">
+        <p>{readable(head.proposal.after ?? "")}</p>
+        <p>
+          <b>{t("ag.splitNew")}</b> {readable(head.proposal.split.after)}
+        </p>
+        {head.proposal.split.more?.map((one, index) => (
+          <p key={index}>
+            <b>{t("ag.splitMoreNew")}</b> {readable(one.after)}
+          </p>
+        ))}
+      </div>
+    ) : head.proposal.after ? (
+      <TextChangeView before={readable(head.proposal.before ?? original)} after={readable(head.proposal.after)} lines layout={apart ? "sides" : "together"} labels={{ now: t("ag.today"), proposed: nameOf(option) }} corner={apartButton} />
+    ) : null;
+
   const rows = [{ id: KEEP_OPTION, versions: [] as ProposalView[] }, ...options];
   return (
     <section className="ck-opts" id="ck-opts" aria-labelledby="ck-opts-title">
@@ -157,7 +189,9 @@ export function NoteOptions({
                 disabled={saving || closed || Boolean(winner)}
                 onClick={() => {
                   setOpen(option.id);
-                  if (!chosen) onChoose(option.id);
+                  // A proposal is chosen by checking it; leaving the note as it is, with a touch.
+                  if (checkable(head)) setInCheck(option.id);
+                  else if (!chosen) onChoose(option.id);
                 }}
               >
                 <span className="ck-opt__dot" aria-hidden>
@@ -166,7 +200,18 @@ export function NoteOptions({
                 <span className="ck-opt__name">{nameOf(option.id)}</span>
                 <span className="ck-opt__who">{names.length ? names.join(", ") : ""}</span>
               </button>
-              {head ? (
+              {head && inCheck === option.id && checkGroupsOf && onMark ? (
+                <ProposalCheck
+                  lead={same(option.versions[0]!.by, me) ? t("ck.checkOfMine") : t("ck.checkOf").replace("{who}", `@${option.versions[0]!.by}`)}
+                  groups={checkGroupsOf(head)}
+                  mine={head.marks?.[me.trim().toLowerCase()] ?? {}}
+                  change={changeOf(head, option.id)}
+                  saving={saving}
+                  onMark={(questionId, value, note) => onMark(head, questionId, value, note)}
+                  onAdjust={() => onEdit(head)}
+                  onDone={() => setInCheck(null)}
+                />
+              ) : head ? (
                 isOpen ? (
                   <div className="ck-opt__body">
                     {head.reason || option.versions[0]!.reason ? (
@@ -174,12 +219,22 @@ export function NoteOptions({
                         <b>{who(head.by)}</b>: «{head.reason || option.versions[0]!.reason}»
                       </p>
                     ) : null}
+                    {head.noBy?.map((name) => {
+                      // Who says «no» to it, with what they said fails.
+                      const why = [...said].reverse().find((m) => same(m.by, name));
+                      return (
+                        <p key={name} className="ck-opt__no">
+                          <b>{t("ck.optSaysNo").replace("{who}", who(name))}</b>
+                          {why ? `: «${why.text}»` : ""}
+                        </p>
+                      );
+                    })}
                     {stale ? (
-                      // Edited since it was chosen: read again, and chosen again with a touch.
+                      // Edited since it was chosen: read again, and chosen again (checked again, when it is checked).
                       <div className="ck-opt__stale">
                         <p>{t("ck.optStale")}</p>
-                        <button type="button" className="btn" data-variant="default" data-size="sm" disabled={saving} onClick={() => onChoose(option.id)}>
-                          <Check size={16} aria-hidden /> {t("ck.optStillYes")}
+                        <button type="button" className="btn" data-variant="default" data-size="sm" disabled={saving} onClick={() => (checkable(head) ? setInCheck(option.id) : onChoose(option.id))}>
+                          <Check size={16} aria-hidden /> {t(checkable(head) ? "ck.optCheckAgain" : "ck.optStillYes")}
                         </button>
                         {option.versions.length > 1 ? (
                           <button type="button" className="af-link" onClick={() => setHistory(option.id)}>
@@ -188,20 +243,12 @@ export function NoteOptions({
                         ) : null}
                       </div>
                     ) : null}
-                    {head.proposal.split ? (
-                      <div className="ck-msg__text">
-                        <p>{readable(head.proposal.after ?? "")}</p>
-                        <p>
-                          <b>{t("ag.splitNew")}</b> {readable(head.proposal.split.after)}
-                        </p>
-                        {head.proposal.split.more?.map((one, index) => (
-                          <p key={index}>
-                            <b>{t("ag.splitMoreNew")}</b> {readable(one.after)}
-                          </p>
-                        ))}
-                      </div>
-                    ) : head.proposal.after ? (
-                      <TextChangeView before={readable(head.proposal.before ?? original)} after={readable(head.proposal.after)} lines layout={apart ? "sides" : "together"} labels={{ now: t("ag.today"), proposed: nameOf(option.id) }} corner={apartButton} />
+                    {changeOf(head, option.id)}
+                    {checkable(head) && !chosen && !stale && !closed && !winner ? (
+                      // What is asked of this person: to check it, the one obvious thing on it.
+                      <button type="button" className="btn ck-opt__check" data-variant="default" data-size="lg" disabled={saving} onClick={() => setInCheck(option.id)}>
+                        {t("ck.optCheck")}
+                      </button>
                     ) : null}
                   </div>
                 ) : null

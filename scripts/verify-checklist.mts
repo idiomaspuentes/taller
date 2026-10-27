@@ -399,6 +399,14 @@ test("la pregunta del versículo enlazado se hace solo a una nota que remite a o
     const summary = summarizeChecklist({ items: [{ id: "n1", verseKey: "1:1" }], questions: three, answers: rows, agreement: { people: 3, proposals: proposalsOf(rows, 3, () => true, rule), me: "ana" } });
     assert.equal(summary.items[0]!.state, "ok");
   });
+
+  test("una propuesta de antes del cambio sigue siendo solo de la pregunta que respondió", () => {
+    const old = proposalAnswer({ itemId: "n1", questionId: "tpl", by: "ana", at: "2026-10-21T10:00:00Z", reason: "", proposal: p("pr-o", "b") });
+    const yes = ["ana", "bea", "carla"].map((who, i) => ({ itemId: "n1", questionId: "tps", value: "yes" as const, by: who, at: `2026-10-21T10:1${i}:00Z` }));
+    const rows = [old, ...yes];
+    const slots = summarizeChecklist({ items: [{ id: "n1", verseKey: "1:1" }], questions: three, answers: rows, agreement: { people: 3, proposals: proposalsOf(rows, 3, () => true, rule), me: "ana" } }).items[0]!.slots!;
+    assert.equal(slots.tps!.settled, true, "las tres dijeron que sí a la nota en el TPS, como antes");
+  });
 }
 
 console.log(`\nverify-checklist: ${passed} checks passed.`);

@@ -420,7 +420,8 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       const state = done ? view.state : winner === option ? "agreed" : winner ? "rejected" : "open";
       const stale = [...choice].filter(([, one]) => one.option === option && one.version !== head.proposal.id).map(([who]) => who);
       const noBy = noByOf(option);
-      const checks = asks ? { marks: Object.fromEntries(people.map((who) => [who, Object.fromEntries(effective(who, head.proposal.id))] as const).filter(([, marks]) => Object.keys(marks).length)), noBy, origin: originOf(head.proposal.id) } : {};
+      // Only a version checked with questions carries its marks: one with none (a change of a text) is chosen as before.
+      const checks = asks && asks(head).length ? { marks: Object.fromEntries(people.map((who) => [who, Object.fromEntries(effective(who, head.proposal.id))] as const).filter(([, marks]) => Object.keys(marks).length)), noBy, origin: originOf(head.proposal.id) } : {};
       const next: ProposalView = { ...view, inFavour: named(option), against: named(KEEP_OPTION), state, choices, ...(stale.length ? { staleFor: stale } : {}), ...checks };
       delete next.disputedSince;
       delete next.decidedBy;

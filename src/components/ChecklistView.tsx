@@ -29,10 +29,12 @@ import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
 import { freshRowId } from "../domain/helpsDraft";
-import { consultReply, groupInView, groupsOf, questionsFor, summarizeChecklist, withVerseStops, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
+import { asksOf, consultReply, groupInView, groupsOf, questionsFor, summarizeChecklist, withVerseStops, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
 import { DISPUTE_DAYS, disputeStalled, ITEM_SAYS, KEEP_OPTION, itemSaying, versionsOf as chainOf, PROPOSAL_DECIDED, PROPOSAL_FREE, PROPOSAL_KEEPS, PROPOSAL_SAYS, proposalDecided, loadTrialChecks, proposalAnswer, proposalDone, proposalKeeping, proposalSaying, proposalsOf, readable, saveTrialChecks, withoutWithdrawn, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
 import { NoteConversation, OPEN_TALK, type TalkLine, type TalkStatus } from "./NoteConversation";
 import { NoteOptions, type HelpOption, type OptionMessage } from "./NoteOptions";
+import type { ProposalCheckGroup } from "./ProposalCheck";
+import { proposalMark } from "../domain/singleProposal";
 import { applyProposal, sendProposal as askOwnersFor } from "../dcs/checkProposals";
 import { shareTurnFromTool } from "../dcs/roundClose";
 import { uid } from "../domain/assignment";
@@ -223,7 +225,17 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * coordinates the team settles one the team could not agree on in some days.
    */
   const decides = (login: string) => Boolean(data?.task && isCoordinatorOf(data.levelBook, data.task.orgTeamName, login));
-  const proposals = useMemo(() => proposalsOf(answers, needed, ours, people ? { consensus: true, decides } : {}), [answers, needed, data?.task, people, data?.levelBook]);
+  /**
+   * The questions a proposal is checked with (27 October): the step's, asked once per help, that apply to what the
+   * proposal says. Whether the note links an article is the note's: a proposal of its words does not change it.
+   */
+  const questionsOfProposal = (view: ProposalView): string[] => {
+    // A change of a text, or of an article, is not a version of the help: it is chosen with a touch, as before.
+    if (view.proposal.resource !== kind) return [];
+    const help = data?.items.find((row) => row.id === view.proposal.rowId);
+    return questions.filter((q) => (q.per ?? "item") === "item" && asksOf(q, { ...(view.proposal.after !== undefined ? { text: view.proposal.after } : {}), ...(help ? { linked: Boolean(help.supportRef) } : {}) })).map((q) => q.id);
+  };
+  const proposals = useMemo(() => proposalsOf(answers, needed, ours, people ? { consensus: true, decides, questionsOf: questionsOfProposal } : {}), [answers, needed, data?.task, people, data?.levelBook, questions]);
   const summary = useMemo(
     () => summarizeChecklist({ items: checkItems, questions, answers: withoutWithdrawn(answers), currentHashes: hashes, ...(people ? { agreement: { people, proposals, me } } : {}) }),
     [checkItems, questions, answers, hashes, people, proposals, me],
@@ -1271,6 +1283,32 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     const head = optionsHere.heads.find((view) => (view.option ?? view.proposal.id) === option);
     if (head) return save([proposalSaying(head.proposal.id, me, now, true)], t("ck.saved"));
   };
+  /**
+   * The steps a proposal for the help in view is checked in, as the note is (27 October): its questions grouped by
+   * what they are read against, with that text's verse. Its author does not mark the question it was proposed from.
+   */
+  const proposalGroups = (view: ProposalView): ProposalCheckGroup[] => {
+    if (!item || !data) return [];
+    const asked = new Set(questionsOfProposal(view));
+    const author = optionsHere?.options.find((option) => option.id === (view.option ?? view.proposal.id))?.versions[0]?.by ?? view.by;
+    const own = isMe(author) ? new Set(view.origin ?? []) : new Set<string>();
+    const rows = questions.filter((q) => asked.has(q.id) && !own.has(q.id)).map((question) => ({ question, answerItemId: view.proposal.id }));
+    return groupsOf(rows).map((group) => ({
+      about: group.about,
+      label: scopeLabel(group.about, data.board?.settings?.resourceNames, language),
+      ...(data.texts[group.about as ChecklistText]?.verses[item.verse] ? { reference: data.texts[group.about as ChecklistText]!.verses[item.verse] } : {}),
+      questions: group.rows.map(({ question }) => ({ id: question.id, text: questionText(question, language, ctx?.lang) })),
+    }));
+  };
+  /** One mark on a proposal; a «no» says what fails in the conversation of that option too. */
+  const markProposal = async (view: ProposalView, questionId: string, value: "yes" | "no", note?: string) => {
+    if (!item) return;
+    const now = new Date().toISOString();
+    const rows = [proposalMark(view.proposal.id, questionId, me, now, value, note)];
+    if (value === "no" && note) rows.push(itemSaying(item.id, me, now, note, view.option ?? view.proposal.id));
+    await save(rows, t("ck.saved"));
+    if (value === "no") reopenOthers();
+  };
   /** Another option, from the help as it is, answering what the others answer. */
   const proposeOption = () => {
     const head = optionsHere?.heads[0];
@@ -1354,6 +1392,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         onWithdraw={(id) => void withdraw(id)}
         onSay={(text, about) => save([itemSaying(item.id, me, new Date().toISOString(), text, about)], t("ck.talkSent"))}
         onDecide={decideOption}
+        checkGroupsOf={proposalGroups}
+        onMark={markProposal}
       >
         {session && ctx?.pmOrg && ctx.projectId && data && !aboutArticle ? (
           <HelpMessages key={item.id} session={session} pmOrg={ctx.pmOrg} lang={ctx.lang} projectId={ctx.projectId} book={data.book} chapter={item.chapter} verse={item.verse} about={messageKey} resource={kind} taskName={ctx.taskName} lede={t("hm.ledeRead")} onlyIfAny canAttend folded foldLabel={t("ck.messagesFold")} />
