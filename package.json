@@ -138,6 +138,7 @@
     "verify:consensus": "tsx --tsconfig tsconfig.scripts.json scripts/verify-consensus.mts",
     "verify:draft-cache": "tsx --tsconfig tsconfig.scripts.json scripts/verify-draft-cache.mts",
     "verify:note-situation": "tsx --tsconfig tsconfig.scripts.json scripts/verify-note-situation.mts",
+    "verify:help-checks": "tsx --tsconfig tsconfig.scripts.json scripts/verify-help-checks.mts",
     "verify:note-timeline": "tsx --tsconfig tsconfig.scripts.json scripts/verify-note-timeline.mts"
   },
   "dependencies": {

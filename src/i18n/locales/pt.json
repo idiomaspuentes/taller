@@ -3965,5 +3965,11 @@
   "mm.recreateHint": "Se o seu rascunho se estragou, é criado de novo a partir do rascunho do grupo.",
   "menu.firstSteps": "Como começar",
   "menu.firstStepsHint": "Instalar o app, receber avisos e encontrar suas tarefas.",
-  "mt.readAgo": "Lista atualizada {when}"
+  "mt.readAgo": "Lista atualizada {when}",
+  "hc.badLink": "Este link leva a um livro que não existe ({code}).",
+  "hc.doubleSpace": "Sobra um espaço.",
+  "hc.spaceBefore": "Sobra o espaço antes do sinal.",
+  "hc.listComma": "A linha termina em vírgula.",
+  "hc.bareHeading": "Falta «##» no título da seção.",
+  "hc.bulletSpace": "Falta o espaço depois do asterisco."
 }

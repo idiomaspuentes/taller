@@ -3965,5 +3965,11 @@
   "mm.recreateHint": "Si tu borrador se dañó, se crea de nuevo desde el borrador grupal.",
   "menu.firstSteps": "Cómo empezar",
   "menu.firstStepsHint": "Instalar la app, recibir avisos y encontrar tus tareas.",
-  "mt.readAgo": "Lista actualizada {when}"
+  "mt.readAgo": "Lista actualizada {when}",
+  "hc.badLink": "Este enlace lleva a un libro que no existe ({code}).",
+  "hc.doubleSpace": "Sobra un espacio.",
+  "hc.spaceBefore": "Sobra el espacio antes del signo.",
+  "hc.listComma": "La línea termina en coma.",
+  "hc.bareHeading": "Falta «##» en el encabezado.",
+  "hc.bulletSpace": "Falta el espacio después del asterisco."
 }
