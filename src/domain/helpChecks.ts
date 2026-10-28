@@ -116,7 +116,8 @@ function lineChecks(text: string, before: string | undefined, out: HelpCheck[]) 
     const bullet = BULLET.exec(line);
     // A doubled space inside the text; the indentation and the space after a bullet are layout, not a slip.
     const bodyAt = bullet ? bullet[1]!.length : (/^\s*/.exec(line)?.[0].length ?? 0);
-    for (const m of line.slice(bodyAt).matchAll(/(?<=\S) {2,}(?=\S)/g)) {
+    // Before a comma or a stop the spaces are one slip, «space-before», which takes them all.
+    for (const m of line.slice(bodyAt).matchAll(/(?<=\S) {2,}(?=[^\s,.;:!?])/g)) {
       const start = at + bodyAt + m.index!;
       const end = start + m[0].length;
       out.push({ id: "double-space", fix: "auto", excerpt: excerptAt(text, start, end), message: { key: "hc.doubleSpace" }, start, end, replacement: " " });

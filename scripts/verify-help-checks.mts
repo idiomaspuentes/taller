@@ -59,6 +59,15 @@ test("espacio antes de coma o punto", () => {
   assert.equal(applyFixes(text, checks), "de los creyentes de Cristo.");
 });
 
+test("dos espacios antes de una coma son un solo aviso, y Arreglar los quita todos", () => {
+  const text = "una palabra  , otra";
+  const checks = notas(text);
+  assert.deepEqual(ids(checks), ["space-before"]);
+  assert.equal(applyFixes(text, checks), "una palabra, otra");
+  const item = "* algo  ,";
+  assert.equal(applyFixes(item, palabras(item)), "* algo.");
+});
+
 test("línea de lista que termina en coma", () => {
   const text = "* La palabra casa…, ya sean edificios o tiendas,\n* Otra línea.";
   const checks = palabras(text);
