@@ -1,4 +1,4 @@
-import { PencilLine } from "lucide-react";
+import { CheckCheck, PencilLine } from "lucide-react";
 import type { NoteSituation } from "../domain/noteSituation";
 import { useT } from "../i18n/messages";
 import { RosterFace } from "./ChapterHelpsList";
@@ -57,6 +57,9 @@ export function SituationLine({ situation, people, me, nameOf, answered }: {
       parts = [t("ck.sitOwn"), agreedLine(agreed), doubtLine(situation.doubts), missing(situation.agreed)];
       break;
     }
+    case "agreedApart":
+      parts = [t("ck.agreedApart")];
+      break;
     case "asked":
       faces = [situation.by];
       parts = [t(answered ? "ck.sitAnswered" : "ck.sitAsked").replace("{who}", nameOf(situation.by))];
@@ -67,7 +70,7 @@ export function SituationLine({ situation, people, me, nameOf, answered }: {
   return (
     <p className="ck-sit" data-kind={situation.kind}>
       <span className="ck-sit__faces" aria-hidden="true">
-        {faces.length ? faces.map((login) => <RosterFace key={login} login={login} name={nameOf(login)} now={false} />) : <PencilLine size={18} />}
+        {faces.length ? faces.map((login) => <RosterFace key={login} login={login} name={nameOf(login)} now={false} />) : situation.kind === "agreedApart" ? <CheckCheck size={18} /> : <PencilLine size={18} />}
       </span>
       <span className="ck-sit__text">{parts.filter(Boolean).join(" ")}</span>
     </p>

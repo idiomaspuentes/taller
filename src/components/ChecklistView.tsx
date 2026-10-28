@@ -1357,9 +1357,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   const situation = useMemo(() => {
     if (!people || !item || verseStop) return null;
     const live = (optionsHere?.heads ?? []).filter((view) => view.state === "open" || view.state === "agreed");
-    return noteSituation({ me, itemId: item.id, stepRows: rowsShown.map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })), answers, options: live });
+    return noteSituation({ me, itemId: item.id, stepRows: rowsShown.map(({ question, answerItemId }) => ({ answerItemId, questionId: question.id })), answers, options: live, agreedApart: Boolean(tally?.agreedApart) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [people, item?.id, verseStop, answers, optionsHere, stepKey, me]);
+  }, [people, item?.id, verseStop, answers, optionsHere, stepKey, me, Boolean(tally?.agreedApart)]);
   const collab = situation && situation.kind !== "options" ? situation : null;
   /** A person by the name the project knows them by. */
   const personName = (login: string) => data?.board?.people?.find((person) => person.id.toLowerCase() === login.toLowerCase())?.name ?? login;
@@ -1466,7 +1466,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   const [doubting, setDoubting] = useState(false);
   useEffect(() => setDoubting(false), [item?.id, group?.about]);
   const meKey = me.trim().toLowerCase();
-  const answerMode: "first" | "confirm" | "proposal" | "ownProposal" | "asked" | null = !collab ? null : collab.kind === "asked" ? (doubting ? (collab.head ? "proposal" : "first") : "asked") : collab.kind;
+  // Agreed before Taller there is nothing to answer: what was agreed is said, and «Hay algo que cambiar» stays.
+  const answerMode: "first" | "confirm" | "proposal" | "ownProposal" | "asked" | null = !collab || collab.kind === "agreedApart" ? null : collab.kind === "asked" ? (doubting ? (collab.head ? "proposal" : "first") : "asked") : collab.kind;
   const reviewHead = collab && (collab.kind === "proposal" || collab.kind === "ownProposal") ? collab.head : collab?.kind === "asked" ? collab.head : undefined;
   const reviewQuestions = reviewHead ? questionsOfProposal(reviewHead) : [];
   const reviewOption = reviewHead ? (reviewHead.option ?? reviewHead.proposal.id) : "";
@@ -2570,7 +2571,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                               : asking}</p>
                   ) : tally?.agreedApart ? (
                     // Agreed by the team before Taller (see `ITEM_AGREED`): nobody's turn, and nobody is waited for.
-                    <p className="ck-ask ck-ask--wait">{t("ck.agreedApart")}</p>
+                    // Decided together, the line under the steps says so.
+                    collab?.kind === "agreedApart" ? null : <p className="ck-ask ck-ask--wait">{t("ck.agreedApart")}</p>
                   ) : people && !summary.complete ? (
                     <p className="ck-ask ck-ask--wait">{t("ck.youSaid")}</p>
                   ) : null}

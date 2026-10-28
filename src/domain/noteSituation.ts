@@ -20,7 +20,9 @@ export type NoteSituation =
   /** Somebody wrote and waits for an answer; with a proposal on the note, it is still what is reviewed. */
   | { kind: "asked"; by: string; at: string; text: string; head?: ProposalView; author?: string }
   /** Two or more proposals from before one proposal per note: chosen among, as before. */
-  | { kind: "options" };
+  | { kind: "options" }
+  /** The team agreed on the note outside Taller (see `ITEM_AGREED`): nobody opens or confirms it. */
+  | { kind: "agreedApart" };
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const byTime = (rows: CheckAnswer[]) => [...rows].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
@@ -30,7 +32,7 @@ const byTime = (rows: CheckAnswer[]) => [...rows].sort((a, b) => Date.parse(a.at
  * adjustments), as `proposalsOf` reads them by agreement of all. Asked first, since what somebody wrote waits for an
  * answer; then a proposal, which is what every step reviews; then a review to confirm; else this person opens it.
  */
-export function noteSituation(p: { me: string; itemId: string; stepRows: StepRow[]; answers: CheckAnswer[]; options: ProposalView[] }): NoteSituation {
+export function noteSituation(p: { me: string; itemId: string; stepRows: StepRow[]; answers: CheckAnswer[]; options: ProposalView[]; agreedApart?: boolean }): NoteSituation {
   const rows = byTime(p.answers);
   const versions = new Set(p.options.flatMap((view) => [view.proposal.id, view.option ?? view.proposal.id]));
   const aboutNote = (row: CheckAnswer) => row.itemId === p.itemId || versions.has(row.itemId) || row.proposal?.rowId === p.itemId || p.stepRows.some((step) => step.answerItemId === row.itemId);
@@ -47,6 +49,8 @@ export function noteSituation(p: { me: string; itemId: string; stepRows: StepRow
     const doubts = head.noBy ?? [];
     return same(author, p.me) ? { kind: "ownProposal", head, since, agreed, doubts } : { kind: "proposal", head, author, since, agreed, doubts };
   }
+  // Agreed by the team before Taller, it has no answers of anybody: it read as a note nobody had opened.
+  if (p.agreedApart) return { kind: "agreedApart" };
   // Each person's last answer to each question of the step; one taken back is none.
   const last = new Map<string, CheckAnswer>();
   const slots = new Set(p.stepRows.map((step) => `${step.answerItemId}\u0000${step.questionId}`));

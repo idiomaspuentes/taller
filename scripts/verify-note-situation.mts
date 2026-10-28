@@ -117,6 +117,16 @@ test("una propuesta sin preguntas se apoya como antes", () => {
   assert.equal(proposalSaying("pr-a", "bea", T("11:00"), true).questionId, rows[0]!.questionId);
 });
 
+test("una nota que el equipo acordó antes de Taller no se abre como nueva", () => {
+  const agreed = (me: string, answers: CheckAnswer[]) => noteSituation({ me, itemId: "n1", stepRows: tpl, answers, options: optionsOf(answers), agreedApart: true });
+  assert.equal(agreed("bea", []).kind, "agreedApart");
+  assert.equal(agreed("bea", [yes("ana", "tpl1", T("10:00")), yes("ana", "tpl2", T("10:01"))]).kind, "agreedApart", "tampoco se confirma: ya está acordada");
+  const asked = agreed("bea", [itemSaying("n1", "ana", T("10:00"), "¿Y esto?")]);
+  assert.equal(asked.kind, "asked", "lo que alguien pregunta sigue esperando respuesta");
+  assert.equal(agreed("bea", [proposed("ana", T("10:00"), P("pr-a", "b"))]).kind, "proposal", "una propuesta nueva se revisa");
+  assert.deepEqual(agreementRows({ me: "bea", at: T("11:00"), situation: agreed("bea", []), stepRows: tpl, proposalQuestions: [] }), [], "no hay nada que confirmar");
+});
+
 test("un mensaje guarda el paso del que habla", () => {
   assert.equal(itemSaying("n1", "ana", T("10:00"), "hola", undefined, "tpl").step, "tpl");
   assert.equal(itemSaying("n1", "ana", T("10:00"), "hola").step, undefined);
