@@ -97,6 +97,29 @@ export type ProcessPackage = {
    * articles come in. See `src/domain/articleSections.ts`.
    */
   readingOmits?: string[];
+  /** The team's writing rules, shown under a proposed note or article. See `src/domain/helpChecks.ts`. */
+  writingChecks?: WritingCheck[];
+};
+
+/**
+ * A writing rule of a team: where a proposed text matches `pattern`, Taller shows `message` and, on request, `why`.
+ * It never fixes the text: the person decides.
+ */
+export type WritingCheck = {
+  /** With hyphens, like the other ids of a package. */
+  id: string;
+  /** "notas" and/or "palabras" (checked when the package is read: a JSON file cannot say it is one of these). */
+  resources: string[];
+  /** A regular expression, always run with the flags "gu". */
+  pattern: string;
+  /** The rule applies only if this other expression is in the same sentence. */
+  near?: string;
+  /** The rule does not look past the first line that matches this expression. */
+  until?: string;
+  /** By interface language. */
+  message: Record<string, string>;
+  /** By interface language. */
+  why: Record<string, string>;
 };
 
 export type TallerConfig = {

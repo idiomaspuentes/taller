@@ -1,3 +1,4 @@
+import type { WritingCheck } from "../config/types";
 import type { MessageKey } from "../i18n/messages";
 import { BOOKS, bookLabel, usfmStudyBookId } from "./books";
 
@@ -150,6 +151,53 @@ export function mechanicalChecks(text: string, opts: { kind: HelpKind; before?: 
   const out: HelpCheck[] = [];
   badLinks(text, out);
   lineChecks(text, opts.before, out);
+  return out.sort((a, b) => a.start - b.start);
+}
+
+/** The sentence around a place: the text between stops or line breaks. */
+function sentenceAt(text: string, start: number, end: number): string {
+  let from = start;
+  while (from > 0 && !/[.?!\n]/.test(text[from - 1]!)) from--;
+  let to = end;
+  while (to < text.length && !/[.?!\n]/.test(text[to]!)) to++;
+  return text.slice(from, to);
+}
+
+/** Where the team's writing rules apply in a proposed text. They are never fixed for the person. */
+export function ruleChecks(text: string, kind: HelpKind, rules: WritingCheck[], lang: string): HelpCheck[] {
+  const out: HelpCheck[] = [];
+  for (const rule of rules) {
+    if (!rule.resources.includes(kind)) continue;
+    let pattern: RegExp;
+    let near: RegExp | null;
+    let scope = text;
+    try {
+      pattern = new RegExp(rule.pattern, "gu");
+      near = rule.near ? new RegExp(rule.near, "u") : null;
+      if (rule.until) {
+        const until = new RegExp(rule.until, "u");
+        const stop = linesOf(text).find(({ line }) => until.test(line));
+        if (stop) scope = text.slice(0, stop.at);
+      }
+    } catch {
+      continue; // The package check reports a broken expression; here it just does not apply.
+    }
+    for (const m of scope.matchAll(pattern)) {
+      const start = m.index!;
+      const end = start + m[0].length;
+      if (end === start) continue;
+      if (near && !near.test(sentenceAt(text, start, end))) continue;
+      out.push({
+        id: rule.id,
+        fix: "none",
+        excerpt: excerptAt(text, start, end),
+        message: { text: rule.message[lang] ?? rule.message.es ?? Object.values(rule.message)[0] ?? "" },
+        why: rule.why[lang] ?? rule.why.es ?? Object.values(rule.why)[0],
+        start,
+        end,
+      });
+    }
+  }
   return out.sort((a, b) => a.start - b.start);
 }
 

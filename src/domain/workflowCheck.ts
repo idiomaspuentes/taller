@@ -236,6 +236,31 @@ export function processProblems(pack: ProcessPackage, opts: { tools: SolverApp[]
     workflowIds.add(id);
     problems.push(...workflowProblems(workflow, opts));
   }
+  if (pack.writingChecks !== undefined && !Array.isArray(pack.writingChecks)) problems.push("«writingChecks» debe ser una lista de reglas.");
+  const ruleIds = new Set<string>();
+  for (const rule of list(pack.writingChecks)) {
+    const id = text(rule.id);
+    const where = `regla de redacción «${id || "(sin id)"}»`;
+    if (!id) problems.push(`${where}: necesita id.`);
+    if (ruleIds.has(id)) problems.push(`${where}: el id está repetido.`);
+    ruleIds.add(id);
+    const resources = Array.isArray(rule.resources) ? rule.resources.map(String) : [];
+    if (!resources.length) problems.push(`${where}: necesita al menos un recurso («notas» o «palabras»).`);
+    for (const resource of resources) if (resource !== "notas" && resource !== "palabras") problems.push(`${where}: el recurso «${resource}» no existe.`);
+    for (const field of ["pattern", "near", "until"] as const) {
+      if (field !== "pattern" && rule[field] === undefined) continue;
+      try {
+        if (!text(rule[field])) throw new Error("empty");
+        new RegExp(text(rule[field]), "gu");
+      } catch {
+        problems.push(`${where}: «${field}» no es una expresión regular válida.`);
+      }
+    }
+    for (const field of ["message", "why"] as const) {
+      const value = isObject(rule[field]) ? rule[field] : {};
+      for (const lang of opts.languages) if (!text(value[lang])) problems.push(`${where}: falta «${field}» en «${lang}».`);
+    }
+  }
   for (const [lang, words] of Object.entries(pack.glossary ?? {})) {
     if (!opts.languages.includes(lang)) problems.push(`glosario: el idioma «${lang}» no es un idioma de la interfaz.`);
     for (const [from, to] of Object.entries(words)) if (!from.trim() || !String(to).trim()) problems.push(`glosario «${lang}»: hay una entrada vacía.`);

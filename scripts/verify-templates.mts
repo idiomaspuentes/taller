@@ -197,6 +197,16 @@ test("el catálogo guardado de una organización se pone al día con lo que trae
   assert.deepEqual(withShippedTools(upgraded, shipped).solvers.map((tool) => tool.id), ["editor", "propia", "extra"]);
 });
 
+test("un writingCheck con expresión inválida o sin mensaje en un idioma es un problema", () => {
+  const rule = { id: "regla", resources: ["notas"], pattern: "x", message: { es: "m", pt: "m" }, why: { es: "w", pt: "w" } };
+  const problemsOf = (writingChecks: unknown[]) =>
+    processProblems({ id: "p", writingChecks } as unknown as ProcessPackage, { tools: [], languages: LANGUAGES });
+  assert.deepEqual(problemsOf([rule]), []);
+  assert.match(problemsOf([{ ...rule, pattern: "(" }]).join("\n"), /regla.*expresión/);
+  assert.match(problemsOf([{ ...rule, message: { es: "m" } }]).join("\n"), /regla.*«pt»/);
+  assert.match(problemsOf([{ ...rule, resources: ["otro"] }]).join("\n"), /regla.*recurso/);
+});
+
 // ---------------------------------------------------------------- the packages of taller.config.ts
 for (const pack of tallerConfig.processes) {
   test(`paquete «${pack.id}»: sin problemas`, () => {

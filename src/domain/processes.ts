@@ -1,6 +1,6 @@
 import { tallerConfig } from "../../taller.config";
 import { DEFAULT_LOAD_LIMITS, type LoadLimits } from "./processLoad";
-import type { ProcessPackage } from "../config/types";
+import type { ProcessPackage, WritingCheck } from "../config/types";
 import { DEFAULT_SOLVERS_CATALOG } from "./solvers";
 import { normalizeWorkflowTemplate } from "./store";
 import type { Localized, TaskStep, WorkflowTemplate } from "./types";
@@ -100,6 +100,11 @@ export function tasksToRedoAfter(resource: string, packages: ProcessPackage[] = 
 /** The titles of the sections left out of an article read to understand a point, of every package (see `readingOmits`). */
 export function readingOmits(packages: ProcessPackage[] = tallerConfig.processes): string[] {
   return [...new Set(packages.flatMap((pack) => (Array.isArray(pack.readingOmits) ? pack.readingOmits.filter((x): x is string => typeof x === "string" && Boolean(x.trim())) : [])))];
+}
+
+/** The writing rules of every package, shown under a proposed note or article (see `writingChecks`). */
+export function writingChecks(packages: ProcessPackage[] = tallerConfig.processes): WritingCheck[] {
+  return packages.flatMap((pack) => (Array.isArray(pack.writingChecks) ? pack.writingChecks : []));
 }
 
 export function localized(name: string, names: Localized | undefined, language: string): string {

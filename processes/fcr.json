@@ -3175,6 +3175,72 @@
     "Estratégias de tradução aplicadas",
     "Exemplos de estratégias de tradução aplicadas"
   ],
+  "writingChecks": [
+    {
+      "id": "mayuscula-para-dios",
+      "resources": [
+        "notas",
+        "palabras"
+      ],
+      "pattern": "(?<!\\p{L})él(?!\\p{L})",
+      "near": "(?<!\\p{L})(Dios|Jehová|Señor|Jesús|Cristo)(?!\\p{L})",
+      "message": {
+        "es": "¿Se refiere a Dios? En las ayudas va «Él» con mayúscula.",
+        "pt": "Refere-se a Deus? Nas ajudas vai «Ele» com maiúscula."
+      },
+      "why": {
+        "es": "Regla del equipo: mayúscula para Dios y Jesús en las ayudas y el TPS; no en el TPL.",
+        "pt": "Regra da equipe: maiúscula para Deus e Jesus nas ajudas e no TPS; não no TPL."
+      }
+    },
+    {
+      "id": "rey-humano-minuscula",
+      "resources": [
+        "notas",
+        "palabras"
+      ],
+      "pattern": "(?<!\\p{L})Rey (?!de [rR]eyes|Jes[uú]s)[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+",
+      "message": {
+        "es": "Un rey humano va con minúscula: «el rey Asuero».",
+        "pt": "Um rei humano vai com minúscula: «o rei Assuero»."
+      },
+      "why": {
+        "es": "La mayúscula de «Rey» es solo para Dios o Jesús.",
+        "pt": "A maiúscula de «Rei» é só para Deus ou Jesus."
+      }
+    },
+    {
+      "id": "negrita-en-definicion",
+      "resources": [
+        "palabras"
+      ],
+      "pattern": "\\*\\*[^*\\n]+\\*\\*",
+      "until": "^## (Ejemplos|Exemplos)",
+      "message": {
+        "es": "En la definición no se usa negrita; la palabra de la que se habla va entre comillas.",
+        "pt": "Na definição não se usa negrito; a palavra de que se fala vai entre aspas."
+      },
+      "why": {
+        "es": "La negrita es solo para la palabra dentro de las historias bíblicas.",
+        "pt": "O negrito é só para a palavra dentro das histórias bíblicas."
+      }
+    },
+    {
+      "id": "traduccion-alternativa-entre-comillas",
+      "resources": [
+        "notas"
+      ],
+      "pattern": "Traducción alternativa:\\s*\\*\\*",
+      "message": {
+        "es": "La traducción alternativa va entre comillas, no en negrita.",
+        "pt": "A tradução alternativa vai entre aspas, não em negrito."
+      },
+      "why": {
+        "es": "En las notas, la negrita es solo para las palabras del TPL.",
+        "pt": "Nas notas, o negrito é só para as palavras do TPL."
+      }
+    }
+  ],
   "glossary": {
     "pt": {
       "Flujo de Creación de Recursos": "Fluxo de Criação de Recursos",

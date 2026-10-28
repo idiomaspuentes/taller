@@ -4,7 +4,8 @@
  * Run: npm run verify:help-checks
  */
 import assert from "node:assert/strict";
-import { applyFixes, mechanicalChecks, type HelpCheck } from "../src/domain/helpChecks";
+import { applyFixes, mechanicalChecks, ruleChecks, type HelpCheck } from "../src/domain/helpChecks";
+import { writingChecks } from "../src/domain/processes";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -84,6 +85,50 @@ test("viñeta sin espacio", () => {
 
 test("las comillas no se avisan", () => {
   assert.deepEqual(ids(notas("\"reinar\" y “reinar” y «reinar»")), []);
+});
+
+// ---------------------------------------------------------------- the team's rules, from the process package
+const RULES = writingChecks();
+const reglas = (text: string, kind: "notas" | "palabras" = "notas") => ruleChecks(text, kind, RULES, "es");
+
+test("él cerca de Dios avisa como pregunta", () => {
+  const checks = reglas("Esto se dirige hacia Dios porque él es justo.");
+  assert.equal(checks.length, 1);
+  assert.match((checks[0]!.message as { text: string }).text, /^¿Se refiere a Dios\?/);
+  assert.ok(checks[0]!.why, "una regla dice por qué");
+  assert.deepEqual(reglas("Asuero dijo que él iría."), []);
+});
+
+test("Rey con nombre avisa, Rey de reyes no", () => {
+  assert.equal(reglas("Esto pasó con el Rey Asuero.").length, 1);
+  assert.deepEqual(reglas("Jesús es Rey de reyes."), []);
+});
+
+test("negrita en la definición sí, en los ejemplos no", () => {
+  const article = [
+    "# provincia",
+    "",
+    "## Definición",
+    "",
+    "Una **provincia** es una parte de un reino.",
+    "",
+    "## Ejemplos de las historias bíblicas",
+    "",
+    "* **[1:1](../01/01.md)** Los **judíos** vivían en todas las provincias.",
+  ].join("\n");
+  assert.equal(reglas(article, "palabras").length, 1);
+  assert.deepEqual(reglas(article, "notas"), [], "es una regla de los artículos, no de las notas");
+});
+
+test("traducción alternativa en negrita", () => {
+  assert.equal(reglas("Traducción alternativa: **incluso hoy**").length, 1);
+  assert.deepEqual(reglas("Traducción alternativa: “incluso hoy”"), []);
+});
+
+test("las reglas no se arreglan solas", () => {
+  const all = [...reglas("hacia Dios porque él es justo, con el Rey Asuero. Traducción alternativa: **hoy**")];
+  assert.equal(all.length, 3);
+  assert.ok(all.every((c) => c.fix === "none" && c.replacement === undefined));
 });
 
 console.log(`verify-help-checks: ${passed} checks passed.`);
