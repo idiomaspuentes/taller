@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { applyFixes, mechanicalChecks, ruleChecks, type HelpCheck } from "../src/domain/helpChecks";
 import { writingChecks } from "../src/domain/processes";
+import { articleStrongs, strongKey, strongMismatch } from "../src/domain/termStrong";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -129,6 +130,55 @@ test("las reglas no se arreglan solas", () => {
   const all = [...reglas("hacia Dios porque él es justo, con el Rey Asuero. Traducción alternativa: **hoy**")];
   assert.equal(all.length, 3);
   assert.ok(all.every((c) => c.fix === "none" && c.replacement === undefined));
+});
+
+// ---------------------------------------------------------------- the Strong number of a linked word
+const KING_ES = "# rey\n\n## Definición\n\nUn rey…\n\n## Datos de esta palabra\n\n*   Números de Strong: H4427, H4428, H4430, G0935, G0936.\n";
+const KING_EN = "# king\n\n## Word Data:\n\n* Strong’s: H4427, H4428, H4430, G09350, G09360\n";
+const NO_STRONG = "# rey\n\n## Definición\n\nUn rey…\n";
+const VERSE = [
+  { surface: "וַ⁠יְהִ֖י", lemma: "הָיָה", strong: "c:H1961" },
+  { surface: "הַ⁠מֶּ֣לֶךְ", lemma: "מֶלֶךְ", strong: "d:H4428" },
+  { surface: "יְשׁוּעָ֑ה", lemma: "יְשׁוּעָה", strong: "H3444" },
+];
+
+test("strongKey quita prefijos, ceros y la letra final", () => {
+  assert.equal(strongKey("b:H4428"), "H4428");
+  assert.equal(strongKey("H0148"), "H148");
+  assert.equal(strongKey("H1961a"), "H1961");
+  assert.equal(strongKey("G07440"), "G744");
+  assert.equal(strongKey("G0744"), "G744");
+  assert.equal(strongKey("G744"), "G744");
+  assert.equal(strongKey(""), null);
+  assert.equal(strongKey("x"), null);
+});
+
+test("la lista sale de la línea Strong en español o en inglés", () => {
+  assert.deepEqual(articleStrongs(KING_ES), ["H4427", "H4428", "H4430", "G935", "G936"]);
+  assert.deepEqual(articleStrongs(KING_EN), ["H4427", "H4428", "H4430", "G935", "G936"]);
+  assert.deepEqual(articleStrongs(NO_STRONG), []);
+});
+
+test("la palabra del rey está en el artículo del rey", () => {
+  assert.equal(strongMismatch({ words: VERSE, quote: "הַ⁠מֶּ֣לֶךְ", occurrence: 1, article: KING_ES, sourceArticle: KING_EN }), null);
+});
+
+test("una palabra enlazada a un artículo que no la tiene avisa", () => {
+  assert.deepEqual(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: KING_ES, sourceArticle: null }), { strongs: ["H3444"] });
+});
+
+test("sin Strong en ningún artículo, calla", () => {
+  assert.equal(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: NO_STRONG, sourceArticle: null }), null);
+  assert.equal(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: null, sourceArticle: null }), null);
+});
+
+test("el inglés suple al español", () => {
+  assert.deepEqual(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: NO_STRONG, sourceArticle: KING_EN }), { strongs: ["H3444"] });
+  assert.equal(strongMismatch({ words: VERSE, quote: "הַ⁠מֶּ֣לֶךְ", occurrence: 1, article: NO_STRONG, sourceArticle: KING_EN }), null);
+});
+
+test("una cita que el versículo no dice no se juzga", () => {
+  assert.equal(strongMismatch({ words: VERSE, quote: "שָׁלוֹם", occurrence: 1, article: KING_ES, sourceArticle: null }), null);
 });
 
 console.log(`verify-help-checks: ${passed} checks passed.`);

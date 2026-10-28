@@ -275,7 +275,7 @@ export function matchHelpEntryToTokenIndicesByAlignment(
  * Where a quote is in a verse of the original: each stretch of it whole words in a row, the first one the n-th time
  * the verse says it and the others after it. `null` when the verse does not say it.
  */
-function quoteInOriginal(original: OriginalToken[], quote: string, occurrence: number): number[] | null {
+export function quoteInOriginal(original: OriginalToken[], quote: string, occurrence: number): number[] | null {
   const words = original.map((token) => normalizeHelpsText(token.content));
   // Made plain before it is cut into words: a maqaf joins two words of the original («לֵב־הַמֶּלֶךְ» is two), and it
   // becomes a space only then. Cut first, «לֵב־הַמֶּלֶךְ» was one word the verse never says, every Hebrew quote with a
