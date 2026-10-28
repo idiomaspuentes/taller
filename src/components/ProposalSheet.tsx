@@ -7,6 +7,7 @@ import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { HelpMarkdownView } from "./HelpMarkdownView";
 import { FormalAddressHint } from "./FormalAddressHint";
+import { HelpChecksHint, helpKindOf } from "./HelpChecksHint";
 import type { HelpsAddress } from "../domain/formalAddress";
 import { isScriptureResource, type ScopeKey } from "../domain/types";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -150,6 +151,8 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
   const canSplit = canWrite && Boolean(target?.split) && !target?.add;
   // A verse is what its people say, «tú» included: only a help speaks to the translator.
   const helpAddress = target && !isScriptureResource(target.resource as ScopeKey) ? address : undefined;
+  /** Notes and Words articles are checked as they are written: what Taller finds goes under the box. */
+  const helpKind = helpKindOf(target?.resource);
   /** What is written starts from: the version this one answers, the one already proposed, or the words as they are. */
   const base = startFrom ?? target?.start ?? current;
 
@@ -305,6 +308,14 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
                 address={helpAddress}
                 onFix={(fixed) => setText(target?.format === "note" ? noteToTsv(fixed) : fixed)}
               />
+              {helpKind ? (
+                <HelpChecksHint
+                  text={target?.format === "note" ? noteFromTsv(text) : text}
+                  kind={helpKind}
+                  before={target?.format === "note" ? noteFromTsv(current) : current}
+                  onFix={(fixed) => setText(target?.format === "note" ? noteToTsv(fixed) : fixed)}
+                />
+              ) : null}
               {target?.start ? <p className="af-hint">{target.startBy ? t("pr.fromOther").replace("{who}", target.startBy) : t("pr.fromPrior")}</p> : !changed ? <p className="af-hint">{t(target?.add ? "pr.writeNew" : "pr.same")}</p> : null}
               {/* What the new version changes, as it is written: what is crossed out and what is new. */}
               {changed && !target?.add ? (
@@ -345,6 +356,7 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
                   </label>
                   <MarkdownEditor key={`${opening}|${targetId}|new|${turn}`} id="pr-other" compact book={book} value={noteFromTsv(other)} onChange={(written) => setOther(noteToTsv(written))} />
                   <FormalAddressHint text={noteFromTsv(other)} address={helpAddress} onFix={(fixed) => setOther(noteToTsv(fixed))} />
+                  {helpKind ? <HelpChecksHint text={noteFromTsv(other)} kind={helpKind} onFix={(fixed) => setOther(noteToTsv(fixed))} /> : null}
                 </div>
               ) : (
                 <div className="pr-field">
@@ -353,6 +365,7 @@ export function ProposalSheet({ open, onClose, targets, failed, reason: firstRea
                   </label>
                   <MarkdownEditor key={`${opening}|${targetId}|keeps|${turn}`} id="pr-text" compact book={book} value={noteFromTsv(text)} onChange={(written) => setText(noteToTsv(written))} />
                   <FormalAddressHint text={noteFromTsv(text)} address={helpAddress} onFix={(fixed) => setText(noteToTsv(fixed))} />
+                  {helpKind ? <HelpChecksHint text={noteFromTsv(text)} kind={helpKind} before={noteFromTsv(current)} onFix={(fixed) => setText(noteToTsv(fixed))} /> : null}
                   <p className="af-hint">{t(changed ? "pr.splitKeepsHint" : "pr.splitTakeOut")}</p>
                 </div>
               )}

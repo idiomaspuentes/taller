@@ -3971,5 +3971,11 @@
   "hc.spaceBefore": "Sobra el espacio antes del signo.",
   "hc.listComma": "La línea termina en coma.",
   "hc.bareHeading": "Falta «##» en el encabezado.",
-  "hc.bulletSpace": "Falta el espacio después del asterisco."
+  "hc.bulletSpace": "Falta el espacio después del asterisco.",
+  "hc.found": "Taller encontró {n} cosas",
+  "hc.foundOne": "Taller encontró 1 cosa",
+  "hc.more": "Ver {n} más",
+  "hc.fix": "Arreglar",
+  "hc.why": "Por qué",
+  "hc.strong": "Esta palabra ({strong}) no está entre las del artículo; revise si el enlace es el correcto."
 }

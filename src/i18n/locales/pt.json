@@ -3971,5 +3971,11 @@
   "hc.spaceBefore": "Sobra o espaço antes do sinal.",
   "hc.listComma": "A linha termina em vírgula.",
   "hc.bareHeading": "Falta «##» no título da seção.",
-  "hc.bulletSpace": "Falta o espaço depois do asterisco."
+  "hc.bulletSpace": "Falta o espaço depois do asterisco.",
+  "hc.found": "O Taller encontrou {n} coisas",
+  "hc.foundOne": "O Taller encontrou 1 coisa",
+  "hc.more": "Ver mais {n}",
+  "hc.fix": "Corrigir",
+  "hc.why": "Por quê",
+  "hc.strong": "Esta palavra ({strong}) não está entre as do artigo; confira se o link é o correto."
 }

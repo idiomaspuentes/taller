@@ -20,7 +20,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { appendCheckAnswers, loadCheckAnswers } from "../dcs/checkStore";
-import { chapterTextOf, loadArticleBody, loadTermTitles, type ChapterText } from "../dcs/afinacionLoad";
+import { chapterTextOf, loadArticleBody, loadTermTitles, originalWordsOf, readRaw, type ChapterText } from "../dcs/afinacionLoad";
+import { articleStrongs, strongMismatch } from "../domain/termStrong";
 import { resolveSourcePackage, sourcePackageLang } from "../domain/sourcePackage";
 import { articleBody, termArticlePath, termLabel, type TermKind } from "../domain/afinacionWords";
 import { loadChecklist, type ChecklistData, type ChecklistItem, type ChecklistKind, type ChecklistText } from "../dcs/checklistLoad";
@@ -41,6 +42,8 @@ import { NoteThread, THREAD_BOX } from "./NoteThread";
 import { noteTimeline } from "../domain/noteTimeline";
 import { SituationLine } from "./SituationLine";
 import { ProposalCard } from "./ProposalCard";
+import { HelpChecksHint, helpKindOf } from "./HelpChecksHint";
+import { noteFromTsv, noteToTsv } from "../domain/helpMarkup";
 import { AdjustmentList } from "./AdjustmentList";
 import { applyProposal, sendProposal as askOwnersFor } from "../dcs/checkProposals";
 import { shareTurnFromTool } from "../dcs/roundClose";
@@ -138,6 +141,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     adjust?: ProposalView;
     /** An adjustment written over another version, written again over the one in force: the one it takes the place of. */
     rewrites?: string;
+    /** What the adjustment starts from, when it is not the version adjusted: that version with what Taller fixed. */
+    start?: string;
   } | null>(null);
   /** «Hay algo que cambiar» was touched: what is wrong is chosen among the questions of the step in view. */
   const [choosing, setChoosing] = useState(false);
@@ -439,6 +444,31 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, Boolean(data)]);
+  /**
+   * The article as the source has it, read only when the team's lists no Strong numbers: the warning that the linked
+   * word is not among the article's reads them from there.
+   */
+  const [sourceTerms, setSourceTerms] = useState<Record<string, string | null>>({});
+  const teamTerm = slug ? articles[slug] : undefined;
+  useEffect(() => {
+    if (!slug || teamTerm === undefined || (teamTerm && articleStrongs(teamTerm).length) || slug in sourceTerms || !session?.token || !data) return;
+    let cancelled = false;
+    const pkg = resolveSourcePackage(data.board?.settings);
+    void readRaw(session, pkg.owner, pkg.tw, termArticlePath(termKind as TermKind, slug))
+      .catch(() => null)
+      .then((text) => !cancelled && setSourceTerms((prev) => ({ ...prev, [slug]: text })));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, teamTerm, Boolean(data)]);
+  /** The words of the original with their Strong numbers, read once per book, for the Words steps only. */
+  const originalWords = useMemo(() => (kind === "palabras" ? originalWordsOf(data?.original ?? null) : {}), [kind, data?.original]);
+  /** The linked word is not among the article's Strong numbers: said over the article, never decided for the person. */
+  const strongWarning =
+    slug && item && teamTerm !== undefined
+      ? strongMismatch({ words: originalWords[`${item.chapter}:${item.verse}`] ?? [], quote: item.quote ?? "", occurrence: Number(item.occurrence ?? 1) || 1, article: teamTerm, sourceArticle: sourceTerms[slug] ?? null })
+      : null;
   // On to another group, or to another help: the screen is placed so that the help starts right under the text and
   // its questions clear the bar at the foot. The text a group is read against had come on screen above, and its
   // questions were left under the bar (the first at 788 px of 812); in the group after, the note itself was under
@@ -808,10 +838,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
    * Adjusting a proposal: a new version of it, from its words, answering the questions it answered (21 October). The
    * team goes on adjusting one proposal until three agree on a version, instead of piling up proposals that compete.
    */
-  const adjustProposal = (view: ProposalView, more: { answerItemId: string; questionId: string }[] = [], rewrites?: string) => {
+  const adjustProposal = (view: ProposalView, more: { answerItemId: string; questionId: string }[] = [], rewrites?: string, start?: string) => {
     const [first, ...others] = slotsOfProposal(view);
     for (const one of more) if (!(one.answerItemId === first!.answerItemId && one.questionId === first!.questionId) && !others.some((o) => o.answerItemId === one.answerItemId && o.questionId === one.questionId)) others.push(one);
-    setProposing({ answerItemId: first!.answerItemId, questionId: first!.questionId, reason: "", others, adjust: view, ...(rewrites ? { rewrites } : {}) });
+    setProposing({ answerItemId: first!.answerItemId, questionId: first!.questionId, reason: "", others, adjust: view, ...(rewrites ? { rewrites } : {}), ...(start !== undefined ? { start } : {}) });
   };
   /** The questions a version answers, the first one first: a new version of it answers the same. */
   const slotsOfProposal = (view: ProposalView) => {
@@ -1424,6 +1454,25 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
       </span>
     ) : null;
   };
+  /**
+   * What Taller finds by itself in a proposed note or article, under it. «Arreglar» does not touch somebody's
+   * proposal: it opens an adjustment of it with what was fixed, as any other adjustment.
+   */
+  const checksOf = (head: ProposalView) => {
+    const helpKind = helpKindOf(head.proposal.resource);
+    const after = head.proposal.after;
+    if (!helpKind || !after || head.proposal.split || stepDone) return null;
+    const note = helpKind === "notas";
+    const before = head.proposal.before ?? (note ? item?.body : slug ? (articles[slug] ?? undefined) : undefined);
+    return (
+      <HelpChecksHint
+        text={note ? noteFromTsv(after) : after}
+        kind={helpKind}
+        before={before && note ? noteFromTsv(before) : before}
+        onFix={(fixed) => adjustProposal(head, [], undefined, note ? noteToTsv(fixed) : fixed)}
+      />
+    );
+  };
   /** With a proposal, the note is read as it would leave it, with what others suggest changing of it under it. */
   const proposalShown = (() => {
     // Asked something about a note with a proposal, what is read is still the proposal.
@@ -1438,7 +1487,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     const who = (by: string) => (isMe(by) ? t("ck.talkYou") : `@${by}`);
     return (
       <>
-        <ProposalCard head={head} original={item.body} title={title} reason={reason} reasonBy={who(author)} />
+        <ProposalCard head={head} original={item.body} title={title} reason={reason} reasonBy={who(author)} hint={checksOf(head)} />
         <AdjustmentList
           adjustments={option?.adjustments ?? []}
           head={head}
@@ -2313,6 +2362,11 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
             {/* In the article's step the note is what the article is checked for: named, as context. */}
             {aboutArticle && !articleInSource ? <span className="ck-chip">{t("ck.noteChip")}</span> : null}
             {aboutArticle ? (proposalShown ?? helpRead) : null}
+            {strongWarning ? (
+              <p className="hc-strong" role="status">
+                {t("hc.strong").replace("{strong}", strongWarning.strongs.join(", "))}
+              </p>
+            ) : null}
             {slug ? articles[slug] === undefined ? <p className="af-hint">{t("ur.readingArticle")}</p> : articles[slug] === null ? <p className="af-hint">{t("ur.noArticle")}</p> : <HelpMarkdownView className="ur-md ur-article ck-article" content={articleBody(articles[slug]!)} /> : null}
             {/* A term is already named by its title above: the path of its article says nothing to who checks it. */}
             {articleInSource ? (
@@ -2781,7 +2835,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
         open={Boolean(proposing)}
         onClose={() => setProposing(null)}
         targets={proposing?.adjust ? targets.filter((target) => target.resource === proposing.adjust!.proposal.resource && (target.rowId ?? "") === (proposing.adjust!.proposal.rowId ?? "") && (target.path ?? "") === (proposing.adjust!.proposal.path ?? "")).concat(targets).slice(0, 1) : targets}
-        startFrom={proposing?.adjust?.proposal.after}
+        startFrom={proposing?.start ?? proposing?.adjust?.proposal.after}
         lead={proposing?.adjust && people && !isMe(authorOfOption(proposing.adjust)) ? t("pr.adjustingOf").replaceAll("{who}", `@${authorOfOption(proposing.adjust)}`) : proposing?.adjust ? t("pr.adjusting").replace("{n}", String(chainOf(proposals, proposing.adjust.proposal.id).length)).replace("{who}", isMe(proposing.adjust.by) ? t("ck.talkYou") : `@${proposing.adjust.by}`) : undefined}
         // What the step reads the help against, beside the help: in the TPL's step the note, or the TPL itself, may be
         // what needs the change.

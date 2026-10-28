@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { readable, type ProposalView } from "../domain/checkProposal";
 import { useT } from "../i18n/messages";
 import { TextChangeView } from "./TextChangeView";
@@ -8,7 +8,7 @@ import { TextChangeView } from "./TextChangeView";
  * it, not the note. What changes is marked; the note as it is stays a touch away. It was a list of options to choose
  * among, under questions about the note as it was.
  */
-export function ProposalCard({ head, original, title, reason, reasonBy }: {
+export function ProposalCard({ head, original, title, reason, reasonBy, hint }: {
   head: ProposalView;
   /** The note as it is. */
   original: string;
@@ -17,6 +17,8 @@ export function ProposalCard({ head, original, title, reason, reasonBy }: {
   reason?: string;
   /** Who gave the reason, as they are named («@ana»). */
   reasonBy?: string;
+  /** Under the change: what Taller found in it by itself (see `HelpChecksHint`). */
+  hint?: ReactNode;
 }) {
   const t = useT();
   // Together, what changes is marked in one text; apart, the note as it is and then as it would be.
@@ -52,6 +54,7 @@ export function ProposalCard({ head, original, title, reason, reasonBy }: {
           <b>{reasonBy}</b>: «{reason}»
         </p>
       ) : null}
+      {hint}
     </div>
   );
 }
