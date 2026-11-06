@@ -84,12 +84,14 @@ test("un paso que toman varias personas tiene un solo asiento, y no pide a nadie
       assert.equal(step.minAgree, undefined);
       assert.equal(step.excludePriorStepIds, undefined);
       assert.equal(step.excludeIssueAssignee, undefined);
+      assert.equal(step.openHours, undefined, `${step.id}: una sola persona es todo el paso, no espera a nadie`);
       assert.deepEqual(thresholdsOf(step), { minAgree: 1, minIndependent: 0 });
     }
     // On a project, and written and read again, it still says so.
     const board = JSON.parse(JSON.stringify(boardOf(trial))) as AssignmentsDoc;
     for (const task of board.teams) for (const step of task.steps ?? []) if (step.claimMode === "pool") assert.deepEqual([step.minAssignees, step.minIndependent], [1, 0]);
   }
+  assert.ok(processes.some((workflow) => stepsOf(workflow).some(({ step }) => step.openHours)), "el proceso de verdad deja abiertos algunos pasos");
 });
 
 test("el proceso de verdad no cambia: sus pasos piden a las personas que pedían", () => {
