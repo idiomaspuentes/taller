@@ -313,7 +313,7 @@ Cualquiera puede corregir el versículo en el borrador del grupo; al corregirlo,
 ya habían dado su acuerdo son avisados y vuelven a mirarlo. Un versículo ya acordado se reabre con una duda
 o una corrección.
 
-**Se cierra** cuando llegaron todas las porciones de su texto todo está acordado y ya pasó su tiempo abierto (sección 4). La Afinación de ese texto en
+**Se cierra** cuando llegaron todas las porciones de su texto, todo está acordado y ya pasó su tiempo abierto (sección 4). La Afinación de ese texto en
 el capítulo espera a este cierre: los desafíos del TPL a la revisión grupal del TPL, los del TPS a la del TPS.
 
 ### 3.5 Traducir Palabras · 3.6 Traducir Academia
@@ -457,8 +457,8 @@ acto:
 
 - Queda abierto **72 horas** para que otras personas del paso opinen. Una opinión más de acuerdo **no alarga** ese
   plazo. Se cierra antes si ya opinaron todas las personas sentadas en el paso.
-- Una objeción, una propuesta de cambio o una corrección del texto lo sacan del acuerdo y vuelve a disputa. Cuando se
-  acuerda de nuevo, empiezan otras 72 horas.
+- Una objeción, una propuesta de cambio o una corrección del texto lo sacan del acuerdo y vuelve a estar en disputa.
+  Cuando se acuerda de nuevo, empiezan otras 72 horas.
 - Lo que el equipo decide en la reunión se cierra en el acto, sin esperar.
 - Un ítem acordado, aun con su plazo vencido, se puede reabrir mientras el paso siga abierto. Con el paso cerrado,
   lo que alguien vea después va como corrección a la fase dueña del texto (Afinación, para el TPL y el TPS), como
