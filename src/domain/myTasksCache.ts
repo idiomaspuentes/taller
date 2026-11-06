@@ -16,7 +16,9 @@ export type KeptTasks = {
   closed: DcsIssue[];
 };
 
-const PREFIX = "taller-mis-tareas:";
+// «-v2»: a list kept before a project was read whole (6 November 2026) misses the oldest subtareas of a big book, and
+// bringing it up to date only adds what changed since: it would never get them back. Those lists are not used.
+const PREFIX = "taller-mis-tareas-v2:";
 /** A list older than this is not shown: after days away it would show work long gone. */
 const KEEP_MS = 3 * 24 * 60 * 60 * 1000;
 
