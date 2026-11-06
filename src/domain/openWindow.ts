@@ -50,10 +50,15 @@ export function latestOf(dates: (string | undefined)[]): string | undefined {
   return latest;
 }
 
-/** A time said as a day and an hour in the language of the interface: `{day}` and `{time}` in `pattern`. */
+/**
+ * A time said as a day and an hour in the language of the interface: `{day}` and `{time}` in `pattern`. The day is
+ * short, «el jueves 12 a las 10:00»: it is never more than a few days ahead, and the month made it a long line.
+ */
 export function sayOpenDate(iso: string, language: string, pattern: string): string {
   const date = new Date(iso);
-  const day = date.toLocaleDateString(language, { weekday: "long", day: "numeric", month: "long" });
+  const long = date.toLocaleDateString(language, { weekday: "long", day: "numeric" });
+  // Spanish reads «lunes 9», without the comma Intl puts after the weekday («lunes, 9»).
+  const day = language.toLowerCase().startsWith("es") ? long.replace(/^(\p{L}+),\s*/u, "$1 ") : long;
   const time = date.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" });
   return pattern.replace(/\{day\}/g, day).replace(/\{time\}/g, time);
 }

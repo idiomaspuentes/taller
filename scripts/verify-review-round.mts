@@ -452,11 +452,23 @@ test("el plazo de la ronda es el más tardío de los ítems abiertos", () => {
 });
 
 test("la fecha del plazo se dice con el día y la hora en el idioma de la interfaz", () => {
-  const said = sayOpenDate("2026-10-08T10:30:00.000Z", "es", "hasta el {day} a las {time}");
+  const iso = "2026-11-09T10:30:00.000Z";
+  const said = sayOpenDate(iso, "es", "hasta el {day} a las {time}");
   assert.ok(!said.includes("{day}") && !said.includes("{time}"), said);
-  const time = new Date("2026-10-08T10:30:00.000Z").toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  const time = new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
   assert.ok(said.includes(time), `${said} lleva la hora ${time}`);
-  assert.ok(/30/.test(said), said);
+});
+
+test("la fecha del plazo es corta: el día de la semana y el número, sin el mes", () => {
+  const iso = "2026-11-09T10:30:00.000Z";
+  const said = sayOpenDate(iso, "es", "hasta el {day} a las {time}");
+  assert.ok(!/noviembre|november/i.test(said), `${said} no dice el mes`);
+  // «lunes 9», as the spec's «el jueves 12 a las 10:00», without the comma Intl may put after the weekday.
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString("es", { weekday: "long" });
+  const day = date.toLocaleDateString("es", { day: "numeric" });
+  assert.ok(said.includes(`hasta el ${weekday} ${day} a las`), said);
+  assert.ok(!/novembro|november/i.test(sayOpenDate(iso, "pt", "até {day} às {time}")), "en portugués tampoco");
 });
 
 console.log(`\nverify-review-round: ${passed} checks passed.`);
