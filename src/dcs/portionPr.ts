@@ -25,6 +25,7 @@ import {
   pullReviewNeedsSubmit,
   isOwnedWorkBranch,
   removePortionPrFromBody,
+  reusablePull,
   upsertPortionPrInBody,
   type PortionMergeStatus,
   type PortionPrMarker,
@@ -245,7 +246,8 @@ export async function ensurePortionPr(
     session.token,
   );
   let created = false;
-  let pull = found;
+  // A review closed without being delivered is not this one (see `reusablePull`): a new one is opened.
+  let pull = reusablePull(found) ? found : null;
   if (!pull) {
     pull = await createPull(config, owner, repo, {
       title: `${ctx.book} ${ctx.ref} · ${ctx.taskName || ctx.taskId} (#${issue.number})`,

@@ -470,6 +470,16 @@ export function upsertPortionPrInBody(
   return trimmed ? `${trimmed}\n\n${encoded}\n` : `${encoded}\n`;
 }
 
+/**
+ * Whether a pull request found by its two branches is the review of this subtarea. Door43 finds one whatever its
+ * state, and a work branch is named by its person and subtarea: a subtarea whose review was closed (it was reset, or
+ * given back) and taken again by the same person found the closed one, with what was said in it. One closed without
+ * being delivered is left as it is, and a new review is opened; a delivered one is still the record of the work.
+ */
+export function reusablePull(pull: { state?: string; merged?: boolean } | null | undefined): boolean {
+  return Boolean(pull) && (Boolean(pull!.merged) || (pull!.state ?? "open").toLowerCase() !== "closed");
+}
+
 /** Drop the portion-PR stamp after this subtarea closes or abandons its PR. */
 export function removePortionPrFromBody(body: string | undefined): string {
   if (!body) return "";
