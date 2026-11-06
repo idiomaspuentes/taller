@@ -13,9 +13,8 @@ import { CorrectionReasons, reasonLine } from "./CorrectionReasons";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadGroupReading, type GroupReadingData, type GroupReadingText } from "../dcs/groupReading";
 import { commentOnIssue } from "../dcs/issues";
-import { completeStepFromTool, stepIsDone, stepSeated } from "../dcs/roundClose";
-import { openWindowFor, sayOpenDate } from "../domain/openWindow";
-import { useNow } from "../useNow";
+import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useOpenWindow, useSayUntil } from "../useOpenWindow";
 import { useStepWork } from "../dcs/stepWork";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -61,11 +60,6 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stepDone, setStepDone] = useState(false);
-  // Those seated on the step, whom an agreed verse waits for; and the next close, kept in state (set below) so the
-  // progress, which depends on the time, does not feed the clock it is read with.
-  const [seated, setSeated] = useState<string[]>([]);
-  const [nextClose, setNextClose] = useState<string | undefined>();
-  const now = useNow(nextClose);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -96,9 +90,6 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     void stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: step.id })
       .then((done) => !cancelled && setStepDone(done))
       .catch(() => undefined);
-    void stepSeated({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: step.id })
-      .then((who) => !cancelled && setSeated(who))
-      .catch(() => !cancelled && setSeated([]));
     return () => {
       cancelled = true;
     };
@@ -110,7 +101,8 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
   const confirmers = useMemo(() => confirmersOf(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
 
-  const openWin = useMemo(() => openWindowFor(step, seated, now), [step, seated, now]);
+  const { open: openWin, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step });
+  const sayUntil = useSayUntil();
   const passages = useMemo<ReadingPassage[]>(() => (data ? readingPassages(data.passages, data.texts) : []), [data]);
   const tallies = useMemo(() => {
     const map = new Map<string, ItemTally>();
@@ -125,7 +117,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     return map;
   }, [data, decisions, teamLevels, confirmers, minAgree, minIndependent, openWin]);
   const progress = useMemo(() => (data ? readingProgress(passages, data.texts, data.chapter, tallies) : null), [data, passages, tallies]);
-  useEffect(() => setNextClose(progress?.closesAt), [progress?.closesAt]);
+  useEffect(() => wakeAt([...tallies.values()].map((point) => point.openUntil)), [tallies, wakeAt]);
   // Counted against the whole chapter: the verses of a passage still being translated are yet to be read.
   const toRead = Math.max(progress?.items ?? 0, passages.reduce((sum, passage) => sum + passage.verses.length, 0) * (data?.texts.length ?? 0));
   useStepWork(session, ctx, progress?.agreed ?? 0, toRead, { stepId: step?.id, on: !stepDone && !saving });
@@ -271,7 +263,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
           <span className="gr-text__state">
             {tally?.state === "agreed" && tally.openUntil ? (
               <>
-                <Check size={12} aria-hidden /> {t("round.openUntil").replace("{date}", sayOpenDate(tally.openUntil, language, t("round.dateAt")))}
+                <Check size={12} aria-hidden /> {sayUntil("round.openUntil", tally.openUntil)}
               </>
             ) : tally?.state === "agreed" ? (
               <>
@@ -471,7 +463,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                 : progress.complete
                   ? t("gr.readyToClose")
                   : progress.allAgreed && progress.closesAt
-                    ? t("round.allAgreedOpen").replace("{date}", sayOpenDate(progress.closesAt, language, t("round.dateAt")))
+                    ? sayUntil("round.allAgreedOpen", progress.closesAt)
                     : !progress.items
                     ? t("gr.nothingYet")
                     : [

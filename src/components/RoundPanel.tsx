@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ItemTally, RoundSummary } from "../domain/reviewRound";
 import { useT } from "../i18n/messages";
-import { useUiLanguage } from "../i18n/language";
-import { sayOpenDate } from "../domain/openWindow";
+import { useSayUntil } from "../useOpenWindow";
 
 /**
  * How a round of review stands, for any tool that reviews item by item: what is still without agreement (the agenda
@@ -29,7 +28,7 @@ export function RoundPanel(props: {
   meetingElsewhere?: boolean;
 }) {
   const t = useT();
-  const language = useUiLanguage();
+  const sayUntil = useSayUntil();
   const { summary } = props;
   // Folded: it is the agenda of whoever settles the points, and it stood open, some two hundred pixels of it, over
   // every point of everybody else.
@@ -70,7 +69,7 @@ export function RoundPanel(props: {
         )
       ) : waiting && summary.closesAt ? (
         <div className="round__ready">
-          <p>{t("round.allAgreedOpen").replace("{date}", sayOpenDate(summary.closesAt, language, t("round.dateAt")))}</p>
+          <p>{sayUntil("round.allAgreedOpen", summary.closesAt)}</p>
         </div>
       ) : null}
 

@@ -57,9 +57,8 @@ import {
 import { tcCheckerOf } from "../domain/tcImport";
 import { canConfirmForTeam, confirmersOf, coordinatorsOf, countsForMinimum, levelLabel, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
-import { completeStepFromTool, stepIsDone, stepSeated } from "../dcs/roundClose";
-import { openWindowFor, sayOpenDate } from "../domain/openWindow";
-import { useNow } from "../useNow";
+import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { sayUntilNow, useOpenWindow, useSayUntil } from "../useOpenWindow";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { useStepWork } from "../dcs/stepWork";
 import { FinalDecision, MeetingChip, RoundPanel } from "./RoundPanel";
@@ -513,12 +512,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const verseText = item ? data?.draftVerses[item.verse] ?? "" : "";
   const hash = textFingerprint(verseText);
 
-  // An agreed item stays open for those seated on the step; the time of the next close is kept in state (set below)
-  // so that the summary, which depends on the time, does not feed the clock it is read with.
-  const [seated, setSeated] = useState<string[]>([]);
-  const [nextClose, setNextClose] = useState<string | undefined>();
-  const now = useNow(nextClose);
-  const open = useMemo(() => openWindowFor(taskStep, seated, now), [taskStep, seated, now]);
+  // An agreed item stays open for those seated on the step.
+  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: taskStep });
+  const sayUntil = useSayUntil();
   const tally = item && data
     ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers, tcCloses: stepDone, open })
     : null;
@@ -547,7 +543,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   };
   /** The point is shown closed, with the one way to open it again; the team's box then only says who answered. */
   const closedView = Boolean(tally?.decided) && !reopened && !fixing;
-  const openUntilText = (until: string) => t("round.openUntil").replace("{date}", sayOpenDate(until, language, t("round.dateAt")));
+  const openUntilText = (until: string) => sayUntil("round.openUntil", until);
   const agreeCount = tally ? (tally.state === "agreed" && tally.openUntil ? openUntilText(tally.openUntil) : tally.state === "agreed" ? t("af.teamAgreed").replace("{n}", String(tally.agree)) : t("af.agreeCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree))) : "";
 
   const summary = useMemo(
@@ -568,7 +564,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, decisions, thresholds.minAgree, thresholds.minIndependent, teamLevels, confirmers, stepDone, open],
   );
-  useEffect(() => setNextClose(summary?.closesAt), [summary?.closesAt]);
+  useEffect(() => wakeAt((summary?.items ?? []).map((point) => point.openUntil)), [summary, wakeAt]);
   /** The points closed already, by the team or in translationCore: nobody is taken to them to answer. */
   const settled = useMemo(() => new Set((summary?.items ?? []).filter((point) => point.decided).map((point) => point.itemId)), [summary]);
 
@@ -579,9 +575,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     void stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
       .then((done) => !cancelled && setStepDone(done))
       .catch(() => undefined);
-    void stepSeated({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
-      .then((who) => !cancelled && setSeated(who))
-      .catch(() => !cancelled && setSeated([]));
     return () => {
       cancelled = true;
     };
@@ -740,7 +733,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [pending]);
   // So does what tells that everything is agreed, to whoever gave the last answer: it is at the top of the page.
   const roundRef = useRef<HTMLDivElement>(null);
-  const allAgreed = Boolean(summary?.complete);
+  const allAgreed = Boolean(summary?.allAgreed);
   useEffect(() => {
     if (!allAgreed || stepDone) return;
     // After the next point has been brought to its top, which the last answer also asks for.
@@ -941,7 +934,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         });
         const who = coordinatorsOf(data.levelBook, task?.orgTeamName).filter((login) => login.toLowerCase() !== me);
         if (round.allAgreed && who.length) {
-          const tell = round.closesAt ? tNow("round.allAgreedTellOpen").replace("{date}", sayOpenDate(round.closesAt, language, tNow("round.dateAt"))) : tNow("round.allAgreedTell");
+          const tell = round.closesAt ? sayUntilNow("round.allAgreedTellOpen", round.closesAt) : tNow("round.allAgreedTell");
           await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, whileOpen(`${who.map((login) => `@${login}`).join(" ")} ${tell}`)).catch(() => undefined);
         }
       }
