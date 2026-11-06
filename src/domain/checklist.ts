@@ -79,7 +79,8 @@ export type CheckSlot = {
   settled: boolean;
   /**
    * When it was settled, for the time it stays open after (see `openWindow`): when the proposal decided on it was
-   * chosen by all, or when the last «yes» it took was said. Absent when whoever coordinates decided it, when it was
+   * chosen by all, or when the last «yes» it took was said; not before a proposal on it was taken back, since agreed
+   * again it stays open the whole time again. Absent when whoever coordinates decided it, when it was
    * carried out, or when the team agreed on the item outside Taller: then it is closed.
    */
   settledAt?: string;
@@ -355,6 +356,16 @@ function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals:
     if (!view.marks || view.adjusts || view.state === "withdrawn" || view.state === "replaced" || firstAt(view) < SINGLE_PROPOSAL_FROM) continue;
     wholeAt.set(view.itemId, [...(wholeAt.get(view.itemId) ?? []), view]);
   }
+  // When a proposal was taken back, by the questions it kept open: what it answered, or its whole item when made since
+  // proposals are about the whole item. The screen leaves its answers out (see `withoutWithdrawn`): the view says where.
+  const takenBackAt = new Map<string, string[]>();
+  const takenBack = (key: string, at: string) => takenBackAt.set(key, [...(takenBackAt.get(key) ?? []), at]);
+  for (const view of agreement.proposals) {
+    if (!view.withdrawnAt || view.adjusts) continue;
+    takenBack(`${view.itemId}\u0000${view.questionId}`, view.withdrawnAt);
+    for (const answer of answers) if (answer.outcome === "proposal" && answer.proposal?.id === view.proposal.id) takenBack(`${answer.itemId}\u0000${answer.questionId}`, view.withdrawnAt);
+    if (firstAt(view) >= SINGLE_PROPOSAL_FROM) takenBack(view.itemId, view.withdrawnAt);
+  }
   return (answerItemId, questionId) => {
     const slot = `${answerItemId}\u0000${questionId}`;
     const rows = (bySlot.get(slot) ?? []).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
@@ -375,8 +386,10 @@ function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals:
     // Some for it and some against it; or, decided by agreement of all, more than one option chosen.
     const disputed = open.filter((view) => (view.choices ? Boolean(view.disputedSince) : view.inFavour.length > 0 && view.against.length > 0));
     // Settled by a proposal, since everybody chose the same for it (none when whoever coordinates decided it, or once
-    // carried out); else by «yes», since the one that made `people`.
-    const settledAt = !settled ? undefined : decided ? latestOf(made.map((view) => view.agreedAt)) : yesRows[agreement.people - 1]?.at;
+    // carried out); else by «yes», since the one that made `people`. Either way not before a proposal on it was taken
+    // back: until then there was a disagreement, and agreed again it stays open the whole time again.
+    const agreedAt = !settled ? undefined : decided ? latestOf(made.map((view) => view.agreedAt)) : yesRows[agreement.people - 1]?.at;
+    const settledAt = agreedAt && latestOf([agreedAt, ...(takenBackAt.get(slot) ?? []), ...(takenBackAt.get(answerItemId) ?? [])]);
     const openUntil = openUntilOf({ agreedAt: settledAt, window: agreement.open, answered: voices });
     return { yesBy, open, disputed, decided, voices, settled, ...(settledAt ? { settledAt } : {}), ...(openUntil ? { openUntil } : {}) };
   };

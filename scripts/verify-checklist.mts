@@ -1,6 +1,6 @@
 /** A checklist step: every item answered yes, or its «no» settled (fixed, created, or answered by the owner). */
 import assert from "node:assert/strict";
-import { itemSaying, proposalAnswer, proposalDecided, proposalKeeping, proposalSaying, proposalsOf } from "../src/domain/checkProposal";
+import { itemSaying, proposalAnswer, proposalDecided, proposalKeeping, proposalSaying, proposalsOf, withoutWithdrawn } from "../src/domain/checkProposal";
 import { articleItemId, asksOf, itemAgreed, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, withVerseStops, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
 import type { OpenWindow } from "../src/domain/openWindow";
 import { questionText, shippedWorkflow } from "../src/domain/processes";
@@ -500,6 +500,33 @@ test("la pregunta del versículo enlazado se hace solo a una nota que remite a o
     assert.equal(half.allSettled, false);
     assert.equal(half.complete, half.allSettled);
     assert.equal(half.closesAt, undefined);
+  });
+
+  test("una propuesta retirada dentro del plazo hace empezar otras 72 horas desde que se retiró", () => {
+    // Ana, Bea and Carla said «yes» on Monday; Dora proposed a change on Tuesday and took it back on Wednesday. The
+    // note is agreed again from Wednesday, not from Monday's «yes», which came before the disagreement.
+    const p = { id: "pr-d", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+    const made = proposalAnswer({ itemId: "n1", questionId: "sentido", by: "dora", at: "2026-11-03T09:00:00Z", reason: "", proposal: p });
+    const back = proposalSaying("pr-d", "dora", "2026-11-04T10:00:00Z", false);
+    const rule = { consensus: true, questionsOf: () => ["sentido"] };
+    // As the screen reads it: the proposals from every answer, the list from the answers without what was taken back.
+    const summaryOf = (answers: CheckAnswer[], window: OpenWindow) =>
+      summarizeChecklist({ items: note, questions: qs, answers: withoutWithdrawn(answers), agreement: { people: 3, proposals: proposalsOf(answers, 3, () => true, rule), me: "dina", open: window } });
+    const at = (iso: string, hoursLater: number): OpenWindow => ({ hours: 72, seated: [], now: Date.parse(iso) + hoursLater * H });
+    assert.equal(summaryOf([...three, made], at(made.at, 1)).items[0]!.state, "pending", "con la propuesta abierta no está resuelta");
+    const rows = [...three, made, back];
+    const after = summaryOf(rows, at(three[2]!.at, 73));
+    assert.equal(after.items[0]!.slots!.sentido!.settledAt, back.at, "resuelta otra vez cuando se retiró");
+    assert.equal(after.items[0]!.openUntil, new Date(Date.parse(back.at) + 72 * H).toISOString(), "72 horas desde que se retiró");
+    assert.equal(after.complete, false, "73 horas después del tercer «sí», pero menos de 72 desde que se retiró");
+    assert.equal(summaryOf(rows, at(back.at, 73)).complete, true, "vencido el plazo nuevo, se cierra");
+  });
+
+  test("un cuarto sí no cambia desde cuándo está resuelta la pregunta", () => {
+    const fourth = [...three, yes("dora", "2026-11-03T09:00:00Z")];
+    const slot = run(fourth, open(1)).items[0]!.slots!.sentido!;
+    assert.equal(slot.settledAt, three[2]!.at, "desde el tercer «sí», no el cuarto");
+    assert.equal(slot.openUntil, new Date(Date.parse(three[2]!.at) + 72 * H).toISOString());
   });
 }
 

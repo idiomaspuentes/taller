@@ -153,6 +153,11 @@ export type ProposalView = {
    * coordinates decided it, nor once carried out. The item stays open a while from then (see `openWindow`).
    */
   agreedAt?: string;
+  /**
+   * When its author took it back, while it stays taken back (6 November): what it kept open is agreed again from
+   * then, so the time it stays open counts from there, not from a «yes» said before the disagreement.
+   */
+  withdrawnAt?: string;
 };
 
 /**
@@ -230,6 +235,7 @@ export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resou
     // The last thing each person said of it: for it, for leaving things as they are, or neither any more.
     const said = new Map<string, { by: string; at: string; stand: "for" | "against" | "none" }>();
     let withdrawn = false;
+    let withdrawnAt: string | undefined;
     // By agreement of all its author may come round to leaving things as they are, and say so.
     let authorKeeps: string | undefined;
     for (const other of byTime) {
@@ -237,7 +243,10 @@ export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resou
       const yes = other.value === "yes";
       // Its author is for it while it stands: what they can say is that they take it back.
       if (same(other.by, row.by)) {
-        if (other.questionId === PROPOSAL_SAYS) withdrawn = !yes;
+        if (other.questionId === PROPOSAL_SAYS) {
+          withdrawn = !yes;
+          withdrawnAt = withdrawn ? other.at : undefined;
+        }
         else if (rule.consensus) authorKeeps = yes ? other.at : undefined;
         continue;
       }
@@ -288,6 +297,7 @@ export function proposalsOf(answers: CheckAnswer[], needed: number, ours: (resou
       ...(done?.note ? { sentAs: done.note } : {}),
       ...(disputedSince ? { disputedSince } : {}),
       ...(decision && !done && !withdrawn && !replaced.has(proposal.id) ? { decidedBy: decision.by } : {}),
+      ...(withdrawn && withdrawnAt ? { withdrawnAt } : {}),
     };
   });
   return rule.consensus ? byChoice(views, byTime, needed, rule) : views;
