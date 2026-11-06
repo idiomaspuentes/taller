@@ -76,6 +76,7 @@ import {
   type RefRange,
 } from "../domain/usfmEdit";
 import { joinMarkup, verseNotes, type VerseNote } from "../domain/verseMarkup";
+import { joinDraftRows, splitDraftRow, type DraftJoins } from "../domain/joinedVerses";
 import { chapterShape, expectedLines, lineShapes, shownLines, typedOffset } from "../domain/verseShape";
 import { lineOfOffset } from "../domain/verseLines";
 import { VerseLines, lineFieldId } from "./VerseLines";
@@ -1062,6 +1063,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   /** The branch the draft was read from: its file's hash is that branch's, and no other's. */
   const readFrom = useRef<string | undefined>(undefined);
   const editedVerses = useRef<Set<string>>(new Set());
+  // Joins made while this screen is open, so splitting one again gives each verse back its text.
+  const draftJoins = useRef<DraftJoins>(new Map());
   const announcedCache = useRef(false);
   const [bootPending, setBootPending] = useState(false);
 
@@ -1706,18 +1709,13 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
     const cur = drafts[index];
     const next = drafts[index + 1];
     if (!cur || !next || !canJoinRows(cur, next, range)) return;
-    const text = [cur.text.trim(), next.text.trim()].filter(Boolean).join(" ");
-    replaceRows(index, 2, [{ from: cur.from, to: next.to, text }]);
+    replaceRows(index, 2, [joinDraftRows(cur, next, draftJoins.current)]);
   }
 
   function splitRow(index: number) {
     const cur = drafts[index];
     if (!cur || cur.to <= cur.from || !rowInRange(cur, range)) return;
-    const rows: VerseDraft[] = [];
-    for (let v = cur.from; v <= cur.to; v++) {
-      rows.push({ from: v, to: v, text: v === cur.from ? cur.text : "" });
-    }
-    replaceRows(index, 1, rows);
+    replaceRows(index, 1, splitDraftRow(cur, draftJoins.current));
     announce(t("se.splitAnnounce").replace("{a}", String(cur.from)).replace("{b}", String(cur.to)));
   }
 
