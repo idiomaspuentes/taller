@@ -171,6 +171,14 @@ test("las apariciones que otra persona marcó igual se acuerdan de un toque; las
   assert.deepEqual(sameRenderingUses({ ...base, rendering: "", decisions: [mark("a3", "Dios", 1, 5, "bea")] }), [], "sin palabras marcadas no hay con qué estar de acuerdo");
 });
 
+test("una aparición que Taller ve mal enlazada no se acuerda de paso: se mira", () => {
+  const inHand = parseTermRows(rows, 1);
+  const a1 = inHand.find((u) => u.id === "w:a1")!;
+  const base = { use: a1, uses: inHand, rendering: "Dios", me: "ana", verseText, decisions: [mark("a3", "Dios", 1, 5, "bea")] };
+  assert.deepEqual(sameRenderingUses({ ...base, suspect: (use) => use.id === "w:a3" }), []);
+  assert.deepEqual(sameRenderingUses({ ...base, suspect: () => false }).map((r) => r.use.id), ["w:a3"]);
+});
+
 test("un artículo se muestra sin su primer título donde el título ya está dicho arriba", () => {
   assert.equal(articleBody("# siervo, esclavo\n\n## Definición\n\nUn siervo…\n"), "## Definición\n\nUn siervo…\n");
   assert.equal(articleBody("﻿# fe\r\n\r\n## Definición\r\n"), "## Definición\r\n");

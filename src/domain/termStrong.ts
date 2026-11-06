@@ -34,8 +34,8 @@ export function articleStrongs(article: string): string[] {
 }
 
 /**
- * `{ strongs }` (the Strong numbers of the linked words) when none of them is among the article's; null when there is
- * nothing to say: the article lists none (in the team's language nor in the source's), or the verse does not say the
+ * `{ strongs, words }` (the Strong numbers of the linked words, and the words as the verse writes them) when none of
+ * them is among the article's; null when there is nothing to say: the article lists none (in the team's language nor in the source's), or the verse does not say the
  * quote, or its words carry no number.
  */
 export function strongMismatch(p: {
@@ -44,7 +44,7 @@ export function strongMismatch(p: {
   occurrence: number;
   article: string | null;
   sourceArticle: string | null;
-}): { strongs: string[] } | null {
+}): { strongs: string[]; words: string[] } | null {
   const listed = articleStrongs(p.article ?? "");
   const strongs = listed.length ? listed : articleStrongs(p.sourceArticle ?? "");
   if (!strongs.length) return null;
@@ -56,5 +56,5 @@ export function strongMismatch(p: {
   if (!at) return null;
   const linked = [...new Set(at.map((i) => strongKey(p.words[i]?.strong ?? "")).filter((key): key is string => Boolean(key)))];
   if (!linked.length || linked.some((key) => strongs.includes(key))) return null;
-  return { strongs: linked };
+  return { strongs: linked, words: at.map((i) => p.words[i]?.surface ?? "").filter(Boolean) };
 }

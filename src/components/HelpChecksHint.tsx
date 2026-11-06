@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { applyFixes, mechanicalChecks, ruleChecks, type HelpCheck, type HelpKind } from "../domain/helpChecks";
+import { applyFixes, mechanicalChecks, ruleChecks, verseChecks, type HelpCheck, type HelpKind } from "../domain/helpChecks";
 import { writingChecks } from "../domain/processes";
 import { useUiLanguage } from "../i18n/language";
 import { useT } from "../i18n/messages";
@@ -8,19 +8,22 @@ import { useT } from "../i18n/messages";
 const SHOWN = 3;
 
 /**
- * Under a proposed note or Words article: what Taller found by itself. One line says how many; touched, it opens the
+ * Under a proposed note or Words article, or a verse being corrected: what Taller found by itself. One line says how many; touched, it opens the
  * list, three at a time. Mechanical slips are fixed together with one «Arreglar»; the team's rules say why on request
  * and are never fixed for the person. Nothing shows when nothing was found, and nothing here stops anyone proposing
  * or agreeing.
  */
-export function HelpChecksHint({ text, kind, before, onFix }: { text: string; kind: HelpKind; before?: string; onFix?: (next: string) => void }) {
+export function HelpChecksHint({ text, kind, before, onFix }: { text: string; kind: HelpKind | "verse"; before?: string; onFix?: (next: string) => void }) {
   const t = useT();
   const language = useUiLanguage();
   const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
   const [why, setWhy] = useState<string | null>(null);
   const checks = useMemo(
-    () => [...mechanicalChecks(text, { kind, before }), ...ruleChecks(text, kind, writingChecks(), language)].sort((a, b) => a.start - b.start),
+    () =>
+      kind === "verse"
+        ? verseChecks(text)
+        : [...mechanicalChecks(text, { kind, before }), ...ruleChecks(text, kind, writingChecks(), language)].sort((a, b) => a.start - b.start),
     [text, kind, before, language],
   );
   if (!checks.length) return null;

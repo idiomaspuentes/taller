@@ -4,7 +4,7 @@
  * Run: npm run verify:help-checks
  */
 import assert from "node:assert/strict";
-import { applyFixes, mechanicalChecks, ruleChecks, type HelpCheck } from "../src/domain/helpChecks";
+import { applyFixes, mechanicalChecks, ruleChecks, verseChecks, type HelpCheck } from "../src/domain/helpChecks";
 import { writingChecks } from "../src/domain/processes";
 import { articleStrongs, strongKey, strongMismatch } from "../src/domain/termStrong";
 
@@ -173,7 +173,7 @@ test("la palabra del rey está en el artículo del rey", () => {
 });
 
 test("una palabra enlazada a un artículo que no la tiene avisa", () => {
-  assert.deepEqual(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: KING_ES, sourceArticle: null }), { strongs: ["H3444"] });
+  assert.deepEqual(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: KING_ES, sourceArticle: null }), { strongs: ["H3444"], words: ["יְשׁוּעָ֑ה"] });
 });
 
 test("sin Strong en ningún artículo, calla", () => {
@@ -182,12 +182,53 @@ test("sin Strong en ningún artículo, calla", () => {
 });
 
 test("el inglés suple al español", () => {
-  assert.deepEqual(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: NO_STRONG, sourceArticle: KING_EN }), { strongs: ["H3444"] });
+  assert.deepEqual(strongMismatch({ words: VERSE, quote: "יְשׁוּעָ֑ה", occurrence: 1, article: NO_STRONG, sourceArticle: KING_EN }), { strongs: ["H3444"], words: ["יְשׁוּעָ֑ה"] });
   assert.equal(strongMismatch({ words: VERSE, quote: "הַ⁠מֶּ֣לֶךְ", occurrence: 1, article: NO_STRONG, sourceArticle: KING_EN }), null);
 });
 
 test("una cita que el versículo no dice no se juzga", () => {
   assert.equal(strongMismatch({ words: VERSE, quote: "שָׁלוֹם", occurrence: 1, article: KING_ES, sourceArticle: null }), null);
+});
+
+
+// A verse corrected in Tuning: only what reaches the file as a slip. A doubled space does not (the writer joins it),
+// nor quotes (a quote opened in one verse closes in another).
+const verse = (text: string) => verseChecks(text);
+
+test("en el versículo, el espacio antes de un signo se arregla", () => {
+  const text = "Y sucedió en los días , de Asuero .";
+  const checks = verse(text);
+  assert.deepEqual(ids(checks), ["space-before", "space-before"]);
+  assert.equal(applyFixes(text, checks), "Y sucedió en los días, de Asuero.");
+});
+
+test("en el versículo, el espacio después de un signo que abre se arregla", () => {
+  const text = "y dijo: « Ve. ¿ Quién eres ?»";
+  assert.equal(applyFixes(text, verse(text)), "y dijo: «Ve. ¿Quién eres?»");
+});
+
+test("en el versículo, un signo pegado a la palabra siguiente se separa", () => {
+  const text = "de Asuero.Y el rey dijo:«Ve»y fue";
+  const checks = verse(text);
+  assert.ok(checks.every((c) => c.id === "space-after" && c.fix === "auto"));
+  assert.equal(applyFixes(text, checks), "de Asuero. Y el rey dijo: «Ve» y fue");
+});
+
+test("en el versículo, los números con dos puntos y los puntos suspensivos no son un error", () => {
+  assert.deepEqual(verse("como en 3:14 y 1.5 … y así..."), []);
+  assert.deepEqual(verse("«¡Viva el rey!»."), []);
+});
+
+test("en el versículo, una palabra repetida avisa pero no se quita sola", () => {
+  const text = "la casa de de su padre, abajo, abajo";
+  const checks = verse(text);
+  assert.deepEqual(ids(checks), ["repeated"]);
+  assert.equal(checks[0]!.fix, "none");
+  assert.equal(applyFixes(text, checks), text, "el TPL repite a propósito lo que el hebreo repite");
+});
+
+test("en el versículo, el doble espacio y las comillas sin cerrar no se reportan", () => {
+  assert.deepEqual(verse("Y sucedió  en los días de «Asuero"), []);
 });
 
 console.log(`verify-help-checks: ${passed} checks passed.`);

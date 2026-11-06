@@ -322,6 +322,8 @@ export function sameRenderingUses(params: {
   decisions: ReviewDecision[];
   me: string;
   verseText: (chapter: number, verse: number) => string;
+  /** A use Taller sees linked to the wrong article: it is looked at, never agreed with in passing. */
+  suspect?: (use: TermItem) => boolean;
 }): { use: TermItem; selectedText: NonNullable<ReviewDecision["selectedText"]> }[] {
   const wanted = renderingKey(params.rendering);
   if (!wanted) return [];
@@ -329,6 +331,7 @@ export function sameRenderingUses(params: {
   const out: { use: TermItem; selectedText: NonNullable<ReviewDecision["selectedText"]> }[] = [];
   for (const use of params.uses) {
     if (use.id === params.use.id || use.termSlug !== params.use.termSlug) continue;
+    if (params.suspect?.(use)) continue;
     const hash = textFingerprint(params.verseText(use.chapter, use.verse));
     const fresh = params.decisions.filter((d) => d.itemId === use.id && (d.textHash === undefined || d.textHash === hash));
     if (fresh.some((d) => d.reviewer.trim().toLowerCase() === me)) continue;
