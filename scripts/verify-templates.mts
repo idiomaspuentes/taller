@@ -462,7 +462,7 @@ test("una regla que el proceso da a un paso después de creado el plan llega tam
   assert.match(stepPurpose("armonizar-palabras", { id: "palabras-textos" }, "pt").criterion ?? "", /todos os sentidos/);
 });
 
-console.log(`\nverify-templates: ${passed} checks passed.`);test("un paso de acuerdo conserva sus horas abiertas, y uno que no es de acuerdo no las tiene", () => {
+test("un paso de acuerdo conserva sus horas abiertas, y uno que no es de acuerdo no las tiene", () => {
   const open = (step: object) => normalizeWorkflowTemplate({ id: "x", name: "X", phases: [{ id: "a", name: "A" }], tasks: [{ id: "t", name: "T", phaseId: "a", rules: [{ resource: "tpl" }], steps: [{ id: "s", name: "S", ...step }] }] })!.tasks[0]!.steps![0]!.openHours;
   assert.equal(open({ closing: "consensus", claimMode: "pool", openHours: 72 }), 72);
   assert.equal(open({ closing: "self", openHours: 72 }), undefined);
@@ -490,4 +490,4 @@ test("el FCR deja abierto 72 horas cada paso de acuerdo, salvo la validación", 
   assert.equal(open("validar", "decision"), undefined);
 });
 
-
+console.log(`\nverify-templates: ${passed} checks passed.`);

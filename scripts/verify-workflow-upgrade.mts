@@ -259,7 +259,7 @@ test("un proyecto que ya armonizaba por secciones las conserva al actualizar: su
   }
 });
 
-console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);test("traer lo nuevo agrega las horas abiertas a los pasos de acuerdo de un proyecto viejo", () => {
+test("traer lo nuevo agrega las horas abiertas a los pasos de acuerdo de un proyecto viejo", () => {
   const created = applyWorkflowToBoard(empty, fcr);
   const stripped = (hours?: number): AssignmentsDoc => ({
     ...created,
@@ -279,4 +279,4 @@ console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);test("traer l
   assert.equal(stepOf(upgradeBoardToWorkflow(stripped(24), fcr).board).openHours, 24, "el plazo que puso el proyecto se queda");
 });
 
-
+console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);
