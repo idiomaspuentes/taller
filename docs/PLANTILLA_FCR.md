@@ -308,7 +308,7 @@ entrega la primera porción, y las demás aparecen a medida que llegan («Todav�
 La del TPL no espera al TPS ni al revés.
 
 **Cómo se acuerda un versículo:** dos personas habilitadas de acuerdo, al menos una que no lo tradujo, y
-ninguna duda abierta. Cualquiera puede corregir el versículo en el borrador del grupo; al corregirlo, quienes
+ninguna duda abierta; tras el acuerdo el versículo queda abierto 72 horas para opinar (sección 4). Cualquiera puede corregir el versículo en el borrador del grupo; al corregirlo, quienes
 ya habían dado su acuerdo son avisados y vuelven a mirarlo. Un versículo ya acordado se reabre con una duda
 o una corrección.
 
@@ -450,6 +450,18 @@ cuando 3 personas habilitadas están de acuerdo y nadie tiene una objeción abie
 consenso, y lo disputado va a la lista de la reunión del equipo, donde el coordinador o una persona habilitada
 registra la decisión. Cada persona más que responde suma confianza al ítem. Quien llega después empieza con las
 palabras que eligió quien llegó primero.
+**Tiempo abierto tras el acuerdo** (Abel, 6 de noviembre de 2026): alcanzado el mínimo, el ítem no se cierra en el
+acto. Queda abierto **72 horas** (`openHours` en el paso) para que otras personas del paso opinen, y la pantalla
+dice «De acuerdo · puedes opinar hasta el …». Se cierra antes si ya opinaron todas las personas sentadas en el
+paso. Una objeción dentro del plazo lo vuelve a disputa; cuando se acuerda de nuevo, empiezan otras 72 horas. Lo
+que el equipo decide en la reunión se cierra en el acto, sin esperar. Un ítem cerrado se puede reabrir mientras el
+paso siga abierto. **El paso se cierra cuando ningún ítem tiene un plazo abierto**: mientras tanto, en lugar del
+botón de cerrar, la pantalla dice «Todo está de acuerdo. Se puede cerrar desde el …» (y en Armonización, sin
+recuentos, «Este paso se puede cerrar desde el …»). Quien coordina Afinación recibe esa fecha en el aviso. En
+Armonización, quien está sentado en el paso y aún no habló en una nota dentro de su plazo la ve como suya
+(«Siguiente» lo lleva); cuando ya no le queda nada, la pantalla dice «Todo está comprobado. Este paso se puede
+cerrar desde el …». Sin `openHours` (o con 0) todo funciona como antes. Lo llevan los pasos de lectura grupal,
+de revisión de Desafíos, Palabras y Alinear, y los de Armonización; no el de decisión de Validar.
 **Quién puede tomarlas:** Aprendiz o más. Un cambio acordado lo escribe **cualquier persona habilitada
 del equipo**.
 
@@ -618,11 +630,11 @@ acuerda. En cada pregunta, tocarla la marca bien; «No», a su lado, abre la hoj
 | **Proponer** | Qué cambiaría (la ayuda, su artículo, el TPL o el TPS), cómo (la nueva versión, escrita sobre el texto como está y como se lee, con su negrita y sus enlaces, o un comentario) y, si quiere, el motivo. La ayuda se lee desde entonces con el cambio propuesto. |
 | **Acordar** | En «Acuerdo del equipo», cada propuesta se abre entera, con su versículo. «De acuerdo» la apoya; «Dejar como está» dice que no; «Otra propuesta» responde con otra versión; quien la hizo puede retirarla. |
 | **Votar** | Cada opción tiene su botón: «Votar por esta versión», «Votar por dejarla como está». El voto se puede cambiar o quitar hasta que se cierre el paso; quien propone ya cuenta a favor de la suya, y si vota por otra, la suya se retira. |
-| **Con tres de acuerdo** (quien propone cuenta: necesita dos más) | Hay acuerdo, pero todavía no se escribe nada. Se aplica cuando todo el equipo da su acuerdo al paso: entonces, si es de una ayuda del equipo, se escribe en su borrador. Si es del TPL o el TPS, se pide a Afinación como corrección, **con la razón**: Armonización nunca edita esos textos. La corrección es una subtarea de quien afina ese texto, nombrada por el motivo y las palabras que cambian; la versión entera va en su conversación. |
+| **Con tres de acuerdo** (quien propone cuenta: necesita dos más) | Hay acuerdo, que queda abierto 72 horas para opinar (sección 4), pero todavía no se escribe nada. Se aplica cuando todo el equipo da su acuerdo al paso: entonces, si es de una ayuda del equipo, se escribe en su borrador. Si es del TPL o el TPS, se pide a Afinación como corrección, **con la razón**: Armonización nunca edita esos textos. La corrección es una subtarea de quien afina ese texto, nombrada por el motivo y las palabras que cambian; la versión entera va en su conversación. |
 | **Con dos que prefieren dejarlo** | La propuesta no se acepta y la ayuda queda como está. Hacen falta tantas personas, sin contar a quien la propuso, como para acordarla: dos, donde el acuerdo es de tres. También se puede cambiar hasta el cierre. |
 | **Lo que falta** | Una nota que falta se propone con «Proponer una nota nueva en 1:1», bajo las preguntas (o eligiendo «Una nota nueva» en la hoja): se escribe y se tocan en el versículo las palabras que explica. Acordada, se agrega a las notas del equipo. Un artículo que falta se propone con un comentario. |
 | **Dividir una nota** | «Dividirla en dos», en la hoja: se tocan las frases que pasan a la nota nueva, se retocan las dos y se marcan las palabras que explica la nueva. Es una sola propuesta: acordada, la nota queda con su parte y la nueva se agrega a su lado, las dos a la vez. |
-| **Al cerrarse el paso** | Cuando ninguna ayuda espera más votos, cada persona da su acuerdo al paso. Con el de la última se aplica todo lo acordado de una vez y la subtarea se entrega desde esa misma pantalla (Abel, 16 de octubre: un voto que aplicaba en el acto no tenía vuelta). Mientras falte alguien, quien ya dio su acuerdo puede retirarlo; a la última persona se le avisa que con el suyo ya no se puede cambiar. |
+| **Al cerrarse el paso** | Cuando ninguna ayuda espera más votos ni tiene un plazo abierto (sección 4), cada persona da su acuerdo al paso. Con el de la última se aplica todo lo acordado de una vez y la subtarea se entrega desde esa misma pantalla (Abel, 16 de octubre: un voto que aplicaba en el acto no tenía vuelta). Mientras falte alguien, quien ya dio su acuerdo puede retirarlo; a la última persona se le avisa que con el suyo ya no se puede cambiar. |
 | **Un comentario** | Un comentario sobre una ayuda del equipo no trae el texto nuevo, así que no se vota: alguien escribe cómo debe quedar («Escribir cómo debe quedar») y esa versión, que toma su lugar, es la que se vota. Si no se sabía a qué nota iba, se escribe como nota nueva del versículo, empezando por el texto que el comentario proponía. Mientras tanto la ayuda espera, o el equipo vota dejarla como está. Un comentario para otro equipo sí se vota y se le envía. |
 
 ---
