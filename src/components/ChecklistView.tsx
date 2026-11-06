@@ -2666,8 +2666,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                       <Button type="button" size="lg" disabled={saving || !allTicked} onClick={allGood}>
                         <Check size={16} aria-hidden /> {t(collab?.kind === "first" ? "ck.ansAllGood" : optionsHere ? "ck.restYes" : othersSaid.length ? "ck.agreeYes" : verseStop ? "ck.verseYes" : pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.yesGo")}
                       </Button>
-                    ) : waitingToClose ? (
-                      // Opened to the rest of the team: said once on the screen, not offered a way on.
+                    ) : waitingToClose && nothingForMe ? (
+                      // Opened to the rest of the team and nothing left for this person: said once, no way on.
                       closesHere ? <p className="ck-ask ck-ask--wait">{sayUntil("ck.allCheckedOpen", summary.closesAt!)}</p> : null
                     ) : !summary.complete ? (
                       <Button type="button" size="lg" onClick={nextPending}>

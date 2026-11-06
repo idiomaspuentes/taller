@@ -38,6 +38,8 @@ export function inSections<T extends { verse: number }>(items: T[], sections: Ro
 }
 
 function statusOf(tally: CheckItemTally | undefined, voices: string[], me: string): RosterStatus {
+  // A note agreed but still open to the rest of the team is theirs to give a view on, though it counts as agreed.
+  if (tally?.turn === "mine" && tally.openUntil) return "mine";
   if (tally?.state === "ok") return "ready";
   if (tally?.turn === "mine") return "mine";
   // Begun and not finished by this person: some of its questions nobody answered yet, theirs to go on with.
