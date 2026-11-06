@@ -21,8 +21,8 @@ La app del equipo FCR de Idiomas Puentes para el trabajo de traducción: lo que 
 - **Primera pantalla** de bienvenida y tarjeta de primeros pasos; estados vacíos que distinguen «sin tareas todavía» de «al día».
 - **Configuración en un archivo** y **espacios de trabajo**: varios equipos (por idioma o no) en la misma organización o en organizaciones distintas, sin mezclarse (`scope`).
 - **Español y portugués**: bienvenida, inicio de sesión, menús, Ahora, Mis tareas, Equipo hoy, Avisos (incluidos mensajes y nombres de las plantillas de flujo).
-- **Proyectos y plantillas con un solo editor** (2 de octubre, sin publicar todavía): borrador antes de crear, vista previa de subtareas, unir o partir porciones, subtareas a mano, y cambios a un proyecto en marcha con aviso de a qué afectan. Ver [`PROYECTOS.md`](PROYECTOS.md).
-- **Tiempo abierto tras el acuerdo** (6 de noviembre, sin publicar todavía): un ítem acordado queda abierto 72 horas (`openHours`) y el paso se cierra cuando ningún ítem tiene plazo abierto. Ver [`PLANTILLA_FCR.md`](PLANTILLA_FCR.md), sección 4.
+- **Proyectos y plantillas con un solo editor** (2 de octubre): borrador antes de crear, vista previa de subtareas, unir o partir porciones, subtareas a mano, y cambios a un proyecto en marcha con aviso de a qué afectan. Ver [`PROYECTOS.md`](PROYECTOS.md).
+- **Tiempo abierto tras el acuerdo** (6 de noviembre, publicado el mismo día): un ítem acordado queda abierto 72 horas (`openHours`) y el paso se cierra cuando ningún ítem tiene plazo abierto. Cada proyecto lo recibe con «Traer lo nuevo» (versión 54 del proceso). Ver [`PLANTILLA_FCR.md`](PLANTILLA_FCR.md), sección 4.
 - Puentes: diseño visual, PWA instalable, acceso por LAN para probar en el teléfono, mock de Door43 para pruebas con varias personas.
 
 **Hecho y publicado entre el 2 y el 10 de octubre**
