@@ -170,6 +170,24 @@ borrador se abre otra vez, las aprobaciones dadas dejan de contar (lo aprobado v
 revisan conservan su lugar. Lo lleva al editor, en el párrafo que tenía abierto; al terminar el
 borrador otra vez, la revisión sigue. Vale igual para el TPL y el TPS y para los artículos.
 
+**Quien escribió un comentario puede cambiarlo o borrarlo, mientras nadie lo haya atendido.** Pedido el
+6-11-2026, tras el primer día de Nehemías: una revisora dejó un comentario y no pudo corregirlo. Cada
+comentario propio tiene «Cambiar» y «Borrar» mientras la revisión siga abierta (el paso sin terminar y el
+trabajo sin entregar), el comentario no esté resuelto ni convertido en regla del equipo o en decisión del
+glosario, y nadie más haya escrito después sobre el mismo versículo, nota o párrafo (o, si es sobre todo el
+borrador, sobre todo el borrador). Pasado eso, cambiarlo dejaría la respuesta o la corrección hablando de
+algo que ya no dice. Al cambiarlo se conserva dónde está y, si pedía cambios, que los pide; el comentario
+cambiado dice «editado» a quien ya lo había leído. El mensaje que la app escribe sola al pedir cambios no se
+cambia.
+
+**Quien revisó puede volver a su revisión hasta que se entregue.** Pedido el mismo día: una vez aprobada, la
+revisión no dejaba volver a entrar para cambiar algo. Quien aprobó tiene «Cambiar mi revisión» en el pie de la
+revisión, también cuando quien tradujo ya estuvo de acuerdo y la revisión quedó completa; y si está completa,
+su tarjeta de «Mis tareas» ofrece «Ver mi revisión» para llegar a ella. Al cambiarla (después de confirmar) la
+revisión se abre otra vez: su aprobación y el acuerdo de quien tradujo dejan de contar, porque lo aprobado
+puede cambiar, y conserva su lugar en ella. El borrador sigue entregado: nadie recibe nada de vuelta. Deja de
+poder hacerse cuando el trabajo se entrega, o cuando un paso posterior de la subtarea ya empezó.
+
 **Las notas de introducción tienen dueño.** La introducción a cada capítulo va con las notas de la **primera
 porción de ese capítulo**, y la introducción al libro con las de la primera porción del libro. Antes no caían en
 ninguna subtarea: todos las leían al estudiar y nadie las traducía.

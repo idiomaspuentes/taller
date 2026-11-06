@@ -109,6 +109,8 @@ let commentCounter = 0;
 function renumberComments() {
   commentCounter = 0;
   for (const list of comments.values()) for (const c of list) c.id = ++commentCounter;
+  // Those of a pull request keep their ids (the review's own events name them): the next one comes after them all.
+  for (const list of pulls?.values() ?? []) for (const pull of list) for (const c of pull.comments ?? []) commentCounter = Math.max(commentCounter, c.id);
 }
 let labels;
 let milestones;
@@ -685,6 +687,46 @@ async function handle(req, res) {
         }
       }
       return json(res, { message: "blob not found" }, 404);
+    }
+
+    // ---- what is said in the review of a pull request: Door43 keeps it as the comments of an issue ----
+    const onPull = repoKey !== `${PM_ORG}/taller` ? /^issues\/(\d+)\/comments$/.exec(rest) : null;
+    const pullComment = repoKey !== `${PM_ORG}/taller` ? /^issues\/comments\/(\d+)$/.exec(rest) : null;
+    if (onPull || pullComment) {
+      const list = pulls.get(repoKey) || [];
+      if (onPull) {
+        const pull = list.find((x) => x.number === Number(onPull[1]));
+        if (!pull) return json(res, { message: "issue not found" }, 404);
+        pull.comments ??= [];
+        if (req.method === "GET") return json(res, pull.comments);
+        if (!user) return json(res, { message: "token is required" }, 401);
+        const body = await readBody(req);
+        const at = new Date().toISOString();
+        const c = { id: ++commentCounter, body: String(body.body ?? ""), user, created_at: at, updated_at: at };
+        pull.comments.push(c);
+        log.push({ at, user: user.login, write: `comment ${repoKey}#${pull.number}`, text: c.body.split("\n")[0] });
+        return json(res, c, 201);
+      }
+      if (!user) return json(res, { message: "token is required" }, 401);
+      const id = Number(pullComment[1]);
+      const pull = list.find((x) => (x.comments ?? []).some((c) => c.id === id));
+      const c = pull?.comments.find((one) => one.id === id);
+      if (!c) return json(res, { message: "comment not found" }, 404);
+      if (c.user?.login !== user.login) return json(res, { message: "only the author edits a comment" }, 403);
+      const at = new Date().toISOString();
+      if (req.method === "PATCH") {
+        const body = await readBody(req);
+        c.body = String(body.body ?? c.body);
+        c.updated_at = at;
+        log.push({ at, user: user.login, write: `comment ${repoKey}#${pull.number} edited`, text: c.body.split("\n")[0] });
+        return json(res, c);
+      }
+      if (req.method === "DELETE") {
+        pull.comments = pull.comments.filter((one) => one.id !== id);
+        log.push({ at, user: user.login, write: `comment ${repoKey}#${pull.number} deleted` });
+        res.writeHead(204);
+        return res.end();
+      }
     }
 
     // ---- pull requests: one per subtarea, merged on delivery ----

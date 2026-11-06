@@ -28,6 +28,10 @@ export type ReviewComment = {
   resolved?: { by: string; at: string };
   /** The entry of the glossary that was made from it. */
   glossary?: string;
+  /** Changed by whoever wrote it after it was first read (see `canEditComment`). */
+  edited?: boolean;
+  /** The comment as it is kept on the review, with the place it is about: what an edit rewrites. */
+  raw?: string;
 };
 
 export const COMMENT_RESOLVED = "comment-resolved";
@@ -61,8 +65,60 @@ export function reviewCommentsFrom(rows: RawComment[], draftAuthor?: string): Re
     .filter((row) => row.body && !isMachineComment(row.body) && classifyComment(row.body).kind === "humano")
     .map((row) => {
       const resolved = standing.get(row.id);
-      return { id: row.id, by: row.user?.login ?? "", at: row.created_at ?? "", ...parseRefComment(row.body ?? ""), ...(resolved ? { resolved } : {}), ...(kept.has(row.id) ? { glossary: kept.get(row.id)! } : {}) };
+      // Door43 gives a comment the same time for both when it is written; a later one is an edit.
+      const edited = Date.parse(row.updated_at ?? "") - Date.parse(row.created_at ?? "") > 1000;
+      return {
+        id: row.id,
+        by: row.user?.login ?? "",
+        at: row.created_at ?? "",
+        ...parseRefComment(row.body ?? ""),
+        raw: row.body ?? "",
+        ...(resolved ? { resolved } : {}),
+        ...(kept.has(row.id) ? { glossary: kept.get(row.id)! } : {}),
+        ...(edited ? { edited } : {}),
+      };
     });
+}
+
+/**
+ * Whether somebody else said something about the same place after this comment: an answer to it, which would speak
+ * of words the comment no longer says if it changed. About the whole draft, whatever else is said about the whole.
+ */
+function answered(comment: ReviewComment, all: ReviewComment[]): boolean {
+  return all.some((other) => other.id > comment.id && other.ref === comment.ref && !same(other.by, comment.by));
+}
+
+/**
+ * Who may change or take back a comment, and until when (6 November 2026: a reviewer of Nehemiah left one she could
+ * not correct). Only whoever wrote it, and only while it is still just what they said:
+ * - the review is open (`reviewOpen`: its step not finished, the work not handed in); once it is finished, what
+ *   was said there is the record of it;
+ * - nobody answered it in the same place, and it was not given as resolved: the author already acted on it as it
+ *   was, and changing it would leave the answer or the correction speaking of something else;
+ * - it did not become a rule of the team or a decision of the glossary (`kept`), which were copied from its words;
+ * - it is not the message the app writes by itself when changes are asked for (`isBareRequest`).
+ */
+export function canEditComment(comment: ReviewComment, all: ReviewComment[], login: string, opts: { reviewOpen: boolean; kept?: boolean }): boolean {
+  if (!opts.reviewOpen || !login.trim() || !same(comment.by, login)) return false;
+  if (comment.resolved || comment.glossary !== undefined || opts.kept || isBareRequest(comment)) return false;
+  return !answered(comment, all);
+}
+
+/** «@abelper8 Pido cambios: »: what a comment that asks for changes starts with, which an edit keeps. */
+const REQUEST_LEAD = /^(?:@\S+\s+)?(?:Pido cambios|Peço mudanças):\s+/;
+
+/** What a comment says, apart from what it starts with when it asked for changes: the words that may be edited. */
+export function commentWords(comment: Pick<ReviewComment, "text">): { lead: string; words: string } {
+  const lead = REQUEST_LEAD.exec(comment.text)?.[0] ?? "";
+  return { lead, words: comment.text.slice(lead.length) };
+}
+
+/** The comment as it is to be kept after an edit: the same place, the same request for changes, the new words. */
+export function editedCommentBody(comment: Pick<ReviewComment, "text" | "raw">, words: string): string {
+  const raw = (comment.raw ?? comment.text).trimEnd();
+  // What comes before the text is the place it is about (`**NEH 1:3** — `), as it was written.
+  const head = raw.endsWith(comment.text) ? raw.slice(0, raw.length - comment.text.length) : "";
+  return `${head}${commentWords(comment).lead}${words.trim()}`;
 }
 
 /**

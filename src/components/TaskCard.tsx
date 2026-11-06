@@ -103,6 +103,8 @@ export function TaskCard(props: Props) {
   // My part of a round is done: the tool can be looked at, and it is not what the card asks for.
   // A step with no tool is an approval: there are no answers to look at, and the card offered «Ver mis respuestas».
   else if (action.kind === "none" && action.why === "othersAnswer") label = action.step?.solverAppId ? t("tb.seeMine") : "";
+  // A review I approved that is still to be handed in: I may open it again, to change something.
+  else if (action.kind === "none" && action.why === "assigneeDelivers" && action.step?.solverAppId) label = t("tb.seeMyReview");
   else if (action.kind === "vote") label = t("tb.vote");
   else if (action.kind === "proposals") label = t("tb.proposals");
   // A step somebody joins to do it says what is done in it, as any other («Revisar»): pressing it takes the seat and

@@ -9,7 +9,7 @@ import { isDecisionIssue } from "./decisionAccess";
 import type { LevelSource } from "./levels";
 import { canClaimIssue, issueProjectId, issueTaskId, listStepClaimOffers, type MyTasksProjectBucket } from "./myTasks";
 import type { ReadCursorDoc } from "./readCursor";
-import { answeredRound, canApproveStep, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
+import { answeredRound, canApproveStep, canChangeReview, canClaimStep, isStepActor, stepClaimMode } from "./stepClaim";
 import { OPEN_STEP_MOST, stepFraction } from "./workProgress";
 import { withOnceSteps } from "./stepOnce";
 import { allStepsDone, getStepRuntime, parseTaskProgressMarker } from "./taskProgress";
@@ -45,7 +45,9 @@ export type CardAction =
   /** A review step I am seated in: approve it. */
   | { kind: "approveStep"; step: TaskStep }
   /** Nothing to press; `why` says what the card is waiting for. */
-  | { kind: "none"; why: "hold" | "othersReview" | "assigneeDelivers" | "done" | "noTool" }
+  | { kind: "none"; why: "hold" | "othersReview" | "done" | "noTool" }
+  /** All done, and its author hands it in. `step`: a review of mine I may still come back to (`canChangeReview`). */
+  | { kind: "none"; why: "assigneeDelivers"; step?: TaskStep }
   /** A round everybody answers, and I answered everything: it waits for the others. Its tool can still be opened. */
   | { kind: "none"; why: "othersAnswer"; step: TaskStep };
 
@@ -183,7 +185,10 @@ function stepAction(login: string, steps: TaskStep[], issue: DcsIssue, mine: boo
   const progress = parseTaskProgressMarker(issue.body ?? "");
   const assignee = assigneeOf(issue);
   if (allStepsDone(steps.map((s) => s.id), progress)) {
-    return { action: mine ? { kind: "deliver" } : { kind: "none", why: "assigneeDelivers" } };
+    if (mine) return { action: { kind: "deliver" } };
+    // Whoever reviewed it may still open their review until it is handed in, to change something.
+    const review = steps.find((s) => canChangeReview(login, steps, progress, s, assignee, false));
+    return { action: { kind: "none", why: "assigneeDelivers", ...(review ? { step: review } : {}) } };
   }
   const next = steps.find((s) => !progress.doneStepIds.includes(s.id))!;
   const mode = stepClaimMode(next);

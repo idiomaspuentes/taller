@@ -452,6 +452,37 @@ export function takeBack(progress: TaskProgressMarker, steps: TaskStep[], step: 
   return withStepRuntime(reopened, step.id, { ...getStepRuntime(progress, step.id), approvals: [], returnedBy: login.trim() });
 }
 
+/**
+ * Whoever reviewed and approved may come back to their review, to change something (6 November 2026: once a
+ * reviewer of Nehemiah had sent hers, nothing let her back in). Only a person seated in the review who approved it
+ * (never the author, whose part is to agree), and only while what follows has not begun: the work not handed in
+ * (`closed`), and no later step of the subtarea taken or done, whose work would rest on a review that may change.
+ */
+export function canChangeReview(login: string, steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep, author: string | undefined, closed: boolean): boolean {
+  const user = login.trim().toLowerCase();
+  if (!user || closed || user === (author ?? "").trim().toLowerCase()) return false;
+  if (stepClaimMode(step) === "none" || closesInItsTool(step) || step.closing !== "approval") return false;
+  const runtime = getStepRuntime(progress, step.id);
+  if (!runtime.assignees.some((a) => a.toLowerCase() === user) || !runtime.approvals.some((a) => a.toLowerCase() === user)) return false;
+  const later = steps.slice(steps.findIndex((row) => row.id === step.id) + 1);
+  return !later.some((row) => isStepDone(progress, row.id) || getStepRuntime(progress, row.id).assignees.length);
+}
+
+/**
+ * The review is open again for whoever comes back to it: their approval no longer counts, nor does the author's
+ * agreement, given to what was approved, which may now change. Their seat is kept, and the draft stays handed in:
+ * nobody is sent back anything. From there it is a review like any other (comment, ask for changes, approve).
+ */
+export function changeReview(progress: TaskProgressMarker, steps: TaskStep[], step: TaskStep, login: string, author: string | undefined): TaskProgressMarker {
+  if (!canChangeReview(login, steps, progress, step, author, false)) return progress;
+  const user = login.trim().toLowerCase();
+  const writer = (author ?? "").trim().toLowerCase();
+  const reopened = { ...progress, doneStepIds: progress.doneStepIds.filter((id) => id !== step.id) };
+  const runtime = getStepRuntime(progress, step.id);
+  // A closed review said who closed it and when, and against which sources: it is not closed any more.
+  return withStepRuntime(reopened, step.id, { ...runtime, approvals: runtime.approvals.filter((a) => a.toLowerCase() !== user && a.toLowerCase() !== writer), done: undefined, sources: undefined });
+}
+
 /** The work is back with its author because the author took it, not because a reviewer asked: nobody «asked for changes». */
 export function takenBackByAuthor(steps: TaskStep[], progress: TaskProgressMarker, step: TaskStep, author: string | undefined): boolean {
   const by = getStepRuntime(progress, step.id).returnedBy?.toLowerCase();

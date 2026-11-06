@@ -44,6 +44,7 @@ export type RawComment = {
   id: number;
   body?: string | null;
   created_at?: string;
+  updated_at?: string;
   user?: { login?: string } | null;
 };
 

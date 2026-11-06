@@ -1,8 +1,8 @@
-import { createIssueComment, listIssueComments } from "@ip-lms/dcs-client";
+import { createIssueComment, editIssueComment, listIssueComments, request } from "@ip-lms/dcs-client";
 import type { GtSession } from "./auth";
 import { dcsConfig } from "./config";
 import type { PortionPrMarker } from "../domain/portionPr";
-import { glossaryComment, resolutionComment, reviewCommentsFrom, type ReviewComment } from "../domain/reviewComments";
+import { editedCommentBody, glossaryComment, resolutionComment, reviewCommentsFrom, type ReviewComment } from "../domain/reviewComments";
 
 export type { ReviewComment } from "../domain/reviewComments";
 
@@ -13,6 +13,21 @@ export type { ReviewComment } from "../domain/reviewComments";
 export async function loadReviewComments(session: GtSession, marker: PortionPrMarker, draftAuthor?: string): Promise<ReviewComment[]> {
   const rows = await listIssueComments(dcsConfig(session.host), marker.owner, marker.repo, marker.number, session.token);
   return reviewCommentsFrom(rows, draftAuthor);
+}
+
+/**
+ * Change what a comment says, in its place on the review (see `canEditComment` for when). Door43 keeps when it was
+ * changed, and the comment says so to whoever had read it.
+ */
+export async function editReviewComment(session: GtSession, marker: PortionPrMarker, comment: ReviewComment, words: string): Promise<void> {
+  await editIssueComment(dcsConfig(session.host), marker.owner, marker.repo, comment.id, editedCommentBody(comment, words), session.token);
+}
+
+/** Take a comment back, while nobody has answered it (see `canEditComment`). */
+export async function deleteReviewComment(session: GtSession, marker: PortionPrMarker, comment: ReviewComment): Promise<void> {
+  // A comment's id is unique in its repository (as for editing it); Door43 lets only its writer take it back.
+  const path = `/repos/${encodeURIComponent(marker.owner)}/${encodeURIComponent(marker.repo)}/issues/comments/${comment.id}`;
+  await request<void>(dcsConfig(session.host), { method: "DELETE", path, token: session.token });
 }
 
 /** Give a comment as resolved, or open it again: written on the review as a comment of its own, never an edit. */
