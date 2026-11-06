@@ -2704,7 +2704,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                             ? t("af.linkSuspectNote")
                                 .replace("{words}", linkWarning.words.join(" "))
                                 .replace("{strong}", linkWarning.strongs.join(", "))
-                                .replace("{name}", pointName.replace(/^«|»$/g, ""))
+                                // The article by its title: the point's name in this step is the word of the original.
+                                .replace("{name}", teamTermTitle || (termSlug ? termLabel(termSlug, termTitles) : ""))
                             : "",
                       );
                       setDoubting(true);

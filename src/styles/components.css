@@ -10650,6 +10650,8 @@ html[data-text] .af-section-label { font-size: calc(0.875rem * var(--ts)); }
 /* Step 1's question over its two answers, one block at the foot. */
 .af--round .af-decide--ask { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .af--round .af-decide--ask > .af-study-q { grid-column: 1 / -1; margin: 0 0 0.25rem; }
+/* Taller's notice over the question, as wide as it. */
+.af--round .af-decide--ask > .hc-strong { grid-column: 1 / -1; margin: 0; }
 @media (min-width: 48rem) { .af--round .af-decide--ask { display: grid; grid-template-columns: auto auto 1fr; justify-content: start; gap: 0.75rem; } }
 /* The pinned answers are set apart from the text that scrolls under them: room and a soft edge. */
 @media (max-width: 63.99rem) { .af--round .af-work > .af-decide, .af--round .af-ask > .af-decide--answer { padding-top: 1rem; box-shadow: 0 -1px 0 var(--border), 0 -10px 16px -14px rgb(11 23 48 / 0.35); } }
