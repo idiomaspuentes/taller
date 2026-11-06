@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { canConfirmForTeam, levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
-import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { approveStepFromTool, completeStepFromTool, stepIsDone, stepSeated } from "../dcs/roundClose";
+import { openWindowFor } from "../domain/openWindow";
+import { useNow } from "../useNow";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { useStepWork } from "../dcs/stepWork";
 import { RoundPanel } from "./RoundPanel";
@@ -625,9 +627,15 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     return [...own, ...effective];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shared, data, effective, groups]);
+  // An agreed verse stays open for those seated on the step; the next close is kept in state (set below) so the
+  // summary, which depends on the time, does not feed the clock it is read with.
+  const [seated, setSeated] = useState<string[]>([]);
+  const [nextClose, setNextClose] = useState<string | undefined>();
+  const now = useNow(nextClose);
+  const open = useMemo(() => openWindowFor(taskStep, seated, now), [taskStep, seated, now]);
   const tally =
     verse && data
-      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds, tcCloses: stepDone })
+      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds, tcCloses: stepDone, open })
       : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -643,11 +651,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
             authorsByItem: Object.fromEntries(data.verses.map((v) => [itemId(data.chapter, v.verse), authorsOf(v)])),
             thresholds,
             tcCloses: stepDone,
+            open,
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, counted, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels, stepDone],
+    [data, counted, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels, stepDone, open],
   );
+  useEffect(() => setNextClose(summary?.closesAt), [summary?.closesAt]);
 
   // The review of the alignment closes here, by consensus, when the step says so (objections are settled as team
   // decisions in the conversation, so there is no final decision to record on this screen).
@@ -660,6 +670,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     void stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
       .then((done) => !cancelled && setStepDone(done))
       .catch(() => undefined);
+    void stepSeated({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: taskStep.id })
+      .then((who) => !cancelled && setSeated(who))
+      .catch(() => !cancelled && setSeated([]));
     return () => {
       cancelled = true;
     };

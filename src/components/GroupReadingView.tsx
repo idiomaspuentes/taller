@@ -13,7 +13,9 @@ import { CorrectionReasons, reasonLine } from "./CorrectionReasons";
 import { loadSession, type GtSession } from "../dcs/auth";
 import { loadGroupReading, type GroupReadingData, type GroupReadingText } from "../dcs/groupReading";
 import { commentOnIssue } from "../dcs/issues";
-import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { completeStepFromTool, stepIsDone, stepSeated } from "../dcs/roundClose";
+import { openWindowFor, sayOpenDate } from "../domain/openWindow";
+import { useNow } from "../useNow";
 import { useStepWork } from "../dcs/stepWork";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -59,6 +61,11 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stepDone, setStepDone] = useState(false);
+  // Those seated on the step, whom an agreed verse waits for; and the next close, kept in state (set below) so the
+  // progress, which depends on the time, does not feed the clock it is read with.
+  const [seated, setSeated] = useState<string[]>([]);
+  const [nextClose, setNextClose] = useState<string | undefined>();
+  const now = useNow(nextClose);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -89,6 +96,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
     void stepIsDone({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: step.id })
       .then((done) => !cancelled && setStepDone(done))
       .catch(() => undefined);
+    void stepSeated({ session, pmOrg: ctx.pmOrg, issueNumber: ctx.issueNumber, stepId: step.id })
+      .then((who) => !cancelled && setSeated(who))
+      .catch(() => !cancelled && setSeated([]));
     return () => {
       cancelled = true;
     };
@@ -100,6 +110,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
   const confirmers = useMemo(() => confirmersOf(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
 
+  const openWin = useMemo(() => openWindowFor(step, seated, now), [step, seated, now]);
   const passages = useMemo<ReadingPassage[]>(() => (data ? readingPassages(data.passages, data.texts) : []), [data]);
   const tallies = useMemo(() => {
     const map = new Map<string, ItemTally>();
@@ -108,12 +119,13 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
       for (const [verse, body] of Object.entries(text.verses)) {
         if (!body?.trim()) continue;
         const itemId = readingItemId(text.resource, data.chapter, Number(verse));
-        map.set(itemId, tallyItem({ itemId, decisions, currentHash: textFingerprint(body), levels: teamLevels, authors: data.authorsByItem[itemId] ?? [], thresholds: { minAgree, minIndependent }, confirmers }));
+        map.set(itemId, tallyItem({ itemId, decisions, currentHash: textFingerprint(body), levels: teamLevels, authors: data.authorsByItem[itemId] ?? [], thresholds: { minAgree, minIndependent }, confirmers, open: openWin }));
       }
     }
     return map;
-  }, [data, decisions, teamLevels, confirmers, minAgree, minIndependent]);
+  }, [data, decisions, teamLevels, confirmers, minAgree, minIndependent, openWin]);
   const progress = useMemo(() => (data ? readingProgress(passages, data.texts, data.chapter, tallies) : null), [data, passages, tallies]);
+  useEffect(() => setNextClose(progress?.closesAt), [progress?.closesAt]);
   // Counted against the whole chapter: the verses of a passage still being translated are yet to be read.
   const toRead = Math.max(progress?.items ?? 0, passages.reduce((sum, passage) => sum + passage.verses.length, 0) * (data?.texts.length ?? 0));
   useStepWork(session, ctx, progress?.agreed ?? 0, toRead, { stepId: step?.id, on: !stepDone && !saving });
@@ -257,7 +269,11 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
         <div className="gr-text__head">
           <span className="gr-text__name">{text.name}</span>
           <span className="gr-text__state">
-            {tally?.state === "agreed" ? (
+            {tally?.state === "agreed" && tally.openUntil ? (
+              <>
+                <Check size={12} aria-hidden /> {t("round.openUntil").replace("{date}", sayOpenDate(tally.openUntil, language, t("round.dateAt")))}
+              </>
+            ) : tally?.state === "agreed" ? (
               <>
                 <Check size={12} aria-hidden /> {t("gr.agreed")}
               </>
@@ -454,7 +470,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                 ? t("gr.alreadyClosed")
                 : progress.complete
                   ? t("gr.readyToClose")
-                  : !progress.items
+                  : progress.allAgreed && progress.closesAt
+                    ? t("round.allAgreedOpen").replace("{date}", sayOpenDate(progress.closesAt, language, t("round.dateAt")))
+                    : !progress.items
                     ? t("gr.nothingYet")
                     : [
                         t("gr.progress").replace("{n}", String(progress.agreed)).replace("{of}", String(progress.items)),
