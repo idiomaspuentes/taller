@@ -10,15 +10,18 @@ import { useNow } from "./useNow";
  * The open window of a step for a screen that reviews item by item: who is seated on it, and the clock, which
  * wakes at the earliest window still ahead so no line keeps saying «hasta…» about a time that has passed. The screen
  * says every item's `openUntil` to `wakeAt` (from an effect, since they depend on `open`); the wake-up time is kept
- * in state so the summary, which depends on the time, does not feed the clock it is read with.
+ * in state so the summary, which depends on the time, does not feed the clock it is read with. Once the step is
+ * `closed` nothing is open any more: its items stop inviting to give a view, and nobody seated is read.
  */
 export function useOpenWindow(params: {
   session: GtSession | null | undefined;
   pmOrg?: string;
   issueNumber?: number;
   step: { id: string; openHours?: number } | undefined;
+  closed?: boolean;
 }): { open: OpenWindow | undefined; wakeAt: (times: (string | undefined)[]) => void } {
-  const { session, pmOrg, issueNumber, step } = params;
+  const { session, pmOrg, issueNumber, closed } = params;
+  const step = closed ? undefined : params.step;
   const [seated, setSeated] = useState<string[]>([]);
   const [times, setTimes] = useState<number[]>([]);
   const nowRef = useRef(0);

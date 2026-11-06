@@ -627,7 +627,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shared, data, effective, groups]);
   // An agreed verse stays open for those seated on the step.
-  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: taskStep });
+  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: taskStep, closed: stepDone });
   const tally =
     verse && data
       ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds, tcCloses: stepDone, open })

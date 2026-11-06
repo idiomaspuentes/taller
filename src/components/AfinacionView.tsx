@@ -513,7 +513,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const hash = textFingerprint(verseText);
 
   // An agreed item stays open for those seated on the step.
-  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: taskStep });
+  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: taskStep, closed: stepDone });
   const sayUntil = useSayUntil();
   const tally = item && data
     ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers, tcCloses: stepDone, open })

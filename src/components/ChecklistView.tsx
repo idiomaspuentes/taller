@@ -252,7 +252,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
   };
   const proposals = useMemo(() => proposalsOf(answers, needed, ours, people ? { consensus: true, decides, questionsOf: questionsOfProposal } : {}), [answers, needed, data?.task, people, data?.levelBook, questions]);
   // An agreed note stays open for the rest of the team for the step's `openHours` (see `useOpenWindow`).
-  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: data?.step ?? undefined });
+  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: data?.step ?? undefined, closed: stepDone });
   const sayUntil = useSayUntil();
   const summary = useMemo(
     () => summarizeChecklist({ items: checkItems, questions, answers: withoutWithdrawn(answers), currentHashes: hashes, ...(people ? { agreement: { people, proposals, me, ...(open ? { open } : {}) } } : {}) }),

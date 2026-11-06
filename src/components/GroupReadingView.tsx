@@ -101,7 +101,7 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
   const confirmers = useMemo(() => confirmersOf(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
 
-  const { open: openWin, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step });
+  const { open: openWin, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step, closed: stepDone });
   const sayUntil = useSayUntil();
   const passages = useMemo<ReadingPassage[]>(() => (data ? readingPassages(data.passages, data.texts) : []), [data]);
   const tallies = useMemo(() => {
