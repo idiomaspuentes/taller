@@ -2486,6 +2486,7 @@
   "af.guideAskTpl": "O que o TPL pede?",
   "af.guideAskTps": "O que o TPS pede?",
   "af.teamAgreed": "Acordado · {n} de acordo",
+  "af.openToOthers": "Aberto aos demais até {date}",
   "af.teamCount": "Equipe: {n} de {of} de acordo",
   "af.teamOpenOne": "{who} não está de acordo",
   "af.teamOpenMany": "{who} não estão de acordo",

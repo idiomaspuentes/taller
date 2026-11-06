@@ -545,6 +545,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const closedView = Boolean(tally?.decided) && !reopened && !fixing;
   const openUntilText = (until: string) => sayUntil("round.openUntil", until);
   const agreeCount = tally ? (tally.state === "agreed" && tally.openUntil ? openUntilText(tally.openUntil) : tally.state === "agreed" ? t("af.teamAgreed").replace("{n}", String(tally.agree)) : t("af.agreeCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree))) : "";
+  // Beside one's own answer the open time is for the others: «De acuerdo» twice, and an invitation to give the view
+  // already given, was what it read.
+  const mineCount = tally?.state === "agreed" && tally.openUntil ? sayUntil("af.openToOthers", tally.openUntil) : agreeCount;
 
   const summary = useMemo(
     () =>
@@ -2720,7 +2723,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
             <div className="af-ask">
               {teamBox()}
-              {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {agreeCount}</span> : null}</p> : null}
+              {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {mineCount}</span> : null}</p> : null}
               {mine && !changing ? (
                 // Answered: what there is to do here is nothing, or change it. The same buttons as before answering
                 // were read as a point still to answer.
