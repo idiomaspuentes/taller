@@ -64,6 +64,7 @@ Cada plantilla tiene `id`, `name`, `version`, `phases` y `tasks`.
 | `checks` | Lo que la persona comprueba en su propio trabajo antes de entregar el paso: una lista corta que marca para sí (`id`, `text`, `texts` por idioma). Con `when` (palabras de la fuente: enteras, sin importar mayúsculas; `walk*` y `*ed` para el principio o el final de una palabra; `#` para cualquier número; `Aa` para un nombre propio) solo aparece en un pasaje cuya fuente tenga alguna. Recuerda; no cierra el paso |
 | `claimMode` | Quién lo toma: `none` (quien tiene la tarea), `exclusive` (una persona), `pool` (varias) |
 | `minAssignees`, `maxAssignees`, `minIndependent` | Cuántas personas, y cuántas no deben haber escrito el texto (`pool`) |
+| `openHours` | Cuántas horas sigue abierto un ítem que ya tiene el mínimo para que otros opinen; se cierra antes si ya opinaron todos los del paso. Solo en pasos `pool` que se cierran por acuerdo (`consensus`, `checklist`). Sin el campo, el ítem se cierra al acordarse |
 | `excludeIssueAssignee`, `excludePriorStepIds`, `includeAuthorInApproval` | Quién no puede tomarlo, y si el autor también confirma |
 | `closing` | Cómo se completa: `self`, `approval`, `consensus`, `checklist`, `automatic` |
 | `articleFocus` | Los títulos de la sección de un artículo de que trata el paso («Sugerencias de traducción»): el artículo se muestra desde ahí |
