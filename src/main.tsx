@@ -7,6 +7,10 @@ import { applyServerFromUrl } from "./serverChoice";
 import { installTypingMode } from "./typingMode";
 import "./index.css";
 import { applyTextSize } from "./textSize";
+import { installDoor43Gate } from "./dcs/door43Gate";
+
+// Before any request leaves: Door43 gets a few at a time, writes first (see door43Gate.ts).
+installDoor43Gate();
 
 // The size of the texts the person chose on this device, before anything is drawn.
 applyTextSize();
