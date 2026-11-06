@@ -4,6 +4,7 @@
  * consensus round (`reviewRound.ts`); a passage nobody delivered yet has no text, and is waited for.
  * Pure: `dcs/groupReading.ts` reads the drafts, the view shows this.
  */
+import { latestOf } from "./openWindow";
 import type { ItemTally } from "./reviewRound";
 import type { VerseTextMap } from "./usfmAst";
 
@@ -65,7 +66,11 @@ export type ReadingProgress = {
   disputed: number;
   /** Passages × texts still being translated. */
   missing: number;
-  /** Everything arrived and everything is agreed: the review can be closed. */
+  /** Everything arrived and everything is agreed (some verses may still be open for the rest of the step). */
+  allAgreed: boolean;
+  /** When the last verse still open closes; absent when none is open. */
+  closesAt?: string;
+  /** Everything arrived, everything is agreed and nothing is still open: the review can be closed. */
   complete: boolean;
 };
 
@@ -75,6 +80,7 @@ export function readingProgress(passages: ReadingPassage[], texts: ReadingText[]
   let agreed = 0;
   let disputed = 0;
   let missing = 0;
+  const openUntil: (string | undefined)[] = [];
   for (const passage of passages) {
     for (const text of texts) {
       if (!passage.arrived[text.resource]) {
@@ -85,11 +91,15 @@ export function readingProgress(passages: ReadingPassage[], texts: ReadingText[]
         // A verse left empty inside a delivered passage (joined to its neighbour) has nothing to agree on.
         if (!text.verses[verse]?.trim()) continue;
         items++;
-        const state = tallies.get(readingItemId(text.resource, chapter, verse))?.state;
-        if (state === "agreed") agreed++;
-        else if (state === "disputed") disputed++;
+        const tally = tallies.get(readingItemId(text.resource, chapter, verse));
+        if (tally?.state === "agreed") {
+          agreed++;
+          openUntil.push(tally.openUntil);
+        } else if (tally?.state === "disputed") disputed++;
       }
     }
   }
-  return { items, agreed, disputed, missing, complete: items > 0 && missing === 0 && agreed === items };
+  const allAgreed = items > 0 && missing === 0 && agreed === items;
+  const closesAt = latestOf(openUntil);
+  return { items, agreed, disputed, missing, allAgreed, ...(closesAt ? { closesAt } : {}), complete: allAgreed && !closesAt };
 }

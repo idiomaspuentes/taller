@@ -542,6 +542,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
         : undefined;
 
     const closing = STEP_CLOSINGS.includes(item.closing as StepClosing) ? (item.closing as StepClosing) : undefined;
+    const isAgreementPool = claimMode === "pool" && (closing === "consensus" || closing === "checklist");
     const formerNames = Array.isArray(item.formerNames) ? [...new Set(item.formerNames.map((old) => String(old).trim()).filter((old) => old && old !== name))] : [];
     const formerChecks = Array.isArray(item.formerChecks) ? [...new Set(item.formerChecks.map((old) => String(old).trim()).filter(Boolean))] : [];
     const formerQuestions = Array.isArray(item.formerQuestions) ? [...new Set(item.formerQuestions.map((old) => String(old).trim()).filter(Boolean))] : [];
@@ -576,6 +577,7 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       maxAssignees,
       minIndependent,
       ...(claimMode === "pool" && Number(item.minAgree) >= 1 ? { minAgree: Math.floor(Number(item.minAgree)) } : {}),
+      ...(isAgreementPool && Number.isInteger(Number(item.openHours)) && Number(item.openHours) >= 1 ? { openHours: Number(item.openHours) } : {}),
       excludePriorStepIds: excludePriorStepIds?.length ? excludePriorStepIds : undefined,
       excludeIssueAssignee,
       includeAuthorInApproval: includeAuthorInApproval || undefined,

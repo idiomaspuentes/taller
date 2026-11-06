@@ -1,5 +1,6 @@
 import type { CheckingDecision, CheckingDecisionsFile } from "@usfm-tools/types";
 import { countsForMinimum, type PersonLevel } from "./levels";
+import { latestOf, openUntilOf, type OpenWindow } from "./openWindow";
 
 /**
  * Consensus of an asynchronous review round (Afinación, Validación, …).
@@ -75,6 +76,13 @@ export type ItemTally = {
    * the team chooses. Absent when every agreement is about the same words.
    */
   selections?: { words: string; by: string[] }[];
+  /**
+   * When an agreed item became agreed, the last time it did (the answer that brought it there). Absent when the
+   * team's final decision settled it.
+   */
+  agreedAt?: string;
+  /** Until when the agreed item stays open for the rest of the step. Absent when it is closed. */
+  openUntil?: string;
 };
 
 /**
@@ -131,7 +139,7 @@ function latestPerReviewer(decisions: ReviewDecision[]): ReviewDecision[] {
   return [...byPerson.values()];
 }
 
-export function tallyItem(params: {
+type TallyParams = {
   itemId: string;
   decisions: ReviewDecision[];
   /** Fingerprint of the text now. Answers on another text are stale. Omitted = nothing is stale. */
@@ -144,10 +152,34 @@ export function tallyItem(params: {
   confirmers?: string[];
   /** The step is closed: what was checked in translationCore shows the point closed. Otherwise it counts for nothing. */
   tcCloses?: boolean;
+};
+
+export function tallyItem(params: TallyParams & {
+  /** How long an agreed item stays open for the rest of the step (`openWindow.ts`). Omitted = it closes when agreed. */
+  open?: OpenWindow;
 }): ItemTally {
+  const mine = params.decisions.filter((d) => d.itemId === params.itemId && isStance(d.status) && (params.tcCloses || !fromTc(d)));
+  const tally = countAnswers(params, mine);
+  // The team's final decision closes at once: the meeting was the moment to give one's view.
+  if (tally.state !== "agreed" || tally.decided) return tally;
+  // The answer with which the item became agreed, the last time it did: another agreement after it does not move
+  // it; an objection, a proposal or a corrected text undoes the agreement, and the next one starts again.
+  const inOrder = [...mine].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  let agreedAt: string | undefined;
+  let before = false;
+  for (let k = 1; k <= inOrder.length; k++) {
+    const agreedHere = countAnswers(params, inOrder.slice(0, k)).state === "agreed";
+    if (agreedHere && !before) agreedAt = inOrder[k - 1]!.timestamp;
+    before = agreedHere;
+  }
+  const openUntil = openUntilOf({ agreedAt, window: params.open, answered: tally.answers.map((a) => a.reviewer), decided: false });
+  return { ...tally, ...(agreedAt ? { agreedAt } : {}), ...(openUntil ? { openUntil } : {}) };
+}
+
+/** Where an item stands with these answers (already those of the item that count), with no window. */
+function countAnswers(params: TallyParams, mine: ReviewDecision[]): ItemTally {
   const { itemId, currentHash, levels, thresholds } = params;
   const authors = new Set(params.authors.map((a) => a.trim().toLowerCase()));
-  const mine = params.decisions.filter((d) => d.itemId === itemId && isStance(d.status) && (params.tcCloses || !fromTc(d)));
   const latest = latestPerReviewer(mine);
   const stale = latest.filter((d) => currentHash !== undefined && d.textHash !== undefined && d.textHash !== currentHash);
   const staleSet = new Set(stale);
@@ -289,7 +321,11 @@ export type RoundSummary = {
   agreed: number;
   disputed: number;
   pending: number;
-  /** The round closes when every item is agreed. */
+  /** Every item is agreed (some may still be open for the rest of the step). */
+  allAgreed: boolean;
+  /** When the last item still open closes; absent when none is open. */
+  closesAt?: string;
+  /** The round closes when every item is agreed and none is still open. */
   complete: boolean;
   /** Disputed items, with the positions already written: the agenda of a short meeting. */
   meeting: ItemTally[];
@@ -312,6 +348,8 @@ export function summarizeRound(params: {
   confirmers?: string[];
   /** See `tallyItem`. */
   tcCloses?: boolean;
+  /** See `tallyItem`. */
+  open?: OpenWindow;
 }): RoundSummary {
   const items = params.itemIds.map((itemId) =>
     tallyItem({
@@ -323,18 +361,23 @@ export function summarizeRound(params: {
       thresholds: params.thresholds,
       confirmers: params.confirmers,
       tcCloses: params.tcCloses,
+      open: params.open,
     }),
   );
   const agreed = items.filter((i) => i.state === "agreed").length;
   const disputed = items.filter((i) => i.state === "disputed").length;
   const answered = new Set(items.flatMap((i) => i.answers.map((a) => a.reviewer.trim().toLowerCase())));
   const waitingOn = (params.reviewers ?? []).filter((r) => !answered.has(r.trim().toLowerCase()));
+  const allAgreed = items.length > 0 && agreed === items.length;
+  const closesAt = latestOf(items.map((i) => i.openUntil));
   return {
     items,
     agreed,
     disputed,
     pending: items.length - agreed - disputed,
-    complete: items.length > 0 && agreed === items.length,
+    allAgreed,
+    ...(closesAt ? { closesAt } : {}),
+    complete: allAgreed && !closesAt,
     meeting: items.filter((i) => i.state === "disputed"),
     waitingOn,
   };

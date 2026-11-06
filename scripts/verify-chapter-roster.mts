@@ -159,4 +159,14 @@ test("te toca dice por qué", () => {
   assert.equal(rosterOf({ items, summary, sections })[1]!.reason, undefined);
 });
 
+test("una nota de acuerdo aún abierta al resto del equipo le toca a quien debe opinar", () => {
+  const inWindow = { ...tally("w1", "ok", "mine", ["ana", "bea"]), openUntil: "2026-11-09T12:00:00.000Z" };
+  const closed = tally("w2", "ok", "mine", ["ana", "bea"]);
+  const both: CheckItem[] = [{ id: "w1", verseKey: "1:1" }, { id: "w2", verseKey: "1:2" }];
+  const rows = rosterOf({ items: both, summary: summaryOf([inWindow, closed]), sections, me: "carla" });
+  assert.equal(rows.find((row) => row.itemId === "w1")!.status, "mine");
+  assert.equal(rows.find((row) => row.itemId === "w2")!.status, "ready", "sin ventana, una nota resuelta sigue lista");
+  assert.equal(nextNeeding(rows, { me: "carla", needed: 3 }), "w1");
+});
+
 console.log(`\nverify-chapter-roster: ${passed} checks passed.`);

@@ -70,4 +70,19 @@ test("quien tradujo el versículo puede estar de acuerdo, pero hace falta alguie
   assert.equal(readingProgress(whole, [one], 1, map).complete, false);
 });
 
+test("la lectura grupal no se puede cerrar mientras un versículo acordado sigue abierto", () => {
+  const whole = readingPassages([{ from: 1, to: 2 }], [tpl]);
+  const all = [answer("ana", "tpl", 1, tpl.verses[1]), answer("bea", "tpl", 1, tpl.verses[1]), answer("ana", "tpl", 2, tpl.verses[2]), answer("bea", "tpl", 2, tpl.verses[2])];
+  const map = tally(all, [tpl]);
+  const iso = "2026-10-05T10:00:00.000Z";
+  const itemId = readingItemId("tpl", 1, 2);
+  map.set(itemId, { ...map.get(itemId)!, state: "agreed", openUntil: iso });
+  const progress = readingProgress(whole, [tpl], 1, map);
+  assert.equal(progress.allAgreed, true);
+  assert.equal(progress.complete, false, "el versículo 2 sigue abierto para los demás");
+  assert.equal(progress.closesAt, iso);
+  const closed = readingProgress(whole, [tpl], 1, tally(all, [tpl]));
+  assert.deepEqual([closed.allAgreed, closed.complete, closed.closesAt], [true, true, undefined]);
+});
+
 console.log(`\nverify-group-reading: ${passed} checks passed.`);

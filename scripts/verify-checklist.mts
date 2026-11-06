@@ -1,7 +1,8 @@
 /** A checklist step: every item answered yes, or its «no» settled (fixed, created, or answered by the owner). */
 import assert from "node:assert/strict";
-import { itemSaying, proposalAnswer, proposalKeeping, proposalSaying, proposalsOf } from "../src/domain/checkProposal";
+import { itemSaying, proposalAnswer, proposalDecided, proposalKeeping, proposalSaying, proposalsOf, withoutWithdrawn } from "../src/domain/checkProposal";
 import { articleItemId, asksOf, itemAgreed, consultReply, groupInView, groupsOf, helpAtWord, questionsFor, summarizeChecklist, verseCoverage, verseItemId, withVerseStops, type CheckAnswer, type CheckItem } from "../src/domain/checklist";
+import type { OpenWindow } from "../src/domain/openWindow";
 import { questionText, shippedWorkflow } from "../src/domain/processes";
 import { proposalMark } from "../src/domain/singleProposal";
 import { canApproveStep, closesInItsTool } from "../src/domain/stepClaim";
@@ -410,6 +411,122 @@ test("la pregunta del versículo enlazado se hace solo a una nota que remite a o
     const rows = [old, ...yes];
     const slots = summarizeChecklist({ items: [{ id: "n1", verseKey: "1:1" }], questions: three, answers: rows, agreement: { people: 3, proposals: proposalsOf(rows, 3, () => true, rule), me: "ana" } }).items[0]!.slots!;
     assert.equal(slots.tps!.settled, true, "las tres dijeron que sí a la nota en el TPS, como antes");
+  });
+}
+
+// ---------------------------------------------------------------- an agreed note stays open for the rest of the step (6 November)
+{
+  // `now` is counted from the «yes» that completed the agreement, as in verify-review-round.
+  const H = 3_600_000;
+  const qs = [{ id: "sentido", text: "¿Tiene sentido?" }];
+  const note: CheckItem[] = [{ id: "n1", verseKey: "1:1" }];
+  const yes = (by: string, at: string): CheckAnswer => ({ itemId: "n1", questionId: "sentido", value: "yes", by, at });
+  const three = [yes("ana", "2026-11-02T10:00:00Z"), yes("bea", "2026-11-02T10:05:00Z"), yes("carla", "2026-11-02T10:10:00Z")];
+  const open = (hoursLater: number, seated: string[] = []): OpenWindow => ({ hours: 72, seated, now: Date.parse(three[2]!.at) + hoursLater * H });
+  const run = (answers: CheckAnswer[], window?: OpenWindow, me = "dina") => summarizeChecklist({ items: note, questions: qs, answers, agreement: { people: 3, proposals: [], me, ...(window ? { open: window } : {}) } });
+
+  test("tres sí en una pregunta la dejan resuelta, abierta 72 horas", () => {
+    const summary = run(three, open(1));
+    const slot = summary.items[0]!.slots!.sentido!;
+    assert.equal(slot.settled, true);
+    assert.equal(slot.settledAt, three[2]!.at, "desde el tercer «sí»");
+    assert.equal(slot.openUntil, new Date(Date.parse(three[2]!.at) + 72 * H).toISOString());
+    assert.equal(summary.items[0]!.state, "ok");
+    assert.equal(summary.items[0]!.openUntil, slot.openUntil);
+    assert.equal(summary.allSettled, true);
+    assert.equal(summary.complete, false, "todo está de acuerdo, pero el plazo no venció");
+    assert.ok(summary.closesAt);
+    assert.equal(summary.closesAt, slot.openUntil);
+  });
+
+  test("vencido el plazo, la lista está completa", () => {
+    const summary = run(three, open(73));
+    assert.equal(summary.complete, true);
+    assert.equal(summary.closesAt, undefined);
+    assert.equal(summary.items[0]!.openUntil, undefined);
+  });
+
+  test("si ya opinaron todos los del paso, la nota se cierra en el acto", () => {
+    const summary = run(three, open(1, ["Ana", "bea", "carla"]));
+    assert.equal(summary.items[0]!.slots!.sentido!.openUntil, undefined, "no queda nadie a quien esperar (se comparan en minúsculas)");
+    assert.equal(summary.items[0]!.openUntil, undefined);
+    assert.equal(summary.complete, true);
+  });
+
+  test("sin saber quién está en el paso, la nota espera el plazo completo", () => {
+    assert.ok(run(three, open(1, [])).items[0]!.slots!.sentido!.openUntil);
+  });
+
+  test("a quien está en el paso y no opinó, la nota abierta le toca", () => {
+    const seated = ["ana", "bea", "carla", "dora"];
+    assert.equal(run(three, open(1, seated), "dora").items[0]!.turn, "mine", "Dora todavía puede opinar");
+    assert.equal(run(three, open(1, seated), "ana").items[0]!.turn, "done", "Ana ya opinó");
+    assert.equal(run(three, open(1, seated), "eva").items[0]!.turn, "done", "quien no está en el paso no tiene nada que hacer");
+  });
+
+  test("una nota acordada fuera de Taller no espera", () => {
+    const summary = run([...three, itemAgreed("n1", "abelper8", three[2]!.at, "Revisada en equipo en la hoja")], open(1));
+    assert.equal(summary.items[0]!.state, "ok");
+    assert.equal(summary.items[0]!.openUntil, undefined);
+    assert.equal(summary.items[0]!.slots!.sentido!.openUntil, undefined);
+    assert.equal(summary.complete, true);
+  });
+
+  test("una propuesta acordada por todos deja la nota abierta desde ese acuerdo; la que decide quien coordina, no", () => {
+    // Before SINGLE_PROPOSAL_FROM a proposal is chosen by proposing it or saying one is for it.
+    const p = { id: "pr-v", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+    const made = proposalAnswer({ itemId: "n1", questionId: "sentido", by: "ana", at: "2026-10-21T10:00:00Z", reason: "", proposal: p });
+    const carla = proposalSaying("pr-v", "carla", "2026-10-21T10:06:00Z", true);
+    const rule = { consensus: true, decides: (login: string) => login === "tito" };
+    const window = (hoursLater: number): OpenWindow => ({ hours: 72, seated: [], now: Date.parse(carla.at) + hoursLater * H });
+    const slotOf = (answers: CheckAnswer[]) => summarizeChecklist({ items: note, questions: qs, answers, agreement: { people: 3, proposals: proposalsOf(answers, 3, () => true, rule), open: window(1) } }).items[0]!.slots!.sentido!;
+    const agreed = slotOf([made, proposalSaying("pr-v", "bea", "2026-10-21T10:05:00Z", true), carla]);
+    assert.equal(agreed.settled, true);
+    assert.equal(agreed.settledAt, carla.at);
+    assert.ok(agreed.openUntil);
+    const decided = slotOf([made, proposalSaying("pr-v", "bea", "2026-10-21T10:05:00Z", true), proposalKeeping("pr-v", "carla", "2026-10-21T10:06:00Z", true), proposalDecided("pr-v", "tito", "2026-10-21T10:07:00Z", true)]);
+    assert.equal(decided.settled, true);
+    assert.equal(decided.settledAt, undefined);
+    assert.equal(decided.openUntil, undefined);
+  });
+
+  test("una lista sin horas abiertas se cuenta como antes", () => {
+    const done = run(three);
+    assert.equal(done.allSettled, true);
+    assert.equal(done.complete, done.allSettled);
+    assert.equal(done.closesAt, undefined);
+    assert.equal(done.items[0]!.slots!.sentido!.openUntil, undefined);
+    const half = run(three.slice(0, 2));
+    assert.equal(half.allSettled, false);
+    assert.equal(half.complete, half.allSettled);
+    assert.equal(half.closesAt, undefined);
+  });
+
+  test("una propuesta retirada dentro del plazo hace empezar otras 72 horas desde que se retiró", () => {
+    // Ana, Bea and Carla said «yes» on Monday; Dora proposed a change on Tuesday and took it back on Wednesday. The
+    // note is agreed again from Wednesday, not from Monday's «yes», which came before the disagreement.
+    const p = { id: "pr-d", resource: "notas", where: "1:1", rowId: "n1", field: "Note", before: "a", after: "b" };
+    const made = proposalAnswer({ itemId: "n1", questionId: "sentido", by: "dora", at: "2026-11-03T09:00:00Z", reason: "", proposal: p });
+    const back = proposalSaying("pr-d", "dora", "2026-11-04T10:00:00Z", false);
+    const rule = { consensus: true, questionsOf: () => ["sentido"] };
+    // As the screen reads it: the proposals from every answer, the list from the answers without what was taken back.
+    const summaryOf = (answers: CheckAnswer[], window: OpenWindow) =>
+      summarizeChecklist({ items: note, questions: qs, answers: withoutWithdrawn(answers), agreement: { people: 3, proposals: proposalsOf(answers, 3, () => true, rule), me: "dina", open: window } });
+    const at = (iso: string, hoursLater: number): OpenWindow => ({ hours: 72, seated: [], now: Date.parse(iso) + hoursLater * H });
+    assert.equal(summaryOf([...three, made], at(made.at, 1)).items[0]!.state, "pending", "con la propuesta abierta no está resuelta");
+    const rows = [...three, made, back];
+    const after = summaryOf(rows, at(three[2]!.at, 73));
+    assert.equal(after.items[0]!.slots!.sentido!.settledAt, back.at, "resuelta otra vez cuando se retiró");
+    assert.equal(after.items[0]!.openUntil, new Date(Date.parse(back.at) + 72 * H).toISOString(), "72 horas desde que se retiró");
+    assert.equal(after.complete, false, "73 horas después del tercer «sí», pero menos de 72 desde que se retiró");
+    assert.equal(summaryOf(rows, at(back.at, 73)).complete, true, "vencido el plazo nuevo, se cierra");
+  });
+
+  test("un cuarto sí no cambia desde cuándo está resuelta la pregunta", () => {
+    const fourth = [...three, yes("dora", "2026-11-03T09:00:00Z")];
+    const slot = run(fourth, open(1)).items[0]!.slots!.sentido!;
+    assert.equal(slot.settledAt, three[2]!.at, "desde el tercer «sí», no el cuarto");
+    assert.equal(slot.openUntil, new Date(Date.parse(three[2]!.at) + 72 * H).toISOString());
   });
 }
 

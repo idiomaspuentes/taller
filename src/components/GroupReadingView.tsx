@@ -14,6 +14,7 @@ import { loadSession, type GtSession } from "../dcs/auth";
 import { loadGroupReading, type GroupReadingData, type GroupReadingText } from "../dcs/groupReading";
 import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useOpenWindow, useSayUntil } from "../useOpenWindow";
 import { useStepWork } from "../dcs/stepWork";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
@@ -100,6 +101,8 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
   const confirmers = useMemo(() => confirmersOf(data?.levelBook, data?.teamName), [data?.levelBook, data?.teamName]);
 
+  const { open: openWin, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step, closed: stepDone });
+  const sayUntil = useSayUntil();
   const passages = useMemo<ReadingPassage[]>(() => (data ? readingPassages(data.passages, data.texts) : []), [data]);
   const tallies = useMemo(() => {
     const map = new Map<string, ItemTally>();
@@ -108,12 +111,13 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
       for (const [verse, body] of Object.entries(text.verses)) {
         if (!body?.trim()) continue;
         const itemId = readingItemId(text.resource, data.chapter, Number(verse));
-        map.set(itemId, tallyItem({ itemId, decisions, currentHash: textFingerprint(body), levels: teamLevels, authors: data.authorsByItem[itemId] ?? [], thresholds: { minAgree, minIndependent }, confirmers }));
+        map.set(itemId, tallyItem({ itemId, decisions, currentHash: textFingerprint(body), levels: teamLevels, authors: data.authorsByItem[itemId] ?? [], thresholds: { minAgree, minIndependent }, confirmers, open: openWin }));
       }
     }
     return map;
-  }, [data, decisions, teamLevels, confirmers, minAgree, minIndependent]);
+  }, [data, decisions, teamLevels, confirmers, minAgree, minIndependent, openWin]);
   const progress = useMemo(() => (data ? readingProgress(passages, data.texts, data.chapter, tallies) : null), [data, passages, tallies]);
+  useEffect(() => wakeAt([...tallies.values()].map((point) => point.openUntil)), [tallies, wakeAt]);
   // Counted against the whole chapter: the verses of a passage still being translated are yet to be read.
   const toRead = Math.max(progress?.items ?? 0, passages.reduce((sum, passage) => sum + passage.verses.length, 0) * (data?.texts.length ?? 0));
   useStepWork(session, ctx, progress?.agreed ?? 0, toRead, { stepId: step?.id, on: !stepDone && !saving });
@@ -257,7 +261,11 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
         <div className="gr-text__head">
           <span className="gr-text__name">{text.name}</span>
           <span className="gr-text__state">
-            {tally?.state === "agreed" ? (
+            {tally?.state === "agreed" && tally.openUntil ? (
+              <>
+                <Check size={12} aria-hidden /> {sayUntil("round.openUntil", tally.openUntil)}
+              </>
+            ) : tally?.state === "agreed" ? (
               <>
                 <Check size={12} aria-hidden /> {t("gr.agreed")}
               </>
@@ -454,7 +462,9 @@ export function GroupReadingView({ ctxEncoded, onClose, announce }: Props) {
                 ? t("gr.alreadyClosed")
                 : progress.complete
                   ? t("gr.readyToClose")
-                  : !progress.items
+                  : progress.allAgreed && progress.closesAt
+                    ? sayUntil("round.allAgreedOpen", progress.closesAt)
+                    : !progress.items
                     ? t("gr.nothingYet")
                     : [
                         t("gr.progress").replace("{n}", String(progress.agreed)).replace("{of}", String(progress.items)),

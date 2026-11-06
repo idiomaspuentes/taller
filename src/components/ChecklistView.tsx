@@ -29,6 +29,7 @@ import { commentOnIssue } from "../dcs/issues";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
 import { goOnAfterStep } from "../dcs/nextStep";
 import { useStepWork } from "../dcs/stepWork";
+import { useOpenWindow, useSayUntil } from "../useOpenWindow";
 import { freshRowId } from "../domain/helpsDraft";
 import { asksOf, consultReply, groupInView, groupsOf, questionsFor, summarizeChecklist, withVerseStops, type CheckAnswer, type CheckItem, type CheckOutcome, type ThreadLine } from "../domain/checklist";
 import { DISPUTE_DAYS, disputeStalled, ITEM_SAYS, KEEP_OPTION, itemSaying, versionsOf as chainOf, PROPOSAL_DECIDED, PROPOSAL_FREE, PROPOSAL_KEEPS, PROPOSAL_SAYS, proposalDecided, loadTrialChecks, proposalAnswer, proposalDone, proposalKeeping, proposalSaying, proposalsOf, readable, saveTrialChecks, withoutWithdrawn, type ProposalPayload, type ProposalView } from "../domain/checkProposal";
@@ -250,10 +251,16 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     return questions.filter((q) => (q.per ?? "item") === "item" && asksOf(q, { ...(view.proposal.after !== undefined ? { text: view.proposal.after } : {}), ...(help ? { linked: Boolean(help.supportRef) } : {}) })).map((q) => q.id);
   };
   const proposals = useMemo(() => proposalsOf(answers, needed, ours, people ? { consensus: true, decides, questionsOf: questionsOfProposal } : {}), [answers, needed, data?.task, people, data?.levelBook, questions]);
+  // An agreed note stays open for the rest of the team for the step's `openHours` (see `useOpenWindow`).
+  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: data?.step ?? undefined, closed: stepDone });
+  const sayUntil = useSayUntil();
   const summary = useMemo(
-    () => summarizeChecklist({ items: checkItems, questions, answers: withoutWithdrawn(answers), currentHashes: hashes, ...(people ? { agreement: { people, proposals, me } } : {}) }),
-    [checkItems, questions, answers, hashes, people, proposals, me],
+    () => summarizeChecklist({ items: checkItems, questions, answers: withoutWithdrawn(answers), currentHashes: hashes, ...(people ? { agreement: { people, proposals, me, ...(open ? { open } : {}) } } : {}) }),
+    [checkItems, questions, answers, hashes, people, proposals, me, open],
   );
+  useEffect(() => wakeAt(summary.items.map((row) => row.openUntil)), [summary, wakeAt]);
+  /** Everything is agreed but the step opens to the rest of the team until `closesAt`: no closing yet; «Siguiente» is still offered while this person has a note to give a view on. */
+  const waitingToClose = !summary.complete && summary.allSettled && Boolean(summary.closesAt);
   const tallyOf = (id: string) => summary.items.find((row) => row.itemId === id);
   /** Decided together: what this person said gives the others something to say again (a first review, a proposal). */
   const reopenOthers = () => {
@@ -2063,6 +2070,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                 {t("fa.back")}
               </Button>
             </div>
+          ) : waitingToClose && closesHere ? (
+            <div className="round__ready">
+              <p>{sayUntil("ck.allCheckedOpen", summary.closesAt!)}</p>
+            </div>
           ) : summary.complete && closesHere ? (
             <div className="round__ready">
               <p>{t("ck.allChecked")}</p>
@@ -2627,7 +2638,10 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                     // Agreed by the team before Taller (see `ITEM_AGREED`): nobody's turn, and nobody is waited for.
                     // Decided together, the line under the steps says so.
                     collab?.kind === "agreedApart" ? null : <p className="ck-ask ck-ask--wait">{t("ck.agreedApart")}</p>
-                  ) : people && !summary.complete ? (
+                  ) : tally?.openUntil ? (
+                    <p className="ck-ask ck-ask--wait">{sayUntil("round.openUntil", tally.openUntil)}</p>
+                  ) : people && !summary.complete && !(tally?.state === "ok" && !tally.openUntil) ? (
+                    // A note settled whose window has passed waits for nobody, though another one is still open.
                     <p className="ck-ask ck-ask--wait">{t("ck.youSaid")}</p>
                   ) : null}
                   {commenting && item ? (
@@ -2653,6 +2667,9 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                       <Button type="button" size="lg" disabled={saving || !allTicked} onClick={allGood}>
                         <Check size={16} aria-hidden /> {t(collab?.kind === "first" ? "ck.ansAllGood" : optionsHere ? "ck.restYes" : othersSaid.length ? "ck.agreeYes" : verseStop ? "ck.verseYes" : pendingHere.length < rowsShown.length ? "ck.restGood" : "ck.yesGo")}
                       </Button>
+                    ) : waitingToClose && nothingForMe ? (
+                      // Opened to the rest of the team and nothing left for this person: said once, no way on.
+                      closesHere ? <p className="ck-ask ck-ask--wait">{sayUntil("ck.allCheckedOpen", summary.closesAt!)}</p> : null
                     ) : !summary.complete ? (
                       <Button type="button" size="lg" onClick={nextPending}>
                         {t(people ? "ck.nextMine" : "ck.nextPending")}

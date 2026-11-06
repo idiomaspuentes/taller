@@ -58,6 +58,7 @@ import { tcCheckerOf } from "../domain/tcImport";
 import { canConfirmForTeam, confirmersOf, coordinatorsOf, countsForMinimum, levelLabel, levelOf, levelsForTeam, meetsLevel } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { sayUntilNow, useOpenWindow, useSayUntil } from "../useOpenWindow";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { useStepWork } from "../dcs/stepWork";
 import { FinalDecision, MeetingChip, RoundPanel } from "./RoundPanel";
@@ -511,8 +512,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const verseText = item ? data?.draftVerses[item.verse] ?? "" : "";
   const hash = textFingerprint(verseText);
 
+  // An agreed item stays open for those seated on the step.
+  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: taskStep, closed: stepDone });
+  const sayUntil = useSayUntil();
   const tally = item && data
-    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers, tcCloses: stepDone })
+    ? tallyItem({ itemId: item.id, decisions, currentHash: hash, levels: teamLevels, authors: [], thresholds, confirmers, tcCloses: stepDone, open })
     : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   // The decision of the team is said once, as such, and not also as the answer of whoever registered it.
@@ -539,7 +543,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   };
   /** The point is shown closed, with the one way to open it again; the team's box then only says who answered. */
   const closedView = Boolean(tally?.decided) && !reopened && !fixing;
-  const agreeCount = tally ? (tally.state === "agreed" ? t("af.teamAgreed").replace("{n}", String(tally.agree)) : t("af.agreeCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree))) : "";
+  const openUntilText = (until: string) => sayUntil("round.openUntil", until);
+  const agreeCount = tally ? (tally.state === "agreed" && tally.openUntil ? openUntilText(tally.openUntil) : tally.state === "agreed" ? t("af.teamAgreed").replace("{n}", String(tally.agree)) : t("af.agreeCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree))) : "";
+  // Beside one's own answer the open time is for the others: «De acuerdo» twice, and an invitation to give the view
+  // already given, was what it read.
+  const mineCount = tally?.state === "agreed" && tally.openUntil ? sayUntil("af.openToOthers", tally.openUntil) : agreeCount;
 
   const summary = useMemo(
     () =>
@@ -553,11 +561,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             thresholds,
             confirmers,
             tcCloses: stepDone,
+            open,
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, decisions, thresholds.minAgree, thresholds.minIndependent, teamLevels, confirmers, stepDone],
+    [data, decisions, thresholds.minAgree, thresholds.minIndependent, teamLevels, confirmers, stepDone, open],
   );
+  useEffect(() => wakeAt((summary?.items ?? []).map((point) => point.openUntil)), [summary, wakeAt]);
   /** The points closed already, by the team or in translationCore: nobody is taken to them to answer. */
   const settled = useMemo(() => new Set((summary?.items ?? []).filter((point) => point.decided).map((point) => point.itemId)), [summary]);
 
@@ -726,7 +736,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   }, [pending]);
   // So does what tells that everything is agreed, to whoever gave the last answer: it is at the top of the page.
   const roundRef = useRef<HTMLDivElement>(null);
-  const allAgreed = Boolean(summary?.complete);
+  const allAgreed = Boolean(summary?.allAgreed);
   useEffect(() => {
     if (!allAgreed || stepDone) return;
     // After the next point has been brought to its top, which the last answer also asks for.
@@ -914,7 +924,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       if (status !== "approved") await tellTeam(`${stanceLabel(status)}: ${words}`);
       // With this answer everything is agreed, and this person may not close the review: whoever coordinates is
       // told. Nobody was: the round stood at «30 de 30» until somebody who may close it happened to open the tool.
-      if (status === "approved" && closesHere && !canConfirm && !stepDone && summary && !summary.complete && ctx.pmOrg && ctx.issueNumber) {
+      if (status === "approved" && closesHere && !canConfirm && !stepDone && summary && !summary.allAgreed && ctx.pmOrg && ctx.issueNumber) {
         const round = summarizeRound({
           itemIds: data.items.map((i) => i.id),
           decisions: [...decisions, decision],
@@ -923,10 +933,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           authors: [],
           thresholds,
           confirmers,
+          open,
         });
         const who = coordinatorsOf(data.levelBook, task?.orgTeamName).filter((login) => login.toLowerCase() !== me);
-        if (round.complete && who.length) {
-          await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, whileOpen(`${who.map((login) => `@${login}`).join(" ")} ${tNow("round.allAgreedTell")}`)).catch(() => undefined);
+        if (round.allAgreed && who.length) {
+          const tell = round.closesAt ? sayUntilNow("round.allAgreedTellOpen", round.closesAt) : tNow("round.allAgreedTell");
+          await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, whileOpen(`${who.map((login) => `@${login}`).join(" ")} ${tell}`)).catch(() => undefined);
         }
       }
       setPending(null);
@@ -1727,6 +1739,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ? t("af.teamSplit")
               : tally.decided
               ? t(tally.decided.inTc ? "af.closedInTc" : "af.teamDecided")
+              : tally.state === "agreed" && tally.openUntil
+              ? openUntilText(tally.openUntil)
               : tally.state === "agreed"
               ? t("af.teamAgreed").replace("{n}", String(tally.agree))
               : [t("af.teamCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree)), tally.open.length ? t(tally.open.length === 1 ? "af.teamOpenOne" : "af.teamOpenMany").replace("{who}", tally.open.map((who) => `@${who}`).join(", ")) : ""].filter(Boolean).join(" · ")}
@@ -2709,7 +2723,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
             <div className="af-ask">
               {teamBox()}
-              {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {agreeCount}</span> : null}</p> : null}
+              {mine ? <p className="af-saved"><Check size={16} aria-hidden /> {t("af.myAnswer").replace("{stance}", stanceLabel(mine.status))}{plainAgreement && tally ? <span className="af-saved__count"> · {mineCount}</span> : null}</p> : null}
               {mine && !changing ? (
                 // Answered: what there is to do here is nothing, or change it. The same buttons as before answering
                 // were read as a point still to answer.

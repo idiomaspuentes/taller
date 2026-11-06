@@ -18,6 +18,7 @@ import {
   type ReviewDecision,
 } from "../src/domain/reviewRound";
 import type { PersonLevel } from "../src/domain/levels";
+import { latestOf, openWindowFor, sayOpenDate, type OpenWindow } from "../src/domain/openWindow";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -327,6 +328,147 @@ test("al releer las respuestas se ven las de los demás, y no se pierde la que s
   assert.deepEqual(now.map((d) => `${d.reviewer}:${d.itemId}`), ["ana:n1", "bea:n1", "carla:n2"]);
   // Once the files have it, it is not counted twice.
   assert.equal(withAnswersGivenHere([ana, mine, carla], [ana, mine]).length, 3);
+});
+
+// An agreed item stays open for a while so the rest of the step can still answer. `now` is counted from the answer
+// that completed the agreement: the minute counter `t` is shared by every test, so a fixed base would drift.
+const H = 3_600_000;
+const open = (from: ReviewDecision, hoursLater: number, seated: string[] = []): OpenWindow => ({ hours: 72, seated, now: Date.parse(from.timestamp) + hoursLater * H });
+const plus72 = (d: ReviewDecision) => new Date(Date.parse(d.timestamp) + 72 * H).toISOString();
+const agreedByThree = () => [answer("ana", "n1", "approved"), answer("bea", "n1", "approved"), answer("carla", "n1", "approved")];
+
+test("acordado hace una hora, el ítem sigue abierto 72 horas y la ronda no está completa", () => {
+  const three = agreedByThree();
+  const carla = three[2]!;
+  const r = tallyItem({ itemId: "n1", decisions: three, levels, authors, thresholds, open: open(carla, 1) });
+  assert.equal(r.state, "agreed");
+  assert.equal(r.agreedAt, carla.timestamp, "quedó de acuerdo con la respuesta de Carla");
+  assert.equal(r.openUntil, plus72(carla));
+  const s = summarizeRound({ itemIds: ["n1"], decisions: three, levels, authors, thresholds, open: open(carla, 1) });
+  assert.equal(s.allAgreed, true);
+  assert.equal(s.complete, false, "todo está de acuerdo, pero el plazo no venció");
+  assert.equal(s.closesAt, r.openUntil);
+});
+
+test("acordado hace 73 horas, el ítem está cerrado", () => {
+  const three = agreedByThree();
+  const carla = three[2]!;
+  const r = tallyItem({ itemId: "n1", decisions: three, levels, authors, thresholds, open: open(carla, 73) });
+  assert.equal(r.state, "agreed");
+  assert.equal(r.openUntil, undefined);
+  const s = summarizeRound({ itemIds: ["n1"], decisions: three, levels, authors, thresholds, open: open(carla, 73) });
+  assert.equal(s.complete, true);
+  assert.equal(s.closesAt, undefined);
+});
+
+test("si respondieron todos los que tomaron el paso, se cierra en el acto", () => {
+  const three = agreedByThree();
+  const r = tallyItem({ itemId: "n1", decisions: three, levels, authors, thresholds, open: open(three[2]!, 1, ["Ana", "BEA", "carla "]) });
+  assert.equal(r.state, "agreed");
+  assert.equal(r.openUntil, undefined, "no queda nadie a quien esperar (se comparan en minúsculas y sin espacios)");
+});
+
+test("alguien más se sienta en el paso dentro del plazo, y el ítem vuelve a estar abierto", () => {
+  const three = agreedByThree();
+  const r = tallyItem({ itemId: "n1", decisions: three, levels, authors, thresholds, open: open(three[2]!, 1, ["ana", "bea", "carla", "dora"]) });
+  assert.equal(r.openUntil, plus72(three[2]!), "falta Dora");
+});
+
+test("sin saber quién está en el paso, se espera el plazo completo", () => {
+  const three = agreedByThree();
+  const r = tallyItem({ itemId: "n1", decisions: three, levels, authors, thresholds, open: open(three[2]!, 1, []) });
+  assert.equal(r.openUntil, plus72(three[2]!));
+});
+
+test("un de acuerdo más dentro del plazo no lo alarga", () => {
+  const three = agreedByThree();
+  const carla = three[2]!;
+  const dora = answer("dora", "n1", "approved");
+  const r = tallyItem({ itemId: "n1", decisions: [...three, dora], levels, authors, thresholds, open: open(carla, 1) });
+  assert.equal(r.state, "agreed");
+  assert.equal(r.agreedAt, carla.timestamp);
+  assert.equal(r.openUntil, plus72(carla), "el mismo plazo que con tres");
+});
+
+test("una objeción dentro del plazo lo vuelve a disputa; retirada, el plazo empieza de nuevo", () => {
+  const three = agreedByThree();
+  const objection = answer("dora", "n1", "revise", { note: "¿«año» o «tiempo»?" });
+  const disputed = tallyItem({ itemId: "n1", decisions: [...three, objection], levels, authors, thresholds, open: open(three[2]!, 1) });
+  assert.equal(disputed.state, "disputed");
+  assert.equal(disputed.openUntil, undefined);
+  assert.equal(disputed.agreedAt, undefined);
+  const withdrawn = answer("dora", "n1", "approved");
+  const again = tallyItem({ itemId: "n1", decisions: [...three, objection, withdrawn], levels, authors, thresholds, open: open(withdrawn, 1) });
+  assert.equal(again.state, "agreed");
+  assert.equal(again.agreedAt, withdrawn.timestamp);
+  assert.equal(again.openUntil, plus72(withdrawn), "72 horas desde que Dora retiró la objeción");
+});
+
+test("con el texto corregido y vuelto a acordar, el plazo cuenta desde el acuerdo nuevo", () => {
+  const onA = [answer("ana", "n1", "approved", { hash: "a" }), answer("bea", "n1", "approved", { hash: "a" }), answer("carla", "n1", "approved", { hash: "a" })];
+  const onB = [answer("ana", "n1", "approved", { hash: "b" }), answer("bea", "n1", "approved", { hash: "b" }), answer("carla", "n1", "approved", { hash: "b" })];
+  const r = tallyItem({ itemId: "n1", decisions: [...onA, ...onB], currentHash: "b", levels, authors, thresholds, open: open(onB[2]!, 1) });
+  assert.equal(r.state, "agreed");
+  assert.equal(r.agreedAt, onB[2]!.timestamp, "el acuerdo sobre el texto viejo no cuenta");
+  assert.equal(r.openUntil, plus72(onB[2]!));
+});
+
+test("la decisión final de quien coordina se cierra en el acto", () => {
+  const final = about("carla", "n1", "approved", "En el primer año", { final: true });
+  const r = tallyItem({
+    itemId: "n1",
+    decisions: [about("ana", "n1", "approved", "En el año"), about("bea", "n1", "approved", "En el primer año"), final],
+    levels,
+    authors,
+    thresholds,
+    confirmers: ["carla"],
+    open: open(final, 1),
+  });
+  assert.equal(r.state, "agreed");
+  assert.ok(r.decided, "la reunión ya decidió");
+  assert.equal(r.openUntil, undefined);
+  assert.equal(r.agreedAt, undefined);
+});
+
+test("un paso sin horas abiertas se cuenta como antes", () => {
+  const three = agreedByThree();
+  const r = tallyItem({ itemId: "n1", decisions: three, levels, authors, thresholds });
+  assert.equal(r.state, "agreed");
+  assert.equal(r.openUntil, undefined);
+  const s = summarizeRound({ itemIds: ["n1"], decisions: three, levels, authors, thresholds });
+  assert.equal(s.allAgreed, s.complete);
+  assert.equal(s.complete, true);
+  assert.equal(s.closesAt, undefined);
+  assert.equal(openWindowFor({}, ["ana"], 0), undefined, "un paso sin el campo no tiene plazo");
+  assert.equal(openWindowFor({ openHours: 0 }, ["ana"], 0), undefined, "con 0 tampoco");
+  assert.equal(openWindowFor(undefined, [], 0), undefined);
+  assert.deepEqual(openWindowFor({ openHours: 72 }, ["ana"], 5), { hours: 72, seated: ["ana"], now: 5 });
+});
+
+test("el plazo de la ronda es el más tardío de los ítems abiertos", () => {
+  assert.equal(latestOf([undefined, "2026-10-04T12:03:00.000Z", "2026-10-05T08:00:00.000Z", "2026-10-04T23:00:00.000Z"]), "2026-10-05T08:00:00.000Z");
+  assert.equal(latestOf([undefined, undefined]), undefined);
+  assert.equal(latestOf([]), undefined);
+});
+
+test("la fecha del plazo se dice con el día y la hora en el idioma de la interfaz", () => {
+  const iso = "2026-11-09T10:30:00.000Z";
+  const said = sayOpenDate(iso, "es", "hasta el {day} a las {time}");
+  assert.ok(!said.includes("{day}") && !said.includes("{time}"), said);
+  const time = new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  assert.ok(said.includes(time), `${said} lleva la hora ${time}`);
+});
+
+test("la fecha del plazo es corta: el día de la semana y el número, sin el mes", () => {
+  const iso = "2026-11-09T10:30:00.000Z";
+  const said = sayOpenDate(iso, "es", "hasta el {day} a las {time}");
+  assert.ok(!/noviembre|november/i.test(said), `${said} no dice el mes`);
+  // «lunes 9», as the spec's «el jueves 12 a las 10:00», without the comma Intl may put after the weekday.
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString("es", { weekday: "long" });
+  const day = date.toLocaleDateString("es", { day: "numeric" });
+  assert.ok(said.includes(`hasta el ${weekday} ${day} a las`), said);
+  assert.ok(!/novembro|november/i.test(sayOpenDate(iso, "pt", "até {day} às {time}")), "en portugués tampoco");
 });
 
 console.log(`\nverify-review-round: ${passed} checks passed.`);

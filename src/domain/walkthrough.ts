@@ -29,11 +29,12 @@ export const processOf = (workflowId: string | undefined): string => (workflowId
 /**
  * A step several people take, with one seat: whoever they are and whatever they did before in the subtarea, and
  * with nobody else's agreement asked for. `minIndependent` is said as 0, not left out: the tools that close a step
- * by agreement ask for independent people of their own when a step does not say.
+ * by agreement ask for independent people of their own when a step does not say. Nor does an agreed item stay open
+ * for the others (`openHours`): the one person is everybody, and a trial would wait days for nobody.
  */
 function aloneStep(step: TaskStep): TaskStep {
   if (step.claimMode !== "pool") return step;
-  const { minAgree: _agree, excludePriorStepIds: _prior, excludeIssueAssignee: _assignee, ...rest } = step;
+  const { minAgree: _agree, excludePriorStepIds: _prior, excludeIssueAssignee: _assignee, openHours: _open, ...rest } = step;
   return { ...rest, minAssignees: 1, maxAssignees: Math.max(1, step.maxAssignees ?? 1), minIndependent: 0 };
 }
 

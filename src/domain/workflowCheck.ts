@@ -165,6 +165,10 @@ export function workflowProblems(raw: unknown, opts: { tools?: SolverApp[]; lang
       // Questions also serve a report each person hands in (closing: "approval"); elsewhere they would never be asked.
       if (closing !== "checklist" && closing !== "approval" && step.checklist !== undefined) problems.push(`${at}: tiene preguntas, pero ni se cierra con ellas (closing: "checklist") ni son las de un reporte (closing: "approval").`);
       if (closing === "approval" && stepClaimMode(typed) === "none") problems.push(`${at}: lo aprueba otra persona, así que alguien tiene que poder tomarlo (exclusive o pool).`);
+      if (step.openHours !== undefined) {
+        if (!Number.isInteger(step.openHours) || Number(step.openHours) < 0) problems.push(`${at}: «openHours» tiene que ser un número entero de horas, 0 o más.`);
+        else if (!(claim === "pool" && (closing === "consensus" || closing === "checklist"))) problems.push(`${at}: «openHours» solo vale en un paso que se cierra por acuerdo de varias personas.`);
+      }
       if (step.decisionRule !== undefined && !["majority", "unanimous"].includes(text(step.decisionRule))) problems.push(`${at}: la regla de decisión es "majority" o "unanimous".`);
       if (step.scope !== undefined && !STEP_SCOPES.includes(text(step.scope))) problems.push(`${at}: «${text(step.scope)}» no es un alcance de paso (${STEP_SCOPES.join(", ")}).`);
       const checkIds = new Set<string>();

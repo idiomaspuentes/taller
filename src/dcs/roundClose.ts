@@ -2,7 +2,7 @@ import type { GtSession } from "./auth";
 import { setIssueTaskProgress } from "./issues";
 import { getPmIssue } from "./portionPr";
 import { agreeInTool, agreementStanding, approveStep, isStepUnlocked, reopenTurns, waitInTool, withdrawInTool, type AgreementStanding } from "../domain/stepClaim";
-import { isStepDone, markStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
+import { getStepRuntime, isStepDone, markStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import type { TaskStep } from "../domain/types";
 
 /**
@@ -88,4 +88,10 @@ export async function shareTurnFromTool(params: { session: GtSession; pmOrg: str
 export async function stepIsDone(params: { session: GtSession; pmOrg: string; issueNumber: number; stepId: string }): Promise<boolean> {
   const issue = await getPmIssue(params.session, params.pmOrg, params.issueNumber);
   return isStepDone(parseTaskProgressMarker(issue.body), params.stepId);
+}
+
+/** The logins seated on the step in the subtarea: who the open window of an agreed item waits for. */
+export async function stepSeated(params: { session: GtSession; pmOrg: string; issueNumber: number; stepId: string }): Promise<string[]> {
+  const issue = await getPmIssue(params.session, params.pmOrg, params.issueNumber);
+  return getStepRuntime(parseTaskProgressMarker(issue.body), params.stepId).assignees;
 }

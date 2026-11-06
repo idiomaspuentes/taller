@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ItemTally, RoundSummary } from "../domain/reviewRound";
 import { useT } from "../i18n/messages";
+import { useSayUntil } from "../useOpenWindow";
 
 /**
  * How a round of review stands, for any tool that reviews item by item: what is still without agreement (the agenda
@@ -27,6 +28,7 @@ export function RoundPanel(props: {
   meetingElsewhere?: boolean;
 }) {
   const t = useT();
+  const sayUntil = useSayUntil();
   const { summary } = props;
   // Folded: it is the agenda of whoever settles the points, and it stood open, some two hundred pixels of it, over
   // every point of everybody else.
@@ -34,7 +36,9 @@ export function RoundPanel(props: {
   if (!summary.items.length) return null;
   // Nothing to say yet (no meeting needed, nothing to close): no empty box taking room.
   const meeting = props.meetingElsewhere ? [] : summary.meeting;
-  if (!props.stepDone && !(summary.complete && props.closesHere) && !meeting.length) return null;
+  // Everything agreed but still open to the rest of the team: said without a button, until the date.
+  const waiting = !props.stepDone && props.closesHere && summary.allAgreed && Boolean(summary.closesAt);
+  if (!props.stepDone && !(summary.complete && props.closesHere) && !waiting && !meeting.length) return null;
 
   return (
     <section className="round" aria-label={t("round.aria")}>
@@ -63,6 +67,10 @@ export function RoundPanel(props: {
             </Button>
           </div>
         )
+      ) : waiting && summary.closesAt ? (
+        <div className="round__ready">
+          <p>{sayUntil("round.allAgreedOpen", summary.closesAt)}</p>
+        </div>
       ) : null}
 
       {meeting.length ? (

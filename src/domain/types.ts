@@ -426,6 +426,8 @@ export type TaskStep = {
    * confirmation by two people of what a third reviewed asks for three. Omitted = `minAssignees`.
    */
   minAgree?: number;
+  /** Agreement steps: hours an agreed item stays open for others to weigh in (see `reviewRound.ts`, `checklist.ts`). Omitted = it closes when agreed. */
+  openHours?: number;
   /** Logins who were assignees on these prior steps cannot claim this step. */
   excludePriorStepIds?: string[];
   /**

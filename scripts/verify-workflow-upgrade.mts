@@ -259,4 +259,24 @@ test("un proyecto que ya armonizaba por secciones las conserva al actualizar: su
   }
 });
 
+test("traer lo nuevo agrega las horas abiertas a los pasos de acuerdo de un proyecto viejo", () => {
+  const created = applyWorkflowToBoard(empty, fcr);
+  const stripped = (hours?: number): AssignmentsDoc => ({
+    ...created,
+    workflowVersion: 53,
+    teams: created.teams.map((task) => ({
+      ...task,
+      steps: task.steps?.map((s) => {
+        const { openHours: _gone, ...rest } = s;
+        return task.id === "desafios-tpl" && s.id === "revisar" && hours ? { ...rest, openHours: hours } : rest;
+      }),
+    })),
+  });
+  const stepOf = (board: AssignmentsDoc) => board.teams.find((t) => t.id === "desafios-tpl")!.steps!.find((s) => s.id === "revisar")!;
+  const result = upgradeBoardToWorkflow(stripped(), fcr);
+  assert.equal(stepOf(result.board).openHours, 72);
+  assert.equal(result.board.workflowVersion, 54);
+  assert.equal(stepOf(upgradeBoardToWorkflow(stripped(24), fcr).board).openHours, 24, "el plazo que puso el proyecto se queda");
+});
+
 console.log(`\nverify-workflow-upgrade: ${passed} checks passed.`);

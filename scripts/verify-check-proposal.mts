@@ -524,4 +524,35 @@ test("una pregunta que no aplica al texto de la propuesta no se pide", () => {
   assert.equal(head([proposed("ver [[rc://x]]"), ...marksBy("bea", "pr-a", 0, ["tpl"])], "pr-a", rule).choices?.bea, undefined);
 });
 
+// ---------------------------------------------------------------- since when an item is agreed (6 November)
+
+const agreedByThree = () => [proposed(), ...marksBy("ana", "pr-a", 0, ["tps", "acad"]), ...marksBy("bea", "pr-a", 10), ...marksBy("carla", "pr-a", 20)];
+
+test("una propuesta acordada por tres sabe desde cuándo está de acuerdo", () => {
+  const rows = agreedByThree();
+  const carla = rows[rows.length - 1]!;
+  const view = head(rows);
+  assert.equal(view.state, "agreed");
+  assert.equal(view.agreedAt, carla.at, "desde la última marca de carla, la que la dejó elegida por las tres");
+  // A «no» undoes the agreement; the next one starts again.
+  const again = head([...rows, proposalMark("pr-a", "tps", "bea", T("11:30"), "no", "no explica la figura"), proposalMark("pr-a", "tps", "bea", T("11:40"), "yes")]);
+  assert.equal(again.agreedAt, T("11:40"));
+});
+
+test("un cuarto que también está de acuerdo no cambia desde cuándo", () => {
+  const rows = agreedByThree();
+  const view = head([...rows, ...marksBy("dora", "pr-a", 30)]);
+  assert.equal(view.state, "agreed");
+  assert.equal(view.agreedAt, rows[rows.length - 1]!.at);
+});
+
+test("lo que decide quien coordina no tiene desde cuándo", () => {
+  const rows = [proposed(), ...marksBy("ana", "pr-a", 0, ["tps", "acad"]), ...marksBy("bea", "pr-a", 10), proposalMark("pr-a", "tps", "carla", T("11:20"), "no", "no explica la figura")];
+  assert.equal(head(rows).state, "open");
+  const decided = head([...rows, proposalDecided("pr-a", "tito", T("12:00"), true)]);
+  assert.equal(decided.state, "agreed");
+  assert.equal(decided.decidedBy, "tito");
+  assert.equal(decided.agreedAt, undefined);
+});
+
 console.log(`\nverify-check-proposal: ${passed} checks passed.`);

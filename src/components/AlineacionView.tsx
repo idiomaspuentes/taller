@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { canConfirmForTeam, levelsForTeam } from "../domain/levels";
 import { closesInItsTool } from "../domain/stepClaim";
 import { approveStepFromTool, completeStepFromTool, stepIsDone } from "../dcs/roundClose";
+import { useOpenWindow } from "../useOpenWindow";
 import { deliverSharedSubtask } from "../dcs/deliverShared";
 import { useStepWork } from "../dcs/stepWork";
 import { RoundPanel } from "./RoundPanel";
@@ -625,9 +626,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     return [...own, ...effective];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shared, data, effective, groups]);
+  // An agreed verse stays open for those seated on the step.
+  const { open, wakeAt } = useOpenWindow({ session, pmOrg: ctx?.pmOrg, issueNumber: ctx?.issueNumber, step: taskStep, closed: stepDone });
   const tally =
     verse && data
-      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds, tcCloses: stepDone })
+      ? tallyItem({ itemId: itemId(data.chapter, verse.verse), decisions: counted, currentHash: hashOf(verse), levels: teamLevels, authors: authorsOf(verse), thresholds, tcCloses: stepDone, open })
       : null;
   const mine = tally?.answers.find((a) => a.reviewer.trim().toLowerCase() === me);
   const others = (tally?.answers ?? []).filter((a) => a.reviewer.trim().toLowerCase() !== me);
@@ -643,11 +646,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
             authorsByItem: Object.fromEntries(data.verses.map((v) => [itemId(data.chapter, v.verse), authorsOf(v)])),
             thresholds,
             tcCloses: stepDone,
+            open,
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, counted, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels, stepDone],
+    [data, counted, proposals, groups, thresholds.minAgree, thresholds.minIndependent, teamLevels, stepDone, open],
   );
+  useEffect(() => wakeAt((summary?.items ?? []).map((point) => point.openUntil)), [summary, wakeAt]);
 
   // The review of the alignment closes here, by consensus, when the step says so (objections are settled as team
   // decisions in the conversation, so there is no final decision to record on this screen).

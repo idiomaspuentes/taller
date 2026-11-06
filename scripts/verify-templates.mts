@@ -462,4 +462,32 @@ test("una regla que el proceso da a un paso después de creado el plan llega tam
   assert.match(stepPurpose("armonizar-palabras", { id: "palabras-textos" }, "pt").criterion ?? "", /todos os sentidos/);
 });
 
+test("un paso de acuerdo conserva sus horas abiertas, y uno que no es de acuerdo no las tiene", () => {
+  const open = (step: object) => normalizeWorkflowTemplate({ id: "x", name: "X", phases: [{ id: "a", name: "A" }], tasks: [{ id: "t", name: "T", phaseId: "a", rules: [{ resource: "tpl" }], steps: [{ id: "s", name: "S", ...step }] }] })!.tasks[0]!.steps![0]!.openHours;
+  assert.equal(open({ closing: "consensus", claimMode: "pool", openHours: 72 }), 72);
+  assert.equal(open({ closing: "self", openHours: 72 }), undefined);
+  assert.equal(open({ closing: "consensus", claimMode: "pool", openHours: 0 }), undefined);
+});
+
+test("el validador rechaza horas abiertas que no son un número entero, o en un paso que no es de acuerdo", () => {
+  const check = (step: object) =>
+    workflowProblems({ id: "x", name: "X", phases: [{ id: "a", name: "A" }], tasks: [{ id: "t", name: "T", phaseId: "a", steps: [{ id: "s", name: "S", ...step }] }] } as never, { languages: LANGUAGES }).join("\n");
+  const agreement = { closing: "consensus", claimMode: "pool", minAssignees: 2 };
+  assert.match(check({ ...agreement, openHours: -1 }), /«openHours»/);
+  assert.match(check({ ...agreement, openHours: 1.5 }), /«openHours»/);
+  assert.match(check({ closing: "self", openHours: 72 }), /«openHours»/);
+  assert.doesNotMatch(check({ ...agreement, openHours: 72 }), /«openHours»/);
+});
+
+test("el FCR deja abierto 72 horas cada paso de acuerdo, salvo la validación", () => {
+  const flow = shippedWorkflows().find((workflow) => workflow.id === "fcr-base")!;
+  const open = (taskId: string, stepId: string) => flow.tasks.find((t) => t.id === taskId)!.steps!.find((s) => s.id === stepId)!.openHours;
+  for (const [taskId, stepId] of [
+    ["revision-grupal-tpl", "lectura"], ["revision-grupal-tps", "lectura"], ["desafios-tpl", "revisar"], ["desafios-tps", "revisar"],
+    ["palabras-tpl", "revisar"], ["palabras-tps", "revisar"], ["alinear-tpl", "revisar-alineacion"], ["alinear-tps", "revisar-alineacion"],
+    ["armonizar-notas", "notas-textos"], ["armonizar-palabras", "palabras-textos"], ["armonizar-preguntas", "preguntas-textos"],
+  ] as const) assert.equal(open(taskId, stepId), 72, taskId + " › " + stepId);
+  assert.equal(open("validar", "decision"), undefined);
+});
+
 console.log(`\nverify-templates: ${passed} checks passed.`);
