@@ -1,5 +1,6 @@
 import type { ProposalPayload, ProposalView } from "./checkProposal";
 import { ITEM_SAYS } from "./checkProposal";
+import { latestOf, openUntilOf, type OpenWindow } from "./openWindow";
 import { SINGLE_PROPOSAL_FROM } from "./singleProposal";
 import type { ChecklistQuestion } from "./types";
 
@@ -76,6 +77,14 @@ export type CheckSlot = {
   /** Everybody who said something of it: that it is right, a proposal, or for or against one. */
   voices: string[];
   settled: boolean;
+  /**
+   * When it was settled, for the time it stays open after (see `openWindow`): when the proposal decided on it was
+   * chosen by all, or when the last «yes» it took was said. Absent when whoever coordinates decided it, when it was
+   * carried out, or when the team agreed on the item outside Taller: then it is closed.
+   */
+  settledAt?: string;
+  /** Until when it stays open for the rest of the step to give their view. Absent when it is closed. */
+  openUntil?: string;
 };
 
 /** Whose turn an item is, for the person looking: theirs to give an opinion, nobody's yet, or the others'. */
@@ -91,6 +100,8 @@ export type CheckItemTally = {
   turn?: CheckTurn;
   /** The team agreed on the whole item outside Taller (see `ITEM_AGREED`): said instead of who answered each question. */
   agreedApart?: CheckAnswer;
+  /** Until when the item stays open for the rest of the step: the latest of its questions'. */
+  openUntil?: string;
   /** Something was fixed or created for this item: it goes in the summary the team agrees on. */
   changed: boolean;
 };
@@ -98,6 +109,11 @@ export type CheckItemTally = {
 export type ChecklistSummary = {
   items: CheckItemTally[];
   done: number;
+  /** Every item is settled (some may still be open for the rest of the step). */
+  allSettled: boolean;
+  /** When the last item still open closes; absent when none is. */
+  closesAt?: string;
+  /** Every item is settled and none is still open. */
   complete: boolean;
   /** «No» with nothing done about it yet. */
   open: CheckItemTally[];
@@ -189,9 +205,10 @@ export function summarizeChecklist(params: {
    * The list is decided by several people (21 October): each question of an item is settled when `people` of them
    * said it is right, or when a proposal made on it was decided (`proposals`, as `proposalsOf` reads them); a
    * proposal still to be decided keeps it open. One person who found nothing to change was the whole decision, and
-   * the team never saw it. `me`: whose turn each item is, said for this person.
+   * the team never saw it. `me`: whose turn each item is, said for this person. `open`: how long a settled question
+   * stays open for the rest of the step (see `openWindow`); without it, it closes when settled.
    */
-  agreement?: { people: number; proposals: ProposalView[]; me?: string };
+  agreement?: { people: number; proposals: ProposalView[]; me?: string; open?: OpenWindow };
 }): ChecklistSummary {
   const verseOf = new Map<string, string>();
   for (const item of params.items) {
@@ -242,13 +259,22 @@ export function summarizeChecklist(params: {
       for (const qid of Object.keys(answers)) {
         const q = params.questions.find((one) => one.id === qid)!;
         const slot = slotOf(item.stop ? item.id : answeredAt(q, item), qid);
-        slots[qid] = agreedApart && !slot.open.length ? { ...slot, settled: true } : slot;
+        // Agreed outside Taller, the team already gave its view: it is closed at once.
+        if (agreedApart && !slot.open.length) {
+          const apart: CheckSlot = { ...slot, settled: true };
+          delete apart.settledAt;
+          delete apart.openUntil;
+          slots[qid] = apart;
+        } else slots[qid] = slot;
       }
       const all = Object.values(slots);
       const waiting = Object.values(answers).some((a) => a?.outcome === "consult" && !a.resolved);
       const state: CheckItemState = waiting ? "consult" : all.every((slot) => slot.settled) ? "ok" : "pending";
       const me = (params.agreement!.me ?? "").trim().toLowerCase();
-      const unsettled = all.filter((slot) => !slot.settled);
+      // A question still open is one to give a view on for whoever is on the step and has not; for the rest it is settled.
+      const seated = (params.agreement!.open?.seated ?? []).some((who) => who.trim().toLowerCase() === me);
+      const unsettled = all.filter((slot) => !slot.settled || (Boolean(slot.openUntil) && seated && !slot.voices.some((who) => who.trim().toLowerCase() === me)));
+      const openUntil = latestOf(all.map((slot) => slot.openUntil));
       // In a disagreement each side answers the other: it is one's turn while the last word is not of one's side.
       // Whoever said «no» to a proposal is a side of its dispute too (27 October), the side that wants it changed.
       const disputed = unsettled.flatMap((slot) => slot.disputed).filter((view) => [...view.inFavour, ...view.against, ...(view.noBy ?? [])].some((who) => who.toLowerCase() === me));
@@ -270,7 +296,7 @@ export function summarizeChecklist(params: {
           : unsettled.some((slot) => !slot.voices.length)
             ? "new"
             : "waiting";
-      return { itemId: item.id, state, answers, changed, slots, turn, ...(agreedApart && state === "ok" ? { agreedApart } : {}) };
+      return { itemId: item.id, state, answers, changed, slots, turn, ...(agreedApart && state === "ok" ? { agreedApart } : {}), ...(openUntil ? { openUntil } : {}) };
     }
     if (agreedApart) return { itemId: item.id, state: "ok", answers, changed, agreedApart };
     const states = Object.values(answers).map(stateOf);
@@ -278,10 +304,14 @@ export function summarizeChecklist(params: {
     return { itemId: item.id, state, answers, changed };
   });
   const done = items.filter((i) => i.state === "ok").length;
+  const allSettled = items.length > 0 && done === items.length;
+  const closesAt = latestOf(items.map((i) => i.openUntil));
   return {
     items,
     done,
-    complete: items.length > 0 && done === items.length,
+    allSettled,
+    ...(closesAt ? { closesAt } : {}),
+    complete: allSettled && !closesAt,
     open: items.filter((i) => i.state === "open"),
     consulting: items.filter((i) => i.state === "consult"),
     changed: items.filter((i) => i.changed),
@@ -292,7 +322,7 @@ export function summarizeChecklist(params: {
  * What everybody said of each question, read once for a whole list: the last answer of each person to it, the
  * proposals made on it, and whether it is settled (see `agreement` in `summarizeChecklist`).
  */
-function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals: ProposalView[] }): (answerItemId: string, questionId: string) => CheckSlot {
+function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals: ProposalView[]; open?: OpenWindow }): (answerItemId: string, questionId: string) => CheckSlot {
   // Each person's last answer to each question; one taken back is no answer.
   const mine = new Map<string, CheckAnswer>();
   for (const answer of [...answers].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) {
@@ -330,7 +360,8 @@ function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals:
     const rows = (bySlot.get(slot) ?? []).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
     // Something done about a «no» before lists were decided by several (fixed, created, a consultation answered)
     // is what that person said: that it is right now.
-    const yesBy = rows.filter((row) => row.value === "yes" || row.outcome === "fixed" || row.outcome === "created" || (row.outcome === "consult" && row.resolved)).map((row) => row.by);
+    const yesRows = rows.filter((row) => row.value === "yes" || row.outcome === "fixed" || row.outcome === "created" || (row.outcome === "consult" && row.resolved));
+    const yesBy = yesRows.map((row) => row.by);
     const made = [...new Set([...(proposalsAt.get(slot) ?? []), ...(wholeAt.get(answerItemId) ?? [])])];
     const open = made.filter((view) => view.state === "open");
     const decided = made.some((view) => view.state === "agreed" || view.state === "applied" || view.state === "sent" || view.state === "rejected");
@@ -343,7 +374,11 @@ function slotsOf(answers: CheckAnswer[], agreement: { people: number; proposals:
     const settled = !waiting && !open.length && (decided || yesBy.length >= agreement.people);
     // Some for it and some against it; or, decided by agreement of all, more than one option chosen.
     const disputed = open.filter((view) => (view.choices ? Boolean(view.disputedSince) : view.inFavour.length > 0 && view.against.length > 0));
-    return { yesBy, open, disputed, decided, voices, settled };
+    // Settled by a proposal, since everybody chose the same for it (none when whoever coordinates decided it, or once
+    // carried out); else by «yes», since the one that made `people`.
+    const settledAt = !settled ? undefined : decided ? latestOf(made.map((view) => view.agreedAt)) : yesRows[agreement.people - 1]?.at;
+    const openUntil = openUntilOf({ agreedAt: settledAt, window: agreement.open, answered: voices });
+    return { yesBy, open, disputed, decided, voices, settled, ...(settledAt ? { settledAt } : {}), ...(openUntil ? { openUntil } : {}) };
   };
 }
 

@@ -147,6 +147,12 @@ export type ProposalView = {
   /** Who began the option this version belongs to, and when: its first version (27 October). */
   optionBy?: string;
   optionAt?: string;
+  /**
+   * Since when everybody chose the same for the item (6 November): the answer that made the choice unanimous, the
+   * last time it did. On each version in force of an item settled that way, whichever option won; not when whoever
+   * coordinates decided it, nor once carried out. The item stays open a while from then (see `openWindow`).
+   */
+  agreedAt?: string;
 };
 
 /**
@@ -385,6 +391,22 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       else if (noOn.get(who) === version) noOn.delete(who);
     };
     const anyNo = () => [...noOn.values()].some((version) => inForce.get(rootOf(version)) === version && live.has(rootOf(version)));
+    // A choice of a version since edited is to be looked at again: it does not settle the item until then.
+    const current = (one: { option: string; version?: string }) => one.option === KEEP_OPTION || one.version === live.get(one.option)?.proposal.id;
+    // Who says «no» to the version of an option in force: while somebody does, it is not agreed (27 October).
+    const noByOf = (option: string) => {
+      const head = live.get(option);
+      return head ? [...marked.keys()].filter((who) => saysNo(who, head.proposal.id)).map((who) => byTime.find((row) => same(row.by, who))?.by ?? who) : [];
+    };
+    // The option everybody chose, as the reading stands: at least `needed` chose, all the same and as it reads now, and
+    // nobody says «no» to it. A choice of an option taken back by its author is no choice.
+    const agreedOption = (): string | undefined => {
+      const counted = [...choice.values()].filter((one) => one.option === KEEP_OPTION || live.has(one.option));
+      const chosen = new Set(counted.map((one) => one.option));
+      const unanimous = counted.length >= Math.max(1, needed) && chosen.size === 1 && counted.every(current) ? [...chosen][0] : undefined;
+      return unanimous && (unanimous === KEEP_OPTION || !noByOf(unanimous).length) ? unanimous : undefined;
+    };
+    let agreedSince: string | undefined;
     for (const row of byTime) {
       const who = row.by.trim().toLowerCase();
       // An adjustment, and what is said of it, chooses nothing.
@@ -416,6 +438,9 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       // proposal, until they meet again.
       if (distinct() > 1 || anyNo()) since ??= row.at;
       else since = undefined;
+      // When everybody came to choose the same, the last time they did: one more who agrees does not move it, a
+      // disagreement undoes it.
+      agreedSince = agreedOption() !== undefined ? (agreedSince ?? row.at) : undefined;
     }
     // A choice of an option taken back by its author is no choice.
     for (const [who, one] of choice) if (one.option !== KEEP_OPTION && !live.has(one.option)) choice.delete(who);
@@ -423,16 +448,8 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
     const named = (option: string) => [...choice].filter(([, one]) => one.option === option).map(([who]) => group.concat(views).find((view) => same(view.by, who))?.by ?? byTime.find((row) => same(row.by, who))?.by ?? who);
     const all = new Set(Object.values(choices));
     const decided = decision ? (decision.value === "yes" ? rootOf(decision.itemId) : KEEP_OPTION) : undefined;
-    // A choice of a version since edited is to be looked at again: it does not settle the item until then.
-    const current = (one: { option: string; version?: string }) => one.option === KEEP_OPTION || one.version === live.get(one.option)?.proposal.id;
-    // Who says «no» to the version of an option in force: while somebody does, it is not agreed (27 October).
     const people = [...marked.keys()];
-    const noByOf = (option: string) => {
-      const head = live.get(option);
-      return head ? people.filter((who) => saysNo(who, head.proposal.id)).map((who) => byTime.find((row) => same(row.by, who))?.by ?? who) : [];
-    };
-    const unanimous = choice.size >= Math.max(1, needed) && all.size === 1 && [...choice.values()].every(current) ? [...all][0] : undefined;
-    const winner = decided ?? (unanimous && (unanimous === KEEP_OPTION || !noByOf(unanimous).length) ? unanimous : undefined);
+    const winner = decided ?? agreedOption();
     for (const [option, head] of live) {
       const view = out.get(head.proposal.id)!;
       const done = view.state === "applied" || view.state === "sent";
@@ -447,6 +464,7 @@ function byChoice(views: ProposalView[], byTime: CheckAnswer[], needed: number, 
       delete next.decidedBy;
       if (!winner && since && (all.size > 1 || noBy.length)) next.disputedSince = since;
       if (decision && decided && !done) next.decidedBy = decision.by;
+      if (winner && !decided && !done && agreedSince) next.agreedAt = agreedSince;
       out.set(head.proposal.id, next);
     }
     // An adjustment its author did not accept, left alone when that proposal was taken back, is not accepted: it
