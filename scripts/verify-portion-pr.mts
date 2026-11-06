@@ -38,6 +38,7 @@ import {
   isOwnedWorkBranch,
   portionPrHeadMatchesWork,
   removePortionPrFromBody,
+  reusablePull,
   upsertPortionPrInBody,
   type PortionPrMarker,
 } from "../src/domain/portionPr.ts";
@@ -389,6 +390,16 @@ assert(closeIssueBlockReason(undefined, "none") === null, "sin recurso: comporta
   assert(book!.intro === "book" && book!.chapter === undefined, "front:intro es la introducción del libro");
   assert(chapter!.intro === "chapter" && chapter!.chapter === 1 && chapter!.verse === undefined, "1:intro es la del capítulo 1");
   assert(verse!.intro === undefined && verse!.chapter === 1 && verse!.verse === 2, "una nota de un versículo no es una introducción");
+}
+
+{
+  // Door43 finds a pull request by its two branches whatever its state (seen 6-11-2026: es-419_glt#34, closed). A
+  // subtarea reset by closing its review, then taken again by the same person, has a work branch of the same name:
+  // the closed review, with what was said in it, came back as if it were the new one.
+  assert(reusablePull({ state: "open", merged: false }), "una revisión abierta se usa");
+  assert(reusablePull({ state: "closed", merged: true }), "una entregada (fusionada) se sigue leyendo");
+  assert(!reusablePull({ state: "closed", merged: false }), "una cerrada sin entregar no vuelve: se abre otra");
+  assert(!reusablePull(null), "sin PR, nada que usar");
 }
 
 console.log("verify-portion-pr: ok");
