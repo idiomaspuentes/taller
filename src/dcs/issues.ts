@@ -178,6 +178,14 @@ type PmSearch = {
 };
 
 /**
+ * Pages to read when a whole project (or all a team has open) is needed: 200 of 50, ten thousand subtareas. What
+ * holds a subtarea back, what is free and what already exists are only right with every subtarea in hand: Nehemías
+ * started with 1.221 open, and a read stopped at 1.000 left out its oldest ones (all of the TPL), so the group
+ * reading of the TPS looked free, and publishing the plan again would have made the unseen ones twice.
+ */
+const WHOLE_PROJECT_PAGES = 200;
+
+/**
  * Searches being answered right now. A screen asks several things at once and two of them are often the same search
  * (what I closed this week, what I closed with a conflict): they share one request instead of making Door43 answer
  * twice. Nothing is kept once the answer arrives.
@@ -658,7 +666,7 @@ export async function previewPublishWorkOrders(params: {
   const existing = await searchPmIssues(session, org, {
     state: "all",
     milestones: [projectId],
-    maxPages: 10,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId: pmConfig.namespaceId,
   });
 
@@ -733,7 +741,7 @@ export async function publishWorkOrders(params: {
   const existing = await searchPmIssues(session, org, {
     state: "all",
     milestones: [projectId],
-    maxPages: 10,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId,
   });
 
@@ -901,7 +909,7 @@ export async function createReviewIssues(params: {
   const existing = await searchPmIssues(session, org, {
     state: "all",
     milestones: [projectId],
-    maxPages: 20,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId,
   });
   const known = indexWorkIssues(existing);
@@ -1011,7 +1019,7 @@ export async function pullIssues(params: {
   const issues = await searchPmIssues(session, org, {
     state: "all",
     milestones: [normalizeProjectId(book)],
-    maxPages: 20,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId: pmConfig.namespaceId,
   });
 
@@ -1095,7 +1103,7 @@ export async function listProjectOpenIssues(
   return searchPmIssues(session, org, {
     state: "open",
     milestones: [normalizeProjectId(projectId)],
-    maxPages: 20,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId: pmConfig.namespaceId,
   });
 }
@@ -1116,7 +1124,7 @@ export async function syncProjectOpenIssues(
     state: "all",
     milestones: [normalizeProjectId(projectId)],
     since: changesSince(known.at),
-    maxPages: 20,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId: pmConfig.namespaceId,
   });
   return mergeChanged(known.issues, changed);
@@ -1132,7 +1140,7 @@ export async function listProjectIssues(
   const issues = await searchPmIssues(session, org, {
     state: "all",
     milestones: [normalizeProjectId(projectId)],
-    maxPages: 20,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId: pmConfig.namespaceId,
   });
   return { issues, namespaceId: pmConfig.namespaceId };
@@ -1148,7 +1156,7 @@ export async function listTeamOpenIssues(
   const issues = await searchPmIssues(session, org, {
     team: orgTeamName,
     state: "open",
-    maxPages: 10,
+    maxPages: WHOLE_PROJECT_PAGES,
     namespaceId: pmConfig.namespaceId,
   });
   return issues.filter((issue) => isIssueUnassigned(issue));
