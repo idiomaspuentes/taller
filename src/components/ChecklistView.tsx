@@ -259,7 +259,7 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
     [checkItems, questions, answers, hashes, people, proposals, me, open],
   );
   useEffect(() => wakeAt(summary.items.map((row) => row.openUntil)), [summary, wakeAt]);
-  /** Everything is agreed but the step opens to the rest of the team until `closesAt`: no closing yet, and no «Siguiente». */
+  /** Everything is agreed but the step opens to the rest of the team until `closesAt`: no closing yet; «Siguiente» is still offered while this person has a note to give a view on. */
   const waitingToClose = !summary.complete && summary.allSettled && Boolean(summary.closesAt);
   const tallyOf = (id: string) => summary.items.find((row) => row.itemId === id);
   /** Decided together: what this person said gives the others something to say again (a first review, a proposal). */
@@ -2640,7 +2640,8 @@ export function ChecklistView({ ctxEncoded, kind, texts, onlyLinked, openItem, o
                     collab?.kind === "agreedApart" ? null : <p className="ck-ask ck-ask--wait">{t("ck.agreedApart")}</p>
                   ) : tally?.openUntil ? (
                     <p className="ck-ask ck-ask--wait">{sayUntil("round.openUntil", tally.openUntil)}</p>
-                  ) : people && !summary.complete ? (
+                  ) : people && !summary.complete && !(tally?.state === "ok" && !tally.openUntil) ? (
+                    // A note settled whose window has passed waits for nobody, though another one is still open.
                     <p className="ck-ask ck-ask--wait">{t("ck.youSaid")}</p>
                   ) : null}
                   {commenting && item ? (
