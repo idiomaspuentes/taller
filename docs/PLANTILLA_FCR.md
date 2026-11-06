@@ -301,18 +301,19 @@ sobre el borrador del grupo.
 
 | # | Paso | Botón | Quién | Cuántas | Herramienta | Se completa cuando |
 |---|------|-------|-------|---------|-------------|--------------------|
-| 1 | Lectura grupal | Revisar | El equipo de ese texto (también quienes tradujeron) | 2 a 8 | Lectura grupal | Todo llegó y cada versículo está acordado |
+| 1 | Lectura grupal | Revisar | El equipo de ese texto (también quienes tradujeron) | 2 a 8 | Lectura grupal | Todo llegó, cada versículo está acordado y ya pasó su tiempo abierto (sección 4) |
 
 **Espera a:** la traducción de su texto en el mismo capítulo, **de forma parcial**: se puede empezar en cuanto se
 entrega la primera porción, y las demás aparecen a medida que llegan («Todavía en traducción» mientras tanto).
 La del TPL no espera al TPS ni al revés.
 
 **Cómo se acuerda un versículo:** dos personas habilitadas de acuerdo, al menos una que no lo tradujo, y
-ninguna duda abierta; tras el acuerdo el versículo queda abierto 72 horas para opinar (sección 4). Cualquiera puede corregir el versículo en el borrador del grupo; al corregirlo, quienes
+ninguna duda abierta. Tras el acuerdo, el versículo queda abierto 72 horas para que otros opinen (sección 4).
+Cualquiera puede corregir el versículo en el borrador del grupo; al corregirlo, quienes
 ya habían dado su acuerdo son avisados y vuelven a mirarlo. Un versículo ya acordado se reabre con una duda
 o una corrección.
 
-**Se cierra** cuando llegaron todas las porciones de su texto y todo está acordado. La Afinación de ese texto en
+**Se cierra** cuando llegaron todas las porciones de su texto todo está acordado y ya pasó su tiempo abierto (sección 4). La Afinación de ese texto en
 el capítulo espera a este cierre: los desafíos del TPL a la revisión grupal del TPL, los del TPS a la del TPS.
 
 ### 3.5 Traducir Palabras · 3.6 Traducir Academia
@@ -450,18 +451,29 @@ cuando 3 personas habilitadas están de acuerdo y nadie tiene una objeción abie
 consenso, y lo disputado va a la lista de la reunión del equipo, donde el coordinador o una persona habilitada
 registra la decisión. Cada persona más que responde suma confianza al ítem. Quien llega después empieza con las
 palabras que eligió quien llegó primero.
-**Tiempo abierto tras el acuerdo** (Abel, 6 de noviembre de 2026): alcanzado el mínimo, el ítem no se cierra en el
-acto. Queda abierto **72 horas** (`openHours` en el paso) para que otras personas del paso opinen, y la pantalla
-dice «De acuerdo · puedes opinar hasta el …». Se cierra antes si ya opinaron todas las personas sentadas en el
-paso. Una objeción dentro del plazo lo vuelve a disputa; cuando se acuerda de nuevo, empiezan otras 72 horas. Lo
-que el equipo decide en la reunión se cierra en el acto, sin esperar. Un ítem cerrado se puede reabrir mientras el
-paso siga abierto. **El paso se cierra cuando ningún ítem tiene un plazo abierto**: mientras tanto, en lugar del
-botón de cerrar, la pantalla dice «Todo está de acuerdo. Se puede cerrar desde el …» (y en Armonización, sin
-recuentos, «Este paso se puede cerrar desde el …»). Quien coordina Afinación recibe esa fecha en el aviso. En
-Armonización, quien está sentado en el paso y aún no habló en una nota dentro de su plazo la ve como suya
-(«Siguiente» lo lleva); cuando ya no le queda nada, la pantalla dice «Todo está comprobado. Este paso se puede
-cerrar desde el …». Sin `openHours` (o con 0) todo funciona como antes. Lo llevan los pasos de lectura grupal,
-de revisión de Desafíos, Palabras y Alinear, y los de Armonización; no el de decisión de Validar.
+
+**Tiempo abierto tras el acuerdo** (Abel, 6 de noviembre de 2026). Alcanzado el mínimo, el ítem no se cierra en el
+acto:
+
+- Queda abierto **72 horas** para que otras personas del paso opinen. Una opinión más de acuerdo **no alarga** ese
+  plazo. Se cierra antes si ya opinaron todas las personas sentadas en el paso.
+- Una objeción, una propuesta de cambio o una corrección del texto lo sacan del acuerdo y vuelve a disputa. Cuando se
+  acuerda de nuevo, empiezan otras 72 horas.
+- Lo que el equipo decide en la reunión se cierra en el acto, sin esperar.
+- Un ítem acordado, aun con su plazo vencido, se puede reabrir mientras el paso siga abierto. Con el paso cerrado,
+  lo que alguien vea después va como corrección a la fase dueña del texto (Afinación, para el TPL y el TPS), como
+  hoy.
+- **El paso se cierra cuando ningún ítem tiene un plazo abierto.** «Un capítulo a la vez» no cambia: el capítulo
+  siguiente espera a que el paso se cierre.
+- Lo llevan los pasos de lectura grupal, de revisión de Desafíos, Palabras y Alinear, y los de Armonización; no el
+  de decisión de Validar. Si un paso no tiene plazo (`openHours` en el paquete), funciona como antes.
+
+Qué dicen las pantallas: el ítem muestra «De acuerdo · puedes opinar hasta el …» y, en lugar del botón de cerrar, la
+pantalla dice «Todo está de acuerdo. Se puede cerrar desde el …». Quien coordina Afinación recibe esa fecha en el
+aviso. En Armonización no hay recuentos: la línea es la misma y el paso dice «Este paso se puede cerrar desde el …».
+Allí, quien está sentado en el paso y aún no habló en una nota dentro de su plazo la ve como suya («Siguiente» lo
+lleva); cuando ya no le queda nada, la pantalla dice «Todo está comprobado. Este paso se puede cerrar desde el …».
+
 **Quién puede tomarlas:** Aprendiz o más. Un cambio acordado lo escribe **cualquier persona habilitada
 del equipo**.
 
