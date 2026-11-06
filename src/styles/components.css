@@ -8285,6 +8285,12 @@ input.pf-name { font-size: 1.625rem; }
 .rv-comment__act { min-height: 32px; margin-left: auto; padding: 0 0.25rem; border: 0; background: none; color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; }
 .rv-comment__act:hover:not(:disabled) { text-decoration: underline; }
 .rv-comment__act:disabled { opacity: 0.5; cursor: default; }
+/* What may be done with a comment goes together at its right: change it, take it back, give it as resolved. */
+.rv-comment__acts { display: inline-flex; flex-wrap: wrap; gap: 0 0.75rem; margin-left: auto; }
+.rv-comment__acts:empty { display: none; }
+/* 44 px to touch, without making the line under the comment any taller than it reads. */
+.rv-comment__acts .rv-comment__act { min-height: 44px; margin: -6px 0; }
+.rv-comment--editing { background: var(--surface); box-shadow: inset 0 0 0 1px var(--border-strong); }
 /* A comment kept as a rule of the team: the way to do it, and the mark that it was done. */
 .rv-comment__keep { min-height: 40px; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
 .rv-comment__rule { display: inline-flex; align-items: center; gap: 0.1875rem; margin-top: 0.25rem; font-size: 0.75rem; font-weight: 700; color: var(--accent-800); }
@@ -9114,7 +9120,8 @@ body:has(.th-notes .snd-button) .snd-panel { top: 3.75rem; bottom: auto; max-hei
 .tool-foot { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border-strong); box-shadow: 0 -4px 12px rgb(0 0 0 / 0.06); }
 .tool-foot p { flex: 1 1 10rem; min-width: 0; margin: 0; font-size: 0.8125rem; line-height: 1.35; color: var(--text-muted); }
 .tool-foot > button, .tool-foot__actions > button { min-height: 2.5rem; }
-.tool-foot__actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; }
+/* No wider than the foot: two long buttons on a phone go one under the other instead of past its edge. */
+.tool-foot__actions { flex: 0 1 auto; max-width: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-left: auto; }
 .fam:has(> .tool-foot) .fam__body { padding-bottom: 1rem; }
 :root[data-typing="true"] .tool-foot, :root[data-typing="true"] .en-jump { display: none; }
 .rv-item__text--article { max-height: 60dvh; overflow-y: auto; }

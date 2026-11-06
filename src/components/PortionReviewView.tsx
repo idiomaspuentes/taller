@@ -21,8 +21,9 @@ import { loadAssignmentsFromDcs, loadInventoryFromDcs } from "../dcs/persist";
 import { commentOnPortionPr, ensurePortionPr, getPmIssue, loadLinkedPull, loadLinkedPullFiles, submitPortionPrApproval } from "../dcs/portionPr";
 import type { DcsPull } from "../dcs/pulls";
 import { readRepoFile } from "../dcs/repoFile";
-import { loadReviewComments, markReviewCommentInGlossary, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
-import { canResolveComment, openComments } from "../domain/reviewComments";
+import { deleteReviewComment, editReviewComment, loadReviewComments, markReviewCommentInGlossary, setReviewCommentResolved, type ReviewComment as Comment } from "../dcs/reviewComments";
+import { canEditComment, canResolveComment, commentWords, openComments } from "../domain/reviewComments";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { explainError } from "../dcs/userError";
 import { bookLabel } from "../domain/books";
 import { parsePortionPrMarker, stepNeedsOpenPortionPr, translatorLoginFromHead, type PortionPrMarker } from "../domain/portionPr";
@@ -33,7 +34,7 @@ import { helpsTsvFilename } from "../domain/helpsTarget";
 import { parseTsvTable } from "../prep/tsv";
 import { DEFAULT_PM_CONFIG } from "../domain/roles";
 import { decodeSolverLaunchContext, openSolverApp, type SolverLaunchContext } from "../domain/solverLaunch";
-import { approveStep, askForChanges, canApproveStep, canAskForChanges, canClaimStep, canTakeBack, changesPending, claimStep, isEligibleForStep, isStepUnlocked, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
+import { approveStep, askForChanges, canApproveStep, canAskForChanges, canChangeReview, canClaimStep, canTakeBack, changeReview, changesPending, claimStep, isEligibleForStep, isStepUnlocked, reviewedStepId, takeBack, takenBackByAuthor } from "../domain/stepClaim";
 import { getStepRuntime, isStepDone, parseTaskProgressMarker } from "../domain/taskProgress";
 import { localized } from "../domain/processes";
 import { localizeName } from "../domain/templateNames";
@@ -66,14 +67,35 @@ type Source = { short: string; verses: VerseTextMap };
  * One box to write a comment in; `Enter` alone makes a new line, so a comment can have several. `focus`: the box was
  * asked for with a touch («Comentar»), and is ready to be written in without another.
  */
-function Composer({ placeholder, busy, actions, focus }: { placeholder: string; busy: boolean; focus?: boolean; actions: { label: string; primary?: boolean; run: (text: string) => Promise<boolean> }[] }) {
-  const [text, setText] = useState("");
+function Composer({
+  placeholder,
+  busy,
+  actions,
+  focus,
+  initial = "",
+  cancel,
+}: {
+  placeholder: string;
+  busy: boolean;
+  focus?: boolean;
+  /** What the box starts with: the words of a comment being changed. */
+  initial?: string;
+  /** The way back without saving, when the box was opened to change something. */
+  cancel?: { label: string; run: () => void };
+  actions: { label: string; primary?: boolean; run: (text: string) => Promise<boolean> }[];
+}) {
+  const [text, setText] = useState(initial);
   return (
     <div className="rv-composer">
       <textarea className="af-textarea" rows={2} autoFocus={focus} value={text} placeholder={placeholder} aria-label={placeholder} onChange={(e) => setText(e.target.value)} />
       <div className="rv-composer__row">
+        {cancel ? (
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={cancel.run}>
+            {cancel.label}
+          </Button>
+        ) : null}
         {actions.map((action) => (
-          <Button key={action.label} type="button" size="sm" variant={action.primary ? "default" : "outline"} disabled={busy || !text.trim()} onClick={() => void action.run(text).then((sent) => sent && setText(""))}>
+          <Button key={action.label} type="button" size="sm" variant={action.primary ? "default" : "outline"} disabled={busy || !text.trim() || (Boolean(initial) && text.trim() === initial.trim())} onClick={() => void action.run(text).then((sent) => sent && setText(""))}>
             {action.label}
           </Button>
         ))}
@@ -133,6 +155,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   const [support, setSupport] = useState(false);
   const [showChanges, setShowChanges] = useState(true);
   const [commenting, setCommenting] = useState("");
+  /** The comment whose words are being changed, by its id. */
+  const [editing, setEditing] = useState(0);
+  /** A comment about to be taken back, asked first. */
+  const [deleting, setDeleting] = useState<Comment | null>(null);
+  /** «Cambiar mi revisión» was pressed: asked first, as it takes back approvals. */
+  const [changing, setChanging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState("");
@@ -294,6 +322,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
 
   const draftOwner = marker ? translatorLoginFromHead(marker.head, [author, me]) : (author ?? "");
   const mine = Boolean(draftOwner) && draftOwner.toLowerCase() === me.toLowerCase();
+  // Handed in: the subtarea closed, or its draft already in the team's text.
+  const handedIn = (issue?.state ?? "open").toLowerCase() === "closed" || Boolean(pull?.merged);
+  // What was said may be changed while the review is open (see `canEditComment`).
+  const reviewOpen = !stepDone && !handedIn;
+  // Whoever reviewed and approved may come back to the review until it is handed in (see `canChangeReview`).
+  const canChange = Boolean(step && me && canChangeReview(me, steps, progress, step, author, handedIn));
 
   async function act(run: () => Promise<void>): Promise<boolean> {
     setActing(true);
@@ -424,6 +458,43 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       await loadComments(session, marker, author).catch(() => undefined);
     });
 
+  /**
+   * Change what a comment says, or take it back. Read again first: an answer written meanwhile means the comment is
+   * no longer only its writer's (see `canEditComment`), and it is left as it is.
+   */
+  const changeComment = (row: Comment, words: string | null) =>
+    act(async () => {
+      if (!session || !ctx || !marker) return;
+      const said = await loadReviewComments(session, marker, author);
+      const now = said.find((other) => other.id === row.id);
+      if (!now || !canEditComment(now, said, me, { reviewOpen, kept: Boolean(ruleMadeFrom(teamRules, String(row.id))) || decided.includes(String(row.id)) })) {
+        setComments(said);
+        setEditing(0);
+        throw new Error(tNow("rv.cannotEditNow"));
+      }
+      if (words === null) await deleteReviewComment(session, marker, now);
+      else await editReviewComment(session, marker, now, words);
+      setEditing(0);
+      announce(tNow(words === null ? "rv.commentDeleted" : "rv.commentEdited"));
+      await loadComments(session, marker, author).catch(() => undefined);
+    });
+
+  /** «Cambiar mi revisión»: the review is open again for whoever approved it (see `changeReview`). */
+  const reopenMine = () =>
+    act(async () => {
+      if (!session || !ctx || !step) return;
+      // Read again first: the work may have been handed in meanwhile, or the author may have agreed.
+      const fresh = await getPmIssue(session, ctx.pmOrg, ctx.issueNumber);
+      const current = parseTaskProgressMarker(fresh.body);
+      const owner = fresh.assignee?.login || fresh.assignees?.[0]?.login || undefined;
+      if (!canChangeReview(me, steps, current, step, owner, (fresh.state ?? "open").toLowerCase() === "closed" || Boolean(pull?.merged))) {
+        setIssue(fresh);
+        throw new Error(tNow("rv.cannotChangeReview"));
+      }
+      setIssue(await setIssueTaskProgress(session, ctx.pmOrg, fresh, changeReview(current, steps, step, me, owner)));
+      announce(tNow("rv.reviewReopened"));
+    });
+
   const stepName = step ? localized(step.name, step.names, language) : mode === "group" ? t("pr.group") : t("pr.pairs");
   const passageName = ctx ? [bookLabel(ctx.book, language), ctx.ref].filter(Boolean).join(/^\d/.test(ctx.ref ?? "") ? " " : " · ") : stepName;
   // What is reviewed is an article, not a passage of the book: the screen calls it that.
@@ -515,22 +586,53 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
    * `source`: the source of what the comment is about, whose words a rule made from it may be said to be about.
    * `place`: what it is about, as its words lead to the glossary (see `underWords`); none for the whole draft.
    */
-  const commentRow = (row: Comment, source?: string | null, place?: Place) => (
+  const commentRow = (row: Comment, source?: string | null, place?: Place) => {
+    const kept = Boolean(ruleMadeFrom(teamRules, String(row.id))) || decided.includes(String(row.id));
+    const editable = canEditComment(row, comments, me, { reviewOpen, kept });
+    if (editing === row.id && editable) {
+      const { words } = commentWords(row);
+      return (
+        <li key={row.id} className="rv-comment rv-comment--editing" data-comment={row.id}>
+          <Composer
+            focus
+            initial={words}
+            placeholder={t("rv.editPlaceholder")}
+            busy={acting}
+            cancel={{ label: t("rv.cancelEdit"), run: () => setEditing(0) }}
+            actions={[{ label: t("rv.saveEdit"), primary: true, run: (text) => changeComment(row, text) }]}
+          />
+        </li>
+      );
+    }
+    return (
     <li key={row.id} className="rv-comment" data-comment={row.id} data-resolved={row.resolved ? "true" : undefined}>
       <p className="rv-comment__text">{row.text}</p>
       <p className="rv-comment__meta">
-        <span>{[row.by ? `@${row.by}` : "", when(row.at)].filter(Boolean).join(" · ")}</span>
+        <span>{[row.by ? `@${row.by}` : "", when(row.at), row.edited ? t("rv.edited") : ""].filter(Boolean).join(" · ")}</span>
         {row.resolved ? (
           <span className="rv-comment__done">
             <Check size={12} aria-hidden /> {t("rv.resolved")}
           </span>
         ) : null}
-        {canResolveComment(row, me, { draftAuthor: author, canManage: session?.canManage }) ? (
-          // Whoever made the comment says when it is answered: the review is not approved while one is open.
-          <button type="button" className="rv-comment__act" disabled={acting} onClick={() => void resolve(row, Boolean(row.resolved))}>
-            {t(row.resolved ? "rv.reopen" : "rv.resolve")}
-          </button>
-        ) : null}
+        <span className="rv-comment__acts">
+          {editable ? (
+            // Whoever wrote it may change it, or take it back, until somebody answers it (see `canEditComment`).
+            <>
+              <button type="button" className="rv-comment__act" disabled={acting} onClick={() => setEditing(row.id)}>
+                {t("rv.editComment")}
+              </button>
+              <button type="button" className="rv-comment__act" disabled={acting} onClick={() => setDeleting(row)}>
+                {t("rv.deleteComment")}
+              </button>
+            </>
+          ) : null}
+          {canResolveComment(row, me, { draftAuthor: author, canManage: session?.canManage }) ? (
+            // Whoever made the comment says when it is answered: the review is not approved while one is open.
+            <button type="button" className="rv-comment__act" disabled={acting} onClick={() => void resolve(row, Boolean(row.resolved))}>
+              {t(row.resolved ? "rv.reopen" : "rv.resolve")}
+            </button>
+          ) : null}
+        </span>
       </p>
       {ruleMadeFrom(teamRules, String(row.id)) || row.glossary !== undefined || decided.includes(String(row.id)) ? (
         <p className="rv-comment__rule">
@@ -553,7 +655,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         </button>
       ) : null}
     </li>
-  );
+    );
+  };
 
   // What was said and is still open holds the review: nobody approves over it.
   const open = openComments(comments, author);
@@ -1060,6 +1163,12 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                     {t("rv.openDraft")}
                   </Button>
                 ) : null}
+                {canChange ? (
+                  // Approved, and something is to be changed: the review opens again for whoever made it.
+                  <Button type="button" variant="outline" disabled={acting} onClick={() => setChanging(true)}>
+                    {t("rv.changeReview")}
+                  </Button>
+                ) : null}
                 {stepDone || approved ? (
                   <Button type="button" onClick={onClose}>
                     {t("fa.back")}
@@ -1100,6 +1209,31 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
           ) : null}
         </>
       ) : null}
+      <ConfirmDialog
+        open={changing}
+        safe
+        title={t("rv.changeReviewTitle")}
+        text={t(author && approvals.includes(author.toLowerCase()) ? "rv.changeReviewTextAuthor" : "rv.changeReviewText").replace("{who}", author ?? "")}
+        yes={t("rv.changeReviewYes")}
+        onYes={() => {
+          setChanging(false);
+          void reopenMine();
+        }}
+        onNo={() => setChanging(false)}
+      />
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        safe
+        title={t("rv.deleteCommentTitle")}
+        text={deleting ? commentWords(deleting).words : ""}
+        yes={t("rv.deleteCommentYes")}
+        onYes={() => {
+          const row = deleting;
+          setDeleting(null);
+          if (row) void changeComment(row, null);
+        }}
+        onNo={() => setDeleting(null)}
+      />
     </div>
   );
 }
