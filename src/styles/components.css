@@ -8181,7 +8181,11 @@ input.pf-name { font-size: 1.625rem; }
 }
 .se-sources__whole { margin-left: 0.5rem; padding: 0; border: 0; background: none; color: var(--primary); font-size: 0.75rem; font-weight: 400; text-decoration: underline; cursor: pointer; }
 .se-finish-short { display: none; }
+/* Whether the draft is saved: in the header on a wide screen, over the verses on a phone (the header has room for «Terminé» alone). */
+.scripture-editor--split .scripture-editor__save-state.se-draft-state { display: none; }
 @media (max-width: 48rem) {
+  .scripture-editor--split .scripture-editor__save-state.se-draft-state { display: inline-flex; flex-basis: 100%; }
+  .scripture-editor--split .scripture-editor__draft-head { flex-wrap: wrap; row-gap: 0.25rem; }
   .scripture-editor--split .se-head-state { display: none; }
   .se-finish-label { display: none; }
   .se-finish-short { display: inline; }
