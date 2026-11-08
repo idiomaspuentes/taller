@@ -137,6 +137,8 @@ type ScripturePane = {
 };
 
 import { tNow, useT } from "../i18n/messages";
+import { versesLeft } from "../domain/draftFinish";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { useUiLanguage } from "../i18n/language";
 import { localizeThread } from "../domain/threadNames";
 import { localizeName } from "../domain/templateNames";
@@ -967,6 +969,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
   const [onlyVerse, setOnlyVerse] = useState(true);
   const [stepDone, setStepDone] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  /** «Terminé» was pressed with verses still to write: asked first (see `versesLeft`). */
+  const [askingFinish, setAskingFinish] = useState(false);
   /** Counts edits, so that a save that ends while the person kept typing does not call the draft saved. */
   const editCount = useRef(0);
   /**
@@ -1597,7 +1601,8 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               ? { tone: "idle", text: t("se.onlyHere") }
               : savedOnce
                 ? { tone: "saved", text: labLocal ? t("se.savedHere") : t("se.saved") }
-                : { tone: "idle", text: t("se.noChanges") };
+                : // Nothing written yet in this visit: what is said is that it will be kept without a button.
+                  { tone: "idle", text: t("se.savesItself") };
   const labNote = !lab
     ? ""
     : write?.mode === "dcs"
@@ -2151,7 +2156,14 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             </Button>
           ) : null}
           {lab ? null : ctx?.stepId && !stepDone ? (
-            <Button type="button" size="sm" className="scripture-editor__save" disabled={recreating || finishing || openingPr || saving || !session || !ctx.issueNumber || !written} onClick={() => void finish()}>
+            <Button
+              type="button"
+              size="sm"
+              className="scripture-editor__save"
+              disabled={recreating || finishing || openingPr || saving || !session || !ctx.issueNumber || !written}
+              // With verses still to write it asks first: it was taken for a way to save, and handed in one verse of three.
+              onClick={() => (versesLeft(drafts).count ? setAskingFinish(true) : void finish())}
+            >
               <Check className="scripture-editor__action-icon" aria-hidden />
               <span className="se-finish-label">{finishing ? t("se.finishing") : t("se.finish")}</span>
               <span className="se-finish-short">{finishing ? "…" : t("se.finishShort")}</span>
@@ -2351,6 +2363,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           <div className="scripture-editor__draft-head">
             <p className="scripture-editor__eyebrow">{t("se.yourDraftRes").replace("{res}", resourceCode)}</p>
             {drafts.length ? <p className="se-written">{t("se.written").replace("{n}", String(written)).replace("{total}", String(drafts.length))}</p> : null}
+            {/* On a phone the header has room for «Terminé» alone: whether the draft is saved is said here, over the
+                verses. Without it, a translator looking for a way to save took «Terminé» for one. */}
+            <p className="scripture-editor__save-state se-draft-state" data-tone={saveState.tone} role="status">
+              <span className="scripture-editor__save-dot" aria-hidden />
+              {saveState.text}
+            </p>
           </div>
           {reviewComments.length && !stepDone ? (
             // On a phone the comments are behind «Recursos»: said here, where the author is writing.
@@ -2693,6 +2711,24 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={askingFinish}
+        safe
+        title={t(versesLeft(drafts).count === 1 ? "se.pendingTitleOne" : "se.pendingTitleMany").replace("{n}", String(versesLeft(drafts).count))}
+        text={t("se.pendingText")}
+        yes={t("he.finishAnyway")}
+        no={t("he.keepTranslating")}
+        onYes={() => {
+          setAskingFinish(false);
+          void finish();
+        }}
+        onNo={() => {
+          setAskingFinish(false);
+          // Back to the first verse still to write, ready to be written in.
+          const first = drafts.find((row) => row.from === versesLeft(drafts).first);
+          if (first) window.setTimeout(() => editRow(first, null), 0);
+        }}
+      />
     </div>
   );
 }
