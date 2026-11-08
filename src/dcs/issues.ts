@@ -53,7 +53,8 @@ import {
 } from "../domain/solvers";
 import { normalizeProjectId } from "../domain/books";
 import { allPages } from "../domain/pages";
-import { canSyncFrom, changesSince, mergeChanged } from "../domain/issueSync";
+import { canSyncFrom, changesSince, mergeAllChanged, mergeChanged } from "../domain/issueSync";
+import { door43Writes } from "./door43Gate";
 import {
   encodeWorkOrderMarker,
   indexWorkIssues,
@@ -1093,24 +1094,78 @@ export async function listMyIssues(
   });
 }
 
+/**
+ * How long a reading of a project's subtareas is taken as it is, with no request at all. Past it, only what changed is
+ * asked for (one page). A write to Door43 from this page cuts it short: what was read may no longer be so.
+ */
+export const PROJECT_FRESH_MS = 30_000;
+
+/**
+ * The subtareas of each project as last read in this page, shared by every screen. Each screen used to read whole
+ * books again: «Terminé» three times, «Proyectos» and «Equipo hoy» every time they opened. With Nehemías (1.221
+ * subtareas, 25 pages) that was most of what made Taller slow on 6 November 2026.
+ */
+type KeptProject = { at: string; checked: number; writes: number; open?: DcsIssue[]; all?: DcsIssue[] };
+const keptProjects = new Map<string, KeptProject>();
+const keptProjectKey = (session: GtSession, org: string, projectId: string) =>
+  JSON.stringify([session.host, session.username, org, scopeFolder(), normalizeProjectId(projectId)]);
+
+/** Forget every project read (another person signs in, or a check starts afresh). */
+export function forgetProjectIssues(): void {
+  keptProjects.clear();
+}
+
+const openOnly = (issues: DcsIssue[]) => issues.filter((issue) => (issue.state ?? "open").toLowerCase() !== "closed");
+const keptView = (kept: KeptProject, want: "open" | "all"): DcsIssue[] | undefined =>
+  want === "all" ? kept.all && [...kept.all] : kept.open ? [...kept.open] : kept.all && openOnly(kept.all);
+
+async function readProjectIssues(session: GtSession, org: string, projectId: string, want: "open" | "all"): Promise<DcsIssue[]> {
+  const key = keptProjectKey(session, org, projectId);
+  const pmConfig = await loadPmConfig(session, org);
+  const milestones = [normalizeProjectId(projectId)];
+  const kept = keptProjects.get(key);
+  const now = Date.now();
+  const startedAt = new Date(now).toISOString();
+  const writesAt = door43Writes();
+  if (kept && keptView(kept, want)) {
+    if (now - kept.checked < PROJECT_FRESH_MS && kept.writes === writesAt) return keptView(kept, want)!;
+    if (canSyncFrom(kept.at, new Date(now))) {
+      const changed = await searchPmIssues(session, org, {
+        state: "all",
+        milestones,
+        since: changesSince(kept.at),
+        maxPages: WHOLE_PROJECT_PAGES,
+        namespaceId: pmConfig.namespaceId,
+      });
+      const next: KeptProject = {
+        at: startedAt,
+        checked: Date.now(),
+        writes: writesAt,
+        ...(kept.all ? { all: mergeAllChanged(kept.all, changed) } : {}),
+        ...(kept.open ? { open: mergeChanged(kept.open, changed) } : {}),
+      };
+      keptProjects.set(key, next);
+      return keptView(next, want)!;
+    }
+  }
+  const issues = await searchPmIssues(session, org, { state: want, milestones, maxPages: WHOLE_PROJECT_PAGES, namespaceId: pmConfig.namespaceId });
+  keptProjects.set(key, { at: startedAt, checked: Date.now(), writes: writesAt, [want]: issues });
+  return [...issues];
+}
+
 /** Open PM issues for a project milestone (all assignees). */
 export async function listProjectOpenIssues(
   session: GtSession,
   org: string,
   projectId: string,
 ): Promise<DcsIssue[]> {
-  const pmConfig = await loadPmConfig(session, org);
-  return searchPmIssues(session, org, {
-    state: "open",
-    milestones: [normalizeProjectId(projectId)],
-    maxPages: WHOLE_PROJECT_PAGES,
-    namespaceId: pmConfig.namespaceId,
-  });
+  return readProjectIssues(session, org, projectId, "open");
 }
 
 /**
- * The open subtareas of a project, from a list read at `known.at` and what changed since (see `issueSync.ts`): one
- * page instead of the whole book. A list too old to be brought up to date is read whole.
+ * The open subtareas of a project, from a list read at `known.at` (the one «Mis tareas» keeps in the device) and what
+ * changed since (see `issueSync.ts`): one page instead of the whole book. A list too old to be brought up to date is
+ * read whole. A newer reading already in this page is used instead.
  */
 export async function syncProjectOpenIssues(
   session: GtSession,
@@ -1118,16 +1173,13 @@ export async function syncProjectOpenIssues(
   projectId: string,
   known: { at: string; issues: DcsIssue[] },
 ): Promise<DcsIssue[]> {
-  if (!canSyncFrom(known.at)) return listProjectOpenIssues(session, org, projectId);
-  const pmConfig = await loadPmConfig(session, org);
-  const changed = await searchPmIssues(session, org, {
-    state: "all",
-    milestones: [normalizeProjectId(projectId)],
-    since: changesSince(known.at),
-    maxPages: WHOLE_PROJECT_PAGES,
-    namespaceId: pmConfig.namespaceId,
-  });
-  return mergeChanged(known.issues, changed);
+  const key = keptProjectKey(session, org, projectId);
+  const kept = keptProjects.get(key);
+  if (!kept || Date.parse(kept.at) < Date.parse(known.at)) {
+    if (!canSyncFrom(known.at, new Date(Date.now()))) return readProjectIssues(session, org, projectId, "open");
+    keptProjects.set(key, { at: known.at, checked: 0, writes: -1, open: known.issues });
+  }
+  return readProjectIssues(session, org, projectId, "open");
 }
 
 /** Every PM issue (open and closed) of a project milestone. */
@@ -1137,12 +1189,7 @@ export async function listProjectIssues(
   projectId: string,
 ): Promise<{ issues: DcsIssue[]; namespaceId: string }> {
   const pmConfig = await loadPmConfig(session, org);
-  const issues = await searchPmIssues(session, org, {
-    state: "all",
-    milestones: [normalizeProjectId(projectId)],
-    maxPages: WHOLE_PROJECT_PAGES,
-    namespaceId: pmConfig.namespaceId,
-  });
+  const issues = await readProjectIssues(session, org, projectId, "all");
   return { issues, namespaceId: pmConfig.namespaceId };
 }
 

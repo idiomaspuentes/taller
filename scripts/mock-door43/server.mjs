@@ -846,7 +846,7 @@ async function handle(req, res) {
         }
         return json(res, { message: "comment not found" }, 404);
       }
-      const issueMatch = /^issues\/(\d+)(?:\/(comments|assignees|labels))?$/.exec(rest);
+      const issueMatch = /^issues\/(\d+)(?:\/(comments|assignees|labels)(?:\/(\d+))?)?$/.exec(rest);
       if (issueMatch) {
         const number = Number(issueMatch[1]);
         const issue = issues.find((i) => i.number === number);
@@ -893,6 +893,14 @@ async function handle(req, res) {
           issue.assignee = issue.assignees[0] || null;
           issue.updated_at = new Date().toISOString();
           return json(res, issueView(issue), 201);
+        }
+        // Like Door43: one label taken off a subtarea.
+        if (kind === "labels" && issueMatch[3] && req.method === "DELETE") {
+          issue.labels = issue.labels.filter((l) => l.id !== Number(issueMatch[3]));
+          issue.updated_at = new Date().toISOString();
+          log.push({ at: issue.updated_at, user: user.login, write: `issue #${number} -label ${issueMatch[3]}` });
+          res.writeHead(204);
+          return res.end();
         }
         if (kind === "labels") return json(res, issue.labels);
       }

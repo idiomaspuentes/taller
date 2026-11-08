@@ -18,6 +18,13 @@ export const canSyncFrom = (at: string | undefined, now: Date = new Date()): boo
   return Number.isFinite(read) && now.getTime() - read <= SYNC_MAX_AGE_MS && read <= now.getTime() + SYNC_SLACK_MS;
 };
 
+/** Every subtarea (open and closed) with its changes: each changed one takes its place, and a new one comes first. */
+export function mergeAllChanged<T extends Changed>(known: T[], changed: T[]): T[] {
+  const latest = new Map(changed.map((issue) => [issue.number, issue]));
+  const had = new Set(known.map((issue) => issue.number));
+  return [...changed.filter((issue) => !had.has(issue.number)), ...known.map((issue) => latest.get(issue.number) ?? issue)];
+}
+
 /**
  * The open list with its changes: one that closed leaves it, one that changed takes its place where it was, and
  * one new comes first (the newest first, as Door43 lists them).

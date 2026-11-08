@@ -28,6 +28,7 @@
     "verify:help-quote": "tsx scripts/verify-help-quote.mts",
     "verify:pages": "tsx scripts/verify-pages.mts",
     "verify:whole-project": "tsx --tsconfig tsconfig.scripts.json scripts/verify-whole-project.mts",
+    "verify:door43-load": "tsx --tsconfig tsconfig.scripts.json scripts/verify-door43-load.mts",
     "verify:my-tasks-cache": "tsx scripts/verify-my-tasks-cache.mts",
     "verify:issue-sync": "tsx scripts/verify-issue-sync.mts",
     "verify:photos": "tsx scripts/verify-photos.mts",
