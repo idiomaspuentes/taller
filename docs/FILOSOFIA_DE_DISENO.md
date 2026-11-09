@@ -104,6 +104,23 @@ grupos, y cada grupo necesita espacio para respirar.
   (lo que dice hoy, lo que se propone) se ven distintas.
 - **Se mide, no se mira:** con un guion en la página se toma la distancia entre cada grupo y el siguiente.
 
+## La guía paso a paso
+
+*9 de noviembre de 2026.* Los primeros días de Nehemías el equipo se perdió en la app: una traductora tocó «Terminé»
+creyendo que guardaba. Desde entonces cada pantalla de trabajo trae una guía corta que señala dónde tocar, paso a
+paso. Sale sola la primera vez, se puede saltar, y «Guía» (siempre en la cabecera, con su palabra) la repite. En el
+menú de la cuenta, «Ver la guía» lleva a la de «Mis tareas».
+
+- **Hay guía en** «Mis tareas», el editor del texto y la revisión en pares. En cualquier herramienta, el primer paso
+  es para qué sirve el paso del proceso: viene del paquete (`purpose`), no de `src/`. Sustituye a la tarjeta «En
+  esta tarea» con «Entendido» y a la de «Para empezar con buen pie».
+- **Cada paso señala algo que se toca** y lo dice en una frase de doce palabras o menos, de «usted».
+- **Cada paso se recuerda por separado**, por persona y servidor: abrir el editor para el TPS después del TPL solo
+  muestra para qué sirve el paso nuevo. Un paso cuyo objeto no está en pantalla (no hay «Terminé» en una prueba) no
+  sale ni se da por visto.
+- **Para agregar un paso:** un `data-guide="…"` en el elemento, el paso en `src/components/screenGuides.tsx` y su
+  frase en `es.json` y `pt.json` (`guide.*`). La lógica está en `src/domain/guide.ts`; su prueba, `npm run verify:guide`.
+
 ## Cómo comprobarlo
 
 Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alguien poco hábil con la tecnología, y se anotan los números en el informe:
@@ -120,3 +137,4 @@ Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alg
 - [ ] ¿Cada grupo tiene más aire alrededor (24–32 px) que entre sus partes (8–12 px)? Medido.
 - [ ] ¿Hay alguna etiqueta suelta entre dos grupos, o una caja dentro de otra?
 - [ ] ¿Se ve igual de bien en portugués y a 1280 px?
+- [ ] Si la pantalla trae algo nuevo que aprender, ¿lo dice su guía?

@@ -5,6 +5,7 @@ import { refComment } from "../domain/commentPlace";
 import { ChapterReader } from "./ChapterReader";
 import { Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
+import { GuidePurpose } from "../guide";
 import { PassageIntroText, StepAsk } from "./StepAsk";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -528,27 +529,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   /** What the step is for and how it is done, as the process says them; said once, then a touch away. */
   const said = stepPurpose(task?.id ?? ctx?.taskId ?? "", taskStep, language);
   const taskLabel = ctx?.taskName ? localizeName(ctx.taskName, language) : "";
-  const roundSteps = (said.description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const [aboutOpen, setAboutOpen] = useState(false);
   /** The introduction of the book and the chapter, in a sheet opened from «Más». */
   const [introOpen, setIntroOpen] = useState(false);
-  const welcomeKey = `taller-af-welcome:${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`;
-  const [welcomed, setWelcomed] = useState(true);
-  useEffect(() => {
-    try {
-      setWelcomed(localStorage.getItem(welcomeKey) === "1");
-    } catch {
-      setWelcomed(false);
-    }
-  }, [welcomeKey]);
-  const dismissWelcome = () => {
-    setWelcomed(true);
-    try {
-      localStorage.setItem(welcomeKey, "1");
-    } catch {
-      /* private window: seen for this visit only */
-    }
-  };
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   // An open round: one step anybody of the team enters, that closes by agreement and leaves nobody out for having
@@ -1543,26 +1526,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           </DialogContent>
         </Dialog>
       ) : null}
-      {data && said.purpose && !welcomed ? (
-        <section className="af-welcome" aria-label={t("af.welcomeTitle")}>
-          <p className="af-welcome__title">{t("af.welcomeTitle")}</p>
-          <p className="af-welcome__purpose">{said.purpose}</p>
-          {roundSteps.length > 1 ? (
-            <ol className="af-welcome__steps">
-              {roundSteps.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ol>
-          ) : null}
-          <div className="af-welcome__actions">
-            <Button type="button" variant="outline" onClick={dismissWelcome}>
-              {t("af.welcomeOk")}
-            </Button>
-            <button type="button" className="af-link" onClick={() => setAboutOpen(true)}>
-              {t("af.welcomeRules")}
-            </button>
-          </div>
-        </section>
+      {data && said.purpose ? (
+        // The first time this person opens this step: what it is for, as the first step of its guide.
+        <GuidePurpose id={`${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`} purpose={said.purpose} title={t("af.welcomeTitle")} legacyKey={`taller-af-welcome:${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`} />
       ) : null}
 
       {data && verse && session && pane === "chapter" ? (

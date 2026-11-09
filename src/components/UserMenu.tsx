@@ -10,6 +10,7 @@ import { TEXT_SIZES, type TextSize } from "../domain/textSize";
 import { setTextSize, useTextSize } from "../textSize";
 import type { MessageKey } from "../i18n/messages";
 import { usePersonPhoto } from "./PersonPhoto";
+import { appName } from "../brand";
 
 const TEXT_SIZE_NAME: Record<TextSize, MessageKey> = { normal: "menu.textNormal", large: "menu.textLarge", larger: "menu.textLarger" };
 
@@ -179,7 +180,7 @@ export function UserMenu(props: Props) {
             <Item icon={<Compass />} onClick={run(props.onOpenFirstSteps)}>
               <span className="user-menu__two">
                 {t("menu.firstSteps")}
-                <span className="user-menu__hint">{t("menu.firstStepsHint")}</span>
+                <span className="user-menu__hint">{t("menu.firstStepsHint").replace("{app}", appName(language))}</span>
               </span>
             </Item>
           ) : null}

@@ -4,6 +4,8 @@ import { useT } from "../i18n/messages";
 import { MoreMenu, type MoreItem } from "./MoreMenu";
 import { useAboutEntry } from "./introSlot";
 import { setNotesSlot, useNotesEntry } from "./notesSlot";
+import { GuideButton } from "./GuideButton";
+import { useHasGuide } from "../guide";
 
 type Props = {
   /** What is in hand: the passage, or the name of the step. One line; it is cut short when it does not fit. */
@@ -31,7 +33,11 @@ export function ToolHeader({ title, meta, onBack, more = [], children, info: giv
   const about = useAboutEntry();
   const info = given ?? (about ? { label: t("af.aboutTask"), onOpen: about.open } : undefined);
   const notes = useNotesEntry();
+  // Where there is a guide, «Guía» takes the corner of the «ⓘ»: an icon alone said nothing to the team, and what the
+  // task is for is the guide's first step. «Sobre esta tarea» stays, first in «Más».
+  const hasGuide = useHasGuide();
   const items: MoreItem[] = [
+    ...(info && hasGuide ? [{ id: "about", label: info.label, hint: t("mm.aboutHint"), onSelect: info.onOpen }] : []),
     ...more,
     ...(notes ? [{ id: "notes", label: t("sn.tab"), hint: t("mm.notesHint"), count: notes.count, pressed: notes.open, onSelect: notes.toggle }] : []),
   ];
@@ -48,7 +54,8 @@ export function ToolHeader({ title, meta, onBack, more = [], children, info: giv
         <div className="th-actions">
           {/* Says to the notes that this tool has a header: they become a row of «Más» instead of a corner button. */}
           <span className="th-notes" ref={setNotesSlot} />
-          {info ? (
+          <GuideButton />
+          {info && !hasGuide ? (
             <button type="button" className="th-info" aria-haspopup="dialog" aria-label={info.label} title={info.label} onClick={info.onOpen}>
               <Info size={20} aria-hidden />
             </button>

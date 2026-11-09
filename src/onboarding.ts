@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
-
-/** Whether this person has already put away the first-steps card. Kept per person and server on this device. */
+/**
+ * Whether this person put away the old card of first steps (install, notices, tasks). It is gone: the guide says
+ * the same, and whoever saw the card is not asked about installing and the notices again (`TasksGuide`).
+ */
 export const onboardingKey = (host: string, username: string) => `taller-onboarding-done:${host.replace(/\/$/, "")}:${username.toLowerCase()}`;
 
 type Store = Pick<Storage, "getItem" | "setItem">;
@@ -19,25 +20,4 @@ export function markOnboardingDone(key: string, store?: Store): void {
   } catch {
     /* blocked storage: it shows again next time */
   }
-}
-
-/**
- * Show the first-steps card until the person hides it or opens their first task; after that it is in their menu
- * («Cómo empezar»), and `show` brings it back above «Mis tareas» until it is hidden again.
- */
-export function useOnboarding(session: { host: string; username: string } | null) {
-  const key = session ? onboardingKey(session.host, session.username) : "";
-  const [done, setDone] = useState(() => (key ? onboardingDone(key) : true));
-  const [lastKey, setLastKey] = useState(key);
-  if (key !== lastKey) {
-    // Another person signed in on this device.
-    setLastKey(key);
-    setDone(key ? onboardingDone(key) : true);
-  }
-  const hide = useCallback(() => {
-    if (key) markOnboardingDone(key);
-    setDone(true);
-  }, [key]);
-  const show = useCallback(() => setDone(false), []);
-  return { visible: Boolean(session) && !done, hide, show };
 }

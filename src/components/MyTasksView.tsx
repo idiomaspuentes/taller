@@ -101,6 +101,7 @@ import { Button } from "@/components/ui/button";
 import { recordOwnAction, recordOwnClose } from "../domain/pendingEvents";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
+import { TasksGuide } from "./screenGuides";
 
 type Props = {
   session: GtSession;
@@ -973,6 +974,7 @@ export function MyTasksView({
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);
     return (
       <div className="hub task-home">
+        <TasksGuide session={session} ready={Boolean(pmOrg) && loaded} hasTasks={count > 0} />
         <div className="task-home__head">
           <div>
             <h1 className="hub-title">{t("mt.title")}</h1>

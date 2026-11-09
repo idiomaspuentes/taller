@@ -14,7 +14,7 @@ import { activeRules, ruleText } from "../domain/teamRules";
 import { localizeName } from "../domain/templateNames";
 import { stepPurpose } from "../domain/processes";
 import { setAboutEntry, setIntroEntry } from "./introSlot";
-import { Button } from "@/components/ui/button";
+import { useGuidePurpose } from "../guide";
 import { portionRange } from "../domain/usfmEdit";
 import type { ProjectSettings, ProjectTask, TaskStep } from "../domain/types";
 import { useUiLanguage } from "../i18n/language";
@@ -582,8 +582,8 @@ export function StepAsk({
 }
 
 /**
- * A step that says what it is for, in any tool: a welcome the first time a person opens it on a device (what it is
- * for, how it is done, «Entendido»), then «Sobre esta tarea» a touch away (an «ⓘ» in the header, or a row of «Más»):
+ * A step that says what it is for, in any tool: the first step of the tool's guide the first time a person opens it
+ * (what it is for; see `guide.tsx`), then «Sobre esta tarea» a touch away (an «ⓘ» in the header, or a row of «Más»):
  * what it is for, how it is done, the team's rules and the glossary. It replaces the fold «Qué se pide en …», which
  * sat over the work in every tool and scrolled inside its own height (16 October).
  */
@@ -607,52 +607,15 @@ function AboutStep({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const key = `taller-af-welcome:${task.id}:${step.id}`;
-  const [welcomed, setWelcomed] = useState(true);
-  useEffect(() => {
-    try {
-      setWelcomed(localStorage.getItem(key) === "1");
-    } catch {
-      setWelcomed(false);
-    }
-  }, [key]);
   useEffect(() => {
     const entry = { open: () => setOpen(true) };
     setAboutEntry(entry);
     return () => setAboutEntry(null);
   }, []);
-  const dismiss = () => {
-    setWelcomed(true);
-    try {
-      localStorage.setItem(key, "1");
-    } catch {
-      /* private window: seen for this visit only */
-    }
-  };
-  const lines = (description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  // What the step is for opens its guide (see `guide.tsx`); the rest stays in «Sobre esta tarea».
+  useGuidePurpose(`${task.id}:${step.id}`, purpose, t("af.welcomeTitle"), `taller-af-welcome:${task.id}:${step.id}`);
   return (
     <>
-      {welcomed ? null : (
-        <section className="af-welcome" aria-label={t("af.welcomeTitle")}>
-          <p className="af-welcome__title">{t("af.welcomeTitle")}</p>
-          <p className="af-welcome__purpose">{purpose}</p>
-          {lines.length > 1 ? (
-            <ol className="af-welcome__steps">
-              {lines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ol>
-          ) : null}
-          <div className="af-welcome__actions">
-            <Button type="button" variant="outline" onClick={dismiss}>
-              {t("af.welcomeOk")}
-            </Button>
-            <button type="button" className="af-link" onClick={() => setOpen(true)}>
-              {t("af.welcomeRules")}
-            </button>
-          </div>
-        </section>
-      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="fix-sheet hint-sheet step-sheet" aria-label={t("af.aboutTask")}>
           <header className="fx-head">

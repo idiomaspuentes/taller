@@ -45,6 +45,7 @@ export function AppNav({ links, attentionCount, attentionLinkId }: Props) {
             key={link.id}
             type="button"
             className="app-nav-btn"
+            data-guide={`nav-${link.id}`}
             data-active={link.active ? "true" : "false"}
             aria-label={link.id === attentionLinkId && count > 0 ? `${link.label} · ${attentionLabel(count, t)}` : undefined}
             title={link.id === attentionLinkId && count > 0 ? attentionLabel(count, t) : undefined}

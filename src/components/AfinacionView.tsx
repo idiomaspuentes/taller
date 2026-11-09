@@ -2,6 +2,7 @@ import { termAsk } from "../domain/afinacionWords";
 import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
+import { GuidePurpose } from "../guide";
 import { PassageIntroText, StepAsk } from "./StepAsk";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSession, type GtSession } from "../dcs/auth";
@@ -477,28 +478,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const said = stepPurpose(task?.id ?? ctx?.taskId ?? "", taskStep, language);
   const heading = toolHeading(ctx, language, t(TITLE[stepProp]));
   const taskLabel = ctx?.taskName ? localizeName(ctx.taskName, language) : "";
-  /** How the round is answered, line by line, for the welcome. */
-  const roundSteps = (said.description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  /** «Sobre esta tarea», opened from the header or the welcome. */
+  /** «Sobre esta tarea», opened from the header («Más») or the guide. */
   const [aboutOpen, setAboutOpen] = useState(false);
-  /** Whether this person has seen the welcome of this task on this device. */
-  const welcomeKey = `taller-af-welcome:${ctx?.taskId ?? ""}`;
-  const [welcomed, setWelcomed] = useState(true);
-  useEffect(() => {
-    try {
-      setWelcomed(localStorage.getItem(welcomeKey) === "1");
-    } catch {
-      setWelcomed(false);
-    }
-  }, [welcomeKey]);
-  const dismissWelcome = () => {
-    setWelcomed(true);
-    try {
-      localStorage.setItem(welcomeKey, "1");
-    } catch {
-      /* private window: seen for this visit only */
-    }
-  };
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   const thresholds = { minAgree: taskStep?.minAgree ?? taskStep?.minAssignees ?? 3, minIndependent: taskStep?.minIndependent ?? 2 };
@@ -2206,27 +2187,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
 
       {/* Not before the answers of everybody have been read: for some seconds the first point of the list was
           shown as if nobody had answered anything, to be touched, and then the screen went to another point. */}
-      {data && item && pane === "review" && !busy && said.purpose && !welcomed ? (
-        // The first time this person opens this task on this device: what it is for and how it is answered, once.
-        <section className="af-welcome" aria-label={t("af.welcomeTitle")}>
-          <p className="af-welcome__title">{t("af.welcomeTitle")}</p>
-          <p className="af-welcome__purpose">{said.purpose}</p>
-          {roundSteps.length > 1 ? (
-            <ol className="af-welcome__steps">
-              {roundSteps.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ol>
-          ) : null}
-          <div className="af-welcome__actions">
-            <Button type="button" variant="outline" onClick={dismissWelcome}>
-              {t("af.welcomeOk")}
-            </Button>
-            <button type="button" className="af-link" onClick={() => setAboutOpen(true)}>
-              {t("af.welcomeRules")}
-            </button>
-          </div>
-        </section>
+      {data && !busy && said.purpose ? (
+        // The first time this person opens this task: what it is for, as the first step of its guide.
+        <GuidePurpose id={`${ctx?.taskId ?? ""}:${taskStep?.id ?? ""}`} purpose={said.purpose} title={t("af.welcomeTitle")} legacyKey={`taller-af-welcome:${ctx?.taskId ?? ""}`} />
       ) : null}
       {data && item && pane === "review" && !busy ? (
         <section className="af-focus" aria-label={t("af.noteAria")}>

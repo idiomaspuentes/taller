@@ -1,6 +1,8 @@
 import { Hints, StepAsk, useItemHints, useVerseDecisions } from "./StepAsk";
 import { toolHeading } from "./toolHeading";
 import { MoreMenu, type MoreItem } from "./MoreMenu";
+import { GuideButton } from "./GuideButton";
+import { EditorGuide } from "./screenGuides";
 import { loadReviewComments, type ReviewComment } from "../dcs/reviewComments";
 import { openComments } from "../domain/reviewComments";
 import { studyNotesProps } from "./StudyNotesDrawer";
@@ -2064,6 +2066,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
 
   return (
     <div className="scripture-editor scripture-editor--split" data-panel={mobilePanel}>
+      <EditorGuide ready={drafts.length > 0} />
       <header className="scripture-editor__head">
         <div className="scripture-editor__head-main min-w-0">
           <Button
@@ -2145,7 +2148,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               ) : undefined
             }
           />
-          <p className="scripture-editor__save-state se-head-state" data-tone={saveState.tone} role="status">
+          <p className="scripture-editor__save-state se-head-state" data-tone={saveState.tone} role="status" data-guide="saved">
             <span className="scripture-editor__save-dot" aria-hidden />
             {saveState.text}
           </p>
@@ -2160,6 +2163,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
               type="button"
               size="sm"
               className="scripture-editor__save"
+              data-guide="finish"
               disabled={recreating || finishing || openingPr || saving || !session || !ctx.issueNumber || !written}
               // With verses still to write it asks first: it was taken for a way to save, and handed in one verse of three.
               onClick={() => (versesLeft(drafts).count ? setAskingFinish(true) : void finish())}
@@ -2211,7 +2215,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
       ) : null}
 
       <div className="scripture-editor__workspace">
-        <aside className="scripture-editor__refs" aria-label={t("se.refsAria")}>
+        <aside className="scripture-editor__refs" aria-label={t("se.refsAria")} data-guide="resources">
           <div className="se-sources">
             <div className="se-sources__head">
               <span className="se-sources__title">
@@ -2365,10 +2369,12 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
             {drafts.length ? <p className="se-written">{t("se.written").replace("{n}", String(written)).replace("{total}", String(drafts.length))}</p> : null}
             {/* On a phone the header has room for «Terminé» alone: whether the draft is saved is said here, over the
                 verses. Without it, a translator looking for a way to save took «Terminé» for one. */}
-            <p className="scripture-editor__save-state se-draft-state" data-tone={saveState.tone} role="status">
+            <p className="scripture-editor__save-state se-draft-state" data-tone={saveState.tone} role="status" data-guide="saved">
               <span className="scripture-editor__save-dot" aria-hidden />
               {saveState.text}
             </p>
+            {/* «Guía», over the verses: on a phone the header has room for «Terminé» alone. */}
+            <GuideButton className="se-guide" />
           </div>
           {reviewComments.length && !stepDone ? (
             // On a phone the comments are behind «Recursos»: said here, where the author is writing.
@@ -2418,6 +2424,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
                     key={key}
                     className="scripture-editor__verse"
                     data-active={activeVerse === d.from || undefined}
+                    data-guide={index === 0 ? "verse" : undefined}
                   >
                     <div className="scripture-editor__verse-num">
                       <label
@@ -2647,6 +2654,7 @@ export function ScriptureEditorView({ ctxEncoded, onClose, announce }: Props) {
           data-active={mobilePanel === "recursos"}
           aria-selected={mobilePanel === "recursos"}
           onClick={() => setMobilePanel("recursos")}
+          data-guide="resources"
         >
           {t("se.panelResources")}
         </button>
