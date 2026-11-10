@@ -51,3 +51,14 @@ cada una da su acuerdo al paso. Sin un mock con ese libro, no se ejecuta.
 - `GET /__mock/log`: escrituras hechas y peticiones que el servidor no implementa.
 - `GET /__mock/files?repo=es-419_gl/es-419_glt&branch=neh` (añade `&path=16-NEH.usfm` para ver un archivo).
 - `POST /__mock/reset`: vuelve al estado inicial.
+
+## Medir cuánto pide una pantalla
+
+- `GET /__mock/stats`: peticiones y bytes por tipo de petición desde el último `POST /__mock/stats/reset`, y cuánto
+  tiempo estuvo ocupado el servidor (`busyMs`). Las búsquedas de subtareas se paginan y respetan `since` como en Door43.
+- `MOCK_FULL_ISSUES=1`: cada subtarea viene completa, como la manda Door43 (unos 2,5 KB además de su texto).
+- `MOCK_LATENCY_MS` y `MOCK_LIST_LATENCY_MS`: lo que tarda cada respuesta, y cada página de subtareas.
+- `npx tsx --tsconfig tsconfig.scripts.json scripts/mock-door43/seed-big-book.mts NEH:6:0 EZR:6:0.9`: siembra libros
+  del tamaño de los reales con el plan FCR (libro:porciones por capítulo:parte cerrada). Mejor con `MOCK_NO_SAMPLE=1`.
+
+Lo medido así y la propuesta que sale de ahí: [`docs/ISSUES_Y_RENDIMIENTO.md`](../../docs/ISSUES_Y_RENDIMIENTO.md).
