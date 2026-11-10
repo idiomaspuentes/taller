@@ -5,6 +5,8 @@ import { refComment } from "../domain/commentPlace";
 import { ChapterReader } from "./ChapterReader";
 import { Eraser, Redo2, Undo2 } from "lucide-react";
 import { ToolHeader } from "./ToolHeader";
+import { GuidePurpose, guideDid } from "../guide";
+import { AligningGuide } from "./tuningGuides";
 import { PassageIntroText, StepAsk } from "./StepAsk";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -139,6 +141,7 @@ function BankWord({
   dragIndices,
   disabled,
   onTap,
+  guide,
 }: {
   token: WordToken;
   index: number;
@@ -147,6 +150,8 @@ function BankWord({
   dragIndices: number[];
   disabled: boolean;
   onTap: (index: number) => void;
+  /** What the step-by-step guide calls it, when it points at it. */
+  guide?: string;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `word-${index}`,
@@ -160,6 +165,7 @@ function BankWord({
       {...listeners}
       {...attributes}
       className="al-word"
+      data-guide={guide}
       data-aligned={aligned ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
       data-dragging={isDragging ? "true" : undefined}
@@ -194,7 +200,7 @@ function PlacedWord({
     disabled,
   });
   return (
-    <span className="al-chip" data-dragging={isDragging ? "true" : undefined} data-no-box-select>
+    <span className="al-chip" data-guide="al-chip" data-dragging={isDragging ? "true" : undefined} data-no-box-select>
       <button type="button" ref={setNodeRef} {...listeners} {...attributes} className="al-chip__word" data-no-box-select>
         {token.surface}
         <Occurrence token={token} />
@@ -353,6 +359,7 @@ function Bank({ children, editable, foot }: { children: ReactNode; editable: boo
         box.current = node;
       }}
       className="al-bank"
+      data-guide="al-bank"
       data-over={isOver ? "true" : undefined}
       data-open={open ? "true" : undefined}
       style={!open && height ? { maxHeight: height } : undefined}
@@ -528,27 +535,9 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   /** What the step is for and how it is done, as the process says them; said once, then a touch away. */
   const said = stepPurpose(task?.id ?? ctx?.taskId ?? "", taskStep, language);
   const taskLabel = ctx?.taskName ? localizeName(ctx.taskName, language) : "";
-  const roundSteps = (said.description ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const [aboutOpen, setAboutOpen] = useState(false);
   /** The introduction of the book and the chapter, in a sheet opened from «Más». */
   const [introOpen, setIntroOpen] = useState(false);
-  const welcomeKey = `taller-af-welcome:${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`;
-  const [welcomed, setWelcomed] = useState(true);
-  useEffect(() => {
-    try {
-      setWelcomed(localStorage.getItem(welcomeKey) === "1");
-    } catch {
-      setWelcomed(false);
-    }
-  }, [welcomeKey]);
-  const dismissWelcome = () => {
-    setWelcomed(true);
-    try {
-      localStorage.setItem(welcomeKey, "1");
-    } catch {
-      /* private window: seen for this visit only */
-    }
-  };
   // Who counts for the minimum is decided by the levels of this task's team.
   const teamLevels = useMemo(() => levelsForTeam(data?.levelBook, task?.orgTeamName), [data?.levelBook, task?.orgTeamName]);
   // An open round: one step anybody of the team enters, that closes by agreement and leaves nobody out for having
@@ -793,6 +782,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
   function put(boxId: string, indices: number[]) {
     if (!verse || !indices.length) return;
     change(addSourcesToBox(verse.original, verse.draft, current, boxId, indices));
+    guideDid("al:placed");
   }
 
   function tapWord(index: number) {
@@ -1085,6 +1075,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
         await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, `${data.chapter}:${verse.verse}`, said)).catch(() => undefined);
       }
       announce(n("al.verseDone", verse.verse));
+      guideDid("al:verse-done");
       moveOnAfterAction();
     } catch (err) {
       setError(explainError(err));
@@ -1114,6 +1105,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
+      guideDid("al:answered");
       moveOnAfterAction();
     } catch (err) {
       setError(explainError(err));
@@ -1202,6 +1194,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       setProposals(loadedProposals);
       setSentIssue(opened.issue.number);
       announce(n("al.decisionOpened", opened.issue.number));
+      guideDid("al:answered");
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -1231,6 +1224,15 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
     first?.scrollIntoView({ block: "nearest" });
   }, [verse?.verse]);
   /** The first word still to place: named in the hint before anything is placed. */
+  /**
+   * The word the guide asks to place first: a name if the verse has one still to place (its box is the easiest to
+   * find), else the first word left.
+   */
+  const firstFree = useMemo(() => {
+    if (!verse) return -1;
+    const name = verse.draft.findIndex((token, i) => i > 0 && !aligned[i] && /^\p{Lu}/u.test(token.surface));
+    return name >= 0 ? name : verse.draft.findIndex((_, i) => !aligned[i]);
+  }, [verse, aligned]);
   const nextWord = verse ? verse.draft.find((_, i) => !aligned[i])?.surface : undefined;
   /**
    * The boxes the lexicon points to for the word of the draft in hand: those whose word of the original has it,
@@ -1307,6 +1309,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                     <button
                       type="button"
                       className="af-link al-bank__fix"
+                      data-guide="al-fix"
                       // With links not saved yet the button was off, and said why only where a mouse rests: on a
                       // phone it was a button that did nothing. The links are saved first, and then it opens.
                       onClick={() => {
@@ -1356,6 +1359,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                       dragIndices={selectedWords.includes(i) ? selectedWords.filter((w) => !aligned[w]) : [i]}
                       disabled={!editable}
                       onTap={tapWord}
+                      guide={i === firstFree ? "al-word" : undefined}
                     />
                   ))}
                 </div>
@@ -1364,7 +1368,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
               {/* What to do with what is chosen; before the first word, how it works. The rest is in the boxes.
                   It keeps its room whatever it says: it was two lines, then one line and a button, then nothing, and
                   with each touch every box moved up or down, the one aimed at among them. */}
-              <div className="al-guide" role="status">
+              <div className="al-guide" role="status" data-guide="al-hint">
                 <p className="af-hint">
                   {selectedWords.length
                     ? selectedWords.length === 1
@@ -1384,7 +1388,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                 {selectedWords.length || selectedBoxes.length ? (
                   <div className="al-actions">
                     {selectedBoxes.length >= 2 ? (
-                      <Button type="button" size="sm" variant="outline" onClick={join}>
+                      <Button type="button" size="sm" variant="outline" onClick={join} data-guide="al-join">
                         {t("al.mergeBoxes")}
                       </Button>
                     ) : null}
@@ -1405,7 +1409,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                 ) : null}
               </div>
               <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
-                <div className="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
+                <div className="al-grid" data-guide="al-grid" dir={data.originalRtl ? "rtl" : undefined}>
                   {boxes.map((box) => (
                     <Box
                       key={box.id}
@@ -1543,26 +1547,30 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           </DialogContent>
         </Dialog>
       ) : null}
-      {data && said.purpose && !welcomed ? (
-        <section className="af-welcome" aria-label={t("af.welcomeTitle")}>
-          <p className="af-welcome__title">{t("af.welcomeTitle")}</p>
-          <p className="af-welcome__purpose">{said.purpose}</p>
-          {roundSteps.length > 1 ? (
-            <ol className="af-welcome__steps">
-              {roundSteps.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ol>
-          ) : null}
-          <div className="af-welcome__actions">
-            <Button type="button" variant="outline" onClick={dismissWelcome}>
-              {t("af.welcomeOk")}
-            </Button>
-            <button type="button" className="af-link" onClick={() => setAboutOpen(true)}>
-              {t("af.welcomeRules")}
-            </button>
-          </div>
-        </section>
+      {/* The first verse is worked with the guide, step by step (see `tuningGuides.tsx`). */}
+      {data && verse ? (
+        <AligningGuide
+          ready={!busy && pane === "align" && !fixing}
+          state={{
+            mode,
+            res: data.resource === "tps" ? "TPS" : "TPL",
+            orig: data.originalLabel.replace(/\s*\(.*\)\s*$/, "").toLocaleLowerCase(language),
+            editable: editable && mode === "alinear",
+            canTake: mode === "alinear" && shared && !mineToAlign(verse) && !ownerOf(verse) && !readyToReview,
+            picked: selectedWords.length ? selectedWords.map((i) => verse.draft[i]?.surface ?? "").join(" ") : "",
+            nextWord: verse.draft[firstFree]?.surface ?? nextWord ?? "",
+            complete,
+            ready: readyToReview,
+            answered: Boolean(mine),
+            proposing: Boolean(proposing),
+            objecting,
+            minAgree: thresholds.minAgree,
+          }}
+        />
+      ) : null}
+      {data && said.purpose ? (
+        // The first time this person opens this step: what it is for, as the first step of its guide.
+        <GuidePurpose id={`${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`} purpose={said.purpose} title={t("af.welcomeTitle")} legacyKey={`taller-af-welcome:${ctx?.taskId ?? ""}:${ctx?.stepId ?? ""}`} />
       ) : null}
 
       {data && verse && session && pane === "chapter" ? (
@@ -1577,6 +1585,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
       {busy ? <LoadingState shape="tool" label={t("al.loading")} /> : null}
 
       {(shared || mode === "revisar") && summary && data ? (
+        <div data-guide="al-round">
         <RoundPanel
           summary={summary}
           labelOf={(id) => `${data.book} ${id.replace(/^al:/, "")}`}
@@ -1592,12 +1601,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
           onLeave={onClose}
           canClose={canClose}
         />
+        </div>
       ) : null}
 
       {data?.titleLeftOut && pane === "align" ? <p className="af-hint al-joined">{t("al.titleLeftOut")}</p> : null}
       {data && verse && pane === "align" ? (
         <>
-          <nav className="al-verses" aria-label={t("al.versesNav")}>
+          <nav className="al-verses" aria-label={t("al.versesNav")} data-guide="al-verses">
             {data.verses.map((v, i) => {
               const state = verseState(v);
               return (
@@ -1670,7 +1680,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
               </p>
             </section>
           ) : (
-            <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`}>
+            <section className="al-main" aria-label={`${data.originalLabel}, ${data.book} ${data.chapter}:${verse.verse}`} data-guide="al-read">
               <p className="af-lbl">
                 {data.originalLabel} · {data.book} {data.chapter}:{spanLabel(verse)}
               </p>
@@ -1732,13 +1742,13 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                       {t(alreadyTold(verse) ? "al.toldAligner" : "al.changedSince").replace("{who}", finishedBefore(verse))}
                     </p>
                     {alreadyTold(verse) ? null : (
-                      <Button type="button" size="lg" onClick={() => void tellAligner()} disabled={saving}>
+                      <Button type="button" size="lg" onClick={() => void tellAligner()} disabled={saving} data-guide="al-tell">
                         {t("al.tellAligner").replace("{who}", finishedBefore(verse))}
                       </Button>
                     )}
                   </>
                 ) : (
-                  <p className="af-stale" role="status">
+                  <p className="af-stale" role="status" data-guide={mode !== "alinear" ? "al-not-marked" : undefined}>
                     {mode !== "alinear" ? t("al.notMarked") : ownerOf(verse) ? t("al.takenHint").replace("{who}", ownerOf(verse)) : t("al.takeHint")}
                   </p>
                 )
@@ -1748,11 +1758,11 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                 </p>
               ) : null}
               {authoredByMe(verse) ? (
-                <p className="af-hint" role="status">
+                <p className="af-hint" role="status" data-guide="al-own">
                   {t("al.authoredByMe")}
                 </p>
               ) : null}
-              {readyToReview ? <p className="af-question">{t("al.question")}</p> : null}
+              {readyToReview ? <p className="af-question" data-guide="al-question">{t("al.question")}</p> : null}
               {mine ? (
                 <p className="af-mine">
                   {t("al.myAnswer").replace("{stance}", stanceLabel(mine.status))}
@@ -1775,7 +1785,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
             </section>
           )}
 
-          <div className="al-actionbar" role="region" aria-label={t("al.actionsAria")}>
+          <div className="al-actionbar" role="region" aria-label={t("al.actionsAria")} data-guide="al-actionbar">
             {mode === "alinear" && !mineToAlign(verse) ? (
               <div className="al-actionbar__row">
                 {ownerOf(verse) && !readyToReview ? (
@@ -1789,7 +1799,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                 ) : readyToReview ? (
                   <span className="al-actionbar__flag">{t("al.stDone")}</span>
                 ) : (
-                  <Button type="button" onClick={() => void takeVerse()} disabled={saving}>
+                  <Button type="button" onClick={() => void takeVerse()} disabled={saving} data-guide="al-take">
                     {saving ? t("al.saving") : t("al.take")}
                   </Button>
                 )}
@@ -1806,7 +1816,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                     </Button>
                   </div>
                 ) : null}
-                <div className="al-actionbar__row al-actionbar__row--one">
+                <div className="al-actionbar__row al-actionbar__row--one" data-guide="al-tools">
                   <Button type="button" variant="ghost" size="icon" aria-label={t("al.undo")} title={t("al.undo")} disabled={!canUndo} onClick={undo}>
                     <Undo2 size={18} aria-hidden />
                   </Button>
@@ -1817,7 +1827,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                     <Eraser size={18} aria-hidden />
                   </Button>
                   {complete && !readyToReview ? (
-                    <Button type="button" className="al-actionbar__main" aria-label={t("al.markDone")} onClick={() => void markDone()} disabled={saving}>
+                    <Button type="button" className="al-actionbar__main" aria-label={t("al.markDone")} onClick={() => void markDone()} disabled={saving} data-guide="al-done">
                       {saving ? (
                         t("al.saving")
                       ) : (
@@ -1836,7 +1846,7 @@ export function AlineacionView({ ctxEncoded, mode: initialMode, shared: sharedBy
                         {t("fa.back")}
                       </Button>
                     ) : (
-                      <Button type="button" className="al-actionbar__main" onClick={() => void finishAligning()} disabled={saving}>
+                      <Button type="button" className="al-actionbar__main" onClick={() => void finishAligning()} disabled={saving} data-guide="al-finish">
                         {saving ? t("al.saving") : t("al.finishStep")}
                       </Button>
                     )

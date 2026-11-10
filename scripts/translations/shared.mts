@@ -32,7 +32,7 @@ export const samePlaceholders = (a: string, b: string): boolean => placeholdersO
 /** What a person sees as the name of each part of the app (Portuguese, for the reviewer). */
 export const AREA_NAMES: Record<string, string> = {
   nav: "Menu e navegação", header: "Cabeçalho", welcome: "Boas-vindas", thread: "Conversa (avisos)", workspace: "Espaço de trabalho",
-  push: "Avisos no celular", signIn: "Entrar", onboarding: "Primeiros passos", empty: "Telas vazias", mt: "Minhas tarefas e Agora",
+  push: "Avisos no celular", signIn: "Entrar", guide: "Guia passo a passo", empty: "Telas vazias", mt: "Minhas tarefas e Agora",
   td: "Equipe hoje", app: "Mensagens gerais", pj: "Projetos", tb: "Quadro da equipe", org: "Organização", tv: "Fases e tarefas",
   ml: "Nível mínimo", wa: "Esperar por outra tarefa", sc: "Quem pode pegar uma etapa", st: "Etapas do projeto", sg: "Fases do projeto",
   wf: "Modelos de fluxo", as: "Atribuir pessoas", bk: "Inventário do livro", bx: "Explorador do inventário", pb: "Criar subtarefas",

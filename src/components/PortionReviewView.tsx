@@ -9,6 +9,7 @@ import { entryFromSources, filedUnder, groupsOfVerse, newGlossaryId } from "../d
 import { glossaryEntrySaved, useGlossaryEntries } from "../useGlossary";
 import { CommentAsRule } from "./CommentAsRule";
 import { ToolHeader } from "./ToolHeader";
+import { ReviewGuide } from "./screenGuides";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { Check, MessageSquare } from "lucide-react";
@@ -753,6 +754,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
   };
 
   /** One piece of what is reviewed that is not an article shown by its own pieces: a verse, a row of a help, a whole file. */
+  // The guide points at one verse: the first that changed, where there is one to read.
+  const guideItem = (items.find((item) => item.state === "changed") ?? items[0])?.key;
   const itemRow = (item: ReviewItem) => {
     const verseNotes = notesOf(item.verse);
     // What this item's own source calls for. A verse is matched against the English text it translates;
@@ -779,7 +782,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
     const stateSaid = help ? (item.state === "changed" ? corrected : item.state !== "same") && !pending : item.state !== "same";
 
     return (
-      <li key={item.key} className="rv-item" data-ref={item.ref} data-place={place} data-row={help ? item.key : undefined} data-state={pending ? "same" : item.state}>
+      <li key={item.key} className="rv-item" data-guide={item.key === guideItem ? "rv-item" : undefined} data-ref={item.ref} data-place={place} data-row={help ? item.key : undefined} data-state={pending ? "same" : item.state}>
         <div className="rv-item__head">
           <span className="rv-item__ref">{item.ref}</span>
           {stateSaid ? <span className="rv-item__state">{t(`rv.state.${item.state}`)}</span> : null}
@@ -885,7 +888,7 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
         {commenting === item.key ? (
           <Composer focus placeholder={t("rv.commentOn").replace("{ref}", item.ref)} busy={acting} actions={[{ label: t("rv.comment"), primary: true, run: (text) => comment(place, text) }]} />
         ) : (
-          <button type="button" className="rv-item__add" onClick={() => setCommenting(item.key)}>
+          <button type="button" className="rv-item__add" data-guide={item.key === guideItem ? "rv-comment" : undefined} onClick={() => setCommenting(item.key)}>
             <MessageSquare size={14} aria-hidden /> {t("rv.comment")}
           </button>
         )}
@@ -1001,6 +1004,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
       <div className="step-ask-bar">
         <StepAsk session={session} ctx={ctx ? { ...ctx, stepId: stepId || ctx.stepId } : ctx} />
       </div>
+      {/* A draft found later in this screen brings the steps about reading it. */}
+      <ReviewGuide ready={!busy && Boolean(issue && range)} watch={`${marker ? "draft" : ""}:${items.length}`} />
 
       {error ? (
         <Alert variant="destructive" className="mx-4 mt-3">
@@ -1152,7 +1157,8 @@ export function PortionReviewView({ ctxEncoded, mode, onClose, announce }: Props
                   </>
                 ) : null}
               </p>
-              <div className="tool-foot__actions">
+              {/* Without a button (the draft is not finished yet), the guide has nothing here to point at. */}
+              <div className="tool-foot__actions" data-guide="rv-foot">
                 {canCorrect ? (
                   // What a reviewer says is usually answered by correcting: the author does not wait to be sent back.
                   <Button type="button" variant="outline" disabled={acting} onClick={() => void correct()}>

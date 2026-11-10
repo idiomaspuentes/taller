@@ -42,6 +42,7 @@ export function BottomNav({ active, attentionCount, coordinator, onSelect }: Pro
             key={id}
             type="button"
             className="bottom-nav__item"
+            data-guide={`nav-${id}`}
             aria-current={active === id ? "page" : undefined}
             aria-label={id === "avisos" && attentionCount > 0 ? `${label}, ${attentionCount}` : label}
             onClick={() => onSelect(id)}

@@ -56,10 +56,10 @@ export function shippedStepTool(taskId: string, stepId: string, packages: Proces
  */
 export function stepPurpose(
   taskId: string,
-  step: Pick<TaskStep, "id" | "purpose" | "purposes" | "criterion" | "criteria" | "description" | "descriptions"> | undefined,
+  step: Pick<TaskStep, "id" | "purpose" | "purposes" | "criterion" | "criteria" | "description" | "descriptions" | "howTo" | "howTos"> | undefined,
   language: string,
   packages: ProcessPackage[] = tallerConfig.processes,
-): { purpose?: string; criterion?: string; description?: string } {
+): { purpose?: string; criterion?: string; description?: string; howTo?: string } {
   if (!step) return {};
   const shipped = shippedWorkflows(packages).flatMap((workflow) => workflow.tasks.filter((task) => task.id === taskId))[0]?.steps?.find((row) => row.id === step.id);
   const own = step.purpose || step.criterion ? step : shipped;
@@ -67,8 +67,12 @@ export function stepPurpose(
   // A rule the process gave a step after a project was made (the harmonization rules, 16 October) reaches it too:
   // a plan keeps the steps it was made with, and Esther's had what each step is for but no rule.
   const ruled = own.criterion ? own : shipped?.criterion ? shipped : own;
+  // What the hands do, said later than the rest (9 November): from the process as shipped when the project's copy
+  // has none.
+  const taught = own.howTo ? own : shipped?.howTo ? shipped : undefined;
   // How the step is done goes with what it is for: the same version of the process says both.
   return {
+    ...(taught?.howTo ? { howTo: localized(taught.howTo, taught.howTos, language) } : {}),
     ...(own.purpose ? { purpose: localized(own.purpose, own.purposes, language) } : {}),
     ...(ruled.criterion ? { criterion: localized(ruled.criterion, ruled.criteria, language) } : {}),
     ...(own.description ? { description: localized(own.description, own.descriptions, language) } : {}),

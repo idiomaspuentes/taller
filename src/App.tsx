@@ -104,9 +104,10 @@ import { ProjectsView, type CreateProjectInput } from "./components/ProjectsView
 import { AppNav } from "./components/AppNav";
 import { PushPrompt } from "./components/PushPrompt";
 import { useMentions } from "./useMentions";
-import { Onboarding } from "./components/Onboarding";
+import { GuideOverlay } from "./components/GuideOverlay";
+import { GuideButton } from "./components/GuideButton";
 import { ProfileView } from "./components/ProfileView";
-import { useOnboarding } from "./onboarding";
+import { guide, setGuidePerson, useGuideRun } from "./guide";
 import { clearNotices } from "./clearNotices";
 import { QaAdminDialog } from "./components/QaAdminDialog";
 import { canShowQaAdmin, isProductionHost } from "./domain/qaAdmin";
@@ -256,13 +257,9 @@ export function App() {
   const mentions = useMentions(session, pmOrg);
   // Notices with the app closed are worded for each device: it tells the Worker its language, now and when it changes.
   useEffect(() => (session ? keepPushLanguage(session) : undefined), [session?.token, session?.host]); // eslint-disable-line react-hooks/exhaustive-deps
-  const onboarding = useOnboarding(session);
-  // The first steps are put away once the person opens a task of theirs: from then on they know the way, and the
-  // card took a third of «Mis tareas». It stays in their menu, «Cómo empezar».
-  const opensTask = route.name === "conversacion" || route.name === "propuestas" || (route.name.startsWith("solver-") && route.name !== "solver-lab");
-  useEffect(() => {
-    if (opensTask && onboarding.visible) onboarding.hide();
-  }, [opensTask, onboarding.visible, onboarding.hide]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The guide remembers what each person has seen (see `guide.tsx`); it is told who is signed in before it reads.
+  setGuidePerson(session);
+  const guideRun = useGuideRun();
   // Mentions of issues the plan already tracks are counted there; only the others add to the badge.
   // The rules of the teams are read once and shared by the card, the tool, the team's screen and this count.
   useEffect(() => setTeamRulesContext(session, pmOrg), [session?.token, session?.host, pmOrg]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1103,6 +1100,7 @@ export function App() {
           {live}
         </div>
         {sessionExpiredAlert}
+        <GuideOverlay />
         {route.name === "solver-scripture" ? (
           <ScriptureEditorView
             key={sessionEpoch}
@@ -1323,6 +1321,7 @@ export function App() {
             attentionLinkId="avisos"
           />
 
+          {session ? <GuideButton className="app-guide" /> : null}
           {session ? (
             <UserMenu
               session={session}
@@ -1334,7 +1333,8 @@ export function App() {
               onOpenOrganization={() => navigate({ name: "organizacion" })}
               onOpenTemplates={() => navigate({ name: "plantillas" })}
               onOpenFirstSteps={() => {
-                onboarding.show();
+                // The guide of «Mis tareas», whole, once it is on screen.
+                guide.replaySoon();
                 navigate({ name: "mis-tareas" });
               }}
               onOpenFromDoor43={effectiveCanManage ? () => void openFromDcs() : undefined}
@@ -1386,11 +1386,9 @@ export function App() {
         <div className="sr-only" aria-live="polite">
           {live}
         </div>
-        {route.name === "mis-tareas" && session && onboarding.visible ? (
-          <Onboarding session={session} onHide={onboarding.hide} />
-        ) : null}
         {/* A window that asks for the notices: on «Mis tareas» only, never over a tool in the middle of work. */}
-        {route.name === "mis-tareas" && !onboarding.visible ? <PushPrompt session={session} /> : null}
+        {/* Not over the guide, nor on the visit it ran: the guide offers the notices itself. */}
+        {route.name === "mis-tareas" && !guideRun && !guide.ranThisVisit() ? <PushPrompt session={session} /> : null}
         {hydrating && route.name === "proyecto" ? (
           <LoadingState shape="list" label={t("app.loadingProject")} />
         ) : null}
@@ -1458,7 +1456,6 @@ export function App() {
             mentions={mentions.rows}
             onMentionRead={closeMention}
             canManage={effectiveCanManage}
-            greet={!onboarding.visible}
           />
         ) : null}
         {route.name === "conversacion" ? (
@@ -1856,6 +1853,7 @@ export function App() {
         />
       ) : null}
 
+      <GuideOverlay />
       {signInModal}
     </div>
   );

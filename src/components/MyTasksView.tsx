@@ -101,6 +101,10 @@ import { Button } from "@/components/ui/button";
 import { recordOwnAction, recordOwnClose } from "../domain/pendingEvents";
 import { explainError } from "../dcs/userError";
 import { LoadingState } from "./LoadingState";
+import { TasksGuide } from "./screenGuides";
+import { TaskIntro } from "./TaskIntro";
+import { guideSeen, markGuideSeen, taskGuideKeys } from "../guide";
+import { stepPurpose } from "../domain/processes";
 
 type Props = {
   session: GtSession;
@@ -202,6 +206,8 @@ export function MyTasksView({
   const [conflictIssues, setConflictIssues] = useState<DcsIssue[]>([]);
   const [closedIssues, setClosedIssues] = useState<DcsIssue[]>([]);
   const [confirm, setConfirm] = useState<{ title: string; text: string; yes: string; run: () => void } | null>(null);
+  /** The window «De qué trata esta tarea», open over a card whose button was touched: the card and its step. */
+  const [intro, setIntro] = useState<{ card: BoardCard; step: TaskStep } | null>(null);
   // The organization's levels: my level depends on the team of each task.
   const [myLevel, setMyLevel] = useState<LevelBook | undefined>(undefined);
   // The order the projects are worked in and those set aside, as whoever manages left them.
@@ -890,6 +896,46 @@ export function MyTasksView({
       const id = step?.solverAppId ?? card.task?.solverAppId;
       return id ? findSolverApp(solversCatalog, id) : card.bucket ? resolveSolverForIssue(solversCatalog, card.bucket.board, card.issue) : undefined;
     };
+    /** Opens what the card's button says: its tool, its conversation, or the step it asks to join or approve. */
+    const openCard = (card: BoardCard) => {
+      const board = card.bucket?.board;
+      const a = card.action;
+      // Steps done once per chapter that count here are saved with the first thing the person does on the card.
+      if (card.onceApplied) void setIssueTaskProgress(session, pmOrg, card.issue, parseTaskProgressMarker(card.issue.body)).catch(() => undefined);
+      // A decision of the team about the text is read where its change can be compared; any other in its conversation.
+      if (a.kind === "vote") return isDecisionIssue(card.issue) && onOpenProposals ? onOpenProposals(card.issue.number) : onOpenThread(card.issue.number);
+      if (a.kind === "proposals") {
+        onMarkSeen?.(card.issue.number);
+        return onOpenProposals ? onOpenProposals(card.issue.number) : onOpenThread(card.issue.number);
+      }
+      if (!board) return;
+      if (a.kind === "begin") return void begin(card.issue, board, a.step);
+      if (a.kind === "continue") return void resolve(card.issue, board, { step: a.step });
+      if (a.kind === "none" && a.why === "othersAnswer") return void resolve(card.issue, board, { step: a.step });
+      if (a.kind === "none" && a.why === "assigneeDelivers" && a.step) return void resolve(card.issue, board, { step: a.step });
+      if (a.kind === "claimStep") return void claimStepOnIssue(card.issue, board, a.step);
+      if (a.kind === "approveStep") return void approveStepOnIssue(card.issue, board, a.step);
+      if (a.kind === "deliver") return handlers.onDeliver(card);
+    };
+    /**
+     * The step a card opens for the first time in a tool of Taller, when the process says what it is for: it is
+     * said in «De qué trata esta tarea» first. Not to whoever saw what it is for already (in the tool, or in the
+     * card «En esta tarea» it had before).
+     */
+    const introStep = (card: BoardCard): TaskStep | null => {
+      const a = card.action;
+      const step = a.kind === "begin" || a.kind === "continue" || a.kind === "claimStep" ? a.step : undefined;
+      if (!step || !card.task || !step.solverAppId || handlers.isExternal(card)) return null;
+      if (!stepPurpose(card.task.id, step, language).purpose) return null;
+      const keys = taskGuideKeys(card.task.id, step.id);
+      if (guideSeen(keys.intro) || guideSeen(keys.purpose)) return null;
+      try {
+        if (localStorage.getItem(`taller-af-welcome:${card.task.id}:${step.id}`) === "1" || localStorage.getItem(`taller-af-welcome:${card.task.id}`) === "1") return null;
+      } catch {
+        /* private window: the window shows */
+      }
+      return step;
+    };
     const handlers: CardHandlers = {
       isExternal: (card) => {
         const app = toolOf(card);
@@ -897,24 +943,10 @@ export function MyTasksView({
       },
       finishesInTool: (card, step) => toolFinishesItsStep(findSolverApp(solversCatalog, step.solverAppId ?? card.task?.solverAppId)),
       onPrimary: (card) => {
-        const board = card.bucket?.board;
-        const a = card.action;
-        // Steps done once per chapter that count here are saved with the first thing the person does on the card.
-        if (card.onceApplied) void setIssueTaskProgress(session, pmOrg, card.issue, parseTaskProgressMarker(card.issue.body)).catch(() => undefined);
-        // A decision of the team about the text is read where its change can be compared; any other in its conversation.
-        if (a.kind === "vote") return isDecisionIssue(card.issue) && onOpenProposals ? onOpenProposals(card.issue.number) : onOpenThread(card.issue.number);
-        if (a.kind === "proposals") {
-          onMarkSeen?.(card.issue.number);
-          return onOpenProposals ? onOpenProposals(card.issue.number) : onOpenThread(card.issue.number);
-        }
-        if (!board) return;
-        if (a.kind === "begin") return void begin(card.issue, board, a.step);
-        if (a.kind === "continue") return void resolve(card.issue, board, { step: a.step });
-        if (a.kind === "none" && a.why === "othersAnswer") return void resolve(card.issue, board, { step: a.step });
-        if (a.kind === "none" && a.why === "assigneeDelivers" && a.step) return void resolve(card.issue, board, { step: a.step });
-        if (a.kind === "claimStep") return void claimStepOnIssue(card.issue, board, a.step);
-        if (a.kind === "approveStep") return void approveStepOnIssue(card.issue, board, a.step);
-        if (a.kind === "deliver") return handlers.onDeliver(card);
+        // The first time a step of a task is opened here, what it is about comes first.
+        const step = introStep(card);
+        if (step) return setIntro({ card, step });
+        openCard(card);
       },
       onOpenThread: (card) =>
         card.bucket && canOpenConversation(card.issue, session.username, canManage, opensAsTeamDecision(session, pmOrg, card.bucket.board, card.issue))
@@ -973,6 +1005,7 @@ export function MyTasksView({
     const name = session.username.charAt(0).toUpperCase() + session.username.slice(1);
     return (
       <div className="hub task-home">
+        <TasksGuide session={session} ready={Boolean(pmOrg) && loaded} hasTasks={count > 0} />
         <div className="task-home__head">
           <div>
             <h1 className="hub-title">{t("mt.title")}</h1>
@@ -1027,6 +1060,20 @@ export function MyTasksView({
             Probar un conflicto (solo en desarrollo)
           </a>
         ) : null}
+        <TaskIntro
+          task={intro?.card.task ?? null}
+          step={intro?.step ?? null}
+          onCancel={() => setIntro(null)}
+          onStart={(withGuide) => {
+            if (!intro?.card.task) return;
+            const keys = taskGuideKeys(intro.card.task.id, intro.step.id);
+            // The window said what the step is for; without the guide, its walk waits for «Guía».
+            markGuideSeen(withGuide ? [keys.intro, keys.purpose] : [keys.intro, keys.purpose, keys.quiet]);
+            const card = intro.card;
+            setIntro(null);
+            openCard(card);
+          }}
+        />
         <ConfirmDialog
           open={Boolean(confirm)}
           title={confirm?.title ?? ""}

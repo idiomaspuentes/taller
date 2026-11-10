@@ -6264,95 +6264,6 @@ dl.rv-sources dt { font-size: 0.75rem; line-height: 2.2; }
   margin-bottom: 0.5rem;
 }
 
-/* ---- First steps card (Ahora, first visits) ---- */
-.onboarding {
-  margin: 0 0 1rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--primary) 7%, var(--surface)), var(--surface) 60%);
-  box-shadow: var(--shadow-sm);
-}
-.onboarding__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  line-height: 1.2;
-}
-.onboarding__lead {
-  margin: 0.15rem 0 0.75rem;
-  color: var(--text-muted);
-  font-size: 0.9375rem;
-}
-.onboarding__steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-.onboarding__step {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-.onboarding__icon {
-  flex-shrink: 0;
-  display: inline-grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
-  color: var(--primary);
-}
-.onboarding__icon svg {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-.onboarding__step[data-done] .onboarding__icon {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.onboarding__body {
-  min-width: 0;
-  display: grid;
-  gap: 0.35rem;
-  justify-items: start;
-}
-.onboarding__step-title {
-  margin: 0;
-  font-weight: 700;
-  font-size: 0.9375rem;
-}
-.onboarding__step-text {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--text-muted);
-}
-.onboarding__error {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--destructive);
-}
-/* 44 px to touch: it was a line of 19. */
-.onboarding__hide {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--space-44);
-  margin-top: var(--space-4);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.9375rem;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 /* ---- Sign in ---- */
 .dialog.dialog--signin {
   max-height: calc(100dvh - 2rem);
@@ -8184,7 +8095,8 @@ input.pf-name { font-size: 1.625rem; }
 /* Whether the draft is saved: in the header on a wide screen, over the verses on a phone (the header has room for «Terminé» alone). */
 .scripture-editor--split .scripture-editor__save-state.se-draft-state { display: none; }
 @media (max-width: 48rem) {
-  .scripture-editor--split .scripture-editor__save-state.se-draft-state { display: inline-flex; flex-basis: 100%; }
+  /* «Guía» on the same line as «Se guarda solo»: on a line of its own it pushed the verse down. */
+  .scripture-editor--split .scripture-editor__save-state.se-draft-state { display: inline-flex; flex: 1 1 calc(100% - 7rem); }
   .scripture-editor--split .scripture-editor__draft-head { flex-wrap: wrap; row-gap: 0.25rem; }
   .scripture-editor--split .se-head-state { display: none; }
   .se-finish-label { display: none; }
@@ -9907,19 +9819,69 @@ button.cr-note:hover { background: var(--primary-100); }
 /* The one filled button, white on blue: 4.7:1 on accent-500, about 6:1 a step darker. */
 .af--round { --primary: var(--accent-600); --primary-hover: var(--accent-700); }
 
-/*
- * «Sobre esta tarea»: an «ⓘ» in a tool's header, beside «Más». And the welcome of a tuning task, said once per task
- * and device over the first point: what it is for, how the round is answered, «Entendido».
- */
+/* «Sobre esta tarea»: an «ⓘ» in a tool's header, beside «Más», where the tool has no guide (see `.guide-button`). */
 .th-info { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 999px; background: none; color: var(--text-muted); cursor: pointer; }
 .th-info:hover { background: var(--surface-muted); color: var(--text); }
-.af-welcome { display: grid; gap: 0.5rem; padding: 0.875rem 1rem; border: 1px solid var(--accent-200); border-radius: var(--radius-lg); background: var(--accent-50); }
-.af-welcome__title { margin: 0; font-size: calc(0.8125rem * var(--ts, 1)); font-weight: 700; color: var(--accent-800); }
-.af-welcome__purpose { margin: 0; font-size: calc(1rem * var(--ts, 1)); font-weight: 600; line-height: 1.45; color: var(--text); }
-.af-welcome__steps { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.25rem; font-size: calc(0.9375rem * var(--ts, 1)); line-height: 1.5; color: var(--gray-700); }
-.af-welcome__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; margin-top: 0.25rem; }
-.af-welcome__actions .af-link { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .step-sheet__purpose { margin: 0; font-weight: 600; line-height: 1.5; }
+
+/*
+ * The step-by-step guide (`GuideOverlay`): the rest of the screen dimmed, what to touch lit with a ring, and a short
+ * sentence beside it. The count, the title and the sentence are one group (8 px); the buttons, another (24 px).
+ */
+.guide { position: fixed; inset: 0; z-index: 1000; }
+.guide:not([data-lit]):not([data-kind="do"]) { background: rgb(15 23 42 / 0.6); }
+.guide__hole { position: fixed; border-radius: 12px; outline: 3px solid var(--primary); outline-offset: 0; box-shadow: 0 0 0 9999px rgb(15 23 42 / 0.6); pointer-events: none; }
+.guide__bubble { position: fixed; display: grid; gap: 8px; padding: 20px; border-radius: var(--radius-xl); background: var(--surface); color: var(--text); box-shadow: 0 16px 40px rgb(0 0 0 / 0.28); }
+.guide__bubble:focus { outline: none; }
+.guide__count { margin: 0; font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); }
+.guide__title { margin: 0; font-family: var(--font-display); font-size: 1.25rem; line-height: 1.25; }
+.guide__text { margin: 0; font-size: 1.0625rem; font-weight: 500; line-height: 1.45; }
+.guide__action { justify-self: start; min-height: 44px; margin-top: 8px; }
+.guide__error { margin: 0; font-size: 0.875rem; color: var(--destructive); }
+.guide__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.guide__skip { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.9375rem; text-decoration: underline; cursor: pointer; }
+.guide__next { min-height: 44px; min-width: 8rem; }
+.guide__sub { margin: 0; font-size: 0.9375rem; line-height: 1.4; color: var(--text-muted); }
+/*
+ * «De qué trata esta tarea»: big type, short groups with room between them (28 px) and little inside (8 px), the one
+ * thing to do filled at the foot. On a phone it takes the screen.
+ */
+.task-intro { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: 28px 24px 24px; overflow-y: auto; }
+.task-intro[open] { display: flex; flex-direction: column; gap: 28px; }
+@media (max-width: 40rem) { .task-intro { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; padding: 24px 20px 20px; } }
+.task-intro__title { margin: 0; padding-inline-end: 40px; font-family: var(--font-display); font-size: 1.625rem; font-weight: 800; line-height: 1.2; }
+.task-intro__group { display: grid; gap: 8px; }
+.task-intro__label { margin: 0; font-size: 1rem; font-weight: 700; color: var(--text); }
+.task-intro__text { margin: 0; font-size: 1.25rem; line-height: 1.45; }
+.task-intro__list { margin: 0; padding-inline-start: 1.5rem; display: grid; gap: 8px; font-size: 1.25rem; line-height: 1.4; }
+.task-intro__list li[data-here] { font-weight: 700; }
+.task-intro__here { font-weight: 600; color: var(--primary); font-size: 1rem; }
+.task-intro__actions { display: grid; gap: 12px; margin-top: auto; padding-top: 4px; }
+.task-intro__actions .btn { width: 100%; min-height: 52px; font-size: 1.0625rem; }
+.task-intro__note { margin: -4px 0 4px; font-size: 0.9375rem; color: var(--text-muted); text-align: center; }
+html[data-text] .task-intro__title { font-size: calc(1.625rem * var(--ts)); }
+html[data-text] .task-intro__label, html[data-text] .task-intro__here { font-size: calc(1rem * var(--ts)); }
+html[data-text] .task-intro__text, html[data-text] .task-intro__list { font-size: calc(1.25rem * var(--ts)); }
+html[data-text] .task-intro__note { font-size: calc(0.9375rem * var(--ts)); }
+/* «Toque» and «Haga»: the touch goes through to the screen, held only around what is lit. */
+.guide { pointer-events: none; }
+.guide__bubble, .guide__block { pointer-events: auto; }
+.guide__block { position: fixed; }
+.guide__block--all { inset: 0; }
+/* «Haga»: what is worked on, outlined, the screen undimmed; the line small, its button a link. */
+.guide__ring { position: fixed; border-radius: 12px; outline: 3px solid var(--primary); pointer-events: none; }
+.guide[data-kind="do"] .guide__bubble { gap: 4px; padding: 12px 16px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.22); border: 1px solid var(--border); }
+.guide[data-kind="do"] .guide__text { font-size: 1rem; }
+.guide[data-kind="do"] .guide__actions, .guide[data-kind="tap"] .guide__actions { margin-top: 4px; }
+html[data-text] .guide__sub { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .guide[data-kind="do"] .guide__text { font-size: calc(1rem * var(--ts)); }
+html[data-text] .guide__text { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .guide__title { font-size: calc(1.25rem * var(--ts)); }
+html[data-text] .guide__count, html[data-text] .guide__skip { font-size: calc(0.875rem * var(--ts)); }
+/* «Guía»: the guide of the screen again. Always with its word, in the same corner of every header. */
+.guide-button { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.875rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.guide-button:hover { background: var(--surface-muted); }
+.guide-button svg { color: var(--primary); }
 
 /* The words of the original in the box of step 2: larger than the translation beside them, each one to touch. */
 .af--round .af-recap__ref.af-orig { font-size: calc(1.5rem * var(--ts, 1)); line-height: 1.6; }

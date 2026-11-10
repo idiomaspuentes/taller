@@ -86,6 +86,7 @@
     "verify:mentions": "tsx --tsconfig tsconfig.scripts.json scripts/verify-mentions.mts",
     "verify:article-sections": "tsx --tsconfig tsconfig.scripts.json scripts/verify-article-sections.mts",
     "verify:config": "tsx --tsconfig tsconfig.scripts.json scripts/verify-config.mts",
+    "verify:guide": "tsx --tsconfig tsconfig.scripts.json scripts/verify-guide.mts",
     "verify:scope": "tsx --tsconfig tsconfig.scripts.json scripts/verify-scope.mts",
     "verify:scope-mock": "tsx --tsconfig tsconfig.scripts.json scripts/e2e-scope.mts",
     "translations:review": "tsx --tsconfig tsconfig.scripts.json scripts/translations/review.mts",

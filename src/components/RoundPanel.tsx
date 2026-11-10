@@ -62,7 +62,7 @@ export function RoundPanel(props: {
         ) : (
           <div className="round__ready">
             <p>{t("round.allAgreed")}</p>
-            <Button type="button" size="lg" disabled={props.busy} onClick={props.onClose}>
+            <Button type="button" size="lg" disabled={props.busy} onClick={props.onClose} data-guide="round-close">
               {props.busy ? t("round.closing") : t("round.close")}
             </Button>
           </div>
