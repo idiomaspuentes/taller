@@ -53,7 +53,9 @@ import {
 } from "../domain/solvers";
 import { normalizeProjectId } from "../domain/books";
 import { allPages } from "../domain/pages";
-import { canSyncFrom, changesSince, mergeAllChanged, mergeChanged } from "../domain/issueSync";
+import { canSyncFrom, changesSince, mergeAllChanged, mergeChanged, wholeIsRecent } from "../domain/issueSync";
+import { slimIssue } from "../domain/myTasksCache";
+import { deviceStore, type DeviceStore } from "../lib/deviceStore";
 import { door43Writes } from "./door43Gate";
 import {
   encodeWorkOrderMarker,
@@ -1017,12 +1019,9 @@ export async function pullIssues(params: {
 }): Promise<IssueBoardProjection> {
   const { session, org, book, board } = params;
   const pmConfig = await loadPmConfig(session, org);
-  const issues = await searchPmIssues(session, org, {
-    state: "all",
-    milestones: [normalizeProjectId(book)],
-    maxPages: WHOLE_PROJECT_PAGES,
-    namespaceId: pmConfig.namespaceId,
-  });
+  // The book as the other screens read it: opening a project right after «Proyectos» read it whole again (26 pages
+  // for Nehemías, 9 November 2026).
+  const issues = await readProjectIssues(session, org, book, "all");
 
   const peopleByLogin = new Map(board.people.map((p) => [p.id.toLowerCase(), p]));
   const next: Assignment[] = [];
@@ -1105,14 +1104,65 @@ export const PROJECT_FRESH_MS = 30_000;
  * books again: «Terminé» three times, «Proyectos» and «Equipo hoy» every time they opened. With Nehemías (1.221
  * subtareas, 25 pages) that was most of what made Taller slow on 6 November 2026.
  */
-type KeptProject = { at: string; checked: number; writes: number; open?: DcsIssue[]; all?: DcsIssue[] };
+type KeptProject = {
+  /** When it was last read or brought up to date: the next reading asks for what changed since. */
+  at: string;
+  /** When it was last read whole: what a change cannot tell (a subtarea moved to another book) is put right then. */
+  wholeAt: string;
+  checked: number;
+  writes: number;
+  open?: DcsIssue[];
+  all?: DcsIssue[];
+};
 const keptProjects = new Map<string, KeptProject>();
 const keptProjectKey = (session: GtSession, org: string, projectId: string) =>
   JSON.stringify([session.host, session.username, org, scopeFolder(), normalizeProjectId(projectId)]);
 
-/** Forget every project read (another person signs in, or a check starts afresh). */
+/**
+ * Each book is also kept in this device (9 November 2026). Kept only in the page, every start of the app read every
+ * book whole: 24 pages for each 1.200 subtareas, and a coordinator's «Equipo hoy» 53 pages and 9 MB with two books.
+ * From the device, the first reading of the day asks only for what changed.
+ */
+const SAVED_PREFIX = "taller-libro-v1:";
+type SavedProject = Pick<KeptProject, "at" | "wholeAt" | "open" | "all">;
+let projectStore: DeviceStore = deviceStore;
+const restored = new Map<string, Promise<void>>();
+
+/** Where the books are kept: the device, or a store of a test's own. */
+export function keepProjectsIn(store: DeviceStore): void {
+  projectStore = store;
+  restored.clear();
+}
+
+function restoreProject(key: string): Promise<void> {
+  let once = restored.get(key);
+  if (!once) {
+    once = projectStore.get<SavedProject>(SAVED_PREFIX + key).then(
+      (saved) => {
+        if (!saved?.at || !(saved.open || saved.all) || keptProjects.has(key)) return;
+        // Checked never and with no write seen: the first reading brings it up to date.
+        keptProjects.set(key, { at: saved.at, wholeAt: saved.wholeAt || saved.at, checked: 0, writes: -1, open: saved.open, all: saved.all });
+      },
+      () => undefined,
+    );
+    restored.set(key, once);
+  }
+  return once;
+}
+
+function saveProject(key: string, kept: KeptProject): void {
+  const saved: SavedProject = {
+    at: kept.at,
+    wholeAt: kept.wholeAt,
+    ...(kept.all ? { all: kept.all.map(slimIssue) } : kept.open ? { open: kept.open.map(slimIssue) } : {}),
+  };
+  void projectStore.set(SAVED_PREFIX + key, saved).catch(() => undefined);
+}
+
+/** Forget every project read in this page (another person signs in, or a check starts afresh). The device keeps its own. */
 export function forgetProjectIssues(): void {
   keptProjects.clear();
+  restored.clear();
 }
 
 const openOnly = (issues: DcsIssue[]) => issues.filter((issue) => (issue.state ?? "open").toLowerCase() !== "closed");
@@ -1121,7 +1171,7 @@ const keptView = (kept: KeptProject, want: "open" | "all"): DcsIssue[] | undefin
 
 async function readProjectIssues(session: GtSession, org: string, projectId: string, want: "open" | "all"): Promise<DcsIssue[]> {
   const key = keptProjectKey(session, org, projectId);
-  const pmConfig = await loadPmConfig(session, org);
+  const [pmConfig] = await Promise.all([loadPmConfig(session, org), restoreProject(key)]);
   const milestones = [normalizeProjectId(projectId)];
   const kept = keptProjects.get(key);
   const now = Date.now();
@@ -1129,7 +1179,7 @@ async function readProjectIssues(session: GtSession, org: string, projectId: str
   const writesAt = door43Writes();
   if (kept && keptView(kept, want)) {
     if (now - kept.checked < PROJECT_FRESH_MS && kept.writes === writesAt) return keptView(kept, want)!;
-    if (canSyncFrom(kept.at, new Date(now))) {
+    if (canSyncFrom(kept.at, new Date(now)) && wholeIsRecent(kept.wholeAt, new Date(now))) {
       const changed = await searchPmIssues(session, org, {
         state: "all",
         milestones,
@@ -1139,17 +1189,22 @@ async function readProjectIssues(session: GtSession, org: string, projectId: str
       });
       const next: KeptProject = {
         at: startedAt,
+        wholeAt: kept.wholeAt,
         checked: Date.now(),
         writes: writesAt,
         ...(kept.all ? { all: mergeAllChanged(kept.all, changed) } : {}),
         ...(kept.open ? { open: mergeChanged(kept.open, changed) } : {}),
       };
       keptProjects.set(key, next);
+      // Nothing changed: what the device has is still right, and its time is only a little older.
+      if (changed.length) saveProject(key, next);
       return keptView(next, want)!;
     }
   }
   const issues = await searchPmIssues(session, org, { state: want, milestones, maxPages: WHOLE_PROJECT_PAGES, namespaceId: pmConfig.namespaceId });
-  keptProjects.set(key, { at: startedAt, checked: Date.now(), writes: writesAt, [want]: issues });
+  const read: KeptProject = { at: startedAt, wholeAt: startedAt, checked: Date.now(), writes: writesAt, [want]: issues };
+  keptProjects.set(key, read);
+  saveProject(key, read);
   return [...issues];
 }
 
@@ -1174,10 +1229,11 @@ export async function syncProjectOpenIssues(
   known: { at: string; issues: DcsIssue[] },
 ): Promise<DcsIssue[]> {
   const key = keptProjectKey(session, org, projectId);
+  await restoreProject(key);
   const kept = keptProjects.get(key);
   if (!kept || Date.parse(kept.at) < Date.parse(known.at)) {
     if (!canSyncFrom(known.at, new Date(Date.now()))) return readProjectIssues(session, org, projectId, "open");
-    keptProjects.set(key, { at: known.at, checked: 0, writes: -1, open: known.issues });
+    keptProjects.set(key, { at: known.at, wholeAt: kept?.wholeAt ?? known.at, checked: 0, writes: -1, open: known.issues });
   }
   return readProjectIssues(session, org, projectId, "open");
 }

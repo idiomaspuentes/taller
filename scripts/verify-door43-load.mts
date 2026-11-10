@@ -8,7 +8,8 @@
  */
 import assert from "node:assert/strict";
 import { createGate, gatedFetch, door43Writes } from "../src/dcs/door43Gate.ts";
-import { forgetProjectIssues, listProjectIssues, listProjectOpenIssues, PROJECT_FRESH_MS, syncProjectOpenIssues } from "../src/dcs/issues.ts";
+import { forgetProjectIssues, keepProjectsIn, listProjectIssues, listProjectOpenIssues, PROJECT_FRESH_MS, pullIssues, syncProjectOpenIssues } from "../src/dcs/issues.ts";
+import { memoryStore } from "../src/lib/deviceStore.ts";
 import type { GtSession } from "../src/dcs/auth.ts";
 
 let passed = 0;
@@ -161,6 +162,74 @@ await test("la lista guardada de «Mis tareas» sirve de punto de partida: no se
   asked.length = 0;
   await listProjectOpenIssues(session, ORG, "NEH");
   assert.equal(asked.length, 0, "y las demás pantallas lo aprovechan");
+});
+
+// ---------- Each book kept in the device (9 November 2026) ----------
+
+const device = memoryStore();
+keepProjectsIn(device);
+/** Opening the app again: what the page had read is gone, what the device keeps is not. */
+const reopen = () => forgetProjectIssues();
+
+await test("al volver a abrir la app, el libro guardado en el aparato se pone al día con una página", async () => {
+  rows = fresh(1221);
+  reopen();
+  await listProjectOpenIssues(session, ORG, "NEH");
+  clock += 12 * 3_600_000;
+  rows[4] = { ...rows[4]!, state: "closed", updated_at: iso(clock) };
+  reopen();
+  asked.length = 0;
+  const open = await listProjectOpenIssues(session, ORG, "NEH");
+  assert.equal(asked.length, 1, `pidió ${asked.length} páginas`);
+  assert.ok(asked[0]!.since, "con «desde»");
+  assert.equal(open.length, 1220);
+});
+
+await test("abiertas y cerradas: la primera vez se lee entero, y desde entonces también se pone al día desde el aparato", async () => {
+  rows = fresh(300).map((r, i) => (i < 200 ? { ...r, state: "closed" as const } : r));
+  reopen();
+  asked.length = 0;
+  await listProjectIssues(session, ORG, "NEH");
+  assert.ok(asked.length >= 6, "la primera vez, entero");
+  clock += 3_600_000;
+  reopen();
+  asked.length = 0;
+  const { issues } = await listProjectIssues(session, ORG, "NEH");
+  assert.equal(asked.length, 1);
+  assert.equal(issues.length, 300);
+  assert.equal((await listProjectOpenIssues(session, ORG, "NEH")).length, 100, "las abiertas salen de ahí");
+});
+
+await test("abrir un proyecto (sus subtareas en el tablero) usa lo que ya se leyó, sin leer el libro otra vez", async () => {
+  rows = fresh(1221);
+  reopen();
+  await listProjectIssues(session, ORG, "NEH");
+  asked.length = 0;
+  const board = { people: [], assignments: [] } as unknown as Parameters<typeof pullIssues>[0]["board"];
+  const pulled = await pullIssues({ session, org: ORG, book: "NEH", board });
+  assert.equal(pulled.issues.length, 1221);
+  assert.equal(asked.length, 0);
+});
+
+await test("un libro leído entero hace más de una semana se lee entero otra vez, aunque se haya puesto al día", async () => {
+  rows = fresh(120);
+  reopen();
+  await listProjectOpenIssues(session, ORG, "NEH");
+  for (let day = 0; day < 8; day++) {
+    clock += 24 * 3_600_000;
+    reopen();
+    asked.length = 0;
+    await listProjectOpenIssues(session, ORG, "NEH");
+  }
+  assert.ok(asked.every((a) => !a.since) && asked.length >= 3, "el octavo día, sin «desde»");
+});
+
+await test("lo que se guarda de cada subtarea es lo que las pantallas leen, no la subtarea entera", async () => {
+  const saved = device.keys().find((k) => k.includes("NEH"))!;
+  const kept = (await device.get<{ open?: Record<string, unknown>[] }>(saved))!;
+  assert.ok(kept.open?.length);
+  assert.equal(typeof kept.open![0]!.body, "string");
+  assert.equal((kept.open![0]!.repository as Record<string, unknown>).full_name, `${ORG}/taller`);
 });
 
 Date.now = realNow;

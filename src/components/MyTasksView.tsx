@@ -252,8 +252,8 @@ export function MyTasksView({
     const keptKey = keptTasksKey({ host: session.host, username: session.username, pmOrg, lang, contentOrg, mode });
     // Opening the screen: the list as it was last read, at once, while it is read again (seconds, with a big book).
     if (!shownOnce.current) {
-      const kept = keptTasks(keptKey);
-      if (kept) {
+      const kept = await keptTasks(keptKey);
+      if (kept && mine === reading.current) {
         setProjects(kept.projects);
         setConflictIssues(kept.conflicted);
         setClosedIssues(kept.closed);
@@ -290,7 +290,7 @@ export function MyTasksView({
       setReadAt(startedAt);
       setStale(false);
       lastRead.current = { at, projects: nextProjects };
-      keepTasks(keptKey, { at, projects: nextProjects, catalog, conflicted, closed });
+      void keepTasks(keptKey, { at, projects: nextProjects, catalog, conflicted, closed });
     } catch (err) {
       if (mine === reading.current) setError(explainError(err));
     } finally {

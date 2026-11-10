@@ -1,6 +1,7 @@
 # Las subtareas en Door43 y lo que tarda Taller
 
-*9 de noviembre de 2026. Propuesta: falta el visto bueno de Abel antes de tocar código de producción.*
+*9 de noviembre de 2026. Abel aprobó el camino A y está hecho (abajo, «Lo que cambió con A»). El camino C espera su
+decisión.*
 
 Cada subtarea es una incidencia (issue) de Door43 en el repositorio del plan (`{org}/taller`). Un libro del FCR trae
 unas 1.200 (Nehemías empezó con 1.221), y cada libro nuevo suma otras tantas. Este documento mide dónde se va el
@@ -84,6 +85,34 @@ solo la de «Mis tareas») en IndexedDB, que no tiene el límite de 5 MB, y desd
 - **No resuelve:** la primera vez en un aparato (teléfono nuevo, datos borrados) sigue siendo 24 páginas por libro, y
   sigue creciendo con cada libro.
 - **Riesgo:** bajo. Nada cambia en Door43.
+
+#### Lo que cambió con A (9 de noviembre)
+
+- **Cada libro leído se guarda en el aparato** (IndexedDB, `src/lib/deviceStore.ts`), con lo que las pantallas leen de
+  cada subtarea. Al abrir la app otra vez se pide solo lo que cambió desde entonces (`readProjectIssues` en
+  `src/dcs/issues.ts`).
+  - Se pide así hasta tres días sin abrir la app; antes eran seis horas, y cada mañana se leía todo entero.
+  - Igual se lee entero una vez por semana, por lo que un cambio no dice (una subtarea pasada a otro libro).
+- **«Mis tareas» guarda su lista en IndexedDB**, y no en `localStorage`. Al leerla, quita la copia vieja.
+- **Abrir un proyecto usa lo ya leído** (`pullIssues`).
+- **«Equipo hoy» lee todos los libros a la vez.**
+- **«Terminé»** también se pone al día desde lo guardado: abiertas y cerradas se leen enteras solo la primera vez en
+  cada aparato.
+
+Medido de nuevo en el mock, con los mismos dos libros:
+
+| Pantalla | Antes | Con A |
+|---|---|---|
+| «Mis tareas» al volver a abrir la app | 9 páginas, 1,4 MB | 2 páginas, 0,48 MB |
+| «Equipo hoy» al volver a abrir la app | 53 páginas, 9,1 MB | 9 páginas, 0,84 MB |
+| Abrir un proyecto | 26 páginas, 4,2 MB | 1 página vacía |
+| La primera vez en un aparato | igual | igual (37 y 53 páginas); «Equipo hoy» ocupó al servidor 22 s y no 30, por leer los libros a la vez |
+
+**No se hizo:**
+- **«Mis tareas» sigue pidiendo las abiertas de cada libro.** Con el FCR casi siempre las necesita, por las esperas
+  entre tareas.
+- **Los libros terminados siguen leyéndose.** Hay que decidir antes desde cuándo un libro cuenta como terminado.
+- **Publicar el plan sigue leyendo todo entero.** Así no se crea nada dos veces.
 
 ### B. Menos incidencias
 
