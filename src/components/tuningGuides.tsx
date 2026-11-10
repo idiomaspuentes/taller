@@ -1,0 +1,162 @@
+import type { GuideStep } from "../domain/guide";
+import { GuideScreen } from "../guide";
+import { useT, type MessageKey } from "../i18n/messages";
+
+/**
+ * The guides of the tuning tools, as walks through the first piece of work (see `domain/guide.ts`): each step shows
+ * one thing, says what to do in a sentence, and waits for it to be done. What has not had its turn is not on screen
+ * yet (`hide`). The cases the first piece does not have (somebody answered before, a point the team closed, closing
+ * the review) are said on their own the first time they come. Designed with Abel on 9 November, from the page
+ * «Guía de afinación paso a paso».
+ */
+
+/** Where a point of tuning stands, as `AfinacionView` has it. */
+export type TuningState = {
+  kind: "notas" | "palabras";
+  res: "TPL" | "TPS";
+  /** What the point is a case of («Nombres»), for notes. */
+  name: string;
+  /** Another text to read the point in («ULT»), when there is one. */
+  tab?: string;
+  hasHelp: boolean;
+  studied: boolean;
+  /** «No, es otra cosa» was touched: the box to say what one sees is open. */
+  doubting: boolean;
+  marked: boolean;
+  confirmed: boolean;
+  /** Nothing of the translation renders it: there is no «Sí, está bien». */
+  needsWords: boolean;
+  /** The box of a proposal or an observation is open. */
+  pending: string | null;
+  /** This person's answer is on the point (and is not being changed). */
+  answered: boolean;
+  /** How the key word reads elsewhere is listed. */
+  elsewhere: boolean;
+  /** Somebody else had marked the words: the point opened at the question. */
+  othersChose: boolean;
+};
+
+/** A walk's step: one key for the whole walk, so it is seen once, as a whole. */
+const walkStep = (kind: TuningState["kind"], id: string, rest: Omit<GuideStep, "id" | "seenKey" | "flow">): GuideStep => ({ id, seenKey: `flow:afinar-${kind}`, flow: true, ...rest });
+
+export function TuningGuide({ ready, state: s }: { ready: boolean; state: TuningState }) {
+  const t = useT();
+  const fill = (key: MessageKey, values: Record<string, string>) => Object.entries(values).reduce((text, [name, value]) => text.split(`{${name}}`).join(value), t(key));
+  const notes = s.kind === "notas";
+  const top = ["af-head", "af-round"];
+  const study = s.studied;
+  const answer = s.doubting
+    ? { kind: "do" as const, target: "af-doubt", text: fill("guide.afDoubt", { button: t("af.doubtContinue") }) }
+    : { kind: "tap" as const, target: "af-answer", text: notes ? fill("guide.afN5", { name: s.name }) : t("guide.afW5") };
+  const decide =
+    s.pending === "revise"
+      ? { kind: "do" as const, target: "af-why", text: fill("guide.afPropose", { button: t("fx.fixNow") }) }
+      : s.pending
+        ? { kind: "do" as const, target: "af-why", text: fill("guide.afObserve", { button: t("af.send") }) }
+        : s.needsWords
+          ? { kind: "tap" as const, target: "af-answer-final", text: fill("guide.afDecideMissing", { revise: t("rv.revise"), obs: t("af.observation") }) }
+          : {
+              kind: "tap" as const,
+              target: "af-answer-final",
+              text: fill(notes ? (s.res === "TPS" ? "guide.afDecideTps" : "guide.afDecideTpl") : s.elsewhere ? "guide.afDecideW" : "guide.afDecideWFirst", { yes: t("af.yesFine") }),
+              sub: fill("guide.afDecideSub", { revise: t("rv.revise"), obs: t("af.observation") }),
+            };
+  const k = s.kind;
+  const steps: GuideStep[] = [
+    // Estudiar
+    walkStep(k, "steps", { target: "af-steps", text: t(notes ? "guide.afN1" : "guide.afW1"), done: study, hide: [...top, "af-title", "af-ref", "af-help", "af-answer"] }),
+    walkStep(k, "ref", { target: "af-ref", text: t(notes ? "guide.afN2" : "guide.afW2"), done: study, hide: [...top, "af-help", "af-answer"] }),
+    // A step to practise the tabs: the reference can be read in another text.
+    walkStep(k, "tab", { kind: "tap", target: "af-tabs", text: fill("guide.afTab", { tab: s.tab ?? "" }), when: notes && Boolean(s.tab), until: ["af:ref-tab"], done: study, hide: [...top, "af-help", "af-answer"] }),
+    walkStep(k, "help", { target: "af-help", text: t(notes ? "guide.afN4" : "guide.afW4"), ok: t(notes ? "guide.readNote" : "guide.readArticle"), when: s.hasHelp, done: study, hide: [...top, "af-answer"] }),
+    walkStep(k, "answer", { ...answer, done: study, hide: top }),
+    // Marcar
+    // One step of work, in two shapes: the screen stays free while words are marked, and once there is one, the line
+    // says how to go on. As a step to touch, «¿Están todas?» held the words, and no second word could be marked.
+    s.marked
+      ? walkStep(k, "mark", { kind: "do", target: "af-words", text: fill("guide.afConfirm", { button: t("af.confirmWords") }), sub: fill("guide.afConfirmSub", { res: s.res, none: t("af.notThere") }), done: s.confirmed, hide: [...top, "af-ref"] })
+      : walkStep(k, "mark", { kind: "do", target: "af-words", text: fill(notes ? "guide.afMark" : "guide.afMarkW", { res: s.res }), sub: t("guide.afMarkSub"), done: s.confirmed, hide: [...top, "af-ref"] }),
+    // Decidir
+    notes
+      ? walkStep(k, "compare", { target: "af-recap", text: t("guide.afCompare"), when: !s.needsWords, done: s.answered, hide: [...top, "af-question", "af-answer-final"] })
+      : walkStep(k, "compare", { target: "af-elsewhere", text: t("guide.afElsewhere"), when: s.elsewhere, done: s.answered, hide: [...top, "af-question", "af-answer-final", "af-recap"] }),
+    walkStep(k, "decide", { ...decide, until: ["af:answered"], done: s.answered, hide: top }),
+    walkStep(k, "saved", { target: "af-count", text: t("guide.afSaved"), after: ["af:answered"] }),
+    // The cases that come later, each the first time it is on screen.
+    { id: "others-chose", seenKey: "afinar:others-chose", target: "af-change", text: fill("guide.afOthersChose", { button: t("af.changeWords") }), when: s.othersChose && s.confirmed && !s.answered },
+    { id: "others-agree", seenKey: "afinar:others-agree", target: "af-ask-agree", text: fill("guide.afOthersAgree", { yes: t("af.yesFine") }) },
+    { id: "second", seenKey: "afinar:second", target: "af-second", text: fill("guide.afSecond", { same: t("af.second") }) },
+    { id: "alike", seenKey: "afinar:alike", target: "af-alike", text: t("guide.afAlike") },
+    { id: "closed", seenKey: "afinar:closed", target: "af-closed", text: fill("guide.afClosed", { button: t("af.reopen") }) },
+    { id: "round-close", seenKey: "afinar:round-close", target: "round-close", text: fill("guide.afRoundClose", { button: t("round.close") }) },
+  ];
+  return <GuideScreen steps={steps} ready={ready} />;
+}
+
+/** Where the verse in hand stands, as `AlineacionView` has it. */
+export type AligningState = {
+  mode: "alinear" | "revisar";
+  res: "TPL" | "TPS";
+  /** What the original is called («Hebreo»). */
+  orig: string;
+  /** The alignment can be changed here: the verse is this person's to align. */
+  editable: boolean;
+  /** In a step the team shares, the verse is free: it is taken before it is aligned. */
+  canTake: boolean;
+  /** A word of the draft is in hand, and which. */
+  picked: string;
+  /** The first word still to place. */
+  nextWord: string;
+  complete: boolean;
+  /** The verse is marked finished: in a review, it can be answered. */
+  ready: boolean;
+  answered: boolean;
+  proposing: boolean;
+  objecting: boolean;
+  /** How many agree make a verse reviewed. */
+  minAgree: number;
+};
+
+export function AligningGuide({ ready, state: s }: { ready: boolean; state: AligningState }) {
+  const t = useT();
+  const fill = (key: MessageKey, values: Record<string, string>) => Object.entries(values).reduce((text, [name, value]) => text.split(`{${name}}`).join(value), t(key));
+  const step = (id: string, rest: Omit<GuideStep, "id" | "seenKey" | "flow">): GuideStep => ({ id, seenKey: `flow:alinear-${s.mode}`, flow: true, ...rest });
+  if (s.mode === "alinear") {
+    const steps: GuideStep[] = [
+      step("take", { kind: "tap", target: "al-take", text: fill("guide.alTake", { button: t("al.take") }), when: s.canTake, done: s.editable || s.complete }),
+      step("bank", { target: "al-bank", text: fill("guide.alBank", { res: s.res }), done: s.complete, hide: ["al-grid", "al-hint", "al-actionbar", "al-verses"] }),
+      step("boxes", { target: "al-grid", text: fill("guide.alBoxes", { orig: s.orig }), done: s.complete, hide: ["al-hint", "al-actionbar", "al-verses"] }),
+      // One step in two shapes: a word in hand goes to its box; with none, a word is touched first.
+      s.picked
+        ? step("place", { kind: "tap", target: "al-grid", text: fill("guide.alPlace", { word: s.picked, orig: s.orig }), sub: t("guide.alPlaceSub"), until: ["al:placed"], done: s.complete, hide: ["al-actionbar", "al-verses"] })
+        : step("place", { kind: "tap", target: "al-word", text: fill("guide.alPick", { word: s.nextWord }), until: ["al:placed"], done: s.complete, hide: ["al-actionbar", "al-verses"] }),
+      step("remove", { target: "al-chip", text: t("guide.alRemove"), done: s.complete, hide: ["al-actionbar", "al-verses"] }),
+      // While the bar is there: the next verse may not be this person's yet, and have no bar to point at.
+      step("tools", { target: "al-tools", text: t("guide.alTools"), done: s.complete, hide: ["al-verses"] }),
+      step("rest", { kind: "do", text: t("guide.alRest"), sub: t("guide.alRestSub"), done: s.complete, hide: ["al-verses"] }),
+      step("done", { kind: "tap", target: "al-done", text: fill("guide.alDone", { button: t("al.markDoneShort") }), until: ["al:verse-done"], done: s.ready }),
+      step("next", { target: "al-verses", text: t("guide.alNext"), after: ["al:verse-done"] }),
+      { id: "join", seenKey: "alinear:join", target: "al-join", text: fill("guide.alJoin", { button: t("al.mergeBoxes") }) },
+      { id: "finish", seenKey: "alinear:finish", target: "al-finish", text: fill("guide.alFinish", { button: t("al.finishStep") }) },
+      { id: "fix", seenKey: "alinear:fix", target: "al-fix", text: fill("guide.alFix", { button: t("al.fixOrAsk") }) },
+    ];
+    return <GuideScreen steps={steps} ready={ready && (s.editable || s.canTake)} />;
+  }
+  const answer = s.proposing
+    ? { kind: "do" as const, target: "al-actionbar", text: fill("guide.alPropose", { button: t("al.sendProposal") }) }
+    : s.objecting
+      ? { kind: "do" as const, target: "al-actionbar", text: fill("guide.alObject", { button: t("al.sendObjection") }) }
+      : { kind: "tap" as const, target: "al-actionbar", text: fill("guide.alAgree", { yes: t("rv.approved") }), sub: fill("guide.alAgreeSub", { revise: t("rv.revise"), object: t("rv.rejected") }) };
+  const steps: GuideStep[] = [
+    step("read", { target: "al-read", text: fill("guide.alRead", { orig: s.orig, res: s.res }), done: s.answered, hide: ["al-question", "al-actionbar", "al-verses", "al-round"] }),
+    step("question", { target: "al-question", text: t("guide.alQuestion"), done: s.answered, hide: ["al-actionbar", "al-verses", "al-round"] }),
+    step("answer", { ...answer, until: ["al:answered"], done: s.answered, hide: ["al-verses", "al-round"] }),
+    // How a verse comes to be reviewed, said once it has an answer: the panel of the round has nothing to say yet.
+    step("next", { target: "al-verses", text: fill("guide.alAnswered", { n: String(s.minAgree) }), after: ["al:answered"] }),
+    { id: "not-marked", seenKey: "revisar:not-marked", target: "al-not-marked", text: fill("guide.alNotMarked", { button: t("al.continue") }) },
+    { id: "own", seenKey: "revisar:own", target: "al-own", text: t("guide.alOwn") },
+    { id: "tell", seenKey: "revisar:tell", target: "al-tell", text: t("guide.alTell") },
+    { id: "round-close", seenKey: "afinar:round-close", target: "round-close", text: fill("guide.afRoundClose", { button: t("round.close") }) },
+  ];
+  return <GuideScreen steps={steps} ready={ready && s.ready} />;
+}

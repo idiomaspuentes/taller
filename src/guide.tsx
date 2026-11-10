@@ -27,6 +27,31 @@ export const guide = createGuide({
   present: (target) => Boolean(guideTarget(target)),
 });
 
+/** Something the person did that a step of the guide may be waiting for («answered»). Nothing when no guide is on. */
+export function guideDid(event: string): void {
+  guide.did(event);
+}
+
+/** Whether whoever is signed in has seen this (a step, a walk, the window «De qué trata esta tarea»). */
+export function guideSeen(key: string): boolean {
+  return Boolean(seenKey) && readSeen(seenKey).has(key);
+}
+
+/** Marks these as seen for whoever is signed in. */
+export function markGuideSeen(keys: string[]): void {
+  if (!seenKey) return;
+  const seen = readSeen(seenKey);
+  for (const key of keys) seen.add(key);
+  writeSeen(seenKey, seen);
+}
+
+/** The keys a step of a task is remembered by: its window, what it is for, and «Empezar sin guía». */
+export const taskGuideKeys = (taskId: string, stepId: string) => ({
+  intro: `intro:${taskId}:${stepId}`,
+  purpose: `purpose:${taskId}:${stepId}`,
+  quiet: `noguide:${taskId}:${stepId}`,
+});
+
 /** Whoever is signed in: what they have seen is theirs. */
 export function setGuidePerson(session: { host: string; username: string } | null): void {
   seenKey = session ? guideKey(session.host, session.username) : "";
@@ -51,7 +76,11 @@ export function useGuidePart(part: GuidePart, steps: GuideStep[] | null, ready =
   const latest = useRef(steps);
   latest.current = steps;
   const signature = steps
-    ? JSON.stringify([ready, watch, steps.map((step) => [step.id, step.seenKey, step.target, step.title, step.text, step.when, step.seenBefore, step.action?.label])])
+    ? JSON.stringify([
+        ready,
+        watch,
+        steps.map((step) => [step.id, step.seenKey, step.target, step.title, step.text, step.sub, step.ok, step.kind, step.flow, step.done, step.until, step.after, step.hide, step.when, step.seenBefore, step.quiet, step.action?.label]),
+      ])
     : "";
   useEffect(() => {
     if (!latest.current) {
@@ -84,7 +113,9 @@ export function useGuidePurpose(key: string | null, purpose: string | undefined,
       before = false;
     }
   }
-  useGuidePart("purpose", key && purpose ? [{ id: "purpose", seenKey: `purpose:${key}`, title, text: purpose, ...(before ? { seenBefore: true } : {}) }] : null);
+  // «Empezar sin guía» in the window that opened the task: the screen's walk waits for «Guía».
+  const quiet = Boolean(key) && guideSeen(`noguide:${key}`);
+  useGuidePart("purpose", key && purpose ? [{ id: "purpose", seenKey: `purpose:${key}`, title, text: purpose, ...(before ? { seenBefore: true } : {}), ...(quiet ? { quiet } : {}) }] : null);
 }
 
 /**

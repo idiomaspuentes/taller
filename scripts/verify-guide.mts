@@ -218,4 +218,146 @@ await test("avisa a quien escucha cuando cambia, y dice si ya corrió en esta vi
   assert.equal(calls, before);
 });
 
+// A walk through the first point of a tuning task, as `screenGuides.tsx` gives it: one seenKey for the whole of it.
+const walk = (state: { studied?: boolean; doubting?: boolean; marked?: boolean; confirmed?: boolean } = {}): GuideStep[] => {
+  const w = (id: string, extra: Partial<GuideStep>) => step(id, { seenKey: "flow:notas", flow: true, ...extra });
+  return [
+    w("steps", { target: "af-steps", done: state.studied, hide: ["af-ref", "af-answer"] }),
+    w("ref", { target: "af-ref", done: state.studied }),
+    w("tab", { kind: "tap", target: "af-tabs", until: ["af:ref-tab"], done: state.studied }),
+    // The question, or, once «No» is touched, the box to say what one sees: one step, two shapes.
+    state.doubting
+      ? w("answer", { kind: "do", target: "af-doubt", text: "Escriba qué ve", done: state.studied })
+      : w("answer", { kind: "tap", target: "af-answer", text: "Toque su respuesta", done: state.studied }),
+    w("mark", { kind: "do", target: "af-words", done: state.confirmed || state.marked }),
+    w("confirm", { kind: "tap", target: "af-confirm", done: state.confirmed }),
+    w("decide", { kind: "tap", target: "af-decide", until: ["af:answered"] }),
+    w("saved", { target: "af-count", after: ["af:answered"] }),
+  ];
+};
+const idNow = (guide: ReturnType<typeof setup>["guide"]) => {
+  const run = guide.run();
+  return run ? run.steps[run.index]!.id : null;
+};
+
+await test("una caminata se toma entera aunque lo que señala aún no esté en pantalla", () => {
+  assert.deepEqual(stepsToShow(walk(), new Set(), { present: () => false }).map((s) => s.id), ["steps", "ref", "tab", "answer", "mark", "confirm", "decide", "saved"]);
+  assert.deepEqual(stepsToShow(walk(), new Set(["flow:notas"]), { present: () => true }), [], "vista, no vuelve sola");
+});
+
+await test("«Mire» sigue con su botón; «Toque» espera a que se toque lo iluminado", () => {
+  const { guide } = setup();
+  guide.setPart("screen", walk());
+  guide.autoStart();
+  assert.equal(idNow(guide), "steps");
+  assert.equal(guide.run()!.flow, true);
+  guide.next();
+  guide.next();
+  assert.equal(idNow(guide), "tab");
+  guide.setPart("screen", walk());
+  assert.equal(idNow(guide), "tab", "nada cambió: sigue esperando");
+  guide.did("af:ref-tab");
+  assert.equal(idNow(guide), "answer");
+});
+
+await test("una rama: «No» cambia el mismo paso a «Escriba qué ve»; «Cancelar» lo devuelve a la pregunta", () => {
+  const { guide } = setup();
+  guide.setPart("screen", walk());
+  guide.autoStart();
+  guide.next();
+  guide.next();
+  guide.did("af:ref-tab");
+  guide.setPart("screen", walk({ doubting: true }));
+  assert.equal(idNow(guide), "answer");
+  assert.equal(guide.run()!.steps[guide.run()!.index]!.target, "af-doubt");
+  guide.setPart("screen", walk());
+  assert.equal(guide.run()!.steps[guide.run()!.index]!.target, "af-answer");
+  guide.setPart("screen", walk({ studied: true }));
+  assert.equal(idNow(guide), "mark", "respondió: a marcar");
+});
+
+await test("«Haga» espera la primera palabra marcada; lo que el trabajo ya dejó atrás se salta", () => {
+  const { guide } = setup();
+  guide.setPart("screen", walk({ studied: true }));
+  guide.autoStart();
+  assert.equal(idNow(guide), "mark", "la frase ya estaba estudiada: empieza en marcar");
+  guide.setPart("screen", walk({ studied: true, marked: true }));
+  assert.equal(idNow(guide), "confirm");
+  guide.setPart("screen", walk({ studied: true, marked: true, confirmed: true }));
+  assert.equal(idNow(guide), "decide");
+});
+
+await test("al responder, la app pasa a la frase siguiente: la guía dice «¡Guardado!» y no vuelve atrás", () => {
+  const { guide, store, key } = setup();
+  guide.setPart("screen", walk({ studied: true, marked: true, confirmed: true }));
+  guide.autoStart();
+  assert.equal(idNow(guide), "decide");
+  assert.deepEqual(guide.run()!.steps.map((s) => s.id).includes("saved"), false, "«¡Guardado!» aún no");
+  // The answer is saved and the next point opens at its first stage, all in one go.
+  guide.did("af:answered");
+  guide.setPart("screen", walk());
+  assert.equal(idNow(guide), "saved", "no vuelve a «estudiar» en la frase 2");
+  guide.next();
+  assert.equal(guide.run(), null, "terminó");
+  assert.deepEqual([...readSeen(key, store)], ["flow:notas"]);
+  guide.setPart("screen", walk());
+  assert.equal(guide.autoStart(), false, "vista, no vuelve sola");
+  guide.replay();
+  assert.equal(idNow(guide), "steps", "«Guía» la repite desde el principio");
+});
+
+await test("«Saltar la guía» a mitad de la caminata la da por vista, entera", () => {
+  const { guide, store, key } = setup();
+  guide.setPart("screen", walk());
+  guide.setPart("end", end);
+  guide.autoStart();
+  guide.skip();
+  assert.deepEqual([...readSeen(key, store)].sort(), ["flow:notas", "guide-button"]);
+});
+
+await test("terminada la caminata sigue lo demás: el paso del botón «Guía»", () => {
+  const { guide } = setup();
+  guide.setPart("screen", walk({ studied: true, marked: true, confirmed: true }));
+  guide.setPart("end", end);
+  guide.autoStart();
+  guide.did("af:answered");
+  assert.equal(idNow(guide), "saved");
+  guide.next();
+  assert.equal(idNow(guide), "guide");
+});
+
+await test("lo que pasa sin la guía puesta no cuenta para la próxima vez", () => {
+  const { guide } = setup();
+  guide.setPart("screen", walk({ studied: true, marked: true, confirmed: true }));
+  guide.did("af:answered");
+  guide.autoStart();
+  assert.equal(idNow(guide), "decide");
+});
+
+await test("un aviso suelto que ya no está en pantalla cuando le llega el turno se salta, sin darse por visto", () => {
+  const { guide, store, key, onScreen } = setup(["agree", "guide-button"]);
+  const agree = step("agree", { seenKey: "afinar:agree", target: "agree" });
+  guide.setPart("screen", [...walk({ studied: true, marked: true, confirmed: true }), agree]);
+  guide.autoStart();
+  guide.did("af:answered");
+  onScreen.splice(onScreen.indexOf("agree"), 1);
+  guide.setPart("screen", [...walk(), agree]);
+  guide.next();
+  assert.equal(guide.run(), null);
+  assert.deepEqual([...readSeen(key, store)], ["flow:notas"]);
+});
+
+await test("«Empezar sin guía»: la caminata no sale sola, pero «Guía» la muestra", () => {
+  const { guide } = setup();
+  guide.setPart("purpose", [step("purpose", { seenKey: "purpose:desafios-tpl:revisar", seenBefore: true, quiet: true })]);
+  guide.setPart("screen", walk());
+  guide.setPart("end", end);
+  assert.equal(guide.autoStart(), true, "solo el paso del botón «Guía»");
+  assert.equal(idNow(guide), "guide");
+  guide.skip();
+  assert.equal(guide.autoStart(), false);
+  guide.replay();
+  assert.equal(idNow(guide), "purpose", "al repetir, todo");
+});
+
 console.log(`\n${passed} pruebas de la guía pasaron.`);

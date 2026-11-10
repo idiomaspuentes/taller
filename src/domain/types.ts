@@ -406,6 +406,12 @@ export type TaskStep = {
    */
   purpose?: string;
   purposes?: Localized;
+  /**
+   * How the step is done, a line per thing to do («Estudie la frase y su nota.»): said in the window that opens the
+   * task, before its tool. The description says how the team's work goes; this, what the person's hands do.
+   */
+  howTo?: string;
+  howTos?: Localized;
   /** The rule what is checked is measured against («El TPS aclara la figura…»): said where the answer is given. */
   criterion?: string;
   criteria?: Localized;

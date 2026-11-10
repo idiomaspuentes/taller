@@ -569,6 +569,8 @@ export function normalizeTaskSteps(raw: unknown): TaskStep[] {
       descriptions: normalizeLocalized(item.descriptions),
       ...(String(item.purpose ?? "").trim() ? { purpose: String(item.purpose).trim() } : {}),
       ...(normalizeLocalized(item.purposes) ? { purposes: normalizeLocalized(item.purposes) } : {}),
+      ...(String(item.howTo ?? "").trim() ? { howTo: String(item.howTo).trim() } : {}),
+      ...(normalizeLocalized(item.howTos) ? { howTos: normalizeLocalized(item.howTos) } : {}),
       ...(String(item.criterion ?? "").trim() ? { criterion: String(item.criterion).trim() } : {}),
       ...(normalizeLocalized(item.criteria) ? { criteria: normalizeLocalized(item.criteria) } : {}),
       solverAppId: String(item.solverAppId ?? "").trim() || undefined,

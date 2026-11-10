@@ -121,6 +121,36 @@ menú de la cuenta, «Ver la guía» lleva a la de «Mis tareas».
 - **Para agregar un paso:** un `data-guide="…"` en el elemento, el paso en `src/components/screenGuides.tsx` y su
   frase en `es.json` y `pt.json` (`guide.*`). La lógica está en `src/domain/guide.ts`; su prueba, `npm run verify:guide`.
 
+### En las pantallas de trabajo, la guía acompaña mientras se hace
+
+*9 de noviembre de 2026, con Abel.* Una guía que lo dice todo primero se olvida antes de empezar. En afinación
+(frases con nota, palabras clave), alinear y revisar la alineación, la guía es una **caminata** por el primer punto o
+versículo: cada paso muestra una sola cosa, la dice y **espera a que la persona la haga**. Desde el segundo punto la
+pantalla está completa y la guía calla. Está en `src/components/tuningGuides.tsx`; el diseño anotado, en la página
+«Guía de afinación paso a paso».
+
+- **Tres clases de paso.** *Mire*: algo que leer; sigue con su botón («Entendido», «Ya la leí»). *Toque*: lo
+  iluminado se toca de verdad, solo eso; al tocarlo la guía sigue sola. *Haga*: un trabajo de varios toques (marcar
+  palabras, colocarlas en sus cajas); la pantalla queda libre y la guía se achica a una línea que no tapa el trabajo.
+- **Se ve lo mínimo.** Lo que todavía no tiene su turno no está en pantalla (`hide`); lo ya visto queda atenuado
+  detrás del velo.
+- **Una rama es el mismo paso con otra forma.** Si la persona toca «No, es otra cosa», el paso de la pregunta pasa a
+  «Escriba qué ve aquí…»; si cancela, vuelve a la pregunta.
+- **Lo que la persona hace se le avisa a la guía** con `guideDid("af:answered")`: responder lleva a la app al punto
+  siguiente de una vez, y la guía no debe volver a empezar en él.
+- **Los casos que el primer punto no tiene** (otra persona ya respondió, un punto cerrado, cerrar la revisión) traen
+  su aviso corto la primera vez que aparecen.
+- **Si lo que un paso señala no llega** (el versículo siguiente aún no es de la persona), la guía sigue a los 30
+  segundos: nunca se queda esperando para siempre.
+
+### «De qué trata esta tarea»
+
+La primera vez que se toca el botón de una tarjeta para un paso con herramienta de Taller, antes de abrirla sale una
+ventana grande: de qué se trata (`purpose`), los pasos de la tarea con dónde está la persona, cómo se hace (`howTo`,
+una línea por cosa que hacer) y lo que debe cumplir (`criterion`). Todo sale del paquete del proceso. «Empezar con la
+guía» abre la herramienta con su caminata; «Empezar sin guía» la abre sin ella (la caminata espera a «Guía»). Quien ya
+vio para qué sirve el paso no la ve.
+
 ## Cómo comprobarlo
 
 Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alguien poco hábil con la tecnología, y se anotan los números en el informe:
@@ -137,4 +167,4 @@ Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alg
 - [ ] ¿Cada grupo tiene más aire alrededor (24–32 px) que entre sus partes (8–12 px)? Medido.
 - [ ] ¿Hay alguna etiqueta suelta entre dos grupos, o una caja dentro de otra?
 - [ ] ¿Se ve igual de bien en portugués y a 1280 px?
-- [ ] Si la pantalla trae algo nuevo que aprender, ¿lo dice su guía?
+- [ ] Si la pantalla trae algo nuevo que aprender, ¿lo dice su guía? Si es una pantalla de trabajo, ¿la guía espera a que la persona lo haga?
