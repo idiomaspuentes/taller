@@ -38,6 +38,8 @@ export type TuningState = {
   elsewhere: boolean;
   /** Somebody else had marked the words: the point opened at the question. */
   othersChose: boolean;
+  /** Somebody of the team has answered the point: their messages are on screen. */
+  others: boolean;
 };
 
 /**
@@ -58,16 +60,16 @@ export function TuningGuide({ ready, state: s }: { ready: boolean; state: Tuning
     : { kind: "tap" as const, target: "af-answer", text: notes ? fill("guide.afN5", { name: s.name }) : fill("guide.afW5", { button: t("af.studyYesTerm") }) };
   const decide =
     s.pending === "revise"
-      ? { kind: "do" as const, target: "af-why", text: fill("guide.afPropose", { button: t("fx.fixNow") }) }
+      ? { kind: "do" as const, target: "af-why", text: fill("guide.afPropose", { button: t("af.sendToTeam") }) }
       : s.pending
-        ? { kind: "do" as const, target: "af-why", text: fill("guide.afObserve", { button: t("af.send") }) }
+        ? { kind: "do" as const, target: "af-why", text: fill("guide.afObserve", { button: t("af.sendToTeam") }) }
         : s.needsWords
-          ? { kind: "tap" as const, target: "af-answer-final", text: fill("guide.afDecideMissing", { revise: t("rv.revise"), obs: t("af.observation") }) }
+          ? { kind: "tap" as const, target: "af-answer-final", text: fill("guide.afDecideMissing", { revise: t("af.proposeWords"), obs: t("af.commentTeam") }) }
           : {
               kind: "tap" as const,
               target: "af-answer-final",
               text: fill(notes ? (s.res === "TPS" ? "guide.afDecideTps" : "guide.afDecideTpl") : s.elsewhere ? "guide.afDecideW" : "guide.afDecideWFirst", { yes: t("af.yesFine"), orig: s.orig }),
-              sub: fill("guide.afDecideSub", { revise: t("rv.revise"), obs: t("af.observation") }),
+              sub: fill("guide.afDecideSub", { no: t("af.notQuite") }),
             };
   const k = s.kind;
   // Each walk shows every button of its step, one by one, in the order they are met: where the point is, what is
@@ -77,9 +79,8 @@ export function TuningGuide({ ready, state: s }: { ready: boolean; state: Tuning
     s.phase === 1
       ? [
           // Estudiar
-          walkStep(k, 1, "steps", { target: "af-steps", text: t(notes ? "guide.afN1" : "guide.afW1"), done: study, hide: [...round, "af-head", "af-title", "af-ref", "af-help", "af-more", "af-answer"] }),
           walkStep(k, 1, "where", { target: "af-where", text: t(notes ? "guide.afWhere" : "guide.afWhereW"), done: study, hide: [...round, "af-title", "af-ref", "af-help", "af-more", "af-answer"] }),
-          walkStep(k, 1, "ref", { target: "af-ref", text: fill(notes ? "guide.afN2" : "guide.afW2", { orig: s.orig }), sub: fill("guide.afWordsSub", { orig: s.orig }), done: study, hide: [...round, "af-help", "af-more", "af-answer"] }),
+          walkStep(k, 1, "ref", { target: "af-ref", text: fill(notes ? "guide.afN2" : "guide.afW2", { orig: s.orig }), sub: fill("guide.afWordsSub", { button: t("af.wordsOn") }), done: study, hide: [...round, "af-help", "af-more", "af-answer"] }),
           walkStep(k, 1, "help", { target: "af-help", text: t(notes ? "guide.afN4" : "guide.afW4"), ok: t(notes ? "guide.readNote" : "guide.readArticle"), when: s.hasHelp, done: study, hide: [...round, "af-more", "af-answer"] }),
           walkStep(k, 1, "more", { target: "af-more", text: t("guide.afMore"), done: study, hide: [...round, "af-answer"] }),
           walkStep(k, 1, "answer", { ...answer, done: study, hide: round }),
@@ -87,6 +88,7 @@ export function TuningGuide({ ready, state: s }: { ready: boolean; state: Tuning
       : s.phase === 2
         ? [
             // Marcar
+            walkStep(k, 2, "seek", { target: "af-seek", text: fill("guide.afSeek", { res: s.res }), done: s.confirmed, hide: [...round, "af-words", "af-more", "af-back", "af-confirm"] }),
             walkStep(k, 2, "back", { target: "af-back", text: t("guide.afBackStudy"), done: s.confirmed, hide: [...round, "af-more", "af-confirm"] }),
             // One step of work, in two shapes: the screen stays free while words are marked, and once there is one, the
             // line says how to go on. As a step to touch, «¿Están todas?» held the words, and no second word could be marked.
@@ -100,7 +102,8 @@ export function TuningGuide({ ready, state: s }: { ready: boolean; state: Tuning
               notes
                 ? walkStep(k, 3, "compare", { target: "af-recap", text: t("guide.afCompare"), when: !s.needsWords, done: s.answered, hide: [...round, "af-more", "af-question", "af-answer-final"] })
                 : walkStep(k, 3, "compare", { target: "af-elsewhere", text: t("guide.afElsewhere"), when: s.elsewhere, done: s.answered, hide: [...round, "af-more", "af-question", "af-answer-final", "af-recap"] }),
-              walkStep(k, 3, "back", { target: "af-change", text: t("guide.afBackMark"), when: !s.needsWords, done: s.answered, hide: [...round, "af-more", "af-answer-final"] }),
+              walkStep(k, 3, "back", { target: "af-change", text: t("guide.afBackMark"), when: !s.needsWords, done: s.answered, hide: [...round, "af-thread", "af-answer-final"] }),
+              walkStep(k, 3, "thread", { target: "af-thread", text: t("guide.afThread"), when: s.others, done: s.answered, hide: [...round, "af-answer-final"] }),
               walkStep(k, 3, "decide", { ...decide, until: ["af:answered"], done: s.answered, hide: round }),
             ]
           : [];
@@ -109,8 +112,7 @@ export function TuningGuide({ ready, state: s }: { ready: boolean; state: Tuning
     // An answer is said kept, with the way on and the way to change it: in every list, since the screen leaves the step.
     walkStep(k, 3, "saved", { target: "af-saved-now", text: fill("guide.afSaved", { next: t(notes ? "af.nextNote" : "af.nextTerm"), change: t("af.changeMine") }), after: ["af:answered"] }),
     // The cases that come later: with «Guía», when they are on screen.
-    { id: "others-chose", seenKey: "afinar:others-chose", manual: true, target: "af-change", text: fill("guide.afOthersChose", { button: t("af.backToMark") }), when: s.othersChose && s.confirmed && !s.answered },
-    { id: "others-agree", seenKey: "afinar:others-agree", manual: true, target: "af-ask-agree", text: fill("guide.afOthersAgree", { yes: t("af.yesFine") }) },
+    { id: "others-chose", seenKey: "afinar:others-chose", manual: true, target: "af-change", text: fill("guide.afOthersChose", { button: t("af.changeTheWords") }), when: s.othersChose && s.confirmed && !s.answered },
     { id: "second", seenKey: "afinar:second", manual: true, target: "af-second", text: fill("guide.afSecond", { same: t("af.second") }) },
     { id: "alike", seenKey: "afinar:alike", manual: true, target: "af-alike", text: t("guide.afAlike") },
     { id: "closed", seenKey: "afinar:closed", manual: true, target: "af-closed", text: fill("guide.afClosed", { button: t("af.reopen") }) },

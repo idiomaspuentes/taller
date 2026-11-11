@@ -178,6 +178,27 @@ después de guardar. En frases con nota y palabras clave (`AfinacionView`, venta
 - **«Corregir» salió de Marcar.** Cambiar el texto se propone en Decidir, con «Propongo un cambio».
 - **En escritorio**, la misma columna, sin cajas de ancho fijo; las ventanas, centradas y cortas.
 
+**Los tres pasos, rediseñados** (11 de noviembre, con Abel, de las páginas «Afinación: tres caminos por paso» y
+«Decidir como conversación»):
+
+- **Sin barra de pasos.** Dónde se está lo dicen la ventana de cada paso y lo que pide la pantalla; se vuelve con un
+  enlace junto a lo que se cambia («‹ Volver a leer la frase», «‹ Cambiar las palabras»).
+- **Estudiar, la frase primero:** el versículo en hebreo o griego sin etiquetas ni subrayado de puntos, y debajo el ULT
+  con la misma frase marcada. El significado de cada palabra se abre con «Ver palabra por palabra». Después, «La nota
+  en inglés» y la pregunta.
+- **Marcar, el resaltador:** arriba lo que se busca, grande, con lo que significa («Meses hebreos · en el ULT: «in the
+  month of Kislev»»); el versículo del TPL se lee como texto y cada toque lo pinta de amarillo, en renglones de 44 px.
+  «Marcó 3 palabras · Quitar las marcas». El botón, mientras espera, dice «Toque primero una palabra».
+- **Decidir, una conversación del equipo:** arriba, lo que se juzga («TPL hoy · ‹ Cambiar las palabras»). Debajo,
+  la pregunta corta («¿El TPL conserva la forma del hebreo?») y lo que dijo cada persona, con su cara y sus palabras;
+  «Pienso lo mismo» bajo un mensaje. Al pie, «✓ Sí, está bien» (verde) y «No del todo…», que abre una hoja con
+  «Proponer otras palabras» y «Comentar algo al equipo». La propuesta se escribe en la tarjeta «Su propuesta», con lo
+  cambiado en verde, junto al TPL de hoy, que no se toca. Lo guardado es el mensaje verde de la persona, con
+  «Cambiar mi respuesta» a su lado y «Siguiente frase» al pie. En una palabra clave, el primer mensaje es de Taller:
+  cómo se tradujo en otros lugares. El cuadro del equipo queda solo para la decisión de quien coordina.
+- **En escritorio, dos columnas:** a la izquierda lo que se lee (el versículo, lo que se busca, lo que se juzga), a la
+  derecha el trabajo. Son las mismas piezas que en el teléfono, ordenadas por la cuadrícula (`data-cols`).
+
 ## Cómo comprobarlo
 
 Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alguien poco hábil con la tecnología, y se anotan los números en el informe:

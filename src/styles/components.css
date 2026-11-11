@@ -11523,3 +11523,105 @@ html[data-text] .ck-vcar__where { font-size: calc(0.9375rem * var(--ts)); }
 .ck-on-this[data-writing]::before { background: var(--warning-500); box-shadow: 0 0 0 3px var(--warning-200); }
 html[data-text] .ck-here { font-size: calc(0.875rem * var(--ts)); }
 html[data-text] .ck-on-this { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * Tuning, the three steps as designed with Abel on 11 November («Afinación: tres caminos por paso»): Estudiar shows
+ * the phrase first, Marcar marks with a highlighter, Decidir is a short conversation of the team. No bar of steps.
+ */
+/* Estudiar: names said in words, not in tags; the aside on who reads the note, out. */
+.af--round .af-study-lbl { font-size: 0.9375rem; font-weight: 800; color: var(--text); }
+.af--round .af-study-help .af-note-reader { display: none; }
+html[data-text] .af--round .af-study-lbl { font-size: calc(0.9375rem * var(--ts)); }
+/* The words of the original open their meaning only when asked: underlined all, the verse looked touchable. */
+.af--round .af-ref:not([data-words]) .af-word--open { text-decoration: none; cursor: text; }
+.af--round .af-pin .af-word--open { text-decoration: none; }
+.af--round .af-ref[data-words] .af-word--open { text-decoration-color: var(--accent-700); text-decoration-thickness: 2px; }
+.af--round .af-ref .af-ref__words { justify-self: start; }
+/* The verse in English under the original, with the same phrase marked. */
+.af--round .af-gloss { margin: 0; font-size: 1rem; line-height: 1.55; color: var(--gray-700); }
+.af--round .af-gloss__name { font-size: 0.8125rem; font-weight: 800; color: var(--text); margin-inline-end: 4px; }
+html[data-text] .af--round .af-gloss { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af--round .af-gloss__name { font-size: calc(0.8125rem * var(--ts)); }
+
+/* Marcar: what is sought, big, with its meaning; the verse marked as with a highlighter. */
+.af--round .af-seek { display: grid; gap: 8px; }
+.af--round .af-seek .af-heading { margin: 0; }
+.af--round .af-seek__phrase { margin: 0; font-size: 1.625rem; line-height: 1.5; }
+.af--round .af-seek__phrase .af-tag { font-size: inherit; padding: 0 0.25rem; }
+.af--round .af-seek__mean { margin: 0; font-size: 1rem; line-height: 1.5; color: var(--gray-700); }
+.af--round .af-seek__mean b { color: var(--text); }
+.af--round .af-draft__where { margin: 0; font-size: 0.875rem; font-weight: 800; color: var(--text); }
+.af--round .af-draft .af-draft__words .af-word--tap { min-height: 44px; padding: 0.25rem 0.125rem; border: 0; border-radius: 4px; background: none; font-size: 1.1875rem; text-decoration: none; color: var(--text); }
+.af--round .af-draft .af-draft__words .af-word--tap[data-selected="true"] { background: var(--warning-200); box-shadow: inset 0 -2px 0 var(--warning-500); color: var(--text); font-weight: 700; }
+.af--round .af-draft > .af-echo { order: 3; }
+.af--round .af-echo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0; font-size: 0.9375rem; font-weight: 700; }
+html[data-text] .af--round .af-seek__phrase { font-size: calc(1.625rem * var(--ts)); }
+html[data-text] .af--round .af-seek__mean { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af--round .af-draft__where { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .af--round .af-draft .af-draft__words .af-word--tap { font-size: calc(1.1875rem * var(--ts)); }
+html[data-text] .af--round .af-echo { font-size: calc(0.9375rem * var(--ts)); }
+
+/* Decidir: what is judged, small and first. */
+.af--round .af-pin { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.af--round .af-pin__ref { margin: 0; font-size: 1.25rem; line-height: 1.7; text-align: right; }
+.af--round .af-pin__verse { margin: 0; font-size: 1.0625rem; line-height: 1.55; }
+.af--round .af-pin__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.af--round .af-pin__lbl { font-size: 0.8125rem; font-weight: 800; color: var(--gray-700); }
+.af--round .af-pin .af-more { margin-top: -4px; }
+html[data-text] .af--round .af-pin__ref { font-size: calc(1.25rem * var(--ts)); }
+html[data-text] .af--round .af-pin__verse { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af--round .af-pin__lbl { font-size: calc(0.8125rem * var(--ts)); }
+/* The question, short, under the name of the point. */
+.af--round .af-q { display: grid; gap: 4px; margin-top: 16px; }
+.af--round .af-q__about { margin: 0; font-size: 0.9375rem; font-weight: 800; color: var(--gray-700); }
+.af--round .af-q__about .af-see { display: inline; min-height: 0; }
+.af--round .af-q__ask { margin: 0; }
+html[data-text] .af--round .af-q__about { font-size: calc(0.9375rem * var(--ts)); }
+/* The conversation: each person with their face and their words; the person's own answer, green, to the right. */
+.af--round .af-thread { display: grid; gap: 12px; margin-top: 8px; }
+.af--round .af-thread:empty { display: none; }
+.af--round .af-msg { display: flex; align-items: flex-end; gap: 8px; }
+.af--round .af-msg__face { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--accent-700) 14%, var(--surface)); color: var(--accent-700); font-size: 0.875rem; font-weight: 800; }
+.af--round .af-msg__bub { display: grid; gap: 4px; min-width: 0; max-width: 85%; padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: var(--surface-muted); font-size: 1rem; line-height: 1.45; }
+.af--round .af-msg__bub > b { display: flex; align-items: center; gap: 4px; font-size: 0.8125rem; font-weight: 800; }
+.af--round .af-msg__bub ul { margin: 4px 0 0; padding-inline-start: 1.1em; display: grid; gap: 6px; }
+.af--round .af-msg__words { font-weight: 700; }
+.af--round .af-msg__acts { display: flex; flex-wrap: wrap; gap: 0 16px; }
+.af--round .af-msg__count { font-size: 0.875rem; color: var(--gray-700); }
+.af--round .af-msg--taller .af-msg__bub { background: color-mix(in srgb, var(--accent-700) 8%, var(--surface)); }
+.af--round .af-msg--mine { flex-direction: column; align-items: flex-end; gap: 2px; }
+.af--round .af-msg--mine .af-msg__bub { border-radius: 16px 16px 4px 16px; background: var(--success-100); }
+.af--round .af-msg--mine .af-msg__bub > b { color: var(--success-700); }
+html[data-text] .af--round .af-msg__bub { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af--round .af-msg__bub > b { font-size: calc(0.8125rem * var(--ts)); }
+html[data-text] .af--round .af-msg__count { font-size: calc(0.875rem * var(--ts)); }
+/* «Su propuesta» and the comment: written beside today's verse, in a card of their own. */
+.af--round .af-prop { display: grid; gap: 10px; padding: 14px 16px; border: 1.5px dashed var(--accent-700); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--accent-700) 4%, var(--surface)); }
+.af--round .af-prop__lbl { font-size: 0.9375rem; font-weight: 800; }
+.af--round .af-prop__diff { margin: 0; font-size: 1.0625rem; line-height: 1.55; }
+.af--round .af-prop__diff ins { text-decoration: underline 2px var(--success-700); text-underline-offset: 3px; color: var(--success-700); font-weight: 800; }
+html[data-text] .af--round .af-prop__lbl { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .af--round .af-prop__diff { font-size: calc(1.0625rem * var(--ts)); }
+/* The sheet of «No del todo…»: two big ways, and the way back. */
+.af-no-sheet__body { display: grid; gap: 12px; }
+.af-opt { display: grid; gap: 2px; width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.af-opt:hover { border-color: var(--accent-700); }
+.af-opt b { font-size: 1.0625rem; }
+.af-opt span { font-size: 0.9375rem; color: var(--gray-700); }
+.af-no-sheet .af-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; padding: 0; border: 0; background: none; color: var(--text-muted); font: inherit; font-weight: 700; cursor: pointer; }
+html[data-text] .af-opt b { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af-opt span { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * On a computer, each step in two columns: what is read on the left (the verse; what is sought; what is judged),
+ * the work on the right. The same pieces as on a phone, placed by the grid: no box of a fixed width in the middle.
+ */
+@media (min-width: 64rem) {
+  .af--round > .af-focus:has(.af-work[data-cols]) { max-width: 74rem; }
+  .af--round .af-work[data-cols] { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: repeat(12, auto) 1fr; grid-auto-flow: row dense; column-gap: 3rem; align-items: start; }
+  .af--round .af-work[data-cols] > * { grid-column: 2; }
+  .af--round .af-work[data-cols="1"] > .af-ref, .af--round .af-work[data-cols="2"] > .af-seek, .af--round .af-work[data-cols="3"] > .af-pin { grid-column: 1; grid-row: 1 / -1; position: sticky; top: 1rem; margin-top: 0; }
+  .af--round .af-work[data-cols="1"] > .af-ref .af-orig .af-word { font-size: 1.5rem; }
+  .af--round .af-work[data-cols="2"] > .af-seek .af-seek__phrase { font-size: 2rem; }
+  .af--round .af-work[data-cols] .af-q { margin-top: 0; }
+}
