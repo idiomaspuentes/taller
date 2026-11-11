@@ -2,9 +2,8 @@ import { termAsk } from "../domain/afinacionWords";
 import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
-import { guide, guideDid, useGuideRun } from "../guide";
+import { guide, guideDid, useGuideOpener, useGuideRun } from "../guide";
 import { StageWindow } from "./StageWindow";
-import { ConfirmDialog } from "./ConfirmDialog";
 import { TuningGuide } from "./tuningGuides";
 import { PassageIntroText, StepAsk } from "./StepAsk";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,7 +32,7 @@ import { refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, sortByVerse, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Info, Lock, Maximize2, Pencil, X } from "lucide-react";
+import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Eye, Info, Lock, Maximize2, Pencil, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { changeMyStudyNotes } from "../dcs/studyNotes";
@@ -527,8 +526,24 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   };
   /** The point is shown closed, with the one way to open it again; the team's box then only says who answered. */
   const closedView = Boolean(tally?.decided) && !reopened && !fixing;
+  /**
+   * The answer just saved, said before going on, with the way to change it. The next point opened at once, and the
+   * person never saw that the answer was kept, nor that it could be changed (Abel, 11 November). `next`: the point
+   * «Siguiente» goes to, or -1 after the last.
+   */
+  const [savedNow, setSavedNow] = useState<{ itemId: string; stance: string; words: string; also: number; nextId: string | null } | null>(null);
+  /** An answer in the words of the button that gave it: «Usted dijo: De acuerdo» answered «Sí, está bien». */
+  const saidAs = (status: string) => t(status === "approved" ? "af.yesFine" : status === "revise" ? "rv.revise" : "af.observation");
+  /** The list of the points, from «Frase 3 de 82»: the arrows between points are gone (11 November). */
+  const [listOpen, setListOpen] = useState(false);
+  const savedHere = Boolean(savedNow && item && savedNow.itemId === item.id);
+  // Another point in view (a filter, a term's other use): what was said of the last one is no longer in hand.
+  useEffect(() => {
+    if (savedNow && item?.id !== savedNow.itemId) setSavedNow(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id]);
   /** The stage of the point on screen, when one is: 1 Estudiar, 2 Marcar, 3 Decidir. */
-  const phase: 1 | 2 | 3 | null = data && item && pane === "review" && !busy && !closedView ? (!studied ? 1 : !confirmed ? 2 : 3) : null;
+  const phase: 1 | 2 | 3 | null = data && item && pane === "review" && !busy && !closedView && !savedHere ? (!studied ? 1 : !confirmed ? 2 : 3) : null;
   /*
    * What is done here, said before it is done. The tuning team is made of older people who fear that a touch may
    * spoil the work (Abel, 11 November): on entering the task, a window says what it is about; at each stage of the
@@ -546,8 +561,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     stagesSaid.current.add(phase);
     setStageWindow(phase);
   }, [phase, taskWindowOpen, stageWindow, guideRun]);
-  /** «Corregir» changes the verse for the whole team: asked first, apart from marking words. */
-  const [fixAsk, setFixAsk] = useState(false);
+  // «Guía» opens the window of the step in hand, which offers its walk.
+  useGuideOpener(phase ? () => setStageWindow(phase) : null);
   const openUntilText = (until: string) => sayUntil("round.openUntil", until);
   const agreeCount = tally ? (tally.state === "agreed" && tally.openUntil ? openUntilText(tally.openUntil) : tally.state === "agreed" ? t("af.teamAgreed").replace("{n}", String(tally.agree)) : t("af.agreeCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree))) : "";
   // Beside one's own answer the open time is for the others: «De acuerdo» twice, and an invitation to give the view
@@ -623,6 +638,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, busy, visible, decisions.length]);
 
+  /** This person's answer to a point, as it counts: not one to a verse corrected since, nor one from translationCore. */
+  const myAnswerOf = (row: NoteItem) => {
+    const hash = textFingerprint(data?.draftVerses[row.verse] ?? "");
+    return decisions
+      .filter((d) => d.itemId === row.id && d.reviewer.trim().toLowerCase() === me && !fromTc(d) && (d.textHash === undefined || d.textHash === hash))
+      .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+  };
   const answeredByMe = useMemo(() => {
     if (!data) return 0;
     return data.items.filter((row) => {
@@ -718,7 +740,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   // On a phone a new point starts at its own top, with the words to touch in sight: it was shown wherever the last
   // one had been left, and the translation fell under the bar of the answer. Not the first one: whoever arrives
   // reads from the top.
-  const kindRef = useRef<HTMLParagraphElement>(null);
+  const kindRef = useRef<HTMLButtonElement>(null);
   const shownOnce = useRef(false);
   useEffect(() => {
     if (!item?.id) return;
@@ -750,7 +772,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allAgreed]);
 
+  /** The point after this one that waits for this person; after the last, the next in the list; -1 at the end. */
+  function nextFrom(at: number, given = decisions): number {
+    if (!data) return -1;
+    const next = firstUnanswered({ items: visible, decisions: given, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: at + 1, settled });
+    return next >= 0 ? next : at < visible.length - 1 ? at + 1 : -1;
+  }
+  /** To another point of the list, from the list or after an answer. */
+  function goTo(index: number) {
+    setSavedNow(null);
+    setListOpen(false);
+    setPosition(index);
+  }
+
   function jumpToItem(id: string) {
+    setSavedNow(null);
     setCategory("all");
     const at = groups.flatMap((g) => g.items).findIndex((i) => i.id === id);
     if (at >= 0) setPosition(at);
@@ -948,12 +984,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       }
       setPending(null);
       setChanging(false);
-      guideDid("af:answered");
       announce(t("af.savedAnswer").replace("{stance}", stanceLabel(status)));
-      // On to the next one this person has not answered; after the last, the next in the list.
-      const next = firstUnanswered({ items: visible, decisions: [...decisions, decision], me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1, settled });
-      if (next >= 0) setPosition(next);
-      else if (position < visible.length - 1) setPosition((p) => p + 1);
+      // The next one this person has not answered; after the last, the next in the list. Gone to from «Siguiente».
+      const next = nextFrom(position, [...decisions, decision]);
+      setSavedNow({ itemId: item.id, stance: saidAs(status), words: chosenWords, also: 0, nextId: next >= 0 ? visible[next]!.id : null });
+      guideDid("af:answered");
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -1040,10 +1075,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       await appendMyDecisions(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, batch);
       const all = [...decisions, ...batch];
       setDecisions((prev) => [...prev, ...batch]);
-      guideDid("af:answered");
       announce(t("af.savedAlike").replace("{n}", String(batch.length)));
-      const next = firstUnanswered({ items: visible, decisions: all, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: position + 1, settled });
-      if (next >= 0) setPosition(next);
+      const next = nextFrom(position, all);
+      setSavedNow({ itemId: item.id, stance: saidAs("approved"), words: chosenWords, also: batch.length - 1, nextId: next >= 0 ? visible[next]!.id : null });
+      guideDid("af:answered");
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -1263,6 +1298,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   // The words the item is about, marked in the text it is read against: in the original from the quote, in the
   // English texts through their alignment with it.
   const reference = data?.references.find((row) => row.id === refText) ?? data?.references[0];
+  /** A text named by its language or its name, «Hebreo» or «ULT»: not «Hebreo (UHB)», nor «Original» (11 November). */
+  const refName = (row: { id?: string; label: string } | undefined) =>
+    row?.id === "orig" ? t(/UGNT|grieg|grec/i.test(row.label) ? "af.langGreek" : "af.langHebrew") : (row?.label ?? "").replace(/\s*\(.*\)\s*$/, "");
+  /** The language of the original, in a sentence: «hebreo», «griego». */
+  const origWord = (refName(data?.references.find((row) => row.id === "orig")) || t("af.qOriginal")).toLocaleLowerCase(language);
   const refVerse = item && reference ? (reference.book[`${item.chapter}:${item.verse}`] ?? "") : "";
   const refMarked = useMemo(() => {
     if (!item || !reference || !refVerse) return [] as number[];
@@ -1437,7 +1477,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         // Why this is a challenge: the team's note first, said to be a draft until harmonized, or the source's.
         // In step 1, named as the reference is («Nota»), its draft said in a word beside it: «Borrador de la fase 1:
         // Traducción» took a line of its own over the note (19 October).
-        <HelpVersions label={label} team={teamNotes?.byId[item.id] ?? null} source={item.note} teamLang={ctx?.lang ?? ""} sourceLang={sourcePackageLang(data.sourcePackage)} draftLabel={label ? t("hv.draft") : notesDraftLabel}>
+        <HelpVersions label={label} simple={Boolean(label)} team={teamNotes?.byId[item.id] ?? null} source={item.note} teamLang={ctx?.lang ?? ""} sourceLang={sourcePackageLang(data.sourcePackage)} draftLabel={label ? t("hv.draft") : notesDraftLabel}>
           {(text, lang) => (
             <>
               {/* How to read the note: it is not written for whoever refines the text, but for whoever will
@@ -1459,6 +1499,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         // Said whom it is written for, as the note of a challenge is.
         <HelpVersions
           label={label}
+          simple={Boolean(label)}
           team={termRead.team ? { text: whole ? termRead.team.text : termDefinition(termRead.team.text), draft: termRead.team.draft } : null}
           source={termRead.source ? (whole ? termRead.source : termDefinition(termRead.source)) : ""}
           teamLang={ctx?.lang ?? ""}
@@ -1622,23 +1663,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     data && item ? (
         <div className="af-ref" data-guide="af-ref">
           <div className="af-ref__bar">
-            <span className="af-lbl af-lbl--ref">{t("af.refLabel")}</span>
-            <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
-              {(data.references ?? []).map((row) => (
-                <button
-                  key={row.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={reference?.id === row.id}
-                  onClick={() => {
-                    setRefText(row.id);
-                    if (row.id !== reference?.id) guideDid("af:ref-tab");
-                  }}
-                >
-                  {row.id === "orig" ? t("af.tabOriginal") : row.label}
-                </button>
-              ))}
-            </div>
+            {/* Named by its language, «Hebreo»: «Original» left the person to guess which (11 November). */}
+            <span className="af-lbl af-lbl--ref">{refName(reference) || t("af.refLabel")}</span>
           </div>
           {/* No line saying that the words of the original open their meaning: their dotted underline says it, and the
               line was one more thing to read before the verse (19 October). */}
@@ -1650,28 +1676,57 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             )}
           </span>
           {refToggle}
-          <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
-          {/* In step 1 the chapter around the point opens from the reference, as it does from the draft in step 2:
-              the case is studied in its place too (19 October). In step 2 the draft's box has it. */}
-          {!studied ? (
-            <div className="af-ref__acts">
-              <span className="af-draft__acts">
-                <button type="button" className="af-link" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
-                  <Maximize2 size={14} aria-hidden /> {t("af.expand")}
-                </button>
-              </span>
-            </div>
-          ) : null}
         </div>
     ) : null;
+  /**
+   * What can be looked at besides the work of the step, folded under one line with an eye: the verse in other texts,
+   * the chapter around it, the verse in other books, what was corrected in it. Each was a button of its own on the
+   * screen, and 30 things could be touched in the first step of a point, two of which did the work (11 November).
+   * Nothing in it changes anything.
+   */
+  const moreToSee = (n: 1 | 2 | 3) =>
+    data && item ? (
+      <details key={`${item.id}-${n}`} className="af-more" data-guide="af-more">
+        <summary className="af-see">
+          <Eye size={16} aria-hidden /> {t("af.moreToSee")}
+        </summary>
+        <div className="af-more__body">
+          {n === 1 && data.references.length > 1 ? (
+            <div className="af-more__row">
+              <span className="af-lbl">{t("af.readIn")}</span>
+              <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
+                {data.references.map((row) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={reference?.id === row.id}
+                    onClick={() => {
+                      setRefText(row.id);
+                      if (row.id !== reference?.id) guideDid("af:ref-tab");
+                    }}
+                  >
+                    {refName(row)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
+            <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
+          </button>
+          {n === 1 ? <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} /> : null}
+          {n === 2 ? <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} /> : null}
+        </div>
+      </details>
+    ) : null;
   const stageRes = data?.resource === "tps" ? "TPS" : "TPL";
-  /** What a stage asks, in its window. */
+  /** What a step asks, in its window. */
   const stageText = (n: 1 | 2 | 3) =>
-    n === 1 ? (stepProp === "notas" ? t("stage.studyNote").replace("{name}", pointName.replace(/^«|»$/g, "")) : t("stage.studyTerm")) : n === 2 ? t("stage.mark").replace("{res}", stageRes) : t("stage.judge");
-  /** The same, short, in the line under the steps. */
-  const stageShort = (n: 1 | 2 | 3) => t(n === 1 ? (stepProp === "notas" ? "stage.studyNoteShort" : "stage.studyTermShort") : n === 2 ? "stage.markShort" : "stage.judgeShort").replace("{res}", stageRes);
-  /** Whether anything is kept in a stage: what takes the fear of touching away. */
-  const stageSafe = (n: 1 | 2 | 3) => t(n === 1 ? "stage.studySafe" : n === 2 ? "stage.markSafe" : "stage.judgeSafe");
+    (n === 1 ? (stepProp === "notas" ? t("stage.studyNote").replace("{name}", pointName.replace(/^«|»$/g, "")) : t("stage.studyTerm")) : n === 2 ? t("stage.mark") : t("stage.judge"))
+      .replace("{res}", stageRes)
+      .replace("{orig}", origWord);
+  const stepName = (n: 1 | 2 | 3) => t(n === 1 ? "af.stepShortStudy" : n === 2 ? "af.stepShortMark" : "af.stepShortJudge");
   /** «Paso 2 de 3 · Marcar en el borrador»: where the person is, in a quiet line over each step. */
   // The three steps, the one in hand marked; one done is touched to go back to it. A line «Paso 2 de 3 · …» was
   // read as one more line of text, and nothing took the person back (18 October).
@@ -1703,12 +1758,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         );
       })}
     </ol>
-    <p className="af-phase" data-guide="af-phase">
-      {stageShort(n)} {stageSafe(n)}{" "}
-      <button type="button" className="af-link af-phase__ask" onClick={() => setStageWindow(n)}>
-        {t("stage.whatHere")}
-      </button>
-    </p>
     </>
   );
   /** Step 1 said: on to marking, or, when somebody already chose the words, to whether they are right. */
@@ -2218,10 +2267,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           session={session}
           ctx={ctx && taskStep ? { ...ctx, stepId: taskStep.id } : ctx}
           intro={false}
-          label={said.purpose ? t("af.aboutTask") : undefined}
-          open={said.purpose ? aboutOpen : undefined}
-          onOpenChange={said.purpose ? setAboutOpen : undefined}
-          trigger={!said.purpose}
+          label={t("af.aboutTask")}
+          open={aboutOpen}
+          onOpenChange={setAboutOpen}
+          // Opened from «Más» only: a line of its own over the work was one more thing to read (11 November).
+          trigger={false}
         />
       </div>
 
@@ -2247,7 +2297,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           ready={!busy && pane === "review" && !closedView}
           state={{
             kind: stepProp,
-            phase: phase ?? 1,
+            phase: savedHere ? 0 : (phase ?? 1),
+            orig: origWord,
             res: data.resource === "tps" ? "TPS" : "TPL",
             name: pointName.replace(/^«|»$/g, ""),
             tab: data.references.find((row) => row.id !== reference?.id)?.label.replace(/\s*\(.*\)\s*$/, ""),
@@ -2271,24 +2322,16 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         open={taskWindowOpen}
         title={t(stepProp === "notas" ? "stage.taskTitleNotes" : "stage.taskTitleTerms")}
         sub={[heading.title, stageRes].filter(Boolean).join(" · ")}
-        text={t(stepProp === "notas" ? (stageRes === "TPS" ? "stage.aboutNotesTps" : "stage.aboutNotesTpl") : stageRes === "TPS" ? "stage.aboutTermsTps" : "stage.aboutTermsTpl")}
-        lead={t(stepProp === "notas" ? "stage.stepsNotes" : "stage.stepsTerms")}
-        steps={[
-          { name: t("af.stepShortStudy"), text: t(stepProp === "notas" ? "stage.step1Notes" : "stage.step1Terms") },
-          { name: t("af.stepShortMark"), text: t("stage.step2").replace("{res}", stageRes) },
-          { name: t("af.stepShortJudge"), text: t("stage.step3") },
-        ]}
-        team={reviewing ? undefined : t(stepProp === "notas" ? "stage.teamNotes" : "stage.teamTerms").replace("{n}", String(thresholds.minAgree))}
-        safe={t("stage.taskSafe")}
+        text={t(stepProp === "notas" ? (stageRes === "TPS" ? "stage.aboutNotesTps" : "stage.aboutNotesTpl") : stageRes === "TPS" ? "stage.aboutTermsTps" : "stage.aboutTermsTpl").replace("{orig}", origWord)}
+        steps={[stepName(1), stepName(2), stepName(3)]}
         go={t("stage.start")}
         onGo={() => setTaskWindow(false)}
       />
-      {/* At each stage of the first point: what it asks, whether anything is kept, and its walk if wanted. */}
+      {/* At each step of the first point: what it asks, and its walk if wanted. «Guía» opens it again. */}
       <StageWindow
         open={stageWindow !== null && !taskWindowOpen}
-        title={stageWindow === 1 ? withPoint(studyHeading) : stageWindow === 2 ? withPoint(t("af.markHeading")) : t("stage.judgeTitle")}
+        title={stageWindow ? t("stage.stepTitle").replace("{n}", String(stageWindow)).replace("{name}", stepName(stageWindow)) : ""}
         text={stageWindow ? stageText(stageWindow) : ""}
-        safe={stageWindow ? stageSafe(stageWindow) : ""}
         go={t("stage.go")}
         onGo={() => setStageWindow(null)}
         show={t("stage.show")}
@@ -2298,19 +2341,36 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           window.setTimeout(() => guide.replay(["screen"]), 150);
         }}
       />
-      <ConfirmDialog
-        open={fixAsk}
-        title={t("af.fixAskTitle")}
-        text={t("af.fixAskText").replace("{res}", stageRes)}
-        yes={t("af.fixAskYes")}
-        safe
-        onYes={() => {
-          setFixAsk(false);
-          setFixText(verseText);
-          setFixing(true);
-        }}
-        onNo={() => setFixAsk(false)}
-      />
+      {/* Every point of the list, with what this person answered in each: the way to another point. */}
+      <Dialog open={listOpen} onOpenChange={setListOpen}>
+        <DialogContent className="fix-sheet hint-sheet af-list-sheet" aria-describedby={undefined}>
+          <header className="fx-head">
+            <DialogTitle className="fx-title">{t(stepProp === "notas" ? "af.listNotes" : "af.listTerms")}</DialogTitle>
+          </header>
+          <ol className="fx-body af-list">
+            {visible.map((row, index) => {
+              const said = listOpen ? myAnswerOf(row) : undefined;
+              return (
+                <li key={row.id}>
+                  <button type="button" aria-current={index === position ? "true" : undefined} onClick={() => goTo(index)}>
+                    <span className="af-list__n">{index + 1}</span>
+                    <span className="af-list__what">{labelOfItem(row.id)}</span>
+                    <span className="af-list__said" data-said={said ? "true" : undefined}>
+                      {said ? (
+                        <>
+                          <Check size={14} aria-hidden /> {stanceLabel(said.status)}
+                        </>
+                      ) : (
+                        t("af.notYet")
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </DialogContent>
+      </Dialog>
       {data && item && pane === "review" && !busy ? (
         <section className="af-focus" aria-label={t("af.noteAria")}>
           {/* What the point is, small, with the help beside it: the question below is what the screen asks. The name
@@ -2320,19 +2380,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               point, with the figure to filter by, pushed the point down and drew the eye first (18 October). The
               filter is in «Más»; when one is on, it is said here, with the way to take it off. */}
           <div className="af-head" data-guide="af-head">
-            <p className="af-kind af-kind--top" ref={kindRef}>
-              {t(stepProp === "notas" ? "af.kindNoteNamed" : "af.kindTermNamed").replace("{name}", pointName).replace("{ref}", `${item.chapter}:${item.verse}`)}
-            </p>
+            <button type="button" className="af-where" ref={kindRef} data-guide="af-where" aria-haspopup="dialog" onClick={() => setListOpen(true)}>
+              <span className="af-where__n">{t(stepProp === "notas" ? "af.whereNote" : "af.whereTerm").replace("{a}", String(Math.min(position + 1, total))).replace("{b}", String(total))}</span>
+              <span className="af-where__what">
+                {item.chapter}:{item.verse} · {stepProp === "palabras" && pointWords ? <bdi className="af-orig">{pointWords}</bdi> : pointName}
+              </span>
+              <ChevronDown size={16} aria-hidden />
+            </button>
             {tally?.decided && closedView ? helpButton(true) : null}
-            <span className="af-step" data-guide="af-count">
-              <button type="button" className="th-icon" aria-label={t("af.prev")} title={t("af.prev")} disabled={position <= 0} onClick={() => setPosition((p) => Math.max(0, p - 1))}>
-                <ChevronLeft size={18} aria-hidden />
-              </button>
-              <span className="af-count">{t("af.countOf").replace("{a}", String(Math.min(position + 1, total))).replace("{b}", String(total))}</span>
-              <button type="button" className="th-icon" aria-label={t("af.next")} title={t("af.next")} disabled={position >= total - 1} onClick={() => setPosition((p) => p + 1)}>
-                <ChevronRight size={18} aria-hidden />
-              </button>
-            </span>
             {summary && !stepDone ? <MeetingChip summary={summary} labelOf={labelOfItem} onJump={jumpToItem} /> : null}
             {category !== "all" ? (
               <button
@@ -2365,8 +2420,51 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               the box sat between the note and the question and said what that line says (16 October). It stands
               in the work column, over the steps, where the answer is given. */}
           {/* The team's answers: on a closed point here, where it is read; otherwise only at the decision (step 3). */}
-          {closedView ? teamBox() : null}
-          {tally?.decided && closedView ? (
+          {closedView && !savedHere ? teamBox() : null}
+          {savedHere && savedNow ? (
+            // The answer kept, said in its words, with the next point and the way back to it a touch away: the next
+            // point opened at once, and an answer seemed gone where it could not be seen (11 November).
+            <div className="af-saved-now" data-guide="af-saved-now" role="status">
+              <span className="af-saved-now__tick" aria-hidden>
+                <Check size={30} />
+              </span>
+              <h2 className="af-heading">{t("af.savedTitle")}</h2>
+              <p className="af-saved-now__said">
+                {t("af.youSaid")} <b>{savedNow.stance}</b>
+              </p>
+              {savedNow.words ? <p className="af-saved-now__words">«{savedNow.words}»</p> : null}
+              {savedNow.also ? <p className="af-saved-now__also">{t(savedNow.also === 1 ? "af.savedAlsoOne" : "af.savedAlsoMany").replace("{n}", String(savedNow.also))}</p> : null}
+              <div className="af-decide af-decide--ask af-decide--one af-saved-now__acts">
+                {savedNow.nextId && visible.some((row) => row.id === savedNow.nextId) ? (
+                  <Button type="button" data-guide="af-next" onClick={() => goTo(visible.findIndex((row) => row.id === savedNow.nextId))}>
+                    {t(stepProp === "notas" ? "af.nextNote" : "af.nextTerm")} <ChevronRight size={18} aria-hidden />
+                  </Button>
+                ) : (
+                  <Button type="button" data-guide="af-next" onClick={() => setListOpen(true)}>
+                    {t(stepProp === "notas" ? "af.listNotes" : "af.listTerms")}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-guide="af-change-mine"
+                  onClick={() => {
+                    setSavedNow(null);
+                    // On a point the team had decided, the answer is changed by opening it again, as «Reabrir» does:
+                    // the point showed closed, with «Reabrir» instead of the answers.
+                    if (tally?.decided) {
+                      setReopened(true);
+                      setConfirmed(true);
+                      setChoosing(true);
+                    }
+                    setChanging(true);
+                  }}
+                >
+                  {t("af.changeMine")}
+                </Button>
+              </div>
+            </div>
+          ) : tally?.decided && closedView ? (
             // Closed: it reads as closed, and opening it again is a deliberate act. A closed point looked like any
             // other, its buttons waiting to be pressed (16 October).
             <div className="af-closed" data-guide="af-closed">
@@ -2430,6 +2528,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   </ul>
                 </div>
               ) : null}
+              {moreToSee(1)}
               {doubting ? (
                 <div className="af-why" data-guide="af-doubt">
                   <h3 className="af-study-q">{askNamed(stepProp === "notas" ? "af.studyQNote" : "af.studyQTerm")}</h3>
@@ -2452,36 +2551,23 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 // word asks whether the person understands what it means here and its literal form: both texts need
                 // to know both, whatever each then does with them by its rules (literal, simple). Its «no» is an
                 // error to report: an article that does not match the word marked (19 October).
-                <div className={stepProp === "notas" ? "af-decide af-decide--ask" : "af-decide af-decide--ask af-decide--one"} data-guide="af-answer">
-                  {/* A note asks a real question, with two answers. A key word only asks to study it: what it asked
-                      («¿Entiende…?») is said by the window of the stage, and the screen keeps one way on (11 November). */}
+                <div className="af-decide af-decide--ask af-decide--one" data-guide="af-answer">
+                  {/* One way on, and the other answer a quiet link under it. A note asks a real question; a key word
+                      only asks to study it: what it asked («¿Entiende…?») is said by the window of the step. */}
                   {stepProp === "notas" ? <h3 className="af-study-q">{askNamed("af.studyQNote")}</h3> : null}
                   <Button type="button" onClick={() => studyDone({ applies: true })}>
-                    <Check size={16} aria-hidden /> {t(stepProp === "notas" ? "af.studyYesNote" : "af.studyYesTerm").replace("{name}", pointName.replace(/^«|»$/g, ""))}
+                    {t(stepProp === "notas" ? "af.studyYesNote" : "af.studyYesTerm").replace("{name}", pointName.replace(/^«|»$/g, ""))}
                   </Button>
-                  {stepProp === "notas" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setDoubtText(study?.applies === false ? (study.note ?? "") : "");
-                        setDoubting(true);
-                      }}
-                    >
-                      {t("af.studyNoNote")}
-                    </Button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="af-link af-decide__aside"
-                      onClick={() => {
-                        setDoubtText(study?.applies === false ? (study.note ?? "") : "");
-                        setDoubting(true);
-                      }}
-                    >
-                      {t("af.studyNoTerm")}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="af-link af-decide__aside"
+                    onClick={() => {
+                      setDoubtText(study?.applies === false ? (study.note ?? "") : "");
+                      setDoubting(true);
+                    }}
+                  >
+                    {t(stepProp === "notas" ? "af.studyNoNote" : "af.studyNoTerm")}
+                  </button>
                 </div>
               )}
             </>
@@ -2491,11 +2577,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {stepper(2)}
               {/* One heading, what to do with this point: the point studied, what is left is to touch its words. The
                   name of the point, a link to the note and a line of instruction said three times the same. */}
+              {/* The heading names what is sought, marked as in the reference: the reference box over the words
+                  said it a second time, with its own tabs and links (11 November). */}
               <h2 className="af-heading af-point-title">
                 {withPoint(t("af.markHeading"))}
               </h2>
-            {referenceBox}
-  
+
             {/* 2. The words of the translation that render it: tapped in the draft. */}
             <div className="af-draft" data-guide="af-words">
               <div className="af-draft__bar">
@@ -2531,39 +2618,34 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   {/* A verse with no text has nothing to touch: the line said to touch a word over «Sin texto». */}
                   {verseText.trim() ? <p className="af-subhead af-subhead--in">{t("af.bridgeShort")}</p> : null}
                   <WordPicker text={verseText} selected={selected} onChange={setSelected} />
-                  <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
-                  {/* What else can be done with the verse, at the foot of the box, after it is read: beside the name
-                      they were read before the verse (18 October). */}
-                  <span className="af-draft__acts">
-                    <button type="button" className="af-link" aria-label={t("af.expandAria")} onClick={() => setChapterOpen(true)}>
-                      <Maximize2 size={14} aria-hidden /> {t("af.expand")}
-                    </button>
-                    <button type="button" className="af-link" onClick={() => setFixAsk(true)}>
-                      {t("af.fixShort")}
-                    </button>
-                  </span>
                 </>
               )}
             </div>
   
               {/* While the verse is being corrected the answer is not what is in hand: this bar, which stays at the
                   foot of a phone, stood over the button that saves the correction. */}
+              {fixing ? null : moreToSee(2)}
               {fixing ? null : (
-              <div className="af-decide" data-guide="af-confirm">
+                <button type="button" className="af-back" data-guide="af-back" onClick={() => setStudied(false)}>
+                  <ChevronLeft size={16} aria-hidden /> {t("af.backToStudy")}
+                </button>
+              )}
+              {fixing ? null : (
+              <div className="af-decide af-decide--ask af-decide--one" data-guide="af-confirm">
                 <Button type="button" disabled={needsWords} title={needsWords ? t("af.pickFirst") : undefined} onClick={() => setConfirmed(true)}>
-                  <Check size={16} aria-hidden /> {t("af.confirmWords")}
+                  {t("af.confirmWords")}
                 </Button>
-                <Button
+                <button
                   type="button"
-                  variant="outline"
+                  className="af-link af-decide__aside"
                   onClick={() => {
                     // Missing from the translation: what is left is to propose a change or object.
                     setConfirmed(true);
                     setChoosing(true);
                   }}
                 >
-                  {t("af.notThere")}
-                </Button>
+                  {t("af.notThere").replace("{res}", stageRes)}
+                </button>
               </div>
               )}
             </>
@@ -2597,7 +2679,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 // conserva la forma de «in the … Ahasuerus»?» (18 October). Then the question names what is marked,
                 // and the box right under it shows the words.
                 const res = data.resource === "tps" ? "TPS" : "TPL";
-                const refName = isOrig ? t("af.qOriginal") : (reference?.label.replace(/\s*\(.*\)\s*$/, "") ?? "");
+                const refCalled = isOrig ? origWord : refName(reference);
                 // A challenge is named at the end, «… como «Eventos nuevos»?»: without it the question did not say what
                 // the form was kept as (18 October). Without a name, the words that would introduce it go too.
                 const challenge = stepProp === "notas" && study?.applies !== false ? pointName.replace(/^«|»$/g, "").trim() : "";
@@ -2634,7 +2716,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                             // «Lo marcado en el TPS», unless the question names the text itself («… en el TPS?»).
                             <span key={at}>{capital(t(key).includes(` ${res}`) ? t("af.qMarkedWordsPlain") : t("af.qMarkedWords").replace("{res}", res), at)}</span>
                           ) : !questionNames.orig && piece === "{orig}" ? (
-                            <span key={at}>{t("af.qMarkedOrig").replace("{ref}", refName)}</span>
+                            <span key={at}>{t("af.qMarkedOrig").replace("{ref}", refCalled)}</span>
                           ) : piece === "{words}" ? (
                             // The words are marked as in the box, the quotes left outside the mark.
                             <span key={at}>
@@ -2769,26 +2851,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   )}
                 </p>
                 {/* The chapter around the point here too: the answer is weighed with the verses around it (18 October). */}
-                <span className="af-recap__acts">
-                  <button type="button" className="af-link" aria-label={t("af.expandAria")} onClick={() => setChapterOpen(true)}>
-                    <Maximize2 size={14} aria-hidden /> {t("af.expand")}
-                  </button>
-                  {/* With nothing marked, «Volver a marcar» under the question says the same. */}
-                  {needsWords ? null : (
-                    <button
-                      type="button"
-                      className="af-link af-recap__change"
-                      data-guide="af-change"
-                      onClick={() => {
-                        setConfirmed(false);
-                        // The words to choose again open under the screen (their box started at 752 px of 812).
-                        window.setTimeout(() => document.querySelector(".af-draft__words")?.scrollIntoView({ block: "center" }), 80);
-                      }}
-                    >
-                      {t("af.changeWords")}
-                    </button>
-                  )}
-                </span>
               </div>
                 );
                 return stepProp === "palabras" && !needsWords && questionNamesBoth ? (
@@ -2800,6 +2862,22 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   recap
                 );
               })()}
+          {/* Out of the box and its fold, always in sight. With nothing marked, «Volver a marcar» under the question says the same. */}
+          {needsWords ? null : (
+            <button
+              type="button"
+              className="af-back"
+              data-guide="af-change"
+              onClick={() => {
+                setConfirmed(false);
+                // The words to choose again open under the screen (their box started at 752 px of 812).
+                window.setTimeout(() => document.querySelector(".af-draft__words")?.scrollIntoView({ block: "center" }), 80);
+              }}
+            >
+              <ChevronLeft size={16} aria-hidden /> {t("af.backToMark")}
+            </button>
+          )}
+          {moreToSee(3)}
           {/* 3. Whether those words keep the rule of the TPL or the TPS, and the answer. */}
             <div className="af-ask">
               {teamBox()}
@@ -2807,7 +2885,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {mine && !changing ? (
                 // Answered: what there is to do here is nothing, or change it. The same buttons as before answering
                 // were read as a point still to answer.
-                <div className="af-row-buttons">
+                <div className="af-decide af-decide--ask af-decide--one">
+                  {/* The way on from a point answered, as after answering: from here it was only the list. */}
+                  {nextFrom(position) >= 0 ? (
+                    <Button type="button" onClick={() => goTo(nextFrom(position))}>
+                      {t(stepProp === "notas" ? "af.nextNote" : "af.nextTerm")} <ChevronRight size={18} aria-hidden />
+                    </Button>
+                  ) : null}
                   <Button type="button" variant="outline" onClick={() => setChanging(true)}>
                     {t("af.changeMine")}
                   </Button>
@@ -2830,7 +2914,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {!pending && (!mine || changing) ? (
                 <div className={needsWords ? "af-decide af-decide--answer af-decide--missing" : "af-decide af-decide--answer"} data-guide="af-answer-final">
                   {needsWords ? null : (
-                    <Button type="button" disabled={saving} onClick={() => void answer("approved")}>
+                    <Button type="button" data-kind="save" disabled={saving} onClick={() => void answer("approved")}>
                       <Check size={16} aria-hidden /> {t("af.yesFine")}
                     </Button>
                   )}
@@ -2860,7 +2944,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   </Button>
                   {alike.length && !needsWords ? (
                     // The uses that read the same are agreed with here; the person stops where the term reads otherwise.
-                    <Button type="button" variant="outline" className="af-alike" data-guide="af-alike" disabled={saving} onClick={() => void answerAlike()}>
+                    <Button type="button" variant="outline" className="af-alike" data-kind="save-alt" data-guide="af-alike" disabled={saving} onClick={() => void answerAlike()}>
                       <Check size={16} aria-hidden /> {t(alike.length === 1 ? "af.alikeOne" : "af.alikeMany").replace("{n}", String(alike.length))}
                     </Button>
                   ) : null}
@@ -2910,7 +2994,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <ReasonField id="af-fix-point-reason" rows={2} value={fixReason} onChange={setFixReason} session={session} ctx={ctx} chapter={item.chapter} verse={item.verse} placeholder={t("fx.whyHint")} ariaLabel={t("fx.why")} />
                   <div className="af-row-buttons">
                     {/* A proposal is a change to the verse: the verse unchanged proposes nothing. */}
-                    <Button type="button" disabled={saving || !fixText.trim() || fixText.trim() === verseText.trim()} onClick={() => void proposeForPoint()}>
+                    <Button type="button" data-kind="save" disabled={saving || !fixText.trim() || fixText.trim() === verseText.trim()} onClick={() => void proposeForPoint()}>
                       {saving ? t("af.saving") : t("fx.fixNow")}
                     </Button>
                     <Button
@@ -2932,7 +3016,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   </label>
                   <textarea id="af-note" className="af-textarea" rows={3} value={note} autoFocus onChange={(e) => setNote(e.target.value)} />
                   <div className="af-row-buttons">
-                    <Button type="button" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
+                    <Button type="button" data-kind="save" disabled={saving || !note.trim()} onClick={() => void answer(pending)}>
                       {saving ? t("af.saving") : t("af.send")}
                     </Button>
                     <Button

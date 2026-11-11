@@ -1,5 +1,5 @@
 import { CircleHelp } from "lucide-react";
-import { guide, useGuidePart, useHasGuide } from "../guide";
+import { openGuide, useGuidePart, useHasGuide } from "../guide";
 import { useT } from "../i18n/messages";
 
 /**
@@ -13,7 +13,7 @@ export function GuideButton({ className }: { className?: string }) {
   useGuidePart("end", [{ id: "guide-button", seenKey: "guide-button", target: "guide-button", text: t("guide.buttonStep") }]);
   if (!has) return null;
   return (
-    <button type="button" className={`guide-button${className ? ` ${className}` : ""}`} data-guide="guide-button" onClick={() => guide.replay()}>
+    <button type="button" className={`guide-button${className ? ` ${className}` : ""}`} data-guide="guide-button" onClick={openGuide}>
       <CircleHelp size={18} aria-hidden />
       <span>{t("guide.button")}</span>
     </button>

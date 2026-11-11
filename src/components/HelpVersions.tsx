@@ -46,6 +46,11 @@ type Props = {
   children: (text: string, lang: string) => ReactNode;
   /** A name for the help at the start of its row, as «Referencia» names the text over it («Artículo»). */
   label?: ReactNode;
+  /**
+   * Only what there is: the team's version, or else the source's with its language named, and no switch. In
+   * step 1 of tuning, «Todavía no hay versión en español» over the note read as something broken (11 November).
+   */
+  simple?: boolean;
 };
 
 /**
@@ -55,7 +60,7 @@ type Props = {
  * the team has no version yet: hidden then, the help seemed to have none in Spanish by design (19 October). It
  * opens in the team's language every time, not in the one chosen last.
  */
-export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, children, label }: Props) {
+export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, children, label, simple }: Props) {
   const t = useT();
   const ui = useUiLanguage();
   const [choice, setChoice] = useState<"team" | "source">("team");
@@ -72,6 +77,20 @@ export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, c
       {draft}
     </span>
   ) : null;
+  if (simple && twoLanguages) {
+    const theirs = !usable && source.trim();
+    return (
+      <div className="hv">
+        <div className="hv__bar">
+          <span className="hv__named">
+            {label ? <span className="hv__label">{label}</span> : null}
+            {theirs ? <span className="hv__lang">{t("hv.inLang").replace("{lang}", languageName(sourceLang, ui).toLocaleLowerCase(ui))}</span> : draft}
+          </span>
+        </div>
+        {usable ? children(team!.text, teamLang) : children(source, sourceLang)}
+      </div>
+    );
+  }
   if (!twoLanguages)
     return (
       <div className="hv">

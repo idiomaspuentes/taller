@@ -9858,25 +9858,71 @@ button.cr-note:hover { background: var(--primary-100); }
 .task-intro__here { font-weight: 600; color: var(--primary); font-size: 1rem; }
 .task-intro__actions { display: grid; gap: 12px; margin-top: auto; padding-top: 4px; }
 .task-intro__actions .btn { width: 100%; min-height: 52px; font-size: 1.0625rem; }
-/* The windows of a task of tuning and of each stage of its first point (StageWindow): the same big type. */
+/* The windows of a task of tuning and of each step of its first point (StageWindow): the same big type, short. */
 .stage-window__head { display: grid; gap: 4px; }
 /* The way on stays in view at the foot, when the window is taller than the screen: it is never scrolled to. */
-.stage-window .task-intro__actions { position: sticky; bottom: -24px; margin-bottom: -24px; padding: 12px 0 24px; background: var(--surface, #fff); box-shadow: 0 -12px 16px -12px rgb(11 23 48 / 0.18); }
+.stage-window .task-intro__actions { position: sticky; bottom: -24px; margin-bottom: -24px; padding: 12px 0 24px; background: var(--surface, #fff); }
 @media (max-width: 40rem) { .stage-window .task-intro__actions { bottom: -20px; margin-bottom: -20px; padding-bottom: 20px; } }
 .stage-window__sub { margin: 0; font-size: 1rem; color: var(--text-muted); }
-.stage-window__team { margin: 0; font-size: 1.0625rem; line-height: 1.45; }
 html[data-text] .stage-window__sub { font-size: calc(1rem * var(--ts)); }
-html[data-text] .stage-window__team { font-size: calc(1.0625rem * var(--ts)); }
-.stage-window__safe { margin: 0; font-size: 1.0625rem; line-height: 1.45; font-weight: 600; color: var(--text); }
-html[data-text] .stage-window__safe { font-size: calc(1.0625rem * var(--ts)); }
-/* What the stage asks, in a line under the steps, and the way to its window again. */
-.af--round .af-phase { margin: -0.25rem 0 0; font-size: 0.9375rem; line-height: 1.45; color: var(--text-muted); }
-.af--round .af-phase__ask { display: inline; min-height: 0; padding: 0; font-size: inherit; }
-html[data-text] .af--round .af-phase { font-size: calc(0.9375rem * var(--ts)); }
-/* One way on in step 1 of a key word, and an error to report as a quiet link under it. */
+/* The three steps of a task, as chips in a row: «1 Estudiar › 2 Marcar › 3 Decidir». */
+.stage-window__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; }
+.stage-window__steps li { display: inline-flex; align-items: center; gap: 6px; font-size: 1.0625rem; font-weight: 700; }
+.stage-window__n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: color-mix(in srgb, var(--accent-700) 12%, var(--surface)); color: var(--accent-700); font-size: 0.9375rem; }
+.stage-window__to { color: var(--text-muted); }
+html[data-text] .stage-window__steps li { font-size: calc(1.0625rem * var(--ts)); }
+
+/*
+ * Tuning, three kinds of touch that look apart (11 November). To look: blue words with their icon, no box
+ * (.af-see); nothing they open changes anything. To go on: the filled button. To keep an answer: green, with its
+ * tick ([data-kind="save"]). The way back is grey words with a chevron (.af-back).
+ */
+.af--round .af-see { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--accent-700); font: inherit; font-size: 0.9375rem; font-weight: 700; text-align: left; cursor: pointer; }
+.af--round .af-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; padding: 0; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.9375rem; font-weight: 700; cursor: pointer; }
+.af--round .af-see:hover, .af--round .af-back:hover { text-decoration: underline; text-underline-offset: 3px; }
+html[data-text] .af--round .af-see, html[data-text] .af--round .af-back { font-size: calc(0.9375rem * var(--ts)); }
+.af--round .btn[data-kind="save"] { background: var(--success-700); border-color: var(--success-700); color: #fff; }
+.af--round .btn[data-kind="save"]:hover:not(:disabled) { background: color-mix(in srgb, var(--success-700) 88%, black); }
+.af--round .btn[data-kind="save-alt"] { border-color: var(--success-700); color: var(--success-700); }
+/* «Más para ver»: what can be looked at besides the work, folded under one line. */
+.af--round .af-more > summary { list-style: none; }
+.af--round .af-more > summary::-webkit-details-marker { display: none; }
+.af--round .af-more__body { display: grid; justify-items: start; gap: 4px; padding: 4px 0 8px 24px; }
+.af--round .af-more__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-block: 4px; }
+/* Where the point is in the list, which it opens: «Frase 3 de 82 · 1:1 · Nombres ▾». No arrows. */
+.af--round .af-where { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.af--round .af-where__n { font-size: 0.9375rem; font-weight: 800; }
+.af--round .af-where__what { font-size: 0.875rem; color: var(--text-muted); }
+html[data-text] .af--round .af-where__n { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .af--round .af-where__what { font-size: calc(0.875rem * var(--ts)); }
+/* The note in its language, named, when the team has none yet. */
+.hv__lang { font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); }
+html[data-text] .hv__lang { font-size: calc(0.8125rem * var(--ts)); }
+/* One way on, and the other answer a quiet link under it. */
 .af--round .af-decide--ask.af-decide--one { grid-template-columns: minmax(0, 1fr); }
 .af--round .af-decide--one > .af-decide__aside { justify-self: center; min-height: 44px; }
 @media (min-width: 48rem) { .af--round .af-decide--ask.af-decide--one { grid-template-columns: auto auto; justify-content: start; align-items: center; } }
+/* An answer kept: said in its words, with the next point and the way to change it. */
+.af--round .af-saved-now { display: grid; justify-items: center; gap: 12px; padding: 32px 0 8px; text-align: center; }
+.af--round .af-saved-now__tick { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--success-100); color: var(--success-700); }
+.af--round .af-saved-now .af-heading { margin: 0; }
+.af--round .af-saved-now__said { margin: 0; font-size: 1.125rem; }
+.af--round .af-saved-now__words { margin: 0; font-size: 1.0625rem; font-weight: 700; }
+.af--round .af-saved-now__also { margin: 0; font-size: 0.9375rem; color: var(--text-muted); }
+.af--round .af-saved-now .af-decide--ask.af-decide--one { width: 100%; max-width: 26rem; margin-top: 16px; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 12px; }
+html[data-text] .af--round .af-saved-now__said { font-size: calc(1.125rem * var(--ts)); }
+html[data-text] .af--round .af-saved-now__words { font-size: calc(1.0625rem * var(--ts)); }
+html[data-text] .af--round .af-saved-now__also { font-size: calc(0.9375rem * var(--ts)); }
+/* The list of the points, with what this person answered in each. */
+.af-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.af-list button { width: 100%; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 52px; padding: 10px 8px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: 1rem; text-align: left; cursor: pointer; }
+.af-list button:hover { background: color-mix(in srgb, var(--accent-700) 6%, var(--surface)); }
+.af-list button[aria-current] { background: color-mix(in srgb, var(--accent-700) 12%, var(--surface)); }
+.af-list__n { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.af-list__said { display: inline-flex; align-items: center; gap: 4px; font-size: 0.875rem; color: var(--text-muted); white-space: nowrap; }
+.af-list__said[data-said] { color: var(--success-700); font-weight: 700; }
+html[data-text] .af-list button { font-size: calc(1rem * var(--ts)); }
+html[data-text] .af-list__said { font-size: calc(0.875rem * var(--ts)); }
 .task-intro__note { margin: -4px 0 4px; font-size: 0.9375rem; color: var(--text-muted); text-align: center; }
 html[data-text] .task-intro__title { font-size: calc(1.625rem * var(--ts)); }
 html[data-text] .task-intro__label, html[data-text] .task-intro__here { font-size: calc(1rem * var(--ts)); }
