@@ -58,6 +58,11 @@ export type GuideStep = {
    * own steps do not start by themselves; «Guía» still shows them.
    */
   quiet?: boolean;
+  /**
+   * Said only when asked for («Muéstreme cómo», «Guía»), never by itself. The tuning team feared touching anything
+   * that came uninvited (11 November): each stage of a point says first what it is for, and offers its walk.
+   */
+  manual?: boolean;
 };
 
 /** The guide on screen: the steps it is going through (as they read now) and the one in hand. */
@@ -203,14 +208,22 @@ export function createGuide(deps: { load: () => Set<string>; save: (seen: Set<st
         return start(stepsToShow(all, new Set(), { present: deps.present, replay: true }));
       }
       const quiet = parts.get("purpose")?.steps.some((step) => step.quiet);
-      const own = quiet ? ORDER.filter((part) => part !== "screen").flatMap((part) => parts.get(part)?.steps ?? []) : all;
+      const own = (quiet ? ORDER.filter((part) => part !== "screen").flatMap((part) => parts.get(part)?.steps ?? []) : all).filter((step) => !step.manual);
+      // A screen whose own steps all wait to be asked for does not start with only the step about «Guía».
+      const endOnly = new Set((parts.get("end")?.steps ?? []).map((step) => step.id));
+      if (!quiet && own.every((step) => endOnly.has(step.id))) return false;
       return start(stepsToShow(own, deps.load(), { present: deps.present }));
     },
-    /** «Guía»: every step again. */
-    replay(): void {
+    /**
+     * «Guía»: every step again. `only` limits it to some parts: «Muéstreme cómo» in the window of a stage of tuning
+     * shows that stage's walk, and not the step about «Guía» after it each time.
+     */
+    replay(only?: GuidePart[]): void {
       pendingReplay = false;
       going = null;
-      start(stepsToShow(steps(), new Set(), { present: deps.present, replay: true }));
+      const all = steps();
+      const chosen = only ? ORDER.filter((part) => only.includes(part)).flatMap((part) => parts.get(part)?.steps ?? []) : all;
+      start(stepsToShow(chosen, new Set(), { present: deps.present, replay: true }));
     },
     /** «Ver la guía» from the menu, on its way to the screen that has one. */
     replaySoon(): void {

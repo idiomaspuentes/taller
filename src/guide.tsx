@@ -79,7 +79,7 @@ export function useGuidePart(part: GuidePart, steps: GuideStep[] | null, ready =
     ? JSON.stringify([
         ready,
         watch,
-        steps.map((step) => [step.id, step.seenKey, step.target, step.title, step.text, step.sub, step.ok, step.kind, step.flow, step.done, step.until, step.after, step.hide, step.when, step.seenBefore, step.quiet, step.action?.label]),
+        steps.map((step) => [step.id, step.seenKey, step.target, step.title, step.text, step.sub, step.ok, step.kind, step.flow, step.done, step.until, step.after, step.hide, step.when, step.seenBefore, step.quiet, step.manual, step.action?.label]),
       ])
     : "";
   useEffect(() => {

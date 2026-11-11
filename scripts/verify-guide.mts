@@ -360,4 +360,16 @@ await test("«Empezar sin guía»: la caminata no sale sola, pero «Guía» la m
   assert.equal(idNow(guide), "purpose", "al repetir, todo");
 });
 
+await test("los pasos que esperan a que se pidan no salen solos, ni el del botón «Guía» por ellos; «Guía» los muestra", () => {
+  const { guide } = setup();
+  guide.setPart("screen", walk().map((one) => ({ ...one, manual: true })));
+  guide.setPart("end", end);
+  assert.equal(guide.autoStart(), false);
+  assert.equal(guide.run(), null);
+  guide.replay();
+  assert.equal(guide.run()?.steps[0]?.id, walk()[0]!.id, "al pedirla, la caminata desde su primer paso");
+  guide.replay(["screen"]);
+  assert.ok(!guide.run()?.steps.some((one) => one.id === "guide"), "«Muéstreme cómo»: solo la caminata, sin el paso de «Guía»");
+});
+
 console.log(`\n${passed} pruebas de la guía pasaron.`);

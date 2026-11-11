@@ -151,6 +151,27 @@ una línea por cosa que hacer) y lo que debe cumplir (`criterion`). Todo sale de
 guía» abre la herramienta con su caminata; «Empezar sin guía» la abre sin ella (la caminata espera a «Guía»). Quien ya
 vio para qué sirve el paso no la ve.
 
+### Afinación: primero se dice qué se hace, y si algo se guarda
+
+*11 de noviembre de 2026, con Abel.* El equipo de afinación es de personas mayores que desconfían de tocar algo por
+miedo a dañar el trabajo. En frases con nota y palabras clave (`AfinacionView`, ventanas en `StageWindow.tsx`):
+
+- **Al entrar a la tarea, siempre**, una ventana: el nombre de la tarea, para qué es (`purpose`), sus tres pasos
+  (`howTo`) y «Nada cambia el texto hasta que usted decide en el paso 3. Lo que decida se puede cambiar después».
+  Un solo botón, «Empezar». Por eso la tarjeta no abre «De qué trata esta tarea» para estas herramientas.
+- **Al empezar cada fase del primer punto de la visita** (Estudiar, Marcar, Decidir), otra ventana: el título de la
+  fase, qué se hace y si algo se guarda («Aquí no se cambia nada», «Nada se guarda todavía», «Su respuesta se
+  guarda, y la puede cambiar después»). «Continuar» o «Muéstreme cómo». Solo en el primer punto: en cada uno serían
+  más de doscientos toques, y se cerrarían sin leer.
+- **Desde el segundo punto**, una línea bajo los pasos dice lo mismo, corto, y «¿Qué hago aquí?» abre la ventana otra
+  vez.
+- **La guía va por fase** (`flow:afinar-<notas|palabras>-<1|2|3>`) y **nunca sale sola** (`manual`): la abre
+  «Muéstreme cómo», solo la de esa fase, o «Guía».
+- **Una sola salida obvia.** En Estudiar de una palabra clave, «Ya lo estudié»; «Hay un error» queda como enlace
+  discreto debajo. Una frase con nota conserva su pregunta y sus dos respuestas, porque ahí se responde algo.
+- **Lo que cambia el texto pregunta antes.** «Corregir», junto a las palabras que se marcan, abre «¿Corregir el
+  versículo?» con «No, volver» como lo destacado.
+
 ## Cómo comprobarlo
 
 Antes de dar por hecho un cambio visible, se recorre a 375 px como lo haría alguien poco hábil con la tecnología, y se anotan los números en el informe:

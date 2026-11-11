@@ -2,7 +2,9 @@ import { termAsk } from "../domain/afinacionWords";
 import { openTextProposal } from "../dcs/alignmentDecisionStore";
 import { toolHeading } from "./toolHeading";
 import { ToolHeader } from "./ToolHeader";
-import { GuidePurpose, guideDid } from "../guide";
+import { guide, guideDid, useGuideRun } from "../guide";
+import { StageWindow } from "./StageWindow";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { TuningGuide } from "./tuningGuides";
 import { PassageIntroText, StepAsk } from "./StepAsk";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -525,6 +527,27 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   };
   /** The point is shown closed, with the one way to open it again; the team's box then only says who answered. */
   const closedView = Boolean(tally?.decided) && !reopened && !fixing;
+  /** The stage of the point on screen, when one is: 1 Estudiar, 2 Marcar, 3 Decidir. */
+  const phase: 1 | 2 | 3 | null = data && item && pane === "review" && !busy && !closedView ? (!studied ? 1 : !confirmed ? 2 : 3) : null;
+  /*
+   * What is done here, said before it is done. The tuning team is made of older people who fear that a touch may
+   * spoil the work (Abel, 11 November): on entering the task, a window says what it is about; at each stage of the
+   * first point of the visit, another says what the stage asks and whether anything is kept, and offers its walk.
+   * From then on a line under the steps says it, and «¿Qué hago aquí?» opens the window again.
+   */
+  const [taskWindow, setTaskWindow] = useState(true);
+  const [stageWindow, setStageWindow] = useState<1 | 2 | 3 | null>(null);
+  const stagesSaid = useRef(new Set<number>());
+  const guideRun = useGuideRun();
+  const taskWindowOpen = taskWindow && Boolean(data) && !busy;
+  useEffect(() => {
+    // Not over a walk still going (its last word, after the stage it showed), nor over the window of the task.
+    if (!phase || taskWindowOpen || stageWindow || guideRun || stagesSaid.current.has(phase)) return;
+    stagesSaid.current.add(phase);
+    setStageWindow(phase);
+  }, [phase, taskWindowOpen, stageWindow, guideRun]);
+  /** «Corregir» changes the verse for the whole team: asked first, apart from marking words. */
+  const [fixAsk, setFixAsk] = useState(false);
   const openUntilText = (until: string) => sayUntil("round.openUntil", until);
   const agreeCount = tally ? (tally.state === "agreed" && tally.openUntil ? openUntilText(tally.openUntil) : tally.state === "agreed" ? t("af.teamAgreed").replace("{n}", String(tally.agree)) : t("af.agreeCount").replace("{n}", String(tally.agree)).replace("{of}", String(thresholds.minAgree))) : "";
   // Beside one's own answer the open time is for the others: «De acuerdo» twice, and an invitation to give the view
@@ -1575,20 +1598,23 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    * named the tool and a text not yet touched (19 October). The point is named by what is highlighted in the text
    * chosen as reference, in its yellow, for a key word too: the name of its article is already over the question.
    */
+  const withPoint = (text: string) =>
+    text.split(/(\{x\}|\{res\})/).map((piece, at) =>
+      piece === "{x}" ? (
+        <span key={at}>
+          «<bdi className={reference?.id === "orig" && markedWords ? "af-orig af-tag af-tag--marked" : "af-tag af-tag--marked"} lang={reference?.id === "orig" && markedWords ? "hbo" : undefined}>{pointWords || pointName.replace(/^«|»$/g, "")}</bdi>»
+        </span>
+      ) : piece === "{res}" ? (
+        data?.resource === "tps" ? "TPS" : "TPL"
+      ) : (
+        piece
+      ),
+    );
+  const studyHeading = t(!hasHelp ? "af.studyHeading" : stepProp === "notas" ? "af.studyHeadingNote" : "af.studyHeadingTerm");
   const pointTitle =
     data && item ? (
         <h2 className="af-heading af-point-title" data-guide="af-title">
-          {t(!hasHelp ? "af.studyHeading" : stepProp === "notas" ? "af.studyHeadingNote" : "af.studyHeadingTerm")
-            .split(/(\{x\})/)
-            .map((piece, at) =>
-              piece !== "{x}" ? (
-                piece
-              ) : (
-                <span key={at}>
-                  «<bdi className={reference?.id === "orig" && markedWords ? "af-orig af-tag af-tag--marked" : "af-tag af-tag--marked"} lang={reference?.id === "orig" && markedWords ? "hbo" : undefined}>{pointWords || pointName.replace(/^«|»$/g, "")}</bdi>»
-                </span>
-              ),
-            )}
+          {withPoint(studyHeading)}
         </h2>
     ) : null;
   /** Where the point is: marked in the text the draft is read against, the original unless another is chosen. */
@@ -1638,10 +1664,19 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           ) : null}
         </div>
     ) : null;
+  const stageRes = data?.resource === "tps" ? "TPS" : "TPL";
+  /** What a stage asks, in its window. */
+  const stageText = (n: 1 | 2 | 3) =>
+    n === 1 ? (stepProp === "notas" ? t("stage.studyNote").replace("{name}", pointName.replace(/^«|»$/g, "")) : t("stage.studyTerm")) : n === 2 ? t("stage.mark").replace("{res}", stageRes) : t("stage.judge");
+  /** The same, short, in the line under the steps. */
+  const stageShort = (n: 1 | 2 | 3) => t(n === 1 ? (stepProp === "notas" ? "stage.studyNoteShort" : "stage.studyTermShort") : n === 2 ? "stage.markShort" : "stage.judgeShort").replace("{res}", stageRes);
+  /** Whether anything is kept in a stage: what takes the fear of touching away. */
+  const stageSafe = (n: 1 | 2 | 3) => t(n === 1 ? "stage.studySafe" : n === 2 ? "stage.markSafe" : "stage.judgeSafe");
   /** «Paso 2 de 3 · Marcar en el borrador»: where the person is, in a quiet line over each step. */
+  // The three steps, the one in hand marked; one done is touched to go back to it. A line «Paso 2 de 3 · …» was
+  // read as one more line of text, and nothing took the person back (18 October).
   const stepper = (n: 1 | 2 | 3) => (
-    // The three steps, the one in hand marked; one done is touched to go back to it. A line «Paso 2 de 3 · …» was
-    // read as one more line of text, and nothing took the person back (18 October).
+    <>
     <ol className="af-steps" aria-label={t("af.stepsAria")} data-guide="af-steps">
       {([1, 2, 3] as const).map((k) => {
         const name = t(k === 1 ? "af.stepShortStudy" : k === 2 ? "af.stepShortMark" : "af.stepShortJudge");
@@ -1668,6 +1703,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         );
       })}
     </ol>
+    <p className="af-phase" data-guide="af-phase">
+      {stageShort(n)} {stageSafe(n)}{" "}
+      <button type="button" className="af-link af-phase__ask" onClick={() => setStageWindow(n)}>
+        {t("stage.whatHere")}
+      </button>
+    </p>
+    </>
   );
   /** Step 1 said: on to marking, or, when somebody already chose the words, to whether they are right. */
   const studyDone = (said: { applies: boolean; note?: string }) => {
@@ -2205,6 +2247,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           ready={!busy && pane === "review" && !closedView}
           state={{
             kind: stepProp,
+            phase: phase ?? 1,
             res: data.resource === "tps" ? "TPS" : "TPL",
             name: pointName.replace(/^«|»$/g, ""),
             tab: data.references.find((row) => row.id !== reference?.id)?.label.replace(/\s*\(.*\)\s*$/, ""),
@@ -2221,10 +2264,44 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           }}
         />
       ) : null}
-      {data && !busy && said.purpose ? (
-        // The first time this person opens this task: what it is for, as the first step of its guide.
-        <GuidePurpose id={`${ctx?.taskId ?? ""}:${taskStep?.id ?? ""}`} purpose={said.purpose} title={t("af.welcomeTitle")} legacyKey={`taller-af-welcome:${ctx?.taskId ?? ""}`} />
-      ) : null}
+      {/* On entering: what the task is about, its three stages, and that nothing changes the text until step 3. */}
+      <StageWindow
+        open={taskWindowOpen}
+        title={taskLabel || heading.title}
+        text={said.purpose}
+        steps={(said.howTo ?? "").split("\n").map((line) => line.trim()).filter(Boolean)}
+        safe={t("stage.taskSafe")}
+        go={t("stage.start")}
+        onGo={() => setTaskWindow(false)}
+      />
+      {/* At each stage of the first point: what it asks, whether anything is kept, and its walk if wanted. */}
+      <StageWindow
+        open={stageWindow !== null && !taskWindowOpen}
+        title={stageWindow === 1 ? withPoint(studyHeading) : stageWindow === 2 ? withPoint(t("af.markHeading")) : t("stage.judgeTitle")}
+        text={stageWindow ? stageText(stageWindow) : ""}
+        safe={stageWindow ? stageSafe(stageWindow) : ""}
+        go={t("stage.go")}
+        onGo={() => setStageWindow(null)}
+        show={t("stage.show")}
+        onShow={() => {
+          setStageWindow(null);
+          // Once the window is gone: the walk of the stage on screen, from its first step.
+          window.setTimeout(() => guide.replay(["screen"]), 150);
+        }}
+      />
+      <ConfirmDialog
+        open={fixAsk}
+        title={t("af.fixAskTitle")}
+        text={t("af.fixAskText").replace("{res}", stageRes)}
+        yes={t("af.fixAskYes")}
+        safe
+        onYes={() => {
+          setFixAsk(false);
+          setFixText(verseText);
+          setFixing(true);
+        }}
+        onNo={() => setFixAsk(false)}
+      />
       {data && item && pane === "review" && !busy ? (
         <section className="af-focus" aria-label={t("af.noteAria")}>
           {/* What the point is, small, with the help beside it: the question below is what the screen asks. The name
@@ -2366,21 +2443,36 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 // word asks whether the person understands what it means here and its literal form: both texts need
                 // to know both, whatever each then does with them by its rules (literal, simple). Its «no» is an
                 // error to report: an article that does not match the word marked (19 October).
-                <div className="af-decide af-decide--ask" data-guide="af-answer">
-                  <h3 className="af-study-q">{askNamed(stepProp === "notas" ? "af.studyQNote" : "af.studyQTerm")}</h3>
+                <div className={stepProp === "notas" ? "af-decide af-decide--ask" : "af-decide af-decide--ask af-decide--one"} data-guide="af-answer">
+                  {/* A note asks a real question, with two answers. A key word only asks to study it: what it asked
+                      («¿Entiende…?») is said by the window of the stage, and the screen keeps one way on (11 November). */}
+                  {stepProp === "notas" ? <h3 className="af-study-q">{askNamed("af.studyQNote")}</h3> : null}
                   <Button type="button" onClick={() => studyDone({ applies: true })}>
                     <Check size={16} aria-hidden /> {t(stepProp === "notas" ? "af.studyYesNote" : "af.studyYesTerm").replace("{name}", pointName.replace(/^«|»$/g, ""))}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setDoubtText(study?.applies === false ? (study.note ?? "") : "");
-                      setDoubting(true);
-                    }}
-                  >
-                    {t(stepProp === "notas" ? "af.studyNoNote" : "af.studyNoTerm")}
-                  </Button>
+                  {stepProp === "notas" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setDoubtText(study?.applies === false ? (study.note ?? "") : "");
+                        setDoubting(true);
+                      }}
+                    >
+                      {t("af.studyNoNote")}
+                    </Button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="af-link af-decide__aside"
+                      onClick={() => {
+                        setDoubtText(study?.applies === false ? (study.note ?? "") : "");
+                        setDoubting(true);
+                      }}
+                    >
+                      {t("af.studyNoTerm")}
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -2391,19 +2483,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               {/* One heading, what to do with this point: the point studied, what is left is to touch its words. The
                   name of the point, a link to the note and a line of instruction said three times the same. */}
               <h2 className="af-heading af-point-title">
-                {t("af.markHeading")
-                  .split(/(\{x\}|\{res\})/)
-                  .map((piece, at) =>
-                    piece === "{x}" ? (
-                      <span key={at}>
-                        «<bdi className={reference?.id === "orig" && markedWords ? "af-orig af-tag af-tag--marked" : "af-tag af-tag--marked"} lang={reference?.id === "orig" && markedWords ? "hbo" : undefined}>{pointWords || pointName.replace(/^«|»$/g, "")}</bdi>»
-                      </span>
-                    ) : piece === "{res}" ? (
-                      data.resource === "tps" ? "TPS" : "TPL"
-                    ) : (
-                      piece
-                    ),
-                  )}
+                {withPoint(t("af.markHeading"))}
               </h2>
             {referenceBox}
   
@@ -2449,14 +2529,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     <button type="button" className="af-link" aria-label={t("af.expandAria")} onClick={() => setChapterOpen(true)}>
                       <Maximize2 size={14} aria-hidden /> {t("af.expand")}
                     </button>
-                    <button
-                      type="button"
-                      className="af-link"
-                      onClick={() => {
-                        setFixText(verseText);
-                        setFixing(true);
-                      }}
-                    >
+                    <button type="button" className="af-link" onClick={() => setFixAsk(true)}>
                       {t("af.fixShort")}
                     </button>
                   </span>
