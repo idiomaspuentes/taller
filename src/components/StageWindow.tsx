@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 export function StageWindow({
   open,
   title,
+  sub,
   text,
+  lead,
   steps,
+  team,
   safe,
   go,
   onGo,
@@ -21,10 +24,16 @@ export function StageWindow({
 }: {
   open: boolean;
   title: ReactNode;
-  /** What to do here, one sentence or two. */
+  /** Where this is, small under the title («Nehemías 1 · TPL»). */
+  sub?: string;
+  /** What to do here, or what the task is about. */
   text?: string;
-  /** What the task has, in order («Estudie…», «Marque…», «Decida…»). */
-  steps?: string[];
+  /** What the list of steps is («Cada frase se revisa en tres pasos:»). */
+  lead?: string;
+  /** The steps, in order: their name and what is done in each. */
+  steps?: { name: string; text: string }[];
+  /** That the person does not decide alone. */
+  team?: string;
   /** Whether anything is kept here: what takes the fear away. */
   safe: string;
   go: string;
@@ -36,16 +45,27 @@ export function StageWindow({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onGo()}>
       <DialogContent className="task-intro stage-window" data-state={open ? "open" : "closed"} aria-describedby={undefined}>
-        <DialogTitle className="task-intro__title">{title}</DialogTitle>
+        <header className="stage-window__head">
+          <DialogTitle className="task-intro__title">{title}</DialogTitle>
+          {sub ? <p className="stage-window__sub">{sub}</p> : null}
+        </header>
         {text ? <p className="task-intro__text">{text}</p> : null}
         {steps?.length ? (
-          <ol className="task-intro__list">
-            {steps.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ol>
+          <section className="task-intro__group">
+            {lead ? <p className="task-intro__label">{lead}</p> : null}
+            <ol className="task-intro__list">
+              {steps.map((step) => (
+                <li key={step.name}>
+                  <b>{step.name}:</b> {step.text}
+                </li>
+              ))}
+            </ol>
+          </section>
         ) : null}
-        <p className="stage-window__safe">{safe}</p>
+        <section className="task-intro__group">
+          {team ? <p className="stage-window__team">{team}</p> : null}
+          <p className="stage-window__safe">{safe}</p>
+        </section>
         <div className="task-intro__actions">
           <Button type="button" size="lg" onClick={onGo}>
             {go}

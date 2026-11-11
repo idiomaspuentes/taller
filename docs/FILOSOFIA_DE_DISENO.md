@@ -156,9 +156,10 @@ vio para qué sirve el paso no la ve.
 *11 de noviembre de 2026, con Abel.* El equipo de afinación es de personas mayores que desconfían de tocar algo por
 miedo a dañar el trabajo. En frases con nota y palabras clave (`AfinacionView`, ventanas en `StageWindow.tsx`):
 
-- **Al entrar a la tarea, siempre**, una ventana: el nombre de la tarea, para qué es (`purpose`), sus tres pasos
-  (`howTo`) y «Nada cambia el texto hasta que usted decide en el paso 3. Lo que decida se puede cambiar después».
-  Un solo botón, «Empezar». Por eso la tarjeta no abre «De qué trata esta tarea» para estas herramientas.
+- **Al entrar a la tarea, siempre**, una ventana con palabras de la app, no las del paquete: qué se revisa y por
+  qué (una para frases con nota y otra para palabras clave, en TPL o TPS), los tres pasos con su nombre, que la
+  persona no decide sola y que estudiar y marcar no cambian nada. El `purpose` del paquete («Compruebe que el TPL
+  conserve…») decía la regla, no lo que la persona iba a hacer. Un solo botón, «Empezar», siempre a la vista. Por eso la tarjeta no abre «De qué trata esta tarea» para estas herramientas.
 - **Al empezar cada fase del primer punto de la visita** (Estudiar, Marcar, Decidir), otra ventana: el título de la
   fase, qué se hace y si algo se guarda («Aquí no se cambia nada», «Nada se guarda todavía», «Su respuesta se
   guarda, y la puede cambiar después»). «Continuar» o «Muéstreme cómo». Solo en el primer punto: en cada uno serían

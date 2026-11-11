@@ -9859,6 +9859,14 @@ button.cr-note:hover { background: var(--primary-100); }
 .task-intro__actions { display: grid; gap: 12px; margin-top: auto; padding-top: 4px; }
 .task-intro__actions .btn { width: 100%; min-height: 52px; font-size: 1.0625rem; }
 /* The windows of a task of tuning and of each stage of its first point (StageWindow): the same big type. */
+.stage-window__head { display: grid; gap: 4px; }
+/* The way on stays in view at the foot, when the window is taller than the screen: it is never scrolled to. */
+.stage-window .task-intro__actions { position: sticky; bottom: -24px; margin-bottom: -24px; padding: 12px 0 24px; background: var(--surface, #fff); box-shadow: 0 -12px 16px -12px rgb(11 23 48 / 0.18); }
+@media (max-width: 40rem) { .stage-window .task-intro__actions { bottom: -20px; margin-bottom: -20px; padding-bottom: 20px; } }
+.stage-window__sub { margin: 0; font-size: 1rem; color: var(--text-muted); }
+.stage-window__team { margin: 0; font-size: 1.0625rem; line-height: 1.45; }
+html[data-text] .stage-window__sub { font-size: calc(1rem * var(--ts)); }
+html[data-text] .stage-window__team { font-size: calc(1.0625rem * var(--ts)); }
 .stage-window__safe { margin: 0; font-size: 1.0625rem; line-height: 1.45; font-weight: 600; color: var(--text); }
 html[data-text] .stage-window__safe { font-size: calc(1.0625rem * var(--ts)); }
 /* What the stage asks, in a line under the steps, and the way to its window again. */

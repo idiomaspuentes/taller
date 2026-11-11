@@ -2264,12 +2264,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           }}
         />
       ) : null}
-      {/* On entering: what the task is about, its three stages, and that nothing changes the text until step 3. */}
+      {/* On entering: what is reviewed and why, its three steps, that the person does not decide alone, and that
+          studying and marking change nothing. In the app's own words, plain: the purpose of the process's step
+          («Compruebe que el TPL conserve…») said the rule, not what the person would do (Abel, 11 November). */}
       <StageWindow
         open={taskWindowOpen}
-        title={taskLabel || heading.title}
-        text={said.purpose}
-        steps={(said.howTo ?? "").split("\n").map((line) => line.trim()).filter(Boolean)}
+        title={t(stepProp === "notas" ? "stage.taskTitleNotes" : "stage.taskTitleTerms")}
+        sub={[heading.title, stageRes].filter(Boolean).join(" · ")}
+        text={t(stepProp === "notas" ? (stageRes === "TPS" ? "stage.aboutNotesTps" : "stage.aboutNotesTpl") : stageRes === "TPS" ? "stage.aboutTermsTps" : "stage.aboutTermsTpl")}
+        lead={t(stepProp === "notas" ? "stage.stepsNotes" : "stage.stepsTerms")}
+        steps={[
+          { name: t("af.stepShortStudy"), text: t(stepProp === "notas" ? "stage.step1Notes" : "stage.step1Terms") },
+          { name: t("af.stepShortMark"), text: t("stage.step2").replace("{res}", stageRes) },
+          { name: t("af.stepShortJudge"), text: t("stage.step3") },
+        ]}
+        team={reviewing ? undefined : t(stepProp === "notas" ? "stage.teamNotes" : "stage.teamTerms").replace("{n}", String(thresholds.minAgree))}
         safe={t("stage.taskSafe")}
         go={t("stage.start")}
         onGo={() => setTaskWindow(false)}
