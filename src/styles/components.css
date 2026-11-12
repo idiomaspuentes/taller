@@ -11683,3 +11683,17 @@ html[data-text] .af--round .af-more__lbl { font-size: calc(1rem * var(--ts)); }
 @media (prefers-reduced-motion: reduce) { .af--round .af-more__chev { transition: none; } }
 /* Brought into sight under the header that stays on top, not behind it. */
 .af--round .af-work > .af-ref { scroll-margin-top: 5rem; }
+
+/*
+ * Where one is, and who does not agree yet: each a bar across the row on a phone (11 November). The two did not fit
+ * on one row at 375-500 px, so «1 sin acuerdo» fell under the pill on its own at the left and looked dropped there.
+ * Where there is room for both they share one row, the pill taking what is left.
+ */
+.af--round .af-head:has(> .af-where) { container-type: inline-size; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.af--round .af-head > .af-where { flex: 1 1 100%; min-width: 0; }
+.af--round .af-head > .af-where > svg { flex: none; margin-left: auto; }
+.af--round .af-head:has(> .af-where) > .round-chip { flex: 1 1 100%; justify-content: space-between; min-height: 44px; padding: 0 14px; }
+@container (min-width: 34rem) {
+  .af--round .af-head > .af-where { flex-basis: 0; }
+  .af--round .af-head:has(> .af-where) > .round-chip { flex: none; }
+}
