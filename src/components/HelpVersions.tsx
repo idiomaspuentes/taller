@@ -79,15 +79,29 @@ export function HelpVersions({ team, source, teamLang, sourceLang, draftLabel, c
   ) : null;
   if (simple && twoLanguages) {
     const theirs = !usable && source.trim();
+    // With both versions, the switch is there, the team's first: with the Spanish draft alone, the English it came
+    // from could no longer be read (Abel, 12 November). With one, no switch: there is nothing to choose.
+    const both = usable && Boolean(source.trim());
+    const onTeam = usable && (choice === "team" || !source.trim());
     return (
       <div className="hv">
         <div className="hv__bar">
           <span className="hv__named">
             {label ? <span className="hv__label">{label}</span> : null}
-            {theirs ? <span className="hv__lang">{t("hv.inLang").replace("{lang}", languageName(sourceLang, ui).toLocaleLowerCase(ui))}</span> : draft}
+            {theirs ? <span className="hv__lang">{t("hv.inLang").replace("{lang}", languageName(sourceLang, ui).toLocaleLowerCase(ui))}</span> : onTeam ? draft : null}
           </span>
+          {both ? (
+            <div className="af-ref__texts" role="tablist" aria-label={t("hv.versions")}>
+              <button type="button" role="tab" aria-selected={choice === "team"} onClick={() => setChoice("team")}>
+                {languageName(teamLang, ui)}
+              </button>
+              <button type="button" role="tab" aria-selected={choice === "source"} onClick={() => setChoice("source")}>
+                {languageName(sourceLang, ui)}
+              </button>
+            </div>
+          ) : null}
         </div>
-        {usable ? children(team!.text, teamLang) : children(source, sourceLang)}
+        {onTeam ? children(team!.text, teamLang) : children(source, sourceLang)}
       </div>
     );
   }

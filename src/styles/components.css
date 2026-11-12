@@ -11752,3 +11752,7 @@ html[data-text] .af-pair-back { font-size: calc(1rem * var(--ts)); }
 .af-pair-sheet .af-pair-bar { display: contents; }
 .af-pair-sheet .af-pair-bar > .af-ref__texts { justify-self: center; }
 .af-pair-sheet .af-pair-bar > .mm { position: relative; justify-self: end; }
+
+/* The note's switch of languages as the verse card's switch of texts: the same size, so the two read as one kind. */
+.af--round .af-study-help .hv__bar > .af-ref__texts button { min-height: 40px; padding: 0 16px; font-size: 0.9375rem; }
+html[data-text] .af--round .af-study-help .hv__bar > .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }
