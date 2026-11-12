@@ -11723,4 +11723,15 @@ html[data-text] .af--round .af-ref__extra .af-ref__texts button { font-size: cal
 .af--round .af-ref__gloss { display: grid; justify-items: start; gap: 8px; }
 .af--round .af-ref__gloss > .af-gloss { margin: 0; }
 .af--round .af-ref__gloss > .af-ref__texts button { min-height: 40px; padding: 0 16px; }
-.af--round .af-ref__links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 20px; margin-block: -6px; }
+
+/*
+ * What opens elsewhere, as buttons of their own (11 November): a blue link under the verse read at its level, told
+ * apart only by its colour. A shape and more room above than inside the text's block set it apart, with no line.
+ */
+.af--round .af-ref__links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.af--round .af-ref__links > .af-see,
+.af--round .af-ref__links > .se-parallel { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--accent-700); font-size: 0.9375rem; font-weight: 600; }
+.af--round .af-ref__links > .af-see:hover,
+.af--round .af-ref__links > .se-parallel:hover { background: var(--gray-50); text-decoration: none; }
+html[data-text] .af--round .af-ref__links > .af-see,
+html[data-text] .af--round .af-ref__links > .se-parallel { font-size: calc(0.9375rem * var(--ts)); }
