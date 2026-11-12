@@ -11837,3 +11837,9 @@ html[data-text] .af--round .af-ref__gloss > .af-gloss.af-orig { font-size: calc(
 .af--round .af-ref__gloss .af-orig .af-word { font-size: 1.3125rem; }
 .af--round .af-ref__gloss .af-word--open { text-decoration: none; }
 html[data-text] .af--round .af-ref__gloss .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
+
+/* Decidir's card in the sizes of Marcar's: the original as under «Ver más», the TPL as its words to mark (12 November). */
+.af--round .af-pin__ref.af-orig .af-word { font-size: 1.3125rem; }
+.af--round .af-pin__verse { font-size: 1.1875rem; }
+html[data-text] .af--round .af-pin__ref.af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
+html[data-text] .af--round .af-pin__verse { font-size: calc(1.1875rem * var(--ts)); }

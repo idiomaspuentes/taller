@@ -1762,6 +1762,41 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           </button>
         </div>
     ) : null;
+  /**
+   * The verse in the original, the ULT or the UST with the point highlighted, under «Ver más» in Marcar and Decidir:
+   * the switch of Estudiar, with the original among its options since these screens do not show it whole.
+   */
+  const verseInTexts = () => {
+    if (!data || !item) return null;
+    const rows = data.references.filter((row) => row.id === "orig" || glossRows.includes(row));
+    const shown = rows.find((row) => row.id === seekText) ?? glossRow ?? rows[0];
+    if (!shown) return null;
+    const verse = shown.book[`${item.chapter}:${item.verse}`] ?? "";
+    return (
+      <div className="af-ref__gloss">
+        {rows.length > 1 ? (
+          <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
+            {rows.map((row) => (
+              <button key={row.id} type="button" role="tab" aria-selected={shown.id === row.id} onClick={() => setSeekText(row.id)}>
+                {refName(row)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="af-gloss__name">{refName(shown)}</span>
+        )}
+        {shown.id === "orig" ? (
+          <p className="af-gloss af-orig" lang="hbo" dir="rtl">
+            <OriginalWords text={verse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={markedIn("orig", verse)} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
+          </p>
+        ) : (
+          <p className="af-gloss" lang="en">
+            <Words text={verse} marked={markedIn(shown.id, verse)} />
+          </p>
+        )}
+      </div>
+    );
+  };
   const stageRes = data?.resource === "tps" ? "TPS" : "TPL";
   /** What a step asks, in its window. */
   const stageText = (n: 1 | 2 | 3) =>
@@ -2695,37 +2730,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   ) : null}
                   {draftMore ? (
                     <div className="af-ref__extra" id="af-draft-more">
-                      {/* The verse in the original, the ULT or the UST, the point highlighted, chosen as in Estudiar. */}
-                      {(() => {
-                        const rows = data.references.filter((row) => row.id === "orig" || glossRows.includes(row));
-                        const shown = rows.find((row) => row.id === seekText) ?? glossRow ?? rows[0];
-                        if (!shown) return null;
-                        const verse = shown.book[`${item.chapter}:${item.verse}`] ?? "";
-                        return (
-                          <div className="af-ref__gloss">
-                            {rows.length > 1 ? (
-                              <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
-                                {rows.map((row) => (
-                                  <button key={row.id} type="button" role="tab" aria-selected={shown.id === row.id} onClick={() => setSeekText(row.id)}>
-                                    {refName(row)}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="af-gloss__name">{refName(shown)}</span>
-                            )}
-                            {shown.id === "orig" ? (
-                              <p className="af-gloss af-orig" lang="hbo" dir="rtl">
-                                <OriginalWords text={verse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={markedIn("orig", verse)} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
-                              </p>
-                            ) : (
-                              <p className="af-gloss" lang="en">
-                                <Words text={verse} marked={markedIn(shown.id, verse)} />
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      {verseInTexts()}
                       <div className="af-ref__links">
                         <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
                           <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
@@ -2816,6 +2821,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </p>
                 {draftMore ? (
                   <div className="af-ref__extra" id="af-pin-more">
+                    {verseInTexts()}
                     <div className="af-ref__links">
                       <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
                         <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
