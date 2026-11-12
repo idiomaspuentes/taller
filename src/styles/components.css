@@ -11770,3 +11770,23 @@ html[data-text] .af--round .af-study-help .hv__bar > .af-ref__texts button { fon
 .af--round .af-study-help--article { gap: 16px; }
 html[data-text] .af--round .af-study-article__name { font-size: calc(1.125rem * var(--ts)); }
 html[data-text] .af--round .af-study-article__q { font-size: calc(1rem * var(--ts)); }
+
+/*
+ * Style of Estudiar, after a critique (12 November). The two folds were two grey bands one after the other, a third
+ * of a closed card each, read before the question: now a fine line and the words, grey only under the finger. The
+ * article is one row touched whole, its name, «Leer el artículo» and an arrow, flush with the card.
+ */
+.af--round .af-ref__fold { background: none; }
+.af--round .af-ref__fold:hover, .af--round .af-ref__fold:active { background: var(--gray-50); }
+.af--round .af-study-help--article { gap: 0; }
+.af--round .af-study-help--article > .af-ref__fold { margin-top: 0; }
+.af--round .af-study-help--article > .af-study-note { padding-bottom: 16px; }
+.af--round .af-study-article__open { display: flex; align-items: center; gap: 14px; width: calc(100% + 32px); min-height: 72px; margin: -16px -16px 0; padding: 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.af--round .af-study-article__open:hover, .af--round .af-study-article__open:active { background: var(--gray-50); }
+.af--round .af-study-article__open:focus-visible { outline: 2px solid var(--accent-700); outline-offset: -2px; }
+.af--round .af-study-article__icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--accent-50); color: var(--accent-700); }
+.af--round .af-study-article__text { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; }
+.af--round .af-study-article__go { font-size: 0.9375rem; font-weight: 600; color: var(--accent-700); }
+.af--round .af-study-article__chev { flex: none; color: var(--accent-700); }
+.af--round .af-study-article > .af-study-article__name { padding-bottom: 16px; }
+html[data-text] .af--round .af-study-article__go { font-size: calc(0.9375rem * var(--ts)); }

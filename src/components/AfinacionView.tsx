@@ -2546,26 +2546,34 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : noteGroup ? (
                 // What the question asks about first, the article, and the note folded at the card's foot.
                 <section className="af-study-help af-study-help--named af-study-help--article">
+                  {/* The article as one row touched whole, as a list in a phone: its name, what touching it does, and
+                      the arrow. A heading, a bordered button and the band were three things for one (12 November). */}
                   <div className="af-study-article" data-guide="af-help">
-                    <h3 className="af-study-article__name">{askName}</h3>
-                    {/* The article's own question, in the team's language only: in English it read as a stray line. */}
-                    {articles[articlePathOf(item.supportRef)]?.own && articles[articlePathOf(item.supportRef)]?.question ? (
-                      <p className="af-study-article__q">{articles[articlePathOf(item.supportRef)]!.question}</p>
-                    ) : null}
                     {articlePathOf(item.supportRef) ? (
-                      <div className="af-ref__links">
-                        <button
-                          type="button"
-                          className="af-see"
-                          onClick={() => {
-                            void readArticle(articlePathOf(item.supportRef));
-                            setArticleOpen(true);
-                          }}
-                        >
-                          <BookOpen size={16} aria-hidden /> {t("af.readArticle")}
-                        </button>
-                      </div>
-                    ) : null}
+                      <button
+                        type="button"
+                        className="af-study-article__open"
+                        onClick={() => {
+                          void readArticle(articlePathOf(item.supportRef));
+                          setArticleOpen(true);
+                        }}
+                      >
+                        <span className="af-study-article__icon" aria-hidden>
+                          <BookOpen size={20} />
+                        </span>
+                        <span className="af-study-article__text">
+                          <span className="af-study-article__name">{askName}</span>
+                          {/* The article's own question, in the team's language only: in English it read as a stray line. */}
+                          {articles[articlePathOf(item.supportRef)]?.own && articles[articlePathOf(item.supportRef)]?.question ? (
+                            <span className="af-study-article__q">{articles[articlePathOf(item.supportRef)]!.question}</span>
+                          ) : null}
+                          <span className="af-study-article__go">{t("af.readArticle")}</span>
+                        </span>
+                        <ChevronRight size={20} aria-hidden className="af-study-article__chev" />
+                      </button>
+                    ) : (
+                      <h3 className="af-study-article__name">{askName}</h3>
+                    )}
                   </div>
                   {noteOpen ? <div className="af-study-note" id="af-study-note">{noteGroupWith(<span className="af-study-lbl">{t("af.noteHeading")}</span>, true)}</div> : null}
                   <button type="button" className="af-see af-ref__fold" aria-expanded={noteOpen} aria-controls="af-study-note" onClick={() => setNoteOpen(!noteOpen)}>
