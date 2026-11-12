@@ -563,6 +563,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    * else confused the answer when it was read first. Folded again on every point.
    */
   const [noteOpen, setNoteOpen] = useState(false);
+  /** What more there is to see under the translation's verse in step 2, folded at the foot of its card. */
+  const [draftMore, setDraftMore] = useState(false);
   const [refMore, setRefMore] = useState(() => {
     try {
       return localStorage.getItem("taller-af-refmore") === "1";
@@ -583,6 +585,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   useEffect(() => {
     setReopened(false);
     setNoteOpen(false);
+    setDraftMore(false);
   }, [item?.id]);
   /** An answer in the words of the button that gave it: «Usted dijo: De acuerdo» answered «Sí, está bien». */
   const saidAs = (status: string) => t(status === "approved" ? "af.yesFine" : status === "revise" ? "rv.revise" : "af.observation");
@@ -1475,7 +1478,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   );
   /** The article being read, as the team has it (said to be a draft while it is one) and as the source has it. */
   const articleVersions = reading ? (
-    <HelpVersions team={reading.team} source={reading.source ?? ""} teamLang={ctx?.lang ?? ""} sourceLang={data ? sourcePackageLang(data.sourcePackage) : "en"} draftLabel={t("hv.draft")}>
+    <HelpVersions simple team={reading.team} source={reading.source ?? ""} teamLang={ctx?.lang ?? ""} sourceLang={data ? sourcePackageLang(data.sourcePackage) : "en"} draftLabel={t("hv.draft")}>
       {(text, lang) => <div lang={lang}>{readArticleText(text)}</div>}
     </HelpVersions>
   ) : null;
@@ -2645,6 +2648,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             <>
               {/* What is sought, and what it means: here the person had only the original, and had to remember
                   its sense from the step before (11 November, «El resaltador»). */}
+              {fixing ? null : (
+                <button type="button" className="af-back af-back--top" data-guide="af-back" onClick={() => setStudied(false)}>
+                  <ChevronLeft size={16} aria-hidden /> {t(stepProp === "notas" ? "af.backToStudy" : "af.backToStudyTerm")}
+                </button>
+              )}
               <div className="af-seek" data-guide="af-seek">
                 <h2 className="af-heading">{t("af.seekHeading").replace("{res}", stageRes)}</h2>
                 <p className="af-seek__phrase">{withPoint("{x}")}</p>
@@ -2697,18 +2705,24 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                       </button>
                     </p>
                   ) : null}
+                  {draftMore ? (
+                    <div className="af-ref__extra" id="af-draft-more">
+                      <div className="af-ref__links">
+                        <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
+                          <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
+                        </button>
+                      </div>
+                      <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} />
+                    </div>
+                  ) : null}
+                  <button type="button" className="af-see af-ref__fold" data-guide="af-more" aria-expanded={draftMore} aria-controls="af-draft-more" onClick={() => setDraftMore(!draftMore)}>
+                    {t(draftMore ? "af.seeLess" : "af.seeMore")}
+                    <ChevronDown size={18} aria-hidden className="af-more__chev" />
+                  </button>
                 </>
               )}
             </div>
-  
-              {/* While the verse is being corrected the answer is not what is in hand: this bar, which stays at the
-                  foot of a phone, stood over the button that saves the correction. */}
-              {fixing ? null : moreToSee(2)}
-              {fixing ? null : (
-                <button type="button" className="af-back" data-guide="af-back" onClick={() => setStudied(false)}>
-                  <ChevronLeft size={16} aria-hidden /> {t(stepProp === "notas" ? "af.backToStudy" : "af.backToStudyTerm")}
-                </button>
-              )}
+
               {fixing ? null : (
               <div className="af-decide af-decide--ask af-decide--one" data-guide="af-confirm">
                 {/* Waiting, it says for what: grey and silent, it did not. */}

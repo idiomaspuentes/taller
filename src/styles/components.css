@@ -11710,6 +11710,7 @@ html[data-text] .af--round .af-ref__extra .af-ref__texts button { font-size: cal
  * folded part from what unfolds. Now what opens grows inside the card, above its foot, under a line.
  */
 .af--round .af-work > .af-ref:has(> .af-ref__fold),
+.af--round .af-work > .af-draft:has(> .af-ref__fold),
 .af--round .af-work > .af-study-help:has(> .af-ref__fold) { overflow: hidden; }
 .af--round .af-ref__fold { justify-content: center; gap: 6px; width: auto; min-height: 48px; margin: 4px -16px -16px; padding: 0 16px; border-top: 1px solid var(--border); background: var(--gray-50); font-weight: 600; }
 .af--round .af-ref__fold:hover { background: var(--surface-muted); text-decoration: none; }
@@ -11790,3 +11791,18 @@ html[data-text] .af--round .af-study-article__q { font-size: calc(1rem * var(--t
 .af--round .af-study-article__chev { flex: none; color: var(--accent-700); }
 .af--round .af-study-article > .af-study-article__name { padding-bottom: 16px; }
 html[data-text] .af--round .af-study-article__go { font-size: calc(0.9375rem * var(--ts)); }
+
+/*
+ * Marcar as Estudiar (12 November): the way back first, at the left; what more there is folded at the foot of the
+ * translation's card, as the verse card's; the answer apart, under a fine line, as the question of Estudiar.
+ */
+.af--round .af-work > .af-back--top { margin: 0 0 4px; }
+.af--round .af-work > .af-draft > .af-ref__fold { margin: 4px -18px -16px; padding: 0 18px; }
+.af--round .af-work > .af-draft > .af-ref__extra { margin-top: 4px; }
+.af--round .af-work[data-cols="2"] > .af-decide { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+
+@media (min-width: 64rem) {
+  /* On a computer the way back heads the left column, over what is sought, not the work on the right. */
+  .af--round .af-work[data-cols="2"] > .af-back--top { grid-column: 1; grid-row: 1; }
+  .af--round .af-work[data-cols="2"]:has(> .af-back--top) > .af-seek { grid-row: 1 / -1; margin-top: 56px; }
+}
