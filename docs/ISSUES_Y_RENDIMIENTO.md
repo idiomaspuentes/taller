@@ -126,6 +126,28 @@ En Door43 una página de 500 tardó 4,8 s y una de 50, 1,4 s (una sola muestra d
 El mock tarda lo mismo con cualquier tamaño de página, así que exagera la ganancia de tiempo. Lo seguro es esto: el
 servidor hace 8 veces menos búsquedas y comprobaciones de permisos. Conviene medirlo en QA.
 
+#### Lo que corrigió la revisión (12 de noviembre)
+
+- **Un libro se lee entero siempre con abiertas y cerradas.** Door43 da primero lo más nuevo, en páginas.
+  - Si alguien cerraba una subtarea mientras se leían solo las abiertas, las demás subían un lugar, y una pasaba a una
+    página ya leída: se perdía.
+  - Con la copia en el aparato, ese hueco duraba hasta la lectura entera de la semana.
+  - Leídas con las cerradas, nada se mueve.
+- **Dos pantallas que leen el mismo libro a la vez** ya no dejan una copia más vieja o más chica que la que ya había.
+- **Un libro que no cambió no se vuelve a guardar entero.** Solo se anota cuándo se comprobó, y así no se lee entero
+  cada tres días solo por estar quieto.
+- **Si IndexedDB no contesta** (pasa en algunos iPhone), a los 1,5 s se sigue sin él. Antes, la app se quedaba
+  esperando.
+- **«Mis tareas» pide a Door43 sin esperar su copia del aparato.**
+- **Si no se pudo preguntar el límite de páginas**, se vuelve a preguntar la próxima vez.
+- **La cola de Door43 también cuenta las escrituras al mock.** Antes, contra el mock una escritura no invalidaba lo
+  leído, y `verify:redo-mock` fallaba también en `main` por eso.
+
+**Sigue pendiente:**
+- `verify:proposals-mock` falla, también en `main`: busca en el FCR un paso que se cierra «por consenso», y el proceso
+  ya no lo tiene.
+- Las copias de libros en el aparato no se borran solas (una por persona, organización, espacio y libro).
+
 **En el propio Door43 (`unfoldingWord/dcs`)** se podría hacer más. Sería trabajo compartido, con la regla de uW y
 según el calendario de uW:
 - revisar por qué Door43 se pone lento con muchas peticiones a la vez (configuración, sin código);

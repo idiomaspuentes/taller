@@ -24,7 +24,11 @@ export function pageSizeFor(host: string, fetcher: typeof fetch = (...args) => f
         const most = Number(settings?.max_response_items);
         return Number.isInteger(most) && most >= SAFE_PAGE ? Math.min(most, BIGGEST_PAGE) : SAFE_PAGE;
       })
-      .catch(() => SAFE_PAGE);
+      .catch(() => {
+        // No network for a moment: 50 this time, and the limit is asked again next time.
+        asked.delete(host);
+        return SAFE_PAGE;
+      });
     asked.set(host, size);
   }
   return size;

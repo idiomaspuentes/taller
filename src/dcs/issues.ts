@@ -1139,14 +1139,19 @@ export function keepProjectsIn(store: DeviceStore): void {
   restored.clear();
 }
 
+/** When a book was last checked against Door43 with nothing changed: a few bytes, not the whole book again. */
+const checkedKey = (key: string) => `${SAVED_PREFIX}${key}|al-dia`;
+
 function restoreProject(key: string): Promise<void> {
   let once = restored.get(key);
   if (!once) {
-    once = projectStore.get<SavedProject>(SAVED_PREFIX + key).then(
-      (saved) => {
+    once = Promise.all([projectStore.get<SavedProject>(SAVED_PREFIX + key), projectStore.get<{ at?: string }>(checkedKey(key))]).then(
+      ([saved, checked]) => {
         if (!saved?.at || !(saved.open || saved.all) || keptProjects.has(key)) return;
+        // Checked later with nothing changed: what is kept was still right then.
+        const at = checked?.at && Date.parse(checked.at) > Date.parse(saved.at) ? checked.at : saved.at;
         // Checked never and with no write seen: the first reading brings it up to date.
-        keptProjects.set(key, { at: saved.at, wholeAt: saved.wholeAt || saved.at, checked: 0, writes: -1, open: saved.open, all: saved.all });
+        keptProjects.set(key, { at, wholeAt: saved.wholeAt || saved.at, checked: 0, writes: -1, open: saved.open, all: saved.all });
       },
       () => undefined,
     );
@@ -1164,6 +1169,18 @@ function saveProject(key: string, kept: KeptProject): void {
   void projectStore.set(SAVED_PREFIX + key, saved).catch(() => undefined);
 }
 
+/**
+ * Keep a reading unless one newer is already there: two screens read the same book at once («Equipo hoy» the whole of
+ * it, «Mis tareas» what changed), and the one that answered last must not put back an older or smaller copy.
+ */
+function keepReading(key: string, next: KeptProject, before: KeptProject | undefined): KeptProject {
+  const now = keptProjects.get(key);
+  const newer = now && now !== before && Date.parse(now.at) >= Date.parse(next.at) && (now.all || !next.all);
+  if (newer) return now;
+  keptProjects.set(key, next);
+  return next;
+}
+
 /** Forget every project read in this page (another person signs in, or a check starts afresh). The device keeps its own. */
 export function forgetProjectIssues(): void {
   keptProjects.clear();
@@ -1173,6 +1190,11 @@ export function forgetProjectIssues(): void {
 const openOnly = (issues: DcsIssue[]) => issues.filter((issue) => (issue.state ?? "open").toLowerCase() !== "closed");
 const keptView = (kept: KeptProject, want: "open" | "all"): DcsIssue[] | undefined =>
   want === "all" ? kept.all && [...kept.all] : kept.open ? [...kept.open] : kept.all && openOnly(kept.all);
+/** Once each: a subtarea created while the pages were read pushes the others down, and one can come twice. */
+const onceEach = (issues: DcsIssue[]) => {
+  const seen = new Set<number>();
+  return issues.filter((issue) => !seen.has(issue.number) && Boolean(seen.add(issue.number)));
+};
 
 async function readProjectIssues(session: GtSession, org: string, projectId: string, want: "open" | "all"): Promise<DcsIssue[]> {
   const key = keptProjectKey(session, org, projectId);
@@ -1200,17 +1222,24 @@ async function readProjectIssues(session: GtSession, org: string, projectId: str
         ...(kept.all ? { all: mergeAllChanged(kept.all, changed) } : {}),
         ...(kept.open ? { open: mergeChanged(kept.open, changed) } : {}),
       };
-      keptProjects.set(key, next);
-      // Nothing changed: what the device has is still right, and its time is only a little older.
-      if (changed.length) saveProject(key, next);
-      return keptView(next, want)!;
+      const shown = keepReading(key, next, kept);
+      if (shown === next) {
+        if (changed.length) saveProject(key, next);
+        // Nothing changed: the device's copy is still right, and only when it was checked is written down.
+        else void projectStore.set(checkedKey(key), { at: next.at }).catch(() => undefined);
+      }
+      return keptView(shown, want) ?? keptView(next, want)!;
     }
   }
-  const issues = await searchPmIssues(session, org, { state: want, milestones, maxPages: WHOLE_PROJECT_PAGES, namespaceId: pmConfig.namespaceId });
-  const read: KeptProject = { at: startedAt, wholeAt: startedAt, checked: Date.now(), writes: writesAt, [want]: issues };
-  keptProjects.set(key, read);
-  saveProject(key, read);
-  return [...issues];
+  // Read whole, the closed ones too, even when only the open are wanted. Door43 gives the newest first and in pages:
+  // a subtarea closed while the open ones are read moves every later one up a place, and the one that crossed to a
+  // page already read was lost, for as long as the book was kept (12 November 2026). Read with the closed ones,
+  // nothing moves; and the open ones come out of it.
+  const issues = onceEach(await searchPmIssues(session, org, { state: "all", milestones, maxPages: WHOLE_PROJECT_PAGES, namespaceId: pmConfig.namespaceId }));
+  const read: KeptProject = { at: startedAt, wholeAt: startedAt, checked: Date.now(), writes: writesAt, all: issues };
+  const shown = keepReading(key, read, kept);
+  if (shown === read) saveProject(key, read);
+  return keptView(shown, want)!;
 }
 
 /** Open PM issues for a project milestone (all assignees). */
@@ -1236,7 +1265,8 @@ export async function syncProjectOpenIssues(
   const key = keptProjectKey(session, org, projectId);
   await restoreProject(key);
   const kept = keptProjects.get(key);
-  if (!kept || Date.parse(kept.at) < Date.parse(known.at)) {
+  // A whole book in hand (open and closed) is never traded for an open list: it is brought up to date instead.
+  if (!kept || (!kept.all && Date.parse(kept.at) < Date.parse(known.at))) {
     if (!canSyncFrom(known.at, new Date(Date.now()))) return readProjectIssues(session, org, projectId, "open");
     keptProjects.set(key, { at: known.at, wholeAt: kept?.wholeAt ?? known.at, checked: 0, writes: -1, open: known.issues });
   }

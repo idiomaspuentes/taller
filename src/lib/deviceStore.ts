@@ -18,25 +18,39 @@ const KV = "kv";
 
 let opening: Promise<IDBDatabase | null> | null = null;
 
+/**
+ * Some versions of Safari leave an opening of IndexedDB unanswered for good (iOS 14.6–15). Every book is read through
+ * here, so a store that does not answer soon counts as no store: the app reads from Door43 as it did before.
+ */
+const OPEN_MS = 1500;
+/** Reading a big book back takes longer than opening: a slow phone is given more time. */
+const ANSWER_MS = 5000;
+const inTime = <T>(asked: Promise<T>, otherwise: T, ms: number): Promise<T> =>
+  Promise.race([asked, new Promise<T>((resolve) => setTimeout(() => resolve(otherwise), ms))]);
+
 function database(): Promise<IDBDatabase | null> {
-  opening ??= new Promise((resolve) => {
-    try {
-      if (typeof indexedDB === "undefined") return resolve(null);
-      const asked = indexedDB.open(DB, 1);
-      asked.onupgradeneeded = () => asked.result.createObjectStore(KV);
-      asked.onsuccess = () => resolve(asked.result);
-      asked.onerror = () => resolve(null);
-      asked.onblocked = () => resolve(null);
-    } catch {
-      resolve(null);
-    }
-  });
+  opening ??= inTime(
+    new Promise<IDBDatabase | null>((resolve) => {
+      try {
+        if (typeof indexedDB === "undefined") return resolve(null);
+        const asked = indexedDB.open(DB, 1);
+        asked.onupgradeneeded = () => asked.result.createObjectStore(KV);
+        asked.onsuccess = () => resolve(asked.result);
+        asked.onerror = () => resolve(null);
+        asked.onblocked = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    }),
+    null,
+    OPEN_MS,
+  );
   return opening;
 }
 
 function run<T>(mode: IDBTransactionMode, act: (kv: IDBObjectStore) => IDBRequest): Promise<T | undefined> {
-  return database().then(
-    (db) =>
+  return database().then((db) =>
+    inTime(
       new Promise<T | undefined>((resolve) => {
         if (!db) return resolve(undefined);
         try {
@@ -47,6 +61,9 @@ function run<T>(mode: IDBTransactionMode, act: (kv: IDBObjectStore) => IDBReques
           resolve(undefined);
         }
       }),
+      undefined,
+      ANSWER_MS,
+    ),
   );
 }
 

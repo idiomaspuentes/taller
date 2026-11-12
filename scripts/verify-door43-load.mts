@@ -64,6 +64,9 @@ await test("solo pasa por la cola lo que va a Door43; cada escritura se cuenta",
   await f("http://localhost:5189/src/main.tsx");
   assert.equal(seen.length, 3);
   assert.equal(door43Writes(), before + 1, "el PATCH a Door43 cuenta; leer y lo que no es de Door43, no");
+  await f("http://localhost:8787/api/v1/repos/x/y/issues/1", { method: "PATCH" });
+  await f("http://localhost:5189/src/save.ts", { method: "POST" });
+  assert.equal(door43Writes(), before + 2, "una escritura al Door43 de prueba también cuenta; un archivo de la app, no");
 });
 
 // ---------- One reading of a project, kept ----------
@@ -76,6 +79,9 @@ const iso = (ms: number) => new Date(ms).toISOString();
 /** What the server says a page may hold (`/settings/api`), and what it really gives. Null: it does not say. */
 let serverSays: number | null = null;
 let serverGives = 50;
+const afterPage = new Map<number, () => void>();
+/** How long each search takes to answer (a test's own), to have two readings on their way at once. */
+let answerMs = 0;
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = new URL(String(input));
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -86,12 +92,19 @@ globalThis.fetch = (async (input: RequestInfo | URL) => {
     const page = Number(url.searchParams.get("page") || "1");
     const limit = Math.min(Number(url.searchParams.get("limit") || "30"), serverGives);
     asked.push({ state, since, page });
+    if (answerMs) await new Promise((resolve) => setTimeout(resolve, answerMs));
     const list = rows
       .filter((r) => state === "all" || r.state === state)
       .filter((r) => !since || Date.parse(r.updated_at) >= Date.parse(since))
       .sort((a, b) => b.number - a.number)
       .slice((page - 1) * limit, page * limit)
       .map((r) => ({ ...r, id: r.number, title: `NEH ${r.number}`, body: "", labels: [{ id: 1, name: "pm" }], milestone: { id: 1, title: "NEH" }, assignees: [], repository: { name: "taller", full_name: `${ORG}/taller` } }));
+    // Something somebody does on Door43 right after a page is given (a test's own).
+    const then = afterPage.get(page);
+    if (then) {
+      afterPage.delete(page);
+      then();
+    }
     return json(list);
   }
   return json({ message: "not found" }, 404);
@@ -172,14 +185,20 @@ await test("la lista guardada de «Mis tareas» sirve de punto de partida: no se
 
 // ---------- Each book kept in the device (9 November 2026) ----------
 
-const device = memoryStore();
+let device = memoryStore();
 keepProjectsIn(device);
 /** Opening the app again: what the page had read is gone, what the device keeps is not. */
 const reopen = () => forgetProjectIssues();
+/** A device that never opened the app. */
+const newDevice = () => {
+  device = memoryStore();
+  keepProjectsIn(device);
+  forgetProjectIssues();
+};
 
 await test("al volver a abrir la app, el libro guardado en el aparato se pone al día con una página", async () => {
   rows = fresh(1221);
-  reopen();
+  newDevice();
   await listProjectOpenIssues(session, ORG, "NEH");
   clock += 12 * 3_600_000;
   rows[4] = { ...rows[4]!, state: "closed", updated_at: iso(clock) };
@@ -193,7 +212,7 @@ await test("al volver a abrir la app, el libro guardado en el aparato se pone al
 
 await test("abiertas y cerradas: la primera vez se lee entero, y desde entonces también se pone al día desde el aparato", async () => {
   rows = fresh(300).map((r, i) => (i < 200 ? { ...r, state: "closed" as const } : r));
-  reopen();
+  newDevice();
   asked.length = 0;
   await listProjectIssues(session, ORG, "NEH");
   assert.ok(asked.length >= 6, "la primera vez, entero");
@@ -208,7 +227,7 @@ await test("abiertas y cerradas: la primera vez se lee entero, y desde entonces 
 
 await test("abrir un proyecto (sus subtareas en el tablero) usa lo que ya se leyó, sin leer el libro otra vez", async () => {
   rows = fresh(1221);
-  reopen();
+  newDevice();
   await listProjectIssues(session, ORG, "NEH");
   asked.length = 0;
   const board = { people: [], assignments: [] } as unknown as Parameters<typeof pullIssues>[0]["board"];
@@ -219,7 +238,7 @@ await test("abrir un proyecto (sus subtareas en el tablero) usa lo que ya se ley
 
 await test("un libro leído entero hace más de una semana se lee entero otra vez, aunque se haya puesto al día", async () => {
   rows = fresh(120);
-  reopen();
+  newDevice();
   await listProjectOpenIssues(session, ORG, "NEH");
   for (let day = 0; day < 8; day++) {
     clock += 24 * 3_600_000;
@@ -232,10 +251,10 @@ await test("un libro leído entero hace más de una semana se lee entero otra ve
 
 await test("lo que se guarda de cada subtarea es lo que las pantallas leen, no la subtarea entera", async () => {
   const saved = device.keys().find((k) => k.includes("NEH"))!;
-  const kept = (await device.get<{ open?: Record<string, unknown>[] }>(saved))!;
-  assert.ok(kept.open?.length);
-  assert.equal(typeof kept.open![0]!.body, "string");
-  assert.equal((kept.open![0]!.repository as Record<string, unknown>).full_name, `${ORG}/taller`);
+  const kept = (await device.get<{ all?: Record<string, unknown>[] }>(saved))!;
+  assert.ok(kept.all?.length, "el libro entero, abiertas y cerradas");
+  assert.equal(typeof kept.all![0]!.body, "string");
+  assert.equal((kept.all![0]!.repository as Record<string, unknown>).full_name, `${ORG}/taller`);
 });
 
 // ---------- Pages as big as the server allows (12 November 2026) ----------
@@ -287,6 +306,92 @@ await test("con páginas de 500, un libro de 10.000 subtareas sigue leyéndose e
   rows = fresh(10_000);
   reopen();
   assert.equal((await listProjectOpenIssues(session, ORG, "NEH")).length, 10_000);
+});
+
+// ---------- What the review of 12 November found ----------
+
+await test("si alguien cierra una subtarea mientras se lee el libro, no se pierde ninguna de las abiertas", async () => {
+  forgetPageSizes();
+  keepProjectsIn(memoryStore());
+  serverSays = null;
+  serverGives = 50;
+  rows = fresh(120);
+  reopen();
+  // Right after page 1, somebody closes the newest subtarea (it was on page 1).
+  afterPage.set(1, () => {
+    rows = rows.map((r) => (r.number === 120 ? { ...r, state: "closed" as const, updated_at: iso(clock) } : r));
+  });
+  const open = await listProjectOpenIssues(session, ORG, "NEH");
+  const numbers = new Set(open.map((i) => i.number));
+  for (let n = 1; n <= 119; n++) assert.ok(numbers.has(n), `falta la ${n}`);
+  assert.ok(asked.slice(-3).every((a) => a.state === "all"), "el libro se lee con las cerradas");
+});
+
+await test("si se crea una subtarea mientras se lee el libro, ninguna sale dos veces", async () => {
+  forgetPageSizes();
+  keepProjectsIn(memoryStore());
+  rows = fresh(120);
+  reopen();
+  afterPage.set(1, () => {
+    rows = [...rows, { number: 121, state: "open", updated_at: iso(clock) }];
+  });
+  const all = (await listProjectIssues(session, ORG, "NEH")).issues;
+  assert.equal(all.length, new Set(all.map((i) => i.number)).size);
+});
+
+await test("dos pantallas leen el mismo libro a la vez: la que contesta última no deja una copia más vieja ni más chica", async () => {
+  forgetPageSizes();
+  keepProjectsIn(memoryStore());
+  rows = fresh(120);
+  reopen();
+  await listProjectOpenIssues(session, ORG, "NEH");
+  clock += PROJECT_FRESH_MS + 1000;
+  answerMs = 20;
+  // «Mis tareas» brings the open ones up to date while «Equipo hoy» wants the whole book.
+  const [, whole] = await Promise.all([listProjectOpenIssues(session, ORG, "NEH"), listProjectIssues(session, ORG, "NEH")]);
+  answerMs = 0;
+  assert.equal(whole.issues.length, 120);
+  asked.length = 0;
+  await listProjectIssues(session, ORG, "NEH");
+  assert.equal(asked.length, 0, "el libro entero sigue a mano");
+});
+
+await test("un libro que no cambió no se vuelve a guardar entero, pero se anota cuándo se comprobó", async () => {
+  forgetPageSizes();
+  const device = memoryStore();
+  keepProjectsIn(device);
+  rows = fresh(120);
+  reopen();
+  await listProjectOpenIssues(session, ORG, "NEH");
+  for (let day = 0; day < 4; day++) {
+    clock += 24 * 3_600_000;
+    reopen();
+    await listProjectOpenIssues(session, ORG, "NEH");
+  }
+  // Four days, checked every day with nothing changed: still brought up to date, not read whole.
+  clock += 24 * 3_600_000;
+  reopen();
+  asked.length = 0;
+  await listProjectOpenIssues(session, ORG, "NEH");
+  assert.equal(asked.length, 1);
+  assert.ok(asked[0]!.since);
+});
+
+await test("si no se pudo preguntar el límite de páginas, se pregunta otra vez la próxima", async () => {
+  forgetPageSizes();
+  const { pageSizeFor } = await import("../src/dcs/pageSize.ts");
+  let calls = 0;
+  const failing = (async () => {
+    calls++;
+    throw new Error("sin red");
+  }) as unknown as typeof fetch;
+  assert.equal(await pageSizeFor("https://git.door43.org", failing), 50);
+  const answering = (async () => {
+    calls++;
+    return new Response(JSON.stringify({ max_response_items: 500 }));
+  }) as unknown as typeof fetch;
+  assert.equal(await pageSizeFor("https://git.door43.org", answering), 500);
+  assert.equal(calls, 2);
 });
 
 Date.now = realNow;
