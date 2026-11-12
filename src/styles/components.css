@@ -11855,3 +11855,6 @@ html[data-text] .af--round .af-pin__verse { font-size: calc(1.1875rem * var(--ts
 .af--round .af-work > .af-ref > .af-ref__fold { margin-top: 8px; }
 .af--round .af-work > .af-draft > .af-ref__fold { margin-top: 12px; }
 .af--round .af-work > .af-pin > .af-ref__fold { margin-top: 12px; }
+
+/* The note opened in Estudiar is what is read then: the size of the English verse over it, not grey (12 November). */
+.af--round .af-study-note .af-reason .af-note { font-size: calc(1rem * var(--ts, 1)); line-height: 1.55; color: var(--text); }
