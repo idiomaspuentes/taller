@@ -11826,3 +11826,16 @@ html[data-text] .af--round .af-study-article__go { font-size: calc(0.9375rem * v
 /* The TPL card orders its words and their echo (2, 3): what opens and its fold come after them, at the foot. */
 .af--round .af-work > .af-draft > .af-ref__extra { order: 4; }
 .af--round .af-work > .af-draft > .af-ref__fold { order: 5; }
+
+/* The original under «Ver más» in Marcar reads as the original of the verse card: larger, from the right. */
+.af--round .af-ref__gloss > .af-gloss.af-orig { justify-self: stretch; font-size: 1.25rem; line-height: 1.7; text-align: right; color: var(--text); }
+html[data-text] .af--round .af-ref__gloss > .af-gloss.af-orig { font-size: calc(1.25rem * var(--ts)); }
+
+/* The text under the switch spaced as in the verse card, wherever the switch is (the TPL card set no rule of its own). */
+.af--round .af-ref__gloss .af-words { gap: 0 0.125rem; line-height: 1.55; }
+.af--round .af-ref__gloss .af-orig .af-words { line-height: 1.7; }
+
+/* Its original words as the verse card's: the same size, touched without an underline. */
+.af--round .af-ref__gloss .af-orig .af-word { font-size: 1.3125rem; }
+.af--round .af-ref__gloss .af-word--open { text-decoration: none; }
+html[data-text] .af--round .af-ref__gloss .af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }

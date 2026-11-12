@@ -324,6 +324,11 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const refText = "orig" as "orig" | "ult" | "ust";
   /** The text read under the original in step 1. */
   const [glossText, setGlossText] = useState("ult");
+  /**
+   * The text read under «Ver más» in Marcar: the original too, since this screen does not show it apart (Abel, 12
+   * November). `null`: the one read under the original in Estudiar.
+   */
+  const [seekText, setSeekText] = useState<string | null>(null);
   /** «Revisar» (the item in hand) or «Capítulo» (whole chapters of a text, to read around it). */
   const [pane, setPane] = useState<"review" | "helps" | "chapter" | "intro">("review");
   // The team's other text (the TPS beside a TPL being tuned), read once the chapter is opened.
@@ -2690,6 +2695,37 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   ) : null}
                   {draftMore ? (
                     <div className="af-ref__extra" id="af-draft-more">
+                      {/* The verse in the original, the ULT or the UST, the point highlighted, chosen as in Estudiar. */}
+                      {(() => {
+                        const rows = data.references.filter((row) => row.id === "orig" || glossRows.includes(row));
+                        const shown = rows.find((row) => row.id === seekText) ?? glossRow ?? rows[0];
+                        if (!shown) return null;
+                        const verse = shown.book[`${item.chapter}:${item.verse}`] ?? "";
+                        return (
+                          <div className="af-ref__gloss">
+                            {rows.length > 1 ? (
+                              <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")}>
+                                {rows.map((row) => (
+                                  <button key={row.id} type="button" role="tab" aria-selected={shown.id === row.id} onClick={() => setSeekText(row.id)}>
+                                    {refName(row)}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="af-gloss__name">{refName(shown)}</span>
+                            )}
+                            {shown.id === "orig" ? (
+                              <p className="af-gloss af-orig" lang="hbo" dir="rtl">
+                                <OriginalWords text={verse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={markedIn("orig", verse)} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
+                              </p>
+                            ) : (
+                              <p className="af-gloss" lang="en">
+                                <Words text={verse} marked={markedIn(shown.id, verse)} />
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div className="af-ref__links">
                         <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
                           <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
