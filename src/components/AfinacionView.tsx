@@ -1701,7 +1701,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         <div className="af-more__body">
           {n === 1 && data.references.length > 1 ? (
             <div className="af-more__row">
-              <span className="af-lbl">{t("af.readIn")}</span>
               <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
                 {data.references.map((row) => (
                   <button

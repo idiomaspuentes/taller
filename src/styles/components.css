@@ -11633,3 +11633,35 @@ html[data-text] .af-opt span { font-size: calc(0.9375rem * var(--ts)); }
 @media (max-width: 63.99rem) {
   .af--round .af-work > .af-decide, .af--round .af-ask > .af-decide--answer { position: static; z-index: auto; margin: 1.5rem 0 0; padding: 0; background: none; box-shadow: none; }
 }
+
+/*
+ * Estudiar, each group in its place (critique of 11 November): on one grey ground, the verse, the note, what more
+ * there is and the question ran into one another, with 8 px between the note and «Más para ver». Now what is read
+ * is in two white cards, as what is judged is in step 3 and as Armonización reads the TPL and the note; each link
+ * inside what it opens; the grey only the table under them.
+ */
+.af--round .af-work[data-cols="1"] > .af-ref,
+.af--round .af-work[data-cols="1"] > .af-study-help { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.af--round .af-work[data-cols="1"] > .af-ref { gap: 12px; }
+.af--round .af-work[data-cols="1"] > .af-study-help { margin-top: 16px; gap: 8px; }
+/* Links inside a card say less than what they open: lighter, a little smaller, with their icon. */
+.af--round .af-work[data-cols="1"] .af-ref__words,
+.af--round .af-work[data-cols="1"] .af-about__links .af-link { font-size: 0.9375rem; font-weight: 600; }
+.af--round .af-work[data-cols="1"] .af-ref__words { margin-bottom: -10px; }
+.af--round .af-work[data-cols="1"] .af-about__links { margin-bottom: -10px; }
+html[data-text] .af--round .af-work[data-cols="1"] .af-ref__words,
+html[data-text] .af--round .af-work[data-cols="1"] .af-about__links .af-link { font-size: calc(0.9375rem * var(--ts)); }
+/* What more there is: a quiet row under the cards; open, its own soft ground, apart from the question. */
+.af--round .af-work[data-cols="1"] > .af-more { margin-top: 16px; }
+.af--round .af-more > summary { font-weight: 600; }
+.af--round .af-more[open] > .af-more__body { gap: 8px; margin-top: 4px; padding: 12px; border-radius: var(--radius-lg); background: var(--surface-muted); }
+.af--round .af-more .af-see { font-weight: 600; }
+.af--round .af-more .af-ref__texts button { font-size: 0.9375rem; }
+html[data-text] .af--round .af-more .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }
+/* The question is what is answered, not read: no card, a fine line and room above it; the answer the heaviest. */
+.af--round .af-work[data-cols="1"] > .af-decide { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.af--round .af-work[data-cols="1"] > .af-decide .btn { font-size: 1.0625rem; }
+html[data-text] .af--round .af-work[data-cols="1"] > .af-decide .btn { font-size: calc(1.0625rem * var(--ts)); }
+@media (min-width: 64rem) {
+  .af--round .af-work[data-cols="1"] > .af-study-help { margin-top: 0; }
+}
