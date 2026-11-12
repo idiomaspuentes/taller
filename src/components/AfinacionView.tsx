@@ -557,6 +557,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    * The verse card of step 1 shows the original alone; «Ver más» opens under it the ULT, the other texts, the chapter
    * and the other books (Abel, 11 November). Whoever opens it keeps it open from one point to the next, on this device.
    */
+  /**
+   * The note of a challenge in step 1, folded under its article until asked for (Abel, 12 November): the question
+   * asks whether the highlight is a case of the article, and a note that says, by mistake, that it is something
+   * else confused the answer when it was read first. Folded again on every point.
+   */
+  const [noteOpen, setNoteOpen] = useState(false);
   const [refMore, setRefMore] = useState(() => {
     try {
       return localStorage.getItem("taller-af-refmore") === "1";
@@ -576,6 +582,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   // given (with «Reabrir» alone, the person had no way on).
   useEffect(() => {
     setReopened(false);
+    setNoteOpen(false);
   }, [item?.id]);
   /** An answer in the words of the button that gave it: «Usted dijo: De acuerdo» answered «Sí, está bien». */
   const saidAs = (status: string) => t(status === "approved" ? "af.yesFine" : status === "revise" ? "rv.revise" : "af.observation");
@@ -1775,7 +1782,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         ? t("stage.mark")
         : t("stage.judge"))
       .replace("{res}", stageRes)
-      .replace("{orig}", origWord);
+      .replace("{orig}", origWord)
+      .replace("{name}", askName);
   const stepName = (n: 1 | 2 | 3) => t(n === 1 ? "af.stepShortStudy" : n === 2 ? "af.stepShortMark" : "af.stepShortJudge");
   /** Step 1 said: on to marking, or, when somebody already chose the words, to whether they are right. */
   const studyDone = (said: { applies: boolean; note?: string }) => {
@@ -2536,7 +2544,35 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               ) : stepProp === "palabras" ? (
                 helpButton(false)
               ) : noteGroup ? (
-                <section className="af-study-help af-study-help--named">{noteGroupWith(<span className="af-study-lbl">{t("af.noteHeading")}</span>)}</section>
+                // What the question asks about first, the article, and the note folded at the card's foot.
+                <section className="af-study-help af-study-help--named af-study-help--article">
+                  <div className="af-study-article" data-guide="af-help">
+                    <h3 className="af-study-article__name">{askName}</h3>
+                    {/* The article's own question, in the team's language only: in English it read as a stray line. */}
+                    {articles[articlePathOf(item.supportRef)]?.own && articles[articlePathOf(item.supportRef)]?.question ? (
+                      <p className="af-study-article__q">{articles[articlePathOf(item.supportRef)]!.question}</p>
+                    ) : null}
+                    {articlePathOf(item.supportRef) ? (
+                      <div className="af-ref__links">
+                        <button
+                          type="button"
+                          className="af-see"
+                          onClick={() => {
+                            void readArticle(articlePathOf(item.supportRef));
+                            setArticleOpen(true);
+                          }}
+                        >
+                          <BookOpen size={16} aria-hidden /> {t("af.readArticle")}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  {noteOpen ? <div className="af-study-note" id="af-study-note">{noteGroupWith(<span className="af-study-lbl">{t("af.noteHeading")}</span>, true)}</div> : null}
+                  <button type="button" className="af-see af-ref__fold" aria-expanded={noteOpen} aria-controls="af-study-note" onClick={() => setNoteOpen(!noteOpen)}>
+                    {t(noteOpen ? "af.hideNote" : "af.showNote")}
+                    <ChevronDown size={18} aria-hidden className="af-more__chev" />
+                  </button>
+                </section>
               ) : null}
               {/* What the others said of it, before answering: why they do not see it, in their words. */}
               {tally && tally.doubted.some((d) => d.by.trim().toLowerCase() !== me) ? (
