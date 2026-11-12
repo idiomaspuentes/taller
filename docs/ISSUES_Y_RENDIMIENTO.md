@@ -205,6 +205,31 @@ pantalla llegue rápido con pocos datos, y eso solo lo da C. B y D no hacen falt
 3. Si el webhook de producción de `es-419_gl` ya está creado. El índice lo necesita; [`PLAN.md`](PLAN.md) lo daba
    como pendiente.
 
+## Pendiente: estudiar una alternativa a las incidencias
+
+Decidido por Abel el 12 de noviembre: se hace **después de medir A y las páginas de 500 una o dos semanas en
+producción**. Hay dos razones para hacerlo:
+
+- **Crecer con cada libro.** Aunque A y las páginas de 500 mejoren la velocidad, todo sigue creciendo con cada libro
+  nuevo.
+- **Los guardados que se pisan.** El progreso de cada subtarea se guarda reescribiendo todo su texto, sin comprobar
+  si cambió mientras tanto (`setIssueTaskProgress` en `src/dcs/issues.ts`). Si dos personas guardan la misma
+  subtarea casi a la vez, gana la última y se pierde lo de la otra. No se sabe si ya pasó en producción.
+
+**Qué comparar:**
+1. el estado de cada subtarea en archivos del repositorio del plan (uno por persona o por subtarea, para que nadie
+   escriba el mismo);
+2. el índice en un Worker (camino C);
+3. una base de datos propia, con la incidencia de Door43 solo para la conversación.
+
+**Con qué criterios:**
+- velocidad en el teléfono, la primera vez y las demás;
+- que nada se pierda al guardar;
+- lo que Door43 tiene que seguir dando: conversación, menciones y sus avisos, y quién ve qué;
+- configurarlo para otra organización;
+- migrar Nehemías, Esdras y Ester;
+- quién lo mantiene.
+
 ## Cómo repetir las medidas
 
 ```bash
