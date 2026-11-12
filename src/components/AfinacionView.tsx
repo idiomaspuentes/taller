@@ -1700,10 +1700,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {refToggle}
           {/* The same verse in English, with the same phrase marked: whoever does not read the original well reads
               it here, without opening anything (11 November). */}
-          <button type="button" className="af-see af-ref__fold" data-guide="af-more" aria-expanded={refMore} aria-controls="af-ref-more" onClick={toggleRefMore}>
-            {t(refMore ? "af.seeLess" : "af.seeMore")}
-            <ChevronDown size={18} aria-hidden className="af-more__chev" />
-          </button>
           {refMore ? (
             <div className="af-ref__extra" id="af-ref-more">
               {reference?.id === "orig" && glossRow && glossVerse ? (
@@ -1738,6 +1734,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
               <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
             </div>
           ) : null}
+          <button type="button" className="af-see af-ref__fold" data-guide="af-more" aria-expanded={refMore} aria-controls="af-ref-more" onClick={toggleRefMore}>
+            {t(refMore ? "af.seeLess" : "af.seeMore")}
+            <ChevronDown size={18} aria-hidden className="af-more__chev" />
+          </button>
         </div>
     ) : null;
   /**
