@@ -11839,3 +11839,19 @@ html[data-text] .af--round .af-ref__gloss .af-orig .af-word { font-size: calc(1.
 .af--round .af-pin__verse { font-size: 1.1875rem; }
 html[data-text] .af--round .af-pin__ref.af-orig .af-word { font-size: calc(1.3125rem * var(--ts)); }
 html[data-text] .af--round .af-pin__verse { font-size: calc(1.1875rem * var(--ts)); }
+
+/*
+ * One rhythm inside the three verse cards (12 November, redesign of the open «Ver más»): a fine line has 20 px over
+ * it and 20 under it, between groups; inside a group, 12. The switch sat 16 px under a line 12 px from the TPL, and
+ * the card read as one block. The cards' own gaps differ (af-ref 12, af-draft and af-pin 8): the margins make up.
+ */
+.af--round .af-work > .af-ref > .af-ref__extra { margin-top: 8px; padding-top: 20px; }
+.af--round .af-work > .af-draft > .af-ref__extra,
+.af--round .af-work > .af-pin > .af-ref__extra { margin-top: 12px; padding-top: 20px; }
+.af--round .af-pin__ref + .af-pin__lbl { margin-top: 12px; padding-top: 20px; }
+.af--round .af-ref__extra { gap: 20px; }
+.af--round .af-ref__extra > .af-ref__links { margin-top: 0; }
+.af--round .af-ref__gloss { gap: 12px; }
+.af--round .af-work > .af-ref > .af-ref__fold { margin-top: 8px; }
+.af--round .af-work > .af-draft > .af-ref__fold { margin-top: 12px; }
+.af--round .af-work > .af-pin > .af-ref__fold { margin-top: 12px; }
