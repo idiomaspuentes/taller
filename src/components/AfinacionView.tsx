@@ -32,7 +32,7 @@ import { refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, sortByVerse, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
-import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Eye, Info, Lock, Maximize2, Pencil, X } from "lucide-react";
+import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Info, Lock, Maximize2, Pencil, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HelpMessages } from "./HelpMessages";
 import { changeMyStudyNotes } from "../dcs/studyNotes";
@@ -563,7 +563,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    * else confused the answer when it was read first. Folded again on every point.
    */
   const [noteOpen, setNoteOpen] = useState(false);
-  /** What more there is to see under the translation's verse in step 2, folded at the foot of its card. */
+  /** What more there is to see under the translation's verse in steps 2 and 3, folded at the foot of its card. */
   const [draftMore, setDraftMore] = useState(false);
   const [refMore, setRefMore] = useState(() => {
     try {
@@ -587,6 +587,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     setNoteOpen(false);
     setDraftMore(false);
   }, [item?.id]);
+  // Steps 2 and 3 fold the same: what was opened under the words to mark is closed under the words to judge.
+  useEffect(() => {
+    setDraftMore(false);
+  }, [confirmed]);
   /** An answer in the words of the button that gave it: «Usted dijo: De acuerdo» answered «Sí, está bien». */
   const saidAs = (status: string) => t(status === "approved" ? "af.yesFine" : status === "revise" ? "rv.revise" : "af.observation");
   /** The list of the points, from «Frase 3 de 82»: the arrows between points are gone (11 November). */
@@ -1753,27 +1757,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           </button>
         </div>
     ) : null;
-  /**
-   * What can be looked at besides the work of the step, folded under one line with an eye: the verse in other texts,
-   * the chapter around it, the verse in other books, what was corrected in it. Each was a button of its own on the
-   * screen, and 30 things could be touched in the first step of a point, two of which did the work (11 November).
-   * Nothing in it changes anything.
-   */
-  const moreToSee = (n: 2 | 3) =>
-    data && item ? (
-      <details key={`${item.id}-${n}`} className="af-more" data-guide="af-more">
-        <summary className="af-see">
-          <Eye size={16} aria-hidden /> {t("af.moreToSee")}
-          <ChevronDown size={18} aria-hidden className="af-more__chev" />
-        </summary>
-        <div className="af-more__body">
-          <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
-            <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
-          </button>
-          {n === 2 ? <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} /> : null}
-        </div>
-      </details>
-    ) : null;
   const stageRes = data?.resource === "tps" ? "TPS" : "TPL";
   /** What a step asks, in its window. */
   const stageText = (n: 1 | 2 | 3) =>
@@ -2747,8 +2730,26 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             // Step 3 of 3, as what it is: the team talking about this point, each with their face and their words. A
             // disagreement is one more message somebody answers, the most harmless thing to see (Abel, 11 November).
             <>
-              {/* What is judged, small and first: the original with what is highlighted, the verse of the translation
-                  with the words chosen, and the way back to them. The chapter and the rest, under «Más para ver». */}
+              {/* The way back to the words first, at the left, as in Marcar: in a row of the card, at its right beside
+                  «TPL hoy», it read as part of what is judged (12 November). */}
+              {needsWords ? null : (
+                <button
+                  type="button"
+                  className="af-back af-back--top"
+                  data-guide="af-change"
+                  onClick={() => {
+                    // Other words for an answer given are a change of it: the answer is asked again after them.
+                    if (mine) setChanging(true);
+                    setConfirmed(false);
+                    window.setTimeout(() => document.querySelector(".af-draft__words")?.scrollIntoView({ block: "center" }), 80);
+                  }}
+                >
+                  <ChevronLeft size={16} aria-hidden /> {t("af.changeTheWords")}
+                </button>
+              )}
+              {/* What is judged, small and first, in reading order as the cards before: the original with what is
+                  highlighted, a fine line, the name of the translation's verse and the verse with the words chosen.
+                  The chapter, folded at the foot. */}
               <div className="af-pin" data-guide="af-recap">
                 <p className={reference?.id === "orig" ? "af-pin__ref af-orig" : "af-pin__ref"} lang={reference?.id === "orig" ? "hbo" : undefined} dir="auto">
                   {reference?.id === "orig" ? (
@@ -2759,6 +2760,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     markedWords || t("af.theMarked")
                   )}
                 </p>
+                <span className="af-pin__lbl">{t("af.verseInRes").replace("{ref}", `${item.chapter}:${item.verse}`).replace("{res}", stageRes)}</span>
                 <p className="af-pin__verse">
                   {selected.length ? (
                     (() => {
@@ -2793,25 +2795,19 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     <b>{t("af.nothingChosen")}</b>
                   )}
                 </p>
-                <div className="af-pin__row">
-                  <span className="af-pin__lbl">{t("af.resToday").replace("{res}", stageRes)}</span>
-                  {needsWords ? null : (
-                    <button
-                      type="button"
-                      className="af-back"
-                      data-guide="af-change"
-                      onClick={() => {
-                        // Other words for an answer given are a change of it: the answer is asked again after them.
-                        if (mine) setChanging(true);
-                        setConfirmed(false);
-                        window.setTimeout(() => document.querySelector(".af-draft__words")?.scrollIntoView({ block: "center" }), 80);
-                      }}
-                    >
-                      <ChevronLeft size={16} aria-hidden /> {t("af.changeTheWords")}
-                    </button>
-                  )}
-                </div>
-                {moreToSee(3)}
+                {draftMore ? (
+                  <div className="af-ref__extra" id="af-pin-more">
+                    <div className="af-ref__links">
+                      <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
+                        <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                <button type="button" className="af-see af-ref__fold" data-guide="af-more" aria-expanded={draftMore} aria-controls="af-pin-more" onClick={() => setDraftMore(!draftMore)}>
+                  {t(draftMore ? "af.seeLess" : "af.seeMore")}
+                  <ChevronDown size={18} aria-hidden className="af-more__chev" />
+                </button>
               </div>
               {/* The question, short: what is decided, under the name of the point and the way to its note. The words
                   are in the box above; named in the question too, it ran to five lines in three colours. */}
