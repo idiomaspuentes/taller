@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { CiteScope, ReasonField } from "./ReasonField";
 import type { ChatEvent } from "../domain/chatEvent";
 import type { ThreadItem } from "../domain/conversation";
@@ -70,6 +70,8 @@ export function DecisionCard({
   /** The option that is being written for (another wording, the reason of a no), and what is written so far. */
   const [writing, setWriting] = useState<{ id: string; text: string; second?: string } | null>(null);
   const [busy, setBusy] = useState<DecisionOption | null>(null);
+  /** A second tap before the card shows it is busy runs nothing: two taps wrote the same vote twice (12 November). */
+  const running = useRef(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
 
@@ -104,6 +106,8 @@ export function DecisionCard({
   const editorRange = options.find((o) => o.blockReason && o.openEditor)?.openEditor;
 
   async function run(option: DecisionOption, input?: string, second?: string) {
+    if (running.current) return;
+    running.current = true;
     setConfirming(null);
     setWriting(null);
     setError("");
@@ -129,6 +133,7 @@ export function DecisionCard({
     } catch (err) {
       setError(explainError(err));
     } finally {
+      running.current = false;
       setBusy(null);
     }
   }

@@ -300,6 +300,47 @@ export function changedStretch(before: string, now: string, around = 2): { befor
 }
 
 /**
+ * Each place a text changed, with the word before and after it, compared exactly (a comma counts). One stretch from
+ * the first difference to the last hid what had changed: a comma near the start and a full stop lost at the end of
+ * EZR 4:13 were said as the whole verse twice (12 November). More than `max` places: the one stretch.
+ */
+export function changedPlaces(before: string, now: string, max = 3): Array<{ before: string; now: string }> {
+  const a = before.trim().split(/\s+/).filter(Boolean);
+  const b = now.trim().split(/\s+/).filter(Boolean);
+  // Longest common run of words, by a table: a verse is a few dozen words.
+  const lcs: number[][] = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) lcs[i]![j] = a[i] === b[j] ? lcs[i + 1]![j + 1]! + 1 : Math.max(lcs[i + 1]![j]!, lcs[i]![j + 1]!);
+  const hunks: Array<{ a0: number; a1: number; b0: number; b1: number }> = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length || j < b.length) {
+    if (i < a.length && j < b.length && a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    const start = { a0: i, b0: j };
+    while ((i < a.length || j < b.length) && !(i < a.length && j < b.length && a[i] === b[j])) {
+      if (j >= b.length || (i < a.length && lcs[i + 1]![j]! >= lcs[i]![j + 1]!)) i++;
+      else j++;
+    }
+    hunks.push({ ...start, a1: i, b1: j });
+  }
+  if (!hunks.length) return [];
+  if (hunks.length > max) return [changedStretch(before, now)];
+  return hunks.map((h) => {
+    const lead = h.a0 > 0 ? [a[h.a0 - 1]!] : [];
+    const trail = h.a1 < a.length ? [a[h.a1]!] : [];
+    return { before: [...lead, ...a.slice(h.a0, h.a1), ...trail].join(" "), now: [...lead, ...b.slice(h.b0, h.b1), ...trail].join(" ") };
+  });
+}
+
+/** The places a text changed, as a message says them: «que si» → «que, si»; «sucesores.» → «sucesores». */
+export function changesSaid(before: string, now: string): string {
+  return changedPlaces(before, now).map((place) => `«${place.before}» → «${place.now}»`).join("; ");
+}
+
+/**
  * Someone corrected the text of an item: who had answered on the old text and
  * should look again. The person who made the correction is not told.
  */

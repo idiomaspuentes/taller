@@ -463,4 +463,17 @@ await test("los avisos de revisión y de publicar versión se traducen", () => {
   for (const [es, pt] of cases) assert.equal(localizeThread(es, "pt"), pt);
 });
 
+await test("los votos, los acuerdos, los cierres y los recordatorios dichos como personas se leen en portugués", () => {
+  const cases: [string, string][] = [
+    ["@AnerG está de acuerdo con la propuesta.", "@AnerG concorda com a proposta."],
+    ["@bea no está de acuerdo con la propuesta: «falta la coma»", "@bea não concorda com a proposta: «falta la coma»"],
+    ["@Keneramk, @AnerG y @bismarck están de acuerdo con la propuesta. Falta que una persona habilitada del equipo lo confirme para cerrar la decisión.", "@Keneramk, @AnerG e @bismarck concordam com a proposta. Falta uma pessoa habilitada da equipe confirmar para encerrar a decisão."],
+    ["Se aceptó la propuesta de @Keneramk: el texto de EZR 4:13 ya está cambiado. Lo confirmó @bismarck por el equipo.", "A proposta de @Keneramk foi aceita: o texto de EZR 4:13 já foi alterado. @bismarck confirmou pela equipe."],
+    ["No se aceptó la propuesta de @ana; NEH 1:1 queda como estaba. Lo decidió @bea, que coordina.", "A proposta de @ana não foi aceita; NEH 1:1 fica como estava. Decidido por @bea, que coordena."],
+    ["@bismarck y @miguelcordero: ya pasó el plazo para opinar sobre la propuesta de @Keneramk sobre EZR 4:13. Ahora, si nadie está en contra, basta con que 2 personas además de quien la propuso estén de acuerdo. Si quieren opinar, todavía pueden.", "@bismarck e @miguelcordero: já passou o prazo para opinar sobre a proposta de @Keneramk sobre EZR 4:13. Agora, se ninguém for contra, basta que 2 pessoas além de quem a propôs concordem. Se quiserem opinar, ainda podem."],
+    ["@ana: falta su voto sobre la propuesta de @bea sobre NEH 1:1. Se decide antes del 4 de octubre.", "@ana: falta o seu voto sobre a proposta de @bea sobre NEH 1:1. Decide-se antes de 4 de outubro."],
+  ];
+  for (const [es, pt] of cases) assert.equal(localizeThread(es, "pt"), pt);
+});
+
 console.log(`\nverify-config: ${passed} checks passed.`);

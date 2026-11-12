@@ -1,5 +1,7 @@
 /** A proposal or an objection as a decision of the team: who counts, when it is decided. */
-import { alineacionDecisionType, buildCloseEvent, buildDecisionEvent, mayEdit, toldOf, waitsOnVote, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
+import { alineacionDecisionType, buildCloseEvent, buildConsensusEvent, buildDecisionEvent, buildVoteEvent, mayEdit, toldOf, waitsOnVote, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
+import { staleUntilResolved } from "../src/domain/chatEvents/registry";
+import type { ChatEvent } from "../src/domain/chatEvent";
 import assert from "node:assert/strict";
 import type { AlignmentGroup } from "@usfm-tools/types";
 import type { PersonLevel } from "../src/domain/levels";
@@ -225,6 +227,27 @@ test("quien propuso no ve botones para votar su propuesta: el aviso dice cuánto
   assert.equal(own.find((option) => option.id === "aceptar")?.blockReason, "Es tuya: ya cuenta a favor. Van 1 de 2 votos para aceptarla.");
   const other = alineacionDecisionType.options!(event, { viewer: viewer("carla"), prepared });
   assert.deepEqual(other.filter((option) => !option.hidden && !option.blockReason).map((option) => option.id).slice(0, 2), ["aceptar", "rechazar"], "quien no la propuso vota");
+});
+
+test("los votos, el acuerdo y el cierre se dicen como los diría una persona, y lo que solo pedía confirmar se calla al cerrarse", () => {
+  const data = { id: "x2", kind: "proposal", book: "EZR", chapter: 4, verse: 13, by: "Keneramk", aligners: [], tell: ["anerg", "bismarck"], deadline: "2026-11-02T01:07:01.353Z", oldText: "que si ellos", newText: "que, si ellos", path: "p", baseHash: "h", draft: { owner: "o", repo: "r", branch: "b", filepath: "f" }, source: { id: "s", layerDir: "l" } } as unknown as DecisionEventData;
+  assert.match(buildDecisionEvent(data, 1474).summary, /^Propuesta de @Keneramk para cambiar el texto de EZR 4:13\. Diga aquí si está de acuerdo, antes del \d de noviembre\.$/);
+  assert.equal(buildVoteEvent({ issue: 1474, data, by: "AnerG", option: "aceptar" }).summary, "@AnerG está de acuerdo con la propuesta.");
+  assert.equal(buildVoteEvent({ issue: 1474, data, by: "bea", option: "rechazar", reason: "falta  la coma" }).summary, "@bea no está de acuerdo con la propuesta: «falta la coma»");
+  const consensus = buildConsensusEvent({ issue: 1474, data, winner: "aceptar", people: ["Keneramk", "AnerG", "bismarck"] });
+  assert.equal(consensus.summary, "@Keneramk, @AnerG y @bismarck están de acuerdo con la propuesta. Falta que una persona habilitada del equipo lo confirme para cerrar la decisión.");
+  const close = buildCloseEvent({ issue: 1474, data, outcome: "aceptada", how: "consenso", by: "bismarck" });
+  assert.equal(close.summary, "Se aceptó la propuesta de @Keneramk: el texto de EZR 4:13 ya está cambiado. Lo confirmó @bismarck por el equipo.", "un cambio de texto no dice que cambió la alineación");
+  // The decided card names what was decided under how it ended, not the ending twice.
+  const cardEvent = { schema: "tas-chat-event-1", ...buildDecisionEvent(data, 1474) } as ChatEvent;
+  const closeEvent = { schema: "tas-chat-event-1", ...close } as ChatEvent;
+  assert.equal(alineacionDecisionType.decided!(cardEvent, closeEvent)!.title, "Propuesta de @Keneramk para cambiar el texto de EZR 4:13");
+  const items = [
+    { key: "card", event: cardEvent },
+    { key: "consenso", event: { schema: "tas-chat-event-1", ...consensus } as ChatEvent },
+  ];
+  assert.deepEqual([...staleUntilResolved(items)], [], "mientras no se cierra, el aviso de acuerdo se ve");
+  assert.deepEqual([...staleUntilResolved([...items, { key: "cierre", event: closeEvent }])], ["consenso"], "cerrada, ya no pide nada");
 });
 
 console.log(`\nverify-alignment-decision: ${passed} checks passed.`);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { issueNumberOf, listMentions, markMentionRead, markSeen, mentionComment, mentionRows, mentionText, namesPerson, withoutSeen } from "../src/dcs/mentions";
-import { asksWhileOpen, whileOpen } from "../src/domain/commentPlace";
+import { asksWhileOpen, namedLast, refComment, whileOpen, withoutNamed } from "../src/domain/commentPlace";
 
 let passed = 0;
 async function test(name: string, fn: () => Promise<void> | void) {
@@ -151,6 +151,18 @@ await test("de una subtarea terminada no queda lo que pedía hacer algo en ella,
   assert.equal(reads, 8);
   await listMentions(session, "org", "plan", fake);
   assert.equal(reads, 8, "mientras Door43 no toque el aviso, no se vuelve a leer su subtarea ni sus comentarios");
+});
+
+await test("un mensaje de la app nombra al final, una vez cada persona, y la conversación muestra solo lo dicho", () => {
+  const body = refComment("EZR", "4:11", namedLast("Nota «Marcas de cita»\n\nEsta nota no corresponde.", ["AnerG", "anerg", "Keneramk", ""]));
+  assert.equal(body, "**EZR 4:11** — Nota «Marcas de cita»\n\nEsta nota no corresponde.\n\n@AnerG @Keneramk", "sin «@AnerG @anerg»");
+  assert.equal(withoutNamed("Nota «Marcas de cita»\n\nEsta nota no corresponde.\n\n@AnerG @Keneramk"), "Nota «Marcas de cita»\n\nEsta nota no corresponde.");
+  assert.equal(withoutNamed("@anerg @keneramk Quote Markings · «Esto es». Tengo una observación: sí."), "Quote Markings · «Esto es». Tengo una observación: sí.", "los mensajes de antes, con los nombres delante");
+  assert.equal(withoutNamed("Estoy de acuerdo con @miguelcordero."), "Estoy de acuerdo con @miguelcordero.", "un nombre dentro de la frase se queda");
+  assert.equal(withoutNamed("@ana"), "@ana", "un mensaje que solo nombra no queda vacío");
+  // The notice reads what was said, not the names after it.
+  const said = { body: body, user: { login: "miguel" }, created_at: "2026-10-01T10:00:00Z" };
+  assert.equal(mentionText([said], "anerg")?.text, "**EZR 4:11** — Nota «Marcas de cita» Esta nota no corresponde.");
 });
 
 console.log(`\nverify-mentions: ${passed} checks passed.`);

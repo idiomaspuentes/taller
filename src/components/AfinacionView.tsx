@@ -28,7 +28,7 @@ import { appendMyDecision, appendMyDecisions, loadDecisionFiles, savePreferredTe
 import type { CorrectionReason } from "../domain/correctionLog";
 import { CorrectionReasons, reasonLine, VerseCorrections } from "./CorrectionReasons";
 import { commentOnIssue } from "../dcs/issues";
-import { refComment, whileOpen } from "../domain/commentPlace";
+import { namedLast, refComment, whileOpen } from "../domain/commentPlace";
 import { loadAssignmentsFromDcs } from "../dcs/persist";
 import { articleName, articlePathOf, articleShortName, groupByCategory, sortByVerse, type ArticleInfo, type NoteItem } from "../domain/afinacionNotes";
 import { HelpMarkdownView } from "./HelpMarkdownView";
@@ -44,7 +44,7 @@ import { WordPicker } from "./WordPicker";
 import { askRedoAfterCorrection, redoSaid } from "../dcs/redoAfterCorrection";
 import { alignedGatewayQuoteForHelpQuote, matchHelpQuoteToTokenIndices, tokenizeVersePlainText } from "../domain/helpQuoteMatch";
 import {
-  changedStretch,
+  changesSaid,
   mergeDecisionFiles,
   reviewersToNotifyAfterEdit,
   standingAnswers,
@@ -759,8 +759,17 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     if (!session || !data || !item || !ctx?.pmOrg || !ctx.issueNumber) return;
     // Whoever coordinates the team is told as well: a point without agreement waits for their decision.
     const who = [...new Set([...(tally?.answers ?? []).map((a) => a.reviewer.trim()), ...coordinatorsOf(data.levelBook, task?.orgTeamName)].filter((login) => login && login.toLowerCase() !== me))];
-    const about = [stepProp === "notas" ? nameOf(item) : "", chosenWords ? `«${chosenWords}»` : ""].filter(Boolean).join(" · ");
-    const body = `${who.map((login) => `@${login}`).join(" ")} ${about ? `${about}. ` : ""}${said}`.trim();
+    // What it is about on a line of its own, then what was said, and the people told last: the names and the note
+    // went first, and what the person had said came after some twenty-five words (12 November).
+    const name = stepProp === "notas" ? nameOf(item) : "";
+    const about = name && chosenWords
+      ? tNow("af.toldNote").replace("{name}", name).replace("{words}", chosenWords)
+      : name
+        ? tNow("af.toldNoteOnly").replace("{name}", name)
+        : chosenWords
+          ? tNow("af.toldWords").replace("{words}", chosenWords)
+          : "";
+    const body = namedLast(about ? `${about}\n\n${said}` : said, who);
     await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, `${item.chapter}:${item.verse}`, body)).catch(() => undefined);
   }
 
@@ -1017,7 +1026,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       };
       await appendMyDecision(session, { owner: data.draft.owner, repo: data.draft.repo, branch: data.draft.branch }, data.book, decision);
       setDecisions((prev) => [...prev, decision]);
-      if (status !== "approved") await tellTeam(`${stanceLabel(status)}: ${words}`);
+      if (status !== "approved") await tellTeam(said === undefined && status === "revise" ? `${stanceLabel(status)}: ${words}` : words);
       // With this answer everything is agreed, and this person may not close the review: whoever coordinates is
       // told. Nobody was: the round stood at «30 de 30» until somebody who may close it happened to open the tool.
       if (status === "approved" && closesHere && !canConfirm && !stepDone && summary && !summary.allAgreed && ctx.pmOrg && ctx.issueNumber) {
@@ -1075,10 +1084,18 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         note: why || tNow("fx.proposalNote"),
         tell: Object.keys(teamLevels),
         thresholds,
+        // The answer below says it in the subtarea, with what changes.
+        quietParent: true,
       });
       setFixReason("");
       setFixReasons([]);
-      await answer("revise", [tNow("af.proposedAnswer").replace("{n}", String(opened.issue.number)).replace("{text}", text), why].filter(Boolean).join(" — "));
+      // What changes and not the whole verse: the verse twice hid that the change was a comma, and a full stop lost.
+      const proposed = [
+        tNow("af.proposedAnswer").replace("{changes}", changesSaid(data.draftVerses[item.verse] ?? "", text)),
+        why ? tNow("af.proposedWhy").replace("{why}", why) : "",
+        tNow("af.proposedWhere").replace("{n}", String(opened.issue.number)),
+      ].filter(Boolean).join(" ");
+      await answer("revise", proposed);
     } catch (err) {
       setError(explainError(err));
       setSaving(false);
@@ -1232,13 +1249,14 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       if (who.size && ctx.issueNumber && ctx.pmOrg && before !== text) {
         // Said as the person who corrected would say it, with the place and what changed: it was a line of small
         // print («Corregí JUD 1:3») among the messages, the only one that asked the others to do something.
-        const change = changedStretch(before, text);
-        const said = [
-          [...who].map((login) => `@${login}`).join(" "),
-          tNow("af.correctedNote").replace("{before}", change.before).replace("{now}", change.now),
-          why ? tNow("gr.reason").replace("{why}", why) : "",
-          tNow("af.correctedAgain"),
-        ].filter(Boolean).join(" ");
+        const said = namedLast(
+          [
+            tNow("af.correctedNote").replace("{changes}", changesSaid(before, text)),
+            why ? tNow("gr.reason").replace("{why}", why) : "",
+            tNow("af.correctedAgain"),
+          ].filter(Boolean).join(" "),
+          [...who],
+        );
         await commentOnIssue(session, ctx.pmOrg, ctx.issueNumber, refComment(data.book, `${item.chapter}:${item.verse}`, said)).catch(() => undefined);
       }
     } catch (err) {

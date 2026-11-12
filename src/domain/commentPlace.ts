@@ -11,6 +11,33 @@ export function refComment(book: string, ref: string, text: string): string {
   return `**${book.toUpperCase()} ${ref}** — ${text.trim()}`;
 }
 
+/**
+ * A message the app writes in somebody's name, with the people it tells named last, each once whatever the case of
+ * their login. Named first, two to four logins («@AnerG @anerg») stood before every word that was said (12 November).
+ * Door43 tells them wherever they are named.
+ */
+export function namedLast(text: string, logins: string[]): string {
+  const seen = new Set<string>();
+  const who = logins.map((login) => login.trim()).filter((login) => {
+    const key = login.toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return who.length ? `${text.trim()}\n\n${who.map((login) => `@${login}`).join(" ")}` : text.trim();
+}
+
+/**
+ * What a message of the app says, without the people it named before or after it: the notice reached them, and in
+ * the conversation the names stood between the reader and what was said. Nothing is taken from a message that is
+ * only names.
+ */
+export function withoutNamed(text: string): string {
+  // The names after the text are a line of their own; a sentence that ends on a name («De acuerdo con @ana.») keeps it.
+  const out = text.replace(/^(?:@[\w-]+[\s,]*)+/, "").replace(/\n\s*(?:@[\w-]+[ \t]*)+$/, "").trim();
+  return out || text.trim();
+}
+
 const WHILE_OPEN = "<!-- gt:mientras-abierta -->";
 
 /**

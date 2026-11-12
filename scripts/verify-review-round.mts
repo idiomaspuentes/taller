@@ -5,7 +5,9 @@
 import assert from "node:assert/strict";
 import type { CheckingDecisionsFile } from "@usfm-tools/types";
 import {
+  changedPlaces,
   changedStretch,
+  changesSaid,
   decisionsFilePath,
   mergeDecisionFiles,
   reviewersToNotifyAfterEdit,
@@ -278,6 +280,16 @@ test("tras una corrección solo se avisa a quien respondió sobre palabras que c
 test("lo que cambió una corrección se dice en pocas palabras, con algo alrededor para encontrarlo", () => {
   assert.deepEqual(changedStretch(VERSE, FIXED), { before: "… común, tengo la necesidad de …", now: "… común, tengo necesidad de …" });
   assert.deepEqual(changedStretch("uno dos", "uno tres"), { before: "uno dos", now: "uno tres" });
+});
+
+test("cada lugar que cambió se dice aparte, con una coma o un punto que falte a la vista", () => {
+  // EZR 4:13, as the team accepted it on 10 November: a comma added and the full stop lost.
+  const before = "Es importante que sepa que si ellos reconstruyen esta ciudad y terminan de levantar sus murallas, ellos dejarán de pagar todo tipo de impuestos. Como resultado, habrá menos dinero en la tesorería de los reyes para usted y para sus sucesores. ";
+  const now = "Es importante que sepa que, si ellos reconstruyen esta ciudad y terminan de levantar sus murallas, ellos dejarán de pagar todo tipo de impuestos. Como resultado, habrá menos dinero en la tesorería de los reyes para usted y para sus sucesores";
+  assert.equal(changesSaid(before, now), "«sepa que si» → «sepa que, si»; «sus sucesores.» → «sus sucesores»");
+  assert.deepEqual(changedPlaces("a b c", "a b c"), [], "nada cambió");
+  assert.deepEqual(changedPlaces("a b c", "a b c d"), [{ before: "c", now: "c d" }], "lo que se agrega al final");
+  assert.equal(changedPlaces("a b c d e f g h", "x b y d z f w h").length, 1, "con muchos lugares, un solo tramo");
 });
 
 test("con el paso cerrado, lo comprobado en translationCore muestra el punto cerrado, aunque lo haya traído alguien que no coordina, y sigue cerrado tras corregir otras palabras", () => {

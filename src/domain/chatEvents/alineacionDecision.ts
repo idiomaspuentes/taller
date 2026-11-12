@@ -27,6 +27,28 @@ export const CONSENSUS_EVENT = "alineacion-consenso";
 export const WITHDRAW_EVENT = "alineacion-retiro";
 export const EDIT_EVENT = "alineacion-edicion";
 
+/** What a vote says, of one person and of several: «@ana está de acuerdo con la propuesta». */
+const VOTE_SAID: Record<DecisionOptionId, { one: string; many: string }> = {
+  aceptar: { one: "está de acuerdo con la propuesta", many: "están de acuerdo con la propuesta" },
+  rechazar: { one: "no está de acuerdo con la propuesta", many: "no están de acuerdo con la propuesta" },
+  cambiar: { one: "piensa que hay que cambiar la alineación", many: "piensan que hay que cambiar la alineación" },
+  mantener: { one: "piensa que la alineación debe quedar como está", many: "piensan que la alineación debe quedar como está" },
+};
+
+/** «@ana», «@ana y @bea», «@ana, @bea y @carla». */
+export function peopleSaid(logins: string[]): string {
+  const at = logins.map((login) => `@${login}`);
+  return at.length > 1 ? `${at.slice(0, -1).join(", ")} y ${at.at(-1)}` : (at[0] ?? "");
+}
+
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** «2 de noviembre», from an ISO time, by the calendar of the place it was written in. */
+export function daySaid(iso: string): string {
+  const at = new Date(iso);
+  return Number.isFinite(at.getTime()) ? `${at.getDate()} de ${MONTHS[at.getMonth()]}` : iso.slice(0, 10);
+}
+
 export type DecisionEventData = {
   id: string;
   kind: DecisionKind;
@@ -203,7 +225,7 @@ export function buildDecisionEvent(data: DecisionEventData, issue: number): Omit
     type: DECISION_EVENT,
     emitter: "afinacion",
     issue,
-    summary: `${decisionTitle(data)}. Vota en esta tarea; se decide con el equipo antes del ${data.deadline.slice(0, 10)}.`,
+    summary: `${decisionTitle(data)}. Diga aquí si está de acuerdo, antes del ${daySaid(data.deadline)}.`,
     // Opening a proposal tells the whole team, not only whoever aligned: they are the ones to answer it.
     mentions: toldOf(data, data.by),
     decision: {
@@ -225,7 +247,7 @@ export function buildVoteEvent(params: { issue: number; data: DecisionEventData;
     emitter: "afinacion",
     issue: params.issue,
     // A no says why: it is what the conversation goes on from, and what another wording answers.
-    summary: `@${params.by} votó: ${OPTION_LABEL[params.option]}${reason ? `. «${reason}»` : ""}`,
+    summary: `@${params.by} ${VOTE_SAID[params.option].one}${reason ? `: «${reason}»` : "."}`,
     ...(reason ? { mentions: [params.data.by] } : {}),
     data: { decisionId: decisionId(params.data), option: params.option, by: params.by, ...(reason ? { reason } : {}) },
   };
@@ -271,7 +293,8 @@ export function buildConsensusEvent(params: { issue: number; data: DecisionEvent
     type: CONSENSUS_EVENT,
     emitter: "afinacion",
     issue: params.issue,
-    summary: `Hay consenso: ${OPTION_LABEL[params.winner]} (${params.people.map((p) => `@${p}`).join(", ")}). ${mentions.map((m) => `@${m}`).join(" ")}: falta que una persona lo confirme para cerrar la decisión.`,
+    // Who is asked to confirm it is named under it, where Door43 reads them (see `alignmentDecisionThread.ts`).
+    summary: `${peopleSaid(params.people)} ${params.people.length > 1 ? VOTE_SAID[params.winner].many : VOTE_SAID[params.winner].one}. Falta que una persona habilitada del equipo lo confirme para cerrar la decisión.`,
     mentions,
     data: { decisionId: decisionId(params.data), winner: params.winner },
   };
@@ -285,22 +308,35 @@ export function consensusData(event: ChatEvent): { decisionId: string; winner: D
 
 export type CloseData = { decisionId: string; outcome: DecisionOutcome; how: "consenso" | "coordinacion"; by: string };
 
-const CLOSE_TEXT: Record<DecisionOutcome, string> = {
-  aceptada: "Se aceptó la propuesta y la alineación quedó cambiada.",
-  rechazada: "Se rechazó la propuesta; la alineación sigue igual.",
-  realinear: "La objeción prospera: hay que ajustar la alineación.",
-  mantenida: "La objeción no prospera; la alineación se mantiene.",
-  caducada: "La alineación cambió mientras se decidía, así que la propuesta ya no aplica.",
-};
+/**
+ * How a decision ended, of whom and where. An accepted change of wording said «la alineación quedó cambiada» when
+ * what had changed was the text (12 November).
+ */
+function closeSaid(outcome: DecisionOutcome, d: DecisionEventData): string {
+  const of = `de @${d.by}`;
+  const ref = refLabel(d);
+  switch (outcome) {
+    case "aceptada":
+      return editsText(d) ? `Se aceptó la propuesta ${of}: el texto de ${ref} ya está cambiado.` : `Se aceptó la propuesta ${of}: la alineación de ${ref} ya está cambiada.`;
+    case "rechazada":
+      return `No se aceptó la propuesta ${of}; ${ref} queda como estaba.`;
+    case "realinear":
+      return `Se aceptó la objeción ${of}: hay que ajustar la alineación de ${ref}.`;
+    case "mantenida":
+      return `No se aceptó la objeción ${of}; la alineación de ${ref} queda como está.`;
+    case "caducada":
+      return `${ref} cambió mientras se decidía, así que la propuesta ${of} ya no aplica.`;
+  }
+}
 
 export function buildCloseEvent(params: { issue: number; data: DecisionEventData; outcome: DecisionOutcome; how: "consenso" | "coordinacion"; by: string; aligners?: string[] }): Omit<ChatEvent, "schema"> {
-  const who = params.how === "consenso" ? `Decidido por el equipo; @${params.by} confirmó el consenso` : `Decidido por @${params.by}, quien coordina`;
-  const ask = params.outcome === "realinear" && params.aligners?.length ? ` ${params.aligners.map((a) => `@${a}`).join(" ")} por favor ajústenla.` : "";
+  const who = params.how === "consenso" ? `Lo confirmó @${params.by} por el equipo.` : `Lo decidió @${params.by}, que coordina.`;
+  const ask = params.outcome === "realinear" && params.aligners?.length ? ` ${peopleSaid(params.aligners)}, por favor ajústenla.` : "";
   return {
     type: CLOSE_EVENT,
     emitter: "afinacion",
     issue: params.issue,
-    summary: `${who}. ${CLOSE_TEXT[params.outcome]}${ask}`,
+    summary: `${closeSaid(params.outcome, params.data)} ${who}${ask}`,
     // Applying a decision changes the draft under everybody: all of them are told, whoever confirms it apart.
     mentions: toldOf({ ...params.data, aligners: params.aligners ?? params.data.aligners }, params.by),
     data: { decisionId: decisionId(params.data), outcome: params.outcome, how: params.how, by: params.by } satisfies CloseData,
@@ -557,7 +593,8 @@ export const alineacionDecisionType: ChatEventType<DecisionPrepared> = {
   },
   decided(event, resolution) {
     const c = closeData(resolution);
-    return c ? { event, title: resolution.summary, options: [] } : null;
+    const d = alineacionDecisionData(event);
+    return c ? { event, title: d ? decisionTitle(d) : event.summary, options: [] } : null;
   },
   resolves(event) {
     return closeData(event)?.decisionId ?? null;
@@ -568,5 +605,5 @@ registerChatEventType(alineacionDecisionType);
 registerChatEventType({ type: VOTE_EVENT, render: "system", valid: (e) => voteData(e) !== null, title: (e) => e.summary });
 registerChatEventType({ type: EDIT_EVENT, render: "system", title: (e) => e.summary });
 registerChatEventType({ type: WITHDRAW_EVENT, render: "system", valid: (e) => withdrawData(e) !== null, title: (e) => e.summary });
-registerChatEventType({ type: CONSENSUS_EVENT, render: "system", valid: (e) => consensusData(e) !== null, title: (e) => e.summary });
+registerChatEventType({ type: CONSENSUS_EVENT, render: "system", valid: (e) => consensusData(e) !== null, title: (e) => e.summary, until: (e) => consensusData(e)?.decisionId ?? null });
 registerChatEventType({ type: CLOSE_EVENT, render: "system", valid: (e) => closeData(e) !== null, title: (e) => e.summary, resolves: (e) => closeData(e)?.decisionId ?? null });

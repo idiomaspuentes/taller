@@ -46,6 +46,7 @@ import {
   decisionStatuses,
   pendingDecisionIds,
   resolutionsOnCards,
+  staleUntilResolved,
   resolveChatEvent,
   type ResolvedChatEvent,
 } from "../domain/chatEvents/registry";
@@ -82,7 +83,7 @@ import { localizeThread } from "../domain/threadNames";
 import { localizeName } from "../domain/templateNames";
 import { explainError } from "../dcs/userError";
 import { loadPlaceTexts } from "../dcs/placeTexts";
-import { placedMessage } from "../domain/commentPlace";
+import { placedMessage, withoutNamed } from "../domain/commentPlace";
 import { placeName } from "../commentPlaceText";
 import { localized } from "../domain/processes";
 import { PersonPhoto } from "./PersonPhoto";
@@ -397,8 +398,9 @@ function ConversationThread({
   );
   /** A decided card already shows its resolution; its separate line is not repeated. */
   const visible = useMemo(() => {
-    const onCards = resolutionsOnCards(timeline);
-    return onCards.size ? timeline.filter((item) => !onCards.has(item.key)) : timeline;
+    // And a line that only asked for what has since been done («falta que alguien lo confirme») is not shown either.
+    const hidden = new Set([...resolutionsOnCards(timeline), ...staleUntilResolved(timeline)]);
+    return hidden.size ? timeline.filter((item) => !hidden.has(item.key)) : timeline;
   }, [timeline]);
 
   useEffect(() => {
@@ -1210,8 +1212,10 @@ function TimelineRow({
         </>
       );
     }
-    const who = item.author && item.author.toLowerCase() === me.toLowerCase() ? t("cv.you") : item.author;
     const title = item.event.type === "saved" ? t("cv.savedWork") : localizeThread(resolved.title, language);
+    // «@AnerG está de acuerdo… · AnerG»: a line that starts with whoever wrote it does not name them again.
+    const named = Boolean(item.author) && resolved.title.toLowerCase().startsWith(`@${item.author.toLowerCase()} `);
+    const who = !item.author || named ? "" : item.author.toLowerCase() === me.toLowerCase() ? t("cv.you") : item.author;
     const label =
       item.count && item.count > 1 ? t("cv.nTimes").replace("{title}", title).replace("{n}", String(item.count)) : title;
     return (
@@ -1275,7 +1279,7 @@ function TimelineRow({
                 ) : placed ? (
                   <div className="chat-place">{quoted}</div>
                 ) : null}
-                <MessageText text={placed ? placed.text : item.text} />
+                <MessageText text={placed ? withoutNamed(placed.text) : item.text} />
               </div>
               <span className="chat-bubble__meta">
                 {item.pending === "enviando" ? t("cv.sending") : null}
