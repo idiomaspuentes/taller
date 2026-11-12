@@ -23,22 +23,25 @@ export async function loadTeamToday(params: {
 }): Promise<TodayProject[]> {
   const { session, pmOrg, lang, contentOrg } = params;
   const index = await listPmProjects(session, pmOrg, lang);
-  const projects: TodayProject[] = [];
-  for (const row of index) {
-    const [fromDcs, all] = await Promise.all([
-      loadAssignmentsFromDcs(session, pmOrg, lang, row.projectId, contentOrg),
-      listProjectIssues(session, pmOrg, row.projectId).catch(() => null),
-    ]);
-    if (!all) continue;
-    const local = loadLocalAssignments(lang, row.projectId, contentOrg, pmOrg);
-    const board =
-      fromDcs && fromDcs.teams.length
-        ? mergeLocalSolverBindings(fromDcs, local)
-        : local.teams.length
-          ? local
-          : fromDcs ?? emptyAssignments(row.projectId, lang, contentOrg, pmOrg);
-    if (!all.issues.length) continue;
-    projects.push({ projectId: board.projectId || row.projectId, title: board.title || row.title || row.projectId, board, issues: all.issues });
-  }
-  return projects;
+  // Every book at once (Door43 is asked a few pages at a time anyway): one after another, the wait grew with each
+  // book the team had (9 November 2026).
+  const read = await Promise.all(
+    index.map(async (row): Promise<TodayProject | null> => {
+      const [fromDcs, all] = await Promise.all([
+        loadAssignmentsFromDcs(session, pmOrg, lang, row.projectId, contentOrg),
+        listProjectIssues(session, pmOrg, row.projectId).catch(() => null),
+      ]);
+      if (!all) return null;
+      const local = loadLocalAssignments(lang, row.projectId, contentOrg, pmOrg);
+      const board =
+        fromDcs && fromDcs.teams.length
+          ? mergeLocalSolverBindings(fromDcs, local)
+          : local.teams.length
+            ? local
+            : fromDcs ?? emptyAssignments(row.projectId, lang, contentOrg, pmOrg);
+      if (!all.issues.length) return null;
+      return { projectId: board.projectId || row.projectId, title: board.title || row.title || row.projectId, board, issues: all.issues };
+    }),
+  );
+  return read.filter((project): project is TodayProject => project !== null);
 }

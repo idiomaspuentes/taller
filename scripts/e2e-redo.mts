@@ -16,6 +16,10 @@ import type { AssignmentsDoc, InventoryDoc } from "../src/domain/types";
 import { waitBlocks } from "../src/domain/waits";
 import { parseWorkOrderMarker, type WorkOrder } from "../src/domain/workOrder";
 import { applyWorkflowToBoard } from "../src/domain/workflows";
+import { installDoor43Gate } from "../src/dcs/door43Gate";
+
+// As the app does when it starts: a write cuts short what was read before it.
+installDoor43Gate();
 
 const HOST = process.env.MOCK_HOST || "http://localhost:8787";
 const ORG = "es-419_gl";

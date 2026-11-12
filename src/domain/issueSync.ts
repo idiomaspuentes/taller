@@ -7,8 +7,22 @@ type Changed = { number: number; state?: string | null };
 
 /** How far back from the last reading changes are asked for: the two clocks, and what changed while it was read. */
 export const SYNC_SLACK_MS = 10 * 60 * 1000;
-/** Past this, the list is read whole again: what a change cannot tell (a subtarea moved to another book) is put right. */
-export const SYNC_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+/**
+ * A list not brought up to date for this long is read whole again. It was six hours while lists were kept only for a
+ * moment; with each book kept in the device (9 November 2026) that made the first opening of every morning read every
+ * book whole. Three days, as long as «Mis tareas» shows what it kept.
+ */
+export const SYNC_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+/**
+ * However often it is brought up to date, a book is read whole once a week: what a change cannot tell (a subtarea
+ * moved to another book, or deleted) is put right then.
+ */
+export const WHOLE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export const wholeIsRecent = (wholeAt: string | undefined, now: Date = new Date()): boolean => {
+  const read = wholeAt ? Date.parse(wholeAt) : NaN;
+  return Number.isFinite(read) && now.getTime() - read <= WHOLE_MAX_AGE_MS;
+};
 
 export const changesSince = (at: string): string => new Date(Date.parse(at) - SYNC_SLACK_MS).toISOString();
 

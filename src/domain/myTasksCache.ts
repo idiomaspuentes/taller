@@ -2,6 +2,7 @@ import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { MyTasksProjectBucket } from "./myTasks";
 import type { SolversCatalog } from "./solvers";
 import { scopeKey } from "./scope";
+import { deviceStore, type DeviceStore } from "../lib/deviceStore";
 
 /**
  * «Mis tareas» as it was last read, kept in this device: shown at once while it is read again, which takes seconds
@@ -53,7 +54,23 @@ export function slimIssue(issue: DcsIssue): DcsIssue {
 
 type KeptProject = Omit<MyTasksProjectBucket, "openIssues"> & { openIssues?: DcsIssue[]; openSame?: boolean };
 
-export function keepTasks(key: string, value: KeptTasks, storage: Pick<Storage, "setItem"> | undefined = globalThis.localStorage): void {
+/**
+ * Where the list is kept: as text, in IndexedDB. It was in `localStorage` until 9 November 2026, where one big book
+ * (2,5 million characters) filled Safari's 5 MB, and the next write failed without a word.
+ */
+export type KeptStore = { get(key: string): Promise<string | null | undefined>; set(key: string, text: string): Promise<void> };
+export const keptStoreOf = (store: DeviceStore): KeptStore => ({ get: (key) => store.get<string>(key), set: (key, text) => store.set(key, text) });
+
+/** The copy kept in `localStorage` before: taken out, so it no longer fills the space the rest of the app needs. */
+function dropOldCopy(key: string): void {
+  try {
+    globalThis.localStorage?.removeItem(key);
+  } catch {
+    // Not allowed in this window: there was nothing kept there either.
+  }
+}
+
+export async function keepTasks(key: string, value: KeptTasks, storage: KeptStore | undefined = keptStoreOf(deviceStore)): Promise<void> {
   if (!storage) return;
   // A queue that is browsed is its open subtareas too: kept once.
   const projects: KeptProject[] = value.projects.map(({ openIssues, ...bucket }) => {
@@ -63,15 +80,16 @@ export function keepTasks(key: string, value: KeptTasks, storage: Pick<Storage, 
     return { ...bucket, issues, sourceIssues, ...(openIssues ? { openIssues: openIssues.map(slimIssue) } : {}) };
   });
   try {
-    storage.setItem(key, JSON.stringify({ ...value, projects, conflicted: value.conflicted.map(slimIssue), closed: value.closed.map(slimIssue) }));
+    await storage.set(key, JSON.stringify({ ...value, projects, conflicted: value.conflicted.map(slimIssue), closed: value.closed.map(slimIssue) }));
   } catch {
     // Full, or not allowed in this window: the list is simply read every time, as before.
   }
 }
 
-export function keptTasks(key: string, now: Date = new Date(), storage: Pick<Storage, "getItem"> | undefined = globalThis.localStorage): KeptTasks | null {
+export async function keptTasks(key: string, now: Date = new Date(), storage: KeptStore | undefined = keptStoreOf(deviceStore)): Promise<KeptTasks | null> {
+  dropOldCopy(key);
   try {
-    const raw = storage?.getItem(key);
+    const raw = await storage?.get(key);
     if (!raw) return null;
     const kept = JSON.parse(raw) as Omit<KeptTasks, "projects"> & { projects: KeptProject[] };
     if (!kept.at || !Array.isArray(kept.projects) || now.getTime() - Date.parse(kept.at) > KEEP_MS) return null;

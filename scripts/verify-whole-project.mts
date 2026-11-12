@@ -103,13 +103,13 @@ await test("se pide hasta la primera página vacía y no más", () => {
   assert.ok(Math.max(...asked) <= pages + 4, `pidió hasta la página ${Math.max(...asked)}`);
 });
 
-await test("una lista de «Mis tareas» guardada antes del arreglo (con el hueco) no se vuelve a usar", () => {
+await test("una lista de «Mis tareas» guardada antes del arreglo (con el hueco) no se vuelve a usar", async () => {
   const where = { host: session.host, username: "Elisha", pmOrg: ORG, lang: "es-419", contentOrg: ORG, mode: "trabajo" };
   const store = new Map<string, string>();
   const oldKey = `taller-mis-tareas:${[where.host, "elisha", where.pmOrg, where.lang, where.contentOrg, where.mode].join("|")}`;
   store.set(oldKey, JSON.stringify({ at: new Date().toISOString(), projects: [], catalog: {}, conflicted: [], closed: [] }));
   assert.notEqual(keptTasksKey(where), oldKey);
-  assert.equal(keptTasks(keptTasksKey(where), new Date(), { getItem: (k: string) => store.get(k) ?? null }), null);
+  assert.equal(await keptTasks(keptTasksKey(where), new Date(), { get: async (k: string) => store.get(k) ?? null, set: async () => {} }), null);
 });
 
 console.log(`\nverify-whole-project: ${passed} checks passed.`);

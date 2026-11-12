@@ -46,8 +46,11 @@ export const door43Writes = (): number => writes;
 
 const isDoor43 = (url: string): boolean => {
   try {
-    const host = new URL(url).hostname;
-    return host === "door43.org" || host.endsWith(".door43.org");
+    const { hostname: host, pathname } = new URL(url);
+    // The mock Door43 (scripts/mock-door43) too: without it, a write made there did not cut short what was read
+    // before, and the tests against the mock saw a list older than the app would (12 November 2026).
+    const mock = (host === "localhost" || host === "127.0.0.1") && pathname.startsWith("/api/v1/");
+    return mock || host === "door43.org" || host.endsWith(".door43.org");
   } catch {
     return false;
   }
