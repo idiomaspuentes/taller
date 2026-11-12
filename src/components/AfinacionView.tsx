@@ -2671,11 +2671,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             <>
               {/* What is sought, and what it means: here the person had only the original, and had to remember
                   its sense from the step before (11 November, «El resaltador»). */}
-              {fixing ? null : (
-                <button type="button" className="af-back af-back--top" data-guide="af-back" onClick={() => setStudied(false)}>
-                  <ChevronLeft size={16} aria-hidden /> {t(stepProp === "notas" ? "af.backToStudy" : "af.backToStudyTerm")}
-                </button>
-              )}
               <div className="af-seek" data-guide="af-seek">
                 <h2 className="af-heading">{t("af.seekHeading").replace("{res}", stageRes)}</h2>
                 <p className="af-seek__phrase">{withPoint("{x}")}</p>
@@ -2763,6 +2758,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   }}
                 >
                   {t("af.notThere").replace("{res}", stageRes)}
+                </button>
+                {/* The way back with the answers, last and quiet, as every step's (12 November). */}
+                <button type="button" className="af-back af-decide__aside" data-guide="af-back" onClick={() => setStudied(false)}>
+                  <ChevronLeft size={16} aria-hidden /> {t(stepProp === "notas" ? "af.backToStudy" : "af.backToStudyTerm")}
                 </button>
               </div>
               )}

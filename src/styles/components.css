@@ -11797,15 +11797,11 @@ html[data-text] .af--round .af-study-article__go { font-size: calc(0.9375rem * v
  * Marcar as Estudiar (12 November): the way back first, at the left; what more there is folded at the foot of the
  * translation's card, as the verse card's; the answer apart, under a fine line, as the question of Estudiar.
  */
-.af--round .af-work > .af-back--top { margin: 0 0 4px; }
 .af--round .af-work > .af-draft > .af-ref__fold { margin: 4px -18px -16px; padding: 0 18px; }
 .af--round .af-work > .af-draft > .af-ref__extra { margin-top: 4px; }
 .af--round .af-work[data-cols="2"] > .af-decide { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
 
 @media (min-width: 64rem) {
-  /* On a computer the way back heads the left column, over what is sought, not the work on the right. */
-  .af--round .af-work[data-cols="2"] > .af-back--top { grid-column: 1; grid-row: 1; }
-  .af--round .af-work[data-cols="2"]:has(> .af-back--top) > .af-seek { grid-row: 1 / -1; margin-top: 56px; }
 }
 
 /*
