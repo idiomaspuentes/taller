@@ -14,6 +14,7 @@ import { useUiLanguage } from "../i18n/language";
 import { subtaskName } from "../domain/noticeText";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { explainError } from "../dcs/userError";
+import { TeamBooks } from "./BooksPanel";
 
 type Props = {
   session: GtSession;
@@ -177,6 +178,8 @@ export function TeamBoardView({
           })}
         </CardContent>
       </Card>
+      {/* How far each book is in this team's tasks, with what the team did before Taller. */}
+      <TeamBooks session={session} pmOrg={pmOrg} lang={lang} contentOrg={contentOrg} team={orgTeam} />
     </div>
   );
 }

@@ -256,10 +256,12 @@ export function MyTasksView({
       return;
     }
     const keptKey = keptTasksKey({ host: session.host, username: session.username, pmOrg, lang, contentOrg, mode });
-    // Opening the screen: the list as it was last read, at once, while it is read again (seconds, with a big book).
+    // Opening the screen: the list as it was last read, while it is read again (seconds, with a big book). The reading
+    // does not wait for it: each book is kept in the device on its own and brought up to date from there.
+    let readNow = false;
     if (!shownOnce.current) {
-      const kept = keptTasks(keptKey);
-      if (kept) {
+      void keptTasks(keptKey).then((kept) => {
+        if (!kept || readNow || mine !== reading.current) return;
         setProjects(kept.projects);
         setConflictIssues(kept.conflicted);
         setClosedIssues(kept.closed);
@@ -267,8 +269,7 @@ export function MyTasksView({
         setReadAt(new Date(kept.at));
         setStale(true);
         setLoaded(true);
-        lastRead.current = { at: kept.at, projects: kept.projects };
-      }
+      });
     }
     shownOnce.current = true;
     // The open subtareas of each project, to bring up to date with what changed since they were read.
@@ -286,6 +287,7 @@ export function MyTasksView({
         listMyConflictIssues(session, pmOrg).catch(() => [] as DcsIssue[]),
         mode === "lista" ? listMyClosedIssues(session, pmOrg).catch(() => [] as DcsIssue[]) : Promise.resolve([] as DcsIssue[]),
       ]);
+      readNow = true;
       if (mine !== reading.current) return;
       setProjects(nextProjects);
       setConflictIssues(conflicted);
@@ -296,7 +298,7 @@ export function MyTasksView({
       setReadAt(startedAt);
       setStale(false);
       lastRead.current = { at, projects: nextProjects };
-      keepTasks(keptKey, { at, projects: nextProjects, catalog, conflicted, closed });
+      void keepTasks(keptKey, { at, projects: nextProjects, catalog, conflicted, closed });
     } catch (err) {
       if (mine === reading.current) setError(explainError(err));
     } finally {

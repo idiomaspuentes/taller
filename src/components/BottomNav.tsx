@@ -3,11 +3,14 @@ import { useT, type MessageKey } from "../i18n/messages";
 
 export type BottomNavId = "mis-tareas" | "avisos" | "hoy" | "proyectos" | "perfil";
 
+/** Who the navigation is for: whoever manages, whoever coordinates a team (without managing), or the team. */
+export type NavRole = "manage" | "coordinate" | "team";
+
 type Props = {
   active: BottomNavId | null;
   attentionCount: number;
-  /** People who coordinate start from the team and have projects at hand; the rest from their tasks. */
-  coordinator: boolean;
+  /** People who manage start from the team and have projects at hand; whoever coordinates a team has its day too. */
+  role: NavRole;
   onSelect: (id: BottomNavId) => void;
 };
 
@@ -26,16 +29,26 @@ const COORDINATION: Item[] = [
   { id: "proyectos", label: "nav.projects", Icon: FolderKanban },
 ];
 
-/** Phone navigation: the four places a person goes every day, by role. Hidden on wide screens. */
-export function itemsFor(coordinator: boolean): BottomNavId[] {
-  return (coordinator ? COORDINATION : TEAM).map((item) => item.id);
+/** Whoever coordinates a team: their tasks first, as anybody in the team, and the day of their team beside them. */
+const TEAM_COORDINATION: Item[] = [
+  { id: "mis-tareas", label: "nav.myTasks", Icon: ListChecks },
+  { id: "hoy", label: "nav.teamToday", Icon: Users },
+  { id: "avisos", label: "nav.alerts", Icon: Bell },
+  { id: "perfil", label: "nav.me", Icon: UserRound },
+];
+
+const ITEMS: Record<NavRole, Item[]> = { manage: COORDINATION, coordinate: TEAM_COORDINATION, team: TEAM };
+
+/** Phone navigation: the places a person goes every day, by role. Hidden on wide screens. */
+export function itemsFor(role: NavRole): BottomNavId[] {
+  return ITEMS[role].map((item) => item.id);
 }
 
-export function BottomNav({ active, attentionCount, coordinator, onSelect }: Props) {
+export function BottomNav({ active, attentionCount, role, onSelect }: Props) {
   const t = useT();
   return (
     <nav className="bottom-nav" aria-label={t("nav.main")}>
-      {(coordinator ? COORDINATION : TEAM).map(({ id, label: labelKey, Icon }) => {
+      {ITEMS[role].map(({ id, label: labelKey, Icon }) => {
         const label = t(labelKey);
         return (
           <button

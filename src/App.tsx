@@ -78,7 +78,7 @@ import { AfinacionView } from "./components/AfinacionView";
 import { WordPickerTryout } from "./components/WordPickerTryout";
 import { AlineacionView } from "./components/AlineacionView";
 import { TeamTodayView } from "./components/TeamTodayView";
-import { itemsFor, BottomNav, type BottomNavId } from "./components/BottomNav";
+import { itemsFor, BottomNav, type BottomNavId, type NavRole } from "./components/BottomNav";
 import { MyTasksView } from "./components/MyTasksView";
 import { ConflictSandboxView } from "./components/ConflictSandboxView";
 import { ConversationView } from "./components/ConversationView";
@@ -325,11 +325,17 @@ export function App() {
   const announce = useCallback((msg: string) => setLive(msg), []);
   /** Real DCS capability — role-toggle visibility and never elevated by preview. */
   const canManage = Boolean(session?.canManage);
+  /** The org teams this person coordinates (`config.json`), read with the roles. */
+  const [coordinates, setCoordinates] = useState<string[]>([]);
   /** UI gates / nav / landing — demoted when admin previews trabajador. */
   // Seeing the app «as a person of the team» is for testing (development or a test server), not a choice for people.
   const canPreview = canManage && (Boolean(import.meta.env.DEV) || Boolean(session && !isProductionHost(session.host)));
   const roleView: ViewMode = canPreview ? viewMode : "gestor";
   const effectiveCanManage = computeEffectiveCanManage(canManage, roleView);
+  // «Equipo hoy»: whoever manages sees all of it; whoever coordinates a team, the work of that team.
+  const coordinating = !effectiveCanManage && coordinates.length > 0;
+  const canSeeToday = effectiveCanManage || coordinating;
+  const navRole: NavRole = effectiveCanManage ? "manage" : coordinating ? "coordinate" : "team";
   const showQaAdmin = canShowQaAdmin({ host: session?.host, canManage, viewMode: roleView });
   const myTasksActive =
     route.name === "mis-tareas" || route.name === "conversacion" || route.name === "propuestas" || route.name === "conflicto-prueba" || route.name === "equipo";
@@ -409,6 +415,10 @@ export function App() {
     if (!current?.token || !org) return;
     try {
       const config = await loadPmConfig(current, org);
+      // The teams this person coordinates (`config.json`): whoever coordinates sees how their team's work goes.
+      const me = current.username.trim().toLowerCase();
+      const mine = Object.entries(config.coordinators ?? {}).filter(([, who]) => who.includes(me)).map(([team]) => team).sort();
+      setCoordinates((prev) => (prev.join("|") === mine.join("|") ? prev : mine));
       const enriched = await enrichSessionRoles(current, org, config.managerTeam);
       if (pmOrgNow.current !== org) return;
       setSession((prev) => {
@@ -448,10 +458,10 @@ export function App() {
   // Kick managers out of manager-only routes while previewing trabajador.
   useEffect(() => {
     if (!canManage || roleView !== "trabajador") return;
-    if (route.name === "hoy" || route.name === "sugerencias" || route.name === "proyectos" || route.name === "proyecto") {
+    if ((route.name === "hoy" && !coordinating) || route.name === "sugerencias" || route.name === "proyectos" || route.name === "proyecto") {
       navigate({ name: "mis-tareas" });
     }
-  }, [canManage, roleView, route.name, navigate]);
+  }, [canManage, roleView, route.name, navigate, coordinating]);
 
   // Sync workspace project id from route (`projectId` may be a book code today).
   useEffect(() => {
@@ -1297,6 +1307,10 @@ export function App() {
                     },
                   ]
                 : [
+                    // Whoever coordinates a team, without managing, also has its «Equipo hoy».
+                    ...(coordinating
+                      ? [{ id: "hoy", label: t("nav.teamToday"), active: route.name === "hoy", onSelect: () => navigate({ name: "hoy" }) }]
+                      : []),
                     {
                       id: "mis-tareas",
                       label: t("nav.myTasks"),
@@ -1411,7 +1425,7 @@ export function App() {
           </Alert>
         ) : null}
 
-        {route.name === "hoy" && session && effectiveCanManage ? (
+        {route.name === "hoy" && session && canSeeToday ? (
           <TeamTodayView
             session={session}
             pmOrg={pmOrg}
@@ -1419,7 +1433,8 @@ export function App() {
             contentOrg={contentOrg}
             announce={announce}
             onOpenThread={(issue) => navigate({ name: "conversacion", issue })}
-            onOpenSuggestions={() => navigate({ name: "sugerencias" })}
+            onOpenSuggestions={effectiveCanManage ? () => navigate({ name: "sugerencias" }) : undefined}
+            teams={effectiveCanManage ? undefined : coordinates}
           />
         ) : null}
         {route.name === "sugerencias" && session && effectiveCanManage ? (
@@ -1846,9 +1861,9 @@ export function App() {
 
       {session && BOTTOM_NAV_ROUTES.includes(route.name) ? (
         <BottomNav
-          active={(itemsFor(effectiveCanManage) as string[]).includes(route.name) ? (route.name as BottomNavId) : null}
+          active={(itemsFor(navRole) as string[]).includes(route.name) ? (route.name as BottomNavId) : null}
           attentionCount={attentionTotal}
-          coordinator={effectiveCanManage}
+          role={navRole}
           onSelect={(id) => navigate({ name: id })}
         />
       ) : null}

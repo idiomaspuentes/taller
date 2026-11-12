@@ -96,9 +96,57 @@ async function rosterApi(api, req, res, user) {
 let counter = 0;
 const nextSha = () => `sha${String(++counter).padStart(6, "0")}`;
 const json = (res, body, status = 200, headers = {}) => {
+  const text = JSON.stringify(body);
   res.writeHead(status, { "content-type": "application/json", ...headers });
-  res.end(JSON.stringify(body));
+  res.end(text);
+  if (res.statsKey) countRequest(res.statsKey, Buffer.byteLength(text));
 };
+
+/**
+ * How much the app asks: requests and bytes per kind of request since the last `POST /__mock/stats/reset`
+ * (`GET /__mock/stats`). To measure a screen: reset, open it, read.
+ */
+let stats = new Map();
+/** When the first request counted arrived and the last one was answered: how long the screen kept Door43 busy. */
+let statsSpan = { first: 0, last: 0 };
+function countRequest(key, bytes) {
+  const row = stats.get(key) ?? { requests: 0, bytes: 0 };
+  row.requests += 1;
+  row.bytes += bytes;
+  stats.set(key, row);
+  statsSpan.last = Date.now();
+}
+/** A request named by its kind: numbers and names left out, so every subtarea's comments count as one kind. */
+const statsKeyOf = (method, path) =>
+  `${method} ${path
+    .replace(/^\/api\/v1/, "")
+    .replace(/\/repos\/[^/]+\/[^/]+\//, "/repos/{repo}/")
+    .replace(/\/\d+(?=\/|$)/g, "/{n}")
+    .replace(/\/contents\/.*$/, "/contents/{path}")
+    .replace(/\/(raw|media)\/.*$/, "/$1/{path}")}`;
+
+/**
+ * MOCK_LATENCY_MS: every API answer waits this long, as a real server does (Door43 answers a page of 50 subtareas in
+ * about a second when nothing else is asked). MOCK_LIST_LATENCY_MS: lists of subtareas wait this instead.
+ */
+const LATENCY_MS = Number(process.env.MOCK_LATENCY_MS || 0);
+const LIST_LATENCY_MS = Number(process.env.MOCK_LIST_LATENCY_MS || LATENCY_MS);
+
+/** The most a page can hold: 500 in Door43 (`/settings/api`, November 2026). MOCK_MAX_ITEMS=50 is a stock Gitea. */
+const MAX_ITEMS = Number(process.env.MOCK_MAX_ITEMS || 500);
+
+/** A page of a list, as Door43 gives it: `limit` per page (MAX_ITEMS at most), from page 1. */
+function pageOf(list, url) {
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 30), 1), MAX_ITEMS);
+  const page = Math.max(Number(url.searchParams.get("page") || 1), 1);
+  return list.slice((page - 1) * limit, page * limit);
+}
+/** Only what changed at or after `since`, newest first, as Door43 sorts a search. */
+function sinceOf(list, url) {
+  const since = Date.parse(url.searchParams.get("since") || "");
+  const kept = Number.isFinite(since) ? list.filter((issue) => Date.parse(issue.updated_at) >= since) : list;
+  return [...kept].sort((a, b) => b.number - a.number);
+}
 
 /** repos: "owner/name" → { defaultBranch, branches: Map<branch, Map<path, {text, sha}>> } */
 let repos;
@@ -454,8 +502,36 @@ async function tokenApi(req, res, login, id) {
   return json(res, { message: "mock: no such token" }, 404);
 }
 
+/**
+ * MOCK_FULL_ISSUES=1: each subtarea comes with everything Door43 puts in it (the whole person, each label and the
+ * milestone in full, the repository), so the bytes counted are close to the real ones. A subtarea of Door43 is about
+ * 2.5 KB before its own text.
+ */
+const FULL_ISSUES = process.env.MOCK_FULL_ISSUES === "1";
+const fullUser = (u) =>
+  u && {
+    id: u.id, login: u.login, login_name: "", source_id: 0, full_name: u.full_name ?? u.login, email: `${u.login}@noreply.door43.org`,
+    avatar_url: `https://git.door43.org/avatars/${createHash("md5").update(u.login).digest("hex")}`, html_url: `https://git.door43.org/${u.login}`,
+    language: "es-ES", is_admin: false, last_login: "2026-11-06T13:00:00Z", created: "2024-02-01T10:00:00Z", restricted: false, active: true,
+    prohibit_login: false, location: "", website: "", description: "", visibility: "public", followers_count: 0, following_count: 0,
+    starred_repos_count: 0, username: u.login,
+  };
+function fullIssue(issue) {
+  const repo = { id: 77, name: "taller", owner: PM_ORG, full_name: `${PM_ORG}/taller` };
+  return {
+    ...issue,
+    url: `https://git.door43.org/api/v1/repos/${PM_ORG}/taller/issues/${issue.number}`,
+    user: fullUser(USERS["token-ana"] ?? Object.values(USERS)[0]), original_author: "", original_author_id: 0, ref: "", assets: [],
+    labels: issue.labels.map((l) => ({ id: l.id, name: l.name, exclusive: false, is_archived: false, color: l.color || "0075ca", description: "", url: `https://git.door43.org/api/v1/repos/${PM_ORG}/taller/labels/${l.id}` })),
+    milestone: issue.milestone && { id: issue.milestone.id, title: issue.milestone.title, description: "", state: "open", open_issues: 0, closed_issues: 0, created_at: "2026-11-01T10:00:00Z", updated_at: issue.updated_at, closed_at: null, due_on: null },
+    assignee: fullUser(issue.assignee), assignees: (issue.assignees ?? []).map(fullUser),
+    is_locked: false, closed_at: issue.closed_at ?? null, due_date: null, pull_request: null, repository: repo, pin_order: 0,
+  };
+}
+
 function issueView(issue) {
-  return { ...issue, comments: (comments.get(issue.number) || []).length, html_url: `http://localhost:${PORT}/${PM_ORG}/taller/issues/${issue.number}` };
+  const view = { ...issue, comments: (comments.get(issue.number) || []).length, html_url: `http://localhost:${PORT}/${PM_ORG}/taller/issues/${issue.number}` };
+  return FULL_ISSUES ? fullIssue(view) : view;
 }
 
 async function handle(req, res) {
@@ -474,6 +550,16 @@ async function handle(req, res) {
     return json(res, { ok: true });
   }
   if (p === "/__mock/log") return json(res, log);
+  if (p === "/__mock/stats/reset" && req.method === "POST") {
+    stats = new Map();
+    statsSpan = { first: 0, last: 0 };
+    return json(res, { ok: true });
+  }
+  if (p === "/__mock/stats") {
+    const rows = [...stats].map(([kind, row]) => ({ kind, ...row })).sort((a, b) => b.requests - a.requests);
+    const total = rows.reduce((sum, row) => ({ requests: sum.requests + row.requests, bytes: sum.bytes + row.bytes }), { requests: 0, bytes: 0 });
+    return json(res, { total: { ...total, busyMs: statsSpan.first ? statsSpan.last - statsSpan.first : 0 }, rows });
+  }
   if (p === "/__mock/dump") {
     const plain = (map) => [...map].map(([branch, files]) => [branch, [...files]]);
     return json(res, {
@@ -504,6 +590,11 @@ async function handle(req, res) {
 
   const api = p.startsWith("/api/v1") ? p.slice("/api/v1".length) : null;
   if (api === null) return json(res, { message: "not an api path" }, 404);
+  res.statsKey = statsKeyOf(req.method, p);
+  if (!statsSpan.first) statsSpan.first = Date.now();
+  const isList = req.method === "GET" && (api === "/repos/issues/search" || /\/issues$/.test(api));
+  const wait = isList ? LIST_LATENCY_MS : LATENCY_MS;
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
 
   // Public unfoldingWord texts: read from the real QA, read only.
   const repoMatch = /^\/repos\/([^/]+)\/([^/]+)(?:\/(.*))?$/.exec(api);
@@ -514,6 +605,7 @@ async function handle(req, res) {
 
   const tokensMatch = /^\/users\/([^/]+)\/tokens(?:\/(\d+))?$/.exec(api);
   if (tokensMatch) return tokenApi(req, res, decodeURIComponent(tokensMatch[1]), tokensMatch[2] === undefined ? undefined : Number(tokensMatch[2]));
+  if (api === "/settings/api") return json(res, { max_response_items: MAX_ITEMS, default_paging_num: 30 });
   if (api === "/user") return user ? json(res, { ...user, avatar_url: "" }) : json(res, { message: "token is required" }, 401);
   if (ROSTER) {
     const answered = await rosterApi(api, req, res, user);
@@ -571,7 +663,9 @@ async function handle(req, res) {
     if (wantedMilestones.length) list = list.filter((i) => i.milestone && wantedMilestones.includes(i.milestone.title));
     const wantedLabels = (url.searchParams.get("labels") || "").split(",").map((x) => x.trim()).filter(Boolean);
     if (wantedLabels.length) list = list.filter((i) => !i.labels.length || wantedLabels.every((name) => i.labels.some((l) => l.name === name)));
-    return json(res, Number(url.searchParams.get("page") || 1) > 1 ? [] : list.map(issueView), 200, { "x-total-count": String(list.length) });
+    // Paged and with «since», like Door43, so the number of requests a screen makes is the real one.
+    list = sinceOf(list, url);
+    return json(res, pageOf(list, url).map(issueView), 200, { "x-total-count": String(list.length) });
   }
 
   if (repoMatch) {
@@ -904,7 +998,11 @@ async function handle(req, res) {
         }
         if (kind === "labels") return json(res, issue.labels);
       }
-      if (rest === "issues" && req.method === "GET") return json(res, issues.map(issueView));
+      if (rest === "issues" && req.method === "GET") {
+        const state = url.searchParams.get("state") || "open";
+        const list = sinceOf(issues.filter((i) => state === "all" || i.state === state), url);
+        return json(res, pageOf(list, url).map(issueView), 200, { "x-total-count": String(list.length) });
+      }
       if (rest === "issues" && req.method === "POST") {
         if (!user) return json(res, { message: "token is required" }, 401);
         const body = await readBody(req);
