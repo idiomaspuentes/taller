@@ -2766,23 +2766,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
             // Step 3 of 3, as what it is: the team talking about this point, each with their face and their words. A
             // disagreement is one more message somebody answers, the most harmless thing to see (Abel, 11 November).
             <>
-              {/* The way back to the words first, at the left, as in Marcar: in a row of the card, at its right beside
-                  «TPL hoy», it read as part of what is judged (12 November). */}
-              {needsWords ? null : (
-                <button
-                  type="button"
-                  className="af-back af-back--top"
-                  data-guide="af-change"
-                  onClick={() => {
-                    // Other words for an answer given are a change of it: the answer is asked again after them.
-                    if (mine) setChanging(true);
-                    setConfirmed(false);
-                    window.setTimeout(() => document.querySelector(".af-draft__words")?.scrollIntoView({ block: "center" }), 80);
-                  }}
-                >
-                  <ChevronLeft size={16} aria-hidden /> {t("af.changeTheWords")}
-                </button>
-              )}
               {/* What is judged, small and first, in reading order as the cards before: the original with what is
                   highlighted, a fine line, the name of the translation's verse and the verse with the words chosen.
                   The chapter, folded at the foot. */}
@@ -3023,6 +3006,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                       <Check size={16} aria-hidden /> {t(alike.length === 1 ? "af.alikeOne" : "af.alikeMany").replace("{n}", String(alike.length))}
                     </Button>
                   ) : null}
+                  {needsWords ? null : (
+                    <button
+                      type="button"
+                      className="af-back af-decide__aside"
+                      data-guide="af-change"
+                      onClick={() => {
+                        // Other words for an answer given are a change of it: the answer is asked again after them.
+                        if (mine) setChanging(true);
+                        setConfirmed(false);
+                        window.setTimeout(() => document.querySelector(".af-draft__words")?.scrollIntoView({ block: "center" }), 80);
+                      }}
+                    >
+                      <ChevronLeft size={16} aria-hidden /> {t("af.changeTheWords")}
+                    </button>
+                  )}
                   {needsWords || changing || reopened ? (
                     <button
                       type="button"

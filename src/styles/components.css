@@ -11817,8 +11817,6 @@ html[data-text] .af--round .af-study-article__go { font-size: calc(0.9375rem * v
 .af--round .af-work > .af-pin > .af-ref__extra { margin-top: 4px; }
 .af--round .af-work[data-cols="3"] > .af-q { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
 @media (min-width: 64rem) {
-  .af--round .af-work[data-cols="3"] > .af-back--top { grid-column: 1; grid-row: 1; }
-  .af--round .af-work[data-cols="3"]:has(> .af-back--top) > .af-pin { margin-top: 56px; }
   /* On a computer the question heads the right column: no line over it. */
   .af--round .af-work[data-cols="3"] > .af-q { margin-top: 0; padding-top: 0; border-top: 0; }
 }
