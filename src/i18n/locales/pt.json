@@ -2374,6 +2374,7 @@
   "stage.go": "Continuar",
   "stage.stepTitle": "Passo {n} · {name}",
   "af.moreToSee": "Mais para ver",
+  "af.verseIn": "Ver o versículo em",
   "af.langHebrew": "Hebraico",
   "af.langGreek": "Grego",
   "af.askNotasTpl": "O TPL conserva a forma do {orig}?",

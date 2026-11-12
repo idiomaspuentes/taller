@@ -1664,6 +1664,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
         <div className="af-ref" data-guide="af-ref" data-words={wordsOn ? "on" : undefined}>
           {/* No line saying that the words of the original open their meaning: their dotted underline says it, and the
               line was one more thing to read before the verse (19 October). */}
+          {/* Another text than the original says its name: chosen down under «Más para ver», the verse changed here
+              without saying in which text it now reads. */}
+          {reference && reference.id !== "orig" ? <span className="af-gloss__name">{refName(reference)}</span> : null}
           <span className={reference?.id === "orig" ? "af-orig" : undefined} lang={reference?.id === "orig" ? "grc" : undefined}>
             {reference?.id === "orig" ? (
               <OriginalWords text={refVerse} words={data.originalWords[`${item.chapter}:${item.verse}`]} marked={refMarked} only={refExcerpt ?? undefined} onOpen={(word) => setSheetWord({ word, chapter: item.chapter, verse: item.verse })} />
@@ -1697,10 +1700,12 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
       <details key={`${item.id}-${n}`} className="af-more" data-guide="af-more">
         <summary className="af-see">
           <Eye size={16} aria-hidden /> {t("af.moreToSee")}
+          <ChevronDown size={18} aria-hidden className="af-more__chev" />
         </summary>
         <div className="af-more__body">
           {n === 1 && data.references.length > 1 ? (
             <div className="af-more__row">
+              <span className="af-more__lbl">{t("af.verseIn")}</span>
               <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
                 {data.references.map((row) => (
                   <button
@@ -1711,6 +1716,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                     onClick={() => {
                       setRefText(row.id);
                       if (row.id !== reference?.id) guideDid("af:ref-tab");
+                      document.querySelector(".af-work > .af-ref")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
                     }}
                   >
                     {refName(row)}

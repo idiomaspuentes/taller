@@ -11654,7 +11654,7 @@ html[data-text] .af--round .af-work[data-cols="1"] .af-about__links .af-link { f
 /* What more there is: a quiet row under the cards; open, its own soft ground, apart from the question. */
 .af--round .af-work[data-cols="1"] > .af-more { margin-top: 16px; }
 .af--round .af-more > summary { font-weight: 600; }
-.af--round .af-more[open] > .af-more__body { gap: 8px; margin-top: 4px; padding: 12px; border-radius: var(--radius-lg); background: var(--surface-muted); }
+
 .af--round .af-more .af-see { font-weight: 600; }
 .af--round .af-more .af-ref__texts button { font-size: 0.9375rem; }
 html[data-text] .af--round .af-more .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }
@@ -11665,3 +11665,21 @@ html[data-text] .af--round .af-work[data-cols="1"] > .af-decide .btn { font-size
 @media (min-width: 64rem) {
   .af--round .af-work[data-cols="1"] > .af-study-help { margin-top: 0; }
 }
+
+/*
+ * «Más para ver», open: a white card of rows, as the cards above it (11 November). On a grey ground of its own, the
+ * tabs floated with nothing saying what they change, and the box looked like nothing else on the screen.
+ */
+.af--round .af-more > summary { display: flex; align-items: center; gap: 6px; }
+.af--round .af-more__chev { transition: transform 0.15s; }
+.af--round .af-more[open] .af-more__chev { transform: rotate(180deg); }
+.af--round .af-work > .af-more[open] > .af-more__body { display: grid; justify-items: stretch; gap: 0; margin-top: 8px; padding: 0 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.af--round .af-work > .af-more > .af-more__body > * { min-height: 52px; margin: 0; padding-block: 4px; }
+.af--round .af-work > .af-more > .af-more__body > * + * { border-top: 1px solid var(--border); }
+.af--round .af-work > .af-more .af-more__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-block: 10px; }
+.af--round .af-more__lbl { font-size: 1rem; font-weight: 600; color: var(--text); }
+.af--round .af-work > .af-more > .af-more__body > .af-see { justify-content: flex-start; width: 100%; }
+html[data-text] .af--round .af-more__lbl { font-size: calc(1rem * var(--ts)); }
+@media (prefers-reduced-motion: reduce) { .af--round .af-more__chev { transition: none; } }
+/* Brought into sight under the header that stays on top, not behind it. */
+.af--round .af-work > .af-ref { scroll-margin-top: 5rem; }
