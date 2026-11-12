@@ -11737,8 +11737,18 @@ html[data-text] .af--round .af-ref__links > .af-see,
 html[data-text] .af--round .af-ref__links > .se-parallel { font-size: calc(0.9375rem * var(--ts)); }
 
 /* The chapter sheet opens with «‹ Volver» at its left, as a page does; no cross in the corner (11 November). */
-.af-pair-sheet .fx-head { padding-inline: 8px 16px; }
+.af-pair-sheet .fx-head { padding-inline: 12px; }
 .af-pair-back { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 12px 0 4px; border: 0; border-radius: 999px; background: none; color: var(--text); font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
 .af-pair-back:hover { background: var(--gray-50); }
 .af-pair-back:focus-visible { outline: 2px solid var(--accent-700); outline-offset: 2px; }
 html[data-text] .af-pair-back { font-size: calc(1rem * var(--ts)); }
+
+/*
+ * The chapter sheet's bar in three places (11 November): «Volver» at the left, the texts in the middle, «Más» at the
+ * right. The texts sat right after «Volver», and the bar looked out of order. The menu opens under its own button.
+ */
+.af-pair-sheet .fx-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.af-pair-sheet .fx-head > .af-pair-back { justify-self: start; }
+.af-pair-sheet .af-pair-bar { display: contents; }
+.af-pair-sheet .af-pair-bar > .af-ref__texts { justify-self: center; }
+.af-pair-sheet .af-pair-bar > .mm { position: relative; justify-self: end; }
