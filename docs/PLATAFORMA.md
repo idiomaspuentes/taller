@@ -396,6 +396,73 @@ Lo que hay que saber al leerlo:
   subtareas terminadas y el calendario sí alcanzan hacia atrás.
 - Todos los pasos de una subtarea valen lo mismo, aunque uno sea de cinco minutos y otro de horas.
 
+## Libros y lo hecho fuera de Taller
+
+*12 de noviembre de 2026.* Quien coordina y quien administra quieren ver cómo va **cada libro**, también lo que se
+hizo antes de que existiera Taller: Tito ya está publicado, Efesios se trae a medias, Ester y Esdras se migraron,
+Nehemías empezó aquí. Las subtareas son solo para el trabajo que se hace en Taller; lo de antes no se convierte en
+subtareas.
+
+**El registro.** Un archivo por espacio en el repositorio del plan, junto al índice de proyectos:
+`es-419/fuera-de-taller.json` (con la carpeta del espacio delante en un espacio con alcance, `scope.ts`). Por libro
+dice de dónde vino el trabajo, cuándo, y por cada tarea del proceso (los ids del paquete) los capítulos hechos, o
+`"todo"`:
+
+```json
+{ "schema": "taller-fuera-1", "process": "fcr-base",
+  "books": {
+    "TIT": { "from": "publicado", "at": "2026-08-11", "tasks": "todo" },
+    "EPH": { "from": "translationCore", "at": "2026-11-12",
+             "tasks": { "notas-ayuda": "todo", "preguntas-ayuda": [1, 2, 3] } } } }
+```
+
+**Cómo se genera.** `npm run done-elsewhere:draft -- TIT RUT JON 3JN EPH --out borrador.json` lee Door43 (solo
+lectura) y escribe un borrador:
+
+- un libro que está en la última versión publicada de cada texto y ayuda del proceso, y entero en la rama principal,
+  queda con todas sus tareas hechas;
+- si no, los capítulos con texto de cada recurso van a la tarea que lo traduce (la primera del proceso que trabaja
+  con él);
+- lo que el contenido no prueba (alinear, armonizar, validar) se agrega a mano;
+- un libro con proyecto en Taller se deja fuera: sus subtareas ya dicen lo hecho. Ester y Esdras se trajeron como
+  subtareas cerradas con la marca `brought`, y Ester, publicada hace años, se está haciendo otra vez.
+
+Se corrige el borrador y se guarda con `--save borrador.json` y `DCS_TOKEN`. Es una escritura en Door43: en
+producción, solo con el visto bueno de quien administra.
+
+**Cómo se cuenta** (`src/domain/bookStanding.ts`, prueba: `npm run verify:books-standing`). Cada tarea del libro vale
+lo mismo, y dentro de una tarea cada capítulo vale lo mismo.
+
+- Un capítulo del registro está hecho. Los demás valen la media de sus subtareas, como las cuenta `workProgress.ts`.
+  Un capítulo nunca se cuenta dos veces.
+- Una tarea con subtareas se mide solo por los capítulos que tienen alguna. Así las tareas de artículos (Palabras,
+  Academia) no quedan a medias para siempre.
+- Una tarea sin subtareas y sin registro tiene todo por hacer.
+- Lo del registro y lo traído (`brought`) es «antes de Taller»: cuenta para el avance, nunca para el ritmo.
+- Un libro sin proyecto se mide con las tareas del proceso que nombra el registro. Cada tarea lleva el equipo que
+  tiene en los proyectos del espacio.
+
+Esto mide el libro, no las subtareas: «Avance» de un proyecto cuenta sus subtareas, todas iguales, y puede dar otro
+número.
+
+**Qué muestra cada panel.**
+
+- **Quien administra** (Owner o `managers`): «Equipo hoy» empieza con «Libros». Salen todos los libros del espacio:
+  primero los que se trabajan en Taller (en el orden de «Proyectos»), después los que faltan traer, los pausados y
+  los terminados.
+  - Cada libro trae una barra y una línea: «Publicado antes de Taller», el ritmo, «En pausa», o «45 % se hizo antes
+    de Taller».
+  - Al tocar un libro se abren sus fases y tareas.
+- **Quien coordina un equipo sin administrar** (`coordinators` en `config.json`): también tiene «Equipo hoy», en la
+  barra y en el menú. Ve las tareas de su equipo: sus libros, sus subtareas y su gente. Puede recordar, pero no
+  reasignar.
+- **«Mi equipo»** (`#/equipo/<equipo>`): «Libros» plegado, con el avance de ese equipo.
+
+**El índice de proyectos** (`es-419/projects.json`) se escribía con lo que conocía el aparato. El 6 de noviembre,
+crear Nehemías desde un aparato que solo lo conocía a él borró a Ester y Esdras del índice, y dejaron de salir en
+«Equipo hoy». Desde ahora, guardar el índice suma a lo que tiene Door43 (`mergeProjectsIndex`). Leerlo junta el
+índice con las carpetas del repositorio, así que un índice incompleto ya no esconde ningún libro.
+
 ## Cómo se escribe el texto bíblico
 
 Un libro es un archivo USFM y cada guardado lo escribe entero. Lo que no se tocó tiene que quedar

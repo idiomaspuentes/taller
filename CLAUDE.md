@@ -53,6 +53,7 @@ Sin sesión de Cloudflare ni acceso al Door43 real: se trabaja con el mock (`npm
 | La alineación y sus decisiones | `docs/AFINACION_PROXIMOS_PASOS.md` |
 | Cómo se escribe el USFM (formato, poesía, lo que no se toca) | `docs/PLATAFORMA.md` («Cómo se escribe el texto bíblico»), `npm run verify:usfm-poetry` |
 | Cómo se escriben las notas, las preguntas y los artículos | `docs/PLATAFORMA.md` («Cómo se escriben las ayudas»), `npm run verify:helps-table`, `verify:help-markup` |
+| Cómo va cada libro, y lo hecho antes de Taller (`fuera-de-taller.json`) | `docs/PLATAFORMA.md` («Libros y lo hecho fuera de Taller»), `npm run verify:books-standing` |
 | Avisos con la app cerrada | `push-worker/README.md` |
 | Cambiar la bienvenida, los equipos, los idiomas | `docs/CONFIGURACION.md` |
 | Crear o cambiar un proyecto o una plantilla (pantallas, editor, borrador) | `docs/PROYECTOS.md` |

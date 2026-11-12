@@ -1215,6 +1215,17 @@ export function normalizeProjectsIndex(raw: unknown): ProjectIndexEntry[] {
   return out.sort((a, b) => a.title.localeCompare(b.title, "es"));
 }
 
+/**
+ * The index of projects with these added, over the one Door43 has. Written from what one device knew, the index lost
+ * every project that device had not seen: on 6 November 2026 Nehemiah was created from a device that knew only it,
+ * and Esther and Ezra vanished from «Equipo hoy».
+ */
+export function mergeProjectsIndex(remote: ProjectIndexEntry[], added: ProjectIndexEntry[]): ProjectIndexEntry[] {
+  const byId = new Map<string, ProjectIndexEntry>();
+  for (const entry of [...normalizeProjectsIndex(remote), ...normalizeProjectsIndex(added)]) byId.set(entry.projectId, entry);
+  return [...byId.values()].sort((a, b) => a.projectId.localeCompare(b.projectId));
+}
+
 /** Upsert project meta into the local index (and return the next list). */
 export function upsertLocalProjectIndex(
   lang: string,

@@ -4,12 +4,15 @@ import type { GtSession } from "../dcs/auth";
 import { useHeatmaps } from "../dcs/activity";
 import { commentOnIssue, loadPmConfig, reassignIssue } from "../dcs/issues";
 import { remindDecisionVoters } from "../dcs/alignmentDecisionStore";
-import { loadTeamToday, type TodayProject } from "../dcs/teamToday";
+import { loadDoneElsewhere, loadTeamToday, type TodayProject } from "../dcs/teamToday";
 import { mergePeople, peopleWork, type HeatSlot } from "../domain/activity";
 import { whileOpen } from "../domain/commentPlace";
-import { endDateText, paceNumber, paceOf, PACE_WEEKS } from "../domain/pace";
+import { spaceBooks } from "../domain/bookStanding";
+import type { DoneElsewhereDoc } from "../domain/doneElsewhere";
+import { issueTaskId } from "../domain/myTasks";
+import { processPlan } from "../domain/processes";
+import { displayOrgTeamName } from "../domain/roles";
 import { classifyToday, type TodayGroup, type TodayRow } from "../domain/teamToday";
-import { projectTally } from "../domain/workProgress";
 import { intakeRepos, listSuggestions } from "../dcs/outsideSuggestions";
 import { useDecisionReminders } from "../useDecisionReminders";
 import { useT, type MessageKey } from "../i18n/messages";
@@ -20,7 +23,7 @@ import type { LevelBook } from "../domain/levels";
 import { Button } from "@/components/ui/button";
 import { explainError } from "../dcs/userError";
 import { ActivityCalendar, ActivityStrip, useWorkLine, WORK_WEEKS } from "./ActivityCalendar";
-import { WorkLine } from "./ProgressBar";
+import { BooksPanel } from "./BooksPanel";
 import { LoadingState } from "./LoadingState";
 import { PersonPhoto } from "./PersonPhoto";
 
@@ -33,6 +36,11 @@ type Props = {
   onOpenThread: (issue: number) => void;
   /** Opens the suggestions to the text that came from outside. */
   onOpenSuggestions?: () => void;
+  /**
+   * The org teams this person coordinates, for whoever coordinates without managing: they see the work of these teams
+   * only. Absent for whoever manages, who sees everything.
+   */
+  teams?: string[];
 };
 
 const GROUPS: { id: TodayGroup; title: MessageKey; empty: MessageKey }[] = [
@@ -72,7 +80,7 @@ function shortTitle(row: TodayRow): string {
  * Equipo hoy: how the work stands, for whoever coordinates. Stuck work first,
  * each row with what can be done about it from the same place.
  */
-export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOpenThread, onOpenSuggestions }: Props) {
+export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOpenThread, onOpenSuggestions, teams }: Props) {
   const t = useT();
   const language = useUiLanguage();
   const [projects, setProjects] = useState<TodayProject[]>([]);
@@ -82,6 +90,9 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   const [error, setError] = useState("");
   const [reminded, setReminded] = useState<Set<number>>(new Set());
   const [levels, setLevels] = useState<LevelBook>({ levels: {} });
+  // The order of the projects and those set aside, and the record of what was done before Taller (null: not read).
+  const [priority, setPriority] = useState<{ projectOrder: string[]; paused: string[] }>({ projectOrder: [], paused: [] });
+  const [elsewhere, setElsewhere] = useState<DoneElsewhereDoc | null>(null);
   const [assigning, setAssigning] = useState<number | null>(null);
   const [pick, setPick] = useState("");
   const [open, setOpen] = useState<Set<TodayGroup>>(new Set(["decisions", "stuck", "waiting", "running"]));
@@ -107,12 +118,15 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
     setBusy(true);
     setError("");
     try {
-      const [loadedProjects, config] = await Promise.all([
+      const [loadedProjects, config, record] = await Promise.all([
         loadTeamToday({ session, pmOrg, lang, contentOrg }),
         loadPmConfig(session, pmOrg).catch(() => null),
+        loadDoneElsewhere(session, pmOrg, lang),
       ]);
       setProjects(loadedProjects);
       setLevels(config ?? { levels: {} });
+      setPriority({ projectOrder: config?.projectOrder ?? [], paused: config?.paused ?? [] });
+      setElsewhere(record);
     } catch (err) {
       setError(explainError(err));
     } finally {
@@ -125,29 +139,43 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
     void reload();
   }, [reload]);
 
+  // Whoever coordinates sees the subtareas of the tasks of their teams; whoever manages, all of them.
+  const teamKey = (teams ?? []).map((name) => name.trim().toLowerCase()).sort().join("|");
+  const shown = useMemo(() => {
+    if (!teams) return projects;
+    const mine = teamKey.split("|");
+    return projects.map((project) => {
+      const tasks = new Set(project.board.teams.filter((task) => mine.includes((task.orgTeamName ?? "").trim().toLowerCase())).map((task) => task.id));
+      return { ...project, issues: project.issues.filter((issue) => tasks.has(issueTaskId(issue))) };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, teamKey]);
+
   const rows = useMemo(() => {
     const merged: Record<TodayGroup, Array<TodayRow & { project: string }>> = {
       decisions: [], stuck: [], running: [], free: [], waiting: [], done: [],
     };
     const now = new Date();
-    for (const project of projects) {
+    for (const project of shown) {
       const grouped = classifyToday({ issues: project.issues, board: project.board, now, levels });
       for (const group of GROUPS) {
         for (const row of grouped[group.id]) merged[group.id].push({ ...row, project: project.title });
       }
     }
     return merged;
-  }, [projects, levels]);
+  }, [shown, levels]);
 
-  // How far each project is and at what pace, and what each person did these weeks: read from the same subtareas.
-  const standing = useMemo(() => {
-    const now = new Date();
-    return projects.map((project) => ({ id: project.projectId, title: project.title, tally: projectTally(project.issues, project.board), pace: paceOf(project.issues, project.board, now) }));
-  }, [projects]);
+  // Every book of the space and how far it is, with what was done before Taller. A book without a project is laid out
+  // by the process the record names.
+  const books = useMemo(() => {
+    const process = processPlan(elsewhere?.process, { lang, contentOrg, pmOrg });
+    return spaceBooks({ projects, doneElsewhere: elsewhere ?? { books: {} }, process, teams: teams ? teamKey.split("|") : undefined, priority });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, elsewhere, teamKey, priority, lang, contentOrg, pmOrg]);
   const people = useMemo(() => {
     const since = new Date(Date.now() - WORK_WEEKS * 7 * 86_400_000);
-    return mergePeople(projects.map((project) => peopleWork(project.issues, project.board, since)));
-  }, [projects]);
+    return mergePeople(shown.map((project) => peopleWork(project.issues, project.board, since)));
+  }, [shown]);
   // Asked of Door43 only when the list is opened: one small answer per person.
   const heat = useHeatmaps(session, peopleOpen ? people.map((row) => row.login) : []);
 
@@ -189,13 +217,14 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
   }
 
   const multiProject = projects.length > 1;
+  const teamNames = (teams ?? []).map((name) => displayOrgTeamName(name)).join(", ");
 
   return (
     <div className="hub">
       <div className="hub-header">
         <div>
           <h1 className="hub-title">{t("td.title")}</h1>
-          <p className="hub-lede">{t("td.lede")}</p>
+          <p className="hub-lede">{teams ? t("td.ledeTeams").replace("{teams}", teamNames) : t("td.lede")}</p>
         </div>
         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reload()}>
           {busy ? t("td.refreshing") : t("td.refresh")}
@@ -218,13 +247,15 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
       ) : null}
       {busy && !loaded ? <LoadingState shape="list" label={t("td.loading")} /> : null}
 
-      {loaded && !projects.length && !error ? (
+      {loaded && !projects.length && !books.length && !error ? (
         <div className="hub-empty-panel">
           <span className="hub-empty-panel__kicker">{t("td.title")}</span>
           <h2 className="hub-empty-panel__title">{t("td.emptyTitle")}</h2>
           <p className="hub-empty-panel__body">{t("td.emptyBody")}</p>
         </div>
       ) : null}
+
+      {loaded ? <BooksPanel books={books} recordMissing={elsewhere === null} /> : null}
 
       {loaded && projects.length ? (
         <div className="today-summary" role="list" aria-label={t("td.summary")}>
@@ -235,36 +266,6 @@ export function TeamTodayView({ session, pmOrg, lang, contentOrg, announce, onOp
             </div>
           ))}
         </div>
-      ) : null}
-
-      {loaded && standing.some((row) => row.tally.total) ? (
-        <section className="today-group" aria-labelledby="today-projects">
-          <div className="today-group__head">
-            <h2 id="today-projects" className="today-group__title">
-              {t("td.projects")}
-            </h2>
-          </div>
-          <ul className="today-list">
-            {standing
-              .filter((row) => row.tally.total)
-              .map((row) => (
-                <li key={row.id} className="today-project">
-                  <strong>{row.title}</strong>
-                  <WorkLine tally={row.tally} />
-                  <p className="today-row__reason">
-                    {row.pace.left <= 0
-                      ? t("pc.allDone")
-                      : row.pace.perWeek > 0
-                        ? t("pc.pace").replace("{weeks}", String(PACE_WEEKS)).replace("{n}", paceNumber(row.pace.perWeek, language))
-                        : row.pace.brought > 0
-                          ? t("pc.noneYet")
-                          : t("pc.none").replace("{weeks}", String(PACE_WEEKS))}
-                    {row.pace.endsAt ? ` ${t("pc.ends").replace("{date}", endDateText(row.pace.endsAt, language))}` : ""}
-                  </p>
-                </li>
-              ))}
-          </ul>
-        </section>
       ) : null}
 
       {loaded && people.length ? (
