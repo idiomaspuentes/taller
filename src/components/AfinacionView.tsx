@@ -1703,14 +1703,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {refMore ? (
             <div className="af-ref__extra" id="af-ref-more">
               {reference?.id === "orig" && glossRow && glossVerse ? (
-                <p className="af-gloss" lang="en">
-                  <span className="af-gloss__name">{refName(glossRow)}</span> <Words text={glossVerse} marked={glossMarked} />
-                </p>
-              ) : null}
-              {glossRows.length > 1 ? (
-                <div className="af-more__row">
-                  <span className="af-more__lbl">{t("af.verseIn")}</span>
-                  <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
+                <div className="af-ref__gloss">
+                  {glossRows.length > 1 ? (
+                    <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
                     {glossRows.map((row) => (
                       <button
                         key={row.id}
@@ -1725,13 +1720,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                         {refName(row)}
                       </button>
                     ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <span className="af-gloss__name">{refName(glossRow)}</span>
+                  )}
+                  <p className="af-gloss" lang="en">
+                    <Words text={glossVerse} marked={glossMarked} />
+                  </p>
                 </div>
               ) : null}
-              <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
-                <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
-              </button>
-              <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
+              <div className="af-ref__links">
+                <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
+                  <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
+                </button>
+                <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
+              </div>
             </div>
           ) : null}
           <button type="button" className="af-see af-ref__fold" data-guide="af-more" aria-expanded={refMore} aria-controls="af-ref-more" onClick={toggleRefMore}>

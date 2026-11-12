@@ -11701,11 +11701,6 @@ html[data-text] .af--round .af-more__lbl { font-size: calc(1rem * var(--ts)); }
 
 .af--round .af-ref__fold[aria-expanded="true"] .af-more__chev { transform: rotate(180deg); }
 
-.af--round .af-ref__extra > * { min-height: 52px; margin: 0; padding-block: 10px; }
-.af--round .af-ref__extra > * + * { border-top: 1px solid var(--border); }
-.af--round .af-ref__extra > .af-gloss { min-height: 0; padding-block: 4px 14px; }
-.af--round .af-ref__extra .af-more__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
-.af--round .af-ref__extra > .af-see { display: flex; justify-content: flex-start; width: 100%; padding-block: 4px; }
 .af--round .af-ref__extra .af-ref__texts button { font-size: 0.9375rem; }
 html[data-text] .af--round .af-ref__extra .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }
 
@@ -11717,5 +11712,15 @@ html[data-text] .af--round .af-ref__extra .af-ref__texts button { font-size: cal
 .af--round .af-work > .af-ref:has(> .af-ref__fold) { overflow: hidden; }
 .af--round .af-ref__fold { justify-content: center; gap: 6px; width: auto; min-height: 48px; margin: 4px -16px -16px; padding: 0 16px; border-top: 1px solid var(--border); background: var(--gray-50); font-weight: 600; }
 .af--round .af-ref__fold:hover { background: var(--surface-muted); text-decoration: none; }
-.af--round .af-ref__extra { display: grid; gap: 0; border-top: 1px solid var(--border); }
-.af--round .af-ref__extra > .af-gloss { padding-block: 14px; }
+
+/*
+ * The verse card open, one block under one line (11 November): the switch of ULT and UST is the name of the text
+ * under the original, over it, as small as a name; the text; then what can be opened from here, as links. The
+ * switch two rows down with «Ver el versículo en», and the chapter as a row of its own, gave four cuts to the card
+ * and set the controls at the level of what is read.
+ */
+.af--round .af-ref__extra { display: grid; gap: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.af--round .af-ref__gloss { display: grid; justify-items: start; gap: 8px; }
+.af--round .af-ref__gloss > .af-gloss { margin: 0; }
+.af--round .af-ref__gloss > .af-ref__texts button { min-height: 40px; padding: 0 16px; }
+.af--round .af-ref__links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 20px; margin-block: -6px; }
