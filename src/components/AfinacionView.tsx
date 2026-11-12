@@ -1731,7 +1731,13 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const stageRes = data?.resource === "tps" ? "TPS" : "TPL";
   /** What a step asks, in its window. */
   const stageText = (n: 1 | 2 | 3) =>
-    (n === 1 ? (stepProp === "notas" ? t("stage.studyNote").replace("{name}", pointName.replace(/^«|»$/g, "")) : t("stage.studyTerm")) : n === 2 ? t("stage.mark") : t("stage.judge"))
+    (n === 1
+      ? stepProp === "notas"
+        ? t(stageRes === "TPS" ? "stage.studyNoteTps" : "stage.studyNoteTpl")
+        : t(stageRes === "TPS" ? "stage.studyTermTps" : "stage.studyTermTpl")
+      : n === 2
+        ? t("stage.mark")
+        : t("stage.judge"))
       .replace("{res}", stageRes)
       .replace("{orig}", origWord);
   const stepName = (n: 1 | 2 | 3) => t(n === 1 ? "af.stepShortStudy" : n === 2 ? "af.stepShortMark" : "af.stepShortJudge");
