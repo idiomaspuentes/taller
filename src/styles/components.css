@@ -11822,3 +11822,7 @@ html[data-text] .af--round .af-study-article__go { font-size: calc(0.9375rem * v
   /* On a computer the question heads the right column: no line over it. */
   .af--round .af-work[data-cols="3"] > .af-q { margin-top: 0; padding-top: 0; border-top: 0; }
 }
+
+/* The TPL card orders its words and their echo (2, 3): what opens and its fold come after them, at the foot. */
+.af--round .af-work > .af-draft > .af-ref__extra { order: 4; }
+.af--round .af-work > .af-draft > .af-ref__fold { order: 5; }
