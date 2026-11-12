@@ -320,7 +320,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   const [titlesRead, setTitlesRead] = useState(false);
   const [articles, setArticles] = useState<Record<string, ArticleInfo>>({});
   /** The text the draft is read against: the original unless the person chose another. */
-  const [refText, setRefText] = useState<"orig" | "ult" | "ust">("orig");
+  // The point is read in the original; the ULT or the UST is read under it, not in its place.
+  const refText = "orig" as "orig" | "ult" | "ust";
+  /** The text read under the original in step 1. */
+  const [glossText, setGlossText] = useState("ult");
   /** «Revisar» (the item in hand) or «Capítulo» (whole chapters of a text, to read around it). */
   const [pane, setPane] = useState<"review" | "helps" | "chapter" | "intro">("review");
   // The team's other text (the TPS beside a TPL being tuned), read once the chapter is opened.
@@ -1370,7 +1373,10 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     return alignedGatewayQuoteForHelpQuote({ verseText: text, quote: item.quote, occurrence: item.occurrence, alignments: row.alignments, book: data.book, chapter: item.chapter, verse: item.verse }).tokenIndices;
   };
   /** The verse in the ULT with the point marked, read under the original in step 1 and as its meaning in step 2. */
-  const glossRow = data?.references.find((row) => row.id !== "orig" && /ult/i.test(`${row.id} ${row.label}`));
+  // The original always stays on top in step 1; the text under it is the one chosen, the ULT unless the UST is
+  // (Abel, 11 November).
+  const glossRows = data?.references.filter((row) => row.id !== "orig") ?? [];
+  const glossRow = glossRows.find((row) => row.id === glossText) ?? glossRows.find((row) => /ult/i.test(`${row.id} ${row.label}`)) ?? glossRows[0];
   const glossVerse = item && glossRow ? (glossRow.book[`${item.chapter}:${item.verse}`] ?? "") : "";
   const glossMarked = useMemo(
     () => (glossRow && glossVerse ? markedIn(glossRow.id, glossVerse) : []),
@@ -1705,20 +1711,19 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   <span className="af-gloss__name">{refName(glossRow)}</span> <Words text={glossVerse} marked={glossMarked} />
                 </p>
               ) : null}
-              {data.references.length > 1 ? (
+              {glossRows.length > 1 ? (
                 <div className="af-more__row">
                   <span className="af-more__lbl">{t("af.verseIn")}</span>
                   <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
-                    {data.references.map((row) => (
+                    {glossRows.map((row) => (
                       <button
                         key={row.id}
                         type="button"
                         role="tab"
-                        aria-selected={reference?.id === row.id}
+                        aria-selected={glossRow?.id === row.id}
                         onClick={() => {
-                          setRefText(row.id);
-                          if (row.id !== reference?.id) guideDid("af:ref-tab");
-                          document.querySelector(".af-work > .af-ref")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                          if (row.id !== glossRow?.id) guideDid("af:ref-tab");
+                          setGlossText(row.id);
                         }}
                       >
                         {refName(row)}
