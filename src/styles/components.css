@@ -11625,3 +11625,11 @@ html[data-text] .af-opt span { font-size: calc(0.9375rem * var(--ts)); }
   .af--round .af-work[data-cols="2"] > .af-seek .af-seek__phrase { font-size: 2rem; }
   .af--round .af-work[data-cols] .af-q { margin-top: 0; }
 }
+
+/*
+ * The answers of each tuning step are part of the screen, after what is read, as in Armonización (26 October): pinned
+ * to the foot, they covered the verse and the note, and were read before them.
+ */
+@media (max-width: 63.99rem) {
+  .af--round .af-work > .af-decide, .af--round .af-ask > .af-decide--answer { position: static; z-index: auto; margin: 1.5rem 0 0; padding: 0; background: none; box-shadow: none; }
+}
