@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { createGate, gatedFetch, door43Writes } from "../src/dcs/door43Gate.ts";
 import { forgetProjectIssues, keepProjectsIn, listProjectIssues, listProjectOpenIssues, PROJECT_FRESH_MS, pullIssues, syncProjectOpenIssues } from "../src/dcs/issues.ts";
 import { memoryStore } from "../src/lib/deviceStore.ts";
+import { forgetPageSizes } from "../src/dcs/pageSize.ts";
 import type { GtSession } from "../src/dcs/auth.ts";
 
 let passed = 0;
@@ -72,19 +73,24 @@ type Row = { number: number; state: "open" | "closed"; updated_at: string };
 let rows: Row[] = [];
 const asked: { state: string; since: string | null; page: number }[] = [];
 const iso = (ms: number) => new Date(ms).toISOString();
+/** What the server says a page may hold (`/settings/api`), and what it really gives. Null: it does not say. */
+let serverSays: number | null = null;
+let serverGives = 50;
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = new URL(String(input));
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  if (url.pathname.endsWith("/settings/api")) return serverSays === null ? json({ message: "not found" }, 404) : json({ max_response_items: serverSays });
   if (url.pathname.endsWith("/repos/issues/search")) {
     const state = url.searchParams.get("state") || "open";
     const since = url.searchParams.get("since");
     const page = Number(url.searchParams.get("page") || "1");
+    const limit = Math.min(Number(url.searchParams.get("limit") || "30"), serverGives);
     asked.push({ state, since, page });
     const list = rows
       .filter((r) => state === "all" || r.state === state)
       .filter((r) => !since || Date.parse(r.updated_at) >= Date.parse(since))
       .sort((a, b) => b.number - a.number)
-      .slice((page - 1) * 50, page * 50)
+      .slice((page - 1) * limit, page * limit)
       .map((r) => ({ ...r, id: r.number, title: `NEH ${r.number}`, body: "", labels: [{ id: 1, name: "pm" }], milestone: { id: 1, title: "NEH" }, assignees: [], repository: { name: "taller", full_name: `${ORG}/taller` } }));
     return json(list);
   }
@@ -230,6 +236,57 @@ await test("lo que se guarda de cada subtarea es lo que las pantallas leen, no l
   assert.ok(kept.open?.length);
   assert.equal(typeof kept.open![0]!.body, "string");
   assert.equal((kept.open![0]!.repository as Record<string, unknown>).full_name, `${ORG}/taller`);
+});
+
+// ---------- Pages as big as the server allows (12 November 2026) ----------
+
+keepProjectsIn(memoryStore());
+
+await test("Door43 da hasta 500 por página: un libro de 1.221 subtareas son 3 páginas, no 25", async () => {
+  forgetPageSizes();
+  keepProjectsIn(memoryStore());
+  serverSays = 500;
+  serverGives = 500;
+  rows = fresh(1221);
+  reopen();
+  asked.length = 0;
+  const open = await listProjectOpenIssues(session, ORG, "NEH");
+  assert.equal(open.length, 1221);
+  assert.equal(asked.length, 3, `pidió ${asked.length} páginas`);
+});
+
+await test("un servidor que permite más de 500 recibe igual páginas de 500", async () => {
+  forgetPageSizes();
+  keepProjectsIn(memoryStore());
+  serverSays = 5000;
+  serverGives = 5000;
+  rows = fresh(1221);
+  reopen();
+  asked.length = 0;
+  assert.equal((await listProjectOpenIssues(session, ORG, "NEH")).length, 1221);
+  assert.equal(asked.length, 3);
+});
+
+await test("un servidor que no dice su límite recibe páginas de 50, y no se pierde ninguna subtarea", async () => {
+  forgetPageSizes();
+  keepProjectsIn(memoryStore());
+  serverSays = null;
+  serverGives = 50;
+  rows = fresh(1221);
+  reopen();
+  asked.length = 0;
+  assert.equal((await listProjectOpenIssues(session, ORG, "NEH")).length, 1221);
+  assert.equal(asked.length, 25);
+});
+
+await test("con páginas de 500, un libro de 10.000 subtareas sigue leyéndose entero", async () => {
+  forgetPageSizes();
+  keepProjectsIn(memoryStore());
+  serverSays = 500;
+  serverGives = 500;
+  rows = fresh(10_000);
+  reopen();
+  assert.equal((await listProjectOpenIssues(session, ORG, "NEH")).length, 10_000);
 });
 
 Date.now = realNow;

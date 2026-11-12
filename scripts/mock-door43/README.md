@@ -58,6 +58,8 @@ cada una da su acuerdo al paso. Sin un mock con ese libro, no se ejecuta.
   tiempo estuvo ocupado el servidor (`busyMs`). Las búsquedas de subtareas se paginan y respetan `since` como en Door43.
 - `MOCK_FULL_ISSUES=1`: cada subtarea viene completa, como la manda Door43 (unos 2,5 KB además de su texto).
 - `MOCK_LATENCY_MS` y `MOCK_LIST_LATENCY_MS`: lo que tarda cada respuesta, y cada página de subtareas.
+- `MOCK_MAX_ITEMS`: cuántas subtareas caben en una página (500, como en Door43; 50 es un Gitea sin cambiar). Se lee en
+  `GET /api/v1/settings/api`, como en el servidor real.
 - `npx tsx --tsconfig tsconfig.scripts.json scripts/mock-door43/seed-big-book.mts NEH:6:0 EZR:6:0.9`: siembra libros
   del tamaño de los reales con el plan FCR (libro:porciones por capítulo:parte cerrada). Mejor con `MOCK_NO_SAMPLE=1`.
 

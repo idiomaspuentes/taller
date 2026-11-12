@@ -108,6 +108,33 @@ Medido de nuevo en el mock, con los mismos dos libros:
 | Abrir un proyecto | 26 páginas, 4,2 MB | 1 página vacía |
 | La primera vez en un aparato | igual | igual (37 y 53 páginas); «Equipo hoy» ocupó al servidor 22 s y no 30, por leer los libros a la vez |
 
+#### Páginas de 500 (12 de noviembre)
+
+Door43 ya comprime sus respuestas: los 4,2 MB de un libro viajan como unos 224 KB. Además acepta hasta 500
+subtareas por página (`GET /api/v1/settings/api`, `max_response_items: 500`), y Taller pedía 50.
+
+Ahora cada servidor dice su límite y Taller pide hasta 500 (`src/dcs/pageSize.ts`). Si el límite no se puede leer,
+sigue pidiendo 50: pedir más de lo que el servidor da haría que una página corta pareciera la última, y se perderían
+subtareas.
+
+| La primera vez en un aparato | Páginas de 50 | Páginas de 500 |
+|---|---|---|
+| «Mis tareas», persona del equipo | 37 | 6 |
+| «Equipo hoy», quien coordina | 53 | 8, con los mismos números en pantalla |
+
+En Door43 una página de 500 tardó 4,8 s y una de 50, 1,4 s (una sola muestra de cada una, el 12 de noviembre).
+El mock tarda lo mismo con cualquier tamaño de página, así que exagera la ganancia de tiempo. Lo seguro es esto: el
+servidor hace 8 veces menos búsquedas y comprobaciones de permisos. Conviene medirlo en QA.
+
+**En el propio Door43 (`unfoldingWord/dcs`)** se podría hacer más. Sería trabajo compartido, con la regla de uW y
+según el calendario de uW:
+- revisar por qué Door43 se pone lento con muchas peticiones a la vez (configuración, sin código);
+- una búsqueda que devuelva subtareas «ligeras», sin la persona, el repositorio y la solicitud de cambios de cada una
+  (`LoadAttributes` en `models/issues/issue_list.go`);
+- un pedido que devuelva el índice de un libro.
+
+Conviene solo si, con A y las páginas de 500, la app sigue lenta.
+
 **No se hizo:**
 - **«Mis tareas» sigue pidiendo las abiertas de cada libro.** Con el FCR casi siempre las necesita, por las esperas
   entre tareas.

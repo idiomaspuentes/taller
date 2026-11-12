@@ -57,6 +57,7 @@ import { canSyncFrom, changesSince, mergeAllChanged, mergeChanged, wholeIsRecent
 import { slimIssue } from "../domain/myTasksCache";
 import { deviceStore, type DeviceStore } from "../lib/deviceStore";
 import { door43Writes } from "./door43Gate";
+import { pageSizeFor, SAFE_PAGE } from "./pageSize";
 import {
   encodeWorkOrderMarker,
   indexWorkIssues,
@@ -207,6 +208,9 @@ function searchPmIssues(session: GtSession, org: string, opts: PmSearch): Promis
 async function searchPmIssuesNow(session: GtSession, org: string, opts: PmSearch): Promise<DcsIssue[]> {
   const config = dcsConfig(session.host);
   const namespaceId = opts.namespaceId ?? DEFAULT_PM_NAMESPACE;
+  // `maxPages` counts pages of 50, as it always did; with bigger pages, fewer of them reach as far.
+  const size = await pageSizeFor(session.host);
+  const maxPages = Math.max(1, Math.ceil(((opts.maxPages ?? 10) * SAFE_PAGE) / size));
   const issues = await allPages(
     (page) =>
       searchIssues(config, {
@@ -220,9 +224,10 @@ async function searchPmIssuesNow(session: GtSession, org: string, opts: PmSearch
         type: "issues",
         state: opts.state ?? "open",
         page,
-        limit: 50,
+        limit: size,
       }),
-    { limit: 50, maxPages: opts.maxPages ?? 10 },
+    // Four pages of 500 at once after the first would mostly come back empty: a book rarely passes 1.500.
+    { limit: size, maxPages, window: size > SAFE_PAGE ? 2 : 4 },
   );
   return issuesOfMilestones(
     issues.filter((issue) => isPmNamespacedIssue(issue, namespaceId) && isGatewayTasksRepo(issue) && issueInScope(issue)),

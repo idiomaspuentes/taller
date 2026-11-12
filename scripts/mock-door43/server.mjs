@@ -132,9 +132,12 @@ const statsKeyOf = (method, path) =>
 const LATENCY_MS = Number(process.env.MOCK_LATENCY_MS || 0);
 const LIST_LATENCY_MS = Number(process.env.MOCK_LIST_LATENCY_MS || LATENCY_MS);
 
-/** A page of a list, as Door43 gives it: `limit` per page (50 at most), from page 1. */
+/** The most a page can hold: 500 in Door43 (`/settings/api`, November 2026). MOCK_MAX_ITEMS=50 is a stock Gitea. */
+const MAX_ITEMS = Number(process.env.MOCK_MAX_ITEMS || 500);
+
+/** A page of a list, as Door43 gives it: `limit` per page (MAX_ITEMS at most), from page 1. */
 function pageOf(list, url) {
-  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 30), 1), 50);
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 30), 1), MAX_ITEMS);
   const page = Math.max(Number(url.searchParams.get("page") || 1), 1);
   return list.slice((page - 1) * limit, page * limit);
 }
@@ -602,6 +605,7 @@ async function handle(req, res) {
 
   const tokensMatch = /^\/users\/([^/]+)\/tokens(?:\/(\d+))?$/.exec(api);
   if (tokensMatch) return tokenApi(req, res, decodeURIComponent(tokensMatch[1]), tokensMatch[2] === undefined ? undefined : Number(tokensMatch[2]));
+  if (api === "/settings/api") return json(res, { max_response_items: MAX_ITEMS, default_paging_num: 30 });
   if (api === "/user") return user ? json(res, { ...user, avatar_url: "" }) : json(res, { message: "token is required" }, 401);
   if (ROSTER) {
     const answered = await rosterApi(api, req, res, user);
