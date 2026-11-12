@@ -11735,3 +11735,10 @@ html[data-text] .af--round .af-ref__extra .af-ref__texts button { font-size: cal
 .af--round .af-ref__links > .se-parallel:hover { background: var(--gray-50); text-decoration: none; }
 html[data-text] .af--round .af-ref__links > .af-see,
 html[data-text] .af--round .af-ref__links > .se-parallel { font-size: calc(0.9375rem * var(--ts)); }
+
+/* The chapter sheet opens with «‹ Volver» at its left, as a page does; no cross in the corner (11 November). */
+.af-pair-sheet .fx-head { padding-inline: 8px 16px; }
+.af-pair-back { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 12px 0 4px; border: 0; border-radius: 999px; background: none; color: var(--text); font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.af-pair-back:hover { background: var(--gray-50); }
+.af-pair-back:focus-visible { outline: 2px solid var(--accent-700); outline-offset: 2px; }
+html[data-text] .af-pair-back { font-size: calc(1rem * var(--ts)); }

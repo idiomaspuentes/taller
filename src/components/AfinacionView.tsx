@@ -2022,8 +2022,21 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           }
         }}
       >
-        <DialogContent className="fix-sheet af-pair-sheet" aria-describedby={undefined}>
+        <DialogContent className="fix-sheet af-pair-sheet" aria-describedby={undefined} showCloseButton={false}>
           <header className="fx-head">
+            {/* The way back to the point, said in a word, where a page's way back is: the small cross in the corner
+                was not found by whoever does not know that a cross closes (11 November). */}
+            <button
+              type="button"
+              className="af-pair-back"
+              onClick={() => {
+                setChapterOpen(false);
+                setPairFix(null);
+                setPairChapter(null);
+              }}
+            >
+              <ChevronLeft size={22} aria-hidden /> {t("af.back")}
+            </button>
             {/* Which text is read beside the draft, chosen here as in the box (it is the same choice): the sheet
                 showed only the one chosen before opening it (18 October). In the header, which stays while the
                 chapter scrolls under it. The tabs alone: a «Referencia» label there was one word too many. And «Más»
