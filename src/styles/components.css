@@ -11858,3 +11858,27 @@ html[data-text] .af--round .af-pin__verse { font-size: calc(1.1875rem * var(--ts
 
 /* The note opened in Estudiar is what is read then: the size of the English verse over it, not grey (12 November). */
 .af--round .af-study-note .af-reason .af-note { font-size: calc(1rem * var(--ts, 1)); line-height: 1.55; color: var(--text); }
+
+/* One point of a tuning task with what was said of it (`TopicCard`): the point once at its head, then who said what.
+   More room between cards than inside them. */
+.chat-topic { display: grid; width: 100%; max-width: 42rem; margin: 1.5rem 0 0; border: 1px solid var(--border); border-radius: var(--radius-lg, 0.75rem); background: var(--surface, #fff); overflow: hidden; }
+.chat-topic__head { display: grid; gap: 0.125rem; width: 100%; min-height: 2.75rem; padding: 0.75rem 0.875rem; border: 0; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--accent-50) 70%, transparent); color: inherit; font: inherit; text-align: left; }
+button.chat-topic__head { cursor: pointer; }
+button.chat-topic__head:hover, button.chat-topic__head:focus-visible { background: var(--accent-100); }
+.chat-topic__ref { font-size: 0.75rem; font-weight: 700; color: var(--accent-800); }
+.chat-topic__title { font-size: 0.9375rem; font-weight: 700; line-height: 1.3; color: var(--text); }
+.chat-topic__phrase { font-size: 0.875rem; line-height: 1.4; font-style: italic; color: var(--text-muted); }
+.chat-topic__lines { display: grid; margin: 0; padding: 0; list-style: none; }
+.chat-topic__line { display: grid; gap: 0.25rem; padding: 0.75rem 0.875rem; }
+.chat-topic__line + .chat-topic__line { border-top: 1px solid var(--border); }
+.chat-topic__line--agree { padding-block: 0.5rem; }
+.chat-topic__who { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+.chat-topic__who b { font-weight: 600; color: var(--accent-700); }
+.chat-topic__who time, .chat-topic__agree time { margin-left: 0.25rem; font-size: 0.6875rem; color: var(--text-faint); }
+.chat-topic__body { font-size: 0.9375rem; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-topic__agree { margin: 0; font-size: 0.875rem; color: var(--success-700, #166534); }
+.chat-topic__more { justify-self: start; min-height: 2.75rem; margin-top: 0.25rem; font-size: 0.8125rem; }
+html[data-text] .chat-topic__title { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .chat-topic__phrase { font-size: calc(0.875rem * var(--ts)); }
+html[data-text] .chat-topic__body { font-size: calc(0.9375rem * var(--ts)); }
+html[data-text] .chat-topic__agree { font-size: calc(0.875rem * var(--ts)); }

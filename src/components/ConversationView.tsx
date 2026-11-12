@@ -85,6 +85,7 @@ import { explainError } from "../dcs/userError";
 import { loadPlaceTexts } from "../dcs/placeTexts";
 import { placedMessage, withoutNamed } from "../domain/commentPlace";
 import { placeName } from "../commentPlaceText";
+import { groupTopics, type TopicRow } from "../domain/conversationTopics";
 import { localized } from "../domain/processes";
 import { PersonPhoto } from "./PersonPhoto";
 
@@ -685,6 +686,9 @@ function ConversationThread({
     [issueNumber, readPending, writePending, refreshLocal],
   );
 
+  /** The messages of each point of a tuning task in one card, at its latest message (`conversationTopics.ts`). */
+  const rows = useMemo(() => groupTopics(visible), [visible]);
+
   const firstUnreadKey = useMemo(() => {
     const snap = readSnapshot.current;
     if (!snap || demo) return "";
@@ -941,26 +945,43 @@ function ConversationThread({
                 <p className="chat-state__body">{t("cv.noMessagesBody")}</p>
               </div>
             ) : null}
-            {visible.map((item, index) => (
-              <TimelineRow
-                key={item.key}
-                item={item}
-                prev={visible[index - 1]}
-                me={username}
-                day={
-                  item.createdAt && dayKey(item.createdAt) !== dayKey(visible[index - 1]?.createdAt ?? "")
-                    ? dayLabel(item.createdAt, now)
-                    : ""
-                }
-                showNewDivider={item.key === firstUnreadKey}
-                onRetry={() => retrySend(item)}
-                onDiscard={() => discard(item)}
-                renderDecision={renderDecision}
-                placeTexts={placeTexts}
-                onOpenPlace={openPlace}
-                resolved={item.source === "pr" && resolvedComments.has(item.id)}
-              />
-            ))}
+            {rows.map((row, index) => {
+              const at = anchorOf(row);
+              const before = index > 0 ? anchorOf(rows[index - 1]!) : "";
+              const day = at && dayKey(at) !== dayKey(before) ? dayLabel(at, now) : "";
+              if (row.kind === "topic") {
+                return (
+                  <TopicCard
+                    key={row.key}
+                    row={row}
+                    me={username}
+                    day={day}
+                    now={now}
+                    unreadKey={firstUnreadKey}
+                    placeTexts={placeTexts}
+                    onOpenPlace={openPlace}
+                  />
+                );
+              }
+              const item = row.item;
+              const prevRow = rows[index - 1];
+              return (
+                <TimelineRow
+                  key={item.key}
+                  item={item}
+                  prev={prevRow?.kind === "item" ? prevRow.item : undefined}
+                  me={username}
+                  day={day}
+                  showNewDivider={item.key === firstUnreadKey}
+                  onRetry={() => retrySend(item)}
+                  onDiscard={() => discard(item)}
+                  renderDecision={renderDecision}
+                  placeTexts={placeTexts}
+                  onOpenPlace={openPlace}
+                  resolved={item.source === "pr" && resolvedComments.has(item.id)}
+                />
+              );
+            })}
             {failed.map((source) => (
               <p key={source.kind} className="chat-system chat-system--error">
                 {t("cv.failedLoad").replace("{what}", t(SOURCE_LABEL[source.kind] ?? "cv.srcOther"))} ·{" "}
@@ -1154,6 +1175,131 @@ function Composer({
       {!ready ? <p className="chat-composer__hint">{t("cv.loadingHint")}</p> : null}
     </div>
   );
+}
+
+/** When a row of the conversation was said: a card of a point, by its latest message. */
+function anchorOf(row: TopicRow<ThreadItem>): string {
+  return (row.kind === "topic" ? row.entries[row.entries.length - 1]!.item.createdAt : row.item.createdAt) ?? "";
+}
+
+/** A card shows its first message, which says the point, and its last ones; those between are folded. */
+const TOPIC_SHOWN = 4;
+
+/**
+ * One point of a tuning task (a note of a verse and the words it marks) with everything said about it: the point
+ * once at its head, then who said what, and the agreements in one line. Each message said the note and the words
+ * again, and the people named, before what was said (12 November).
+ */
+function TopicCard({
+  row,
+  me,
+  day,
+  now,
+  unreadKey,
+  placeTexts,
+  onOpenPlace,
+}: {
+  row: Extract<TopicRow<ThreadItem>, { kind: "topic" }>;
+  me: string;
+  day: string;
+  now: Date;
+  unreadKey: string;
+  placeTexts: Record<string, string>;
+  onOpenPlace?: (ref: string) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  // Agreements one after the other are one line: «AnerG y Keneramk están de acuerdo».
+  type Line = { kind: "said"; entry: (typeof row.entries)[number] } | { kind: "agree"; entries: typeof row.entries };
+  const lines: Line[] = [];
+  for (const entry of row.entries) {
+    const last = lines[lines.length - 1];
+    if (entry.agree && last?.kind === "agree") last.entries.push(entry);
+    else lines.push(entry.agree ? { kind: "agree", entries: [entry] } : { kind: "said", entry });
+  }
+  const folded = !open && lines.length > TOPIC_SHOWN ? lines.length - TOPIC_SHOWN : 0;
+  const shown = folded ? [lines[0]!, ...lines.slice(lines.length - (TOPIC_SHOWN - 1))] : lines;
+  const lastDay = dayKey(anchorOf(row));
+  const who = (login: string) => (login.toLowerCase() === me.toLowerCase() ? t("cv.you") : login);
+  const when = (iso: string | undefined) =>
+    iso ? (
+      <time dateTime={iso} title={fullStamp(iso)}>
+        {dayKey(iso) !== lastDay ? `${dayLabel(iso, now)} · ` : ""}
+        {timeOfDay(iso)}
+      </time>
+    ) : null;
+  const said = placeTexts[row.ref];
+  const head = (
+    <>
+      <span className="chat-topic__ref">{placeName(row.place)}</span>
+      {row.title ? <span className="chat-topic__title">{row.title}</span> : null}
+      {row.phrase ? <span className="chat-topic__phrase">«{row.phrase}»</span> : null}
+      {!row.title && !row.phrase && said ? <span className="chat-topic__phrase">{said}</span> : null}
+    </>
+  );
+  const isNew = row.entries.some((entry) => entry.item.key === unreadKey);
+  return (
+    <>
+      {day ? (
+        <div className="chat-day" role="separator">
+          <span>{day}</span>
+        </div>
+      ) : null}
+      {isNew ? (
+        <div className="chat-new-divider" role="separator">
+          <span>{t("cv.newDivider")}</span>
+        </div>
+      ) : null}
+      <section className="chat-topic" data-key={row.key} aria-label={[placeName(row.place), row.title, row.phrase].filter(Boolean).join(" · ")}>
+        {onOpenPlace ? (
+          <button type="button" className="chat-topic__head" title={t("cv.openPlace")} onClick={() => onOpenPlace(row.ref)}>
+            {head}
+          </button>
+        ) : (
+          <div className="chat-topic__head">{head}</div>
+        )}
+        <ol className="chat-topic__lines">
+          {shown.map((line, i) => (
+            <li
+              key={line.kind === "said" ? line.entry.item.key : line.entries[0]!.item.key}
+              className={line.kind === "agree" ? "chat-topic__line chat-topic__line--agree" : "chat-topic__line"}
+              data-key={line.kind === "said" ? line.entry.item.key : line.entries[0]!.item.key}
+            >
+              {line.kind === "said" ? (
+                <>
+                  <p className="chat-topic__who">
+                    <b>{who(line.entry.item.author)}</b> {when(line.entry.item.createdAt)}
+                  </p>
+                  <div className="chat-topic__body">
+                    <MessageText text={line.entry.body} />
+                  </div>
+                </>
+              ) : (
+                <p className="chat-topic__agree">
+                  <span aria-hidden>✓</span>{" "}
+                  {t(new Set(line.entries.map((entry) => entry.item.author.toLowerCase())).size > 1 ? "cv.agreeMany" : "cv.agreeOne").replace(
+                    "{who}",
+                    joinNames([...new Map(line.entries.map((entry) => [entry.item.author.toLowerCase(), who(entry.item.author)])).values()], t("cv.and")),
+                  )}{" "}
+                  {when(line.entries[line.entries.length - 1]!.item.createdAt)}
+                </p>
+              )}
+              {i === 0 && folded ? (
+                <button type="button" className="chat-link chat-topic__more" onClick={() => setOpen(true)}>
+                  {t(folded === 1 ? "cv.topicMoreOne" : "cv.topicMore").replace("{n}", String(folded))}
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+    </>
+  );
+}
+
+/** «Ana», «Ana y Bea», «Ana, Bea y Carla». */
+function joinNames(names: string[], and: string): string {
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} ${and} ${names[names.length - 1]}` : (names[0] ?? "");
 }
 
 function TimelineRow({
