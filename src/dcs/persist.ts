@@ -43,6 +43,7 @@ import {
   normalizeTeamPresets,
   normalizeWorkflowsCatalog,
   isInventoryDoc,
+  mergeProjectsIndex,
   projectsIndexPath,
   resolveProjectMeta,
   teamPresetsPath,
@@ -51,6 +52,7 @@ import {
   workflowsPath,
 } from "../domain/store";
 import { normalizeProjectId } from "../domain/books";
+import { scopeFolder } from "../domain/scope";
 import { dcsConfig } from "./config";
 import type { GtSession } from "./auth";
 
@@ -201,45 +203,39 @@ export async function ensurePmRepo(session: GtSession, org: string): Promise<Dcs
   }
 }
 
+/**
+ * The projects of a space: its index, and every folder of the plan repository that holds one. A project missing from
+ * the index (a device that knew fewer projects wrote it, see `mergeProjectsIndex`) is still found by its folder.
+ */
 export async function listPmProjects(
   session: GtSession,
   org: string,
   lang: string,
 ): Promise<ProjectIndexEntry[]> {
   const config = dcsConfig(session.host);
-  try {
-    const raw = await getRawContent(config, org, PM_REPO_NAME, projectsIndexPath(lang), {
-      token: session.token,
-    });
-    const parsed = JSON.parse(raw) as { projects?: unknown } | unknown[];
-    const list = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === "object" && "projects" in parsed
-        ? (parsed as { projects: unknown }).projects
-        : [];
-    const indexed = normalizeProjectsIndex(list);
-    if (indexed.length) return indexed;
-  } catch {
-    /* fall through to directory scan */
-  }
-  try {
-    const contents = await getContents(config, org, PM_REPO_NAME, lang.toLowerCase(), {
-      token: session.token,
-    });
-    if (!Array.isArray(contents)) return [];
-    return contents
-      .filter((row) => row.type === "dir")
-      .map((row) => resolveProjectMeta({ projectId: normalizeProjectId(row.name) }))
-      .map((meta) => ({
-        projectId: meta.projectId,
-        title: meta.title,
-        kind: meta.kind,
-        books: meta.books,
-      }))
-      .sort((a, b) => a.title.localeCompare(b.title, "es"));
-  } catch {
-    return [];
-  }
+  const [indexed, folders] = await Promise.all([
+    getRawContent(config, org, PM_REPO_NAME, projectsIndexPath(lang), { token: session.token })
+      .then((raw) => {
+        const parsed = JSON.parse(raw) as { projects?: unknown } | unknown[];
+        const list = Array.isArray(parsed)
+          ? parsed
+          : parsed && typeof parsed === "object" && "projects" in parsed
+            ? (parsed as { projects: unknown }).projects
+            : [];
+        return normalizeProjectsIndex(list);
+      })
+      .catch((): ProjectIndexEntry[] => []),
+    getContents(config, org, PM_REPO_NAME, `${scopeFolder()}${lang.toLowerCase()}`, { token: session.token })
+      .then((contents) =>
+        (Array.isArray(contents) ? contents : [])
+          .filter((row) => row.type === "dir")
+          .map((row) => resolveProjectMeta({ projectId: normalizeProjectId(row.name) }))
+          .map((meta): ProjectIndexEntry => ({ projectId: meta.projectId, title: meta.title, kind: meta.kind, books: meta.books })),
+      )
+      .catch((): ProjectIndexEntry[] => []),
+  ]);
+  // What the index says of a project (its title, its books) wins over what its folder's name says.
+  return mergeProjectsIndex(folders, indexed).sort((a, b) => a.title.localeCompare(b.title, "es"));
 }
 
 /** @deprecated Prefer {@link listPmProjects}. */
@@ -267,11 +263,13 @@ export async function saveProjectsIndexToDcs(
   entries: ProjectIndexEntry[],
 ): Promise<void> {
   await ensurePmRepo(session, org);
+  // Added to what Door43 has: a device writes the projects it knows, which may be fewer than the space has.
+  const projects = mergeProjectsIndex(await listPmProjects(session, org, lang), entries);
   await writeJsonFile(
     session,
     org,
     projectsIndexPath(lang),
-    { projects: entries, updated_at: new Date().toISOString() },
+    { projects, updated_at: new Date().toISOString() },
     `Índice de proyectos (${lang})`,
   );
 }

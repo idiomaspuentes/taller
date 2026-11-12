@@ -2,8 +2,9 @@ import { tallerConfig } from "../../taller.config";
 import { DEFAULT_LOAD_LIMITS, type LoadLimits } from "./processLoad";
 import type { ProcessPackage, WritingCheck } from "../config/types";
 import { DEFAULT_SOLVERS_CATALOG } from "./solvers";
-import { normalizeWorkflowTemplate } from "./store";
-import type { Localized, TaskStep, WorkflowTemplate } from "./types";
+import { emptyAssignments, normalizeWorkflowTemplate } from "./store";
+import type { AssignmentsDoc, Localized, TaskStep, WorkflowTemplate } from "./types";
+import { applyWorkflowToBoard } from "./workflows";
 import { processProblems } from "./workflowCheck";
 
 /**
@@ -35,6 +36,15 @@ export function shippedWorkflows(packages: ProcessPackage[] = tallerConfig.proce
 /** A copy of a shipped template (its own arrays), to start a new one from. */
 export function shippedWorkflow(id: string, packages: ProcessPackage[] = tallerConfig.processes): WorkflowTemplate | undefined {
   return shippedWorkflows(packages).find((workflow) => workflow.id === id);
+}
+
+/**
+ * The phases and tasks of a process as a project would lay them out: how a book that has no project in Taller is
+ * measured (`bookStanding.ts`). The process named, or the first one shipped.
+ */
+export function processPlan(id: string | undefined, space: { lang: string; contentOrg: string; pmOrg: string }): AssignmentsDoc | undefined {
+  const workflow = (id && shippedWorkflow(id)) || shippedWorkflows()[0];
+  return workflow ? applyWorkflowToBoard(emptyAssignments("TMP", space.lang, space.contentOrg, space.pmOrg), workflow) : undefined;
 }
 
 /**
