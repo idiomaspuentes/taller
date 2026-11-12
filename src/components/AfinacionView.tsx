@@ -550,12 +550,29 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** «No del todo…»: the sheet with the two ways to say why (propose other words, comment to the team). */
   const [noSheet, setNoSheet] = useState(false);
   /** The words of the original open their meaning only when asked: underlined all, the verse looked touchable. */
-  const [wordsOn, setWordsOn] = useState(false);
-  // Another point: closed as it is, and its words without their meanings until asked. Not on an answer to this one:
-  // a point opened again stays open for the answer just given (with «Reabrir» alone, the person had no way on).
+  /**
+   * The verse card of step 1 shows the original alone; «Ver más» opens under it the ULT, the other texts, the chapter
+   * and the other books (Abel, 11 November). Whoever opens it keeps it open from one point to the next, on this device.
+   */
+  const [refMore, setRefMore] = useState(() => {
+    try {
+      return localStorage.getItem("taller-af-refmore") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleRefMore = () => {
+    setRefMore(!refMore);
+    try {
+      localStorage.setItem("taller-af-refmore", refMore ? "0" : "1");
+    } catch {
+      /* private window: open for this visit only */
+    }
+  };
+  // Another point: closed as it is. Not on an answer to this one: a point opened again stays open for the answer just
+  // given (with «Reabrir» alone, the person had no way on).
   useEffect(() => {
     setReopened(false);
-    setWordsOn(false);
   }, [item?.id]);
   /** An answer in the words of the button that gave it: «Usted dijo: De acuerdo» answered «Sí, está bien». */
   const saidAs = (status: string) => t(status === "approved" ? "af.yesFine" : status === "revise" ? "rv.revise" : "af.observation");
@@ -1661,7 +1678,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
   /** Where the point is: marked in the text the draft is read against, the original unless another is chosen. */
   const referenceBox =
     data && item ? (
-        <div className="af-ref" data-guide="af-ref" data-words={wordsOn ? "on" : undefined}>
+        <div className="af-ref" data-guide="af-ref">
           {/* No line saying that the words of the original open their meaning: their dotted underline says it, and the
               line was one more thing to read before the verse (19 October). */}
           {/* Another text than the original says its name: chosen down under «Más para ver», the verse changed here
@@ -1677,15 +1694,44 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           {refToggle}
           {/* The same verse in English, with the same phrase marked: whoever does not read the original well reads
               it here, without opening anything (11 November). */}
-          {reference?.id === "orig" && glossRow && glossVerse ? (
-            <p className="af-gloss" lang="en">
-              <span className="af-gloss__name">{refName(glossRow)}</span> <Words text={glossVerse} marked={glossMarked} />
-            </p>
-          ) : null}
-          {reference?.id === "orig" ? (
-            <button type="button" className="af-see af-ref__words" aria-pressed={wordsOn} onClick={() => setWordsOn((on) => !on)}>
-              <Eye size={16} aria-hidden /> {t(wordsOn ? "af.wordsOff" : "af.wordsOn")}
-            </button>
+          <button type="button" className="af-see af-ref__fold" data-guide="af-more" aria-expanded={refMore} aria-controls="af-ref-more" onClick={toggleRefMore}>
+            {t(refMore ? "af.seeLess" : "af.seeMore")}
+            <ChevronDown size={18} aria-hidden className="af-more__chev" />
+          </button>
+          {refMore ? (
+            <div className="af-ref__extra" id="af-ref-more">
+              {reference?.id === "orig" && glossRow && glossVerse ? (
+                <p className="af-gloss" lang="en">
+                  <span className="af-gloss__name">{refName(glossRow)}</span> <Words text={glossVerse} marked={glossMarked} />
+                </p>
+              ) : null}
+              {data.references.length > 1 ? (
+                <div className="af-more__row">
+                  <span className="af-more__lbl">{t("af.verseIn")}</span>
+                  <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
+                    {data.references.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={reference?.id === row.id}
+                        onClick={() => {
+                          setRefText(row.id);
+                          if (row.id !== reference?.id) guideDid("af:ref-tab");
+                          document.querySelector(".af-work > .af-ref")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                        }}
+                      >
+                        {refName(row)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
+                <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
+              </button>
+              <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} />
+            </div>
           ) : null}
         </div>
     ) : null;
@@ -1695,7 +1741,7 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
    * screen, and 30 things could be touched in the first step of a point, two of which did the work (11 November).
    * Nothing in it changes anything.
    */
-  const moreToSee = (n: 1 | 2 | 3) =>
+  const moreToSee = (n: 2 | 3) =>
     data && item ? (
       <details key={`${item.id}-${n}`} className="af-more" data-guide="af-more">
         <summary className="af-see">
@@ -1703,32 +1749,9 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
           <ChevronDown size={18} aria-hidden className="af-more__chev" />
         </summary>
         <div className="af-more__body">
-          {n === 1 && data.references.length > 1 ? (
-            <div className="af-more__row">
-              <span className="af-more__lbl">{t("af.verseIn")}</span>
-              <div className="af-ref__texts" role="tablist" aria-label={t("af.readAgainst")} data-guide="af-tabs">
-                {data.references.map((row) => (
-                  <button
-                    key={row.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={reference?.id === row.id}
-                    onClick={() => {
-                      setRefText(row.id);
-                      if (row.id !== reference?.id) guideDid("af:ref-tab");
-                      document.querySelector(".af-work > .af-ref")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-                    }}
-                  >
-                    {refName(row)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
           <button type="button" className="af-see" aria-label={t("af.expandRefsAria")} onClick={() => setChapterOpen(true)}>
             <Maximize2 size={16} aria-hidden /> {t("af.seeChapter")}
           </button>
-          {n === 1 ? <ParallelLink book={data.book} chapter={item.chapter} from={item.verse} session={session ?? null} workspace={ctx ? workspaceOfOrg(tallerConfig, ctx.pmOrg) : undefined} team={{ owner: data.draft.owner, repo: data.draft.repo }} /> : null}
           {n === 2 ? <VerseCorrections session={session} target={data.draft} book={data.book} chapter={item.chapter} verse={item.verse} /> : null}
         </div>
       </details>
@@ -2510,7 +2533,6 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                   </ul>
                 </div>
               ) : null}
-              {moreToSee(1)}
               {doubting ? (
                 <div className="af-why" data-guide="af-doubt">
                   <h3 className="af-study-q">{askNamed(stepProp === "notas" ? "af.studyQNote" : "af.studyQTerm")}</h3>

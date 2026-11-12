@@ -11533,10 +11533,8 @@ html[data-text] .ck-on-this { font-size: calc(0.9375rem * var(--ts)); }
 .af--round .af-study-help .af-note-reader { display: none; }
 html[data-text] .af--round .af-study-lbl { font-size: calc(0.9375rem * var(--ts)); }
 /* The words of the original open their meaning only when asked: underlined all, the verse looked touchable. */
-.af--round .af-ref:not([data-words]) .af-word--open { text-decoration: none; cursor: text; }
+.af--round .af-ref .af-word--open { text-decoration: none; }
 .af--round .af-pin .af-word--open { text-decoration: none; }
-.af--round .af-ref[data-words] .af-word--open { text-decoration-color: var(--accent-700); text-decoration-thickness: 2px; }
-.af--round .af-ref .af-ref__words { justify-self: start; }
 /* The verse in English under the original, with the same phrase marked. */
 .af--round .af-gloss { margin: 0; font-size: 1rem; line-height: 1.55; color: var(--gray-700); }
 .af--round .af-gloss__name { font-size: 0.8125rem; font-weight: 800; color: var(--text); margin-inline-end: 4px; }
@@ -11645,11 +11643,8 @@ html[data-text] .af-opt span { font-size: calc(0.9375rem * var(--ts)); }
 .af--round .af-work[data-cols="1"] > .af-ref { gap: 12px; }
 .af--round .af-work[data-cols="1"] > .af-study-help { margin-top: 16px; gap: 8px; }
 /* Links inside a card say less than what they open: lighter, a little smaller, with their icon. */
-.af--round .af-work[data-cols="1"] .af-ref__words,
 .af--round .af-work[data-cols="1"] .af-about__links .af-link { font-size: 0.9375rem; font-weight: 600; }
-.af--round .af-work[data-cols="1"] .af-ref__words { margin-bottom: -10px; }
 .af--round .af-work[data-cols="1"] .af-about__links { margin-bottom: -10px; }
-html[data-text] .af--round .af-work[data-cols="1"] .af-ref__words,
 html[data-text] .af--round .af-work[data-cols="1"] .af-about__links .af-link { font-size: calc(0.9375rem * var(--ts)); }
 /* What more there is: a quiet row under the cards; open, its own soft ground, apart from the question. */
 .af--round .af-work[data-cols="1"] > .af-more { margin-top: 16px; }
@@ -11697,3 +11692,19 @@ html[data-text] .af--round .af-more__lbl { font-size: calc(1rem * var(--ts)); }
   .af--round .af-head > .af-where { flex-basis: 0; }
   .af--round .af-head:has(> .af-where) > .round-chip { flex: none; }
 }
+
+/*
+ * The verse card of Estudiar, folded (11 November): the original alone, and at its foot one «Ver más» over a fine
+ * line. Open, it shows under that line the ULT, the texts the verse can be read in, the chapter and the other books,
+ * as rows of the card: «Más para ver» under the note held the same and was one more fold on the screen.
+ */
+.af--round .af-ref__fold { justify-content: space-between; width: 100%; margin-bottom: -8px; padding-top: 4px; border-top: 1px solid var(--border); font-weight: 600; }
+.af--round .af-ref__fold[aria-expanded="true"] .af-more__chev { transform: rotate(180deg); }
+.af--round .af-ref__extra { display: grid; gap: 0; margin-top: -4px; }
+.af--round .af-ref__extra > * { min-height: 52px; margin: 0; padding-block: 10px; }
+.af--round .af-ref__extra > * + * { border-top: 1px solid var(--border); }
+.af--round .af-ref__extra > .af-gloss { min-height: 0; padding-block: 4px 14px; }
+.af--round .af-ref__extra .af-more__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.af--round .af-ref__extra > .af-see { display: flex; justify-content: flex-start; width: 100%; padding-block: 4px; }
+.af--round .af-ref__extra .af-ref__texts button { font-size: 0.9375rem; }
+html[data-text] .af--round .af-ref__extra .af-ref__texts button { font-size: calc(0.9375rem * var(--ts)); }

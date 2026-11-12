@@ -80,7 +80,7 @@ export function TuningGuide({ ready, state: s }: { ready: boolean; state: Tuning
       ? [
           // Estudiar
           walkStep(k, 1, "where", { target: "af-where", text: t(notes ? "guide.afWhere" : "guide.afWhereW"), done: study, hide: [...round, "af-title", "af-ref", "af-help", "af-more", "af-answer"] }),
-          walkStep(k, 1, "ref", { target: "af-ref", text: fill(notes ? "guide.afN2" : "guide.afW2", { orig: s.orig }), sub: fill("guide.afWordsSub", { button: t("af.wordsOn") }), done: study, hide: [...round, "af-help", "af-more", "af-answer"] }),
+          walkStep(k, 1, "ref", { target: "af-ref", text: fill(notes ? "guide.afN2" : "guide.afW2", { orig: s.orig }), sub: fill("guide.afWordsSub", { orig: s.orig }), done: study, hide: [...round, "af-help", "af-more", "af-answer"] }),
           walkStep(k, 1, "help", { target: "af-help", text: t(notes ? "guide.afN4" : "guide.afW4"), ok: t(notes ? "guide.readNote" : "guide.readArticle"), when: s.hasHelp, done: study, hide: [...round, "af-more", "af-answer"] }),
           walkStep(k, 1, "more", { target: "af-more", text: t("guide.afMore"), done: study, hide: [...round, "af-answer"] }),
           walkStep(k, 1, "answer", { ...answer, done: study, hide: round }),
