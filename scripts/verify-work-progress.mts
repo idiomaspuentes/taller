@@ -146,6 +146,15 @@ test("las porciones juntadas en su capítulo cuentan una sola vez, y el capítul
   const pace = paceOf(issues, board, new Date("2026-11-14T12:00:00Z"));
   assert.equal(pace.left, 0.75 + 1, "lo que falta, sin contar dos veces lo del capítulo 4");
   assert.equal(pace.weeks.reduce((a, b) => a + b, 0), 3, "las tres porciones terminadas, en su semana; el capítulo de registro, no");
+  // Ezra's chapters 4–10 on 13 November: gathered, and nobody had opened them yet. A chapter that has not said how far
+  // it is does not hide its finished passages: chapter 4 read 0 % with half of it done.
+  const silent = part("afinar", ["c4a", "c4b"], { at: "2026-11-13T21:58:00Z" });
+  const before = [...four, silent];
+  assert.deepEqual(countedIssues(before, board).map((issue) => issue.number), [silent.number], "cuenta el capítulo");
+  const silentTally = projectTally(before, board);
+  assert.deepEqual([silentTally.done, silentTally.total, silentTally.fraction], [0, 1, 0.5], "por lo que valen sus porciones mientras nadie lo abre: una terminada, otra pasada a él");
+  const nothingYet = [part("afinar", ["c6a"], { closed: true, at: "2026-11-13T21:58:00Z" }), part("afinar", ["c6a", "c6b"], { at: "2026-11-13T21:58:00Z" })];
+  assert.deepEqual([projectTally(nothingYet, board).total, projectTally(nothingYet, board).fraction], [1, 0], "un capítulo sin nada hecho no desaparece: vale cero");
 });
 
 console.log(`\nverify-work-progress: ${passed} checks passed.`);

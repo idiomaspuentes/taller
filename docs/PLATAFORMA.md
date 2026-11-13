@@ -366,9 +366,10 @@ Todo sale de **dos fuentes que ya existían**; Taller no guarda nada aparte:
 - **Tarea, fase y proyecto**: la media de sus subtareas. En «Avance» del proyecto y en «Equipo hoy».
 - No cuentan las decisiones del equipo ni las subtareas que el plan retiró (cerradas con pasos sin
   hacer). Un porcentaje nunca dice «100 %» de algo sin terminar ni «0 %» de algo empezado.
-- Cada trabajo cuenta una vez (`countedIssues`). Cuando unas porciones se juntan en la subtarea de su capítulo,
+- Cada trabajo cuenta una vez (`countedWork`). Cuando unas porciones se juntan en la subtarea de su capítulo,
   cuenta el capítulo y no sus porciones. El capítulo cerrado que solo se hace para guardar porciones ya terminadas no
-  cuenta: lo dicen sus porciones, con sus fechas. Una corrección es trabajo aparte y siempre cuenta.
+  cuenta: lo dicen sus porciones, con sus fechas. Una corrección es trabajo aparte y siempre cuenta. Mientras nadie abre el
+  capítulo y su herramienta no ha contado nada, vale lo que sus porciones: las terminadas enteras, las que pasaron a él cero.
 
 **Cómo lo dice una herramienta** (`useStepWork`, `src/dcs/stepWork.ts`): cuando la cuenta lleva 20
 segundos quieta, y al salir. Lee la subtarea otra vez antes de escribir (para no pisar un asiento o
