@@ -366,6 +366,10 @@ Todo sale de **dos fuentes que ya existían**; Taller no guarda nada aparte:
 - **Tarea, fase y proyecto**: la media de sus subtareas. En «Avance» del proyecto y en «Equipo hoy».
 - No cuentan las decisiones del equipo ni las subtareas que el plan retiró (cerradas con pasos sin
   hacer). Un porcentaje nunca dice «100 %» de algo sin terminar ni «0 %» de algo empezado.
+- Cada trabajo cuenta una vez (`countedWork`). Cuando unas porciones se juntan en la subtarea de su capítulo,
+  cuenta el capítulo y no sus porciones. El capítulo cerrado que solo se hace para guardar porciones ya terminadas no
+  cuenta: lo dicen sus porciones, con sus fechas. Una corrección es trabajo aparte y siempre cuenta. Mientras nadie abre el
+  capítulo y su herramienta no ha contado nada, vale lo que sus porciones: las terminadas enteras, las que pasaron a él cero.
 
 **Cómo lo dice una herramienta** (`useStepWork`, `src/dcs/stepWork.ts`): cuando la cuenta lleva 20
 segundos quieta, y al salir. Lee la subtarea otra vez antes de escribir (para no pisar un asiento o
@@ -437,7 +441,9 @@ lo mismo, y dentro de una tarea cada capítulo vale lo mismo.
   Un capítulo nunca se cuenta dos veces.
 - Una tarea con subtareas se mide solo por los capítulos que tienen alguna. Así las tareas de artículos (Palabras,
   Academia) no quedan a medias para siempre.
-- Una tarea sin subtareas y sin registro tiene todo por hacer.
+- Una tarea sin subtareas y sin registro tiene todo por hacer, salvo en un libro que ya se trabaja en Taller: ahí
+  publicar repartió todas las tareas a la vez, y una sin subtareas no tenía nada que hacer (las Palabras y la
+  Academia de Ester, ya traducidas). Dice «Nada que hacer en este libro» y no entra en los promedios.
 - Lo del registro y lo traído (`brought`) es «antes de Taller»: cuenta para el avance, nunca para el ritmo.
 - Un libro sin proyecto se mide con las tareas del proceso que nombra el registro. Cada tarea lleva el equipo que
   tiene en los proyectos del espacio.

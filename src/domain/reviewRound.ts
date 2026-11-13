@@ -326,7 +326,8 @@ export function changedPlaces(before: string, now: string, max = 3): Array<{ bef
     }
     hunks.push({ ...start, a1: i, b1: j });
   }
-  if (!hunks.length) return [];
+  // The same words with other spaces or line breaks: the two texts, each line break shown as « / ».
+  if (!hunks.length) return before === now ? [] : [{ before: before.trim().replace(/\s*\n\s*/g, " / "), now: now.trim().replace(/\s*\n\s*/g, " / ") }];
   if (hunks.length > max) return [changedStretch(before, now)];
   return hunks.map((h) => {
     const lead = h.a0 > 0 ? [a[h.a0 - 1]!] : [];

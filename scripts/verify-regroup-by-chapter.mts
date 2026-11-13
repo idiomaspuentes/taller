@@ -149,4 +149,16 @@ test("lo que dicen las conversaciones", () => {
   assert.equal(closedIntoNote(4, 2001), "Esta porción se juntó en la tarea del capítulo 4: #2001. Lo que se respondió aquí sigue allí.");
 });
 
+test("correr de nuevo cierra el capítulo terminado que quedó abierto porque falló su cierre", () => {
+  const first = planRegroup({ board: byPassage, inventory, taskId: "desafios-tps", issues, at: "2026-11-13T12:00:00Z" });
+  const three = first.chapters.find((c) => c.order.chapter === 3)!;
+  // Created, and the step that closes it failed: it is there, open, with the mark of a finished chapter.
+  const left = { number: 2002, id: 2002, title: "EZR 3", state: "open", body: three.body, labels: [] } as unknown as DcsIssue;
+  const again = planRegroup({ board: first.board, inventory, taskId: "desafios-tps", issues: [...issues, left], at: "2026-11-13T13:00:00Z" });
+  const chapter3 = again.chapters.find((c) => c.order.chapter === 3)!;
+  assert.deepEqual([chapter3.existing?.number, chapter3.state, chapter3.closeExisting], [2002, "closed", true]);
+  const chapter4 = again.chapters.find((c) => c.order.chapter === 4)!;
+  assert.equal(chapter4.closeExisting, undefined, "un capítulo con trabajo abierto no se cierra");
+});
+
 console.log(`\nverify-regroup-by-chapter: ${passed} checks passed.`);

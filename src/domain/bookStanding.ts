@@ -3,9 +3,8 @@ import { BOOKS } from "./books";
 import { chaptersOf } from "./bookChapters";
 import { chaptersDoneElsewhere, type BookDoneElsewhere } from "./doneElsewhere";
 import { issueTaskId } from "./myTasks";
-import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc } from "./types";
-import { issueFraction } from "./workProgress";
+import { countedWork, issueFraction } from "./workProgress";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -30,9 +29,14 @@ export type TaskStanding = {
   before: number;
   /** The chapters it is measured by. */
   chapters: number;
+  /**
+   * The book is worked in Taller and this task laid out nothing in it, nor is it in the record: there was nothing to
+   * do (Esther's words and articles were all translated before). It is left out of the means, never read as 0 %.
+   */
+  nothing?: true;
 };
 
-export type PhaseStanding = { phaseId: string; fraction: number; before: number; tasks: TaskStanding[] };
+export type PhaseStanding = { phaseId: string; fraction: number; before: number; tasks: TaskStanding[]; nothing?: true };
 
 export type BookStanding = {
   book: string;
@@ -68,6 +72,11 @@ export function bookStanding(params: {
   teams?: string[];
   /** The book's chapters; from `bookChapters.ts` when absent. */
   chapters?: number;
+  /**
+   * Whether its project has subtareas at all (of any team). With `teams`, the subtareas given are only theirs, and a
+   * team with none would read as a book never brought here.
+   */
+  inTaller?: boolean;
 }): BookStanding {
   const { book, plan, issues, elsewhere } = params;
   const chapters = params.chapters ?? chaptersOf(book);
@@ -75,23 +84,24 @@ export function bookStanding(params: {
   const tasks = plan.teams.filter((task) => !teams || teams.includes((task.orgTeamName ?? "").trim().toLowerCase()));
 
   // Each subtarea, by task and chapter: how far it is, and whether its work was brought from elsewhere.
-  const cells = new Map<string, Map<number, { fraction: number; brought: boolean }[]>>();
+  const cells = new Map<string, Map<number, { fraction: number; before: number }[]>>();
   let started = false;
-  for (const issue of issues) {
-    const fraction = issueFraction(issue, plan);
-    if (fraction === null) continue;
+  for (const { issue, fraction, before } of countedWork(issues, plan)) {
     started = true;
     const chapter = issueChapter(issue);
     if (chapter < 1 || chapter > chapters) continue;
     const taskId = issueTaskId(issue);
     const byChapter = cells.get(taskId) ?? new Map();
     cells.set(taskId, byChapter);
-    byChapter.set(chapter, [...(byChapter.get(chapter) ?? []), { fraction, brought: Boolean(parseTaskProgressMarker(issue.body ?? "").brought) }]);
+    byChapter.set(chapter, [...(byChapter.get(chapter) ?? []), { fraction, before }]);
   }
 
+  const inTaller = params.inTaller ?? started;
   const taskRows: TaskStanding[] = tasks.map((task) => {
     const recorded = chaptersDoneElsewhere(elsewhere, task.id, chapters);
     const laid = cells.get(task.id);
+    // Publishing a book lays out every task at once: in a book worked here, a task with no subtarea had nothing to do.
+    if (inTaller && !laid && !recorded.size) return { taskId: task.id, phaseId: task.phaseId, fraction: 0, before: 0, chapters: 0, nothing: true as const };
     const values: number[] = [];
     const before: number[] = [];
     for (let chapter = 1; chapter <= chapters; chapter++) {
@@ -103,7 +113,7 @@ export function bookStanding(params: {
       const here = laid?.get(chapter);
       if (here?.length) {
         values.push(mean(here.map((row) => row.fraction)));
-        before.push(here.filter((row) => row.brought).length / here.length);
+        before.push(here.reduce((sum, row) => sum + row.before, 0) / here.length);
       } else if (!laid) {
         values.push(0);
         before.push(0);
@@ -116,10 +126,12 @@ export function bookStanding(params: {
     .sort((a, b) => a.order - b.order)
     .map((phase) => {
       const rows = taskRows.filter((row) => row.phaseId === phase.id);
-      return { phaseId: phase.id, tasks: rows, fraction: mean(rows.map((row) => row.fraction)), before: mean(rows.map((row) => row.before)) };
+      const work = rows.filter((row) => !row.nothing);
+      return { phaseId: phase.id, tasks: rows, fraction: mean(work.map((row) => row.fraction)), before: mean(work.map((row) => row.before)), ...(rows.length && !work.length ? { nothing: true as const } : {}) };
     })
     .filter((phase) => phase.tasks.length);
-  return { book: book.toUpperCase(), started, phases, fraction: mean(taskRows.map((row) => row.fraction)), before: mean(taskRows.map((row) => row.before)) };
+  const work = taskRows.filter((row) => !row.nothing);
+  return { book: book.toUpperCase(), started, phases, fraction: mean(work.map((row) => row.fraction)), before: mean(work.map((row) => row.before)) };
 }
 
 /**
@@ -198,7 +210,8 @@ export function spaceBooks(params: {
     seen.add(book);
     const elsewhere = doneElsewhere.books[book];
     const issues = ofTeams(project.board, project.issues);
-    out.push({ book, projectId: project.projectId, title: project.title, plan: project.board, issues, elsewhere, paused: paused.has(project.projectId.toUpperCase()) || paused.has(book), standing: { ...bookStanding({ book, plan: project.board, issues, elsewhere, teams }), started: project.issues.some((issue) => issueFraction(issue, project.board) !== null) } });
+    const started = project.issues.some((issue) => issueFraction(issue, project.board) !== null);
+    out.push({ book, projectId: project.projectId, title: project.title, plan: project.board, issues, elsewhere, paused: paused.has(project.projectId.toUpperCase()) || paused.has(book), standing: { ...bookStanding({ book, plan: project.board, issues, elsewhere, teams, inTaller: started }), started } });
   }
   if (process) {
     const plan = planWithTeams(process, projects.map((project) => project.board));

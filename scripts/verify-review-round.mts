@@ -483,4 +483,10 @@ test("la fecha del plazo es corta: el día de la semana y el número, sin el mes
   assert.ok(!/novembro|november/i.test(sayOpenDate(iso, "pt", "até {day} às {time}")), "en portugués tampoco");
 });
 
+test("un cambio que solo toca espacios o saltos de línea se dice, y no queda en «cambiar el versículo: .»", () => {
+  assert.equal(changesSaid("y dijo:\nVengan", "y dijo: Vengan"), "«y dijo: / Vengan» → «y dijo: Vengan»");
+  assert.equal(changesSaid("a  b", "a b"), "«a  b» → «a b»");
+  assert.equal(changesSaid("a b", "a b"), "", "lo que no cambió no dice nada");
+});
+
 console.log(`\nverify-review-round: ${passed} checks passed.`);

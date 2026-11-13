@@ -3089,6 +3089,7 @@
   "bk.paused": "En pausa.",
   "bk.notInTaller": "Todavía no se trabaja en Taller.",
   "bk.before": "{n} % se hizo antes de Taller.",
+  "bk.nothing": "Nada que hacer en este libro",
   "bk.allBefore": "Hecho antes de Taller",
   "bk.recordMissing": "No se pudo leer lo hecho antes de Taller: se muestran solo los libros que se trabajan aquí.",
   "td.ledeTeams": "Cómo va el trabajo de {teams} y qué necesita atención.",

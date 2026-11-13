@@ -1,5 +1,5 @@
 /** A proposal or an objection as a decision of the team: who counts, when it is decided. */
-import { alineacionDecisionType, buildCloseEvent, buildConsensusEvent, buildDecisionEvent, buildVoteEvent, mayEdit, toldOf, waitsOnVote, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
+import { alineacionDecisionType, reminderSaid, buildCloseEvent, buildConsensusEvent, buildDecisionEvent, buildVoteEvent, mayEdit, toldOf, waitsOnVote, type DecisionEventData } from "../src/domain/chatEvents/alineacionDecision";
 import { staleUntilResolved } from "../src/domain/chatEvents/registry";
 import type { ChatEvent } from "../src/domain/chatEvent";
 import assert from "node:assert/strict";
@@ -248,6 +248,19 @@ test("los votos, el acuerdo y el cierre se dicen como los diría una persona, y 
   ];
   assert.deepEqual([...staleUntilResolved(items)], [], "mientras no se cierra, el aviso de acuerdo se ve");
   assert.deepEqual([...staleUntilResolved([...items, { key: "cierre", event: closeEvent }])], ["consenso"], "cerrada, ya no pide nada");
+});
+
+test("el recordatorio de plazo vencido dice lo que de verdad cierra la decisión: una propuesta, con pocas personas; una objeción, quien coordina", () => {
+  const base = { who: "@ana y @carla", by: "bea", ref: "NEH 1:1", deadline: "2026-11-20T12:00:00Z" };
+  const proposal = reminderSaid({ ...base, due: "vencido", kind: "proposal", minIndependent: 3 });
+  assert.match(proposal, /basta con que 2 personas/);
+  assert.match(reminderSaid({ ...base, due: "vencido", kind: "proposal", minIndependent: 1 }), /basta con que una persona/);
+  const objection = reminderSaid({ ...base, due: "vencido", kind: "objection", minIndependent: 3 });
+  // tallyDecision accepts nothing late for an objection: it waits for whoever coordinates.
+  assert.doesNotMatch(objection, /basta con/);
+  assert.match(objection, /^@ana y @carla: ya pasó el plazo para opinar sobre la objeción de @bea sobre NEH 1:1\. Ahora la decide quien coordina el equipo\./);
+  assert.match(reminderSaid({ ...base, due: "cerca", kind: "objection", minIndependent: 3 }), /mañana vence el plazo/);
+  assert.match(reminderSaid({ ...base, due: null, kind: "proposal", minIndependent: 3 }), /Se decide antes del \d+ de noviembre\.$/);
 });
 
 console.log(`\nverify-alignment-decision: ${passed} checks passed.`);

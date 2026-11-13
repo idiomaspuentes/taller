@@ -465,8 +465,9 @@ equipos distintos.
 **Una subtarea por capítulo para las frases con nota** (Abel, 13 de noviembre de 2026; versión 55 del proceso). Eran una
 por porción, y el equipo de Esdras veía «4:11–13» suelta, sin saber dónde estaba del capítulo. Las respuestas no se
 pierden al juntar porciones: se guardan por frase junto al borrador, no dentro de la subtarea. Un proyecto que ya
-existía conserva su corte al traer el proceso nuevo; Esdras y Nehemías se cambiaron a mano. La alineación pasó a
-ser por capítulo el mismo día (versión 56), como se describe abajo.
+existía conserva su corte al traer el proceso nuevo; Esdras y Nehemías se cambiaron con
+`npm run regroup-by-chapter -- <LIBRO> <tarea>`, que sin `--write` solo dice lo que haría. La alineación pasó a ser
+por capítulo el mismo día (versión 56), como se describe abajo.
 
 **Quién entra y cuándo queda acordado:** en Desafíos y Palabras clave, entre dos y seis personas del equipo,
 sin que nadie quede fuera; en Alinear, cada versículo lo revisan al menos otras dos personas que no lo alinearon. Un ítem queda **acordado
@@ -534,7 +535,7 @@ dejaba a una sola persona con 70 versículos (Esdras 2). Ahora, en el capítulo:
 - Entran hasta seis personas. Nadie queda fuera de revisar por haber alineado otros versículos.
 
 Un proyecto que ya existía conserva sus dos pasos al traer el proceso nuevo. Esdras y Nehemías se cambiaron a mano
-(`regroupTaskByChapter` con `stepsFromProcess`).
+(`npm run regroup-by-chapter -- <LIBRO> alinear-tps --steps-from-process`).
 
 **Cómo se revisan las palabras clave:**
 - Es **una ronda abierta**, no «una persona revisa y otras confirman». Nadie tiene que ser la primera en todos los

@@ -3,6 +3,7 @@ import { stepMaxAssignees } from "./stepClaim";
 import { emptyTaskProgress, parseTaskProgressMarker, upsertTaskProgressInBody, withStepRuntime, type TaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc, InventoryDoc, ProjectTask } from "./types";
 import { indexWorkIssues, parseWorkOrderMarker, publishableWorkOrders, workOrderIssueBody, type WorkOrder } from "./workOrder";
+import { GATHERED_FROM, isGatheredRecord } from "./workProgress";
 
 /**
  * One subtask per chapter for a task of a project that was cut by passage (Abel, 13 November 2026: Ezra's tuning team
@@ -11,6 +12,9 @@ import { indexWorkIssues, parseWorkOrderMarker, publishableWorkOrders, workOrder
  * Pure: what to write. The answers of a tuning task are kept per item beside the draft, not in its subtask, so a
  * subtask of the chapter shows every answer given in its passages. What a passage subtask carries (who sits in its
  * step) goes to the chapter's; its approvals and its count of work do not, because they were of the passage only.
+ *
+ * Counting: the chapter's subtask is the work of its passages from then on (`countedIssues` in `workProgress.ts`), and a
+ * chapter whose passages were all finished gets a closed record that counts for nothing (`GATHERED_FROM`).
  */
 
 /**
@@ -30,6 +34,8 @@ export type ChapterSubtask = {
   from: DcsIssue[];
   /** Closed when all its passages were: made only so that publishing the plan again never opens it. */
   state: "open" | "closed";
+  /** A run before made this record of finished passages and could not close it: this run closes it. */
+  closeExisting?: true;
   /** The body to create it with (none when it exists). */
   body?: string;
   begun: boolean;
@@ -118,14 +124,18 @@ export function planRegroup(params: {
     const open = from.filter((issue) => issue.state !== "closed");
     const begun = open.some(isBegun);
     const touched = open.some(isTouched);
-    const chapter: ChapterSubtask = { order, from, state: open.length || existing?.state === "open" ? "open" : "closed", begun, touched };
+    // A record of finished passages left open by a run that failed to close it is closed now; a chapter with work in
+    // hand stays as it is.
+    const recordLeftOpen = Boolean(existing && existing.state !== "closed" && !open.length && isGatheredRecord({ ...existing, state: "closed" }));
+    const chapter: ChapterSubtask = { order, from, state: open.length || (existing?.state === "open" && !recordLeftOpen) ? "open" : "closed", begun, touched };
+    if (recordLeftOpen) chapter.closeExisting = true;
     if (existing) chapter.existing = existing;
     else if (open.length) {
       const body = upsertTaskProgressInBody(workOrderIssueBody(order), seatsOf(cut, open));
       chapter.body = begun ? `${begunMark}\n${body}` : body;
     } else {
       // Every passage was finished: the chapter is, and its pace is not counted again.
-      const done: TaskProgressMarker = { ...emptyTaskProgress(), doneStepIds: (cut.steps ?? []).map((step) => step.id), brought: { from: "porciones", at } };
+      const done: TaskProgressMarker = { ...emptyTaskProgress(), doneStepIds: (cut.steps ?? []).map((step) => step.id), brought: { from: GATHERED_FROM, at } };
       chapter.body = upsertTaskProgressInBody(workOrderIssueBody(order), done);
     }
     chapters.push(chapter);

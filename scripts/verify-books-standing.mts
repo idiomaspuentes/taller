@@ -128,6 +128,23 @@ test("el capítulo de una subtarea sale de su etiqueta, o de su porción cuando 
   assert.deepEqual([tpl.chapters, tpl.fraction], [1, 1]);
 });
 
+test("en un libro que ya se trabaja en Taller, una tarea sin ninguna subtarea no tenía nada que hacer: no cuenta como 0 %", () => {
+  // Esther, 13 November: its 173 words and articles were translated before, so «Traducir Palabras» and «Traducir
+  // Academia» laid out nothing, and «Libros» said 0 % of the translation of both.
+  const issues = [issue("tpl", 1, { closed: true, marker: done(["borrador", "pares"]) })];
+  const book = bookStanding({ book: "EPH", plan, issues });
+  const articles = book.phases[0]!.tasks.find((r) => r.taskId === "articulos")!;
+  assert.deepEqual([articles.nothing, articles.chapters], [true, 0]);
+  const tpl = book.phases[0]!.tasks.find((r) => r.taskId === "tpl")!;
+  const tps = book.phases[0]!.tasks.find((r) => r.taskId === "tps")!;
+  assert.equal(tps.nothing, true, "lo mismo cualquier tarea que el plan no repartió");
+  assert.equal(book.phases[0]!.fraction, tpl.fraction, "la fase va por las tareas que tienen trabajo");
+  const fresh = bookStanding({ book: "EPH", plan, issues: [] }).phases[0]!.tasks.find((r) => r.taskId === "articulos")!;
+  assert.deepEqual([fresh.nothing, fresh.fraction, fresh.chapters], [undefined, 0, 6], "en un libro que aún no se trabaja aquí, todo está por hacer");
+  const allNothing = bookStanding({ book: "EPH", plan: { ...plan, teams: plan.teams.filter((t) => t.id !== "tpl") }, issues: [issue("alinear", 1)] });
+  assert.equal(allNothing.phases.find((p) => p.phaseId === "f1")!.nothing, true, "una fase sin nada que hacer lo dice, en vez de 0 %");
+});
+
 test("una tarea que no trabaja todos los capítulos (artículos) se mide por los capítulos que tienen subtareas", () => {
   const issues = [issue("articulos", 1, { closed: true, marker: done(["borrador"]) }), issue("articulos", 5)];
   const row = bookStanding({ book: "EPH", plan, issues }).phases[0]!.tasks.find((r) => r.taskId === "articulos")!;
@@ -188,6 +205,14 @@ test("los libros del espacio: los de Taller con su plan, y los del registro con 
   const tps = spaceBooks({ projects, doneElsewhere, process, teams: ["pm-tps"], priority: { projectOrder: [], paused: [] } });
   assert.deepEqual(tps.map((row) => [row.book, row.issues.length]), [["NEH", 2], ["EST", 0], ["EPH", 0], ["TIT", 0]], "Nehemías se trabaja en Taller aunque solo se cuenten las del TPS");
   assert.equal(tps.find((row) => row.book === "EST")!.standing.fraction, 0, "lo del TPL no es del equipo del TPS");
+});
+
+test("un capítulo cerrado solo para guardar porciones terminadas en Taller no es trabajo de antes de Taller", () => {
+  const record = { ...done(["borrador", "pares"]), brought: { from: "porciones", at: "2026-11-13T21:58:00Z" } };
+  const issues = [issue("tpl", 1, { closed: true, marker: done(["borrador", "pares"]) })];
+  const gathered = issue("tpl", 1, { closed: true, marker: record });
+  const row = bookStanding({ book: "EPH", plan, issues: [...issues, { ...gathered, body: gathered.body!.replace(/"portionIds":\["[^"]+"\]/, '"portionIds":["EPH-01-01","EPH-01-02"]') } as DcsIssue] }).phases[0]!.tasks.find((r) => r.taskId === "tpl")!;
+  assert.deepEqual([row.fraction, row.before], [1, 0], "terminado en Taller, por su porción");
 });
 
 console.log(`\nverify-books-standing: ${passed} checks passed.`);

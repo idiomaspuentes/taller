@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import { emptyTaskProgress, encodeTaskProgressMarker, markStepDone, parseTaskProgressMarker, withStepRuntime, withStepWork, type TaskProgressMarker } from "../src/domain/taskProgress";
 import type { AssignmentsDoc, ProjectTask } from "../src/domain/types";
-import { issueFraction, percentOf, projectTally, stepFraction, subtaskFraction } from "../src/domain/workProgress";
+import { countedIssues, issueFraction, percentOf, projectTally, stepFraction, subtaskFraction } from "../src/domain/workProgress";
+import { paceOf } from "../src/domain/pace";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -117,6 +118,43 @@ test("no cuenta lo que no es trabajo: una decisión del equipo, ni la subtarea q
   assert.equal(issueFraction(issue("tpl", { closed: true, marker: done(STEPS) }), board), 1);
   const dropped = projectTally([issue("tpl", { closed: true }), issue("tpl", { closed: true, marker: done(STEPS) })], board);
   assert.deepEqual([dropped.done, dropped.total], [1, 1]);
+});
+
+test("las porciones juntadas en su capítulo cuentan una sola vez, y el capítulo hecho solo para guardarlas no cuenta", () => {
+  // Ezra's «Frases con nota TPS» on 13 November: chapter 3 was finished by passage, chapter 4 half, then gathered.
+  const part = (taskId: string, portions: string[], o: { closed?: boolean; marker?: TaskProgressMarker; at: string; extra?: boolean }) => {
+    n++;
+    const order = JSON.stringify({ schema: "gateway-work-order-1", key: `${taskId}|${portions.join(",")}|${n}`, book: "EZR", teamId: taskId, resource: "tpl", portionIds: portions, itemIds: o.extra ? ["extra:1"] : [] });
+    return {
+      id: n, number: n, title: `EZR · ${portions.join(",")}`, state: o.closed ? "closed" : "open", created_at: o.at, closed_at: o.closed ? o.at : undefined,
+      body: `<!-- gateway-work-order ${order} -->\n${o.marker ? encodeTaskProgressMarker(o.marker) : ""}`,
+      labels: [{ name: `pm/tarea:${taskId}` }],
+    } as unknown as DcsIssue;
+  };
+  const gatheredMark = { ...done(["afinar"]), brought: { from: "porciones", at: "2026-11-13T21:58:00Z" } };
+  const three = [part("afinar", ["c3a"], { closed: true, marker: done(["afinar"]), at: "2026-11-01T00:00:00Z" }), part("afinar", ["c3b"], { closed: true, marker: done(["afinar"]), at: "2026-11-02T00:00:00Z" })];
+  const record3 = part("afinar", ["c3a", "c3b"], { closed: true, marker: gatheredMark, at: "2026-11-13T21:58:00Z" });
+  const four = [part("afinar", ["c4a"], { closed: true, marker: done(["afinar"]), at: "2026-11-03T00:00:00Z" }), part("afinar", ["c4b"], { closed: true, at: "2026-11-13T21:58:00Z" })];
+  const chapter4 = part("afinar", ["c4a", "c4b"], { marker: withStepWork(emptyTaskProgress(), "afinar", { done: 1, total: 4 }), at: "2026-11-13T21:58:00Z" });
+  const correction = part("afinar", ["c4a"], { at: "2026-11-14T00:00:00Z", extra: true });
+  const issues = [...three, record3, ...four, chapter4, correction];
+  const counted = countedIssues(issues, board).map((issue) => issue.number);
+  assert.deepEqual(counted, [three[0]!.number, three[1]!.number, chapter4.number, correction.number], "las porciones de 3, el capítulo 4 en vez de sus porciones, y la corrección aparte");
+  const tally = projectTally(issues, board);
+  // Chapter 3's two passages, chapter 4 at a quarter and the correction not begun; the withdrawn passage counts for nothing.
+  assert.deepEqual([tally.done, tally.total, tally.fraction], [2, 4, (1 + 1 + 0.25 + 0) / 4]);
+  const pace = paceOf(issues, board, new Date("2026-11-14T12:00:00Z"));
+  assert.equal(pace.left, 0.75 + 1, "lo que falta, sin contar dos veces lo del capítulo 4");
+  assert.equal(pace.weeks.reduce((a, b) => a + b, 0), 3, "las tres porciones terminadas, en su semana; el capítulo de registro, no");
+  // Ezra's chapters 4–10 on 13 November: gathered, and nobody had opened them yet. A chapter that has not said how far
+  // it is does not hide its finished passages: chapter 4 read 0 % with half of it done.
+  const silent = part("afinar", ["c4a", "c4b"], { at: "2026-11-13T21:58:00Z" });
+  const before = [...four, silent];
+  assert.deepEqual(countedIssues(before, board).map((issue) => issue.number), [silent.number], "cuenta el capítulo");
+  const silentTally = projectTally(before, board);
+  assert.deepEqual([silentTally.done, silentTally.total, silentTally.fraction], [0, 1, 0.5], "por lo que valen sus porciones mientras nadie lo abre: una terminada, otra pasada a él");
+  const nothingYet = [part("afinar", ["c6a"], { closed: true, at: "2026-11-13T21:58:00Z" }), part("afinar", ["c6a", "c6b"], { at: "2026-11-13T21:58:00Z" })];
+  assert.deepEqual([projectTally(nothingYet, board).total, projectTally(nothingYet, board).fraction], [1, 0], "un capítulo sin nada hecho no desaparece: vale cero");
 });
 
 console.log(`\nverify-work-progress: ${passed} checks passed.`);

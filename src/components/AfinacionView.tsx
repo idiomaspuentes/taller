@@ -845,6 +845,8 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
     const next = firstUnanswered({ items: visible, decisions: given, me, hashOf: (id) => textFingerprint(data.draftVerses[visible.find((row) => row.id === id)?.verse ?? 0] ?? ""), from: at + 1, settled });
     return next >= 0 ? next : at < visible.length - 1 ? at + 1 : -1;
   }
+  /** Where «Siguiente» leads, worked out once a render and only when it is on screen (a fingerprint per point). */
+  const nextAt = mine && !changing ? nextFrom(position) : -1;
   /** To another point of the list, from the list or after an answer. */
   function goTo(index: number) {
     setListOpen(false);
@@ -3063,14 +3065,15 @@ export function AfinacionView({ ctxEncoded, step: stepProp = "notas", onClose, a
                 </div>
               ) : null}
               {mine && !changing ? (
-                // The way on from a point answered: the next one, or the list after the last.
+                // The way on from a point answered: the next one, or the list after the last. A tint, never filled:
+                // moving on must not look like deciding (Abel, 14 October).
                 <div className="af-decide af-decide--ask af-decide--one">
-                  {nextFrom(position) >= 0 ? (
-                    <Button type="button" data-guide="af-next" onClick={() => goTo(nextFrom(position))}>
+                  {nextAt >= 0 ? (
+                    <Button type="button" variant="secondary" data-guide="af-next" onClick={() => goTo(nextAt)}>
                       {t(stepProp === "notas" ? "af.nextNote" : "af.nextTerm")} <ChevronRight size={18} aria-hidden />
                     </Button>
                   ) : (
-                    <Button type="button" data-guide="af-next" onClick={() => setListOpen(true)}>
+                    <Button type="button" variant="secondary" data-guide="af-next" onClick={() => setListOpen(true)}>
                       {t(stepProp === "notas" ? "af.listNotes" : "af.listTerms")}
                     </Button>
                   )}

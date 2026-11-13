@@ -6,6 +6,7 @@
 import type { PersonLevel } from "../levels";
 import type { ChatEvent } from "../chatEvent";
 import {
+  LATE_APPROVALS,
   OPTION_LABEL,
   latestVotes,
   optionsFor,
@@ -47,6 +48,34 @@ const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", 
 export function daySaid(iso: string): string {
   const at = new Date(iso);
   return Number.isFinite(at.getTime()) ? `${at.getDate()} de ${MONTHS[at.getMonth()]}` : iso.slice(0, 10);
+}
+
+/**
+ * What a reminder to vote says. Past the deadline it says what closes the decision then, as `tallyDecision` counts it:
+ * a proposal with a few people more and nobody against; an objection only by whoever coordinates. It promised the
+ * shortcut of the proposals to objections too (review of 13 November).
+ */
+export function reminderSaid(params: {
+  due: "vencido" | "cerca" | null;
+  /** Who is reminded, as said («@ana y @carla»). */
+  who: string;
+  kind: DecisionKind;
+  by: string;
+  ref: string;
+  deadline: string;
+  minIndependent: number;
+}): string {
+  const what = `la ${params.kind === "proposal" ? "propuesta" : "objeción"} de @${params.by} sobre ${params.ref}`;
+  if (params.due === "vencido") {
+    const enough = Math.min(LATE_APPROVALS, Math.max(1, params.minIndependent));
+    const rule =
+      params.kind === "proposal"
+        ? `Ahora, si nadie está en contra, basta con que ${enough === 1 ? "una persona" : `${enough} personas`} que no la propusieron ni alinearon el versículo ${enough === 1 ? "esté" : "estén"} de acuerdo.`
+        : "Ahora la decide quien coordina el equipo.";
+    return `${params.who}: ya pasó el plazo para opinar sobre ${what}. ${rule} Si quieren opinar, todavía pueden.`;
+  }
+  if (params.due === "cerca") return `${params.who}: mañana vence el plazo para opinar sobre ${what}. Falta su voto.`;
+  return `${params.who}: falta su voto sobre ${what}. Se decide antes del ${daySaid(params.deadline)}.`;
 }
 
 export type DecisionEventData = {
