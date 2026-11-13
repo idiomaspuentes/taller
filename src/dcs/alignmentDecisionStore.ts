@@ -30,7 +30,6 @@ import {
   parseProposalFilename,
   reminderDue,
   waitingOn,
-  LATE_APPROVALS,
   proposalPath,
   resultPath,
   type DecisionKind,
@@ -51,9 +50,9 @@ import {
   decisionId,
   decisionTitle,
   alineacionDecisionData,
-  daySaid,
   editsText,
   peopleSaid,
+  reminderSaid,
   readDecisionThread,
   refLabel,
   type DecisionEventData,
@@ -591,17 +590,7 @@ export async function remindDecisionVoters(params: {
   const lastReminderAt = events.filter((e) => e.event.type === "alineacion-recordatorio").map((e) => e.at).sort().at(-1);
   const due = params.auto ? reminderDue({ deadline: card.deadline, now, lastReminderAt, waiting }) : null;
   if (params.auto && !due) return [];
-  const what = `la ${card.kind === "proposal" ? "propuesta" : "objeción"} de @${card.by} sobre ${refLabel(card)}`;
-  const who = peopleSaid(waiting);
-  // How many are enough once the time is up, as `tallyDecision` counts them: «dos aprobaciones de fuera» was said
-  // whatever the team had asked for, in words nobody used (12 November).
-  const enough = Math.min(LATE_APPROVALS, Math.max(1, card.thresholds.minIndependent));
-  const summary =
-    due === "vencido"
-      ? `${who}: ya pasó el plazo para opinar sobre ${what}. Ahora, si nadie está en contra, basta con que ${enough === 1 ? "una persona" : `${enough} personas`} además de quien la propuso ${enough === 1 ? "esté" : "estén"} de acuerdo. Si quieren opinar, todavía pueden.`
-      : due === "cerca"
-        ? `${who}: mañana vence el plazo para opinar sobre ${what}. Falta su voto.`
-        : `${who}: falta su voto sobre ${what}. Se decide antes del ${daySaid(card.deadline)}.`;
+  const summary = reminderSaid({ due, who: peopleSaid(waiting), kind: card.kind, by: card.by, ref: refLabel(card), deadline: card.deadline, minIndependent: card.thresholds.minIndependent });
   await commentOnIssue(
     session,
     pmOrg,

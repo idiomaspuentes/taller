@@ -770,15 +770,7 @@ export async function publishWorkOrders(params: {
   // takes long on a real server.
   const prepared: { order: (typeof orders)[number]; labelIds: number[]; milestoneId: number | undefined }[] = [];
   for (const order of orders) {
-    const labelIds: number[] = [];
-    for (const name of pmIssueLabelNames(order, namespaceId)) {
-      try {
-        labelIds.push(await ensureLabel(session, org, name, labelColorFor(name, namespaceId), labelCache));
-      } catch {
-        /* label creation may fail without admin; continue without it */
-      }
-    }
-    prepared.push({ order, labelIds, milestoneId: await ensureMilestone(session, org, projectId, milestoneCache) });
+    prepared.push({ order, labelIds: await workOrderLabelIds(session, org, order, namespaceId, labelCache), milestoneId: await ensureMilestone(session, org, projectId, milestoneCache) });
   }
 
   let finished = 0;
@@ -861,6 +853,22 @@ export async function publishWorkOrders(params: {
   return { created, updated, closed, issues: results };
 }
 
+/**
+ * The labels of a subtarea of the plan, made when missing, one at a time (two subtareas must never try to create the
+ * same one). A label that cannot be made (no admin) is left out.
+ */
+async function workOrderLabelIds(session: GtSession, org: string, order: WorkOrder, namespaceId: string, cache: Map<string, number>, extra: string[] = []): Promise<number[]> {
+  const ids: number[] = [];
+  for (const name of [...pmIssueLabelNames(order, namespaceId), ...extra]) {
+    try {
+      ids.push(await ensureLabel(session, org, name, labelColorFor(name, namespaceId), cache));
+    } catch {
+      /* label creation may fail without admin; continue without it */
+    }
+  }
+  return ids;
+}
+
 export type RegroupSummary = {
   /** Chapters whose subtask was made open, made closed, or already there. */
   opened: string[];
@@ -889,7 +897,7 @@ export async function regroupTaskByChapter(params: {
   const { session, org, lang, contentOrg, projectId, taskId } = params;
   const say = params.say ?? (() => undefined);
   const config = dcsConfig(session.host);
-  const board =await loadAssignmentsFromDcs(session, org, lang, projectId, contentOrg);
+  const board = await loadAssignmentsFromDcs(session, org, lang, projectId, contentOrg);
   const inventory = await loadInventoryFromDcs(session, org, lang, projectId);
   if (!board || !inventory) throw new Error(`No se pudo leer el plan de ${projectId}.`);
   const { issues, namespaceId } = await listProjectIssues(session, org, projectId);
@@ -897,7 +905,7 @@ export async function regroupTaskByChapter(params: {
   const summary: RegroupSummary = { opened: [], finished: [], already: [], gathered: [] };
   for (const chapter of plan.chapters) {
     const name = `${chapter.order.label} (${chapter.from.length} porciones)`;
-    (chapter.existing ? summary.already : chapter.state === "open" ? summary.opened : summary.finished).push(name);
+    (chapter.existing && !chapter.closeExisting ? summary.already : chapter.state === "open" ? summary.opened : summary.finished).push(name);
   }
   for (const { issue, into } of plan.close) summary.gathered.push(`#${issue.number} ${issue.title} → ${into.order.label}`);
   if (params.dry) {
@@ -914,17 +922,14 @@ export async function regroupTaskByChapter(params: {
   for (const chapter of plan.chapters) {
     if (chapter.existing) {
       made.set(chapter.order.key, chapter.existing.number);
+      // A record of finished passages that a run before made and could not close.
+      if (chapter.closeExisting) {
+        await editIssue(config, org, PM_REPO_NAME, chapter.existing.number, { token: session.token, state: "closed" });
+        say(`  #${chapter.existing.number} ${chapter.order.label} (terminada, cerrada ahora)`);
+      }
       continue;
     }
-    const names = [...pmIssueLabelNames(chapter.order, namespaceId), ...(chapter.begun ? [pmFacetLabel("estado", "en-curso", namespaceId)] : [])];
-    const labels: number[] = [];
-    for (const name of names) {
-      try {
-        labels.push(await ensureLabel(session, org, name, labelColorFor(name, namespaceId), labelCache));
-      } catch {
-        /* label creation may fail without admin; continue without it */
-      }
-    }
+    const labels = await workOrderLabelIds(session, org, chapter.order, namespaceId, labelCache, chapter.begun ? [pmFacetLabel("estado", "en-curso", namespaceId)] : []);
     const created = await createIssue(config, org, PM_REPO_NAME, {
       token: session.token,
       title: workOrderIssueTitle(chapter.order),

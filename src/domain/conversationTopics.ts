@@ -29,11 +29,20 @@ const OLD_NOTE_WORDS = new RegExp(`^(.+?) · «([\\s\\S]+?)»\\. (${STANCES}):? 
 const OLD_WORDS = new RegExp(`^«([\\s\\S]+?)»\\. (${STANCES}):? ([\\s\\S]*)$`);
 const OLD_NOTE = new RegExp(`^([^.\\n]+?)\\. (${STANCES}):? ([\\s\\S]*)$`);
 
+/**
+ * Until when the tool wrote the head before the answer. After it, a message that starts «Gracias. Propongo un cambio:
+ * …» is a person's, not a note called «Gracias».
+ */
+const OLD_HEADS_UNTIL = Date.parse("2026-11-13T00:00:00Z");
+
 /** An observation said nothing the words did not; a proposal or a decision is said as such. */
 const oldBody = (stance: string, rest: string) => (/observa/i.test(stance) ? rest.trim() : `${stance}: ${rest.trim()}`);
 
-/** The point a message of the tuning tool is about, from what it says after its place; `null` for any other. */
-export function topicOf(placedText: string): MessageTopic | null {
+/**
+ * The point a message of the tuning tool is about, from what it says after its place; `null` for any other. `writtenAt`:
+ * when it was written, to read the old head only where the tool wrote it.
+ */
+export function topicOf(placedText: string, writtenAt?: string): MessageTopic | null {
   const text = withoutNamed(placedText.trim());
   const [head, ...rest] = text.split(/\n{2,}/);
   const after = rest.join("\n\n").trim();
@@ -43,6 +52,8 @@ export function topicOf(placedText: string): MessageTopic | null {
     const words = HEAD_WORDS.exec(head);
     if (words) return { phrase: words[1]!.trim(), body: after };
   }
+  const at = writtenAt ? Date.parse(writtenAt) : Number.NaN;
+  if (Number.isFinite(at) && at >= OLD_HEADS_UNTIL) return null;
   const both = OLD_NOTE_WORDS.exec(text);
   if (both) return { title: both[1]!.trim(), phrase: both[2]!.trim(), body: oldBody(both[3]!, both[4]!) };
   const words = OLD_WORDS.exec(text);
@@ -83,7 +94,7 @@ export function groupTopics<T extends Item>(items: T[]): TopicRow<T>[] {
   const loose: Array<{ at: number; item: T }> = [];
   items.forEach((item, at) => {
     const placed = item.kind === "humano" ? placedMessage(item.text) : null;
-    const topic = placed ? topicOf(placed.text) : null;
+    const topic = placed ? topicOf(placed.text, item.createdAt) : null;
     if (placed && topic) {
       const key = `${placed.ref}|${norm(topic.title)}|${norm(topic.phrase)}`;
       let row = topics.get(key);

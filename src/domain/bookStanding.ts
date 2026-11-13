@@ -5,7 +5,7 @@ import { chaptersDoneElsewhere, type BookDoneElsewhere } from "./doneElsewhere";
 import { issueTaskId } from "./myTasks";
 import { parseTaskProgressMarker } from "./taskProgress";
 import type { AssignmentsDoc } from "./types";
-import { issueFraction } from "./workProgress";
+import { countedIssues, issueFraction } from "./workProgress";
 import { parseWorkOrderMarker } from "./workOrder";
 
 /**
@@ -77,7 +77,7 @@ export function bookStanding(params: {
   // Each subtarea, by task and chapter: how far it is, and whether its work was brought from elsewhere.
   const cells = new Map<string, Map<number, { fraction: number; brought: boolean }[]>>();
   let started = false;
-  for (const issue of issues) {
+  for (const issue of countedIssues(issues, plan)) {
     const fraction = issueFraction(issue, plan);
     if (fraction === null) continue;
     started = true;

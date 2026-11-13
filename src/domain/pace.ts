@@ -1,7 +1,7 @@
 import type { DcsIssue } from "@ip-lms/dcs-client";
 import type { AssignmentsDoc } from "./types";
 import { parseTaskProgressMarker } from "./taskProgress";
-import { issueFraction } from "./workProgress";
+import { countedIssues, isGatheredRecord, issueFraction } from "./workProgress";
 
 /**
  * The pace of a project: how many subtareas are finished per week, and when it would end going on like that.
@@ -33,12 +33,15 @@ export function paceOf(issues: DcsIssue[], board: Pick<AssignmentsDoc, "teams">,
   let left = 0;
   let brought = 0;
   let first = Number.POSITIVE_INFINITY;
+  // What is left counts each piece of work once (see `countedIssues`); what was finished, each subtarea when it closed,
+  // a passage gathered later into its chapter too.
+  const counted = new Set(countedIssues(issues, board));
   for (const issue of issues) {
     const fraction = issueFraction(issue, board);
-    if (fraction === null) continue;
+    if (fraction === null || isGatheredRecord(issue)) continue;
     const created = Date.parse(issue.created_at ?? "");
     if (Number.isFinite(created)) first = Math.min(first, created);
-    left += 1 - fraction;
+    if (counted.has(issue)) left += 1 - fraction;
     if (parseTaskProgressMarker(issue.body ?? "").brought) {
       brought++;
       continue;

@@ -70,4 +70,11 @@ test("una conversación sin mensajes de la herramienta queda tal cual", () => {
   assert.deepEqual(groupTopics(plain).map((row) => row.kind === "item" && row.item.key), ["x", "y", "z"]);
 });
 
+test("la cabeza de antes solo se lee en mensajes de antes del 13 de noviembre: después, una frase cualquiera no es una nota", () => {
+  const said = "Gracias. Propongo un cambio: mejor «carta»";
+  assert.equal(topicOf(said, "2026-11-14T10:00:00Z"), null, "«Gracias» no es el nombre de una nota");
+  assert.equal(topicOf(said, "2026-11-10T10:00:00Z")?.title, "Gracias", "antes, la herramienta escribía así");
+  assert.equal(topicOf("Nota «Doblete»\n\nDe acuerdo.", "2026-11-14T10:00:00Z")?.title, "Doblete", "la cabeza de ahora se lee siempre");
+});
+
 console.log(`\nverify-conversation-topics: ${passed} checks passed.`);
