@@ -86,13 +86,21 @@ export function BooksPanel({ books, recordMissing, folded }: Props) {
                           <div key={phase.phaseId} className="book-phase">
                             <p className="book-phase__head">
                               <strong>{named ? localizeName(named.name, language) : phase.phaseId}</strong>
-                              <span>{t("pg.percent").replace("{n}", String(percentOf(phase.fraction)))}</span>
+                              <span>{phase.nothing ? t("bk.nothing") : t("pg.percent").replace("{n}", String(percentOf(phase.fraction)))}</span>
                             </p>
                             <ul className="book-phase__tasks">
                               {phase.tasks.map((task) => {
                                 const plan = row.plan.teams.find((p) => p.id === task.taskId);
                                 const taskName = plan ? localizeName(plan.name, language) : task.taskId;
                                 const p = percentOf(task.fraction);
+                                // Nothing to do in this book (all translated before): said, never as a bar at 0 %.
+                                if (task.nothing)
+                                  return (
+                                    <li key={task.taskId} className="book-task">
+                                      <span className="book-task__name">{taskName}</span>
+                                      <span className="book-task__percent">{t("bk.nothing")}</span>
+                                    </li>
+                                  );
                                 return (
                                   <li key={task.taskId} className="book-task">
                                     <span className="book-task__name">{taskName}</span>

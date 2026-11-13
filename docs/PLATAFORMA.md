@@ -441,7 +441,9 @@ lo mismo, y dentro de una tarea cada capítulo vale lo mismo.
   Un capítulo nunca se cuenta dos veces.
 - Una tarea con subtareas se mide solo por los capítulos que tienen alguna. Así las tareas de artículos (Palabras,
   Academia) no quedan a medias para siempre.
-- Una tarea sin subtareas y sin registro tiene todo por hacer.
+- Una tarea sin subtareas y sin registro tiene todo por hacer, salvo en un libro que ya se trabaja en Taller: ahí
+  publicar repartió todas las tareas a la vez, y una sin subtareas no tenía nada que hacer (las Palabras y la
+  Academia de Ester, ya traducidas). Dice «Nada que hacer en este libro» y no entra en los promedios.
 - Lo del registro y lo traído (`brought`) es «antes de Taller»: cuenta para el avance, nunca para el ritmo.
 - Un libro sin proyecto se mide con las tareas del proceso que nombra el registro. Cada tarea lleva el equipo que
   tiene en los proyectos del espacio.
