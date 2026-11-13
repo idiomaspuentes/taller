@@ -146,15 +146,16 @@ function holdsLaterChapters(other: DcsIssue, board: Board, openIssues: DcsIssue[
 }
 
 /**
- * Whether somebody already works on a subtarea: seated in one of its steps, with a step done, or taken and begun.
+ * Whether work was already done on a subtarea here: a step done, part of a step's work done, or taken and begun.
  * A wait decides what may be started, never what is under way: in Ezra the team had 43 of the 57 points of 4:11–13
- * done when a place left free in chapter 1 sent it, and seven more begun, back to «En espera», where nobody found
- * them among a thousand (12 November).
+ * done when a place left free in chapter 1 sent it back to «En espera», where nobody found it among a thousand
+ * (12 November). A seat alone is not work: counted as such, it brought out of their order the passages of chapters 4
+ * and 5 somebody had only opened, and the team saw them «with no logical order» (Abel, the same day).
  */
 export function isUnderWay(issue: DcsIssue): boolean {
   const progress = parseTaskProgressMarker(issue.body ?? "");
   if (progress.doneStepIds.length) return true;
-  if (Object.values(progress.steps ?? {}).some((step) => step?.assignees?.length)) return true;
+  if (Object.values(progress.steps ?? {}).some((step) => (step?.work?.done ?? 0) > 0)) return true;
   const taken = Boolean(issue.assignee?.login || issue.assignees?.some((a) => a?.login));
   const begun =
     Boolean(issue.body?.includes("<!-- gt:en-curso -->")) || (issue.labels ?? []).some((label) => /(^|[/:])en-curso$/.test(label?.name ?? ""));

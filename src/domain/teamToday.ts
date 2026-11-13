@@ -148,7 +148,7 @@ export function classifyToday(params: {
       continue;
     }
     // A subtarea of the team with people in its steps is taken, though nobody took it whole: it moves or it is quiet.
-    if (isIssueUnassigned(issue) && !isUnderWay(issue)) {
+    if (isIssueUnassigned(issue) && !isUnderWay(issue) && !seatedIn(issue).length) {
       const days = daysSince(issue.created_at, now);
       if (days >= limits.freeDays) {
         out.stuck.push({ ...base, group: "stuck", days, reason: `Nadie la ha tomado en ${days} días` });
